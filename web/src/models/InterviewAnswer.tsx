@@ -1,4 +1,5 @@
 import type { InterviewQuestion } from "@/models/InterviewTemplate";
+import { draftValue, sourceName, type InterviewDraft, type InterviewSource } from "@/models/InterviewSource";
 import { optionValue, type AnswerValue, type HarnessQuestion, type QuestionAnswers, type QuestionItem } from "@/models/Question";
 import type { Trail } from "@/models/Trail";
 
@@ -33,12 +34,24 @@ export interface SaveInterviewAnswerInput {
 
 export type InterviewRowStatus = "answered" | "skipped" | "pending";
 
+// open: a draft waiting on an unanswered or skipped question; confirmed: the answer is the draft; suggested: newer and different.
+export type RowDraftState = "open" | "confirmed" | "suggested";
+
+export interface RowDraft {
+  id: string;
+  value: AnswerValue;
+  from: string;
+  where: string;
+  state: RowDraftState;
+}
+
 export interface InterviewRow {
   key: string;
   round: number;
   item: QuestionItem;
   why: string;
   answer: InterviewAnswer | undefined;
+  draft?: RowDraft | undefined;
   // A follow-up of the run's live question, answered on the trail with the rest of its round rather than saved alone.
   live?: true;
 }
@@ -58,9 +71,34 @@ export const rowStatus = (row: InterviewRow): InterviewRowStatus => {
   return "pending";
 };
 
-// The template's questions in template order, matched to their answers by trimmed text, then one section per stored round.
-export const buildSections = (questions: InterviewQuestion[], answers: InterviewAnswer[]): InterviewSectionData[] => {
+const sameValue = (draft: InterviewDraft, answer: InterviewAnswer): boolean =>
+  draft.text.trim() === answer.text.trim() && [...draft.selected].sort().join("\n") === [...answer.selected].sort().join("\n");
+
+// A draft as its question's row shows it; a draft older than an answer that differs from it was overridden and is not shown.
+export const rowDraft = (draft: InterviewDraft | undefined, answer: InterviewAnswer | undefined, sources: InterviewSource[]): RowDraft | undefined => {
+  if (!draft) return undefined;
+  const from = draft.source_ids
+    .map((id) => sources.find((s) => s.id === id))
+    .filter((s) => s !== undefined)
+    .map(sourceName)
+    .join(", ");
+  const base = { id: draft.id, value: draftValue(draft), from, where: draft.where };
+  const answered = !!answer && !answer.skipped && (answer.selected.length > 0 || answer.text !== "");
+  if (!answered) return { ...base, state: "open" };
+  if (sameValue(draft, answer)) return { ...base, state: "confirmed" };
+  if (Date.parse(draft.drafted_at) > Date.parse(answer.answered_at)) return { ...base, state: "suggested" };
+  return undefined;
+};
+
+// The template's questions in template order, matched to their answers and drafts by trimmed text, then one section per stored round.
+export const buildSections = (
+  questions: InterviewQuestion[],
+  answers: InterviewAnswer[],
+  drafts: InterviewDraft[] = [],
+  sources: InterviewSource[] = [],
+): InterviewSectionData[] => {
   const initial = answers.filter((a) => a.round === 0);
+  const answerTo = (q: InterviewQuestion) => initial.find((a) => a.question === q.text.trim());
   const sections: InterviewSectionData[] = [
     {
       key: "0",
@@ -76,7 +114,12 @@ export const buildSections = (questions: InterviewQuestion[], answers: Interview
           options: q.options.map((o) => ({ label: o.label, description: o.description })),
         },
         why: "",
-        answer: initial.find((a) => a.question === q.text.trim()),
+        answer: answerTo(q),
+        draft: rowDraft(
+          drafts.find((d) => d.question === q.text.trim()),
+          answerTo(q),
+          sources,
+        ),
       })),
     },
   ];
@@ -102,8 +145,10 @@ export const buildSections = (questions: InterviewQuestion[], answers: Interview
 export const countLine = (rows: InterviewRow[]): string => {
   const answered = rows.filter((r) => rowStatus(r) === "answered").length;
   const skipped = rows.filter((r) => rowStatus(r) === "skipped").length;
-  if (skipped === 0) return `${answered} of ${rows.length} answered`;
-  return `${answered} answered · ${skipped} skipped`;
+  const drafted = rows.filter((r) => r.draft?.state === "open").length;
+  const suggested = rows.filter((r) => r.draft?.state === "suggested").length;
+  const head = skipped === 0 ? `${answered} of ${rows.length} answered` : `${answered} answered · ${skipped} skipped`;
+  return [head, drafted > 0 && `${drafted} drafted`, suggested > 0 && `${suggested} suggested`].filter(Boolean).join(" · ");
 };
 
 export const firstPendingKey = (rows: InterviewRow[]): string | null =>
@@ -121,8 +166,10 @@ export const answerValue = (answer: InterviewAnswer | undefined): AnswerValue | 
   return { selected: answer.selected, text: answer.text };
 };
 
-export const answerLine = (answer: InterviewAnswer | undefined): string =>
-  answer ? [...answer.selected, answer.text].filter((part) => part !== "").join(" · ").replaceAll("\n", " · ") : "";
+export const valueLine = (value: AnswerValue | undefined): string =>
+  value ? [...(value.selected ?? []), value.text ?? ""].filter((part) => part !== "").join(" · ").replaceAll("\n", " · ") : "";
+
+export const answerLine = (answer: InterviewAnswer | undefined): string => valueLine(answer);
 
 // Mirrors internal/plays splitWhy: a follow-up's text is the question up to the first "?" followed by whitespace, then why it is asked.
 export const splitWhy = (text: string): { question: string; why: string } => {

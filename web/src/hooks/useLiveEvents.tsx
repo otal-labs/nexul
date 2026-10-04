@@ -20,6 +20,7 @@ import { followWorkspaceUpdate, getMyRoleKey, getWorkspacesKey } from "@/hooks/W
 import { getTeamKey } from "@/models/Team";
 import type { MyWorkspaceInfo } from "@/models/Permission";
 import { getInterviewAnswersKey, getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
+import { getInterviewDraftsKey, getInterviewSourcesKey } from "@/hooks/InterviewSourceHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getMeKey, getPATsKey, getSessionsKey } from "@/hooks/AuthHooks";
 import { getAttachmentsKey } from "@/hooks/AttachmentHooks";
@@ -108,8 +109,8 @@ const pushTopics: Record<string, string[]> = {
   "category.updated": [getCategoriesKey, getProjectCategoriesKey],
   "category.deleted": [getCategoriesKey, getProjectCategoriesKey],
   "doc.created": [getDocsKey],
-  // An edit makes its editor a watcher, which the Watch control's count shows.
-  "doc.updated": [getDocsKey, getDocKey, getDocWatchersKey],
+  // An edit makes its editor a watcher, which the Watch control's count shows; an interview source names the doc and dates its change.
+  "doc.updated": [getDocsKey, getDocKey, getDocWatchersKey, getInterviewSourcesKey],
   "doc.watchers.changed": [getDocWatchersKey],
   // The inbox groups doc rows by the folder each doc is in now, so a move, rename, or delete regroups it.
   "doc.moved": [getDocsKey, getDocKey, getDocFoldersKey, getNotificationsKey],
@@ -146,10 +147,15 @@ const pushTopics: Record<string, string[]> = {
   // An instance template changes what every unedited workspace shows and what each copy is compared with.
   "instance_template.updated": TEMPLATE_QUERY_KEYS,
   "memory.created": [getMemoriesKey],
-  "memory.updated": [getMemoriesKey, getMemoryKey, getMemoryVersionsKey],
-  "memory.deleted": [getMemoriesKey, getMemoryKey],
+  "memory.updated": [getMemoriesKey, getMemoryKey, getMemoryVersionsKey, getInterviewSourcesKey],
+  "memory.deleted": [getMemoriesKey, getMemoryKey, getInterviewSourcesKey],
   "interview_answer.saved": [getInterviewAnswersKey],
   "interview_answer.cleared": [getInterviewAnswersKey],
+  "interview_source.added": [getInterviewSourcesKey],
+  "interview_source.changed": [getInterviewSourcesKey],
+  "interview_source.removed": [getInterviewSourcesKey],
+  "interview_draft.saved": [getInterviewDraftsKey],
+  "interview_draft.dismissed": [getInterviewDraftsKey],
   // The Team list and a person's detail follow account and membership changes made anywhere, MCP included.
   "account.admitted": [getTeamKey],
   "account.disabled": [getTeamKey],

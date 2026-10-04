@@ -1,5 +1,6 @@
 import { InterviewChecklist } from "@/components/memory/InterviewChecklist";
 import { InterviewMemoryColumn } from "@/components/memory/InterviewMemoryColumn";
+import { InterviewSourcesSection } from "@/components/memory/InterviewSourcesSection";
 import { PageHeader } from "@/components/PageHeader";
 import type { Project } from "@/models/Project";
 
@@ -17,7 +18,10 @@ export const ProjectInterview = ({ project }: ProjectInterviewProps) => (
     />
     <div className="@container">
       <div className="grid gap-12 @5xl:grid-cols-[minmax(0,36rem)_minmax(0,1fr)] @5xl:items-start @5xl:gap-10">
-        <InterviewChecklist projectId={project.id} />
+        <div className="min-w-0 space-y-6">
+          <InterviewSourcesSection projectId={project.id} />
+          <InterviewChecklist projectId={project.id} />
+        </div>
         <InterviewMemoryColumn project={project} />
       </div>
     </div>

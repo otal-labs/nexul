@@ -1,9 +1,12 @@
+import type { ReactNode } from "react";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-import { QuestionOptionRow } from "@/components/play/QuestionOptionRow";
-import { optionValue, type AnswerValue, type QuestionItem } from "@/models/Question";
+import { DraftedTag, QuestionOptionRow } from "@/components/play/QuestionOptionRow";
+import { optionValue, type AnswerValue, type QuestionItem, type QuestionOption } from "@/models/Question";
+import { cn } from "@/lib/utils";
 
 interface QuestionStepProps {
   item: QuestionItem;
@@ -11,6 +14,10 @@ interface QuestionStepProps {
   idPrefix: string;
   draft: AnswerValue | undefined;
   onDraft: (value: AnswerValue) => void;
+  // What a drafting run proposed, tagged on its options and its text.
+  drafted?: AnswerValue | undefined;
+  // A line under the hint, such as where a draft came from.
+  note?: ReactNode;
 }
 
 // toggle picks one value for a single choice and flips it in the set for a multi-select; either clears typed text.
@@ -23,12 +30,15 @@ export const toggleOption = (item: QuestionItem, draft: AnswerValue | undefined,
 const listClass = "mt-2 divide-y divide-border overflow-hidden rounded-md border border-border";
 
 // The answering part of one question, under whatever title its host gives it: the hint muted, the option rows, the free text.
-export const QuestionStep = ({ item, idPrefix, draft, onDraft }: QuestionStepProps) => {
+export const QuestionStep = ({ item, idPrefix, draft, onDraft, drafted, note }: QuestionStepProps) => {
   const selected = draft?.selected ?? [];
+  const isDrafted = (option: QuestionOption) => drafted?.selected?.includes(optionValue(option)) ?? false;
+  const draftedText = (drafted?.text ?? "") !== "";
   const rowId = (i: number) => `${idPrefix}-option-${i}`;
   return (
     <div>
       {item.header && <p className="text-xs text-muted-foreground">{item.header}</p>}
+      {note}
       {item.options.length > 0 && !item.multi_select && (
         <RadioGroup asChild className="gap-0" value={selected[0] ?? ""} onValueChange={(value) => onDraft(toggleOption(item, draft, value))}>
           <ul className={listClass}>
@@ -38,6 +48,7 @@ export const QuestionStep = ({ item, idPrefix, draft, onDraft }: QuestionStepPro
                 number={i + 1}
                 option={option}
                 checked={selected.includes(optionValue(option))}
+                drafted={isDrafted(option)}
                 htmlFor={rowId(i)}
                 control={<RadioGroupItem id={rowId(i)} value={optionValue(option)} aria-label={option.label} />}
               />
@@ -53,6 +64,7 @@ export const QuestionStep = ({ item, idPrefix, draft, onDraft }: QuestionStepPro
               number={i + 1}
               option={option}
               checked={selected.includes(optionValue(option))}
+              drafted={isDrafted(option)}
               htmlFor={rowId(i)}
               control={
                 <Checkbox
@@ -66,13 +78,18 @@ export const QuestionStep = ({ item, idPrefix, draft, onDraft }: QuestionStepPro
           ))}
         </ul>
       )}
+      {draftedText && (
+        <div className="mt-2 flex justify-end">
+          <DraftedTag />
+        </div>
+      )}
       <Input
         type="text"
         aria-label={item.options.length > 0 ? "Something else" : "Your answer"}
         placeholder={item.options.length > 0 ? "Something else…" : "Your answer"}
         value={draft?.text ?? ""}
         onChange={(e) => onDraft({ text: e.target.value })}
-        className="mt-2 h-8 text-sm"
+        className={cn("h-8 text-sm", draftedText ? "mt-1" : "mt-2")}
       />
     </div>
   );
