@@ -515,6 +515,36 @@ func TestDismissDraft(t *testing.T) {
 	assert.Equal(t, DraftEvent{WorkspaceID: "workspace-1", ProjectID: "project-1", DraftID: id, Question: "Stack", AuthorID: "user-1", At: fixedNow}, evts[0].Payload)
 }
 
+func TestClearSuggestions_DeletesOnlyDraftsOnAnsweredQuestions(t *testing.T) {
+	repo, s, followID, _ := draftsFixture(t)
+	_, err := s.SaveDrafts(testCtx(), "project-1", []InterviewDraft{
+		{Question: "Tests", Selected: []string{"Unit"}, SourceIDs: []string{followID}},
+		{Question: "Style", Text: "Early return", SourceIDs: []string{followID}},
+		{Question: "Stack", Text: "Go", SourceIDs: []string{followID}},
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, s.ClearSuggestions(testCtx(), "project-1"))
+
+	ds, err := s.ListDrafts(testCtx(), "project-1")
+	require.NoError(t, err)
+	require.Len(t, ds, 2, "drafts on a skipped and an unanswered question stay for the run to replace")
+	assert.Equal(t, []string{"Style", "Stack"}, []string{ds[0].Question, ds[1].Question})
+	evts := repo.eventsFor(TopicDraftDismissed)
+	require.Len(t, evts, 1, "the page hears the suggested change go")
+	assert.Equal(t, "Tests", evts[0].Payload.(DraftEvent).Question)
+}
+
+func TestClearSuggestions_Refusals(t *testing.T) {
+	repo, s, _, _ := draftsFixture(t)
+	require.ErrorIs(t, s.ClearSuggestions(testCtx(), " "), apperrs.ErrInvalid)
+	require.ErrorIs(t, s.ClearSuggestions(context.Background(), "project-1"), apperrs.ErrUnauthorized)
+	deny := newSourcesService(repo, fakeAccess{can: true, deny: map[string]bool{"project-1:memories:write": true}})
+	require.ErrorIs(t, deny.ClearSuggestions(testCtx(), "project-1"), apperrs.ErrForbidden)
+	repo.answerErr = apperrs.ErrConflict
+	require.Error(t, s.ClearSuggestions(testCtx(), "project-1"))
+}
+
 func TestListDrafts_RequiresMemoriesRead(t *testing.T) {
 	_, err := newSourcesService(newFakeRepo(), fakeAccess{can: false}).ListDrafts(testCtx(), "project-1")
 	require.ErrorIs(t, err, apperrs.ErrForbidden)

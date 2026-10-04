@@ -20,9 +20,6 @@ export const SOURCE_KIND_LABEL: Record<SourceKind, string> = {
 
 export const SOURCE_STANCE_LABEL: Record<SourceStance, string> = { follow: "Follow", question: "Question" };
 
-// Mirrors plays builtin key interview-draft: the play that writes drafts from the follow sources.
-export const DRAFT_PLAY_KEY = "interview-draft";
-
 // Mirrors memories.InterviewSource; label, not_visible, gone, and ref_updated_at are resolved for the reader.
 export interface InterviewSource {
   id: string;

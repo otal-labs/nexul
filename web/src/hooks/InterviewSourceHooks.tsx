@@ -5,13 +5,8 @@ import { api, errorMessage } from "@/api/client";
 import { useFetchApplicablePlays, useFetchWorkspacePlays } from "@/hooks/PlayHooks";
 import { useFetchTrails } from "@/hooks/TrailHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import {
-  DRAFT_PLAY_KEY,
-  type AddInterviewSourceInput,
-  type InterviewDraft,
-  type InterviewSource,
-  type SourceStance,
-} from "@/models/InterviewSource";
+import { DRAFT_INTERVIEW_KEY } from "@/models/Play";
+import type { AddInterviewSourceInput, InterviewDraft, InterviewSource, SourceStance } from "@/models/InterviewSource";
 
 export const getInterviewSourcesKey = "getInterviewSources";
 export const getInterviewDraftsKey = "getInterviewDrafts";
@@ -101,8 +96,8 @@ export const useInterviewPlays = (projectId: string) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: plays } = useFetchApplicablePlays(workspaceId, projectId, "interview", undefined);
   return {
-    followUp: plays?.find((p) => p.builtin_key !== DRAFT_PLAY_KEY),
-    draft: plays?.find((p) => p.builtin_key === DRAFT_PLAY_KEY),
+    followUp: plays?.find((p) => p.builtin_key !== DRAFT_INTERVIEW_KEY),
+    draft: plays?.find((p) => p.builtin_key === DRAFT_INTERVIEW_KEY),
   };
 };
 
@@ -113,7 +108,7 @@ export const useInterviewTrails = (projectId: string) => {
   const { data: trails } = useFetchTrails("interview", projectId);
   const { data: plays } = useFetchWorkspacePlays(workspaceId);
   const runnable = useInterviewPlays(projectId).draft;
-  const draftId = runnable?.id ?? plays?.find((p) => p.builtin_key === DRAFT_PLAY_KEY)?.id;
+  const draftId = runnable?.id ?? plays?.find((p) => p.builtin_key === DRAFT_INTERVIEW_KEY)?.id;
   return {
     followUp: trails?.filter((t) => t.play_id !== draftId),
     drafting: trails?.filter((t) => t.play_id === draftId),
