@@ -128,11 +128,17 @@ The Agent is told the project's name and id and the answers the project
 already records, such as where its tests live from the project wizard. It
 opens the interview memory with `memory_create` and `kind` `interview`, which creates it
 empty the first time and returns the workspace's Interview template questions
-and the project's stored answers. It reads the checkout, then asks about
-skipped questions, gaps, and anything the code contradicts, a round of
-questions at a time, each with its recommended answer as the first option and
-a line on why it is asked. Each answered round is stored with the project's
-answers. It records nothing from the code that was not confirmed, then writes
+and the project's stored answers and sources. It reads the checkout and every
+source whose stance is question, such as an earlier phase's code, then asks
+about skipped questions, gaps, anything the code contradicts, and what a
+question source did that the answers do not settle, a round of questions at a
+time, each with its recommended answer as the first option and a line on why
+it is asked that names what was found and where. Follow sources are read only
+as context; drafting from them is the Draft interview play's. The run's prompt
+names each project source under question with its checkout path when the
+starter's project link for it is on the run's computer. Each answered round is
+stored with the project's answers. It records nothing from the code or a
+source that was not confirmed, then writes
 the interview memory with `memory_update` as rules rather than a transcript,
 under the 8,000-character cap, keeping every existing rule no answer
 contradicts. Memory versioning makes any change revertible.

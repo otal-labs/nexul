@@ -71,14 +71,25 @@ func TestRun_DraftingPlay_NamesItsTrailAndFollowProjectCheckouts(t *testing.T) {
 	assert.Equal(t, []string{projectID}, f.answers.cleared, "the run clears the project's suggested changes as it starts")
 }
 
-func TestRun_InterviewPlay_NeitherClearsSuggestionsNorNamesItsTrail(t *testing.T) {
+func TestRun_InterviewPlay_NamesQuestionProjectCheckoutsButNeitherClearsSuggestionsNorNamesItsTrail(t *testing.T) {
 	f, _ := newDraftingFixture()
 
-	_, blocks := runBlocks(t, f, RunInput{PlayID: intPlayID, TargetType: TargetInterview, TargetID: projectID, Via: ViaWeb})
+	_, blocks := runBlocks(t, f, RunInput{PlayID: intPlayID, TargetType: TargetInterview, TargetID: projectID, ComputerID: runComputer, Via: ViaWeb})
 
+	assert.Contains(t, blocks, "Project sources with stance question:\n"+
+		`- "Old app" (project id p-old, source id s-old): its checkout on this computer is /home/dev/old.`)
+	assert.NotContains(t, blocks, "stance follow", "follow sources are the drafting run's")
 	assert.NotContains(t, blocks, "trail id")
-	assert.NotContains(t, blocks, "Project sources")
 	assert.Empty(t, f.answers.cleared)
+}
+
+func TestRun_InterviewPlay_NoQuestionProjectSources_NamesNone(t *testing.T) {
+	f, _ := newDraftingFixture()
+	f.answers.sources = f.answers.sources[:3]
+
+	_, blocks := runBlocks(t, f, RunInput{PlayID: intPlayID, TargetType: TargetInterview, TargetID: projectID, ComputerID: runComputer, Via: ViaWeb})
+
+	assert.NotContains(t, blocks, "Project sources")
 }
 
 func TestRun_DraftingPlay_SeamFailuresNeverStopTheRun(t *testing.T) {

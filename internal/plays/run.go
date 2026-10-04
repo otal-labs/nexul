@@ -355,9 +355,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	if err != nil {
 		return refuse(err)
 	}
-	if trail.TargetType == TargetInterview {
-		links = append(links, r.interviewBlocks(ctx, play, trail, tgt)...)
-	}
+	links = append(links, r.interviewBlocks(ctx, play, trail, tgt)...)
 	drafting := trail.TargetType == TargetInterview && play.BuiltinKey == DraftInterviewKey
 	conversationID, err := r.openThread(ctx, play.WorkspaceID, trail.TargetType, trail.TargetID, trail.StarterID)
 	if err != nil {
@@ -400,26 +398,27 @@ func (r *Runner) clearSuggestions(ctx context.Context, trail *Trail) {
 	}
 }
 
-// interviewBlocks is an interview run's context: the interview, plus what a drafting or an audit run reads.
+// interviewBlocks names an interview run's project, then its drafting context or question sources; an audit adds date and target.
 func (r *Runner) interviewBlocks(ctx context.Context, play *Play, trail *Trail, tgt target) []string {
+	if trail.TargetType != TargetInterview {
+		return nil
+	}
 	blocks := []string{interviewBlock(tgt)}
 	if play.BuiltinKey == DraftInterviewKey {
-		blocks = append(blocks, r.draftingBlock(ctx, trail))
+		return append(blocks, r.draftingBlock(ctx, trail))
 	}
-	if play.BuiltinKey == AuditKey {
-		blocks = append(blocks, r.auditBlock(ctx, trail))
+	auditing := play.BuiltinKey == AuditKey
+	if auditing {
+		blocks = append(blocks, fmt.Sprintf("Today is %s. This run's trail id is %s.", r.now().UTC().Format(time.DateOnly), trail.ID))
+	}
+	sources := r.projectSourcesBlock(ctx, trail, StanceQuestion)
+	if sources != "" {
+		return append(blocks, sources)
+	}
+	if auditing {
+		blocks = append(blocks, "This project has no project source under question: audit its own code, in the checkout you are running in.")
 	}
 	return blocks
-}
-
-// auditBlock names an audit run's date, its trail id, and what to audit: question project sources, else its own checkout.
-func (r *Runner) auditBlock(ctx context.Context, trail *Trail) string {
-	block := fmt.Sprintf("Today is %s. This run's trail id is %s.", r.now().UTC().Format(time.DateOnly), trail.ID)
-	sources := r.projectSourcesBlock(ctx, trail, StanceQuestion)
-	if sources == "" {
-		return block + "\nThis project has no project source under question: audit its own code, in the checkout you are running in."
-	}
-	return block + "\n" + sources
 }
 
 // draftingBlock tells a drafting run its trail id, for the drafts it saves, and where its follow project sources are.
