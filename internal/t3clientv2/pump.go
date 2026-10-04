@@ -21,7 +21,7 @@ type source interface {
 const (
 	// noteEvery repeats the standing note, which keeps the callers' silence windows open while the turn waits on T3.
 	noteEvery = 5 * time.Minute
-	// handoffCap is how long a turn whose run is done waits for the work it handed off.
+	// handoffCap is how long a turn whose run is done, or cut by a T3 restart, waits for the work it handed off.
 	handoffCap = 60 * time.Minute
 	// updatedNote ends a turn whose resubscribe finds T3 Code on another protocol.
 	updatedNote = "T3 Code was updated during this turn; ask again"
@@ -44,7 +44,7 @@ type pump struct {
 	// note is the standing note last shown, due when it is shown again.
 	note string
 	due  time.Time
-	// capAt is when the turn stops waiting for handed-off work, zero until its own run is done.
+	// capAt is when the turn stops waiting for handed-off work, zero until its own run is done or cut.
 	capAt time.Time
 	pills pills
 	// feeds are the hand-offs' own threads by subagent id, each read into inbox by its own goroutine; nil once ended.
@@ -178,7 +178,7 @@ func (p *pump) remind(ctx context.Context, out chan<- harness.Update) bool {
 	return send(ctx, out, harness.Update{Activity: note})
 }
 
-// capped ends the turn done handoffCap after its own run finished, while work it handed off still runs; true once it did.
+// capped ends the turn done handoffCap after its own run was done or cut, while work it handed off still runs; true once it did.
 func (p *pump) capped(ctx context.Context, out chan<- harness.Update) bool {
 	if !p.w.waiting() {
 		return false
