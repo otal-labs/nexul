@@ -12,15 +12,17 @@ project's interview.
 
 ## Configure a play
 
-Open **Configuration → Plays**. Every workspace starts with four ordinary plays:
+Open **Configuration → Plays**. Every workspace starts with five ordinary plays:
 
 - **Fix with AI** is a ticket play shown in the In progress stage.
 - **To tickets via AI** is a document play.
 - **Interview** is an interview play, run from a project's Interview page.
 - **Test with AI** is a ticket play shown in the Testing stage.
+- **Draft interview** is an interview play that drafts answers from the
+  interview's follow sources.
 
 Each keeps a built-in key (`fix-with-ai`, `to-tickets-via-ai`, `interview`,
-`test-with-ai`) through renames. A new workspace's copies take their
+`test-with-ai`, `interview-draft`) through renames. A new workspace's copies take their
 instructions from the instance's templates (see
 [Templates](/docs/guide/memories/#templates)); editing those never rewrites a
 workspace that already exists, and resetting a built-in play's instructions
@@ -134,6 +136,24 @@ none. Skipping it, or leaving the wizard without starting it, asks "are you
 sure?" and says what agents lose without it. A project without an interview is
 never blocked: its board shows a banner linking to the Interview page until
 the interview memory exists, which can be dismissed for the browser session.
+
+## The Draft interview play
+
+Draft interview runs on a project's interview like the Interview play, in the
+same hidden thread, and never asks anything. It reads the interview memory
+with its questions, answers, sources, and drafts, then every source whose
+stance is follow, reading a large one selectively. It drafts each template
+question with no answer or a skip that a source speaks to, and an answered
+question only where the sources now disagree with the answer, which the page
+shows as a suggested change. Each draft names its source ids and one line on
+where it came from, and is saved with `memory_update` and the run's trail id
+as it is found. Sources under question are left to the Interview play.
+
+The run's prompt names its trail id and, for each project source, that
+project's checkout path when the starter's project link for it is on the
+run's computer, or says there is no checkout there. As the run starts, the
+project's suggested changes are cleared, so only those the run drafts again
+come back; drafts on unanswered questions stay until the run replaces them.
 
 ## The Test with AI play
 

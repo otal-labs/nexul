@@ -22,6 +22,9 @@ export const PLAY_STAGE_LABELS: Record<PlayStage, string> = {
   done: "Done",
 };
 
+// The built-in interview play that drafts answers from sources; it is never the interview's run.
+export const DRAFT_INTERVIEW_KEY = "interview-draft";
+
 export interface Play {
   id: string;
   workspace_id: string;
@@ -32,7 +35,7 @@ export interface Play {
   enabled: boolean;
   show_when_stage: PlayStage | null;
   excluded_project_ids: string[];
-  // The seeded play this one is (fix-with-ai, to-tickets-via-ai, interview, test-with-ai), kept through renames; "" for a play a person made.
+  // The seeded play this one is (fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft), kept through renames; "" for a play a person made.
   builtin_key: string;
   created_by: string;
   created_at: string;

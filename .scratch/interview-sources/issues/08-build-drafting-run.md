@@ -21,11 +21,11 @@ never ask; never draft from a question source; write drafts with
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A run on a fake harness: drafts land, an equal draft is dropped, a
+- [x] A run on a fake harness: drafts land, an equal draft is dropped, a
       question source is not read for drafts
-- [ ] Seed and migration: fresh workspaces get five plays, existing ones
+- [x] Seed and migration: fresh workspaces get five plays, existing ones
       gain the new play once, an edited Interview play is untouched
-- [ ] `CONTEXT.md` (Interview, Interview source) and an ADR recording
+- [x] `CONTEXT.md` (Interview, Interview source) and an ADR recording
       drafting as its own play and drafts kept apart from answers

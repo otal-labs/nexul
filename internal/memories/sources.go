@@ -232,6 +232,41 @@ func (s *Service) DismissDraft(ctx context.Context, id string) error {
 	return nil
 }
 
+// ClearSuggestions deletes a project's drafts on questions that already have an answer, as a drafting run starts, so
+// only the suggested changes it drafts again come back (ADR 0122); drafts on unanswered questions stay. memories:write.
+func (s *Service) ClearSuggestions(ctx context.Context, projectID string) error {
+	projectID = strings.TrimSpace(projectID)
+	if projectID == "" {
+		return fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
+	}
+	actorID, err := requireActor(ctx)
+	if err != nil {
+		return err
+	}
+	if err := s.requireProject(ctx, projectID, permissions.MemoriesWrite); err != nil {
+		return err
+	}
+	_, answered, err := s.draftContext(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	ds, err := s.repo.ListDrafts(ctx, projectID)
+	if err != nil {
+		return fmt.Errorf("list interview drafts for project %s: %w", projectID, err)
+	}
+	now := s.now().UTC()
+	for _, d := range ds {
+		if answered[d.Question] == nil {
+			continue
+		}
+		err := s.repo.DeleteDraft(ctx, d.ID, draftEvent(TopicDraftDismissed, d, actorID, now))
+		if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+			return fmt.Errorf("clear suggested change %s: %w", d.ID, err)
+		}
+	}
+	return nil
+}
+
 func (s *Service) writableSource(ctx context.Context, id string) (*InterviewSource, error) {
 	src, err := s.repo.GetSource(ctx, id)
 	if err != nil {
