@@ -72,13 +72,17 @@ too.
 ## Decisions so far
 
 - [How the interview's machinery carries over to a doc](issues/01-how-the-interview-carries-over.md): own docs-domain tables beside the interview's; a run posts its round through `doc_update` and ends, `doc_get` returns the rounds; the runner locks at start, unlocks at every end, and only the running round's starter may write through the lock; the checklist rows carry over, `QuestionCard` does not; two new notification kinds; the phone starts from a read-only doc screen.
+- [Where clarifications live](issues/03-where-clarifications-live.md): two docs-domain tables (rounds, questions), closed kept on the newest round; see with `docs:read`, answer with `docs:write`, close with `plays:run`; events never carry answers; `doc_get`/`doc_update` carry the rounds.
+- [How a round runs](issues/04-the-run-lifecycle.md): built-in `clarify` doc play; the runner opens and closes each round, locking the doc only while it runs (ADR 0121); the agent posts the round or a no-gaps rewrite through `doc_update` and ends; empty failed rounds vanish; two new notification kinds.
+
+## Build
+
+Build tickets 07–12 in `issues/`, worked here per the destination: storage
+and agent tools, the play and its rounds, the notifications, the web panel,
+the phone view, and the walkthrough.
 
 ## Not yet specified
 
-- The build tickets: storage, the play and its run, the web panel, the
-  phone view, notifications, MCP, and a walkthrough with a restricted
-  member on a real install. They graduate once the decision tickets
-  resolve.
 - How a clarification shows in the docs list and the doc's header (an
   "awaiting answers" marker for the client, "answered" for the
   developer), if the prototype shows it is needed.
