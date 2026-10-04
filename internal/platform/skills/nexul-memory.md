@@ -75,6 +75,15 @@ Keep the set small and specific. Prefer updating an existing memory over
 creating a near-duplicate. A when-to-use line should be short enough to
 scan in a list: "use this if you are writing React code", not a paragraph.
 
+## Sign-in
+
+Nexul's MCP tools act as the signed-in user, and that sign-in covers the
+tool calls only; a browser you drive does not share it. Unless a browser is
+signed in to Nexul separately and the task calls for one, inspect records
+through the tools and use screenshots you are given as the visual evidence.
+A logged-out browser's login screen or "Page not found" says nothing about
+whether a record or route exists, so never report it as a failure of either.
+
 ## Staying current
 
 This file's `metadata.version` names the version you have. Once per session,

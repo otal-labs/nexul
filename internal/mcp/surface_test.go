@@ -111,6 +111,11 @@ func TestSurface_DocAndMemoryCreatePointAtEachOther(t *testing.T) {
 	assert.Contains(t, skills.NexulMemory.Content, "memory_create")
 }
 
+func TestSurface_InstructionsAndSkillSayABrowserDoesNotShareTheSignIn(t *testing.T) {
+	assert.Contains(t, instructions, "A browser does not share that sign-in")
+	assert.Contains(t, skills.NexulMemory.Content, "a browser you drive does not share it")
+}
+
 func sentences(text string) int {
 	n := strings.Count(text, ". ") + strings.Count(text, "? ")
 	if strings.HasSuffix(strings.TrimSpace(text), ".") {
