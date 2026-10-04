@@ -211,46 +211,56 @@ func TestPump_StopDuringAResubscribeBackoff_EndsInterruptedAtOnceWithItsNote(t *
 }
 
 func TestPump_HandedOffWorkStillRunning_StepRepeatsUntilTheCapEndsTheTurnDone(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		src := newFakeSource(items(
-			event(2, "run.created", runOf("msg-1", "running")),
-			event(3, "subagent.updated", handedOff("task-1", "app_owned", "running", map[string]any{"completionWake": "settled_only"})),
-		))
-		out := make(chan harness.Update, 32)
-		p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newRunningTurn(t.Context(), "msg-1"), openChild: silentThread}
-		start := time.Now()
-		go p.run(t.Context(), src, out)
+	for _, tt := range []struct{ name, ends string }{
+		{"its own run done", runWaiting},
+		{"its own run cut by a T3 restart", "cancelled"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				src := newFakeSource(items(
+					event(2, "run.created", runOf("msg-1", "running")),
+					event(3, "subagent.updated", handedOff("task-1", "app_owned", "running", map[string]any{"completionWake": "settled_only"})),
+				))
+				out := make(chan harness.Update, 32)
+				p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newRunningTurn(t.Context(), "msg-1"), openChild: silentThread}
+				start := time.Now()
+				go p.run(t.Context(), src, out)
 
-		// A wait-mode delegation keeps the parent running and the stream silent.
-		time.Sleep(40 * time.Minute)
-		synctest.Wait()
-		steps := collect(out)
-		require.NotEmpty(t, steps)
-		assert.Equal(t, harness.HandoffRunning, steps[0].Handoff.State, "the pill shows first")
-		steps = steps[1:]
-		require.Len(t, steps, 9, "at once, then every five minutes: well inside chat's and plays' 15-minute silence windows")
-		for i, u := range steps {
-			require.NotNil(t, u.Activity, "nothing ends the turn while the handed-off work runs")
-			assert.Equal(t, harness.Activity{Kind: harness.ActivityNote, CallID: "handoff:" + runOne, Summary: handoffNote,
-				At: start.Add(time.Duration(i) * noteEvery).UTC()}, *u.Activity)
-		}
+				// A wait-mode delegation keeps the parent running and the stream silent.
+				time.Sleep(40 * time.Minute)
+				synctest.Wait()
+				steps := collect(out)
+				require.NotEmpty(t, steps)
+				assert.Equal(t, harness.HandoffRunning, steps[0].Handoff.State, "the pill shows first")
+				steps = steps[1:]
+				require.Len(t, steps, 9, "at once, then every five minutes: well inside chat's and plays' 15-minute silence windows")
+				for i, u := range steps {
+					require.NotNil(t, u.Activity, "nothing ends the turn while the handed-off work runs")
+					assert.Equal(t, harness.Activity{Kind: harness.ActivityNote, CallID: "handoff:" + runOne, Summary: handoffNote,
+						At: start.Add(time.Duration(i) * noteEvery).UTC()}, *u.Activity)
+				}
 
-		src.ch <- items(event(4, "run.updated", runOf("msg-1", runWaiting)))
-		time.Sleep(handoffCap - time.Second)
-		synctest.Wait()
-		for _, u := range collect(out) {
-			require.Nil(t, u.Terminal, "the cap counts from the run's own end")
-			assert.Equal(t, "handoff:"+runOne, u.Activity.CallID)
-		}
+				src.ch <- items(event(4, "run.updated", runOf("msg-1", tt.ends)))
+				time.Sleep(handoffCap - time.Second)
+				synctest.Wait()
+				waited := collect(out)
+				require.NotEmpty(t, waited)
+				for _, u := range waited {
+					require.NotNil(t, u.Activity, "only the step until the cap, which counts from the run's own end")
+					assert.Equal(t, "handoff:"+runOne, u.Activity.CallID)
+					assert.Equal(t, handoffNote, u.Activity.Summary)
+				}
 
-		time.Sleep(time.Second)
-		synctest.Wait()
-		last := collect(out)
-		require.Len(t, last, 2)
-		assert.Equal(t, harness.HandoffLeftRunning, last[0].Handoff.State, "the pill still running at the cap")
-		assert.Equal(t, harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone, LeftRunning: true}}, last[1])
-		assert.True(t, src.closed.Load())
-	})
+				time.Sleep(time.Second)
+				synctest.Wait()
+				last := collect(out)
+				require.Len(t, last, 2)
+				assert.Equal(t, harness.HandoffLeftRunning, last[0].Handoff.State, "the pill still running at the cap")
+				assert.Equal(t, harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone, LeftRunning: true}}, last[1])
+				assert.True(t, src.closed.Load())
+			})
+		})
+	}
 }
 
 func TestPump_HandedOffAgentsThread_StreamsIntoItsPillUntilTheTurnEnds(t *testing.T) {

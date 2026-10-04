@@ -15,7 +15,8 @@ started turn, so the trail records the real steps, reply and outcome, and Stop a
   and the thread says the reconnect failed.
 - Steps the harness ran while Nexul was down are not replayed onto the trail; the reply and outcome are.
 - Chat `@Agent` turns are not followed again: they keep no record of a turn in flight to resume from.
-- Nexul keeps no id for the message it sent, so Watch follows the thread's newest turn (on protocol 2, the run whose
-  hand-off led to it). A message typed into the T3 thread during the restart would be the turn followed.
+- Nexul keeps no id for the message it sent, so Watch follows the thread's newest turn (on protocol 2, the run T3 ran
+  last, by T3's own order, or the run whose hand-off or restart led to it). A message typed into the T3 thread during
+  the restart would be the turn followed.
 - On protocol 1 a question already pending at the restart is history to the watch: the run follows on silently and
   the silence window ends it if nobody answers in T3.

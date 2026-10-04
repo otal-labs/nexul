@@ -49,12 +49,14 @@ type appThread struct {
 }
 
 type run struct {
-	ID                         string `json:"id"`
-	UserMessageID              string `json:"userMessageId"`
-	RootNodeID                 string `json:"rootNodeId"`
-	Status                     string `json:"status"`
-	QueueHeld                  bool   `json:"queueHeld"`
-	RestartContinuationOfRunID string `json:"restartContinuationOfRunId"`
+	ID                         string  `json:"id"`
+	Ordinal                    int     `json:"ordinal"`
+	UserMessageID              string  `json:"userMessageId"`
+	RootNodeID                 string  `json:"rootNodeId"`
+	Status                     string  `json:"status"`
+	QueueHeld                  bool    `json:"queueHeld"`
+	CompletedAt                *string `json:"completedAt"`
+	RestartContinuationOfRunID string  `json:"restartContinuationOfRunId"`
 	// DelegatedCompletion names the message that will carry the run's delegated results back, once T3 dispatches it.
 	DelegatedCompletion *struct {
 		Delivery *struct {
@@ -375,10 +377,8 @@ func (w *watch) steered() bool {
 
 // pending is whether work the turn handed off is still running or its result is still on its way back.
 func (w *watch) pending() bool {
-	for id := range w.followed {
-		if id != w.run.ID && slices.Contains(workingRuns, w.runs[id].Status) {
-			return true
-		}
+	if w.woken(func(r run) bool { return slices.Contains(workingRuns, r.Status) }) {
+		return true
 	}
 	for _, s := range w.subagents {
 		if !w.followed[s.RunID] {
@@ -393,6 +393,19 @@ func (w *watch) pending() bool {
 	}
 	return false
 }
+
+// woken is whether a run the turn's hand-offs woke, not its own run, matches is.
+func (w *watch) woken(is func(run) bool) bool {
+	for id := range w.followed {
+		if id != w.run.ID && is(w.runs[id]) {
+			return true
+		}
+	}
+	return false
+}
+
+// replied is a run that has its reply: waiting or completed.
+func replied(r run) bool { return r.Status == runWaiting || r.Status == runCompleted }
 
 func (w *watch) sessionLastError(s providerSession) {
 	if s.LastError != nil && *s.LastError != "" {
@@ -447,12 +460,15 @@ func (w *watch) step(it turnItem) []harness.Update {
 	return []harness.Update{u}
 }
 
-// end is the turn's terminal result, once: at its run's end, but for a done run only after the work it handed off.
+// end is the turn's terminal result, once: at its run's end, but for a done or cut run only after the work it handed off.
 func (w *watch) end() ([]harness.Update, *harness.TurnResult) {
 	if w.ended || w.run.ID == "" {
 		return nil, nil
 	}
 	result := terminal(w.run.Status)
+	if w.cut() {
+		result = &harness.TurnResult{State: harness.TurnDone}
+	}
 	if result == nil {
 		return nil, nil
 	}
@@ -466,13 +482,21 @@ func (w *watch) end() ([]harness.Update, *harness.TurnResult) {
 	if result.State == harness.TurnDone && w.pending() {
 		return nil, nil
 	}
+	if w.cut() && !w.woken(replied) {
+		result.State = harness.TurnInterrupted
+	}
 	w.ended = true
 	return nil, result
 }
 
-// waiting is whether the turn's own run is done and only the work it handed off keeps the turn open.
+// cut is the turn's run cancelled by a T3 restart, which leaves its handed-off work running; a deleted thread's cancel ends it all.
+func (w *watch) cut() bool {
+	return w.run.Status == "cancelled" && w.thread.DeletedAt == nil
+}
+
+// waiting is whether the turn's own run is done or cut and only the work it handed off keeps the turn open.
 func (w *watch) waiting() bool {
-	return !w.ended && (w.run.Status == runWaiting || w.run.Status == runCompleted)
+	return !w.ended && (replied(w.run) || w.cut())
 }
 
 // leave ends a turn that stopped waiting for the work it handed off, which T3 still runs.
@@ -566,7 +590,11 @@ func (w *watch) standingNote() *harness.Activity {
 	if w.ended || w.run.ID == "" || !w.pending() {
 		return nil
 	}
-	return &harness.Activity{Kind: harness.ActivityNote, CallID: "handoff:" + w.run.ID, Summary: handoffNote}
+	summary := handoffNote
+	if w.woken(func(r run) bool { return r.Status == runQueued && r.QueueHeld }) {
+		summary = heldNote
+	}
+	return &harness.Activity{Kind: harness.ActivityNote, CallID: "handoff:" + w.run.ID, Summary: summary}
 }
 
 // busy is whether a run on the thread is queued or live, which a runtime-mode change would detach.

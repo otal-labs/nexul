@@ -34,20 +34,52 @@ Known limits, not in scope:
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** done
 
 Read first: `practices/go.md`, `practices/testing.md`, `.scratch/t3-orchestrator-v2/research/protocol-2-wire.md` (run status mapping, bounded snapshots), `.scratch/t3-orchestrator-v2/research/runs-nexul-did-not-start.md`, ADR 0114, ADR 0116, the Comments on ticket 11.
 
-- [ ] `watch_test.go`, rows in the `TestWatch_HandedOffWork` table:
+- [x] `watch_test.go`, rows in the `TestWatch_HandedOffWork` table:
   - A restart-cancelled own run with an app_owned task still running emits no terminal. The wake run (message `delegatedCompletion.parentRunId` = own run) then replies and ends the turn "end done" with that reply.
   - A cut run with nothing pending ends "end interrupted" at once.
   - A cut run on a deleted thread ends interrupted at once, even with work pending.
   - A cut run whose child ends with no followed run reaching waiting or completed ends interrupted.
-- [ ] `pump_test.go`: a cut run with pending work repeats `handoffNote`, and the cap ends it done with `LeftRunning` (next to `TestPump_HandedOffWorkStillRunning_StepRepeatsUntilTheCapEndsTheTurnDone`).
-- [ ] `turn_test.go`:
+- [x] `pump_test.go`: a cut run with pending work repeats `handoffNote`, and the cap ends it done with `LeftRunning` (next to `TestPump_HandedOffWorkStillRunning_StepRepeatsUntilTheCapEndsTheTurnDone`).
+- [x] `turn_test.go`:
   - Watch on `[R0 cancelled, R1 running, R_c completed with restartContinuationOfRunId=R0]` follows R1's message.
   - Watch on `[R0 cancelled, R_c completed, R1 completed later]` ends at once with R1's reply.
   - `TestWatch_NewestRunIsAWakeOfAnEarlierRun_FollowsTheRunThatHandedOff` stays green.
-- [ ] A followed wake run held with `queueHeld` shows the held note under the hand-off call id (watch_test row)
-- [ ] `go test ./internal/t3clientv2/...`, `make lint` and `make coverage` are green.
-- [ ] ADR 0116, both research files and ticket 17 are updated in the same PR. Hit every surface: only the harness client and docs apply (no route, MCP tool, event, push or UI).
+- [x] A followed wake run held with `queueHeld` shows the held note under the hand-off call id (watch_test row)
+- [x] `go test ./internal/t3clientv2/...`, `make lint` and `make coverage` are green.
+- [x] ADR 0116, both research files and ticket 17 are updated in the same PR. Hit every surface: only the harness client and docs apply (no route, MCP tool, event, push or UI).
+
+## Comments
+
+- **Where it lives.** `t3clientv2/watch.go`: `cut()` (own run `cancelled` on a thread that is not deleted), `woken(is)`
+  (a followed run other than the turn's own matches `is`, which `pending()` now uses too) and `replied(run)` (waiting or
+  completed). `end()` treats a cut run as done for `steered()` and `pending()`, then ends interrupted unless a woken run
+  replied. `waiting()` covers a cut run, so `pump.capped` counts the 60 minutes from the cut. `standingNote()` says
+  `heldNote` under `handoff:<run id>` while a woken run is queued with `queueHeld`. `t3clientv2/turn.go`: `adopted()`
+  picks the run T3 ran last with `ranAfter` (T3's `runRanAfter`) and looks for chain roots only before it; `run` gained
+  `Ordinal` and `CompletedAt`. `stop.go` is unchanged.
+- **Tests, each shown failing on the code before this change.** `TestWatch_HandedOffWork` rows: a cut run waits for its
+  task and ends done on the wake's reply; a cut run whose woken run fails ends interrupted with the wake's partial text;
+  a held wake shows the held note (the table now also checks each row's standing note, nil once a turn ended).
+  `TestPump_HandedOffWorkStillRunning_StepRepeatsUntilTheCapEndsTheTurnDone` is a table over the run's end (done, cut).
+  `TestWatch_AfterAT3Restart_FollowsTheRunT3RanLast` covers both snapshots this ticket names. The deleted-thread row
+  passes on the old code by design: it guards the new exception and fails when `cut()` ignores `DeletedAt`.
+- **Judgment calls.**
+  - "A cut run with nothing pending ends interrupted at once" has no new row: `TestWatch_RunAlreadyOver_EndsAtOnceWithItsFinalReply/cancelled`
+    and `TestWatch_RecordedTurns/a queued run cancelled in T3 is interrupted` already put a cancelled run on a live
+    thread with nothing pending through the watch, and both fail when the interrupted fallback is removed. A near-copy
+    row would test the same contract twice.
+  - "Reached waiting or completed" reads each woken run's current status. A woken run that replied and was then
+    cancelled by a second restart in the same wait counts as not replied, so that turn ends interrupted.
+  - The wire does not say which cancel a run got. A queued-run cancel takes the cut path too, which is harmless: an
+    unstarted run handed nothing off, so it ends interrupted at once.
+  - Unfinished means a status in `liveRuns`, as the ticket says, not T3's `completedAt == null`; T3 sets one exactly when
+    the other changes. A finished run without a readable `completedAt` sorts first.
+  - The held-note row uses a done run, so it shows the note on its own; a cut run takes the same path.
+  - `research/protocol-2-wire.md` names a deleted thread beside the queued-run cancel as mapping straight to
+    interrupted, since T3's deletion cancels live runs too.
+  - Hit every surface, docs: ADR 0114's closing pointer and ADR 0119's line on what a Watch follows now say the same.
+- **Still open.** The three known limits above stand.
