@@ -57,6 +57,8 @@ const flushConnect = () => act(() => new Promise((r) => setTimeout(r, 0)));
 
 const writer = ["docs:read", "docs:write"];
 
+const noClarification = { rounds: [], running: false, closed: false, can_close: false };
+
 const renderDetailRaw = (socket: FakeSocket, shown: Doc = doc, permissions: string[] = writer) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   // Prime the profile cache (production warms it via OnboardingGate): the collab
@@ -104,6 +106,7 @@ beforeEach(() => {
     if (url === "/api/pairing/presence") return { data: { computers: {} } };
     if (url === "/api/pairing/resolve") return { data: { ok: false, reason: "unpaired" } };
     if (url === "/api/docs/doc-1/watchers") return { data: { watchers: [], watching: false } };
+    if (url === "/api/docs/doc-1/clarification") return { data: noClarification };
     return { data: [] };
   });
   vi.mocked(api.post).mockResolvedValue({ data: { chips: [] } });
@@ -297,6 +300,7 @@ describe("DocDetail", () => {
       if (url === "/api/pairing/presence") return { data: { computers: {} } };
       if (url === "/api/pairing/resolve") return { data: { ok: false, reason: "unpaired" } };
       if (url === "/api/docs/doc-1/watchers") return { data: { watchers: [], watching: false } };
+      if (url === "/api/docs/doc-1/clarification") return { data: noClarification };
       if (url === "/api/plays/runs") {
         return {
           data: [
@@ -385,6 +389,50 @@ describe("DocDetail", () => {
     expect(screen.getByRole("heading", { name: "Storage Spine" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Body")).not.toBeInTheDocument();
     expect(socket.send).not.toHaveBeenCalled();
+  });
+
+  it("hides the Doc | Questions switch on a doc with no clarification for someone who can't start one", async () => {
+    await renderDetail(new FakeSocket());
+
+    expect(await screen.findByLabelText("Body")).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Doc or questions" })).not.toBeInTheDocument();
+  });
+
+  it("opens on the Questions view while questions wait, counting them on the switch, and switches back to the doc", async () => {
+    const user = userEvent.setup();
+    const question = {
+      id: "q1", doc_id: "doc-1", round: 1, position: 1, question: "Who books the van?", why: "", options: [],
+      multi_select: false, selected: [], text: "", skipped: false,
+    };
+    const clarification = {
+      rounds: [{ doc_id: "doc-1", round: 1, started_by: "u-2", trail_id: "tr-1", started_at: "", running: false,
+        anything_else: "", anything_else_reply: "", questions: [question] }],
+      running: false, closed: false, can_close: false,
+    };
+    const defaultGet = vi.mocked(api.get).getMockImplementation();
+    vi.mocked(api.get).mockImplementation(async (url: string) =>
+      url === "/api/docs/doc-1/clarification" ? { data: clarification } : defaultGet!(url),
+    );
+    await renderDetail(new FakeSocket());
+
+    expect(await screen.findByRole("radio", { name: "Questions, 1 waiting" })).toBeChecked();
+    expect(await screen.findByText("Who books the van?")).toBeInTheDocument();
+
+    // Answering the last question keeps the Questions view, now counting none.
+    const answered = { ...question, text: "The front desk", answered_at: "2026-10-04T10:00:00Z" };
+    const answeredRound = { ...clarification.rounds[0]!, questions: [answered] };
+    vi.mocked(api.get).mockImplementation(async (url: string) =>
+      url === "/api/docs/doc-1/clarification" ? { data: { ...clarification, rounds: [answeredRound] } } : defaultGet!(url),
+    );
+    vi.mocked(api.put).mockResolvedValue({ data: answered });
+    await user.type(screen.getByRole("textbox", { name: "Your answer" }), "The front desk");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(await screen.findByRole("radio", { name: "Questions" })).toBeChecked();
+    expect(screen.getByText("Who books the van?")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("radio", { name: "Doc" }));
+    expect(screen.queryByText("Who books the van?")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Body")).toBeVisible();
   });
 
   it("hides the Trail section for a caller without docs:thread", async () => {

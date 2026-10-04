@@ -2,7 +2,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-import { QuestionOptionRow } from "@/components/play/QuestionOptionRow";
+import { QuestionOptionRow } from "@/components/questions/QuestionOptionRow";
 import { optionValue, type AnswerValue, type QuestionItem } from "@/models/Question";
 
 interface QuestionStepProps {

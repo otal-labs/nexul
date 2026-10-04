@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { buildSections, countLine, firstPendingKey, nextPendingKey, type InterviewAnswer } from "@/models/InterviewAnswer";
+import { buildSections, type InterviewAnswer } from "@/models/InterviewAnswer";
+import { countLine, firstPendingKey, nextPendingKey } from "@/models/QuestionChecklist";
 import type { InterviewQuestion } from "@/models/InterviewTemplate";
 
 const question = (text: string): InterviewQuestion => ({ text, hint: "", multi_select: false, options: [] });

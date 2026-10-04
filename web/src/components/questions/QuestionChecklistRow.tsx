@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { Check, Minus } from "lucide-react";
 
-import { answerLine, rowStatus, type InterviewRow, type InterviewRowStatus } from "@/models/InterviewAnswer";
+import { answerLine, rowStatus, type ChecklistRow, type ChecklistRowStatus } from "@/models/QuestionChecklist";
 import { cn } from "@/lib/utils";
 
-interface InterviewQuestionRowProps {
-  row: InterviewRow;
+interface QuestionChecklistRowProps {
+  row: ChecklistRow;
   number: number;
   open: boolean;
   readOnly: boolean;
@@ -14,7 +14,7 @@ interface InterviewQuestionRowProps {
   children: ReactNode;
 }
 
-const RowMarker = ({ status, open, number }: { status: InterviewRowStatus; open: boolean; number: number }) => (
+const RowMarker = ({ status, open, number }: { status: ChecklistRowStatus; open: boolean; number: number }) => (
   <span
     aria-hidden
     className={cn(
@@ -31,10 +31,10 @@ const RowMarker = ({ status, open, number }: { status: InterviewRowStatus; open:
   </span>
 );
 
-const STATUS_LABEL: Record<InterviewRowStatus, string> = { answered: "Answered", skipped: "Skipped", pending: "Not answered" };
+const STATUS_LABEL: Record<ChecklistRowStatus, string> = { answered: "Answered", skipped: "Skipped", pending: "Not answered" };
 
 // One question as a hairline row: its marker, title, and one-line answer; the open row holds the question under it.
-export const InterviewQuestionRow = ({ row, number, open, readOnly, onToggle, children }: InterviewQuestionRowProps) => {
+export const QuestionChecklistRow = ({ row, number, open, readOnly, onToggle, children }: QuestionChecklistRowProps) => {
   const status = rowStatus(row);
   const summary = (
     <>

@@ -3,7 +3,7 @@ import { ChevronDownIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-interface InterviewSectionProps {
+interface QuestionSectionProps {
   label: string;
   meta: string;
   folded: boolean;
@@ -12,7 +12,7 @@ interface InterviewSectionProps {
 }
 
 // A foldable group of question rows with the board swimlane's header: label left, muted count and chevron right.
-export const InterviewSection = ({ label, meta, folded, onToggle, children }: InterviewSectionProps) => (
+export const QuestionSection = ({ label, meta, folded, onToggle, children }: QuestionSectionProps) => (
   <section aria-label={label} className="space-y-2">
     <h3 className="border-b border-border pb-1">
       <button

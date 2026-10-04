@@ -1,5 +1,6 @@
 import type { InterviewQuestion } from "@/models/InterviewTemplate";
 import { optionValue, type AnswerValue, type HarnessQuestion, type QuestionAnswers, type QuestionItem } from "@/models/Question";
+import type { ChecklistRow } from "@/models/QuestionChecklist";
 import type { Trail } from "@/models/Trail";
 
 // Mirrors internal/plays skippedAnswer: a skipped live follow-up is sent as this text, since a harness may refuse an empty answer.
@@ -31,13 +32,8 @@ export interface SaveInterviewAnswerInput {
   skip: boolean;
 }
 
-export type InterviewRowStatus = "answered" | "skipped" | "pending";
-
-export interface InterviewRow {
-  key: string;
+export interface InterviewRow extends ChecklistRow {
   round: number;
-  item: QuestionItem;
-  why: string;
   answer: InterviewAnswer | undefined;
   // A follow-up of the run's live question, answered on the trail with the rest of its round rather than saved alone.
   live?: true;
@@ -50,13 +46,6 @@ export interface InterviewSectionData {
 }
 
 const rowKey = (round: number, question: string): string => `${round}:${question}`;
-
-export const rowStatus = (row: InterviewRow): InterviewRowStatus => {
-  if (!row.answer) return "pending";
-  if (row.answer.skipped) return "skipped";
-  if (row.answer.selected.length > 0 || row.answer.text !== "") return "answered";
-  return "pending";
-};
 
 // The template's questions in template order, matched to their answers by trimmed text, then one section per stored round.
 export const buildSections = (questions: InterviewQuestion[], answers: InterviewAnswer[]): InterviewSectionData[] => {
@@ -98,31 +87,6 @@ export const buildSections = (questions: InterviewQuestion[], answers: Interview
   });
   return sections;
 };
-
-export const countLine = (rows: InterviewRow[]): string => {
-  const answered = rows.filter((r) => rowStatus(r) === "answered").length;
-  const skipped = rows.filter((r) => rowStatus(r) === "skipped").length;
-  if (skipped === 0) return `${answered} of ${rows.length} answered`;
-  return `${answered} answered · ${skipped} skipped`;
-};
-
-export const firstPendingKey = (rows: InterviewRow[]): string | null =>
-  rows.find((r) => rowStatus(r) === "pending")?.key ?? null;
-
-// The next row still pending once the row at key is done, wrapping round to the first one left.
-export const nextPendingKey = (rows: InterviewRow[], key: string): string | null => {
-  const at = rows.findIndex((r) => r.key === key);
-  const ordered = [...rows.slice(at + 1), ...rows.slice(0, Math.max(at, 0))];
-  return firstPendingKey(ordered);
-};
-
-export const answerValue = (answer: InterviewAnswer | undefined): AnswerValue | undefined => {
-  if (!answer || answer.skipped) return undefined;
-  return { selected: answer.selected, text: answer.text };
-};
-
-export const answerLine = (answer: InterviewAnswer | undefined): string =>
-  answer ? [...answer.selected, answer.text].filter((part) => part !== "").join(" · ").replaceAll("\n", " · ") : "";
 
 // Mirrors internal/plays splitWhy: a follow-up's text is the question up to the first "?" followed by whitespace, then why it is asked.
 export const splitWhy = (text: string): { question: string; why: string } => {

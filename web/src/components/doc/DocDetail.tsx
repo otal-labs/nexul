@@ -9,12 +9,16 @@ import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
 import { DocTitleField } from "@/components/doc/DocTitleField";
 import { DocWatchButton } from "@/components/doc/DocWatchButton";
 import { DocToc } from "@/components/doc/DocToc";
+import { DocQuestionsPanel } from "@/components/doc/clarification/DocQuestionsPanel";
+import { DocViewSwitch } from "@/components/doc/clarification/DocViewSwitch";
 import { PointerOverlay } from "@/components/doc/collab/PointerOverlay";
+import { useArticlePointer } from "@/components/doc/collab/useArticlePointer";
 import { useCollabSession } from "@/components/doc/collab/useCollabSession";
 import { extractDocHeadings, type DocHeading } from "@/components/doc/docHeadings";
 import { PlaysMenu } from "@/components/play/PlaysMenu";
 import { TrailSection } from "@/components/play/TrailSection";
 import { useFetchMe } from "@/hooks/AuthHooks";
+import { useDocView } from "@/hooks/useDocView";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { effectiveAvatar } from "@/models/User";
@@ -39,15 +43,7 @@ interface DocDetailProps {
   wsFactory?: (url: string) => LiveSocket;
 }
 
-export const DocDetail = ({
-  doc,
-  workspaceId,
-  onCreateTicket,
-  onPermissions,
-  onArchive,
-  onRestore,
-  wsFactory,
-}: DocDetailProps) => {
+export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onArchive, onRestore, wsFactory }: DocDetailProps) => {
   const token = useSessionStore((s) => s.token);
   const canThread = useHasPermission("docs:thread");
   const canWrite = useHasPermission("docs:write");
@@ -69,8 +65,8 @@ export const DocDetail = ({
   const titleDirtyRef = useRef(false);
   const lastCommittedTitleRef = useRef(doc.title);
   const titleInputRef = useRef<HTMLTextAreaElement | null>(null);
-  const articleRef = useRef<HTMLElement | null>(null);
-  const lastPointerSent = useRef(0);
+  const { articleRef, onPointerMove, onPointerLeave } = useArticlePointer(session);
+  const { switchable, waiting, view, setView } = useDocView(doc);
 
   // Refs skip a re-render per keystroke; reading title clears dirty to avoid stomping peer renames.
   useEffect(() => {
@@ -112,7 +108,7 @@ export const DocDetail = ({
         {/* Hidden below @4xl; the has() rule keeps the column from reserving 14rem when neither section renders. */}
         <div className="hidden w-56 shrink-0 pt-16 @4xl:has-[section]:block">
           <div className="sticky top-6 -mx-2 flex max-h-[calc(100vh-3rem)] flex-col gap-8 overflow-y-auto px-2">
-            <DocToc headings={headings} />
+            <DocToc headings={view === "doc" ? headings : []} />
             {canThread && (
               <TrailSection
                 workspaceId={workspaceId}
@@ -126,14 +122,17 @@ export const DocDetail = ({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between">
-            <Link
-              to={wsPath("/docs")}
-              className="font-mono text-xs text-muted-foreground lg:invisible transition-colors duration-150 ease-standard hover:text-foreground"
-            >
-              ← All docs
-            </Link>
-            <div className="flex items-center gap-1">
+          <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-3">
+              <Link
+                to={wsPath("/docs")}
+                className="font-mono text-xs text-muted-foreground lg:hidden transition-colors duration-150 ease-standard hover:text-foreground"
+              >
+                ← All docs
+              </Link>
+              {switchable && <DocViewSwitch view={view} waiting={waiting} onChange={setView} />}
+            </div>
+            <div className="ml-auto flex items-center gap-1">
               {doc.locked && <DocLockedSignal docId={doc.id} />}
               <PlaysMenu workspaceId={workspaceId} projectId={doc.project_id} docId={doc.id} />
               <DocWatchButton docId={doc.id} />
@@ -148,23 +147,14 @@ export const DocDetail = ({
             </div>
           </div>
 
+          {view === "questions" && <DocQuestionsPanel docId={doc.id} />}
+          {/* Hidden, not unmounted, behind Questions so the editor keeps its session. */}
           <article
             ref={articleRef}
+            hidden={view === "questions"}
             className="relative mt-4 rounded-2xl border border-border bg-card p-6 shadow-card sm:p-10 lg:p-14"
-            onPointerMove={(e) => {
-              if (!session) return;
-              // ~20Hz is plenty for a presence pointer and keeps awareness frames cheap.
-              const now = performance.now();
-              if (now - lastPointerSent.current < 50) return;
-              lastPointerSent.current = now;
-              const rect = articleRef.current?.getBoundingClientRect();
-              if (!rect) return;
-              session.provider.awareness.setLocalStateField("pointer", {
-                x: Math.round(e.clientX - rect.left),
-                y: Math.round(e.clientY - rect.top),
-              });
-            }}
-            onPointerLeave={() => session?.provider.awareness.setLocalStateField("pointer", null)}
+            onPointerMove={onPointerMove}
+            onPointerLeave={onPointerLeave}
           >
             {session && <PointerOverlay awareness={session.provider.awareness} selfID={session.doc.clientID} />}
             <DocPresenceBar participants={participants} connected={session?.connected} updatedAt={doc.updated_at} />

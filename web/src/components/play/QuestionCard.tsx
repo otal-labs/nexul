@@ -3,7 +3,7 @@ import { useState, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 
 import { QuestionAnsweredList } from "@/components/play/QuestionAnsweredList";
-import { QuestionStep, toggleOption } from "@/components/play/QuestionStep";
+import { QuestionStep, toggleOption } from "@/components/questions/QuestionStep";
 import { optionValue, type AnswerValue, type HarnessQuestion, type QuestionAnswer, type QuestionAnswers } from "@/models/Question";
 import { cn } from "@/lib/utils";
 

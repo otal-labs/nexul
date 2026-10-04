@@ -371,6 +371,19 @@ hand: `tabPath("versions")` names a tab and `tabPath()` the first one. A tab nev
 nothing when empty says so in an `EmptyRow` instead. A filter that narrows one
 list (`ConnectorsSection`'s Connected and Not connected) is not a tab.
 
+Doc questions. A doc with a clarification heads its page with a "Doc |
+Questions N" segmented switch (an outline `ToggleGroup`, not `PageTabs`: the
+two are views of one record, and the choice stays in the page, never the
+path), N being the questions waiting in mono. Questions takes the article's
+place in the same card: a "Questions" heading over one state line (the trail
+icon, a medium label, a muted detail), the next action trailing right for
+people who may close it, then one `QuestionSection` per round of numbered
+`QuestionChecklistRow`s, the same checklist the Interview page uses. Only the
+open round ends in its "Anything else?" box; an earlier round shows what was
+written and its reply under its header, folded or not. The page opens on
+Questions while some wait. `DocQuestionsPanel` in
+`web/src/components/doc/clarification/` is the reference.
+
 ## Motion baseline
 
 The two eases in `web/src/index.css` cover every role; no new duration or

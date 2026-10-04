@@ -230,6 +230,18 @@ describe("useLiveEvents dispatch", () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ["getTickets"] });
   });
 
+  it("refetches a doc's clarification on every doc.clarification topic, the panel and the run dialog alike", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    const topics = ["round_started", "round_posted", "round_ended", "round_answered", "answer_saved", "answer_cleared", "anything_else_saved", "closed"];
+    for (const topic of topics) {
+      act(() => socket.message(JSON.stringify({ topic: `doc.clarification.${topic}`, type: "event", payload: {} })));
+    }
+    expect(spy).toHaveBeenCalledTimes(topics.length);
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getDocClarification"] });
+  });
+
   it("invalidates the ticket, its links, and the trails query on ticket.updated and ticket.status_changed", async () => {
     setup();
     const socket = await connectedSocket();

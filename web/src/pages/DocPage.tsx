@@ -8,6 +8,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { CreateTicketFooter } from "@/components/ticket/CreateTicketFooter";
 import { CreateTicketForm, emptyTicketForm } from "@/components/ticket/CreateTicketForm";
 import { ProjectDialogHeader } from "@/components/project/ProjectDialogHeader";
+import { useFetchDocClarification } from "@/hooks/DocClarificationHooks";
 import { useArchiveDoc, useFetchDoc, useRestoreDoc } from "@/hooks/DocHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { SaveTicketFormSchema, type SaveTicketFormData } from "@/models/Ticket";
@@ -28,6 +29,8 @@ export const DocPage = ({ wsFactory, docId: docIdProp }: DocPageProps = {}) => {
   const { open: openCreateTicket } = useFormDialog();
   const { open: openPermissions } = useFormDialog();
   const { data: doc, error, isPending } = useFetchDoc(docId);
+  // Fetched beside the doc, so a page opening on its Questions view doesn't flash the article first.
+  useFetchDocClarification(docId);
   const archiveDoc = useArchiveDoc();
   const restoreDoc = useRestoreDoc();
 

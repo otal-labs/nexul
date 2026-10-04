@@ -91,6 +91,7 @@ const mockApiResponse = (url: string) => {
     if (url === "/api/docs/doc-1") return Promise.resolve({ data: docData });
     if (url === "/api/pairing/presence") return Promise.resolve({ data: { computers: {} } });
     if (url.endsWith("/watchers")) return Promise.resolve({ data: { watchers: [], watching: false } });
+    if (url.endsWith("/clarification")) return Promise.resolve({ data: { rounds: [], running: false, closed: false, can_close: false } });
     return Promise.resolve({ data: [] });
 };
 

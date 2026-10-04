@@ -31,6 +31,16 @@ export const useFetchApplicablePlays = (workspaceId: string, projectId: string, 
     enabled: workspaceId !== "" && projectId !== "" && (type !== "ticket" || stage !== undefined),
   });
 
+// The doc's seeded Clarify via AI and To tickets via AI plays, when the caller may run them on this project.
+export const useDocBuiltinPlays = (projectId: string) => {
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  const { data: plays } = useFetchApplicablePlays(workspaceId, projectId, "doc", undefined);
+  return {
+    clarify: plays?.find((p) => p.builtin_key === "clarify"),
+    toTickets: plays?.find((p) => p.builtin_key === "to-tickets-via-ai"),
+  };
+};
+
 // A ticket's stage is its current column's kind; the rail and the bottom bar both read this one query.
 export const useApplicableTicketPlays = (ticket: Ticket) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
