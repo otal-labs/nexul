@@ -46,7 +46,8 @@ func (s *Service) SetPeople(p PeopleSource) {
 }
 
 // Resolve renders a batch of refs as chips; missing targets are omitted, unopenable ones get can_open=false.
-func (s *Service) Resolve(ctx context.Context, refs []Ref) ([]Chip, error) {
+// A ticket ref may name a PREFIX-NUMBER key, as an in-app ticket URL does, which resolves inside workspaceID.
+func (s *Service) Resolve(ctx context.Context, workspaceID string, refs []Ref) ([]Chip, error) {
 	if s.cfg.Tickets == nil || s.cfg.Docs == nil || s.cfg.Statuses == nil || s.cfg.Projects == nil || s.cfg.TicketTypes == nil {
 		return nil, errors.New("mentions: resolution sources are not wired")
 	}
@@ -66,7 +67,7 @@ func (s *Service) Resolve(ctx context.Context, refs []Ref) ([]Chip, error) {
 			continue
 		}
 		seen[key] = true
-		chip, ok, err := s.resolveRef(ctx, actor.ID, people, ref)
+		chip, ok, err := s.resolveRef(ctx, actor.ID, workspaceID, people, ref)
 		if err != nil {
 			return nil, err
 		}
@@ -78,13 +79,13 @@ func (s *Service) Resolve(ctx context.Context, refs []Ref) ([]Chip, error) {
 }
 
 // resolveRef resolves one ref to a chip; ok is false when the target was not found.
-func (s *Service) resolveRef(ctx context.Context, actorID string, people map[string]Person, ref Ref) (Chip, bool, error) {
+func (s *Service) resolveRef(ctx context.Context, actorID, workspaceID string, people map[string]Person, ref Ref) (Chip, bool, error) {
 	switch ref.Type {
 	case string(KindPerson):
 		p, ok := people[ref.ID]
 		return personChip(p), ok, nil
 	case string(KindTicket):
-		chip, err := s.resolveTicket(ctx, ref.ID)
+		chip, err := s.resolveTicket(ctx, workspaceID, ref.ID)
 		if err != nil {
 			if errors.Is(err, apperrs.ErrNotFound) {
 				return Chip{}, false, nil
@@ -270,15 +271,16 @@ func personChip(p Person) Chip {
 	return Chip{Type: string(KindPerson), ID: p.UserID, Title: personLabel(p), Login: p.Login, AvatarURL: p.AvatarURL, CanOpen: true}
 }
 
-func (s *Service) resolveTicket(ctx context.Context, id string) (Chip, error) {
-	t, err := s.cfg.Tickets.GetByID(ctx, id)
+// resolveTicket echoes the ref's id, key or not, so the client finds the chip under the ref it sent.
+func (s *Service) resolveTicket(ctx context.Context, workspaceID, id string) (Chip, error) {
+	t, err := s.ticketByRef(ctx, workspaceID, id)
 	if err != nil {
 		return Chip{}, err
 	}
 	prefix := s.projectPrefix(ctx, t.ProjectID)
 	return Chip{
 		Type:           string(KindTicket),
-		ID:             t.ID,
+		ID:             id,
 		Title:          t.Title,
 		Status:         t.Status,
 		StatusLabel:    s.statusLabel(ctx, t.Status),
@@ -288,6 +290,26 @@ func (s *Service) resolveTicket(ctx context.Context, id string) (Chip, error) {
 		TypeLabel:      s.typeLabel(ctx, t.TypeID),
 		DeveloperLabel: t.Developer,
 	}, nil
+}
+
+// ticketByRef reads a ticket by id, or by a key that names exactly one ticket in workspaceID.
+func (s *Service) ticketByRef(ctx context.Context, workspaceID, ref string) (*Ticket, error) {
+	m := mentionKeyRe.FindStringSubmatch(ref)
+	if m == nil {
+		return s.cfg.Tickets.GetByID(ctx, ref)
+	}
+	number, err := strconv.Atoi(m[2])
+	if err != nil {
+		return nil, fmt.Errorf("%w: ticket %s", apperrs.ErrNotFound, ref)
+	}
+	ts, err := s.cfg.Tickets.ListByKey(ctx, strings.TrimSpace(workspaceID), m[1], number)
+	if err != nil {
+		return nil, fmt.Errorf("resolve ticket key %s: %w", ref, err)
+	}
+	if len(ts) != 1 {
+		return nil, fmt.Errorf("%w: ticket %s", apperrs.ErrNotFound, ref)
+	}
+	return ts[0], nil
 }
 
 func (s *Service) resolveDoc(ctx context.Context, actorID, id string) (Chip, error) {

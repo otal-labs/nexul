@@ -35,7 +35,7 @@ const renderBody = (body: string) => {
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   // MentionChip reads the selected workspace's template off the workspace list; the default renders like the old fixed chip.
-  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "acme" });
   vi.mocked(api.get).mockResolvedValue({
     data: [{ id: "ws-1", name: "Acme", slug: "acme", mention_chip_template: "{ticket.Ticket} {ticket.Status}", created_at: "", updated_at: "" }],
   });
@@ -69,9 +69,21 @@ describe("DocBodyView", () => {
           { type: "ticket", id: "t-1" },
           { type: "doc", id: "d-2" },
         ],
+        workspace_id: "ws-1",
       });
     });
     expect(api.post).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a link to a ticket in this workspace as its pill, leaving board and outside links as links", async () => {
+    const origin = window.location.origin;
+    vi.mocked(api.post).mockResolvedValue({ data: { chips: [{ ...chips[0], id: "ERF-7" }] } });
+    renderBody(`See [the ticket](${origin}/acme/tickets/ERF-7) on the [board](${origin}/acme/board) or [Example](https://example.com).`);
+
+    expect(await screen.findByRole("link", { name: /Fix the bug/ })).toHaveAttribute("data-mention-id", "ERF-7");
+    expect(screen.getByRole("link", { name: "board" })).toHaveAttribute("href", `${origin}/acme/board`);
+    expect(screen.getByRole("link", { name: "Example" })).toHaveAttribute("href", "https://example.com");
+    expect(api.post).toHaveBeenCalledWith("/api/mentions/resolve", { refs: [{ type: "ticket", id: "ERF-7" }], workspace_id: "ws-1" });
   });
 
   it("hydrates chips with live title, status label, and clickability", async () => {

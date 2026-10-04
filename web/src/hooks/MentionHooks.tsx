@@ -7,10 +7,11 @@ import type { MentionChipData, MentionRef, MentionSearchResult } from "@/models/
 export const resolveMentionsKey = "resolveMentions";
 export const searchMentionsKey = "searchMentions";
 
-// One batch request for every ref in a render; a gone target is omitted, so the client falls back to the label.
+// One batch request for every ref in a render; a gone target is omitted, so the client falls back to the label. A ticket key resolves in the selected workspace.
 export const resolveMentions = async (refs: MentionRef[]): Promise<MentionChipData[]> => {
   if (refs.length === 0) return [];
-  const res = await api.post<{ chips: MentionChipData[] }>("/api/mentions/resolve", { refs });
+  const workspaceId = useWorkspaceStore.getState().selectedWorkspaceId;
+  const res = await api.post<{ chips: MentionChipData[] }>("/api/mentions/resolve", { refs, ...(workspaceId && { workspace_id: workspaceId }) });
   return res.data.chips;
 };
 
@@ -30,9 +31,11 @@ export const refsKey = (refs: MentionRef[]): string =>
     .sort()
     .join(",");
 
-export const useResolveMentions = (refs: MentionRef[]) =>
-  useQuery({
-    queryKey: [resolveMentionsKey, refsKey(refs)],
+export const useResolveMentions = (refs: MentionRef[]) => {
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  return useQuery({
+    queryKey: [resolveMentionsKey, workspaceId, refsKey(refs)],
     queryFn: () => resolveMentions(refs),
     enabled: refs.length > 0,
   });
+};

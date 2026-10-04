@@ -18,6 +18,7 @@ import {
   type MentionSuggestionsRef,
 } from "@/components/doc/mention/MentionSuggestions";
 import { MentionNodeView } from "@/components/doc/mention/MentionNodeView";
+import { currentRecordRef, RecordLinkMentions } from "@/components/doc/mention/recordLinks";
 import { PlusMenuExtension, SlashCommandExtension } from "@/components/doc/slashCommand/slashCommandExtension";
 import { searchMentions } from "@/hooks/MentionHooks";
 import type { MentionRef, MentionSearchResult } from "@/models/Mention";
@@ -40,23 +41,23 @@ function escapeMarkdownLabel(label: string): string {
   return label.replace(/([\\[\]*_`~])/g, "\\$1");
 }
 
-// Collects unique refs so a whole render resolves in one batched request.
+// Collects unique refs so a whole render resolves in one batched request; a record link counts, since the editor shows it as a pill.
 export function extractMentionRefs(doc: JSONContent | null): MentionRef[] {
   const refs: MentionRef[] = [];
   const seen = new Set<string>();
+  const add = (ref: MentionRef) => {
+    const key = `${ref.type}:${ref.id}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    refs.push(ref);
+  };
   const visit = (node: JSONContent | null | undefined) => {
     if (!node) return;
-    if (node.type === "mention") {
-      const type = node.attrs?.type;
-      const id = node.attrs?.id;
-      if ((type === "ticket" || type === "doc") && typeof id === "string" && id) {
-        const key = `${type}:${id}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          refs.push({ type, id });
-        }
-      }
-    }
+    const type = node.attrs?.type;
+    const id = node.attrs?.id;
+    if (node.type === "mention" && (type === "ticket" || type === "doc") && typeof id === "string" && id) add({ type, id });
+    const linkRef = node.type === "text" && currentRecordRef(node.marks?.find((m) => m.type === "link")?.attrs?.href);
+    if (linkRef) add(linkRef);
     for (const child of node.content ?? []) visit(child);
   };
   visit(doc);
@@ -124,6 +125,7 @@ export function buildEditorExtensions({
       },
     }),
     CaretOffNodes,
+    RecordLinkMentions,
     AttachmentUpload.configure({ owner: attachTo, stage, ...(onUploaded ? { onUploaded } : {}) }),
     SlashCommandExtension,
     ...(plusMenu ? [PlusMenuExtension] : []),
