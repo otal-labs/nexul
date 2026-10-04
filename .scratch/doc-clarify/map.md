@@ -74,6 +74,7 @@ too.
 - [How the interview's machinery carries over to a doc](issues/01-how-the-interview-carries-over.md): own docs-domain tables beside the interview's; a run posts its round through `doc_update` and ends, `doc_get` returns the rounds; the runner locks at start, unlocks at every end, and only the running round's starter may write through the lock; the checklist rows carry over, `QuestionCard` does not; two new notification kinds; the phone starts from a read-only doc screen.
 - [Where clarifications live](issues/03-where-clarifications-live.md): two docs-domain tables (rounds, questions), closed kept on the newest round; see with `docs:read`, answer with `docs:write`, close with `plays:run`; events never carry answers; `doc_get`/`doc_update` carry the rounds.
 - [How a round runs](issues/04-the-run-lifecycle.md): built-in `clarify` doc play; the runner opens and closes each round, locking the doc only while it runs (ADR 0121); the agent posts the round or a no-gaps rewrite through `doc_update` and ends; empty failed rounds vanish; two new notification kinds.
+- [What Clarify via AI asks](issues/05-the-plays-instructions.md): functional and non-functional needs in the authors' terms, never how to build; 3–6 per round; "(Suggested)" listed first, never pre-picked; "Why we're asking:"; no gaps when ticketable, twice-skipped go to "Open points"; full instructions in the ticket.
 
 ## Build
 
