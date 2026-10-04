@@ -267,6 +267,64 @@ describe("InterviewPage", () => {
     expect(await screen.findByRole("button", { name: /Regenerate/ })).toBeInTheDocument();
   });
 
+  it("offers Audit via AI only once the memory exists", async () => {
+    const auditPlay: Play = { ...interviewPlay, id: "play-audit", label: "Audit via AI", description: "Audits the code.", builtin_key: "audit" };
+    mockApi({ answers: [stored(0, organised.text), stored(0, testing.text)], plays: [auditPlay, interviewPlay] });
+    const { unmount } = renderPage();
+    expect(await screen.findByRole("button", { name: /Done/ })).toHaveAttribute("title", interviewPlay.description);
+    expect(screen.queryByRole("button", { name: /Audit via AI/ })).not.toBeInTheDocument();
+    unmount();
+
+    mockApi({ memories: [interview], plays: [auditPlay, interviewPlay] });
+    renderPage();
+    expect(await screen.findByRole("button", { name: /Audit via AI/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Regenerate$/ })).toBeInTheDocument();
+  });
+
+  it("links the doc a finished audit wrote, and the memory's run line ignores the audit", async () => {
+    const auditPlay: Play = { ...interviewPlay, id: "play-audit", label: "Audit via AI", description: "Audits the code.", builtin_key: "audit" };
+    const followUp = waitingTrail({ id: "tr-0", state: "done", question: null, ended_at: "2026-10-03T10:00:00Z" });
+    const audit = waitingTrail({ id: "tr-a", play_id: "play-audit", play_label: "Audit via AI", state: "done", question: null, started_at: "2026-10-04T09:00:00Z", ended_at: "2026-10-04T09:30:00Z" });
+    const doc = (id: string, title: string, created_at: string, created_by = "u-1") => ({
+      id, project_id: "p-1", folder_id: "f-1", title, version: 1, archived: false, locked: false, can_open: true, created_at, updated_at: created_at, created_by,
+    });
+    mockApi({ memories: [{ ...interview, updated_at: "2026-10-03T10:00:00Z" }], plays: [auditPlay, interviewPlay], trails: () => [audit, followUp] });
+    const base = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation(async (url: string, config?: unknown) => {
+      if (url === "/api/docs")
+        return {
+          data: [
+            doc("doc-early", "Audit of Old app, 2026-10-03", "2026-10-03T09:10:00Z"),
+            doc("doc-a", "Audit of Old app, 2026-10-04", "2026-10-04T09:25:00Z"),
+            doc("doc-other", "Notes", "2026-10-04T09:20:00Z", "u-2"),
+          ],
+        };
+      return base(url, config as never);
+    });
+    renderPage();
+
+    expect(await screen.findByText("Audit written")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "· Audit of Old app, 2026-10-04" })).toHaveAttribute("href", expect.stringContaining("doc-a"));
+    expect(screen.getByText("Memory ready")).toBeInTheDocument();
+    expect(screen.queryByText("Run finished")).not.toBeInTheDocument();
+  });
+
+  it("shows a running audit beside a memory that stays ready, with only the audit's Stop", async () => {
+    const auditPlay: Play = { ...interviewPlay, id: "play-audit", label: "Audit via AI", description: "Audits the code.", builtin_key: "audit" };
+    const audit = waitingTrail({ id: "tr-a", play_id: "play-audit", play_label: "Audit via AI", state: "running", question: null });
+    mockApi({ memories: [interview], plays: [auditPlay, interviewPlay], trails: () => [audit] });
+    const base = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation(async (url: string, config?: unknown) =>
+      url === "/api/auth/me" ? { data: { user: { id: "u-1" } } } : base(url, config as never),
+    );
+    renderPage();
+
+    expect(await screen.findByText("Auditing")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stop Audit via AI" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Interview|Regenerate/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Memory ready")).toBeInTheDocument();
+  });
+
   it("marks the memory out of date once an answer changes, and clears it once a run regenerates it", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     let trails = [waitingTrail({ id: "tr-0", state: "done", question: null, ended_at: "2026-10-03T10:00:00Z" })];

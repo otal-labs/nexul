@@ -18,11 +18,15 @@ the run finishes.
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A run on a fake harness writes the doc, for a predecessor and for
+- [x] A run on a fake harness writes the doc, for a predecessor and for
       own code
-- [ ] Seed and migration add the play once; an edited workspace keeps its
+- [x] Seed and migration add the play once; an edited workspace keeps its
       plays
-- [ ] The button, run state, and doc link verified at 768, 1024, 1440px
-- [ ] `CONTEXT.md` gains Audit if it is a term the product now uses
+- [x] The button, run state, and doc link verified at 768, 1024, 1440px
+- [x] `CONTEXT.md` gains Audit if it is a term the product now uses
+
+## Answer
+
+Built in #440: the `audit` play, migration 0070, and the page's button, run line, and doc link (found as the starter's newest doc created during the run).

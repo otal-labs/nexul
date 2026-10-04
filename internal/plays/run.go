@@ -413,7 +413,7 @@ func (r *Runner) clearSuggestions(ctx context.Context, trail *Trail) {
 	}
 }
 
-// interviewBlocks names an interview run's project, then a drafting run's context or the project sources under question.
+// interviewBlocks names an interview run's project, then its drafting context or question sources; an audit adds date and target.
 func (r *Runner) interviewBlocks(ctx context.Context, play *Play, trail *Trail, tgt target) []string {
 	if trail.TargetType != TargetInterview {
 		return nil
@@ -422,8 +422,16 @@ func (r *Runner) interviewBlocks(ctx context.Context, play *Play, trail *Trail, 
 	if play.BuiltinKey == DraftInterviewKey {
 		return append(blocks, r.draftingBlock(ctx, trail))
 	}
-	if sources := r.projectSourcesBlock(ctx, trail, StanceQuestion); sources != "" {
-		blocks = append(blocks, sources)
+	auditing := play.BuiltinKey == AuditKey
+	if auditing {
+		blocks = append(blocks, fmt.Sprintf("Today is %s. This run's trail id is %s.", r.now().UTC().Format(time.DateOnly), trail.ID))
+	}
+	sources := r.projectSourcesBlock(ctx, trail, StanceQuestion)
+	if sources != "" {
+		return append(blocks, sources)
+	}
+	if auditing {
+		blocks = append(blocks, "This project has no project source under question: audit its own code, in the checkout you are running in.")
 	}
 	return blocks
 }

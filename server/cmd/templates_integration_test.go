@@ -163,7 +163,7 @@ func TestIntegration_TemplatesResolveThroughTheInstance(t *testing.T) {
 
 		listed, err := f.tpl.List(as(uPlain))
 		require.NoError(t, err, "any member reads the instance templates")
-		assert.Len(t, listed, 13)
+		assert.Len(t, listed, 14)
 	})
 
 	t.Run("a copy resets to the instance version, not the code default", func(t *testing.T) {

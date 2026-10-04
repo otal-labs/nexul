@@ -61,7 +61,11 @@ a click. Once every question is answered or skipped, **Done** runs the
 workspace's Interview play: an Agent asks follow-ups about what your answers
 and the code leave open, then writes the memory shown beside the questions;
 **Regenerate** runs it again later. Follow-ups the Agent asked appear under the
-questions, one section per round. See [Plays](/docs/guide/plays/).
+questions, one section per round. Once the memory exists, **Audit via AI**
+beside it measures code against it: the project's sources under question, or
+the project's own checkout when there are none. The run writes one doc in the
+Main folder, and the line under the buttons shows its state and links the doc
+when it finishes. See [Plays](/docs/guide/plays/).
 
 The interview memory reaches every Agent turn in the project: every mention and
 every play names it, ahead of the other always-included memories, for the Agent

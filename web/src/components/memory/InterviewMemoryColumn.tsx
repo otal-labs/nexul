@@ -3,6 +3,8 @@ import { NotebookPen } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { InterviewAuditButton } from "@/components/memory/InterviewAuditButton";
+import { InterviewAuditLine } from "@/components/memory/InterviewAuditLine";
 import { InterviewMemoryView } from "@/components/memory/InterviewMemoryView";
 import { InterviewRunButton } from "@/components/memory/InterviewRunButton";
 import { InterviewRunLine } from "@/components/memory/InterviewRunLine";
@@ -19,14 +21,15 @@ interface InterviewMemoryColumnProps {
   project: Project;
 }
 
-// The memory beside the questions, headed by the latest run's state and Regenerate, made primary once an answer changed.
+// The memory, headed by the latest run's state, Regenerate, and Audit via AI; during a run only that run's own button shows.
 export const InterviewMemoryColumn = ({ project }: InterviewMemoryColumnProps) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: memories, error, isPending } = useFetchMemoriesByProject(project.id);
   const { data: answers } = useFetchInterviewAnswers(project.id);
-  const trails = useInterviewTrails(project.id).followUp;
+  const { followUp: trails, audit: audits } = useInterviewTrails(project.id);
   const active = useActiveTrail("interview", project.id);
   const followUpActive = !!active && !!trails?.some((t) => t.id === active.id);
+  const auditActive = !!active && !!audits?.some((t) => t.id === active.id);
   const memory = memories?.find((m) => isInterviewMemory(m) && m.project_id === project.id);
   const changed = memory && answers && trails ? answersChangedSinceRun(answers, trails) : 0;
   const stale = changed > 0 && !active;
@@ -35,13 +38,15 @@ export const InterviewMemoryColumn = ({ project }: InterviewMemoryColumnProps) =
     <section aria-label="Interview memory" className="min-w-0 space-y-4">
       <header className="flex min-h-9 flex-wrap items-center gap-3 border-b border-border pb-3">
         <InterviewRunLine projectId={project.id} memory={memory} changed={changed} />
-        {(memory || followUpActive) && (
+        {((memory && !active) || followUpActive) && (
           <InterviewRunButton
             projectId={project.id}
             label={stale ? "Regenerate the memory" : "Regenerate"}
             variant={stale ? "default" : "outline"}
           />
         )}
+        {((memory && !active) || auditActive) && <InterviewAuditButton projectId={project.id} />}
+        <InterviewAuditLine project={project} />
       </header>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}

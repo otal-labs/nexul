@@ -49,6 +49,14 @@ const (
 		"Save drafts with `memory_update` on the interview memory, in `drafts` with this run's `trail_id`, as you find them rather than all at the end, so the page shows them while you work; a draft replaces its question's earlier one. " +
 		"Never ask the person anything and never use a question tool: the person confirms drafts on the page. Do not change the memory's body, its answers, or its sources. " +
 		"End with a one-line summary of how many questions you drafted and from which sources."
+	auditInstructions = "Audit code against this project's interview memory and write what you find as one doc; the project, today's date, this run's trail id, and the code to audit are named below. " +
+		"Start by calling `memory_create` with the project id and `kind` `interview`: it returns the interview memory, whose body is the project's rules under its headings, with its `answers` and its `sources`. The memory is the yardstick. " +
+		"Check the known breaks first: the answers to follow-ups about what a source under question did, such as one naming how the old project keeps booking state and asking what this one does instead. " +
+		"Then read the code named below: each project source under question through its checkout on this computer, or through its memories and interview answers with `memory_list` and `memory_get` when no checkout is named; with no project source under question, audit this project's own code in the checkout you are running in. Read selectively: structure, manifests, and config first, then the code each rule speaks to. " +
+		"Write one doc with `doc_create` in this project, without a `folder_id` so it lands in the Main folder, titled Audit of <what you audited>, <today's date>, such as Audit of Booking app, 2026-10-04. Open its body with one line naming what you audited and this run's trail id. Group the findings under the memory's headings, in the memory's order, one line per finding: its verdict, where it is as `path:line`, and the rule it meets or breaks. A heading with nothing found says so in one line. " +
+		"Auditing a source under question, the verdicts are Carry over (it meets the rule, bring it across), Rebuild (it does a job this project needs but breaks the rule), and Avoid (the rules rule it out). Auditing this project's own code, they are Keeps (it meets the rule) and Fix (it breaks it). " +
+		"Write a new doc every run, and change no earlier audit, the memory, its answers, or its sources. File no tickets: a person turns the doc into work with To tickets via AI. " +
+		"Never ask the person anything and never use a question tool. End with a one-line summary naming the doc by its title and counting its findings per verdict."
 	testWithAIInstructions = "Test this ticket the way a tester would, then pass or fail it. Read it with `ticket_get`, which also carries its links and where to test; its acceptance criteria are what you test against. " +
 		"Follow the testing strategy in this project's interview memory, which comes with this run. With no interview, check each criterion on the live URL and run the tests the project already has, and add none. " +
 		"Where to test is the `test_target` in that result. Test nowhere else: never production, and never anything that shares production's services. If its url is empty, the only place to test is production: stop without passing or failing the ticket, and reply that it needs a deploy branch on its own network. " +
@@ -248,6 +256,9 @@ const TemplateKind = "play_instructions"
 // DraftInterviewKey is the built-in drafting play's key: an interview run that drafts answers instead of asking (ADR 0122).
 const DraftInterviewKey = "interview-draft"
 
+// AuditKey is the built-in audit play's key: an interview run that measures code against the interview memory and writes a doc.
+const AuditKey = "audit"
+
 // Builtin is one seeded play: the stable key a clone matches it by, and what a new workspace gets.
 type Builtin struct {
 	Key           string
@@ -280,6 +291,9 @@ func Builtins() []Builtin {
 		{Key: ClarifyKey, Label: "Clarify via AI", Type: TypeDoc,
 			Description:  "Asks the doc's authors about the gaps in what they need, a round at a time, then writes the answers into the doc.",
 			Instructions: clarifyInstructions},
+		{Key: AuditKey, Label: "Audit via AI", Type: TypeInterview,
+			Description:  "Audits a predecessor's code, or this project's own, against the interview memory and writes the findings as a doc.",
+			Instructions: auditInstructions},
 	}
 }
 
@@ -364,7 +378,7 @@ func (s *Service) builtin(ctx context.Context, workspaceID, key string) (*Play, 
 			return p, nil
 		}
 	}
-	return nil, fmt.Errorf("%w: workspace %s has no built-in play %q; it was deleted, or the key is not one of fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft, clarify", apperrs.ErrNotFound, workspaceID, key)
+	return nil, fmt.Errorf("%w: workspace %s has no built-in play %q; it was deleted, or the key is not one of fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft, clarify, audit", apperrs.ErrNotFound, workspaceID, key)
 }
 
 func (s *Service) getInWorkspace(ctx context.Context, workspaceID, id string) (*Play, error) {
