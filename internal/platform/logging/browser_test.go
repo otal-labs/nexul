@@ -57,3 +57,21 @@ func TestBrowserHandler_RejectsMalformedEmptyAndOversizedBatches(t *testing.T) {
 		}
 	}
 }
+
+func TestBrowserHandler_RedactsTokensInMessageURLAndAttrs(t *testing.T) {
+	session := "ses_" + strings.Repeat("a", 43)
+	rec, out := postBrowserLogs(t, `{"records":[
+		{"level":"error","message":"ws connection error {\"url\":\"wss://n/ws/events?token=`+session+`\"}","url":"/chat?token=abc","attrs":{"socket":"wss://n/ws/x?token=nxr_1","line":3}}
+	]}`)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	for _, leaked := range []string{session, "token=abc", "nxr_1"} {
+		if strings.Contains(out, leaked) {
+			t.Fatalf("logged %s: %s", leaked, out)
+		}
+	}
+	if !strings.Contains(out, `"line":3`) {
+		t.Fatalf("non-string attrs were dropped: %s", out)
+	}
+}

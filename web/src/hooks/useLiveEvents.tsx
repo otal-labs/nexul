@@ -50,6 +50,7 @@ import {
 } from "@/hooks/ChatHooks";
 import { applyCachedReaction } from "@/hooks/ReactionHooks";
 import { isNote, type ConversationDeleted, type Message } from "@/models/Chat";
+import type { Handoff } from "@/models/Handoff";
 import type { MeResponse, SessionClient } from "@/models/User";
 import { getServerVersionKey, notifyIfServerUpdated } from "@/hooks/VersionHooks";
 import { setCachedTunnelStatus, type TunnelStatusChangedPayload } from "@/hooks/PairingHooks";
@@ -205,6 +206,8 @@ interface AgentStreamPayload {
   activity?: string;
   activity_kind?: ActivityKind;
   activity_tool?: string;
+  // Set only on the frame for the one hand-off that changed.
+  handoff?: Handoff;
 }
 
 // Message frames carry the whole message, so they patch the cached list instead of triggering a refetch.
@@ -282,6 +285,7 @@ const dispatch = (client: ReturnType<typeof useQueryClient>, router: RouterFollo
       activity: p.activity ?? "",
       ...(p.activity_kind && { activityKind: p.activity_kind }),
       ...(p.activity_tool && { activityTool: p.activity_tool }),
+      ...(p.handoff && { handoff: p.handoff }),
     });
     return;
   }

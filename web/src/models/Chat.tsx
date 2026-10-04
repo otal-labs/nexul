@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { attachmentPath, isAttachmentPath, type Attachment } from "@/models/Attachment";
+import type { Handoff } from "@/models/Handoff";
 import { personLabel, type Person } from "@/models/Person";
 import type { PlayType } from "@/models/Play";
 
@@ -78,6 +79,7 @@ export interface Message {
   created_at: string;
   updated_at: string;
   reactions?: Reaction[];
+  handoffs?: Handoff[];
   // Client-only: an optimistic row shown before the server acks the post.
   pending?: boolean;
 }

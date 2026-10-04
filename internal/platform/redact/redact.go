@@ -8,15 +8,19 @@ import (
 	"regexp"
 )
 
-// Placeholder replaces every personal access token Tokens finds.
+// Placeholder replaces every token Tokens finds.
 const Placeholder = "[redacted token]"
 
-// personalAccessToken matches auth's dep_ prefix plus its base64url body; TestTokens_HidesAMintedToken in auth pins the shape.
-var personalAccessToken = regexp.MustCompile(`dep_[A-Za-z0-9_-]{43,}`)
+// bearerToken matches auth's dep_ and ses_ prefixes plus their base64url body; TestTokens_HidesAMintedToken in auth pins the shape.
+var bearerToken = regexp.MustCompile(`(?:dep|ses)_[A-Za-z0-9_-]{43,}`)
 
-// Tokens replaces every personal access token in s with Placeholder.
+// queryToken matches a token= query value, how every WebSocket carries its credential whatever its prefix.
+var queryToken = regexp.MustCompile(`([?&]token=)[^&#\s"'\\]+`)
+
+// Tokens replaces every personal access or session token, and every token= query value, in s with Placeholder.
 func Tokens(s string) string {
-	return personalAccessToken.ReplaceAllString(s, Placeholder)
+	s = queryToken.ReplaceAllString(s, "${1}"+Placeholder)
+	return bearerToken.ReplaceAllString(s, Placeholder)
 }
 
 // JSON marshals v with every personal access token replaced and reports whether it found one; base64url needs no escaping.
