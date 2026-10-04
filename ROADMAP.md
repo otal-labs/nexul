@@ -155,6 +155,16 @@ project's folder, or a new git worktree off the branch that folder is on, so
 plays and chats running at the same time never edit the same files. The choice
 sits beside the model in pairing defaults, and a project link can override it.
 
+### Interview sources
+
+A project's interview can start from what it already has. Sources are pointed
+at, never copied: paths in the checkout, docs, memories, pasted text, or the
+project it replaces. What the team stands behind is drafted into answers the
+person confirms; what was only done, such as a predecessor's code, is asked
+about in the follow-ups. New material redrafts only what it touches, and
+"Audit via AI" measures the old code against the new rules in a doc that
+"To tickets via AI" turns into work. ADRs 0122 and 0123.
+
 ### The design pass
 
 A monochrome identity — "The Mono Console", light and dark as true inversions
@@ -205,13 +215,6 @@ Planned: **clarifying a doc**. A client writes what they need in a doc;
 "Clarify via AI" asks the gaps as rounds of question cards on the doc
 page and in the phone app, the client answers, and once nothing is left
 the answers are written into the doc. The map is in `.scratch/doc-clarify/`.
-
-In progress: **interview sources**. A project that already has standards, docs,
-or a predecessor points its interview at them; an agent drafts each answer
-from what the team stands behind and asks about what it only did, the
-person confirms, and new material redrafts only what it touches. A
-predecessor's code is then audited against the new rules. The map is in
-`.scratch/interview-sources/`.
 
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab
