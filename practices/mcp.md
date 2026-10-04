@@ -303,7 +303,8 @@ decide whether an agent picks the right tool.
 - **Instructions are a map, not a manual.** The server's `instructions` are
   under 2,048 characters, most important first: what Nexul is in one line,
   the tool families and how they relate, the cross-tool workflows (deploy,
-  then poll the deploy), and how ids and keys work. Clients that defer tool
+  then poll the deploy), how ids and keys work, and that the connection's
+  sign-in does not reach a browser the agent drives. Clients that defer tool
   schemas show the instructions and the bare names at session start, so the
   instructions are how an agent learns which tool to search for. They never
   repeat a tool description and never carry behavior rules or security
