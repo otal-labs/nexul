@@ -250,8 +250,8 @@ Not adopted, on purpose, until a ticket asks for one:
   - Notes from the protocol-2 client arrive as `ActivityNote` steps.
   - The settings row labels `t3code-v2` as "T3 Code".
   - Check at 768, 1024 and 1440 px.
-- **Phone app:** a pill on Agent replies too (ticket 19). Until then, `native/` ignores the additive
-  field and shows the reply as today.
+- **Phone app:** a pill on Agent replies too, shipped in ticket 19. It opens a screen with the helper's
+  prompt, steps and reply from the stored hand-off; the live bubble on the phone stays as it is.
 - **HTTP gateway:** messages gain an additive `handoffs` field. No new route.
 - **MCP:**
   - `message_list` returns hand-off summaries without steps, so results stay under the 10,000-token

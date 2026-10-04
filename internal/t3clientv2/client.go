@@ -22,9 +22,12 @@ const protocol = 2
 // Harness is the harness.Client for T3 Code servers running T3's orchestrator V2.
 type Harness struct {
 	Options t3rpc.Options
-	// turns maps a thread id to the *runningTurn watching it, for Stop.
+	// turns maps a turnKey to the *runningTurn watching it, for Stop.
 	turns sync.Map
 }
+
+// turnKey names one turn on a thread by the message id whose run it watches, since several turns can share a thread.
+type turnKey struct{ threadID, messageID string }
 
 // NewHarness wires a Harness dialing real T3 servers.
 func NewHarness(opts t3rpc.Options) *Harness {

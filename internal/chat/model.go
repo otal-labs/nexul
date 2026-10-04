@@ -2,10 +2,7 @@
 package chat
 
 import (
-	"encoding/json"
-	"fmt"
 	"regexp"
-	"slices"
 	"strings"
 	"time"
 
@@ -141,87 +138,6 @@ func NewHandoff(h harness.Handoff) Handoff {
 		steps = append(steps, HandoffStep(a))
 	}
 	return Handoff{ID: h.ID, Driver: h.Driver, Model: h.Model, Title: h.Title, Prompt: h.Prompt, State: h.State, Reply: h.Reply, Steps: steps}
-}
-
-// maxHandoffBytes caps the hand-offs one reply stores, as JSON.
-const maxHandoffBytes = 256 << 10
-
-// storedHandoffs is hs as a reply stores them, nil for none, within maxHandoffBytes: the oldest steps go first, then the longest replies.
-func storedHandoffs(hs []harness.Handoff) ([]Handoff, error) {
-	if len(hs) == 0 {
-		return nil, nil
-	}
-	out := make([]Handoff, 0, len(hs))
-	for _, h := range hs {
-		out = append(out, NewHandoff(h))
-	}
-	raw, err := json.Marshal(out)
-	if err != nil {
-		return nil, fmt.Errorf("measure hand-offs: %w", err)
-	}
-	type stepRef struct {
-		handoff, step int
-		at            time.Time
-		size          int
-	}
-	var refs []stepRef
-	for i, h := range out {
-		for j, s := range h.Steps {
-			step, err := json.Marshal(s)
-			if err != nil {
-				return nil, fmt.Errorf("measure a hand-off step: %w", err)
-			}
-			refs = append(refs, stepRef{i, j, s.At, len(step)})
-		}
-	}
-	slices.SortStableFunc(refs, func(a, b stepRef) int { return a.at.Compare(b.at) })
-	size, drop := len(raw), map[[2]int]bool{}
-	for _, r := range refs {
-		if size <= maxHandoffBytes {
-			break
-		}
-		size -= r.size
-		drop[[2]int{r.handoff, r.step}] = true
-	}
-	for i := range out {
-		kept := out[i].Steps[:0]
-		for j, s := range out[i].Steps {
-			if !drop[[2]int{i, j}] {
-				kept = append(kept, s)
-			}
-		}
-		out[i].Steps = kept
-	}
-	cutReplies(out, size)
-	return out, nil
-}
-
-// cutReplies cuts out's longest replies to even shares of what the rest leaves under maxHandoffBytes, size being out's JSON length.
-func cutReplies(out []Handoff, size int) {
-	if size <= maxHandoffBytes {
-		return
-	}
-	lens, order := make([]int, len(out)), make([]int, len(out))
-	budget := maxHandoffBytes - size
-	for i, h := range out {
-		lens[i], order[i] = jsonLen(h.Reply), i
-		budget += lens[i]
-	}
-	slices.SortFunc(order, func(a, b int) int { return lens[a] - lens[b] })
-	for k, i := range order {
-		share := budget / (len(order) - k)
-		if lens[i] > share {
-			// An escape never shrinks a byte, so cutting the excess as raw bytes cuts at least as much JSON.
-			out[i].Reply = harness.CapBytes(out[i].Reply, max(len(out[i].Reply)-(lens[i]-share), 0))
-			lens[i] = share
-		}
-		budget -= lens[i]
-	}
-}
-
-func jsonLen(s string) int {
-	raw, _ := json.Marshal(s) // marshalling a string cannot fail
-	return len(raw)
 }
 
 // Reaction is one emoji on a message and the people who reacted with it, earliest first.
