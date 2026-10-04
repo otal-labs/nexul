@@ -46,5 +46,10 @@ export const answerValue = (answer: ChecklistAnswer | undefined): AnswerValue | 
   return { selected: answer.selected, text: answer.text };
 };
 
+// A doc question's suggested option keeps its "(Suggested)" mark as picked; the one-line answer reads without it.
+const withoutSuggested = (label: string): string => label.replace(/\s*\(Suggested\)$/, "");
+
 export const answerLine = (answer: ChecklistAnswer | undefined): string =>
-  answer ? [...answer.selected, answer.text].filter((part) => part !== "").join(" · ").replaceAll("\n", " · ") : "";
+  answer
+    ? [...answer.selected.map(withoutSuggested), answer.text].filter((part) => part !== "").join(" · ").replaceAll("\n", " · ")
+    : "";
