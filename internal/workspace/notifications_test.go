@@ -890,3 +890,83 @@ func TestNotificationRunCleanupLoop_RunsAMinuteAfterStartThenDaily_SurvivingAFai
 		<-done
 	})
 }
+
+func TestHandleDocClarificationNotices(t *testing.T) {
+	round := func(extra map[string]any) map[string]any {
+		out := map[string]any{"doc": map[string]any{"id": "d-1", "title": "Spec", "project_id": "p-1"}, "round": 2, "started_by": "u1", "actor_id": "u1"}
+		for k, v := range extra {
+			out[k] = v
+		}
+		return out
+	}
+	users := func() *fakeNotifUsers {
+		return newFakeNotifUsers(notifUser("u1", "onik97"), notifUser("u2", "alice"), notifUser("u3", "bob"))
+	}
+	service := func(repo *fakeNotifRepo, access *fakeAccessChecker, watching ...string) *NotificationService {
+		return newTestNotifServiceWith(repo, users(), nil, access).WithDocWatchers(&fakeDocWatchers{byDoc: map[string][]string{"d-1": watching}})
+	}
+
+	t.Run("malformed payloads are fatal", func(t *testing.T) {
+		s := service(newFakeNotifRepo(), &fakeAccessChecker{})
+		bad := eventbus.Event{ID: "e1", Payload: []byte(`{`)}
+		assert.ErrorIs(t, HandleDocQuestionsPosted(context.Background(), s, bad), apperrs.ErrFatal)
+		assert.ErrorIs(t, HandleDocRoundAnswered(context.Background(), s, bad), apperrs.ErrFatal)
+		assert.ErrorIs(t, HandleDocRoundAnswered(context.Background(), s, notifEvFor(t, "doc.clarification.round_answered", map[string]any{"doc": map[string]any{"id": "d-1"}})), apperrs.ErrFatal, "no starter")
+	})
+	t.Run("a round that found no gaps or asked nothing tells nobody", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		s := service(repo, &fakeAccessChecker{}, "u2")
+		require.NoError(t, HandleDocQuestionsPosted(context.Background(), s, notifEvFor(t, "doc.clarification.round_posted", round(map[string]any{"no_gaps": true}))))
+		require.NoError(t, HandleDocQuestionsPosted(context.Background(), s, notifEvFor(t, "doc.clarification.round_posted", round(map[string]any{"question_count": 0}))))
+		assert.Empty(t, repo.notifsFor("u2"))
+	})
+	t.Run("the starter is never told of their own round, though they watch the doc", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		s := service(repo, &fakeAccessChecker{}, "u1", "u2")
+		require.NoError(t, HandleDocQuestionsPosted(context.Background(), s, notifEvFor(t, "doc.clarification.round_posted", round(map[string]any{"question_count": 3}))))
+		assert.Empty(t, repo.notifsFor("u1"))
+		assert.Len(t, repo.notifsFor("u2"), 1)
+	})
+	t.Run("a watcher who cannot open the doc gets nothing", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		s := service(repo, &fakeAccessChecker{denyUserIDs: map[string]bool{"u3": true}}, "u2", "u3")
+		require.NoError(t, HandleDocQuestionsPosted(context.Background(), s, notifEvFor(t, "doc.clarification.round_posted", round(map[string]any{"question_count": 1}))))
+		assert.Empty(t, repo.notifsFor("u3"))
+		got := repo.notifsFor("u2")
+		require.Len(t, got, 1)
+		assert.Equal(t, KindDocQuestionsAsked, got[0].Kind)
+		assert.Equal(t, SubjectDoc, got[0].SubjectType)
+		assert.Equal(t, "d-1", got[0].SubjectID)
+		assert.Equal(t, "New questions on Spec", got[0].SubjectTitle)
+	})
+	t.Run("watcher lookup failure propagates so the bus retries", func(t *testing.T) {
+		watchers := &fakeDocWatchers{err: errors.New("db down")}
+		s := newTestNotifServiceWith(newFakeNotifRepo(), users(), nil, &fakeAccessChecker{}).WithDocWatchers(watchers)
+		err := HandleDocQuestionsPosted(context.Background(), s, notifEvFor(t, "doc.clarification.round_posted", round(map[string]any{"question_count": 1})))
+		assert.ErrorIs(t, err, watchers.err)
+	})
+	t.Run("the starter hears the last answer, once per event", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		s := service(repo, &fakeAccessChecker{}, "u2")
+		ev := notifEvFor(t, "doc.clarification.round_answered", round(map[string]any{"actor_id": "u2"}))
+		require.NoError(t, HandleDocRoundAnswered(context.Background(), s, ev))
+		require.NoError(t, HandleDocRoundAnswered(context.Background(), s, ev))
+		got := repo.notifsFor("u1")
+		require.Len(t, got, 1)
+		assert.Equal(t, KindDocQuestionsAnswered, got[0].Kind)
+		assert.Equal(t, "Questions answered on Spec", got[0].SubjectTitle)
+		assert.Empty(t, repo.notifsFor("u2"), "watchers are not told an answer landed")
+	})
+	t.Run("the starter answering their own round is not told", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		s := service(repo, &fakeAccessChecker{})
+		require.NoError(t, HandleDocRoundAnswered(context.Background(), s, notifEvFor(t, "doc.clarification.round_answered", round(nil))))
+		assert.Empty(t, repo.notifsFor("u1"))
+	})
+	t.Run("a starter who can no longer open the doc is not told", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		s := service(repo, &fakeAccessChecker{denyUserIDs: map[string]bool{"u1": true}})
+		require.NoError(t, HandleDocRoundAnswered(context.Background(), s, notifEvFor(t, "doc.clarification.round_answered", round(map[string]any{"actor_id": "u2"}))))
+		assert.Empty(t, repo.notifsFor("u1"))
+	})
+}

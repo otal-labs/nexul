@@ -12,6 +12,8 @@ const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.DocCreated]: "doc created",
   [NotificationKind.DocUpdated]: "doc updated",
   [NotificationKind.DocMentioned]: "mention",
+  [NotificationKind.DocQuestionsAsked]: "new questions",
+  [NotificationKind.DocQuestionsAnswered]: "questions answered",
   [NotificationKind.MemoryUpdated]: "memory updated",
   [NotificationKind.PlayRunFinished]: "play run ended",
   [NotificationKind.PlayRunWaiting]: "needs your answer",

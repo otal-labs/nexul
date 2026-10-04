@@ -280,6 +280,12 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	mustSubscribe(ctx, bus, "notifications", docs.TopicUpdated, "", func(ctx context.Context, ev eventbus.Event) error {
 		return workspace.HandleDocUpdated(ctx, svc.notifSvc, ev)
 	})
+	mustSubscribe(ctx, bus, "notifications", docs.TopicClarificationRoundPosted, "", func(ctx context.Context, ev eventbus.Event) error {
+		return workspace.HandleDocQuestionsPosted(ctx, svc.notifSvc, ev)
+	})
+	mustSubscribe(ctx, bus, "notifications", docs.TopicClarificationRoundAnswered, "", func(ctx context.Context, ev eventbus.Event) error {
+		return workspace.HandleDocRoundAnswered(ctx, svc.notifSvc, ev)
+	})
 	mustSubscribe(ctx, bus, "notifications", memories.TopicUpdated, "", func(ctx context.Context, ev eventbus.Event) error {
 		return workspace.HandleMemoryUpdated(ctx, svc.notifSvc, ev)
 	})

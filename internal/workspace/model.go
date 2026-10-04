@@ -219,15 +219,17 @@ type ProjectAccessEntry struct {
 type Kind string
 
 const (
-	KindTicketAssigned  Kind = "ticket.assigned"
-	KindTicketMentioned Kind = "ticket.mentioned"
-	KindTicketStatus    Kind = "ticket.status_changed"
-	KindDocCreated      Kind = "doc.created"
-	KindDocUpdated      Kind = "doc.updated"
-	KindDocMentioned    Kind = "doc.mentioned"
-	KindMemoryUpdated   Kind = "memory.updated"
-	KindPlayRunFinished Kind = "play.run_finished"
-	KindPlayRunWaiting  Kind = "play.run_waiting"
+	KindTicketAssigned       Kind = "ticket.assigned"
+	KindTicketMentioned      Kind = "ticket.mentioned"
+	KindTicketStatus         Kind = "ticket.status_changed"
+	KindDocCreated           Kind = "doc.created"
+	KindDocUpdated           Kind = "doc.updated"
+	KindDocMentioned         Kind = "doc.mentioned"
+	KindDocQuestionsAsked    Kind = "doc.questions_asked"
+	KindDocQuestionsAnswered Kind = "doc.questions_answered"
+	KindMemoryUpdated        Kind = "memory.updated"
+	KindPlayRunFinished      Kind = "play.run_finished"
+	KindPlayRunWaiting       Kind = "play.run_waiting"
 )
 
 // SubjectType is what a notification points at, used to build the click-through link in the inbox.
