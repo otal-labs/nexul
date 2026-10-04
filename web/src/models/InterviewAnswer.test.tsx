@@ -58,6 +58,15 @@ describe("pending rows", () => {
     expect(firstPendingKey(rows)).toBe("0:C");
   });
 
+  it("counts a suggested change on an answered question as waiting on the person", () => {
+    const suggestion = {
+      id: "d-1", workspace_id: "ws-1", project_id: "p-1", question: "B", selected: [], text: "no", source_ids: [], where: "",
+      drafted_by: "u-1", drafted_at: "2026-10-04T10:00:00Z",
+    };
+    const [all] = buildSections([question("A"), question("B")], [answer(0, "A"), answer(0, "B", { answered_at: "2026-10-03T10:00:00Z" })], [suggestion]);
+    expect(firstPendingKey(all?.rows ?? [])).toBe("0:B");
+  });
+
   it("moves on to the next pending row, wrapping to the start, and stops when none is left", () => {
     expect(nextPendingKey(rows, "0:D")).toBe("0:C");
     expect(nextPendingKey(rows, "0:C")).toBeNull();

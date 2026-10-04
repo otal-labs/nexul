@@ -13,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs/richtext"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 func (f *fakeRepo) GetByProjectKind(_ context.Context, projectID, kind string) (*Memory, error) {
@@ -219,6 +220,38 @@ func TestSaveInterviewTemplate_PublishesAndReadsBack(t *testing.T) {
 	assert.Equal(t, "## Only this", got.Body)
 	assert.Equal(t, DefaultInterviewTemplate, got.DefaultBody)
 	require.Len(t, repo.eventsFor(TopicInterviewTemplateUpdated), 1)
+}
+
+func TestProjectInterviewTemplate_RestrictedReader_GetsTheWorkspaceTemplate(t *testing.T) {
+	repo := newFakeRepo()
+	_, err := newTestService(repo).SaveInterviewTemplate(testCtx(), "workspace-1", "## Only this")
+	require.NoError(t, err)
+	restricted := newTestServiceWith(repo, fakeAccess{can: true, deny: map[string]bool{"workspace-1:" + string(permissions.MemoriesRead): true}})
+
+	_, err = restricted.InterviewTemplate(testCtx(), "workspace-1")
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	got, err := restricted.ProjectInterviewTemplate(testCtx(), "project-1")
+	require.NoError(t, err)
+	assert.Equal(t, "## Only this", got.Body)
+}
+
+func TestProjectInterviewTemplate_Errors(t *testing.T) {
+	tests := []struct {
+		name    string
+		svc     *Service
+		project string
+		want    error
+	}{
+		{"empty project", newTestService(newFakeRepo()), " ", apperrs.ErrInvalid},
+		{"unknown project", newTestService(newFakeRepo()), "project-x", apperrs.ErrNotFound},
+		{"no read on the project", newDenyService(newFakeRepo()), "project-1", apperrs.ErrForbidden},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.svc.ProjectInterviewTemplate(testCtx(), tt.project)
+			require.ErrorIs(t, err, tt.want)
+		})
+	}
 }
 
 func TestInterviewTemplate_Errors(t *testing.T) {

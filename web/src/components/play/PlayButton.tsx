@@ -48,7 +48,8 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
   if (!canRun) return null;
 
   const running = activeTrail !== undefined;
-  const canStop = running && (activeTrail.starter_id === me?.user.id || canWrite);
+  // Stop sits on the button of the play that is running; a sibling only reads as disabled.
+  const canStop = running && activeTrail.play_id === play.id && (activeTrail.starter_id === me?.user.id || canWrite);
   // Only the play that asked reads as waiting; its siblings stay disabled with the reason.
   const waiting = running && (liveState ?? activeTrail.state) === "waiting" && activeTrail.play_id === play.id;
   const reason = disabledReason(running, (liveState ?? activeTrail?.state) === "waiting", readiness);

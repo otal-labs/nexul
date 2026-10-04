@@ -4,9 +4,8 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { InterviewChecklistFeed } from "@/components/memory/InterviewChecklistFeed";
 import { useFetchInterviewDrafts, useFetchInterviewSources } from "@/hooks/InterviewSourceHooks";
-import { useFetchInterviewAnswers, useFetchInterviewTemplate, useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
+import { useFetchInterviewAnswers, useFetchProjectInterviewTemplate, useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
-import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { buildSections } from "@/models/InterviewAnswer";
 import { hasInterview } from "@/models/Memory";
 
@@ -15,9 +14,8 @@ interface InterviewChecklistProps {
 }
 
 export const InterviewChecklist = ({ projectId }: InterviewChecklistProps) => {
-  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const canWrite = useHasPermission("memories:write");
-  const template = useFetchInterviewTemplate(workspaceId);
+  const template = useFetchProjectInterviewTemplate(projectId);
   const answers = useFetchInterviewAnswers(projectId);
   const { data: drafts } = useFetchInterviewDrafts(projectId);
   const { data: sources } = useFetchInterviewSources(projectId);

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { emptyDocJson } from "@/utils/emptyDocJson";
+
 export interface Memory {
   id: string;
   workspace_id: string;
@@ -42,8 +44,11 @@ export const MAX_INTERVIEW_CHARS = 8000;
 
 export const isInterviewMemory = (memory: Memory): boolean => memory.kind === INTERVIEW_KIND;
 
-export const hasInterview = (memories: Memory[], projectId: string): boolean =>
-  memories.some((memory) => isInterviewMemory(memory) && memory.project_id === projectId);
+// A run creates the interview memory empty before it writes anything, so only one with a body counts as written.
+export const isWrittenInterview = (memory: Memory, projectId: string): boolean =>
+  isInterviewMemory(memory) && memory.project_id === projectId && memory.body.trim() !== "" && memory.body !== emptyDocJson;
+
+export const hasInterview = (memories: Memory[], projectId: string): boolean => memories.some((memory) => isWrittenInterview(memory, projectId));
 
 export const DECISIONS_LOG_KIND = "decisions_log";
 

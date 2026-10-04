@@ -168,6 +168,14 @@ describe("PlayButton", () => {
     expect(screen.getByRole("button", { name: "Fix with AI" })).toBeDisabled();
   });
 
+  it("gives a sibling play no Stop while the viewer's own run of another play is in progress", async () => {
+    mockApi({ permissions: ["plays:run", "plays:write"], trails: [{ ...runningTrail("u-me"), play_id: "play-other", play_label: "Interview" }] });
+    renderButton();
+    expect(await screen.findByText("a run is in progress")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fix with AI" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Stop Fix with AI" })).not.toBeInTheDocument();
+  });
+
   it("shows Stop to a plays:write holder who did not start the run", async () => {
     mockApi({ permissions: ["plays:run", "plays:write"], trails: [runningTrail("u-other")] });
     renderButton();

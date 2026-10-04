@@ -14,7 +14,7 @@ import { useInterviewTrails } from "@/hooks/InterviewSourceHooks";
 import { useActiveTrail } from "@/hooks/TrailHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { answersChangedSinceRun } from "@/models/InterviewAnswer";
-import { isInterviewMemory } from "@/models/Memory";
+import { isWrittenInterview } from "@/models/Memory";
 import { projectToken, type Project } from "@/models/Project";
 
 interface InterviewMemoryColumnProps {
@@ -30,7 +30,7 @@ export const InterviewMemoryColumn = ({ project }: InterviewMemoryColumnProps) =
   const active = useActiveTrail("interview", project.id);
   const followUpActive = !!active && !!trails?.some((t) => t.id === active.id);
   const auditActive = !!active && !!audits?.some((t) => t.id === active.id);
-  const memory = memories?.find((m) => isInterviewMemory(m) && m.project_id === project.id);
+  const memory = memories?.find((m) => isWrittenInterview(m, project.id));
   const changed = memory && answers && trails ? answersChangedSinceRun(answers, trails) : 0;
   const stale = changed > 0 && !active;
 

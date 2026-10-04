@@ -168,6 +168,14 @@ export const useFetchInterviewTemplate = (workspaceId: string) =>
     enabled: workspaceId !== "",
   });
 
+// The template a project's Interview page asks, readable by a restricted member with access to that project.
+export const useFetchProjectInterviewTemplate = (projectId: string) =>
+  useQuery({
+    queryKey: [getInterviewTemplateKey, "project", projectId],
+    queryFn: async () =>
+      (await api.get<InterviewTemplate>("/api/memories/interview-template", { params: { project_id: projectId } })).data,
+  });
+
 export const useSaveInterviewTemplate = () => {
   const client = useQueryClient();
   return useMutation({

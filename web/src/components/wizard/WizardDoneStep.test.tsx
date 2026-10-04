@@ -84,7 +84,7 @@ describe("WizardDoneStep", () => {
 
   it("offers nothing and asks nothing when the project already has an interview", async () => {
     const user = userEvent.setup();
-    mockApi([{ id: "m-1", project_id: "p-1", kind: "interview" }]);
+    mockApi([{ id: "m-1", project_id: "p-1", kind: "interview", body: "## Stack" }]);
     renderStep();
     await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/api/memories", { params: { project_id: "p-1" } }));
     await user.click(screen.getByRole("button", { name: "View on the canvas" }));
@@ -96,7 +96,7 @@ describe("WizardDoneStep", () => {
   it("offers only the destinations the viewer can read", async () => {
     access.areas = ["topology"];
     useProjectWizardStore.getState().setStackId("s-1");
-    mockApi([{ id: "mem-i", project_id: "p-1", kind: "interview" }]);
+    mockApi([{ id: "mem-i", project_id: "p-1", kind: "interview", body: "## Stack" }]);
     renderStep();
     expect(await screen.findByRole("button", { name: "View on the canvas" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "View stack" })).not.toBeInTheDocument();

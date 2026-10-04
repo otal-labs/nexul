@@ -43,8 +43,9 @@ export const countLine = (rows: ChecklistRow[]): string => {
   return [head, drafted > 0 && `${drafted} drafted`, suggested > 0 && `${suggested} suggested`].filter(Boolean).join(" · ");
 };
 
+// A row waits on the person while it is unanswered or carries a suggested change to accept or dismiss.
 export const firstPendingKey = (rows: ChecklistRow[]): string | null =>
-  rows.find((r) => rowStatus(r) === "pending")?.key ?? null;
+  rows.find((r) => rowStatus(r) === "pending" || r.draft?.state === "suggested")?.key ?? null;
 
 // The next row still pending once the row at key is done, wrapping round to the first one left.
 export const nextPendingKey = (rows: ChecklistRow[], key: string): string | null => {
