@@ -1,6 +1,6 @@
 # 10 — The Questions panel on the doc page
 
-**What to build:** The panel picked in 02, built for real from the
+**What to build:** The tab picked in 02 ("Doc | Questions N" on the doc page), built for real from the
 prototype on `proto/doc-clarify-panel` (rewrite it properly, don't copy the
 throwaway). The interview's reusable rows, sections and option steps move to
 a shared folder rather than being imported from the memory components. Every
