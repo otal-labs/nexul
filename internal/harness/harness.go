@@ -210,14 +210,18 @@ type Activity struct {
 
 // CapDetail cuts s at MaxActivityDetail bytes on a rune boundary.
 func CapDetail(s string) string {
-	if len(s) <= MaxActivityDetail {
+	return CapBytes(s, MaxActivityDetail)
+}
+
+// CapBytes cuts s at n bytes on a rune boundary.
+func CapBytes(s string, n int) string {
+	if len(s) <= n {
 		return s
 	}
-	cut := MaxActivityDetail
-	for cut > 0 && !utf8.RuneStart(s[cut]) {
-		cut--
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
 	}
-	return s[:cut]
+	return s[:n]
 }
 
 // Preview flattens s to one line of at most n runes for a row label.
@@ -314,6 +318,28 @@ type TurnResult struct {
 	LeftRunning bool
 }
 
+// The states of a Handoff.
+const (
+	HandoffRunning     = "running"
+	HandoffDone        = "done"
+	HandoffFailed      = "failed"
+	HandoffInterrupted = "interrupted"
+	// HandoffLeftRunning is work still running when the turn stopped waiting for it.
+	HandoffLeftRunning = "left_running"
+)
+
+// Handoff is one cumulative snapshot of work a turn handed to another agent, re-emitted on change and keyed by ID.
+type Handoff struct {
+	ID     string
+	Driver string
+	Model  string
+	Title  string
+	Prompt string
+	State  string
+	Reply  string
+	Steps  []Activity
+}
+
 // Update is one item off a turn's stream, exactly one field set; a Terminal update is always last.
 // A Question is not terminal: the turn stays open on the harness until Client.Answer or Interrupt.
 type Update struct {
@@ -321,6 +347,7 @@ type Update struct {
 	Activity *Activity
 	Approval *Approval
 	Question *Question
+	Handoff  *Handoff
 	Terminal *TurnResult
 }
 

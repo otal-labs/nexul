@@ -452,7 +452,7 @@ Stripped from the wire (O/WireProjection.ts:66-150). This applies to snapshots, 
 - file_change diffStr, oldStr and newStr are removed.
 - dynamic_tool.input becomes {summary, truncated:true} when its JSON exceeds 16 KiB.
 - dynamic_tool.output is reduced to {isError?, threadId?, messageId?, taskId?, scheduledTaskId?, status?, thread?, threads?}, or dropped entirely (packages/shared/src/toolOutput.ts:97-160). Tool RESULTS are therefore not available.
-- subagent prompt, progress and result are truncated at 32 KiB.
+- a `subagent` turn item's prompt, progress and result are truncated at 32 KiB. The subagent row (`subagent.updated`, `projection.subagents`) is not projected, so its `result` arrives whole.
 - handoff.summary is removed.
 - No RPC returns the full output. Only getTurnDiff returns diffs.
 

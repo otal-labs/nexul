@@ -308,7 +308,7 @@ func TestAnswerFromChat_TurnGone_PostsTheAnswerAndResumesAFreshTurn(t *testing.T
 
 	conv.mu.Lock()
 	require.Len(t, conv.userPosts, 1)
-	assert.Equal(t, fakePost{"conv-1", "u-2", "Answered: Yes"}, conv.userPosts[0])
+	assert.Equal(t, fakePost{conversationID: "conv-1", viaUserID: "u-2", body: "Answered: Yes"}, conv.userPosts[0])
 	conv.mu.Unlock()
 	waitFor(t, time.Second, func() bool { replies, _ := conv.snapshot(); return len(replies) == 1 })
 	assert.Contains(t, client.snapshotPrompt(), "Answered: Yes", "the fresh turn carries the answer as its request")

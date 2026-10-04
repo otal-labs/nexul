@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -32,6 +33,8 @@ type StreamFrame struct {
 	Activity     string               `json:"activity,omitempty"`
 	ActivityKind harness.ActivityKind `json:"activity_kind,omitempty"`
 	ActivityTool string               `json:"activity_tool,omitempty"`
+	// Handoff is set only on the frame for a hand-off that changed; the web merges it by id.
+	Handoff *chat.Handoff `json:"handoff,omitempty"`
 }
 
 // Conversation is the pipeline's slice of a chat conversation (ADR 0017 seam onto chat).
@@ -73,8 +76,8 @@ type Conversations interface {
 	MessagesSince(ctx context.Context, conversationID string, since time.Time) ([]ConversationMessage, error)
 	SetThread(ctx context.Context, conversationID, threadID string) error
 	MarkSynced(ctx context.Context, conversationID string, at time.Time) error
-	// PostAgentReply returns the posted message's id so a caller keeping its own record can point at the reply.
-	PostAgentReply(ctx context.Context, conversationID, viaUserID, body string) (string, error)
+	// PostAgentReply stores the reply and the work it handed off, nil for none, and returns the posted message's id.
+	PostAgentReply(ctx context.Context, conversationID, viaUserID, body string, handoffs []harness.Handoff) (string, error)
 	PostSystemMessage(ctx context.Context, conversationID, viaUserID, body string) error
 	// PostUserMessage posts as userID themselves: the answer to an Agent question is the user's own message.
 	PostUserMessage(ctx context.Context, conversationID, userID, body string) error
@@ -399,9 +402,9 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	}
 	obs.OnStarted(turn.target.SessionID)
 
-	finalText, term := s.drainTurn(ctx, conversationID, viaUserID, result.Updates, obs, newSilenceWindow(req.Silence, turn.answered))
+	finalText, handoffs, term := s.drainTurn(ctx, conversationID, viaUserID, result.Updates, obs, newSilenceWindow(req.Silence, turn.answered))
 
-	s.finishTurn(ctx, conversationID, viaUserID, finalText, term, obs)
+	s.finishTurn(ctx, conversationID, viaUserID, finalText, handoffs, term, obs)
 }
 
 // openTurn starts the turn, or with watch follows the one already running on t's session.
@@ -631,8 +634,8 @@ func (s *Service) announceTurnStarted(ctx context.Context, conversationID, prior
 	s.mu.Unlock()
 }
 
-// drainTurn reads a turn's updates to completion, forwarding snapshots and approvals live.
-func (s *Service) drainTurn(ctx context.Context, conversationID, viaUserID string, updates <-chan harness.Update, obs Observer, window *silenceWindow) (finalText string, term *harness.TurnResult) {
+// drainTurn reads a turn's updates to completion, forwarding snapshots, hand-offs and approvals live.
+func (s *Service) drainTurn(ctx context.Context, conversationID, viaUserID string, updates <-chan harness.Update, obs Observer, window *silenceWindow) (finalText string, handoffs []harness.Handoff, term *harness.TurnResult) {
 	frame := StreamFrame{ConversationID: conversationID, Streaming: true}
 	publish := func() {
 		if err := s.live.Publish(ctx, TopicAgentStream, frame); err != nil {
@@ -643,10 +646,10 @@ func (s *Service) drainTurn(ctx context.Context, conversationID, viaUserID strin
 	for {
 		u, end, ok := window.receive(ctx, updates)
 		if end != nil {
-			return finalText, end
+			return finalText, handoffs, end
 		}
 		if !ok {
-			return finalText, term
+			return finalText, handoffs, term
 		}
 		switch {
 		case u.Snapshot != nil:
@@ -672,10 +675,17 @@ func (s *Service) drainTurn(ctx context.Context, conversationID, viaUserID strin
 			obs.OnActivity(*u.Activity)
 		case u.Question != nil:
 			// The question lands as the Agent's own message so the thread shows the card; the stream bubble yields to it.
-			if _, err := s.conversations.PostAgentReply(ctx, conversationID, viaUserID, QuestionMessageBody(*u.Question)); err != nil {
+			if _, err := s.conversations.PostAgentReply(ctx, conversationID, viaUserID, QuestionMessageBody(*u.Question), nil); err != nil {
 				s.log.Error("agent: post question failed", "conversation", conversationID, "error", err)
 			}
 			obs.OnQuestion(*u.Question)
+		case u.Handoff != nil:
+			handoffs = keepHandoff(handoffs, *u.Handoff)
+			h := chat.NewHandoff(*u.Handoff)
+			frame.Handoff = &h
+			publish()
+			frame.Handoff = nil
+			obs.OnSnapshot()
 		case u.Approval != nil:
 			s.postSystemMessage(ctx, conversationID, viaUserID, fmt.Sprintf(
 				"Agent's environment asked for approval (%s: %s) — auto-declined; adjust its runtime mode if you want it to proceed unattended.",
@@ -684,6 +694,15 @@ func (s *Service) drainTurn(ctx context.Context, conversationID, viaUserID strin
 			term = u.Terminal
 		}
 	}
+}
+
+// keepHandoff replaces h's earlier snapshot, else appends it, so the reply keeps the order the hand-offs started in.
+func keepHandoff(hs []harness.Handoff, h harness.Handoff) []harness.Handoff {
+	if i := slices.IndexFunc(hs, func(x harness.Handoff) bool { return x.ID == h.ID }); i >= 0 {
+		hs[i] = h
+		return hs
+	}
+	return append(hs, h)
 }
 
 // silenceWindow ends a turn after d without a harness update; a question pauses it until answered, and a zero d never fires.
@@ -776,7 +795,7 @@ func textActivity(text string) harness.Activity {
 	return harness.Activity{Kind: harness.ActivityText, Summary: harness.Preview(text, 160), Detail: harness.CapDetail(text), At: time.Now().UTC()}
 }
 
-func (s *Service) finishTurn(ctx context.Context, conversationID, viaUserID, finalText string, term *harness.TurnResult, obs Observer) {
+func (s *Service) finishTurn(ctx context.Context, conversationID, viaUserID, finalText string, handoffs []harness.Handoff, term *harness.TurnResult, obs Observer) {
 	if term == nil {
 		term = &harness.TurnResult{State: harness.TurnError, LastError: "turn ended without a terminal result"}
 	}
@@ -791,7 +810,7 @@ func (s *Service) finishTurn(ctx context.Context, conversationID, viaUserID, fin
 	switch term.State {
 	case harness.TurnDone, harness.TurnInterrupted:
 		if strings.TrimSpace(finalText) != "" {
-			id, err := s.conversations.PostAgentReply(ctx, conversationID, viaUserID, finalText)
+			id, err := s.conversations.PostAgentReply(ctx, conversationID, viaUserID, finalText, handoffs)
 			if err != nil {
 				s.log.Error("agent: persist reply failed", "conversation", conversationID, "error", err)
 				s.clearStream(ctx, conversationID)

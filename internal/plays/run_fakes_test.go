@@ -522,7 +522,7 @@ func (a *agentConvs) SetThread(context.Context, string, string) error { return n
 
 func (a *agentConvs) MarkSynced(context.Context, string, time.Time) error { return nil }
 
-func (a *agentConvs) PostAgentReply(_ context.Context, _, _, body string) (string, error) {
+func (a *agentConvs) PostAgentReply(_ context.Context, _, _, body string, _ []harness.Handoff) (string, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.replies = append(a.replies, body)
