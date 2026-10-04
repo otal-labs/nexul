@@ -239,3 +239,12 @@ interview memory returns `sources`, pasted text included, and `drafts`, and
 `drafts`, and `dismiss_drafts`. Changes publish `interview_source.added`,
 `.changed`, `.removed`, `interview_draft.saved`, and `.dismissed`, never a
 source's content, and reach the project's readers live.
+
+On the Interview page the sources sit above the questions, each with its
+stance and a remove control, and "Add source" takes any kind; a dropped text or
+markdown file becomes pasted text named after the file. "Draft answers" shows
+once a follow source exists and carries a warning dot when a source was added,
+or a doc, memory, or pasted text changed, since the last drafting run started.
+A drafted question opens with the draft picked and where it came from, so Next
+confirms it. A draft on an answered question shows as a suggested change:
+Accept saves it as the answer, Dismiss deletes the draft.

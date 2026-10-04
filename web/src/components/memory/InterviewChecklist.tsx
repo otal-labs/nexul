@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { InterviewChecklistFeed } from "@/components/memory/InterviewChecklistFeed";
+import { useFetchInterviewDrafts, useFetchInterviewSources } from "@/hooks/InterviewSourceHooks";
 import { useFetchInterviewAnswers, useFetchInterviewTemplate, useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -18,13 +19,15 @@ export const InterviewChecklist = ({ projectId }: InterviewChecklistProps) => {
   const canWrite = useHasPermission("memories:write");
   const template = useFetchInterviewTemplate(workspaceId);
   const answers = useFetchInterviewAnswers(projectId);
+  const { data: drafts } = useFetchInterviewDrafts(projectId);
+  const { data: sources } = useFetchInterviewSources(projectId);
   const { data: memories } = useFetchMemoriesByProject(projectId);
   const hasMemory = !!memories && hasInterview(memories, projectId);
   const isPending = template.isPending || answers.isPending;
   const error = template.error ?? answers.error;
   const sections = useMemo(
-    () => template.data && answers.data && buildSections(template.data.questions, answers.data),
-    [template.data, answers.data],
+    () => template.data && answers.data && buildSections(template.data.questions, answers.data, drafts, sources),
+    [template.data, answers.data, drafts, sources],
   );
 
   return (

@@ -1,6 +1,7 @@
 import { useId, useState, type KeyboardEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { InterviewDraftFrom } from "@/components/memory/InterviewDraftFrom";
 import { QuestionStep } from "@/components/play/QuestionStep";
 import { useSaveInterviewAnswer } from "@/hooks/MemoryHooks";
 import { answerValue, recommendedDraft, SKIPPED_ANSWER, type InterviewRow } from "@/models/InterviewAnswer";
@@ -22,8 +23,10 @@ const hasAnswer = (draft: AnswerValue | undefined): boolean =>
   (draft?.text?.trim() ?? "") !== "" || (draft?.selected?.length ?? 0) > 0;
 
 // The open row's body: the question's options flush under its title, with Back, Skip, and Next; Next and Skip save.
+// A drafted question opens on the draft with where it came from, so Next confirms it.
 export const InterviewQuestionForm = ({ row, projectId, progress, prevKey, nextKey, onMove, onAnswer, pending = false }: InterviewQuestionFormProps) => {
-  const [draft, setDraft] = useState<AnswerValue | undefined>(answerValue(row.answer) ?? recommendedDraft(row.item));
+  const proposed = row.draft?.state === "open" ? row.draft.value : undefined;
+  const [draft, setDraft] = useState<AnswerValue | undefined>(answerValue(row.answer) ?? proposed ?? recommendedDraft(row.item));
   const save = useSaveInterviewAnswer();
   const idPrefix = useId();
   const busy = save.isPending || pending;
@@ -60,7 +63,15 @@ export const InterviewQuestionForm = ({ row, projectId, progress, prevKey, nextK
           {row.why}
         </p>
       )}
-      <QuestionStep item={row.item} idPrefix={idPrefix} draft={draft} onDraft={setDraft} />
+      <QuestionStep
+        item={row.item}
+        idPrefix={idPrefix}
+        draft={draft}
+        onDraft={setDraft}
+        drafted={row.draft?.value}
+        multiline
+        note={row.draft && <InterviewDraftFrom draft={row.draft} />}
+      />
       <div className="mt-4 flex items-center justify-end gap-2">
         {prevKey !== null && (
           <Button variant="ghost" size="sm" onClick={() => onMove(prevKey)}>
