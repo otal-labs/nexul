@@ -137,6 +137,21 @@ type docRef struct {
 	Body      string `json:"body"`
 }
 
+// docQuestionsPostedEvent mirrors the docs domain's doc.clarification.round_posted payload.
+type docQuestionsPostedEvent struct {
+	Doc           docRef `json:"doc"`
+	StartedBy     string `json:"started_by"`
+	QuestionCount int    `json:"question_count"`
+	NoGaps        bool   `json:"no_gaps"`
+}
+
+// docRoundAnsweredEvent mirrors the docs domain's doc.clarification.round_answered payload.
+type docRoundAnsweredEvent struct {
+	Doc       docRef `json:"doc"`
+	StartedBy string `json:"started_by"`
+	ActorID   string `json:"actor_id"`
+}
+
 // memoryUpdatedEvent mirrors the memories domain's memory.updated payload.
 type memoryUpdatedEvent struct {
 	Memory    memoryRef `json:"memory"`
@@ -247,6 +262,31 @@ func HandleDocUpdated(ctx context.Context, svc *NotificationService, ev eventbus
 		return apperrs.Fatal(fmt.Errorf("doc.updated missing doc id"))
 	}
 	return svc.onDocActivity(CtxWithEventKey(ctx, ev.ID), e, KindDocUpdated)
+}
+
+// HandleDocQuestionsPosted tells the doc's watchers a round asked new questions, never the round's starter; a round
+// that found no gaps asked nothing and tells nobody.
+func HandleDocQuestionsPosted(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
+	var e docQuestionsPostedEvent
+	if err := json.Unmarshal(ev.Payload, &e); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse doc.clarification.round_posted: %w", err))
+	}
+	if e.Doc.ID == "" {
+		return apperrs.Fatal(fmt.Errorf("doc.clarification.round_posted missing doc id"))
+	}
+	return svc.onDocQuestionsPosted(CtxWithEventKey(ctx, ev.ID), e)
+}
+
+// HandleDocRoundAnswered tells the round's starter its last question was answered, unless they answered it themself.
+func HandleDocRoundAnswered(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
+	var e docRoundAnsweredEvent
+	if err := json.Unmarshal(ev.Payload, &e); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse doc.clarification.round_answered: %w", err))
+	}
+	if e.Doc.ID == "" || e.StartedBy == "" {
+		return apperrs.Fatal(fmt.Errorf("doc.clarification.round_answered missing doc id or starter"))
+	}
+	return svc.onDocRoundAnswered(CtxWithEventKey(ctx, ev.ID), e)
 }
 
 // HandleMemoryUpdated notifies every workspace member who holds memories:read, except the author.

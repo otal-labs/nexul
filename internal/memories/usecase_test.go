@@ -35,6 +35,9 @@ type fakeRepo struct {
 	templateErr error
 	answers     []*InterviewAnswer
 	answerErr   error
+	sources     []*InterviewSource
+	drafts      []*InterviewDraft
+	sourceErr   error
 }
 
 func newFakeRepo() *fakeRepo {
@@ -186,7 +189,7 @@ type fakeAccess struct {
 	outside map[string]bool
 }
 
-var testProjects = map[string]string{"project-1": "workspace-1", "project-2": "workspace-2"}
+var testProjects = map[string]string{"project-1": "workspace-1", "project-2": "workspace-2", "project-3": "workspace-1"}
 
 func (f fakeAccess) Require(_ context.Context, workspaceID string, action permissions.Action) error {
 	return f.check(workspaceID, action)
@@ -197,6 +200,10 @@ func (f fakeAccess) RequireProject(_ context.Context, projectID string, action p
 		return fmt.Errorf("%w: project %s", apperrs.ErrNotFound, projectID)
 	}
 	return f.check(projectID, action)
+}
+
+func (f fakeAccess) Can(_ context.Context, _, docID string, action permissions.Action) (bool, error) {
+	return f.check(docID, action) == nil, nil
 }
 
 func (f fakeAccess) check(scope string, action permissions.Action) error {
@@ -227,6 +234,16 @@ func (f fakeProjects) WorkspaceForProject(_ context.Context, projectID string) (
 		return "", apperrs.ErrNotFound
 	}
 	return ws, nil
+}
+
+func (f fakeProjects) ProjectName(_ context.Context, projectID string) (string, error) {
+	if f.err != nil {
+		return "", f.err
+	}
+	if _, ok := f.workspaces[projectID]; !ok {
+		return "", apperrs.ErrNotFound
+	}
+	return "Project " + projectID, nil
 }
 
 // fakeAttachments is an AttachmentsCopier stub: no attachments by default, records copy calls.

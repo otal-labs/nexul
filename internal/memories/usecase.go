@@ -22,11 +22,27 @@ const maxWhenToUseChars = 200
 type AccessGate interface {
 	Require(ctx context.Context, workspaceID string, action permissions.Action) error
 	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
+	// Can answers a doc check for userID, the doc's own sharing included.
+	Can(ctx context.Context, userID, docID string, action permissions.Action) (bool, error)
 }
 
-// ProjectLookup resolves a project's workspace so a memory can denormalize workspace_id at creation (ADR 0017).
+// ProjectLookup resolves a project's workspace and name without memories importing workspace (ADR 0017).
 type ProjectLookup interface {
 	WorkspaceForProject(ctx context.Context, projectID string) (string, error)
+	ProjectName(ctx context.Context, projectID string) (string, error)
+}
+
+// DocLookup reads a source's doc unchecked, ErrNotFound when gone (ADR 0017: memories never imports docs).
+type DocLookup interface {
+	DocForSource(ctx context.Context, docID string) (DocInfo, error)
+}
+
+// DocInfo is what a doc source needs of its doc.
+type DocInfo struct {
+	ProjectID   string
+	WorkspaceID string
+	Title       string
+	UpdatedAt   time.Time
 }
 
 // AttachmentsCopier duplicates a memory's attachments under a clone's id (ADR 0017: memories never imports
@@ -45,6 +61,7 @@ type Service struct {
 	projects    ProjectLookup
 	attachments AttachmentsCopier
 	instance    InstanceTemplates
+	docs        DocLookup
 	now         func() time.Time
 }
 
@@ -52,6 +69,9 @@ type Service struct {
 type InstanceTemplates interface {
 	Effective(ctx context.Context, kind, key string) (string, error)
 }
+
+// SetDocLookup wires the doc reads a doc interview source resolves through.
+func (s *Service) SetDocLookup(d DocLookup) { s.docs = d }
 
 // SetInstanceTemplates wires the instance layer an unedited workspace Interview template follows.
 func (s *Service) SetInstanceTemplates(t InstanceTemplates) { s.instance = t }

@@ -206,7 +206,7 @@ Planned: **clarifying a doc**. A client writes what they need in a doc;
 page and in the phone app, the client answers, and once nothing is left
 the answers are written into the doc. The map is in `.scratch/doc-clarify/`.
 
-Planned: **interview sources**. A project that already has standards, docs,
+In progress: **interview sources**. A project that already has standards, docs,
 or a predecessor points its interview at them; an agent drafts each answer
 from what the team stands behind and asks about what it only did, the
 person confirms, and new material redrafts only what it touches. A

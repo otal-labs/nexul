@@ -11,6 +11,8 @@ import (
 type Repo interface {
 	TemplateRepo
 	AnswerRepo
+	SourceRepo
+	DraftRepo
 	Create(ctx context.Context, m *Memory, authorVia string, evts ...eventbus.OutboxEvent) error
 	GetByID(ctx context.Context, id string) (*Memory, error)
 	// GetByProjectKind returns a project's memory of a special kind, or ErrNotFound.
@@ -46,4 +48,27 @@ type AnswerRepo interface {
 	LastRound(ctx context.Context, projectID string) (int, error)
 	// InsertRound writes a follow-up round's questions and answers in one transaction.
 	InsertRound(ctx context.Context, answers []*InterviewAnswer, evts ...eventbus.OutboxEvent) error
+}
+
+// SourceRepo stores a project's interview sources as given; refs are resolved by the use-case.
+type SourceRepo interface {
+	ListSources(ctx context.Context, projectID string) ([]*InterviewSource, error)
+	GetSource(ctx context.Context, id string) (*InterviewSource, error)
+	CountSources(ctx context.Context, projectID string) (int, error)
+	// InsertSource returns ErrConflict when the project already points at that kind and ref.
+	InsertSource(ctx context.Context, src *InterviewSource, evts ...eventbus.OutboxEvent) error
+	// UpdateSource stores the stance and label; ErrNotFound if the source is gone.
+	UpdateSource(ctx context.Context, src *InterviewSource, evts ...eventbus.OutboxEvent) error
+	// DeleteSource returns ErrNotFound if there is no such source.
+	DeleteSource(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
+}
+
+// DraftRepo stores a project's interview drafts, one per question.
+type DraftRepo interface {
+	ListDrafts(ctx context.Context, projectID string) ([]*InterviewDraft, error)
+	GetDraft(ctx context.Context, id string) (*InterviewDraft, error)
+	// SaveDrafts upserts each draft by project and question in one transaction.
+	SaveDrafts(ctx context.Context, drafts []*InterviewDraft, evts ...eventbus.OutboxEvent) error
+	// DeleteDraft returns ErrNotFound if there is no such draft.
+	DeleteDraft(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
 }

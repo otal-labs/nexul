@@ -10,8 +10,8 @@ labels and summaries, and the phone app's notification model and row.
 
 **Blocked by:** 05, 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A watcher who cannot open the doc gets nothing; the starter is never
+- [x] A watcher who cannot open the doc gets nothing; the starter is never
       told about their own round
-- [ ] An older phone app shows the new kinds without breaking
+- [x] An older phone app shows the new kinds without breaking

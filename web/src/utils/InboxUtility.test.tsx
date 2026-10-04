@@ -49,6 +49,24 @@ describe("groupInbox", () => {
     expect(doc?.title).toBe("Spec");
   });
 
+  it("names the clarification notices on a doc and keeps the doc's own title", () => {
+    const [doc] = groupInbox([
+      note({ kind: "doc.questions_answered", subject_title: "Questions answered on Spec", created_at: at(12), ...inMain }),
+      note({ kind: "doc.questions_asked", subject_title: "New questions on Spec", created_at: at(11), ...inMain }),
+      note({ kind: "doc.updated", created_at: at(10), ...inMain }),
+    ]) as InboxRow[];
+
+    expect(doc?.summary).toBe("updated · new questions · questions answered");
+    expect(doc?.title).toBe("Spec");
+  });
+
+  it("titles a doc that only has clarification notices by the notice", () => {
+    const [doc] = groupInbox([note({ kind: "doc.questions_asked", subject_title: "New questions on Spec", ...inMain })]) as InboxRow[];
+
+    expect(doc?.title).toBe("New questions on Spec");
+    expect(doc?.summary).toBe("new questions");
+  });
+
   it("puts docs of a non-default folder under one folder group, docs in Main stay plain rows", () => {
     const entries = groupInbox([
       note({ subject_id: "d-ep07", subject_title: "GetSource EP07: Bluesky feeds", created_at: at(12), ...inGetSource }),
