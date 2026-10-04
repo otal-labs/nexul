@@ -78,18 +78,22 @@ decision tickets are resolved, the build tickets graduate from the fog.
 ## Decisions so far
 
 - [How a run reads another project and the sources it is given](issues/02-reading-another-project.md): one checkout per run today, found through the starter's project link for the other project; its docs, memories, and answers are already readable over MCP; a prompt-only source list is lost on resume; GitHub issues are not reachable.
+- [What a source is and where it is kept](issues/01-what-a-source-is.md): path, doc, memory, whole project, or pasted text (uploads become text) with a required follow or question stance, in a new memories-domain table; adding a ref takes read on it, gone refs show as gone, read by the run through the interview memory tools.
 
 ## Not yet specified
 
 - The build tickets: source storage, the drafting run, drafts on the cards,
   redrafting, the audit, MCP, and the walkthrough on Clutch Hub (create the
-  project in MgClutch, point its interview at its repo, follow the run through its trail). They graduate once the
-  decision tickets resolve.
+  project in MgClutch, point its interview at its repo, follow the run
+  through its trail). They graduate once the decision tickets resolve.
 - What the follow-up run does differently with question sources than with
   the project's own checkout, which it already reads for contradictions:
   possibly nothing beyond reading more than one checkout.
 - How the drafting copes with a very large source (a whole predecessor
   repo, a long practices folder) against one session's budget.
+- Whether GitHub issues become a source kind, which needs the App's Issues
+  permission on every installation; pasted text covers them until the
+  walkthrough shows otherwise.
 
 ## Out of scope
 
