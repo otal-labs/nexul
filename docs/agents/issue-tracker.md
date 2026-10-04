@@ -91,6 +91,10 @@ git history, and anything durable it decided is an ADR.
   Interview page with no agent, then a play run that asks follow-ups about
   the gaps and writes the interview memory. Wayfinder map charted
   2026-10-03; carries the build. Research findings in `research/`.
+- `.scratch/doc-clarify/` — "Clarify via AI": an agent asks a doc's gaps
+  as rounds of question cards on the doc page and in the phone app, the
+  client answers, and a round with no gaps left writes the doc. Wayfinder
+  map charted 2026-10-04; carries the build.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.

@@ -201,6 +201,11 @@ cards, then an agent reads the answers and the code, asks follow-ups about
 the gaps, and writes the interview memory. Answers stay on the page, so a
 re-run means changing what changed. The map is in `.scratch/interview-qna/`.
 
+Planned: **clarifying a doc**. A client writes what they need in a doc;
+"Clarify via AI" asks the gaps as rounds of question cards on the doc
+page and in the phone app, the client answers, and once nothing is left
+the answers are written into the doc. The map is in `.scratch/doc-clarify/`.
+
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab
 in Settings. The wayfinder map in `.scratch/bots/` has the Discord contract,

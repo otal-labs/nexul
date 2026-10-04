@@ -251,6 +251,17 @@ A doc's one conversation, the counterpart of a ticket thread: a real
 conversation people reply in, and where a doc play's run lands. Gated by
 `docs:thread`, so a reader of the doc need not see the work behind it.
 
+**Clarification**:
+A doc's rounds of questions and answers, filling the gaps in what someone
+wrote. Each press of "Clarify via AI" is one round: the agent reads the
+doc and the earlier rounds and asks a batch of questions, which anyone who
+can edit the doc answers, skips, or adds their own question to, whenever
+they like. The body keeps its author's words until a round finds no gaps
+left and writes the answers into it. Whoever runs plays closes it, and
+another round reopens it. The people answering see only the questions,
+never the agent behind them.
+_Avoid_: Wayfinder, questionnaire, review, interview (that is a project's rules for agents)
+
 **Note**:
 What an agent leaves on a ticket instead of growing its body: one Agent
 message in the ticket's thread together with the markdown file it carries,
