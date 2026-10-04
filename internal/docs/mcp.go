@@ -28,6 +28,8 @@ type docResult struct {
 	// Watchers are the people who get the doc's change notifications; Watching says whether the caller is one.
 	Watchers []watcherResult `json:"watchers"`
 	Watching bool            `json:"watching"`
+	// Clarification is the doc's rounds of questions and answers, empty until a Clarify via AI run opens one.
+	Clarification *Clarification `json:"clarification"`
 }
 
 type watcherResult struct {
@@ -63,6 +65,32 @@ type docUpdateIn struct {
 	Locked   *bool   `json:"locked,omitempty" jsonschema:"true locks the doc read-only so its title and body refuse edits, false unlocks it; either needs docs:lock. Omit to leave it as is."`
 	FolderID *string `json:"folder_id,omitempty" jsonschema:"Moves the doc to this folder of its own project, from project_get's doc_folders; every doc lives in exactly one folder, and a locked doc moves too. Omit to leave it where it is."`
 	Watch    *bool   `json:"watch,omitempty" jsonschema:"true makes you a watcher of the doc, so its edits reach your notifications; false stops that, and your own later edits do not start it again. Needs only read access. Omit to leave it as is."`
+
+	Answers             []clarifyAnswerIn   `json:"answers,omitempty" jsonschema:"Answers to the doc's clarification questions, by question id from doc_get's clarification; each replaces that question's answer, clears it, or skips it. Needs docs:write, and works on a locked doc."`
+	Questions           []clarifyQuestionIn `json:"questions,omitempty" jsonschema:"The running Clarify round's questions, posted once by the run that round belongs to; anyone else is refused. Post them, then end the turn."`
+	AnythingElseReply   *string             `json:"anything_else_reply,omitempty" jsonschema:"The running Clarify round's one-line reply to the previous round's Anything else? text, when it had one; from that round's run only."`
+	NoGaps              bool                `json:"no_gaps,omitzero" jsonschema:"true from the running Clarify round's run when it found no gaps left, sent with body: the whole rewritten doc, which goes through the lock the run holds. Instead of questions; title is not allowed with it."`
+	ClarificationClosed *bool               `json:"clarification_closed,omitempty" jsonschema:"true closes the doc's clarification; it needs docs:write and plays:run on the Clarify via AI play, and a new round started with play_run reopens it. Omit to leave it as is."`
+}
+
+type clarifyAnswerIn struct {
+	QuestionID string   `json:"question_id" jsonschema:"The question's id, from doc_get's clarification rounds."`
+	Selected   []string `json:"selected,omitempty" jsonschema:"The picked options' labels."`
+	Text       string   `json:"text,omitempty" jsonschema:"A free-text answer, alone or beside the picked options."`
+	Skip       bool     `json:"skip,omitzero" jsonschema:"true skips the question instead of answering it; omit selected and text."`
+	Clear      bool     `json:"clear,omitzero" jsonschema:"true makes the question unanswered again; omit the other fields."`
+}
+
+type clarifyQuestionIn struct {
+	Question    string          `json:"question" jsonschema:"The question as the people answering read it, in plain words."`
+	Why         string          `json:"why,omitempty" jsonschema:"One line on why the doc needs this answer."`
+	Options     []clarifyOption `json:"options,omitempty" jsonschema:"The choices to pick from; omit for a free-text question. A free-text box is always offered beside them."`
+	MultiSelect bool            `json:"multi_select,omitzero" jsonschema:"true lets several options be picked. Defaults to false."`
+}
+
+type clarifyOption struct {
+	Label       string `json:"label" jsonschema:"The option's short label."`
+	Description string `json:"description,omitempty" jsonschema:"One line explaining the option."`
 }
 
 type docDeleteIn struct {
@@ -133,6 +161,7 @@ func docGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_get", "Get doc",
 		"Returns one doc with its full body as markdown, its project, the folder it lives in (folder_id), version, archived and locked state, "+
 			"and its watchers: the people its edits notify, who are its creator, everyone who edited it, and anyone who chose to watch, with watching true when you are one. "+
+			"It also returns the doc's clarification: every round of questions with their answers, each round's Anything else? text and its reply, whether a round is running, and whether it is closed. "+
 			"Use it after doc_list has given you the id, and before doc_update so you edit the current text. "+
 			"Fails with forbidden when you cannot read the doc.",
 		mcptool.Hints{ReadOnly: true, Local: true},
@@ -182,6 +211,8 @@ func docUpdateTool(s *Service) mcptool.Tool {
 			"A locked doc refuses title and body changes until locked false, which you may send with the edit to unlock first; "+
 			"locking and unlocking need docs:lock, and a doc play locks its doc when its run starts. "+
 			"A title or body edit makes you a watcher, notified of the doc's later edits, unless you stopped watching it; watch true or false starts or stops that for you alone. "+
+			"The answers field answers, skips, or clears clarification questions by id, and clarification_closed true closes the clarification; "+
+			"questions, anything_else_reply, and no_gaps with the new body come only from the running Clarify via AI round's own run. "+
 			"Read the doc with doc_get first, because body replaces the whole body. "+
 			"Returns the doc as it now stands.",
 		mcptool.Hints{Idempotent: true, Local: true},
@@ -211,6 +242,9 @@ func docDeleteTool(s *Service) mcptool.Tool {
 
 // updateDoc unlocks before editing and locks after it, so one call can do either around a title or body change.
 func updateDoc(ctx context.Context, s *Service, in docUpdateIn) (*Doc, error) {
+	if in.NoGaps {
+		return writeNoGaps(ctx, s, in)
+	}
 	d, err := s.Get(ctx, in.ID)
 	if err != nil {
 		return nil, err
@@ -241,8 +275,76 @@ func updateDoc(ctx context.Context, s *Service, in docUpdateIn) (*Doc, error) {
 		if _, err := s.SetWatching(ctx, in.ID, *in.Watch); err != nil {
 			return nil, stepErr(applied, "watch", err)
 		}
+		applied = append(applied, "watch")
+	}
+	if err := clarifyDoc(ctx, s, in, applied); err != nil {
+		return nil, err
 	}
 	return d, nil
+}
+
+// writeNoGaps takes a Clarify round's no-gaps rewrite, with the reply to the last Anything else? when it has one.
+func writeNoGaps(ctx context.Context, s *Service, in docUpdateIn) (*Doc, error) {
+	if in.Body == nil || in.Title != nil || len(in.Questions) > 0 {
+		return nil, fmt.Errorf("%w: no_gaps comes with body, the whole rewritten doc, and without title or questions", apperrs.ErrInvalid)
+	}
+	if in.AnythingElseReply != nil {
+		if err := s.PostRound(ctx, in.ID, nil, *in.AnythingElseReply); err != nil {
+			return nil, err
+		}
+	}
+	d, err := s.WriteNoGaps(ctx, in.ID, *in.Body)
+	if err != nil && in.AnythingElseReply != nil {
+		return nil, stepErr([]string{"anything_else_reply"}, "no_gaps", err)
+	}
+	return d, err
+}
+
+// clarifyDoc applies the clarification fields after the doc's own, so a refusal names what was already saved.
+func clarifyDoc(ctx context.Context, s *Service, in docUpdateIn, applied []string) error {
+	if len(in.Questions) > 0 || in.AnythingElseReply != nil {
+		if err := s.PostRound(ctx, in.ID, toQuestions(in.Questions), deref(in.AnythingElseReply, "")); err != nil {
+			return stepErr(applied, "questions", err)
+		}
+		applied = append(applied, "questions")
+	}
+	for i, a := range in.Answers {
+		if err := answer(ctx, s, in.ID, a); err != nil {
+			return stepErr(applied, fmt.Sprintf("answer %d of %d (%s)", i+1, len(in.Answers), a.QuestionID), err)
+		}
+		applied = append(applied, fmt.Sprintf("answer %d", i+1))
+	}
+	if in.ClarificationClosed == nil {
+		return nil
+	}
+	if !*in.ClarificationClosed {
+		return stepErr(applied, "clarification_closed", fmt.Errorf("%w: a closed clarification reopens with a new round; start the doc's Clarify via AI play with play_run", apperrs.ErrInvalid))
+	}
+	if _, err := s.CloseClarification(ctx, in.ID); err != nil {
+		return stepErr(applied, "clarification_closed", err)
+	}
+	return nil
+}
+
+func answer(ctx context.Context, s *Service, docID string, a clarifyAnswerIn) error {
+	if a.Clear {
+		_, err := s.ClearAnswer(ctx, docID, a.QuestionID)
+		return err
+	}
+	_, err := s.AnswerQuestion(ctx, docID, a.QuestionID, Answer{Selected: a.Selected, Text: a.Text, Skipped: a.Skip})
+	return err
+}
+
+func toQuestions(in []clarifyQuestionIn) []ClarificationQuestion {
+	out := make([]ClarificationQuestion, 0, len(in))
+	for _, q := range in {
+		options := make([]QuestionOption, 0, len(q.Options))
+		for _, o := range q.Options {
+			options = append(options, QuestionOption(o))
+		}
+		out = append(out, ClarificationQuestion{Question: q.Question, Why: q.Why, Options: options, MultiSelect: q.MultiSelect})
+	}
+	return out
 }
 
 // placeDoc applies the folder and archived fields, the ones that change where a doc shows rather than its text.
@@ -313,9 +415,13 @@ func toDocResult(ctx context.Context, s *Service, d *Doc) (docResult, error) {
 	for _, w := range ws.Watchers {
 		watchers = append(watchers, watcherResult{UserID: w.UserID, Source: w.Source})
 	}
+	c, err := s.clarificationOf(ctx, d)
+	if err != nil {
+		return docResult{}, err
+	}
 	return docResult{
 		ID: d.ID, ProjectID: d.ProjectID, FolderID: d.FolderID, Title: d.Title, Body: md,
 		Version: d.Version, Archived: d.Archived, Locked: d.Locked, UpdatedAt: d.UpdatedAt,
-		Watchers: watchers, Watching: ws.Watching,
+		Watchers: watchers, Watching: ws.Watching, Clarification: c,
 	}, nil
 }

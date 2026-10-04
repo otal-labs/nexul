@@ -34,10 +34,27 @@ type WatcherRepo interface {
 	SetWatching(ctx context.Context, docID, userID string, watching bool, at time.Time, evts ...eventbus.OutboxEvent) error
 }
 
+// ClarificationRepo persists a doc's clarification rounds and their questions; deleting the doc deletes them.
+type ClarificationRepo interface {
+	// ListClarificationRounds returns the doc's rounds oldest first, without their questions.
+	ListClarificationRounds(ctx context.Context, docID string) ([]*ClarificationRound, error)
+	// ListClarificationQuestions returns every question of the doc by round, then position.
+	ListClarificationQuestions(ctx context.Context, docID string) ([]*ClarificationQuestion, error)
+	GetClarificationQuestion(ctx context.Context, id string) (*ClarificationQuestion, error)
+	// CreateClarificationRound returns ErrConflict when the doc already has a round of that number.
+	CreateClarificationRound(ctx context.Context, r *ClarificationRound, evts ...eventbus.OutboxEvent) error
+	// SaveClarification updates the given rounds and inserts the new questions in one transaction.
+	SaveClarification(ctx context.Context, rounds []*ClarificationRound, questions []*ClarificationQuestion, evts ...eventbus.OutboxEvent) error
+	DeleteClarificationRound(ctx context.Context, docID string, round int, evts ...eventbus.OutboxEvent) error
+	// SaveClarificationAnswer stores q's answer, writing roundAnswered too only when no question of q's round stays pending.
+	SaveClarificationAnswer(ctx context.Context, q *ClarificationQuestion, roundAnswered *eventbus.OutboxEvent, evts ...eventbus.OutboxEvent) error
+}
+
 // Repo is the consumer-side persistence contract for docs; a save also makes its creator or editor a watcher (ADR 0101).
 type Repo interface {
 	FolderRepo
 	WatcherRepo
+	ClarificationRepo
 	Create(ctx context.Context, d *Doc, evts ...eventbus.OutboxEvent) error
 	GetByID(ctx context.Context, id string) (*Doc, error)
 	List(ctx context.Context) ([]*Doc, error)

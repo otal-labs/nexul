@@ -77,3 +77,70 @@ type Watchers struct {
 	Watchers []*Watcher `json:"watchers"`
 	Watching bool       `json:"watching"`
 }
+
+// Clarification is a doc's rounds of questions and answers as one person sees them; NoGapsAt shows only when CanClose.
+type Clarification struct {
+	Rounds []*ClarificationRound `json:"rounds"`
+	// Running is a round being written now; Closed is the newest round closed, until another round reopens it.
+	Running bool `json:"running"`
+	Closed  bool `json:"closed"`
+	// CanClose is docs:write plus plays:run on the Clarify play, which closing and the no-gaps signal take.
+	CanClose bool `json:"can_close"`
+}
+
+// ClarificationRound is one Clarify run's batch of questions, numbered from 1 within its doc.
+type ClarificationRound struct {
+	DocID     string    `json:"doc_id"`
+	Round     int       `json:"round"`
+	StartedBy string    `json:"started_by"`
+	TrailID   string    `json:"trail_id"`
+	StartedAt time.Time `json:"started_at"`
+	Running   bool      `json:"running"`
+	// TookLock is whether this round's run locked the doc, so its end unlocks it (ADR 0121).
+	TookLock       bool       `json:"-"`
+	AnythingElse   string     `json:"anything_else"`
+	AnythingElseBy string     `json:"anything_else_by,omitempty"`
+	AnythingElseAt *time.Time `json:"anything_else_at,omitempty"`
+	// AnythingElseReply is the next round's one-line answer to this round's AnythingElse.
+	AnythingElseReply string `json:"anything_else_reply"`
+	// NoGapsAt is when this round found no gaps left and wrote the doc.
+	NoGapsAt  *time.Time               `json:"no_gaps_at,omitempty"`
+	ClosedBy  string                   `json:"closed_by,omitempty"`
+	ClosedAt  *time.Time               `json:"closed_at,omitempty"`
+	Questions []*ClarificationQuestion `json:"questions"`
+}
+
+// ClarificationQuestion is one question of a round with its answer; no picks, no text, and not skipped is pending.
+type ClarificationQuestion struct {
+	ID          string           `json:"id"`
+	DocID       string           `json:"doc_id"`
+	Round       int              `json:"round"`
+	Position    int              `json:"position"`
+	Question    string           `json:"question"`
+	Why         string           `json:"why"`
+	Options     []QuestionOption `json:"options"`
+	MultiSelect bool             `json:"multi_select"`
+	Selected    []string         `json:"selected"`
+	Text        string           `json:"text"`
+	Skipped     bool             `json:"skipped"`
+	AnsweredBy  string           `json:"answered_by,omitempty"`
+	AnsweredAt  *time.Time       `json:"answered_at,omitempty"`
+}
+
+// Pending reports a question nobody has answered or skipped yet.
+func (q *ClarificationQuestion) Pending() bool {
+	return len(q.Selected) == 0 && q.Text == "" && !q.Skipped
+}
+
+// QuestionOption is one choice a question offers.
+type QuestionOption struct {
+	Label       string `json:"label"`
+	Description string `json:"description,omitempty"`
+}
+
+// Answer is what someone gives a question: picked labels, free text, or a skip, which carries neither.
+type Answer struct {
+	Selected []string `json:"selected"`
+	Text     string   `json:"text"`
+	Skipped  bool     `json:"skipped"`
+}

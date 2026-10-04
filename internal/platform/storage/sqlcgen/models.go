@@ -330,6 +330,39 @@ type Doc struct {
 	FolderID  string
 }
 
+type DocClarificationQuestion struct {
+	ID          string
+	DocID       string
+	Round       int64
+	Position    int64
+	Question    string
+	Why         string
+	Options     string
+	MultiSelect int64
+	Selected    string
+	FreeText    string
+	Skipped     int64
+	AnsweredBy  string
+	AnsweredAt  int64
+}
+
+type DocClarificationRound struct {
+	DocID             string
+	Round             int64
+	StartedBy         string
+	TrailID           string
+	StartedAt         int64
+	Running           int64
+	TookLock          int64
+	AnythingElse      string
+	AnythingElseBy    string
+	AnythingElseAt    int64
+	AnythingElseReply string
+	NoGapsAt          int64
+	ClosedBy          string
+	ClosedAt          int64
+}
+
 type DocFolder struct {
 	ID        string
 	ProjectID string

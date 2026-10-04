@@ -36,6 +36,10 @@ type fakeRepo struct {
 	deleteErr error
 	searchErr error
 	watching  map[string]bool
+	// rounds and questions back the clarification methods in clarification_test.go.
+	rounds     []*ClarificationRound
+	questions  []*ClarificationQuestion
+	clarifyErr error
 }
 
 func newFakeRepo() *fakeRepo {

@@ -731,6 +731,173 @@ var catalogSchemas = map[string]string{
 			"watching": {"type": "boolean", "description": "true when they started watching, false when they stopped."}
 		}
 	}`,
+	"doc.clarification.round_started": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "A Clarify via AI run opened a doc's next round of questions; it is being written until the round ends.",
+		"required": ["doc", "round", "started_by"],
+		"properties": {
+			"doc": {
+				"type": "object",
+				"required": ["id", "project_id", "title"],
+				"properties": {
+					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"title": {"type": "string"}
+				}
+			},
+			"round": {"type": "integer", "minimum": 1},
+			"started_by": {"type": "string", "description": "Who started the round's Clarify via AI run."},
+			"actor_id": {"type": "string"}
+		}
+	}`,
+	"doc.clarification.round_posted": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "A running round posted its questions, or found no gaps left and wrote the doc instead.",
+		"required": ["doc", "round", "started_by", "question_count", "no_gaps"],
+		"properties": {
+			"doc": {
+				"type": "object",
+				"required": ["id", "project_id", "title"],
+				"properties": {
+					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"title": {"type": "string"}
+				}
+			},
+			"round": {"type": "integer", "minimum": 1},
+			"started_by": {"type": "string", "description": "Who started the round's Clarify via AI run."},
+			"actor_id": {"type": "string"},
+			"question_count": {"type": "integer", "minimum": 0},
+			"no_gaps": {"type": "boolean", "description": "true when the round found no gaps left and wrote the doc instead of asking."}
+		}
+	}`,
+	"doc.clarification.round_ended": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "A round's run ended, whatever its outcome; a round that asked nothing and found no gaps is removed.",
+		"required": ["doc", "round", "started_by"],
+		"properties": {
+			"doc": {
+				"type": "object",
+				"required": ["id", "project_id", "title"],
+				"properties": {
+					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"title": {"type": "string"}
+				}
+			},
+			"round": {"type": "integer", "minimum": 1},
+			"started_by": {"type": "string", "description": "Who started the round's Clarify via AI run."},
+			"actor_id": {"type": "string"},
+			"removed": {"type": "boolean", "description": "true when the round asked nothing and found no gaps, so it is gone."}
+		}
+	}`,
+	"doc.clarification.round_answered": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "The last pending question of a round was answered or skipped; started_by is whom it is for.",
+		"required": ["doc", "round", "started_by"],
+		"properties": {
+			"doc": {
+				"type": "object",
+				"required": ["id", "project_id", "title"],
+				"properties": {
+					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"title": {"type": "string"}
+				}
+			},
+			"round": {"type": "integer", "minimum": 1},
+			"started_by": {"type": "string", "description": "Who started the round's Clarify via AI run."},
+			"actor_id": {"type": "string"}
+		}
+	}`,
+	"doc.clarification.answer_saved": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "Someone answered or skipped a question of a doc's clarification; the answer itself never travels.",
+		"required": ["doc", "round", "question_id", "question", "author_id"],
+		"properties": {
+			"doc": {
+				"type": "object",
+				"required": ["id", "project_id", "title"],
+				"properties": {
+					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"title": {"type": "string"}
+				}
+			},
+			"round": {"type": "integer", "minimum": 1},
+			"question_id": {"type": "string"},
+			"question": {"type": "string"},
+			"author_id": {"type": "string"},
+			"at": {"type": "string", "format": "date-time"}
+		}
+	}`,
+	"doc.clarification.answer_cleared": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "Someone made a question of a doc's clarification unanswered again.",
+		"required": ["doc", "round", "question_id", "question", "author_id"],
+		"properties": {
+			"doc": {
+				"type": "object",
+				"required": ["id", "project_id", "title"],
+				"properties": {
+					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"title": {"type": "string"}
+				}
+			},
+			"round": {"type": "integer", "minimum": 1},
+			"question_id": {"type": "string"},
+			"question": {"type": "string"},
+			"author_id": {"type": "string"},
+			"at": {"type": "string", "format": "date-time"}
+		}
+	}`,
+	"doc.clarification.anything_else_saved": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "Someone saved or cleared a round's Anything else? text; the text itself never travels.",
+		"required": ["doc", "round", "started_by"],
+		"properties": {
+			"doc": {
+				"type": "object",
+				"required": ["id", "project_id", "title"],
+				"properties": {
+					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"title": {"type": "string"}
+				}
+			},
+			"round": {"type": "integer", "minimum": 1},
+			"started_by": {"type": "string", "description": "Who started the round's Clarify via AI run."},
+			"actor_id": {"type": "string"}
+		}
+	}`,
+	"doc.clarification.closed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "Someone closed a doc's clarification on its newest round; another round reopens it.",
+		"required": ["doc", "round", "started_by"],
+		"properties": {
+			"doc": {
+				"type": "object",
+				"required": ["id", "project_id", "title"],
+				"properties": {
+					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"title": {"type": "string"}
+				}
+			},
+			"round": {"type": "integer", "minimum": 1},
+			"started_by": {"type": "string", "description": "Who started the round's Clarify via AI run."},
+			"actor_id": {"type": "string"}
+		}
+	}`,
 	"play.created": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",
