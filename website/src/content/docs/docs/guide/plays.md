@@ -12,7 +12,7 @@ project's interview.
 
 ## Configure a play
 
-Open **Configuration → Plays**. Every workspace starts with six ordinary plays:
+Open **Configuration → Plays**. Every workspace starts with seven ordinary plays:
 
 - **Fix with AI** is a ticket play shown in the In progress stage.
 - **To tickets via AI** is a document play.
@@ -20,6 +20,8 @@ Open **Configuration → Plays**. Every workspace starts with six ordinary plays
 - **Test with AI** is a ticket play shown in the Testing stage.
 - **Draft interview** is an interview play that drafts answers from the
   interview's follow sources.
+- **Clarify via AI** is a document play that asks the doc's authors a round
+  of questions about what it leaves open.
 - **Audit via AI** is an interview play, shown beside the memory once the
   interview memory exists. It reads the project's sources under question (a
   predecessor's code), or the project's own checkout when there are none, and
@@ -28,7 +30,7 @@ Open **Configuration → Plays**. Every workspace starts with six ordinary plays
   headings. A finished run links its doc on the Interview page.
 
 Each keeps a built-in key (`fix-with-ai`, `to-tickets-via-ai`, `interview`,
-`test-with-ai`, `interview-draft`, `audit`) through renames. A new workspace's copies take their
+`test-with-ai`, `interview-draft`, `clarify`, `audit`) through renames. A new workspace's copies take their
 instructions from the instance's templates (see
 [Templates](/docs/guide/memories/#templates)); editing those never rewrites a
 workspace that already exists, and resetting a built-in play's instructions
@@ -85,7 +87,9 @@ ends. Starting the play needs no `docs:lock`; someone holding it unlocks the
 doc when it should change again. A doc that was already locked stays as it
 was. The trail and the doc's thread say the run locked it. A custom doc play
 meant to edit its own doc is refused by that lock; the built-in **To tickets
-via AI** only reads its doc.
+via AI** only reads its doc. **Clarify via AI** is the exception: its run
+locks the doc only while its round runs and unlocks it when the run ends,
+however it ends, unless the doc was locked before the run started.
 
 Each press creates a persisted **Trail**. It records the starter, target,
 selected memories, instructions, resolved Harness choice, structured activity,

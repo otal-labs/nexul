@@ -363,18 +363,28 @@ func (s *Service) runningRoundOfCaller(ctx context.Context, docID string) (*Doc,
 }
 
 // OpenRound opens the doc's next round as a Clarify run starts, recording its starter, its trail, and whether the
-// run took the doc's lock. No permission check: the run's start already checked the starter, as LockForPlay.
+// run took the doc's lock. No permission check: the run's start already checked the starter, as LockForPlay. A round
+// still running is stale, since the runner allows one live run per doc, so it is ended first; a lock it took passes
+// to the new round, which the runner's own lock attempt found already taken.
 func (s *Service) OpenRound(ctx context.Context, docID, starterID, trailID string, tookLock bool) (int, error) {
 	d, err := s.repo.GetByID(ctx, docID)
 	if err != nil {
 		return 0, fmt.Errorf("get doc %s: %w", docID, err)
 	}
-	rounds, err := s.repo.ListClarificationRounds(ctx, d.ID)
+	rounds, err := s.loadRounds(ctx, d.ID)
 	if err != nil {
-		return 0, fmt.Errorf("list clarification rounds of doc %s: %w", d.ID, err)
+		return 0, err
 	}
-	if slices.ContainsFunc(rounds, func(r *ClarificationRound) bool { return r.Running }) {
-		return 0, fmt.Errorf("%w: doc %s already has a round running", apperrs.ErrConflict, d.ID)
+	if i := slices.IndexFunc(rounds, func(r *ClarificationRound) bool { return r.Running }); i >= 0 {
+		stale := rounds[i]
+		handOver := stale.TookLock && d.Locked
+		if err := s.endRound(ctx, d, stale, handOver); err != nil {
+			return 0, fmt.Errorf("end stale round %d of doc %s: %w", stale.Round, d.ID, err)
+		}
+		tookLock = tookLock || handOver
+		if len(stale.Questions) == 0 && stale.NoGapsAt == nil {
+			rounds = slices.Delete(rounds, i, i+1)
+		}
 	}
 	next := 1
 	if n := len(rounds); n > 0 {
@@ -404,8 +414,12 @@ func (s *Service) EndRound(ctx context.Context, docID, trailID string) error {
 	if i < 0 {
 		return nil
 	}
-	r := rounds[i]
-	if r.TookLock && d.Locked {
+	return s.endRound(ctx, d, rounds[i], false)
+}
+
+// endRound stops r running, unlocking the doc if its run took the lock unless keepLock, and removes it when empty.
+func (s *Service) endRound(ctx context.Context, d *Doc, r *ClarificationRound, keepLock bool) error {
+	if r.TookLock && d.Locked && !keepLock {
 		if err := s.persistLocked(ctx, d, false); err != nil {
 			return err
 		}

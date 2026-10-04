@@ -42,7 +42,7 @@ INSERT INTO plays (id, workspace_id, label, type, description, instructions, ena
 	for _, p := range seeded {
 		keys[p.Label] = p.BuiltinKey
 	}
-	assert.Equal(t, map[string]string{"Fix with AI": "fix-with-ai", "To tickets via AI": "to-tickets-via-ai", "Interview": "interview", "Test with AI": "test-with-ai", "Draft interview": "interview-draft", "Audit via AI": "audit"}, keys)
+	assert.Equal(t, map[string]string{"Fix with AI": "fix-with-ai", "To tickets via AI": "to-tickets-via-ai", "Interview": "interview", "Test with AI": "test-with-ai", "Draft interview": "interview-draft", "Clarify via AI": "clarify", "Audit via AI": "audit"}, keys)
 	for id, key := range map[string]string{"p-fix": "fix-with-ai", "p-fix-again": "", "p-renamed": ""} {
 		p, err := s.Plays.Get(ctx, id)
 		require.NoError(t, err)

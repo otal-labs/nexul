@@ -236,10 +236,11 @@ definition — the run dialog picks those per run, footer memories among
 them. Runs on the clicking user's own paired harness and posts into the
 target's thread, which for an interview is hidden plumbing; a play never moves its ticket itself, the agent does, as
 its footer memories say. Every workspace,
-new or existing, is seeded with the same six, "Fix with AI" (ticket,
+new or existing, is seeded with the same seven, "Fix with AI" (ticket,
 progress stage), "To tickets via AI" (doc), "Interview" (interview),
 "Test with AI" (ticket, testing stage), "Draft interview" (interview),
-and "Audit via AI" (interview), as ordinary plays a member
+"Clarify via AI" (doc), and "Audit via AI" (interview), as ordinary plays
+a member
 may edit or delete; each keeps a built-in key through renames, and a new
 workspace's start from the instance template of their instructions. Seen and fired with `plays:run`, managed with
 `plays:read`, `plays:write`, `plays:delete`. A named user can be excluded

@@ -13,9 +13,9 @@ questions.
 
 **Blocked by:** 05, 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Runner tests for every end: done, failed, stopped, silence, restart
+- [x] Runner tests for every end: done, failed, stopped, silence, restart
       before start, restart mid-run; a doc locked before the run stays locked
-- [ ] Seed migration tested by upgrading; new workspaces get the play
-- [ ] ADR 0121 and the `play_run` / `doc_update` descriptions agree with the code
+- [x] Seed migration tested by upgrading; new workspaces get the play
+- [x] ADR 0121 and the `play_run` / `doc_update` descriptions agree with the code

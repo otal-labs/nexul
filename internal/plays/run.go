@@ -57,12 +57,23 @@ type TargetReader interface {
 	GetStatus(ctx context.Context, id string) (StatusTarget, error)
 }
 
-// docLockedNote is the trail's and the thread's line for a doc play locking its doc (ADR 0107).
-const docLockedNote = "Locked the doc because the run started; it stays locked after the run ends."
+// docLockedNote is the trail's and the thread's line for a doc play locking its doc (ADR 0107); a Clarify run's lock
+// comes off when it ends (ADR 0121).
+const (
+	docLockedNote     = "Locked the doc because the run started; it stays locked after the run ends."
+	clarifyLockedNote = "Locked the doc while this round runs; it unlocks when the run ends."
+)
 
 // DocLocker locks a doc play's doc as the run starts, whatever the starter's own bits; true when it was unlocked.
 type DocLocker interface {
 	LockForPlay(ctx context.Context, docID string) (bool, error)
+}
+
+// ClarifyRounds opens a Clarify run's round on its doc and ends it at any end of the run, unlocking the doc if the
+// run took its lock (ADR 0121); ending a trail that opened no round does nothing.
+type ClarifyRounds interface {
+	OpenRound(ctx context.Context, docID, starterID, trailID string, tookLock bool) (int, error)
+	EndRound(ctx context.Context, docID, trailID string) error
 }
 
 // ProjectTarget is the slice of a project an interview run needs; TestsLocation is the wizard's answer, "" when unanswered.
@@ -212,6 +223,8 @@ type RunnerConfig struct {
 	Links LinkReader
 	// Answers is optional; nil means an interview run's follow-ups live only on the trail and it names no sources.
 	Answers InterviewAnswers
+	// Rounds is optional; nil means a Clarify run opens no round.
+	Rounds ClarifyRounds
 	// Checkouts is optional; nil names every project source with no checkout on the run's computer.
 	Checkouts Checkouts
 	Logger    *slog.Logger
@@ -227,6 +240,7 @@ type Runner struct {
 	perm      PermissionGate
 	targets   TargetReader
 	docs      DocLocker
+	rounds    ClarifyRounds
 	projects  ProjectLookup
 	harness   HarnessResolver
 	memories  MemoryReader
@@ -260,7 +274,7 @@ func NewRunner(cfg RunnerConfig) *Runner {
 		cfg.Live = redact.Live{Publisher: cfg.Live}
 	}
 	return &Runner{
-		plays: cfg.Plays, trails: redactedTrails{cfg.Trails}, perm: cfg.Perm, targets: cfg.Targets, docs: cfg.Docs, projects: cfg.Projects,
+		plays: cfg.Plays, trails: redactedTrails{cfg.Trails}, perm: cfg.Perm, targets: cfg.Targets, docs: cfg.Docs, rounds: cfg.Rounds, projects: cfg.Projects,
 		harness: cfg.Harness, memories: cfg.Memories, threads: redactedThreads{cfg.Threads}, turns: cfg.Turns,
 		live: cfg.Live, users: cfg.Users, links: cfg.Links, answers: cfg.Answers, checkouts: cfg.Checkouts, log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout,
 		runs: map[string]*trailObserver{},
@@ -371,8 +385,9 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 		r.finish(ctx, trail, targetTitle, harness.TurnResult{State: harness.TurnError, LastError: reason}, "", "Run failed: "+reason)
 		return nil, fmt.Errorf("post started message: %w", err)
 	}
-	if trail.TargetType == TargetDoc {
-		r.lockDoc(ctx, trail)
+	if err := r.prepareDoc(ctx, play, trail); err != nil {
+		r.finish(ctx, trail, targetTitle, harness.TurnResult{State: harness.TurnError, LastError: err.Error()}, "", "Run failed: "+err.Error())
+		return nil, err
 	}
 	if drafting {
 		r.clearSuggestions(ctx, trail)
@@ -491,21 +506,54 @@ func (r *Runner) checkoutPaths(ctx context.Context, trail *Trail) func(projectID
 	}
 }
 
-// lockDoc locks a doc play's doc as the run starts and leaves it locked (ADR 0107); a failed lock is logged, never the run's failure.
-func (r *Runner) lockDoc(ctx context.Context, trail *Trail) {
+// prepareDoc locks a doc play's doc and, for a Clarify run, opens its round, which the agent posts to (ADR 0121).
+func (r *Runner) prepareDoc(ctx context.Context, play *Play, trail *Trail) error {
+	if trail.TargetType != TargetDoc {
+		return nil
+	}
+	clarify := play.BuiltinKey == ClarifyKey && r.rounds != nil
+	tookLock := r.lockDoc(ctx, trail, clarify)
+	if !clarify {
+		return nil
+	}
+	// ponytail: a failed open leaves the lock this run took on the doc; a docs:lock holder unlocks it until plays gets an unlock seam.
+	if _, err := r.rounds.OpenRound(ctx, trail.TargetID, trail.StarterID, trail.ID, tookLock); err != nil {
+		return fmt.Errorf("open the clarification round: %w", err)
+	}
+	return nil
+}
+
+// lockDoc locks a doc play's doc as the run starts (ADR 0107), true when this run took the lock; a failed lock is
+// logged, never the run's failure.
+func (r *Runner) lockDoc(ctx context.Context, trail *Trail, clarify bool) bool {
 	if r.docs == nil {
-		return
+		return false
 	}
 	locked, err := r.docs.LockForPlay(ctx, trail.TargetID)
 	if err != nil {
 		r.log.Warn("plays: lock doc failed", "trail", trail.ID, "doc", trail.TargetID, "error", err)
-		return
+		return false
 	}
 	if !locked {
+		return false
+	}
+	note := docLockedNote
+	if clarify {
+		note = clarifyLockedNote
+	}
+	r.note(ctx, trail, note)
+	r.save(ctx, trail)
+	return true
+}
+
+// endRound ends the Clarify round a doc run opened, if any; a failure is logged, since the trail has ended anyway.
+func (r *Runner) endRound(ctx context.Context, trail *Trail) {
+	if r.rounds == nil || trail.TargetType != TargetDoc {
 		return
 	}
-	r.note(ctx, trail, docLockedNote)
-	r.save(ctx, trail)
+	if err := r.rounds.EndRound(ctx, trail.TargetID, trail.ID); err != nil {
+		r.log.Error("plays: end clarification round failed", "trail", trail.ID, "doc", trail.TargetID, "error", err)
+	}
 }
 
 // Answer resolves a waiting run's question: the answer is posted as the caller's message and handed to the live
@@ -1049,6 +1097,7 @@ func (r *Runner) finish(ctx context.Context, trail *Trail, targetTitle string, r
 		r.note(ctx, trail, note)
 	}
 	r.save(ctx, trail, r.finishedEvent(trail, targetTitle))
+	r.endRound(ctx, trail)
 }
 
 func (r *Runner) createFailed(ctx context.Context, trail *Trail, targetTitle, reason string) {

@@ -175,7 +175,7 @@ func TestDelete_WithoutPlaysDelete_ReturnsForbidden(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 }
 
-func TestSeedDefaults_CreatesTheSixDefaultPlays(t *testing.T) {
+func TestSeedDefaults_CreatesTheSevenDefaultPlays(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, newFakePerm(nil)) // no permission gate needed; SeedDefaults bypasses it
 
@@ -184,7 +184,7 @@ func TestSeedDefaults_CreatesTheSixDefaultPlays(t *testing.T) {
 
 	list, err := repo.List(context.Background(), workspaceID)
 	require.NoError(t, err)
-	require.Len(t, list, 6)
+	require.Len(t, list, 7)
 	byLabel := map[string]*Play{}
 	for _, p := range list {
 		byLabel[p.Label] = p
@@ -201,6 +201,7 @@ func TestSeedDefaults_CreatesTheSixDefaultPlays(t *testing.T) {
 		{"Interview", TypeInterview, nil, []string{"`kind` `interview`", "one round at a time", "memory_update"}},
 		{"Test with AI", TypeTicket, &testingStage, []string{"test_target", "project_get", "ticket_test_report", "never production"}},
 		{"Draft interview", TypeInterview, nil, []string{"`kind` `interview`", "stance is follow", "`trail_id`", "500 characters", "Never ask"}},
+		{"Clarify via AI", TypeDoc, nil, []string{"doc_get", "`questions`", "`anything_else_reply`", "`no_gaps`", "Never use your question tool"}},
 		{"Audit via AI", TypeInterview, nil, []string{"`kind` `interview`", "known breaks", "doc_create", "Main folder", "Carry over", "Keeps", "Never ask"}},
 	}
 	for _, tt := range tests {
@@ -407,5 +408,5 @@ func TestSeedDefaults_AlreadySeeded_IsANoOp(t *testing.T) {
 
 	list, err := repo.List(context.Background(), workspaceID)
 	require.NoError(t, err)
-	assert.Len(t, list, 6)
+	assert.Len(t, list, 7)
 }
