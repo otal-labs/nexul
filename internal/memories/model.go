@@ -94,3 +94,62 @@ type AnswerOption struct {
 	Label       string `json:"label"`
 	Description string `json:"description,omitempty"`
 }
+
+// Interview source kinds: a checkout path, a doc, a memory, another project, or pasted text.
+const (
+	SourcePath    = "path"
+	SourceDoc     = "doc"
+	SourceMemory  = "memory"
+	SourceProject = "project"
+	SourceText    = "text"
+)
+
+// Interview source stances: follow is drafted from, question is only ever asked about.
+const (
+	StanceFollow   = "follow"
+	StanceQuestion = "question"
+)
+
+const (
+	// MaxSources caps a project's interview sources.
+	MaxSources = 50
+	// MaxSourceTextChars caps pasted text, the same as the Interview template.
+	MaxSourceTextChars = 32_000
+	// MaxDraftWhereChars caps the line saying where a draft came from.
+	MaxDraftWhereChars = 500
+)
+
+// InterviewSource is material a project's interview is pointed at; a ref's Label, NotVisible, and Gone are set on read.
+type InterviewSource struct {
+	ID          string `json:"id"`
+	WorkspaceID string `json:"workspace_id"`
+	ProjectID   string `json:"project_id"`
+	Kind        string `json:"kind"`
+	// Ref is the path, or the doc, memory, or project id; empty for pasted text.
+	Ref    string `json:"ref"`
+	Label  string `json:"label"`
+	Body   string `json:"body,omitempty"`
+	Stance string `json:"stance"`
+	// RefUpdatedAt is when a visible doc or memory last changed, for the page's redraft signal.
+	RefUpdatedAt *time.Time `json:"ref_updated_at,omitempty"`
+	NotVisible   bool       `json:"not_visible,omitempty"`
+	Gone         bool       `json:"gone,omitempty"`
+	AddedBy      string     `json:"added_by"`
+	AddedAt      time.Time  `json:"added_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+}
+
+// InterviewDraft is an answer a drafting run proposes for a template question; it never counts as an answer.
+type InterviewDraft struct {
+	ID          string    `json:"id"`
+	WorkspaceID string    `json:"workspace_id"`
+	ProjectID   string    `json:"project_id"`
+	Question    string    `json:"question"`
+	Selected    []string  `json:"selected"`
+	Text        string    `json:"text"`
+	SourceIDs   []string  `json:"source_ids"`
+	Where       string    `json:"where"`
+	TrailID     string    `json:"trail_id,omitempty"`
+	DraftedBy   string    `json:"drafted_by"`
+	DraftedAt   time.Time `json:"drafted_at"`
+}

@@ -21,11 +21,11 @@ permissions catalog entry if the Access page needs one.
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Migration tested by upgrading from the previous schema
-- [ ] Use-case tables: every refusal in 01 (absolute path, `..`, a ref the
+- [x] Migration tested by upgrading from the previous schema
+- [x] Use-case tables: every refusal in 01 (absolute path, `..`, a ref the
       adder cannot read, the 50 cap, the 32,000 text cap), not visible and
       gone resolution, equal-draft drop
-- [ ] Integration tests on real SQLite for the repo and the cascades
-- [ ] MCP surface test updated; tool count unchanged
+- [x] Integration tests on real SQLite for the repo and the cascades
+- [x] MCP surface test updated; tool count unchanged
