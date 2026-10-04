@@ -1120,3 +1120,56 @@ func TestRunTurn_PlayStart_CarriesNoHistoryButAdvancesTheCursor(t *testing.T) {
 	defer conv.mu.Unlock()
 	assert.Equal(t, minuteOf(32), conv.syncedAt["conv-1"], "a later mention on the session does not resend what the run skipped")
 }
+
+// --- watch after a restart --------------------------------------------------------
+
+func TestRunTurn_Watch_FollowsTheThreadsTurnWithoutStartingOne(t *testing.T) {
+	conv := newFakeConversations(Conversation{ID: "conv-1", ThreadID: "thread-1"})
+	client := &fakeHarness{watchResult: harness.StartResult{SessionID: "thread-1", Updates: updatesChan(
+		harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, CallID: "c-1", Tool: "Bash", Summary: "go test"}},
+		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "All green.", Streaming: false}},
+		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+	)}}
+	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
+	obs := &fakeObserver{}
+
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", Watch: true, Observer: obs})
+
+	require.Len(t, client.watched, 1)
+	assert.Equal(t, "thread-1", client.watched[0].SessionID)
+	assert.Empty(t, client.snapshotPrompt(), "nothing is sent to the harness")
+	assert.Equal(t, "thread-1", obs.sessionID)
+	require.NotNil(t, obs.result)
+	assert.Equal(t, harness.TurnDone, obs.result.State)
+	replies, _ := conv.snapshot()
+	require.Len(t, replies, 1)
+	assert.Equal(t, "All green.", replies[0].body)
+}
+
+func TestRunTurn_WatchWithoutThread_FailsWithoutCallingTheHarness(t *testing.T) {
+	conv := newFakeConversations(Conversation{ID: "conv-1"})
+	client := &fakeHarness{}
+	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
+	obs := &fakeObserver{}
+
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", Watch: true, Observer: obs})
+
+	assert.Empty(t, client.watched)
+	require.NotNil(t, obs.result)
+	assert.Equal(t, harness.TurnError, obs.result.State)
+}
+
+func TestRunTurn_WatchRefused_PostsReconnectFailure(t *testing.T) {
+	conv := newFakeConversations(Conversation{ID: "conv-1", ThreadID: "thread-1"})
+	client := &fakeHarness{watchErr: errors.New("computer offline")}
+	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
+	obs := &fakeObserver{}
+
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", Watch: true, Observer: obs})
+
+	_, systemPosts := conv.snapshot()
+	require.Len(t, systemPosts, 1)
+	assert.Equal(t, "Agent turn failed to reconnect: computer offline", systemPosts[0].body)
+	require.NotNil(t, obs.result)
+	assert.Equal(t, harness.TurnError, obs.result.State)
+}

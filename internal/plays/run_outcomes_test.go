@@ -330,31 +330,52 @@ func TestFormatDuration(t *testing.T) {
 	assert.Equal(t, "1m30s", formatDuration(90*time.Second))
 }
 
-func TestEndRunsCutOffByRestart_ClosesOnlyRunsNoTurnWatches(t *testing.T) {
+func seedTrail(f *runnerFixture, id string, state TrailState, sessionID string) {
+	f.trails.byID[id] = &Trail{ID: id, WorkspaceID: workspaceID, PlayID: fixPlayID, TargetType: TargetTicket, TargetID: ticketID,
+		ConversationID: "conv-" + id, StarterID: starter, State: state, StartedAt: fixedNow, HarnessSessionID: sessionID,
+		ComputerID: "pc-1", Provider: "codex", Model: "gpt"}
+}
+
+func TestResumeRunsAfterRestart_FollowsRunningRunsAndEndsUnstartedOnes(t *testing.T) {
 	f := newRunnerFixture()
-	for id, state := range map[string]TrailState{"tr-running": TrailRunning, "tr-starting": TrailStarting, "tr-waiting": TrailWaiting, "tr-done": TrailDone} {
-		f.trails.byID[id] = &Trail{ID: id, WorkspaceID: workspaceID, PlayID: fixPlayID, TargetType: TargetTicket, TargetID: ticketID,
-			ConversationID: "conv-" + id, StarterID: starter, State: state, StartedAt: fixedNow}
-	}
+	seedTrail(f, "tr-running", TrailRunning, "sess-1")
+	seedTrail(f, "tr-starting", TrailStarting, "")
+	seedTrail(f, "tr-waiting", TrailWaiting, "sess-2")
+	seedTrail(f, "tr-done", TrailDone, "sess-3")
 
-	require.NoError(t, f.runner.EndRunsCutOffByRestart(t.Context()))
+	require.NoError(t, f.runner.ResumeRunsAfterRestart(t.Context()))
+	<-f.turns.done
 
-	for id, want := range map[string]TrailState{"tr-running": TrailInterrupted, "tr-starting": TrailInterrupted, "tr-waiting": TrailWaiting, "tr-done": TrailDone} {
+	req := f.turns.last()
+	assert.True(t, req.Watch, "the turn is followed, never started again")
+	assert.Equal(t, "conv-tr-running", req.ConversationID)
+	assert.Equal(t, starter, req.ViaUserID)
+	assert.Equal(t, &agent.TargetOverride{ComputerID: "pc-1", Provider: "codex", Model: "gpt"}, req.Target)
+	assert.Empty(t, req.RequestBody)
+
+	for id, want := range map[string]TrailState{"tr-running": TrailRunning, "tr-starting": TrailInterrupted, "tr-waiting": TrailWaiting, "tr-done": TrailDone} {
 		got, err := f.trails.GetTrail(t.Context(), id)
 		require.NoError(t, err)
 		assert.Equal(t, want, got.State, id)
 	}
+	unstarted, err := f.trails.GetTrail(t.Context(), "tr-starting")
+	require.NoError(t, err)
+	assert.Equal(t, "Nexul restarted before the run started", unstarted.LastError)
+	assert.ElementsMatch(t, []string{"Nexul restarted; following the run in T3 Code again.", "Nexul restarted before the run started."}, f.threads.noteBodies())
+
+	req.Observer.OnStarted("sess-1")
+	req.Observer.OnFinished(harness.TurnResult{State: harness.TurnDone}, "reply-1")
 	ended, err := f.trails.GetTrail(t.Context(), "tr-running")
 	require.NoError(t, err)
-	assert.Equal(t, "Nexul restarted during the run", ended.LastError)
-	assert.NotNil(t, ended.EndedAt)
-	assert.Len(t, f.threads.noteBodies(), 2, "each closed run says why in its thread")
+	assert.Equal(t, TrailDone, ended.State, "the followed run ends with the harness's own outcome")
+	assert.Equal(t, "reply-1", ended.ReplyMessageID)
+	assert.Empty(t, f.trails.eventsFor(TopicRunStarted), "a followed run announces no second start")
 	assert.Len(t, f.trails.eventsFor(TopicRunFinished), 2)
 }
 
-func TestEndRunsCutOffByRestart_ListFails_ReturnsTheError(t *testing.T) {
+func TestResumeRunsAfterRestart_ListFails_ReturnsTheError(t *testing.T) {
 	f := newRunnerFixture()
 	f.trails.listErr = errors.New("db down")
 
-	assert.ErrorContains(t, f.runner.EndRunsCutOffByRestart(t.Context()), "db down")
+	assert.ErrorContains(t, f.runner.ResumeRunsAfterRestart(t.Context()), "db down")
 }
