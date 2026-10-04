@@ -481,6 +481,26 @@ describe("useLiveEvents dispatch", () => {
     expect(useAgentStreamStore.getState().streams.c1).toBeUndefined();
   });
 
+  it("keeps the live hand-offs when a question lands mid-turn, and clears them with the reply", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const helper = { id: "sa-1", driver: "codex", model: "", title: "sa-1", prompt: "Review it", state: "running", reply: "", steps: [] };
+    const question = "```nexul-question\n" + JSON.stringify({ request_id: "req-1", questions: [] }) + "\n```";
+    const created = (body: string) =>
+      act(() => socket.message(JSON.stringify({ topic: "chat.message.created", type: "event", payload: { message: { id: body, conversation_id: "c1", author_kind: "agent", body } } })));
+    act(() =>
+      socket.message(
+        JSON.stringify({ topic: "chat.agent.stream", type: "event", payload: { conversation_id: "c1", message_id: "m-1", text: "Asking first", streaming: true, handoff: helper } }),
+      ),
+    );
+
+    created(question);
+    expect(useAgentStreamStore.getState().streams.c1).toMatchObject({ text: "", streaming: true, handoffs: [helper] });
+
+    created("All done.");
+    expect(useAgentStreamStore.getState().streams.c1).toBeUndefined();
+  });
+
   it("leaves the agent stream store alone for a note left mid-turn", async () => {
     setup();
     const socket = await connectedSocket();

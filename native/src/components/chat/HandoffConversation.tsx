@@ -2,6 +2,7 @@ import { ScrollView, View } from "react-native";
 
 import { HandoffStepRow } from "@/components/chat/HandoffStepRow";
 import { MessageBody } from "@/components/chat/MessageBody";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import { handoffStateDot, handoffStateLabel, type Handoff } from "@/models/Chat";
@@ -32,11 +33,15 @@ export const HandoffConversation = ({ handoff }: HandoffConversationProps) => (
         ))}
       </View>
     )}
+    {handoff.state === "running" && handoff.steps.length === 0 && <LoadingDisplay message="Working…" />}
     {handoff.reply !== "" && (
       <View className="gap-3">
         <Text className="font-mono text-[11px] uppercase text-muted-foreground">Reply</Text>
         <MessageBody body={handoff.reply} />
       </View>
+    )}
+    {handoff.state !== "running" && handoff.reply === "" && (
+      <Text variant="muted">{handoff.state === "left_running" ? "Still running in T3 Code." : "No reply came back."}</Text>
     )}
   </ScrollView>
 );

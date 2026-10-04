@@ -1,5 +1,6 @@
-import { cn } from "@/lib/utils";
 import type { HandoffState } from "@/models/Handoff";
+
+import { cn } from "@/lib/utils";
 
 const dotClass: Record<HandoffState, string> = {
   running: "bg-warning animate-[status-pulse_2.4s_ease-standard_infinite]",

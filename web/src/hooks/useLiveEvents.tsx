@@ -51,6 +51,7 @@ import {
 import { applyCachedReaction } from "@/hooks/ReactionHooks";
 import { isNote, type ConversationDeleted, type Message } from "@/models/Chat";
 import type { Handoff } from "@/models/Handoff";
+import { parseQuestionMessage } from "@/models/Question";
 import type { MeResponse, SessionClient } from "@/models/User";
 import { getServerVersionKey, notifyIfServerUpdated } from "@/hooks/VersionHooks";
 import { setCachedTunnelStatus, type TunnelStatusChangedPayload } from "@/hooks/PairingHooks";
@@ -260,6 +261,17 @@ interface RouterFollowers {
   onConversationDeleted: (deleted: ConversationDeleted) => void;
 }
 
+// A question mid-turn takes the bubble's text, not the hand-offs still working, so their pills stay until the reply.
+const yieldStream = (message: Message) => {
+  const store = useAgentStreamStore.getState();
+  const stream = store.streams[message.conversation_id];
+  if (stream && stream.handoffs.length > 0 && parseQuestionMessage(message.body)) {
+    store.setStream(message.conversation_id, { messageId: stream.messageId, text: "", streaming: stream.streaming });
+    return;
+  }
+  store.clearStream(message.conversation_id);
+};
+
 const dispatch = (client: ReturnType<typeof useQueryClient>, router: RouterFollowers) => (frame: ServerFrame) => {
   if (frame.topic === "workspace.updated") {
     router.onWorkspaceUpdated(frame.payload as WorkspaceUpdate);
@@ -318,7 +330,7 @@ const dispatch = (client: ReturnType<typeof useQueryClient>, router: RouterFollo
     const p = frame.payload as MessagePayload;
     if (p.message) upsertCachedMessage(client, p.message);
     // Once the turn's real message lands (author_kind "agent"), the ephemeral stream bubble yields to it; a note does not end it.
-    if (p.message?.author_kind === "agent" && !isNote(p.message)) useAgentStreamStore.getState().clearStream(p.message.conversation_id);
+    if (p.message?.author_kind === "agent" && !isNote(p.message)) yieldStream(p.message);
     // A note's file changed under its message: open renders and the pill's size follow it; an open editor follows its room.
     if (frame.topic === "chat.message.updated" && p.message && isNote(p.message)) {
       void client.invalidateQueries({ queryKey: [getNoteTextKey, p.message.attachment_id] });

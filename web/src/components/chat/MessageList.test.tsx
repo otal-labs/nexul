@@ -197,6 +197,15 @@ describe("MessageList agent stream bubble lifecycle", () => {
     expect(within(dialog).getByText("Done")).toBeInTheDocument();
     expect(within(dialog).getByText("The refresh holds the lock throughout.")).toBeInTheDocument();
   });
+
+  it("a live frame with only hand-offs shows their pills without the waiting placeholder", () => {
+    const helper: Handoff = { id: "sa-1", driver: "codex", model: "", title: "Review the auth module", prompt: "Review it", state: "running", reply: "", steps: [] };
+    act(() => useAgentStreamStore.getState().setStream("c1", { messageId: "", text: "", streaming: true, handoff: helper }));
+    renderList([message({})]);
+
+    expect(screen.getByRole("button", { name: /Review the auth module/ })).toBeInTheDocument();
+    expect(screen.queryByText("…")).not.toBeInTheDocument();
+  });
 });
 
 vi.mock("@/api/client", () => ({
