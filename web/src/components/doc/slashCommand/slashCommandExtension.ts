@@ -86,12 +86,14 @@ export const PlusMenuExtension = Extension.create({
               button.style.display = "none";
               return;
             }
-            const pos = view.state.selection.$from.before();
-            const coords = view.coordsAtPos(pos);
+            const { $from } = view.state.selection;
+            const line = view.coordsAtPos($from.before());
+            // The top-level block's edge, so a nested empty line (list item, quote) keeps the "+" in the gutter.
+            const block = view.coordsAtPos($from.before(1));
             const parentRect = parent.getBoundingClientRect();
             button.style.display = "flex";
-            button.style.top = `${coords.top - parentRect.top}px`;
-            button.style.left = `${coords.left - parentRect.left - 28}px`;
+            button.style.top = `${line.top - parentRect.top}px`;
+            button.style.left = `${block.left - parentRect.left - 28}px`;
           };
 
           update(view);

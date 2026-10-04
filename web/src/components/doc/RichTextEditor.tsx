@@ -54,6 +54,10 @@ const setBody = (editor: Editor, value: string, emitUpdate = true) => {
   editor.commands.setContent(value, { contentType: "markdown", emitUpdate });
 };
 
+// Only a lone empty paragraph takes the hint; an empty list, quote, or code block sits where the hint would draw.
+const isBlankDoc = (doc: Editor["state"]["doc"]) =>
+  doc.childCount === 1 && doc.firstChild?.type.name === "paragraph" && doc.firstChild.content.size === 0;
+
 // Wires y-prosemirror's cursor plugin to session awareness so remote cursors render live.
 const CollaborationCursors = Extension.create<{ awareness: Awareness }>({
   name: "collaborationCursors",
@@ -143,7 +147,7 @@ export const RichTextEditor = ({
   const { isEmpty } = useEditorState({
     editor,
     selector: (ctx) => ({
-      isEmpty: ctx.editor ? ctx.editor.state.doc.textContent.trim() === "" : true,
+      isEmpty: ctx.editor ? isBlankDoc(ctx.editor.state.doc) : true,
     }),
   }) ?? { isEmpty: true };
 

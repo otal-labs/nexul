@@ -77,6 +77,14 @@ describe("RichTextEditor", () => {
     expect(screen.getByText("Start writing…")).toBeInTheDocument();
   });
 
+  it("drops the empty-state hint once the empty line becomes a list, so the hint never covers it", async () => {
+    const user = userEvent.setup();
+    renderEditor(emptyDocJson);
+    await user.click(screen.getByLabelText(/doc body/i));
+    await user.keyboard("- ");
+    expect(screen.queryByText("Start writing…")).not.toBeInTheDocument();
+  });
+
   it("surfaces the formatting bubble over a text selection", async () => {
     const user = userEvent.setup();
     renderEditor(emptyDocJson);
