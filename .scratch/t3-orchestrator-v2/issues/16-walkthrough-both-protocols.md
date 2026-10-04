@@ -14,7 +14,8 @@ T3 Code to the nightly. No Incus box and no provider token; his own T3 and provi
 - Stop on a running and on a queued turn.
 - An agent that hands work to another agent: the reply waits, carries a pill, and the pill opens the
   helper's conversation; a Claude subagent gets a pill too; Stop during the wait leaves nothing running in T3.
-- The phone app shows the same pill (with a build that has ticket 19).
+- The phone app shows the same pill (with a build that has ticket 19): open a real hand-off reply after the
+  turn ends, and scroll a long one (close to 200 steps) to its end.
 - Optional: a computer setup turn on the nightly confirms.
 
 Findings become fix-up tickets here. Going back to stable is not part of the walkthrough; its message is

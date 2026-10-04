@@ -415,7 +415,7 @@ func (s *Service) runSetupSession(ctx context.Context, client harness.Client, ta
 	if err != nil {
 		return "Could not start the setup turn: " + err.Error()
 	}
-	target.SessionID = started.SessionID
+	target.SessionID, target.TurnID = started.SessionID, started.TurnID
 	reply := ""
 	for {
 		select {

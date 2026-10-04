@@ -45,8 +45,10 @@ Decision: a turn follows the runs its own run's handed-off work caused, and repl
   offline; deleting the reply clears it. Caps: 20 hand-offs, the newest 200 steps of each with 2 KiB of detail, a
   2 KiB prompt, and 256 KiB per reply, the oldest steps going first and then the longest final replies.
 - **More than one turn on a conversation.** The pipeline keeps each in-flight turn on its own, so a second mention
-  that ends first leaves the first one reachable. Stop reaches every live turn of the conversation, and an answer is
-  tried on each, newest first, until a harness takes it.
+  that ends first leaves the first one reachable. Stop reaches every live turn of the conversation, each by its own
+  name. An answer goes first to the turn that asked, then to the others newest first, until a harness takes it, and
+  it restarts only the asking turn's silence window: another turn's window stays paused while its own question is
+  open.
 
 Rejected: ignoring the hand-off, which makes placeholder replies the normal case because T3 tells agents to end the
 turn; telling the agent to use wait mode, which fights T3's own tool text and cannot reach a provider's own

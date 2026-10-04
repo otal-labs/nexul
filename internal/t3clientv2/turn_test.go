@@ -765,8 +765,9 @@ func TestWatch_RunAlreadyOver_EndsAtOnceWithItsFinalReply(t *testing.T) {
 			_, r := watchThread(t, f, h, threadAt(tt.runs, nil, tt.turnItems...))
 
 			assert.Equal(t, tt.want, drainUpdates(t, r.Updates))
-			_, watching := h.turns.Load("th-1")
-			assert.False(t, watching, "nothing left for Stop to reach")
+			watching := 0
+			h.turns.Range(func(any, any) bool { watching++; return true })
+			assert.Zero(t, watching, "nothing left for Stop to reach")
 			assert.Empty(t, f.Dispatched)
 		})
 	}
@@ -796,7 +797,7 @@ func TestWatch_Interrupted_StopsTheWatchedRunAndEndsInterrupted(t *testing.T) {
 	_, r := watchThread(t, f, h, threadAt([]any{runAt(1, "msg-1", "running")}, nil))
 	f.Projections = map[string]any{"th-1": projectionWith(t, []any{runAt(1, "msg-1", "running")})}
 
-	require.NoError(t, h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"}))
+	require.NoError(t, h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1", TurnID: r.TurnID}))
 	cmd := t3rpctest.WaitFor(t, f.Dispatched, "run.interrupt")
 	assert.Equal(t, "run.interrupt", cmd["type"])
 	assert.Equal(t, runOne, cmd["runId"])

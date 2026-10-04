@@ -162,6 +162,8 @@ type Target struct {
 	ModelOptions []OptionSetting
 	// SessionID is the harness-side thread; empty means create one.
 	SessionID string
+	// TurnID is the StartResult.TurnID of the turn Interrupt stops; empty means whatever runs on SessionID.
+	TurnID string
 	// Worktree creates a new thread in a fresh git worktree of the project rather than in its folder.
 	Worktree bool
 }
@@ -224,7 +226,7 @@ func CapBytes(s string, n int) string {
 	return s[:n]
 }
 
-// Preview flattens s to one line of at most n runes for a row label.
+// Preview flattens s to one line for a row label, cut to n runes and an ellipsis when it is longer.
 func Preview(s string, n int) string {
 	s = strings.Join(strings.Fields(s), " ")
 	if utf8.RuneCountInString(s) <= n {
@@ -371,7 +373,9 @@ type TurnPrompts struct {
 // StartResult is what starting a turn hands back: the session id actually used, plus the update stream.
 type StartResult struct {
 	SessionID string
-	Updates   <-chan Update
+	// TurnID names this turn among others on the same session, for Target.TurnID; empty when the harness needs none.
+	TurnID  string
+	Updates <-chan Update
 	// PromptSent is false when the harness only resolved a pending answer, so the messages since are still unsent.
 	PromptSent bool
 }
@@ -391,13 +395,18 @@ type Client interface {
 	StartTurn(ctx context.Context, t Target, title string, prompts TurnPrompts) (StartResult, error)
 	// Watch follows the turn on t's session that another watcher started; with nothing running it ends at once, done.
 	Watch(ctx context.Context, t Target) (StartResult, error)
-	// Interrupt aborts whatever turn is active on t's session.
+	// Interrupt aborts the turn t.TurnID names on t's session, or whatever turn is active there when it names none.
 	Interrupt(ctx context.Context, t Target) error
 	// Answer resolves the pending Question requestID on t's session so the turn continues; ErrConflict when the
 	// harness already holds an answer for it.
 	Answer(ctx context.Context, t Target, requestID string, answer QuestionAnswer) error
 	// Settle moves t's idle session out of the harness's active list; the harness wakes it on new activity.
 	Settle(ctx context.Context, t Target) error
+}
+
+// ImageTaker is a Client that sends its agent only some image types; a Client that is not one sends every image.
+type ImageTaker interface {
+	TakesImage(mime string) bool
 }
 
 // Registry maps each supported kind to its client; the composition root builds it once.

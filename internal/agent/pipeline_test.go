@@ -805,6 +805,44 @@ func TestRunTurn_TicketThread_PDFReference_AttachesNothing(t *testing.T) {
 	assert.NotContains(t, got.Full, imagesLine, "the images line promises only what was attached")
 }
 
+// fourImageTypes is a harness client that sends its agent only gif, jpeg, png and webp images, as T3 Code on protocol 2 does.
+type fourImageTypes struct{ *harnesstest.Client }
+
+func (fourImageTypes) TakesImage(mime string) bool {
+	return mime == "image/gif" || mime == "image/jpeg" || mime == "image/png" || mime == "image/webp"
+}
+
+func TestRunTurn_TicketImagesTheHarnessDoesNotTake_AreLinkedNotNamedAsAttached(t *testing.T) {
+	conv := newFakeConversations(Conversation{ID: "conv-1", IsTicketThread: true, TicketID: "tix-1"})
+	var got harness.TurnPrompts
+	client := fourImageTypes{&harnesstest.Client{StartTurnFn: func(_ context.Context, _ harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
+		got = prompts
+		return harness.StartResult{SessionID: "thread-1", Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}})}, nil
+	}}}
+	reader := newFakeAttachmentReader()
+	reader.items["png-1"] = StoredAttachment{Name: "shot.png", MIME: "image/png", Bytes: []byte{1}}
+	reader.items["svg-1"] = StoredAttachment{Name: "diagram.svg", MIME: "image/svg+xml", Bytes: []byte{2}}
+	reader.items["bmp-1"] = StoredAttachment{Name: "scan.bmp", MIME: "image/bmp", Bytes: []byte{3}}
+	svc := NewService(Config{
+		Conversations: conv,
+		Targets:       &fakeTargets{target: testTarget()},
+		Harnesses:     harness.Registry{harness.KindT3Code: client},
+		Tickets: &fakeTickets{ticket: Ticket{ProjectID: "proj-1", Key: "SRC-3", Title: "Bug",
+			Body: "![a](/api/attachments/svg-1) ![b](/api/attachments/png-1) ![c](/api/attachments/bmp-1)"}},
+		Attachments: reader,
+		Live:        &fakeLive{},
+	})
+
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent look"})
+
+	assert.Equal(t, []harness.Attachment{{Name: "shot.png", MIME: "image/png", Bytes: []byte{1}}}, got.Attachments)
+	assert.Contains(t, got.Full, "Ticket: SRC-3 \"Bug\". Read it with ticket_get before you start.\n"+
+		"Open these images in its body with attachment_get; they are not attached to this message:\n"+
+		"- diagram.svg: /api/attachments/svg-1\n- scan.bmp: /api/attachments/bmp-1\n"+
+		"The other images in its body are attached to this message, in order.\n\n")
+	assert.NotContains(t, got.Full, imagesLine, "the prompt never claims an image the agent did not get")
+}
+
 // --- interrupt -------------------------------------------------------------
 
 func TestInterrupt_NoActiveTurn_ReturnsNotFound(t *testing.T) {

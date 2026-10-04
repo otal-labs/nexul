@@ -43,17 +43,19 @@ const DefaultFooter = "Standing rules:\n" +
 
 // The fixed lines naming a turn's context by reference; each names the tool that reads it (ADR 0111).
 const (
-	ticketLine   = "Ticket: %s %q. Read it with ticket_get before you start."
-	docLine      = "Doc: %q (id %s). Read it with doc_get before you start."
-	imagesLine   = "The images in its body are attached to this message, in order."
-	memoriesLine = "Read these memories with memory_get before you start; they are your context:"
-	concludeLine = "When the work is done, before your final reply, read these memories with memory_get and follow them to " +
+	ticketLine      = "Ticket: %s %q. Read it with ticket_get before you start."
+	docLine         = "Doc: %q (id %s). Read it with doc_get before you start."
+	imagesLine      = "The images in its body are attached to this message, in order."
+	linksLine       = "Open these images in its body with attachment_get; they are not attached to this message:"
+	otherImagesLine = "The other images in its body are attached to this message, in order."
+	memoriesLine    = "Read these memories with memory_get before you start; they are your context:"
+	concludeLine    = "When the work is done, before your final reply, read these memories with memory_get and follow them to " +
 		"conclude the run, for example to decide which column the ticket now belongs in:"
 )
 
 // PromptTexts returns the fixed texts a prompt hands the agent, so the MCP surface test can check the tools they name.
 func PromptTexts() []string {
-	return []string{DefaultIntro, DefaultFooter, ticketLine, docLine, memoriesLine, concludeLine}
+	return []string{DefaultIntro, DefaultFooter, ticketLine, docLine, linksLine, memoriesLine, concludeLine}
 }
 
 // MemoryItem is one of a project's memories as the pipeline sees it: enough to name it, never its body.

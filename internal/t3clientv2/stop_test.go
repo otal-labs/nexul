@@ -129,10 +129,10 @@ func TestInterrupt_StopsTheRunTheTurnIsFor(t *testing.T) {
 				f.AfterCommand[command] = map[string]any{"th-1": projectionWith(t, runs)}
 			}
 			if tt.watching != "" {
-				h.turns.Store("th-1", newRunningTurn(t.Context(), tt.watching))
+				h.turns.Store(turnKey{"th-1", tt.watching}, newRunningTurn(t.Context(), tt.watching))
 			}
 
-			err := h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"})
+			err := h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1", TurnID: tt.watching})
 			if tt.wantErr != "" {
 				require.ErrorIs(t, err, tt.errIs)
 				assert.EqualError(t, err, tt.wantErr)
@@ -172,14 +172,76 @@ func TestInterrupt_AfterStartTurn_StopsThatTurnsRunNotTheNewest(t *testing.T) {
 	done := begin(t, h, laptop(f), "th-1")
 	f.Write(t3rpctest.Chunk(t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread"), snapshotWith(t, nil)))
 	messageID, _ := t3rpctest.WaitFor(t, f.Dispatched, "message.dispatch")["messageId"].(string)
-	require.NoError(t, (<-done).err)
+	s := <-done
+	require.NoError(t, s.err)
+	require.Equal(t, messageID, s.result.TurnID, "a turn is named by the message whose run it is")
 	f.Projections = map[string]any{"th-1": projectionWith(t, []any{runAt(1, messageID, "running"), runAt(2, "msg-x", runQueued)},
 		map[string]any{"id": "rq-1", "status": "pending", "responseCapability": map[string]any{"type": "live", "providerSessionId": "ps-1"}})}
 
-	require.NoError(t, h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"}))
+	require.NoError(t, h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1", TurnID: s.result.TurnID}))
 	cmd := t3rpctest.WaitFor(t, f.Dispatched, "run.interrupt")
 	assert.Equal(t, "run.interrupt", cmd["type"])
 	assert.Equal(t, "run:thread:th-1:ordinal:1", cmd["runId"], "the turn's own run, though a newer one is queued")
+}
+
+func TestInterrupt_TwoTurnsOnOneThread_EachStopsOnlyItsOwnRunAndHandOffs(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	first := begin(t, h, laptop(f), "th-1")
+	sub := t3rpctest.WaitFor(t, f.Subscribed, "the first turn's subscribe")
+	f.Write(t3rpctest.Chunk(sub, snapshotWith(t, nil)))
+	asOne := sentMessage(t, f)
+	one := <-first
+	require.NoError(t, one.err)
+	f.Write(t3rpctest.Chunk(sub, event(3, "run.created", runOf(asOne, "running")),
+		event(4, "subagent.updated", merged(handedOff("task-1", "app_owned", "running", nil), map[string]any{"childThreadId": nil}))))
+	for u := t3rpctest.WaitFor(t, one.result.Updates, "the waiting step"); u.Activity == nil; {
+		u = t3rpctest.WaitFor(t, one.result.Updates, "the waiting step")
+	}
+
+	second := begin(t, h, laptop(f), "th-1")
+	f.Write(t3rpctest.Chunk(t3rpctest.WaitFor(t, f.Subscribed, "the second turn's subscribe"), snapshotWith(t, nil, runOf(asOne, "running"))))
+	asTwo := sentMessage(t, f)
+	two := <-second
+	require.NoError(t, two.err)
+	require.Equal(t, asTwo, two.result.TurnID)
+	f.Projections = map[string]any{"th-1": projectionWith(t, []any{runOf(asOne, "running"), runAt(2, asTwo, runQueued)})}
+
+	require.NoError(t, h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1", TurnID: one.result.TurnID}))
+	assert.Equal(t, map[string]any{"type": "delegated_task.completion-delivery.dispose", "parentThreadId": "th-1", "taskId": "task-1"},
+		withoutID(t3rpctest.WaitFor(t, f.Dispatched, "a stop command")), "the first turn's own hand-off")
+	assert.Equal(t, map[string]any{"type": "run.interrupt", "threadId": "th-1", "runId": runOne, "reason": "Stopped from Nexul"},
+		withoutID(t3rpctest.WaitFor(t, f.Dispatched, "a stop command")), "then its own run, though a newer turn waits behind it")
+	assert.Equal(t, "end "+string(harness.TurnInterrupted), lastLabel(drainUpdates(t, one.result.Updates)))
+	assert.Empty(t, f.Dispatched, "nothing of the second turn's is cancelled")
+	assert.Empty(t, collect(two.result.Updates), "the second turn still waits for its run")
+
+	f.Projections = map[string]any{"th-1": projectionWith(t, []any{runOf(asOne, "interrupted"), runAt(2, asTwo, runQueued)})}
+	require.NoError(t, h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1", TurnID: two.result.TurnID}))
+	assert.Equal(t, map[string]any{"type": "queued-run.cancel", "threadId": "th-1", "runId": runTwo},
+		withoutID(t3rpctest.WaitFor(t, f.Dispatched, "the second turn's stop")), "its own queued run, and no hand-off of the first's")
+	assert.Equal(t, "end "+string(harness.TurnInterrupted), lastLabel(drainUpdates(t, two.result.Updates)))
+}
+
+// sentMessage is the message id of the next message.dispatch, past any command a turn sends before it.
+func sentMessage(t *testing.T, f *t3rpctest.Server) string {
+	t.Helper()
+	commands := commandsUntil(t, f, "message.dispatch")
+	id, _ := commands[len(commands)-1]["messageId"].(string)
+	return id
+}
+
+func withoutID(cmd map[string]any) map[string]any {
+	delete(cmd, "commandId")
+	return cmd
+}
+
+func lastLabel(updates []harness.Update) string {
+	got := labels(updates)
+	if len(got) == 0 {
+		return ""
+	}
+	return got[len(got)-1]
 }
 
 // endQueuedTurn ends a turn T3 queued behind msg-0's run on th-1, returning its message id and the command sent next.
@@ -219,7 +281,7 @@ func TestInterrupt_TurnsWatchEnded_StopsTheNewestUnfinishedRun(t *testing.T) {
 	messageID, _ := endQueuedTurn(t, f, h)
 	f.Projections = map[string]any{"th-1": projectionWith(t, []any{runAt(1, "msg-0", "running"), runAt(2, messageID, "cancelled")})}
 
-	require.NoError(t, h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"}))
+	require.NoError(t, h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1", TurnID: messageID}))
 	cmd := t3rpctest.WaitFor(t, f.Dispatched, "run.interrupt")
 	assert.Equal(t, "run.interrupt", cmd["type"])
 	assert.Equal(t, "run:thread:th-1:ordinal:1", cmd["runId"], "no turn watches the thread any more, so its own finished run is not the one")
@@ -352,7 +414,7 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 			}
 			f.CommandCauses = tt.causes
 
-			err := h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"})
+			err := h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1", TurnID: messageID})
 			var sent []map[string]any
 			for range tt.want {
 				cmd := t3rpctest.WaitFor(t, f.Dispatched, "a stop command")
@@ -362,7 +424,7 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 			assert.Equal(t, tt.want, sent, "in T3's order, so no child's end can wake the thread")
 			if tt.wantErr != "" {
 				assert.ErrorContains(t, err, tt.wantErr)
-				found, _ := h.turns.Load("th-1")
+				found, _ := h.turns.Load(turnKey{"th-1", messageID})
 				assert.NoError(t, found.(*runningTurn).halted.Err(), "a Stop that failed leaves the turn to end on its own")
 				return
 			}
@@ -390,7 +452,7 @@ func TestInterrupt_StoppedAgainAfterARefusal_NotesWhatItCouldNotStopOnce(t *test
 	})
 	f.Projections = map[string]any{"th-1": projectionWith(t, []any{runOf(messageID, runWaiting)})}
 	f.CommandCauses = map[string]any{"run.interrupt": rejected("run.interrupt", "Provider session ps-1 is restarting.")}
-	target := harness.Target{Session: laptop(f), SessionID: "th-1"}
+	target := harness.Target{Session: laptop(f), SessionID: "th-1", TurnID: messageID}
 	require.ErrorContains(t, h.Interrupt(t.Context(), target), "Provider session ps-1 is restarting.")
 
 	f.CommandCauses = nil

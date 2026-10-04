@@ -132,3 +132,41 @@ func TestHandleMessageCreated_PendingQuestion_PausesTheWindowUntilAnswered(t *te
 		assert.Contains(t, systemPosts[0].body, noSignalReply)
 	})
 }
+
+func TestAnswer_TwoTurnsPausedOnTheirOwnQuestions_WakesOnlyTheTurnThatAsked(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		first, second := make(chan harness.Update, 4), make(chan harness.Update, 4)
+		h := &followUpHarness{sessionIDs: []string{"thread-1", "thread-2"}, updates: []<-chan harness.Update{first, second}}
+		var answeredOn []string
+		client := h.client()
+		client.AnswerFn = func(_ context.Context, target harness.Target, _ string, _ harness.QuestionAnswer) error {
+			answeredOn = append(answeredOn, target.SessionID)
+			return nil
+		}
+		conv := newFakeConversations(Conversation{ID: "conv-1"})
+		svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: harnesstest.Registry(client), Live: &fakeLive{}})
+		for _, body := range []string{"@Agent first", "@Agent second"} {
+			require.NoError(t, svc.HandleMessageCreated(t.Context(), messageCreatedEvent(t, "conv-1", "u-1", body, true)))
+			synctest.Wait()
+		}
+		asked, waiting := question(), question()
+		waiting.RequestID = "req-2"
+		first <- harness.Update{Question: &asked}
+		second <- harness.Update{Question: &waiting}
+		time.Sleep(time.Hour)
+		synctest.Wait()
+
+		answer := harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q1": {Selected: []string{"Yes"}}}}
+		require.NoError(t, svc.Answer(t.Context(), "conv-1", "req-1", answer))
+		assert.Equal(t, []string{"thread-1"}, answeredOn, "the answer goes to the turn that asked, though a newer one runs")
+		time.Sleep(15 * time.Minute)
+		synctest.Wait()
+		_, systemPosts := conv.snapshot()
+		require.Len(t, systemPosts, 1, "the answered turn's window runs again; the other stays paused on its own question")
+		assert.Contains(t, systemPosts[0].body, noSignalReply)
+
+		second <- harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}
+		close(second)
+		synctest.Wait()
+	})
+}

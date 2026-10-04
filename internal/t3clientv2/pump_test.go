@@ -163,12 +163,17 @@ func TestPump_StreamEndsMidTurn(t *testing.T) {
 					afters = append(afters, after)
 					return tt.opens[len(afters)-1]()
 				}}
+				// What an earlier, refused Stop could not stop shows before whichever end the turn comes to.
+				p.live.setNotes([]string{childUnreadable})
 				out := make(chan harness.Update, 16)
 				start := time.Now()
 
 				p.run(t.Context(), first, out)
 
-				assert.Equal(t, []harness.Update{tt.want}, collect(out))
+				got := collect(out)
+				require.Len(t, got, 2)
+				assert.Equal(t, childUnreadable, got[0].Activity.Summary)
+				assert.Equal(t, tt.want, got[1])
 				assert.Equal(t, tt.elapsed, time.Since(start), "backs off before each try")
 				require.Len(t, afters, len(tt.opens), "every try is made, and no more")
 				for _, after := range afters {
@@ -178,6 +183,31 @@ func TestPump_StreamEndsMidTurn(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestPump_StopDuringAResubscribeBackoff_EndsInterruptedAtOnceWithItsNote(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		lost := fmt.Errorf("orchestration.subscribeThread: %w", t3rpc.ErrConnectionLost)
+		first := newFakeSource(items(event(5, "run.created", runOf("msg-1", "running"))), chunkOrEnd{err: lost})
+		var opens atomic.Int32
+		p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newRunningTurn(t.Context(), "msg-1"),
+			open: func(context.Context, int64) (source, error) {
+				opens.Add(1)
+				return nil, errors.New("dial T3 websocket: connection refused")
+			}}
+		out := make(chan harness.Update, 16)
+		start := time.Now()
+		go p.run(t.Context(), first, out)
+		synctest.Wait()
+
+		p.live.setNotes([]string{childUnreadable})
+		p.live.halt()
+		synctest.Wait()
+
+		assert.Equal(t, []string{"note " + childUnreadable, "end " + string(harness.TurnInterrupted)}, labels(collect(out)))
+		assert.Zero(t, time.Since(start), "Stop does not wait out the backoff")
+		assert.Zero(t, opens.Load(), "nor resubscribes a turn it stopped")
+	})
 }
 
 func TestPump_HandedOffWorkStillRunning_StepRepeatsUntilTheCapEndsTheTurnDone(t *testing.T) {
