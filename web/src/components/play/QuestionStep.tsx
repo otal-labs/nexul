@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
 
 import { DraftedTag, QuestionOptionRow } from "@/components/play/QuestionOptionRow";
 import { optionValue, type AnswerValue, type QuestionItem, type QuestionOption } from "@/models/Question";
@@ -18,6 +19,8 @@ interface QuestionStepProps {
   drafted?: AnswerValue | undefined;
   // A line under the hint, such as where a draft came from.
   note?: ReactNode;
+  // A question without options takes a growing text box, where Enter is a new line, instead of a one-line field.
+  multiline?: boolean;
 }
 
 // toggle picks one value for a single choice and flips it in the set for a multi-select; either clears typed text.
@@ -30,7 +33,8 @@ export const toggleOption = (item: QuestionItem, draft: AnswerValue | undefined,
 const listClass = "mt-2 divide-y divide-border overflow-hidden rounded-md border border-border";
 
 // The answering part of one question, under whatever title its host gives it: the hint muted, the option rows, the free text.
-export const QuestionStep = ({ item, idPrefix, draft, onDraft, drafted, note }: QuestionStepProps) => {
+export const QuestionStep = ({ item, idPrefix, draft, onDraft, drafted, note, multiline = false }: QuestionStepProps) => {
+  const textBox = multiline && item.options.length === 0;
   const selected = draft?.selected ?? [];
   const isDrafted = (option: QuestionOption) => drafted?.selected?.includes(optionValue(option)) ?? false;
   const draftedText = (drafted?.text ?? "") !== "";
@@ -83,14 +87,26 @@ export const QuestionStep = ({ item, idPrefix, draft, onDraft, drafted, note }: 
           <DraftedTag />
         </div>
       )}
-      <Input
-        type="text"
-        aria-label={item.options.length > 0 ? "Something else" : "Your answer"}
-        placeholder={item.options.length > 0 ? "Something else…" : "Your answer"}
-        value={draft?.text ?? ""}
-        onChange={(e) => onDraft({ text: e.target.value })}
-        className={cn("h-8 text-sm", draftedText ? "mt-1" : "mt-2")}
-      />
+      {textBox && (
+        <Textarea
+          aria-label="Your answer"
+          placeholder="Your answer"
+          rows={1}
+          value={draft?.text ?? ""}
+          onChange={(e) => onDraft({ text: e.target.value })}
+          className={cn("field-sizing-content min-h-8 resize-none py-1.5 text-sm", draftedText ? "mt-1" : "mt-2")}
+        />
+      )}
+      {!textBox && (
+        <Input
+          type="text"
+          aria-label={item.options.length > 0 ? "Something else" : "Your answer"}
+          placeholder={item.options.length > 0 ? "Something else…" : "Your answer"}
+          value={draft?.text ?? ""}
+          onChange={(e) => onDraft({ text: e.target.value })}
+          className={cn("h-8 text-sm", draftedText ? "mt-1" : "mt-2")}
+        />
+      )}
     </div>
   );
 };

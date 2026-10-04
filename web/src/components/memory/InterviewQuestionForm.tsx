@@ -69,6 +69,7 @@ export const InterviewQuestionForm = ({ row, projectId, progress, prevKey, nextK
         draft={draft}
         onDraft={setDraft}
         drafted={row.draft?.value}
+        multiline
         note={row.draft && <InterviewDraftFrom draft={row.draft} />}
       />
       <div className="mt-4 flex items-center justify-end gap-2">

@@ -32,10 +32,10 @@ const answer = (question: string, selected: string[], at: string): InterviewAnsw
   skipped: false, answered_by: "u-1", answered_at: at,
 });
 
-const renderFeed = (answers: InterviewAnswer[], drafts: InterviewDraft[]) =>
+const renderFeed = (answers: InterviewAnswer[], drafts: InterviewDraft[], asked = questions) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <InterviewChecklistFeed projectId="p-1" sections={buildSections(questions, answers, drafts, [source])} readOnly={false} hasMemory memoryWithoutAnswers={false} />
+      <InterviewChecklistFeed projectId="p-1" sections={buildSections(asked, answers, drafts, [source])} readOnly={false} hasMemory memoryWithoutAnswers={false} />
     </QueryClientProvider>,
   );
 
@@ -83,6 +83,21 @@ describe("InterviewChecklistFeed with drafts", () => {
     await user.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(mocks.delete).toHaveBeenCalledWith("/api/memories/interview-drafts/d-3");
     expect(mocks.put).not.toHaveBeenCalled();
+  });
+
+  it("gives a question without options a text box where Enter is a new line and Next saves", async () => {
+    const user = userEvent.setup();
+    const stack = "What languages and frameworks does this project use?";
+    renderFeed([], [{ ...draft("d-5", stack, [], "2026-10-02T10:00:00Z"), text: "Go 1.24" }], [{ text: stack, hint: "", multi_select: false, options: [] }]);
+    const box = screen.getByRole("textbox", { name: "Your answer" });
+    expect(box.tagName).toBe("TEXTAREA");
+    expect(box).toHaveValue("Go 1.24");
+    await user.type(box, "{Enter}React 19");
+    expect(mocks.put).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(mocks.put).toHaveBeenCalledWith("/api/memories/interview-answers", {
+      project_id: "p-1", round: 0, question: stack, selected: [], text: "Go 1.24\nReact 19",
+    });
   });
 
   it("leaves an answer the person changed from an older draft alone", () => {
