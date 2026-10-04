@@ -7,6 +7,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
+	"github.com/otal-labs/nexul/internal/platform/redact"
 )
 
 const (
@@ -39,11 +40,21 @@ func BrowserHandler(logger *slog.Logger, userID func(*http.Request) string) http
 			return
 		}
 		l := logger.With("source", "web", "user_id", userID(r), "user_agent", r.UserAgent())
+		// A browser logs whatever it holds, such as a socket URL carrying its session token, so nothing reaches the sinks unredacted.
 		for _, rec := range body.Records {
-			l.LogAttrs(r.Context(), browserLevel(rec.Level), rec.Message, slog.String("url", rec.URL), slog.Any("attrs", rec.Attrs))
+			l.LogAttrs(r.Context(), browserLevel(rec.Level), redact.Tokens(rec.Message), slog.String("url", redact.Tokens(rec.URL)), slog.Any("attrs", redactAttrs(rec.Attrs)))
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
+}
+
+func redactAttrs(attrs map[string]any) map[string]any {
+	for k, v := range attrs {
+		if s, ok := v.(string); ok {
+			attrs[k] = redact.Tokens(s)
+		}
+	}
+	return attrs
 }
 
 // browserLevel maps the console method name; anything unknown is treated as an error so nothing is silently downgraded.
