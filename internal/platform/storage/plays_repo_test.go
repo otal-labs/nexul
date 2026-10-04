@@ -134,7 +134,7 @@ func TestPlaysRepo_Migration_SeedsDefaultWorkspaceWithTheDefaultPlays(t *testing
 	s := newTestStore(t)
 	got, err := s.Plays.List(context.Background(), "workspace-default")
 	require.NoError(t, err)
-	require.Len(t, got, 5)
+	require.Len(t, got, 6)
 	byLabel := map[string]*plays.Play{}
 	for _, p := range got {
 		byLabel[p.Label] = p
@@ -151,6 +151,7 @@ func TestPlaysRepo_Migration_SeedsDefaultWorkspaceWithTheDefaultPlays(t *testing
 		{"Interview", plays.TypeInterview, nil, "`kind` `interview`"},
 		{"Test with AI", plays.TypeTicket, &testingStage, "ticket_test_report"},
 		{"Draft interview", plays.TypeInterview, nil, "`trail_id`"},
+		{"Audit via AI", plays.TypeInterview, nil, "doc_create"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.label, func(t *testing.T) {

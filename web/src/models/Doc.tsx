@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { Trail } from "@/models/Trail";
+
 export interface Doc {
   id: string;
   // Mirrors ticket.project_id; the frontend resolves the project's name from the already-fetched list.
@@ -29,6 +31,8 @@ export interface DocListItem {
   can_open: boolean;
   created_at: string;
   updated_at: string;
+  /** The author's user id, sent only when can_open. */
+  created_by?: string;
   /** The body's first line of text, sent only when can_open; the list search matches it. */
   snippet?: string;
 }
@@ -65,3 +69,13 @@ export const CloneDocFormSchema = z.object({
 });
 
 export type CloneDocFormData = z.infer<typeof CloneDocFormSchema>;
+
+// The doc an audit run wrote: one its starter created while it ran, newest first, preferring the title the audit play gives it.
+export const auditDocOf = (trail: Trail, docs: DocListItem[]): DocListItem | undefined => {
+  const start = Date.parse(trail.started_at);
+  const end = trail.ended_at ? Date.parse(trail.ended_at) : Number.POSITIVE_INFINITY;
+  const made = docs
+    .filter((d) => d.created_by === trail.starter_id && Date.parse(d.created_at) >= start && Date.parse(d.created_at) <= end)
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  return made.find((d) => d.title.startsWith("Audit of")) ?? made[0];
+};

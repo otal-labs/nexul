@@ -5,7 +5,7 @@ import { api, errorMessage } from "@/api/client";
 import { useFetchApplicablePlays, useFetchWorkspacePlays } from "@/hooks/PlayHooks";
 import { useFetchTrails } from "@/hooks/TrailHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { DRAFT_INTERVIEW_KEY } from "@/models/Play";
+import { AUDIT_KEY, DRAFT_INTERVIEW_KEY } from "@/models/Play";
 import type { AddInterviewSourceInput, InterviewDraft, InterviewSource, SourceStance } from "@/models/InterviewSource";
 
 export const getInterviewSourcesKey = "getInterviewSources";
@@ -96,21 +96,24 @@ export const useInterviewPlays = (projectId: string) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: plays } = useFetchApplicablePlays(workspaceId, projectId, "interview", undefined);
   return {
-    followUp: plays?.find((p) => p.builtin_key !== DRAFT_INTERVIEW_KEY),
+    followUp: plays?.find((p) => p.builtin_key !== DRAFT_INTERVIEW_KEY && p.builtin_key !== AUDIT_KEY),
     draft: plays?.find((p) => p.builtin_key === DRAFT_INTERVIEW_KEY),
+    audit: plays?.find((p) => p.builtin_key === AUDIT_KEY),
   };
 };
 
 // The interview target's trails split by play, newest first like the list they come from; the workspace's play list names the
-// drafting play for someone who cannot run it.
+// drafting and audit plays for someone who cannot run them.
 export const useInterviewTrails = (projectId: string) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: trails } = useFetchTrails("interview", projectId);
   const { data: plays } = useFetchWorkspacePlays(workspaceId);
-  const runnable = useInterviewPlays(projectId).draft;
-  const draftId = runnable?.id ?? plays?.find((p) => p.builtin_key === DRAFT_INTERVIEW_KEY)?.id;
+  const runnable = useInterviewPlays(projectId);
+  const draftId = runnable.draft?.id ?? plays?.find((p) => p.builtin_key === DRAFT_INTERVIEW_KEY)?.id;
+  const auditId = runnable.audit?.id ?? plays?.find((p) => p.builtin_key === AUDIT_KEY)?.id;
   return {
-    followUp: trails?.filter((t) => t.play_id !== draftId),
+    followUp: trails?.filter((t) => t.play_id !== draftId && t.play_id !== auditId),
     drafting: trails?.filter((t) => t.play_id === draftId),
+    audit: trails?.filter((t) => t.play_id === auditId),
   };
 };

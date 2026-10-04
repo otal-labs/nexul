@@ -356,12 +356,9 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 		return refuse(err)
 	}
 	if trail.TargetType == TargetInterview {
-		links = append(links, interviewBlock(tgt))
+		links = append(links, r.interviewBlocks(ctx, play, trail, tgt)...)
 	}
 	drafting := trail.TargetType == TargetInterview && play.BuiltinKey == DraftInterviewKey
-	if drafting {
-		links = append(links, r.draftingBlock(ctx, trail))
-	}
 	conversationID, err := r.openThread(ctx, play.WorkspaceID, trail.TargetType, trail.TargetID, trail.StarterID)
 	if err != nil {
 		return refuse(err)
@@ -401,6 +398,28 @@ func (r *Runner) clearSuggestions(ctx context.Context, trail *Trail) {
 	if err := r.answers.ClearSuggestions(ctx, trail.ProjectID); err != nil {
 		r.log.Warn("plays: clear suggested changes failed", "trail", trail.ID, "project", trail.ProjectID, "error", err)
 	}
+}
+
+// interviewBlocks is an interview run's context: the interview, plus what a drafting or an audit run reads.
+func (r *Runner) interviewBlocks(ctx context.Context, play *Play, trail *Trail, tgt target) []string {
+	blocks := []string{interviewBlock(tgt)}
+	if play.BuiltinKey == DraftInterviewKey {
+		blocks = append(blocks, r.draftingBlock(ctx, trail))
+	}
+	if play.BuiltinKey == AuditKey {
+		blocks = append(blocks, r.auditBlock(ctx, trail))
+	}
+	return blocks
+}
+
+// auditBlock names an audit run's date, its trail id, and what to audit: question project sources, else its own checkout.
+func (r *Runner) auditBlock(ctx context.Context, trail *Trail) string {
+	block := fmt.Sprintf("Today is %s. This run's trail id is %s.", r.now().UTC().Format(time.DateOnly), trail.ID)
+	sources := r.projectSourcesBlock(ctx, trail, StanceQuestion)
+	if sources == "" {
+		return block + "\nThis project has no project source under question: audit its own code, in the checkout you are running in."
+	}
+	return block + "\n" + sources
 }
 
 // draftingBlock tells a drafting run its trail id, for the drafts it saves, and where its follow project sources are.

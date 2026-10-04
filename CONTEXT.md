@@ -194,6 +194,18 @@ and named first, for the agent to read before anything else, in every Agent
 turn in that project.
 _Avoid_: Practices doc, guidelines, rules file
 
+**Audit**:
+A doc the Audit via AI play writes from a project's Interview page once the
+interview memory exists, measuring code against that memory: a
+predecessor's, the project sources under question, or with none the
+project's own. Titled "Audit of <what>, <date>" in the project's Main
+folder, one line per finding under the memory's headings: a verdict (Carry
+over, Rebuild, or Avoid for a predecessor; Keeps or Fix for own code),
+where it is, and the rule. The answers about question sources are checked
+first, as the known breaks. Each run writes a new one, and To tickets via
+AI turns it into work.
+_Avoid_: Review, report, scan
+
 **Decisions log**:
 A project memory recording only the tickets that changed how the project
 works, three lines at most per entry, with reversed decisions marked
@@ -222,10 +234,10 @@ definition — the run dialog picks those per run, footer memories among
 them. Runs on the clicking user's own paired harness and posts into the
 target's thread, which for an interview is hidden plumbing; a play never moves its ticket itself, the agent does, as
 its footer memories say. Every workspace,
-new or existing, is seeded with the same five, "Fix with AI" (ticket,
+new or existing, is seeded with the same six, "Fix with AI" (ticket,
 progress stage), "To tickets via AI" (doc), "Interview" (interview),
-"Test with AI" (ticket, testing stage), and "Draft interview" (interview),
-as ordinary plays a member
+"Test with AI" (ticket, testing stage), "Draft interview" (interview),
+and "Audit via AI" (interview), as ordinary plays a member
 may edit or delete; each keeps a built-in key through renames, and a new
 workspace's start from the instance template of their instructions. Seen and fired with `plays:run`, managed with
 `plays:read`, `plays:write`, `plays:delete`. A named user can be excluded

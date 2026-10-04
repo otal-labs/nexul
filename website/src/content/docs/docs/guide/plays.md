@@ -12,7 +12,7 @@ project's interview.
 
 ## Configure a play
 
-Open **Configuration → Plays**. Every workspace starts with five ordinary plays:
+Open **Configuration → Plays**. Every workspace starts with six ordinary plays:
 
 - **Fix with AI** is a ticket play shown in the In progress stage.
 - **To tickets via AI** is a document play.
@@ -20,9 +20,15 @@ Open **Configuration → Plays**. Every workspace starts with five ordinary play
 - **Test with AI** is a ticket play shown in the Testing stage.
 - **Draft interview** is an interview play that drafts answers from the
   interview's follow sources.
+- **Audit via AI** is an interview play, shown beside the memory once the
+  interview memory exists. It reads the project's sources under question (a
+  predecessor's code), or the project's own checkout when there are none, and
+  writes one doc in the Main folder, "Audit of <what>, <date>", with a
+  verdict, a `path:line`, and the rule for each finding under the memory's
+  headings. A finished run links its doc on the Interview page.
 
 Each keeps a built-in key (`fix-with-ai`, `to-tickets-via-ai`, `interview`,
-`test-with-ai`, `interview-draft`) through renames. A new workspace's copies take their
+`test-with-ai`, `interview-draft`, `audit`) through renames. A new workspace's copies take their
 instructions from the instance's templates (see
 [Templates](/docs/guide/memories/#templates)); editing those never rewrites a
 workspace that already exists, and resetting a built-in play's instructions
