@@ -3,6 +3,7 @@ package t3clientv2
 import (
 	"bytes"
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"testing"
@@ -635,4 +636,170 @@ func TestStartTurn_ApprovalRequest_IsDeclinedOnce(t *testing.T) {
 			assert.Empty(t, f.Dispatched, "declined once")
 		})
 	}
+}
+
+// watchThread calls Watch on th-1 and answers its subscribe with first; Watch returns once that snapshot is in.
+func watchThread(t *testing.T, f *t3rpctest.Server, h *Harness, first json.RawMessage) (string, harness.StartResult) {
+	t.Helper()
+	done := make(chan started, 1)
+	go func() {
+		r, err := h.Watch(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"})
+		done <- started{r, err}
+	}()
+	subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread")
+	f.Write(t3rpctest.Chunk(subID, first))
+	s := <-done
+	require.NoError(t, s.err)
+	assert.Equal(t, "th-1", s.result.SessionID)
+	assert.False(t, s.result.PromptSent)
+	return subID, s.result
+}
+
+// threadAt is th-1's snapshot holding runs and turn items, out of full access so a runtime-mode change would show.
+func threadAt(runs []any, extra map[string]any, turnItems ...any) json.RawMessage {
+	p := map[string]any{"thread": map[string]any{"id": "th-1", "runtimeMode": "approval-required", "deletedAt": nil},
+		"runs": runs, "turnItems": append([]any{}, turnItems...), "providerSessions": []any{}}
+	maps.Copy(p, extra)
+	return snapshotItem(2, p)
+}
+
+// shellStep is a finished command of run 1.
+func shellStep(id, command string) map[string]any {
+	return map[string]any{"id": id, "threadId": "th-1", "runId": runOne, "nodeId": "node:" + id, "ordinal": 1, "status": "completed",
+		"type": "command_execution", "input": command, "updatedAt": "2026-10-03T16:00:00.000Z"}
+}
+
+func TestWatch_NoThreadToFollow_FailsWithoutSendingAnything(t *testing.T) {
+	t.Parallel()
+	deleted := recorded(t, "subscribe-deleted-thread"+nightly)
+	tests := []struct {
+		name   string
+		answer func(t *testing.T, f *t3rpctest.Server, subID string)
+		errIs  error
+	}{
+		{"the thread no longer exists", func(t *testing.T, f *t3rpctest.Server, subID string) {
+			f.Write(failExit(subID, missingThreadCause(t)))
+		}, errThreadGone},
+		{"the snapshot says it was deleted", func(_ *testing.T, f *t3rpctest.Server, subID string) {
+			f.Write(t3rpctest.Chunk(subID, deleted[2]))
+		}, errThreadGone},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f, h := newFake(t, 2)
+			done := make(chan error, 1)
+			go func() {
+				_, err := h.Watch(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"})
+				done <- err
+			}()
+			tt.answer(t, f, t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread"))
+
+			require.ErrorIs(t, <-done, tt.errIs)
+			assert.Empty(t, f.Dispatched, "a gone thread is never recreated by a watch")
+			assert.Empty(t, f.Launched)
+		})
+	}
+}
+
+func TestWatch_NoSession_IsInvalid(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	_, err := h.Watch(t.Context(), harness.Target{Session: laptop(f)})
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.Empty(t, f.Dialed, "nothing to watch, so nothing is dialed")
+}
+
+func TestWatch_RunStillRunning_FollowsItToItsEndAndSendsNothing(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	subID, r := watchThread(t, f, h, threadAt([]any{runOf("msg-1", "running")}, nil, shellStep("step-1", "ls"), assistantItem("Hel", true)))
+
+	f.Write(t3rpctest.Chunk(subID,
+		event(3, "turn-item.updated", shellStep("step-1", "ls")),
+		event(4, "turn-item.updated", shellStep("step-2", "go test ./...")),
+		event(5, "turn-item.updated", assistantItem("Hello there.", false)),
+		event(6, "run.updated", runOf("msg-1", runWaiting)),
+	))
+	assert.Equal(t, []string{"reply Hel", "tool_result go test ./...", "reply Hello there.", "end done"}, labels(drainUpdates(t, r.Updates)),
+		"the partial reply carries on and the step shown before the watch is not shown again")
+	assert.Empty(t, f.Dispatched, "no message, and the runtime mode is left as it is")
+	assert.Empty(t, f.Launched)
+	assert.Empty(t, f.Persisted)
+}
+
+func TestWatch_RunAskingAQuestion_RaisesItAgain(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	asking := recordedItem(t, toolSteps, questionItem, "waiting")
+	asking.RunID = runOne
+	_, r := watchThread(t, f, h, threadAt([]any{runOf("msg-1", "running")}, nil, asking))
+
+	u := t3rpctest.WaitFor(t, r.Updates, "the open question")
+	require.NotNil(t, u.Question, "the run waits on it, so the turn parks again")
+	assert.Equal(t, question1, u.Question.RequestID)
+}
+
+func TestWatch_RunAlreadyOver_EndsAtOnceWithItsFinalReply(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		runs      []any
+		turnItems []any
+		want      []harness.Update
+	}{
+		{"completed", []any{runOf("msg-1", runCompleted)}, []any{shellStep("step-1", "ls"), assistantItem("Hello there.", false)},
+			[]harness.Update{snapshotOf(codexMessage, "Hello there.", false), ended(harness.TurnDone, "")}},
+		{"waiting on nothing handed off", []any{runOf("msg-1", runWaiting)}, []any{assistantItem("Hello there.", false)},
+			[]harness.Update{snapshotOf(codexMessage, "Hello there.", false), ended(harness.TurnDone, "")}},
+		{"interrupted mid-reply, which is no longer streaming", []any{runOf("msg-1", "interrupted")}, []any{assistantItem("Hel", true)},
+			[]harness.Update{snapshotOf(codexMessage, "Hel", false), ended(harness.TurnInterrupted, "")}},
+		{"cancelled", []any{runOf("msg-1", "cancelled")}, nil, []harness.Update{ended(harness.TurnInterrupted, "")}},
+		{"failed", []any{runOf("msg-1", "failed")}, nil, []harness.Update{ended(harness.TurnError, noReason)}},
+		{"no run at all", []any{}, nil, []harness.Update{ended(harness.TurnDone, "")}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f, h := newFake(t, 2)
+			_, r := watchThread(t, f, h, threadAt(tt.runs, nil, tt.turnItems...))
+
+			assert.Equal(t, tt.want, drainUpdates(t, r.Updates))
+			_, watching := h.turns.Load("th-1")
+			assert.False(t, watching, "nothing left for Stop to reach")
+			assert.Empty(t, f.Dispatched)
+		})
+	}
+}
+
+func TestWatch_NewestRunIsAWakeOfAnEarlierRun_FollowsTheRunThatHandedOff(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	linked := map[string]any{"delegatedCompletion": map[string]any{"parentRunId": runOne, "generation": 1, "taskIds": []any{"task-1"}}}
+	subID, r := watchThread(t, f, h, threadAt([]any{runOf("msg-1", runWaiting), runAt(2, wakeMessage, "running")}, map[string]any{
+		"subagents": []any{handedOff("task-1", "app_owned", "completed", delivery("claimed"))},
+		"messages":  []any{userMessage(wakeMessage, 2, linked)},
+	}, replyIn(1, "Handed the audit off.")))
+
+	f.Write(t3rpctest.Chunk(subID,
+		event(3, "turn-item.updated", replyIn(2, "The audit found three issues.")),
+		event(4, "subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("delivered"))),
+		event(5, "run.updated", runAt(2, wakeMessage, runWaiting)),
+	))
+	assert.Equal(t, []string{"reply Handed the audit off.", "note " + handoffNote, "reply The audit found three issues.", "end done"},
+		labels(drainUpdates(t, r.Updates)))
+}
+
+func TestWatch_Interrupted_StopsTheWatchedRunAndEndsInterrupted(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	_, r := watchThread(t, f, h, threadAt([]any{runAt(1, "msg-1", "running")}, nil))
+	f.Projections = map[string]any{"th-1": projectionWith(t, []any{runAt(1, "msg-1", "running")})}
+
+	require.NoError(t, h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"}))
+	cmd := t3rpctest.WaitFor(t, f.Dispatched, "run.interrupt")
+	assert.Equal(t, "run.interrupt", cmd["type"])
+	assert.Equal(t, runOne, cmd["runId"])
+	assert.Equal(t, []harness.Update{ended(harness.TurnInterrupted, "")}, drainUpdates(t, r.Updates),
+		"Stop ends the watched turn at once, without waiting for T3 to report the run's end")
 }
