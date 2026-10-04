@@ -92,11 +92,6 @@ func (l *runningTurn) takeNotes() []string {
 	return notes
 }
 
-// Watch implements harness.Client.
-func (h *Harness) Watch(_ context.Context, _ harness.Target) (harness.StartResult, error) {
-	return harness.StartResult{}, errors.ErrUnsupported
-}
-
 // Interrupt implements harness.Client: it stops the watching turn's handed-off work, then its run, and ends it interrupted.
 func (h *Harness) Interrupt(ctx context.Context, target harness.Target) (err error) {
 	if target.SessionID == "" {
