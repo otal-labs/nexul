@@ -681,6 +681,13 @@ func TestHandleDocCreatedAndUpdated(t *testing.T) {
 		require.NoError(t, HandleDocUpdated(context.Background(), s, ev))
 		require.Len(t, repo.notifsFor("u1"), 1)
 	})
+	t.Run("a lock or unlock tells no watcher, the page flips through its live push", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		s := newTestNotifServiceWith(repo, users(), wsMembers(), &fakeAccessChecker{}).WithDocWatchers(watching("u1"))
+		locked := map[string]any{"doc": docPayload["doc"], "actor_id": "u2", "lock_changed": true}
+		require.NoError(t, HandleDocUpdated(context.Background(), s, notifEvFor(t, "doc.updated", locked)))
+		assert.Empty(t, repo.notifsFor("u1"))
+	})
 	t.Run("watcher lookup failure propagates so the bus retries", func(t *testing.T) {
 		watchers := watching("u1")
 		watchers.err = errors.New("db down")

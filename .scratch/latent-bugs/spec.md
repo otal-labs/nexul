@@ -128,3 +128,11 @@ Saving a note from the editor drops the file's final newline, or adds one
 when the note ends in an image, so a note an agent wrote changes bytes on
 its first human save even when nothing visible changed. Seen in the ticket
 flow walkthrough; normalise the trailing newline in one direction.
+
+## The invite dialog's role picker is greyed out on a fresh install
+
+On a fresh install the role picker in the invite dialog is disabled with no
+hint until a custom role exists
+(`web/src/components/member/InvitationGrantRow.tsx:60`, disabled while there
+are no assignable roles), so the inviter cannot tell why or what to do. Seen
+2026-10-04 in the Clarify via AI walkthrough.

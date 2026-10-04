@@ -22,11 +22,11 @@ type NotificationsRepo struct {
 	q  *sqlcgen.Queries
 }
 
-// CreateMany enqueues the outbox event only if a row was newly inserted.
+// CreateMany enqueues the outbox events only if a row was newly inserted or an unread one lifted by a repeat.
 func (r *NotificationsRepo) CreateMany(ctx context.Context, ns []*workspace.Notification, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
-		inserted := false
+		changed := false
 		for _, n := range ns {
 			rows, err := q.CreateNotificationIfAbsent(ctx, sqlcgen.CreateNotificationIfAbsentParams{
 				ID: n.ID, UserID: n.UserID, WorkspaceID: n.WorkspaceID, Kind: string(n.Kind), SubjectType: string(n.SubjectType),
@@ -38,11 +38,18 @@ func (r *NotificationsRepo) CreateMany(ctx context.Context, ns []*workspace.Noti
 				}
 				return fmt.Errorf("insert notification %s: %w", n.ID, err)
 			}
-			if rows > 0 {
-				inserted = true
+			if rows == 0 && n.Kind.LiftsOnRepeat() {
+				rows, err = q.BumpUnreadNotification(ctx, sqlcgen.BumpUnreadNotificationParams{
+					ID: n.ID, SubjectTitle: n.SubjectTitle, CreatedAt: n.CreatedAt.Unix(), UserID: n.UserID, WorkspaceID: n.WorkspaceID,
+					Kind: string(n.Kind), SubjectType: string(n.SubjectType), SubjectID: n.SubjectID,
+				})
+				if err != nil {
+					return fmt.Errorf("lift notification %s: %w", n.ID, err)
+				}
 			}
+			changed = changed || rows > 0
 		}
-		if !inserted {
+		if !changed {
 			return nil
 		}
 		for _, evt := range evts {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -51,11 +52,9 @@ func (s *Service) clarificationOf(ctx context.Context, d *Doc) (*Clarification, 
 		return nil, err
 	}
 	c := &Clarification{Rounds: rounds, CanClose: s.canClose(ctx, d)}
+	s.redact(ctx, d, c.CanClose, rounds...)
 	for _, r := range rounds {
 		c.Running = c.Running || r.Running
-		if !c.CanClose {
-			r.NoGapsAt = nil
-		}
 	}
 	if n := len(rounds); n > 0 {
 		c.Closed = rounds[n-1].ClosedAt != nil
@@ -84,6 +83,20 @@ func (s *Service) loadRounds(ctx context.Context, docID string) ([]*Clarificatio
 		}
 	}
 	return rounds, nil
+}
+
+// redact blanks what only some may see: the no-gaps signal unless canClose, a round's trail unless the caller sees doc
+// threads or canClose.
+func (s *Service) redact(ctx context.Context, d *Doc, canClose bool, rounds ...*ClarificationRound) {
+	seesTrails := canClose || s.can(ctx, d.ID, permissions.DocsThread)
+	for _, r := range rounds {
+		if !canClose {
+			r.NoGapsAt = nil
+		}
+		if !seesTrails {
+			r.TrailID = ""
+		}
+	}
 }
 
 func (s *Service) canClose(ctx context.Context, d *Doc) bool {
@@ -185,6 +198,7 @@ func (s *Service) SaveAnythingElse(ctx context.Context, docID string, round int,
 	if err := s.repo.SaveClarification(ctx, []*ClarificationRound{r}, nil, evt); err != nil {
 		return nil, fmt.Errorf("save anything else of doc %s round %d: %w", d.ID, round, err)
 	}
+	s.redact(ctx, d, s.canClose(ctx, d), r)
 	return r, nil
 }
 
@@ -291,6 +305,9 @@ func (s *Service) newQuestions(r *ClarificationRound, questions []ClarificationQ
 	for i, q := range questions {
 		if err := normalizeQuestion(&q); err != nil {
 			return nil, fmt.Errorf("question %d: %w", i+1, err)
+		}
+		if fix := optionsFix(q.Options); fix != "" {
+			return nil, fmt.Errorf("%w: question %d, %q, %s; resend the whole round with it fixed", apperrs.ErrInvalid, i+1, q.Question, fix)
 		}
 		if slices.ContainsFunc(out, func(o *ClarificationQuestion) bool { return o.Question == q.Question }) {
 			return nil, fmt.Errorf("%w: question %d, %q, is asked twice", apperrs.ErrInvalid, i+1, q.Question)
@@ -537,4 +554,31 @@ func normalizeQuestion(q *ClarificationQuestion) error {
 	}
 	q.Options = options
 	return nil
+}
+
+// optionsFix says what to change in a question's options, or "" when they hold: two at least, and "(Suggested)" on the
+// first alone if on any.
+func optionsFix(options []QuestionOption) string {
+	if len(options) == 1 {
+		return "has 1 option; give it two to four concrete options that each stand on their own"
+	}
+	if len(options) < 2 {
+		return fmt.Sprintf("has %d options; give it two to four concrete options that each stand on their own", len(options))
+	}
+	var suggested []string
+	for i, o := range options {
+		if strings.Contains(strings.ToLower(o.Label), "(suggested)") {
+			suggested = append(suggested, strconv.Itoa(i+1))
+		}
+	}
+	if n := len(suggested); n > 1 {
+		return fmt.Sprintf("options %s and %s are labelled (Suggested); label only the first option, the one most projects pick",
+			strings.Join(suggested[:n-1], ", "), suggested[n-1])
+	}
+	for i, o := range options[1:] {
+		if strings.Contains(strings.ToLower(o.Label), "(suggested)") {
+			return fmt.Sprintf("option %d, %q, is labelled (Suggested); move it to the first place, where the suggested option always goes", i+2, o.Label)
+		}
+	}
+	return ""
 }

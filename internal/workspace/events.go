@@ -127,6 +127,7 @@ type docEvent struct {
 	Doc              docRef   `json:"doc"`
 	ActorID          string   `json:"actor_id"`
 	MentionedUserIDs []string `json:"mentioned_user_ids"`
+	LockChanged      bool     `json:"lock_changed"`
 }
 
 // docRef is the slice of a doc the generation rules need.
@@ -253,6 +254,7 @@ func HandleDocCreated(ctx context.Context, svc *NotificationService, ev eventbus
 }
 
 // HandleDocUpdated notifies the doc's watchers except the editor; people the edit newly @-mentions get a mention instead.
+// A lock or unlock is no edit and tells nobody.
 func HandleDocUpdated(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
 	var e docEvent
 	if err := json.Unmarshal(ev.Payload, &e); err != nil {
@@ -260,6 +262,9 @@ func HandleDocUpdated(ctx context.Context, svc *NotificationService, ev eventbus
 	}
 	if e.Doc.ID == "" {
 		return apperrs.Fatal(fmt.Errorf("doc.updated missing doc id"))
+	}
+	if e.LockChanged {
+		return nil
 	}
 	return svc.onDocActivity(CtxWithEventKey(ctx, ev.ID), e, KindDocUpdated)
 }

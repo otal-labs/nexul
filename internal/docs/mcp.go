@@ -84,7 +84,7 @@ type clarifyAnswerIn struct {
 type clarifyQuestionIn struct {
 	Question    string          `json:"question" jsonschema:"The question as the people answering read it, in plain words."`
 	Why         string          `json:"why,omitempty" jsonschema:"One line on why the doc needs this answer."`
-	Options     []clarifyOption `json:"options,omitempty" jsonschema:"The choices to pick from; omit for a free-text question. A free-text box is always offered beside them."`
+	Options     []clarifyOption `json:"options,omitempty" jsonschema:"Two to four choices to pick from, each standing on its own; only the first may be labelled (Suggested). A free-text box is always offered beside them."`
 	MultiSelect bool            `json:"multi_select,omitzero" jsonschema:"true lets several options be picked. Defaults to false."`
 }
 

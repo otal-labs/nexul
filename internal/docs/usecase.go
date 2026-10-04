@@ -385,7 +385,7 @@ func (s *Service) LockForPlay(ctx context.Context, id string) (bool, error) {
 
 func (s *Service) persistLocked(ctx context.Context, d *Doc, locked bool) error {
 	d.Locked = locked
-	if err := s.repo.SetLocked(ctx, d.ID, locked, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *d, ActorID: actorID(ctx)}}); err != nil {
+	if err := s.repo.SetLocked(ctx, d.ID, locked, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *d, ActorID: actorID(ctx), LockChanged: true}}); err != nil {
 		return fmt.Errorf("lock doc %s: %w", d.ID, err)
 	}
 	return nil

@@ -48,6 +48,8 @@ type UpdatedEvent struct {
 	ActorID string `json:"actor_id,omitempty"`
 	// MentionedUserIDs are the people this save @-mentions that the previous version did not.
 	MentionedUserIDs []string `json:"mentioned_user_ids,omitempty"`
+	// LockChanged marks a lock or unlock: title and body are unchanged, so it tells no watcher.
+	LockChanged bool `json:"lock_changed,omitempty"`
 }
 
 // DeletedEvent is the doc.deleted payload; the doc is already gone by publish time, so consumers get identity only.

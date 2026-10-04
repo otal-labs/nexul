@@ -679,6 +679,7 @@ func TestLock_RefusesTitleAndBodyEditsUntilUnlocked(t *testing.T) {
 	updated := repo.eventsFor(TopicUpdated)
 	require.Len(t, updated, 1)
 	assert.True(t, updated[0].Payload.(UpdatedEvent).Doc.Locked, "the doc.updated push tells open editors to go read-only")
+	assert.True(t, updated[0].Payload.(UpdatedEvent).LockChanged, "a lock is no edit to tell watchers of")
 
 	_, err = s.Update(testCtx(), d.ID, "Renamed", "new body")
 	require.ErrorIs(t, err, apperrs.ErrConflict)
@@ -694,9 +695,11 @@ func TestLock_RefusesTitleAndBodyEditsUntilUnlocked(t *testing.T) {
 
 	_, err = s.Unlock(testCtx(), d.ID)
 	require.NoError(t, err)
+	assert.True(t, repo.eventsFor(TopicUpdated)[1].Payload.(UpdatedEvent).LockChanged, "nor an unlock")
 	got, err = s.Update(testCtx(), d.ID, "Renamed", "new body")
 	require.NoError(t, err)
 	assert.Equal(t, "Renamed", got.Title)
+	assert.False(t, repo.eventsFor(TopicUpdated)[2].Payload.(UpdatedEvent).LockChanged, "an edit is one")
 }
 
 func TestLock_NeedsDocsLock(t *testing.T) {
@@ -731,6 +734,7 @@ func TestLockForPlay_LocksWithoutDocsLockAndOnlyOnce(t *testing.T) {
 	require.Len(t, updated, 1)
 	assert.True(t, updated[0].Payload.(UpdatedEvent).Doc.Locked, "the lock reaches open pages like any other")
 	assert.Equal(t, "user-1", updated[0].Payload.(UpdatedEvent).ActorID, "the starter is the one who locked it")
+	assert.True(t, updated[0].Payload.(UpdatedEvent).LockChanged, "a play's lock is no edit to tell watchers of")
 
 	changed, err = reader.LockForPlay(testCtx(), d.ID)
 	require.NoError(t, err)

@@ -14,7 +14,8 @@ Decision: a doc's change notifications go to its watchers, the people who create
 - Stopping sticks. The `doc_watchers` row stays with `watching` off, so the person's own later edits do not add them
   again; watching again turns it back on.
 - `doc.updated` notifies the watchers, minus the editor and minus anyone who can no longer open the doc. `doc.created`
-  does the same, so it notifies nobody: the creator is the only watcher and the actor. A mention still notifies the
+  does the same, so it notifies nobody: the creator is the only watcher and the actor. A `doc.updated` marked
+  `lock_changed` is a lock or unlock, not an edit, and notifies nobody; open pages still flip read-only on it. A mention still notifies the
   person mentioned whether or not they watch, and does not make them a watcher.
 - Migration 0050 makes every existing doc's creator and each distinct named-version author a watcher, skipping anyone
   who is not a user. An upgraded instance therefore stops notifying members who never touched a doc.
