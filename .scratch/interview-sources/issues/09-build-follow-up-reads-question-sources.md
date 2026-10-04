@@ -15,7 +15,11 @@ written here.
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A run on a fake harness asks a round naming a question source's file
-- [ ] Instructions migration leaves an edited workspace play untouched
+- [x] A run on a fake harness asks a round naming a question source's file
+- [x] Instructions migration leaves an edited workspace play untouched
+
+## Answer
+
+Built in #439.
