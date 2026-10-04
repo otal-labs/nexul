@@ -45,10 +45,11 @@ export const ClarificationRoundsFeed = ({ clarification, readOnly }: Clarificati
 
   return (
     <div className="mt-5 space-y-6">
-      {rounds.map((round) => (
+      {rounds.map((round, i) => (
         <ClarificationRoundSection
           key={round.round}
           round={round}
+          number={i + 1}
           current={current}
           readOnly={locked}
           folded={folded(round)}

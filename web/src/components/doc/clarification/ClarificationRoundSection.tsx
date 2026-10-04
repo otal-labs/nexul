@@ -8,6 +8,7 @@ import { countLine } from "@/models/QuestionChecklist";
 
 interface ClarificationRoundSectionProps {
   round: ClarificationRound;
+  number: number;
   current: string | null;
   readOnly: boolean;
   folded: boolean;
@@ -19,10 +20,10 @@ interface ClarificationRoundSectionProps {
 }
 
 // One round as a foldable section of numbered rows, ending with its "Anything else?".
-export const ClarificationRoundSection = ({ round, current, readOnly, folded, open, onToggleFold, onMove, around }: ClarificationRoundSectionProps) => {
+export const ClarificationRoundSection = ({ round, number, current, readOnly, folded, open, onToggleFold, onMove, around }: ClarificationRoundSectionProps) => {
   return (
     <div>
-      <QuestionSection label={`Round ${round.round}`} meta={countLine(round.questions.map(questionRow))} folded={folded} onToggle={onToggleFold}>
+      <QuestionSection label={`Round ${number}`} meta={countLine(round.questions.map(questionRow))} folded={folded} onToggle={onToggleFold}>
         <ol>
           {round.questions.map((question, i) => (
             <QuestionChecklistRow

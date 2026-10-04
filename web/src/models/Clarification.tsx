@@ -74,6 +74,9 @@ export const questionRow = (q: ClarificationQuestion): ChecklistRow => ({
 // The rounds that asked something; a running round and a no-gaps round hold no questions.
 export const askedRounds = (c: Clarification): ClarificationRound[] => c.rounds.filter((r) => r.questions.length > 0);
 
+// What a round is called to the reader: its place among the rounds that asked something, so a no-gaps round leaves no hole.
+export const roundNumber = (c: Clarification, r: ClarificationRound): number => askedRounds(c).filter((a) => a.round < r.round).length + 1;
+
 // Questions nobody has answered or skipped, the tab's count; a closed clarification waits on nobody.
 export const waitingCount = (c: Clarification): number =>
   c.closed ? 0 : c.rounds.flatMap((r) => r.questions).filter(isPending).length;
@@ -85,13 +88,15 @@ export const answeredCount = (c: Clarification): number =>
 export const noGapsRound = (c: Clarification): ClarificationRound | undefined =>
   c.rounds.filter((r) => r.no_gaps_at !== undefined).at(-1);
 
-// Answers saved after the newest no-gaps round wrote the doc, which another round picks up.
+// Answers saved after the newest no-gaps round wrote the doc, to questions it had already seen; later rounds are not stale.
 export const answersChangedSinceWritten = (c: Clarification): number => {
-  const written = noGapsRound(c)?.no_gaps_at;
-  if (!written) return 0;
+  const writer = noGapsRound(c);
+  if (!writer?.no_gaps_at) return 0;
+  const written = Date.parse(writer.no_gaps_at);
   return c.rounds
+    .filter((r) => r.round <= writer.round)
     .flatMap((r) => r.questions)
-    .filter((q) => q.answered_at !== undefined && Date.parse(q.answered_at) > Date.parse(written)).length;
+    .filter((q) => q.answered_at !== undefined && Date.parse(q.answered_at) > written).length;
 };
 
 export type ClarificationPhase = "none" | "running" | "closed" | "noGaps" | "waiting" | "answered";
@@ -118,17 +123,17 @@ export const clarificationStatus = (c: Clarification, dev: boolean, locked: bool
   const phase = clarificationPhase(c);
   const asked = askedRounds(c);
   const rounds = plural(asked.length, "round");
-  const newest = c.rounds.at(-1)?.round ?? 0;
-  if (phase === "running" && dev) return { icon: "running", label: `Round ${newest} running`, detail: locked ? "The doc is locked until it ends" : "" };
+  const newest = c.rounds.at(-1);
+  if (phase === "running" && dev) return { icon: "running", label: `Round ${newest ? roundNumber(c, newest) : 1} running`, detail: locked ? "The doc is locked until it ends" : "" };
   if (phase === "running") return { icon: null, label: "More questions are on the way", detail: "" };
   if (phase === "closed" && dev) return { icon: "done", label: "Closed", detail: `${rounds} · ${answeredCount(c)} answered` };
   if (phase === "closed") return { icon: "done", label: "All answered", detail: rounds };
   if (phase === "noGaps" && dev) return { icon: "done", label: "No gaps left", detail: "The doc now holds every answer" };
   if (phase === "waiting") {
-    const round = asked.filter((r) => r.questions.some(isPending)).at(-1)?.round ?? newest;
-    return { icon: "waiting", label: `${plural(waitingCount(c), "question")} waiting`, detail: `Round ${round}` };
+    const waitingRound = asked.filter((r) => r.questions.some(isPending)).at(-1);
+    return { icon: "waiting", label: `${plural(waitingCount(c), "question")} waiting`, detail: `Round ${waitingRound ? roundNumber(c, waitingRound) : asked.length}` };
   }
-  if (phase === "answered" && dev) return { icon: "done", label: `Round ${asked.at(-1)?.round ?? newest} answered`, detail: "" };
+  if (phase === "answered" && dev) return { icon: "done", label: `Round ${asked.length} answered`, detail: "" };
   if (phase === "none") return { icon: null, label: "No questions yet", detail: "" };
   return { icon: "done", label: "All answered", detail: "Thanks, nothing is waiting on you." };
 };
