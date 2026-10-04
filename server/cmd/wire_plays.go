@@ -6,6 +6,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/plays"
@@ -119,6 +120,39 @@ func (a playsInterviewAnswers) RecordRound(ctx context.Context, projectID, answe
 	}
 	_, err := a.svc.RecordRound(ctx, projectID, answeredBy, rows)
 	return err
+}
+
+func (a playsInterviewAnswers) ListSources(ctx context.Context, projectID string) ([]plays.InterviewSource, error) {
+	srcs, err := a.svc.ListSources(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]plays.InterviewSource, 0, len(srcs))
+	for _, s := range srcs {
+		out = append(out, plays.InterviewSource{ID: s.ID, Kind: s.Kind, Ref: s.Ref, Label: s.Label, Stance: s.Stance, Unreadable: s.NotVisible || s.Gone})
+	}
+	return out, nil
+}
+
+func (a playsInterviewAnswers) ClearSuggestions(ctx context.Context, projectID string) error {
+	return a.svc.ClearSuggestions(ctx, projectID)
+}
+
+// playsCheckouts adapts pairing's project links and computer project lists to the runner's Checkouts seam.
+type playsCheckouts struct {
+	svc *pairing.Service
+}
+
+func (a playsCheckouts) LinkedProject(ctx context.Context, userID, projectID string) (string, string, error) {
+	link, err := a.svc.GetProjectLink(ctx, userID, projectID)
+	if err != nil {
+		return "", "", err
+	}
+	return link.ComputerID, link.HarnessProjectID, nil
+}
+
+func (a playsCheckouts) ListProjects(ctx context.Context, userID, computerID string) ([]harness.Project, error) {
+	return a.svc.ListProjects(ctx, userID, computerID)
 }
 
 // playsThreads adapts chat to the runner's Threads seam (ADR 0017: plays never imports chat).

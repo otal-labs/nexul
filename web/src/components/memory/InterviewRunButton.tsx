@@ -1,5 +1,6 @@
 import { PlayButton } from "@/components/play/PlayButton";
 import { useFetchApplicablePlays } from "@/hooks/PlayHooks";
+import { DRAFT_INTERVIEW_KEY } from "@/models/Play";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 interface InterviewRunButtonProps {
@@ -8,11 +9,11 @@ interface InterviewRunButtonProps {
   variant?: "outline" | "default";
 }
 
-// Hidden when the workspace has no enabled interview play the caller may run on this project.
+// Hidden when the workspace has no enabled interview play, besides the drafting one, the caller may run on this project.
 export const InterviewRunButton = ({ projectId, label, variant = "outline" }: InterviewRunButtonProps) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: plays } = useFetchApplicablePlays(workspaceId, projectId, "interview", undefined);
-  const play = plays?.[0];
+  const play = plays?.find((p) => p.builtin_key !== DRAFT_INTERVIEW_KEY);
 
   if (!play) return null;
 

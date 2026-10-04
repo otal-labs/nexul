@@ -39,6 +39,15 @@ const (
 		"Then write the memory with `memory_update`, passing its id and the full markdown body: rules, not a transcript, as short imperative lines under headings you choose, with no questions, answers, or narration. Keep every existing rule no answer contradicts, and change only what the answers change. " +
 		"The body is capped at 8,000 characters and every agent turn in the project reads it first, so keep it well under the cap: tighten wording and drop what a linter or the code already enforces. " +
 		"Reply with a short summary of what the memory now says and what this run changed."
+	draftInterviewInstructions = "Draft answers to this project's Interview template from its follow sources, for the person to confirm on the project's Interview page; the project, this run's trail id, and the checkouts of its project sources are named below. " +
+		"Start by calling `memory_create` with the project id and `kind` `interview`: it returns the interview memory with its `questions` (the Interview template's questions), its `answers` (round 0 answers the template's questions, a skip is no answer), its `sources`, and its `drafts`. " +
+		"Read every source whose stance is follow: a path in the checkout you are running in, a doc with `doc_get`, a memory with `memory_get`, pasted text from its body, and another project through its memories and interview answers with `memory_list` and `memory_get`, plus its checkout when one is named below. " +
+		"Read a large source selectively: its table of contents or headings first, then only the passages a question needs. Never read a source whose stance is question and never draft from one; another run asks about those. " +
+		"Draft every template question with no answer or a skip that a follow source speaks to. Draft a question that already has an answer only where the sources now say something different from that answer, and leave every other answered question alone. A question no follow source speaks to gets no draft. " +
+		"Shape each draft like an answer: `selected` with the labels of the options it picks, `text` for what the options do not say, `source_ids` with the ids of the follow sources it came from, and `where`, one line of at most 500 characters saying where in them, such as practices/testing.md, Test error paths first. " +
+		"Save drafts with `memory_update` on the interview memory, in `drafts` with this run's `trail_id`, as you find them rather than all at the end, so the page shows them while you work; a draft replaces its question's earlier one. " +
+		"Never ask the person anything and never use a question tool: the person confirms drafts on the page. Do not change the memory's body, its answers, or its sources. " +
+		"End with a one-line summary of how many questions you drafted and from which sources."
 	testWithAIInstructions = "Test this ticket the way a tester would, then pass or fail it. Read it with `ticket_get`, which also carries its links and where to test; its acceptance criteria are what you test against. " +
 		"Follow the testing strategy in this project's interview memory, which comes with this run. With no interview, check each criterion on the live URL and run the tests the project already has, and add none. " +
 		"Where to test is the `test_target` in that result. Test nowhere else: never production, and never anything that shares production's services. If its url is empty, the only place to test is production: stop without passing or failing the ticket, and reply that it needs a deploy branch on its own network. " +
@@ -235,6 +244,9 @@ func (s *Service) Delete(ctx context.Context, workspaceID, id string) error {
 // TemplateKind names built-in play instructions among the instance templates (ADR 0103).
 const TemplateKind = "play_instructions"
 
+// DraftInterviewKey is the built-in drafting play's key: an interview run that drafts answers instead of asking (ADR 0122).
+const DraftInterviewKey = "interview-draft"
+
 // Builtin is one seeded play: the stable key a clone matches it by, and what a new workspace gets.
 type Builtin struct {
 	Key           string
@@ -261,6 +273,9 @@ func Builtins() []Builtin {
 		{Key: "test-with-ai", Label: "Test with AI", Type: TypeTicket, ShowWhenStage: &testingStage,
 			Description:  "Tests the ticket on its test environment against its acceptance criteria, then passes or fails it.",
 			Instructions: testWithAIInstructions},
+		{Key: DraftInterviewKey, Label: "Draft interview", Type: TypeInterview,
+			Description:  "Drafts answers to the Interview questions from this project's follow sources, for a person to confirm.",
+			Instructions: draftInterviewInstructions},
 		{Key: ClarifyKey, Label: "Clarify via AI", Type: TypeDoc,
 			Description:  "Asks the doc's authors about the gaps in what they need, a round at a time, then writes the answers into the doc.",
 			Instructions: clarifyInstructions},
@@ -348,7 +363,7 @@ func (s *Service) builtin(ctx context.Context, workspaceID, key string) (*Play, 
 			return p, nil
 		}
 	}
-	return nil, fmt.Errorf("%w: workspace %s has no built-in play %q; it was deleted, or the key is not one of fix-with-ai, to-tickets-via-ai, interview, test-with-ai, clarify", apperrs.ErrNotFound, workspaceID, key)
+	return nil, fmt.Errorf("%w: workspace %s has no built-in play %q; it was deleted, or the key is not one of fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft, clarify", apperrs.ErrNotFound, workspaceID, key)
 }
 
 func (s *Service) getInWorkspace(ctx context.Context, workspaceID, id string) (*Play, error) {
