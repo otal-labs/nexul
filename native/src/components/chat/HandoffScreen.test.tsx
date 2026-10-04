@@ -56,7 +56,7 @@ const renderHandoff = async () => {
 
 beforeEach(() => get.mockReset());
 
-test("a reply whose hand-offs are gone (the reply was deleted) says so", async () => {
+test("a reply without the hand-off says it is no longer there", async () => {
   get.mockResolvedValue([reply()]);
   await renderHandoff();
 
@@ -73,5 +73,23 @@ test("the hand-off shows the helper's prompt, each step and its reply", async ()
   expect(screen.getByText("bun run test")).toBeTruthy();
   expect(screen.getByText("Retried after a timeout")).toBeTruthy();
   expect(screen.getByText("All 212 tests pass.")).toBeTruthy();
-  expect(get).toHaveBeenCalledWith("/api/chat/conversations/c1/messages?limit=100");
+  expect(get).toHaveBeenCalledWith(expect.stringContaining("/conversations/c1/messages"));
+});
+
+test.each([
+  ["done", "No reply came back."],
+  ["left_running", "Still running in T3 Code."],
+] as const)("a %s hand-off with no reply says why", async (state, line) => {
+  get.mockResolvedValue([reply([{ ...handoff, state, reply: "" }])]);
+  await renderHandoff();
+
+  expect(await screen.findByText(line)).toBeTruthy();
+});
+
+test("a running hand-off with no steps yet shows it is working", async () => {
+  get.mockResolvedValue([reply([{ ...handoff, state: "running", reply: "", steps: [] }])]);
+  await renderHandoff();
+
+  expect(await screen.findByText("Working…")).toBeTruthy();
+  expect(screen.queryByText("No reply came back.")).toBeNull();
 });

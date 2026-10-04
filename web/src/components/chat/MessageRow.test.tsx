@@ -175,6 +175,34 @@ describe("MessageRow hand-offs", () => {
     states.forEach(([, label], i) => expect(screen.getByRole("button", { name: `Helper ${i} claude-sonnet-4-5, ${label}` })).toBeInTheDocument());
   });
 
+  it("names a pill without a model by its title and state alone", () => {
+    renderRow(
+      <MessageRow
+        message={message({ author_kind: "agent", body: "Done.", handoffs: [handoff({ model: "" })] })}
+        author={unknownPerson("onik97")}
+        isOwn
+        onEdit={noop}
+        onDelete={noop}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Review the auth module, Done" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["done", "No reply came back."],
+    ["left_running", "Still running in T3 Code."],
+  ] as const)("a %s hand-off with no reply says why in its conversation", async (state, line) => {
+    const user = userEvent.setup();
+    renderRow(
+      <MessageRow message={message({ author_kind: "agent", body: "Done.", handoffs: [handoff({ state })] })} author={unknownPerson("onik97")} isOwn onEdit={noop} onDelete={noop} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Review the auth module/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Review the auth module" });
+    expect(within(dialog).getByRole("status")).toHaveTextContent(line);
+  });
+
   it("opens a hand-off's conversation: the prompt it was given, its steps, then its reply", async () => {
     const user = userEvent.setup();
     const steps = [

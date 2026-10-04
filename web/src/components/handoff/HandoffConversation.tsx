@@ -36,7 +36,9 @@ export const HandoffConversation = ({ handoff }: HandoffConversationProps) => {
         ))}
         {running && handoff.steps.length === 0 && <LoadingDisplay label="Working…" className="justify-start p-1" />}
         {handoff.reply !== "" && <TrailReplyProse text={handoff.reply} />}
-        {!running && handoff.reply === "" && <EmptyRow>No reply came back.</EmptyRow>}
+        {!running && handoff.reply === "" && (
+          <EmptyRow>{handoff.state === "left_running" ? "Still running in T3 Code." : "No reply came back."}</EmptyRow>
+        )}
       </div>
     </div>
   );

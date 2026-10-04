@@ -20,13 +20,11 @@ export const HandoffPill = ({ handoff }: HandoffPillProps) => {
       <DialogPill
         icon={<HarnessProviderMark driver={handoff.driver} className="size-3" />}
         label={handoff.title}
+        name={`${[handoff.title, handoff.model].filter(Boolean).join(" ")}, ${HANDOFF_STATE_LABELS[handoff.state]}`}
         trailing={
           <>
-            {/* The flex row drops this space; it keeps the title and model apart in the button's name. */}
-            {" "}
             {handoff.model && <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{handoff.model}</span>}
             <HandoffStateDot state={handoff.state} />
-            <span className="sr-only">, {HANDOFF_STATE_LABELS[handoff.state]}</span>
           </>
         }
         onOpen={() => setOpen(true)}
