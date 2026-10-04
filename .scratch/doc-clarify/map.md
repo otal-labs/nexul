@@ -71,6 +71,8 @@ too.
 
 ## Decisions so far
 
+- [How the interview's machinery carries over to a doc](issues/01-how-the-interview-carries-over.md): own docs-domain tables beside the interview's; a run posts its round through `doc_update` and ends, `doc_get` returns the rounds; the runner locks at start, unlocks at every end, and only the running round's starter may write through the lock; the checklist rows carry over, `QuestionCard` does not; two new notification kinds; the phone starts from a read-only doc screen.
+
 ## Not yet specified
 
 - The build tickets: storage, the play and its run, the web panel, the
