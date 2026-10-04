@@ -192,16 +192,20 @@ describe("useFormDialog", () => {
     expect(await screen.findByText("cancelled")).toBeInTheDocument();
   });
 
-  it("resolves cancelled on a backdrop click", async () => {
+  it("stays open with the typed input on a backdrop click", async () => {
     const user = userEvent.setup();
     renderWithRoot(<FormHarness form={<TestForm />} />);
 
     await user.click(screen.getByRole("button", { name: "Open" }));
+    await user.type(screen.getByPlaceholderText("Title"), "Half written");
     const overlay = document.querySelector("[data-slot='dialog-overlay']");
     expect(overlay).not.toBeNull();
     await user.click(overlay as Element);
 
-    expect(await screen.findByText("cancelled")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Title")).toHaveValue("Half written");
+    expect(screen.getByText("pending")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
   });
 
   it("renders a form passed as a component type", async () => {
