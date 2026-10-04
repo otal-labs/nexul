@@ -875,20 +875,29 @@ func (r *Runner) Stop(ctx context.Context, trailID string) (*Trail, error) {
 	return trail, nil
 }
 
-// EndRunsCutOffByRestart closes the runs whose turns only the previous process watched; call it at boot, before any run starts.
-func (r *Runner) EndRunsCutOffByRestart(ctx context.Context) error {
+// ResumeRunsAfterRestart follows again the runs whose turns only the previous process watched; call it at boot, before any run starts.
+func (r *Runner) ResumeRunsAfterRestart(ctx context.Context) error {
 	trails, err := r.trails.ListRunningTrails(ctx)
 	if err != nil {
 		return fmt.Errorf("list running trails: %w", err)
 	}
-	const reason = "Nexul restarted during the run"
 	for _, trail := range trails {
 		tgt, err := r.readTarget(ctx, trail.TargetType, trail.TargetID)
 		if err != nil {
-			r.log.Warn("plays: restart cleanup could not read the target", "trail", trail.ID, "error", err)
+			r.log.Warn("plays: restart could not read the run's target", "trail", trail.ID, "error", err)
 		}
-		r.finish(ctx, trail, tgt.title, harness.TurnResult{State: harness.TurnInterrupted, LastError: reason}, "",
-			reason+"; the harness may have finished it, check its own thread for the outcome.")
+		// A run the harness never accepted has no thread to follow.
+		if trail.HarnessSessionID == "" || trail.ConversationID == "" {
+			const reason = "Nexul restarted before the run started"
+			r.finish(ctx, trail, tgt.title, harness.TurnResult{State: harness.TurnInterrupted, LastError: reason}, "", reason+".")
+			continue
+		}
+		r.note(ctx, trail, "Nexul restarted; following the run in T3 Code again.")
+		r.save(ctx, trail)
+		r.startTurn(ctx, trail, tgt.title, agent.TurnRequest{
+			ConversationID: trail.ConversationID, ViaUserID: trail.StarterID, Watch: true,
+			Target: &agent.TargetOverride{ComputerID: trail.ComputerID, Provider: trail.Provider, Model: trail.Model, ModelOptions: trail.ModelOptions},
+		}, true)
 	}
 	return nil
 }

@@ -392,6 +392,30 @@ func (h *Harness) forward(ctx context.Context, client rpcConn, threadID string, 
 	}
 }
 
+// Watch implements harness.Client: it only subscribes, so nothing reaches T3 and the turn there carries on untouched.
+func (h *Harness) Watch(ctx context.Context, target harness.Target) (harness.StartResult, error) {
+	if target.SessionID == "" {
+		return harness.StartResult{}, fmt.Errorf("%w: no session to watch", apperrs.ErrInvalid)
+	}
+	client, err := h.connect(ctx, target.Session, h.Options)
+	if err != nil {
+		return harness.StartResult{}, fmt.Errorf("connect t3: %w", err)
+	}
+	sub, err := client.ResumeThread(ctx, target.SessionID, &turnWatch{follow: true})
+	if err != nil {
+		_ = client.Close() // the subscribe error is the one worth reporting
+		return harness.StartResult{}, fmt.Errorf("subscribe t3 thread: %w", err)
+	}
+	if err := sub.Ready(ctx); err != nil {
+		sub.Close()
+		_ = client.Close() // the watch error is the one worth reporting
+		return harness.StartResult{}, fmt.Errorf("watch t3 thread %s: %w", target.SessionID, err)
+	}
+	updates := make(chan harness.Update, 16)
+	go h.pump(ctx, target.Session, client, target.SessionID, sub, updates)
+	return harness.StartResult{SessionID: target.SessionID, Updates: updates}, nil
+}
+
 // Interrupt aborts whatever turn is active on target's thread.
 func (h *Harness) Interrupt(ctx context.Context, target harness.Target) error {
 	if target.SessionID == "" {

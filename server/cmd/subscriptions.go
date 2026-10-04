@@ -366,8 +366,8 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Answers:  playsInterviewAnswers{svc: svc.memoriesSvc},
 		Logger:   logger,
 	})
-	if err := svc.playsRunner.EndRunsCutOffByRestart(ctx); err != nil {
-		logger.Error("plays: end runs cut off by restart", "error", err)
+	if err := svc.playsRunner.ResumeRunsAfterRestart(ctx); err != nil {
+		logger.Error("plays: resume runs after restart", "error", err)
 	}
 
 	// A ticket entering done fires the built-in decisions check on the mover's or the developer's harness.

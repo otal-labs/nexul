@@ -128,6 +128,11 @@ type turn struct {
 	// snapshot is the thread's first snapshot, which says how a pending answer reaches T3.
 	snapshot projection
 	prompted bool
+	// adopt makes the turn a Watch: its first snapshot names the run to follow instead of a message it sends.
+	adopt bool
+	// caught is what the first snapshot's batch emitted, and over the turn's end if that batch already ended it.
+	caught []harness.Update
+	over   *harness.TurnResult
 }
 
 // StartTurn implements harness.Client: the message goes out after the thread's snapshot, and its run is the turn.
@@ -146,18 +151,84 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 		t.close()
 		return harness.StartResult{}, err
 	}
-	l := newRunningTurn(ctx, t.messageID)
-	h.turns.Store(t.threadID, l)
-	updates := make(chan harness.Update, 16)
-	for _, n := range notes {
-		updates <- n
+	return harness.StartResult{SessionID: t.threadID, Updates: t.follow(ctx, src, w, notes), PromptSent: t.prompted}, nil
+}
+
+// Watch implements harness.Client: it follows the thread's newest run without sending T3 anything.
+func (h *Harness) Watch(ctx context.Context, target harness.Target) (harness.StartResult, error) {
+	if target.SessionID == "" {
+		return harness.StartResult{}, fmt.Errorf("%w: no session to watch", apperrs.ErrInvalid)
 	}
-	p := &pump{w: w, open: t.open, openChild: t.openThread, decline: t.decline, log: h.log(), live: l}
+	c, err := h.connect(ctx, target.Session)
+	if err != nil {
+		return harness.StartResult{}, err
+	}
+	t := &turn{h: h, target: target, conn: c, threadID: target.SessionID, adopt: true}
+	src, w, err := t.subscribe(ctx)
+	if err != nil {
+		t.close()
+		return harness.StartResult{}, fmt.Errorf("watch t3 thread %s: %w", t.threadID, err)
+	}
+	// The snapshot's steps were shown before; its replies and open questions still belong to the turn.
+	caught := slices.DeleteFunc(t.caught, func(u harness.Update) bool { return u.Activity != nil && u.Activity.Kind != harness.ActivityNote })
+	if t.over == nil && w.run.ID != "" {
+		return harness.StartResult{SessionID: t.threadID, Updates: t.follow(ctx, src, w, caught)}, nil
+	}
+	src.Close()
+	t.close()
+	return harness.StartResult{SessionID: t.threadID, Updates: finished(caught, t.over)}, nil
+}
+
+// adopted is the message id of the run a Watch follows: the newest run, or the earliest run whose hand-off or restart led to it.
+func adopted(p projection) string {
+	if len(p.Runs) == 0 {
+		return ""
+	}
+	newest := p.Runs[len(p.Runs)-1]
+	for _, r := range p.Runs[:len(p.Runs)-1] {
+		w := newWatch(r.UserMessageID)
+		w.reset(p)
+		if w.followed[newest.ID] {
+			return r.UserMessageID
+		}
+	}
+	return newest.UserMessageID
+}
+
+// finished is a watched turn whose run ended before the watch began, done when the thread had no run.
+func finished(caught []harness.Update, end *harness.TurnResult) <-chan harness.Update {
+	if end == nil {
+		end = &harness.TurnResult{State: harness.TurnDone}
+	}
+	updates := make(chan harness.Update, len(caught)+1)
+	for _, u := range caught {
+		if u.Snapshot != nil {
+			final := *u.Snapshot
+			final.Streaming = false
+			u.Snapshot = &final
+		}
+		updates <- u
+	}
+	updates <- harness.Update{Terminal: end}
+	close(updates)
+	return updates
+}
+
+// follow registers the turn for Stop and pumps its stream after first until the turn ends.
+func (t *turn) follow(ctx context.Context, src source, w *watch, first []harness.Update) <-chan harness.Update {
+	l := newRunningTurn(ctx, t.messageID)
+	t.h.turns.Store(t.threadID, l)
+	updates := make(chan harness.Update, len(first)+16)
+	for _, u := range first {
+		updates <- u
+	}
+	p := &pump{w: w, open: t.open, openChild: t.openThread, decline: t.decline, log: t.h.log(), live: l}
 	go func() {
+		p.declineApprovals(ctx)
 		p.run(ctx, src, updates)
 		t.end(ctx, w, l)
 	}()
-	return harness.StartResult{SessionID: t.threadID, Updates: updates, PromptSent: t.prompted}, nil
+	return updates
 }
 
 // start creates or reuses the thread, reads its snapshot, and dispatches the prompt that snapshot calls for.
@@ -305,7 +376,15 @@ func (t *turn) subscribe(ctx context.Context) (source, *watch, error) {
 			if item.Kind == "snapshot" {
 				t.snapshot = item.Projection
 			}
-			w.apply(item)
+			if item.Kind == "snapshot" && t.adopt && !w.synced {
+				t.messageID = adopted(item.Projection)
+				w.messageID = t.messageID
+			}
+			updates, end := w.apply(item)
+			t.caught = append(t.caught, updates...)
+			if end != nil {
+				t.over = end
+			}
 		}
 	}
 	// A deleted thread still takes a message, so only its snapshot or a delete event says it is gone.
