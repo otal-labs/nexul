@@ -1290,6 +1290,31 @@ func (s *NotificationService) onDocActivity(ctx context.Context, e docEvent, kin
 	return s.fanOut(ctx, evtKey(ctx), n, recipients)
 }
 
+// onDocQuestionsPosted tells the doc's watchers but the round's starter; the starter's own post is no news to them.
+func (s *NotificationService) onDocQuestionsPosted(ctx context.Context, e docQuestionsPostedEvent) error {
+	if e.NoGaps || e.QuestionCount <= 0 || s.watchers == nil {
+		return nil
+	}
+	n, err := s.notice(ctx, SubjectDoc, e.Doc.ID, "New questions on "+e.Doc.Title, e.Doc.ProjectID, e.StartedBy)
+	if err != nil || n.workspaceID == "" {
+		return err
+	}
+	ids, err := s.watchers.ListDocWatcherIDs(ctx, e.Doc.ID)
+	if err != nil {
+		return fmt.Errorf("list watchers of doc %s: %w", e.Doc.ID, err)
+	}
+	return s.fanOutByUserID(ctx, evtKey(ctx), n, KindDocQuestionsAsked, ids)
+}
+
+// onDocRoundAnswered tells the round's starter, unless the answer that finished it was their own.
+func (s *NotificationService) onDocRoundAnswered(ctx context.Context, e docRoundAnsweredEvent) error {
+	n, err := s.notice(ctx, SubjectDoc, e.Doc.ID, "Questions answered on "+e.Doc.Title, e.Doc.ProjectID, e.ActorID)
+	if err != nil || n.workspaceID == "" {
+		return err
+	}
+	return s.fanOutByUserID(ctx, evtKey(ctx), n, KindDocQuestionsAnswered, []string{e.StartedBy})
+}
+
 // docMentionRecipients keeps the mentioned people who are members of the doc's workspace.
 func (s *NotificationService) docMentionRecipients(ctx context.Context, n notice, mentioned []string) ([]recipient, error) {
 	if len(mentioned) == 0 || s.members == nil {

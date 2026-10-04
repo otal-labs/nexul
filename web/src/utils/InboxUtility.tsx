@@ -7,6 +7,8 @@ const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.DocCreated]: "doc created",
   [NotificationKind.DocUpdated]: "doc updated",
   [NotificationKind.DocMentioned]: "mention",
+  [NotificationKind.DocQuestionsAsked]: "new questions",
+  [NotificationKind.DocQuestionsAnswered]: "questions answered",
   [NotificationKind.MemoryUpdated]: "memory updated",
   [NotificationKind.PlayRunFinished]: "play run ended",
   [NotificationKind.PlayRunWaiting]: "needs your answer",
@@ -49,6 +51,8 @@ const docSummary = (ns: Notification[]) => {
     updates > 1 && plural(updates, "update"),
     mentions === 1 && "mentioned you",
     mentions > 1 && `mentioned you ${mentions} times`,
+    count(NotificationKind.DocQuestionsAsked) > 0 && kindLabels[NotificationKind.DocQuestionsAsked],
+    count(NotificationKind.DocQuestionsAnswered) > 0 && kindLabels[NotificationKind.DocQuestionsAnswered],
   ];
   return parts.filter(Boolean).join(" · ");
 };
@@ -66,8 +70,9 @@ const rowOf = (ns: Notification[], folderName: string | undefined): InboxRow => 
   if (newest.subject_type !== SubjectType.Doc) {
     return { type: "notification", key: `n:${newest.id}`, notification: newest, title: newest.subject_title, summary: kindLabels[newest.kind], unreadIds };
   }
-  // A mention's title names its author, so the doc's own title comes from any other notification when there is one.
-  const title = (ns.find((n) => n.kind !== NotificationKind.DocMentioned) ?? newest).subject_title;
+  // These kinds word their title around the doc's, so the doc's own title comes from any other notification when there is one.
+  const titleWorded: NotificationKind[] = [NotificationKind.DocMentioned, NotificationKind.DocQuestionsAsked, NotificationKind.DocQuestionsAnswered];
+  const title = (ns.find((n) => !titleWorded.includes(n.kind)) ?? newest).subject_title;
   return {
     type: "doc",
     key: `doc:${newest.subject_id}`,
