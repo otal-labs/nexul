@@ -12,3 +12,13 @@ fix-up tickets here.
 **Blocked by:** 08, 09, 10, 11
 
 **Status:** ready-for-agent
+
+## Comments
+
+- 2026-10-04, web half walked on this machine: master in an Incus box, a
+  throwaway T3 Code server with Claude, a Restricted member as the client,
+  four rounds to no gaps, then reopen, Stop, and the edge checks. Every step
+  passed. Defects fixed in "Number a doc's question rounds by what they
+  asked and hide agent wording from clients" (#442) and the lock-notification,
+  inbox-bump, trail id, question-validation and instructions fixes (#443).
+  The phone half waits on the phone ticket.
