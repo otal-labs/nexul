@@ -31,14 +31,24 @@ const (
 		"context, acceptance criteria, and a pointer to the doc section it came from. Create each with " +
 		"`ticket_create`, passing the doc id so the ticket links back. Put them in the backlog column. Reply " +
 		"with the list of tickets created and anything in the doc you deliberately did not turn into a ticket."
-	interviewInstructions = "Run this project's interview follow-ups: the person has answered the workspace's Interview template on the project's Interview page, and you ask about what is still open, then write the interview memory; the project and the answers it already records are named below. " +
-		"Start by calling `memory_create` with the project id and `kind` `interview`: it returns the interview memory, whose body is the project's current rules (empty the first time), its `questions` (the Interview template's questions), and its `answers` (the stored answers: round 0 answers the template's questions, round 1 and up are earlier follow-ups). An answer to a question no longer in `questions` answers an earlier wording of one; use it too. " +
+	interviewInstructions = "Run this project's interview follow-ups: the person has answered the workspace's Interview template on the project's Interview page, and you ask about what is still open, then write the interview memory; the project, the answers it already records, and the checkouts of its project sources under question are named below. " +
+		"Start by calling `memory_create` with the project id and `kind` `interview`: it returns the interview memory, whose body is the project's current rules (empty the first time), its `questions` (the Interview template's questions), its `answers` (the stored answers: round 0 answers the template's questions, round 1 and up are earlier follow-ups), and its `sources`. An answer to a question no longer in `questions` answers an earlier wording of one; use it too. " +
 		"Then read the checkout you are running in: manifests and lockfiles, CI config, linter and formatter config, tests, README, docs and decision records. " +
-		"Ask about every skipped or unanswered question, every gap the answers leave that the code cannot settle, and anything the code contradicts. Ask with your own question tool, never through another agent, one round at a time: all of a round's questions in one call, each with your recommended answer as its first option, labelled (Recommended), and a header of at most 12 characters naming its topic, such as Testing. Write each question's text as the question followed by one sentence on why you are asking that names what you found and where, such as: When are tests written? You skipped this, and most commits in the last month add a test file beside the code they change. Keep asking rounds until nothing is left open. Never record something from the code the person did not confirm, and never ask whether to scan the codebase. " +
+		"Read every source whose stance is question as well: how something was done before, such as an earlier phase of this project. A source is a path in the checkout you are running in, a doc with `doc_get`, a memory with `memory_get`, pasted text from its body, or another project through its memories and interview answers with `memory_list` and `memory_get`, plus its checkout when one is named below. Read a large source selectively: its table of contents or headings first, then only the passages a question needs. Read a source whose stance is follow only as context for the gaps; another run drafts answers from it, so write no drafts. " +
+		"Ask about every skipped or unanswered question, every gap the answers leave that the code cannot settle, anything the code contradicts, and what a question source did that the answers do not settle. Ask with your own question tool, never through another agent, one round at a time: all of a round's questions in one call, each with your recommended answer as its first option, labelled (Recommended), and a header of at most 12 characters naming its topic, such as Testing. Write each question's text as the question followed by one sentence on why you are asking that names what you found and where, such as: When are tests written? You skipped this, and most commits in the last month add a test file beside the code they change. For a question source, name the source and the file, such as: Keep booking state on the server for phase 2? Phase 1 keeps it in the mobile app, in src/state/booking.ts of its checkout. Keep asking rounds until nothing is left open. Never record something from the code or a source the person did not confirm, and never ask whether to scan the codebase. " +
 		"Do not ask again what the project already records, such as where its tests live, unless the person changes it; record a change there with `project_update` and `tests_location` as well. " +
 		"Then write the memory with `memory_update`, passing its id and the full markdown body: rules, not a transcript, as short imperative lines under headings you choose, with no questions, answers, or narration. Keep every existing rule no answer contradicts, and change only what the answers change. " +
 		"The body is capped at 8,000 characters and every agent turn in the project reads it first, so keep it well under the cap: tighten wording and drop what a linter or the code already enforces. " +
 		"Reply with a short summary of what the memory now says and what this run changed."
+	draftInterviewInstructions = "Draft answers to this project's Interview template from its follow sources, for the person to confirm on the project's Interview page; the project, this run's trail id, and the checkouts of its project sources are named below. " +
+		"Start by calling `memory_create` with the project id and `kind` `interview`: it returns the interview memory with its `questions` (the Interview template's questions), its `answers` (round 0 answers the template's questions, a skip is no answer), its `sources`, and its `drafts`. " +
+		"Read every source whose stance is follow: a path in the checkout you are running in, a doc with `doc_get`, a memory with `memory_get`, pasted text from its body, and another project through its memories and interview answers with `memory_list` and `memory_get`, plus its checkout when one is named below. " +
+		"Read a large source selectively: its table of contents or headings first, then only the passages a question needs. Never read a source whose stance is question and never draft from one; another run asks about those. " +
+		"Draft every template question with no answer or a skip that a follow source speaks to. Draft a question that already has an answer only where the sources now say something different from that answer, and leave every other answered question alone. A question no follow source speaks to gets no draft. " +
+		"Shape each draft like an answer: `selected` with the labels of the options it picks, `text` for what the options do not say, `source_ids` with the ids of the follow sources it came from, and `where`, one line of at most 500 characters saying where in them, such as practices/testing.md, Test error paths first. " +
+		"Save drafts with `memory_update` on the interview memory, in `drafts` with this run's `trail_id`, as you find them rather than all at the end, so the page shows them while you work; a draft replaces its question's earlier one. " +
+		"Never ask the person anything and never use a question tool: the person confirms drafts on the page. Do not change the memory's body, its answers, or its sources. " +
+		"End with a one-line summary of how many questions you drafted and from which sources."
 	testWithAIInstructions = "Test this ticket the way a tester would, then pass or fail it. Read it with `ticket_get`, which also carries its links and where to test; its acceptance criteria are what you test against. " +
 		"Follow the testing strategy in this project's interview memory, which comes with this run. With no interview, check each criterion on the live URL and run the tests the project already has, and add none. " +
 		"Where to test is the `test_target` in that result. Test nowhere else: never production, and never anything that shares production's services. If its url is empty, the only place to test is production: stop without passing or failing the ticket, and reply that it needs a deploy branch on its own network. " +
@@ -47,7 +57,17 @@ const (
 		"Where the interview calls for an automated end-to-end suite, add or extend a test covering the ticket's acceptance criteria, run it against the url, commit it, and push: to the ticket's linked branch, or in a tests repository to a branch named `<ticket key>-<short-slug>` with a pull request whose title starts with the ticket key. " +
 		"Then record the result exactly as a person would. If every criterion holds and the tests pass, call `ticket_test_report` with `outcome` `pass`. Otherwise call it with `outcome` `fail` and the bug template filled: the steps to reproduce, the expected result the criterion promises, and the actual result you saw. It posts them to the ticket's thread and moves the ticket back to progress. " +
 		"Reply with each criterion and whether it held, the tests you ran and added, and the result you recorded. If you cannot reach the url or run the tests, say what blocked you instead of passing or failing the ticket."
+	clarifyInstructions = "Clarify this doc for the people who wrote it. Read it with `doc_get`: its body and its clarification, every earlier round with its questions, answers, skipped questions, and \"Anything else?\" text. The instructions for this run, if any, win over everything below.\n\n" +
+		"Find the gaps in what the doc says its authors need. Ask about what it must do: who uses it and what each of them does, the steps of each flow, the business rules and their exceptions, the data they have or must keep, what is in and out of scope, and what finished looks like. Ask about how well it must do it, in their terms: how many people use it and when, how fast it must feel, when it must be available, who may see what, devices and languages, accessibility, the systems it must work with, legal or industry rules, deadlines, budget, and what matters most. Never ask how to build it (hosting, databases, frameworks, architecture); those are the developer's, so put anything technical left unclear in your reply.\n\n" +
+		"Do not ask what an earlier round answered, and do not repeat a question still waiting for an answer. Ask a skipped question once more only if it still matters.\n\n" +
+		"If gaps remain, post one round with `doc_update` `questions`: three to six, the biggest unknowns first, grouped by the doc's sections. Write each in plain words for someone non-technical, with two to four concrete options, the one most projects pick first and labelled \"(Suggested)\", multi-select only where several can apply, and a one-line why that says why it matters to them. If the last round has \"Anything else?\" text, send `anything_else_reply` with it: one plain line that answers it, or says which of this round's questions follow it up. Never use your question tool: post the round and end your turn.\n\n" +
+		"If the developer could turn the doc into tickets without asking its authors anything more, there are no gaps left: send `doc_update` with `no_gaps` and the whole new body. Keep the authors' headings and words, weave each answer into the section it belongs to, add a section only where nothing fits, and never mention questions or rounds. Questions skipped twice that still matter go under a short \"Open points\" section.\n\n" +
+		"Never mention AI, an agent, or yourself in anything the authors see. Reply to the developer with what you asked and why, or that the doc is complete and what changed, plus any technical questions for them."
 )
+
+// ClarifyKey is the built-in key of the Clarify via AI play, whose run opens and ends a round of the doc's
+// clarification (ADR 0121).
+const ClarifyKey = "clarify"
 
 // Service is the plays use-case layer: workspace-scoped play definitions (ADR 0055).
 type Service struct {
@@ -225,6 +245,9 @@ func (s *Service) Delete(ctx context.Context, workspaceID, id string) error {
 // TemplateKind names built-in play instructions among the instance templates (ADR 0103).
 const TemplateKind = "play_instructions"
 
+// DraftInterviewKey is the built-in drafting play's key: an interview run that drafts answers instead of asking (ADR 0122).
+const DraftInterviewKey = "interview-draft"
+
 // Builtin is one seeded play: the stable key a clone matches it by, and what a new workspace gets.
 type Builtin struct {
 	Key           string
@@ -251,10 +274,16 @@ func Builtins() []Builtin {
 		{Key: "test-with-ai", Label: "Test with AI", Type: TypeTicket, ShowWhenStage: &testingStage,
 			Description:  "Tests the ticket on its test environment against its acceptance criteria, then passes or fails it.",
 			Instructions: testWithAIInstructions},
+		{Key: DraftInterviewKey, Label: "Draft interview", Type: TypeInterview,
+			Description:  "Drafts answers to the Interview questions from this project's follow sources, for a person to confirm.",
+			Instructions: draftInterviewInstructions},
+		{Key: ClarifyKey, Label: "Clarify via AI", Type: TypeDoc,
+			Description:  "Asks the doc's authors about the gaps in what they need, a round at a time, then writes the answers into the doc.",
+			Instructions: clarifyInstructions},
 	}
 }
 
-// SeedDefaults creates the four out-of-the-box plays for a fresh workspace (ticket 02), each with the instance's
+// SeedDefaults creates the out-of-the-box plays for a fresh workspace (ticket 02), each with the instance's
 // instructions for it; no permission gate, the same way CreateOwnerRole seeds a workspace's first role: there is no
 // member yet to hold plays:write.
 // Idempotent: the default workspace already carries its plays from migrations by the time the Owner
@@ -335,7 +364,7 @@ func (s *Service) builtin(ctx context.Context, workspaceID, key string) (*Play, 
 			return p, nil
 		}
 	}
-	return nil, fmt.Errorf("%w: workspace %s has no built-in play %q; it was deleted, or the key is not one of fix-with-ai, to-tickets-via-ai, interview, test-with-ai", apperrs.ErrNotFound, workspaceID, key)
+	return nil, fmt.Errorf("%w: workspace %s has no built-in play %q; it was deleted, or the key is not one of fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft, clarify", apperrs.ErrNotFound, workspaceID, key)
 }
 
 func (s *Service) getInWorkspace(ctx context.Context, workspaceID, id string) (*Play, error) {

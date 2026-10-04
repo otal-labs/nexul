@@ -1,6 +1,6 @@
 import { CornerDownRight } from "lucide-react";
 
-import type { ClarificationRound } from "@/models/DocClarification";
+import type { ClarificationRound } from "@/models/Clarification";
 
 interface AnythingElseReplyProps {
   round: ClarificationRound;

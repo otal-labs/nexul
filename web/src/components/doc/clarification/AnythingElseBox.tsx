@@ -1,6 +1,6 @@
 import { Textarea } from "@/components/ui/textarea";
-import { useSaveAnythingElse } from "@/hooks/DocClarificationHooks";
-import type { ClarificationRound } from "@/models/DocClarification";
+import { useSaveAnythingElse } from "@/hooks/DocHooks";
+import type { ClarificationRound } from "@/models/Clarification";
 
 interface AnythingElseBoxProps {
   round: ClarificationRound;

@@ -12,15 +12,19 @@ project's interview.
 
 ## Configure a play
 
-Open **Configuration → Plays**. Every workspace starts with four ordinary plays:
+Open **Configuration → Plays**. Every workspace starts with six ordinary plays:
 
 - **Fix with AI** is a ticket play shown in the In progress stage.
 - **To tickets via AI** is a document play.
 - **Interview** is an interview play, run from a project's Interview page.
 - **Test with AI** is a ticket play shown in the Testing stage.
+- **Draft interview** is an interview play that drafts answers from the
+  interview's follow sources.
+- **Clarify via AI** is a document play that asks the doc's authors a round
+  of questions about what it leaves open.
 
 Each keeps a built-in key (`fix-with-ai`, `to-tickets-via-ai`, `interview`,
-`test-with-ai`) through renames. A new workspace's copies take their
+`test-with-ai`, `interview-draft`, `clarify`) through renames. A new workspace's copies take their
 instructions from the instance's templates (see
 [Templates](/docs/guide/memories/#templates)); editing those never rewrites a
 workspace that already exists, and resetting a built-in play's instructions
@@ -77,7 +81,9 @@ ends. Starting the play needs no `docs:lock`; someone holding it unlocks the
 doc when it should change again. A doc that was already locked stays as it
 was. The trail and the doc's thread say the run locked it. A custom doc play
 meant to edit its own doc is refused by that lock; the built-in **To tickets
-via AI** only reads its doc.
+via AI** only reads its doc. **Clarify via AI** is the exception: its run
+locks the doc only while its round runs and unlocks it when the run ends,
+however it ends, unless the doc was locked before the run started.
 
 Each press creates a persisted **Trail**. It records the starter, target,
 selected memories, instructions, resolved Harness choice, structured activity,
@@ -120,11 +126,17 @@ The Agent is told the project's name and id and the answers the project
 already records, such as where its tests live from the project wizard. It
 opens the interview memory with `memory_create` and `kind` `interview`, which creates it
 empty the first time and returns the workspace's Interview template questions
-and the project's stored answers. It reads the checkout, then asks about
-skipped questions, gaps, and anything the code contradicts, a round of
-questions at a time, each with its recommended answer as the first option and
-a line on why it is asked. Each answered round is stored with the project's
-answers. It records nothing from the code that was not confirmed, then writes
+and the project's stored answers and sources. It reads the checkout and every
+source whose stance is question, such as an earlier phase's code, then asks
+about skipped questions, gaps, anything the code contradicts, and what a
+question source did that the answers do not settle, a round of questions at a
+time, each with its recommended answer as the first option and a line on why
+it is asked that names what was found and where. Follow sources are read only
+as context; drafting from them is the Draft interview play's. The run's prompt
+names each project source under question with its checkout path when the
+starter's project link for it is on the run's computer. Each answered round is
+stored with the project's answers. It records nothing from the code or a
+source that was not confirmed, then writes
 the interview memory with `memory_update` as rules rather than a transcript,
 under the 8,000-character cap, keeping every existing rule no answer
 contradicts. Memory versioning makes any change revertible.
@@ -134,6 +146,24 @@ none. Skipping it, or leaving the wizard without starting it, asks "are you
 sure?" and says what agents lose without it. A project without an interview is
 never blocked: its board shows a banner linking to the Interview page until
 the interview memory exists, which can be dismissed for the browser session.
+
+## The Draft interview play
+
+Draft interview runs on a project's interview like the Interview play, in the
+same hidden thread, and never asks anything. It reads the interview memory
+with its questions, answers, sources, and drafts, then every source whose
+stance is follow, reading a large one selectively. It drafts each template
+question with no answer or a skip that a source speaks to, and an answered
+question only where the sources now disagree with the answer, which the page
+shows as a suggested change. Each draft names its source ids and one line on
+where it came from, and is saved with `memory_update` and the run's trail id
+as it is found. Sources under question are left to the Interview play.
+
+The run's prompt names its trail id and, for each project source, that
+project's checkout path when the starter's project link for it is on the
+run's computer, or says there is no checkout there. As the run starts, the
+project's suggested changes are cleared, so only those the run drafts again
+come back; drafts on unanswered questions stay until the run replaces them.
 
 ## The Test with AI play
 

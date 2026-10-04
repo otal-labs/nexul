@@ -9,7 +9,7 @@ import { DocQuestionsPanel } from "@/components/doc/clarification/DocQuestionsPa
 import { getMeKey } from "@/hooks/AuthHooks";
 import { getMyRoleKey } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import type { Clarification, ClarificationQuestion, ClarificationRound } from "@/models/DocClarification";
+import type { Clarification, ClarificationQuestion, ClarificationRound } from "@/models/Clarification";
 import type { Doc } from "@/models/Doc";
 
 vi.mock("@/api/client", () => ({

@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { InterviewDoneRow } from "@/components/memory/InterviewDoneRow";
 import { InterviewQuestionForm } from "@/components/memory/InterviewQuestionForm";
+import { InterviewSuggestionCard } from "@/components/memory/InterviewSuggestionCard";
 import { QuestionChecklistRow } from "@/components/questions/QuestionChecklistRow";
 import { QuestionSection } from "@/components/questions/QuestionSection";
 import { useInterviewLiveRound } from "@/hooks/useInterviewLiveRound";
@@ -46,9 +47,12 @@ export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, 
     if (section) setFolds((f) => ({ ...f, [section.key]: false }));
   };
 
+  const progressOf = (section: InterviewSectionData, i: number) =>
+    section.key === "0" ? `Question ${i + 1} of ${section.rows.length}` : `Follow-up ${i + 1} of ${section.rows.length}`;
+
   const formProps = (section: InterviewSectionData, row: InterviewRow, i: number) => {
     const at = rows.indexOf(row);
-    const progress = section.key === "0" ? `Question ${i + 1} of ${section.rows.length}` : `Follow-up ${i + 1} of ${section.rows.length}`;
+    const progress = progressOf(section, i);
     const prevKey = rows[at - 1]?.key ?? null;
     const onAnswer = row.live && ((value: AnswerValue) => live.answer(row, value));
     return { row, projectId, progress, prevKey, nextKey: nextPendingKey(rows, row.key), onMove: move, onAnswer, pending: live.pending };
@@ -79,7 +83,10 @@ export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, 
                 readOnly={readOnly}
                 onToggle={() => move(row.key === current ? null : row.key)}
               >
-                <InterviewQuestionForm {...formProps(section, row, i)} />
+                {row.draft?.state === "suggested" && (
+                  <InterviewSuggestionCard row={row} draft={row.draft} projectId={projectId} progress={progressOf(section, i)} onMove={move} />
+                )}
+                {row.draft?.state !== "suggested" && <InterviewQuestionForm {...formProps(section, row, i)} />}
               </QuestionChecklistRow>
             ))}
           </ol>

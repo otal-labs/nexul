@@ -1,6 +1,6 @@
 import { QuestionForm } from "@/components/questions/QuestionForm";
-import { useAnswerDocQuestion, useClearDocAnswer } from "@/hooks/DocClarificationHooks";
-import { questionRow, type ClarificationQuestion } from "@/models/DocClarification";
+import { useAnswerDocQuestion, useClearDocAnswer } from "@/hooks/DocHooks";
+import { questionRow, type ClarificationQuestion } from "@/models/Clarification";
 import type { AnswerValue } from "@/models/Question";
 
 interface ClarificationQuestionFormProps {

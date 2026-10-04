@@ -53,6 +53,8 @@ var scopeRules = map[string]scopeRule{
 	"workspace.member.updated": workspaceScope, "workspace.updated": workspaceScope, "role.updated": workspaceScope,
 	"interview_template.updated": workspaceScope, "memory.deleted": workspaceScope, "play.deleted": workspaceScope,
 	"interview_answer.saved": workspaceScope, "interview_answer.cleared": workspaceScope,
+	"interview_source.added": workspaceScope, "interview_source.changed": workspaceScope,
+	"interview_source.removed": workspaceScope, "interview_draft.saved": workspaceScope, "interview_draft.dismissed": workspaceScope,
 	"play.run_started": workspaceScope, "play.run_waiting": workspaceScope, "play.run_finished": workspaceScope,
 	"chat.conversation.updated": workspaceScope, "chat.conversation.deleted": workspaceScope, "chat.conversation.members_changed": workspaceScope,
 	"play.created": nestedWorkspaceScope("play"), "play.updated": nestedWorkspaceScope("play"),

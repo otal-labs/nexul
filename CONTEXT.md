@@ -159,16 +159,19 @@ testing strategy, principles, and vocabulary. A person answers the
 workspace's Interview template, a list of questions, on the project's
 Interview page, with no agent involved; the template is the instance
 template until the workspace edits its own. Then the Interview play reads
-those answers and the codebase, asks follow-ups about skipped questions,
-gaps, and anything the code contradicts, a round at a time on the same page,
-and writes the interview memory. The page holds the questions, their stored
+those answers, the codebase, and the question sources, asks follow-ups about
+skipped questions, gaps, anything the code contradicts, and what a question
+source did that the answers do not settle, a round at a time on the same
+page, and writes the interview memory. The page holds the questions, their stored
 answers, and the memory. Running it again changes only what the changed
 answers change. The answers are stored per project, one per question per
 round (round 0 the template's, then one round per batch of follow-ups),
 apart from the interview memory: deleting the memory keeps them, deleting the
-project removes them. The project's interview thread is plumbing that holds
-the run's harness session, which no page shows, not where the interview
-happens.
+project removes them. With follow sources, a person can first run the Draft
+interview play, which reads them and drafts answers that wait on the page
+until confirmed; drafts are kept apart from answers and never count as one.
+The project's interview thread is plumbing that holds the run's harness
+session, which no page shows, not where the interview happens.
 _Avoid_: Onboarding, questionnaire, setup
 
 **Interview source**:
@@ -176,9 +179,15 @@ Material a project's interview is pointed at instead of starting blank: a
 path in its checkout, a doc, a memory, another project, or text someone
 pastes. Each has a stance. Follow is what the team stands behind, and an
 agent drafts answers from it; question is how something was done, not how
-it should be, such as a predecessor's code, and is only ever asked about.
-A draft is not an answer until a person confirms it. A source is pointed
-at, never copied in.
+it should be, such as a predecessor's code, and is only ever asked about,
+by the Interview play, which reads follow sources only as context.
+The Draft interview play drafts from follow sources only: a template
+question with no answer or a skip gets a draft where a source speaks to it,
+and an answered one gets a suggested change only where the sources now
+disagree with the answer. A draft is not an answer until a person confirms
+it. A source is pointed at, never copied in; another project is read
+through its memories and answers, plus its checkout when the person's
+project link for it is on the run's computer.
 _Avoid_: Import, context, reference material
 
 **Interview memory**:
@@ -215,9 +224,10 @@ definition — the run dialog picks those per run, footer memories among
 them. Runs on the clicking user's own paired harness and posts into the
 target's thread, which for an interview is hidden plumbing; a play never moves its ticket itself, the agent does, as
 its footer memories say. Every workspace,
-new or existing, is seeded with the same four, "Fix with AI" (ticket,
-progress stage), "To tickets via AI" (doc), "Interview" (interview), and
-"Test with AI" (ticket, testing stage), as ordinary plays a member
+new or existing, is seeded with the same six, "Fix with AI" (ticket,
+progress stage), "To tickets via AI" (doc), "Interview" (interview),
+"Test with AI" (ticket, testing stage), "Draft interview" (interview), and
+"Clarify via AI" (doc), as ordinary plays a member
 may edit or delete; each keeps a built-in key through renames, and a new
 workspace's start from the instance template of their instructions. Seen and fired with `plays:run`, managed with
 `plays:read`, `plays:write`, `plays:delete`. A named user can be excluded

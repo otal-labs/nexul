@@ -9,12 +9,22 @@ export interface ChecklistAnswer {
 
 export type ChecklistRowStatus = "answered" | "skipped" | "pending";
 
+// open: a draft waiting on an unanswered or skipped question; confirmed: the answer is the draft; suggested: newer and different.
+export type ChecklistDraftState = "open" | "confirmed" | "suggested";
+
+// What a row shows of a drafted answer: its state and where it came from.
+export interface ChecklistDraft {
+  state: ChecklistDraftState;
+  from: string;
+}
+
 // One question of a checklist (the Interview page, a doc's Questions), whatever stores its answer.
 export interface ChecklistRow {
   key: string;
   item: QuestionItem;
   why: string;
   answer: ChecklistAnswer | undefined;
+  draft?: ChecklistDraft | undefined;
 }
 
 export const rowStatus = (row: ChecklistRow): ChecklistRowStatus => {
@@ -27,8 +37,10 @@ export const rowStatus = (row: ChecklistRow): ChecklistRowStatus => {
 export const countLine = (rows: ChecklistRow[]): string => {
   const answered = rows.filter((r) => rowStatus(r) === "answered").length;
   const skipped = rows.filter((r) => rowStatus(r) === "skipped").length;
-  if (skipped === 0) return `${answered} of ${rows.length} answered`;
-  return `${answered} answered · ${skipped} skipped`;
+  const drafted = rows.filter((r) => r.draft?.state === "open").length;
+  const suggested = rows.filter((r) => r.draft?.state === "suggested").length;
+  const head = skipped === 0 ? `${answered} of ${rows.length} answered` : `${answered} answered · ${skipped} skipped`;
+  return [head, drafted > 0 && `${drafted} drafted`, suggested > 0 && `${suggested} suggested`].filter(Boolean).join(" · ");
 };
 
 export const firstPendingKey = (rows: ChecklistRow[]): string | null =>
@@ -46,10 +58,11 @@ export const answerValue = (answer: ChecklistAnswer | undefined): AnswerValue | 
   return { selected: answer.selected, text: answer.text };
 };
 
+export const valueLine = (value: AnswerValue | undefined): string =>
+  value ? [...(value.selected ?? []), value.text ?? ""].filter((part) => part !== "").join(" · ").replaceAll("\n", " · ") : "";
+
 // A doc question's suggested option keeps its "(Suggested)" mark as picked; the one-line answer reads without it.
 const withoutSuggested = (label: string): string => label.replace(/\s*\(Suggested\)$/, "");
 
 export const answerLine = (answer: ChecklistAnswer | undefined): string =>
-  answer
-    ? [...answer.selected.map(withoutSuggested), answer.text].filter((part) => part !== "").join(" · ").replaceAll("\n", " · ")
-    : "";
+  answer ? valueLine({ selected: answer.selected.map(withoutSuggested), text: answer.text }) : "";

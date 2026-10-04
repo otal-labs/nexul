@@ -11,8 +11,7 @@ import {
 import { useFlowStore } from "@/stores/flowStore";
 import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
-import { getDocKey, getDocsKey, getDocWatchersKey } from "@/hooks/DocHooks";
-import { getDocClarificationKey } from "@/hooks/DocClarificationHooks";
+import { getDocClarificationKey, getDocKey, getDocsKey, getDocWatchersKey } from "@/hooks/DocHooks";
 import { getDocFoldersKey } from "@/hooks/DocFolderHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getProjectPeopleKey, getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
@@ -21,6 +20,7 @@ import { followWorkspaceUpdate, getMyRoleKey, getWorkspacesKey } from "@/hooks/W
 import { getTeamKey } from "@/models/Team";
 import type { MyWorkspaceInfo } from "@/models/Permission";
 import { getInterviewAnswersKey, getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
+import { getInterviewDraftsKey, getInterviewSourcesKey } from "@/hooks/InterviewSourceHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getMeKey, getPATsKey, getSessionsKey } from "@/hooks/AuthHooks";
 import { getAttachmentsKey } from "@/hooks/AttachmentHooks";
@@ -109,8 +109,8 @@ const pushTopics: Record<string, string[]> = {
   "category.updated": [getCategoriesKey, getProjectCategoriesKey],
   "category.deleted": [getCategoriesKey, getProjectCategoriesKey],
   "doc.created": [getDocsKey],
-  // An edit makes its editor a watcher, which the Watch control's count shows.
-  "doc.updated": [getDocsKey, getDocKey, getDocWatchersKey],
+  // An edit makes its editor a watcher, which the Watch control's count shows; an interview source names the doc and dates its change.
+  "doc.updated": [getDocsKey, getDocKey, getDocWatchersKey, getInterviewSourcesKey],
   "doc.watchers.changed": [getDocWatchersKey],
   "doc.clarification.round_started": [getDocClarificationKey],
   "doc.clarification.round_posted": [getDocClarificationKey],
@@ -155,10 +155,15 @@ const pushTopics: Record<string, string[]> = {
   // An instance template changes what every unedited workspace shows and what each copy is compared with.
   "instance_template.updated": TEMPLATE_QUERY_KEYS,
   "memory.created": [getMemoriesKey],
-  "memory.updated": [getMemoriesKey, getMemoryKey, getMemoryVersionsKey],
-  "memory.deleted": [getMemoriesKey, getMemoryKey],
+  "memory.updated": [getMemoriesKey, getMemoryKey, getMemoryVersionsKey, getInterviewSourcesKey],
+  "memory.deleted": [getMemoriesKey, getMemoryKey, getInterviewSourcesKey],
   "interview_answer.saved": [getInterviewAnswersKey],
   "interview_answer.cleared": [getInterviewAnswersKey],
+  "interview_source.added": [getInterviewSourcesKey],
+  "interview_source.changed": [getInterviewSourcesKey],
+  "interview_source.removed": [getInterviewSourcesKey],
+  "interview_draft.saved": [getInterviewDraftsKey],
+  "interview_draft.dismissed": [getInterviewDraftsKey],
   // The Team list and a person's detail follow account and membership changes made anywhere, MCP included.
   "account.admitted": [getTeamKey],
   "account.disabled": [getTeamKey],

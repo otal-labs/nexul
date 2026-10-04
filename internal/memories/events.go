@@ -12,11 +12,21 @@ const (
 
 	TopicAnswerSaved   = "interview_answer.saved"
 	TopicAnswerCleared = "interview_answer.cleared"
+
+	TopicSourceAdded   = "interview_source.added"
+	TopicSourceChanged = "interview_source.changed"
+	TopicSourceRemoved = "interview_source.removed"
+
+	TopicDraftSaved     = "interview_draft.saved"
+	TopicDraftDismissed = "interview_draft.dismissed"
 )
 
 // Topics returns every topic the memories domain publishes.
 func Topics() []string {
-	return []string{TopicCreated, TopicUpdated, TopicDeleted, TopicInterviewTemplateUpdated, TopicAnswerSaved, TopicAnswerCleared}
+	return []string{
+		TopicCreated, TopicUpdated, TopicDeleted, TopicInterviewTemplateUpdated, TopicAnswerSaved, TopicAnswerCleared,
+		TopicSourceAdded, TopicSourceChanged, TopicSourceRemoved, TopicDraftSaved, TopicDraftDismissed,
+	}
 }
 
 // MemoryRef is a memory event's identity payload, everything but the body (ADR 0044: additive-only, kept lean).
@@ -68,6 +78,27 @@ type AnswerEvent struct {
 	WorkspaceID string    `json:"workspace_id"`
 	ProjectID   string    `json:"project_id"`
 	Round       int       `json:"round"`
+	Question    string    `json:"question"`
+	AuthorID    string    `json:"author_id"`
+	At          time.Time `json:"at"`
+}
+
+// SourceEvent is the interview_source.added, .changed, and .removed payload: never the ref's content or a text body.
+type SourceEvent struct {
+	WorkspaceID string    `json:"workspace_id"`
+	ProjectID   string    `json:"project_id"`
+	SourceID    string    `json:"source_id"`
+	Kind        string    `json:"kind"`
+	Stance      string    `json:"stance"`
+	AuthorID    string    `json:"author_id"`
+	At          time.Time `json:"at"`
+}
+
+// DraftEvent is the interview_draft.saved and interview_draft.dismissed payload: which question, never the draft.
+type DraftEvent struct {
+	WorkspaceID string    `json:"workspace_id"`
+	ProjectID   string    `json:"project_id"`
+	DraftID     string    `json:"draft_id"`
 	Question    string    `json:"question"`
 	AuthorID    string    `json:"author_id"`
 	At          time.Time `json:"at"`

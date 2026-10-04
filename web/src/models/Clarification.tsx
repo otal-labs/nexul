@@ -1,6 +1,11 @@
 import type { ChecklistRow } from "@/models/QuestionChecklist";
 import type { TrailState } from "@/models/Trail";
 
+export interface QuestionOption {
+  label: string;
+  description?: string;
+}
+
 // Mirrors docs.ClarificationQuestion: no picks, no text, and not skipped is pending.
 export interface ClarificationQuestion {
   id: string;
@@ -9,7 +14,7 @@ export interface ClarificationQuestion {
   position: number;
   question: string;
   why: string;
-  options: { label: string; description?: string }[];
+  options: QuestionOption[];
   multi_select: boolean;
   selected: string[];
   text: string;
@@ -44,6 +49,15 @@ export interface Clarification {
   can_close: boolean;
 }
 
+export const isPending = (q: ClarificationQuestion) => q.selected.length === 0 && q.text === "" && !q.skipped;
+
+// The newest round and how many of its questions nobody has answered or skipped; undefined when there is no round.
+export const unansweredInNewestRound = (c: Clarification) => {
+  const newest = c.rounds.at(-1);
+  if (!newest) return undefined;
+  return { round: newest.round, count: newest.questions.filter(isPending).length };
+};
+
 export interface ClarificationAnswerInput {
   selected: string[];
   text: string;
@@ -56,8 +70,6 @@ export const questionRow = (q: ClarificationQuestion): ChecklistRow => ({
   why: q.why,
   answer: q,
 });
-
-const isPending = (q: ClarificationQuestion): boolean => q.selected.length === 0 && q.text === "" && !q.skipped;
 
 // The rounds that asked something; a running round and a no-gaps round hold no questions.
 export const askedRounds = (c: Clarification): ClarificationRound[] => c.rounds.filter((r) => r.questions.length > 0);

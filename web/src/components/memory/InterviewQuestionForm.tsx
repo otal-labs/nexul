@@ -1,3 +1,4 @@
+import { InterviewDraftFrom } from "@/components/memory/InterviewDraftFrom";
 import { QuestionForm } from "@/components/questions/QuestionForm";
 import { useSaveInterviewAnswer } from "@/hooks/MemoryHooks";
 import { recommendedDraft, SKIPPED_ANSWER, type InterviewRow } from "@/models/InterviewAnswer";
@@ -15,9 +16,11 @@ interface InterviewQuestionFormProps {
   pending?: boolean;
 }
 
-// The interview's open row: its (Recommended) options picked up front, Next and Skip saving the answer or joining the live round.
+// The interview's open row: a drafted question opens on the draft with where it came from, so Next confirms it;
+// otherwise its (Recommended) options are picked up front. Next and Skip save, or join the live round.
 export const InterviewQuestionForm = ({ row, projectId, progress, prevKey, nextKey, onMove, onAnswer, pending = false }: InterviewQuestionFormProps) => {
   const save = useSaveInterviewAnswer();
+  const proposed = row.draft?.state === "open" ? row.draft.value : undefined;
 
   const submit = (value: AnswerValue | null) => {
     if (onAnswer) {
@@ -40,10 +43,13 @@ export const InterviewQuestionForm = ({ row, projectId, progress, prevKey, nextK
       row={row}
       progress={progress}
       whyLabel="Why I'm asking:"
-      initialDraft={recommendedDraft(row.item)}
+      initialDraft={proposed ?? recommendedDraft(row.item)}
       onBack={prevKey !== null ? () => onMove(prevKey) : undefined}
       onSubmit={submit}
       busy={save.isPending || pending}
+      drafted={row.draft?.value}
+      note={row.draft && <InterviewDraftFrom draft={row.draft} />}
+      multiline
     />
   );
 };

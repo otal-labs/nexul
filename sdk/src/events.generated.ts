@@ -75,6 +75,11 @@ export interface EventPayloads {
   "instance_template.updated": { "kind": "interview" | "mention_chip" | "play_instructions" | "ticket_body"; "key": string; "author_id": string; "updated_at"?: string; "reset": boolean; };
   "interview_answer.cleared": { "workspace_id": string; "project_id": string; "round": number; "question": string; "author_id": string; "at"?: string; };
   "interview_answer.saved": { "workspace_id": string; "project_id": string; "round": number; "question": string; "author_id": string; "at"?: string; };
+  "interview_draft.dismissed": { "workspace_id": string; "project_id": string; "draft_id": string; "question": string; "author_id": string; "at"?: string; };
+  "interview_draft.saved": { "workspace_id": string; "project_id": string; "draft_id": string; "question": string; "author_id": string; "at"?: string; };
+  "interview_source.added": { "workspace_id": string; "project_id": string; "source_id": string; "kind": "path" | "doc" | "memory" | "project" | "text"; "stance": "follow" | "question"; "author_id": string; "at"?: string; };
+  "interview_source.changed": { "workspace_id": string; "project_id": string; "source_id": string; "kind": "path" | "doc" | "memory" | "project" | "text"; "stance": "follow" | "question"; "author_id": string; "at"?: string; };
+  "interview_source.removed": { "workspace_id": string; "project_id": string; "source_id": string; "kind": "path" | "doc" | "memory" | "project" | "text"; "stance": "follow" | "question"; "author_id": string; "at"?: string; };
   "interview_template.updated": { "workspace_id": string; "author_id": string; "updated_at"?: string; };
   "invitation.created": { "invitation_id"?: string; "actor_id"?: string; };
   "invitation.deleted": { "invitation_id"?: string; "reason"?: string; };
@@ -205,6 +210,11 @@ export const TOPICS: Topic[] = [
   "instance_template.updated",
   "interview_answer.cleared",
   "interview_answer.saved",
+  "interview_draft.dismissed",
+  "interview_draft.saved",
+  "interview_source.added",
+  "interview_source.changed",
+  "interview_source.removed",
   "interview_template.updated",
   "invitation.created",
   "invitation.deleted",
@@ -333,6 +343,11 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "instance_template.updated": {"kind":"interview","key":"fixture-key","author_id":"fixture-author_id","updated_at":"2026-01-01T00:00:00Z","reset":false},
   "interview_answer.cleared": {"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","round":1,"question":"fixture-question","author_id":"fixture-author_id","at":"2026-01-01T00:00:00Z"},
   "interview_answer.saved": {"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","round":1,"question":"fixture-question","author_id":"fixture-author_id","at":"2026-01-01T00:00:00Z"},
+  "interview_draft.dismissed": {"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","draft_id":"fixture-draft_id","question":"fixture-question","author_id":"fixture-author_id","at":"2026-01-01T00:00:00Z"},
+  "interview_draft.saved": {"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","draft_id":"fixture-draft_id","question":"fixture-question","author_id":"fixture-author_id","at":"2026-01-01T00:00:00Z"},
+  "interview_source.added": {"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","source_id":"fixture-source_id","kind":"path","stance":"follow","author_id":"fixture-author_id","at":"2026-01-01T00:00:00Z"},
+  "interview_source.changed": {"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","source_id":"fixture-source_id","kind":"path","stance":"follow","author_id":"fixture-author_id","at":"2026-01-01T00:00:00Z"},
+  "interview_source.removed": {"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","source_id":"fixture-source_id","kind":"path","stance":"follow","author_id":"fixture-author_id","at":"2026-01-01T00:00:00Z"},
   "interview_template.updated": {"workspace_id":"fixture-workspace_id","author_id":"fixture-author_id","updated_at":"2026-01-01T00:00:00Z"},
   "invitation.created": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id"},
   "invitation.deleted": {"invitation_id":"fixture-invitation_id","reason":"fixture-reason"},

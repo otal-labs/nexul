@@ -495,6 +495,34 @@ type InterviewAnswer struct {
 	AnsweredAt  int64
 }
 
+type InterviewDraft struct {
+	ID          string
+	WorkspaceID string
+	ProjectID   string
+	Question    string
+	Selected    string
+	FreeText    string
+	SourceIds   string
+	WhereLine   string
+	TrailID     string
+	DraftedBy   string
+	DraftedAt   int64
+}
+
+type InterviewSource struct {
+	ID          string
+	WorkspaceID string
+	ProjectID   string
+	Kind        string
+	Ref         string
+	Label       string
+	Body        string
+	Stance      string
+	AddedBy     string
+	AddedAt     int64
+	UpdatedAt   int64
+}
+
 type InterviewTemplate struct {
 	WorkspaceID string
 	Body        string

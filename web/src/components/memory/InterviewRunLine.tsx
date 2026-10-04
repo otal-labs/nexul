@@ -1,5 +1,5 @@
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
-import { useFetchTrails } from "@/hooks/TrailHooks";
+import { useInterviewTrails } from "@/hooks/InterviewSourceHooks";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import type { Memory } from "@/models/Memory";
 import type { TrailState } from "@/models/Trail";
@@ -32,8 +32,7 @@ const lineFor = (state: TrailState | undefined, memory: Memory | undefined, chan
 
 // The latest interview run as one line: the trail's state icon, what it is doing, and when the memory was written.
 export const InterviewRunLine = ({ projectId, memory, changed }: InterviewRunLineProps) => {
-  const { data: trails } = useFetchTrails("interview", projectId);
-  const latest = trails?.[0];
+  const latest = useInterviewTrails(projectId).followUp?.[0];
   const state = usePlayRunStore((s) => (latest ? (s.frames[latest.id]?.state ?? latest.state) : undefined));
   const stale = (state === undefined || state === "done") && !!memory && changed > 0;
   const icon = state ?? (memory ? "done" : undefined);

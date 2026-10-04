@@ -1,6 +1,6 @@
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { usePlayRunStore } from "@/stores/playRunStore";
-import { answersChangedSinceWritten, clarificationStatus, type Clarification } from "@/models/DocClarification";
+import { answersChangedSinceWritten, clarificationStatus, type Clarification } from "@/models/Clarification";
 import { isTrailActive } from "@/models/Trail";
 import { cn } from "@/lib/utils";
 

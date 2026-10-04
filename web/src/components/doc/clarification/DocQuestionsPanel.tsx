@@ -4,10 +4,9 @@ import { ClarificationStatusLine } from "@/components/doc/clarification/Clarific
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { useFetchDocClarification } from "@/hooks/DocClarificationHooks";
-import { useFetchDoc } from "@/hooks/DocHooks";
+import { useFetchDoc, useFetchDocClarification } from "@/hooks/DocHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
-import { clarificationPhase } from "@/models/DocClarification";
+import { clarificationPhase } from "@/models/Clarification";
 
 interface DocQuestionsPanelProps {
   docId: string;

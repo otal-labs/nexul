@@ -119,7 +119,9 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 			"Starts a play on a ticket, a doc, or a project's interview as the calling user, on that user's own "+
 				"paired computer, and posts the run into the target's thread. Check play_list with type first to see "+
 				"which plays the caller may run there; one run at a time per target. A doc play locks its doc as the run "+
-				"starts and leaves it locked, so the doc's title and body refuse edits until someone unlocks it. "+
+				"starts and leaves it locked, so the doc's title and body refuse edits until someone unlocks it; "+
+				"Clarify via AI is the exception, its run opens the doc's next clarification round and unlocks the doc again "+
+				"when it ends, unless the doc was locked before. "+
 				"With decisions_check true instead "+
 				"of a play_id it reruns the built-in decisions check on a done ticket, which reads the ticket, its pull "+
 				"requests, and the project's decisions log, then adds an entry, marks a reversed one superseded, or "+

@@ -8,7 +8,8 @@ import { InterviewRunButton } from "@/components/memory/InterviewRunButton";
 import { InterviewRunLine } from "@/components/memory/InterviewRunLine";
 import { TrailSection } from "@/components/play/TrailSection";
 import { useFetchInterviewAnswers, useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
-import { useActiveTrail, useFetchTrails } from "@/hooks/TrailHooks";
+import { useInterviewTrails } from "@/hooks/InterviewSourceHooks";
+import { useActiveTrail } from "@/hooks/TrailHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { answersChangedSinceRun } from "@/models/InterviewAnswer";
 import { isInterviewMemory } from "@/models/Memory";
@@ -23,8 +24,9 @@ export const InterviewMemoryColumn = ({ project }: InterviewMemoryColumnProps) =
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: memories, error, isPending } = useFetchMemoriesByProject(project.id);
   const { data: answers } = useFetchInterviewAnswers(project.id);
-  const { data: trails } = useFetchTrails("interview", project.id);
+  const trails = useInterviewTrails(project.id).followUp;
   const active = useActiveTrail("interview", project.id);
+  const followUpActive = !!active && !!trails?.some((t) => t.id === active.id);
   const memory = memories?.find((m) => isInterviewMemory(m) && m.project_id === project.id);
   const changed = memory && answers && trails ? answersChangedSinceRun(answers, trails) : 0;
   const stale = changed > 0 && !active;
@@ -33,7 +35,7 @@ export const InterviewMemoryColumn = ({ project }: InterviewMemoryColumnProps) =
     <section aria-label="Interview memory" className="min-w-0 space-y-4">
       <header className="flex min-h-9 flex-wrap items-center gap-3 border-b border-border pb-3">
         <InterviewRunLine projectId={project.id} memory={memory} changed={changed} />
-        {(memory || active) && (
+        {(memory || followUpActive) && (
           <InterviewRunButton
             projectId={project.id}
             label={stale ? "Regenerate the memory" : "Regenerate"}

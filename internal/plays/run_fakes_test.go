@@ -238,6 +238,66 @@ func (f *fakeDocLocks) state(docID string) (locked bool, calls int) {
 	return f.locked[docID], f.calls
 }
 
+func (f *fakeDocLocks) unlock(docID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.locked[docID] = false
+}
+
+// fakeClarifyRound is one round a Clarify run opened, as docs records it.
+type fakeClarifyRound struct {
+	docID, starter    string
+	tookLock, running bool
+}
+
+// fakeRounds is the ClarifyRounds seam: it ends a round as docs does, unlocking the doc only when the run took the lock.
+type fakeRounds struct {
+	mu      sync.Mutex
+	locks   *fakeDocLocks
+	byTrail map[string]*fakeClarifyRound
+	ended   []string
+	openErr error
+	endErr  error
+}
+
+func (f *fakeRounds) OpenRound(_ context.Context, docID, starterID, trailID string, tookLock bool) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.openErr != nil {
+		return 0, f.openErr
+	}
+	f.byTrail[trailID] = &fakeClarifyRound{docID: docID, starter: starterID, tookLock: tookLock, running: true}
+	return len(f.byTrail), nil
+}
+
+func (f *fakeRounds) EndRound(_ context.Context, docID, trailID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ended = append(f.ended, trailID)
+	if f.endErr != nil {
+		return f.endErr
+	}
+	r, ok := f.byTrail[trailID]
+	if !ok || !r.running || r.docID != docID {
+		return nil
+	}
+	r.running = false
+	if r.tookLock {
+		f.locks.unlock(docID)
+	}
+	return nil
+}
+
+func (f *fakeRounds) round(trailID string) (fakeClarifyRound, []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var r fakeClarifyRound
+	if got, ok := f.byTrail[trailID]; ok {
+		r = *got
+	}
+	return r, append([]string(nil), f.ended...)
+}
+
 func (f *fakeTargets) setTicketStage(id string, stage Stage) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -324,11 +384,46 @@ func (f *fakeMemories) ListForProject(_ context.Context, projectID string) ([]Me
 	return f.byProject[projectID], f.err
 }
 
-// fakeAnswers records each round of follow-ups the runner stores, or fails with err.
+// fakeAnswers records each round of follow-ups the runner stores, or fails with err; it also serves sources and
+// records the projects whose suggestions were cleared.
 type fakeAnswers struct {
-	mu     sync.Mutex
-	err    error
-	rounds []fakeRound
+	mu         sync.Mutex
+	err        error
+	rounds     []fakeRound
+	sources    []InterviewSource
+	sourcesErr error
+	clearErr   error
+	cleared    []string
+}
+
+func (f *fakeAnswers) ListSources(context.Context, string) ([]InterviewSource, error) {
+	return f.sources, f.sourcesErr
+}
+
+func (f *fakeAnswers) ClearSuggestions(_ context.Context, projectID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.cleared = append(f.cleared, projectID)
+	return f.clearErr
+}
+
+// fakeCheckouts serves the starter's project links and the computer's T3 projects, counting list calls.
+type fakeCheckouts struct {
+	links    map[string][2]string // project id -> computer id, T3 project id
+	linkErr  error
+	projects []harness.Project
+	listErr  error
+	lists    int
+}
+
+func (f *fakeCheckouts) LinkedProject(_ context.Context, _, projectID string) (string, string, error) {
+	l := f.links[projectID]
+	return l[0], l[1], f.linkErr
+}
+
+func (f *fakeCheckouts) ListProjects(context.Context, string, string) ([]harness.Project, error) {
+	f.lists++
+	return f.projects, f.listErr
 }
 
 type fakeRound struct {

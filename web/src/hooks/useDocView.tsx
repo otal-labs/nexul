@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-import { useFetchDocClarification } from "@/hooks/DocClarificationHooks";
+import { useFetchDocClarification } from "@/hooks/DocHooks";
 import { useDocBuiltinPlays } from "@/hooks/PlayHooks";
-import { waitingCount } from "@/models/DocClarification";
+import { waitingCount } from "@/models/Clarification";
 import type { Doc } from "@/models/Doc";
 
 export type DocView = "doc" | "questions";

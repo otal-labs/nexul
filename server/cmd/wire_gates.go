@@ -14,6 +14,7 @@ import (
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/connectors"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/memories"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/githubapp"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -248,6 +249,32 @@ func (g memoriesProjectLookup) WorkspaceForProject(ctx context.Context, projectI
 	return p.WorkspaceID, nil
 }
 
+func (g memoriesProjectLookup) ProjectName(ctx context.Context, projectID string) (string, error) {
+	p, err := g.projects.Get(ctx, projectID)
+	if err != nil {
+		return "", err
+	}
+	return p.Name, nil
+}
+
+// memoriesDocLookup adapts storage to memories' DocLookup seam (ADR 0017); the caller's read is checked through access.
+type memoriesDocLookup struct {
+	docs     *storage.DocsRepo
+	projects *storage.ProjectsRepo
+}
+
+func (g memoriesDocLookup) DocForSource(ctx context.Context, docID string) (memories.DocInfo, error) {
+	d, err := g.docs.GetByID(ctx, docID)
+	if err != nil {
+		return memories.DocInfo{}, err
+	}
+	p, err := g.projects.Get(ctx, d.ProjectID)
+	if err != nil {
+		return memories.DocInfo{}, err
+	}
+	return memories.DocInfo{ProjectID: d.ProjectID, WorkspaceID: p.WorkspaceID, Title: d.Title, UpdatedAt: d.UpdatedAt}, nil
+}
+
 // channelGate adapts chat's EnsureGeneralChannel to tenancy's ChannelGate seam (ADR 0017: tenancy never imports chat).
 type channelGate struct {
 	svc *chat.Service
@@ -288,9 +315,6 @@ func (g playsPermissionGate) HasPermission(ctx context.Context, userID, workspac
 	return g.svc.HasPermission(ctx, userID, workspaceID, action, resourceType, resourceID)
 }
 
-// clarifyPlayKey is the built-in key of the Clarify via AI play.
-const clarifyPlayKey = "clarify"
-
 // clarifyPlayGate answers docs' Clarify check (ADR 0017): plays:run on the workspace's Clarify play, or workspace-wide
 // while the workspace has none.
 type clarifyPlayGate struct {
@@ -309,7 +333,7 @@ func (g clarifyPlayGate) CanRunClarify(ctx context.Context, userID, projectID st
 		return false
 	}
 	for _, play := range ps {
-		if play.BuiltinKey == clarifyPlayKey {
+		if play.BuiltinKey == plays.ClarifyKey {
 			return g.access.HasPermission(ctx, userID, p.WorkspaceID, permissions.PlaysRun, "play", play.ID)
 		}
 	}

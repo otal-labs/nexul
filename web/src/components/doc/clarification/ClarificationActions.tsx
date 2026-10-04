@@ -1,9 +1,8 @@
 import { PlayButton } from "@/components/play/PlayButton";
 import { Button } from "@/components/ui/button";
-import { useCloseClarification } from "@/hooks/DocClarificationHooks";
-import { useFetchDoc } from "@/hooks/DocHooks";
+import { useCloseClarification, useFetchDoc } from "@/hooks/DocHooks";
 import { useDocBuiltinPlays } from "@/hooks/PlayHooks";
-import { answersChangedSinceWritten, clarificationPhase, type Clarification } from "@/models/DocClarification";
+import { answersChangedSinceWritten, clarificationPhase, type Clarification } from "@/models/Clarification";
 
 interface ClarificationActionsProps {
   clarification: Clarification;

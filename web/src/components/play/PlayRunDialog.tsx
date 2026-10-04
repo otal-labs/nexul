@@ -1,6 +1,7 @@
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PlayRunForm } from "@/components/play/PlayRunForm";
+import { UnansweredQuestionsSignal } from "@/components/play/UnansweredQuestionsSignal";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { useHarnessReadiness } from "@/hooks/PairingHooks";
@@ -41,6 +42,7 @@ const PlayRunDialogBody = ({ play, projectId, targetType, targetId, onDone }: Pl
     <div className="space-y-5">
       {isPending && <LoadingDisplay label="Loading choices…" />}
       {error && <ErrorDisplay error={error} title="Failed to load the run choices" />}
+      {play.builtin_key === "clarify" && targetType === "doc" && <UnansweredQuestionsSignal docId={targetId} />}
       {memories.data && choices.data && readiness && (
         <PlayRunForm
           play={play}

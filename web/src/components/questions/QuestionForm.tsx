@@ -1,4 +1,4 @@
-import { useId, useState, type KeyboardEvent } from "react";
+import { useId, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { QuestionStep } from "@/components/questions/QuestionStep";
@@ -18,13 +18,19 @@ interface QuestionFormProps {
   // Given, an answered or skipped row offers to make it pending again.
   onClear?: (() => void) | undefined;
   busy: boolean;
+  // Passed to the step: what a drafting run proposed, a line under the hint, and a growing text box.
+  drafted?: AnswerValue | undefined;
+  note?: ReactNode;
+  multiline?: boolean;
 }
 
 const hasAnswer = (draft: AnswerValue | undefined): boolean =>
   (draft?.text?.trim() ?? "") !== "" || (draft?.selected?.length ?? 0) > 0;
 
 // The open row's body: the question's options flush under its title, with Back, Skip, and Next.
-export const QuestionForm = ({ row, progress, whyLabel, initialDraft, onBack, onSubmit, onClear, busy }: QuestionFormProps) => {
+export const QuestionForm = ({
+  row, progress, whyLabel, initialDraft, onBack, onSubmit, onClear, busy, drafted, note, multiline = false,
+}: QuestionFormProps) => {
   const [draft, setDraft] = useState<AnswerValue | undefined>(answerValue(row.answer) ?? initialDraft);
   const idPrefix = useId();
   const canNext = hasAnswer(draft) && !busy;
@@ -45,7 +51,7 @@ export const QuestionForm = ({ row, progress, whyLabel, initialDraft, onBack, on
           {row.why}
         </p>
       )}
-      <QuestionStep item={row.item} idPrefix={idPrefix} draft={draft} onDraft={setDraft} />
+      <QuestionStep item={row.item} idPrefix={idPrefix} draft={draft} onDraft={setDraft} drafted={drafted} note={note} multiline={multiline} />
       <div className="mt-4 flex items-center justify-end gap-2">
         {onClear && answered && (
           <Button variant="ghost" size="sm" className="mr-auto" disabled={busy} onClick={onClear}>

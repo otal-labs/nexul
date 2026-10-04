@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { ClarificationRoundSection } from "@/components/doc/clarification/ClarificationRoundSection";
-import { askedRounds, clarificationPhase, questionRow, type Clarification, type ClarificationRound } from "@/models/DocClarification";
+import { askedRounds, clarificationPhase, questionRow, type Clarification, type ClarificationRound } from "@/models/Clarification";
 import { firstPendingKey, nextPendingKey } from "@/models/QuestionChecklist";
 
 interface ClarificationRoundsFeedProps {

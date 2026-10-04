@@ -304,4 +304,44 @@ describe("PlayRunDialog", () => {
     await user.click(await screen.findByRole("button", { name: "Run anyway" }));
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/plays/play-1/run", expect.objectContaining({ target_id: "t-1" })));
   });
+
+  describe("Clarify via AI", () => {
+    const clarify: Play = { ...play, id: "play-clarify", label: "Clarify via AI", type: "doc", show_when_stage: null, builtin_key: "clarify" };
+    const question = (id: string, answered: Partial<{ selected: string[]; text: string; skipped: boolean }> = {}) => ({
+      id, doc_id: "d-1", round: 2, position: 1, question: id, why: "", options: [], multi_select: false,
+      selected: [], text: "", skipped: false, ...answered,
+    });
+    const clarification = (questions: unknown[]) => ({
+      rounds: [{ doc_id: "d-1", round: 1, questions: [question("old")] }, { doc_id: "d-1", round: 2, questions }],
+      running: false, closed: false, can_close: true,
+    });
+
+    const renderClarify = (data: unknown) => {
+      mockApi(["plays:run", "docs:write"]);
+      const fallback = vi.mocked(api.get).getMockImplementation()!;
+      vi.mocked(api.get).mockImplementation(async (...args: Parameters<typeof api.get>) =>
+        args[0] === "/api/docs/d-1/clarification" ? { data } : fallback(...args),
+      );
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      render(
+        <QueryClientProvider client={client}>
+          <PlayRunDialog play={clarify} projectId="p-1" targetType="doc" targetId="d-1" open onClose={vi.fn()} />
+        </QueryClientProvider>,
+      );
+    };
+
+    it("signals the newest round's unanswered questions and still offers the run", async () => {
+      renderClarify(clarification([question("a"), question("b"), question("c", { skipped: true }), question("d", { text: "Staff" })]));
+
+      expect(await screen.findByText("2 questions in Round 2 are still unanswered")).toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: "Run Clarify via AI" })).toBeEnabled();
+    });
+
+    it("says nothing once every question of the newest round is answered or skipped", async () => {
+      renderClarify(clarification([question("a", { selected: ["Staff"] }), question("b", { skipped: true })]));
+
+      expect(await screen.findByRole("button", { name: "Run Clarify via AI" })).toBeInTheDocument();
+      expect(screen.queryByText(/still unanswered/)).not.toBeInTheDocument();
+    });
+  });
 });

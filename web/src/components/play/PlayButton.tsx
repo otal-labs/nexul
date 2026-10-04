@@ -21,6 +21,8 @@ interface PlayButtonProps {
   variant?: "outline" | "ghost" | "default";
   // Replaces the play's own label on the idle button, as the Interview page's Run and Re-run do.
   label?: string;
+  // Swaps the idle icon for the warning dot: what the play last ran on has changed since.
+  outOfDate?: boolean;
   className?: string;
 }
 
@@ -32,7 +34,7 @@ const disabledReason = (running: boolean, waiting: boolean, readiness: HarnessRe
 };
 
 // Hidden without plays:run; the starter or a plays:write holder gets Stop while a run occupies the target.
-export const PlayButton = ({ play, projectId, targetType, targetId, variant = "outline", label, className }: PlayButtonProps) => {
+export const PlayButton = ({ play, projectId, targetType, targetId, variant = "outline", label, outOfDate = false, className }: PlayButtonProps) => {
   const canRun = useHasPermission("plays:run");
   const canWrite = useHasPermission("plays:write");
   const { data: me } = useFetchMe();
@@ -104,7 +106,8 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
           onClick={() => setDialogOpen(true)}
         >
           {running && <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none text-warning" aria-hidden />}
-          {!running && <Sparkles className="size-3.5" aria-hidden />}
+          {!running && outOfDate && <span role="img" aria-label="out of date" className="size-2 rounded-full bg-warning" />}
+          {!running && !outOfDate && <Sparkles className="size-3.5" aria-hidden />}
           {label ?? play.label}
         </Button>
       )}
