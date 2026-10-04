@@ -355,13 +355,8 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	if err != nil {
 		return refuse(err)
 	}
-	if trail.TargetType == TargetInterview {
-		links = append(links, interviewBlock(tgt))
-	}
+	links = append(links, r.interviewBlocks(ctx, play, trail, tgt)...)
 	drafting := trail.TargetType == TargetInterview && play.BuiltinKey == DraftInterviewKey
-	if drafting {
-		links = append(links, r.draftingBlock(ctx, trail))
-	}
 	conversationID, err := r.openThread(ctx, play.WorkspaceID, trail.TargetType, trail.TargetID, trail.StarterID)
 	if err != nil {
 		return refuse(err)
@@ -401,6 +396,21 @@ func (r *Runner) clearSuggestions(ctx context.Context, trail *Trail) {
 	if err := r.answers.ClearSuggestions(ctx, trail.ProjectID); err != nil {
 		r.log.Warn("plays: clear suggested changes failed", "trail", trail.ID, "project", trail.ProjectID, "error", err)
 	}
+}
+
+// interviewBlocks names an interview run's project, then a drafting run's context or the project sources under question.
+func (r *Runner) interviewBlocks(ctx context.Context, play *Play, trail *Trail, tgt target) []string {
+	if trail.TargetType != TargetInterview {
+		return nil
+	}
+	blocks := []string{interviewBlock(tgt)}
+	if play.BuiltinKey == DraftInterviewKey {
+		return append(blocks, r.draftingBlock(ctx, trail))
+	}
+	if sources := r.projectSourcesBlock(ctx, trail, StanceQuestion); sources != "" {
+		blocks = append(blocks, sources)
+	}
+	return blocks
 }
 
 // draftingBlock tells a drafting run its trail id, for the drafts it saves, and where its follow project sources are.

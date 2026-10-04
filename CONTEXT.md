@@ -159,9 +159,10 @@ testing strategy, principles, and vocabulary. A person answers the
 workspace's Interview template, a list of questions, on the project's
 Interview page, with no agent involved; the template is the instance
 template until the workspace edits its own. Then the Interview play reads
-those answers and the codebase, asks follow-ups about skipped questions,
-gaps, and anything the code contradicts, a round at a time on the same page,
-and writes the interview memory. The page holds the questions, their stored
+those answers, the codebase, and the question sources, asks follow-ups about
+skipped questions, gaps, anything the code contradicts, and what a question
+source did that the answers do not settle, a round at a time on the same
+page, and writes the interview memory. The page holds the questions, their stored
 answers, and the memory. Running it again changes only what the changed
 answers change. The answers are stored per project, one per question per
 round (round 0 the template's, then one round per batch of follow-ups),
@@ -178,7 +179,8 @@ Material a project's interview is pointed at instead of starting blank: a
 path in its checkout, a doc, a memory, another project, or text someone
 pastes. Each has a stance. Follow is what the team stands behind, and an
 agent drafts answers from it; question is how something was done, not how
-it should be, such as a predecessor's code, and is only ever asked about.
+it should be, such as a predecessor's code, and is only ever asked about,
+by the Interview play, which reads follow sources only as context.
 The Draft interview play drafts from follow sources only: a template
 question with no answer or a skip gets a draft where a source speaks to it,
 and an answered one gets a suggested change only where the sources now
