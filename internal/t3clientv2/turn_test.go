@@ -791,6 +791,39 @@ func TestWatch_NewestRunIsAWakeOfAnEarlierRun_FollowsTheRunThatHandedOff(t *test
 		labels(drainUpdates(t, r.Updates)))
 }
 
+func TestWatch_AfterAT3Restart_FollowsTheRunT3RanLast(t *testing.T) {
+	t.Parallel()
+	// msg-2 queued behind msg-1; the restart cut msg-1, held msg-2, and ran msg-1's continuation ahead of it.
+	cut := merged(runAt(1, "msg-1", "cancelled"), map[string]any{"completedAt": "2026-10-03T16:00:00.000Z"})
+	continued := merged(runAt(3, "message:restart-continuation:"+runOne, runCompleted), map[string]any{
+		"restartContinuationOfRunId": runOne, "completedAt": "2026-10-03T16:05:00.000Z"})
+	resumed := merged(runAt(2, "msg-2", runCompleted), map[string]any{"completedAt": "2026-10-03T16:09:00.000Z"})
+	tests := []struct {
+		name  string
+		runs  []any
+		items []any
+		then  []any
+	}{
+		{"the held run resumed and still running", []any{cut, runAt(2, "msg-2", "running"), continued},
+			[]any{replyIn(3, "Continued after the restart.")},
+			[]any{event(3, "turn-item.updated", replyIn(2, "Answered the queued ask.")), event(4, "run.updated", runAt(2, "msg-2", runWaiting))}},
+		{"the held run resumed and completed after the continuation", []any{cut, resumed, continued},
+			[]any{replyIn(3, "Continued after the restart."), replyIn(2, "Answered the queued ask.")}, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f, h := newFake(t, 2)
+			subID, r := watchThread(t, f, h, threadAt(tt.runs, nil, tt.items...))
+			if tt.then != nil {
+				f.Write(t3rpctest.Chunk(subID, tt.then...))
+			}
+			assert.Equal(t, []string{"reply Answered the queued ask.", "end done"}, labels(drainUpdates(t, r.Updates)),
+				"not the cut run's continuation, which T3 ran before it")
+		})
+	}
+}
+
 func TestWatch_Interrupted_StopsTheWatchedRunAndEndsInterrupted(t *testing.T) {
 	t.Parallel()
 	f, h := newFake(t, 2)

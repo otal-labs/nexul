@@ -18,17 +18,23 @@ Decision: a turn follows the runs its own run's handed-off work caused, and repl
 - **When it is over.** A followed run's items stream into the same turn, so a wake's reply becomes the turn's reply.
   The turn stays open while a followed run other than Nexul's is queued or working, while a subagent of a followed
   run (either origin) is pending, running or waiting, and while a T3-owned task's result is still to be delivered
-  (`completionDelivery` `pending` or `claimed`, kept when an update leaves it out). Only a done run waits: an
-  interrupted or failed one ends the turn as before. A provider's own subagent stays running in T3's projection until
-  its wake run replays the notice, so the turn cannot end in the gap between the two.
+  (`completionDelivery` `pending` or `claimed`, kept when an update leaves it out). A done run waits, and so does a
+  run cancelled by a T3 restart, because the restart leaves the work it handed off running and a wake or restart
+  continuation still carries the reply; once nothing is pending, that turn is done if a run it woke replied, and
+  interrupted otherwise. Only a Stop, a failure, or a deleted thread ends the turn at once. A provider's own subagent
+  stays running in T3's projection until its wake run replays the notice, so the turn cannot end in the gap between
+  the two.
 - **While it waits.** The step "Waiting for work handed off in T3 Code" repeats every five minutes under one call id
   while anything is pending, whatever Nexul's run is doing, because a wait-mode delegation keeps that run running with
-  no events for as long as the child works. It keeps chat's and plays' silence windows open.
+  no events for as long as the child works. It keeps chat's and plays' silence windows open. While T3 holds a woken run
+  in its queue, as it does with a wake that queues behind a restart continuation, the step says so instead, since only
+  resuming it in T3 Code or stopping it here moves it.
 - **A result T3 steered elsewhere.** A linked message that lands in a run outside the set went into a later turn of
   the thread, which will reply with it. The wait ends done with "The handed-off result went to a later reply in T3
   Code".
-- **The cap.** 60 minutes after Nexul's run reached `waiting`, T3's own longest wait, the turn ends done and the
-  stored reply ends with "Part of this work is still running in T3 Code." A play still ends done.
+- **The cap.** 60 minutes after Nexul's run reached `waiting` or a restart cancelled it, T3's own longest wait, the
+  turn ends done and the stored reply ends with "Part of this work is still running in T3 Code." A play still ends
+  done.
 - **Stop.** Interrupting Nexul's run leaves T3's delegated children running, so Stop first drops each followed
   T3-owned task's undelivered result, so no child's end can wake the thread, then interrupts the newest started run
   of each working child's thread, then cancels a queued wake run or interrupts a live one, and only then stops

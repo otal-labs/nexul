@@ -234,7 +234,7 @@ Server flow (S/ws.ts:648-838):
   - A replay sends no snapshot.
 
 With acceptBoundedSnapshot:true:
-- The snapshot holds the latest ≤10 user turns / ≤75 items (O/threadHistoryPaging.ts:14-23).
+- The snapshot holds the latest ≤10 user turns / ≤75 items (O/threadHistoryPaging.ts:14-23). Since T3 88744f3ddb, an agent-only thread (a handed-off child) is windowed too, to at most 75 items. It used to get its whole history.
 - `runs` still contains EVERY queued, preparing, starting, running and waiting run, plus the runs in the window (O/ProjectionStore.ts:2796-2803).
 - Without the flag you get the full projection, which can be very large.
 
@@ -507,7 +507,7 @@ DECISION: report Done at the first run.updated(status "waiting") for the watched
 Status mapping:
 - waiting, completed → done
 - interrupted → interrupted
-- cancelled (queued run cancelled, or restart recovery) → interrupted, with a note
+- cancelled → interrupted at once for a queued-run cancel, or for a deleted thread. Restart recovery's cancel (T3 5108c978b1) first waits for the run's handed-off work like a done run (ADR 0116).
 - rolled_back → interrupted
 - failed → error. LastError = the root error item's failure.message. For class usage_limit, name the resetAt.
 

@@ -179,20 +179,50 @@ func (h *Harness) Watch(ctx context.Context, target harness.Target) (harness.Sta
 	return harness.StartResult{SessionID: t.threadID, Updates: finished(caught, t.over)}, nil
 }
 
-// adopted is the message id of the run a Watch follows: the newest run, or the earliest run whose hand-off or restart led to it.
+// adopted is the message id of the run a Watch follows: the run T3 ran last, or the earliest run whose hand-off or restart led to it.
 func adopted(p projection) string {
-	if len(p.Runs) == 0 {
+	i := -1
+	for j, r := range p.Runs {
+		if i < 0 || ranAfter(r, p.Runs[i]) {
+			i = j
+		}
+	}
+	if i < 0 {
 		return ""
 	}
-	newest := p.Runs[len(p.Runs)-1]
-	for _, r := range p.Runs[:len(p.Runs)-1] {
+	for _, r := range p.Runs[:i] {
 		w := newWatch(r.UserMessageID)
 		w.reset(p)
-		if w.followed[newest.ID] {
+		if w.followed[p.Runs[i].ID] {
 			return r.UserMessageID
 		}
 	}
-	return newest.UserMessageID
+	return p.Runs[i].UserMessageID
+}
+
+// ranAfter is T3's runRanAfter: an unfinished run ran after any finished one, else the later end, then the higher ordinal.
+func ranAfter(a, b run) bool {
+	ua, ub := slices.Contains(liveRuns, a.Status), slices.Contains(liveRuns, b.Status)
+	if ua != ub {
+		return ua
+	}
+	ea, eb := endedAt(a), endedAt(b)
+	if ua || ea.Equal(eb) {
+		return a.Ordinal > b.Ordinal
+	}
+	return ea.After(eb)
+}
+
+// endedAt is when a finished run ended; a run without a readable end sorts first.
+func endedAt(r run) time.Time {
+	if r.CompletedAt == nil {
+		return time.Time{}
+	}
+	t, err := time.Parse(time.RFC3339Nano, *r.CompletedAt)
+	if err != nil {
+		return time.Time{}
+	}
+	return t
 }
 
 // finished is a watched turn whose run ended before the watch began, done when the thread had no run.

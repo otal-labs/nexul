@@ -76,6 +76,7 @@ Rejected: ending the turn at `completed`, which adds checkpoint latency to every
 target is incomplete; following every run on the thread, which would reply to T3's own wakes, watches and schedules
 as if Nexul had asked; and treating a failed dispatch as a missing thread, which the captures disproved.
 
-A turn that hands work to another agent waits for it past `waiting`: ADR 0116.
+A turn that hands work to another agent waits for it past `waiting`, and past a T3 restart that cancels its run:
+ADR 0116.
 
 Decided 2026-10-03.

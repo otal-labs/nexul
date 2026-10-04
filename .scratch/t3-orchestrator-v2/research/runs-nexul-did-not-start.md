@@ -20,7 +20,7 @@ The contract default is `settled_only`, but that only applies to wait mode:
 - So async, the default mode, is "always". The contract default `settled_only` only applies when the field is omitted (packages/contracts/src/orchestrationV2.ts:646-651, 2826-2828).
 
 How each policy behaves:
-- `settled_only` holds back while the parent has a live run (Orchestrator.ts:8485-8495). `hasLiveRun` covers preparing, starting and running, but not `waiting` (Orchestrator.ts:440-449).
+- `settled_only` holds back while the spawning run is live, not while any run on the parent thread is (Orchestrator.ts:8699-8705 at eac52f0087). `hasLiveRun` covers preparing, starting and running, but not `waiting` (Orchestrator.ts:440-449).
 - `always` with a `running` run on the thread: if the session `supportsActiveSteering`, the wake is steered into that run (Orchestrator.ts:4537-4571). Claude, Codex, OpenCode, OpenCode2 and Pi support this; Cursor and ACP do not.
 - Otherwise the wake becomes a new run. ProviderContinuationService dispatches `message.dispatch` with:
   - `dispatchMode:{type:"queue_after_active"}`, `createdBy:"agent"`, `creationSource:"server"`

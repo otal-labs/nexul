@@ -3,7 +3,8 @@
 **What to build:** `website/` paired-computers guide: stable and nightly T3 both work; a computer moves
 to the new orchestrator on its own and cannot go back; provider minimums (Codex 0.159, Claude Code
 2.1.280, Cursor CLI built 2026-05-09 or later, Grok 1.0.13, OpenCode 2.0.18, Pi 0.99 for setup);
-protocol-2 steps show what ran but not tool output; handed-off agents appear as pills. Computer-setup
+protocol-2 steps show what ran but not tool output; handed-off agents appear as pills. Pi 0.99 is Nexul's setup
+floor, for its MCP client; T3's own floor is Pi 0.80.5, with 1.0 recommended (pingdotgg/t3code#14871). Computer-setup
 guide: Pi and Grok steps, Antigravity unsupported for setup. `CONTEXT.md`: Trail (tool results may be
 absent) and a hand-off term. Move the roadmap item to shipped in `ROADMAP.md` and
 `website/src/pages/roadmap.astro`.

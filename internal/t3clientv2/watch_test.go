@@ -436,10 +436,26 @@ func TestWatch_HandedOffWork(t *testing.T) {
 		{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("delivered"))},
 		{"run.updated", runAt(2, wakeMessage, runWaiting)},
 	}
+	// A T3 restart cancels Nexul's running run but leaves the task it handed off running.
+	cutWhileHandingOff := [][2]any{
+		{"run.created", runOf("msg-1", "running")},
+		{"subagent.updated", handedOff("task-1", "app_owned", "running", map[string]any{"completionWake": "always"})},
+		{"turn-item.updated", replyIn(1, "Handing the audit off.")},
+		{"run.updated", runOf("msg-1", "cancelled")},
+	}
+	wakeQueued := [][2]any{
+		{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("pending"))},
+		{"run.created", runAt(2, wakeMessage, runQueued)},
+		{"message.updated", userMessage(wakeMessage, 2, linkedToRunOne)},
+	}
+	heldWake := runAt(2, wakeMessage, runQueued)
+	heldWake["queueHeld"] = true
 	tests := []struct {
 		name   string
 		events [][2]any
 		want   []string
+		// standing is the note the turn still shows once the events are in, nil when nothing keeps it open.
+		standing *harness.Activity
 	}{
 		{name: "an async delegate's wake joins and the turn ends on the wake's reply",
 			events: slices.Concat(handsOff, [][2]any{
@@ -530,11 +546,36 @@ func TestWatch_HandedOffWork(t *testing.T) {
 				{"run.updated", runAt(3, "message:restart-continuation:run-2", runWaiting)},
 			}),
 			want: []string{"reply Handed the audit off.", "reply Picking the audit up again: three issues.", "end done"}},
+		{name: "a run a T3 restart cut waits for the task it handed off and ends on the wake's reply",
+			events: slices.Concat(cutWhileHandingOff, wakeQueued, wakeReplies),
+			want:   []string{"reply Handing the audit off.", "reply The audit found three issues.", "end done"}},
+		{name: "a cut run on a deleted thread ends interrupted at once, though its task still runs",
+			events: slices.Concat(cutWhileHandingOff[:3], [][2]any{
+				{"thread.deleted", map[string]any{"id": "th-1", "runtimeMode": "full-access", "deletedAt": "2026-10-03T16:00:02.000Z"}},
+			}, cutWhileHandingOff[3:], wakeQueued, wakeReplies),
+			want: []string{"reply Handing the audit off.", "end interrupted"}},
+		{name: "a cut run whose handed-off work ends without a woken run replying ends interrupted",
+			events: slices.Concat(cutWhileHandingOff, wakeQueued, [][2]any{
+				{"run.updated", runAt(2, wakeMessage, "running")},
+				{"turn-item.updated", replyIn(2, "Reading the audit")},
+				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("delivered"))},
+				{"run.updated", runAt(2, wakeMessage, "failed")},
+			}),
+			want: []string{"reply Handing the audit off.", "reply Reading the audit", "end interrupted"}},
+		{name: "a wake held in T3's queue says so under the hand-off's call id",
+			events: slices.Concat(handsOff, wakeQueued[:1], [][2]any{
+				{"run.created", heldWake},
+				{"message.updated", userMessage(wakeMessage, 2, linkedToRunOne)},
+			}),
+			want:     []string{"reply Handed the audit off."},
+			standing: &harness.Activity{Kind: harness.ActivityNote, CallID: "handoff:" + runOne, Summary: heldNote}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tt.want, labels(fold(t, newWatch("msg-1"), story(tt.events...))))
+			w := newWatch("msg-1")
+			assert.Equal(t, tt.want, labels(fold(t, w, story(tt.events...))))
+			assert.Equal(t, tt.standing, w.standingNote())
 		})
 	}
 }
