@@ -44,6 +44,14 @@ export interface EventPayloads {
   "dns.gateway_changed": { "gateway_id": string; "kind"?: string; "docker_network"?: string; "action": "created" | "deleted"; };
   "dns.record_changed": { "zone_id": string; "zone"?: string; "record_id"?: string; "action": "created" | "updated" | "deleted"; "type"?: string; "name"?: string; "service"?: string; };
   "dns.tunnel_changed": { "tunnel_id": string; "name"?: string; "action": "created" | "routed" | "rotated" | "deleted"; "hostname"?: string; "service"?: string; };
+  "doc.clarification.answer_cleared": { "doc": { "id": string; "project_id": string; "title": string; }; "round": number; "question_id": string; "question": string; "author_id": string; "at"?: string; };
+  "doc.clarification.answer_saved": { "doc": { "id": string; "project_id": string; "title": string; }; "round": number; "question_id": string; "question": string; "author_id": string; "at"?: string; };
+  "doc.clarification.anything_else_saved": { "doc": { "id": string; "project_id": string; "title": string; }; "round": number; "started_by": string; "actor_id"?: string; };
+  "doc.clarification.closed": { "doc": { "id": string; "project_id": string; "title": string; }; "round": number; "started_by": string; "actor_id"?: string; };
+  "doc.clarification.round_answered": { "doc": { "id": string; "project_id": string; "title": string; }; "round": number; "started_by": string; "actor_id"?: string; };
+  "doc.clarification.round_ended": { "doc": { "id": string; "project_id": string; "title": string; }; "round": number; "started_by": string; "actor_id"?: string; "removed"?: boolean; };
+  "doc.clarification.round_posted": { "doc": { "id": string; "project_id": string; "title": string; }; "round": number; "started_by": string; "actor_id"?: string; "question_count": number; "no_gaps": boolean; };
+  "doc.clarification.round_started": { "doc": { "id": string; "project_id": string; "title": string; }; "round": number; "started_by": string; "actor_id"?: string; };
   "doc.created": { "doc": { "id": string; "project_id"?: string; "folder_id"?: string; "title": string; "body"?: string; "version": number; "archived"?: boolean; "locked"?: boolean; "created_at"?: string; "updated_at"?: string; }; "actor_id"?: string; "mentioned_user_ids"?: string[]; };
   "doc.deleted": { "id": string; "title": string; "project_id"?: string; };
   "doc.folder.created": { "folder": { "id": string; "project_id": string; "name": string; "is_default": boolean; "created_at"?: string; "updated_at"?: string; }; "actor_id"?: string; };
@@ -166,6 +174,14 @@ export const TOPICS: Topic[] = [
   "dns.gateway_changed",
   "dns.record_changed",
   "dns.tunnel_changed",
+  "doc.clarification.answer_cleared",
+  "doc.clarification.answer_saved",
+  "doc.clarification.anything_else_saved",
+  "doc.clarification.closed",
+  "doc.clarification.round_answered",
+  "doc.clarification.round_ended",
+  "doc.clarification.round_posted",
+  "doc.clarification.round_started",
   "doc.created",
   "doc.deleted",
   "doc.folder.created",
@@ -286,6 +302,14 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "dns.gateway_changed": {"gateway_id":"fixture-gateway_id","kind":"fixture-kind","docker_network":"fixture-docker_network","action":"created"},
   "dns.record_changed": {"zone_id":"fixture-zone_id","zone":"fixture-zone","record_id":"fixture-record_id","action":"created","type":"fixture-type","name":"fixture-name","service":"fixture-service"},
   "dns.tunnel_changed": {"tunnel_id":"fixture-tunnel_id","name":"fixture-name","action":"created","hostname":"fixture-hostname","service":"fixture-service"},
+  "doc.clarification.answer_cleared": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title"},"round":1,"question_id":"fixture-question_id","question":"fixture-question","author_id":"fixture-author_id","at":"2026-01-01T00:00:00Z"},
+  "doc.clarification.answer_saved": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title"},"round":1,"question_id":"fixture-question_id","question":"fixture-question","author_id":"fixture-author_id","at":"2026-01-01T00:00:00Z"},
+  "doc.clarification.anything_else_saved": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title"},"round":1,"started_by":"fixture-started_by","actor_id":"fixture-actor_id"},
+  "doc.clarification.closed": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title"},"round":1,"started_by":"fixture-started_by","actor_id":"fixture-actor_id"},
+  "doc.clarification.round_answered": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title"},"round":1,"started_by":"fixture-started_by","actor_id":"fixture-actor_id"},
+  "doc.clarification.round_ended": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title"},"round":1,"started_by":"fixture-started_by","actor_id":"fixture-actor_id","removed":false},
+  "doc.clarification.round_posted": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title"},"round":1,"started_by":"fixture-started_by","actor_id":"fixture-actor_id","question_count":1,"no_gaps":false},
+  "doc.clarification.round_started": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title"},"round":1,"started_by":"fixture-started_by","actor_id":"fixture-actor_id"},
   "doc.created": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","folder_id":"fixture-folder_id","title":"fixture-title","body":"fixture-body","version":1,"archived":false,"locked":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},"actor_id":"fixture-actor_id","mentioned_user_ids":["fixture-mentioned_user_ids"]},
   "doc.deleted": {"id":"fixture-id","title":"fixture-title","project_id":"fixture-project_id"},
   "doc.folder.created": {"folder":{"id":"fixture-id","project_id":"fixture-project_id","name":"fixture-name","is_default":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},"actor_id":"fixture-actor_id"},
