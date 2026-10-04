@@ -1104,6 +1104,74 @@ var catalogSchemas = map[string]string{
 			"at": {"type": "string", "format": "date-time"}
 		}
 	}`,
+	"interview_source.added": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["workspace_id", "project_id", "source_id", "kind", "stance", "author_id"],
+		"properties": {
+			"workspace_id": {"type": "string"},
+			"project_id": {"type": "string"},
+			"source_id": {"type": "string"},
+			"kind": {"type": "string", "enum": ["path", "doc", "memory", "project", "text"]},
+			"stance": {"type": "string", "enum": ["follow", "question"]},
+			"author_id": {"type": "string"},
+			"at": {"type": "string", "format": "date-time"}
+		}
+	}`,
+	"interview_source.changed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["workspace_id", "project_id", "source_id", "kind", "stance", "author_id"],
+		"properties": {
+			"workspace_id": {"type": "string"},
+			"project_id": {"type": "string"},
+			"source_id": {"type": "string"},
+			"kind": {"type": "string", "enum": ["path", "doc", "memory", "project", "text"]},
+			"stance": {"type": "string", "enum": ["follow", "question"]},
+			"author_id": {"type": "string"},
+			"at": {"type": "string", "format": "date-time"}
+		}
+	}`,
+	"interview_source.removed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["workspace_id", "project_id", "source_id", "kind", "stance", "author_id"],
+		"properties": {
+			"workspace_id": {"type": "string"},
+			"project_id": {"type": "string"},
+			"source_id": {"type": "string"},
+			"kind": {"type": "string", "enum": ["path", "doc", "memory", "project", "text"]},
+			"stance": {"type": "string", "enum": ["follow", "question"]},
+			"author_id": {"type": "string"},
+			"at": {"type": "string", "format": "date-time"}
+		}
+	}`,
+	"interview_draft.saved": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["workspace_id", "project_id", "draft_id", "question", "author_id"],
+		"properties": {
+			"workspace_id": {"type": "string"},
+			"project_id": {"type": "string"},
+			"draft_id": {"type": "string"},
+			"question": {"type": "string"},
+			"author_id": {"type": "string"},
+			"at": {"type": "string", "format": "date-time"}
+		}
+	}`,
+	"interview_draft.dismissed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["workspace_id", "project_id", "draft_id", "question", "author_id"],
+		"properties": {
+			"workspace_id": {"type": "string"},
+			"project_id": {"type": "string"},
+			"draft_id": {"type": "string"},
+			"question": {"type": "string"},
+			"author_id": {"type": "string"},
+			"at": {"type": "string", "format": "date-time"}
+		}
+	}`,
 	"instance_template.updated": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

@@ -219,3 +219,23 @@ the interview memory returns them as `answers`, and `memory_update` takes
 `answers` to save or skip the template's questions. Each change publishes
 `interview_answer.saved` or `interview_answer.cleared`, naming the question and
 its author but never the answer, and reaches the project's readers live.
+
+An interview can also be pointed at sources: a file or folder in the project's
+checkout, a doc, a memory, another project in the workspace, or pasted text.
+Each has a stance, follow or question. A follow source is what drafting reads
+to propose answers; a question source is only asked about. A project holds at
+most 50 sources, pasted text up to 32,000 characters, and a path is relative to
+the checkout. Adding a doc, memory, or project also takes read access on it,
+and someone who cannot read one sees only its kind, flagged not visible. A
+deleted one stays listed, flagged gone. Drafts are proposed answers kept apart
+from the answers, one per question, and a draft equal to the stored answer is
+dropped. `GET`, `POST /api/memories/interview-sources`, and
+`PATCH` and `DELETE /api/memories/interview-sources/{id}` list, add, change,
+and remove sources; `GET /api/memories/interview-drafts` and
+`DELETE /api/memories/interview-drafts/{id}` list and dismiss drafts. Reading
+needs `memories:read` and changing `memories:write`. `memory_get` on the
+interview memory returns `sources`, pasted text included, and `drafts`, and
+`memory_update` takes `add_sources`, `update_sources`, `remove_sources`,
+`drafts`, and `dismiss_drafts`. Changes publish `interview_source.added`,
+`.changed`, `.removed`, `interview_draft.saved`, and `.dismissed`, never a
+source's content, and reach the project's readers live.

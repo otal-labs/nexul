@@ -54,6 +54,12 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PUT /api/memories/interview-answers", h.saveAnswer)
 	mux.HandleFunc("POST /api/memories/interview-answers/skip", h.skipAnswer)
 	mux.HandleFunc("POST /api/memories/interview-answers/clear", h.clearAnswer)
+	mux.HandleFunc("GET /api/memories/interview-sources", h.listSources)
+	mux.HandleFunc("POST /api/memories/interview-sources", h.addSource)
+	mux.HandleFunc("PATCH /api/memories/interview-sources/{id}", h.updateSource)
+	mux.HandleFunc("DELETE /api/memories/interview-sources/{id}", h.removeSource)
+	mux.HandleFunc("GET /api/memories/interview-drafts", h.listDrafts)
+	mux.HandleFunc("DELETE /api/memories/interview-drafts/{id}", h.dismissDraft)
 	return mux
 }
 
@@ -270,6 +276,84 @@ func (h *Handler) clearAnswer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.svc.ClearAnswer(r.Context(), req.ProjectID, req.Round, req.Question); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) listSources(w http.ResponseWriter, r *http.Request) {
+	srcs, err := h.svc.ListSources(r.Context(), r.URL.Query().Get("project_id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, srcs)
+}
+
+type sourceRequest struct {
+	ProjectID string `json:"project_id"`
+	Kind      string `json:"kind"`
+	Ref       string `json:"ref"`
+	Label     string `json:"label"`
+	Body      string `json:"body"`
+	Stance    string `json:"stance"`
+}
+
+func (h *Handler) addSource(w http.ResponseWriter, r *http.Request) {
+	var req sourceRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	src, err := h.svc.AddSource(r.Context(), InterviewSource{
+		ProjectID: req.ProjectID, Kind: req.Kind, Ref: req.Ref, Label: req.Label, Body: req.Body, Stance: req.Stance,
+	})
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, src)
+}
+
+type sourceChangeRequest struct {
+	Stance *string `json:"stance"`
+	Label  *string `json:"label"`
+}
+
+func (h *Handler) updateSource(w http.ResponseWriter, r *http.Request) {
+	var req sourceChangeRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	src, err := h.svc.UpdateSource(r.Context(), r.PathValue("id"), req.Stance, req.Label)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, src)
+}
+
+func (h *Handler) removeSource(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.RemoveSource(r.Context(), r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) listDrafts(w http.ResponseWriter, r *http.Request) {
+	ds, err := h.svc.ListDrafts(r.Context(), r.URL.Query().Get("project_id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, ds)
+}
+
+func (h *Handler) dismissDraft(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.DismissDraft(r.Context(), r.PathValue("id")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
