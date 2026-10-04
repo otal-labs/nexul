@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +9,7 @@ import { api } from "@/api/client";
 import { MessageList } from "@/components/chat/MessageList";
 import { getTrailsKey } from "@/hooks/TrailHooks";
 import type { Conversation, Message } from "@/models/Chat";
+import type { Handoff } from "@/models/Handoff";
 import { unknownPerson } from "@/models/Person";
 import type { ActivityEntry, Trail } from "@/models/Trail";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
@@ -164,6 +165,37 @@ describe("MessageList agent stream bubble lifecycle", () => {
     act(() => useAgentStreamStore.getState().setStream("other-conversation", { messageId: "stream-1", text: "not mine", streaming: true }));
     renderList([message({})]);
     expect(screen.queryByText("not mine")).not.toBeInTheDocument();
+  });
+
+  it("a live hand-off frame updates the hand-off's open conversation in place", async () => {
+    const user = userEvent.setup();
+    const test = { kind: "tool_call" as const, call_id: "c-1", tool: "Shell", summary: "go test -race ./internal/auth/...", at: "2026-10-04T10:00:00Z" };
+    const diff = { kind: "tool_call" as const, call_id: "c-2", tool: "Shell", summary: "git diff internal/auth", at: "2026-10-04T10:00:05Z" };
+    const helper = (overrides: Partial<Handoff>): Handoff => ({
+      id: "sa-1",
+      driver: "codex",
+      model: "gpt-5-codex",
+      title: "Review the auth module",
+      prompt: "Check the token refresh for races",
+      state: "running",
+      reply: "",
+      steps: [test],
+      ...overrides,
+    });
+    const frame = (handoff: Handoff) => act(() => useAgentStreamStore.getState().setStream("c1", { messageId: "", text: "", streaming: true, handoff }));
+
+    frame(helper({}));
+    renderList([message({})]);
+    await user.click(screen.getByRole("button", { name: /Review the auth module/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Review the auth module" });
+    expect(within(dialog).getByText("go test -race ./internal/auth/...")).toBeInTheDocument();
+
+    frame(helper({ steps: [test, diff] }));
+    expect(within(dialog).getByText("git diff internal/auth")).toBeInTheDocument();
+
+    frame(helper({ state: "done", steps: [test, diff], reply: "The refresh holds the lock throughout." }));
+    expect(within(dialog).getByText("Done")).toBeInTheDocument();
+    expect(within(dialog).getByText("The refresh holds the lock throughout.")).toBeInTheDocument();
   });
 });
 

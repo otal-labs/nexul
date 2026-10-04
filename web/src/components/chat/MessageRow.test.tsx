@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { MessageRow } from "@/components/chat/MessageRow";
 import type { AuthorKind, Message } from "@/models/Chat";
+import type { Handoff, HandoffState } from "@/models/Handoff";
 import { unknownPerson } from "@/models/Person";
 import type { Trail } from "@/models/Trail";
 
@@ -141,5 +142,61 @@ describe("MessageRow as the Agent's turn", () => {
     await userEvent.click(screen.getByRole("button", { name: /Worked for 5s/ }));
     expect(screen.getByText("go test ./...")).toBeInTheDocument();
     expect(screen.getByText("All green.")).toBeInTheDocument();
+  });
+});
+
+const handoff = (overrides: Partial<Handoff>): Handoff => ({
+  id: "sa-1",
+  driver: "claudeAgent",
+  model: "claude-sonnet-4-5",
+  title: "Review the auth module",
+  prompt: "Check the token refresh for races",
+  state: "done",
+  reply: "",
+  steps: [],
+  ...overrides,
+});
+
+describe("MessageRow hand-offs", () => {
+  it("shows one pill per hand-off on the Agent's reply, each naming its state", () => {
+    const states: [HandoffState, string][] = [
+      ["running", "Running"],
+      ["done", "Done"],
+      ["failed", "Failed"],
+      ["interrupted", "Interrupted"],
+      ["left_running", "Left running"],
+    ];
+    const handoffs = states.map(([state], i) => handoff({ id: `sa-${i}`, title: `Helper ${i}`, state }));
+    renderRow(
+      <MessageRow message={message({ author_kind: "agent", body: "Every helper reported back.", handoffs })} author={unknownPerson("onik97")} isOwn onEdit={noop} onDelete={noop} />,
+    );
+
+    expect(screen.getAllByRole("button", { name: /^Helper/ })).toHaveLength(5);
+    states.forEach(([, label], i) => expect(screen.getByRole("button", { name: `Helper ${i} claude-sonnet-4-5, ${label}` })).toBeInTheDocument());
+  });
+
+  it("opens a hand-off's conversation: the prompt it was given, its steps, then its reply", async () => {
+    const user = userEvent.setup();
+    const steps = [
+      { kind: "tool_call" as const, call_id: "c-1", tool: "Shell", summary: "go test -race ./internal/auth/...", at: "2026-10-04T10:00:00Z" },
+      { kind: "tool_call" as const, call_id: "c-2", tool: "Read", summary: '{"file_path":"internal/auth/refresh.go"}', at: "2026-10-04T10:00:05Z" },
+    ];
+    renderRow(
+      <MessageRow
+        message={message({ author_kind: "agent", body: "No races found.", handoffs: [handoff({ steps, reply: "The refresh holds the lock throughout." })] })}
+        author={unknownPerson("onik97")}
+        isOwn
+        onEdit={noop}
+        onDelete={noop}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Review the auth module/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Review the auth module" });
+    expect(within(dialog).getByText("Check the token refresh for races")).toBeInTheDocument();
+    expect(within(dialog).getByText("The refresh holds the lock throughout.")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: /Worked for 5s/ }));
+    expect(within(dialog).getByText("go test -race ./internal/auth/...")).toBeInTheDocument();
+    expect(within(dialog).getByText("Read: internal/auth/refresh.go")).toBeInTheDocument();
   });
 });
