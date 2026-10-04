@@ -86,7 +86,7 @@ git history, and anything durable it decided is an ADR.
 - `.scratch/t3-orchestrator-v2/` — T3 Code's new orchestrator (protocol 2):
   a second T3 client under its own harness kind, a one-way switch per
   computer, and handed-off agents as pills on the Agent's reply. Spec and
-  tickets 01–23 written 2026-10-03; wire research in `research/`.
+  tickets 01–24 written 2026-10-03; wire research in `research/`.
 - `.scratch/interview-qna/` — the interview as question cards on the
   Interview page with no agent, then a play run that asks follow-ups about
   the gaps and writes the interview memory. Wayfinder map charted
