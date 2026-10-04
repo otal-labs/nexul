@@ -288,9 +288,6 @@ func (g playsPermissionGate) HasPermission(ctx context.Context, userID, workspac
 	return g.svc.HasPermission(ctx, userID, workspaceID, action, resourceType, resourceID)
 }
 
-// clarifyPlayKey is the built-in key of the Clarify via AI play.
-const clarifyPlayKey = "clarify"
-
 // clarifyPlayGate answers docs' Clarify check (ADR 0017): plays:run on the workspace's Clarify play, or workspace-wide
 // while the workspace has none.
 type clarifyPlayGate struct {
@@ -309,7 +306,7 @@ func (g clarifyPlayGate) CanRunClarify(ctx context.Context, userID, projectID st
 		return false
 	}
 	for _, play := range ps {
-		if play.BuiltinKey == clarifyPlayKey {
+		if play.BuiltinKey == plays.ClarifyKey {
 			return g.access.HasPermission(ctx, userID, p.WorkspaceID, permissions.PlaysRun, "play", play.ID)
 		}
 	}

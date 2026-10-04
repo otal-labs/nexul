@@ -28,6 +28,7 @@ const (
 	projectID  = "proj-1"
 	fixPlayID  = "play-fix"
 	docPlayID  = "play-doc"
+	clarifyID  = "play-clarify"
 	intPlayID  = "play-interview"
 	alwaysMem  = "m-always"
 	pickedMem  = "m-pick"
@@ -44,6 +45,7 @@ type runnerFixture struct {
 	perm    *fakePerm
 	targets *fakeTargets
 	locks   *fakeDocLocks
+	rounds  *fakeRounds
 	harness *fakeHarnessResolver
 	mems    *fakeMemories
 	threads *fakeThreads
@@ -66,6 +68,7 @@ func newRunnerFixture() *runnerFixture {
 		answers: &fakeAnswers{},
 		clock:   fixedNow,
 	}
+	f.rounds = &fakeRounds{locks: f.locks, byTrail: map[string]*fakeClarifyRound{}}
 	f.targets = &fakeTargets{
 		tickets: map[string]TicketTarget{
 			ticketID:    {ProjectID: projectID, Key: "NEX-1", Stage: StageProgress},
@@ -88,9 +91,10 @@ func newRunnerFixture() *runnerFixture {
 	stage := StageProgress
 	f.plays.byID[fixPlayID] = &Play{ID: fixPlayID, WorkspaceID: workspaceID, Label: "Fix with AI", Type: TypeTicket, Instructions: "Fix the ticket.", Enabled: true, ShowWhenStage: &stage}
 	f.plays.byID[docPlayID] = &Play{ID: docPlayID, WorkspaceID: workspaceID, Label: "To tickets via AI", Type: TypeDoc, Instructions: "Split the doc.", Enabled: true}
+	f.plays.byID[clarifyID] = &Play{ID: clarifyID, WorkspaceID: workspaceID, Label: "Clarify via AI", Type: TypeDoc, Instructions: "Clarify the doc.", Enabled: true, BuiltinKey: ClarifyKey}
 	f.plays.byID[intPlayID] = &Play{ID: intPlayID, WorkspaceID: workspaceID, Label: "Interview", Type: TypeInterview, Instructions: "Interview them.", Enabled: true}
 	f.runner = NewRunner(RunnerConfig{
-		Plays: f.plays, Trails: f.trails, Perm: f.perm, Targets: f.targets, Docs: f.locks,
+		Plays: f.plays, Trails: f.trails, Perm: f.perm, Targets: f.targets, Docs: f.locks, Rounds: f.rounds,
 		Projects: &fakeProjects{
 			workspaces: map[string]string{projectID: workspaceID, otherProj: workspaceID, foreignPrj: foreignWS},
 			projects:   map[string]ProjectTarget{projectID: {Name: "Nexul", TestsLocation: "separate"}, otherProj: {Name: "Other"}},
@@ -445,6 +449,7 @@ func TestRun_DocPlay_LocksTheDocAndLeavesItLocked(t *testing.T) {
 			locked, calls := f.locks.state(docID)
 			assert.Equal(t, tt.wantLock, locked, "still locked after the run ends")
 			assert.Equal(t, 1, calls, "locked once, as the run starts")
+			assert.Empty(t, f.rounds.byTrail, "only a Clarify run opens a round")
 		})
 	}
 }

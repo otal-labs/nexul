@@ -32,7 +32,7 @@ export interface Play {
   enabled: boolean;
   show_when_stage: PlayStage | null;
   excluded_project_ids: string[];
-  // The seeded play this one is (fix-with-ai, to-tickets-via-ai, interview, test-with-ai), kept through renames; "" for a play a person made.
+  // The seeded play this one is (fix-with-ai, to-tickets-via-ai, interview, test-with-ai, clarify), kept through renames; "" for a play a person made.
   builtin_key: string;
   created_by: string;
   created_at: string;
