@@ -5,6 +5,8 @@ export const NotificationKind = {
   DocCreated: "doc.created",
   DocUpdated: "doc.updated",
   DocMentioned: "doc.mentioned",
+  DocQuestionsAsked: "doc.questions_asked",
+  DocQuestionsAnswered: "doc.questions_answered",
   MemoryUpdated: "memory.updated",
   PlayRunFinished: "play.run_finished",
   PlayRunWaiting: "play.run_waiting",

@@ -37,4 +37,14 @@ describe("NotificationRow", () => {
 
     expect(onPress).toHaveBeenCalledWith(unread);
   });
+
+  test.each([
+    ["doc.questions_asked", "New questions on Spec", "new questions"],
+    ["doc.questions_answered", "Questions answered on Spec", "questions answered"],
+  ] as const)("a %s notice labels itself", async (kind, title, label) => {
+    await render(<NotificationRow notification={{ ...unread, kind, subject_type: "doc", subject_title: title }} onPress={jest.fn()} />);
+
+    expect(screen.getByText(title)).toBeTruthy();
+    expect(screen.getByText(label)).toBeTruthy();
+  });
 });
