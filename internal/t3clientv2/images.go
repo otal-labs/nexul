@@ -31,13 +31,20 @@ type uploadImage struct {
 	DataURL   string `json:"dataUrl"`
 }
 
+// TakesImage implements harness.ImageTaker: only the types T3's providers take go to the agent.
+func (h *Harness) TakesImage(mime string) bool {
+	return slices.Contains(supportedImages, strings.ToLower(mime))
+}
+
+var _ harness.ImageTaker = (*Harness)(nil)
+
 // persistImages uploads the images T3 takes and returns the references it minted, plus a note for those left out.
 func (t *turn) persistImages(ctx context.Context, images []harness.Attachment) ([]json.RawMessage, []harness.Update, error) {
 	var upload []uploadImage
 	var skipped []string
 	for _, img := range images {
 		mime := strings.ToLower(img.MIME)
-		if !slices.Contains(supportedImages, mime) {
+		if !t.h.TakesImage(mime) {
 			t.h.log().Warn("t3clientv2: image left out, T3 Code takes only gif, jpeg, png and webp", "name", img.Name, "mime", img.MIME)
 			skipped = append(skipped, img.Name)
 			continue

@@ -18,9 +18,11 @@ Decision: a turn's prompt names each piece of context and the tool that reads it
   instructions, the ticket or doc line, its link blocks, the memories to read, and the starter's instructions for
   the run.
 - **The ticket or doc** is a line: its key or id, its title, and "Read it with `ticket_get`" or `doc_get` "before
-  you start". Images its body embeds still travel as attachments, and a line under it says so only when at least one
-  was attached. The body is read as markdown for that, which is also what makes a ticket's images reach the harness;
-  the stored editor tree has none of the markdown image links the scan looks for.
+  you start". Images its body embeds still travel as attachments when the harness takes their type and they fit the
+  size caps, and a line under it says so only when at least one was attached. The others are listed by link for
+  `attachment_get`, so the prompt never claims an image the agent did not get. The body is read as markdown for
+  that, which is also what makes a ticket's images reach the harness; the stored editor tree has none of the markdown
+  image links the scan looks for.
 - **Memories.** Both turn kinds list the memories to read first by name and id, in one place in code: a play its
   ordered selection (ADR 0105), a mention only the project's always-included memories, the interview memory first.
   No turn carries a memory's body, its when-to-use line, or an index of the rest; the agent finds those with

@@ -19,10 +19,11 @@ export const ListDetailLayout = ({ list, detail, hasSelection, placeholder }: Li
 
   return (
     <div className="flex h-screen">
+      {/* The max-width keeps the open record readable whatever width was saved on a wider window. */}
       <div
         style={{ "--list-pane-width": `${width}px` } as CSSProperties}
         className={cn(
-          "relative min-h-0 lg:block lg:w-[var(--list-pane-width)] lg:shrink-0 lg:border-r lg:border-border",
+          "relative min-h-0 lg:block lg:w-[var(--list-pane-width)] lg:max-w-[calc(100%_-_32rem)] lg:shrink-0 lg:border-r lg:border-border",
           hasSelection ? "hidden" : "block w-full",
         )}
       >

@@ -151,7 +151,7 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 		t.close()
 		return harness.StartResult{}, err
 	}
-	return harness.StartResult{SessionID: t.threadID, Updates: t.follow(ctx, src, w, notes), PromptSent: t.prompted}, nil
+	return harness.StartResult{SessionID: t.threadID, TurnID: t.messageID, Updates: t.follow(ctx, src, w, notes), PromptSent: t.prompted}, nil
 }
 
 // Watch implements harness.Client: it follows the thread's newest run without sending T3 anything.
@@ -172,7 +172,7 @@ func (h *Harness) Watch(ctx context.Context, target harness.Target) (harness.Sta
 	// The snapshot's steps were shown before; its replies and open questions still belong to the turn.
 	caught := slices.DeleteFunc(t.caught, func(u harness.Update) bool { return u.Activity != nil && u.Activity.Kind != harness.ActivityNote })
 	if t.over == nil && w.run.ID != "" {
-		return harness.StartResult{SessionID: t.threadID, Updates: t.follow(ctx, src, w, caught)}, nil
+		return harness.StartResult{SessionID: t.threadID, TurnID: t.messageID, Updates: t.follow(ctx, src, w, caught)}, nil
 	}
 	src.Close()
 	t.close()
@@ -217,7 +217,7 @@ func finished(caught []harness.Update, end *harness.TurnResult) <-chan harness.U
 // follow registers the turn for Stop and pumps its stream after first until the turn ends.
 func (t *turn) follow(ctx context.Context, src source, w *watch, first []harness.Update) <-chan harness.Update {
 	l := newRunningTurn(ctx, t.messageID)
-	t.h.turns.Store(t.threadID, l)
+	t.h.turns.Store(turnKey{t.threadID, t.messageID}, l)
 	updates := make(chan harness.Update, len(first)+16)
 	for _, u := range first {
 		updates <- u
@@ -522,7 +522,7 @@ func (t *turn) live(ctx context.Context) (*t3rpc.Conn, error) {
 func (t *turn) end(ctx context.Context, w *watch, l *runningTurn) {
 	defer t.close()
 	l.halt() // frees the context only Stop would have cancelled
-	t.h.turns.CompareAndDelete(t.threadID, l)
+	t.h.turns.CompareAndDelete(turnKey{t.threadID, l.messageID}, l)
 	if !w.queued() {
 		return
 	}

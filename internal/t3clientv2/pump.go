@@ -75,11 +75,7 @@ func (p *pump) drain(ctx context.Context, src source, out chan<- harness.Update)
 			return true, nil
 		}
 		values, err := p.next(p.live.halted, src)
-		if ctx.Err() != nil {
-			return true, nil
-		}
-		if p.live.halted.Err() != nil {
-			p.finish(ctx, out, p.w.stop())
+		if ctx.Err() != nil || p.stopped(ctx, out) {
 			return true, nil
 		}
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
@@ -197,18 +193,30 @@ func (p *pump) capped(ctx context.Context, out chan<- harness.Update) bool {
 	return true
 }
 
-// resubscribe opens the stream again after the cursor, ending the turn when it cannot.
+// stopped ends the turn interrupted once Stop halted it.
+func (p *pump) stopped(ctx context.Context, out chan<- harness.Update) bool {
+	if p.live.halted.Err() == nil {
+		return false
+	}
+	p.finish(ctx, out, p.w.stop())
+	return true
+}
+
+// resubscribe opens the stream again after the cursor, ending the turn when it cannot or once Stop halted it.
 func (p *pump) resubscribe(ctx context.Context, cause error, out chan<- harness.Update) source {
 	for p.failures < len(resubscribeBackoff) {
+		// halted ends with ctx too.
 		select {
-		case <-ctx.Done():
-			return nil
+		case <-p.live.halted.Done():
 		case <-time.After(resubscribeBackoff[p.failures]):
+		}
+		if ctx.Err() != nil || p.stopped(ctx, out) {
+			return nil
 		}
 		p.failures++
 		src, err := p.open(ctx, p.w.cursor)
 		if errors.Is(err, harness.ErrProtocol) {
-			send(ctx, out, harness.Update{Terminal: &harness.TurnResult{State: harness.TurnError, LastError: updatedNote}})
+			p.finish(ctx, out, &harness.TurnResult{State: harness.TurnError, LastError: updatedNote})
 			return nil
 		}
 		if err == nil {
@@ -218,8 +226,8 @@ func (p *pump) resubscribe(ctx context.Context, cause error, out chan<- harness.
 		p.log.Warn("t3clientv2: resubscribe failed", "attempt", p.failures, "error", err)
 		cause = err
 	}
-	send(ctx, out, harness.Update{Terminal: &harness.TurnResult{State: harness.TurnError, LastError: fmt.Sprintf(
-		"Lost the connection to T3 Code and couldn't resume the turn after %d tries: %v", p.failures, cause)}})
+	p.finish(ctx, out, &harness.TurnResult{State: harness.TurnError, LastError: fmt.Sprintf(
+		"Lost the connection to T3 Code and couldn't resume the turn after %d tries: %v", p.failures, cause)})
 	return nil
 }
 

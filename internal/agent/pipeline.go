@@ -213,7 +213,9 @@ type Service struct {
 type activeTurn struct {
 	client harness.Client
 	target harness.Target
-	// answered wakes the turn's silence window once an answer has reached the harness.
+	// asked are the request ids of the questions this turn raised, under Service.mu.
+	asked []string
+	// answered wakes the turn's silence window once an answer to its own question has reached the harness.
 	answered chan struct{}
 }
 
@@ -362,7 +364,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	var sentThrough time.Time
 	if !req.Watch {
 		s.warnVersionIfChanged(setupCtx, conversationID, viaUserID, client, target.Computer)
-		prompts, sentThrough, err = s.buildTurnPrompts(ctx, conv, thread, projectID, req)
+		prompts, sentThrough, err = s.buildTurnPrompts(ctx, client, conv, thread, projectID, req)
 		if err != nil {
 			s.log.Error("agent: list context messages failed", "conversation", conversationID, "error", err)
 			failed(fmt.Sprintf("list context messages: %v", err))
@@ -402,7 +404,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	}
 	obs.OnStarted(turn.target.SessionID)
 
-	finalText, handoffs, term := s.drainTurn(ctx, conversationID, viaUserID, result.Updates, obs, newSilenceWindow(req.Silence, turn.answered))
+	finalText, handoffs, term := s.drainTurn(ctx, turn, conversationID, viaUserID, result.Updates, obs, newSilenceWindow(req.Silence, turn.answered))
 
 	s.finishTurn(ctx, conversationID, viaUserID, finalText, handoffs, term, obs)
 }
@@ -484,7 +486,7 @@ func (s *Service) loadThreadTarget(ctx context.Context, conv Conversation, viaUs
 }
 
 // buildTurnPrompts assembles both prompts and returns the newest message time the conversation has, sent or not.
-func (s *Service) buildTurnPrompts(ctx context.Context, conv Conversation, target *threadTarget, projectID string, req TurnRequest) (harness.TurnPrompts, time.Time, error) {
+func (s *Service) buildTurnPrompts(ctx context.Context, client harness.Client, conv Conversation, target *threadTarget, projectID string, req TurnRequest) (harness.TurnPrompts, time.Time, error) {
 	history, err := s.conversations.MessagesSince(ctx, conv.ID, conv.SyncedAt)
 	if err != nil {
 		return harness.TurnPrompts{}, time.Time{}, err
@@ -501,14 +503,14 @@ func (s *Service) buildTurnPrompts(ctx context.Context, conv Conversation, targe
 	if req.Play != nil {
 		all, others = nil, nil
 	}
-	attachments := s.targetAttachments(actorCtx, target)
-	in.Target = targetSection(target, len(attachments))
+	images := s.targetImages(actorCtx, client, target)
+	in.Target = targetSection(target, images)
 	incremental := in
 	incremental.ContextMessages = others
 	in.ContextMessages = all
 	in.Intro = s.template(ctx, TemplateIntro, DefaultIntro)
 	in.Footer = s.template(ctx, TemplateFooter, DefaultFooter)
-	return harness.TurnPrompts{Full: ComposePrompt(in), Incremental: ComposeIncrementalPrompt(incremental), Attachments: attachments, Answer: req.Answer}, sentThrough, nil
+	return harness.TurnPrompts{Full: ComposePrompt(in), Incremental: ComposeIncrementalPrompt(incremental), Attachments: attached(images), Answer: req.Answer}, sentThrough, nil
 }
 
 // contextMessages resolves history; others drops the Agent's own replies, which a live session already holds, but
@@ -561,24 +563,52 @@ func (s *Service) markSent(ctx context.Context, conversationID string, through t
 	}
 }
 
-// targetAttachments collects the images the ticket or doc body embeds; the body itself never enters the prompt.
-func (s *Service) targetAttachments(ctx context.Context, target *threadTarget) []harness.Attachment {
+// targetImages reads the images the ticket or doc body embeds, attaching those client sends its agent.
+func (s *Service) targetImages(ctx context.Context, client harness.Client, target *threadTarget) []bodyImage {
 	if target == nil || s.attachments == nil {
 		return nil
 	}
-	_, atts := ExtractAttachments(ctx, target.body, s.attachments, NewAttachmentBudget())
-	return atts
+	takes := func(string) bool { return true }
+	if t, ok := client.(harness.ImageTaker); ok {
+		takes = t.TakesImage
+	}
+	return bodyImages(ctx, target.body, s.attachments, takes)
 }
 
-// targetSection is the line naming the thread's ticket or doc, with the images line when any image was attached.
-func targetSection(target *threadTarget, images int) string {
+func attached(images []bodyImage) []harness.Attachment {
+	var out []harness.Attachment
+	for _, img := range images {
+		if img.attachment != nil {
+			out = append(out, *img.attachment)
+		}
+	}
+	return out
+}
+
+// targetSection names the thread's ticket or doc, listing by link each image not attached so it never claims one.
+func targetSection(target *threadTarget, images []bodyImage) string {
 	if target == nil {
 		return ""
 	}
-	if images == 0 {
-		return target.line
+	lines := []string{target.line}
+	var links []string
+	for _, img := range images {
+		if img.attachment == nil {
+			links = append(links, "- "+img.name+": "+img.link)
+		}
 	}
-	return target.line + "\n" + imagesLine
+	if len(links) > 0 {
+		lines = append(lines, linksLine)
+		lines = append(lines, links...)
+	}
+	sent := len(images) - len(links)
+	if sent > 0 && len(links) == 0 {
+		lines = append(lines, imagesLine)
+	}
+	if sent > 0 && len(links) > 0 {
+		lines = append(lines, otherImagesLine)
+	}
+	return strings.Join(lines, "\n")
 }
 
 // turnMemories is what a play names, or for a mention the project's always-included memories.
@@ -618,11 +648,14 @@ func (s *Service) template(ctx context.Context, key, fallback string) string {
 	return body
 }
 
-// announceTurnStarted shows a "working" indicator immediately and persists a new session id, if any.
+// announceTurnStarted shows a "working" indicator at once, names the turn for Stop, and persists a new session id, if any.
 func (s *Service) announceTurnStarted(ctx context.Context, conversationID, priorThreadID string, turn *activeTurn, result harness.StartResult) {
 	if err := s.live.Publish(ctx, TopicAgentStream, StreamFrame{ConversationID: conversationID, Streaming: true}); err != nil {
 		s.log.Warn("agent: publish working frame failed", "conversation", conversationID, "error", err)
 	}
+	s.mu.Lock()
+	turn.target.TurnID = result.TurnID
+	s.mu.Unlock()
 	if result.SessionID == "" || result.SessionID == priorThreadID {
 		return
 	}
@@ -635,7 +668,7 @@ func (s *Service) announceTurnStarted(ctx context.Context, conversationID, prior
 }
 
 // drainTurn reads a turn's updates to completion, forwarding snapshots, hand-offs and approvals live.
-func (s *Service) drainTurn(ctx context.Context, conversationID, viaUserID string, updates <-chan harness.Update, obs Observer, window *silenceWindow) (finalText string, handoffs []harness.Handoff, term *harness.TurnResult) {
+func (s *Service) drainTurn(ctx context.Context, turn *activeTurn, conversationID, viaUserID string, updates <-chan harness.Update, obs Observer, window *silenceWindow) (finalText string, handoffs []harness.Handoff, term *harness.TurnResult) {
 	frame := StreamFrame{ConversationID: conversationID, Streaming: true}
 	publish := func() {
 		if err := s.live.Publish(ctx, TopicAgentStream, frame); err != nil {
@@ -674,6 +707,7 @@ func (s *Service) drainTurn(ctx context.Context, conversationID, viaUserID strin
 			}
 			obs.OnActivity(*u.Activity)
 		case u.Question != nil:
+			s.ask(turn, u.Question.RequestID)
 			// The question lands as the Agent's own message so the thread shows the card; the stream bubble yields to it.
 			if _, err := s.conversations.PostAgentReply(ctx, conversationID, viaUserID, QuestionMessageBody(*u.Question), nil); err != nil {
 				s.log.Error("agent: post question failed", "conversation", conversationID, "error", err)
@@ -950,6 +984,27 @@ func (s *Service) clearActive(conversationID string, t *activeTurn) {
 	s.active[conversationID] = turns
 }
 
+// ask records that t raised requestID, before anyone can see the question to answer it.
+func (s *Service) ask(t *activeTurn, requestID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	t.asked = append(t.asked, requestID)
+}
+
+// answerers splits the conversation's in-flight turns, newest first, into those that asked requestID and the rest.
+func (s *Service) answerers(conversationID, requestID string) (asking, others []activeTurn) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, t := range slices.Backward(s.active[conversationID]) {
+		if slices.Contains(t.asked, requestID) {
+			asking = append(asking, *t)
+			continue
+		}
+		others = append(others, *t)
+	}
+	return asking, others
+}
+
 // liveTurns copies the conversation's in-flight turns, newest first.
 func (s *Service) liveTurns(conversationID string) []activeTurn {
 	s.mu.Lock()
@@ -973,20 +1028,20 @@ func QuestionMessageBody(q harness.Question) string {
 	return questionFence + string(b) + "\n```"
 }
 
-// Answer resolves a pending question through the conversation's live turns, newest first; ErrNotFound when none runs here.
+// Answer resolves a question through the turn that asked it, else another live turn, newest first; ErrNotFound for none.
 func (s *Service) Answer(ctx context.Context, conversationID, requestID string, answer harness.QuestionAnswer) error {
-	turns := s.liveTurns(conversationID)
-	if len(turns) == 0 {
+	asking, others := s.answerers(conversationID, requestID)
+	if len(asking)+len(others) == 0 {
 		return fmt.Errorf("%w: no active agent turn on conversation %s", apperrs.ErrNotFound, conversationID)
 	}
 	var first error
-	for _, t := range turns {
+	for _, t := range append(asking, others...) {
 		err := t.client.Answer(ctx, t.target, requestID, answer)
 		if errors.Is(err, apperrs.ErrConflict) {
 			return err
 		}
 		if err == nil {
-			wakeAll(turns)
+			wake(asking)
 			return nil
 		}
 		if first == nil {
@@ -996,8 +1051,8 @@ func (s *Service) Answer(ctx context.Context, conversationID, requestID string, 
 	return first
 }
 
-// wakeAll restarts the silence window of every turn, since whichever asked is the one paused on the question.
-func wakeAll(turns []activeTurn) {
+// wake restarts the silence windows of the turns that asked; any other turn stays paused on its own question.
+func wake(turns []activeTurn) {
 	for _, t := range turns {
 		// A wake already pending covers this answer too.
 		select {

@@ -25,4 +25,7 @@ with its old state; persisting the seq beside `collab_sessions` is the fix if th
 
 The same reset is keyed on the room id, not on docs, so another live-edited body can reuse it.
 
+Rooms written over before this decision never got their reset, so migration 0065 drops every room whose newest
+update is no newer than its doc's last unnamed version row; the next editor seeds it from the body.
+
 Decided 2026-10-02.

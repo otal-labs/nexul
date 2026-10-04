@@ -32,9 +32,9 @@ Decision: Nexul mints the message id, and the turn is the run whose `userMessage
   so it needs none.
 - **The images.** A full prompt's images are uploaded first with `assets.persistChatAttachments`, under the thread
   and message ids, as gif, jpeg, png or webp data URLs, and `message.dispatch` carries the references T3 returns.
-  Any other type is left out with a note, since T3's providers take only those four. A refused upload fails the
-  turn before anything is sent, because the prompt points at images the agent would not see. An incremental prompt
-  carries none: the thread already holds them.
+  Any other type is left out with a note, since T3's providers take only those four, and the prompt lists it by link
+  rather than as attached (ADR 0111). A refused upload fails the turn before anything is sent, because the prompt
+  points at images the agent would not see. An incremental prompt carries none: the thread already holds them.
 - **The end.** The turn is done at its run's first `waiting`, or at `completed` if `waiting` was missed. T3 persists
   a finished provider turn as `waiting` and moves it to `completed` once its checkpoint is captured; the reply is
   final at `waiting`, and the checkpoint is T3's own rollback bookkeeping, which can lag or stall. `interrupted`,
@@ -47,16 +47,19 @@ Decision: Nexul mints the message id, and the turn is the run whose `userMessage
   cursor are dropped, and unknown event types are skipped but still move the cursor. Once the first snapshot is in,
   any end of the stream, a defect such as `LiveStreamBufferError` included, resubscribes after the cursor, up to three
   times in a row with backoff, and then the turn ends in error. A reconnect that finds T3 Code on another protocol
-  ends the turn at once: "T3 Code was updated during this turn; ask again".
-- **Stop.** Stop acts on the run of the turn watching the thread. Only when no turn is watching, or T3 has no run for
-  its message, does it fall back to the thread's newest unfinished run. A queued run is cancelled. A live one gets
-  `run.interrupt` without `holdQueue`: T3's own Stop sends it, and it would hold every later Nexul message until
-  someone resumes the queue in T3. A `waiting` run has already replied; only the thread's latest one can still have
-  background work to stop, and T3 calling it not interruptible means nothing is left. When T3 refuses because the run
-  started or replied after Stop read it ("is not queued", "is not interruptible"), Stop reads the thread once more and
-  acts on what it finds. With nothing to stop, Stop is a conflict. Work the turn handed off is stopped first
-  (ADR 0116). A Stop that succeeds ends the turn interrupted at once, without waiting for T3 to report the run's end.
-  A turn that stops watching while its run is still queued cancels that run, since nobody would read its reply.
+  ends the turn at once: "T3 Code was updated during this turn; ask again". A Stop during the backoff ends the turn
+  interrupted at once, and every end shows the notes Stop left first.
+- **Stop.** Stop acts on the run of the turn it names. A turn is named by its message id, so with a second turn
+  queued on the same thread each Stop reaches its own run and its own hand-offs. Only when no turn of that name is
+  watching, or T3 has no run for its message, does it fall back to the thread's newest unfinished run. A queued run
+  is cancelled. A live one gets `run.interrupt` without `holdQueue`: T3's own Stop sends it, and it would hold every
+  later Nexul message until someone resumes the queue in T3. A `waiting` run has already replied; only the thread's
+  latest one can still have background work to stop, and T3 calling it not interruptible means nothing is left. When
+  T3 refuses because the run started or replied after Stop read it ("is not queued", "is not interruptible"), Stop
+  reads the thread once more and acts on what it finds. With nothing to stop, Stop is a conflict. Work the turn
+  handed off is stopped first (ADR 0116). A Stop that succeeds ends the turn interrupted at once, without waiting for
+  T3 to report the run's end. A turn that stops watching while its run is still queued cancels that run, since
+  nobody would read its reply.
 - **Answers.** A question is answered with `runtime-request.respond`, keyed by question id. A request T3 resumes by
   dispatching the answer as a message of its own (`responseCapability` `message`) takes one non-empty string per
   question, with multi-select choices joined by ", ".

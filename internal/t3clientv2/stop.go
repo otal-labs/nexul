@@ -92,7 +92,7 @@ func (l *runningTurn) takeNotes() []string {
 	return notes
 }
 
-// Interrupt implements harness.Client: it stops the watching turn's handed-off work, then its run, and ends it interrupted.
+// Interrupt implements harness.Client: it stops the named turn's handed-off work, then its run, and ends it interrupted.
 func (h *Harness) Interrupt(ctx context.Context, target harness.Target) (err error) {
 	if target.SessionID == "" {
 		return fmt.Errorf("%w: no active session to interrupt", apperrs.ErrInvalid)
@@ -108,7 +108,7 @@ func (h *Harness) Interrupt(ctx context.Context, target harness.Target) (err err
 	if err != nil {
 		return err
 	}
-	found, _ := h.turns.Load(target.SessionID)
+	found, _ := h.turns.Load(turnKey{target.SessionID, target.TurnID})
 	l, ok := found.(*runningTurn)
 	if !ok {
 		return stopRun(ctx, c, target.SessionID, p.Runs, "")

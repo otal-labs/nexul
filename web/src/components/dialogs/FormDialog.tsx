@@ -122,7 +122,11 @@ export const FormDialog = ({
         if (!open) handleCancel();
       }}
     >
-      <DialogContent className={cn(dialogClassName)}>
+      <DialogContent
+        className={cn(dialogClassName)}
+        // A stray click beside the dialog must not throw typed input away; Cancel and Esc close it on purpose.
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <FormProvider {...methods}>
           <FormDialogContext.Provider value={contextValue}>
             <DialogHeader>
