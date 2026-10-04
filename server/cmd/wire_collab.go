@@ -9,6 +9,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs/richtext"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/tickets"
 )
 
 // collabDocWriter lets collab writes inherit docs validation without collab importing docs.
@@ -44,4 +45,13 @@ func (n collabNoteRooms) CommitCollab(ctx context.Context, messageID, _, body st
 
 func (n collabNoteRooms) Locked(ctx context.Context, messageID string) (bool, error) {
 	return n.chat.NoteLocked(ctx, messageID)
+}
+
+// collabTicketRooms is the tickets hub's join check, keyed on the ticket id; the hub's context names the caller.
+type collabTicketRooms struct {
+	tickets *tickets.Service
+}
+
+func (t collabTicketRooms) Can(ctx context.Context, _, ticketID string, action permissions.Action) (bool, error) {
+	return t.tickets.CanJoin(ctx, ticketID, action)
 }

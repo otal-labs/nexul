@@ -1,8 +1,7 @@
 import { useEffect, useRef } from "react";
 
-import { ConflictBanner } from "@/components/doc/collab/ConflictBanner";
+import { CollabRichTextEditor } from "@/components/doc/collab/CollabRichTextEditor";
 import type { CollabSession } from "@/components/doc/collab/useCollabSession";
-import { RichTextEditor } from "@/components/doc/RichTextEditor";
 
 interface NoteFileEditorProps {
   session: CollabSession;
@@ -21,28 +20,15 @@ export const NoteFileEditor = ({ session, markdown, conversationId }: NoteFileEd
 
   return (
     <div className="space-y-4">
-      <RichTextEditor
-        key={session.key}
+      <CollabRichTextEditor
+        session={session}
         value={markdown}
         onChange={(json) => {
           bodyRef.current = json;
         }}
         aria-label="Note"
         attachTo={{ conversation_id: conversationId }}
-        collab={{ doc: session.doc, provider: session.provider, user: session.user, seed: session.seed }}
       />
-      {session.applyError && (
-        <ConflictBanner
-          onKeepMine={() => {
-            session.dismissApplyError();
-            session.provider.recoverKeepMine();
-          }}
-          onTakeServer={() => {
-            session.dismissApplyError();
-            session.resetSession();
-          }}
-        />
-      )}
     </div>
   );
 };

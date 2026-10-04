@@ -22,7 +22,6 @@ interface TicketPageBodyProps {
   ticket: Ticket;
   project: Project | undefined;
   workspaceId: string;
-  onSave: (title: string, body: string) => Promise<void>;
   onTransition: (statusId: string) => Promise<void>;
   onSetType: (ticketId: string, typeId: string) => Promise<void>;
   onAddLabel: (ticketId: string, label: string) => Promise<void>;
@@ -35,7 +34,6 @@ export const TicketPageBody = ({
   ticket,
   project,
   workspaceId,
-  onSave,
   onTransition,
   onSetType,
   onAddLabel,
@@ -48,7 +46,7 @@ export const TicketPageBody = ({
   return (
     <div className={layout.grid} data-thread-grid="" style={gridStyle}>
       <div className={layout.body}>
-        <TicketDetail key={ticket.id} ticket={ticket} {...(project ? { project } : {})} onSave={onSave} />
+        <TicketDetail key={ticket.id} ticket={ticket} {...(project ? { project } : {})} />
       </div>
       {workspaceId !== "" && (
         <div className={layout.thread}>

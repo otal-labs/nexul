@@ -11,7 +11,6 @@ import {
   useFetchTicket,
   useRemoveLabel,
   useSetTicketType,
-  useUpdateTicket,
   useUpdateTicketStatus,
 } from "@/hooks/TicketHooks";
 import { useTicketPageResolution } from "@/hooks/useTicketPageResolution";
@@ -31,7 +30,6 @@ export const TicketPage = ({ ticketId: ticketIdProp }: TicketPageProps = {}) => 
   });
   const { data, error, isPending } = useFetchTicket(ticketId);
   const updateStatus = useUpdateTicketStatus();
-  const updateTicket = useUpdateTicket();
   const setType = useSetTicketType();
   const addLabel = useAddLabel();
   const removeLabel = useRemoveLabel();
@@ -50,9 +48,6 @@ export const TicketPage = ({ ticketId: ticketIdProp }: TicketPageProps = {}) => 
           project={project || undefined}
           workspaceId={workspaceId}
           embedded={embedded}
-          onSave={async (title, body) => {
-            await updateTicket.mutateAsync({ id: data.id, title, body });
-          }}
           onTransition={async (status) => {
             await updateStatus.mutateAsync({ id: data.id, status });
           }}

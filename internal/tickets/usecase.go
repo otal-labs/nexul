@@ -30,8 +30,18 @@ type Service struct {
 	gate     Gate
 	docs     SourceDocs
 	people   ProjectPeople
+	live     LiveSessions
 	now      func() time.Time
 }
+
+// LiveSessions fences a body write against the ticket's open editing room and resets the room after it, so the
+// write wins over open editors (ADR 0109); tickets never imports collab (ADR 0017).
+type LiveSessions interface {
+	Reset(ctx context.Context, roomID string, write func(context.Context) error) error
+}
+
+// SetLiveSessions wires the editing rooms a body write must win over; without it a write touches only the ticket.
+func (s *Service) SetLiveSessions(live LiveSessions) { s.live = live }
 
 // Gate is the permission check a ticket passes through before the caller touches it (the access domain, ADR 0042).
 type Gate interface {
@@ -516,10 +526,55 @@ func (s *Service) UpdateTicket(ctx context.Context, id, title, body string) (*Ti
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{
 		Ticket: updated, ActorID: statusActor(ctx).UserID, MentionedUserIDs: richtext.AddedPersonMentions(current.Body, body),
 	}}
-	if err := s.repo.UpdateTicket(ctx, id, title, body, evt); err != nil {
+	write := func(ctx context.Context) error { return s.repo.UpdateTicket(ctx, id, title, body, evt) }
+	if err := s.fence(ctx, id, body != current.Body, write); err != nil {
 		return nil, fmt.Errorf("update ticket %s: %w", id, err)
 	}
 	return &updated, nil
+}
+
+// fence runs a body change through the ticket's live room when one is wired; a title-only write leaves the room be.
+func (s *Service) fence(ctx context.Context, id string, bodyChanged bool, write func(context.Context) error) error {
+	if s.live == nil || !bodyChanged {
+		return write(ctx)
+	}
+	return s.live.Reset(ctx, id, write)
+}
+
+// CommitCollab writes a ticket's live room into its title and body; an empty title means unchanged, since only
+// the client that renamed sends one.
+func (s *Service) CommitCollab(ctx context.Context, id, title, body string) error {
+	current, err := s.load(ctx, id, permissions.TicketsWrite)
+	if err != nil {
+		return fmt.Errorf("commit ticket %s: %w", id, err)
+	}
+	updated := *current
+	if title = strings.TrimSpace(title); title != "" {
+		updated.Title = title
+	}
+	updated.Body = body
+	updated.UpdatedAt = s.now().UTC()
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{
+		Ticket: updated, ActorID: statusActor(ctx).UserID, MentionedUserIDs: richtext.AddedPersonMentions(current.Body, body),
+	}}
+	if err := s.repo.UpdateTicket(ctx, id, updated.Title, body, evt); err != nil {
+		return fmt.Errorf("commit ticket %s: %w", id, err)
+	}
+	return nil
+}
+
+// CanJoin reports whether the caller may join a ticket's live room under action; the hub's context carries them.
+func (s *Service) CanJoin(ctx context.Context, id string, action permissions.Action) (bool, error) {
+	if _, err := s.load(ctx, id, action); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// Locked never refuses a ticket's live edits: tickets have no lock, and a deleted one fails the read instead.
+func (s *Service) Locked(ctx context.Context, id string) (bool, error) {
+	_, err := s.repo.GetByID(ctx, id)
+	return false, err
 }
 
 // AddLabel attaches a cross-cutting tag to a ticket; the ticket must exist, a duplicate label is a no-op.
