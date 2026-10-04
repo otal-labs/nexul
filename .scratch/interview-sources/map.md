@@ -81,18 +81,18 @@ decision tickets are resolved, the build tickets graduate from the fog.
 - [What a source is and where it is kept](issues/01-what-a-source-is.md): path, doc, memory, whole project, or pasted text (uploads become text) with a required follow or question stance, in a new memories-domain table; adding a ref takes read on it, gone refs show as gone, read by the run through the interview memory tools.
 - [The drafting run](issues/03-the-drafting-run.md): its own built-in play, "Draft interview", started by a person once a follow source exists; it never asks, drafts every unanswered template question into a separate drafts table through `memory_update`, and ends; a draft counts only once saved as an answer.
 - [Redrafting after a source is added or changes](issues/05-redrafting.md): a warning dot on "Draft answers" for new or changed sources, never an automatic run; every run reads every follow source, and an answered question gets a draft only where the sources now disagree, shown as a suggested change to accept or dismiss.
+- [The Interview page with sources and drafts](issues/04-the-page-with-sources.md): a collapsible Sources section above the questions with Draft answers in its header; drafted rows in a dashed ring with where they came from; suggested changes with Accept / Dismiss.
+
+## Build
+
+Build tickets 07–10 in `issues/`: storage and surfaces, the drafting run,
+the follow-up run reading question sources, and the page.
 
 ## Not yet specified
 
-- The build tickets: source storage, the drafting run, drafts on the cards,
-  redrafting, the audit, MCP, and the walkthrough on Clutch Hub (create the
-  project in MgClutch, point its interview at its repo, follow the run
-  through its trail). They graduate once the decision tickets resolve.
-- What the follow-up run does differently with question sources than with
-  the project's own checkout, which it already reads for contradictions:
-  possibly nothing beyond reading more than one checkout.
-- How the drafting copes with a very large source (a whole predecessor
-  repo, a long practices folder) against one session's budget.
+- The audit's build and the walkthrough on Clutch Hub (create the project
+  in MgClutch, point its interview at its repo, follow the runs through
+  their trails); they graduate once the audit is decided.
 - Whether GitHub issues become a source kind, which needs the App's Issues
   permission on every installation; pasted text covers them until the
   walkthrough shows otherwise.
