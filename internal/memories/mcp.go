@@ -73,7 +73,7 @@ type draftIn struct {
 	Selected  []string `json:"selected,omitempty" jsonschema:"The picked options' labels."`
 	Text      string   `json:"text,omitempty" jsonschema:"A free-text answer, alone or beside the picked options."`
 	SourceIDs []string `json:"source_ids" jsonschema:"The ids of the follow sources the draft came from, from memory_get."`
-	Where     string   `json:"where,omitempty" jsonschema:"One line, at most 500 characters, saying where in the sources it came from, for example practices/testing.md, Test error paths first."`
+	Where     string   `json:"where,omitempty" jsonschema:"One line, at most 500 characters, saying where inside the sources it came from (a heading, a file inside a folder source, a quoted phrase) without repeating a source's name, for example Testing, 'Test error paths first'."`
 	TrailID   string   `json:"trail_id,omitempty" jsonschema:"The id of the play run's trail writing the draft, when the run names it."`
 }
 

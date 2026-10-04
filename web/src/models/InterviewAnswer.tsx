@@ -177,3 +177,13 @@ export const answersChangedSinceRun = (answers: InterviewAnswer[], trails: Trail
   if (!generated) return answers.length;
   return answers.filter((a) => Date.parse(a.answered_at) > Date.parse(generated)).length;
 };
+
+// What a drafting run started at since has left on the template's questions, worded as their list counts it: drafts waiting
+// on unanswered questions, then suggested changes to answered ones; a confirmed draft no longer counts.
+export const draftRunCount = (questions: InterviewQuestion[], answers: InterviewAnswer[], drafts: InterviewDraft[], since: number): string => {
+  const rows = buildSections(questions, answers, drafts.filter((d) => Date.parse(d.drafted_at) >= since))[0]?.rows ?? [];
+  const drafted = rows.filter((r) => r.draft?.state === "open").length;
+  const suggested = rows.filter((r) => r.draft?.state === "suggested").length;
+  if (drafted === 0 && suggested > 0) return `${suggested} suggested`;
+  return [`${drafted} of ${rows.length} drafted`, suggested > 0 && `${suggested} suggested`].filter(Boolean).join(" · ");
+};
