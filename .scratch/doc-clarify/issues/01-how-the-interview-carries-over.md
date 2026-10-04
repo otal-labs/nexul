@@ -1,7 +1,7 @@
 # 01: How the interview's machinery carries over to a doc
 
 Type: research
-Status: open
+Status: resolved
 Blocked by: None — can start immediately
 
 ## Question
@@ -28,3 +28,22 @@ the run is alive. Find out, with evidence from the code:
   question cards, if anything.
 - How the inbox notifies watchers of a doc and one named person, and
   whether the two notifications need new kinds.
+
+## Answer
+
+Findings in [research/how-the-interview-carries-over.md](../research/how-the-interview-carries-over.md).
+
+- **Storage.** A doc needs its own tables in the docs domain beside the interview's. Sharing `interview_answers`
+  would need a branch on the target in every permission check, event, and live frame to keep a doc's questions away
+  from people who can read memories but not the doc.
+- **Posting a round.** A run posts its round through `doc_update` and then ends normally. `doc_get` returns the
+  rounds. There are 107 of 108 tools, so no new tool. The trail shows the call as an ordinary step and ends done. The
+  page shows stored questions the way the Interview page already shows stored follow-ups, saving one answer at a time.
+- **Locking.** Today a doc play locks its doc at start for good, and that lock would refuse the closing write. The
+  runner should lock at start, record that on the round, and unlock at every end. The closing write should be
+  accepted only from the running round's starter.
+- **Web reuse.** The option rows with "Something else…", the round sections, and the question rows carry over once
+  they move to a shared folder. `QuestionCard` and the interview's round labels carry Agent wording, so they don't.
+- **Phone.** The doc screen is read-only and has nothing for questions yet.
+- **Notifications.** Both need new kinds. The current ones would read "doc updated" or show the play's name to the
+  client.
