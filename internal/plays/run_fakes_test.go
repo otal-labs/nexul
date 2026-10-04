@@ -324,11 +324,46 @@ func (f *fakeMemories) ListForProject(_ context.Context, projectID string) ([]Me
 	return f.byProject[projectID], f.err
 }
 
-// fakeAnswers records each round of follow-ups the runner stores, or fails with err.
+// fakeAnswers records each round of follow-ups the runner stores, or fails with err; it also serves sources and
+// records the projects whose suggestions were cleared.
 type fakeAnswers struct {
-	mu     sync.Mutex
-	err    error
-	rounds []fakeRound
+	mu         sync.Mutex
+	err        error
+	rounds     []fakeRound
+	sources    []InterviewSource
+	sourcesErr error
+	clearErr   error
+	cleared    []string
+}
+
+func (f *fakeAnswers) ListSources(context.Context, string) ([]InterviewSource, error) {
+	return f.sources, f.sourcesErr
+}
+
+func (f *fakeAnswers) ClearSuggestions(_ context.Context, projectID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.cleared = append(f.cleared, projectID)
+	return f.clearErr
+}
+
+// fakeCheckouts serves the starter's project links and the computer's T3 projects, counting list calls.
+type fakeCheckouts struct {
+	links    map[string][2]string // project id -> computer id, T3 project id
+	linkErr  error
+	projects []harness.Project
+	listErr  error
+	lists    int
+}
+
+func (f *fakeCheckouts) LinkedProject(_ context.Context, _, projectID string) (string, string, error) {
+	l := f.links[projectID]
+	return l[0], l[1], f.linkErr
+}
+
+func (f *fakeCheckouts) ListProjects(context.Context, string, string) ([]harness.Project, error) {
+	f.lists++
+	return f.projects, f.listErr
 }
 
 type fakeRound struct {

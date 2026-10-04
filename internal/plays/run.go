@@ -131,9 +131,36 @@ type FollowUp struct {
 	Text        string
 }
 
-// InterviewAnswers is the runner's seam onto the stored interview answers (ADR 0017), one round per answered question.
+// InterviewSource is one source of a project's interview as the caller reads it; Unreadable when they cannot see its ref.
+type InterviewSource struct {
+	ID         string
+	Kind       string
+	Ref        string
+	Label      string
+	Stance     string
+	Unreadable bool
+}
+
+// Interview source kinds and stances the runner acts on; they mirror the memories domain's.
+const (
+	SourceKindProject = "project"
+	StanceFollow      = "follow"
+	StanceQuestion    = "question"
+)
+
+// InterviewAnswers is the runner's seam onto a project's stored interview (ADR 0017): rounds, sources, and drafts.
 type InterviewAnswers interface {
 	RecordRound(ctx context.Context, projectID, answeredBy string, followUps []FollowUp) error
+	ListSources(ctx context.Context, projectID string) ([]InterviewSource, error)
+	// ClearSuggestions deletes the project's drafts on questions that already have an answer.
+	ClearSuggestions(ctx context.Context, projectID string) error
+}
+
+// Checkouts is the runner's seam onto pairing for where another project's checkout is on a computer.
+type Checkouts interface {
+	// LinkedProject is userID's project link for projectID: its computer and T3 project, empty when unset.
+	LinkedProject(ctx context.Context, userID, projectID string) (computerID, harnessProjectID string, err error)
+	ListProjects(ctx context.Context, userID, computerID string) ([]harness.Project, error)
 }
 
 // Threads is the runner's seam onto chat: the target's thread, the starter's request in it, and the run's notes.
@@ -183,33 +210,36 @@ type RunnerConfig struct {
 	Users    UserReader
 	// Links is optional; nil means a ticket play runs without its found-in and blocked-by context.
 	Links LinkReader
-	// Answers is optional; nil means an interview run's follow-ups live only on the trail.
+	// Answers is optional; nil means an interview run's follow-ups live only on the trail and it names no sources.
 	Answers InterviewAnswers
-	Logger  *slog.Logger
-	Now     func() time.Time
+	// Checkouts is optional; nil names every project source with no checkout on the run's computer.
+	Checkouts Checkouts
+	Logger    *slog.Logger
+	Now       func() time.Time
 	// SilenceTimeout defaults to HarnessSilenceTimeout; tests shorten it.
 	SilenceTimeout time.Duration
 }
 
 // Runner starts play runs and keeps their trails (ADR 0055).
 type Runner struct {
-	plays    Repo
-	trails   TrailRepo
-	perm     PermissionGate
-	targets  TargetReader
-	docs     DocLocker
-	projects ProjectLookup
-	harness  HarnessResolver
-	memories MemoryReader
-	threads  Threads
-	turns    TurnRunner
-	live     LivePublisher
-	users    UserReader
-	links    LinkReader
-	answers  InterviewAnswers
-	log      *slog.Logger
-	now      func() time.Time
-	silence  time.Duration
+	plays     Repo
+	trails    TrailRepo
+	perm      PermissionGate
+	targets   TargetReader
+	docs      DocLocker
+	projects  ProjectLookup
+	harness   HarnessResolver
+	memories  MemoryReader
+	threads   Threads
+	turns     TurnRunner
+	live      LivePublisher
+	users     UserReader
+	links     LinkReader
+	answers   InterviewAnswers
+	checkouts Checkouts
+	log       *slog.Logger
+	now       func() time.Time
+	silence   time.Duration
 
 	mu   sync.Mutex
 	runs map[string]*trailObserver // trail id -> the live run, so it can be stopped
@@ -232,7 +262,7 @@ func NewRunner(cfg RunnerConfig) *Runner {
 	return &Runner{
 		plays: cfg.Plays, trails: redactedTrails{cfg.Trails}, perm: cfg.Perm, targets: cfg.Targets, docs: cfg.Docs, projects: cfg.Projects,
 		harness: cfg.Harness, memories: cfg.Memories, threads: redactedThreads{cfg.Threads}, turns: cfg.Turns,
-		live: cfg.Live, users: cfg.Users, links: cfg.Links, answers: cfg.Answers, log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout,
+		live: cfg.Live, users: cfg.Users, links: cfg.Links, answers: cfg.Answers, checkouts: cfg.Checkouts, log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout,
 		runs: map[string]*trailObserver{},
 	}
 }
@@ -328,6 +358,10 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	if trail.TargetType == TargetInterview {
 		links = append(links, interviewBlock(tgt))
 	}
+	drafting := trail.TargetType == TargetInterview && play.BuiltinKey == DraftInterviewKey
+	if drafting {
+		links = append(links, r.draftingBlock(ctx, trail))
+	}
 	conversationID, err := r.openThread(ctx, play.WorkspaceID, trail.TargetType, trail.TargetID, trail.StarterID)
 	if err != nil {
 		return refuse(err)
@@ -345,6 +379,9 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	if trail.TargetType == TargetDoc {
 		r.lockDoc(ctx, trail)
 	}
+	if drafting {
+		r.clearSuggestions(ctx, trail)
+	}
 	// Copied before the turn starts: from here on the observer's goroutine owns trail.
 	snapshot := *trail
 	r.startTurn(ctx, trail, targetTitle, agent.TurnRequest{
@@ -353,6 +390,87 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 		Target: &agent.TargetOverride{ComputerID: choice.ComputerID, Provider: choice.Provider, Model: choice.Model, ModelOptions: choice.ModelOptions},
 	}, false)
 	return &snapshot, nil
+}
+
+// clearSuggestions drops the project's suggested changes as a drafting run starts, so only those it drafts again come back;
+// a failure is logged, never the run's.
+func (r *Runner) clearSuggestions(ctx context.Context, trail *Trail) {
+	if r.answers == nil {
+		return
+	}
+	if err := r.answers.ClearSuggestions(ctx, trail.ProjectID); err != nil {
+		r.log.Warn("plays: clear suggested changes failed", "trail", trail.ID, "project", trail.ProjectID, "error", err)
+	}
+}
+
+// draftingBlock tells a drafting run its trail id, for the drafts it saves, and where its follow project sources are.
+func (r *Runner) draftingBlock(ctx context.Context, trail *Trail) string {
+	block := fmt.Sprintf("This run's trail id is %s; pass it as `trail_id` on every draft.", trail.ID)
+	if sources := r.projectSourcesBlock(ctx, trail, StanceFollow); sources != "" {
+		block += "\n" + sources
+	}
+	return block
+}
+
+// projectSourcesBlock names the interview's project sources of stance with each one's checkout on the run's computer,
+// read through the starter's project link for that project; "" when there are none. Unreadable sources are left out.
+func (r *Runner) projectSourcesBlock(ctx context.Context, trail *Trail, stance string) string {
+	if r.answers == nil {
+		return ""
+	}
+	ctx = identity.WithActor(ctx, identity.Actor{ID: trail.StarterID})
+	srcs, err := r.answers.ListSources(ctx, trail.ProjectID)
+	if err != nil {
+		r.log.Warn("plays: list interview sources failed", "trail", trail.ID, "project", trail.ProjectID, "error", err)
+		return ""
+	}
+	var lines []string
+	paths := r.checkoutPaths(ctx, trail)
+	for _, src := range srcs {
+		if src.Kind != SourceKindProject || src.Stance != stance || src.Unreadable {
+			continue
+		}
+		where := "no checkout on this computer; use only its memories and interview answers"
+		if path := paths(src.Ref); path != "" {
+			where = "its checkout on this computer is " + path
+		}
+		lines = append(lines, fmt.Sprintf("- %q (project id %s, source id %s): %s.", src.Label, src.Ref, src.ID, where))
+	}
+	if len(lines) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("Project sources with stance %s:\n%s", stance, strings.Join(lines, "\n"))
+}
+
+// checkoutPaths returns a lookup of a project's checkout path on the run's computer: the starter's project link for it
+// must name that computer and a T3 project the computer still lists. The computer's list is read once, on first need.
+func (r *Runner) checkoutPaths(ctx context.Context, trail *Trail) func(projectID string) string {
+	var listed map[string]string
+	return func(projectID string) string {
+		if r.checkouts == nil || trail.ComputerID == "" {
+			return ""
+		}
+		computerID, harnessProjectID, err := r.checkouts.LinkedProject(ctx, trail.StarterID, projectID)
+		if err != nil {
+			r.log.Warn("plays: read project link failed", "trail", trail.ID, "project", projectID, "error", err)
+			return ""
+		}
+		if computerID != trail.ComputerID || harnessProjectID == "" {
+			return ""
+		}
+		if listed == nil {
+			listed = map[string]string{}
+			projects, err := r.checkouts.ListProjects(ctx, trail.StarterID, trail.ComputerID)
+			if err != nil {
+				r.log.Warn("plays: list the computer's projects failed", "trail", trail.ID, "computer", trail.ComputerID, "error", err)
+				projects = nil
+			}
+			for _, p := range projects {
+				listed[p.ID] = p.Path
+			}
+		}
+		return listed[harnessProjectID]
+	}
 }
 
 // lockDoc locks a doc play's doc as the run starts and leaves it locked (ADR 0107); a failed lock is logged, never the run's failure.

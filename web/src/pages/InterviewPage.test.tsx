@@ -240,6 +240,13 @@ describe("InterviewPage", () => {
     expect(await screen.findByRole("button", { name: /Done/ })).toBeInTheDocument();
   });
 
+  it("never offers the drafting play as the interview's run", async () => {
+    const draftPlay: Play = { ...interviewPlay, id: "play-draft", label: "Draft interview", description: "Drafts answers.", builtin_key: "interview-draft" };
+    mockApi({ answers: [stored(0, organised.text), stored(0, testing.text, { skipped: true, text: "" })], plays: [draftPlay, interviewPlay] });
+    renderPage();
+    expect(await screen.findByRole("button", { name: /Done/ })).toHaveAttribute("title", interviewPlay.description);
+  });
+
   it("shows the answers read-only to someone who may not answer", async () => {
     perms.denied = ["memories:write"];
     mockApi({ answers: [stored(0, organised.text)] });
