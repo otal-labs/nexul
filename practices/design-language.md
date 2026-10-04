@@ -154,7 +154,8 @@ List pane. A page that edits one record beside its siblings (Docs, Memories)
 is the app sidebar, a list, and the open record. From 1024px the list is
 dragged wider or narrower by a handle on its right border (220 to 560px,
 double-click resets to the 300px default, one width shared by every page,
-kept in the browser). The list heads with its title and a mono count, a ghost `+` icon button, and a
+kept in the browser), but never so wide that the open record drops below
+32rem. The list heads with its title and a mono count, a ghost `+` icon button, and a
 search field. Rows are about 56px with 12px sides and hairline dividers: a
 13px medium title over a muted one-line preview, mono meta trailing right. A
 row whose record already shows its details when open (Docs) is the title alone
