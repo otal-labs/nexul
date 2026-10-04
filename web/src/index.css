@@ -554,10 +554,12 @@ h3 {
   font-weight: 600;
 }
 
+/* Pointer even inside the editable body, where a plain click still opens the link. */
 .prose-rich a:not(.mention-chip) {
   color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 .prose-rich .doc-image {
