@@ -313,6 +313,8 @@ type TurnRequest struct {
 	Silence time.Duration
 	// Answer is set when the turn delivers an answer to a question its earlier turn ended under.
 	Answer *harness.PendingAnswer
+	// Watch follows the turn already running on the conversation's thread, sending nothing; a restart lost its watcher.
+	Watch bool
 }
 
 // RunTurn runs one Agent turn and blocks until it ends; every failure surfaces as a system message or a log line.
@@ -353,16 +355,21 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		failed(reason)
 		return
 	}
-	s.warnVersionIfChanged(setupCtx, conversationID, viaUserID, client, target.Computer)
-
-	prompts, sentThrough, err := s.buildTurnPrompts(ctx, conv, thread, projectID, req)
-	if err != nil {
-		s.log.Error("agent: list context messages failed", "conversation", conversationID, "error", err)
-		failed(fmt.Sprintf("list context messages: %v", err))
+	var prompts harness.TurnPrompts
+	var sentThrough time.Time
+	if !req.Watch {
+		s.warnVersionIfChanged(setupCtx, conversationID, viaUserID, client, target.Computer)
+		prompts, sentThrough, err = s.buildTurnPrompts(ctx, conv, thread, projectID, req)
+		if err != nil {
+			s.log.Error("agent: list context messages failed", "conversation", conversationID, "error", err)
+			failed(fmt.Sprintf("list context messages: %v", err))
+			return
+		}
+	}
+	if req.Watch && conv.ThreadID == "" {
+		failed("the conversation has no harness thread to follow")
 		return
 	}
-
-	title := threadTitle(conv, thread)
 
 	turn := &activeTurn{client: client, answered: make(chan struct{}, 1), target: harness.Target{
 		Session:      target.Computer.Session(),
@@ -376,13 +383,13 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	s.setActive(conversationID, turn)
 	defer s.endTurn(ctx, conv, turn)
 
-	result, err := client.StartTurn(setupCtx, turn.target, title, prompts)
+	result, err := openTurn(setupCtx, client, turn.target, threadTitle(conv, thread), prompts, req.Watch)
 	disarm()
 	if err != nil {
 		if setupCtx.Err() != nil && ctx.Err() == nil {
 			err = context.Cause(setupCtx)
 		}
-		s.postSystemMessage(ctx, conversationID, viaUserID, fmt.Sprintf("Agent turn failed to start: %v", err))
+		s.postSystemMessage(ctx, conversationID, viaUserID, fmt.Sprintf("Agent turn failed to %s: %v", startVerb(req), err))
 		failed(err.Error())
 		return
 	}
@@ -395,6 +402,21 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	finalText, term := s.drainTurn(ctx, conversationID, viaUserID, result.Updates, obs, newSilenceWindow(req.Silence, turn.answered))
 
 	s.finishTurn(ctx, conversationID, viaUserID, finalText, term, obs)
+}
+
+// openTurn starts the turn, or with watch follows the one already running on t's session.
+func openTurn(ctx context.Context, client harness.Client, t harness.Target, title string, prompts harness.TurnPrompts, watch bool) (harness.StartResult, error) {
+	if watch {
+		return client.Watch(ctx, t)
+	}
+	return client.StartTurn(ctx, t, title, prompts)
+}
+
+func startVerb(req TurnRequest) string {
+	if req.Watch {
+		return "reconnect"
+	}
+	return "start"
 }
 
 // setupWindow cuts off the harness calls made before the stream exists, which have no HTTP timeout, after d; zero is no bound.

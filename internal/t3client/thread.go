@@ -381,11 +381,12 @@ func (c *conn) runSubscription(ctx context.Context, stream *t3rpc.Stream, sub *S
 		}
 		for _, raw := range values {
 			updates, terminal := c.streamItemUpdates(raw, w)
-			if terminal != nil {
-				sub.markReady(errors.New(terminal.LastError))
-			}
+			// Synced first: a followed thread that is idle ends on its first snapshot, and that is still a ready watch.
 			if w.synced {
 				sub.markReady(nil)
+			}
+			if terminal != nil {
+				sub.markReady(errors.New(terminal.LastError))
 			}
 			for _, u := range updates {
 				if !emit(u) {
@@ -419,6 +420,8 @@ type turnWatch struct {
 	// synced marks the first snapshot taken; seen holds message and activity ids reported or older than the turn.
 	synced bool
 	seen   map[string]bool
+	// follow takes the first snapshot's turn in flight as the one to watch, since another watcher started it.
+	follow bool
 }
 
 func (w *turnWatch) see(id string) {
@@ -489,11 +492,12 @@ type threadSnapshot struct {
 	Thread           struct {
 		DeletedAt *string `json:"deletedAt"`
 		Messages  []struct {
-			ID        string `json:"id"`
-			Role      string `json:"role"`
-			Text      string `json:"text"`
-			Streaming bool   `json:"streaming"`
-			UpdatedAt string `json:"updatedAt"`
+			ID        string  `json:"id"`
+			Role      string  `json:"role"`
+			Text      string  `json:"text"`
+			Streaming bool    `json:"streaming"`
+			UpdatedAt string  `json:"updatedAt"`
+			TurnID    *string `json:"turnId"`
 		} `json:"messages"`
 		Activities []wireActivity `json:"activities"`
 		Session    *wireSession   `json:"session"`
@@ -728,6 +732,9 @@ func (c *conn) snapshotUpdates(raw json.RawMessage, w *turnWatch) ([]Update, *Tu
 		for _, a := range s.Thread.Activities {
 			w.see(a.ID)
 		}
+		if w.follow {
+			return c.followSnapshot(s, w)
+		}
 		return nil, nil
 	}
 	if s.Thread.DeletedAt != nil {
@@ -739,6 +746,60 @@ func (c *conn) snapshotUpdates(raw json.RawMessage, w *turnWatch) ([]Update, *Tu
 		return missed, nil
 	}
 	return missed, c.sessionTerminal(sessionSetPayload{Session: *s.Thread.Session}, w)
+}
+
+// followSnapshot picks up the turn s shows in flight with its reply so far, or ends at once with the thread's last reply.
+func (c *conn) followSnapshot(s threadSnapshot, w *turnWatch) ([]Update, *TurnResult) {
+	w.lastSeq = max(w.lastSeq, s.SnapshotSequence)
+	session := wireSession{Status: "idle"}
+	if s.Thread.Session != nil {
+		session = *s.Thread.Session
+	}
+	last, current := followReplies(s, session.ActiveTurnID, w)
+	if session.Status == "running" || session.Status == "starting" || session.ActiveTurnID != nil {
+		w.turnSeen = true
+	}
+	end := c.sessionTerminal(sessionSetPayload{Session: session}, w)
+	if end != nil && end.State != TurnDone {
+		return nil, end
+	}
+	if end == nil && w.turnSeen {
+		return replyUpdates(current), nil
+	}
+	if last != nil {
+		last.Streaming = false
+	}
+	return replyUpdates(last), &TurnResult{State: TurnDone}
+}
+
+// followReplies primes w with the replies of the turn in flight: last is the thread's latest, current that turn's.
+func followReplies(s threadSnapshot, activeTurnID *string, w *turnWatch) (last, current *MessageSnapshot) {
+	for _, m := range s.Thread.Messages {
+		if m.Role != "assistant" {
+			continue
+		}
+		last = &MessageSnapshot{MessageID: m.ID, Text: m.Text, Streaming: m.Streaming}
+		if m.Streaming {
+			// A reply can outlive its settled session; left unseen, a resume snapshot still reports its close.
+			delete(w.seen, m.ID)
+			w.turnSeen = true
+			w.accumulate(messageSentPayload{MessageID: m.ID, Text: m.Text})
+			current = last
+			continue
+		}
+		if m.TurnID != nil && activeTurnID != nil && *m.TurnID == *activeTurnID {
+			w.replyClosed = true
+			current = last
+		}
+	}
+	return last, current
+}
+
+func replyUpdates(m *MessageSnapshot) []Update {
+	if m == nil {
+		return nil
+	}
+	return []Update{{Snapshot: m}}
 }
 
 // missedUpdates is every step and reply in s the watch has not reported, in the order they happened.
