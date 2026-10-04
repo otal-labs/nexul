@@ -360,8 +360,6 @@ func TestOpenAndEndRound(t *testing.T) {
 		repo.docs[d.ID].Locked = true
 		_, err := s.OpenRound(context.Background(), d.ID, starter, "trail-1", false)
 		require.NoError(t, err)
-		_, err = s.OpenRound(context.Background(), d.ID, starter, "trail-2", false)
-		require.ErrorIs(t, err, apperrs.ErrConflict, "one round runs at a time")
 
 		require.NoError(t, s.EndRound(context.Background(), d.ID, "trail-1"))
 		assert.True(t, repo.docs[d.ID].Locked)
@@ -381,6 +379,60 @@ func TestOpenAndEndRound(t *testing.T) {
 		round, err := s.OpenRound(context.Background(), d.ID, starter, "trail-2", false)
 		require.NoError(t, err)
 		assert.Equal(t, 2, round)
+	})
+	t.Run("a stale empty round left running is removed, and its lock passes to the next round", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := clarifyService(repo, true, readWrite...)
+		d := mustDoc(t, newTestService(repo), "project-1", "Spec", "body")
+		repo.docs[d.ID].Locked = true
+		_, err := s.OpenRound(context.Background(), d.ID, starter, "trail-1", true)
+		require.NoError(t, err)
+
+		round, err := s.OpenRound(context.Background(), d.ID, starter, "trail-2", false)
+		require.NoError(t, err)
+		assert.Equal(t, 1, round, "the removed round's number is reused")
+		require.Len(t, repo.rounds, 1)
+		assert.Equal(t, "trail-2", repo.rounds[0].TrailID)
+		ended := repo.eventsFor(TopicClarificationRoundEnded)
+		require.Len(t, ended, 1)
+		assert.True(t, ended[0].Payload.(ClarificationRoundEvent).Removed)
+		assert.True(t, repo.docs[d.ID].Locked, "locked while the new round runs")
+
+		require.NoError(t, s.EndRound(context.Background(), d.ID, "trail-2"))
+		assert.False(t, repo.docs[d.ID].Locked, "the stale run's lock is released when the new run ends")
+	})
+	t.Run("a stale round with questions is kept and ended, and a lock held before it stays", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := clarifyService(repo, true, readWrite...)
+		d, _ := postedRound(t, repo, s)
+		repo.rounds[0].Running = true
+		repo.docs[d.ID].Locked = true
+
+		round, err := s.OpenRound(context.Background(), d.ID, starter, "trail-2", false)
+		require.NoError(t, err)
+		assert.Equal(t, 2, round)
+		require.Len(t, repo.rounds, 2)
+		assert.False(t, repo.rounds[0].Running, "the stale round stops running")
+		assert.NotEmpty(t, repo.questions, "its questions stay")
+		ended := repo.eventsFor(TopicClarificationRoundEnded)
+		require.NotEmpty(t, ended)
+		assert.False(t, ended[len(ended)-1].Payload.(ClarificationRoundEvent).Removed)
+
+		require.NoError(t, s.EndRound(context.Background(), d.ID, "trail-2"))
+		assert.True(t, repo.docs[d.ID].Locked, "neither run took the lock")
+	})
+	t.Run("a stale round that took the lock on an unlocked doc unlocks nothing it no longer holds", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := clarifyService(repo, true, readWrite...)
+		d := mustDoc(t, newTestService(repo), "project-1", "Spec", "body")
+		_, err := s.OpenRound(context.Background(), d.ID, starter, "trail-1", true)
+		require.NoError(t, err)
+
+		_, err = s.OpenRound(context.Background(), d.ID, starter, "trail-2", true)
+		require.NoError(t, err)
+		assert.False(t, repo.docs[d.ID].Locked, "someone unlocked it meanwhile; nothing locks it back")
+		require.Len(t, repo.rounds, 1)
+		assert.True(t, repo.rounds[0].TookLock, "the new run's own lock is recorded")
 	})
 	t.Run("a missing doc is not found", func(t *testing.T) {
 		s := clarifyService(newFakeRepo(), true, readWrite...)

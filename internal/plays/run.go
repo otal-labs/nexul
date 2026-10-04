@@ -380,6 +380,7 @@ func (r *Runner) prepareDoc(ctx context.Context, play *Play, trail *Trail) error
 	if !clarify {
 		return nil
 	}
+	// ponytail: a failed open leaves the lock this run took on the doc; a docs:lock holder unlocks it until plays gets an unlock seam.
 	if _, err := r.rounds.OpenRound(ctx, trail.TargetID, trail.StarterID, trail.ID, tookLock); err != nil {
 		return fmt.Errorf("open the clarification round: %w", err)
 	}
