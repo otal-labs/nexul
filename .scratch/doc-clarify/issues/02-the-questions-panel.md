@@ -1,7 +1,7 @@
 # 02: The Questions panel on the doc page
 
 Type: prototype
-Status: open
+Status: claimed
 Blocked by: None — can start immediately
 
 ## Question

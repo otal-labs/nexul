@@ -1,8 +1,9 @@
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 
 import { PermissionsForm, PermissionsFormSchema, type PermissionsFormData } from "@/components/access/PermissionsForm";
 import { Container } from "@/components/Container";
 import { DocDetail } from "@/components/doc/DocDetail";
+import { ClarifyPrototype } from "@/components/doc/prototype/ClarifyPrototype";
 import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { CreateTicketFooter } from "@/components/ticket/CreateTicketFooter";
@@ -23,6 +24,7 @@ interface DocPageProps {
 
 export const DocPage = ({ wsFactory, docId: docIdProp }: DocPageProps = {}) => {
   const { docId: routeDocId } = useParams<{ docId: string }>();
+  const prototype = useSearchParams()[0].has("variant");
   const docId = docIdProp ?? routeDocId;
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { open: openCreateTicket } = useFormDialog();
@@ -54,7 +56,8 @@ export const DocPage = ({ wsFactory, docId: docIdProp }: DocPageProps = {}) => {
     <Container className="p-6">
       {isPending && <LoadingDisplay />}
       {error && <DetailErrorDisplay error={error} embedded={docIdProp !== undefined} />}
-      {doc && (
+      {doc && prototype && <ClarifyPrototype doc={doc} />}
+      {doc && !prototype && (
         <DocDetail
           doc={doc}
           workspaceId={workspaceId}
