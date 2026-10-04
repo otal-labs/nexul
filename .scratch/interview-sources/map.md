@@ -82,17 +82,16 @@ decision tickets are resolved, the build tickets graduate from the fog.
 - [The drafting run](issues/03-the-drafting-run.md): its own built-in play, "Draft interview", started by a person once a follow source exists; it never asks, drafts every unanswered template question into a separate drafts table through `memory_update`, and ends; a draft counts only once saved as an answer.
 - [Redrafting after a source is added or changes](issues/05-redrafting.md): a warning dot on "Draft answers" for new or changed sources, never an automatic run; every run reads every follow source, and an answered question gets a draft only where the sources now disagree, shown as a suggested change to accept or dismiss.
 - [The Interview page with sources and drafts](issues/04-the-page-with-sources.md): a collapsible Sources section above the questions with Draft answers in its header; drafted rows in a dashed ring with where they came from; suggested changes with Accept / Dismiss.
+- [What the audit of a predecessor produces](issues/06-the-audit.md): a built-in "Audit via AI" on the Interview page writes one dated doc of findings (carry over, rebuild, avoid; or keeps and fix for own code) measured against the interview memory; "To tickets via AI" turns it into work. Decided on the recommendation.
 
 ## Build
 
-Build tickets 07–10 in `issues/`: storage and surfaces, the drafting run,
-the follow-up run reading question sources, and the page.
+Decisions complete 2026-10-04. Build tickets 07–12 in `issues/`: storage
+and surfaces, the drafting run, the follow-up run reading question
+sources, the page, the audit, and the walkthrough on Clutch Hub.
 
 ## Not yet specified
 
-- The audit's build and the walkthrough on Clutch Hub (create the project
-  in MgClutch, point its interview at its repo, follow the runs through
-  their trails); they graduate once the audit is decided.
 - Whether GitHub issues become a source kind, which needs the App's Issues
   permission on every installation; pasted text covers them until the
   walkthrough shows otherwise.
