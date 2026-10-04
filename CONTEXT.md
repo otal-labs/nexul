@@ -171,6 +171,16 @@ the run's harness session, which no page shows, not where the interview
 happens.
 _Avoid_: Onboarding, questionnaire, setup
 
+**Interview source**:
+Material a project's interview is pointed at instead of starting blank: a
+path in its checkout, a doc, a memory, another project, or text someone
+pastes. Each has a stance. Follow is what the team stands behind, and an
+agent drafts answers from it; question is how something was done, not how
+it should be, such as a predecessor's code, and is only ever asked about.
+A draft is not an answer until a person confirms it. A source is pointed
+at, never copied in.
+_Avoid_: Import, context, reference material
+
 **Interview memory**:
 The project memory an interview produces, written as rules and kept short,
 and named first, for the agent to read before anything else, in every Agent
