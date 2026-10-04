@@ -362,6 +362,8 @@ type Client interface {
 	Hold(ctx context.Context, s Session) (Conn, error)
 	// StartTurn starts one turn; title names a freshly created session, ignored when SessionID is reused.
 	StartTurn(ctx context.Context, t Target, title string, prompts TurnPrompts) (StartResult, error)
+	// Watch follows the turn on t's session that another watcher started; with nothing running it ends at once, done.
+	Watch(ctx context.Context, t Target) (StartResult, error)
 	// Interrupt aborts whatever turn is active on t's session.
 	Interrupt(ctx context.Context, t Target) error
 	// Answer resolves the pending Question requestID on t's session so the turn continues; ErrConflict when the

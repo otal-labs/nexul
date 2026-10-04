@@ -392,6 +392,11 @@ func (h *Harness) forward(ctx context.Context, client rpcConn, threadID string, 
 	}
 }
 
+// Watch implements harness.Client.
+func (h *Harness) Watch(_ context.Context, _ harness.Target) (harness.StartResult, error) {
+	return harness.StartResult{}, errors.ErrUnsupported
+}
+
 // Interrupt aborts whatever turn is active on target's thread.
 func (h *Harness) Interrupt(ctx context.Context, target harness.Target) error {
 	if target.SessionID == "" {

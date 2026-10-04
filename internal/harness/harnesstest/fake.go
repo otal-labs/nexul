@@ -16,6 +16,7 @@ type Client struct {
 	ListProvidersFn func(ctx context.Context, s harness.Session) ([]harness.Provider, error)
 	HoldFn          func(ctx context.Context, s harness.Session) (harness.Conn, error)
 	StartTurnFn     func(ctx context.Context, t harness.Target, title string, prompts harness.TurnPrompts) (harness.StartResult, error)
+	WatchFn         func(ctx context.Context, t harness.Target) (harness.StartResult, error)
 	InterruptFn     func(ctx context.Context, t harness.Target) error
 	AnswerFn        func(ctx context.Context, t harness.Target, requestID string, answer harness.QuestionAnswer) error
 	SettleFn        func(ctx context.Context, t harness.Target) error
@@ -71,6 +72,13 @@ func (c *Client) StartTurn(ctx context.Context, t harness.Target, title string, 
 		return harness.StartResult{}, nil
 	}
 	return c.StartTurnFn(ctx, t, title, prompts)
+}
+
+func (c *Client) Watch(ctx context.Context, t harness.Target) (harness.StartResult, error) {
+	if c.WatchFn == nil {
+		return harness.StartResult{}, nil
+	}
+	return c.WatchFn(ctx, t)
 }
 
 func (c *Client) Interrupt(ctx context.Context, t harness.Target) error {

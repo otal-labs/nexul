@@ -203,6 +203,16 @@ type fakeHarness struct {
 	lastPrompt      string
 	lastIncremental string
 	lastAnswer      *harness.PendingAnswer
+	watchResult     harness.StartResult
+	watchErr        error
+	watched         []harness.Target
+}
+
+func (f *fakeHarness) Watch(_ context.Context, target harness.Target) (harness.StartResult, error) {
+	f.mu.Lock()
+	f.watched = append(f.watched, target)
+	f.mu.Unlock()
+	return f.watchResult, f.watchErr
 }
 
 func (f *fakeHarness) StartTurn(_ context.Context, target harness.Target, title string, prompts harness.TurnPrompts) (harness.StartResult, error) {

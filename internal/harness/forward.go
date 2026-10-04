@@ -63,6 +63,10 @@ func (f forward) StartTurn(ctx context.Context, t Target, title string, prompts 
 	return follow(ctx, f, t.Session, func(c Client) (StartResult, error) { return c.StartTurn(ctx, t, title, prompts) })
 }
 
+func (f forward) Watch(ctx context.Context, t Target) (StartResult, error) {
+	return follow(ctx, f, t.Session, func(c Client) (StartResult, error) { return c.Watch(ctx, t) })
+}
+
 func (f forward) Interrupt(ctx context.Context, t Target) error {
 	_, err := follow(ctx, f, t.Session, func(c Client) (struct{}, error) { return struct{}{}, c.Interrupt(ctx, t) })
 	return err
