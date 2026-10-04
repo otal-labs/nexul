@@ -1,6 +1,7 @@
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { useFetchInterviewDrafts, useInterviewTrails } from "@/hooks/InterviewSourceHooks";
-import { useFetchProjectInterviewTemplate } from "@/hooks/MemoryHooks";
+import { useFetchInterviewAnswers, useFetchProjectInterviewTemplate } from "@/hooks/MemoryHooks";
+import { draftRunCount } from "@/models/InterviewAnswer";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import type { TrailState } from "@/models/Trail";
 
@@ -17,23 +18,21 @@ const STATE_LABEL: Record<TrailState, string> = {
   interrupted: "Drafting stopped",
 };
 
-// The latest drafting run as one line: its trail icon, its state, and how many template questions it has drafted so far.
+// The latest drafting run as one line: its trail icon, its state, and what it drafted that still waits on the person.
 export const InterviewDraftRunLine = ({ projectId }: InterviewDraftRunLineProps) => {
   const latest = useInterviewTrails(projectId).drafting?.[0];
   const state = usePlayRunStore((s) => (latest ? (s.frames[latest.id]?.state ?? latest.state) : undefined));
   const { data: drafts } = useFetchInterviewDrafts(projectId);
   const { data: template } = useFetchProjectInterviewTemplate(projectId);
+  const { data: answers } = useFetchInterviewAnswers(projectId);
   if (!latest || !state) return null;
-  const questions = new Set(template?.questions.map((q) => q.text.trim()));
-  const since = Date.parse(latest.started_at);
-  const drafted = (drafts ?? []).filter((d) => questions.has(d.question) && Date.parse(d.drafted_at) >= since).length;
   return (
     <p className="flex min-w-0 items-center gap-2 px-1.5 py-1 text-sm">
       <TrailStateIcon state={state} />
       <span className="shrink-0 font-medium">{STATE_LABEL[state]}</span>
-      {template && (
+      {template && answers && (
         <span className="truncate text-muted-foreground tabular-nums">
-          · {drafted} of {template.questions.length} drafted
+          · {draftRunCount(template.questions, answers, drafts ?? [], Date.parse(latest.started_at))}
         </span>
       )}
     </p>

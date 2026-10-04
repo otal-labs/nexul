@@ -23,10 +23,14 @@ real sources.
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The instructions migration leaves an edited workspace play untouched
-- [ ] A drafting run on a fake harness with a doc source writes a `where`
+- [x] The instructions migration leaves an edited workspace play untouched
+- [x] A drafting run on a fake harness with a doc source writes a `where`
       without the doc's title, and the card's From line names it once
-- [ ] The run line after a redraft counts suggestions apart from drafts,
+- [x] The run line after a redraft counts suggestions apart from drafts,
       with a component test
+
+## Answer
+
+Built in PR #446: migration 0073 rewords the Draft interview's `where` line, and the run line counts suggestions apart.
