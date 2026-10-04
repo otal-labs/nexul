@@ -55,4 +55,22 @@ describe("HomePage", () => {
     expect(await screen.findByRole("link", { name: shown })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: hidden })).not.toBeInTheDocument();
   });
+
+  it("keeps agent, trail, and play wording from a member who can neither run nor read plays", async () => {
+    signInWith(["tickets:read", "docs:read"]);
+    renderHome();
+
+    expect(await screen.findByRole("link", { name: "Open the board" })).toBeInTheDocument();
+    expect(screen.queryByText(/agent/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/trail/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/play/i)).not.toBeInTheDocument();
+  });
+
+  it.each(["plays:run", "plays:read"])("shows the agent pitch to a member holding %s", async (permission) => {
+    signInWith(["tickets:read", permission]);
+    renderHome();
+
+    expect(await screen.findByRole("heading", { name: "One button. The trail shows every step the agent took." })).toBeInTheDocument();
+    expect(screen.getByText("nexul · agent trail")).toBeInTheDocument();
+  });
 });

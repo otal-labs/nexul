@@ -193,6 +193,17 @@ describe("DocQuestionsPanel", () => {
     expect(await screen.findByRole("button", { name: /To tickets via AI/ })).toBeInTheDocument();
   });
 
+  it("numbers the rounds by what they asked when an earlier round found no gaps", async () => {
+    serve({
+      ...waiting,
+      rounds: [waiting.rounds[0]!, round(2, [], { no_gaps_at: "2026-10-01T00:30:00Z" }), round(3, [question("q3", 3)])],
+    });
+    renderPanel(client_);
+
+    expect(await screen.findByRole("region", { name: "Round 2" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Round 3" })).not.toBeInTheDocument();
+  });
+
   it("shows a client a closed clarification as all answered, folded, with the earlier Anything else? and its reply", async () => {
     const closed: Clarification = {
       ...waiting,
