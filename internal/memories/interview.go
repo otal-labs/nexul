@@ -158,6 +158,19 @@ func (s *Service) InterviewTemplate(ctx context.Context, workspaceID string) (*I
 	return s.loadTemplate(ctx, workspaceID)
 }
 
+// ProjectInterviewTemplate reads the template through a project, for a restricted member without memories:read on the workspace.
+func (s *Service) ProjectInterviewTemplate(ctx context.Context, projectID string) (*InterviewTemplate, error) {
+	projectID = strings.TrimSpace(projectID)
+	if projectID == "" {
+		return nil, fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
+	}
+	workspaceID, err := s.projectForWrite(ctx, projectID, permissions.MemoriesRead)
+	if err != nil {
+		return nil, err
+	}
+	return s.loadTemplate(ctx, workspaceID)
+}
+
 // SaveInterviewTemplate replaces the workspace's Interview template; existing interviews are never touched.
 func (s *Service) SaveInterviewTemplate(ctx context.Context, workspaceID, body string) (*InterviewTemplate, error) {
 	workspaceID = strings.TrimSpace(workspaceID)

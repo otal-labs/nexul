@@ -88,14 +88,14 @@ decision tickets are resolved, the build tickets graduate from the fog.
 
 Decisions complete 2026-10-04. Built the same day: storage and surfaces
 (#435), the drafting run (#438), the page (#437), the follow-up run
-reading question sources (#439), and the audit (#440). Left: the
-walkthrough on Clutch Hub (`issues/12-build-walkthrough.md`).
+reading question sources (#439), and the audit (#440). Walked on Clutch
+Hub the same day (`issues/12-build-walkthrough.md`), its fixes in the
+same change. Left: ticket 13, the draft's source line and the drafting
+line's count after a redraft.
 
 ## Not yet specified
 
-- Whether GitHub issues become a source kind, which needs the App's Issues
-  permission on every installation; pasted text covers them until the
-  walkthrough shows otherwise.
+- Nothing. GitHub issues stay pasted text, decided at the walkthrough.
 
 ## Out of scope
 

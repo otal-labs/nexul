@@ -201,12 +201,21 @@ func (h *Handler) createInterview(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getInterviewTemplate(w http.ResponseWriter, r *http.Request) {
-	t, err := h.svc.InterviewTemplate(r.Context(), r.URL.Query().Get("workspace_id"))
+	t, err := h.templateFor(r)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, t)
+}
+
+// templateFor reads a project's template with project_id, the Interview page's call, else the workspace's.
+func (h *Handler) templateFor(r *http.Request) (*InterviewTemplate, error) {
+	q := r.URL.Query()
+	if projectID := q.Get("project_id"); projectID != "" {
+		return h.svc.ProjectInterviewTemplate(r.Context(), projectID)
+	}
+	return h.svc.InterviewTemplate(r.Context(), q.Get("workspace_id"))
 }
 
 type interviewTemplateRequest struct {

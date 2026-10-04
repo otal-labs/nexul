@@ -242,3 +242,21 @@ func TestMemoriesHandler_Forbidden(t *testing.T) {
 	rec := serve(t, h, http.MethodGet, "/api/memories/"+created.ID, "")
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 }
+
+func TestMemoriesHandler_InterviewTemplate(t *testing.T) {
+	h, _ := newMemoriesHandler()
+
+	t.Run("reads a project's template with project_id", func(t *testing.T) {
+		rec := serve(t, h, http.MethodGet, "/api/memories/interview-template?project_id=project-1", "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), `"workspace_id":"workspace-1"`)
+	})
+	t.Run("an unknown project is 404", func(t *testing.T) {
+		rec := serve(t, h, http.MethodGet, "/api/memories/interview-template?project_id=project-x", "")
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+	})
+	t.Run("no project and no workspace is 400", func(t *testing.T) {
+		rec := serve(t, h, http.MethodGet, "/api/memories/interview-template", "")
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+}

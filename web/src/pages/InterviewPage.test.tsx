@@ -12,6 +12,7 @@ import type { Play } from "@/models/Play";
 import type { Trail } from "@/models/Trail";
 import { InterviewPage } from "@/pages/InterviewPage";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { emptyDocJson } from "@/utils/emptyDocJson";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -181,6 +182,8 @@ describe("InterviewPage", () => {
     expect(screen.getByText("Layers")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Initial questions/ })).toHaveTextContent("1 answered · 1 skipped");
     expect(screen.getByText("No memory yet")).toBeInTheDocument();
+    // Asked by project, so a restricted member with access to it can read the questions.
+    expect(api.get).toHaveBeenCalledWith("/api/memories/interview-template", { params: { project_id: "p-1" } });
   });
 
   it("saves the answer on Next and opens the next question", async () => {
@@ -279,6 +282,17 @@ describe("InterviewPage", () => {
     renderPage();
     expect(await screen.findByRole("button", { name: /Audit via AI/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Regenerate$/ })).toBeInTheDocument();
+  });
+
+  it("treats the empty memory a drafting run creates as no memory yet", async () => {
+    const auditPlay: Play = { ...interviewPlay, id: "play-audit", label: "Audit via AI", description: "Audits the code.", builtin_key: "audit" };
+    mockApi({ memories: [{ ...interview, body: emptyDocJson }], plays: [auditPlay, interviewPlay] });
+    renderPage();
+
+    expect(await screen.findByText("No memory yet")).toBeInTheDocument();
+    expect(screen.getByText("Not generated yet")).toBeInTheDocument();
+    expect(screen.queryByText(/came from an earlier interview/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Audit via AI|Regenerate/ })).not.toBeInTheDocument();
   });
 
   it("links the doc a finished audit wrote, and the memory's run line ignores the audit", async () => {

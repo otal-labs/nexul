@@ -1,8 +1,7 @@
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { useFetchInterviewDrafts, useInterviewTrails } from "@/hooks/InterviewSourceHooks";
-import { useFetchInterviewTemplate } from "@/hooks/MemoryHooks";
+import { useFetchProjectInterviewTemplate } from "@/hooks/MemoryHooks";
 import { usePlayRunStore } from "@/stores/playRunStore";
-import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { TrailState } from "@/models/Trail";
 
 interface InterviewDraftRunLineProps {
@@ -20,11 +19,10 @@ const STATE_LABEL: Record<TrailState, string> = {
 
 // The latest drafting run as one line: its trail icon, its state, and how many template questions it has drafted so far.
 export const InterviewDraftRunLine = ({ projectId }: InterviewDraftRunLineProps) => {
-  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const latest = useInterviewTrails(projectId).drafting?.[0];
   const state = usePlayRunStore((s) => (latest ? (s.frames[latest.id]?.state ?? latest.state) : undefined));
   const { data: drafts } = useFetchInterviewDrafts(projectId);
-  const { data: template } = useFetchInterviewTemplate(workspaceId);
+  const { data: template } = useFetchProjectInterviewTemplate(projectId);
   if (!latest || !state) return null;
   const questions = new Set(template?.questions.map((q) => q.text.trim()));
   const since = Date.parse(latest.started_at);

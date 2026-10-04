@@ -86,7 +86,8 @@ export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, 
                 {row.draft?.state === "suggested" && (
                   <InterviewSuggestionCard row={row} draft={row.draft} projectId={projectId} progress={progressOf(section, i)} onMove={move} />
                 )}
-                {row.draft?.state !== "suggested" && <InterviewQuestionForm {...formProps(section, row, i)} />}
+                {/* Keyed on the draft so one that lands while its card is open seeds the form; confirming keeps the key. */}
+                {row.draft?.state !== "suggested" && <InterviewQuestionForm key={row.draft?.id ?? "none"} {...formProps(section, row, i)} />}
               </QuestionChecklistRow>
             ))}
           </ol>

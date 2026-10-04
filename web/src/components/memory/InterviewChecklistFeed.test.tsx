@@ -65,7 +65,7 @@ describe("InterviewChecklistFeed with drafts", () => {
       [draft("d-2", "When are tests written?", ["Before the code"], "2026-10-03T10:00:00Z")],
     );
     expect(screen.getByText("2 of 2 answered · 1 suggested")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /When are tests written/ }));
+    expect(screen.getByRole("button", { name: /When are tests written/ })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Your answer").nextSibling).toHaveTextContent("With the change");
     await user.click(screen.getByRole("button", { name: "Accept" }));
     expect(mocks.put).toHaveBeenCalledWith("/api/memories/interview-answers", {
@@ -79,7 +79,6 @@ describe("InterviewChecklistFeed with drafts", () => {
       [answer("When are tests written?", ["With the change"], "2026-10-02T10:00:00Z")],
       [draft("d-3", "When are tests written?", ["Before the code"], "2026-10-03T10:00:00Z")],
     );
-    await user.click(screen.getByRole("button", { name: /When are tests written/ }));
     await user.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(mocks.delete).toHaveBeenCalledWith("/api/memories/interview-drafts/d-3");
     expect(mocks.put).not.toHaveBeenCalled();
@@ -98,6 +97,39 @@ describe("InterviewChecklistFeed with drafts", () => {
     expect(mocks.put).toHaveBeenCalledWith("/api/memories/interview-answers", {
       project_id: "p-1", round: 0, question: stack, selected: [], text: "Go 1.24\nReact 19",
     });
+  });
+
+  it("seeds the open card with a draft that arrives while it is open", () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const feed = (drafts: InterviewDraft[]) => (
+      <QueryClientProvider client={client}>
+        <InterviewChecklistFeed projectId="p-1" sections={buildSections(questions, [], drafts, [source])} readOnly={false} hasMemory memoryWithoutAnswers={false} />
+      </QueryClientProvider>
+    );
+    const { rerender } = render(feed([]));
+    expect(screen.getByRole("radio", { name: "With the change" })).not.toBeChecked();
+    rerender(feed([draft("d-6", "When are tests written?", ["With the change"], "2026-10-02T10:00:00Z")]));
+    expect(screen.getByRole("radio", { name: "With the change" })).toBeChecked();
+    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+  });
+
+  it("opens the next question once a confirmed draft saves, though the save turns the row confirmed first", async () => {
+    const user = userEvent.setup();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const drafts = [draft("d-7", "When are tests written?", ["With the change"], "2026-10-02T10:00:00Z")];
+    const feed = (answers: InterviewAnswer[]) => (
+      <QueryClientProvider client={client}>
+        <InterviewChecklistFeed projectId="p-1" sections={buildSections(questions, answers, drafts, [source])} readOnly={false} hasMemory memoryWithoutAnswers={false} />
+      </QueryClientProvider>
+    );
+    let resolve: (value: { data: InterviewAnswer }) => void = () => {};
+    mocks.put.mockReturnValue(new Promise((r) => (resolve = r)));
+    const { rerender } = render(feed([]));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    const saved = answer("When are tests written?", ["With the change"], "2026-10-02T11:00:00Z");
+    rerender(feed([saved]));
+    resolve({ data: saved });
+    expect(await screen.findByRole("radio", { name: "Layers" })).toBeInTheDocument();
   });
 
   it("leaves an answer the person changed from an older draft alone", () => {
