@@ -170,6 +170,7 @@ func TestTrailUpdate_Stop(t *testing.T) {
 	out, err := callTool(t, tools, ctxAs(starter), "play_run", `{"play_id":"play-fix","target_type":"ticket","target_id":"t-1"}`)
 	require.NoError(t, err)
 	<-f.turns.done
+	releaseUnheldTurn(f, out.(trailSummary).ID)
 
 	stopped, err := callTool(t, tools, ctxAs(starter), "trail_update", `{"id":"`+out.(trailSummary).ID+`","stop":true}`)
 	require.NoError(t, err)
