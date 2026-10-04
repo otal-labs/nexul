@@ -39,7 +39,7 @@ func TestMCPTools_Surface(t *testing.T) {
 		assert.NotEmpty(t, tool.Description, tool.Name)
 		assert.NotNil(t, tool.InputSchema, tool.Name)
 	}
-	assert.Equal(t, []string{"doc_list", "doc_get", "doc_create", "doc_update"}, names)
+	assert.Equal(t, []string{"doc_list", "doc_get", "doc_create", "doc_update", "doc_delete"}, names)
 }
 
 func TestMCPTools_Errors(t *testing.T) {
@@ -66,6 +66,9 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"get without read", denied, testCtx(), "doc_get", `{"id":"` + d.ID + `"}`, apperrs.ErrForbidden},
 		{"update without read or write", denied, testCtx(), "doc_update", `{"id":"` + d.ID + `","title":"x"}`, apperrs.ErrForbidden},
 		{"watch without read", denied, testCtx(), "doc_update", `{"id":"` + d.ID + `","watch":true}`, apperrs.ErrForbidden},
+		{"delete without id", allowed, testCtx(), "doc_delete", `{}`, apperrs.ErrInvalid},
+		{"delete a missing doc", allowed, testCtx(), "doc_delete", `{"id":"nope"}`, apperrs.ErrNotFound},
+		{"delete without the delete bit", denied, testCtx(), "doc_delete", `{"id":"` + d.ID + `"}`, apperrs.ErrForbidden},
 		{"create without an actor", allowed, context.Background(), "doc_create", `{"project_id":"project-1","title":"Spec"}`, apperrs.ErrUnauthorized},
 	}
 	for _, tt := range tests {
@@ -74,6 +77,21 @@ func TestMCPTools_Errors(t *testing.T) {
 			require.ErrorIs(t, err, tt.wantErr)
 		})
 	}
+}
+
+func TestDocDelete_RemovesTheDocRatherThanArchivingIt(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	d := mustDoc(t, s, "project-1", "Research", "body")
+
+	out, err := callTool(testCtx(), t, s, "doc_delete", `{"id":"`+d.ID+`"}`)
+	require.NoError(t, err)
+	assert.Equal(t, mcptool.Gone(d.ID), out)
+
+	_, err = callTool(testCtx(), t, s, "doc_get", `{"id":"`+d.ID+`"}`)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	listed, err := callTool(testCtx(), t, s, "doc_list", `{"include_archived":true}`)
+	require.NoError(t, err)
+	assert.Empty(t, listed.(mcptool.Page[*DocListItem]).Items)
 }
 
 func TestDocUpdate_OmittedFieldsKeepTheirValues(t *testing.T) {

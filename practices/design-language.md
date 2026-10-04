@@ -172,8 +172,9 @@ folder below Pinned, the default folder first and the rest in creation order:
 a folder row is a chevron, a muted lucide `Folder` (`FolderOpen` while open),
 the name in the group-label style, and a muted mono count, and it toggles on
 click, collapsed folders kept per browser and project. On hover and focus a
-`+` (new doc in that folder) and a `…` (Rename, then Delete, never on the
-default folder) take the count's place. Doc rows lead with a muted `FileText`
+`+` (new doc in that folder, never on the default folder, which the header's
+`+` already fills) and a `…` (Rename, then Delete, never on the default
+folder) take the count's place. Doc rows lead with a muted `FileText`
 icon aligned under the folder icon, and an empty open folder says "No docs" in
 one muted line. A search shows matching docs inside their folders, hides the
 folders without a match, and opens collapsed ones while it runs. The header

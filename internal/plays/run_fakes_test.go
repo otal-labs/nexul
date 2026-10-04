@@ -110,6 +110,22 @@ func (f *fakeTrailRepo) ListActiveTrailsByTargets(_ context.Context, targetType 
 	return out, nil
 }
 
+func (f *fakeTrailRepo) ListRunningTrails(_ context.Context) ([]*Trail, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	var out []*Trail
+	for _, t := range f.byID {
+		if t.State == TrailStarting || t.State == TrailRunning {
+			cp := *t
+			out = append(out, &cp)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeTrailRepo) LatestTrailForChoices(_ context.Context, starterID, playID, projectID string) (*Trail, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

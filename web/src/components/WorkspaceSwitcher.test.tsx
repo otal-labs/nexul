@@ -43,6 +43,7 @@ const mockApi = (
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/auth/me") return { data: me };
     if (url.endsWith("/me")) return { data: { role_name: "Member", permissions: ["tickets:read"] } };
+    if (url === "/api/notifications/unread-count") return { data: { count: 3, workspaces: { "ws-2": 3 } } };
     return { data: wsList };
   });
 };
@@ -95,6 +96,20 @@ describe("WorkspaceSwitcher", () => {
     const otherRow = rows.find((row) => within(row).queryByText("Arena's Hub"));
     expect(selectedRow?.querySelector("svg.lucide-check")).not.toBeNull();
     expect(otherRow?.querySelector("svg.lucide-check")).toBeNull();
+  });
+
+  it("shows each workspace's unread inbox count, and none where the inbox is read", async () => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    mockApi(workspaces);
+    const user = userEvent.setup();
+    renderSwitcher();
+
+    await user.click(await screen.findByText("Shopkeepers"));
+
+    const popover = screen.getByRole("dialog");
+    const rowOf = (name: string) => within(popover).getByText(name).closest("button")!;
+    expect(await within(rowOf("Arena's Hub")).findByText("3")).toBeInTheDocument();
+    expect(within(rowOf("Shopkeepers")).queryByText(/^\d+$/)).not.toBeInTheDocument();
   });
 
   it("keeps the section and drops the item when switching inside a workspace", async () => {

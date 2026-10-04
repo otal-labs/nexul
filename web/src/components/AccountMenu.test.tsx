@@ -68,7 +68,7 @@ describe("AccountMenu", () => {
   it("opens the popover with Support and Logout only", async () => {
     const user = userEvent.setup();
     renderMenu();
-    await user.click(await screen.findByText("@onik97"));
+    await user.click(await screen.findByText("Onik"));
 
     expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Members" })).not.toBeInTheDocument();
@@ -93,7 +93,7 @@ describe("AccountMenu", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    await user.click(await screen.findByText("@onik97"));
+    await user.click(await screen.findByText("Onik"));
     await user.click(screen.getByRole("button", { name: "Logout" }));
 
     expect(await screen.findByText("Home page")).toBeInTheDocument();
@@ -116,7 +116,7 @@ describe("AccountMenu", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    await user.click(await screen.findByText("@onik97"));
+    await user.click(await screen.findByText("Onik"));
     await user.click(screen.getByRole("button", { name: "Logout" }));
 
     expect(await screen.findByText("Home page")).toBeInTheDocument();
@@ -125,10 +125,24 @@ describe("AccountMenu", () => {
 
   it("renders an icon-only trigger when collapsed", async () => {
     renderMenu(true);
-    expect(screen.queryByText("@onik97")).not.toBeInTheDocument();
     expect(
-      await screen.findByRole("button", { name: "Account menu for @onik97" }),
+      await screen.findByRole("button", { name: "Account menu for Onik" }),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Onik")).not.toBeInTheDocument();
+  });
+
+  it("shows the display name chosen in Your settings instead of the login", async () => {
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/auth/me") {
+        const user = { ...ownerUser, display_name: "Fahad Malik" };
+        return { data: { user, needs_owner_wizard: false, needs_first_login_wizard: false } };
+      }
+      return { data: roleResponse };
+    });
+    renderMenu();
+    expect(await screen.findByText("Fahad Malik")).toBeInTheDocument();
+    expect(screen.getByText("FM")).toBeInTheDocument();
+    expect(screen.queryByText("@onik97")).not.toBeInTheDocument();
   });
 
   it("renders the avatar in the sidebar's shared size-8 identity slot", async () => {
@@ -141,7 +155,7 @@ describe("AccountMenu", () => {
     ownerUser.avatar_url = "https://avatars.example/onik.png";
     try {
       renderMenu();
-      const trigger = await screen.findByText("@onik97");
+      const trigger = await screen.findByText("Onik");
       const img = trigger.closest("button")?.querySelector("img");
       expect(img).toHaveAttribute("src", "https://avatars.example/onik.png");
       expect(screen.queryByText("O")).not.toBeInTheDocument();
@@ -150,12 +164,12 @@ describe("AccountMenu", () => {
     }
   });
 
-  it("shows the resolved role name for the currently selected workspace as plain text under the login", async () => {
+  it("shows the resolved role name for the currently selected workspace as plain text under the name", async () => {
     renderMenu();
     await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/me"));
 
     const role = await screen.findByText("Owner");
-    expect(role.closest("button")).toBe(screen.getByText("@onik97").closest("button"));
+    expect(role.closest("button")).toBe(screen.getByText("Onik").closest("button"));
     expect(role.closest("[data-slot='no-fill-badge']")).toBeNull();
   });
 

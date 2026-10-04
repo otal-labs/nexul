@@ -1073,20 +1073,33 @@ func (s *NotificationService) opensProject(ctx context.Context, userID, projectI
 
 // UnreadCount returns how many of the user's notifications in one workspace (or every workspace) are unread.
 func (s *NotificationService) UnreadCount(ctx context.Context, userID, workspaceID string) (int, error) {
+	byWorkspace, err := s.UnreadByWorkspace(ctx, userID, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, c := range byWorkspace {
+		n += c
+	}
+	return n, nil
+}
+
+// UnreadByWorkspace returns the user's unread notification count per workspace that has any, the switcher's badges.
+func (s *NotificationService) UnreadByWorkspace(ctx context.Context, userID, workspaceID string) (map[string]int, error) {
 	if strings.TrimSpace(userID) == "" {
-		return 0, fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
 	}
 	groups, err := s.repo.UnreadByProject(ctx, userID, strings.TrimSpace(workspaceID))
 	if err != nil {
-		return 0, fmt.Errorf("unread count: %w", err)
+		return nil, fmt.Errorf("unread count: %w", err)
 	}
-	n := 0
+	out := map[string]int{}
 	for _, g := range groups {
 		if s.opensProject(ctx, userID, g.ProjectID) {
-			n += g.Unread
+			out[g.WorkspaceID] += g.Unread
 		}
 	}
-	return n, nil
+	return out, nil
 }
 
 // MarkRead marks one of the user's notifications as read.

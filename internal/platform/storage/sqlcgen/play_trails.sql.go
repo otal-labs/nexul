@@ -282,6 +282,59 @@ func (q *Queries) ListPlayTrailsByTarget(ctx context.Context, arg ListPlayTrails
 	return items, nil
 }
 
+const listRunningPlayTrails = `-- name: ListRunningPlayTrails :many
+SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options FROM play_trails WHERE state IN ('starting', 'running')
+`
+
+func (q *Queries) ListRunningPlayTrails(ctx context.Context) ([]PlayTrail, error) {
+	rows, err := q.db.QueryContext(ctx, listRunningPlayTrails)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlayTrail
+	for rows.Next() {
+		var i PlayTrail
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.PlayID,
+			&i.PlayLabel,
+			&i.TargetType,
+			&i.TargetID,
+			&i.ProjectID,
+			&i.ConversationID,
+			&i.StarterID,
+			&i.Via,
+			&i.SelectedMemoryIds,
+			&i.CustomInstructions,
+			&i.HarnessSessionID,
+			&i.State,
+			&i.StartedAt,
+			&i.EndedAt,
+			&i.LastError,
+			&i.ReplyMessageID,
+			&i.Activity,
+			&i.ComputerID,
+			&i.Provider,
+			&i.Model,
+			&i.Question,
+			&i.FailureReason,
+			&i.ModelOptions,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updatePlayTrail = `-- name: UpdatePlayTrail :execrows
 UPDATE play_trails SET conversation_id = ?, harness_session_id = ?, state = ?, ended_at = ?, last_error = ?, reply_message_id = ?, activity = ?, question = ?
 WHERE id = ?

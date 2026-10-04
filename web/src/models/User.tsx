@@ -37,6 +37,9 @@ export const providerLabel: Record<Provider, string> = { github: "GitHub", googl
 // The one rule for which avatar to show: the manual override if set, else the provider-sourced one.
 export const effectiveAvatar = (user: User): string => user.avatar_override_url || user.avatar_url;
 
+// The same rule for the name: the chosen display name, else the provider's name, else the login.
+export const userLabel = (user: User): string => user.display_name || user.name || user.login;
+
 export interface MeResponse {
   user: User;
   needs_owner_wizard: boolean;

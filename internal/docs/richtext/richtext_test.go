@@ -95,13 +95,21 @@ func TestMarkdownRoundTrip_KeepsSourceText(t *testing.T) {
 		{"code span with markdown punctuation", "use `*args`, `[x]`, `#tag`, `a~b` and `C:\\path`"},
 		{"prose underscores stay escaped", "plain ticket\\_list and `ticket_list`"},
 		{"table", "| Role | Nexul label | Meaning |\n| --- | --- | --- |\n| needs-triage | `needs_triage` | Needs evaluation |"},
+		{"code in table cells", "| Code | Meaning |\n| --- | --- |\n| `session_checkpoint/1` | `target_not_met` |"},
+		{"code span holding a backtick", "run ``a`b_c`` here"},
+		{"code span edged by backticks", "quote `` `x_y` `` literally"},
+		{"code span edged by spaces", "pad `  a_b  ` kept"},
+		{"code inside bold and link", "**`x_y`** and [`a_b`](https://example.com)"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stored, err := Normalize(tt.md)
-			require.NoError(t, err)
-			back, err := ToMarkdown(stored)
-			require.NoError(t, err)
+			back := tt.md
+			for range 10 {
+				stored, err := Normalize(back)
+				require.NoError(t, err)
+				back, err = ToMarkdown(stored)
+				require.NoError(t, err)
+			}
 			assert.Equal(t, tt.md, back)
 		})
 	}

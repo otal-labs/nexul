@@ -237,7 +237,9 @@ on again in the same trail and session), then one of `done`, `failed`, or
 `interrupted`. Stop (the starter or a `plays:write` holder) interrupts it,
 from `waiting` too; fifteen minutes of harness silence fails it. A dropped
 harness connection does not: the turn is redialed and resumed where it left
-off, and fails only if it stays down for five minutes.
+off, and fails only if it stays down for five minutes. A server restart
+interrupts every `starting` or `running` trail at boot, since no turn is
+watching it any more; a `waiting` one stays, and its answer resumes it.
 Also records the computer, provider, and model the run used, whether the
 starter picked them in the run dialog or they came from the starter's own
 project link or pairing defaults (ADR 0058).

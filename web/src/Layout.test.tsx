@@ -17,6 +17,7 @@ vi.mock("@/hooks/useLiveEvents", () => ({
 vi.mock("@/hooks/NotificationHooks", () => ({
   useFetchInbox: () => ({ data: [] }),
   useFetchUnreadCount: vi.fn(() => ({ data: { count: 0 } })),
+  useFetchUnreadByWorkspace: () => ({ data: {} }),
   useMarkNotificationsRead: () => ({ mutate: vi.fn(), isPending: false }),
   useMarkAllNotificationsRead: () => ({ mutate: vi.fn(), isPending: false }),
 }));
@@ -119,7 +120,7 @@ describe("Layout", () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
     expect(await screen.findByRole("link", { name: /^Topology/ })).toBeInTheDocument();
-    expect(await screen.findByText("@onik97")).toBeInTheDocument();
+    expect(await screen.findByText("Onik")).toBeInTheDocument();
   });
 
   it("has no Work/Deploy/Manage section header anywhere in the sidebar", () => {
@@ -171,7 +172,7 @@ describe("Layout", () => {
   it("reaches Configuration from the Workspace section and Your settings from the footer gear, with no Members or Settings links", async () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
-    await screen.findByText("@onik97");
+    await screen.findByText("Onik");
     expect(await screen.findByRole("link", { name: "Configuration" })).toHaveAttribute("href", "/acme/configuration");
     expect(screen.getByRole("link", { name: "Your settings" })).toHaveAttribute("href", "/settings");
     expect(screen.queryByRole("link", { name: "Members" })).not.toBeInTheDocument();

@@ -265,16 +265,41 @@ func renderInline(nodes []Node) string {
 
 // renderTextRun writes one text run, closing ended marks and opening new ones, keeping the shared prefix open.
 func renderTextRun(b *strings.Builder, text string, marks []Mark, open []Mark) []Mark {
-	// Code spans take no backslash escapes, so an escape there would read back as a literal backslash.
-	if !slices.ContainsFunc(marks, func(m Mark) bool { return m.Type == "code" }) {
-		text = escapeMarkdownText(text)
-	}
+	outer := slices.DeleteFunc(cloneMarks(marks), func(m Mark) bool { return m.Type == "code" })
+	text = runText(text, len(outer) < len(marks))
+	marks = outer
 	shared := sharedMarks(open, marks)
 
 	closeMarks(b, open, shared)
 	openNewMarks(b, marks, shared)
 	b.WriteString(text)
 	return cloneMarks(marks)
+}
+
+// runText writes code as a literal span, since code spans take no backslash escapes, and escapes prose.
+func runText(text string, code bool) string {
+	if code {
+		return codeSpan(text)
+	}
+	return escapeMarkdownText(text)
+}
+
+// codeSpan fences text with a backtick run it does not contain, padded so a reader strips back to the exact text.
+func codeSpan(text string) string {
+	longest, run := 0, 0
+	for _, r := range text {
+		run++
+		if r != '`' {
+			run = 0
+		}
+		longest = max(longest, run)
+	}
+	fence := strings.Repeat("`", longest+1)
+	edgeSpaces := len(text) > 1 && text[0] == ' ' && text[len(text)-1] == ' ' && strings.Trim(text, " ") != ""
+	if strings.HasPrefix(text, "`") || strings.HasSuffix(text, "`") || edgeSpaces {
+		text = " " + text + " "
+	}
+	return fence + text + fence
 }
 
 func sharedMarks(a, b []Mark) []Mark {
@@ -313,8 +338,6 @@ func markDelimiter(m Mark, open bool) string {
 		return "*"
 	case "strike":
 		return "~~"
-	case "code":
-		return "`"
 	case "link":
 		if open {
 			return "["

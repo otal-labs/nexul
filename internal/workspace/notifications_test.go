@@ -368,6 +368,26 @@ func TestNotifUnreadCount(t *testing.T) {
 	})
 }
 
+func TestNotifUnreadByWorkspace(t *testing.T) {
+	t.Run("empty user id is invalid", func(t *testing.T) {
+		s := newTestNotifService(newFakeNotifRepo(), newFakeNotifUsers())
+		_, err := s.UnreadByWorkspace(context.Background(), "", "")
+		assert.ErrorIs(t, err, apperrs.ErrInvalid)
+	})
+	t.Run("counts each workspace apart and leaves fully read ones out", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		repo.create(t, &Notification{ID: "n1", UserID: "u1", WorkspaceID: "ws-1"})
+		repo.create(t, &Notification{ID: "n2", UserID: "u1", WorkspaceID: "ws-1"})
+		repo.create(t, &Notification{ID: "n3", UserID: "u1", WorkspaceID: "ws-2"})
+		repo.create(t, &Notification{ID: "n4", UserID: "u1", WorkspaceID: "ws-3"})
+		require.NoError(t, repo.MarkRead(context.Background(), "u1", "n4", notifFixedNow))
+		s := newTestNotifService(repo, newFakeNotifUsers())
+		got, err := s.UnreadByWorkspace(context.Background(), "u1", "")
+		require.NoError(t, err)
+		assert.Equal(t, map[string]int{"ws-1": 2, "ws-2": 1}, got)
+	})
+}
+
 func TestNotifMarkRead(t *testing.T) {
 	t.Run("empty args are invalid", func(t *testing.T) {
 		s := newTestNotifService(newFakeNotifRepo(), newFakeNotifUsers())

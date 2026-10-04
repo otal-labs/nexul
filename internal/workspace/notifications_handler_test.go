@@ -65,13 +65,20 @@ func TestNotificationHandler_List(t *testing.T) {
 
 func TestNotificationHandler_UnreadCount(t *testing.T) {
 	repo := newFakeNotifRepo()
+	n2 := mkNotif("n2", "u1")
+	n2.WorkspaceID = "ws-2"
 	repo.create(t, mkNotif("n1", "u1"))
+	repo.create(t, n2)
 	s := newTestNotifService(repo, newFakeNotifUsers())
 	rec := notifServe(t, notifAuthedHandler(s), http.MethodGet, "/api/notifications/unread-count", "")
 	require.Equal(t, http.StatusOK, rec.Code)
-	var out map[string]int
+	var out struct {
+		Count      int            `json:"count"`
+		Workspaces map[string]int `json:"workspaces"`
+	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
-	assert.Equal(t, 1, out["count"])
+	assert.Equal(t, 2, out.Count)
+	assert.Equal(t, map[string]int{"": 1, "ws-2": 1}, out.Workspaces)
 }
 
 func TestNotificationHandler_MarkRead(t *testing.T) {
@@ -143,9 +150,13 @@ func TestNotificationHandler_WorkspaceIDScopesTheInbox(t *testing.T) {
 	t.Run("unread count counts only the workspace", func(t *testing.T) {
 		rec := notifServe(t, notifAuthedHandler(seed(t)), http.MethodGet, "/api/notifications/unread-count?workspace_id=ws-2", "")
 		require.Equal(t, http.StatusOK, rec.Code)
-		var out map[string]int
+		var out struct {
+			Count      int            `json:"count"`
+			Workspaces map[string]int `json:"workspaces"`
+		}
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
-		assert.Equal(t, 2, out["count"])
+		assert.Equal(t, 2, out.Count)
+		assert.Equal(t, map[string]int{"ws-2": 2}, out.Workspaces)
 	})
 	t.Run("read-all leaves other workspaces unread", func(t *testing.T) {
 		s := seed(t)

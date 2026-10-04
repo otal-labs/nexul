@@ -65,9 +65,13 @@ type docUpdateIn struct {
 	Watch    *bool   `json:"watch,omitempty" jsonschema:"true makes you a watcher of the doc, so its edits reach your notifications; false stops that, and your own later edits do not start it again. Needs only read access. Omit to leave it as is."`
 }
 
+type docDeleteIn struct {
+	ID string `json:"id" jsonschema:"The doc's id, from doc_list."`
+}
+
 // MCPTools returns the docs tools.
 func MCPTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{docListTool(s), docGetTool(s), docCreateTool(s), docUpdateTool(s)}
+	return []mcptool.Tool{docListTool(s), docGetTool(s), docCreateTool(s), docUpdateTool(s), docDeleteTool(s)}
 }
 
 func docListTool(s *Service) mcptool.Tool {
@@ -174,7 +178,7 @@ func docUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_update", "Update doc",
 		"Changes a doc's title, body, folder, archived, or locked state, or whether you watch it; only the fields you send change. "+
 			"folder_id moves the doc to another folder of its project, one of the folders project_get lists. "+
-			"A new title or body saves a new version, and archived true hides the doc from search until archived false restores it. "+
+			"A new title or body saves a new version, and archived true hides the doc from search until archived false restores it; archiving keeps the doc, and doc_delete removes it for good. "+
 			"A locked doc refuses title and body changes until locked false, which you may send with the edit to unlock first; "+
 			"locking and unlocking need docs:lock, and a doc play locks its doc when its run starts. "+
 			"A title or body edit makes you a watcher, notified of the doc's later edits, unless you stopped watching it; watch true or false starts or stops that for you alone. "+
@@ -187,6 +191,21 @@ func docUpdateTool(s *Service) mcptool.Tool {
 				return nil, err
 			}
 			return toDocResult(ctx, s, d)
+		})
+}
+
+func docDeleteTool(s *Service) mcptool.Tool {
+	return mcptool.New("doc_delete", "Delete doc",
+		"Deletes a doc for good, with its versions, thread, and attachments, the same as Delete in the doc's menu; it needs docs:delete and works on a locked or archived doc too. "+
+			"Archiving with doc_update archived true is the reversible alternative: it only hides the doc, which doc_get and doc_list include_archived still return. "+
+			"It fails with a conflict while tickets are filed from the doc; ticket_list with doc_id finds them, and ticket_update with an empty doc_id clears each one's source. "+
+			"Returns the deleted id with deleted true, and doc_get then answers not found.",
+		mcptool.Hints{Idempotent: true, Local: true},
+		func(ctx context.Context, in docDeleteIn) (any, error) {
+			if err := s.Delete(ctx, in.ID); err != nil {
+				return nil, err
+			}
+			return mcptool.Gone(in.ID), nil
 		})
 }
 
