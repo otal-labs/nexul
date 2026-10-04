@@ -10,6 +10,45 @@ import (
 	"database/sql"
 )
 
+const bumpUnreadNotification = `-- name: BumpUnreadNotification :execrows
+UPDATE notifications SET id = ?1, subject_title = ?2, created_at = ?3
+WHERE id = (
+  SELECT n.id FROM notifications n
+  WHERE n.user_id = ?4 AND n.workspace_id = ?5 AND n.kind = ?6 AND n.subject_type = ?7 AND n.subject_id = ?8 AND n.read = 0 AND n.id <> ?1
+  ORDER BY n.created_at DESC LIMIT 1
+)
+`
+
+type BumpUnreadNotificationParams struct {
+	ID           string
+	SubjectTitle string
+	CreatedAt    int64
+	UserID       string
+	WorkspaceID  string
+	Kind         string
+	SubjectType  string
+	SubjectID    string
+}
+
+// A repeat on an unread row takes over that row under its own event's id, so it rises in the inbox and a redelivery of
+// the same event finds its id taken and does nothing.
+func (q *Queries) BumpUnreadNotification(ctx context.Context, arg BumpUnreadNotificationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, bumpUnreadNotification,
+		arg.ID,
+		arg.SubjectTitle,
+		arg.CreatedAt,
+		arg.UserID,
+		arg.WorkspaceID,
+		arg.Kind,
+		arg.SubjectType,
+		arg.SubjectID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const countUnreadNotificationsByProject = `-- name: CountUnreadNotificationsByProject :many
 SELECT n.workspace_id, CAST(COALESCE(t.project_id, d.project_id, m.project_id, '') AS TEXT) AS project_id, COUNT(*) AS unread
 FROM notifications n
@@ -76,7 +115,7 @@ type CreateNotificationIfAbsentParams struct {
 	CreatedAt    int64
 }
 
-// NOT EXISTS collapses repeats while an unread row exists in the same inbox, so rapid edits don't flood it.
+// NOT EXISTS collapses repeats while an unread row exists in the same inbox; BumpUnreadNotification then lifts that row.
 func (q *Queries) CreateNotificationIfAbsent(ctx context.Context, arg CreateNotificationIfAbsentParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, createNotificationIfAbsent,
 		arg.ID,

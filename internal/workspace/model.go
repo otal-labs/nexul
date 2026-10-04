@@ -232,6 +232,12 @@ const (
 	KindPlayRunWaiting       Kind = "play.run_waiting"
 )
 
+// LiftsOnRepeat says a repeat while the row is unread lifts it to the top and pushes again; an edit kind stays collapsed,
+// since collab commits fire one every few seconds.
+func (k Kind) LiftsOnRepeat() bool {
+	return k != KindDocUpdated && k != KindMemoryUpdated
+}
+
 // SubjectType is what a notification points at, used to build the click-through link in the inbox.
 type SubjectType string
 

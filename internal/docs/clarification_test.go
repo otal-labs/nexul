@@ -162,7 +162,7 @@ func postedRound(t *testing.T, repo *fakeRepo, s *Service) (*Doc, []string) {
 	require.NoError(t, err)
 	require.NoError(t, s.PostRound(as(starter), d.ID, []ClarificationQuestion{
 		{Question: "Who signs in?", Why: "Decides the login.", Options: []QuestionOption{{Label: "Staff"}, {Label: "Customers"}}},
-		{Question: "Which devices?"},
+		{Question: "Which devices?", Options: []QuestionOption{{Label: "Phones"}, {Label: "Laptops"}}},
 	}, ""))
 	require.NoError(t, s.EndRound(context.Background(), d.ID, "trail-1"))
 	var qids []string
@@ -264,7 +264,7 @@ func TestPostRound_OnlyTheRunningRoundsStarterPostsItOnce(t *testing.T) {
 	}
 	require.ErrorIs(t, s.PostRound(as(starter), d.ID, nil, "Yes"), apperrs.ErrInvalid, "round 1 has no Anything else? before it")
 
-	require.NoError(t, s.PostRound(as(starter), d.ID, []ClarificationQuestion{{Question: " Who signs in? ", Options: []QuestionOption{{Label: "Staff"}}}}, ""))
+	require.NoError(t, s.PostRound(as(starter), d.ID, []ClarificationQuestion{{Question: " Who signs in? ", Options: []QuestionOption{{Label: "Staff"}, {Label: "Customers"}}}}, ""))
 	posted := repo.eventsFor(TopicClarificationRoundPosted)
 	require.Len(t, posted, 1)
 	assert.Equal(t, 1, posted[0].Payload.(ClarificationPostedEvent).QuestionCount)
@@ -604,4 +604,66 @@ func TestDocsHandler_Clarification(t *testing.T) {
 	assert.Equal(t, "Billing?", c.Rounds[0].AnythingElse)
 	assert.True(t, c.Rounds[0].Questions[0].Pending())
 	assert.Equal(t, http.StatusNotFound, serve(t, h, http.MethodGet, "/api/docs/nope/clarification", "").Code)
+}
+
+func TestClarification_TrailIDShowsOnlyToThoseWhoSeeTrails(t *testing.T) {
+	repo := newFakeRepo()
+	d, _ := postedRound(t, repo, clarifyService(repo, false, readWrite...))
+	tests := []struct {
+		name string
+		s    *Service
+		want string
+	}{
+		{"a writer who cannot see doc threads or close gets none", clarifyService(repo, false, readWrite...), ""},
+		{"a reader who sees doc threads gets it", clarifyService(repo, false, permissions.DocsRead, permissions.DocsThread), "trail-1"},
+		{"whoever can close gets it", clarifyService(repo, true, readWrite...), "trail-1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := tt.s.Clarification(as(client), d.ID)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, c.Rounds[0].TrailID)
+			out, err := callTool(as(client), t, tt.s, "doc_get", `{"id":"`+d.ID+`"}`)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, out.(docResult).Clarification.Rounds[0].TrailID, "doc_get says the same")
+			if !tt.s.can(as(client), d.ID, permissions.DocsWrite) {
+				return
+			}
+			saved, err := tt.s.SaveAnythingElse(as(client), d.ID, 1, "Billing?")
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, saved.TrailID, "and so does saving Anything else?")
+		})
+	}
+}
+
+func TestPostRound_RefusesMalformedOptionsWithWhatToFix(t *testing.T) {
+	staff, customers, both := QuestionOption{Label: "Staff"}, QuestionOption{Label: "Customers"}, QuestionOption{Label: "Both"}
+	suggested := func(o QuestionOption) QuestionOption { o.Label += " (Suggested)"; return o }
+	tests := []struct {
+		name    string
+		options []QuestionOption
+		want    string
+	}{
+		{"no options", nil, "has 0 options; give it two to four"},
+		{"one option", []QuestionOption{suggested(staff)}, "has 1 option; give it two to four"},
+		{"suggested past the first", []QuestionOption{staff, suggested(customers)}, `option 2, "Customers (Suggested)", is labelled (Suggested); move it to the first place`},
+		{"suggested twice", []QuestionOption{suggested(staff), suggested(customers), both}, "options 1 and 2 are labelled (Suggested); label only the first option"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			s := clarifyService(repo, true, readWrite...)
+			d := mustDoc(t, newTestService(repo), "project-1", "Spec", "body")
+			_, err := s.OpenRound(context.Background(), d.ID, starter, "trail-1", false)
+			require.NoError(t, err)
+			err = s.PostRound(as(starter), d.ID, []ClarificationQuestion{
+				{Question: "Which devices?", Options: []QuestionOption{suggested(staff), customers}},
+				{Question: "Who signs in?", Options: tt.options},
+			}, "")
+			require.ErrorIs(t, err, apperrs.ErrInvalid)
+			assert.Contains(t, err.Error(), `question 2, "Who signs in?", `+tt.want)
+			assert.Contains(t, err.Error(), "resend the whole round")
+			assert.Empty(t, repo.questions, "nothing of the round is saved")
+		})
+	}
 }

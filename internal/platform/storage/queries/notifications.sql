@@ -1,10 +1,20 @@
 -- name: CreateNotificationIfAbsent :execrows
--- NOT EXISTS collapses repeats while an unread row exists in the same inbox, so rapid edits don't flood it.
+-- NOT EXISTS collapses repeats while an unread row exists in the same inbox; BumpUnreadNotification then lifts that row.
 INSERT INTO notifications (id, user_id, workspace_id, kind, subject_type, subject_id, subject_title, read, read_at, created_at)
 SELECT sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(workspace_id), sqlc.arg(kind), sqlc.arg(subject_type), sqlc.arg(subject_id), sqlc.arg(subject_title), sqlc.arg(read), sqlc.narg(read_at), sqlc.arg(created_at)
 WHERE NOT EXISTS (
   SELECT 1 FROM notifications
   WHERE user_id = sqlc.arg(user_id) AND workspace_id = sqlc.arg(workspace_id) AND kind = sqlc.arg(kind) AND subject_type = sqlc.arg(subject_type) AND subject_id = sqlc.arg(subject_id) AND read = 0
+);
+
+-- name: BumpUnreadNotification :execrows
+-- A repeat on an unread row takes over that row under its own event's id, so it rises in the inbox and a redelivery of
+-- the same event finds its id taken and does nothing.
+UPDATE notifications SET id = sqlc.arg(id), subject_title = sqlc.arg(subject_title), created_at = sqlc.arg(created_at)
+WHERE id = (
+  SELECT n.id FROM notifications n
+  WHERE n.user_id = sqlc.arg(user_id) AND n.workspace_id = sqlc.arg(workspace_id) AND n.kind = sqlc.arg(kind) AND n.subject_type = sqlc.arg(subject_type) AND n.subject_id = sqlc.arg(subject_id) AND n.read = 0 AND n.id <> sqlc.arg(id)
+  ORDER BY n.created_at DESC LIMIT 1
 );
 
 -- name: ListNotifications :many

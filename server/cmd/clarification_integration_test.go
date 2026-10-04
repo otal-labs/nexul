@@ -35,7 +35,10 @@ func TestIntegration_Clarification(t *testing.T) {
 	require.NoError(t, err)
 	_, err = s.OpenRound(ctx, f.doc, uDev, "trail-1", tookLock)
 	require.NoError(t, err)
-	require.NoError(t, s.PostRound(as(uDev), f.doc, []docs.ClarificationQuestion{{Question: "Who signs in?"}, {Question: "Which devices?"}}, ""))
+	require.NoError(t, s.PostRound(as(uDev), f.doc, []docs.ClarificationQuestion{
+		{Question: "Who signs in?", Options: []docs.QuestionOption{{Label: "Staff"}, {Label: "Customers"}}},
+		{Question: "Which devices?", Options: []docs.QuestionOption{{Label: "Phones"}, {Label: "Laptops"}}},
+	}, ""))
 	c, err := s.Clarification(as(uDev), f.doc)
 	require.NoError(t, err)
 	qid := c.Rounds[0].Questions[0].ID

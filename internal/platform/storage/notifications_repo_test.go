@@ -79,29 +79,68 @@ func TestNotificationsRepo_CreateMany_AllRowsConflict_SkipsOutbox(t *testing.T) 
 	assert.Equal(t, 0, count)
 }
 
-func TestNotificationsRepo_CreateMany_CollapsesWhileUnread(t *testing.T) {
+func TestNotificationsRepo_CreateMany_RepeatWhileUnread_LiftsTheRow(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
+	s := newTestStore(t)
+	mustCreateUser(t, s, "u1", "onik97")
+	outboxRows := func(id string) int {
+		var n int
+		require.NoError(t, s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox WHERE id = ?`, id).Scan(&n))
+		return n
+	}
+
+	first := newTestNotification("c1", "u1", false)
+	first.Kind = workspace.KindDocQuestionsAsked
+	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{first}))
+
+	repeat := newTestNotification("c2", "u1", false)
+	repeat.Kind, repeat.SubjectTitle, repeat.CreatedAt = workspace.KindDocQuestionsAsked, "New questions on Spec v2", first.CreatedAt.Add(time.Hour)
+	evt := eventbus.OutboxEvent{ID: "evt-repeat", Topic: workspace.TopicNotificationCreated, Payload: workspace.NotificationCreatedEvent{}}
+	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{repeat}, evt))
+	ns, err := s.Notifications.List(ctx, "u1", "", 50)
+	require.NoError(t, err)
+	require.Len(t, ns, 1, "still one unread row for the subject")
+	assert.Equal(t, "c2", ns[0].ID, "the row carries the newest event's id, the one its push names")
+	assert.Equal(t, "New questions on Spec v2", ns[0].SubjectTitle)
+	assert.True(t, ns[0].CreatedAt.Equal(repeat.CreatedAt), "it rises to the top of the inbox")
+	assert.Equal(t, 1, outboxRows("evt-repeat"), "and its push fires")
+
+	again := eventbus.OutboxEvent{ID: "evt-redelivered", Topic: workspace.TopicNotificationCreated, Payload: workspace.NotificationCreatedEvent{}}
+	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{repeat}, again))
+	assert.Equal(t, 0, outboxRows("evt-redelivered"), "a redelivery of the same event changes nothing")
+
+	require.NoError(t, s.Notifications.MarkRead(ctx, "u1", "c2", time.Now()))
+	after := newTestNotification("c3", "u1", false)
+	after.Kind = workspace.KindDocQuestionsAsked
+	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{after}))
+	ns, err = s.Notifications.List(ctx, "u1", "", 50)
+	require.NoError(t, err)
+	require.Len(t, ns, 2, "a read row stays as it was and the next one is new")
+}
+
+func TestNotificationsRepo_CreateMany_EditRepeatWhileUnread_StaysCollapsed(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
 	s := newTestStore(t)
 	mustCreateUser(t, s, "u1", "onik97")
 
-	first := newTestNotification("c1", "u1", false)
-	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{first}))
+	first := newTestNotification("e1", "u1", false)
+	first.Kind = workspace.KindDocUpdated
+	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{first}))
 
-	// Same subject + kind while c1 is unread: collapsed, no second inbox row
-	// (collab commits fire doc.updated every few seconds mid-edit).
-	repeat := newTestNotification("c2", "u1", false)
-	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{repeat}))
-	ns, err := s.Notifications.List(context.Background(), "u1", "", 50)
+	// Collab commits fire doc.updated every few seconds mid-edit; each must not push again.
+	repeat := newTestNotification("e2", "u1", false)
+	repeat.Kind, repeat.CreatedAt = workspace.KindDocUpdated, first.CreatedAt.Add(time.Minute)
+	evt := eventbus.OutboxEvent{ID: "evt-edit", Topic: workspace.TopicNotificationCreated, Payload: workspace.NotificationCreatedEvent{}}
+	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{repeat}, evt))
+	ns, err := s.Notifications.List(ctx, "u1", "", 50)
 	require.NoError(t, err)
 	require.Len(t, ns, 1)
-
-	// Reading the row re-arms the next notification for that subject.
-	require.NoError(t, s.Notifications.MarkRead(context.Background(), "u1", "c1", time.Now()))
-	again := newTestNotification("c3", "u1", false)
-	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{again}))
-	ns, err = s.Notifications.List(context.Background(), "u1", "", 50)
-	require.NoError(t, err)
-	require.Len(t, ns, 2)
+	assert.Equal(t, "e1", ns[0].ID)
+	var n int
+	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox WHERE id = 'evt-edit'`).Scan(&n))
+	assert.Equal(t, 0, n)
 }
 
 func TestNotificationsRepo_CreateMany_UnreadInAnotherWorkspace_DoesNotCollapse(t *testing.T) {

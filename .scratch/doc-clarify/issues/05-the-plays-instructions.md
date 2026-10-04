@@ -50,6 +50,8 @@ Decided with the owner.
 - **Inbox wording**: to the doc's watchers, "New questions on <doc title>";
   to the round's starter, "Questions answered on <doc title>" with a
   summary such as "Round 2 · 5 answered, 1 skipped". Neither mentions AI.
+- Tightened after the walkthrough: options rules, the check before no
+  gaps, and no invented detail in the rewrite.
 
 ### The play's instructions (code default and instance template)
 
@@ -76,20 +78,29 @@ Decided with the owner.
 > If gaps remain, post one round with `doc_update` `questions`: three to
 > six, the biggest unknowns first, grouped by the doc's sections. Write each
 > in plain words for someone non-technical, with two to four concrete
-> options, the one most projects pick first and labelled "(Suggested)",
-> multi-select only where several can apply, and a one-line why that says
-> why it matters to them. If the last round has "Anything else?" text, send
+> options that each stand on their own: the one most projects pick first and
+> labelled "(Suggested)", no other option labelled, multi-select only where
+> the options can be combined, and a one-line why that says why it matters
+> to them. If the last round has "Anything else?" text, send
 > `anything_else_reply` with it: one plain line that answers it, or says
-> which of this round's questions follow it up. Never use your question
-> tool: post the round and end your turn.
+> which of this round's questions follow it up; never name a round number in
+> it. Never use your question tool: post the round and end your turn.
+>
+> Before you call it done, check that every area above was either asked
+> about or is already answered in the doc; anything you set aside in an
+> earlier reply still needs asking, unless the developer's instructions
+> dropped it.
 >
 > If the developer could turn the doc into tickets without asking its
 > authors anything more, there are no gaps left: send `doc_update` with
-> `no_gaps` and the whole new body. Keep the authors' headings and words,
-> weave each answer into the section it belongs to, add a section only
-> where nothing fits, and never mention questions or rounds. Questions
-> skipped twice that still matter go under a short "Open points" section.
+> `no_gaps` and the whole new body. Keep the authors' headings and their own
+> sentences wherever they still hold, weave each answer into the section it
+> belongs to, add a section only where nothing fits, and never mention
+> questions or rounds. Add only what an answer says: never invent details,
+> figures, examples, or requirements the authors did not give. Only
+> questions that were asked and skipped twice, and still matter, go under a
+> short "Open points" section.
 >
-> Never mention AI, an agent, or yourself in anything the authors see.
-> Reply to the developer with what you asked and why, or that the doc is
-> complete and what changed, plus any technical questions for them.
+> Never mention AI, an agent, or yourself in anything the authors see. Reply
+> to the developer with what you asked and why, or that the doc is complete
+> and what changed, plus any technical questions for them.

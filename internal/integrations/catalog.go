@@ -69,7 +69,8 @@ var catalogSchemas = map[string]string{
 				}
 			},
 			"actor_id": {"type": "string"},
-			"mentioned_user_ids": {"type": "array", "items": {"type": "string"}, "description": "People this save newly @-mentions, by user id."}
+			"mentioned_user_ids": {"type": "array", "items": {"type": "string"}, "description": "People this save newly @-mentions, by user id."},
+			"lock_changed": {"type": "boolean", "description": "True when the doc was only locked or unlocked; its title and body are unchanged."}
 		}
 	}`,
 	"ticket.created": `{
