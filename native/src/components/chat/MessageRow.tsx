@@ -1,5 +1,6 @@
 import { View } from "react-native";
 
+import { HandoffPill } from "@/components/chat/HandoffPill";
 import { MessageBody } from "@/components/chat/MessageBody";
 import { MessageReactions } from "@/components/chat/MessageReactions";
 import { NoteFilePill } from "@/components/chat/NoteFilePill";
@@ -31,6 +32,13 @@ export const MessageRow = ({ message, authorName, continuation = false }: Messag
       )}
       {!isSystem && <MessageBody body={message.body} />}
       {isNote(message) && <NoteFilePill conversationId={message.conversation_id} attachmentId={message.attachment_id ?? ""} />}
+      {message.handoffs && message.handoffs.length > 0 && (
+        <View className="flex-row flex-wrap gap-x-1.5">
+          {message.handoffs.map((handoff) => (
+            <HandoffPill key={handoff.id} message={message} handoff={handoff} />
+          ))}
+        </View>
+      )}
       {message.reactions && message.reactions.length > 0 && <MessageReactions reactions={message.reactions} />}
     </View>
   );
