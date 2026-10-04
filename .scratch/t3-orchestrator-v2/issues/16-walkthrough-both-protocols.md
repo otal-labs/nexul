@@ -1,10 +1,9 @@
 # 16 — Walkthrough on both protocols
 
-**What to build:** The owner walks the effort end to end on his own paired computer, once tickets 14, 19
-and 20 have merged and the instance runs a build with them: first on T3 stable, then after updating his
-T3 Code to the nightly. No Incus box and no provider token; his own T3 and providers are the test bed.
+**What to build:** The owner walks the effort end to end on his own paired computer, on T3 Code's nightly
+only (he does not run stable), with a Nexul release that carries tickets 01–24. No Incus box and no provider
+token; his own T3 and providers are the test bed. Protocol 1 stays covered by its tests.
 
-- On stable: an @Agent mention and a play still work as before.
 - Update T3 Code to the nightly. The computer switches to the new client with no re-pair, the settings row
   shows it connected with the nightly version, and the first turn posts no drift warning.
 - Chat: a mention and a follow-up; a mention while the first runs queues and gets its own reply; an old
