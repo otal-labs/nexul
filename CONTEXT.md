@@ -300,7 +300,8 @@ A doc set read-only for everyone as a guard against accidental edits: its
 title and body refuse every change, from people and agents alike, until it
 is unlocked. Locking and unlocking take `docs:lock`, a permission of its own
 apart from editing. Starting a doc play locks its doc, whatever the starter
-holds, and the doc stays locked after the run ends. Archiving, cloning, and
+holds, and the doc stays locked after the run ends, except a Clarify round's
+lock, which comes off when its run ends. Archiving, cloning, and
 deleting still work, and a clone starts unlocked.
 _Avoid_: Frozen, protected, read-only doc
 
