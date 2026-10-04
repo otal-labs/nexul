@@ -157,10 +157,13 @@ func TestIntegration_TemplatesResolveThroughTheInstance(t *testing.T) {
 		assert.Equal(t, "Fix it the instance way.", f.play(t, ws.ID, "fix-with-ai").Instructions)
 		assert.Equal(t, "## Instance bug", f.bodyTemplate(t, p.ID, "bug"))
 		assert.NotEqual(t, before, f.play(t, ws.ID, "to-tickets-via-ai").Instructions, "every built-in play keeps its own key")
+		clarify := f.play(t, ws.ID, plays.ClarifyKey)
+		assert.Equal(t, "Clarify via AI", clarify.Label, "a new workspace gets Clarify via AI too")
+		assert.Equal(t, f.play(t, wsDefault, plays.ClarifyKey).Instructions, clarify.Instructions, "from the unedited instance template")
 
 		listed, err := f.tpl.List(as(uPlain))
 		require.NoError(t, err, "any member reads the instance templates")
-		assert.Len(t, listed, 12)
+		assert.Len(t, listed, 13)
 	})
 
 	t.Run("a copy resets to the instance version, not the code default", func(t *testing.T) {

@@ -20,13 +20,13 @@ func (l locationIn) location() Location {
 
 type templateGetIn struct {
 	Kind string `json:"kind" jsonschema:"The template kind: interview, mention_chip, play_instructions, ticket_body, or agent_prompt (the Intro and Footer every full agent turn prompt opens and closes with)."`
-	Key  string `json:"key,omitempty" jsonschema:"Which template of the kind: a built-in play's key (fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft) or a ticket type's name (task, bug, feature at the instance), or intro or footer for agent_prompt. Empty for interview and mention_chip."`
+	Key  string `json:"key,omitempty" jsonschema:"Which template of the kind: a built-in play's key (fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft, clarify) or a ticket type's name (task, bug, feature at the instance), or intro or footer for agent_prompt. Empty for interview and mention_chip."`
 	locationIn
 }
 
 type templateUpdateIn struct {
 	Kind string `json:"kind" jsonschema:"The template kind: interview, mention_chip, play_instructions, ticket_body, or agent_prompt (the Intro and Footer every full agent turn prompt opens and closes with)."`
-	Key  string `json:"key,omitempty" jsonschema:"Which template of the kind: a built-in play's key (fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft) or a ticket type's name (task, bug, feature at the instance), or intro or footer for agent_prompt. Empty for interview and mention_chip."`
+	Key  string `json:"key,omitempty" jsonschema:"Which template of the kind: a built-in play's key (fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft, clarify) or a ticket type's name (task, bug, feature at the instance), or intro or footer for agent_prompt. Empty for interview and mention_chip."`
 	locationIn
 	Body      *string     `json:"body,omitempty" jsonschema:"The new text, markdown except for mention_chip, which uses {ticket.Field} tokens such as {ticket.Ticket} {ticket.Status}. The interview is one ## heading per question, a hint under it, then - single-choice or - [ ] multi-select options, at most 32,000 characters."`
 	Reset     bool        `json:"reset,omitempty" jsonschema:"true returns this place to its default: the instance to the code default, a workspace or project to the instance's current text."`

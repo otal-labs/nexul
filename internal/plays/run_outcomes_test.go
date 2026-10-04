@@ -23,7 +23,16 @@ func driveTurn(t *testing.T, f *runnerFixture, in RunInput) (*Trail, agent.Obser
 	trail, err := f.runner.Run(ctxAs(starter), in)
 	require.NoError(t, err)
 	<-f.turns.done
+	releaseUnheldTurn(f, trail.ID)
 	return trail, f.turns.last().Observer
+}
+
+// releaseUnheldTurn drops the live entry of a turn the fake already returned from, as the runner's goroutine would
+// on exit; done is sent before RunTurn returns, so without this a Stop races that exit.
+func releaseUnheldTurn(f *runnerFixture, trailID string) {
+	if !f.turns.hold {
+		f.runner.clearRun(trailID, f.runner.run(trailID))
+	}
 }
 
 func TestFinish_WritesRunStartedAndFinishedEvents(t *testing.T) {

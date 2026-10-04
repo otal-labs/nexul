@@ -238,6 +238,66 @@ func (f *fakeDocLocks) state(docID string) (locked bool, calls int) {
 	return f.locked[docID], f.calls
 }
 
+func (f *fakeDocLocks) unlock(docID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.locked[docID] = false
+}
+
+// fakeClarifyRound is one round a Clarify run opened, as docs records it.
+type fakeClarifyRound struct {
+	docID, starter    string
+	tookLock, running bool
+}
+
+// fakeRounds is the ClarifyRounds seam: it ends a round as docs does, unlocking the doc only when the run took the lock.
+type fakeRounds struct {
+	mu      sync.Mutex
+	locks   *fakeDocLocks
+	byTrail map[string]*fakeClarifyRound
+	ended   []string
+	openErr error
+	endErr  error
+}
+
+func (f *fakeRounds) OpenRound(_ context.Context, docID, starterID, trailID string, tookLock bool) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.openErr != nil {
+		return 0, f.openErr
+	}
+	f.byTrail[trailID] = &fakeClarifyRound{docID: docID, starter: starterID, tookLock: tookLock, running: true}
+	return len(f.byTrail), nil
+}
+
+func (f *fakeRounds) EndRound(_ context.Context, docID, trailID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ended = append(f.ended, trailID)
+	if f.endErr != nil {
+		return f.endErr
+	}
+	r, ok := f.byTrail[trailID]
+	if !ok || !r.running || r.docID != docID {
+		return nil
+	}
+	r.running = false
+	if r.tookLock {
+		f.locks.unlock(docID)
+	}
+	return nil
+}
+
+func (f *fakeRounds) round(trailID string) (fakeClarifyRound, []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var r fakeClarifyRound
+	if got, ok := f.byTrail[trailID]; ok {
+		r = *got
+	}
+	return r, append([]string(nil), f.ended...)
+}
+
 func (f *fakeTargets) setTicketStage(id string, stage Stage) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -57,7 +57,17 @@ const (
 		"Where the interview calls for an automated end-to-end suite, add or extend a test covering the ticket's acceptance criteria, run it against the url, commit it, and push: to the ticket's linked branch, or in a tests repository to a branch named `<ticket key>-<short-slug>` with a pull request whose title starts with the ticket key. " +
 		"Then record the result exactly as a person would. If every criterion holds and the tests pass, call `ticket_test_report` with `outcome` `pass`. Otherwise call it with `outcome` `fail` and the bug template filled: the steps to reproduce, the expected result the criterion promises, and the actual result you saw. It posts them to the ticket's thread and moves the ticket back to progress. " +
 		"Reply with each criterion and whether it held, the tests you ran and added, and the result you recorded. If you cannot reach the url or run the tests, say what blocked you instead of passing or failing the ticket."
+	clarifyInstructions = "Clarify this doc for the people who wrote it. Read it with `doc_get`: its body and its clarification, every earlier round with its questions, answers, skipped questions, and \"Anything else?\" text. The instructions for this run, if any, win over everything below.\n\n" +
+		"Find the gaps in what the doc says its authors need. Ask about what it must do: who uses it and what each of them does, the steps of each flow, the business rules and their exceptions, the data they have or must keep, what is in and out of scope, and what finished looks like. Ask about how well it must do it, in their terms: how many people use it and when, how fast it must feel, when it must be available, who may see what, devices and languages, accessibility, the systems it must work with, legal or industry rules, deadlines, budget, and what matters most. Never ask how to build it (hosting, databases, frameworks, architecture); those are the developer's, so put anything technical left unclear in your reply.\n\n" +
+		"Do not ask what an earlier round answered, and do not repeat a question still waiting for an answer. Ask a skipped question once more only if it still matters.\n\n" +
+		"If gaps remain, post one round with `doc_update` `questions`: three to six, the biggest unknowns first, grouped by the doc's sections. Write each in plain words for someone non-technical, with two to four concrete options, the one most projects pick first and labelled \"(Suggested)\", multi-select only where several can apply, and a one-line why that says why it matters to them. If the last round has \"Anything else?\" text, send `anything_else_reply` with it: one plain line that answers it, or says which of this round's questions follow it up. Never use your question tool: post the round and end your turn.\n\n" +
+		"If the developer could turn the doc into tickets without asking its authors anything more, there are no gaps left: send `doc_update` with `no_gaps` and the whole new body. Keep the authors' headings and words, weave each answer into the section it belongs to, add a section only where nothing fits, and never mention questions or rounds. Questions skipped twice that still matter go under a short \"Open points\" section.\n\n" +
+		"Never mention AI, an agent, or yourself in anything the authors see. Reply to the developer with what you asked and why, or that the doc is complete and what changed, plus any technical questions for them."
 )
+
+// ClarifyKey is the built-in key of the Clarify via AI play, whose run opens and ends a round of the doc's
+// clarification (ADR 0121).
+const ClarifyKey = "clarify"
 
 // Service is the plays use-case layer: workspace-scoped play definitions (ADR 0055).
 type Service struct {
@@ -267,6 +277,9 @@ func Builtins() []Builtin {
 		{Key: DraftInterviewKey, Label: "Draft interview", Type: TypeInterview,
 			Description:  "Drafts answers to the Interview questions from this project's follow sources, for a person to confirm.",
 			Instructions: draftInterviewInstructions},
+		{Key: ClarifyKey, Label: "Clarify via AI", Type: TypeDoc,
+			Description:  "Asks the doc's authors about the gaps in what they need, a round at a time, then writes the answers into the doc.",
+			Instructions: clarifyInstructions},
 	}
 }
 
@@ -351,7 +364,7 @@ func (s *Service) builtin(ctx context.Context, workspaceID, key string) (*Play, 
 			return p, nil
 		}
 	}
-	return nil, fmt.Errorf("%w: workspace %s has no built-in play %q; it was deleted, or the key is not one of fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft", apperrs.ErrNotFound, workspaceID, key)
+	return nil, fmt.Errorf("%w: workspace %s has no built-in play %q; it was deleted, or the key is not one of fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft, clarify", apperrs.ErrNotFound, workspaceID, key)
 }
 
 func (s *Service) getInWorkspace(ctx context.Context, workspaceID, id string) (*Play, error) {

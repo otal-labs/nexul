@@ -209,7 +209,8 @@ func docUpdateTool(s *Service) mcptool.Tool {
 			"folder_id moves the doc to another folder of its project, one of the folders project_get lists. "+
 			"A new title or body saves a new version, and archived true hides the doc from search until archived false restores it; archiving keeps the doc, and doc_delete removes it for good. "+
 			"A locked doc refuses title and body changes until locked false, which you may send with the edit to unlock first; "+
-			"locking and unlocking need docs:lock, and a doc play locks its doc when its run starts. "+
+			"locking and unlocking need docs:lock, and a doc play locks its doc when its run starts and leaves it locked, "+
+			"except a Clarify via AI run, which unlocks it when it ends if that run took the lock. "+
 			"A title or body edit makes you a watcher, notified of the doc's later edits, unless you stopped watching it; watch true or false starts or stops that for you alone. "+
 			"The answers field answers, skips, or clears clarification questions by id, and clarification_closed true closes the clarification; "+
 			"questions, anything_else_reply, and no_gaps with the new body come only from the running Clarify via AI round's own run. "+

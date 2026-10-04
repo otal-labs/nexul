@@ -2,11 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import type { Clarification } from "@/models/Clarification";
 import type { Doc, DocListItem, DocWatchers, SaveDocFormData } from "@/models/Doc";
 
 export const getDocsKey = "getDocs";
 export const getDocKey = "getDoc";
 export const getDocWatchersKey = "getDocWatchers";
+export const getDocClarificationKey = "getDocClarification";
 
 export const useFetchDocs = () =>
   useQuery({
@@ -27,6 +29,13 @@ export const useFetchDoc = (id: string | undefined) =>
   useQuery({
     queryKey: [getDocKey, id],
     queryFn: async () => (await api.get<Doc>(`/api/docs/${id}`)).data,
+    enabled: !!id,
+  });
+
+export const useFetchDocClarification = (id: string) =>
+  useQuery({
+    queryKey: [getDocClarificationKey, id],
+    queryFn: async () => (await api.get<Clarification>(`/api/docs/${id}/clarification`)).data,
     enabled: !!id,
   });
 

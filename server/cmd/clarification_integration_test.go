@@ -103,10 +103,13 @@ func TestIntegration_Clarification(t *testing.T) {
 	})
 
 	t.Run("closing takes plays:run on the Clarify play, or workspace-wide while there is none", func(t *testing.T) {
-		_, err := s.CloseClarification(as(uDev), f.doc)
+		seeded, err := f.svc.playsSvc.BuiltinPlay(as(uOwner), wsDefault, plays.ClarifyKey)
+		require.NoError(t, err)
+		require.NoError(t, f.store.Plays.Delete(ctx, seeded.ID))
+		_, err = s.CloseClarification(as(uDev), f.doc)
 		require.NoError(t, err)
 
-		clarify := &plays.Play{ID: "play-clarify", WorkspaceID: wsDefault, Label: "Clarify via AI", Type: plays.TypeDoc, Enabled: true, BuiltinKey: clarifyPlayKey, CreatedAt: now, UpdatedAt: now}
+		clarify := &plays.Play{ID: "play-clarify", WorkspaceID: wsDefault, Label: "Clarify via AI", Type: plays.TypeDoc, Enabled: true, BuiltinKey: plays.ClarifyKey, CreatedAt: now, UpdatedAt: now}
 		require.NoError(t, f.store.Plays.Create(ctx, clarify))
 		require.NoError(t, f.store.Access.Set(ctx, "play", clarify.ID, uDev, nil, grant("plays:run")))
 		_, err = s.CloseClarification(as(uDev), f.doc)
