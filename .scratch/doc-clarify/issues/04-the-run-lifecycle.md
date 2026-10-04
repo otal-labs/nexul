@@ -18,3 +18,6 @@ A technical ticket, answered as a decision. Given the research:
   round's last answer to its starter.
 - Seeding "Clarify via AI" into every workspace, new and existing, with
   its built-in key, and its place in instance templates.
+- Raised by the research: unlocking at the end of a round's run reverses
+  what ADR 0107 records the owner declining for doc plays, so the answer
+  here comes with an ADR amending it.

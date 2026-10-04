@@ -16,3 +16,7 @@ The play's instructions, the content the owner decides:
 - How the agent uses the developer's instructions for the run and the
   client's "Anything else?".
 - When the agent calls "no gaps left".
+- Raised by the research: whether the client sees an option marked
+  "(Recommended)" and pre-picked, as the interview does; whether the
+  first-person "Why I'm asking:" line suits a client; and the inbox wording
+  of the two new notifications.
