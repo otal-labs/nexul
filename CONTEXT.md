@@ -697,8 +697,11 @@ An @-reference in a doc, ticket, or memory body to a ticket, a doc, or a
 person, stored as a node holding the target's id and shown as a live chip.
 A person's holds their user id and its chip shows their picture and
 display name from People; as markdown it is `[@login](/people/<user id>)`.
-Saving a doc or ticket that newly mentions someone tells them in their
-inbox. Chat's `@login` and `@Agent` are plain text in the message instead.
+A link to a ticket or doc page in the same workspace becomes a Mention
+when it is pasted or loaded (ADR 0120); one made from a ticket URL holds
+the ticket's key. Saving a doc or ticket that newly mentions someone tells
+them in their inbox. Chat's `@login` and `@Agent` are plain text in the
+message instead.
 _Avoid_: Tag, ping
 
 **Personal access token**:

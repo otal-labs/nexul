@@ -13,12 +13,12 @@ const mentionSearchScan = 50
 
 type mentionRef struct {
 	Type string `json:"type" jsonschema:"What the reference points at: ticket, doc, or person."`
-	ID   string `json:"id" jsonschema:"The ticket's or doc's id, or a person's user id."`
+	ID   string `json:"id" jsonschema:"The ticket's id or key such as REF-102, the doc's id, or a person's user id."`
 }
 
 type mentionSearchIn struct {
 	Query       string       `json:"query,omitempty" jsonschema:"Text to match against ticket and doc titles and bodies, ticket notes, and people's logins and display names, or a ticket key such as REF-102, which sorts first."`
-	WorkspaceID string       `json:"workspace_id,omitempty" jsonschema:"Only find people, and the ticket a key such as REF-102 names, in this workspace; omit to search every workspace you share."`
+	WorkspaceID string       `json:"workspace_id,omitempty" jsonschema:"Only find people, and the ticket a key such as REF-102 names, in this workspace; omit to search every workspace you share. With refs, a ticket ref given as a key resolves in this workspace."`
 	Refs        []mentionRef `json:"refs,omitempty" jsonschema:"References to resolve to live chips instead of searching, for example the mentions found in a document."`
 	mcptool.PageArgs
 }
@@ -49,7 +49,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 				if err != nil {
 					return nil, err
 				}
-				chips, err := s.Resolve(ctx, refs)
+				chips, err := s.Resolve(ctx, in.WorkspaceID, refs)
 				if err != nil {
 					return nil, err
 				}

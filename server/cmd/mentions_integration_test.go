@@ -80,7 +80,7 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 	})
 
 	t.Run("resolves chips with current title/status and access", func(t *testing.T) {
-		chips, err := svc.Resolve(aliceCtx, []mentions.Ref{
+		chips, err := svc.Resolve(aliceCtx, "", []mentions.Ref{
 			{Type: "ticket", ID: ticket.ID},
 			{Type: "doc", ID: "d-open"},
 			{Type: "doc", ID: "d-locked"},
@@ -109,14 +109,14 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 	t.Run("granted user opens the doc", func(t *testing.T) {
 		// u-owner is no workspace's Owner here, so it proves access via an explicit grant like any other user.
 		require.NoError(t, s.Access.Set(ctx, "doc", "d-locked", "u-owner", permissions.SetOf(permissions.DocsRead), nil))
-		chips, err := svc.Resolve(ownerCtx, []mentions.Ref{{Type: "doc", ID: "d-locked"}})
+		chips, err := svc.Resolve(ownerCtx, "", []mentions.Ref{{Type: "doc", ID: "d-locked"}})
 		require.NoError(t, err)
 		require.Len(t, chips, 1)
 		assert.True(t, chips[0].CanOpen)
 	})
 
 	t.Run("missing targets are omitted", func(t *testing.T) {
-		chips, err := svc.Resolve(aliceCtx, []mentions.Ref{{Type: "ticket", ID: "nope"}})
+		chips, err := svc.Resolve(aliceCtx, "", []mentions.Ref{{Type: "ticket", ID: "nope"}})
 		require.NoError(t, err)
 		assert.Empty(t, chips)
 	})
@@ -160,11 +160,18 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 		assert.Equal(t, "Ship the router rewrite", results[0].Title)
 
 		// Resolve renders {ticket.Project} as PREFIX-NUMBER for a project with a prefix, unlike "project-general" above.
-		chips, err := svc.Resolve(aliceCtx, []mentions.Ref{{Type: "ticket", ID: keyTicket.ID}})
+		chips, err := svc.Resolve(aliceCtx, "", []mentions.Ref{{Type: "ticket", ID: keyTicket.ID}})
 		require.NoError(t, err)
 		require.Len(t, chips, 1)
 		assert.Equal(t, "ERF", chips[0].ProjectPrefix)
 		assert.Equal(t, 1, chips[0].ProjectNumber)
+
+		// An in-app ticket URL carries the key, so a body's link resolves by key inside its workspace.
+		chips, err = svc.Resolve(aliceCtx, "workspace-default", []mentions.Ref{{Type: "ticket", ID: "ERF-1"}})
+		require.NoError(t, err)
+		require.Len(t, chips, 1)
+		assert.Equal(t, "ERF-1", chips[0].ID)
+		assert.Equal(t, "Ship the router rewrite", chips[0].Title)
 	})
 }
 
