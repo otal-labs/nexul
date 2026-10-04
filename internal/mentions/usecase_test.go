@@ -21,6 +21,9 @@ type fakeTicketSource struct {
 	byKey     map[string][]Ticket
 	search    []SearchHit
 	searchErr error
+	keyErr    error
+	// keyWorkspace is the workspace the last ListByKey call scoped to.
+	keyWorkspace string
 }
 
 func (f *fakeTicketSource) GetByID(_ context.Context, id string) (*Ticket, error) {
@@ -35,7 +38,11 @@ func (f *fakeTicketSource) Search(_ context.Context, _ string, _ int) ([]SearchH
 	return f.search, f.searchErr
 }
 
-func (f *fakeTicketSource) ListByKey(_ context.Context, _, prefix string, number int) ([]*Ticket, error) {
+func (f *fakeTicketSource) ListByKey(_ context.Context, workspaceID, prefix string, number int) ([]*Ticket, error) {
+	f.keyWorkspace = workspaceID
+	if f.keyErr != nil {
+		return nil, f.keyErr
+	}
 	var out []*Ticket
 	for _, t := range f.byKey[fmt.Sprintf("%s-%d", prefix, number)] {
 		out = append(out, &t)
@@ -155,14 +162,14 @@ func actorCtx(id string) context.Context {
 
 func TestResolve_RequiresActor(t *testing.T) {
 	svc := newTestService(t, nil, nil, nil, nil)
-	_, err := svc.Resolve(context.Background(), []Ref{{Type: "ticket", ID: "t-1"}})
+	_, err := svc.Resolve(context.Background(), "", []Ref{{Type: "ticket", ID: "t-1"}})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, apperrs.ErrUnauthorized)
 }
 
 func TestResolve_RequiresSources(t *testing.T) {
 	svc := New(Config{})
-	_, err := svc.Resolve(actorCtx("u-1"), []Ref{{Type: "ticket", ID: "t-1"}})
+	_, err := svc.Resolve(actorCtx("u-1"), "", []Ref{{Type: "ticket", ID: "t-1"}})
 	require.Error(t, err)
 }
 
@@ -175,7 +182,7 @@ func TestResolve_TicketChip(t *testing.T) {
 	}}
 	svc := newTestService(t, tickets, nil, statuses, nil)
 
-	chips, err := svc.Resolve(actorCtx("u-1"), []Ref{{Type: "ticket", ID: "t-1"}})
+	chips, err := svc.Resolve(actorCtx("u-1"), "", []Ref{{Type: "ticket", ID: "t-1"}})
 	require.NoError(t, err)
 	require.Len(t, chips, 1)
 	assert.Equal(t, Chip{Type: "ticket", ID: "t-1", Title: "Fix the bug", Status: "open", StatusLabel: "Open", CanOpen: true}, chips[0])
@@ -194,7 +201,7 @@ func TestResolve_TicketChip_ExtraFields(t *testing.T) {
 		Access: &fakeAccessChecker{canOpen: map[string]bool{}}, Projects: projects, TicketTypes: types,
 	})
 
-	chips, err := svc.Resolve(actorCtx("u-1"), []Ref{{Type: "ticket", ID: "t-1"}})
+	chips, err := svc.Resolve(actorCtx("u-1"), "", []Ref{{Type: "ticket", ID: "t-1"}})
 	require.NoError(t, err)
 	require.Len(t, chips, 1)
 	assert.Equal(t, "ERF", chips[0].ProjectPrefix)
@@ -217,7 +224,7 @@ func TestResolve_TicketChip_ProjectAndTypeFallback(t *testing.T) {
 		TicketTypes: &fakeTicketTypeSource{types: map[string]TicketType{}},
 	})
 
-	chips, err := svc.Resolve(actorCtx("u-1"), []Ref{{Type: "ticket", ID: "t-1"}})
+	chips, err := svc.Resolve(actorCtx("u-1"), "", []Ref{{Type: "ticket", ID: "t-1"}})
 	require.NoError(t, err)
 	require.Len(t, chips, 1)
 	assert.Equal(t, "", chips[0].ProjectPrefix, "deleted project falls back to an empty prefix")
@@ -232,7 +239,7 @@ func TestResolve_DocChip_AccessAware(t *testing.T) {
 	access := &fakeAccessChecker{canOpen: map[string]bool{"d-1": true, "d-2": false}}
 	svc := newTestService(t, nil, docs, nil, access)
 
-	chips, err := svc.Resolve(actorCtx("u-1"), []Ref{{Type: "doc", ID: "d-1"}, {Type: "doc", ID: "d-2"}})
+	chips, err := svc.Resolve(actorCtx("u-1"), "", []Ref{{Type: "doc", ID: "d-1"}, {Type: "doc", ID: "d-2"}})
 	require.NoError(t, err)
 	require.Len(t, chips, 2)
 	assert.True(t, chips[0].CanOpen)
@@ -248,7 +255,7 @@ func TestResolve_StatusLabelFallback(t *testing.T) {
 	statuses := &fakeStatusSource{statuses: map[string]Status{}} // done is not configured
 	svc := newTestService(t, tickets, nil, statuses, nil)
 
-	chips, err := svc.Resolve(actorCtx("u-1"), []Ref{{Type: "ticket", ID: "t-1"}})
+	chips, err := svc.Resolve(actorCtx("u-1"), "", []Ref{{Type: "ticket", ID: "t-1"}})
 	require.NoError(t, err)
 	require.Len(t, chips, 1)
 	assert.Equal(t, "done", chips[0].StatusLabel, "falls back to the status id when the column is gone")
@@ -259,7 +266,7 @@ func TestResolve_MissingTargetsOmitted(t *testing.T) {
 	docs := &fakeDocSource{docs: map[string]Doc{}}
 	svc := newTestService(t, tickets, docs, nil, nil)
 
-	chips, err := svc.Resolve(actorCtx("u-1"), []Ref{
+	chips, err := svc.Resolve(actorCtx("u-1"), "", []Ref{
 		{Type: "ticket", ID: "missing"},
 		{Type: "doc", ID: "gone"},
 	})
@@ -274,7 +281,7 @@ func TestResolve_DedupesAndSkipsInvalidRefs(t *testing.T) {
 	statuses := &fakeStatusSource{statuses: map[string]Status{"open": {ID: "open", Name: "Open"}}}
 	svc := newTestService(t, tickets, nil, statuses, nil)
 
-	chips, err := svc.Resolve(actorCtx("u-1"), []Ref{
+	chips, err := svc.Resolve(actorCtx("u-1"), "", []Ref{
 		{Type: "ticket", ID: "t-1"},
 		{Type: "ticket", ID: "t-1"},
 		{Type: "", ID: "x"},
@@ -284,6 +291,38 @@ func TestResolve_DedupesAndSkipsInvalidRefs(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, chips, 1)
 	assert.Equal(t, "t-1", chips[0].ID)
+}
+
+func TestResolve_TicketByKey(t *testing.T) {
+	statuses := &fakeStatusSource{statuses: map[string]Status{"open": {ID: "open", Name: "Open"}}}
+	tests := []struct {
+		name    string
+		byKey   map[string][]Ticket
+		keyErr  error
+		want    []Chip
+		wantErr bool
+	}{
+		{"lookup failure", nil, errors.New("disk"), nil, true},
+		{"unknown key omitted", map[string][]Ticket{}, nil, []Chip{}, false},
+		{"key naming two tickets omitted", map[string][]Ticket{"ERF-7": {{ID: "t-1"}, {ID: "t-2"}}}, nil, []Chip{}, false},
+		{"key echoed as the chip id", map[string][]Ticket{"ERF-7": {{ID: "t-1", Title: "Fix the bug", Status: "open"}}}, nil,
+			[]Chip{{Type: "ticket", ID: "ERF-7", Title: "Fix the bug", Status: "open", StatusLabel: "Open", CanOpen: true}}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tickets := &fakeTicketSource{tickets: map[string]Ticket{}, byKey: tt.byKey, keyErr: tt.keyErr}
+			svc := newTestService(t, tickets, nil, statuses, nil)
+
+			chips, err := svc.Resolve(actorCtx("u-1"), "ws-1", []Ref{{Type: "ticket", ID: "ERF-7"}})
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, chips)
+			assert.Equal(t, "ws-1", tickets.keyWorkspace, "a key resolves inside the body's workspace")
+		})
+	}
 }
 
 func TestSearch_CombinesAndFiltersDocs(t *testing.T) {
@@ -499,7 +538,7 @@ func TestResolve_Person(t *testing.T) {
 	svc := newTestService(t, nil, nil, nil, nil)
 	svc.SetPeople(&fakePeopleSource{people: []Person{{UserID: "u-rix", Login: "rixwavedev", DisplayName: "Rix Wave", AvatarURL: "/api/people/u-rix/avatar?v=1"}}})
 
-	chips, err := svc.Resolve(actorCtx("u-1"), []Ref{{Type: "person", ID: "u-rix"}, {Type: "person", ID: "u-gone"}})
+	chips, err := svc.Resolve(actorCtx("u-1"), "", []Ref{{Type: "person", ID: "u-rix"}, {Type: "person", ID: "u-gone"}})
 	require.NoError(t, err)
 	assert.Equal(t, []Chip{{Type: "person", ID: "u-rix", Title: "Rix Wave", Login: "rixwavedev", AvatarURL: "/api/people/u-rix/avatar?v=1", CanOpen: true}}, chips,
 		"a person the actor shares no workspace with is left out, like any missing target")

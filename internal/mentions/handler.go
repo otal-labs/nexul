@@ -27,6 +27,8 @@ func (h *Handler) Routes() http.Handler {
 
 type resolveRequest struct {
 	Refs []Ref `json:"refs"`
+	// WorkspaceID scopes ticket refs that name a key; optional.
+	WorkspaceID string `json:"workspace_id"`
 }
 
 // resolve renders one batch of references as chips (one request per document render).
@@ -36,7 +38,7 @@ func (h *Handler) resolve(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	chips, err := h.svc.Resolve(r.Context(), req.Refs)
+	chips, err := h.svc.Resolve(r.Context(), req.WorkspaceID, req.Refs)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
