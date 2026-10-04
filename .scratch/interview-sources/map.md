@@ -80,6 +80,7 @@ decision tickets are resolved, the build tickets graduate from the fog.
 - [How a run reads another project and the sources it is given](issues/02-reading-another-project.md): one checkout per run today, found through the starter's project link for the other project; its docs, memories, and answers are already readable over MCP; a prompt-only source list is lost on resume; GitHub issues are not reachable.
 - [What a source is and where it is kept](issues/01-what-a-source-is.md): path, doc, memory, whole project, or pasted text (uploads become text) with a required follow or question stance, in a new memories-domain table; adding a ref takes read on it, gone refs show as gone, read by the run through the interview memory tools.
 - [The drafting run](issues/03-the-drafting-run.md): its own built-in play, "Draft interview", started by a person once a follow source exists; it never asks, drafts every unanswered template question into a separate drafts table through `memory_update`, and ends; a draft counts only once saved as an answer.
+- [Redrafting after a source is added or changes](issues/05-redrafting.md): a warning dot on "Draft answers" for new or changed sources, never an automatic run; every run reads every follow source, and an answered question gets a draft only where the sources now disagree, shown as a suggested change to accept or dismiss.
 
 ## Not yet specified
 
