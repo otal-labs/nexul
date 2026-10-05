@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/platform/redact"
@@ -34,4 +35,8 @@ func (r redactedConversations) PostSystemMessage(ctx context.Context, conversati
 
 func (r redactedConversations) PostUserMessage(ctx context.Context, conversationID, userID, body string) error {
 	return r.Conversations.PostUserMessage(ctx, conversationID, userID, redact.Tokens(body))
+}
+
+func (r redactedConversations) PostHarnessMessage(ctx context.Context, conversationID, userID, body, via, key string, at time.Time) error {
+	return r.Conversations.PostHarnessMessage(ctx, conversationID, userID, redact.Tokens(body), via, key, at)
 }

@@ -429,6 +429,21 @@ func TestChatRepo_CreateMessage_AuthorKind_RoundTrip(t *testing.T) {
 	assert.Equal(t, chat.AuthorUser, got2.AuthorKind)
 }
 
+func TestChatRepo_CreateMessage_Via_RoundTripsAndASecondCopyConflicts(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	seedChatUser(t, s, "u-1")
+	require.NoError(t, s.Chat.CreateConversation(context.Background(), newTestConversation("conv-1", chat.KindChannel, "general", "", "u-1"), []string{"u-1"}))
+	m := &chat.Message{ID: "msg-1", ConversationID: "conv-1", AuthorID: "u-1", Body: "typed in T3", Via: "T3", CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow}
+
+	require.NoError(t, s.Chat.CreateMessage(context.Background(), m))
+	require.ErrorIs(t, s.Chat.CreateMessage(context.Background(), m), apperrs.ErrConflict)
+
+	got, err := s.Chat.GetMessage(context.Background(), "msg-1")
+	require.NoError(t, err)
+	assert.Equal(t, "T3", got.Via)
+}
+
 func TestChatRepo_ListMessagesSince_ExcludesOlderAndDeleted(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,11 +21,13 @@ func TestRedactedConversations_EverySavedMessageHidesTheToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, convs.PostSystemMessage(ctx, "conv-1", "u1", "Agent turn failed: "+token))
 	require.NoError(t, convs.PostUserMessage(ctx, "conv-1", "u1", "use "+token))
+	require.NoError(t, convs.PostHarnessMessage(ctx, "conv-1", "u1", "typed "+token, "T3", "item-1", time.Time{}))
 
 	replies, systemPosts := inner.snapshot()
 	assert.Equal(t, "Connected with "+redact.Placeholder, replies[0].body)
 	assert.Equal(t, "Agent turn failed: "+redact.Placeholder, systemPosts[0].body)
 	assert.Equal(t, "use "+redact.Placeholder, inner.userPosts[0].body)
+	assert.Equal(t, "typed "+redact.Placeholder, inner.relayed[0].body)
 }
 
 func TestNewService_LiveFramesLeaveRedacted(t *testing.T) {

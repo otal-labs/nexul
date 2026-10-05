@@ -31,6 +31,12 @@ const (
 	defaultTitle = "Nexul chat"
 	// cancelWithin bounds cancelling the queued run of a turn that stopped watching, whose own context may be over.
 	cancelWithin = 10 * time.Second
+	// nexulMessagePrefix marks the messages Nexul sends, so a message without it on a followed run was typed in T3.
+	nexulMessagePrefix = "nexul-"
+	// answerMessagePrefix marks the message T3 makes from an answer given in message mode.
+	answerMessagePrefix = "async-answer:"
+	// harnessName is what Nexul shows a message typed in T3 as written in.
+	harnessName = "T3"
 )
 
 // errThreadGone is a reused thread that no longer exists or was deleted in T3 Code.
@@ -141,7 +147,7 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 	if err != nil {
 		return harness.StartResult{}, err
 	}
-	t := &turn{h: h, target: target, conn: c, messageID: ids.New()}
+	t := &turn{h: h, target: target, conn: c, messageID: nexulMessagePrefix + ids.New()}
 	src, w, notes, err := t.start(ctx, title, prompts)
 	if errors.Is(err, errAnswered) {
 		t.close()
@@ -193,7 +199,7 @@ func adopted(p projection) string {
 	for _, r := range p.Runs[:i] {
 		w := newWatch(r.UserMessageID)
 		w.reset(p)
-		if w.followed[p.Runs[i].ID] {
+		if w.followed[p.Runs[i].ID] && !w.typedRuns[p.Runs[i].ID] {
 			return r.UserMessageID
 		}
 	}

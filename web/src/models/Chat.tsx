@@ -80,6 +80,8 @@ export interface Message {
   updated_at: string;
   reactions?: Reaction[];
   handoffs?: Handoff[];
+  // via names the harness the author wrote it in, such as T3, when it was relayed from there.
+  via?: string;
   // Client-only: an optimistic row shown before the server acks the post.
   pending?: boolean;
 }

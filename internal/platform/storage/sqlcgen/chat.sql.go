@@ -51,7 +51,7 @@ func (q *Queries) CreateConversation(ctx context.Context, arg CreateConversation
 }
 
 const createMessage = `-- name: CreateMessage :exec
-INSERT INTO messages (id, conversation_id, author_id, author_kind, body, mentions, attachment_id, handoffs, edited_at, deleted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)
+INSERT INTO messages (id, conversation_id, author_id, author_kind, body, mentions, attachment_id, handoffs, via, edited_at, deleted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)
 `
 
 type CreateMessageParams struct {
@@ -63,6 +63,7 @@ type CreateMessageParams struct {
 	Mentions       string
 	AttachmentID   sql.NullString
 	Handoffs       sql.NullString
+	Via            string
 	CreatedAt      int64
 	UpdatedAt      int64
 }
@@ -77,6 +78,7 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) er
 		arg.Mentions,
 		arg.AttachmentID,
 		arg.Handoffs,
+		arg.Via,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -293,7 +295,7 @@ func (q *Queries) GetInterviewThread(ctx context.Context, projectID sql.NullStri
 }
 
 const getMessage = `-- name: GetMessage :one
-SELECT id, conversation_id, author_id, body, mentions, attachment_id, edited_at, deleted_at, created_at, updated_at, author_kind, handoffs FROM messages WHERE id = ?
+SELECT id, conversation_id, author_id, body, mentions, attachment_id, edited_at, deleted_at, created_at, updated_at, author_kind, handoffs, via FROM messages WHERE id = ?
 `
 
 func (q *Queries) GetMessage(ctx context.Context, id string) (Message, error) {
@@ -312,6 +314,7 @@ func (q *Queries) GetMessage(ctx context.Context, id string) (Message, error) {
 		&i.UpdatedAt,
 		&i.AuthorKind,
 		&i.Handoffs,
+		&i.Via,
 	)
 	return i, err
 }
@@ -495,7 +498,7 @@ func (q *Queries) ListMessageReactions(ctx context.Context, ids []string) ([]Lis
 }
 
 const listMessages = `-- name: ListMessages :many
-SELECT id, conversation_id, author_id, body, mentions, attachment_id, edited_at, deleted_at, created_at, updated_at, author_kind, handoffs FROM messages WHERE conversation_id = ? ORDER BY created_at DESC, id DESC LIMIT ?
+SELECT id, conversation_id, author_id, body, mentions, attachment_id, edited_at, deleted_at, created_at, updated_at, author_kind, handoffs, via FROM messages WHERE conversation_id = ? ORDER BY created_at DESC, id DESC LIMIT ?
 `
 
 type ListMessagesParams struct {
@@ -525,6 +528,7 @@ func (q *Queries) ListMessages(ctx context.Context, arg ListMessagesParams) ([]M
 			&i.UpdatedAt,
 			&i.AuthorKind,
 			&i.Handoffs,
+			&i.Via,
 		); err != nil {
 			return nil, err
 		}
@@ -540,7 +544,7 @@ func (q *Queries) ListMessages(ctx context.Context, arg ListMessagesParams) ([]M
 }
 
 const listMessagesSince = `-- name: ListMessagesSince :many
-SELECT id, conversation_id, author_id, body, mentions, attachment_id, edited_at, deleted_at, created_at, updated_at, author_kind, handoffs FROM messages WHERE conversation_id = ? AND deleted_at IS NULL AND created_at > ? ORDER BY created_at
+SELECT id, conversation_id, author_id, body, mentions, attachment_id, edited_at, deleted_at, created_at, updated_at, author_kind, handoffs, via FROM messages WHERE conversation_id = ? AND deleted_at IS NULL AND created_at > ? ORDER BY created_at
 `
 
 type ListMessagesSinceParams struct {
@@ -570,6 +574,7 @@ func (q *Queries) ListMessagesSince(ctx context.Context, arg ListMessagesSincePa
 			&i.UpdatedAt,
 			&i.AuthorKind,
 			&i.Handoffs,
+			&i.Via,
 		); err != nil {
 			return nil, err
 		}

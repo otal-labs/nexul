@@ -12,7 +12,7 @@ interface TrailTranscriptSegmentProps {
 // One block of the conversation; the question card reads its own trail from the cache, so only the id travels.
 export const TrailTranscriptSegment = ({ trailId, segment }: TrailTranscriptSegmentProps) => (
   <>
-    {segment.kind === "user" && <TrailUserBubble body={segment.body} at={segment.at} />}
+    {segment.kind === "user" && <TrailUserBubble body={segment.body} at={segment.at} via={segment.via} />}
     {segment.kind === "turn" && <TrailTurnGroup entries={segment.entries} running={segment.running} from={segment.from} until={segment.until} />}
     {segment.kind === "question" && (
       <div className="px-1 py-1">

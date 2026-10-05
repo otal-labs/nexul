@@ -62,6 +62,8 @@ type ConversationMessage struct {
 	CreatedAt  time.Time
 	// Note is the markdown file a note carries, nil for any other message (ADR 0108).
 	Note *NoteFile
+	// Via names the harness the message was written in and relayed from, empty for one written in Nexul.
+	Via string
 }
 
 // NoteFile is a note's markdown file, read as text: it never travels as an attachment.
@@ -81,6 +83,8 @@ type Conversations interface {
 	PostSystemMessage(ctx context.Context, conversationID, viaUserID, body string) error
 	// PostUserMessage posts as userID themselves: the answer to an Agent question is the user's own message.
 	PostUserMessage(ctx context.Context, conversationID, userID, body string) error
+	// PostHarnessMessage relays a message userID wrote in the harness itself, at the time written; once per key.
+	PostHarnessMessage(ctx context.Context, conversationID, userID, body, via, key string, at time.Time) error
 }
 
 // Observer receives one turn's lifecycle; callers that keep their own record of a turn (a play's trail) implement it.
@@ -513,8 +517,8 @@ func (s *Service) buildTurnPrompts(ctx context.Context, client harness.Client, c
 	return harness.TurnPrompts{Full: ComposePrompt(in), Incremental: ComposeIncrementalPrompt(incremental), Attachments: attached(images), Answer: req.Answer}, sentThrough, nil
 }
 
-// contextMessages resolves history; others drops the Agent's own replies, which a live session already holds, but
-// keeps notes, which were left over MCP rather than written in this session. The request's own message is left out,
+// contextMessages resolves history; others drops the Agent's own replies and the messages relayed from the harness,
+// which a live session already holds, but keeps notes, which were left over MCP rather than written in this session. The request's own message is left out,
 // since the request block already carries it, and so are system messages, which are the server's notices to people.
 func (s *Service) contextMessages(ctx context.Context, history []ConversationMessage, req TurnRequest) (all, others []ContextMessage, newest time.Time) {
 	skip := requestMessageIndex(history, req)
@@ -527,7 +531,7 @@ func (s *Service) contextMessages(ctx context.Context, history []ConversationMes
 		}
 		cm := ContextMessage{Author: s.authorLabel(ctx, m.AuthorID, m.AuthorKind), Body: noteBody(m), At: m.CreatedAt}
 		all = append(all, cm)
-		if m.AuthorKind != "agent" || m.Note != nil {
+		if m.Via == "" && (m.AuthorKind != "agent" || m.Note != nil) {
 			others = append(others, cm)
 		}
 	}
@@ -700,12 +704,7 @@ func (s *Service) drainTurn(ctx context.Context, turn *activeTurn, conversationI
 				seg.flush(obs)
 			}
 		case u.Activity != nil:
-			frame.Activity, frame.ActivityKind, frame.ActivityTool = u.Activity.Summary, u.Activity.Kind, u.Activity.Tool
-			publish()
-			if u.Activity.Kind == harness.ActivityToolCall {
-				seg.flush(obs)
-			}
-			obs.OnActivity(*u.Activity)
+			s.onActivity(ctx, conversationID, viaUserID, *u.Activity, &frame, publish, &seg, obs)
 		case u.Question != nil:
 			s.ask(turn, u.Question.RequestID)
 			// The question lands as the Agent's own message so the thread shows the card; the stream bubble yields to it.
@@ -727,6 +726,34 @@ func (s *Service) drainTurn(ctx context.Context, turn *activeTurn, conversationI
 		case u.Terminal != nil:
 			term = u.Terminal
 		}
+	}
+}
+
+// onActivity records a step; the Agent's own is the live bubble's step line, while a message the person wrote in the
+// harness is theirs and lands in the thread instead. Either closes the text written before it.
+func (s *Service) onActivity(ctx context.Context, conversationID, viaUserID string, a harness.Activity, frame *StreamFrame, publish func(), seg *textSegments, obs Observer) {
+	if a.Kind == harness.ActivityUserMessage {
+		seg.flush(obs)
+		s.relayUserMessage(ctx, conversationID, viaUserID, a)
+		obs.OnActivity(a)
+		return
+	}
+	frame.Activity, frame.ActivityKind, frame.ActivityTool = a.Summary, a.Kind, a.Tool
+	publish()
+	if a.Kind == harness.ActivityToolCall {
+		seg.flush(obs)
+	}
+	obs.OnActivity(a)
+}
+
+// relayUserMessage posts a message the person wrote in the harness into the thread as theirs; a failure is only logged.
+func (s *Service) relayUserMessage(ctx context.Context, conversationID, userID string, a harness.Activity) {
+	body := a.Detail
+	if body == "" {
+		body = a.Summary
+	}
+	if err := s.conversations.PostHarnessMessage(ctx, conversationID, userID, body, a.Tool, a.CallID, a.At); err != nil {
+		s.log.Error("agent: relay a message written in the harness failed", "conversation", conversationID, "error", err)
 	}
 }
 

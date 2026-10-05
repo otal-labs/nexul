@@ -192,6 +192,8 @@ const (
 	ActivityOther      ActivityKind = "other"
 	// ActivityNote is a line about the run itself rather than a step of the agent's, shown muted.
 	ActivityNote ActivityKind = "note"
+	// ActivityUserMessage is a message the person wrote in the harness itself; Detail is its text, Tool names the harness.
+	ActivityUserMessage ActivityKind = "user_message"
 )
 
 // MaxActivityDetail caps Activity.Detail: a tool result can carry a whole file, and a trail keeps hundreds of steps.

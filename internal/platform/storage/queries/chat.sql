@@ -48,7 +48,7 @@ ORDER BY c.created_at;
 SELECT conversation_id, user_id FROM conversation_participants WHERE conversation_id IN (sqlc.slice('ids'));
 
 -- name: CreateMessage :exec
-INSERT INTO messages (id, conversation_id, author_id, author_kind, body, mentions, attachment_id, handoffs, edited_at, deleted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?);
+INSERT INTO messages (id, conversation_id, author_id, author_kind, body, mentions, attachment_id, handoffs, via, edited_at, deleted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?);
 
 -- name: SetAgentThread :execrows
 UPDATE conversations SET agent_thread_id = ? WHERE id = ?;

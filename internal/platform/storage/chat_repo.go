@@ -257,7 +257,7 @@ func insertMessage(ctx context.Context, q *sqlcgen.Queries, m *chat.Message) err
 	err = q.CreateMessage(ctx, sqlcgen.CreateMessageParams{
 		ID: m.ID, ConversationID: m.ConversationID, AuthorID: m.AuthorID, AuthorKind: string(authorKind),
 		Body: m.Body, Mentions: string(mentionsJSON), AttachmentID: sql.NullString{String: m.AttachmentID, Valid: m.AttachmentID != ""},
-		Handoffs: handoffs, CreatedAt: m.CreatedAt.Unix(), UpdatedAt: m.UpdatedAt.Unix(),
+		Handoffs: handoffs, Via: m.Via, CreatedAt: m.CreatedAt.Unix(), UpdatedAt: m.UpdatedAt.Unix(),
 	})
 	if err != nil {
 		return fmt.Errorf("insert message %s: %w", m.ID, classifyWriteErr(err))
@@ -552,7 +552,7 @@ func toConversations(rows []sqlcgen.Conversation) []*chat.Conversation {
 func toMessage(row sqlcgen.Message) (*chat.Message, error) {
 	m := &chat.Message{
 		ID: row.ID, ConversationID: row.ConversationID, AuthorID: row.AuthorID, AuthorKind: chat.AuthorKind(row.AuthorKind),
-		Body: row.Body, AttachmentID: row.AttachmentID.String,
+		Body: row.Body, AttachmentID: row.AttachmentID.String, Via: row.Via,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}
 	if err := json.Unmarshal([]byte(row.Mentions), &m.Mentions); err != nil {

@@ -107,6 +107,8 @@ type Message struct {
 	Reactions []Reaction `json:"reactions,omitempty"`
 	// Handoffs is the work an Agent reply handed to other agents (ADR 0116); nil on any other message.
 	Handoffs []Handoff `json:"handoffs,omitempty"`
+	// Via names the harness its author wrote it in, such as T3, when it was relayed from there; empty when written in Nexul.
+	Via string `json:"via,omitempty"`
 }
 
 // Handoff is work an Agent reply handed to another agent, as the reply stores it and the live stream pushes it.

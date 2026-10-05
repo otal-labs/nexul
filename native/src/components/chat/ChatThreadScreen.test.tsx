@@ -150,6 +150,13 @@ describe("ChatThreadScreen", () => {
     expect(await screen.findByLabelText("👍 1")).toBeTruthy();
   });
 
+  test("a message written in T3 says so beside its time", async () => {
+    thread = [{ ...message("t1", "Use two threads", 1), via: "T3" }];
+    await renderThread();
+
+    expect(await screen.findByText("via T3")).toBeTruthy();
+  });
+
   test("an agent message without a file shows no pill", async () => {
     thread = [{ ...message("n1", "Just a reply", 1), author_kind: "agent" }];
     await renderThread();

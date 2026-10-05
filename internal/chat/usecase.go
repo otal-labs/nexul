@@ -924,6 +924,23 @@ func (s *Service) PostAgentMessage(ctx context.Context, conversationID, viaUserI
 	return s.create(ctx, m)
 }
 
+// PostHarnessMessage relays a message userID wrote in their harness itself into the conversation, at the time they wrote
+// it; key names it in that harness, so relaying it again changes nothing. Its mentions are not parsed: it already went
+// to the harness, and an @Agent in it must not start a second turn.
+func (s *Service) PostHarnessMessage(ctx context.Context, conversationID, userID, body, via, key string, at time.Time) error {
+	m, err := s.newMessage(conversationID, userID, body, AuthorUser)
+	if err != nil {
+		return err
+	}
+	m.ID = ids.From("relayed-message\x00" + m.ConversationID + "\x00" + key)
+	m.Mentions, m.Via, m.CreatedAt, m.UpdatedAt = []Mention{}, via, at.UTC(), at.UTC()
+	_, err = s.create(ctx, m)
+	if errors.Is(err, apperrs.ErrConflict) {
+		return nil
+	}
+	return err
+}
+
 // maxHandoffBytes caps the hand-offs one reply stores, as JSON.
 const maxHandoffBytes = 256 << 10
 

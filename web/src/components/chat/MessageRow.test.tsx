@@ -48,6 +48,13 @@ describe("MessageRow author_kind rendering", () => {
     expect(screen.getByLabelText("Delete message")).toBeInTheDocument();
   });
 
+  it("marks a message written in T3 as such, on your side and on a teammate's", () => {
+    renderRow(<MessageRow message={message({ via: "T3" })} author={unknownPerson("onik97")} isOwn onEdit={noop} onDelete={noop} />);
+    expect(screen.getByText("via T3")).toBeInTheDocument();
+    renderRow(<MessageRow message={message({ id: "m2", author_id: "u2", via: "T3" })} author={unknownPerson("lena")} isOwn={false} onEdit={noop} onDelete={noop} />);
+    expect(screen.getAllByText("via T3")).toHaveLength(2);
+  });
+
   it("renders a teammate's message left-aligned with their login header", () => {
     renderRow(<MessageRow message={message({ author_id: "u2" })} author={unknownPerson("lena")} isOwn={false} onEdit={noop} onDelete={noop} />);
     expect(screen.getByText("lena")).toBeInTheDocument();

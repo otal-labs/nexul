@@ -41,6 +41,7 @@ type fakeConversations struct {
 	replies     []fakePost
 	systemPosts []fakePost
 	userPosts   []fakePost
+	relayed     []fakeRelay
 	// now, when set, stamps each posted Agent reply into history the way chat stores it.
 	now           func() time.Time
 	postReplyErr  error
@@ -128,6 +129,19 @@ func (f *fakeConversations) PostUserMessage(_ context.Context, conversationID, u
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.userPosts = append(f.userPosts, fakePost{conversationID: conversationID, viaUserID: userID, body: body})
+	return nil
+}
+
+// fakeRelay is one message relayed from the harness, as PostHarnessMessage received it.
+type fakeRelay struct {
+	conversationID, userID, body, via, key string
+	at                                     time.Time
+}
+
+func (f *fakeConversations) PostHarnessMessage(_ context.Context, conversationID, userID, body, via, key string, at time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.relayed = append(f.relayed, fakeRelay{conversationID, userID, body, via, key, at})
 	return nil
 }
 
@@ -498,6 +512,55 @@ func TestRunTurn_HappyPath_StreamsFramesAndPersistsFinalReply(t *testing.T) {
 
 	assert.Equal(t, "thread-new", conv.threads["conv-1"])
 	assert.Contains(t, client.lastPrompt, "New message from")
+}
+
+func TestRunTurn_MessageWrittenInTheHarness_IsRelayedAsTheUsersOwnAndRecordedNotStreamed(t *testing.T) {
+	conv := newFakeConversations(Conversation{ID: "conv-1", ThreadID: "thread-1"})
+	live := &fakeLive{}
+	typed := harness.Activity{Kind: harness.ActivityUserMessage, CallID: "turn-item:message:m-9", Tool: "T3", Summary: "Use two threads",
+		Detail: "Use two threads\nand a native worker", At: minuteOf(20)}
+	client := &fakeHarness{startResult: harness.StartResult{SessionID: "thread-1", Updates: updatesChan(
+		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "Which policy?", Streaming: false}},
+		harness.Update{Activity: &typed},
+		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-2", Text: "Building the worker.", Streaming: false}},
+		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+	)}}
+	obs := &fakeObserver{}
+	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: live})
+
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go", Observer: obs})
+
+	assert.Equal(t, []fakeRelay{{"conv-1", "u-1", "Use two threads\nand a native worker", "T3", "turn-item:message:m-9", minuteOf(20)}}, conv.relayed,
+		"the full text lands as the user's own message, at the time they wrote it, keyed by the harness's own id")
+	kinds := make([]harness.ActivityKind, 0, len(obs.activity))
+	for _, a := range obs.activity {
+		kinds = append(kinds, a.Kind)
+	}
+	assert.Equal(t, []harness.ActivityKind{harness.ActivityText, harness.ActivityUserMessage, harness.ActivityText}, kinds,
+		"the trail keeps the message between what the Agent said before and after it")
+	for _, f := range live.snapshot() {
+		assert.NotEqual(t, harness.ActivityUserMessage, f.ActivityKind, "the user's message is not the Agent's live step")
+	}
+	replies, _ := conv.snapshot()
+	require.Len(t, replies, 1)
+	assert.Equal(t, "Building the worker.", replies[0].body)
+}
+
+func TestRunTurn_FollowUp_LeavesOutWhatWasRelayedFromTheHarness(t *testing.T) {
+	h := &followUpHarness{sessionIDs: []string{"thread-1", "thread-2"}, updates: []<-chan harness.Update{replyThenDone("first answer"), replyThenDone("second answer")}}
+	svc, conv := ticketThreadWithStandingRules(h)
+	conv.history = []ConversationMessage{{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent first", CreatedAt: minuteOf(32)}}
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first"})
+	conv.history = append(conv.history,
+		ConversationMessage{AuthorID: "u-1", AuthorKind: "user", Body: "typed in T3", CreatedAt: minuteOf(34), Via: "T3"},
+		ConversationMessage{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent second", CreatedAt: minuteOf(35)},
+	)
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent second"})
+
+	turns := h.started()
+	require.Len(t, turns, 2)
+	assert.NotContains(t, turns[1].prompts.Incremental, "typed in T3", "the harness session already holds what was written in it")
+	assert.Contains(t, turns[1].prompts.Full, "u-1: typed in T3", "a replacement session never saw it")
 }
 
 // --- memories index wiring ---------------------------------------------
