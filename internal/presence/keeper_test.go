@@ -364,3 +364,53 @@ func TestKeeper_ProtocolRefusal_KeepsRetryingButWarnsOncePerRefusal(t *testing.T
 		time.Sleep(time.Second)
 	})
 }
+
+// watchingT3 is a harness that reports sessions: WatchSessions hands back a conn and reports one update on it.
+type watchingT3 struct {
+	harnesstest.Client
+	update harness.SessionUpdate
+	held   chan string
+}
+
+func (w *watchingT3) WatchSessions(_ context.Context, s harness.Session, onUpdate func(harness.SessionUpdate)) (harness.Conn, error) {
+	w.held <- "watch " + s.Name
+	onUpdate(w.update)
+	return newFakeConn(), nil
+}
+
+func TestKeeper_HarnessThatReportsSessions_PassesEachChangeOnWithItsUserAndComputer(t *testing.T) {
+	t.Parallel()
+	sessions := &sessionsFunc{}
+	sessions.set(computer("c1"))
+	heard := make(chan string, 4)
+	client := &watchingT3{update: harness.SessionUpdate{SessionID: "th-1", Latest: "run-2", Working: true}, held: make(chan string, 4)}
+	client.HoldFn = func(context.Context, harness.Session) (harness.Conn, error) {
+		client.held <- "hold"
+		return newFakeConn(), nil
+	}
+	k := New(Config{Sessions: sessions.list, Harnesses: harness.Registry{harness.KindT3Code: client}, Linger: 20 * time.Millisecond})
+	k.SetOnSession(func(userID, computerID string, u harness.SessionUpdate) {
+		heard <- userID + " " + computerID + " " + u.SessionID + " " + u.Latest
+	})
+
+	k.Connected("u1")
+
+	assert.Equal(t, "watch c1", <-client.held, "the held connection is the one that reports sessions")
+	assert.Equal(t, "u1 c1 th-1 run-2", <-heard)
+}
+
+func TestKeeper_NobodyListening_HoldsWithoutWatchingSessions(t *testing.T) {
+	t.Parallel()
+	sessions := &sessionsFunc{}
+	sessions.set(computer("c1"))
+	client := &watchingT3{held: make(chan string, 4)}
+	client.HoldFn = func(context.Context, harness.Session) (harness.Conn, error) {
+		client.held <- "hold"
+		return newFakeConn(), nil
+	}
+	k := New(Config{Sessions: sessions.list, Harnesses: harness.Registry{harness.KindT3Code: client}, Linger: 20 * time.Millisecond})
+
+	k.Connected("u1")
+
+	assert.Equal(t, "hold", <-client.held)
+}

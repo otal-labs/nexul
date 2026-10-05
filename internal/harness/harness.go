@@ -166,12 +166,31 @@ type Target struct {
 	TurnID string
 	// Worktree creates a new thread in a fresh git worktree of the project rather than in its folder.
 	Worktree bool
+	// Since is a TurnResult.Marker: Watch follows from the first turn after it, so a catch-up misses none; empty follows the newest.
+	Since string
 }
 
 // Conn is a held connection; Done fires when the server drops it.
 type Conn interface {
 	Done() <-chan struct{}
 	Close() error
+}
+
+// SessionUpdate is a change to one session on a held computer, as the harness's own apps see it.
+type SessionUpdate struct {
+	SessionID string
+	// Latest is the session's newest turn, in TurnResult.Marker's terms.
+	Latest string
+	// Working is whether a turn on the session is under way.
+	Working bool
+	// Gone is a session deleted in the harness.
+	Gone bool
+}
+
+// SessionWatcher is a Client whose held connection also reports session changes; a Client that is not one only holds.
+type SessionWatcher interface {
+	// WatchSessions holds like Hold and calls onUpdate for every session as held, then for each change, until Done.
+	WatchSessions(ctx context.Context, s Session, onUpdate func(SessionUpdate)) (Conn, error)
 }
 
 // Snapshot is one cumulative reply, re-emitted per MessageID until Streaming goes false.
@@ -320,6 +339,9 @@ type TurnResult struct {
 	LastError string
 	// LeftRunning is a done turn that stopped waiting for work it handed off, which still runs in the harness.
 	LeftRunning bool
+	// Marker names the newest turn this one saw end on the harness, for SessionUpdate.Latest and Target.Since; empty
+	// when the harness keeps none or the turn ended without hearing from the harness, such as a lost connection.
+	Marker string
 }
 
 // The states of a Handoff.

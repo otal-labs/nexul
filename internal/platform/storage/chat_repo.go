@@ -381,6 +381,27 @@ func (r *ChatRepo) SetAgentSyncedAt(ctx context.Context, conversationID string, 
 	return nil
 }
 
+// SetAgentSeen records the newest harness turn Nexul saw end on a conversation's agent thread (ADR 0127).
+func (r *ChatRepo) SetAgentSeen(ctx context.Context, conversationID, marker string) error {
+	n, err := r.q.SetAgentSeen(ctx, sqlcgen.SetAgentSeenParams{AgentSeen: marker, ID: conversationID})
+	if err != nil {
+		return fmt.Errorf("set agent seen for conversation %s: %w", conversationID, classifyWriteErr(err))
+	}
+	if n == 0 {
+		return fmt.Errorf("set agent seen for conversation %s: %w", conversationID, apperrs.ErrNotFound)
+	}
+	return nil
+}
+
+// GetConversationByAgentThread is the conversation whose agent thread is threadID.
+func (r *ChatRepo) GetConversationByAgentThread(ctx context.Context, threadID string) (*chat.Conversation, error) {
+	row, err := r.q.GetConversationByAgentThread(ctx, threadID)
+	if err != nil {
+		return nil, fmt.Errorf("get conversation for agent thread %s: %w", threadID, notFoundIfNoRows(err))
+	}
+	return toConversation(row), nil
+}
+
 func (r *ChatRepo) GetMessage(ctx context.Context, id string) (*chat.Message, error) {
 	row, err := r.q.GetMessage(ctx, id)
 	if err != nil {
@@ -536,7 +557,7 @@ func toConversation(row sqlcgen.Conversation) *chat.Conversation {
 		ID: row.ID, WorkspaceID: row.WorkspaceID, Kind: chat.Kind(row.Kind), Name: row.Name,
 		TicketID: row.TicketID.String, DocID: row.DocID.String, ProjectID: row.ProjectID.String, ParentMessageID: row.ParentMessageID, CreatedBy: row.CreatedBy,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
-		AgentThreadID: row.AgentThreadID, AgentSyncedAt: time.Unix(row.AgentSyncedAt, 0).UTC(), General: row.IsGeneral != 0,
+		AgentThreadID: row.AgentThreadID, AgentSyncedAt: time.Unix(row.AgentSyncedAt, 0).UTC(), AgentSeen: row.AgentSeen, General: row.IsGeneral != 0,
 		Private: row.Private != 0,
 	}
 }

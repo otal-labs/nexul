@@ -851,6 +851,31 @@ func (s *Service) MarkAgentSynced(ctx context.Context, conversationID string, at
 	return nil
 }
 
+// MarkAgentSeen records the newest harness turn Nexul saw end on the conversation's agent thread.
+func (s *Service) MarkAgentSeen(ctx context.Context, conversationID, marker string) error {
+	conversationID = strings.TrimSpace(conversationID)
+	if conversationID == "" {
+		return fmt.Errorf("%w: conversation id is required", apperrs.ErrInvalid)
+	}
+	if err := s.repo.SetAgentSeen(ctx, conversationID, marker); err != nil {
+		return fmt.Errorf("mark agent seen for conversation %s: %w", conversationID, err)
+	}
+	return nil
+}
+
+// ConversationByAgentThread is the conversation whose agent thread is threadID, read by the server, never a person.
+func (s *Service) ConversationByAgentThread(ctx context.Context, threadID string) (*Conversation, error) {
+	threadID = strings.TrimSpace(threadID)
+	if threadID == "" {
+		return nil, fmt.Errorf("%w: agent thread id is required", apperrs.ErrInvalid)
+	}
+	c, err := s.repo.GetConversationByAgentThread(ctx, threadID)
+	if err != nil {
+		return nil, fmt.Errorf("get conversation for agent thread %s: %w", threadID, err)
+	}
+	return c, nil
+}
+
 // ListConversations returns a user's chat surface: every public channel plus their other conversations.
 func (s *Service) ListConversations(ctx context.Context, workspaceID, userID string) ([]*Conversation, error) {
 	workspaceID = strings.TrimSpace(workspaceID)

@@ -85,7 +85,7 @@ func drainUpdates(t *testing.T, updates <-chan harness.Update) []harness.Update 
 			if !ok {
 				return got
 			}
-			got = append(got, u)
+			got = append(got, unmarked(u))
 		case <-time.After(5 * time.Second):
 			t.Fatalf("the turn never ended; got %+v", got)
 		}
@@ -838,4 +838,101 @@ func TestWatch_Interrupted_StopsTheWatchedRunAndEndsInterrupted(t *testing.T) {
 	assert.Equal(t, runOne, cmd["runId"])
 	assert.Equal(t, []harness.Update{ended(harness.TurnInterrupted, "")}, drainUpdates(t, r.Updates),
 		"Stop ends the watched turn at once, without waiting for T3 to report the run's end")
+}
+
+func TestAdoptedSince_PicksTheFirstRunAfterTheMarker(t *testing.T) {
+	t.Parallel()
+	runs := func(lastStatus string) projection {
+		return projection{Runs: []run{
+			{ID: "r-3", Ordinal: 3, UserMessageID: "m-3", Status: lastStatus},
+			{ID: "r-1", Ordinal: 1, UserMessageID: "m-1", Status: runCompleted},
+			{ID: "r-2", Ordinal: 2, UserMessageID: "m-2", Status: runCompleted},
+		}}
+	}
+	tests := []struct {
+		name, since, lastStatus, want string
+	}{
+		{"the run right after the marker, whatever came later", "r-1", runCompleted, "m-2"},
+		{"the marker's own run while it still runs", "r-3", "running", "m-3"},
+		{"nothing once the marker's run is the newest and over", "r-3", runCompleted, ""},
+		{"the oldest the snapshot holds once the marker fell out of it", "r-0", runCompleted, "m-1"},
+		{"the newest without a marker, as after a restart", "", runCompleted, "m-3"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tr := &turn{target: harness.Target{Since: tt.since}}
+			assert.Equal(t, tt.want, tr.adoptedSince(runs(tt.lastStatus)))
+		})
+	}
+}
+
+// drainEnd reads a turn to its end and returns its terminal result with the Marker kept.
+func drainEnd(t *testing.T, updates <-chan harness.Update) (labels []string, end *harness.TurnResult) {
+	t.Helper()
+	for {
+		select {
+		case u, ok := <-updates:
+			if !ok {
+				return labels, end
+			}
+			if u.Terminal != nil {
+				end = u.Terminal
+				continue
+			}
+			labels = append(labels, label(u))
+		case <-time.After(5 * time.Second):
+			t.Fatalf("the turn never ended; got %v", labels)
+		}
+	}
+}
+
+func label(u harness.Update) string {
+	if u.Snapshot != nil {
+		return "reply " + u.Snapshot.Text
+	}
+	return string(u.Activity.Kind) + " " + u.Activity.Summary
+}
+
+func TestWatch_SinceAMarker_CatchesUpOnWhatRanAfterItStepsIncluded(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	typedStep := shellStep("step-2", "go test ./...")
+	typedStep["runId"], typedStep["ordinal"] = "run:thread:th-1:ordinal:2", 2000
+	snapshot := threadAt([]any{runOf(nexulMessagePrefix+"play", runCompleted), runAt(2, "msg-typed", runCompleted)}, nil,
+		shellStep("step-1", "ls"), replyIn(1, "Which policy?"),
+		typedIn(2, "msg-typed", "Keep two threads"), typedStep, replyIn(2, "Built the worker."))
+	done := make(chan started, 1)
+	go func() {
+		r, err := h.Watch(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1", Since: "run:thread:th-1:ordinal:0"})
+		done <- started{r, err}
+	}()
+	f.Write(t3rpctest.Chunk(t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread"), snapshot))
+	s := <-done
+	require.NoError(t, s.err)
+
+	labels, end := drainEnd(t, s.result.Updates)
+	assert.Equal(t, []string{"tool_result ls", "reply Which policy?", "user_message Keep two threads", "tool_result go test ./...", "reply Built the worker."}, labels,
+		"a catch-up shows the steps no watcher saw, and the typed run joins the play's")
+	require.NotNil(t, end)
+	assert.Equal(t, harness.TurnDone, end.State)
+	assert.Equal(t, "run:thread:th-1:ordinal:2", end.Marker, "the next catch-up starts after the typed run")
+}
+
+func TestWatch_SinceTheNewestFinishedRun_EndsDoneWithNothingToShow(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	done := make(chan started, 1)
+	go func() {
+		r, err := h.Watch(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1", Since: runOne})
+		done <- started{r, err}
+	}()
+	f.Write(t3rpctest.Chunk(t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread"),
+		threadAt([]any{runOf("msg-1", runCompleted)}, nil, replyIn(1, "Already posted."))))
+	s := <-done
+	require.NoError(t, s.err)
+
+	labels, end := drainEnd(t, s.result.Updates)
+	assert.Empty(t, labels, "the reply that run gave was posted when it ended")
+	assert.Equal(t, &harness.TurnResult{State: harness.TurnDone, Marker: runOne}, end)
 }

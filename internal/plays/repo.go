@@ -36,6 +36,8 @@ type TrailRepo interface {
 	ListRunningTrails(ctx context.Context) ([]*Trail, error)
 	// LatestTrailForChoices returns the starter's newest trail of one play in one project, ErrNotFound when none.
 	LatestTrailForChoices(ctx context.Context, starterID, playID, projectID string) (*Trail, error)
+	// LatestTrailInConversation returns the newest trail that ran in a conversation, ErrNotFound when none.
+	LatestTrailInConversation(ctx context.Context, conversationID string) (*Trail, error)
 }
 
 // PermissionGate is the consumer-side slice of access's HasPermission check (ADR 0017); resourceType and

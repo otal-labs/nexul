@@ -198,6 +198,7 @@ type Conversation struct {
 	ProjectID       sql.NullString
 	IsGeneral       int64
 	Private         int64
+	AgentSeen       string
 }
 
 type ConversationParticipant struct {

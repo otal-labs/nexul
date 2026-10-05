@@ -46,6 +46,10 @@ type Repo interface {
 	SetAgentThread(ctx context.Context, conversationID, threadID string) error
 	// SetAgentSyncedAt is set once a turn's prompt reaches the harness, so the next mention only sends what's new.
 	SetAgentSyncedAt(ctx context.Context, conversationID string, at time.Time) error
+	// SetAgentSeen records the newest harness turn Nexul saw end on the conversation's agent thread.
+	SetAgentSeen(ctx context.Context, conversationID, marker string) error
+	// GetConversationByAgentThread is the conversation whose agent thread is threadID; ErrNotFound for none.
+	GetConversationByAgentThread(ctx context.Context, threadID string) (*Conversation, error)
 
 	CreateMessage(ctx context.Context, m *Message, evts ...eventbus.OutboxEvent) error
 	GetMessage(ctx context.Context, id string) (*Message, error)

@@ -41,6 +41,8 @@ type Keeper struct {
 	users map[string]*presence
 	// onlineChanged runs outside the lock when a user's first socket opens or their linger window ends.
 	onlineChanged func(userID string)
+	// onSession hears every session change on a held computer whose harness reports them; nil holds without listening.
+	onSession func(userID, computerID string, u harness.SessionUpdate)
 }
 
 type presence struct {
@@ -96,6 +98,13 @@ func (k *Keeper) SetOnlineChanged(fn func(userID string)) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	k.onlineChanged = fn
+}
+
+// SetOnSession registers the listener for session changes on held computers; call it before serving sockets.
+func (k *Keeper) SetOnSession(fn func(userID, computerID string, u harness.SessionUpdate)) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.onSession = fn
 }
 
 func (k *Keeper) setState(l *loop, state string) {
@@ -240,6 +249,18 @@ func (k *Keeper) logDialFailure(ctx context.Context, userID, computer string, ba
 	return refused || refusal
 }
 
+// hold opens the connection, listening to its sessions when the harness reports them and someone hears them.
+func (k *Keeper) hold(ctx context.Context, client harness.Client, userID string, computer pairing.Computer) (harness.Conn, error) {
+	k.mu.Lock()
+	onSession := k.onSession
+	k.mu.Unlock()
+	watcher, ok := client.(harness.SessionWatcher)
+	if !ok || onSession == nil {
+		return client.Hold(ctx, computer.Session())
+	}
+	return watcher.WatchSessions(ctx, computer.Session(), func(u harness.SessionUpdate) { onSession(userID, computer.ID, u) })
+}
+
 // maintain holds one connection open, redialing with backoff, and removes itself from p.computers on return.
 func (k *Keeper) maintain(ctx context.Context, userID string, p *presence, self *loop, computer pairing.Computer) {
 	defer func() {
@@ -261,7 +282,7 @@ func (k *Keeper) maintain(ctx context.Context, userID string, p *presence, self 
 			return
 		}
 		k.setState(self, StateConnecting)
-		conn, err := client.Hold(ctx, computer.Session())
+		conn, err := k.hold(ctx, client, userID, computer)
 		if err != nil {
 			// Re-pairing fires OnComputersChanged -> Refresh; redialing a rejected session can't fix it.
 			if errors.Is(err, apperrs.ErrUnauthorized) {

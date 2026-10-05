@@ -18,5 +18,8 @@ SELECT * FROM play_trails WHERE starter_id = ? AND play_id = ? AND project_id = 
 -- name: ListActivePlayTrailsByTargets :many
 SELECT * FROM play_trails WHERE target_type = ? AND target_id IN (sqlc.slice('ids')) AND state IN ('starting', 'running', 'waiting');
 
+-- name: LatestPlayTrailInConversation :one
+SELECT * FROM play_trails WHERE conversation_id = ? ORDER BY started_at DESC, id DESC LIMIT 1;
+
 -- name: ListRunningPlayTrails :many
 SELECT * FROM play_trails WHERE state IN ('starting', 'running');

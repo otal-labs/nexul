@@ -40,6 +40,7 @@ func (a agentConversations) GetConversation(ctx context.Context, id string) (age
 		ProjectID:      c.ProjectID,
 		ThreadID:       c.AgentThreadID,
 		SyncedAt:       c.AgentSyncedAt,
+		SeenMarker:     c.AgentSeen,
 	}, nil
 }
 
@@ -98,6 +99,18 @@ func (a agentConversations) PostSystemMessage(ctx context.Context, conversationI
 func (a agentConversations) PostUserMessage(ctx context.Context, conversationID, userID, body string) error {
 	_, err := a.svc.PostMessage(ctx, conversationID, userID, body)
 	return err
+}
+
+func (a agentConversations) MarkSeen(ctx context.Context, conversationID, marker string) error {
+	return a.svc.MarkAgentSeen(ctx, conversationID, marker)
+}
+
+func (a agentConversations) ConversationByThread(ctx context.Context, threadID string) (agent.Conversation, error) {
+	c, err := a.svc.ConversationByAgentThread(ctx, threadID)
+	if err != nil {
+		return agent.Conversation{}, err
+	}
+	return a.GetConversation(ctx, c.ID)
 }
 
 func (a agentConversations) PostHarnessMessage(ctx context.Context, conversationID, userID, body, via, key string, at time.Time) error {

@@ -388,3 +388,71 @@ func TestResumeRunsAfterRestart_ListFails_ReturnsTheError(t *testing.T) {
 
 	assert.ErrorContains(t, f.runner.ResumeRunsAfterRestart(t.Context()), "db down")
 }
+
+func TestFollowThread_NewsOnAnEndedRunsThread_ReopensItsTrailAndCatchesUpFromSince(t *testing.T) {
+	f := newRunnerFixture()
+	seedTrail(f, "tr-failed", TrailFailed, "th-1")
+	f.trails.byID["tr-failed"].LastError = "Lost the connection to T3 Code"
+
+	done, ok := f.runner.FollowThread(t.Context(), "conv-tr-failed", "th-1", starter, "pc-1", "run-7")
+	require.True(t, ok)
+	<-f.turns.done
+
+	req := f.turns.last()
+	assert.True(t, req.Watch, "a catch-up sends nothing")
+	assert.Equal(t, "run-7", req.Since)
+	assert.Equal(t, "conv-tr-failed", req.ConversationID)
+	assert.Equal(t, &agent.TargetOverride{ComputerID: "pc-1", Provider: "codex", Model: "gpt"}, req.Target)
+	reopened, err := f.trails.GetTrail(t.Context(), "tr-failed")
+	require.NoError(t, err)
+	assert.Equal(t, TrailRunning, reopened.State)
+	assert.Nil(t, reopened.EndedAt)
+	assert.Empty(t, reopened.LastError)
+	assert.Contains(t, f.threads.noteBodies(), followedAgainNote, "the thread says why the run moved again")
+
+	req.Observer.OnStarted("th-1")
+	req.Observer.OnFinished(harness.TurnResult{State: harness.TurnDone}, "reply-2")
+	<-done
+	ended, err := f.trails.GetTrail(t.Context(), "tr-failed")
+	require.NoError(t, err)
+	assert.Equal(t, TrailDone, ended.State, "it ends with the harness's own outcome this time")
+	assert.Equal(t, "reply-2", ended.ReplyMessageID)
+	assert.Empty(t, f.trails.eventsFor(TopicRunStarted), "a reopened run announces no second start")
+}
+
+func TestFollowThread_RunsUnreadable_LeavesItToAPlainTurn(t *testing.T) {
+	f := newRunnerFixture()
+	f.trails.latestErr = errors.New("db down")
+
+	_, ok := f.runner.FollowThread(t.Context(), "conv-1", "th-1", starter, "pc-1", "run-7")
+
+	assert.False(t, ok)
+}
+
+func TestFollowThread_NotThisRunsToFollow_LeavesItToAPlainTurn(t *testing.T) {
+	tests := []struct {
+		name                         string
+		state                        TrailState
+		thread, user, computer, conv string
+	}{
+		{"a run still going", TrailRunning, "th-1", starter, "pc-1", "conv-tr-1"},
+		{"a run on another thread", TrailDone, "th-2", starter, "pc-1", "conv-tr-1"},
+		{"someone else's run", TrailDone, "th-1", "u-other", "pc-1", "conv-tr-1"},
+		{"a run on another computer", TrailDone, "th-1", starter, "pc-2", "conv-tr-1"},
+		{"a conversation no run used", TrailDone, "th-1", starter, "pc-1", "conv-none"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newRunnerFixture()
+			seedTrail(f, "tr-1", tt.state, "th-1")
+
+			_, ok := f.runner.FollowThread(t.Context(), tt.conv, tt.thread, tt.user, tt.computer, "run-7")
+
+			assert.False(t, ok)
+			assert.Empty(t, f.turns.done)
+			got, err := f.trails.GetTrail(t.Context(), "tr-1")
+			require.NoError(t, err)
+			assert.Equal(t, tt.state, got.State, "the trail is left as it was")
+		})
+	}
+}

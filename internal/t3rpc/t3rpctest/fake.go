@@ -60,6 +60,10 @@ type Server struct {
 	ProjectionCause any
 	// AfterCommand swaps in Projections entries when a command of the named type arrives, taken or refused.
 	AfterCommand map[string]map[string]any
+	// ShellThreads are the threads the shell snapshot lists; set it before connect.
+	ShellThreads []any
+	// ShellSubscribed gets the requestId of each subscribeShell stream, for the changes a test writes after its snapshot.
+	ShellSubscribed chan string
 
 	connMu sync.Mutex
 	conn   *websocket.Conn
@@ -96,6 +100,8 @@ func New(t testing.TB) *Server {
 		Dispatched:  make(chan map[string]any, 16),
 		Persisted:   make(chan map[string]any, 4),
 		Launched:    make(chan map[string]any, 4),
+
+		ShellSubscribed: make(chan string, 4),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/oauth/token", f.handleExchange)
@@ -237,8 +243,20 @@ func (f *Server) handleRequest(env clientEnv) {
 
 // writeShell sends the shell snapshot; from protocol 2 it is schemaVersion 2 and a second snapshot follows.
 func (f *Server) writeShell(requestID string) {
+	threads := f.ShellThreads
+	if threads == nil {
+		threads = []any{}
+	}
+	// The id goes out once the snapshots are written, so a change a test writes next always follows them.
+	defer func() {
+		select {
+		case f.ShellSubscribed <- requestID:
+		default:
+		}
+	}()
 	snapshot := map[string]any{
 		"snapshotSequence": 1,
+		"threads":          threads,
 		"projects": []map[string]any{
 			{"id": "proj-live", "title": "My App", "workspaceRoot": "/home/me/app", "deletedAt": nil},
 			{"id": "proj-gone", "title": "Old", "deletedAt": "2026-01-01T00:00:00Z"},

@@ -125,6 +125,15 @@ func (r *PlayTrailsRepo) ListActiveTrailsByTargets(ctx context.Context, targetTy
 	return out, nil
 }
 
+// LatestTrailInConversation is the newest trail that ran in a conversation; ErrNotFound for none.
+func (r *PlayTrailsRepo) LatestTrailInConversation(ctx context.Context, conversationID string) (*plays.Trail, error) {
+	row, err := r.q.LatestPlayTrailInConversation(ctx, conversationID)
+	if err != nil {
+		return nil, fmt.Errorf("latest trail in conversation %s: %w", conversationID, notFoundIfNoRows(err))
+	}
+	return toTrail(row)
+}
+
 func (r *PlayTrailsRepo) ListRunningTrails(ctx context.Context) ([]*plays.Trail, error) {
 	rows, err := r.q.ListRunningPlayTrails(ctx)
 	if err != nil {

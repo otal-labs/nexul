@@ -270,8 +270,11 @@ unanswered (the ticket stays put, the silence clock pauses, answering runs
 on again in the same trail and session), then one of `done`, `failed`, or
 `interrupted`. Stop (the starter or a `plays:write` holder) interrupts it,
 from `waiting` too; fifteen minutes of harness silence fails it. A dropped
-harness connection does not: the turn is redialed and resumed where it left
-off, and fails only if it stays down for five minutes. After a server
+harness connection is redialed and the turn resumed where it left off; it
+fails once that keeps missing. Whenever the thread of an ended run gets new
+activity in T3 Code (the run carried on, or the starter continued it there)
+while its owner has Nexul open, the trail reopens and catches up
+(ADR 0127). After a server
 restart every `running` trail follows its harness thread again and ends with
 the harness's own outcome (ADR 0119); a `starting` one, which no thread
 accepted yet, ends `interrupted`, and a `waiting` one stays for its answer.

@@ -42,6 +42,7 @@ type fakeConversations struct {
 	systemPosts []fakePost
 	userPosts   []fakePost
 	relayed     []fakeRelay
+	seen        map[string]string
 	// now, when set, stamps each posted Agent reply into history the way chat stores it.
 	now           func() time.Time
 	postReplyErr  error
@@ -51,7 +52,7 @@ type fakeConversations struct {
 }
 
 func newFakeConversations(conv Conversation) *fakeConversations {
-	return &fakeConversations{conv: conv, threads: map[string]string{}, syncedAt: map[string]time.Time{}}
+	return &fakeConversations{conv: conv, threads: map[string]string{}, syncedAt: map[string]time.Time{}, seen: map[string]string{}}
 }
 
 func (f *fakeConversations) GetConversation(_ context.Context, id string) (Conversation, error) {
@@ -67,7 +68,35 @@ func (f *fakeConversations) GetConversation(_ context.Context, id string) (Conve
 	if at, ok := f.syncedAt[id]; ok {
 		c.SyncedAt = at
 	}
+	if marker, ok := f.seen[id]; ok {
+		c.SeenMarker = marker
+	}
 	return c, nil
+}
+
+func (f *fakeConversations) MarkSeen(_ context.Context, conversationID, marker string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.seen[conversationID] = marker
+	return nil
+}
+
+// ConversationByThread finds the one conversation the fake holds when its thread is threadID.
+func (f *fakeConversations) ConversationByThread(ctx context.Context, threadID string) (Conversation, error) {
+	c, err := f.GetConversation(ctx, f.conv.ID)
+	if err != nil {
+		return Conversation{}, err
+	}
+	if c.ThreadID != threadID {
+		return Conversation{}, apperrs.ErrNotFound
+	}
+	return c, nil
+}
+
+func (f *fakeConversations) seenMarker(id string) string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.seen[id]
 }
 
 func (f *fakeConversations) MessagesSince(_ context.Context, _ string, since time.Time) ([]ConversationMessage, error) {

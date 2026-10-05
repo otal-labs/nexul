@@ -56,6 +56,12 @@ UPDATE conversations SET agent_thread_id = ? WHERE id = ?;
 -- name: SetAgentSyncedAt :execrows
 UPDATE conversations SET agent_synced_at = ? WHERE id = ?;
 
+-- name: SetAgentSeen :execrows
+UPDATE conversations SET agent_seen = ? WHERE id = ?;
+
+-- name: GetConversationByAgentThread :one
+SELECT * FROM conversations WHERE agent_thread_id = ? AND agent_thread_id != '' LIMIT 1;
+
 -- name: GetMessage :one
 SELECT * FROM messages WHERE id = ?;
 

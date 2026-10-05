@@ -354,6 +354,29 @@ func (f *fakeRepo) SetAgentSyncedAt(_ context.Context, conversationID string, at
 	return nil
 }
 
+func (f *fakeRepo) SetAgentSeen(_ context.Context, conversationID, marker string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.conversations[conversationID]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	c.AgentSeen = marker
+	return nil
+}
+
+func (f *fakeRepo) GetConversationByAgentThread(_ context.Context, threadID string) (*Conversation, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, c := range f.conversations {
+		if c.AgentThreadID == threadID {
+			cp := *c
+			return &cp, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
 func (f *fakeRepo) UpdateMessage(_ context.Context, id, body string, mentions []Mention, editedAt time.Time, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -1389,6 +1412,27 @@ func TestPostHarnessMessage_RelaysOnceAsTheUsersOwnAtTheTimeWritten(t *testing.T
 	assert.Equal(t, written, m.CreatedAt, "it sits in the thread when it was written, not when it was relayed")
 	assert.Empty(t, m.Mentions, "an @Agent written in the harness already reached it and must not start a second turn")
 	assert.Len(t, repo.events, events+2, "one chat.message.created per thread it landed in")
+}
+
+func TestConversationByAgentThread_FindsItAndKeepsWhatWasSeen(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	c, err := s.CreateChannel(t.Context(), "w-1", "u-1", "eng")
+	require.NoError(t, err)
+	require.NoError(t, s.SetAgentThread(t.Context(), c.ID, "th-1"))
+	require.NoError(t, s.MarkAgentSeen(t.Context(), c.ID, "run-2"))
+
+	got, err := s.ConversationByAgentThread(t.Context(), " th-1 ")
+	require.NoError(t, err)
+	assert.Equal(t, c.ID, got.ID)
+	assert.Equal(t, "run-2", got.AgentSeen)
+
+	_, err = s.ConversationByAgentThread(t.Context(), "th-9")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	_, err = s.ConversationByAgentThread(t.Context(), " ")
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	require.ErrorIs(t, s.MarkAgentSeen(t.Context(), "", "run-2"), apperrs.ErrInvalid)
+	require.ErrorIs(t, s.MarkAgentSeen(t.Context(), "missing", "run-2"), apperrs.ErrNotFound)
 }
 
 func TestPostHarnessMessage_EmptyBody_IsRefused(t *testing.T) {
