@@ -26,9 +26,18 @@ const projects = [
   { id: "p-2", name: "Frontend", prefix: "FE", position: 1, created_at: "", updated_at: "" },
 ];
 
+const folders: Record<string, unknown[]> = {
+  "p-1": [
+    { id: "f-main", project_id: "p-1", name: "Main", is_default: true },
+    { id: "f-gs", project_id: "p-1", name: "Get Source", is_default: false },
+  ],
+  "p-2": [{ id: "f-main-2", project_id: "p-2", name: "Main", is_default: true }],
+};
+
 const mockApi = (list: unknown[] = projects) => {
-  vi.mocked(api.get).mockImplementation(async (url: string) => {
+  vi.mocked(api.get).mockImplementation(async (url, config) => {
     if (url === "/api/projects") return { data: list };
+    if (url === "/api/docs/folders") return { data: folders[(config?.params as { project_id: string } | undefined)?.project_id ?? ""] ?? [] };
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: ["docs:write"] } };
     return { data: [] };
   });
@@ -98,6 +107,18 @@ describe("New doc dialog", () => {
     mockApi();
     const { user, dialog } = await openDialog("f-gs");
     await user.type(await within(dialog).findByLabelText("Title"), "EP01");
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    await vi.waitFor(() => expect(docPosts()).toHaveLength(1));
+    expect(docPosts()[0]?.[1]).toMatchObject({ project_id: "p-1", folder_id: "f-gs" });
+  });
+
+  it("files the doc in the folder picked in the header", async () => {
+    mockApi();
+    const { user, dialog } = await openDialog();
+    await user.type(await within(dialog).findByLabelText("Title"), "EP02");
+    await user.click(await within(dialog).findByRole("button", { name: "Main" }));
+    await user.click(await screen.findByRole("button", { name: "Get Source" }));
+    expect(within(dialog).getByRole("button", { name: "Get Source" })).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Create" }));
     await vi.waitFor(() => expect(docPosts()).toHaveLength(1));
     expect(docPosts()[0]?.[1]).toMatchObject({ project_id: "p-1", folder_id: "f-gs" });

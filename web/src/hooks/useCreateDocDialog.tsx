@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 
+import { DocFolderPill } from "@/components/doc/DocFolderPill";
 import { LazyCreateDocForm } from "@/components/doc/LazyCreateDocForm";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ProjectDialogHeader } from "@/components/project/ProjectDialogHeader";
@@ -19,7 +20,11 @@ export const useCreateDocDialog = (projectId: string, folderId?: string): (() =>
       title: "New doc",
       schema: SaveDocFormSchema,
       okLabel: "Create",
-      header: <ProjectDialogHeader title="New doc" />,
+      header: (
+        <ProjectDialogHeader title="New doc">
+          <DocFolderPill />
+        </ProjectDialogHeader>
+      ),
       form: (
         <Suspense fallback={<LoadingDisplay />}>
           <LazyCreateDocForm defaultProjectId={projectId} />
