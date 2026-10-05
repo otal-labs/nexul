@@ -30,7 +30,7 @@ export const HandoffConversation = ({ handoff }: HandoffConversationProps) => {
         <DialogTitle className="text-lg leading-snug font-semibold tracking-tight">{handoff.title}</DialogTitle>
       </div>
       <div className="flex flex-col gap-1">
-        <TrailUserBubble body={handoff.prompt} at={null} />
+        <TrailUserBubble body={handoff.prompt} at={null} via={null} />
         {segments.map((segment, i) => (
           <TurnSegment key={i} segment={segment} />
         ))}

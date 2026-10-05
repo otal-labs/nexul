@@ -66,7 +66,7 @@ func (a agentConversations) MessagesSince(ctx context.Context, conversationID st
 	}
 	out := make([]agent.ConversationMessage, len(ms))
 	for i, m := range ms {
-		out[i] = agent.ConversationMessage{AuthorID: m.AuthorID, AuthorKind: string(m.AuthorKind), Body: m.Body, CreatedAt: m.CreatedAt}
+		out[i] = agent.ConversationMessage{AuthorID: m.AuthorID, AuthorKind: string(m.AuthorKind), Body: m.Body, CreatedAt: m.CreatedAt, Via: m.Via}
 		if f, ok := files[m.AttachmentID]; ok {
 			out[i].Note = &agent.NoteFile{Name: f.Name, Markdown: f.Markdown}
 		}
@@ -98,6 +98,10 @@ func (a agentConversations) PostSystemMessage(ctx context.Context, conversationI
 func (a agentConversations) PostUserMessage(ctx context.Context, conversationID, userID, body string) error {
 	_, err := a.svc.PostMessage(ctx, conversationID, userID, body)
 	return err
+}
+
+func (a agentConversations) PostHarnessMessage(ctx context.Context, conversationID, userID, body, via, key string, at time.Time) error {
+	return a.svc.PostHarnessMessage(ctx, conversationID, userID, body, via, key, at)
 }
 
 // agentTicketReader adapts tickets to the agent's TicketReader seam: the key and title name the ticket, the body

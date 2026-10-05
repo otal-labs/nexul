@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -117,6 +118,7 @@ func TestStartTurn_NewThread_CreatesItWithEveryRequiredKeyAndWatchesItsRun(t *te
 	assert.Equal(t, threadID, s.result.SessionID)
 
 	messageID, _ := dispatch["messageId"].(string)
+	assert.True(t, strings.HasPrefix(messageID, nexulMessagePrefix), "Nexul marks its own messages, so one without the mark was typed in T3")
 	f.Write(t3rpctest.Chunk(subID,
 		event(3, "run.created", runOf(messageID, "running")),
 		event(4, "turn-item.updated", assistantItem("Hello there.", false)),

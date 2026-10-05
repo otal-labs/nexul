@@ -31,7 +31,7 @@ describe("segmentTranscript", () => {
 
   it("a fresh running run gets an empty running turn so the clock shows", () => {
     expect(segmentTranscript(trail, [], "starting", null)).toEqual([
-      { kind: "user", body: "Started Fix with AI", at: "2026-09-18T10:00:00Z" },
+      { kind: "user", body: "Started Fix with AI", at: "2026-09-18T10:00:00Z", via: null },
       { kind: "turn", entries: [], running: true, from: "2026-09-18T10:00:00Z", until: null },
     ]);
   });
@@ -42,6 +42,13 @@ describe("segmentTranscript", () => {
     const segments = segmentTranscript(trail, [tool("Read"), asked, tool("Edit"), text("done")], "done", q);
     expect(segments.map((s) => s.kind)).toEqual(["user", "turn", "question", "user", "turn", "reply"]);
     expect(segments[3]).toMatchObject({ body: "Answered: yes please", at: null });
+  });
+
+  it("a message the starter wrote in T3 closes the turn as their own bubble, with its full text and where it was written", () => {
+    const typed: ActivityEntry = { kind: "user_message", call_id: "m", tool: "T3", summary: "Use two", detail: "Use two threads", at: "2026-09-18T10:05:00Z" };
+    const segments = segmentTranscript(trail, [tool("Read"), text("Which policy?"), typed, tool("Edit"), text("done")], "done", null);
+    expect(segments.map((s) => s.kind)).toEqual(["user", "turn", "reply", "user", "turn", "reply"]);
+    expect(segments[3]).toEqual({ kind: "user", body: "Use two threads", at: "2026-09-18T10:05:00Z", via: "T3" });
   });
 
   it("several questions in one request list every answer", () => {

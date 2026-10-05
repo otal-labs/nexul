@@ -88,6 +88,8 @@ type message struct {
 	ID                  string `json:"id"`
 	RunID               string `json:"runId"`
 	Role                string `json:"role"`
+	CreatedBy           string `json:"createdBy"`
+	CreationSource      string `json:"creationSource"`
 	DelegatedCompletion *struct {
 		ParentRunID string `json:"parentRunId"`
 	} `json:"delegatedCompletion"`
@@ -174,7 +176,10 @@ type watch struct {
 	// deliveries maps each wake message id a run's delegatedCompletion named to that run; a run.updated without one keeps it.
 	deliveries map[string]string
 	// messages are the user messages that may link a wake run to handed-off work, kept beyond any snapshot's window.
-	messages  map[string]message
+	messages map[string]message
+	// typed are the ids of messages a person wrote in T3 itself; typedRuns are the followed runs they started.
+	typed     map[string]bool
+	typedRuns map[string]bool
 	subagents map[string]subagent
 	// failures holds the newest failed error of each node of the turn's run; the root node's is the turn's failure.
 	failures     map[string]failure
@@ -191,7 +196,7 @@ type watch struct {
 
 func newWatch(messageID string) *watch {
 	return &watch{messageID: messageID, runs: map[string]run{}, followed: map[string]bool{}, deliveries: map[string]string{},
-		messages: map[string]message{}, subagents: map[string]subagent{}, failures: map[string]failure{}, sent: map[string]harness.Snapshot{},
+		messages: map[string]message{}, typed: map[string]bool{}, typedRuns: map[string]bool{}, subagents: map[string]subagent{}, failures: map[string]failure{}, sent: map[string]harness.Snapshot{},
 		steps: map[string]harness.Activity{}, asked: map[string]bool{}}
 }
 
@@ -325,14 +330,30 @@ func (w *watch) subagent(s subagent) {
 	w.subagents[s.ID] = s
 }
 
-// message keeps a user message that could link a run to handed-off work; no other message changes what the turn follows.
+// message keeps a user message that could link a run to handed-off work, or notes one a person wrote in T3 itself.
 func (w *watch) message(m message) {
-	if m.Role == "user" && (m.DelegatedCompletion != nil || m.subagentThread() != "") {
+	if m.Role != "user" {
+		return
+	}
+	if m.DelegatedCompletion != nil || m.subagentThread() != "" {
 		w.messages[m.ID] = m
+		return
+	}
+	if typedInT3(m.ID, m.CreatedBy, m.CreationSource) {
+		w.typed[m.ID] = true
 	}
 }
 
-// link grows the followed set by every run the followed runs' handed-off work caused, until nothing more joins.
+// typedInT3 is a message a person wrote in a T3 Code app, not one Nexul sent or T3 made from an answer.
+func typedInT3(id, createdBy, source string) bool {
+	if strings.HasPrefix(id, nexulMessagePrefix) || strings.HasPrefix(id, answerMessagePrefix) {
+		return false
+	}
+	return createdBy == "user" && (source == "web" || source == "mobile")
+}
+
+// link grows the followed set by every run the followed runs' handed-off work caused, until nothing more joins,
+// and by every later run a message typed in T3 started, since the person carried the turn on there.
 func (w *watch) link() {
 	for grew := true; grew; {
 		grew = false
@@ -340,6 +361,11 @@ func (w *watch) link() {
 			if !w.followed[r.ID] && w.caused(r) {
 				w.followed[r.ID], grew = true, true
 			}
+		}
+	}
+	for _, r := range w.runs {
+		if !w.followed[r.ID] && w.run.ID != "" && w.typed[r.UserMessageID] && r.Ordinal > w.run.Ordinal {
+			w.followed[r.ID], w.typedRuns[r.ID] = true, true
 		}
 	}
 }
@@ -378,9 +404,14 @@ func (w *watch) steered() bool {
 	return false
 }
 
-// pending is whether work the turn handed off is still running or its result is still on its way back.
+// pending is whether work the turn handed off, or a run a message typed in T3 started, is still running or on its way back.
 func (w *watch) pending() bool {
-	if w.woken(func(r run) bool { return slices.Contains(workingRuns, r.Status) }) {
+	return w.pendingWork(true)
+}
+
+// pendingWork is pending, leaving out the runs typed in T3 unless typed.
+func (w *watch) pendingWork(typed bool) bool {
+	if w.woken(func(r run) bool { return (typed || !w.typedRuns[r.ID]) && slices.Contains(workingRuns, r.Status) }) {
 		return true
 	}
 	for _, s := range w.subagents {
@@ -418,12 +449,14 @@ func (w *watch) sessionLastError(s providerSession) {
 
 // item maps one turn item of a followed run; T3 sends an assistant message's whole text each time, never a delta.
 func (w *watch) item(it turnItem) []harness.Update {
-	// A message T3 steered into a running run gets no run of its own; its item names the run that took it.
-	if w.run.ID == "" && it.Type == "user_message" && it.MessageID == w.messageID {
-		w.own(w.runs[it.RunID])
+	if it.Type == "user_message" {
+		w.userMessageSeen(it)
 	}
 	if w.ended || w.run.ID == "" || !w.followed[it.RunID] {
 		return nil
+	}
+	if it.Type == "user_message" {
+		return w.userMessage(it)
 	}
 	if it.Type == "error" && it.Status == "failed" && it.Failure != nil {
 		w.failures[it.NodeID] = *it.Failure
@@ -438,6 +471,32 @@ func (w *watch) item(it turnItem) []harness.Update {
 	}
 	w.sent[it.MessageID] = snap
 	return []harness.Update{{Snapshot: &snap}}
+}
+
+// userMessageSeen notes a typed message, which may make its run the turn's, and the run a steered own message landed in.
+func (w *watch) userMessageSeen(it turnItem) {
+	if typedInT3(it.MessageID, it.CreatedBy, it.CreationSource) && !w.typed[it.MessageID] {
+		w.typed[it.MessageID] = true
+		w.link()
+	}
+	// A message T3 steered into a running run gets no run of its own; its item names the run that took it.
+	if w.run.ID == "" && it.MessageID == w.messageID {
+		w.own(w.runs[it.RunID])
+	}
+}
+
+// userMessage emits a message a person typed in T3 once, so Nexul shows it as theirs; Nexul's own prompt is never one.
+func (w *watch) userMessage(it turnItem) []harness.Update {
+	if !w.typed[it.MessageID] || it.MessageID == w.messageID {
+		return nil
+	}
+	a := harness.Activity{Kind: harness.ActivityUserMessage, CallID: it.ID, Tool: harnessName, Summary: harness.Preview(it.Text, summaryRunes),
+		Detail: harness.CapDetail(it.Text), At: itemTime(it.UpdatedAt)}
+	if w.steps[it.ID] == a {
+		return nil
+	}
+	w.steps[it.ID] = a
+	return []harness.Update{{Activity: &a}}
 }
 
 // step emits what the mapper makes of an item: a step each time it changes, a question or approval once per request.
@@ -590,7 +649,8 @@ func (w *watch) standingNote() *harness.Activity {
 		}
 		return &harness.Activity{Kind: harness.ActivityNote, CallID: "queue:" + w.run.ID, Summary: summary}
 	}
-	if w.ended || w.run.ID == "" || !w.pending() {
+	// A run typed in T3 shows its own steps, so only handed-off work earns the note.
+	if w.ended || w.run.ID == "" || !w.pendingWork(false) {
 		return nil
 	}
 	summary := handoffNote

@@ -12,18 +12,21 @@ import (
 
 // turnItem is the slice of a T3 turn item Nexul reads; T3 strips command output, diffs and tool results from the wire.
 type turnItem struct {
-	ID        string   `json:"id"`
-	RunID     string   `json:"runId"`
-	NodeID    string   `json:"nodeId"`
-	Ordinal   int      `json:"ordinal"`
-	Status    string   `json:"status"`
-	Type      string   `json:"type"`
-	Title     string   `json:"title"`
-	UpdatedAt string   `json:"updatedAt"`
-	MessageID string   `json:"messageId"`
-	Text      string   `json:"text"`
-	Streaming bool     `json:"streaming"`
-	Failure   *failure `json:"failure"`
+	ID        string `json:"id"`
+	RunID     string `json:"runId"`
+	NodeID    string `json:"nodeId"`
+	Ordinal   int    `json:"ordinal"`
+	Status    string `json:"status"`
+	Type      string `json:"type"`
+	Title     string `json:"title"`
+	UpdatedAt string `json:"updatedAt"`
+	MessageID string `json:"messageId"`
+	// CreatedBy and CreationSource say who wrote a user message and where, which tells a person's own message from a wake.
+	CreatedBy      string   `json:"createdBy"`
+	CreationSource string   `json:"creationSource"`
+	Text           string   `json:"text"`
+	Streaming      bool     `json:"streaming"`
+	Failure        *failure `json:"failure"`
 	// Input is a command's text as a JSON string, or a dynamic tool's arguments as any JSON.
 	Input                  json.RawMessage `json:"input"`
 	Output                 json.RawMessage `json:"output"`

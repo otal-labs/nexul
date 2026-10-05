@@ -27,6 +27,7 @@ export const MessageRow = ({ message, authorName, continuation = false }: Messag
             {message.author_kind === "agent" ? "Agent" : authorName}
           </Text>
           <Text className="font-mono text-xs text-muted-foreground"><RelativeTime iso={message.created_at} /></Text>
+          {message.via && <Text className="text-xs text-muted-foreground">via {message.via}</Text>}
           {message.edited_at && <Text className="text-xs text-muted-foreground">(edited)</Text>}
         </View>
       )}

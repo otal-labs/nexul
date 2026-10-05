@@ -82,6 +82,11 @@ describe("trailSummary", () => {
     expect(trailSummary("interrupted", "", undefined)).toBe("Interrupted");
     expect(trailSummary("done", "", call)).toBe("Done");
   });
+
+  it("does not name a message the starter wrote in T3 as the Agent's latest step", () => {
+    const typed: ActivityEntry = { kind: "user_message", call_id: "m", tool: "T3", summary: "Use two threads", at: "" };
+    expect(trailSummary("running", "", typed)).toBe("Running…");
+  });
 });
 
 describe("trailSummary error truncation", () => {

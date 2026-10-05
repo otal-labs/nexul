@@ -13,3 +13,11 @@ func New() string {
 	}
 	return id.String()
 }
+
+// derived namespaces From's ids, so they never collide with a UUID minted any other way.
+var derived = uuid.MustParse("6f0b8a52-0c4e-4f43-9d0f-2b7c1f6e9a31")
+
+// From returns the same UUIDv5 for the same key every time, for a row that must be written at most once per key.
+func From(key string) string {
+	return uuid.NewSHA1(derived, []byte(key)).String()
+}

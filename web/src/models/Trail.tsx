@@ -16,8 +16,9 @@ export interface TrailQuestion extends HarnessQuestion {
 }
 
 // Mirrors internal/harness.ActivityKind plus plays.ActivityNote: what one transcript step is; a note is the
-// runner's own line (a skipped move, a stop), not harness activity.
-export const ACTIVITY_KINDS = ["tool_call", "tool_result", "text", "question", "other", "note"] as const;
+// runner's own line (a skipped move, a stop), not harness activity, and a user_message is one the starter wrote in
+// the harness itself, its tool naming the harness.
+export const ACTIVITY_KINDS = ["tool_call", "tool_result", "text", "question", "other", "note", "user_message"] as const;
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
 
 // The harness's built-in tools whose row reads the command or the path alone, as the harness itself labels them.
@@ -219,7 +220,7 @@ export const mergeLiveSteps = (activity: ActivityEntry[], live: ActivityEntry[])
 
 // One line for a trail row: the latest step while it runs, the reason once it ended badly.
 export const trailSummary = (state: TrailState, lastError: string, activity: ActivityEntry | null | undefined): string => {
-  if (state === "running" && activity) return stepLabel(activity);
+  if (state === "running" && activity && activity.kind !== "user_message") return stepLabel(activity);
   if ((state === "failed" || state === "interrupted") && lastError !== "") {
     return `${STATE_LABELS[state]} · ${truncateSummaryError(lastError)}`;
   }

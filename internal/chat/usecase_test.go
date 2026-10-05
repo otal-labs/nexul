@@ -283,6 +283,9 @@ func (f *fakeRepo) CreateMessage(_ context.Context, m *Message, evts ...eventbus
 	if _, ok := f.conversations[m.ConversationID]; !ok {
 		return apperrs.ErrConflict
 	}
+	if _, ok := f.messages[m.ID]; ok {
+		return apperrs.ErrConflict
+	}
 	cp := *m
 	f.messages[m.ID] = &cp
 	f.events = append(f.events, evts...)
@@ -1356,6 +1359,52 @@ func TestPostAgentMessage_Handoffs_StoredWithTheReplyAndCutToTheirNewestSteps(t 
 	assert.Less(t, len(stored[0].Steps), 200)
 	created := repo.events[len(repo.events)-1].Payload.(MessageCreatedEvent)
 	assert.Equal(t, stored, created.Message.Handoffs, "chat.message.created carries what the reply stores")
+}
+
+func TestPostHarnessMessage_RelaysOnceAsTheUsersOwnAtTheTimeWritten(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	c, err := s.CreateChannel(t.Context(), "w-1", "u-1", "eng")
+	require.NoError(t, err)
+	other, err := s.CreateChannel(t.Context(), "w-1", "u-1", "ops")
+	require.NoError(t, err)
+	written := time.Date(2026, 10, 5, 14, 0, 0, 0, time.UTC)
+	events := len(repo.events)
+
+	require.NoError(t, s.PostHarnessMessage(t.Context(), c.ID, "u-1", "  ask @Agent and @onik97  ", "T3", "item-1", written))
+	require.NoError(t, s.PostHarnessMessage(t.Context(), c.ID, "u-1", "ask @Agent and @onik97", "T3", "item-1", written.Add(time.Hour)))
+	require.NoError(t, s.PostHarnessMessage(t.Context(), other.ID, "u-1", "same item, other thread", "T3", "item-1", written))
+
+	var relayed []*Message
+	for _, m := range repo.messages {
+		if m.ConversationID == c.ID && m.Via != "" {
+			relayed = append(relayed, m)
+		}
+	}
+	require.Len(t, relayed, 1, "relaying the same harness message again changes nothing")
+	m := relayed[0]
+	assert.Equal(t, "ask @Agent and @onik97", m.Body)
+	assert.Equal(t, AuthorUser, m.AuthorKind)
+	assert.Equal(t, "T3", m.Via)
+	assert.Equal(t, written, m.CreatedAt, "it sits in the thread when it was written, not when it was relayed")
+	assert.Empty(t, m.Mentions, "an @Agent written in the harness already reached it and must not start a second turn")
+	assert.Len(t, repo.events, events+2, "one chat.message.created per thread it landed in")
+}
+
+func TestPostHarnessMessage_EmptyBody_IsRefused(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	err := s.PostHarnessMessage(t.Context(), "conv-1", "u-1", "  ", "T3", "item-1", time.Now())
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+}
+
+func TestPostHarnessMessage_StoreFails_ReturnsTheError(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	c, err := s.CreateChannel(t.Context(), "w-1", "u-1", "eng")
+	require.NoError(t, err)
+	repo.createMessageErr = errors.New("disk full")
+	err = s.PostHarnessMessage(t.Context(), c.ID, "u-1", "hi", "T3", "item-1", time.Now())
+	require.ErrorContains(t, err, "disk full")
 }
 
 func TestPostAgentMessage_HandoffsWithLongReplies_CutTheLongestRepliesOnceNoStepIsLeft(t *testing.T) {

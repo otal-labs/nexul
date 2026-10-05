@@ -47,6 +47,8 @@ export interface Message {
   reactions?: Reaction[];
   // Only an Agent reply that handed work to other agents carries it (ADR 0116).
   handoffs?: Handoff[];
+  // The harness its author wrote it in, such as T3, when it was relayed from there (ADR 0126).
+  via?: string;
   // Client-only: the optimistic row shown until the server confirms the post.
   pending?: boolean;
 }

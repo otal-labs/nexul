@@ -4,7 +4,8 @@ import { isCommandTool, isTrailActive, type ActivityEntry, type Trail, type Trai
 // One block of the transcript as a conversation: the starter's bubbles, the Agent's turn groups, the question
 // card where it was asked, the final reply as prose, and the runner's notes as muted lines between them.
 export type TranscriptSegment =
-  | { kind: "user"; body: string; at: string | null }
+  // via names the harness a message was written in, null for one written in Nexul.
+  | { kind: "user"; body: string; at: string | null; via: string | null }
   // from is the run's start for the first turn; until is when the turn ended when that is later than its last row.
   | { kind: "turn"; entries: ActivityEntry[]; running: boolean; from: string | null; until: string | null }
   | { kind: "question" }
@@ -35,11 +36,11 @@ const lastIndexOfKind = (steps: ActivityEntry[], kind: ActivityEntry["kind"]): n
   return -1;
 };
 
-// Splits the steps into turns: a question (the latest one, the only one stored with its answer) and a runner's note
-// each close the current turn, and a turn that closes on a text step hands that text over as prose; while the run is
+// Splits the steps into turns: a question (the latest one, the only one stored with its answer), a runner's note, and a
+// message the starter wrote in the harness each close the current turn, and a turn that closes on a text step hands that text over as prose; while the run is
 // live the closing text stays in the turn until the harness moves on.
 export const segmentTranscript = (trail: Trail, steps: ActivityEntry[], state: TrailState, question: TrailQuestion | null): TranscriptSegment[] => {
-  const out: TranscriptSegment[] = [{ kind: "user", body: startedBody(trail), at: trail.started_at }];
+  const out: TranscriptSegment[] = [{ kind: "user", body: startedBody(trail), at: trail.started_at, via: null }];
   let turn: ActivityEntry[] = [];
   let from: string | null = trail.started_at;
   const flushTurn = (closing: boolean, until: string | null = null) => {
@@ -55,7 +56,7 @@ export const segmentTranscript = (trail: Trail, steps: ActivityEntry[], state: T
   const pushQuestion = () => {
     if (!question) return;
     out.push({ kind: "question" });
-    if (question.answer) out.push({ kind: "user", body: answerBody(question), at: null });
+    if (question.answer) out.push({ kind: "user", body: answerBody(question), at: null, via: null });
   };
   const questionAt = question ? lastIndexOfKind(steps, "question") : -1;
 
@@ -63,6 +64,11 @@ export const segmentTranscript = (trail: Trail, steps: ActivityEntry[], state: T
     if (entry.kind === "note") {
       flushTurn(true);
       out.push({ kind: "note", text: entry.summary });
+      return;
+    }
+    if (entry.kind === "user_message") {
+      flushTurn(true);
+      out.push({ kind: "user", body: entry.detail || entry.summary, at: entry.at, via: entry.tool ?? null });
       return;
     }
     if (i === questionAt) {

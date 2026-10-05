@@ -42,6 +42,7 @@ export const MessageRowHeader = ({ align, message, isAgent, author }: MessageRow
         <span className="shrink-0 font-mono text-[11px]" title={formatFullTime(message.created_at)}>
           {formatRelativeTime(message.created_at)}
         </span>
+        {message.via && <span className="shrink-0 text-[11px]">via {message.via}</span>}
         {message.edited_at && <span className="shrink-0 text-[11px]">(edited)</span>}
       </MessageHeader>
     )}
@@ -50,6 +51,7 @@ export const MessageRowHeader = ({ align, message, isAgent, author }: MessageRow
         <span className="shrink-0 font-mono text-[11px]" title={formatFullTime(message.created_at)}>
           {formatRelativeTime(message.created_at)}
         </span>
+        {message.via && <span className="shrink-0 text-[11px]">via {message.via}</span>}
         {message.edited_at && <span className="shrink-0 text-[11px]">(edited)</span>}
       </MessageHeader>
     )}

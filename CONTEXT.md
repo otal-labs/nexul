@@ -258,8 +258,9 @@ transcript is the Agent's turn as a conversation: the starter's "Started
 <play>" message, one collapsible "Worked for" group per turn holding what
 the Agent said between actions and each action as a row (a command names
 its command, a file change its path, an MCP call its server and tool), the question card and the answer
-where they happened, the final reply as prose, and the lines about the run
-itself (a stop, a reconnect) as muted lines.
+where they happened, a message the starter typed in T3 Code itself as their
+own bubble marked "via T3" (ADR 0126), the final reply as prose, and the lines
+about the run itself (a stop, a reconnect) as muted lines.
 Persisted, never ephemeral; the "Trail" section on a
 ticket, doc, or Interview page lists them, and the target's thread shows the same turn
 groups above the Agent's reply, question, or closing line, so the run reads

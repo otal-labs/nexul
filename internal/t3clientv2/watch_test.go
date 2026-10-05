@@ -224,7 +224,7 @@ func TestWatch_RecordedToolSteps_ShowEachChangeOfTheTurnsOwnItems(t *testing.T) 
 		"tool_call native-1", "tool_result native-1", "tool_result native-2", "tool_result native-3", "tool_result native-4",
 		"tool_result native-5", "tool_result native-6", "question native-7", "asks " + question1, "question native-7",
 		"approval " + approvalPrompt, "tool_call native-8", "tool_result native-8", "reply Done.", "end done",
-	}, got, "the answered question and the declined approval are not raised again, and the runs typed in T3 show nothing")
+	}, got, "the answered question and the declined approval are not raised again, and the runs typed in T3 after the turn ended show nothing")
 }
 
 func TestWatch_ItemSentAgain_EmitsOnce(t *testing.T) {
@@ -389,6 +389,16 @@ func delivery(state string) map[string]any {
 	return map[string]any{"completionDelivery": map[string]any{"state": state, "observedByRunId": nil}}
 }
 
+// typedKeys make a userMessage one a person wrote in T3's web app.
+var typedKeys = map[string]any{"createdBy": "user", "creationSource": "web", "text": "Use two threads."}
+
+// typedIn is run n's user message item for messageID, written in T3's mobile app.
+func typedIn(n int, messageID, text string) map[string]any {
+	return map[string]any{"id": "turn-item:message:" + messageID, "threadId": "th-1", "runId": fmt.Sprintf("run:thread:th-1:ordinal:%d", n),
+		"nodeId": nil, "ordinal": n*1000 - 1, "status": "completed", "type": "user_message", "messageId": messageID, "createdBy": "user",
+		"creationSource": "mobile", "inputIntent": "queued_turn", "text": text, "attachments": []any{}, "updatedAt": "2026-10-03T16:00:05.000Z"}
+}
+
 // replyIn is run n's finished assistant message.
 func replyIn(n int, text string) map[string]any {
 	return map[string]any{"id": fmt.Sprintf("turn-item:provider:claudeAgent:native-item:reply-%d", n), "threadId": "th-1",
@@ -499,7 +509,7 @@ func TestWatch_HandedOffWork(t *testing.T) {
 				{"run.updated", runAt(2, "message:provider-continuation:native-9", runWaiting)},
 			},
 			want: []string{"reply Started a background agent.", "reply The background agent found two callers.", "end done"}},
-		{name: "a PR-watch wake, a scheduled run, another thread's send, a command's notice and a run typed in T3 are not the turn's",
+		{name: "a PR-watch wake, a scheduled run, another thread's send and a command's notice are not the turn's",
 			events: slices.Concat(handsOff, [][2]any{
 				{"run.created", runAt(2, "message:pr-watch:3f2a", "running")},
 				{"message.updated", userMessage("message:pr-watch:3f2a", 2, map[string]any{
@@ -519,13 +529,39 @@ func TestWatch_HandedOffWork(t *testing.T) {
 					"notification": map[string]any{"source": map[string]any{"kind": "background_command"}, "outcome": "completed", "summary": "npm test finished"}})},
 				{"turn-item.updated", replyIn(5, "Tests passed.")},
 				{"run.updated", runAt(5, "message:provider-continuation:native-3", runWaiting)},
-				{"run.created", runAt(6, "msg-typed", "running")},
-				{"message.updated", userMessage("msg-typed", 6, map[string]any{"createdBy": "user", "creationSource": "web"})},
-				{"turn-item.updated", replyIn(6, "Typed in T3.")},
-				{"run.updated", runAt(6, "msg-typed", runWaiting)},
 				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("disposed"))},
 			}),
 			want: []string{"reply Handed the audit off.", "end done"}},
+		{name: "a run typed in T3 while the turn is open joins it, shows the typed message, and is waited for",
+			events: slices.Concat(handsOff, [][2]any{
+				{"run.created", runAt(6, "msg-typed", "running")},
+				{"message.updated", userMessage("msg-typed", 6, typedKeys)},
+				{"turn-item.updated", typedIn(6, "msg-typed", "Use two threads.")},
+				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("disposed"))},
+				{"turn-item.updated", replyIn(6, "Typed in T3.")},
+				{"run.updated", runAt(6, "msg-typed", runWaiting)},
+			}),
+			want: []string{"reply Handed the audit off.", "user_message Use two threads.", "reply Typed in T3.", "end done"}},
+		{name: "a message typed in T3 is told from one only its item names as typed, and Nexul's own prompt is never shown",
+			events: [][2]any{
+				{"run.created", runOf("msg-1", "running")},
+				{"turn-item.updated", typedIn(1, "msg-1", "Nexul's prompt, seen as typed.")},
+				{"run.created", runAt(2, "msg-typed", runQueued)},
+				{"turn-item.updated", typedIn(2, "msg-typed", "Queued from my phone.")},
+				{"turn-item.updated", replyIn(1, "First.")},
+				{"run.updated", runOf("msg-1", runWaiting)},
+				{"run.updated", runAt(2, "msg-typed", runWaiting)},
+			},
+			want: []string{"user_message Queued from my phone.", "reply First.", "end done"}},
+		{name: "a message from Nexul or from an answer never joins, whoever T3 says sent it",
+			events: [][2]any{
+				{"run.created", runOf("msg-1", runWaiting)},
+				{"run.created", runAt(2, nexulMessagePrefix+"later", "running")},
+				{"turn-item.updated", typedIn(2, nexulMessagePrefix+"later", "Another Nexul turn.")},
+				{"run.created", runAt(3, answerMessagePrefix+"rq-1", "running")},
+				{"turn-item.updated", typedIn(3, answerMessagePrefix+"rq-1", "Answered in T3.")},
+			},
+			want: []string{"end done"}},
 		{name: "a result T3 steered into a later run ends the wait with a note",
 			events: slices.Concat(handsOff, [][2]any{
 				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("pending"))},

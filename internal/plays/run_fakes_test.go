@@ -633,6 +633,10 @@ func (a *agentConvs) PostSystemMessage(_ context.Context, _, _, body string) err
 
 func (a *agentConvs) PostUserMessage(context.Context, string, string, string) error { return nil }
 
+func (a *agentConvs) PostHarnessMessage(context.Context, string, string, string, string, string, time.Time) error {
+	return nil
+}
+
 func (a *agentConvs) snapshot() ([]string, []string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()

@@ -81,7 +81,7 @@ func (t *turn) deliver(ctx context.Context, w *watch, a harness.PendingAnswer) (
 		return false, nil
 	}
 	// T3 runs a message-mode answer as a message of its own, queued or steered into the live run.
-	messageID := "async-answer:" + a.RequestID
+	messageID := answerMessagePrefix + a.RequestID
 	if capability == "live" {
 		messageID = w.runs[t.snapshot.runOf(req.NodeID)].UserMessageID
 	}
