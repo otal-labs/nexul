@@ -375,6 +375,9 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	if err := svc.playsRunner.ResumeRunsAfterRestart(ctx); err != nil {
 		logger.Error("plays: resume runs after restart", "error", err)
 	}
+	// News on a harness thread nobody here watches is caught up: a play's trail first, else a plain turn (ADR 0127).
+	agentSvc.SetFollower(svc.playsRunner)
+	svc.presenceKeeper.SetOnSession(agentSvc.OnSessionUpdate)
 
 	// A ticket entering done fires the built-in decisions check on the mover's or the developer's harness.
 	mustSubscribe(ctx, bus, "plays.decisions_check", tickets.TopicStatusChanged, "", svc.playsRunner.HandleTicketStatusChanged)

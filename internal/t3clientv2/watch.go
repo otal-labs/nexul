@@ -192,6 +192,8 @@ type watch struct {
 	// declines are the approvals raised since the pump last answered them.
 	declines []string
 	ended    bool
+	// adopted is a Watch's: its run is the one it picked to follow, which a person may have started in T3.
+	adopted bool
 }
 
 func newWatch(messageID string) *watch {
@@ -485,9 +487,10 @@ func (w *watch) userMessageSeen(it turnItem) {
 	}
 }
 
-// userMessage emits a message a person typed in T3 once, so Nexul shows it as theirs; Nexul's own prompt is never one.
+// userMessage emits a message a person typed in T3 once, so Nexul shows it as theirs; the turn's own message only
+// when a Watch adopted it, since a turn Nexul started sent that one itself.
 func (w *watch) userMessage(it turnItem) []harness.Update {
-	if !w.typed[it.MessageID] || it.MessageID == w.messageID {
+	if !w.typed[it.MessageID] || (it.MessageID == w.messageID && !w.adopted) {
 		return nil
 	}
 	a := harness.Activity{Kind: harness.ActivityUserMessage, CallID: it.ID, Tool: harnessName, Summary: harness.Preview(it.Text, summaryRunes),
@@ -537,6 +540,7 @@ func (w *watch) end() ([]harness.Update, *harness.TurnResult) {
 	if result.State == harness.TurnError {
 		result.LastError = w.failure()
 	}
+	result.Marker = w.marker()
 	if result.State == harness.TurnDone && w.steered() {
 		w.ended = true
 		return []harness.Update{note(steeredNote)}, result
@@ -564,13 +568,25 @@ func (w *watch) waiting() bool {
 // leave ends a turn that stopped waiting for the work it handed off, which T3 still runs.
 func (w *watch) leave() *harness.TurnResult {
 	w.ended = true
-	return &harness.TurnResult{State: harness.TurnDone, LeftRunning: true}
+	return &harness.TurnResult{State: harness.TurnDone, LeftRunning: true, Marker: w.marker()}
 }
 
 // stop ends a turn without waiting on T3, since a stopped waiting run can stay waiting and dropped work reports no end.
 func (w *watch) stop() *harness.TurnResult {
 	w.ended = true
-	return &harness.TurnResult{State: harness.TurnInterrupted}
+	return &harness.TurnResult{State: harness.TurnInterrupted, Marker: w.marker()}
+}
+
+// marker is the newest followed run T3 has finished with, so work still running after the turn reads as news later.
+func (w *watch) marker() string {
+	newest := run{}
+	for id := range w.followed {
+		r := w.runs[id]
+		if terminal(r.Status) != nil && (newest.ID == "" || r.Ordinal > newest.Ordinal) {
+			newest = r
+		}
+	}
+	return newest.ID
 }
 
 // handoffs is what Stop must reach besides the turn's own run.

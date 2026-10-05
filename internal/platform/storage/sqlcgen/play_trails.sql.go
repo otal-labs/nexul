@@ -155,6 +155,43 @@ func (q *Queries) LatestPlayTrailForChoices(ctx context.Context, arg LatestPlayT
 	return i, err
 }
 
+const latestPlayTrailInConversation = `-- name: LatestPlayTrailInConversation :one
+SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options FROM play_trails WHERE conversation_id = ? ORDER BY started_at DESC, id DESC LIMIT 1
+`
+
+func (q *Queries) LatestPlayTrailInConversation(ctx context.Context, conversationID string) (PlayTrail, error) {
+	row := q.db.QueryRowContext(ctx, latestPlayTrailInConversation, conversationID)
+	var i PlayTrail
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.PlayID,
+		&i.PlayLabel,
+		&i.TargetType,
+		&i.TargetID,
+		&i.ProjectID,
+		&i.ConversationID,
+		&i.StarterID,
+		&i.Via,
+		&i.SelectedMemoryIds,
+		&i.CustomInstructions,
+		&i.HarnessSessionID,
+		&i.State,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.LastError,
+		&i.ReplyMessageID,
+		&i.Activity,
+		&i.ComputerID,
+		&i.Provider,
+		&i.Model,
+		&i.Question,
+		&i.FailureReason,
+		&i.ModelOptions,
+	)
+	return i, err
+}
+
 const listActivePlayTrailsByTargets = `-- name: ListActivePlayTrailsByTargets :many
 SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options FROM play_trails WHERE target_type = ? AND target_id IN (/*SLICE:ids*/?) AND state IN ('starting', 'running', 'waiting')
 `

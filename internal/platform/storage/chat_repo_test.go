@@ -444,6 +444,25 @@ func TestChatRepo_CreateMessage_Via_RoundTripsAndASecondCopyConflicts(t *testing
 	assert.Equal(t, "T3", got.Via)
 }
 
+func TestChatRepo_AgentThread_LooksUpTheConversationAndKeepsWhatWasSeen(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	seedChatUser(t, s, "u-1")
+	require.NoError(t, s.Chat.CreateConversation(ctx, newTestConversation("conv-1", chat.KindChannel, "general", "", "u-1"), []string{"u-1"}))
+	require.NoError(t, s.Chat.CreateConversation(ctx, newTestConversation("conv-2", chat.KindChannel, "random", "", "u-1"), []string{"u-1"}))
+	require.NoError(t, s.Chat.SetAgentThread(ctx, "conv-1", "th-1"))
+	require.NoError(t, s.Chat.SetAgentSeen(ctx, "conv-1", "run-2"))
+
+	got, err := s.Chat.GetConversationByAgentThread(ctx, "th-1")
+	require.NoError(t, err)
+	assert.Equal(t, "conv-1", got.ID)
+	assert.Equal(t, "run-2", got.AgentSeen)
+	_, err = s.Chat.GetConversationByAgentThread(ctx, "")
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "a conversation without a thread is never found by the empty id")
+	require.ErrorIs(t, s.Chat.SetAgentSeen(ctx, "missing", "run-1"), apperrs.ErrNotFound)
+}
+
 func TestChatRepo_ListMessagesSince_ExcludesOlderAndDeleted(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

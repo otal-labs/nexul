@@ -864,17 +864,51 @@ func (r *Runner) openThread(ctx context.Context, workspaceID string, targetType 
 
 // startTurn runs the turn detached from the request's cancellation: it outlives the HTTP call, and chat's
 // silence window is chat's, not a play's. A resumed turn continues an existing trail, so it announces no start.
-func (r *Runner) startTurn(ctx context.Context, trail *Trail, targetTitle string, req agent.TurnRequest, resumed bool) {
+// The channel closes once the turn has ended.
+func (r *Runner) startTurn(ctx context.Context, trail *Trail, targetTitle string, req agent.TurnRequest, resumed bool) <-chan struct{} {
 	runCtx, cancel := context.WithCancelCause(context.WithoutCancel(ctx))
 	o := &trailObserver{r: r, trail: trail, targetTitle: targetTitle, ctx: context.WithoutCancel(runCtx), cancel: cancel, resumed: resumed}
 	o.timer = time.AfterFunc(r.silence, o.onSilence)
 	r.setRun(trail.ID, o)
 	req.Observer = o
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
 		defer r.clearRun(trail.ID, o)
 		defer cancel(nil)
 		r.turns.RunTurn(runCtx, req)
 	}()
+	return done
+}
+
+// followedAgainNote is the trail's and the thread's line for a run reopened by news on its thread (ADR 0127).
+const followedAgainNote = "New activity on this run's thread in T3 Code; following it again."
+
+// FollowThread implements agent.ThreadFollower: news on the thread of a conversation whose newest run ran there,
+// on userID's computerID, and has ended reopens that run's trail and catches it up from since (ADR 0127).
+func (r *Runner) FollowThread(ctx context.Context, conversationID, threadID, userID, computerID, since string) (<-chan struct{}, bool) {
+	trail, err := r.trails.LatestTrailInConversation(ctx, conversationID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil, false
+	}
+	if err != nil {
+		r.log.Warn("plays: read the run to follow again failed", "conversation", conversationID, "error", err)
+		return nil, false
+	}
+	if trail.State.Active() || trail.HarnessSessionID != threadID || trail.StarterID != userID || trail.ComputerID != computerID {
+		return nil, false
+	}
+	tgt, err := r.readTarget(ctx, trail.TargetType, trail.TargetID)
+	if err != nil {
+		r.log.Warn("plays: follow again could not read the target", "trail", trail.ID, "error", err)
+	}
+	trail.State, trail.EndedAt, trail.LastError = TrailRunning, nil, ""
+	r.note(ctx, trail, followedAgainNote)
+	r.save(ctx, trail)
+	return r.startTurn(ctx, trail, tgt.title, agent.TurnRequest{
+		ConversationID: conversationID, ViaUserID: trail.StarterID, Watch: true, Since: since,
+		Target: &agent.TargetOverride{ComputerID: trail.ComputerID, Provider: trail.Provider, Model: trail.Model, ModelOptions: trail.ModelOptions},
+	}, true), true
 }
 
 // trailObserver records the turn's lifecycle on the trail; pipeline, silence timer, and Stop race for it, first terminal wins.

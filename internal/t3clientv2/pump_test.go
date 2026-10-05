@@ -54,8 +54,17 @@ func items(values ...json.RawMessage) chunkOrEnd { return chunkOrEnd{values: val
 // silentThread is a handed-off agent's thread that sends nothing.
 func silentThread(context.Context, string, int64) (source, error) { return newFakeSource(), nil }
 
-// collect takes every update the pump has sent so far without waiting for more.
+// collect takes every update the pump has sent so far without waiting for more, its end's Marker dropped.
 func collect(out <-chan harness.Update) []harness.Update {
+	got := collectMarked(out)
+	for i, u := range got {
+		got[i] = unmarked(u)
+	}
+	return got
+}
+
+// collectMarked is collect with the end's Marker kept.
+func collectMarked(out <-chan harness.Update) []harness.Update {
 	var got []harness.Update
 	for {
 		select {
@@ -124,19 +133,21 @@ func TestPump_StreamEndsMidTurn(t *testing.T) {
 		opens   []func() (source, error)
 		want    harness.Update
 		elapsed time.Duration
+		// marker is the run the turn saw end; none when it never heard T3 say so.
+		marker string
 	}{
 		{"a stream T3 gave up on resubscribes after the cursor", die,
 			[]func() (source, error){func() (source, error) { return newFakeSource(waitingSnapshot), nil }},
-			ended(harness.TurnDone, ""), time.Second},
+			ended(harness.TurnDone, ""), time.Second, runOne},
 		{"a stream that ended resubscribes", io.EOF,
 			[]func() (source, error){func() (source, error) { return newFakeSource(waitingSnapshot), nil }},
-			ended(harness.TurnDone, ""), time.Second},
+			ended(harness.TurnDone, ""), time.Second, runOne},
 		{"a dropped connection resubscribes once it redials", lost,
 			[]func() (source, error){
 				func() (source, error) { return nil, refused },
 				func() (source, error) { return newFakeSource(waitingSnapshot), nil },
 			},
-			ended(harness.TurnDone, ""), 6 * time.Second},
+			ended(harness.TurnDone, ""), 6 * time.Second, runOne},
 		{"three failed resubscribes end the turn", die,
 			[]func() (source, error){
 				func() (source, error) { return nil, refused },
@@ -144,12 +155,12 @@ func TestPump_StreamEndsMidTurn(t *testing.T) {
 				func() (source, error) { return nil, refused },
 			},
 			ended(harness.TurnError, "Lost the connection to T3 Code and couldn't resume the turn after 3 tries: dial T3 websocket: connection refused"),
-			31 * time.Second},
+			31 * time.Second, ""},
 		{"a T3 Code that changed protocol ends the turn at once", lost,
 			[]func() (source, error){func() (source, error) {
 				return nil, harness.ProtocolRefusal("T3 Code on laptop went back to its old orchestrator; Nexul only moves forward. Update T3 Code there.")
 			}},
-			ended(harness.TurnError, updatedNote), time.Second},
+			ended(harness.TurnError, updatedNote), time.Second, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -170,10 +181,11 @@ func TestPump_StreamEndsMidTurn(t *testing.T) {
 
 				p.run(t.Context(), first, out)
 
-				got := collect(out)
+				got := collectMarked(out)
 				require.Len(t, got, 2)
 				assert.Equal(t, childUnreadable, got[0].Activity.Summary)
-				assert.Equal(t, tt.want, got[1])
+				assert.Equal(t, tt.want, unmarked(got[1]))
+				assert.Equal(t, tt.marker, got[1].Terminal.Marker, "a turn that lost T3 keeps no marker, so the thread reads as news")
 				assert.Equal(t, tt.elapsed, time.Since(start), "backs off before each try")
 				require.Len(t, afters, len(tt.opens), "every try is made, and no more")
 				for _, after := range afters {

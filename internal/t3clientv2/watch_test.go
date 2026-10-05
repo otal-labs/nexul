@@ -63,10 +63,20 @@ func fold(t *testing.T, w *watch, items []json.RawMessage) []harness.Update {
 		updates, end := w.apply(item)
 		out = append(out, updates...)
 		if end != nil {
-			out = append(out, harness.Update{Terminal: end})
+			out = append(out, unmarked(harness.Update{Terminal: end}))
 		}
 	}
 	return out
+}
+
+// unmarked drops a terminal update's Marker, which the marker tests check on their own, so the rest compare by state.
+func unmarked(u harness.Update) harness.Update {
+	if u.Terminal == nil {
+		return u
+	}
+	end := *u.Terminal
+	end.Marker = ""
+	return harness.Update{Terminal: &end}
 }
 
 func snapshotOf(messageID, text string, streaming bool) harness.Update {
@@ -389,6 +399,55 @@ func delivery(state string) map[string]any {
 	return map[string]any{"completionDelivery": map[string]any{"state": state, "observedByRunId": nil}}
 }
 
+func TestWatch_AdoptedRunTypedInT3_ShowsItsMessage(t *testing.T) {
+	t.Parallel()
+	w := newWatch("msg-typed")
+	w.adopted = true
+	got := labels(fold(t, w, story(
+		[2]any{"run.created", runAt(2, "msg-typed", "running")},
+		[2]any{"turn-item.updated", typedIn(2, "msg-typed", "Continue from my laptop.")},
+	)))
+	assert.Equal(t, []string{"user_message Continue from my laptop."}, got, "a catch-up shows what started the run it adopted")
+}
+
+func TestWatch_Marker_IsTheNewestFollowedRunT3FinishedWith(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		events [][2]any
+		want   string
+	}{
+		{"the turn's own run", [][2]any{{"run.created", runOf("msg-1", runWaiting)}}, runOne},
+		{"a typed run it followed", [][2]any{
+			{"run.created", runOf("msg-1", "running")},
+			{"run.created", runAt(2, "msg-typed", runQueued)},
+			{"message.updated", userMessage("msg-typed", 2, typedKeys)},
+			{"run.updated", runOf("msg-1", runWaiting)},
+			{"run.updated", runAt(2, "msg-typed", runCompleted)},
+		}, "run:thread:th-1:ordinal:2"},
+		{"not a later run it never followed", [][2]any{
+			{"run.created", runAt(2, nexulMessagePrefix+"other", runCompleted)},
+			{"run.created", runOf("msg-1", runWaiting)},
+		}, runOne},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			w := newWatch("msg-1")
+			var end *harness.TurnResult
+			for _, raw := range story(tt.events...) {
+				var item streamItem
+				require.NoError(t, json.Unmarshal(raw, &item))
+				if _, e := w.apply(item); e != nil {
+					end = e
+				}
+			}
+			require.NotNil(t, end)
+			assert.Equal(t, tt.want, end.Marker)
+		})
+	}
+}
+
 // typedKeys make a userMessage one a person wrote in T3's web app.
 var typedKeys = map[string]any{"createdBy": "user", "creationSource": "web", "text": "Use two threads."}
 
@@ -542,7 +601,7 @@ func TestWatch_HandedOffWork(t *testing.T) {
 				{"run.updated", runAt(6, "msg-typed", runWaiting)},
 			}),
 			want: []string{"reply Handed the audit off.", "user_message Use two threads.", "reply Typed in T3.", "end done"}},
-		{name: "a message typed in T3 is told from one only its item names as typed, and Nexul's own prompt is never shown",
+		{name: "a message typed in T3 is told from one only its item names as typed, and the turn's own prompt is not shown",
 			events: [][2]any{
 				{"run.created", runOf("msg-1", "running")},
 				{"turn-item.updated", typedIn(1, "msg-1", "Nexul's prompt, seen as typed.")},

@@ -148,6 +148,25 @@ func (f *fakeTrailRepo) LatestTrailForChoices(_ context.Context, starterID, play
 	return &cp, nil
 }
 
+func (f *fakeTrailRepo) LatestTrailInConversation(_ context.Context, conversationID string) (*Trail, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.latestErr != nil {
+		return nil, f.latestErr
+	}
+	var latest *Trail
+	for _, t := range f.byID {
+		if t.ConversationID == conversationID && (latest == nil || t.StartedAt.After(latest.StartedAt)) {
+			latest = t
+		}
+	}
+	if latest == nil {
+		return nil, apperrs.ErrNotFound
+	}
+	cp := *latest
+	return &cp, nil
+}
+
 func (f *fakeTrailRepo) all() []*Trail {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -635,6 +654,12 @@ func (a *agentConvs) PostUserMessage(context.Context, string, string, string) er
 
 func (a *agentConvs) PostHarnessMessage(context.Context, string, string, string, string, string, time.Time) error {
 	return nil
+}
+
+func (a *agentConvs) MarkSeen(context.Context, string, string) error { return nil }
+
+func (a *agentConvs) ConversationByThread(context.Context, string) (agent.Conversation, error) {
+	return agent.Conversation{}, apperrs.ErrNotFound
 }
 
 func (a *agentConvs) snapshot() ([]string, []string) {

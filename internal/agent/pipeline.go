@@ -52,6 +52,8 @@ type Conversation struct {
 	Name        string
 	ThreadID    string
 	SyncedAt    time.Time
+	// SeenMarker is the newest harness turn a turn here saw end on ThreadID, a harness.TurnResult.Marker; "" before any.
+	SeenMarker string
 }
 
 // ConversationMessage is one prior message, before its author's display name is resolved.
@@ -85,6 +87,10 @@ type Conversations interface {
 	PostUserMessage(ctx context.Context, conversationID, userID, body string) error
 	// PostHarnessMessage relays a message userID wrote in the harness itself, at the time written; once per key.
 	PostHarnessMessage(ctx context.Context, conversationID, userID, body, via, key string, at time.Time) error
+	// MarkSeen records the newest harness turn seen to end on the conversation's thread.
+	MarkSeen(ctx context.Context, conversationID, marker string) error
+	// ConversationByThread is the conversation whose harness thread is threadID; ErrNotFound for none.
+	ConversationByThread(ctx context.Context, threadID string) (Conversation, error)
 }
 
 // Observer receives one turn's lifecycle; callers that keep their own record of a turn (a play's trail) implement it.
@@ -211,6 +217,9 @@ type Service struct {
 	mu     sync.Mutex
 	active map[string][]*activeTurn // conversationID -> its in-flight turns, oldest first, for Interrupt and Answer
 	ended  map[string]endedTurn     // ticketID -> its thread's last turn, until that thread is settled
+	// following holds the conversations a catch-up was started on, until its turn ends (ADR 0127).
+	following map[string]bool
+	follower  ThreadFollower
 }
 
 // activeTurn is an in-flight turn: the client it runs on and the target to interrupt.
@@ -246,6 +255,7 @@ func NewService(cfg Config) *Service {
 		now:           cfg.Now,
 		active:        map[string][]*activeTurn{},
 		ended:         map[string]endedTurn{},
+		following:     map[string]bool{},
 	}
 }
 
@@ -324,6 +334,8 @@ type TurnRequest struct {
 	Answer *harness.PendingAnswer
 	// Watch follows the turn already running on the conversation's thread, sending nothing; a restart lost its watcher.
 	Watch bool
+	// Since makes a Watch catch up from the first harness turn after this marker instead of following the newest.
+	Since string
 }
 
 // RunTurn runs one Agent turn and blocks until it ends; every failure surfaces as a system message or a log line.
@@ -388,6 +400,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		ModelOptions: target.ModelOptions,
 		SessionID:    conv.ThreadID,
 		Worktree:     target.Worktree,
+		Since:        req.Since,
 	}}
 	s.setActive(conversationID, turn)
 	defer s.endTurn(ctx, conv, turn)
@@ -411,6 +424,17 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	finalText, handoffs, term := s.drainTurn(ctx, turn, conversationID, viaUserID, result.Updates, obs, newSilenceWindow(req.Silence, turn.answered))
 
 	s.finishTurn(ctx, conversationID, viaUserID, finalText, handoffs, term, obs)
+	s.markSeen(ctx, conversationID, term)
+}
+
+// markSeen records how far the turn saw its thread end, so only later work there reads as news; a failure is only logged.
+func (s *Service) markSeen(ctx context.Context, conversationID string, term *harness.TurnResult) {
+	if term == nil || term.Marker == "" {
+		return
+	}
+	if err := s.conversations.MarkSeen(ctx, conversationID, term.Marker); err != nil {
+		s.log.Warn("agent: record the turn's end failed", "conversation", conversationID, "error", err)
+	}
 }
 
 // openTurn starts the turn, or with watch follows the one already running on t's session.
@@ -843,12 +867,18 @@ func (s *textSegments) observe(snap harness.Snapshot) {
 
 // flush emits the text not yet seen as a step and marks it seen; nothing new means no step.
 func (s *textSegments) flush(obs Observer) {
-	piece := strings.TrimSpace(s.text[s.emitted:])
+	from := s.emitted
+	piece := strings.TrimSpace(s.text[from:])
 	s.emitted = len(s.text)
 	if piece == "" {
 		return
 	}
-	obs.OnActivity(textActivity(piece))
+	a := textActivity(piece)
+	// Named by where it starts in its message, so a catch-up that replays the message replaces the step it already has.
+	if s.messageID != "" {
+		a.CallID = fmt.Sprintf("text:%s:%d", s.messageID, from)
+	}
+	obs.OnActivity(a)
 }
 
 // textActivity is one piece of the reply as a transcript step.

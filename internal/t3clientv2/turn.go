@@ -175,14 +175,44 @@ func (h *Harness) Watch(ctx context.Context, target harness.Target) (harness.Sta
 		t.close()
 		return harness.StartResult{}, fmt.Errorf("watch t3 thread %s: %w", t.threadID, err)
 	}
-	// The snapshot's steps were shown before; its replies and open questions still belong to the turn.
-	caught := slices.DeleteFunc(t.caught, func(u harness.Update) bool { return u.Activity != nil && u.Activity.Kind != harness.ActivityNote })
+	// After a restart the snapshot's steps were shown before; a catch-up from Since shows them, and its replies and open
+	// questions belong to the turn either way. A step shown before replaces itself by its call id.
+	caught := t.caught
+	if target.Since == "" {
+		caught = slices.DeleteFunc(caught, func(u harness.Update) bool { return u.Activity != nil && u.Activity.Kind != harness.ActivityNote })
+	}
 	if t.over == nil && w.run.ID != "" {
 		return harness.StartResult{SessionID: t.threadID, TurnID: t.messageID, Updates: t.follow(ctx, src, w, caught)}, nil
 	}
 	src.Close()
 	t.close()
-	return harness.StartResult{SessionID: t.threadID, Updates: finished(caught, t.over)}, nil
+	over := t.over
+	if over == nil {
+		over = &harness.TurnResult{State: harness.TurnDone, Marker: target.Since}
+	}
+	return harness.StartResult{SessionID: t.threadID, Updates: finished(caught, over)}, nil
+}
+
+// adoptedSince is the message id of the run a Watch follows: with Since, the first run after it, or Since itself while
+// it still runs, or the oldest the snapshot holds once Since fell out of it; "" when none is left to catch up on.
+func (t *turn) adoptedSince(p projection) string {
+	since := t.target.Since
+	if since == "" {
+		return adopted(p)
+	}
+	byOrdinal := slices.Clone(p.Runs)
+	slices.SortFunc(byOrdinal, func(a, b run) int { return a.Ordinal - b.Ordinal })
+	i := slices.IndexFunc(byOrdinal, func(r run) bool { return r.ID == since })
+	if i < 0 && len(byOrdinal) > 0 {
+		return byOrdinal[0].UserMessageID
+	}
+	if i >= 0 && i+1 < len(byOrdinal) {
+		return byOrdinal[i+1].UserMessageID
+	}
+	if i >= 0 && slices.Contains(liveRuns, byOrdinal[i].Status) {
+		return byOrdinal[i].UserMessageID
+	}
+	return ""
 }
 
 // adopted is the message id of the run a Watch follows: the run T3 ran last, or the earliest run whose hand-off or restart led to it.
@@ -396,6 +426,7 @@ func (t *turn) subscribe(ctx context.Context) (source, *watch, error) {
 		return nil, nil, err
 	}
 	w := newWatch(t.messageID)
+	w.adopted = t.adopt
 	for !w.synced {
 		values, err := src.Next(ctx)
 		var exit *t3rpc.ExitError
@@ -413,7 +444,7 @@ func (t *turn) subscribe(ctx context.Context) (source, *watch, error) {
 				t.snapshot = item.Projection
 			}
 			if item.Kind == "snapshot" && t.adopt && !w.synced {
-				t.messageID = adopted(item.Projection)
+				t.messageID = t.adoptedSince(item.Projection)
 				w.messageID = t.messageID
 			}
 			updates, end := w.apply(item)

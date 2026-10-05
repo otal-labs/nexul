@@ -202,6 +202,26 @@ func TestPlayTrailsRepo_ListByTarget_NewestFirst(t *testing.T) {
 	assert.Empty(t, none)
 }
 
+func TestPlayTrailsRepo_LatestInConversation_NewestThereOrNotFound(t *testing.T) {
+	t.Parallel()
+	s := newTrailStore(t)
+	base := time.Date(2026, 9, 17, 9, 0, 0, 0, time.UTC)
+	for i, id := range []string{"older", "newer", "elsewhere"} {
+		tr := newTestTrail(id, base.Add(time.Duration(i)*time.Minute))
+		tr.ConversationID = "conv-1"
+		if id == "elsewhere" {
+			tr.ConversationID = "conv-2"
+		}
+		require.NoError(t, s.PlayTrails.CreateTrail(context.Background(), tr))
+	}
+
+	got, err := s.PlayTrails.LatestTrailInConversation(context.Background(), "conv-1")
+	require.NoError(t, err)
+	assert.Equal(t, "newer", got.ID)
+	_, err = s.PlayTrails.LatestTrailInConversation(context.Background(), "conv-9")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
 func TestPlayTrailsRepo_LatestForChoices(t *testing.T) {
 	t.Parallel()
 	s := newTrailStore(t)

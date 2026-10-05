@@ -56,6 +56,8 @@ type Conversation struct {
 	AgentThreadID string `json:"-"`
 	// AgentSyncedAt is how far the agent pipeline has sent history as turn context; only later messages are new.
 	AgentSyncedAt time.Time `json:"-"`
+	// AgentSeen is the newest harness turn Nexul saw end on AgentThreadID; a later one there is followed (ADR 0127).
+	AgentSeen string `json:"-"`
 	// ParticipantIDs is populated for a DM and a private channel; a public channel's readers are implicit.
 	ParticipantIDs []string `json:"participant_ids,omitempty"`
 }
