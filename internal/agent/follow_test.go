@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -176,4 +177,31 @@ func TestRunTurn_TextSteps_AreNamedByTheirMessageSoAReplayReplacesThem(t *testin
 	}
 	assert.Equal(t, []string{"text:m-1:0", "c-1", "text:m-1:7"}, ids)
 	assert.Empty(t, conv.seenMarker("conv-1"), "a turn whose harness kept no marker records none")
+}
+
+func TestRunTurn_KeptThreadGone_EndsSessionGoneWithoutTellingTheThread(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		thread string
+	}{
+		{"the harness no longer has it", "th-1"},
+		{"the conversation never had one", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			conv := newFakeConversations(Conversation{ID: "conv-1", ThreadID: tt.thread})
+			client := &fakeHarness{startErr: fmt.Errorf("watch t3 thread th-1: %w", harness.ErrSessionGone)}
+			obs := &fakeObserver{}
+			svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
+
+			svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "more", KeepThread: true, Observer: obs})
+
+			require.NotNil(t, obs.result)
+			assert.True(t, obs.result.SessionGone)
+			_, systemPosts := conv.snapshot()
+			assert.Empty(t, systemPosts, "the caller says what a gone thread means")
+		})
+	}
 }

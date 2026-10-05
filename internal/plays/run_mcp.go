@@ -107,9 +107,10 @@ type answerIn struct {
 }
 
 type trailUpdateIn struct {
-	ID     string              `json:"id" jsonschema:"The trail's id, from play_run or trail_list."`
-	Answer map[string]answerIn `json:"answer,omitempty" jsonschema:"Answers to the question a waiting trail stopped on, keyed by each question's id from trail_list, for example {\"q1\": {\"selected\": [\"Yes\"]}}. The run continues on the same trail."`
-	Stop   bool                `json:"stop,omitempty" jsonschema:"true interrupts the run and ends the trail as interrupted, keeping its steps."`
+	ID       string              `json:"id" jsonschema:"The trail's id, from play_run or trail_list."`
+	Answer   map[string]answerIn `json:"answer,omitempty" jsonschema:"Answers to the question a waiting trail stopped on, keyed by each question's id from trail_list, for example {\"q1\": {\"selected\": [\"Yes\"]}}. The run continues on the same trail."`
+	Stop     bool                `json:"stop,omitempty" jsonschema:"true interrupts the run and ends the trail as interrupted, keeping its steps."`
+	Continue string              `json:"continue,omitempty" jsonschema:"A message for an ended trail's agent, sent to the same harness thread as the trail's next turn, for example \"Carry on with the second option.\" The play's instructions are not sent again."`
 }
 
 // RunMCPTools returns the tools that run plays and read or steer their trails; every run started here carries Via mcp (ADR 0049).
@@ -167,11 +168,13 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				}
 				return mcptool.Paginate(out, in.PageArgs), nil
 			}),
-		mcptool.New("trail_update", "Answer or stop play run",
-			"Steers a running play: answer gives a waiting trail the answers to its question so the run continues "+
-				"on the same trail, and stop true interrupts an active run. Pass exactly one of the two; trail_list "+
-				"with the trail's id shows the question and its ids. Returns the trail. Allowed for the run's starter "+
-				"or a plays:write holder in its workspace.",
+		mcptool.New("trail_update", "Answer, stop, or continue play run",
+			"Steers a play run: answer gives a waiting trail the answers to its question so the run continues "+
+				"on the same trail, stop true interrupts an active run, and continue sends a message to an ended run's "+
+				"own harness thread so it goes on as the same trail, without the play's instructions again. When that "+
+				"thread was deleted, continue starts the play again as a new run carrying the message and returns that "+
+				"trail. Pass exactly one of the three; trail_list with the trail's id shows the question and its ids. "+
+				"Returns the trail. Allowed for the run's starter or a plays:write holder in its workspace.",
 			mcptool.Hints{},
 			func(ctx context.Context, in trailUpdateIn) (any, error) {
 				t, err := steerTrail(ctx, r, in)
@@ -205,8 +208,17 @@ func runPlay(ctx context.Context, r *Runner, in playRunIn) (*Trail, error) {
 }
 
 func steerTrail(ctx context.Context, r *Runner, in trailUpdateIn) (*Trail, error) {
-	if (len(in.Answer) > 0) == in.Stop {
-		return nil, fmt.Errorf("%w: pass exactly one of answer or stop: true", apperrs.ErrInvalid)
+	picked := 0
+	for _, set := range []bool{len(in.Answer) > 0, in.Stop, in.Continue != ""} {
+		if set {
+			picked++
+		}
+	}
+	if picked != 1 {
+		return nil, fmt.Errorf("%w: pass exactly one of answer, stop: true, or continue", apperrs.ErrInvalid)
+	}
+	if in.Continue != "" {
+		return r.Continue(ctx, in.ID, in.Continue, ViaMCP)
 	}
 	if in.Stop {
 		return r.Stop(ctx, in.ID)

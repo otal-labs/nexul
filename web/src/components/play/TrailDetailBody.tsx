@@ -7,12 +7,13 @@ import {
 } from "@/components/ui/message-scroller";
 
 import { SetupRefusalLink } from "@/components/pairing/SetupRefusalLink";
+import { TrailContinueForm } from "@/components/play/TrailContinueForm";
 import { TrailFacts } from "@/components/play/TrailFacts";
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { TrailTranscript } from "@/components/play/TrailTranscript";
 import { useLiveTrailActivity, useLiveTrailQuestion, useLiveTrailState, useLiveTrailSteps } from "@/hooks/TrailHooks";
 import { SETUP_REQUIRED_REASON } from "@/models/Pairing";
-import { trailSummary, type Trail } from "@/models/Trail";
+import { isTrailActive, trailSummary, type Trail } from "@/models/Trail";
 
 interface TrailDetailBodyProps {
   trail: Trail;
@@ -21,7 +22,7 @@ interface TrailDetailBodyProps {
 const microheaderClass = "font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase";
 
 // Run facts above a hairline, then the transcript filling the rest of the dialog; the scroller follows the live
-// edge while the run grows and offers "Scroll to end" once the reader has scrolled away.
+// edge while the run grows and offers "Scroll to end" once the reader has scrolled away. An ended run can be continued.
 export const TrailDetailBody = ({ trail }: TrailDetailBodyProps) => {
   const state = useLiveTrailState(trail);
   const liveStep = useLiveTrailActivity(trail);
@@ -58,6 +59,7 @@ export const TrailDetailBody = ({ trail }: TrailDetailBodyProps) => {
           </MessageScroller>
         </MessageScrollerProvider>
       </section>
+      {!isTrailActive(state) && <TrailContinueForm trailId={trail.id} />}
     </div>
   );
 };

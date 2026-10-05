@@ -26,6 +26,9 @@ const (
 // ErrProtocol marks a harness speaking a protocol Nexul cannot follow; the refusal's text is the message to show.
 var ErrProtocol = errors.New("unsupported harness protocol")
 
+// ErrSessionGone marks a session the harness no longer has, deleted there or never kept.
+var ErrSessionGone = errors.New("the harness session is gone")
+
 // ProtocolRefusal is an error matching ErrProtocol and ErrInvalid whose text is msg alone, so callers show it as is.
 func ProtocolRefusal(msg string) error {
 	return protocolRefusal(msg)
@@ -168,6 +171,8 @@ type Target struct {
 	Worktree bool
 	// Since is a TurnResult.Marker: Watch follows from the first turn after it, so a catch-up misses none; empty follows the newest.
 	Since string
+	// KeepSession makes StartTurn fail with ErrSessionGone instead of starting a new session when SessionID is gone.
+	KeepSession bool
 }
 
 // Conn is a held connection; Done fires when the server drops it.
@@ -342,6 +347,8 @@ type TurnResult struct {
 	// Marker names the newest turn this one saw end on the harness, for SessionUpdate.Latest and Target.Since; empty
 	// when the harness keeps none or the turn ended without hearing from the harness, such as a lost connection.
 	Marker string
+	// SessionGone is a turn that never started because the session it had to keep is gone.
+	SessionGone bool
 }
 
 // The states of a Handoff.

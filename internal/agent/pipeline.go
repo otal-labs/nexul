@@ -336,6 +336,8 @@ type TurnRequest struct {
 	Watch bool
 	// Since makes a Watch catch up from the first harness turn after this marker instead of following the newest.
 	Since string
+	// KeepThread continues the conversation's own harness thread or nothing: a gone one ends the turn SessionGone.
+	KeepThread bool
 }
 
 // RunTurn runs one Agent turn and blocks until it ends; every failure surfaces as a system message or a log line.
@@ -387,8 +389,8 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 			return
 		}
 	}
-	if req.Watch && conv.ThreadID == "" {
-		failed("the conversation has no harness thread to follow")
+	if conv.ThreadID == "" && (req.Watch || req.KeepThread) {
+		obs.OnFinished(noThread(req), "")
 		return
 	}
 
@@ -401,6 +403,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		SessionID:    conv.ThreadID,
 		Worktree:     target.Worktree,
 		Since:        req.Since,
+		KeepSession:  req.KeepThread,
 	}}
 	s.setActive(conversationID, turn)
 	defer s.endTurn(ctx, conv, turn)
@@ -411,8 +414,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		if setupCtx.Err() != nil && ctx.Err() == nil {
 			err = context.Cause(setupCtx)
 		}
-		s.postSystemMessage(ctx, conversationID, viaUserID, fmt.Sprintf("Agent turn failed to %s: %v", startVerb(req), err))
-		failed(err.Error())
+		s.openFailed(ctx, req, err, obs)
 		return
 	}
 	s.announceTurnStarted(ctx, conversationID, conv.ThreadID, turn, result)
@@ -435,6 +437,25 @@ func (s *Service) markSeen(ctx context.Context, conversationID string, term *har
 	if err := s.conversations.MarkSeen(ctx, conversationID, term.Marker); err != nil {
 		s.log.Warn("agent: record the turn's end failed", "conversation", conversationID, "error", err)
 	}
+}
+
+// noThread ends a turn that needs the conversation's harness thread on one that never had one.
+func noThread(req TurnRequest) harness.TurnResult {
+	if req.KeepThread {
+		return harness.TurnResult{State: harness.TurnError, LastError: harness.ErrSessionGone.Error(), SessionGone: true}
+	}
+	return harness.TurnResult{State: harness.TurnError, LastError: "the conversation has no harness thread to follow"}
+}
+
+// openFailed ends a turn the harness would not open; a caller that asked to keep the thread decides what a gone one
+// means, so the thread hears nothing then.
+func (s *Service) openFailed(ctx context.Context, req TurnRequest, err error, obs Observer) {
+	if req.KeepThread && errors.Is(err, harness.ErrSessionGone) {
+		obs.OnFinished(harness.TurnResult{State: harness.TurnError, LastError: err.Error(), SessionGone: true}, "")
+		return
+	}
+	s.postSystemMessage(ctx, req.ConversationID, req.ViaUserID, fmt.Sprintf("Agent turn failed to %s: %v", startVerb(req), err))
+	obs.OnFinished(harness.TurnResult{State: harness.TurnError, LastError: err.Error()}, "")
 }
 
 // openTurn starts the turn, or with watch follows the one already running on t's session.

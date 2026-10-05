@@ -610,6 +610,76 @@ func (r *Runner) Answer(ctx context.Context, trailID string, answer harness.Ques
 	return &snapshot, nil
 }
 
+// Continue sends message to an ended run's own harness thread, as the next turn of the same trail, instead of pressing
+// the play again (ADR 0128). The starter or a plays:write holder may; it waits for the harness to take the turn, and when
+// the thread is gone it starts the play again as a new run carrying message, and returns that trail instead.
+func (r *Runner) Continue(ctx context.Context, trailID, message string, via Via) (*Trail, error) {
+	trailID, message = strings.TrimSpace(trailID), strings.TrimSpace(message)
+	if trailID == "" {
+		return nil, fmt.Errorf("%w: trail id is required", apperrs.ErrInvalid)
+	}
+	if message == "" {
+		return nil, fmt.Errorf("%w: a message is required", apperrs.ErrInvalid)
+	}
+	trail, err := r.trails.GetTrail(ctx, trailID)
+	if err != nil {
+		return nil, fmt.Errorf("get trail %s: %w", trailID, err)
+	}
+	actor := actorID(ctx)
+	if actor != trail.StarterID && !r.perm.HasPermission(ctx, actor, trail.WorkspaceID, permissions.PlaysWrite, "", "") {
+		return nil, fmt.Errorf("%w: only the starter or a %s holder can continue a run", apperrs.ErrForbidden, permissions.PlaysWrite)
+	}
+	if trail.State.Active() {
+		return nil, fmt.Errorf("%w: the run is still going; answer or stop it instead", apperrs.ErrConflict)
+	}
+	if err := r.refuseIfActive(ctx, trail.TargetType, trail.TargetID); err != nil {
+		return nil, err
+	}
+	tgt, err := r.readTarget(ctx, trail.TargetType, trail.TargetID)
+	if err != nil {
+		r.log.Warn("plays: continue could not read the target", "trail", trailID, "error", err)
+	}
+	if _, err := r.threads.PostMessage(ctx, trail.ConversationID, actor, message); err != nil {
+		return nil, fmt.Errorf("post message: %w", err)
+	}
+	before := *trail
+	trail.AppendActivity(ActivityEntry{Kind: harness.ActivityUserMessage, Summary: harness.Preview(message, 160), Detail: harness.CapDetail(message), At: r.now().UTC()})
+	trail.State, trail.EndedAt, trail.LastError = TrailRunning, nil, ""
+	r.save(ctx, trail)
+	snapshot := *trail
+	o := &trailObserver{trail: trail, targetTitle: tgt.title, resumed: true, opened: make(chan bool, 1), before: &before}
+	r.start(ctx, o, agent.TurnRequest{
+		ConversationID: trail.ConversationID, ViaUserID: trail.StarterID, RequestBody: message, KeepThread: true,
+		Target: &agent.TargetOverride{ComputerID: trail.ComputerID, Provider: trail.Provider, Model: trail.Model, ModelOptions: trail.ModelOptions},
+	})
+	wait := time.NewTimer(continueWait)
+	defer wait.Stop()
+	select {
+	case gone := <-o.opened:
+		if gone {
+			return r.runAgain(ctx, &before, message, via)
+		}
+	case <-wait.C:
+	case <-ctx.Done():
+	}
+	return &snapshot, nil
+}
+
+// continueWait bounds how long Continue waits to learn whether the harness took the turn; past it the trail just runs.
+const continueWait = 30 * time.Second
+
+// runAgain starts a gone thread's play again on the same target with the same choices, its instructions ending with message.
+func (r *Runner) runAgain(ctx context.Context, old *Trail, message string, via Via) (*Trail, error) {
+	custom := message
+	if old.CustomInstructions != "" {
+		custom = old.CustomInstructions + "\n\n" + message
+	}
+	return r.Run(ctx, RunInput{
+		PlayID: old.PlayID, TargetType: old.TargetType, TargetID: old.TargetID, MemoryIDs: old.SelectedMemoryIDs, CustomInstructions: custom,
+		ComputerID: old.ComputerID, Provider: old.Provider, Model: old.Model, ModelOptions: old.ModelOptions, Via: via,
+	})
+}
+
 // recordFollowUps keeps an interview run's answered question as the project's next round; a failed record is only logged.
 func (r *Runner) recordFollowUps(ctx context.Context, trail *Trail, answeredBy string, answer harness.QuestionAnswer) {
 	if r.answers == nil || trail.TargetType != TargetInterview {
@@ -866,8 +936,14 @@ func (r *Runner) openThread(ctx context.Context, workspaceID string, targetType 
 // silence window is chat's, not a play's. A resumed turn continues an existing trail, so it announces no start.
 // The channel closes once the turn has ended.
 func (r *Runner) startTurn(ctx context.Context, trail *Trail, targetTitle string, req agent.TurnRequest, resumed bool) <-chan struct{} {
+	return r.start(ctx, &trailObserver{trail: trail, targetTitle: targetTitle, resumed: resumed}, req)
+}
+
+// start runs o's turn; o names the trail and how its start is recorded, start wires the rest.
+func (r *Runner) start(ctx context.Context, o *trailObserver, req agent.TurnRequest) <-chan struct{} {
+	trail := o.trail
 	runCtx, cancel := context.WithCancelCause(context.WithoutCancel(ctx))
-	o := &trailObserver{r: r, trail: trail, targetTitle: targetTitle, ctx: context.WithoutCancel(runCtx), cancel: cancel, resumed: resumed}
+	o.r, o.ctx, o.cancel = r, context.WithoutCancel(runCtx), cancel
 	o.timer = time.AfterFunc(r.silence, o.onSilence)
 	r.setRun(trail.ID, o)
 	req.Observer = o
@@ -924,6 +1000,21 @@ type trailObserver struct {
 	timer      *time.Timer
 	done       bool
 	stopReason string
+	// opened hears, once, whether a continued turn found its harness thread gone (true) or got going (false); nil otherwise.
+	opened chan bool
+	// before is a continued trail as it had ended, which a gone thread puts back.
+	before *Trail
+}
+
+// signalOpen tells a waiting Continue how the turn opened; only the first word counts.
+func (o *trailObserver) signalOpen(gone bool) {
+	if o.opened == nil {
+		return
+	}
+	select {
+	case o.opened <- gone:
+	default:
+	}
 }
 
 func (o *trailObserver) OnStarted(sessionID string) {
@@ -935,6 +1026,7 @@ func (o *trailObserver) OnStarted(sessionID string) {
 	o.timer.Reset(o.r.silence)
 	o.trail.State = TrailRunning
 	o.trail.HarnessSessionID = sessionID
+	defer o.signalOpen(false)
 	if o.resumed {
 		o.r.save(o.ctx, o.trail)
 		return
@@ -1014,6 +1106,11 @@ func (o *trailObserver) OnFinished(result harness.TurnResult, replyMessageID str
 	}
 	o.done = true
 	o.timer.Stop()
+	if result.SessionGone && o.before != nil {
+		o.putBack()
+		return
+	}
+	defer o.signalOpen(false)
 	if o.trail.State == TrailWaiting && o.stopReason == "" && result.State != harness.TurnInterrupted {
 		// The harness closed the turn under an unanswered question; the trail keeps waiting and the answer resumes it.
 		return
@@ -1026,6 +1123,17 @@ func (o *trailObserver) OnFinished(result harness.TurnResult, replyMessageID str
 		}
 	}
 	o.r.finish(o.ctx, o.trail, o.targetTitle, result, replyMessageID, "")
+}
+
+// threadGoneNote is the line a continued trail ends on when its harness thread was deleted (ADR 0128).
+const threadGoneNote = "This run's thread is gone from T3 Code; the play started again in a new run."
+
+// putBack returns a continued trail to how it had ended, keeping the message it was asked, and tells Continue to run again.
+func (o *trailObserver) putBack() {
+	o.trail.State, o.trail.EndedAt, o.trail.LastError = o.before.State, o.before.EndedAt, o.before.LastError
+	o.r.note(o.ctx, o.trail, threadGoneNote)
+	o.r.save(o.ctx, o.trail)
+	o.signalOpen(true)
 }
 
 // onSilence fails the run when the window elapses with nothing from the harness; done makes the pipeline's later terminal a no-op.

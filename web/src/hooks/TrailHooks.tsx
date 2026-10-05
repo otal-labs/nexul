@@ -147,6 +147,27 @@ export const useAnswerTrail = () => {
   });
 };
 
+// Continue answers with the trail the message went to: the same run, or a new one when its harness thread was deleted.
+export const useContinueTrail = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ trailId, message }: { trailId: string; message: string }) =>
+      (await api.post<Trail>(`/api/plays/runs/${trailId}/continue`, { message })).data,
+    onSuccess: async (trail, { trailId }) => {
+      client.setQueryData<Trail>([getTrailKey, trail.id], trail);
+      await client.invalidateQueries({ queryKey: [getTrailsKey, trail.target_type, trail.target_id] });
+      await client.invalidateQueries({ queryKey: [getTrailKey, trailId] });
+      await client.invalidateQueries({ queryKey: [getActiveTrailsKey] });
+      if (trail.id !== trailId) {
+        toast.info("Its thread was deleted in T3 Code, so the play started again as a new run");
+        return;
+      }
+      toast.success("Sent to the run");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 // A trail's state as the page should show it: the live frame wins over the fetched row until the refetch lands.
 export const useLiveTrailState = (trail: Trail) =>
   usePlayRunStore((s) => s.frames[trail.id]?.state ?? trail.state);
