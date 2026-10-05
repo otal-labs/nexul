@@ -216,6 +216,12 @@ Planned: **clarifying a doc**. A client writes what they need in a doc;
 page and in the phone app, the client answers, and once nothing is left
 the answers are written into the doc. The map is in `.scratch/doc-clarify/`.
 
+Planned: **projects before code**. The project wizard offers "No
+repository yet" and "Attach without deploying" as plain choices instead of a
+muted skip, both end on a Done screen that says what was made, and a project
+with a repository waiting to deploy shows the way back to deploying it. The
+map is in `.scratch/project-paths/`.
+
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab
 in Settings. The wayfinder map in `.scratch/bots/` has the Discord contract,
