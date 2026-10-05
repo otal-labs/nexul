@@ -222,12 +222,11 @@ muted skip, both end on a Done screen that says what was made, and a project
 with a repository waiting to deploy shows the way back to deploying it. The
 map is in `.scratch/project-paths/`.
 
-Parked until the repository migration lands: **bots**, webhook-driven bots
-that post into any conversation with Discord's payload and get their own tab
-in Settings. The wayfinder map in `.scratch/bots/` has the Discord contract,
-the bot model, and the URL and limits decided; it resumes with the mentions
-and notifications ticket, then the two prototypes, the surfaces walk, and the
-spec.
+Planned: **bots**, webhook-driven bots that post into any conversation with
+Discord's payload and get their own tab in Settings. The wayfinder map in
+`.scratch/bots/` has the Discord contract, the bot model, the URL and limits,
+and mentions decided; it resumes with the two prototypes, the surfaces walk,
+and the spec.
 
 ---
 
