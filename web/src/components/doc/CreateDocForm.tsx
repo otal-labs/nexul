@@ -5,6 +5,7 @@ import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { RichTextEditor } from "@/components/doc/RichTextEditor";
 import { createWithStagedFiles } from "@/components/doc/image/fileStage";
 import { dialogTitleInputClass } from "@/components/ticket/ticketFormPillStyles";
+import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
 import { useCreateDoc, useUpdateDoc } from "@/hooks/DocHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFileStage } from "@/hooks/useFileStage";
@@ -22,6 +23,7 @@ export const CreateDocForm = ({ defaultProjectId = "" }: CreateDocFormProps) => 
   const updateDoc = useUpdateDoc();
   const stage = useFileStage();
   const { data: projects } = useFetchProjects();
+  const { data: folders } = useFetchDocFolders(watch("project_id"));
 
   const ready = projects != null;
   const noProjects = ready && projects.length === 0;
@@ -36,10 +38,11 @@ export const CreateDocForm = ({ defaultProjectId = "" }: CreateDocFormProps) => 
     setValue("project_id", (defaultProjectId || projects[0]?.id) ?? "");
   }, [ready, projects, defaultProjectId, getValues, setValue]);
 
-  // The folder belongs to the project the dialog opened in; picking another project files the doc in that one's default.
+  // A folder left over from the previous project pick files the doc in the picked project's default folder.
   onSubmit(async ({ folder_id, ...input }) => {
+    const inProject = folders?.some((f) => f.id === folder_id) ?? false;
     const doc = await createWithStagedFiles(stage, input.body, {
-      create: (body) => createDoc.mutateAsync(input.project_id === defaultProjectId ? { ...input, body, folder_id } : { ...input, body }),
+      create: (body) => createDoc.mutateAsync(inProject ? { ...input, body, folder_id } : { ...input, body }),
       ownerOf: (created) => ({ doc_id: created.id }),
       save: (created, body) => updateDoc.mutateAsync({ id: created.id, title: created.title, body }),
     });
