@@ -95,6 +95,10 @@ git history, and anything durable it decided is an ADR.
   as rounds of question cards on the doc page and in the phone app, the
   client answers, and a round with no gaps left writes the doc. Wayfinder
   map charted 2026-10-04; carries the build.
+- `.scratch/project-paths/` — starting a project without deploying it:
+  "No repository yet" and "Attach without deploying" on the wizard's
+  Repository step, the early Done screens, and the way back to deploying.
+  Wayfinder map charted 2026-10-05; carries the build.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
