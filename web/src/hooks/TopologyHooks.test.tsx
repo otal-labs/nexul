@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router";
 
 import { useFetchTopology } from "@/hooks/TopologyHooks";
 import { useFlowStore } from "@/stores/flowStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 
@@ -38,6 +39,7 @@ describe("useFetchTopology", () => {
   beforeEach(() => {
     mocks.get.mockReset();
     useFlowStore.setState({ nodes: [], edges: [], selectedNodeId: null });
+    useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
   });
 
   it("fetches the canvas and applies it to the flow store", async () => {
@@ -49,7 +51,7 @@ describe("useFetchTopology", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    expect(mocks.get).toHaveBeenCalledWith("/api/topology", { params: { environment: "default" } });
+    expect(mocks.get).toHaveBeenCalledWith("/api/topology", { params: { workspace: "ws-1" } });
     await screen.findByText("loaded");
     await vi.waitFor(() => {
       expect(screen.getByTestId("nodes").textContent).toBe("1");
@@ -68,5 +70,29 @@ describe("useFetchTopology", () => {
       </QueryClientProvider>,
     );
     await screen.findByText("error");
+  });
+});
+
+describe("useFetchTopology across workspaces", () => {
+  beforeEach(() => {
+    mocks.get.mockReset();
+    useWorkspaceStore.getState().selectWorkspace("ws-2", "other");
+    useFlowStore.setState({ workspaceId: "ws-1", nodes: canvas.nodes as never, edges: [], selectedNodeId: null });
+  });
+
+  it("stays pending until the store holds the selected workspace's canvas, never the previous one's", async () => {
+    mocks.get.mockResolvedValue({ data: { schema_version: 2, nodes: [], edges: [] } });
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <Harness />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(screen.getByTestId("status").textContent).toBe("loading");
+    expect(mocks.get).toHaveBeenCalledWith("/api/topology", { params: { workspace: "ws-2" } });
+    await screen.findByText("loaded");
+    expect(useFlowStore.getState().workspaceId).toBe("ws-2");
+    expect(screen.getByTestId("nodes").textContent).toBe("0");
   });
 });

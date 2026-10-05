@@ -10,39 +10,35 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-// MCPTools returns the topology tools: read the canvas, and change its hand-drawn nodes and edges.
+// MCPTools returns the topology tools: read a workspace's canvas, and change its hand-drawn nodes and edges.
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{topologyGetTool(s), topologyUpdateTool(s)}
 }
 
 // canvasResult is the canvas without the saved camera position, which only the web app uses.
 type canvasResult struct {
-	Environment string `json:"environment"`
+	WorkspaceID string `json:"workspace_id"`
 	Nodes       []Node `json:"nodes"`
 	Edges       []Edge `json:"edges"`
 }
 
 type topologyGetIn struct {
-	Environment string `json:"environment,omitempty" jsonschema:"The canvas to read. Omit it for the workspace canvas, the one the web app draws."`
+	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace whose canvas to read, by id from workspace_list."`
 }
 
 func topologyGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("topology_get", "Get topology",
-		"Returns the infrastructure map: service nodes (one per stack service, kept in sync with deploys, with live "+
-			"status and address), network and external nodes people drew, and the typed relations between them. "+
-			"Use it to understand how services connect, and topology_update to draw on it. Any environment other "+
-			"than the workspace canvas must already have a saved canvas, so a mistyped name is an error.",
+		"Returns a workspace's infrastructure map: service nodes (one per container of the workspace's stacks, plus "+
+			"the gateways routing to them, kept in sync with deploys, with live status and address), network and "+
+			"external nodes people drew, and the typed relations between them. Each workspace has its own canvas. "+
+			"Use it to understand how services connect, and topology_update to draw on it.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in topologyGetIn) (any, error) {
-			env, err := resolveEnvironment(ctx, s, in.Environment)
+			c, err := s.Get(ctx, in.WorkspaceID)
 			if err != nil {
 				return nil, err
 			}
-			c, err := s.Get(ctx, env)
-			if err != nil {
-				return nil, err
-			}
-			return toCanvasResult(env, c), nil
+			return toCanvasResult(in.WorkspaceID, c), nil
 		})
 }
 
@@ -64,7 +60,7 @@ type edgeIn struct {
 }
 
 type topologyUpdateIn struct {
-	Environment   string   `json:"environment,omitempty" jsonschema:"The canvas to change. Omit it for the workspace canvas, the one the web app draws."`
+	WorkspaceID   string   `json:"workspace_id" jsonschema:"The workspace whose canvas to change, by id from workspace_list."`
 	AddNodes      []nodeIn `json:"add_nodes,omitempty" jsonschema:"Network or external nodes to add."`
 	RemoveNodeIDs []string `json:"remove_node_ids,omitempty" jsonschema:"Ids of network or external nodes to remove, with every edge that touches them."`
 	AddEdges      []edgeIn `json:"add_edges,omitempty" jsonschema:"Relations to add between existing or newly added nodes."`
@@ -85,47 +81,41 @@ func topologyUpdateTool(s *Service) mcptool.Tool {
 			"failure stops the rest and the error lists what was already applied. Returns the updated canvas.",
 		mcptool.Hints{Local: true},
 		func(ctx context.Context, in topologyUpdateIn) (any, error) {
-			env, err := resolveEnvironment(ctx, s, in.Environment)
-			if err != nil {
-				return nil, err
-			}
-			changes := topologyChanges(ctx, s, env, in)
+			changes := topologyChanges(ctx, s, in.WorkspaceID, in)
 			if len(changes) == 0 {
 				return nil, fmt.Errorf("%w: nothing to change; send add_nodes, remove_node_ids, add_edges, or remove_edge_ids", apperrs.ErrInvalid)
 			}
 			var c *Canvas
+			var err error
 			for i, ch := range changes {
 				if c, err = ch.apply(); err != nil {
 					return nil, appliedBefore(err, changes[:i])
 				}
 			}
-			return toCanvasResult(env, c), nil
+			return toCanvasResult(in.WorkspaceID, c), nil
 		})
 }
 
-func topologyChanges(ctx context.Context, s *Service, env string, in topologyUpdateIn) []change {
+func topologyChanges(ctx context.Context, s *Service, workspaceID string, in topologyUpdateIn) []change {
 	var out []change
 	for _, id := range in.RemoveEdgeIDs {
-		out = append(out, change{"removed edge " + id, func() (*Canvas, error) { return s.RemoveEdge(ctx, env, id) }})
+		out = append(out, change{"removed edge " + id, func() (*Canvas, error) { return s.RemoveEdge(ctx, workspaceID, id) }})
 	}
 	for _, id := range in.RemoveNodeIDs {
-		out = append(out, change{"removed node " + id, func() (*Canvas, error) { return s.RemoveNode(ctx, env, id) }})
+		out = append(out, change{"removed node " + id, func() (*Canvas, error) { return s.RemoveNode(ctx, workspaceID, id) }})
 	}
 	for _, n := range in.AddNodes {
-		out = append(out, change{"added node " + n.ID, func() (*Canvas, error) { return addNode(ctx, s, env, n) }})
+		out = append(out, change{"added node " + n.ID, func() (*Canvas, error) { return addNode(ctx, s, workspaceID, n) }})
 	}
 	for _, e := range in.AddEdges {
 		edge := Edge{ID: e.ID, Type: "relation", Source: e.Source, Target: e.Target, Data: EdgeData{Kind: RelationKind(e.Kind)}}
-		out = append(out, change{"added edge " + e.ID, func() (*Canvas, error) { return s.AddEdge(ctx, env, edge) }})
+		out = append(out, change{"added edge " + e.ID, func() (*Canvas, error) { return s.AddEdge(ctx, workspaceID, edge) }})
 	}
 	return out
 }
 
-func addNode(ctx context.Context, s *Service, env string, n nodeIn) (*Canvas, error) {
-	if NodeType(n.Type) == NodeService {
-		return nil, fmt.Errorf("%w: node %q: service nodes are managed from stacks; add a network or external node", apperrs.ErrInvalid, n.ID)
-	}
-	return s.AddNode(ctx, env, Node{
+func addNode(ctx context.Context, s *Service, workspaceID string, n nodeIn) (*Canvas, error) {
+	return s.AddNode(ctx, workspaceID, Node{
 		ID: n.ID, Type: NodeType(n.Type), Position: Position{X: n.X, Y: n.Y},
 		Data: NodeData{Name: n.Name, Label: ExternalLabel(n.Label), URL: n.URL},
 	})
@@ -145,21 +135,6 @@ func appliedBefore(err error, done []change) error {
 	return fmt.Errorf("%w (already applied: %s)", err, strings.Join(names, ", "))
 }
 
-// resolveEnvironment refuses a never-saved environment, so a mistyped name is an error rather than an empty canvas.
-func resolveEnvironment(ctx context.Context, s *Service, env string) (string, error) {
-	if env == "" || env == DefaultEnvironment {
-		return DefaultEnvironment, nil
-	}
-	ok, err := s.HasCanvas(ctx, env)
-	if err != nil {
-		return "", err
-	}
-	if !ok {
-		return "", fmt.Errorf("%w: no topology is saved for environment %q; omit environment for the workspace canvas", apperrs.ErrNotFound, env)
-	}
-	return env, nil
-}
-
-func toCanvasResult(env string, c *Canvas) canvasResult {
-	return canvasResult{Environment: env, Nodes: c.Nodes, Edges: c.Edges}
+func toCanvasResult(workspaceID string, c *Canvas) canvasResult {
+	return canvasResult{WorkspaceID: workspaceID, Nodes: c.Nodes, Edges: c.Edges}
 }

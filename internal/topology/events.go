@@ -11,5 +11,7 @@ func Topics() []string {
 // UpdatedEvent is topology.updated's payload; field names are part of the published contract (ADR 0044), additive-only.
 type UpdatedEvent struct {
 	Environment string `json:"environment"`
+	// WorkspaceID names the workspace whose canvas changed; empty for the service registry deploys keep.
+	WorkspaceID string `json:"workspace_id,omitempty"`
 	Canvas      Canvas `json:"canvas"`
 }

@@ -41,7 +41,7 @@ type liveRule func(ctx context.Context, a liveAudience, raw json.RawMessage) boo
 // Presence and account frames name nobody but an id; the page that receives them refetches through its own checks.
 const topicPresenceChanged = "account.presence_changed"
 
-// topicTopologyCanvas is the frame the canvas consumer pushes with the whole stored canvas.
+// topicTopologyCanvas is the frame the canvas consumer pushes with one workspace's whole canvas.
 const topicTopologyCanvas = "topology"
 
 // liveRules names the read each pushed topic takes; a topic without a rule reaches nobody.
@@ -149,7 +149,7 @@ var liveRules = map[string]liveRule{
 	runner.TopicDeployStatusChanged:  deployFrame,
 	runner.TopicRunnerConnected:      anywhere(permissions.RunnersRead),
 	runner.TopicRunnerDisconnected:   anywhere(permissions.RunnersRead),
-	topicTopologyCanvas:              anywhere(permissions.TopologyRead),
+	topicTopologyCanvas:              topologyCanvasFrame,
 	dns.TopicRecordChanged:           anywhere(permissions.DNSRead),
 	dns.TopicTunnelChanged:           anywhere(permissions.DNSRead),
 	dns.TopicGatewayChanged:          anywhere(permissions.DNSRead),
@@ -220,6 +220,13 @@ func workspaceFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bo
 		WorkspaceID string `json:"workspace_id"`
 	}
 	return decode(raw, &p) && a.access.Require(ctx, p.WorkspaceID, permissions.Member) == nil
+}
+
+func topologyCanvasFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		WorkspaceID string `json:"workspace_id"`
+	}
+	return decode(raw, &p) && p.WorkspaceID != "" && a.access.Require(ctx, p.WorkspaceID, permissions.TopologyRead) == nil
 }
 
 func anywhere(action permissions.Action) liveRule {

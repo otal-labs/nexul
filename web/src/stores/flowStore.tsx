@@ -10,11 +10,13 @@ import {
 
 // No @xyflow/react import here, on purpose: it would land xyflow's runtime in the eager bundle.
 export type FlowStore = {
+  // The workspace whose canvas the store holds, so a switch never shows or saves the previous one's.
+  workspaceId: string;
   nodes: TopologyNode[];
   edges: RelationEdge[];
   viewport: Viewport | null;
   selectedNodeId: string | null;
-  setCanvas: (canvas: Canvas) => void;
+  setCanvas: (canvas: Canvas, workspaceId: string) => void;
   setViewport: (viewport: Viewport) => void;
   toCanvas: () => Canvas;
   setNodes: (nodes: TopologyNode[]) => void;
@@ -38,13 +40,15 @@ const toCanvasNode = ({ id, type, position, data }: TopologyNode): Canvas["nodes
 }) as Canvas["nodes"][number];
 
 export const useFlowStore = create<FlowStore>((set, get) => ({
+  workspaceId: "",
   nodes: [],
   edges: [],
   viewport: null,
   selectedNodeId: null,
 
-  setCanvas: (canvas) =>
+  setCanvas: (canvas, workspaceId) =>
     set({
+      workspaceId,
       viewport: canvas.viewport ?? null,
       nodes: (canvas.nodes ?? []).map(toFlowNode),
       edges: (canvas.edges ?? []).map(({ id, source, target, data }) => ({

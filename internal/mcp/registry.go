@@ -162,10 +162,10 @@ func ticketResource(s *tickets.Service) resource {
 
 func topologyResource(s *topology.Service) resource {
 	return resource{
-		uri: "topology://current", name: "topology", title: "Current topology", mimeType: "application/json",
-		description: "The topology canvas of the default environment, the same content topology_get returns.",
-		read: func(ctx context.Context, _ string) (string, error) {
-			c, err := s.Get(ctx, topology.DefaultEnvironment)
+		uri: "topology://{id}", name: "topology", title: "Topology", mimeType: "application/json",
+		description: "A workspace's topology canvas, by the workspace's id, the same content topology_get returns.",
+		read: func(ctx context.Context, workspaceID string) (string, error) {
+			c, err := s.Get(ctx, workspaceID)
 			if err != nil {
 				return "", err
 			}

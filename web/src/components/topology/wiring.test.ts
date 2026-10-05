@@ -121,6 +121,14 @@ describe("deriveWiring", () => {
     expect(edges.filter((e) => e.source === "svc-cf")).toHaveLength(2);
   });
 
+  it("shows only the hostnames a shared gateway routes to services on this canvas", () => {
+    const elsewhere = { ...exposure, id: "exp-2", hostname: "other.example.com", service_id: "svc-other" };
+    const { nodes, hosts } = deriveWiring(stored, containers, stacks, [gateway], [exposure, elsewhere]);
+    const gw = nodes.find((n) => n.id === "svc-cf");
+    expect(gw?.type === "gateway" && gw.data.routes.map((r) => r.hostname)).toEqual(["llmtested.example.com"]);
+    expect(hosts.map((h) => h.data.hostname)).toEqual(["llmtested.example.com"]);
+  });
+
   it("resolves a canvas and gateway saved with stack ids to the stack's container", () => {
     // Before containers existed a node's service_id was the stack id; the container that replaced it has its own.
     const oldNodes = [serviceNode("stack-cf", "cloudflared-local"), serviceNode("stack-1", "hello-api")];

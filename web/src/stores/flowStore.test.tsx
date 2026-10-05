@@ -37,7 +37,7 @@ describe("useFlowStore", () => {
   });
 
   it("loads a canvas into nodes and edges", () => {
-    useFlowStore.getState().setCanvas(canvas);
+    useFlowStore.getState().setCanvas(canvas, "ws-1");
     const { nodes, edges } = useFlowStore.getState();
     expect(nodes).toHaveLength(1);
     expect(nodes[0]?.id).toBe("svc-api");
@@ -45,7 +45,7 @@ describe("useFlowStore", () => {
   });
 
  it("serializes nodes and edges back to the stored canvas shape", () => {
-    useFlowStore.getState().setCanvas(canvas);
+    useFlowStore.getState().setCanvas(canvas, "ws-1");
     const out = useFlowStore.getState().toCanvas();
     expect(out.schema_version).toBe(2);
     expect(out.nodes[0]?.data.name).toBe("api-gateway");
@@ -53,17 +53,17 @@ describe("useFlowStore", () => {
   });
 
   it("keeps the viewport with the canvas and only writes it back once set", () => {
-    useFlowStore.getState().setCanvas({ schema_version: 2, nodes: [node], edges: [] });
+    useFlowStore.getState().setCanvas({ schema_version: 2, nodes: [node], edges: [] }, "ws-1");
     expect(useFlowStore.getState().viewport).toBeNull();
     expect(useFlowStore.getState().toCanvas()).not.toHaveProperty("viewport");
     useFlowStore.getState().setViewport({ x: 10, y: -20, zoom: 0.75 });
     expect(useFlowStore.getState().toCanvas().viewport).toEqual({ x: 10, y: -20, zoom: 0.75 });
-    useFlowStore.getState().setCanvas({ ...canvas, viewport: { x: 1, y: 2, zoom: 1 } });
+    useFlowStore.getState().setCanvas({ ...canvas, viewport: { x: 1, y: 2, zoom: 1 } }, "ws-1");
     expect(useFlowStore.getState().viewport).toEqual({ x: 1, y: 2, zoom: 1 });
   });
 
   it("adds a relation edge on connect", () => {
-    useFlowStore.getState().setCanvas({ schema_version: 2, nodes: [node], edges: [] });
+    useFlowStore.getState().setCanvas({ schema_version: 2, nodes: [node], edges: [] }, "ws-1");
     onConnect({
       source: "svc-api",
       target: "svc-db",
@@ -88,14 +88,14 @@ describe("useFlowStore", () => {
       schema_version: 2,
       nodes: null as unknown as never[],
       edges: null as unknown as never[],
-    });
+    }, "ws-1");
     const { nodes, edges } = useFlowStore.getState();
     expect(nodes).toHaveLength(0);
     expect(edges).toHaveLength(0);
   });
 
   it("replaces nodes via setNodes", () => {
-    useFlowStore.getState().setCanvas(canvas);
+    useFlowStore.getState().setCanvas(canvas, "ws-1");
     const moved = { ...node, position: { x: 10, y: 20 } };
     useFlowStore.getState().setNodes([moved]);
     expect(useFlowStore.getState().nodes[0]?.position).toEqual({ x: 10, y: 20 });

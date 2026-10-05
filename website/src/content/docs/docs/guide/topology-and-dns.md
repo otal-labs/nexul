@@ -9,7 +9,7 @@ sidebar:
 
 Topology is the map of your infrastructure, drawn as a canvas — every service, the docker network it runs on, and how traffic reaches it. The canvas is a map, not a controller: service nodes, networks, gateway routes and hostnames are derived from what is actually deployed and cannot be edited on the canvas, and drawing an edge documents a relation without wiring anything. Only the hand-drawn nodes and positions are saved.
 
-Open it from **Topology** in the sidebar. The canvas is built from a few node kinds:
+Open it from **Topology** in the sidebar. Each workspace has its own canvas: it shows the services of that workspace's projects and the gateways that route traffic to them, and it keeps its own layout and drawings. The canvas is built from a few node kinds:
 
 - **Service nodes** — one per container, grouped inside the docker network it runs on.
 - **Gateway nodes** — the hub every route into your infrastructure passes through (see below).
@@ -22,7 +22,7 @@ Each node's accent and status badge reflect what the runner last observed — he
 
 A **gateway** is a Nexul-deployed service — a Cloudflare tunnel or a reverse proxy — that gives one docker network reachability from the internet. On the canvas, a gateway node is a hub: a hostname pill wires into it on the left, one row per exposure names where that traffic lands (`service:port`, with the container's observed address alongside it once known), and a wire goes out to the matching service node on the right.
 
-Manage gateways directly from Settings → DNS → Gateways, or let the DNS setup stepper create your first one for you. A gateway's stack belongs to the instance rather than to a project: it shows on Topology and in Settings → DNS, and its stack page links back to Topology.
+Manage gateways directly from Settings → DNS → Gateways, or let the DNS setup stepper create your first one for you. A gateway's stack belongs to the instance rather than to a project: it shows in Settings → DNS, and on the Topology of every workspace it routes a hostname into, listing there only that workspace's hostnames. Its stack page links back to Topology.
 
 ## Exposures
 

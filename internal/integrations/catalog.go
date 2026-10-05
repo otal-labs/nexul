@@ -187,6 +187,7 @@ var catalogSchemas = map[string]string{
 		"required": ["environment"],
 		"properties": {
 			"environment": {"type": "string"},
+			"workspace_id": {"type": "string"},
 			"canvas": {"type": "object"}
 		}
 	}`,

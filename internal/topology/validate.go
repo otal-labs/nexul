@@ -10,8 +10,11 @@ import (
 // CurrentSchemaVersion is the only canvas schema the backend accepts; bump it with a migration path when the schema evolves.
 const CurrentSchemaVersion = 2
 
-// DefaultEnvironment is the canonical environment key for callers (MCP tools, resources) that do not pass one.
-const DefaultEnvironment = "default"
+// registryKey stores the instance's service nodes; each workspace's canvas is stored under its id (ADR 0125).
+const registryKey = "default"
+
+// FirstWorkspaceID is the instance's first workspace (tenancy's default), which kept the canvas from before the split.
+const FirstWorkspaceID = "workspace-default"
 
 // Valid reports whether s is one of the serialized status strings.
 func (s ServiceStatus) Valid() bool {

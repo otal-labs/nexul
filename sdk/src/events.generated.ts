@@ -127,7 +127,7 @@ export interface EventPayloads {
   "ticket_type.created": { "ticket_type": Record<string, unknown>; };
   "ticket_type.deleted": { "ticket_type": Record<string, unknown>; };
   "ticket_type.updated": { "ticket_type": Record<string, unknown>; };
-  "topology.updated": { "environment": string; "canvas"?: Record<string, unknown>; };
+  "topology.updated": { "environment": string; "workspace_id"?: string; "canvas"?: Record<string, unknown>; };
   "voice.occupancy.changed": { "conversation_id": string; "occupants": { "identity": string; "name": string; }[]; "members_only"?: boolean; };
   "workspace.member.added": { "invitation_id"?: string; "user_id"?: string; "workspace_id"?: string; "actor_id"?: string; };
   "workspace.member.removed": { "user_id": string; "workspace_id": string; "actor_id"?: string; };
@@ -395,7 +395,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "ticket_type.created": {"ticket_type":{}},
   "ticket_type.deleted": {"ticket_type":{}},
   "ticket_type.updated": {"ticket_type":{}},
-  "topology.updated": {"environment":"fixture-environment","canvas":{}},
+  "topology.updated": {"environment":"fixture-environment","workspace_id":"fixture-workspace_id","canvas":{}},
   "voice.occupancy.changed": {"conversation_id":"fixture-conversation_id","occupants":[{"identity":"fixture-identity","name":"fixture-name"}],"members_only":false},
   "workspace.member.added": {"invitation_id":"fixture-invitation_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id"},
   "workspace.member.removed": {"user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id"},

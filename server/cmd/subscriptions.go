@@ -51,15 +51,13 @@ func topologyStackCreatedHandler(topoSvc *topology.Service) eventbus.Handler {
 				name = e.Stack.Name + "/" + svc.Name
 			}
 			status, address := containerNodeStatus(&svc, deploy.StatusPending)
-			_, err := topoSvc.AddNode(ctx, topology.DefaultEnvironment, topology.Node{
-				ID:   svc.ID,
-				Type: topology.NodeService,
+			_, err := topoSvc.AddServiceNode(ctx, topology.Node{
+				ID: svc.ID,
 				Data: topology.NodeData{
-					ServiceID: svc.ID,
-					Name:      name,
-					Runtime:   "docker",
-					Status:    status,
-					Address:   address,
+					Name:    name,
+					Runtime: "docker",
+					Status:  status,
+					Address: address,
 				},
 			})
 			if err != nil && !errors.Is(err, apperrs.ErrConflict) {
@@ -87,7 +85,7 @@ func topologyStackUpdatedHandler(deploySvc *deploy.Service, topoSvc *topology.Se
 			if len(services) > 1 {
 				name = e.Stack.Name + "/" + svc.Name
 			}
-			if _, err := topoSvc.RenameServiceNode(ctx, topology.DefaultEnvironment, svc.ID, name); err != nil {
+			if _, err := topoSvc.RenameServiceNode(ctx, svc.ID, name); err != nil {
 				return err
 			}
 		}
@@ -104,7 +102,7 @@ func topologyStackDeletedHandler(topoSvc *topology.Service) eventbus.Handler {
 			return apperrs.Fatal(fmt.Errorf("parse %s: %w", deploy.TopicStackDeleted, err))
 		}
 		for _, id := range e.ServiceIDs {
-			if _, err := topoSvc.RemoveServiceNode(ctx, topology.DefaultEnvironment, id); err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+			if _, err := topoSvc.RemoveServiceNode(ctx, id); err != nil && !errors.Is(err, apperrs.ErrNotFound) {
 				return err
 			}
 		}
@@ -135,7 +133,7 @@ func topologyDeployStatusHandler(deploySvc *deploy.Service, topoSvc *topology.Se
 		}
 		for _, svc := range services {
 			status, address := containerNodeStatus(svc, deploy.Status(d.Status))
-			if _, err := topoSvc.SetServiceNodeStatus(ctx, topology.DefaultEnvironment, svc.ID, status, address); err != nil {
+			if _, err := topoSvc.SetServiceNodeStatus(ctx, svc.ID, status, address); err != nil {
 				return err
 			}
 		}
@@ -381,14 +379,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	// A ticket entering done fires the built-in decisions check on the mover's or the developer's harness.
 	mustSubscribe(ctx, bus, "plays.decisions_check", tickets.TopicStatusChanged, "", svc.playsRunner.HandleTicketStatusChanged)
 
-	// A bad frame here only costs one live patch, so missing/wrong-shaped payloads are dropped rather than fatal.
-	mustSubscribe(ctx, bus, "topology.live_canvas", topology.TopicUpdated, " for live push", func(ctx context.Context, ev eventbus.Event) error {
-		var e topology.UpdatedEvent
-		if err := json.Unmarshal(ev.Payload, &e); err != nil {
-			return apperrs.Fatal(fmt.Errorf("parse %s: %w", topology.TopicUpdated, err))
-		}
-		return liveHub.Publish(ctx, topicTopologyCanvas, e.Canvas)
-	})
+	mustSubscribe(ctx, bus, "topology.live_canvas", topology.TopicUpdated, " for live push", topologyLiveHandler(svc.topoSvc, store.Workspaces, liveHub.Publish))
 
 	return liveHub, agentHandler
 }

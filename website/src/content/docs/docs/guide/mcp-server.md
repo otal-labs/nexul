@@ -140,7 +140,7 @@ with its contents: an image the agent can look at, a text file as text, and
 anything else as a base64 resource.
 
 **Resources** expose readable entities by URI, for attaching one to a
-conversation: `docs://{id}`, `tickets://{id}`, and `topology://current`.
+conversation: `docs://{id}`, `tickets://{id}`, and `topology://{id}`, where the id is a workspace's.
 
 **Prompts** template common workflows: `create_ticket_from_doc`,
 `deploy_and_watch_stack` (deploy and watch until healthy or failed),
