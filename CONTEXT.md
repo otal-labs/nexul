@@ -378,7 +378,8 @@ joining.
 
 **Topology**:
 The map of your infrastructure, drawn as a canvas. The canvas JSON *is* the
-infra model — not a picture of it.
+infra model — not a picture of it. Each workspace has its own: its projects'
+services, the gateways routing to them, and what its people drew.
 _Avoid_: Diagram, graph, architecture view
 
 **Base service**:
@@ -640,7 +641,7 @@ One capability, written `<domain>:<action>` where the action is `read`,
 declares for an act that is neither (`plays:run`, `memories:clone`,
 `roles:clone`, `docs:thread`, `docs:clone`, `docs:lock`, `stacks:logs`). One vocabulary for every actor: a role, a
 scoped token, and the agent are checked against the same values. Checked in
-the workspace the entity belongs to; runners, the topology, machines, DNS,
+the workspace the entity belongs to (a workspace's topology canvas in that workspace); runners, machines, DNS,
 connectors, the instance's own stacks, and the instance itself (its settings,
 upgrades, accounts, workspace creation), which belong to none, against every
 workspace the caller is in and not a Restricted member of. The Owner of any workspace therefore holds every

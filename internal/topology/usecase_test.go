@@ -13,6 +13,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 type fakeRepo struct {
@@ -97,6 +98,28 @@ func newTestService(repo *fakeRepo, bus *fakeBus) *Service {
 	return NewService(repo)
 }
 
+// seed stores c as workspace "prod"'s canvas and its service nodes in the registry, as deploys would have.
+func seed(repo *fakeRepo, c *Canvas) error {
+	if err := repo.Save(context.Background(), registryKey, c); err != nil {
+		return err
+	}
+	return repo.Save(context.Background(), "prod", c)
+}
+
+// fakeScope shows each workspace the service ids listed for it.
+type fakeScope struct {
+	ids map[string][]string
+	err error
+}
+
+func (f fakeScope) Services(_ context.Context, workspaceID string) (map[string]bool, error) {
+	out := map[string]bool{}
+	for _, id := range f.ids[workspaceID] {
+		out[id] = true
+	}
+	return out, f.err
+}
+
 func validNode() Node {
 	return Node{
 		ID:       "svc-api",
@@ -133,7 +156,7 @@ func validEdge() Edge {
 }
 
 func TestGet(t *testing.T) {
-	t.Run("empty environment is invalid", func(t *testing.T) {
+	t.Run("empty workspace is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeBus())
 		_, err := s.Get(context.Background(), "")
 		require.Error(t, err)
@@ -150,7 +173,7 @@ func TestGet(t *testing.T) {
 	t.Run("returns stored canvas", func(t *testing.T) {
 		repo := newFakeRepo()
 		c := &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNode()}}
-		require.NoError(t, repo.Save(context.Background(), "prod", c))
+		require.NoError(t, seed(repo, c))
 		s := newTestService(repo, newFakeBus())
 
 		got, err := s.Get(context.Background(), "prod")
@@ -169,7 +192,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	t.Run("empty environment is invalid", func(t *testing.T) {
+	t.Run("empty workspace is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeBus())
 		_, err := s.Update(context.Background(), "", &Canvas{SchemaVersion: CurrentSchemaVersion})
 		require.Error(t, err)
@@ -197,13 +220,14 @@ func TestUpdate(t *testing.T) {
 
 		ev := repo.lastUpdated()
 		assert.Equal(t, "prod", ev.Environment)
+		assert.Equal(t, "prod", ev.WorkspaceID)
 		assert.Len(t, ev.Canvas.Nodes, 2)
 	})
 	t.Run("merges stored service nodes into the incoming canvas", func(t *testing.T) {
 		repo := newFakeRepo()
 		bus := newFakeBus()
 		s := newTestService(repo, bus)
-		require.NoError(t, repo.Save(context.Background(), "prod", &Canvas{
+		require.NoError(t, seed(repo, &Canvas{
 			SchemaVersion: CurrentSchemaVersion,
 			Nodes:         []Node{validNode()},
 		}))
@@ -227,7 +251,7 @@ func TestUpdate(t *testing.T) {
 	t.Run("ignores client-supplied service node names", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo, newFakeBus())
-		require.NoError(t, repo.Save(context.Background(), "prod", &Canvas{
+		require.NoError(t, seed(repo, &Canvas{
 			SchemaVersion: CurrentSchemaVersion,
 			Nodes:         []Node{validNode()},
 		}))
@@ -255,35 +279,62 @@ func TestUpdate(t *testing.T) {
 func TestAddNode(t *testing.T) {
 	t.Run("invalid node is rejected", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeBus())
-		_, err := s.AddNode(context.Background(), "prod", Node{ID: "svc-api", Type: NodeService})
+		_, err := s.AddNode(context.Background(), "prod", Node{ID: "net-x", Type: NodeNetwork})
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
+	})
+	t.Run("a service node is refused, since stacks bring their own", func(t *testing.T) {
+		s := newTestService(newFakeRepo(), newFakeBus())
+		_, err := s.AddNode(context.Background(), "prod", validNode())
+		assert.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
 	t.Run("adds node to empty canvas", func(t *testing.T) {
 		repo := newFakeRepo()
 		bus := newFakeBus()
 		s := newTestService(repo, bus)
 
-		c, err := s.AddNode(context.Background(), "prod", validNode())
+		c, err := s.AddNode(context.Background(), "prod", validNetworkNode())
 		require.NoError(t, err)
 		require.Len(t, c.Nodes, 1)
-		assert.Equal(t, "svc-api", c.Nodes[0].ID)
+		assert.Equal(t, "net-main", c.Nodes[0].ID)
 		assert.Len(t, repo.lastUpdated().Canvas.Nodes, 1)
 	})
 	t.Run("duplicate node is a conflict", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo, newFakeBus())
-		require.NoError(t, s.repo.Save(context.Background(), "prod", &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNode()}}))
+		require.NoError(t, seed(repo, &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNetworkNode()}}))
 
-		_, err := s.AddNode(context.Background(), "prod", validNode())
+		_, err := s.AddNode(context.Background(), "prod", validNetworkNode())
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrConflict))
 	})
-	t.Run("edge referencing added node stays valid", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		c, err := s.AddNode(context.Background(), "prod", validNode())
+}
+
+func TestAddServiceNode(t *testing.T) {
+	t.Run("anchors the node in the registry", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo, newFakeBus())
+		_, err := s.AddServiceNode(t.Context(), Node{ID: "svc-api", Data: NodeData{Name: "api", Status: ServiceRunning}})
 		require.NoError(t, err)
-		assert.Equal(t, CurrentSchemaVersion, c.SchemaVersion)
+
+		stored, err := repo.Get(t.Context(), registryKey)
+		require.NoError(t, err)
+		require.Len(t, stored.Nodes, 1)
+		assert.Equal(t, NodeService, stored.Nodes[0].Type)
+		assert.Equal(t, "svc-api", stored.Nodes[0].Data.ServiceID)
+		assert.Empty(t, repo.lastUpdated().WorkspaceID, "a registry change names no workspace")
+	})
+	t.Run("a second anchor for the same service is a conflict", func(t *testing.T) {
+		s := newTestService(newFakeRepo(), newFakeBus())
+		_, err := s.AddServiceNode(t.Context(), Node{ID: "svc-api", Data: NodeData{Name: "api", Status: ServiceRunning}})
+		require.NoError(t, err)
+		_, err = s.AddServiceNode(t.Context(), Node{ID: "svc-api", Data: NodeData{Name: "api", Status: ServiceRunning}})
+		assert.ErrorIs(t, err, apperrs.ErrConflict)
+	})
+	t.Run("a node without a name is invalid", func(t *testing.T) {
+		s := newTestService(newFakeRepo(), newFakeBus())
+		_, err := s.AddServiceNode(t.Context(), Node{ID: "svc-api", Data: NodeData{Status: ServiceRunning}})
+		assert.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
 }
 
@@ -291,7 +342,7 @@ func TestRemoveNode(t *testing.T) {
 	t.Run("missing node is not found", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo, newFakeBus())
-		require.NoError(t, s.repo.Save(context.Background(), "prod", &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNode()}}))
+		require.NoError(t, seed(repo, &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNode()}}))
 
 		_, err := s.RemoveNode(context.Background(), "prod", "nope")
 		require.Error(t, err)
@@ -312,7 +363,7 @@ func TestRemoveNode(t *testing.T) {
 			Nodes:         []Node{validNetworkNode(), {ID: "net-2", Type: NodeNetwork, Position: Position{X: 1, Y: 1}, Data: NodeData{Name: "two"}}},
 			Edges:         []Edge{{ID: "edge-1", Source: "net-main", Target: "net-2", Type: "relation", Data: EdgeData{Kind: KindDependsOn}}},
 		}
-		require.NoError(t, s.repo.Save(context.Background(), "prod", c))
+		require.NoError(t, seed(repo, c))
 
 		got, err := s.RemoveNode(context.Background(), "prod", "net-main")
 		require.NoError(t, err)
@@ -324,7 +375,7 @@ func TestRemoveNode(t *testing.T) {
 	t.Run("service node removal is rejected", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo, newFakeBus())
-		require.NoError(t, s.repo.Save(context.Background(), "prod", &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNode()}}))
+		require.NoError(t, seed(repo, &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNode()}}))
 
 		_, err := s.RemoveNode(context.Background(), "prod", "svc-api")
 		require.Error(t, err)
@@ -353,7 +404,7 @@ func TestAddEdge(t *testing.T) {
 			SchemaVersion: CurrentSchemaVersion,
 			Nodes:         []Node{validNode(), {ID: "svc-db", Type: NodeService, Position: Position{X: 1, Y: 1}, Data: NodeData{ServiceID: "svc-db", Name: "db", Runtime: "postgres", Status: ServiceHealthy}}},
 		}
-		require.NoError(t, s.repo.Save(context.Background(), "prod", c))
+		require.NoError(t, seed(repo, c))
 
 		got, err := s.AddEdge(context.Background(), "prod", validEdge())
 		require.NoError(t, err)
@@ -369,7 +420,7 @@ func TestAddEdge(t *testing.T) {
 			Nodes:         []Node{validNode(), {ID: "svc-db", Type: NodeService, Position: Position{X: 1, Y: 1}, Data: NodeData{ServiceID: "svc-db", Name: "db", Runtime: "postgres", Status: ServiceHealthy}}},
 			Edges:         []Edge{validEdge()},
 		}
-		require.NoError(t, s.repo.Save(context.Background(), "prod", c))
+		require.NoError(t, seed(repo, c))
 
 		_, err := s.AddEdge(context.Background(), "prod", validEdge())
 		require.Error(t, err)
@@ -381,7 +432,7 @@ func TestRemoveEdge(t *testing.T) {
 	t.Run("missing edge is not found", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo, newFakeBus())
-		require.NoError(t, s.repo.Save(context.Background(), "prod", &Canvas{SchemaVersion: CurrentSchemaVersion}))
+		require.NoError(t, seed(repo, &Canvas{SchemaVersion: CurrentSchemaVersion}))
 
 		_, err := s.RemoveEdge(context.Background(), "prod", "nope")
 		require.Error(t, err)
@@ -396,7 +447,7 @@ func TestRemoveEdge(t *testing.T) {
 			Nodes:         []Node{validNode(), {ID: "svc-db", Type: NodeService, Position: Position{X: 1, Y: 1}, Data: NodeData{ServiceID: "svc-db", Name: "db", Runtime: "postgres", Status: ServiceHealthy}}},
 			Edges:         []Edge{validEdge()},
 		}
-		require.NoError(t, s.repo.Save(context.Background(), "prod", c))
+		require.NoError(t, seed(repo, c))
 
 		got, err := s.RemoveEdge(context.Background(), "prod", "edge-1")
 		require.NoError(t, err)
@@ -408,13 +459,13 @@ func TestRemoveEdge(t *testing.T) {
 func TestRenameServiceNode(t *testing.T) {
 	t.Run("missing service id is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeBus())
-		_, err := s.RenameServiceNode(context.Background(), "prod", "", "api")
+		_, err := s.RenameServiceNode(context.Background(), "", "api")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 	t.Run("missing name is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeBus())
-		_, err := s.RenameServiceNode(context.Background(), "prod", "svc-api", "")
+		_, err := s.RenameServiceNode(context.Background(), "svc-api", "")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
@@ -422,9 +473,9 @@ func TestRenameServiceNode(t *testing.T) {
 		repo := newFakeRepo()
 		bus := newFakeBus()
 		s := newTestService(repo, bus)
-		require.NoError(t, repo.Save(context.Background(), "prod", &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNode()}}))
+		require.NoError(t, repo.Save(context.Background(), registryKey, &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNode()}}))
 
-		got, err := s.RenameServiceNode(context.Background(), "prod", "svc-api", "gateway")
+		got, err := s.RenameServiceNode(context.Background(), "svc-api", "gateway")
 		require.NoError(t, err)
 		require.Len(t, got.Nodes, 1)
 		assert.Equal(t, "gateway", got.Nodes[0].Data.Name)
@@ -434,9 +485,9 @@ func TestRenameServiceNode(t *testing.T) {
 		repo := newFakeRepo()
 		bus := newFakeBus()
 		s := newTestService(repo, bus)
-		require.NoError(t, repo.Save(context.Background(), "prod", &Canvas{SchemaVersion: CurrentSchemaVersion}))
+		require.NoError(t, repo.Save(context.Background(), registryKey, &Canvas{SchemaVersion: CurrentSchemaVersion}))
 
-		got, err := s.RenameServiceNode(context.Background(), "prod", "svc-ghost", "x")
+		got, err := s.RenameServiceNode(context.Background(), "svc-ghost", "x")
 		require.NoError(t, err)
 		assert.Empty(t, got.Nodes)
 	})
@@ -445,13 +496,13 @@ func TestRenameServiceNode(t *testing.T) {
 func TestSetServiceNodeStatus(t *testing.T) {
 	t.Run("missing service id is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeBus())
-		_, err := s.SetServiceNodeStatus(context.Background(), "prod", "", ServiceHealthy, "")
+		_, err := s.SetServiceNodeStatus(context.Background(), "", ServiceHealthy, "")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 	t.Run("bad status is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeBus())
-		_, err := s.SetServiceNodeStatus(context.Background(), "prod", "svc-api", ServiceStatus("bogus"), "")
+		_, err := s.SetServiceNodeStatus(context.Background(), "svc-api", ServiceStatus("bogus"), "")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
@@ -459,9 +510,9 @@ func TestSetServiceNodeStatus(t *testing.T) {
 		repo := newFakeRepo()
 		bus := newFakeBus()
 		s := newTestService(repo, bus)
-		require.NoError(t, repo.Save(context.Background(), "prod", &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNode()}}))
+		require.NoError(t, repo.Save(context.Background(), registryKey, &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNode()}}))
 
-		got, err := s.SetServiceNodeStatus(context.Background(), "prod", "svc-api", ServiceFailed, "")
+		got, err := s.SetServiceNodeStatus(context.Background(), "svc-api", ServiceFailed, "")
 		require.NoError(t, err)
 		require.Len(t, got.Nodes, 1)
 		assert.Equal(t, ServiceFailed, got.Nodes[0].Data.Status)
@@ -471,9 +522,9 @@ func TestSetServiceNodeStatus(t *testing.T) {
 		repo := newFakeRepo()
 		bus := newFakeBus()
 		s := newTestService(repo, bus)
-		require.NoError(t, repo.Save(context.Background(), "prod", &Canvas{SchemaVersion: CurrentSchemaVersion}))
+		require.NoError(t, repo.Save(context.Background(), registryKey, &Canvas{SchemaVersion: CurrentSchemaVersion}))
 
-		got, err := s.SetServiceNodeStatus(context.Background(), "prod", "svc-ghost", ServiceHealthy, "")
+		got, err := s.SetServiceNodeStatus(context.Background(), "svc-ghost", ServiceHealthy, "")
 		require.NoError(t, err)
 		assert.Empty(t, got.Nodes)
 	})
@@ -481,9 +532,9 @@ func TestSetServiceNodeStatus(t *testing.T) {
 		repo := newFakeRepo()
 		bus := newFakeBus()
 		s := newTestService(repo, bus)
-		require.NoError(t, repo.Save(context.Background(), "prod", &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNode()}}))
+		require.NoError(t, repo.Save(context.Background(), registryKey, &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNode()}}))
 
-		got, err := s.SetServiceNodeStatus(context.Background(), "prod", "svc-api", ServiceHealthy, "172.18.0.4")
+		got, err := s.SetServiceNodeStatus(context.Background(), "svc-api", ServiceHealthy, "172.18.0.4")
 		require.NoError(t, err)
 		require.Len(t, got.Nodes, 1)
 		assert.Equal(t, "172.18.0.4", got.Nodes[0].Data.Address)
@@ -494,9 +545,9 @@ func TestSetServiceNodeStatus(t *testing.T) {
 		s := newTestService(repo, bus)
 		node := validNode()
 		node.Data.Address = "172.18.0.4"
-		require.NoError(t, repo.Save(context.Background(), "prod", &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{node}}))
+		require.NoError(t, repo.Save(context.Background(), registryKey, &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{node}}))
 
-		got, err := s.SetServiceNodeStatus(context.Background(), "prod", "svc-api", ServiceFailed, "")
+		got, err := s.SetServiceNodeStatus(context.Background(), "svc-api", ServiceFailed, "")
 		require.NoError(t, err)
 		require.Len(t, got.Nodes, 1)
 		assert.Equal(t, "172.18.0.4", got.Nodes[0].Data.Address, "a failed redeploy must not wipe the last known address")
@@ -506,7 +557,7 @@ func TestSetServiceNodeStatus(t *testing.T) {
 func TestRemoveServiceNode(t *testing.T) {
 	t.Run("missing service id is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeBus())
-		_, err := s.RemoveServiceNode(context.Background(), "prod", "")
+		_, err := s.RemoveServiceNode(context.Background(), "")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
@@ -519,9 +570,9 @@ func TestRemoveServiceNode(t *testing.T) {
 			Nodes:         []Node{validNode(), validNetworkNode()},
 			Edges:         []Edge{{ID: "edge-1", Source: "svc-api", Target: "net-main", Type: "relation", Data: EdgeData{Kind: KindConnectsTo}}},
 		}
-		require.NoError(t, repo.Save(context.Background(), "prod", c))
+		require.NoError(t, repo.Save(context.Background(), registryKey, c))
 
-		got, err := s.RemoveServiceNode(context.Background(), "prod", "svc-api")
+		got, err := s.RemoveServiceNode(context.Background(), "svc-api")
 		require.NoError(t, err)
 		require.Len(t, got.Nodes, 1)
 		assert.Equal(t, "net-main", got.Nodes[0].ID)
@@ -531,9 +582,9 @@ func TestRemoveServiceNode(t *testing.T) {
 	t.Run("missing node is a no-op", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo, newFakeBus())
-		require.NoError(t, repo.Save(context.Background(), "prod", &Canvas{SchemaVersion: CurrentSchemaVersion}))
+		require.NoError(t, repo.Save(context.Background(), registryKey, &Canvas{SchemaVersion: CurrentSchemaVersion}))
 
-		got, err := s.RemoveServiceNode(context.Background(), "prod", "svc-ghost")
+		got, err := s.RemoveServiceNode(context.Background(), "svc-ghost")
 		require.NoError(t, err)
 		assert.Empty(t, got.Nodes)
 	})
@@ -563,11 +614,11 @@ func TestMigrate(t *testing.T) {
 		assert.Equal(t, "svc-api", got.Nodes[0].Data.ServiceID)
 		assert.Equal(t, "api", got.Nodes[0].Data.Name)
 	})
-	t.Run("Get migrates a stored v1 canvas and persists it", func(t *testing.T) {
+	t.Run("Get migrates a stored v1 canvas", func(t *testing.T) {
 		repo := newFakeRepo()
 		bus := newFakeBus()
 		s := newTestService(repo, bus)
-		require.NoError(t, repo.Save(context.Background(), "prod", &Canvas{
+		require.NoError(t, seed(repo, &Canvas{
 			SchemaVersion: 1,
 			Nodes: []Node{{
 				ID:       "svc-api",
@@ -582,10 +633,6 @@ func TestMigrate(t *testing.T) {
 		assert.Equal(t, CurrentSchemaVersion, got.SchemaVersion)
 		require.Len(t, got.Nodes, 1)
 		assert.Equal(t, "svc-api", got.Nodes[0].Data.ServiceID)
-
-		stored, err := repo.Get(context.Background(), "prod")
-		require.NoError(t, err)
-		assert.Equal(t, CurrentSchemaVersion, stored.SchemaVersion, "migrated canvas persisted")
 	})
 }
 
@@ -594,29 +641,119 @@ func TestService_Update_KeepsViewport(t *testing.T) {
 	svc := NewService(repo)
 	ctx := context.Background()
 	c := &Canvas{SchemaVersion: 2, Nodes: []Node{validNetworkNode()}, Viewport: &Viewport{X: 12, Y: -40, Zoom: 0.8}}
-	saved, err := svc.Update(ctx, DefaultEnvironment, c)
+	saved, err := svc.Update(ctx, "prod", c)
 	require.NoError(t, err)
 	assert.Equal(t, &Viewport{X: 12, Y: -40, Zoom: 0.8}, saved.Viewport)
 
-	got, err := svc.Get(ctx, DefaultEnvironment)
+	got, err := svc.Get(ctx, "prod")
 	require.NoError(t, err)
 	assert.Equal(t, &Viewport{X: 12, Y: -40, Zoom: 0.8}, got.Viewport)
 }
 
-func TestService_HasCanvas(t *testing.T) {
+func TestView_ShowsOnlyTheWorkspacesServices(t *testing.T) {
 	repo := newFakeRepo()
-	svc := newTestService(repo, newFakeBus())
-	ok, err := svc.HasCanvas(t.Context(), "staging")
-	require.NoError(t, err)
-	assert.False(t, ok, "never saved")
+	s := newTestService(repo, newFakeBus())
+	s.SetScope(fakeScope{ids: map[string][]string{"ws-a": {"svc-api", "svc-gw"}, "ws-b": {"svc-db", "svc-gw"}}})
+	for _, n := range []Node{validNode(), {ID: "svc-db", Data: NodeData{Name: "db", Status: ServiceRunning}}, {ID: "svc-gw", Data: NodeData{Name: "gw", Status: ServiceRunning}}} {
+		_, err := s.AddServiceNode(t.Context(), n)
+		require.NoError(t, err)
+	}
 
-	_, err = svc.AddNode(t.Context(), "staging", validNetworkNode())
+	ids := func(c *Canvas) []string {
+		var out []string
+		for _, n := range c.Nodes {
+			out = append(out, n.ID)
+		}
+		return out
+	}
+	a, err := s.Get(t.Context(), "ws-a")
 	require.NoError(t, err)
-	ok, err = svc.HasCanvas(t.Context(), "staging")
+	assert.ElementsMatch(t, []string{"svc-api", "svc-gw"}, ids(a), "another workspace's db never shows")
+	b, err := s.Get(t.Context(), "ws-b")
 	require.NoError(t, err)
-	assert.True(t, ok)
+	assert.ElementsMatch(t, []string{"svc-db", "svc-gw"}, ids(b), "a gateway routing into both shows in both")
+	none, err := s.Get(t.Context(), "ws-c")
+	require.NoError(t, err)
+	assert.Empty(t, none.Nodes)
+}
 
-	repo.getErr = errors.New("boom")
-	_, err = svc.HasCanvas(t.Context(), "staging")
-	require.Error(t, err)
+func TestView_PositionsAndDrawingsBelongToTheWorkspace(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo, newFakeBus())
+	s.SetScope(fakeScope{ids: map[string][]string{"ws-a": {"svc-gw"}, "ws-b": {"svc-gw"}}})
+	_, err := s.AddServiceNode(t.Context(), Node{ID: "svc-gw", Position: Position{X: 9, Y: 9}, Data: NodeData{Name: "gw", Status: ServiceRunning}})
+	require.NoError(t, err)
+
+	gw := Node{ID: "svc-gw", Type: NodeService, Position: Position{X: 40, Y: 50}, Data: NodeData{ServiceID: "svc-gw", Name: "gw", Status: ServiceRunning}}
+	edge := Edge{ID: "e", Type: "relation", Source: "net-main", Target: "svc-gw", Data: EdgeData{Kind: KindConnectsTo}}
+	_, err = s.Update(t.Context(), "ws-a", &Canvas{SchemaVersion: CurrentSchemaVersion, Nodes: []Node{validNetworkNode(), gw}, Edges: []Edge{edge}})
+	require.NoError(t, err)
+
+	a, err := s.Get(t.Context(), "ws-a")
+	require.NoError(t, err)
+	assert.Len(t, a.Nodes, 2)
+	assert.Len(t, a.Edges, 1)
+	b, err := s.Get(t.Context(), "ws-b")
+	require.NoError(t, err)
+	require.Len(t, b.Nodes, 1, "ws-a's drawing stays on ws-a")
+	assert.Equal(t, Position{}, b.Nodes[0].Position, "unplaced in ws-b, so the web lays it out")
+	assert.Empty(t, b.Edges)
+	assert.Equal(t, Position{X: 40, Y: 50}, a.Nodes[1].Position)
+
+	_, err = s.SetServiceNodeStatus(t.Context(), "svc-gw", ServiceFailed, "")
+	require.NoError(t, err)
+	a, err = s.Get(t.Context(), "ws-a")
+	require.NoError(t, err)
+	assert.Equal(t, ServiceFailed, a.Nodes[1].Data.Status, "status comes from the registry")
+	assert.Equal(t, Position{X: 40, Y: 50}, a.Nodes[1].Position)
+
+	_, err = s.RemoveServiceNode(t.Context(), "svc-gw")
+	require.NoError(t, err)
+	a, err = s.Get(t.Context(), "ws-a")
+	require.NoError(t, err)
+	assert.Len(t, a.Nodes, 1, "a gone service leaves every canvas")
+	assert.Empty(t, a.Edges, "with the edges drawn to it")
+}
+
+func TestView_ScopeErrorFailsTheRead(t *testing.T) {
+	s := newTestService(newFakeRepo(), newFakeBus())
+	s.SetScope(fakeScope{err: errors.New("db down")})
+	_, err := s.Get(t.Context(), "ws-a")
+	assert.ErrorContains(t, err, "db down")
+}
+
+type fakeGate struct {
+	workspaces []string
+	anywhere   int
+	err        error
+}
+
+func (g *fakeGate) Require(_ context.Context, workspaceID string, _ permissions.Action) error {
+	g.workspaces = append(g.workspaces, workspaceID)
+	return g.err
+}
+
+func (g *fakeGate) RequireAnywhere(context.Context, permissions.Action) error {
+	g.anywhere++
+	return g.err
+}
+
+func TestGate_ChecksTheCanvasWorkspace(t *testing.T) {
+	gate := &fakeGate{}
+	s := newTestService(newFakeRepo(), newFakeBus())
+	s.SetGate(gate)
+	_, err := s.Get(t.Context(), "ws-a")
+	require.NoError(t, err)
+	_, err = s.AddNode(t.Context(), "ws-b", validNetworkNode())
+	require.NoError(t, err)
+	_, err = s.SetServiceNodeStatus(t.Context(), "svc-api", ServiceHealthy, "")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"ws-a", "ws-b"}, gate.workspaces)
+	assert.Equal(t, 1, gate.anywhere, "the registry answers to the instance-level check")
+
+	gate.err = apperrs.ErrForbidden
+	_, err = s.Get(t.Context(), "ws-a")
+	assert.ErrorIs(t, err, apperrs.ErrForbidden)
+	_, err = s.RemoveServiceNode(t.Context(), "svc-api")
+	assert.ErrorIs(t, err, apperrs.ErrForbidden)
 }

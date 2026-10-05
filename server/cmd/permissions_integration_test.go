@@ -341,10 +341,10 @@ func TestIntegration_PermissionTable(t *testing.T) {
 			_, err := s.deploySvc.Get(ctx, f.deploy)
 			return err
 		}, map[string]string{uReader: ok, uPlain: forbidden, uOutsider: notFound}},
-		{"topology: get", func(ctx context.Context) error {
-			_, err := s.topoSvc.Get(ctx, "production")
+		{"topology: get a workspace's canvas", func(ctx context.Context) error {
+			_, err := s.topoSvc.Get(ctx, "workspace-default")
 			return err
-		}, map[string]string{uOwner: ok, uReader: ok, uOverwrite: ok, uPlain: forbidden, uOutsider: forbidden}},
+		}, map[string]string{uOwner: ok, uReader: ok, uOverwrite: ok, uPlain: forbidden, uOutsider: notFound}},
 		{"notifications: list a workspace's inbox", func(ctx context.Context) error {
 			actor, _ := identity.ActorFromCtx(ctx)
 			_, err := s.notifSvc.List(ctx, actor.ID, "workspace-default", 10)

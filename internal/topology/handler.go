@@ -16,7 +16,7 @@ func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-// Routes returns the topology REST endpoints; environment defaults to the canonical one when absent.
+// Routes returns the topology REST endpoints of the canvas named by the workspace query parameter.
 func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/topology", h.get)
@@ -29,7 +29,7 @@ func (h *Handler) Routes() http.Handler {
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
-	c, err := h.svc.Get(r.Context(), environmentParam(r))
+	c, err := h.svc.Get(r.Context(), workspaceParam(r))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -43,7 +43,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	c, err := h.svc.Update(r.Context(), environmentParam(r), &req)
+	c, err := h.svc.Update(r.Context(), workspaceParam(r), &req)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -57,7 +57,7 @@ func (h *Handler) addNode(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	c, err := h.svc.AddNode(r.Context(), environmentParam(r), req)
+	c, err := h.svc.AddNode(r.Context(), workspaceParam(r), req)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -66,7 +66,7 @@ func (h *Handler) addNode(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) removeNode(w http.ResponseWriter, r *http.Request) {
-	c, err := h.svc.RemoveNode(r.Context(), environmentParam(r), r.PathValue("id"))
+	c, err := h.svc.RemoveNode(r.Context(), workspaceParam(r), r.PathValue("id"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -80,7 +80,7 @@ func (h *Handler) addEdge(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	c, err := h.svc.AddEdge(r.Context(), environmentParam(r), req)
+	c, err := h.svc.AddEdge(r.Context(), workspaceParam(r), req)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -89,7 +89,7 @@ func (h *Handler) addEdge(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) removeEdge(w http.ResponseWriter, r *http.Request) {
-	c, err := h.svc.RemoveEdge(r.Context(), environmentParam(r), r.PathValue("id"))
+	c, err := h.svc.RemoveEdge(r.Context(), workspaceParam(r), r.PathValue("id"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -97,9 +97,10 @@ func (h *Handler) removeEdge(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, c)
 }
 
-func environmentParam(r *http.Request) string {
-	if env := r.URL.Query().Get("environment"); env != "" {
-		return env
+// workspaceParam falls back to the first workspace for clients older than per-workspace canvases (ADR 0082).
+func workspaceParam(r *http.Request) string {
+	if id := r.URL.Query().Get("workspace"); id != "" {
+		return id
 	}
-	return DefaultEnvironment
+	return FirstWorkspaceID
 }

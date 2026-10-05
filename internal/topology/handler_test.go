@@ -12,8 +12,7 @@ import (
 )
 
 func newHandler(t *testing.T) *Handler {
-	svc := NewService(newFakeRepo())
-	return NewHandler(svc)
+	return NewHandler(NewService(newFakeRepo()))
 }
 
 func getCanvas(t *testing.T, rec *httptest.ResponseRecorder) *Canvas {
@@ -46,11 +45,16 @@ func TestRoutes_AddNode_ThenGet(t *testing.T) {
 	assert.Equal(t, "net-main", c.Nodes[0].ID)
 
 	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/topology?environment=default", nil))
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/topology?workspace="+FirstWorkspaceID, nil))
 	assert.Equal(t, http.StatusOK, rec.Code)
 	c = getCanvas(t, rec)
-	require.Len(t, c.Nodes, 1)
+	require.Len(t, c.Nodes, 1, "a request naming no workspace reached the first one")
 	assert.Equal(t, "main", c.Nodes[0].Data.Name)
+
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/topology?workspace=ws-other", nil))
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Empty(t, getCanvas(t, rec).Nodes, "another workspace has its own canvas")
 }
 
 func TestRoutes_AddExternalNode_RequiresLabel(t *testing.T) {
@@ -61,13 +65,16 @@ func TestRoutes_AddExternalNode_RequiresLabel(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
-func TestRoutes_RemoveServiceNode_IsRejected(t *testing.T) {
-	h := newHandler(t).Routes()
+func TestRoutes_ServiceNodes_AreManagedFromStacks(t *testing.T) {
+	svc := NewService(newFakeRepo())
+	h := NewHandler(svc).Routes()
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/topology/nodes",
-		strings.NewReader(`{"id":"svc-a","type":"service","position":{"x":0,"y":0},"data":{"service_id":"svc-a","name":"A","status":"healthy"}}`)))
-	assert.Equal(t, http.StatusOK, rec.Code)
+		strings.NewReader(`{"id":"svc-b","type":"service","position":{"x":0,"y":0},"data":{"service_id":"svc-b","name":"B","status":"healthy"}}`)))
+	assert.Equal(t, http.StatusBadRequest, rec.Code, "a service node cannot be drawn")
 
+	_, err := svc.AddServiceNode(t.Context(), Node{ID: "svc-a", Data: NodeData{Name: "A", Status: ServiceRunning}})
+	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, "/api/topology/nodes/svc-a", nil))
 	assert.Equal(t, http.StatusBadRequest, rec.Code)

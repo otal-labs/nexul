@@ -310,7 +310,7 @@ decide whether an agent picks the right tool.
   repeat a tool description and never carry behavior rules or security
   claims.
 - **Resources mirror a read tool.** `docs://{id}`, `tickets://{id}`, and
-  `topology://current` exist so a user can attach an entity to a
+  `topology://{id}` (a workspace id) exist so a user can attach an entity to a
   conversation. Each is served by the same use-case as its `get` tool.
 - **Prompts are user-invoked templates.** A prompt enforces its required
   arguments, renders text only, and names only tools that exist; a test

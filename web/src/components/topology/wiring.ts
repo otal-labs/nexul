@@ -79,6 +79,8 @@ export const deriveWiring = (
     gateways.filter((g) => g.service_id).map((g) => [resolveContainerId(g.service_id!), g]),
   );
 
+  // A gateway shared between workspaces routes hostnames into each; only those reaching a service on this canvas show.
+  const onCanvas = exposures.filter((e) => e.service_id && nodeByContainerId.has(e.service_id));
   const networks = new Map<string, string[]>();
   const nodes: TopologyNode[] = stored.map((n) => {
     if (n.type !== NodeType.Service) return n;
@@ -93,7 +95,7 @@ export const deriveWiring = (
       return { ...n, data: { ...n.data, ...extras } };
     }
     const joined = [...new Set([...(container?.networks ?? []).map((net) => net.name), ...(gateway.networks ?? [gateway.docker_network])])];
-    const routes = exposures
+    const routes = onCanvas
       .filter((e) => e.gateway_id === gateway.id)
       .map((e) => {
         const targetContainer = e.service_id ? containerById.get(e.service_id) : undefined;
@@ -116,10 +118,11 @@ export const deriveWiring = (
 
   const hosts: HostnameNode[] = [];
   const edges: RelationEdge[] = [];
-  for (const e of exposures) {
+  for (const e of onCanvas) {
     const gateway = gateways.find((g) => g.id === e.gateway_id);
     const gatewayNode = gateway?.service_id ? nodeByContainerId.get(resolveContainerId(gateway.service_id)) : undefined;
     const target = e.service_id ? nodeByContainerId.get(e.service_id) : undefined;
+    if (!target) continue;
     const hostId = hostnameNodeId(e.id);
     hosts.push({
       id: hostId,
@@ -129,10 +132,10 @@ export const deriveWiring = (
     });
     if (gatewayNode) {
       edges.push(routeEdge(`route-${e.id}-in`, hostId, gatewayNode.id, { targetHandle: routeInHandle(e.id) }));
-      if (target && target.id !== gatewayNode.id) edges.push(routeEdge(`route-${e.id}-out`, gatewayNode.id, target.id, { sourceHandle: e.id }));
+      if (target.id !== gatewayNode.id) edges.push(routeEdge(`route-${e.id}-out`, gatewayNode.id, target.id, { sourceHandle: e.id }));
       continue;
     }
-    if (target) edges.push(directEdge(`route-${e.id}`, hostId, target.id, e.port));
+    edges.push(directEdge(`route-${e.id}`, hostId, target.id, e.port));
   }
 
   return {

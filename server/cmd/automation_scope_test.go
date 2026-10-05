@@ -50,6 +50,8 @@ INSERT INTO deploys (id, stack_id, service, target, image, status, strategy, cre
 		{"a project stack's deploy is the project's", "deploy.status_changed", map[string]any{"id": "d-b"}, []string{"ws-b"}, false},
 		{"an instance stack's deploy reaches every workspace", "deploy.status_changed", map[string]any{"id": "d-instance"}, nil, true},
 		{"a runner event reaches every workspace", "runner.connected", map[string]any{"runner_id": "r"}, nil, true},
+		{"a workspace's canvas change is that workspace's", "topology.updated", map[string]any{"environment": "ws-b", "workspace_id": "ws-b"}, []string{"ws-b"}, false},
+		{"a service registry change reaches nobody", "topology.updated", map[string]any{"environment": "default"}, nil, false},
 		{"a ticket that is gone reaches nobody", "ticket.link_created", map[string]any{"link": map[string]any{"ticket_id": "t-gone"}}, nil, false},
 		{"an unknown topic reaches nobody", "made.up", map[string]any{}, nil, false},
 	}

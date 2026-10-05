@@ -1,8 +1,12 @@
 import { Container } from "@/components/Container";
 import { PageHeader } from "@/components/PageHeader";
 import { TopologyCanvas } from "@/components/topology/TopologyCanvas";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
-export const TopologyPage = () => (
+// Keyed by workspace, so switching starts a fresh canvas: its own layout pass and camera.
+export const TopologyPage = () => {
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  return (
   <Container className="py-6">
     <PageHeader
       title="Topology"
@@ -11,7 +15,8 @@ export const TopologyPage = () => (
     />
     {/* Reserved chrome height grows on narrow viewports since the subtitle wraps to 2-3 lines below `sm`. */}
     <div className="h-[calc(100vh-11.5rem)] overflow-hidden rounded-xl border border-border bg-card shadow-card sm:h-[calc(100vh-10rem)] md:h-[calc(100vh-9.5rem)]">
-      <TopologyCanvas />
+      <TopologyCanvas key={workspaceId} />
     </div>
   </Container>
-);
+  );
+};

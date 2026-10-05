@@ -8,6 +8,7 @@ import {
   type NetworkNode,
 } from "@/models/Topology";
 import { useFlowStore } from "@/stores/flowStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), _delete: vi.fn() }));
 
@@ -32,7 +33,8 @@ describe("FreeNodeDialog", () => {
     mocks.get.mockResolvedValue({ data: { schema_version: 2, nodes: [], edges: [] } });
     mocks.put.mockResolvedValue({ data: { schema_version: 2, nodes: [], edges: [] } });
     mocks._delete.mockResolvedValue({ data: { schema_version: 2, nodes: [], edges: [] } });
-    useFlowStore.setState({ nodes: [networkNode], edges: [], selectedNodeId: null });
+    useFlowStore.setState({ workspaceId: "ws-1", nodes: [networkNode], edges: [], selectedNodeId: null });
+    useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
   });
 
   it("saves an edited network node name via full canvas PUT", async () => {
@@ -46,7 +48,7 @@ describe("FreeNodeDialog", () => {
       expect(mocks.put).toHaveBeenCalledWith(
         "/api/topology",
         expect.objectContaining({ schema_version: 2 }),
-        { params: { environment: "default" } },
+        { params: { workspace: "ws-1" } },
       );
     });
     expect(onClose).toHaveBeenCalled();
@@ -60,7 +62,7 @@ describe("FreeNodeDialog", () => {
 
     await waitFor(() => {
       expect(mocks._delete).toHaveBeenCalledWith("/api/topology/nodes/net-main", {
-        params: { environment: "default" },
+        params: { workspace: "ws-1" },
       });
     });
     expect(onClose).toHaveBeenCalled();

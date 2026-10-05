@@ -689,6 +689,7 @@ describe("useLiveEvents dispatch", () => {
 
   it("applies a topology canvas patch to the flow store on a topology push", async () => {
     setup();
+    useFlowStore.setState({ workspaceId: "ws-1", nodes: [] });
     const socket = await connectedSocket();
     act(() =>
       socket.message(
@@ -696,6 +697,7 @@ describe("useLiveEvents dispatch", () => {
           topic: "topology",
           type: "event",
           payload: {
+            workspace_id: "ws-1",
             schema_version: 2,
             nodes: [
               { id: "svc-api", type: "service", position: { x: 0, y: 0 }, data: { service_id: "svc-api", name: "api", status: "running" } },
@@ -710,6 +712,27 @@ describe("useLiveEvents dispatch", () => {
     });
     const node = useFlowStore.getState().nodes[0];
     expect(node?.type === "service" ? node.data.status : undefined).toBe("running");
+  });
+
+  it("leaves the canvas alone when a topology push is for another workspace", async () => {
+    setup();
+    useFlowStore.setState({ workspaceId: "ws-1", nodes: [] });
+    const socket = await connectedSocket();
+    act(() =>
+      socket.message(
+        JSON.stringify({
+          topic: "topology",
+          type: "event",
+          payload: {
+            workspace_id: "ws-2",
+            schema_version: 2,
+            nodes: [{ id: "svc-db", type: "service", position: { x: 0, y: 0 }, data: { service_id: "svc-db", name: "db", status: "running" } }],
+            edges: [],
+          },
+        }),
+      ),
+    );
+    expect(useFlowStore.getState().nodes).toHaveLength(0);
   });
 
   describe("chat.conversation.deleted", () => {

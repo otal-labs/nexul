@@ -126,6 +126,9 @@ export const CanvasSchema = z.object({
   viewport: ViewportSchema.optional(),
 });
 
+// A live push names the workspace whose canvas it carries.
+export const CanvasFrameSchema = CanvasSchema.extend({ workspace_id: z.string() });
+
 export type Canvas = z.infer<typeof CanvasSchema>;
 export type Viewport = z.infer<typeof ViewportSchema>;
 export type ServiceNodeData = z.infer<typeof ServiceNodeDataSchema>;

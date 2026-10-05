@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TopologyCanvas } from "@/components/topology/TopologyCanvas";
 import { ServiceStatus, type Canvas } from "@/models/Topology";
 import { useFlowStore } from "@/stores/flowStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const access = vi.hoisted(() => ({ areas: ["stacks"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
@@ -66,7 +67,8 @@ describe("TopologyCanvas", () => {
     mocks.put.mockReset();
     mocks.get.mockImplementation((url: string) => Promise.resolve({ data: responses[url] ?? [] }));
     mocks.put.mockImplementation((_url: string, body: Canvas) => Promise.resolve({ data: body }));
-    useFlowStore.getState().setCanvas({ schema_version: 2, nodes: [], edges: [] });
+    useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
+    useFlowStore.getState().setCanvas({ schema_version: 2, nodes: [], edges: [] }, "ws-1");
   });
 
   it("renders the service nodes from the fetched canvas", async () => {

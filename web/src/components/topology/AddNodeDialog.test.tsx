@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AddNodeDialog } from "@/components/topology/AddNodeDialog";
 import { NodeType } from "@/models/Topology";
 import { useFlowStore } from "@/stores/flowStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { pickOption } from "@/test/pickOption";
 import userEvent from "@testing-library/user-event";
 
@@ -21,6 +22,7 @@ describe("AddNodeDialog", () => {
     mocks.get.mockReset();
     mocks.post.mockReset();
     useFlowStore.setState({ nodes: [], edges: [], selectedNodeId: null });
+    useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
     mocks.get.mockResolvedValue({ data: { schema_version: 2, nodes: [], edges: [] } });
   });
 
@@ -42,7 +44,7 @@ describe("AddNodeDialog", () => {
       expect(mocks.post).toHaveBeenCalledWith(
         "/api/topology/nodes",
         expect.objectContaining({ type: "network", data: { name: "app-net" } }),
-        { params: { environment: "default" } },
+        { params: { workspace: "ws-1" } },
       );
     });
     expect(onClose).toHaveBeenCalled();
@@ -68,7 +70,7 @@ describe("AddNodeDialog", () => {
       expect(mocks.post).toHaveBeenCalledWith(
         "/api/topology/nodes",
         expect.objectContaining({ type: "external", data: { name: "Cloudflare", label: "tunnel", url: "https://example.com" } }),
-        { params: { environment: "default" } },
+        { params: { workspace: "ws-1" } },
       );
     });
     expect(onClose).toHaveBeenCalled();

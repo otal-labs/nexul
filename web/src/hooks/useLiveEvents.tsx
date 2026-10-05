@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router";
 
-import { CanvasSchema } from "@/models/Topology";
+import { CanvasFrameSchema } from "@/models/Topology";
 import {
   LiveEventsClient,
   type LiveEventsClientOptions,
@@ -293,8 +293,9 @@ const dispatch = (client: ReturnType<typeof useQueryClient>, router: RouterFollo
   }
   if (frame.topic === "chat.conversation.deleted") router.onConversationDeleted(frame.payload as ConversationDeleted);
   if (frame.topic === "topology") {
-    const parsed = CanvasSchema.safeParse(frame.payload);
-    if (parsed.success) useFlowStore.getState().applyServerPatch(parsed.data);
+    const flow = useFlowStore.getState();
+    const parsed = CanvasFrameSchema.safeParse(frame.payload);
+    if (parsed.success && parsed.data.workspace_id === flow.workspaceId) flow.applyServerPatch(parsed.data);
     return;
   }
   if (frame.topic === "chat.agent.stream") {
