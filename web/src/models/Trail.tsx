@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import type { OptionSetting } from "@/models/Pairing";
 import type { PlayType } from "@/models/Play";
 import type { HarnessQuestion, QuestionAnswer } from "@/models/Question";
@@ -217,6 +219,13 @@ export const mergeLiveSteps = (activity: ActivityEntry[], live: ActivityEntry[])
     if (acc.some((e) => e.at === step.at && e.summary === step.summary)) return acc;
     return [...acc, step];
   }, activity);
+
+// What Continue sends an ended run's own harness thread; the play's instructions never go again (ADR 0128).
+export const ContinueTrailFormSchema = z.object({
+  message: z.string().trim().min(1, "Write what the agent should do next"),
+});
+
+export type ContinueTrailFormData = z.infer<typeof ContinueTrailFormSchema>;
 
 // One line for a trail row: the latest step while it runs, the reason once it ended badly.
 export const trailSummary = (state: TrailState, lastError: string, activity: ActivityEntry | null | undefined): string => {

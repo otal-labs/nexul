@@ -460,6 +460,17 @@ func TestStartTurn_RecreatedThreadGoneToo_FailsWithoutAThirdThread(t *testing.T)
 	assert.Empty(t, f.Dispatched, "one replacement thread, and no message")
 }
 
+func TestStartTurn_KeptThreadGone_FailsSessionGoneWithoutANewThread(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	done := beginAs(t, h, harness.Target{Session: laptop(f), ProjectID: "pr-1", Provider: "claudeAgent", SessionID: "th-1", KeepSession: true}, testPrompts)
+	f.Write(failExit(t3rpctest.WaitFor(t, f.Subscribed, "subscribe"), missingThreadCause(t)))
+
+	s := <-done
+	require.ErrorIs(t, s.err, harness.ErrSessionGone)
+	assert.Empty(t, f.Dispatched, "no replacement thread and no message: the caller decides what a gone thread means")
+}
+
 func TestStartTurn_DispatchRefused_FailsWithT3sMessage(t *testing.T) {
 	t.Parallel()
 	f, h := newFake(t, 2)

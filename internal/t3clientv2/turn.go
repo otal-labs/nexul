@@ -40,7 +40,7 @@ const (
 )
 
 // errThreadGone is a reused thread that no longer exists or was deleted in T3 Code.
-var errThreadGone = errors.New("the T3 thread is gone")
+var errThreadGone = fmt.Errorf("the T3 thread is gone: %w", harness.ErrSessionGone)
 
 type modelSelection struct {
 	InstanceID string                  `json:"instanceId"`
@@ -309,7 +309,7 @@ func (t *turn) start(ctx context.Context, title string, prompts harness.TurnProm
 		}
 	}
 	src, w, err := t.subscribe(ctx)
-	if errors.Is(err, errThreadGone) && !fresh {
+	if errors.Is(err, errThreadGone) && !fresh && !t.target.KeepSession {
 		t.h.log().Info("t3clientv2: reused thread is gone, creating a new one", "thread", t.threadID)
 		fresh = true
 		if notes, err = t.create(ctx, title, prompts); err != nil {

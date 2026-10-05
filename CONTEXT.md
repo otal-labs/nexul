@@ -274,7 +274,9 @@ harness connection is redialed and the turn resumed where it left off; it
 fails once that keeps missing. Whenever the thread of an ended run gets new
 activity in T3 Code (the run carried on, or the starter continued it there)
 while its owner has Nexul open, the trail reopens and catches up
-(ADR 0127). After a server
+(ADR 0127). An ended trail can be continued: a message sent to its own
+harness thread as its next turn, without the play's instructions again, or
+the play started again as a new run when that thread is gone (ADR 0128). After a server
 restart every `running` trail follows its harness thread again and ends with
 the harness's own outcome (ADR 0119); a `starting` one, which no thread
 accepted yet, ends `interrupted`, and a `waiting` one stays for its answer.

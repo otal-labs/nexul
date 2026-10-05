@@ -201,3 +201,25 @@ func TestTrailUpdate_Answer(t *testing.T) {
 	assert.Equal(t, harness.AnswerValue{Selected: []string{"A", "B"}}, f.turns.answered[0].Answers["q1"])
 	assert.Equal(t, harness.AnswerValue{Text: "Bot"}, f.turns.answered[0].Answers["q2"])
 }
+
+func TestTrailUpdate_Continue(t *testing.T) {
+	f := newRunnerFixture()
+	tools := RunMCPTools(f.runner)
+	trail := endedRun(t, f)
+
+	_, err := callTool(t, tools, ctxAs(starter), "trail_update", `{"id":"`+trail.ID+`","continue":"more","stop":true}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "one of answer, stop, or continue")
+
+	outs := make(chan any, 1)
+	go func() {
+		out, err := callTool(t, tools, ctxAs(starter), "trail_update", `{"id":"`+trail.ID+`","continue":"Carry on."}`)
+		assert.NoError(t, err)
+		outs <- out
+	}()
+	<-f.turns.done
+	req := f.turns.last()
+	assert.Equal(t, "Carry on.", req.RequestBody)
+	req.Observer.OnStarted("th-1")
+	assert.Equal(t, TrailRunning, (<-outs).(trailSummary).State)
+	assert.Equal(t, ViaWeb, f.trails.all()[0].Via, "the trail keeps who started it; continue starts nothing new")
+}

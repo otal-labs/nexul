@@ -3,6 +3,7 @@ package plays
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -209,4 +210,26 @@ func TestRunHandler_Answer(t *testing.T) {
 	assert.Equal(t, TrailRunning, answered.State)
 	require.NotNil(t, answered.Question)
 	assert.Equal(t, []string{"Yes"}, answered.Question.Answer.Answers["q1"].Selected)
+}
+
+func TestRunHandler_Continue(t *testing.T) {
+	f := newRunnerFixture()
+	h := NewRunHandler(f.runner).Routes()
+	trail := endedRun(t, f)
+	path := "/api/plays/runs/" + trail.ID + "/continue"
+
+	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodPost, path, `{`, starter).Code)
+	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodPost, path, `{"message":" "}`, starter).Code)
+	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodPost, path, `{"message":"more"}`, "stranger").Code)
+
+	recs := make(chan *httptest.ResponseRecorder, 1)
+	go func() { recs <- do(t, h, http.MethodPost, path, `{"message":"Keep two threads."}`, starter) }()
+	<-f.turns.done
+	f.turns.last().Observer.OnStarted("th-1")
+	rec := <-recs
+	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
+	var got Trail
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	assert.Equal(t, trail.ID, got.ID)
+	assert.Equal(t, TrailRunning, got.State)
 }

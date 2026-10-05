@@ -40,6 +40,7 @@ func (h *RunHandler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/plays/runs/{trailID}", h.get)
 	mux.HandleFunc("POST /api/plays/runs/{trailID}/stop", h.stop)
 	mux.HandleFunc("POST /api/plays/runs/{trailID}/answer", h.answer)
+	mux.HandleFunc("POST /api/plays/runs/{trailID}/continue", h.continueRun)
 	mux.HandleFunc("GET /api/plays/latest-choices", h.latestChoices)
 	mux.HandleFunc("POST /api/plays/decisions-check", h.retryDecisionsCheck)
 	return mux
@@ -88,6 +89,25 @@ func (h *RunHandler) answer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, trail)
+}
+
+type continueRequest struct {
+	Message string `json:"message"`
+}
+
+// continueRun answers with the trail the message went to: the same one, or a new run when its thread was gone.
+func (h *RunHandler) continueRun(w http.ResponseWriter, r *http.Request) {
+	var req continueRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	trail, err := h.runner.Continue(r.Context(), r.PathValue("trailID"), req.Message, ViaWeb)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusAccepted, trail)
 }
 
 func (h *RunHandler) run(w http.ResponseWriter, r *http.Request) {
