@@ -225,8 +225,8 @@ map is in `.scratch/project-paths/`.
 Planned: **bots**, webhook-driven bots that post into any conversation with
 Discord's payload and get their own tab in Settings. The wayfinder map in
 `.scratch/bots/` has the Discord contract, the bot model, the URL and limits,
-and mentions decided; it resumes with the two prototypes, the surfaces walk,
-and the spec.
+mentions, and every surface decided; it resumes with the two prototypes and
+the spec.
 
 ---
 

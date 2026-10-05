@@ -72,6 +72,7 @@ after this map.
 - [The bot model and its author identity](issues/02-bot-model-and-author.md) — one bot, one conversation of any kind; package and permission domain `botwebhook`; the bot is the author with the users foreign key dropped and name/avatar snapshot columns on bot messages; avatar reuses the user mechanism with a Nexul glyph default, per-post overrides honoured; soft delete with restore on a fresh token; unique names, cap of ten.
 - [The URL, the secret, and abuse](issues/03-url-secret-and-abuse.md) — `/api/botwebhooks/{id}/{token}`, 43-character token readable to write-holders and encrypted at rest; 30 posts/min per bot, 60 rejects/min per IP, 64 KiB body; Discord-shaped 404/429, synchronous write, one audit row per accepted post and none for rejects; bot cascades with its conversation; four lines on the pre-release security checklist.
 - [Mentions, the Agent, and notifications](issues/04-mentions-agent-and-notifications.md) — `@Agent` never fires from a bot (the pipeline already skips non-user authors); `@user` acts like a person's mention with `allowed_mentions` honoured; unread bumps normally, no per-bot mute; a bot post counts as ticket and doc thread activity.
+- [Surfaces: settings, gateway, MCP, events, search](issues/06-surfaces-mcp-gateway-events.md) — a Bots section in channel settings, a menu item for DMs and threads; REST under `/api/conversations/{id}/botwebhooks` and `/api/botwebhooks/{id}`; three MCP tools with an ADR raising the ceiling to 111, no posting as a bot over MCP; four `botwebhook.*` events without the token; no chat search today; read sees bots, write sees URLs and restores, delete deletes; the author migration is forward-only now that production data exists.
 
 ## Not yet specified
 
@@ -98,5 +99,3 @@ after this map.
   components, and anything that needs a bot to receive messages.
 - Redesigning the chat dock or message rendering beyond what a bot message
   and an embed card need.
-- Deleting a channel. It does not exist today; a bot cascades away when its
-  conversation is deleted, and the delete itself is chat's missing way out.
