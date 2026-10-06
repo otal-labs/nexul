@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FileTextIcon } from "lucide-react";
 
 import { DocFolderSection } from "@/components/doc/DocFolderSection";
@@ -13,6 +13,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
 import { useCreateDocDialog } from "@/hooks/useCreateDocDialog";
 import { useDocPins } from "@/hooks/useDocPins";
+import { useDocFolderStore } from "@/stores/docFolderStore";
 import { useDocSortStore } from "@/stores/docSortStore";
 import type { DocListItem } from "@/models/Doc";
 import { projectToken, type Project } from "@/models/Project";
@@ -38,6 +39,13 @@ export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) =
   const searching = query !== "";
   const groups = folders && groupDocs({ docs: openable, folders, sortBy, pinnedIds, match: searching ? matches(query) : undefined });
   const token = projectToken(project);
+  const expandFolder = useDocFolderStore((s) => s.expand);
+  const selectedFolderId = docs.find((doc) => doc.id === selectedId)?.folder_id;
+
+  // Opening a doc shows where it lives; collapsing that folder afterwards still sticks.
+  useEffect(() => {
+    if (selectedFolderId) expandFolder(project.id, selectedFolderId);
+  }, [selectedId, selectedFolderId, project.id, expandFolder]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">

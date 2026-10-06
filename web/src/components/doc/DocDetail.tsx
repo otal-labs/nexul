@@ -1,9 +1,9 @@
-import { Link } from "react-router";
 import { useState } from "react";
 
 import { DocThreadButton } from "@/components/chat/DocThreadButton";
 import { DocActionsMenu } from "@/components/doc/DocActionsMenu";
 import { DocBodySection } from "@/components/doc/DocBodySection";
+import { DocBreadcrumb } from "@/components/doc/DocBreadcrumb";
 import { DocLockedSignal } from "@/components/doc/DocLockedSignal";
 import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
 import { DocTitleField } from "@/components/doc/DocTitleField";
@@ -21,7 +21,6 @@ import { TrailSection } from "@/components/play/TrailSection";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useDocView } from "@/hooks/useDocView";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
-import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { effectiveAvatar } from "@/models/User";
 import { useSessionStore } from "@/stores/sessionStore";
 import type { LiveSocket } from "@/api/ws";
@@ -48,7 +47,6 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
   const token = useSessionStore((s) => s.token);
   const canThread = useHasPermission("docs:thread");
   const canWrite = useHasPermission("docs:write");
-  const wsPath = useWorkspacePath();
   // Display name for the collab presence comes from useFetchMe, not sessionStore (F5).
   const { data: me } = useFetchMe();
   const { name: userName, avatar: userAvatar } = collabIdentity(me);
@@ -84,14 +82,9 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
+          <DocBreadcrumb doc={doc} />
+          <div className="mt-2 flex min-h-8 flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-3">
-              <Link
-                to={wsPath("/docs")}
-                className="font-mono text-xs text-muted-foreground lg:hidden transition-colors duration-150 ease-standard hover:text-foreground"
-              >
-                ← All docs
-              </Link>
               {switchable && <DocViewSwitch view={view} waiting={waiting} onChange={setView} />}
             </div>
             <div className="ml-auto flex items-center gap-1">

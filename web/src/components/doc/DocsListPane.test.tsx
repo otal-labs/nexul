@@ -7,6 +7,7 @@ import type { DocFolderGroup } from "@/components/doc/docGroups";
 import type { DocListItem } from "@/models/Doc";
 import type { DocFolder } from "@/models/DocFolder";
 import type { Project } from "@/models/Project";
+import { useDocFolderStore } from "@/stores/docFolderStore";
 import { useDocSortStore } from "@/stores/docSortStore";
 
 const main: DocFolder = { id: "f-main", project_id: "project-1", name: "Main", is_default: true, created_at: "", updated_at: "" };
@@ -70,5 +71,15 @@ describe("DocsListPane", () => {
 
     await userEvent.type(screen.getByRole("textbox", { name: "Search docs" }), "x");
     expect(screen.getByText("Nothing matches")).toBeInTheDocument();
+  });
+
+  it("expands the folder of the doc being opened, and lets it collapse again", () => {
+    useDocFolderStore.setState({ collapsed: { "project-1": ["f-main"] } });
+    const { rerender } = render(<DocsListPane docs={docs} project={{ id: "project-1" } as Project} selectedId="EP06" />);
+    expect(useDocFolderStore.getState().collapsed["project-1"]).toEqual([]);
+
+    useDocFolderStore.getState().toggleCollapsed("project-1", "f-main");
+    rerender(<DocsListPane docs={docs} project={{ id: "project-1" } as Project} selectedId="EP06" />);
+    expect(useDocFolderStore.getState().collapsed["project-1"]).toEqual(["f-main"]);
   });
 });

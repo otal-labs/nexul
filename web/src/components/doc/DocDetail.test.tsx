@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -339,6 +339,18 @@ describe("DocDetail", () => {
     // The rail and the below-article placement both mount (CSS shows one), so the heading appears twice.
     expect((await screen.findAllByRole("heading", { name: "Trail" })).length).toBeGreaterThan(0);
     expect(api.get).toHaveBeenCalledWith("/api/plays/runs", { params: { target_type: "doc", target_id: "doc-1" } });
+  });
+
+  it("shows the folder the doc lives in as a breadcrumb", async () => {
+    const defaultGet = vi.mocked(api.get).getMockImplementation();
+    vi.mocked(api.get).mockImplementation(async (url: string) =>
+      url === "/api/docs/folders" ? { data: [{ id: "f-main", project_id: "p-1", name: "Specs", is_default: true }] } : defaultGet!(url),
+    );
+    await renderDetail(new FakeSocket());
+
+    const crumbs = screen.getByRole("navigation", { name: "breadcrumb" });
+    expect(await within(crumbs).findByText("Specs")).toBeInTheDocument();
+    expect(within(crumbs).getByRole("link", { name: "Docs" })).toBeInTheDocument();
   });
 
   it("renders a locked doc read-only with no edit session, and a holder of docs:lock can unlock it", async () => {
