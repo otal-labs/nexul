@@ -31,6 +31,9 @@ const (
 // HarnessSilenceTimeout ends a run whose harness has sent nothing for this long; a run that keeps reporting has no ceiling.
 const HarnessSilenceTimeout = 15 * time.Minute
 
+// silenceInterruptTimeout bounds the stop a silent run sends its harness, which may be as unresponsive as the run.
+const silenceInterruptTimeout = 30 * time.Second
+
 // TicketTarget is the slice of a ticket the runner needs: its project, its key, and the stage of its current column.
 type TicketTarget struct {
 	ProjectID string
@@ -1136,7 +1139,7 @@ func (o *trailObserver) putBack() {
 	o.signalOpen(true)
 }
 
-// onSilence fails the run when the window elapses with nothing from the harness; done makes the pipeline's later terminal a no-op.
+// onSilence fails the run when the window elapses with nothing from the harness and stops its turn there; done makes the pipeline's later terminal a no-op.
 func (o *trailObserver) onSilence() {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -1146,6 +1149,11 @@ func (o *trailObserver) onSilence() {
 	o.done = true
 	reason := "no harness update for " + formatDuration(o.r.silence)
 	o.r.finish(o.ctx, o.trail, o.targetTitle, harness.TurnResult{State: harness.TurnError, LastError: reason}, "", "Run failed: "+reason)
+	ctx, cancel := context.WithTimeout(o.ctx, silenceInterruptTimeout)
+	defer cancel()
+	if err := o.r.turns.Interrupt(ctx, o.trail.ConversationID); err != nil {
+		o.r.log.Warn("plays: harness interrupt after silence failed", "trail", o.trail.ID, "error", err)
+	}
 	o.cancel(errors.New(reason))
 }
 
