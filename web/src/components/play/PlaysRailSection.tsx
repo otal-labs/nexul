@@ -24,7 +24,7 @@ export const PlaysRailSection = ({ ticket }: PlaysRailSectionProps) => {
         <h2 className={microheaderClass}>Plays</h2>
         {error && <ErrorDisplay error={error} title="Failed to load plays." />}
         {hasPlays && (
-          <div className="flex flex-col gap-1 px-2">
+          <div className="flex flex-col">
             {plays.map((play) => (
               <PlayButton
                 key={play.id}
@@ -33,7 +33,7 @@ export const PlaysRailSection = ({ ticket }: PlaysRailSectionProps) => {
                 targetType="ticket"
                 targetId={ticket.id}
                 variant="ghost"
-                className="w-full [&>button]:w-full [&>button]:justify-start"
+                className="w-full [&>button]:h-auto [&>button]:w-full [&>button]:justify-start [&>button]:gap-2 [&>button]:px-2! [&>button]:py-1.5 [&>button]:text-xs [&>button]:font-normal [&>span]:px-2"
               />
             ))}
           </div>

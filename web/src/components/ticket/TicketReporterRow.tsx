@@ -1,7 +1,7 @@
 import { Bot } from "lucide-react";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
-import { rowClass } from "@/components/ticket/ticketPropertyRowStyle";
+import { rowClass, rowIconClass, rowLabelClass, rowValueClass } from "@/components/ticket/ticketPropertyRowStyle";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { personLabel } from "@/models/Person";
 import { ReporterKind, reporterName, reporterOnBehalfOf, type Ticket } from "@/models/Ticket";
@@ -21,15 +21,17 @@ export const TicketReporterRow = ({ ticket }: TicketReporterRowProps) => {
 
   return (
     <div className={rowClass}>
-      {isNexul && (
-        <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
-          <Bot className="size-3" aria-hidden />
-        </span>
-      )}
-      {!isNexul && name && <PersonAvatar login={person.login} src={person.avatar_url} className="size-4 text-[8px]" />}
-      <span className="w-16 shrink-0 text-xs text-muted-foreground">Reporter</span>
-      <span className="min-w-0 truncate text-xs">
-        <span className="text-foreground">{name || "Unknown"}</span>
+      <span className={rowIconClass}>
+        {isNexul && (
+          <span className="flex size-4 items-center justify-center rounded-full bg-accent text-accent-foreground">
+            <Bot className="size-3" aria-hidden />
+          </span>
+        )}
+        {!isNexul && name && <PersonAvatar login={person.login} src={person.avatar_url} className="size-4 text-[8px]" />}
+      </span>
+      <span className={rowLabelClass}>Reporter</span>
+      <span className={rowValueClass}>
+        <span>{name || "Unknown"}</span>
         {onBehalfOf && <span className="text-muted-foreground"> {onBehalfOf}</span>}
       </span>
     </div>

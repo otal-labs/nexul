@@ -611,8 +611,9 @@ Only a doc can be a source.
 _Avoid_: Origin (that is Found in), parent doc, spec link
 
 **Blocked by**:
-A ticket's link to another ticket that must reach done first. It shows on
-the card and warns before a play runs, but never stops a card moving.
+A ticket's link to another ticket that must reach done first, in any project
+of the same workspace. It shows on the card and warns before a play runs, but
+never stops a card moving.
 _Avoid_: Depends on, dependency, blocker stage
 
 **Body template**:

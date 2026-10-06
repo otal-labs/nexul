@@ -1,4 +1,4 @@
-import { Ban, Bug, FileText, PlusIcon } from "lucide-react";
+import { Ban, Bug, FileText, OctagonX, PlusIcon } from "lucide-react";
 import { useState } from "react";
 
 import { DocPickerList } from "@/components/doc/DocPickerList";
@@ -9,13 +9,14 @@ import { useSetTicketSource } from "@/hooks/TicketHooks";
 import { useAddBlocker, useSetFoundIn } from "@/hooks/TicketLinkHooks";
 import type { Ticket } from "@/models/Ticket";
 
-type PickKind = "blocked_by" | "found_in" | "source";
+type PickKind = "blocked_by" | "blocks" | "found_in" | "source";
 
 interface AddTicketLinkMenuProps {
   ticket: Ticket;
 }
 
 // "+" menu: pick the link kind, then the ticket or doc; a new found-in or source replaces the old one.
+// Blocks is the same link held by the other ticket.
 export const AddTicketLinkMenu = ({ ticket }: AddTicketLinkMenuProps) => {
   const ticketId = ticket.id;
   const [open, setOpen] = useState(false);
@@ -31,6 +32,7 @@ export const AddTicketLinkMenu = ({ ticket }: AddTicketLinkMenuProps) => {
 
   const pick = (otherId: string) => {
     if (kind === "blocked_by") addBlocker.mutate({ id: ticketId, blockerId: otherId });
+    if (kind === "blocks") addBlocker.mutate({ id: otherId, blockerId: ticketId });
     if (kind === "found_in") setFoundIn.mutate({ id: ticketId, originId: otherId });
     if (kind === "source") setSource.mutate({ id: ticketId, docId: otherId });
     close(false);
@@ -53,6 +55,9 @@ export const AddTicketLinkMenu = ({ ticket }: AddTicketLinkMenuProps) => {
             <button type="button" className={menuItemClass} onClick={() => setKind("blocked_by")}>
               <Ban className="size-3.5" aria-hidden /> Blocked by…
             </button>
+            <button type="button" className={menuItemClass} onClick={() => setKind("blocks")}>
+              <OctagonX className="size-3.5" aria-hidden /> Blocks…
+            </button>
             <button type="button" className={menuItemClass} onClick={() => setKind("found_in")}>
               <Bug className="size-3.5" aria-hidden /> Found in…
             </button>
@@ -61,7 +66,7 @@ export const AddTicketLinkMenu = ({ ticket }: AddTicketLinkMenuProps) => {
             </button>
           </div>
         )}
-        {(kind === "blocked_by" || kind === "found_in") && <TicketPickerList excludeId={ticketId} onSelect={pick} />}
+        {(kind === "blocked_by" || kind === "blocks" || kind === "found_in") && <TicketPickerList excludeId={ticketId} onSelect={pick} />}
         {kind === "source" && <DocPickerList projectId={ticket.project_id} excludeId={ticket.doc_id} onSelect={pick} />}
       </PopoverContent>
     </Popover>

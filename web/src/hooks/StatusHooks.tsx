@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import type { BoardStatus, StatusKind } from "@/models/Status";
+import { StatusKind, type BoardStatus } from "@/models/Status";
+import { TicketStatus, type Ticket } from "@/models/Ticket";
 
 export const getStatusesKey = "getStatuses";
 export const getProjectStatusesKey = "getProjectStatuses";
@@ -14,6 +15,20 @@ export const useFetchProjectStatuses = (projectId: string | undefined) =>
       (await api.get<BoardStatus[]>("/api/statuses", { params: { project_id: projectId } })).data,
     enabled: !!projectId,
   });
+
+// Tickets filed before statuses became per-project columns can still hold one of these values.
+const legacyStatuses: Record<string, Pick<BoardStatus, "name" | "kind" | "icon">> = {
+  [TicketStatus.Open]: { name: "Open", kind: StatusKind.Backlog, icon: "" },
+  [TicketStatus.InProgress]: { name: "In progress", kind: StatusKind.Progress, icon: "" },
+  [TicketStatus.Done]: { name: "Done", kind: StatusKind.Done, icon: "" },
+  [TicketStatus.Closed]: { name: "Closed", kind: StatusKind.Backlog, icon: "CircleX" },
+};
+
+export const useTicketStatus = (ticket: Pick<Ticket, "project_id" | "status">) => {
+  const { data: statuses, isPending } = useFetchProjectStatuses(ticket.project_id);
+  const status = statuses?.find((s) => s.id === ticket.status) ?? legacyStatuses[ticket.status];
+  return { status, isPending };
+};
 
 export const useCreateStatus = () => {
   const client = useQueryClient();

@@ -134,7 +134,7 @@ const pushTopics: Record<string, string[]> = {
   "ticket.developer_changed": [getTicketsKey, getTicketKey],
   "ticket.tester_changed": [getTicketsKey, getTicketKey],
   "ticket.finished": [getTicketsKey],
-  "ticket.category_changed": [getTicketsKey],
+  "ticket.category_changed": [getTicketsKey, getTicketKey],
   "ticket_type.created": [getTicketTypesKey, getProjectTicketTypesKey],
   "ticket_type.updated": [getTicketTypesKey, getProjectTicketTypesKey],
   "ticket_type.deleted": [getTicketTypesKey, getProjectTicketTypesKey],

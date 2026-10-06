@@ -416,6 +416,8 @@ func (r ticketRepo) BlockerIDs(_ context.Context, id string) ([]string, error) {
 	return out, nil
 }
 
+func (ticketRepo) SameWorkspace(context.Context, string, string) (bool, error) { return true, nil }
+
 func sameLink(a, b tickets.TicketLink) bool {
 	return a.TicketID == b.TicketID && a.Kind == b.Kind && (a.Kind == tickets.LinkFoundIn || a.TargetID == b.TargetID)
 }

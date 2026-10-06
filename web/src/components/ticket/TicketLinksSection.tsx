@@ -54,7 +54,11 @@ export const TicketLinksSection = ({ ticket }: TicketLinksSectionProps) => {
       {links && links.blocks.length > 0 && (
         <LinkGroupSection title="Blocks">
           {links.blocks.map((t) => (
-            <LinkedTicketRow key={t.id} ticket={t} />
+            <LinkedTicketRow
+              key={t.id}
+              ticket={t}
+              onRemove={() => removeBlocker.mutate({ id: t.id, blockerId: ticketId })}
+            />
           ))}
         </LinkGroupSection>
       )}
