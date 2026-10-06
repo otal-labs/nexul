@@ -143,6 +143,11 @@ func TestSilence_NoHarnessUpdate_FailsTheRunOnce(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		f := newRunnerFixture()
 		client, _ := silentHarness()
+		interrupted := make(chan string, 1)
+		client.InterruptFn = func(_ context.Context, target harness.Target) error {
+			interrupted <- target.SessionID
+			return nil
+		}
 		convs := newHarnessRunner(f, client)
 
 		_, err := f.runner.Run(ctxAs(starter), ticketRun())
@@ -158,8 +163,30 @@ func TestSilence_NoHarnessUpdate_FailsTheRunOnce(t *testing.T) {
 		_, pipelineNotes := convs.snapshot()
 		assert.Empty(t, pipelineNotes, "the cancelled pipeline leaves the note to the runner")
 		assert.Equal(t, []TrailState{TrailStarting, TrailRunning, TrailFailed}, f.trails.recordedStates(), "the pipeline's later terminal is ignored")
+		assert.Equal(t, "sess-1", <-interrupted, "the harness stops the turn the trail gave up on")
 		f.runner.mu.Lock()
 		assert.Empty(t, f.runner.runs, "the cancelled turn released its live entry")
+		f.runner.mu.Unlock()
+	})
+}
+
+func TestSilence_InterruptFails_StillFailsTheRun(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newRunnerFixture()
+		client, _ := silentHarness()
+		client.InterruptFn = func(context.Context, harness.Target) error { return errors.New("computer offline") }
+		newHarnessRunner(f, client)
+
+		_, err := f.runner.Run(ctxAs(starter), ticketRun())
+		require.NoError(t, err)
+
+		final := <-f.trails.terminal
+		synctest.Wait()
+
+		assert.Equal(t, TrailFailed, final.State)
+		assert.Equal(t, "no harness update for 15m", final.LastError)
+		f.runner.mu.Lock()
+		assert.Empty(t, f.runner.runs, "the turn is released even when the harness could not be stopped")
 		f.runner.mu.Unlock()
 	})
 }
