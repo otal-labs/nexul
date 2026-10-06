@@ -149,12 +149,12 @@ describe("RichTextEditor", () => {
 
   it("finds a workspace member on @ and inserts them as a chip showing their display name", async () => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
-    const rix = { user_id: "u-rix", login: "rixwavedev", display_name: "Rix Wave", avatar_url: "" };
+    const nor = { user_id: "u-nor", login: "norwooddev", display_name: "Nor Wood", avatar_url: "" };
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/mentions/search") {
-        return { data: { results: [{ type: "person", id: rix.user_id, title: rix.display_name, login: rix.login, can_open: true }] } };
+        return { data: { results: [{ type: "person", id: nor.user_id, title: nor.display_name, login: nor.login, can_open: true }] } };
       }
-      if (url === "/api/workspaces/ws-1/people") return { data: { people: [rix] } };
+      if (url === "/api/workspaces/ws-1/people") return { data: { people: [nor] } };
       throw new Error(`unexpected GET ${url}`);
     });
     const user = userEvent.setup();
@@ -162,15 +162,15 @@ describe("RichTextEditor", () => {
     renderEditor(emptyDocJson, onChange);
 
     await user.click(screen.getByLabelText(/doc body/i));
-    await user.keyboard("@rix");
-    await user.click(await screen.findByRole("option", { name: /Rix Wave/ }));
+    await user.keyboard("@nor");
+    await user.click(await screen.findByRole("option", { name: /Nor Wood/ }));
 
     await waitFor(() => {
-      expect(document.querySelector('span[data-mention-type="person"]')?.textContent).toBe("Rix Wave");
+      expect(document.querySelector('span[data-mention-type="person"]')?.textContent).toBe("Nor Wood");
     });
-    expect(api.get).toHaveBeenCalledWith("/api/mentions/search", { params: { q: "rix", limit: 8, workspace_id: "ws-1" } });
+    expect(api.get).toHaveBeenCalledWith("/api/mentions/search", { params: { q: "nor", limit: 8, workspace_id: "ws-1" } });
     const emitted = JSON.parse(onChange.mock.calls.at(-1)?.[0] as string);
-    expect(emitted.content[0].content[0].attrs).toMatchObject({ type: "person", id: "u-rix", label: "rixwavedev" });
+    expect(emitted.content[0].content[0].attrs).toMatchObject({ type: "person", id: "u-nor", label: "norwooddev" });
   });
 
   it("shows a person mention no longer in People as @unknown", async () => {

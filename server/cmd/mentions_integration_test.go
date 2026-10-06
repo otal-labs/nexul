@@ -175,16 +175,16 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 	})
 }
 
-// seedMentionPeople makes onik (writes docs and tickets), rixwavedev (reads them), and sam ("Rixa Stone", reads
-// neither) members of the default workspace, and rixoutsider an account outside it.
+// seedMentionPeople makes onik (writes docs and tickets), norwooddev (reads them), and sam ("Nora Stone", reads
+// neither) members of the default workspace, and noroutsider an account outside it.
 func seedMentionPeople(t *testing.T, store *storage.Store) {
 	t.Helper()
 	ctx := context.Background()
-	for id, login := range map[string]string{"u-onik": "onik", "u-rix": "rixwavedev", "u-sam": "sam", "u-out": "rixoutsider"} {
+	for id, login := range map[string]string{"u-onik": "onik", "u-nor": "norwooddev", "u-sam": "sam", "u-out": "noroutsider"} {
 		_, _, err := store.Users.UpsertUser(ctx, &auth.Identity{UserID: id, Provider: auth.ProviderGitHub, ProviderUserID: id, Login: login})
 		require.NoError(t, err)
 	}
-	for id, name := range map[string]string{"u-sam": "Rixa Stone", "u-onik": "Onik"} {
+	for id, name := range map[string]string{"u-sam": "Nora Stone", "u-onik": "Onik"} {
 		require.NoError(t, store.Users.SetProfileOverride(ctx, id, &name, nil))
 	}
 	now := time.Now()
@@ -196,7 +196,7 @@ func seedMentionPeople(t *testing.T, store *storage.Store) {
 		r.WorkspaceID, r.CreatedAt, r.UpdatedAt = "workspace-default", now, now
 		require.NoError(t, store.Roles.Create(ctx, r))
 	}
-	for user, role := range map[string]string{"u-onik": "role-writer", "u-rix": "role-reader", "u-sam": "role-member"} {
+	for user, role := range map[string]string{"u-onik": "role-writer", "u-nor": "role-reader", "u-sam": "role-member"} {
 		require.NoError(t, store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: user, WorkspaceID: "workspace-default", RoleID: role, CreatedAt: now}))
 	}
 }
@@ -210,7 +210,7 @@ func TestMentionSearch_FindsWorkspacePeople(t *testing.T) {
 
 	for _, workspaceID := range []string{"", "workspace-default"} {
 		t.Run("workspace "+workspaceID, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/api/mentions/search?q=rix&limit=8&workspace_id="+workspaceID, nil)
+			req := httptest.NewRequest(http.MethodGet, "/api/mentions/search?q=nor&limit=8&workspace_id="+workspaceID, nil)
 			req = req.WithContext(identity.WithActor(req.Context(), identity.Actor{ID: "u-onik"}))
 			rec := httptest.NewRecorder()
 			routes.ServeHTTP(rec, req)
@@ -230,7 +230,7 @@ func TestMentionSearch_FindsWorkspacePeople(t *testing.T) {
 					got[r.ID] = r.Title
 				}
 			}
-			assert.Equal(t, map[string]string{"u-rix": "rixwavedev", "u-sam": "Rixa Stone"}, got)
+			assert.Equal(t, map[string]string{"u-nor": "norwooddev", "u-sam": "Nora Stone"}, got)
 		})
 	}
 }
@@ -283,31 +283,31 @@ func TestPersonMentions_NotifyOnceAndOnlyReaders(t *testing.T) {
 	onik := as("u-onik")
 
 	t.Run("doc", func(t *testing.T) {
-		doc, err := svc.docsSvc.Create(onik, "project-general", "Launch plan", personMentionBody("u-rix", "u-onik"))
+		doc, err := svc.docsSvc.Create(onik, "project-general", "Launch plan", personMentionBody("u-nor", "u-onik"))
 		require.NoError(t, err)
 		deliverNotifications(t, svc, store)
-		assert.Equal(t, []string{"Onik mentioned you in Launch plan"}, inbox(t, svc, "u-rix", workspace.KindDocMentioned))
+		assert.Equal(t, []string{"Onik mentioned you in Launch plan"}, inbox(t, svc, "u-nor", workspace.KindDocMentioned))
 		assert.Empty(t, inbox(t, svc, "u-onik", workspace.KindDocMentioned), "a self-mention notifies nobody")
 		// Read, so the inbox's collapse of repeated unread rows cannot hide a second mention.
-		require.NoError(t, svc.notifSvc.MarkAllRead(context.Background(), "u-rix", ""))
+		require.NoError(t, svc.notifSvc.MarkAllRead(context.Background(), "u-nor", ""))
 
-		_, err = svc.docsSvc.Update(onik, doc.ID, "Launch plan", personMentionBody("u-rix", "u-onik", "u-sam", "u-out"))
+		_, err = svc.docsSvc.Update(onik, doc.ID, "Launch plan", personMentionBody("u-nor", "u-onik", "u-sam", "u-out"))
 		require.NoError(t, err)
 		deliverNotifications(t, svc, store)
-		assert.Len(t, inbox(t, svc, "u-rix", workspace.KindDocMentioned), 1, "re-saving an existing mention does not notify again")
+		assert.Len(t, inbox(t, svc, "u-nor", workspace.KindDocMentioned), 1, "re-saving an existing mention does not notify again")
 		assert.Empty(t, inbox(t, svc, "u-sam", workspace.KindDocMentioned), "sam cannot read docs")
-		assert.Empty(t, inbox(t, svc, "u-out", workspace.KindDocMentioned), "rixoutsider is not a member")
+		assert.Empty(t, inbox(t, svc, "u-out", workspace.KindDocMentioned), "noroutsider is not a member")
 	})
 
 	t.Run("ticket", func(t *testing.T) {
 		ticket, err := svc.ticketsSvc.Create(onik, "project-general", "Fix login", "", "", "")
 		require.NoError(t, err)
 		for range 2 {
-			_, err = svc.ticketsSvc.UpdateTicket(onik, ticket.ID, "Fix login", personMentionBody("u-rix"))
+			_, err = svc.ticketsSvc.UpdateTicket(onik, ticket.ID, "Fix login", personMentionBody("u-nor"))
 			require.NoError(t, err)
 			deliverNotifications(t, svc, store)
-			require.NoError(t, svc.notifSvc.MarkAllRead(context.Background(), "u-rix", ""))
+			require.NoError(t, svc.notifSvc.MarkAllRead(context.Background(), "u-nor", ""))
 		}
-		assert.Equal(t, []string{"Onik mentioned you in Fix login"}, inbox(t, svc, "u-rix", workspace.KindTicketMentioned))
+		assert.Equal(t, []string{"Onik mentioned you in Fix login"}, inbox(t, svc, "u-nor", workspace.KindTicketMentioned))
 	})
 }

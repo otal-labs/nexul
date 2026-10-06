@@ -10,7 +10,7 @@ import (
 func TestMigration0039_BackfillsSlugsAndScopesPrefixesToTheirWorkspace(t *testing.T) {
 	db := migrateBefore(t, "0039")
 	_, err := db.Exec(`
-UPDATE workspaces SET name = 'Rixwave Labs!' WHERE id = 'workspace-default';
+UPDATE workspaces SET name = 'Norwood Labs!' WHERE id = 'workspace-default';
 INSERT INTO workspaces (id, name, created_at, updated_at) VALUES
     ('ws-otal', 'Otal', 10, 10),
     ('ws-otal-twin', '  OTAL  ', 20, 20),
@@ -38,7 +38,7 @@ INSERT INTO projects (id, name, prefix, position, workspace_id, created_at, upda
 	}
 	require.NoError(t, rows.Err())
 	assert.Equal(t, map[string]string{
-		"workspace-default":                    "rixwave-labs",
+		"workspace-default":                    "norwood-labs",
 		"ws-otal":                              "otal",
 		"ws-otal-twin":                         "otal-2-ws-otal",
 		"0199c0de-7a1b-7c2d-8e3f-000000000001": "otal-2",

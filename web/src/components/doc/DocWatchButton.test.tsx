@@ -31,7 +31,7 @@ beforeEach(() => {
   vi.mocked(api.put).mockReset();
   vi.mocked(api.delete).mockReset();
   vi.mocked(api.get).mockImplementation(async (url: string) => {
-    if (url === "/api/auth/me") return { data: { user: { id: "u-rix" } } };
+    if (url === "/api/auth/me") return { data: { user: { id: "u-nor" } } };
     return { data: { watchers: [watcher("u-onik", "auto")], watching: false } };
   });
 });
@@ -39,7 +39,7 @@ beforeEach(() => {
 describe("DocWatchButton", () => {
   it("watches and stops watching for the viewer, and the count follows", async () => {
     vi.mocked(api.put).mockResolvedValue({
-      data: { watchers: [watcher("u-onik", "auto"), watcher("u-rix", "manual")], watching: true },
+      data: { watchers: [watcher("u-onik", "auto"), watcher("u-nor", "manual")], watching: true },
     });
     vi.mocked(api.delete).mockResolvedValue({ data: { watchers: [watcher("u-onik", "auto")], watching: false } });
     const user = userEvent.setup();
@@ -61,7 +61,7 @@ describe("DocWatchButton", () => {
 
   it("says so when nobody watches the doc", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
-      if (url === "/api/auth/me") return { data: { user: { id: "u-rix" } } };
+      if (url === "/api/auth/me") return { data: { user: { id: "u-nor" } } };
       return { data: { watchers: [], watching: false } };
     });
     const user = userEvent.setup();

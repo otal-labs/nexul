@@ -50,11 +50,11 @@ describe("tokenizeMessageText", () => {
     },
     {
       name: "URL next to a mention",
-      text: "@TigerXLight you can join here instead: https://nexul.otal.dev/fahad/chat/01a0",
+      text: "@bob you can join here instead: https://nexul.example.com/acme/chat/01a0",
       want: [
-        { kind: "mention", text: "@TigerXLight" },
+        { kind: "mention", text: "@bob" },
         { kind: "text", text: " you can join here instead: " },
-        { kind: "link", url: "https://nexul.otal.dev/fahad/chat/01a0" },
+        { kind: "link", url: "https://nexul.example.com/acme/chat/01a0" },
       ],
     },
     {
@@ -68,17 +68,17 @@ describe("tokenizeMessageText", () => {
       want: [{ kind: "text", text: "ftp://files.example.com and data:text/html,<b>x</b>" }],
     },
   ])("$name", ({ text, want }) => {
-    expect(tokenizeMessageText(text, ["TigerXLight"])).toEqual(want);
+    expect(tokenizeMessageText(text, ["bob"])).toEqual(want);
   });
 });
 
 describe("parseInstanceLink", () => {
-  const origin = "https://nexul.otal.dev";
+  const origin = "https://nexul.example.com";
 
   it("reads the workspace and section of a same-origin URL", () => {
-    expect(parseInstanceLink(`${origin}/fahad/chat/c-1?x=1#m`, origin)).toEqual({
-      path: "/fahad/chat/c-1?x=1#m",
-      workspace: "fahad",
+    expect(parseInstanceLink(`${origin}/acme/chat/c-1?x=1#m`, origin)).toEqual({
+      path: "/acme/chat/c-1?x=1#m",
+      workspace: "acme",
       section: "chat",
       rest: ["c-1"],
     });
@@ -89,6 +89,6 @@ describe("parseInstanceLink", () => {
   });
 
   it("returns null for another origin", () => {
-    expect(parseInstanceLink("https://evil.dev/fahad/chat/c-1", origin)).toBeNull();
+    expect(parseInstanceLink("https://evil.dev/acme/chat/c-1", origin)).toBeNull();
   });
 });

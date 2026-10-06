@@ -21,7 +21,7 @@ const renderSection = (access: Promise<unknown>) => {
   mocks.get.mockImplementation((url: string) => {
     if (url === "/api/projects/p-web/access") return access;
     if (url === "/api/permissions/catalog") return Promise.resolve({ data: { permissions: catalog } });
-    if (url === "/api/workspaces/ws-1/people") return Promise.resolve({ data: { people: [{ user_id: "u-fahad", login: "fahad", display_name: "Fahad", avatar_url: "" }] } });
+    if (url === "/api/workspaces/ws-1/people") return Promise.resolve({ data: { people: [{ user_id: "u-bob", login: "bob", display_name: "Bob", avatar_url: "" }] } });
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
   render(
@@ -49,8 +49,8 @@ describe("ProjectPeopleAccessSection", () => {
   });
 
   it("lists each Restricted member with a summary of what they hold", async () => {
-    renderSection(Promise.resolve({ data: { access: [{ user_id: "u-fahad", name: "Fahad", actions: ["tickets:read", "tickets:write", "docs:read"] }] } }));
-    expect(await screen.findByText("Fahad")).toBeInTheDocument();
+    renderSection(Promise.resolve({ data: { access: [{ user_id: "u-bob", name: "Bob", actions: ["tickets:read", "tickets:write", "docs:read"] }] } }));
+    expect(await screen.findByText("Bob")).toBeInTheDocument();
     expect(await screen.findByText("tickets Write · docs Read")).toBeInTheDocument();
   });
 });

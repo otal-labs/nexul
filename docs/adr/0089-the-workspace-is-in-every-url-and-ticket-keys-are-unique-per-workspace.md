@@ -23,7 +23,7 @@ Decision: a workspace has a slug, and every page reached from its sidebar lives 
   with its workspace. Every key lookup takes a workspace, as an id or a slug: the web app has it from the URL, and
   `GET /api/tickets/{key}` and the ticket MCP tools take an optional `workspace`. Without one, a key resolves among
   the tickets the caller can read; a key found in several of the caller's workspaces is refused with their slugs
-  ("WEB-12 exists in otal and rixwave; pass workspace") rather than guessed. Keys named inside `ticket_update` and
+  ("WEB-12 exists in norwood and otal; pass workspace") rather than guessed. Keys named inside `ticket_update` and
   `ticket_create` resolve in the ticket's own workspace. The @ picker lists a key's match in every workspace.
 
 Rejected: redirecting old unprefixed paths to the current workspace. It would keep a second route table alive for

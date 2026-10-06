@@ -40,7 +40,7 @@ const workspace = (name: string, canManage = true) => ({ id: `ws-${name.toLowerC
 const teamWith = (memberships: TeamMembership[], canManage = true): Team => ({
   can_manage_accounts: false,
   workspaces: [workspace("Nexul", canManage), workspace("Labs", canManage), workspace("Kit", canManage)],
-  people: [{ id: "u-fahad", login: "fahad", name: "Fahad", avatar_url: "", status: "active", created_at: "", online: false, last_seen_at: null, workspaces: memberships }],
+  people: [{ id: "u-bob", login: "bob", name: "Bob", avatar_url: "", status: "active", created_at: "", online: false, last_seen_at: null, workspaces: memberships }],
 });
 
 const renderDialog = async (team: Team) => {
@@ -55,12 +55,12 @@ const renderDialog = async (team: Team) => {
   render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
-      <MemoryRouter initialEntries={["/configuration/team?person=u-fahad"]}>
+      <MemoryRouter initialEntries={["/configuration/team?person=u-bob"]}>
         <TeamSection />
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  return within(await screen.findByRole("dialog", { name: "Fahad" }));
+  return within(await screen.findByRole("dialog", { name: "Bob" }));
 };
 
 const pickRole = async (user: UserEvent, workspaceName: string, roleName: string) => {
@@ -70,7 +70,7 @@ const pickRole = async (user: UserEvent, workspaceName: string, roleName: string
 
 const level = (project: string, name: string) => within(screen.getByRole("radiogroup", { name: `${project} access` })).getByRole("radio", { name });
 
-const memberPath = (workspaceId: string) => `/api/workspaces/${workspaceId}/members/u-fahad`;
+const memberPath = (workspaceId: string) => `/api/workspaces/${workspaceId}/members/u-bob`;
 
 const webGrant = { project_id: "p-web", project_name: "Web", allow: ["tickets:read", "tickets:write"] };
 
@@ -93,7 +93,7 @@ describe("Team dialog", () => {
     expect(dialog.getByRole("tab", { name: "Labs" })).toBeInTheDocument();
     await user.click(confirm);
 
-    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Fahad" })).not.toBeInTheDocument());
+    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Bob" })).not.toBeInTheDocument());
     expect(mocks.patch).toHaveBeenCalledTimes(1);
     expect(mocks.patch).toHaveBeenCalledWith(memberPath("ws-nexul"), { role_id: "nexul-editor" });
   });
@@ -107,7 +107,7 @@ describe("Team dialog", () => {
     const prompt = within(await screen.findByRole("dialog", { name: "Discard changes?" }));
     await user.click(prompt.getByRole("button", { name: "Discard" }));
 
-    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Fahad" })).not.toBeInTheDocument());
+    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Bob" })).not.toBeInTheDocument());
     expect(mocks.patch).not.toHaveBeenCalled();
   });
 
@@ -154,7 +154,7 @@ describe("Team dialog", () => {
     expect(dialog.getByRole("tab", { name: "Nexul, unsaved changes" })).toBeInTheDocument();
 
     await user.click(dialog.getByRole("button", { name: "Confirm" }));
-    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Fahad" })).not.toBeInTheDocument());
+    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Bob" })).not.toBeInTheDocument());
     expect(mocks.put).toHaveBeenCalledTimes(1);
     expect(mocks.patch).toHaveBeenCalledTimes(2);
   });

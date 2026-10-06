@@ -11,7 +11,7 @@ describe("PersonPickerList", () => {
   it("offers the people who may open the ticket's project, leaving out a Restricted member without access", async () => {
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/projects/p-web/people") return Promise.resolve({ data: { people: [{ user_id: "u-1", login: "alice", display_name: "Alice", avatar_url: "" }] } });
-      if (url.endsWith("/people")) return Promise.resolve({ data: { people: [{ user_id: "u-1", login: "alice", display_name: "Alice", avatar_url: "" }, { user_id: "u-2", login: "fahad", display_name: "Fahad", avatar_url: "" }] } });
+      if (url.endsWith("/people")) return Promise.resolve({ data: { people: [{ user_id: "u-1", login: "alice", display_name: "Alice", avatar_url: "" }, { user_id: "u-2", login: "bob", display_name: "Bob", avatar_url: "" }] } });
       return Promise.reject(new Error(`unexpected GET ${url}`));
     });
     render(
@@ -21,6 +21,6 @@ describe("PersonPickerList", () => {
     );
 
     expect(await screen.findByRole("button", { name: /Alice/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Fahad/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Bob/ })).not.toBeInTheDocument();
   });
 });

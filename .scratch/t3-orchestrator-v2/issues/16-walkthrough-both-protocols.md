@@ -1,7 +1,7 @@
 # 16 — Walkthrough on both protocols
 
 **What to build:** The owner walks the effort end to end on his own paired computer, on T3 Code's nightly
-only (he does not run stable), with a Nexul release that carries tickets 01–24. No Incus box and no provider
+only (stable is not in use), with a Nexul release that carries tickets 01–24. No Incus box and no provider
 token; his own T3 and providers are the test bed. Protocol 1 stays covered by its tests.
 
 - Update T3 Code to the nightly. The computer switches to the new client with no re-pair, the settings row

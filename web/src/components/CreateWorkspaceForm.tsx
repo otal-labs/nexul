@@ -20,7 +20,7 @@ export const CreateWorkspaceForm = () => {
       control={control}
       name="name"
       label="Workspace name"
-      placeholder="e.g. Shopkeepers"
+      placeholder="e.g. Globex"
       autoFocus
     />
   );

@@ -32,13 +32,13 @@ func newTwoAccounts(t *testing.T) *twoAccounts {
 	}
 	ta.dns.zones = []Zone{
 		{ID: "z-law", Name: "law.example", AccountID: "acct-law", AccountName: "Law"},
-		{ID: "z-otal", Name: "otal.dev", AccountID: "acct-otal", AccountName: "Otal"},
+		{ID: "z-otal", Name: "example.com", AccountID: "acct-otal", AccountName: "Otal"},
 	}
 	ta.svc = NewService(Config{
 		Repo:          ta.repo,
 		Provider:      ta.dns,
 		EncryptionKey: testKey(),
-		Settings:      &fakeSettings{instanceURL: "https://nexul.otal.dev"},
+		Settings:      &fakeSettings{instanceURL: "https://nexul.example.com"},
 		Tokens:        &fakeTokenProvider{token: "at"},
 		NewTunnelProvider: func(_ context.Context, _, accountID string) (TunnelProvider, error) {
 			ta.asked = append(ta.asked, accountID)
@@ -124,10 +124,10 @@ func TestRouteTunnelHostname_RefusesAnotherAccountsZone(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = ta.svc.RouteTunnelHostname(t.Context(), RouteTunnelInput{
-		TunnelID: created.ID, Hostname: "nexul.otal.dev", ZoneID: "z-otal", Zone: "otal.dev", Service: "http://x:1",
+		TunnelID: created.ID, Hostname: "nexul.example.com", ZoneID: "z-otal", Zone: "example.com", Service: "http://x:1",
 	})
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
-	assert.ErrorContains(t, err, "otal.dev belongs to the Cloudflare account Otal")
+	assert.ErrorContains(t, err, "example.com belongs to the Cloudflare account Otal")
 	records, err := ta.dns.ListRecords(t.Context(), "z-otal")
 	require.NoError(t, err)
 	assert.Empty(t, records, "no dead CNAME is left behind")

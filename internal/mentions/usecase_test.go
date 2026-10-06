@@ -498,20 +498,20 @@ func resultKeys(results []SearchResult) []string {
 
 func TestSearch_People_RankedAroundTickets(t *testing.T) {
 	svc := newTestService(t, &fakeTicketSource{
-		tickets: map[string]Ticket{"t-1": {ID: "t-1", Title: "Fix rix bug"}},
-		search:  []SearchHit{{ID: "t-1", Title: "Fix rix bug"}},
+		tickets: map[string]Ticket{"t-1": {ID: "t-1", Title: "Fix nor bug"}},
+		search:  []SearchHit{{ID: "t-1", Title: "Fix nor bug"}},
 	}, nil, nil, nil)
 	svc.SetPeople(&fakePeopleSource{people: []Person{
-		{UserID: "u-rix", Login: "rixwavedev", DisplayName: "Rix Wave"},
-		{UserID: "u-sam", Login: "sam", DisplayName: "Rixa Stone"},
-		{UserID: "u-mo", Login: "morix"},
+		{UserID: "u-nor", Login: "norwooddev", DisplayName: "Nor Wood"},
+		{UserID: "u-sam", Login: "sam", DisplayName: "Nora Stone"},
+		{UserID: "u-mo", Login: "monor"},
 		{UserID: "u-bob", Login: "bob", DisplayName: "Bob"},
-		{UserID: "u-exact", Login: "rix"},
+		{UserID: "u-exact", Login: "nor"},
 	}})
 
-	results, err := svc.Search(actorCtx("u-1"), "RIX", "", 20)
+	results, err := svc.Search(actorCtx("u-1"), "NOR", "", 20)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"person:u-exact", "person:u-rix", "person:u-sam", "ticket:t-1", "person:u-mo"}, resultKeys(results),
+	assert.Equal(t, []string{"person:u-exact", "person:u-nor", "person:u-sam", "ticket:t-1", "person:u-mo"}, resultKeys(results),
 		"exact login first, login or display-name prefixes next, substring matches after tickets and docs")
 }
 
@@ -530,16 +530,16 @@ func TestSearch_People_TicketKeyStillRanksFirst(t *testing.T) {
 func TestSearch_People_SourceErrorFails(t *testing.T) {
 	svc := newTestService(t, nil, nil, nil, nil)
 	svc.SetPeople(&fakePeopleSource{err: errors.New("people unavailable")})
-	_, err := svc.Search(actorCtx("u-1"), "rix", "", 20)
+	_, err := svc.Search(actorCtx("u-1"), "nor", "", 20)
 	require.Error(t, err)
 }
 
 func TestResolve_Person(t *testing.T) {
 	svc := newTestService(t, nil, nil, nil, nil)
-	svc.SetPeople(&fakePeopleSource{people: []Person{{UserID: "u-rix", Login: "rixwavedev", DisplayName: "Rix Wave", AvatarURL: "/api/people/u-rix/avatar?v=1"}}})
+	svc.SetPeople(&fakePeopleSource{people: []Person{{UserID: "u-nor", Login: "norwooddev", DisplayName: "Nor Wood", AvatarURL: "/api/people/u-nor/avatar?v=1"}}})
 
-	chips, err := svc.Resolve(actorCtx("u-1"), "", []Ref{{Type: "person", ID: "u-rix"}, {Type: "person", ID: "u-gone"}})
+	chips, err := svc.Resolve(actorCtx("u-1"), "", []Ref{{Type: "person", ID: "u-nor"}, {Type: "person", ID: "u-gone"}})
 	require.NoError(t, err)
-	assert.Equal(t, []Chip{{Type: "person", ID: "u-rix", Title: "Rix Wave", Login: "rixwavedev", AvatarURL: "/api/people/u-rix/avatar?v=1", CanOpen: true}}, chips,
+	assert.Equal(t, []Chip{{Type: "person", ID: "u-nor", Title: "Nor Wood", Login: "norwooddev", AvatarURL: "/api/people/u-nor/avatar?v=1", CanOpen: true}}, chips,
 		"a person the actor shares no workspace with is left out, like any missing target")
 }

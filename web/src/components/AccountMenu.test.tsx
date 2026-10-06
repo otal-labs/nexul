@@ -134,14 +134,14 @@ describe("AccountMenu", () => {
   it("shows the display name chosen in Your settings instead of the login", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/auth/me") {
-        const user = { ...ownerUser, display_name: "Fahad Malik" };
+        const user = { ...ownerUser, display_name: "Bob Marsh" };
         return { data: { user, needs_owner_wizard: false, needs_first_login_wizard: false } };
       }
       return { data: roleResponse };
     });
     renderMenu();
-    expect(await screen.findByText("Fahad Malik")).toBeInTheDocument();
-    expect(screen.getByText("FM")).toBeInTheDocument();
+    expect(await screen.findByText("Bob Marsh")).toBeInTheDocument();
+    expect(screen.getByText("BM")).toBeInTheDocument();
     expect(screen.queryByText("@onik97")).not.toBeInTheDocument();
   });
 

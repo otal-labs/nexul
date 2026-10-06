@@ -609,9 +609,9 @@ func TestGet(t *testing.T) {
 
 func TestResolve(t *testing.T) {
 	repo := newFakeRepo()
-	repo.prefixes = map[string]string{"p-1": "REF", "p-2": "P1", "p-3": "1P", "p-4": "PHASE1", "p-rix": "WEB", "p-otal": "WEB"}
-	repo.workspaces = map[string][2]string{"p-rix": {"ws-rix", "rixwave"}, "p-otal": {"ws-otal", "otal"}}
-	repo.tickets["t-rix"] = &Ticket{ID: "t-rix", ProjectID: "p-rix", Number: 1}
+	repo.prefixes = map[string]string{"p-1": "REF", "p-2": "P1", "p-3": "1P", "p-4": "PHASE1", "p-nor": "WEB", "p-otal": "WEB"}
+	repo.workspaces = map[string][2]string{"p-nor": {"ws-nor", "norwood"}, "p-otal": {"ws-otal", "otal"}}
+	repo.tickets["t-nor"] = &Ticket{ID: "t-nor", ProjectID: "p-nor", Number: 1}
 	repo.tickets["t-otal"] = &Ticket{ID: "t-otal", ProjectID: "p-otal", Number: 1}
 	// A ticket moved into p-otal keeps its number, so WEB-2 names two tickets there.
 	repo.tickets["t-otal-2"] = &Ticket{ID: "t-otal-2", ProjectID: "p-otal", Number: 2}
@@ -640,12 +640,12 @@ func TestResolve(t *testing.T) {
 		{name: "by a lowercase key whose prefix has a digit", in: "p1-12", wantID: "t-2"},
 		{name: "a prefix starting with a digit is not a key", in: "1P-12", wantErr: apperrs.ErrNotFound},
 		{name: "a six character prefix is not a key", in: "PHASE1-12", wantErr: apperrs.ErrNotFound},
-		{name: "a key in two workspaces names both", in: "WEB-1", wantErr: apperrs.ErrConflict, wantMsg: "WEB-1 exists in otal and rixwave; pass workspace"},
-		{name: "a workspace slug picks one", workspace: "rixwave", in: "web-1", wantID: "t-rix"},
+		{name: "a key in two workspaces names both", in: "WEB-1", wantErr: apperrs.ErrConflict, wantMsg: "WEB-1 exists in norwood and otal; pass workspace"},
+		{name: "a workspace slug picks one", workspace: "norwood", in: "web-1", wantID: "t-nor"},
 		{name: "a workspace id picks one", workspace: "ws-otal", in: "WEB-1", wantID: "t-otal"},
 		{name: "a workspace without the key is not found", workspace: "default", in: "WEB-1", wantErr: apperrs.ErrNotFound},
 		{name: "a key twice in one workspace asks for the id", workspace: "otal", in: "WEB-2", wantErr: apperrs.ErrConflict, wantMsg: "WEB-2 matches more than one ticket in otal; use the ticket's id"},
-		{name: "an id ignores the workspace", workspace: "rixwave", in: "t-otal", wantID: "t-otal"},
+		{name: "an id ignores the workspace", workspace: "norwood", in: "t-otal", wantID: "t-otal"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
