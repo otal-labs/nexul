@@ -76,9 +76,8 @@ git history, and anything durable it decided is an ADR.
   findings in `research/`.
 - `.scratch/bots/` — bots: a named poster in any conversation that outside
   systems drive through a Discord-compatible webhook URL. Wayfinder map
-  charted 2026-09-16, tickets 01 to 03 resolved, parked 2026-09-20 until the
-  repository migration lands; resumes at ticket 04. Research findings in
-  `research/`.
+  complete 2026-10-06 (tickets 01 to 08, ADR 0129, `spec.md`) and sliced
+  into build tickets 09 to 14. Research findings in `research/`.
 - `.scratch/ticket-flow/` — the thread as a resizable pane beside a
   ticket's body, and notes: an agent's additions as an Agent message in the
   thread with a markdown file, instead of edits to the body. Wayfinder map

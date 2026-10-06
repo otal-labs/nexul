@@ -17,7 +17,7 @@ how embeds render, mentions and notifications, permissions, and the settings,
 MCP, gateway, and event surfaces. Planning only; the build is its own effort
 after this map.
 
-**Reached 2026-10-06**: [spec.md](spec.md), ready for `/to-tickets`.
+**Reached 2026-10-06**: [spec.md](spec.md), sliced into build tickets 09 to 14.
 
 ## Notes
 
