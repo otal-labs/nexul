@@ -223,10 +223,9 @@ with a repository waiting to deploy shows the way back to deploying it. The
 map is in `.scratch/project-paths/`.
 
 Planned: **bots**, webhook-driven bots that post into any conversation with
-Discord's payload and get their own tab in Settings. The wayfinder map in
-`.scratch/bots/` has the Discord contract, the bot model, the URL and limits,
-mentions, and every surface decided; it resumes with the two prototypes and
-the spec.
+Discord's payload and get their own section in channel settings. Specced in
+`.scratch/bots/spec.md`, with the message and settings looks picked from live
+prototypes; next it is sliced into build tickets.
 
 ---
 
