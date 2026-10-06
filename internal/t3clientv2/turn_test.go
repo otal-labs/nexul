@@ -741,6 +741,21 @@ func TestWatch_RunStillRunning_FollowsItToItsEndAndSendsNothing(t *testing.T) {
 	assert.Empty(t, f.Persisted)
 }
 
+func TestWatch_MessageTypedInT3BeforeTheWatch_IsShownWithoutReplayingTheSteps(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	subID, r := watchThread(t, f, h, threadAt(
+		[]any{runOf(nexulMessagePrefix+"play", "running"), runAt(2, "msg-typed", "cancelled")}, nil,
+		shellStep("step-1", "ls"), typedIn(1, "msg-typed", "Are you stuck?")))
+
+	f.Write(t3rpctest.Chunk(subID,
+		event(3, "turn-item.updated", replyIn(1, "Not stuck.")),
+		event(4, "run.updated", runOf(nexulMessagePrefix+"play", runWaiting)),
+	))
+	assert.Equal(t, []string{"user_message Are you stuck?", "reply Not stuck.", "end done"}, labels(drainUpdates(t, r.Updates)),
+		"a message steered into the run while nobody watched reaches the thread; the step shown before does not")
+}
+
 func TestWatch_RunAskingAQuestion_RaisesItAgain(t *testing.T) {
 	t.Parallel()
 	f, h := newFake(t, 2)

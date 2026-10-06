@@ -175,11 +175,13 @@ func (h *Harness) Watch(ctx context.Context, target harness.Target) (harness.Sta
 		t.close()
 		return harness.StartResult{}, fmt.Errorf("watch t3 thread %s: %w", t.threadID, err)
 	}
-	// After a restart the snapshot's steps were shown before; a catch-up from Since shows them, and its replies and open
-	// questions belong to the turn either way. A step shown before replaces itself by its call id.
+	// After a restart the snapshot's steps were shown before; a catch-up from Since shows them, and its replies, open
+	// questions and typed messages belong to the turn either way. A step shown before replaces itself by its call id.
 	caught := t.caught
 	if target.Since == "" {
-		caught = slices.DeleteFunc(caught, func(u harness.Update) bool { return u.Activity != nil && u.Activity.Kind != harness.ActivityNote })
+		caught = slices.DeleteFunc(caught, func(u harness.Update) bool {
+			return u.Activity != nil && u.Activity.Kind != harness.ActivityNote && u.Activity.Kind != harness.ActivityUserMessage
+		})
 	}
 	if t.over == nil && w.run.ID != "" {
 		return harness.StartResult{SessionID: t.threadID, TurnID: t.messageID, Updates: t.follow(ctx, src, w, caught)}, nil
