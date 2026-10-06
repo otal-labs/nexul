@@ -40,6 +40,8 @@ type LinkRepo interface {
 	ListLinkEnds(ctx context.Context, id string) (from, to []LinkEnd, err error)
 	// BlockerIDs returns the ids a ticket is directly blocked by, for the cycle walk.
 	BlockerIDs(ctx context.Context, id string) ([]string, error)
+	// SameWorkspace reports whether two projects belong to one workspace.
+	SameWorkspace(ctx context.Context, projectA, projectB string) (bool, error)
 	// CreateWithLink inserts a ticket and a link it holds in one transaction, so a bug is never stored without its found-in.
 	CreateWithLink(ctx context.Context, t *Ticket, link TicketLink, evts ...eventbus.OutboxEvent) error
 	// PutLink inserts a link; a found_in link replaces any found-in the ticket already holds.

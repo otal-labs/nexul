@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { TicketCategoryRow } from "@/components/ticket/TicketCategoryRow";
 import { TicketLabelsRow } from "@/components/ticket/TicketLabelsRow";
 import { TicketPersonRow } from "@/components/ticket/TicketPersonRow";
 import { TicketReporterRow } from "@/components/ticket/TicketReporterRow";
@@ -36,6 +37,7 @@ export const TicketPropertiesPanel = ({
       <h2 className={microheaderClass}>Properties</h2>
       <div className="flex flex-col">
         <TicketStatusRow ticket={ticket} {...(onTransition ? { onTransition } : {})} />
+        <TicketCategoryRow ticket={ticket} />
         <TicketPersonRow ticket={ticket} role={TicketRole.Developer} />
         <TicketPersonRow ticket={ticket} role={TicketRole.Tester} />
         <TicketReporterRow ticket={ticket} />

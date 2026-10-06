@@ -178,6 +178,43 @@ describe("TicketLinksSection", () => {
     expect(api.post).toHaveBeenCalledWith("/api/tickets/t-1/blocked-by", { blocker_id: "t-2" });
   });
 
+  it("marks a ticket in another project of the workspace as blocked by this one, leaving out other workspaces", async () => {
+    mockApi(emptySet);
+    const get = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/projects") return { data: [{ id: "p-1", prefix: "BKS" }, { id: "p-2", prefix: "API" }] };
+      if (url === "/api/tickets") {
+        return {
+          data: [
+            { id: "t-2", project_id: "p-1", number: 2, title: "backend /books" },
+            { id: "t-3", project_id: "p-2", number: 3, title: "books endpoint" },
+            { id: "t-9", project_id: "p-other", number: 9, title: "books elsewhere" },
+          ],
+        };
+      }
+      return get(url);
+    });
+    vi.mocked(api.post).mockResolvedValue({ data: emptySet });
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(await screen.findByRole("button", { name: "Add a link" }));
+    await user.click(screen.getByRole("button", { name: /^Blocks/ }));
+    await user.type(screen.getByRole("textbox", { name: "Search tickets" }), "books");
+    const options = await screen.findAllByRole("button", { name: /books/ });
+    expect(options.map((o) => o.textContent)).toEqual(["BKS-2backend /books", "API-3books endpoint"]);
+    await user.click(options[1]!);
+    expect(api.post).toHaveBeenCalledWith("/api/tickets/t-3/blocked-by", { blocker_id: "t-1" });
+  });
+
+  it("removes a link from the Blocks group on the ticket that holds it", async () => {
+    mockApi({ ...emptySet, blocks: [linked("t-4", 4, "mobile /books")] });
+    vi.mocked(api.delete).mockResolvedValue({ data: emptySet });
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(await screen.findByRole("button", { name: "Remove link to BKS-4" }));
+    expect(api.delete).toHaveBeenCalledWith("/api/tickets/t-4/blocked-by/t-1");
+  });
+
   it("sets found-in from the picker and toasts a refused link", async () => {
     mockApi(emptySet);
     vi.mocked(api.put).mockRejectedValue(new Error("conflict"));

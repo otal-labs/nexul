@@ -1,7 +1,14 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
-import { editableRowClass, menuItemClass, rowClass } from "@/components/ticket/ticketPropertyRowStyle";
+import {
+  editableRowClass,
+  menuItemClass,
+  rowClass,
+  rowIconClass,
+  rowLabelClass,
+  rowValueClass,
+} from "@/components/ticket/ticketPropertyRowStyle";
 import { TicketTypeOption } from "@/components/ticket/TicketTypeOption";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import { cn } from "@/lib/utils";
@@ -19,26 +26,22 @@ export const TicketTypeRow = ({ ticket, onSetType }: TicketTypeRowProps) => {
 
   const content = (
     <>
-      <TicketTypeIcon typeName={current?.name ?? ""} className={cn("size-3.5 shrink-0", ticketTypeColor(current?.name ?? ""))} aria-hidden />
-      <span className={cn("text-xs", current ? "font-medium text-foreground" : "text-muted-foreground")}>
-        {current?.name ?? "No type"}
+      <span className={rowIconClass}>
+        <TicketTypeIcon typeName={current?.name ?? ""} className={cn("size-3.5", ticketTypeColor(current?.name ?? ""))} aria-hidden />
       </span>
+      <span className={rowLabelClass}>Type</span>
+      <span className={cn(rowValueClass, !current && "text-muted-foreground")}>{current?.name ?? "No type"}</span>
     </>
   );
 
   if (!onSetType) {
     return (
-      <div className={rowClass}>
-        <span className="sr-only">Type</span>
-        {content}
-      </div>
+      <div className={rowClass}>{content}</div>
     );
   }
 
   return (
-    <>
-      <span className="sr-only">Type</span>
-      <Popover>
+    <Popover>
         <PopoverTrigger className={editableRowClass}>{content}</PopoverTrigger>
         <PopoverContent align="start" className="w-44 p-1">
           <div className="flex flex-col gap-0.5">
@@ -56,6 +59,5 @@ export const TicketTypeRow = ({ ticket, onSetType }: TicketTypeRowProps) => {
           </div>
         </PopoverContent>
       </Popover>
-    </>
   );
 };

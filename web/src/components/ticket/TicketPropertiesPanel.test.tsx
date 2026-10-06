@@ -39,6 +39,11 @@ const ticketTypes = [
   { id: "ticket-type-bug", name: "bug", position: 1, color: "", created_at: "", updated_at: "" },
 ];
 
+const categories = [
+  { id: "cat-api", project_id: "p-1", name: "API", position: 0, color: "", created_at: "", updated_at: "" },
+  { id: "cat-web", project_id: "p-1", name: "Web", position: 1, color: "", created_at: "", updated_at: "" },
+];
+
 const allLabels = ["backend", "migrations", "urgent"];
 
 const renderPanel = (props: Partial<ComponentProps<typeof TicketPropertiesPanel>> = {}) => {
@@ -68,6 +73,7 @@ beforeEach(() => {
     if (url === "/api/tickets/t-1/links") return Promise.resolve({ data: { prs: [], branches: [] } });
     if (url === "/api/tickets/labels") return Promise.resolve({ data: allLabels });
     if (url === "/api/ticket-types") return Promise.resolve({ data: ticketTypes });
+    if (url === "/api/categories") return Promise.resolve({ data: categories });
     return Promise.resolve({ data: [] });
   });
 });
@@ -186,5 +192,21 @@ describe("TicketPropertiesPanel", () => {
     await user.click(await screen.findByRole("button", { name: /task/i }));
     await user.click(await screen.findByRole("button", { name: "bug" }));
     expect(onSetType).toHaveBeenCalledWith("t-1", "ticket-type-bug");
+  });
+
+  it("moves the ticket to a picked category and clears it with No category", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.post).mockResolvedValue({ data: null });
+    vi.mocked(api.delete).mockResolvedValue({ data: null });
+    const { rerenderWithTicket } = renderPanel();
+
+    await user.click(screen.getByRole("button", { name: "Category: No category" }));
+    await user.click(await screen.findByRole("button", { name: "Web" }));
+    expect(api.post).toHaveBeenCalledWith("/api/categories/cat-web/tickets/t-1");
+
+    rerenderWithTicket({ ...ticket, category_id: "cat-web" });
+    await user.click(await screen.findByRole("button", { name: "Category: Web" }));
+    await user.click(await screen.findByRole("button", { name: "No category" }));
+    expect(api.delete).toHaveBeenCalledWith("/api/categories/tickets/t-1");
   });
 });

@@ -12,7 +12,7 @@ interface TicketPickerListProps {
   onSelect: (ticketId: string) => void;
 }
 
-// Searchable ticket list for a popover body; callers own the Popover and trigger around it.
+// Searchable list of the workspace's tickets, every project, for a popover body; callers own the Popover and trigger.
 export const TicketPickerList = ({ excludeId, onSelect }: TicketPickerListProps) => {
   const { data: tickets } = useFetchTickets();
   const { data: projects } = useFetchProjects();
@@ -22,11 +22,8 @@ export const TicketPickerList = ({ excludeId, onSelect }: TicketPickerListProps)
     const prefixes = new Map((projects ?? []).map((p) => [p.id, p.prefix]));
     const query = search.trim().toLowerCase();
     return (tickets ?? [])
-      .filter((t) => t.id !== excludeId)
-      .map((t) => {
-        const prefix = prefixes.get(t.project_id);
-        return { id: t.id, key: prefix ? `${prefix}-${t.number}` : "", title: t.title };
-      })
+      .filter((t) => t.id !== excludeId && prefixes.has(t.project_id))
+      .map((t) => ({ id: t.id, key: `${prefixes.get(t.project_id)}-${t.number}`, title: t.title }))
       .filter((o) => `${o.key} ${o.title}`.toLowerCase().includes(query))
       .slice(0, MAX_RESULTS);
   }, [tickets, projects, excludeId, search]);
@@ -44,7 +41,7 @@ export const TicketPickerList = ({ excludeId, onSelect }: TicketPickerListProps)
       <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
         {options.map((o) => (
           <button key={o.id} type="button" className={menuItemClass} onClick={() => onSelect(o.id)}>
-            {o.key !== "" && <span className="shrink-0 font-mono text-muted-foreground">{o.key}</span>}
+            <span className="shrink-0 font-mono text-muted-foreground">{o.key}</span>
             <span className="truncate">{o.title}</span>
           </button>
         ))}

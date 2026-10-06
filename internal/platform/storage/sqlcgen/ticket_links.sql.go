@@ -10,6 +10,22 @@ import (
 	"database/sql"
 )
 
+const countProjectWorkspaces = `-- name: CountProjectWorkspaces :one
+SELECT COUNT(DISTINCT workspace_id) FROM projects WHERE id IN (?1, ?2)
+`
+
+type CountProjectWorkspacesParams struct {
+	ProjectA string
+	ProjectB string
+}
+
+func (q *Queries) CountProjectWorkspaces(ctx context.Context, arg CountProjectWorkspacesParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countProjectWorkspaces, arg.ProjectA, arg.ProjectB)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteTicketBlocker = `-- name: DeleteTicketBlocker :execrows
 DELETE FROM ticket_links WHERE ticket_id = ? AND kind = 'blocked_by' AND target_id = ?
 `

@@ -165,7 +165,8 @@ func (s *Service) foundIn(ctx context.Context, id string) (string, bool, error) 
 	return "", false, nil
 }
 
-// AddBlocker records that a ticket waits on another reaching done; it refuses a cycle but never gates a status move.
+// AddBlocker records that a ticket waits on another reaching done, in any project of its workspace; it refuses a cycle
+// but never gates a status move.
 func (s *Service) AddBlocker(ctx context.Context, id, blockerID string) (*LinkSet, error) {
 	id, blockerID = strings.TrimSpace(id), strings.TrimSpace(blockerID)
 	if id == "" || blockerID == "" {
@@ -181,6 +182,13 @@ func (s *Service) AddBlocker(ctx context.Context, id, blockerID string) (*LinkSe
 	blocker, err := s.load(ctx, blockerID, permissions.TicketsRead)
 	if err != nil {
 		return nil, fmt.Errorf("add blocker to ticket %s: %w", id, err)
+	}
+	same, err := s.repo.SameWorkspace(ctx, t.ProjectID, blocker.ProjectID)
+	if err != nil {
+		return nil, fmt.Errorf("add blocker to ticket %s: %w", id, err)
+	}
+	if !same {
+		return nil, fmt.Errorf("%w: %q is in another workspace, a blocker must share the ticket's workspace", apperrs.ErrInvalid, blocker.Title)
 	}
 	existing, err := s.repo.BlockerIDs(ctx, id)
 	if err != nil {

@@ -53,6 +53,12 @@ func (f *fakeRepo) BlockerIDs(_ context.Context, id string) ([]string, error) {
 	return out, nil
 }
 
+func (f *fakeRepo) SameWorkspace(_ context.Context, projectA, projectB string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.workspaces[projectA][0] == f.workspaces[projectB][0], nil
+}
+
 func (f *fakeRepo) CreateWithLink(ctx context.Context, t *Ticket, link TicketLink, evts ...eventbus.OutboxEvent) error {
 	if f.ticketLinkErr != nil {
 		return f.ticketLinkErr
@@ -169,6 +175,25 @@ func TestAddBlocker_InvalidInput_ReturnsError(t *testing.T) {
 		})
 	}
 	assert.Empty(t, repo.ticketLinks)
+}
+
+func TestAddBlocker_AcrossProjects_OnlyWithinTheWorkspace(t *testing.T) {
+	repo := newFakeRepo()
+	repo.workspaces = map[string][2]string{"p-3": {"workspace-other", "other"}}
+	s := newTestService(repo)
+	ts := seedTickets(t, s, "frontend")
+	sibling, err := s.Create(t.Context(), "p-2", "backend", "", "", "")
+	require.NoError(t, err)
+	foreign, err := s.Create(t.Context(), "p-3", "elsewhere", "", "", "")
+	require.NoError(t, err)
+
+	set, err := s.AddBlocker(t.Context(), ts[0].ID, sibling.ID)
+	require.NoError(t, err)
+	assert.Len(t, set.BlockedBy, 1)
+
+	_, err = s.AddBlocker(t.Context(), ts[0].ID, foreign.ID)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.Len(t, repo.ticketLinks, 1)
 }
 
 func TestAddBlocker_WouldFormCycle_ReturnsConflict(t *testing.T) {

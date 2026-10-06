@@ -133,3 +133,22 @@ func TestTicketLinks_Integration_BugFiledWithFoundIn(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, all, 3, "a refused bug leaves no ticket behind")
 }
+
+func TestTicketsRepo_Integration_SameWorkspace(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-2", "Second")))
+	require.NoError(t, s.Projects.Create(ctx, newTestProject("p-a", "A", 0)))
+	require.NoError(t, s.Projects.Create(ctx, newTestProject("p-b", "B", 1)))
+	other := newTestProject("p-c", "C", 0)
+	other.WorkspaceID = "ws-2"
+	require.NoError(t, s.Projects.Create(ctx, other))
+
+	same, err := s.Tickets.SameWorkspace(ctx, "p-a", "p-b")
+	require.NoError(t, err)
+	assert.True(t, same)
+	same, err = s.Tickets.SameWorkspace(ctx, "p-a", "p-c")
+	require.NoError(t, err)
+	assert.False(t, same)
+}

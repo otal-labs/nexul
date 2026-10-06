@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { NoFillBadge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { labelDotColor } from "@/components/board/ticketTypeColor";
-import { menuItemClass, rowClass } from "@/components/ticket/ticketPropertyRowStyle";
+import { menuItemClass, rowClass, rowIconClass, rowLabelClass } from "@/components/ticket/ticketPropertyRowStyle";
 import { useFetchAllLabels } from "@/hooks/TicketHooks";
 import { cn } from "@/lib/utils";
 import type { Ticket } from "@/models/Ticket";
@@ -89,8 +89,10 @@ export const TicketLabelsRow = ({ ticket, onAddLabel, onRemoveLabel }: TicketLab
 
   return (
     <div className={cn(rowClass, "items-start")}>
-      <TagIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-      <span className="sr-only">Labels</span>
+      <span className={cn(rowIconClass, "mt-0.5")}>
+        <TagIcon className="size-3.5" aria-hidden />
+      </span>
+      <span className={cn(rowLabelClass, "mt-0.5")}>Labels</span>
       <div className="flex flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
         {labels.length === 0 && !canEdit && <span className="text-xs text-muted-foreground">None</span>}
         {labels.map((label) => (

@@ -55,6 +55,15 @@ func (r *TicketsRepo) BlockerIDs(ctx context.Context, id string) ([]string, erro
 	return out, nil
 }
 
+// SameWorkspace reports whether two projects belong to one workspace.
+func (r *TicketsRepo) SameWorkspace(ctx context.Context, projectA, projectB string) (bool, error) {
+	n, err := r.q.CountProjectWorkspaces(ctx, sqlcgen.CountProjectWorkspacesParams{ProjectA: projectA, ProjectB: projectB})
+	if err != nil {
+		return false, fmt.Errorf("compare workspaces of projects %s and %s: %w", projectA, projectB, err)
+	}
+	return n == 1, nil
+}
+
 // PutLink inserts a link; a found_in link first clears the ticket's earlier found-in in the same transaction.
 func (r *TicketsRepo) PutLink(ctx context.Context, link tickets.TicketLink, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {

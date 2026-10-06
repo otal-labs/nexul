@@ -95,7 +95,7 @@ describe("TicketPage", () => {
     expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
     expect(screen.getByText("BE-7")).toBeInTheDocument();
 
-    await user.click(await screen.findByRole("button", { name: "In progress" }));
+    await user.click(await screen.findByRole("button", { name: "Status: In progress" }));
     expect(await screen.findByRole("button", { name: "Shipped" })).toBeInTheDocument();
     expect(await screen.findByText("No branches or PRs linked yet.")).toBeInTheDocument();
   });
@@ -123,7 +123,7 @@ describe("TicketPage", () => {
     vi.mocked(api.patch).mockResolvedValue({ data: { ...ticketData, status: "st-done" } });
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: "In progress" }));
+    await user.click(await screen.findByRole("button", { name: "Status: In progress" }));
     await user.click(await screen.findByRole("button", { name: "Shipped" }));
     expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "st-done" });
   });

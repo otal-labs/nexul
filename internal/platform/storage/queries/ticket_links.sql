@@ -36,3 +36,6 @@ LEFT JOIN projects p ON p.id = t.project_id
 LEFT JOIN statuses s ON s.id = t.status
 WHERE l.kind = 'blocked_by' AND COALESCE(s.kind, '') != 'done'
 ORDER BY l.ticket_id, l.created_at, t.id;
+
+-- name: CountProjectWorkspaces :one
+SELECT COUNT(DISTINCT workspace_id) FROM projects WHERE id IN (sqlc.arg(project_a), sqlc.arg(project_b));
