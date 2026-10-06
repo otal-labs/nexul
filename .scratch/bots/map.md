@@ -17,6 +17,8 @@ how embeds render, mentions and notifications, permissions, and the settings,
 MCP, gateway, and event surfaces. Planning only; the build is its own effort
 after this map.
 
+**Reached 2026-10-06**: [spec.md](spec.md), ready for `/to-tickets`.
+
 ## Notes
 
 - Grilling tickets: invoke `/grilling` + `/domain-modeling`. Research
@@ -75,6 +77,7 @@ after this map.
 - [How a bot message and its embeds look](issues/05-embed-rendering-prototype.md) — text and embeds in one message bubble with a `BOT` tag and `via <bot>` on a name override; each embed behind a neutral rule with the sender's color dropped; fields as a framed two-column grid; Discord-weight footer with "Today at 21:11"; long parts fold behind one bar; Discord's markdown subset renders in bot posts only; prototype on `proto/bots-embed`.
 - [Surfaces: settings, gateway, MCP, events, search](issues/06-surfaces-mcp-gateway-events.md) — a Bots section in channel settings, a menu item for DMs and threads; REST under `/api/conversations/{id}/botwebhooks` and `/api/botwebhooks/{id}`; three MCP tools with an ADR raising the ceiling to 111, no posting as a bot over MCP; four `botwebhook.*` events without the token; no chat search today; read sees bots, write sees URLs and restores, delete deletes; the author migration is forward-only now that production data exists.
 - [The Bots section and the create flow](issues/07-bots-tab-prototype.md) — rows of avatar, name and a last-post line under the channel settings card; a row opens a detail view behind "‹ Bots" with avatar, name, the URL in a field with a joined Copy, Regenerate URL and Delete bot; create opens the same view empty; consequence-naming confirms; a Deleted fold with Restore; read-only sees rows only; the dialog scrolls; prototype on `proto/bots-section`.
+- [Write the spec](issues/08-write-the-spec.md) — `spec.md` folds 01 to 07; **Bot** and `botwebhook` in `CONTEXT.md`; ADR 0129 for the author change; ready for `/to-tickets`.
 
 ## Not yet specified
 

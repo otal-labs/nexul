@@ -570,6 +570,14 @@ An external service that listens to signed events and calls the scoped API. A
 separate service, never an in-process plugin. Third-party by positioning:
 first-party event-driven code is an **Automation**.
 
+**Bot**:
+A named poster bound to one conversation and driven from outside through a
+webhook URL that accepts Discord's execute-webhook JSON. The URL is the
+credential; there is no login and no user behind it. A bot's messages carry
+author kind `bot`. Not an **Integration**, which listens to signed events and
+calls the scoped API, and not the **Agent**.
+_Avoid_: Webhook (alone; integrations already send signed webhooks), app, integration
+
 **Trust tier**:
 How much an integration is vouched for — `verified` or `community`.
 
@@ -847,6 +855,10 @@ Distinct from access.
 **Automations** — event-driven code: Default and Custom automations run
 functions when events happen, acting through the scoped API, on the
 automations hosts they are placed on.
+
+**Bot webhooks** (`botwebhook`) — bots: their URL and token, the execute
+route, limits, and lifecycle. Posts reach chat through one use-case chat
+exposes; chat never learns what a webhook is.
 
 **Chat** — conversations inside a workspace: channels, direct messages,
 threads, and ticket threads, with the mentionable Agent and its memories.
