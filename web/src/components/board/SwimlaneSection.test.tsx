@@ -99,14 +99,14 @@ describe("SwimlaneSection", () => {
     frame("t-1", "running");
     frame("t-2", "running");
     frame("t-3", "waiting");
-    expect(screen.getByRole("button", { name: "Sprint 1 Running 2 tickets Waiting for an answer 1 ticket 3 tickets" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sprint 1 Running 2 tickets Waiting for an answer 1 ticket 1/3 tickets" })).toBeInTheDocument();
 
     frame("t-1", "done");
     frame("t-2", "done");
-    expect(screen.getByRole("button", { name: "Sprint 1 Running 0 tickets Waiting for an answer 1 ticket 3 tickets" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sprint 1 Running 0 tickets Waiting for an answer 1 ticket 1/3 tickets" })).toBeInTheDocument();
 
     frame("t-3", "done");
-    expect(screen.getByRole("button", { name: "Sprint 1 3 tickets" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sprint 1 1/3 tickets" })).toBeInTheDocument();
   });
 
   it("ticks the header only once every ticket in the lane is in a done status", () => {
@@ -118,10 +118,19 @@ describe("SwimlaneSection", () => {
     expect(screen.getByLabelText("All done")).toBeInTheDocument();
   });
 
+  it("counts tickets in every done-kind status toward the lane's done total", () => {
+    const wontDo: BoardStatus = { id: "wont", name: "Wont Do", position: 2, kind: "done", icon: "", created_at: "", updated_at: "" };
+    renderSection({
+      columns: [...columns, wontDo],
+      lane: lane("c-1", [ticket("t-1", "Fix login", "done"), ticket("t-2", "Drop IE", "wont"), ticket("t-3", "Wire FTS", "open")]),
+    });
+    expect(screen.getByText("2/3 tickets")).toBeInTheDocument();
+  });
+
   it("collapses and expands the columns from the whole header row", async () => {
     const user = userEvent.setup();
     renderSection();
-    const toggle = screen.getByRole("button", { name: "Sprint 1 1 tickets" });
+    const toggle = screen.getByRole("button", { name: "Sprint 1 0/1 tickets" });
     expect(toggle).toHaveAttribute("aria-expanded", "true");
 
     await user.click(toggle);
@@ -135,18 +144,18 @@ describe("SwimlaneSection", () => {
   it("keeps a lane's collapse to its own project when another project has a same-named lane", async () => {
     const user = userEvent.setup();
     const { unmount } = renderSection({}, "/board/WEB");
-    await user.click(screen.getByRole("button", { name: "Sprint 1 1 tickets" }));
-    expect(screen.getByRole("button", { name: "Sprint 1 1 tickets" })).toHaveAttribute("aria-expanded", "false");
+    await user.click(screen.getByRole("button", { name: "Sprint 1 0/1 tickets" }));
+    expect(screen.getByRole("button", { name: "Sprint 1 0/1 tickets" })).toHaveAttribute("aria-expanded", "false");
     unmount();
 
     renderSection({}, "/board/API");
-    expect(screen.getByRole("button", { name: "Sprint 1 1 tickets" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Sprint 1 0/1 tickets" })).toHaveAttribute("aria-expanded", "true");
   });
 
   it("renders the lane label and ticket count", () => {
     renderSection();
     expect(screen.getByText("Sprint 1")).toBeInTheDocument();
-    expect(screen.getByText("1 tickets")).toBeInTheDocument();
+    expect(screen.getByText("0/1 tickets")).toBeInTheDocument();
   });
 
   it("renders one column per status", () => {

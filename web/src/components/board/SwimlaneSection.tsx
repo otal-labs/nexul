@@ -27,7 +27,8 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
   const toggleLane = useBoardStore((s) => s.toggleLane);
   const runs = useTicketRunCounts(lane.tickets[0]?.project_id, lane.tickets.map((t) => t.id));
   const doneStatusIds = new Set(columns.filter((c) => c.kind === "done").map((c) => c.id));
-  const allDone = lane.tickets.length > 0 && lane.tickets.every((t) => doneStatusIds.has(t.status));
+  const doneCount = lane.tickets.filter((t) => doneStatusIds.has(t.status)).length;
+  const allDone = lane.tickets.length > 0 && doneCount === lane.tickets.length;
   const { setNodeRef, isOver } = useDroppable(
     lane.categoryId === null
       ? { id: `lane-${lane.key}`, disabled: true }
@@ -69,7 +70,7 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
             )}
           </span>{" "}
           <span className="sticky right-0 flex shrink-0 items-center gap-1 font-mono text-xs text-muted-foreground transition-colors group-hover/lane:text-foreground">
-            {lane.tickets.length} tickets
+            {doneCount}/{lane.tickets.length} tickets
             <ChevronDownIcon
               className={cn("size-3.5 transition-transform duration-150 ease-standard", collapsed && "-rotate-90")}
               aria-hidden
