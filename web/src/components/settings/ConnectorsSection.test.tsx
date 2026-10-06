@@ -399,7 +399,7 @@ describe("ConnectorsSection", () => {
       ],
     });
     mocks.post.mockImplementation(async (_url: string, _body: unknown, config?: { params?: { check?: string } }) => {
-      if (config?.params?.check === "dns_edit") return { data: { detail: "Can edit DNS on nexul.io, otal.dev" } };
+      if (config?.params?.check === "dns_edit") return { data: { detail: "Can edit DNS on nexul.io, example.com" } };
       return { data: "" };
     });
     const user = userEvent.setup();
@@ -410,7 +410,7 @@ describe("ConnectorsSection", () => {
     await user.type(within(dialog).getByLabelText(/api token/i), "tok-1");
     await user.click(within(dialog).getByRole("button", { name: /^verify$/i }));
 
-    expect(await within(dialog).findByText("Can edit DNS on nexul.io, otal.dev")).toBeInTheDocument();
+    expect(await within(dialog).findByText("Can edit DNS on nexul.io, example.com")).toBeInTheDocument();
     expect(within(dialog).getByText("Zone → DNS: Edit").closest("li")).toHaveAttribute("data-state", "ok");
     expect(within(dialog).getByText("Token is active").closest("li")).toHaveAttribute("data-state", "ok");
     expect(await within(dialog).findByRole("button", { name: /^confirm$/i })).toBeEnabled();

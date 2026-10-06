@@ -58,7 +58,7 @@ describe("switchWorkspacePath", () => {
 
 describe("slugify", () => {
   it.each([
-    ["Rixwave Labs!", "rixwave-labs"],
+    ["Norwood Labs!", "norwood-labs"],
     ["  OTAL  ", "otal"],
     ["Café Crème", "caf-cr-me"],
     ["!!!", "workspace"],
@@ -82,7 +82,7 @@ describe("replaceWorkspaceSlug", () => {
 describe("normalizeSlugInput", () => {
   it.each([
     ["My App", "my-app"],
-    ["rix_wave!!", "rix-wave-"],
+    ["nor_wood!!", "nor-wood-"],
     ["--lead", "lead"],
     ["a   b", "a-b"],
   ])("types %s as %s", (typed, kept) => {
@@ -96,7 +96,7 @@ describe("WorkspaceGeneralFormSchema", () => {
     return result.success ? undefined : result.error.issues[0]?.message;
   };
 
-  it.each(["rixwave", "acme-2", "a"])("accepts %s", (slug) => {
+  it.each(["norwood", "acme-2", "a"])("accepts %s", (slug) => {
     expect(slugError(slug)).toBeUndefined();
   });
 

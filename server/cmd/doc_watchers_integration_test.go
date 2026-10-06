@@ -54,10 +54,10 @@ func TestDocWatchers_ChangesNotifyOnlyWatchers(t *testing.T) {
 	deliverNotifications(t, svc, store)
 
 	t.Run("a new doc notifies nobody and is watched by its creator", func(t *testing.T) {
-		for _, id := range []string{"u-rix", "u-kai", "u-onik"} {
+		for _, id := range []string{"u-nor", "u-kai", "u-onik"} {
 			assert.Empty(t, inbox(t, svc, id, workspace.KindDocCreated), id)
 		}
-		assert.Equal(t, []string{"u-onik"}, watcherIDs(t, svc, "u-rix", plan.ID))
+		assert.Equal(t, []string{"u-onik"}, watcherIDs(t, svc, "u-nor", plan.ID))
 	})
 
 	t.Run("an edit makes its editor a watcher and tells the other watchers", func(t *testing.T) {
@@ -67,23 +67,23 @@ func TestDocWatchers_ChangesNotifyOnlyWatchers(t *testing.T) {
 		assert.ElementsMatch(t, []string{"u-onik", "u-kai"}, watcherIDs(t, svc, "u-onik", plan.ID))
 		assert.Equal(t, []string{"Launch plan"}, inbox(t, svc, "u-onik", workspace.KindDocUpdated))
 		assert.Empty(t, inbox(t, svc, "u-kai", workspace.KindDocUpdated), "the editor is not told of their own edit")
-		assert.Empty(t, inbox(t, svc, "u-rix", workspace.KindDocUpdated), "a reader who does not watch is not told")
+		assert.Empty(t, inbox(t, svc, "u-nor", workspace.KindDocUpdated), "a reader who does not watch is not told")
 	})
 
 	t.Run("a reader who watches is told of the next edit", func(t *testing.T) {
-		readAll(t, svc, "u-onik", "u-kai", "u-rix")
-		got, err := svc.docsSvc.SetWatching(as("u-rix"), plan.ID, true)
+		readAll(t, svc, "u-onik", "u-kai", "u-nor")
+		got, err := svc.docsSvc.SetWatching(as("u-nor"), plan.ID, true)
 		require.NoError(t, err)
 		assert.True(t, got.Watching)
 		_, err = svc.docsSvc.Update(as("u-onik"), plan.ID, "Launch plan", "")
 		require.NoError(t, err)
 		deliverNotifications(t, svc, store)
-		assert.Len(t, inbox(t, svc, "u-rix", workspace.KindDocUpdated), 1)
+		assert.Len(t, inbox(t, svc, "u-nor", workspace.KindDocUpdated), 1)
 		assert.Len(t, inbox(t, svc, "u-kai", workspace.KindDocUpdated), 1)
 	})
 
 	t.Run("stopping sticks through the person's own later edit", func(t *testing.T) {
-		readAll(t, svc, "u-onik", "u-kai", "u-rix")
+		readAll(t, svc, "u-onik", "u-kai", "u-nor")
 		got, err := svc.docsSvc.SetWatching(as("u-kai"), plan.ID, false)
 		require.NoError(t, err)
 		assert.False(t, got.Watching)
@@ -98,7 +98,7 @@ func TestDocWatchers_ChangesNotifyOnlyWatchers(t *testing.T) {
 	})
 
 	t.Run("a mention reaches someone who is not watching and does not make them a watcher", func(t *testing.T) {
-		readAll(t, svc, "u-onik", "u-kai", "u-rix")
+		readAll(t, svc, "u-onik", "u-kai", "u-nor")
 		_, err := svc.docsSvc.Update(as("u-onik"), plan.ID, "Launch plan v3", personMentionBody("u-kai"))
 		require.NoError(t, err)
 		deliverNotifications(t, svc, store)
@@ -107,14 +107,14 @@ func TestDocWatchers_ChangesNotifyOnlyWatchers(t *testing.T) {
 	})
 
 	t.Run("a watcher who can no longer read the doc is told nothing", func(t *testing.T) {
-		readAll(t, svc, "u-onik", "u-kai", "u-rix")
-		require.Contains(t, watcherIDs(t, svc, "u-onik", plan.ID), "u-rix")
-		before := len(inbox(t, svc, "u-rix", workspace.KindDocUpdated))
-		require.NoError(t, store.WorkspaceMembers.SetRole(context.Background(), "workspace-default", "u-rix", "role-member"))
+		readAll(t, svc, "u-onik", "u-kai", "u-nor")
+		require.Contains(t, watcherIDs(t, svc, "u-onik", plan.ID), "u-nor")
+		before := len(inbox(t, svc, "u-nor", workspace.KindDocUpdated))
+		require.NoError(t, store.WorkspaceMembers.SetRole(context.Background(), "workspace-default", "u-nor", "role-member"))
 		_, err := svc.docsSvc.Update(as("u-onik"), plan.ID, "Launch plan v4", "")
 		require.NoError(t, err)
 		deliverNotifications(t, svc, store)
-		assert.Len(t, inbox(t, svc, "u-rix", workspace.KindDocUpdated), before, "nothing new after losing docs:read")
+		assert.Len(t, inbox(t, svc, "u-nor", workspace.KindDocUpdated), before, "nothing new after losing docs:read")
 	})
 
 	t.Run("a collaborative save from the editor makes its editor a watcher too", func(t *testing.T) {
@@ -140,8 +140,8 @@ func TestDocWatchers_WatchingTakesReadingTheDoc(t *testing.T) {
 	_, err = svc.docsSvc.Watchers(as("u-sam"), plan.ID)
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 
-	got, err := svc.docsSvc.SetWatching(as("u-rix"), plan.ID, true)
+	got, err := svc.docsSvc.SetWatching(as("u-nor"), plan.ID, true)
 	require.NoError(t, err, "reading is enough; watching never needs docs:write")
 	assert.True(t, got.Watching)
-	assert.Contains(t, watcherIDs(t, svc, "u-onik", plan.ID), "u-rix")
+	assert.Contains(t, watcherIDs(t, svc, "u-onik", plan.ID), "u-nor")
 }

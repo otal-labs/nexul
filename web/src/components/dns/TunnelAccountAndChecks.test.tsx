@@ -29,7 +29,7 @@ vi.mock("@/utils/RetryUtility", () => ({
 
 const zones = [
   { id: "z-law", name: "law.example", account_id: "acct-law", account_name: "Onlaw" },
-  { id: "z-otal", name: "otal.dev", account_id: "acct-otal", account_name: "Otal Software" },
+  { id: "z-otal", name: "example.com", account_id: "acct-otal", account_name: "Acme Hosting" },
 ];
 
 const wrap = (ui: ReactNode) => {
@@ -64,7 +64,7 @@ describe("tunnel account and checks", () => {
     expect(await screen.findByText("Choose the Cloudflare account")).toBeInTheDocument();
     expect(mocks.post).not.toHaveBeenCalled();
 
-    await pickOption(user, "Cloudflare account", "Otal Software");
+    await pickOption(user, "Cloudflare account", "Acme Hosting");
     await user.click(screen.getByRole("button", { name: /deploy tunnel/i }));
     expect(mocks.post).toHaveBeenCalledWith("/api/dns/tunnels", { name: "instance", account_id: "acct-otal" });
   });
@@ -87,7 +87,7 @@ describe("tunnel account and checks", () => {
   it("offers only the tunnel account's zones and holds Continue while a check fails", async () => {
     mocks.post.mockImplementation(async (url: string, _body: unknown, config?: { params?: { check?: string } }) => {
       if (url.endsWith("/route")) return { data: { id: "t1" } };
-      if (config?.params?.check === "reachable") throw new Error("otal.dev answered HTTP 530");
+      if (config?.params?.check === "reachable") throw new Error("example.com answered HTTP 530");
       return { data: { detail: "fine" } };
     });
     const user = userEvent.setup();
@@ -96,10 +96,10 @@ describe("tunnel account and checks", () => {
 
     // The only zone in the tunnel's account is preselected; the other account's zone is not offered.
     await user.type(await screen.findByLabelText(/subdomain/i), "nexul");
-    expect(screen.getByText("nexul.otal.dev → this instance")).toBeInTheDocument();
+    expect(screen.getByText("nexul.example.com → this instance")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /point hostname at the tunnel/i }));
-    expect(await screen.findByText("otal.dev answered HTTP 530")).toBeInTheDocument();
+    expect(await screen.findByText("example.com answered HTTP 530")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^continue$/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /check again/i })).toBeInTheDocument();
   });

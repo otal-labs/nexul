@@ -6,3 +6,6 @@ contact_links:
   - name: Questions and ideas
     url: https://github.com/otal-labs/nexul/discussions
     about: Ask a question or float an idea before it becomes an issue.
+  - name: Security report
+    url: https://github.com/otal-labs/nexul/security/advisories/new
+    about: Report a vulnerability privately. Never open a public issue for one.

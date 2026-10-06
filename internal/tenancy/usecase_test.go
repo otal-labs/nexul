@@ -684,7 +684,7 @@ func newRenamingService(repo *fakeRepo) *Service {
 
 func TestSlugify(t *testing.T) {
 	for name, want := range map[string]string{
-		"Rixwave Labs!": "rixwave-labs",
+		"Norwood Labs!": "norwood-labs",
 		"  OTAL  ":      "otal",
 		"Café Crème":    "caf-cr-me",
 		"!!!":           "workspace",

@@ -7,15 +7,13 @@ security fixes.
 
 ## Reporting a vulnerability
 
-Open a [security report](https://github.com/otal-labs/nexul/issues/new?template=security_report.yml)
-on the issue tracker with a description of the issue, the steps to reproduce
-it, and the version or commit you tested against. Issues are public, so keep
-working exploits and live instance details out of the report and say you have
-them; a maintainer will follow up with a private channel. The project is
-young enough that this is the fastest path; a dedicated reporting address
-comes later.
+Report it privately through
+[GitHub's vulnerability reporting](https://github.com/otal-labs/nexul/security/advisories/new)
+with a description of the issue, the steps to reproduce it, and the version or
+commit you tested against. Only maintainers can see the report. Do not open a
+public issue for a vulnerability.
 
-You will get an acknowledgement within three working days, and the issue
+You will get an acknowledgement within three working days, and the advisory
 tracks the fix. Once it is released, we credit reporters in the release notes
 unless they ask us not to.
 

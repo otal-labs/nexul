@@ -31,13 +31,13 @@ describe("ProjectDangerZoneSection", () => {
 
   it("names the Restricted members who lose access in the delete confirmation", async () => {
     const user = userEvent.setup();
-    renderSection({ tickets: 0, repos: 0, services: 0, restricted_members: [{ user_id: "u-1", name: "Fahad" }, { user_id: "u-2", name: "Sam" }] });
+    renderSection({ tickets: 0, repos: 0, services: 0, restricted_members: [{ user_id: "u-1", name: "Bob" }, { user_id: "u-2", name: "Sam" }] });
 
     await vi.waitFor(() => expect(mocks.get).toHaveBeenCalled());
     await user.click(screen.getByRole("button", { name: "Remove project" }));
 
-    expect(await screen.findByText("Fahad and 1 other restricted member lose access.")).toBeInTheDocument();
-    expect(screen.getByText("Fahad, Sam")).toBeInTheDocument();
+    expect(await screen.findByText("Bob and 1 other restricted member lose access.")).toBeInTheDocument();
+    expect(screen.getByText("Bob, Sam")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
   });
 

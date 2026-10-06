@@ -192,7 +192,7 @@ Prototype on branch `proto/bots-section`, the visual source for the build.
   CI? Anything posting to its URL gets a 404. Its messages stay in the
   channel, and you can restore it later with a new URL."
 - **Deleted**: a "› Deleted (n)" fold for editors, rows dimmed with "Deleted
-  2d ago by Fahad" and Restore, off while the conversation is full.
+  2d ago by Bob" and Restore, off while the conversation is full.
 - **Read-only** sees the rows only: no chevron, no URL, no create, no
   Deleted fold. "Delete bot" shows only with `botwebhook:delete`.
 

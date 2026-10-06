@@ -26,7 +26,7 @@ const meResponse = {
 
 const people = [
   { user_id: "u1", login: "onik", display_name: "Onik", avatar_url: "" },
-  { user_id: "u2", login: "fahad", display_name: "Fahad", avatar_url: "" },
+  { user_id: "u2", login: "bob", display_name: "Bob", avatar_url: "" },
   { user_id: "u3", login: "sam", display_name: "Sam", avatar_url: "" },
 ];
 
@@ -54,7 +54,7 @@ const renderSidebar = () => {
         <ChatSidebarSection collapsed={false} />
         <Routes>
           <Route path="/acme/chat" element={<div>chat-home</div>} />
-          <Route path="/acme/chat/dm-fahad" element={<div>dm-with-fahad</div>} />
+          <Route path="/acme/chat/dm-bob" element={<div>dm-with-bob</div>} />
           <Route path="/acme/chat/:conversationId" element={<div>chat-page</div>} />
         </Routes>
       </MemoryRouter>
@@ -119,7 +119,7 @@ describe("a channel's settings", () => {
     expect(within(dialog).queryByRole("switch")).not.toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Add people" })).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Leave channel" })).toBeInTheDocument();
-    await u.click(within(dialog).getByRole("button", { name: "Actions for Fahad" }));
+    await u.click(within(dialog).getByRole("button", { name: "Actions for Bob" }));
     expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual(["Send a message"]);
   });
 
@@ -150,7 +150,7 @@ describe("a channel's settings", () => {
     expect(within(picker).getByRole("checkbox", { name: "Onik" })).toBeDisabled();
     expect(within(picker).getByText("1 of 3 people")).toBeInTheDocument();
     await u.type(within(picker).getByRole("textbox", { name: "Search people" }), "sa");
-    expect(within(picker).queryByRole("checkbox", { name: "Fahad" })).not.toBeInTheDocument();
+    expect(within(picker).queryByRole("checkbox", { name: "Bob" })).not.toBeInTheDocument();
     await u.click(within(picker).getByRole("checkbox", { name: "Sam" }));
     await u.click(within(picker).getByRole("button", { name: "Make private" }));
 
@@ -181,7 +181,7 @@ describe("a channel's settings", () => {
     await u.click(within(dialog).getByRole("button", { name: "Add people" }));
 
     const form = await screen.findByRole("dialog", { name: "Add people to #eng" });
-    expect(within(form).queryByRole("checkbox", { name: "Fahad" })).not.toBeInTheDocument();
+    expect(within(form).queryByRole("checkbox", { name: "Bob" })).not.toBeInTheDocument();
     await u.click(within(form).getByRole("checkbox", { name: "Sam" }));
     await u.click(within(form).getByRole("button", { name: "Add" }));
 
@@ -195,11 +195,11 @@ describe("a channel's settings", () => {
     const u = user();
     renderSidebar();
     const dialog = await openSettings(u);
-    await u.click(within(dialog).getByRole("button", { name: "Actions for Fahad" }));
+    await u.click(within(dialog).getByRole("button", { name: "Actions for Bob" }));
     await u.click(await screen.findByRole("menuitem", { name: "Remove from channel" }));
 
     await waitFor(() => expect(api.delete).toHaveBeenCalledWith("/api/chat/conversations/c5/members/u2"));
-    expect(mocks.toast.success).toHaveBeenCalledWith("Removed Fahad from #eng");
+    expect(mocks.toast.success).toHaveBeenCalledWith("Removed Bob from #eng");
   });
 
   it("leaves after a confirmation and sends a viewer of the channel to the chat home", async () => {
@@ -217,15 +217,15 @@ describe("a channel's settings", () => {
   });
 
   it("sends a message through the existing DM and closes the settings", async () => {
-    const dm: Conversation = { id: "dm-fahad", workspace_id: "ws-1", kind: "dm", created_by: "u1", created_at: "", updated_at: "", participant_ids: ["u2", "u1"] };
+    const dm: Conversation = { id: "dm-bob", workspace_id: "ws-1", kind: "dm", created_by: "u1", created_at: "", updated_at: "", participant_ids: ["u2", "u1"] };
     conversations = [channel({ private: true, participant_ids: ["u1", "u2"] }), dm];
     const u = user();
     renderSidebar();
     const dialog = await openSettings(u);
-    await u.click(within(dialog).getByRole("button", { name: "Actions for Fahad" }));
+    await u.click(within(dialog).getByRole("button", { name: "Actions for Bob" }));
     await u.click(await screen.findByRole("menuitem", { name: "Send a message" }));
 
-    expect(await screen.findByText("dm-with-fahad")).toBeInTheDocument();
+    expect(await screen.findByText("dm-with-bob")).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(api.post).not.toHaveBeenCalled();
   });
@@ -246,7 +246,7 @@ describe("creating a channel", () => {
     await u.click(await screen.findByRole("button", { name: "New channel" }));
     await u.type(await screen.findByLabelText("Channel name"), "client");
     await u.click(screen.getByRole("switch", { name: "Private channel" }));
-    await u.click(await screen.findByRole("checkbox", { name: "Fahad" }));
+    await u.click(await screen.findByRole("checkbox", { name: "Bob" }));
     await u.click(screen.getByRole("button", { name: "Create channel" }));
 
     await waitFor(() =>

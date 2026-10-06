@@ -42,7 +42,7 @@ describe("unwrapShellCommand", () => {
     ["a bare bash wrapper in single quotes", `bash -lc 'go test ./...'`, "go test ./..."],
     ["an sh wrapper with no quotes", "sh -c ls", "ls"],
     ["nested quotes inside the wrapper", String.raw`/bin/bash -lc "rg -n 'a|b' \"$HOME\""`, String.raw`rg -n 'a|b' \"$HOME\"`],
-    ["a wrapper cut short before its closing quote", `/bin/bash -lc "rg -n 'Nexul MCP|skill_get' /home/onik/.codex/mem…`, "rg -n 'Nexul MCP|skill_get' /home/onik/.codex/mem…"],
+    ["a wrapper cut short before its closing quote", `/bin/bash -lc "rg -n 'Nexul MCP|skill_get' /home/dev/.codex/mem…`, "rg -n 'Nexul MCP|skill_get' /home/dev/.codex/mem…"],
     ["no wrapper", "go test ./...", "go test ./..."],
     ["a command that only mentions bash", "bash scripts/build.sh", "bash scripts/build.sh"],
     ["empty", "", ""],

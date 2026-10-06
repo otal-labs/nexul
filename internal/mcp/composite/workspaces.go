@@ -43,8 +43,8 @@ type workspaceResult struct {
 
 type workspaceUpdateIn struct {
 	ID   string  `json:"id" jsonschema:"The workspace to change, from workspace_list."`
-	Name *string `json:"name,omitempty" jsonschema:"The workspace's new display name, for example Rixwave Labs. Omit to keep it."`
-	Slug *string `json:"slug,omitempty" jsonschema:"The workspace's new name in web links, for example rixwave: lowercase letters and digits joined by single dashes, at most 48 characters, not a reserved path such as settings, and not taken by another workspace. Omit to keep it."`
+	Name *string `json:"name,omitempty" jsonschema:"The workspace's new display name, for example Norwood Labs. Omit to keep it."`
+	Slug *string `json:"slug,omitempty" jsonschema:"The workspace's new name in web links, for example norwood: lowercase letters and digits joined by single dashes, at most 48 characters, not a reserved path such as settings, and not taken by another workspace. Omit to keep it."`
 }
 
 type workspaceUpdateResult struct {

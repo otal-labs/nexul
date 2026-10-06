@@ -785,7 +785,7 @@ func TestRunTurn_SessionTitle_NamesWhatTheConversationIsAbout(t *testing.T) {
 	}{
 		{"ticket thread", Conversation{ID: "conv-1", IsTicketThread: true, TicketID: "t-1"}, "Login broken"},
 		{"doc thread", Conversation{ID: "conv-1", IsDocThread: true, DocID: "doc-1"}, "Runbook"},
-		{"interview thread", Conversation{ID: "conv-1", ProjectID: "proj-1", ProjectName: "Shopkeepers"}, "Interview: Shopkeepers"},
+		{"interview thread", Conversation{ID: "conv-1", ProjectID: "proj-1", ProjectName: "Globex"}, "Interview: Globex"},
 		{"channel", Conversation{ID: "conv-1", Name: "general"}, "#general"},
 		{"anything else never shows its id", Conversation{ID: "conv-1"}, "Nexul chat"},
 	}

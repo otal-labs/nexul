@@ -95,7 +95,7 @@ func TestMentionMarkdown_RoundTrip(t *testing.T) {
 	for _, md := range []string{
 		"see [Fix the bug](/tickets/t-1) now",
 		"[Design doc](/docs/d-9) covers it",
-		"ping [@rix-wave](/people/u-1) please",
+		"ping [@nor-wood](/people/u-1) please",
 	} {
 		doc, err := MarkdownToDoc(md)
 		require.NoError(t, err)
@@ -115,15 +115,15 @@ func TestMentionWithMarks_Serializes(t *testing.T) {
 }
 
 func TestPersonMention_MarkdownIsAtLoginAndNodeKeepsTheID(t *testing.T) {
-	body := `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"ping "},{"type":"mention","attrs":{"type":"person","id":"u-1","label":"rixwavedev"}}]}]}`
+	body := `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"ping "},{"type":"mention","attrs":{"type":"person","id":"u-1","label":"norwooddev"}}]}]}`
 	md, err := JSONToMarkdown(body)
 	require.NoError(t, err)
-	assert.Equal(t, "ping [@rixwavedev](/people/u-1)", md)
+	assert.Equal(t, "ping [@norwooddev](/people/u-1)", md)
 
 	doc, err := MarkdownToDoc(md)
 	require.NoError(t, err)
 	mention := doc.Content[0].Content[1]
-	assert.Equal(t, map[string]any{"type": "person", "id": "u-1", "label": "rixwavedev"}, mention.Attrs)
+	assert.Equal(t, map[string]any{"type": "person", "id": "u-1", "label": "norwooddev"}, mention.Attrs)
 }
 
 func TestAddedPersonMentions(t *testing.T) {
@@ -144,7 +144,7 @@ func TestAddedPersonMentions(t *testing.T) {
 		{"only the newcomer", body(mention("u-1")), body(mention("u-1"), mention("u-2")), []string{"u-2"}},
 		{"removing is not adding", body(mention("u-1")), body(), nil},
 		{"ticket and doc mentions are not people", "", body(ticketMention), nil},
-		{"legacy markdown body", "", "hi [@rix](/people/u-3)", []string{"u-3"}},
+		{"legacy markdown body", "", "hi [@nor](/people/u-3)", []string{"u-3"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

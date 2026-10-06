@@ -45,10 +45,10 @@ describe("bodyToMarkdown", () => {
   });
 
   it("writes a person mention as @login and reads it back to the user id, like the server", () => {
-    const body = `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"ping "},{"type":"mention","attrs":{"type":"person","id":"u-rix","label":"rixwavedev"}}]}]}`;
+    const body = `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"ping "},{"type":"mention","attrs":{"type":"person","id":"u-nor","label":"norwooddev"}}]}]}`;
     const markdown = bodyToMarkdown(body);
-    expect(markdown).toBe("ping [@rixwavedev](/people/u-rix)");
-    expect(parseBodyToJSON(markdown).content[0].content[1].attrs).toMatchObject({ type: "person", id: "u-rix", label: "rixwavedev" });
+    expect(markdown).toBe("ping [@norwooddev](/people/u-nor)");
+    expect(parseBodyToJSON(markdown).content[0].content[1].attrs).toMatchObject({ type: "person", id: "u-nor", label: "norwooddev" });
   });
 });
 

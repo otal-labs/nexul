@@ -116,9 +116,9 @@ describe("WorkspaceGeneralSection", () => {
     const user = renderSection();
     const name = await screen.findByLabelText("Name");
     await user.clear(name);
-    await user.type(name, "Rixwave Labs");
+    await user.type(name, "Norwood Labs");
     await user.click(screen.getByRole("button", { name: "Suggest from name" }));
 
-    expect(screen.getByLabelText("URL")).toHaveValue("rixwave-labs");
+    expect(screen.getByLabelText("URL")).toHaveValue("norwood-labs");
   });
 });

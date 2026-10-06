@@ -51,7 +51,7 @@ Bots section, not a tab, and the phone widths above predate ADR 0080.
   "Delete CI? Anything posting to its URL gets a 404. Its messages stay in
   the channel, and you can restore it later with a new URL."
 - **Deleted**: a "› Deleted (1)" fold under the list for editors, each row
-  dimmed with "Deleted 2d ago by Fahad" and Restore (off while the channel
+  dimmed with "Deleted 2d ago by Bob" and Restore (off while the channel
   is full).
 - **Read-only** (`botwebhook:read` without write): the rows only, no
   chevron, no URL, no create, no Deleted fold. "Delete bot" shows only

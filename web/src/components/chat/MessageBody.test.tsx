@@ -24,10 +24,10 @@ const renderBody = (body: string, seed?: (client: QueryClient) => void) => {
   seed?.(client);
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/fahad/chat/c-general"]}>
+      <MemoryRouter initialEntries={["/acme/chat/c-general"]}>
         <Routes>
-          <Route path="/fahad/chat/c-general" element={<MessageBody body={body} mentionHandles={["lena"]} />} />
-          <Route path="/fahad/chat/c-ops" element={<p>ops channel page</p>} />
+          <Route path="/acme/chat/c-general" element={<MessageBody body={body} mentionHandles={["lena"]} />} />
+          <Route path="/acme/chat/c-ops" element={<p>ops channel page</p>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -35,7 +35,7 @@ const renderBody = (body: string, seed?: (client: QueryClient) => void) => {
 };
 
 beforeEach(() => {
-  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "fahad" });
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "acme" });
 });
 
 describe("MessageBody links", () => {
@@ -48,7 +48,7 @@ describe("MessageBody links", () => {
   });
 
   it("renders a same-origin chat URL as a pill named after the cached channel that navigates in-app", async () => {
-    const url = `${window.location.origin}/fahad/chat/c-ops`;
+    const url = `${window.location.origin}/acme/chat/c-ops`;
     renderBody(`@lena join ${url}`, (client) => client.setQueryData([getChatConversationsKey, "ws-1"], [channel]));
     expect(screen.getByText("@lena")).toBeInTheDocument();
     const pill = screen.getByRole("link", { name: "#ops" });
@@ -61,12 +61,12 @@ describe("MessageBody links", () => {
   });
 
   it("falls back to the kind's label when the conversation is not cached", () => {
-    renderBody(`${window.location.origin}/fahad/chat/c-unknown`);
+    renderBody(`${window.location.origin}/acme/chat/c-unknown`);
     expect(screen.getByRole("link", { name: "Chat" })).toBeInTheDocument();
   });
 
   it("copies a pill as its full URL rather than its label", () => {
-    const url = `${window.location.origin}/fahad/chat/c-ops`;
+    const url = `${window.location.origin}/acme/chat/c-ops`;
     renderBody(`join ${url} now`, (client) => client.setQueryData([getChatConversationsKey, "ws-1"], [channel]));
     const paragraph = screen.getByText(/join/).closest("p") as HTMLParagraphElement;
     window.getSelection()?.selectAllChildren(paragraph);

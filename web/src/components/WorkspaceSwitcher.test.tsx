@@ -31,7 +31,7 @@ const baseUser = {
 const baseMe = { user: baseUser, needs_owner_wizard: false, needs_first_login_wizard: false, instance_permissions: [] as string[] };
 
 const workspaces = [
-  { id: "ws-1", name: "Shopkeepers", slug: "shopkeepers", created_at: "", updated_at: "" },
+  { id: "ws-1", name: "Globex", slug: "globex", created_at: "", updated_at: "" },
   { id: "ws-2", name: "Arena's Hub", slug: "arena-s-hub", created_at: "", updated_at: "" },
 ];
 
@@ -50,7 +50,7 @@ const mockApi = (
 
 const Location = () => <p data-testid="location">{useLocation().pathname}</p>;
 
-const renderSwitcher = (collapsed = false, path = "/shopkeepers/board/ONLY") => {
+const renderSwitcher = (collapsed = false, path = "/globex/board/ONLY") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -87,12 +87,12 @@ describe("WorkspaceSwitcher", () => {
     const user = userEvent.setup();
     renderSwitcher();
 
-    expect(await screen.findByText("Shopkeepers")).toBeInTheDocument();
-    await user.click(screen.getByText("Shopkeepers"));
+    expect(await screen.findByText("Globex")).toBeInTheDocument();
+    await user.click(screen.getByText("Globex"));
 
     const popover = screen.getByRole("dialog");
     const rows = within(popover).getAllByRole("button");
-    const selectedRow = rows.find((row) => within(row).queryByText("Shopkeepers"));
+    const selectedRow = rows.find((row) => within(row).queryByText("Globex"));
     const otherRow = rows.find((row) => within(row).queryByText("Arena's Hub"));
     expect(selectedRow?.querySelector("svg.lucide-check")).not.toBeNull();
     expect(otherRow?.querySelector("svg.lucide-check")).toBeNull();
@@ -104,21 +104,21 @@ describe("WorkspaceSwitcher", () => {
     const user = userEvent.setup();
     renderSwitcher();
 
-    await user.click(await screen.findByText("Shopkeepers"));
+    await user.click(await screen.findByText("Globex"));
 
     const popover = screen.getByRole("dialog");
     const rowOf = (name: string) => within(popover).getByText(name).closest("button")!;
     expect(await within(rowOf("Arena's Hub")).findByText("3")).toBeInTheDocument();
-    expect(within(rowOf("Shopkeepers")).queryByText(/^\d+$/)).not.toBeInTheDocument();
+    expect(within(rowOf("Globex")).queryByText(/^\d+$/)).not.toBeInTheDocument();
   });
 
   it("keeps the section and drops the item when switching inside a workspace", async () => {
-    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "shopkeepers" });
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "globex" });
     mockApi(workspaces);
     const user = userEvent.setup();
     renderSwitcher();
 
-    await user.click(await screen.findByText("Shopkeepers"));
+    await user.click(await screen.findByText("Globex"));
     await user.click(screen.getByText("Arena's Hub"));
 
     await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("/arena-s-hub/board"));
@@ -126,12 +126,12 @@ describe("WorkspaceSwitcher", () => {
   });
 
   it("selects the workspace in place on a personal page, which has no workspace URL", async () => {
-    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "shopkeepers" });
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "globex" });
     mockApi(workspaces);
     const user = userEvent.setup();
     renderSwitcher(false, "/settings/profile");
 
-    await user.click(await screen.findByText("Shopkeepers"));
+    await user.click(await screen.findByText("Globex"));
     await user.click(screen.getByText("Arena's Hub"));
 
     expect(useWorkspaceStore.getState()).toMatchObject({ selectedWorkspaceId: "ws-2", selectedWorkspaceSlug: "arena-s-hub" });
@@ -153,7 +153,7 @@ describe("WorkspaceSwitcher", () => {
     const user = userEvent.setup();
     renderSwitcher();
 
-    await user.click(await screen.findByText("Shopkeepers"));
+    await user.click(await screen.findByText("Globex"));
     expect(screen.queryByText("New Workspace")).not.toBeInTheDocument();
   });
 
@@ -165,7 +165,7 @@ describe("WorkspaceSwitcher", () => {
     const user = userEvent.setup();
     renderSwitcher();
 
-    await user.click(await screen.findByText("Shopkeepers"));
+    await user.click(await screen.findByText("Globex"));
     await user.click(screen.getByText("New Workspace"));
 
     await user.type(screen.getByLabelText("Workspace name"), "New Co");
@@ -179,7 +179,7 @@ describe("WorkspaceSwitcher", () => {
     mockApi(workspaces);
     renderSwitcher(true);
 
-    await screen.findByTitle("Shopkeepers");
-    expect(screen.queryByText("Shopkeepers")).not.toBeInTheDocument();
+    await screen.findByTitle("Globex");
+    expect(screen.queryByText("Globex")).not.toBeInTheDocument();
   });
 });
