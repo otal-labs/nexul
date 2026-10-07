@@ -165,3 +165,14 @@ func TestExecuteHandler_BadBodies(t *testing.T) {
 	}
 	assert.Empty(t, f.poster.posts)
 }
+
+// TestExecuteHandler_WaitWithoutEmbeds answers a text-only post's wait=true with an empty embeds list, as Discord
+// does, so a sender reading the answer's embeds never meets null.
+func TestExecuteHandler_WaitWithoutEmbeds(t *testing.T) {
+	f := newExecuteFixture(t)
+	rec := f.post("192.0.2.1", f.url()+"?wait=true", `{"content":"build passed"}`)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	var answer map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &answer))
+	assert.JSONEq(t, `[]`, string(answer["embeds"]))
+}

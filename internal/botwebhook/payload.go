@@ -130,7 +130,10 @@ type checked struct {
 
 // check holds p to Discord's limits, naming the one it breaks.
 func (p Payload) check() (*checked, error) {
-	c := &checked{content: strings.TrimSpace(p.Content), username: strings.TrimSpace(p.Username), avatarURL: strings.TrimSpace(p.AvatarURL)}
+	c := &checked{
+		content: strings.TrimSpace(p.Content), username: strings.TrimSpace(p.Username), avatarURL: strings.TrimSpace(p.AvatarURL),
+		embeds: []Embed{},
+	}
 	if err := atMost("content", c.content, maxContent); err != nil {
 		return nil, err
 	}
