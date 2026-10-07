@@ -343,8 +343,9 @@ func TestParseDeployStatus(t *testing.T) {
 - Packages with no executable statements, such as wire-type-only packages,
   never appear in the coverage profile at all, so they never count against
   the denominator.
-- The coverage script runs `go test` with `-race` over every package
-  (`make coverage`); the separate `go build ./...` step in CI does not
+- The coverage script runs `go test` with `-race` over every package but
+  `internal/platform/storage` (`make coverage`; `practices/testing.md`
+  section 8 says why); the separate `go build ./...` step in CI does not
   use `-race`.
 
 ### Static analysis

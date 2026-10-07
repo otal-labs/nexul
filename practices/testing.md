@@ -164,7 +164,10 @@ that mock and assert the full flow: load, display, interact, mutate, toast.
 
 The `coverage` target in the `Makefile` is the source of record for the exact filtering and
 threshold logic. It runs `go test` with `-race` and a coverage profile over
-`./...`, excludes paths containing `/cmd/`, `/testutil/`, `/sqlcgen/`, or
+`./...` except `internal/platform/storage`, whose tests run without `-race`:
+there the detector instruments the pure-Go SQLite engine and turns 24 seconds
+into ten minutes, while the `server/cmd` integration tests still drive the
+storage code concurrently under `-race`. It excludes paths containing `/cmd/`, `/testutil/`, `/sqlcgen/`, or
 `/t3rpctest/` from the profile, then fails the build below 80%. `golangci-lint` (config in
 `.golangci.yml`) and `govulncheck` run as their own steps in the same Go CI
 job, alongside `go vet` and `go build`. `coverage.filtered.out` and
@@ -212,6 +215,6 @@ func withTitle(title string) func(*Ticket) {
 - Common causes: time-dependent logic (use `testing/synctest` for goroutine
   code, or inject a clock), port conflicts (use `:0` for a random port),
   race conditions (run with `-race`).
-- CI runs with `-race` on every PR.
+- CI runs with `-race` on every PR, over every package but storage (section 8).
 - A test that needs a timeout or a sleep to pass is wrong. Wait on the real
   signal instead: a channel, a receipt, or a WaitGroup.
