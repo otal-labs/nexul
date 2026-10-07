@@ -12,8 +12,17 @@ follow-up tickets. Then move "Channel webhooks" to shipped in
 
 **Blocked by:** 10, 11, 12, 13
 
-**Status:** ready-for-human
+**Status:** resolved
 
-- [ ] All three senders post with only the URL swapped
-- [ ] Screenshots of each message and the Bots section for the owner
+- [x] All three senders post with only the URL swapped (Uptime Kuma and Grafana for real in the box; the Discord status action's own code run locally, since the box has no public URL)
+- [x] Screenshots of each message and the Bots section for the owner
 - [ ] Roadmaps, branches, and the effort directory cleaned up
+
+## Answer
+
+Walked 2026-10-07 on a clean box with a native install of master. Everything
+in the spec held; three defects were fixed in #472 (`wait=true` embeds as
+`[]`, zoneless footer times read as UTC, embeds squeezed in the narrow ticket
+thread pane). Roadmaps moved to shipped and the prototype branches deleted.
+The directory stays until the owner has reacted to the live UI and ticket 15
+is placed.
