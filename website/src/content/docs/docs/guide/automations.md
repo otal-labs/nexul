@@ -1,103 +1,77 @@
 ---
 title: Automations
-description: First-party event-driven code that reacts to what happens in your workspace, and how to write one.
+description: Run your own TypeScript when something happens in a workspace, such as moving a ticket when its pull request merges.
 sidebar:
   order: 12
 ---
 
-An automation is first-party code: when an event happens in your workspace, a function runs. Automations belong to a workspace: each one hears only that workspace's events, plus instance-level ones such as runners and DNS, and switching or configuring one on a workspace's Automations page changes it there alone. Events from a direct message or a private channel, its messages and call included, never reach an automation. Every workspace has its own copy of each default automation. There's no rule builder or condition DSL — customization means writing code against the Nexul SDK.
+An automation is code that runs when an event happens: a ticket is created, a pull request opens, a deploy fails. There's no rule builder. You write a handler in TypeScript against the Nexul SDK, push it, and Nexul runs it.
 
-## The model
+Each automation belongs to one workspace. It hears that workspace's events, plus instance-wide ones such as runners and DNS, and you switch and configure it on that workspace's **Automations** page. It never hears a direct message or a private channel.
 
-- **Default automations** ship with the instance, written on the same public SDK as anything you'd write yourself — standing proof the SDK works. **Custom automations** are yours.
-- Every automation declares, in code, a name, a description, the events it subscribes to (`on('topic', handler)`), and any config knobs it needs. The platform only displays what's declared — it never edits it.
-- Automations **dial in**: the SDK opens one outbound connection to your instance, authenticated by the automation's own token, and events stream down that connection as they happen. There's no inbound webhook URL and no signature verification to manage for first-party code — that's the model signed webhooks use for third-party integrations instead. A reconnect resumes from the last event the automation saw, so downtime doesn't lose anything. Switching an automation off is different: it gets nothing while it's off, and switching it back on starts from new events, so what happened in between is skipped rather than replayed.
-- A handler is an async function for one subscribed event. Returning `true` means success; an exception, a timeout, or anything else counts as a failed run. Runs default to a 30 second timeout and report their outcome (with captured logs) back over the dial-in connection.
+## The defaults
 
-## Where automations run
+Every workspace comes with its own copy of two, switched on:
 
-Automations run on an **automations host**: a small service that starts a worker for each automation placed on it. `nexul install` installs one on the instance's own server, named `instance`, as the `nexul-automations-instance` service. It runs every Default automation out of the box, and new automations go to it unless you choose otherwise.
+- **Ticket finished** moves a ticket to a status you choose once all its pull requests have merged.
+- **PR opened** moves a ticket to a status you choose when a linked pull request opens.
 
-Each automation runs on exactly one host. To move one, pick another host on the automation's page, or set `host_id` with `automation_update` (null puts it back on `instance`). The host fetches its assignments from the instance with its own credential and gets each automation's worker a token scoped to that host: the instance accepts it only while the automation is placed there and the host is still enrolled. So moving an automation, or removing its host, stops it running on the old host, and two hosts never run the same automation.
+Open each one's **Configuration** tab and pick the status. Until you do, it skips every event and logs why on its **Runs** tab.
 
-An automation can also be deployed like any other stack, onto your own server through a runner, which gives it direct access to whatever else is running on that machine's network, or it can dial in with its own token from anywhere that can reach your instance, a laptop included.
+The **Decisions check** is listed with them. It's a [play](/docs/guide/plays/#the-decisions-check), not code, and starts off.
 
-### Adding an automations host
+## Write your own
 
-Add one from the **Hosts** tab of the Automations page, or with the `host_create` MCP tool and `kind: "automations"`. Give it a name (lower case letters, digits and dashes); you get one install line for Linux or macOS and one for Windows, carrying a one-time enrollment code that works once and expires after an hour:
+1. On the **Automations** page, press **New automation**. Name it and pick its **Scopes**: what its token may read and change, from the same [permissions](/docs/guide/api-and-tokens/) integrations use.
+2. Add the SDK to an empty project. It's the `sdk/` package in the Nexul repository, not published to npm, so add it from a checkout; its commands need Bun. Then run `nexul init`. It asks for your instance URL and a personal access token from **Settings → Security → Tokens**, and writes `src/index.ts`.
+3. Write your handlers:
 
-```sh
-curl -fsSL https://nexul.io/automations.sh | NEXUL_VERSION=v0.2.1 sh -s -- --server <instance-url> --name worker-1 --code nxe_…
-```
+   ```ts
+   import { defineAutomation } from "@nexul/sdk/automation";
 
-```powershell
-$env:NEXUL_VERSION='v0.2.1'; & ([scriptblock]::Create((irm https://nexul.io/automations.ps1))) --server <instance-url> --name worker-1 --code nxe_…
-```
+   const automation = defineAutomation({
+     name: "my-automation",
+     description: "Describe what this automation does.",
+     config: {},
+   });
 
-Run it on the machine. It installs the host as the `nexul-automations-<name>` service, which trades the code for the host's own credential; it needs no Docker. On Linux the host runs as the `nexul` system user. A machine can run several automations hosts, each with its own name, directory and credential. Unless you name a machine when adding it, a host is filed under its computer's hostname.
+   automation.on("ticket.created", async (payload, ctx) => {
+     ctx.log("ticket created", { id: payload.ticket.id });
+     return true;
+   });
 
-### Removing an automations host
+   export default automation;
+   ```
 
-**Remove** in the hosts list, or `host_delete` with `kind: "automations"`, revokes the host's credential and deletes it. A connected host uninstalls its own service; one that was offline does so when it next connects and is refused. Move its automations to another host before you remove it. On the machine itself, `nexul uninstall automations <name>` removes the service and tells the instance.
+   Return `true` for success. A thrown error, a timeout (30 seconds by default), or any other value counts as a failed run. `ctx` gives you `ctx.api`, a typed client acting with the automation's token, plus `ctx.config`, `ctx.secrets`, and `ctx.log`.
+4. Run `nexul dev`, pick a topic, and it fires a sample event at your handler. You see the outcome, the logs, and every API call it would have made. Nothing reaches your instance.
+5. Run `nexul push <automation-id> "message"` to upload the code as a pending version.
+6. On the automation's **Versions** tab, read the diff against the active code and press **Merge**. The automation restarts on the new code.
 
-## Tokens and secrets
+`nexul pull <automation-id>` fetches the active code back into `src/index.ts`. This `nexul` comes with the SDK; it's not the `nexul` that installs your instance.
 
-Each automation gets a scoped token minted when you create it; you pick its scopes from the same [permission vocabulary](/docs/guide/api-and-tokens/) integrations use. The token is what gates what the automation's code can touch through the API — including changing Nexul itself. Revoking it kills access immediately.
-
-Secrets are a shared pool per workspace, GitHub-Actions-style: set a name and value once on the **Secrets** tab of the Automations page, and every automation in that workspace can read it as `ctx.secrets.NAME`. Another workspace's automations never see it. Values are write-only after saving — names stay visible, values never do.
-
-## The SDK
-
-The SDK (`sdk/`) is one package used by both automations and integrations: a typed API client, typed event payloads, and an automations entry point.
-
-```ts
-import { defineAutomation } from "@nexul/sdk/automation";
-import { DialinClient } from "@nexul/sdk/client";
-
-const automation = defineAutomation({
-  name: "my-automation",
-  description: "Describe what this automation does.",
-  config: {},
-});
-
-automation.on("ticket.created", async (payload, ctx) => {
-  ctx.log("ticket created", { id: payload.ticket.id });
-  return true;
-});
-
-export default automation;
-```
-
-`ctx` gives a handler `ctx.api` (the typed client), `ctx.config`, `ctx.secrets`, and `ctx.log`.
-
-### The `nexul` CLI
-
-The SDK package's own commands, run from your automation's project directory. This is the SDK's `nexul`, installed with the package, not the `nexul` command that installs and upgrades an instance:
-
-- `nexul init` — asks for your instance URL and a personal access token, writes `nexul.config.json`, and scaffolds `src/index.ts`.
-- `nexul dev` — an interactive harness: pick one of the automation's registered topics, it fires a fixture event at your handler, and prints the outcome, captured logs, and every API call your handler *would* have made. No live effects — nothing actually reaches your instance.
-- `nexul push <automation-id> [message]` — bundles your code and uploads it as a pending version.
-- `nexul pull <automation-id> [version-id]` — fetches a version (the active one by default) back into `src/index.ts`.
-
-### Testing
-
-The `testing` module (`sdk/src/testing.ts`) exports `createMockContext`, the same mock context `nexul dev` uses under the hood: a context whose API client records every call instead of making it, so a plain unit test can assert on what your handler *would* have done without hitting a live server.
-
-## Running one locally
-
-1. In your automation's project directory, run `nexul init` and paste in a personal access token minted from **Your settings → Security → Tokens**.
-2. Create the automation itself in the Nexul UI (**Automations → New automation**) to get its id and scopes.
-3. Write handlers in `src/index.ts`, then use `nexul dev` to fire fixture events at them and check the logs and would-have-called API calls.
-4. When it's ready, `nexul push <id>` uploads it as a pending version. The UI shows a diff against whatever's currently active; merging activates it and respawns the automation's worker.
+For unit tests, `createMockContext` from `@nexul/sdk/testing` gives you the same recording context `nexul dev` uses.
 
 ## Versions
 
-Every push creates an immutable version — code, who pushed it, when, and an optional message — landing as pending. The diff view against the active version is where you catch what you didn't mean to change. Rolling back means repointing at an older version, the same mechanism as any other merge.
+Every push is kept as a version with its author, time, and message, and lands pending: a push never changes running code by itself. **Rollback** on an older version makes it active again.
 
-## The decisions check
+## Secrets
 
-The Automations page also lists the built-in **Decisions check** among the defaults (see Plays). It has no code or config of its own, only a switch: on, a ticket that enters a Done column gets the check; off, nothing runs. It starts off in every workspace. Switching it takes `automations:write`; over HTTP it is `PATCH /api/workspaces/{workspaceID}/plays/decisions-check` with `{"enabled": true}`, and over MCP `play_update` with `id` `decisions-check` and `enabled`.
+Set secrets on the **Secrets** tab of the Automations page. Every automation in the workspace reads them as `ctx.secrets.NAME`; no other workspace sees them. Once saved, a value can be replaced or deleted but never read back.
 
-## Over HTTP and MCP
+## Where automations run
 
-`GET /api/automations?workspace_id=…` lists one workspace's automations; without `workspace_id` it lists every workspace's you can read. `POST /api/automations` needs `workspace_id` in its body, and the secrets routes (`/api/automation-secrets`) need `workspace_id` in the query. `automation_list` and `automation_create` take the same `workspace_id`.
+Automations run on an automations host. `nexul install` puts one on your instance's server, named `instance`, and new automations go there.
+
+To run automations on another machine, for example to reach services on its network:
+
+1. On the **Hosts** tab, press **Add automations host**.
+2. Give it a **Host name** (lower-case letters, digits, and dashes) and optionally a **Machine**.
+3. Run the install line shown, for Linux or macOS, or for Windows, on that machine. It needs no Docker. The line carries a one-time code that expires after an hour.
+
+Move an automation by picking another host on its page. It stops on the old host as it starts on the new one, so two hosts never run the same automation. To retire a host, move its automations off, then **Remove** it; it uninstalls itself.
+
+## Switching off
+
+Switch an automation off and it receives nothing until you switch it on again. Events in between are skipped, not replayed. A host that loses its connection is different: it picks up where it left off when it reconnects.
