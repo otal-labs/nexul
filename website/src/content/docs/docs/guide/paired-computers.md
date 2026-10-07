@@ -1,169 +1,64 @@
 ---
 title: Paired computers
-description: Pair a user's T3 Code computer and choose where Agent turns run.
+description: Connect your own computer running T3 Code so plays and @Agent mentions run there, and choose which computer and model each project uses.
 sidebar:
   order: 9
 ---
 
-An Agent turn runs through the clicking user's own paired **Harness**. A
-Runner builds and deploys stacks. It is a different product surface.
+Agent work in Nexul runs on your own computer, through T3 Code, with your permissions. Nobody else's turns ever run on your machine. A paired computer is not a [runner](/docs/guide/runners/): runners build and deploy, paired computers run agents.
 
 ## Pair a computer
 
-Open **Your settings → T3 pairing** and select **Pair a computer**. The dialog has
-three steps.
+You need T3 Code running on the computer, and the instance needs Cloudflare connected with Zero Trust enabled. The dialog tells you if either is missing and how to fix it.
 
-1. **Connect.** Name the computer and select **Create tunnel**. Nexul creates
-   a tunnel for it on the instance's Cloudflare, with a hostname made from the
-   name plus eight random characters that only the Nexul server can reach.
-   Run the one command shown for your operating system on the computer
-   (`curl -fsSL https://nexul.io/tunnel.sh | sh -s -- <token>` on Linux and
-   macOS, a PowerShell line as administrator on Windows). It installs
-   `cloudflared` if it is missing and runs it as a background service with
-   the computer's token; running it again replaces the service. The dialog waits until the
-   tunnel is online and T3 Code answers through it, then **Next** unlocks.
-   The instance needs Cloudflare connected and Zero Trust enabled once; the
-   dialog explains either missing piece with its fix.
-2. **Pair T3 Code.** Run `t3 pair` on the computer and paste the one-time
-   token it prints. The name and the tunnel hostname are already filled in.
-   A refused token shows on the token field, so run `t3 pair` again for a
-   fresh one. An unreachable T3 Code shows on the URL field.
-3. **Set up.** Select **Start setup** to set up each provider on the
-   computer; see [Set up a computer](#set-up-a-computer).
+1. Open your settings, **T3 pairing → Computers**, and press **Pair a computer**.
+2. Enter a **Computer name** and press **Create tunnel**. Change **T3 Code port** under **Advanced options** only if T3 Code doesn't run on its default port.
+3. Run the command shown for your system on that computer. It installs `cloudflared` if needed and keeps a tunnel open to the instance's Cloudflare account as a background service. The token in it is secret, so keep it to that computer.
+4. Wait for both checks, **Tunnel online** and **T3 Code answering**, then press **Next**.
+5. Run `t3 pair` on the computer and paste the one-time token it prints. A refused token shows on the token field: run `t3 pair` again for a fresh one.
+6. On the last step, [set up the computer](/docs/guide/computer-setup/).
 
-Until step 2 succeeds, the computer's row reads `pairing in progress`. Select
-**Pair** on the row to finish pairing it without starting over.
+The computer gets a hostname made from its name plus eight random characters, and only the Nexul server can reach it. If you close the dialog early, the row reads `pairing in progress`; press **Pair** on it to carry on.
 
 ### Pair by URL
 
-For a machine the server can already reach, such as a VPS or a computer on
-the same network, no tunnel is needed. On the **Connect** step open
-**Advanced options** and select **Pair by URL**. Then enter:
+For a machine the server can already reach, such as a VPS or a computer on the same network, skip the tunnel. On the first step open **Advanced options**, choose **Pair by URL**, and enter a **Name**, the **T3 server URL** the server reaches it at, and the **One-time pairing token** from `t3 pair`.
 
-- **Name**, such as `Home` or `VPS`.
-- **T3 server URL**, the URL the server reaches that T3 Code instance at.
-- **One-time pairing token**, copied from `t3 pair`.
+## Keep it paired
 
-### Sessions
+Each row shows the T3 Code version and **Connected**, **Connecting…**, or **Not connected**.
 
-The token is exchanged for a bearer session and the bearer is encrypted before
-Nexul stores it. A pairing lasts 30 days because the upstream session has no
-refresh flow. Select **Re-pair** before it expires, or when the row says
-`expired · acts as unpaired`. A computer tunnel keeps its hostname when it is
-re-paired. **Remove** deletes the pairing from Nexul, revokes the computer's MCP
-token, and for a computer tunnel also deletes its tunnel, hostname, and Access
-rule.
+A pairing lasts 30 days, because T3 Code's session can't be refreshed. Press **Re-pair** before then, or when the row says it has expired and acts as unpaired. The tunnel keeps its hostname.
 
-Neither **Remove** nor **Re-pair** ends Nexul's session in T3 Code itself,
-because T3 Code gives a paired client no way to revoke its own session. The
-old session stays valid until its expiry date, which the confirmation toast
-shows. To end it sooner, run `t3 auth session list` on the computer, find the
-`Nexul` entry (after a re-pair, the older of the two), and run
-`t3 auth session revoke <id>`. For a removed computer tunnel the session is
-already unreachable from outside, since its hostname is gone.
+**Remove** deletes the pairing, revokes the computer's MCP token, and deletes its tunnel and hostname. Neither Remove nor Re-pair ends Nexul's session inside T3 Code, which offers no way to do that from outside. To end it before it expires, run `t3 auth session list` on the computer and `t3 auth session revoke <id>` on the `Nexul` entry. A removed tunnel computer is already unreachable.
 
-**MCP token** mints the computer its own personal access token, "Nexul MCP on
-<computer>", for its providers' MCP configs. The token is shown once; minting
-again replaces it, and **Revoke** on the row cuts it off. Un-confirming the
-computer's setup revokes it too.
+### The computer's MCP token
 
-Each row reports the harness version and one presence state: **Connected**,
-**Connecting**, or **Not connected**. A computer whose session is expired is
-not usable even if its row remains.
+Setup gives the computer its own personal access token, "Nexul MCP on <computer>", for its providers to reach Nexul. It shows on the row. **Replace** mints a new one, shown once, and **Revoke MCP token** cuts it off. With none, press **Mint MCP token**.
 
-## Set up a computer
+## Choose where turns run
 
-A provider cannot run `@Agent` or a play on a computer until an agent confirms
-its setup there. The dialog's **Set up** step runs that setup for you: one
-turn per provider you leave switched on, one after another, each on the model
-picked for it in the step (its own default unless you pick another). A provider
-you start setup without stays unconfirmed, and the step opens with it switched
-off next time. Each turn connects Nexul's MCP server to
-its provider with the computer's MCP token, installs the default skill set
-(mattpocock/skills) and the nexul-memory skill into `~/.claude/skills/` and
-`~/.agents/skills/`, and confirms the provider with the skills it discovered.
-Each confirmed turn also confirms the computer, so one failed provider never
-blocks the others. A failed provider can be retried on its own.
+Two tabs in **T3 pairing** decide which computer, T3 project, provider, and model a turn uses.
 
-The step shows one row per included provider: waiting, running with the agent's steps
-folded under it (one line per step, updated as it finishes), confirmed, or
-failed with **Retry**. Each computer row in
-**Your settings → T3 pairing** shows **Setup confirmed** or **Needs setup**, one line
-per provider with its confirmed-at time, and **Set up** or **Re-run setup**,
-which opens the dialog at this step. The row only shows the state; an agent
-changes a confirmation through MCP and nowhere else.
+**Defaults** apply to `@Agent` in a channel or direct message, and to every project you haven't linked:
 
-Setup never overwrites an installed mattpocock skill and keeps the token the
-providers already hold, so re-running it on a confirmed computer only
-re-checks. The nexul-memory skill is Nexul's own and carries a version: setup
-replaces a copy whose version is older, and a provider confirmed with an older
-copy shows **skills out of date** in its row. That is a signal,
-not a block; agent work keeps running on the standing rules every turn's prompt
-closes with until the skill is refreshed. A yellow dot on the
-settings gear and on **T3 pairing** says one of your computers needs it. When
-skills are the only thing out of date, the row's main button is **Update skills**:
-one short turn on the computer's first confirmed provider fetches each Nexul skill
-with `skill_get`, writes it into both skill folders, and reports the version, which
-clears the flag for every provider on that computer, since they all read the same
-folders. It reconnects nothing and confirms nothing, and streams into the same
-transcript as setup; a failed update keeps the flag and offers **Retry**.
-**Re-run setup** stays beside it for a full setup. An agent can also
-refresh it without setup: the skill tells it to compare its version with the
-`skill_get` MCP tool once per session and rewrite itself when they differ. Turns
-run in the folder picked under **Folder**, one of the projects T3 Code opens,
-preselected to the fallback T3 project or else the first one T3 Code lists.
-Setup only writes user-level files, so any of them works; pick another when a
-project's folder no longer exists. Transcripts are kept with the token hidden.
+- **Default computer**, needed once you pair more than one.
+- **Fallback T3 project**, the T3 project to work in when no link applies.
+- Provider, model, and model options. Leave them empty for the computer's or provider's default.
+- **New threads start in**: **Project folder**, or **New worktree per thread** so runs side by side never edit the same files.
 
-## Choose defaults
+**Projects** lists every project you can open. Each row reads back what your turns there use, or **Uses your defaults**. Open one to pick a **Computer**, a **T3 project**, a model, and where new threads start, then **Save**. **Use my defaults** clears the link. Your link is yours alone: each teammate links the same project to their own computer.
 
-The **Defaults** tab in **Your settings → T3 pairing** is used by `@Agent` in a
-channel or direct message outside a project, and in every project you have not
-linked. It has these fields:
+A play's run dialog can override the computer, provider, and model for one run. The trail keeps what the run used, so changing your settings later never rewrites history.
 
-- **Default computer**. Leave it empty when only one paired computer should be
-  resolved automatically.
-- **Fallback T3 project**. The T3 project used when no project link of yours
-  applies.
-- **Provider** and **Model**. Optional overrides. Empty values use the
-  computer or provider default.
+## When a turn can't start
 
-Several paired computers with no default produce the `no_default_computer`
-readiness state. A paired computer without a T3 project produces
-`no_default`.
+The play button or the chat says why:
 
-## Link a project
-
-The **Projects** tab in **Your settings → T3 pairing** lists every project you
-can open, grouped by workspace when you belong to more than one. Each row reads
-back what your turns there run on, such as `onik-desktop · nexul · Sonnet 5`,
-or **Uses your defaults**. Open a row to choose one of your own computers, a
-**T3 project**, and optional **Provider** and **Model**, then select **Save**.
-
-A link is yours alone. Each teammate links the same project to their own
-computer, and your link never sends their turns to your machine. It wins over
-your defaults in that project; **Use my defaults** clears it. With no paired
-computer, the tab points you to **Computers** first.
-
-The browser resolves a target before a play or chat mention starts. The UI
-reports the reason when it cannot run:
-
-- `unpaired`: pair a computer in Your settings, or finish pairing one still in
-  progress.
-- `expired`: re-pair the expired computer.
-- `no_harness_project`: link the project on the **Projects** tab or set a fallback project.
-- `no_default_computer`: choose a default when more than one computer is
-  paired.
-- `offline`: the computer is not connected.
-
-The play run dialog can override the resolved computer, provider, and model.
-The selected values are saved on the trail so later settings changes do not
-rewrite the run's history.
-
-The pairing API is authenticated per user. Its routes include
-`/api/pairing/computers`, `/api/pairing/computers/tunnel`,
-`/api/pairing/computers/{id}/pair`, `/api/pairing/computers/{id}/setup/runs`,
-`/api/pairing/computers/{id}/setup/providers/{provider}/retry`, `/api/pairing/defaults`,
-`/api/pairing/projects/{id}`, and `/api/pairing/resolve`. A pairing failure
-names the input it belongs to (`name`, `server_url`, or `token`) in the error
-body's `errors` map.
+| Message | Fix |
+|---|---|
+| Pair a harness in Settings to run plays | Pair a computer, or finish one in progress. |
+| Your harness pairing has expired | Press **Re-pair** on the computer. |
+| Link this project in Settings → T3 pairing → Projects, or set a fallback under Defaults | Link the project, or set a **Fallback T3 project**. |
+| Several harnesses are paired, pick a default in Settings | Set a **Default computer**. |
+| Your harness is offline | Start T3 Code, and check the tunnel is up. |

@@ -1,238 +1,87 @@
 ---
 title: Plays
-description: Configure and run workspace plays that start an Agent turn from a ticket, a document, or a project's interview.
+description: Press a play on a ticket, a doc, or a project's interview and an agent on your own computer does the work, with every step recorded.
 sidebar:
   order: 10
 ---
 
-A **Play** is a workspace-scoped, pre-configured Agent turn fired by a person.
-It is not an Automation. A play runs on that person's paired Harness and posts
-its conversation into the thread of its target: a ticket, a document, or a
-project's interview.
-
-## Configure a play
-
-Open **Configuration → Plays**. Every workspace starts with seven ordinary plays:
-
-- **Fix with AI** is a ticket play shown in the In progress stage.
-- **To tickets via AI** is a document play.
-- **Interview** is an interview play, run from a project's Interview page.
-- **Test with AI** is a ticket play shown in the Testing stage.
-- **Draft interview** is an interview play that drafts answers from the
-  interview's follow sources.
-- **Clarify via AI** is a document play that asks the doc's authors a round
-  of questions about what it leaves open.
-- **Audit via AI** is an interview play, shown beside the memory once the
-  interview memory exists. It reads the project's sources under question (a
-  predecessor's code), or the project's own checkout when there are none, and
-  writes one doc in the Main folder, "Audit of <what>, <date>", with a
-  verdict, a `path:line`, and the rule for each finding under the memory's
-  headings. A finished run links its doc on the Interview page.
-
-Each keeps a built-in key (`fix-with-ai`, `to-tickets-via-ai`, `interview`,
-`test-with-ai`, `interview-draft`, `clarify`, `audit`) through renames. A new workspace's copies take their
-instructions from the instance's templates (see
-[Templates](/docs/guide/memories/#templates)); editing those never rewrites a
-workspace that already exists, and resetting a built-in play's instructions
-gives it the instance's current text.
-
-The same screen can create, edit, exclude users from, and delete plays. A play
-has these fields:
-
-- **Label**, the button text.
-- **Type**, **Ticket**, **Doc**, or **Interview**. It cannot change after
-  creation.
-- **Show when**, exactly one board stage for a ticket play. Other plays have
-  no stage.
-- **Description**, shown as the button tooltip.
-- **Instructions**, sent as the play's base instructions.
-- **Enabled** and **Excluded projects**.
-
-The five possible stages are Backlog, In progress, Review, Testing, and Done.
-An enabled play is offered only when its type, project exclusions, and stage
-match the current target.
+A play is a button that starts an agent on a piece of work, such as **Fix with AI** on a ticket. The agent runs on your own paired computer, with your permissions, and its conversation lands in the ticket's or doc's thread. Before your first run, [pair a computer](/docs/guide/paired-computers/) and [set it up](/docs/guide/computer-setup/).
 
 ## Run a play
 
-Use the play button on a ticket or document. The run dialog can choose:
+1. Open a ticket, a doc, or a project's **Interview** page and press the play's button. A ticket play only shows while the ticket sits in the stage it belongs to.
+2. In the run dialog, pick the memories the agent should read first under **Main**, and the ones it reads at the end under **Footer**. The dialog starts with what you picked last time for this play and project.
+3. Add **Instructions for this run** if you want to steer it. They win over the play's own instructions.
+4. Check the computer, provider, and model. They come from your project link or your defaults; change them here for this run only.
+5. Start the run.
 
-- memories for the Agent to read first;
-- custom instructions;
-- footer memories, which the Agent reads once the work is done to conclude
-  the run, such as deciding which column the ticket now belongs in;
-- a paired computer, provider, and model.
+If the play can't run, the dialog says why instead: no computer paired, a pairing that expired, the computer offline, no T3 project for this project, or several computers and no default. Each message names the setting that fixes it. A play on a blocked ticket asks you to confirm first.
 
-A play never moves the ticket by itself. Where the ticket goes is the Agent's
-call, guided by the footer memories picked for the run.
+The agent decides where the ticket goes when it finishes. It reads your footer memories for that, so a footer memory that says "move the card to Review when the pull request is open" is how you get cards to move.
 
-The memory selection starts with the starter's latest
-choices for this play and project. Custom instructions start blank. The
-harness choice also reuses the starter's latest choice; if there is no prior
-choice, it falls back to the resolved project or user pairing choice. A run
-needs a usable computer. If no computer is paired, expired, offline, missing
-a T3 project, or ambiguous because no default was chosen, the UI shows the
-reason instead of firing a turn.
+## Follow a run
 
-A ticket play also tells the Agent about the ticket's links. On a bug it is
-told which ticket the bug was found in and reads that ticket's body, doc, and
-pull requests itself with `ticket_get`, one hop only, never the origin's own
-origin.
-A bug filed with its origin unknown is run with that said plainly. A play on a
-blocked ticket asks "are you sure?" before it runs, and the Agent is told each
-blocker and whether it is done.
+Every press leaves a trail, listed in the **Trail** section of the ticket, doc, or Interview page. Open one to see who started it, what was picked, and a transcript of what the agent said and did: each command, file change, and MCP call as its own row.
 
-A doc play locks its doc as the run starts, so the doc's title and body
-refuse edits from people and agents alike, and leaves it locked when the run
-ends. Starting the play needs no `docs:lock`; someone holding it unlocks the
-doc when it should change again. A doc that was already locked stays as it
-was. The trail and the doc's thread say the run locked it. A custom doc play
-meant to edit its own doc is refused by that lock; the built-in **To tickets
-via AI** only reads its doc. **Clarify via AI** is the exception: its run
-locks the doc only while its round runs and unlocks it when the run ends,
-however it ends, unless the doc was locked before the run started.
+While a run is going:
 
-Each press creates a persisted **Trail**. It records the starter, target,
-selected memories, instructions, resolved Harness choice, structured activity,
-the Agent reply, and the outcome. The trail is visible from the target and its
-conversation thread.
+- **The agent asks you something.** A question card shows on the trail and in the thread. Answer it and the same run carries on.
+- **You want it to stop.** Press stop on the play's button. You, or anyone who manages plays, can stop it, even while it waits on a question.
+- **The computer drops off.** The trail shows **Reconnecting to T3 Code…** and Nexul keeps trying. The run fails only if the computer stays unreachable.
+- **Nothing happens for 15 minutes.** The run fails and its turn in T3 Code is stopped.
 
-Trail states are `starting`, `running`, `waiting`, `done`, `failed`, and
-`interrupted`. `waiting` means the Agent asked a question. The starter can
-answer it and the same trail continues. The starter or a `plays:write` holder
-can stop a run, including one in `waiting`. Fifteen minutes without Harness
-activity fails the run. If the connection to the computer drops mid-run, the
-trail shows **Reconnecting to T3 Code…** and Nexul keeps redialing for five
-minutes; once it is back, the steps taken while it was away land in order and
-the run ends as the Agent ended it. Only a connection that stays down past
-those five minutes fails the run. A trail keeps the newest 300 activity
-entries.
+When a run has ended, type into **Continue this run** to send the agent its next step on the same thread. The play's instructions are not sent again. If you keep working on the thread in T3 Code itself, the trail picks up those turns while you have Nexul open.
 
-The run's prompt names its context instead of carrying it: the play and its
-instructions, the ticket or doc by key or id and title for the Agent to read
-with `ticket_get` or `doc_get`, then the interview memory, the other
-always-included memories, and the ones picked for the run, each with its id,
-for the Agent to read with `memory_get` before it starts, and last your custom
-instructions. It carries no memory body and none of the thread's earlier
-messages, so memory size never stops a run. The "Started" message still lands
-in the thread. Images embedded in the ticket or doc body travel with the turn,
-limited to 10 MiB each and 25 MiB in total; an oversized or non-image
-attachment is left out.
+A doc play locks its doc when it starts, so nobody edits the doc under the agent, and the doc stays locked afterwards. Someone with the lock permission unlocks it. **Clarify via AI** is the exception: it unlocks the doc when its round ends.
 
-## The Interview play
+## The built-in plays
 
-The Interview play runs on a project's Interview page
-(`/<workspace>/projects/<prefix>/interview`), from **Done** once every question
-is answered or skipped, or **Regenerate** once the project's interview memory
-exists. Its target is the project: `target_type` is `interview` and
-`target_id` is the project id. The run posts into the project's interview
-thread, a conversation of its own that no page shows; the page shows the run's
-state from its trail.
+Every workspace starts with seven. They are ordinary plays: rename, edit, or delete them.
 
-The Agent is told the project's name and id and the answers the project
-already records, such as where its tests live from the project wizard. It
-opens the interview memory with `memory_create` and `kind` `interview`, which creates it
-empty the first time and returns the workspace's Interview template questions
-and the project's stored answers and sources. It reads the checkout and every
-source whose stance is question, such as an earlier phase's code, then asks
-about skipped questions, gaps, anything the code contradicts, and what a
-question source did that the answers do not settle, a round of questions at a
-time, each with its recommended answer as the first option and a line on why
-it is asked that names what was found and where. Follow sources are read only
-as context; drafting from them is the Draft interview play's. The run's prompt
-names each project source under question with its checkout path when the
-starter's project link for it is on the run's computer. Each answered round is
-stored with the project's answers. It records nothing from the code or a
-source that was not confirmed, then writes
-the interview memory with `memory_update` as rules rather than a transcript,
-under the 8,000-character cap, keeping every existing rule no answer
-contradicts. Memory versioning makes any change revertible.
+| Play | Runs on | What it does |
+|---|---|---|
+| **Fix with AI** | a ticket in an In progress column | Reads the ticket, fixes it on its own branch, and opens a pull request. |
+| **Test with AI** | a ticket in a Testing column | Tests the ticket against its acceptance criteria, then passes or fails it. |
+| **To tickets via AI** | a doc | Splits the doc into tickets a developer could pick up on their own. |
+| **Clarify via AI** | a doc | Asks the doc's authors about what it leaves open, a round at a time. See [Clarify a doc](/docs/guide/docs-tickets-and-board/#clarify-a-doc). |
+| **Interview** | a project's Interview page | Asks follow-ups and writes the project's rules for agents. See [Interview](/docs/guide/interview/). |
+| **Draft interview** | a project's Interview page | Drafts interview answers from the project's sources. |
+| **Audit via AI** | a project's Interview page | Checks code against the interview memory and writes the findings as a doc. |
 
-The last step of the project wizard offers the interview while the project has
-none. Skipping it, or leaving the wizard without starting it, asks "are you
-sure?" and says what agents lose without it. A project without an interview is
-never blocked: its board shows a banner linking to the Interview page until
-the interview memory exists, which can be dismissed for the browser session.
+**Test with AI** works like pressing **Pass** or **Fail** yourself. It never tests production: with no safe test environment it stops and says a branch deploy is needed. A pass moves the card to the first Done column; a fail posts steps to reproduce, the expected result, and the actual result to the thread and moves the card back to In progress. Leave out footer memories that move the card for this play, because the result already does.
 
-## The Draft interview play
+On a bug, a ticket play tells the agent which ticket the bug was found in, so it can read that ticket and its pull requests.
 
-Draft interview runs on a project's interview like the Interview play, in the
-same hidden thread, and never asks anything. It reads the interview memory
-with its questions, answers, sources, and drafts, then every source whose
-stance is follow, reading a large one selectively. It drafts each template
-question with no answer or a skip that a source speaks to, and an answered
-question only where the sources now disagree with the answer, which the page
-shows as a suggested change. Each draft names its source ids and one line on
-where it came from, and is saved with `memory_update` and the run's trail id
-as it is found. Sources under question are left to the Interview play.
+## Create or change a play
 
-The run's prompt names its trail id and, for each project source, that
-project's checkout path when the starter's project link for it is on the
-run's computer, or says there is no checkout there. As the run starts, the
-project's suggested changes are cleared, so only those the run drafts again
-come back; drafts on unanswered questions stay until the run replaces them.
+Open **Configuration → Plays**. A play has:
 
-## The Test with AI play
+- **Label**, the button text.
+- **Type**: ticket, doc, or interview. It can't change later.
+- **Show when**, the one board stage a ticket play shows in.
+- **Description**, shown as the button's tooltip.
+- **Instructions**, what the agent should do on every run.
+- **Enabled**, and **Excluded projects** where it never shows.
 
-Test with AI is offered on a ticket in a Testing column. It tests the ticket
-the way a person pressing **Pass** or **Fail** in the Test this panel would.
-The Agent follows the testing strategy in the project's interview memory. It
-reads the ticket's acceptance criteria and where to test from `ticket_get`,
-which is never production. When there is no safe test environment
-it stops without a result and says a deploy branch on its own network is
-needed. Otherwise it checks the live URL against each criterion and runs the
-project's tests, from the tests repository when the project has one. Where the
-interview calls for an automated end-to-end suite, it also adds or extends a
-test covering the criteria.
+A built-in play says whether its instructions match the instance's template, with **Reset to instance template** when they don't. See [Templates](/docs/guide/memories/#templates).
 
-It then records the result with `ticket_test_report`, whose `pass` and `fail`
-outcomes do what the panel's buttons do, signed "Nexul · from" the person who ran
-the play. A pass posts "Passed by Nexul · from <login>" and moves the card to
-the first Done column. A fail posts the bug template (steps to reproduce,
-expected result, actual result) under "Test failed by Nexul · from <login>" to
-the ticket's thread and moves the card back to In progress. Leave out footer memories that move the card for this play,
-because the result already moves it.
+To stop one person from running one play, press **Exclude users** on its row.
 
 ## The decisions check
 
-When a ticket enters a column in the Done stage, and the workspace has the
-check switched on, Nexul fires the built-in **Decisions check** once, with no
-button. The switch is on the Automations page, among the default automations,
-and starts off. It runs like a play started by the
-person who moved the card, on their paired computer. When an automation moved
-it, as the default automation does once the ticket's pull requests merge, it
-runs on the ticket's developer's computer instead. The Agent reads the
-ticket, its pull requests, and the project's decisions log (see Memories),
-then adds an entry, marks an older one superseded, or leaves the log alone.
-Its run is an ordinary trail labelled Decisions check. Moving a done ticket
-between two Done columns does not fire it again.
+The decisions check is a play nobody presses. When a ticket enters a Done column, the agent reads the ticket and its pull requests and updates the project's [decisions log](/docs/guide/memories/#the-decisions-log): it adds an entry, marks an older one superseded, or leaves the log alone.
 
-It never fails silently. If the run cannot start, because nobody paired a
-computer, the provider is not set up there, the computer is offline, the
-ticket has no developer, or another run holds the ticket, the failed trail
-stays on the ticket and the ticket page shows **Decisions check didn't run**
-with the reason and a **Run check** button. Pressing it runs the check on your
-own computer. Agents retry with `play_run` and `decisions_check: true`. Either
-way it needs `plays:run`.
+It starts off. Switch it on per workspace on the **Automations** page, among the default automations. It runs on the computer of the person who moved the card, or the ticket's developer's when an automation moved it.
 
-## Permissions
+If it can't start, the ticket shows **Decisions check didn't run** with the reason. Press **Run check** to run it on your own computer.
 
-`plays:read` shows the Plays settings section and lets a member list plays.
-`plays:write` creates and edits plays and manages the per-user **Exclude
-users** grants. `plays:delete` deletes them. `plays:run` controls who may fire
-a specific play. A deny overwrite for `plays:run` on a play excludes that user
-even when their role can otherwise run it.
+## Who can do what
 
-The HTTP definition routes are under
-`/api/workspaces/{workspaceID}/plays`. Runs use
-`/api/plays/{playID}/run`, `/api/plays/runs/{id}`,
-`/api/plays/runs/{id}/stop`, and `/api/plays/runs/{id}/answer`; the list of a
-target's runs is `/api/plays/runs?target_type=&target_id=`. The decisions
-check retries through `POST /api/plays/decisions-check` with a `ticket_id`.
-MCP exposes the matching `play_*` tools and `trail_list` and `trail_update` for
-runs; `play_run` with `decisions_check: true` reruns the decisions check.
-`play_run` and `trail_list` take `ticket`, `doc`, or `interview` as
-`target_type`. The run events `play.run_started`,
-`play.run_waiting`, and `play.run_finished` carry the same `target_type`, with
-the project's name as `target_title` for an interview. The project's interview
-thread is `POST /api/chat/projects/{projectID}/interview-thread`, or
-`message_list` and `message_post` with the `project_id` over MCP.
+| Permission | Lets you |
+|---|---|
+| `plays:run` | see and press plays |
+| `plays:read` | open **Configuration → Plays** |
+| `plays:write` | create and edit plays, exclude people, stop anyone's run |
+| `plays:delete` | delete plays |
+
+Agents run plays with `play_run` and read trails with `trail_list`. See [MCP server](/docs/guide/mcp-server/).

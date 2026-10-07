@@ -1,51 +1,70 @@
 ---
-title: Docs, Tickets, and the Board
-description: How documents drive work, how tickets track it, and how the board organizes it.
+title: Docs, tickets, and the board
+description: Write the plan as a doc, break it into tickets, and move them across the project's board to done.
 sidebar:
   order: 10
 ---
 
-Nexul's loop starts with a document, not a ticket. Docs are the source of truth; tickets are scoped, actionable units of work derived from them.
+Work in Nexul usually starts with a doc: what you want and why. Tickets are the pieces of work cut from it, and the board shows where each one is. All three belong to a project, under its name in the sidebar: **Board**, **Interview**, **Docs**, **Memories**, and **Settings**.
 
 ## Docs
 
-A document belongs to exactly one project, the same rule a ticket follows. Each project's sidebar includes **Board**, **Interview**, **Docs**, **Memories**, and **Settings**. **Docs** lists the project's documents you can open, grouped by folder, beside the one that's open. Within a folder, docs sort newest first by when each was created; a toggle in the list header switches to last edited, and your choice is remembered. Pin a doc from its row menu to lift it into a Pinned group at the top, newest pin first; pins are kept in your browser, so they are yours alone and don't follow you to another one. Its search filters the list by title and first line, showing the matches inside their folders.
+Open **Docs** under the project. The list groups docs by folder, newest first; the toggle in its header sorts by last edited instead. **Pin** a doc from its row menu to keep it at the top. Pins and collapsed folders are kept in your browser, so they're yours alone.
 
-- **Folders.** Every doc lives in exactly one folder of its project, one level deep. Each project has a default folder, **Main**, which holds every doc from before folders existed and every new doc unless you start it from another folder's **+**. **New folder** in the list header adds one; a folder's **…** menu renames it, or deletes it after saying how many docs move to Main, since deleting a folder never deletes a doc. Main can be renamed but not deleted. Move a doc with **Move to folder** in its row menu, and click a folder's name to collapse it; collapsed folders are remembered in your browser. Creating, renaming, and deleting folders and moving docs need `docs:write`; someone who can only read sees just the folders holding a doc they can open. A doc cloned into another project lands in that project's Main. The API routes are `GET`/`POST /api/docs/folders`, `PUT`/`DELETE /api/docs/folders/{id}`, and `POST /api/docs/{id}/move`; over MCP, `project_get` lists a project's `doc_folders`, `project_update` changes them, and `doc_create`, `doc_update`, and `doc_list` take `folder_id`.
-- **Rich editor.** The canonical representation is structured rich text, not raw markdown — you get real formatting and styling. Markdown is a conversion surface: it's what LLMs, imports, exports, and integrations read and write, converted to and from the structured document automatically.
-- **`@` mentions.** Typing `@` opens an autocomplete of the workspace's people, relevant tickets, and other documents. Picking one inserts a live reference: a ticket mention renders as a chip laid out by the workspace's mention chip template (its id and status out of the box, the instance's until the workspace sets its own), a document mention shows its current title, and a person shows their picture and display name. Mentioning someone tells them in their inbox. If you can't access what's tagged, the chip stays visible but inert — you see the title, not the content. Pasting a link to a ticket or doc in the same workspace gives you the same chip; links to boards and other pages stay links.
-- **Watchers.** A doc's edits notify its watchers, not the whole workspace. You become a watcher when you create a doc or save an edit to its title or body, whether in the editor, over MCP, or through a play acting for you. The eye button in the doc's header shows how many people watch it; click it to see who, and to **Watch** or **Stop watching** yourself, which only needs read access. Stopping sticks: your own later edits don't make you a watcher again until you choose to watch. Creating a doc notifies nobody, and a mention always reaches the person mentioned, watching or not. The API routes are `GET /api/docs/{id}/watchers` and `PUT`/`DELETE /api/docs/{id}/watchers/me`; over MCP, `doc_get` lists `watchers` and `doc_update` takes `watch`.
-- **Real-time collaboration.** Multiple people can edit the same document at once. Changes appear live, presence shows who's viewing or editing (with cursors and selections), and normal concurrent edits merge automatically. A conflict prompt only appears for edits that genuinely can't be merged. Offline edits sync once you reconnect.
-- **Versions.** Lightweight history is kept for recovery, plus deliberate named versions for milestones you want to come back to — not a version for every keystroke.
-- **Attachments.** Paste, drop, or use the `/image` slash command to attach files. Everything the doc owns is listed under the body with download and delete; deleting the doc deletes its files too.
-- **Lock.** Locking a doc makes it read-only for everyone until someone unlocks it: the title and body can't be changed from the editor, the API, or MCP, and a lock icon marks it in the list. Lock and **Unlock** sit in the doc's row menu and its settings menu, and a locked doc says **Locked** at the top with an **Unlock** button. Either needs `docs:lock`, which a role grants apart from editing; without it Lock and Unlock are hidden. Starting a doc play locks the doc too, whoever starts it, and it stays locked after the run ends, except **Clarify via AI**, whose lock comes off when its run ends. Archiving, cloning, and deleting still work. The API routes are `POST /api/docs/{id}/lock` and `/unlock`, and `doc_update` takes `locked` over MCP.
-- **Clone and delete.** Each doc in the list shows only its title; hover it for a menu with **Lock**, **Move to folder**, **Clone**, and **Delete**. **Clone to…** copies the doc and its attachments into any project you can write docs in; choosing its own project makes a copy beside it. Cloning needs `docs:clone`, deleting `docs:delete`, and both are hidden without them. Deleting is permanent, unlike archiving, and is refused while tickets name the doc as their source; clear their source first. The API routes are `POST /api/docs/{id}/clone` and `DELETE /api/docs/{id}`; over MCP, `doc_create` takes `clone_from_id` and `doc_delete` deletes.
+Write in the editor with formatting, tables, and code blocks; type `/` for the block menu. Several people can edit at once: you see who's there and where their cursors are, and edits merge as you type. If an edit can't merge, a banner offers **Keep my version** or **Use server version**.
+
+- **Mention** with `@`: a person, a ticket, or another doc becomes a live chip. Pasting a link to a ticket or doc in the workspace does the same. Mentioning someone tells them in their inbox. A chip you can't open shows its title only.
+- **Attach** files by pasting, dropping, or `/` then **Image**. The doc's files are listed under the body.
+- **Watch** with the eye button in the doc's header. Watchers hear about edits. You start watching a doc when you create it or save an edit, and **Stop watching** sticks until you choose to watch again.
+
+### Folders
+
+Every doc lives in one folder of its project. New docs land in **Main** unless you start them from another folder's **+**. **New folder** in the list header adds one, and a folder's **…** menu renames or deletes it. Deleting a folder moves its docs to Main; it never deletes a doc. Main can be renamed, not deleted. Move a doc with **Move to folder** in its row menu.
+
+### Lock, clone, and delete
+
+The row menu also has **Lock**, **Clone**, and **Delete**.
+
+- **Lock** makes the doc read-only for everyone, people and agents alike, until someone presses **Unlock**. Locking needs `docs:lock`, granted apart from editing. Starting a doc play locks the doc too.
+- **Clone** copies the doc and its files into any project where you can write docs.
+- **Delete** is permanent. It's refused while a ticket names the doc as its source; clear that ticket's source first.
+
+### Clarify a doc
+
+When a doc is a rough idea, run **Clarify via AI** on it. The agent reads the doc and asks a round of questions about what it leaves open.
+
+1. Switch the doc to **Questions**. The number beside it counts questions waiting on an answer.
+2. Answer, skip, or add your own under **Anything else?**. Anyone who can edit the doc can answer, whenever they like.
+3. Press **Clarify via AI** again for the next round. The agent reads the earlier rounds too.
+4. When a round finds no gaps, the agent writes the answers into the doc. Press **Close**, then **To tickets via AI** to cut it into work.
+
+The doc keeps its author's words until that last round. It's locked only while a round runs.
 
 ## Tickets
 
-Tickets don't have to come from a document — you can create one directly — but a doc can spawn tickets scoped to a specific slice of work.
+Create a ticket with **New ticket** in a board column, or from a doc so the ticket keeps that doc as its source. Pick a type; its body template fills in the sections to write. Set a **Developer** to build it and a **Tester** to check it, both optional.
 
-- **Types.** Owners define ticket types (`bug`, `feature`, `task`, or anything project-specific), each with its own icon, color, and body template. A new project's `task`, `bug`, and `feature` types copy the instance's body templates (see [Templates](/docs/guide/memories/#templates)).
-- **Branches and PRs.** From a ticket's Development section you can create a new branch (choosing repository and base branch) or link an existing branch or PR. A branch or PR can link to more than one ticket. Pull requests live here, on the ticket page — there's no separate pull requests page.
-- **Bugs.** A bug is a ticket of the type named `bug`, and it always says which ticket it was found in. Use **Report a bug** on the ticket page to file one linked to that ticket, or **Report a bug** in the board's add menu, where you can tick **Origin unknown** instead. The normal New ticket dialog offers every other type. A done ticket is never reopened: a bug found after done is a new ticket, and the done ticket's page lists it under **Bugs found after done**. A type renamed away from `bug` stops being treated as one.
-- **Source.** A ticket filed from a doc keeps that doc as its source, shown first under **Links** on the ticket page with its title linking back to the doc. **Source doc…** in the Links `+` menu sets or replaces it from the project's docs, and the row's **×** clears it; a ticket has at most one source, always a doc you can read. The API route is `PATCH /api/tickets/{id}/source`, and `ticket_update` takes `doc_id` over MCP, an empty one clearing it.
-- **Blocked by.** A ticket can wait on others. Its card shows a blocked icon until every blocker reaches a done column, but it still moves freely. A play on a blocked ticket asks you to confirm first.
-- **Finishing.** A ticket is finished once it has at least one linked PR, none of its linked PRs are still open, and at least one was merged. PRs closed without merging don't block or count toward this.
-- **Attachments.** Same file list as a document — paste, drop, or `/image` into the description, and the ticket's Attachments list tracks everything added.
+The ticket page has everything else:
+
+- **Links.** The **+** adds **Blocked by…**, **Blocks…**, **Found in…**, or **Source doc…**. A blocked card shows an icon until every blocker is done, but still moves freely; a play on it asks you to confirm.
+- **Development.** Create a branch, or link an existing branch or pull request. A branch or PR can link to more than one ticket.
+- **Testing.** In a Testing column it shows where to test and the acceptance criteria, with **Pass** and **Fail**. Fail asks for steps to reproduce, the expected and actual results, and a screenshot. It never points at production.
+- **Thread.** The ticket's conversation, where plays post their runs and agents leave notes.
+
+### Bugs
+
+A bug is a ticket of the type named `bug`, and it always says which ticket it was found in. Use **Report a bug** on the ticket page to file one linked to it, or **Report a bug** in the board's add menu, where you can mark the origin unknown. A done ticket is never reopened: a bug found later is a new ticket, listed on the done one under **Found after done**.
+
+### Finished
+
+A ticket is finished once it has at least one merged pull request and none still open. Pull requests closed without merging don't count. The default **Ticket finished** automation then moves it to the status picked in its configuration; see [Automations](/docs/guide/automations/#the-defaults).
 
 ## The board
 
-Tickets live on one Kanban board per project — there's no combined all-projects view; visiting the board with no project picked lands you on your last-viewed project.
+**Board** shows one project's tickets as columns. You design the columns, but each belongs to one of five stages, in order: backlog, progress, review, testing, done. Plays and automations read the stage, never the column's name, so rename freely. Only done is final.
 
-- **Statuses.** Fully configurable, not hardcoded to open/in-progress/done. Every status belongs to one of five fixed stages, in order: backlog, progress, review, testing, done. A project can skip a stage entirely by having no columns in it. Only the done stage is terminal.
-- **Swimlanes.** The board can group tickets into horizontal swimlanes by category — a Discord-style grouping inside a project (for example, a sprint or a `Bugs` section). Dragging a ticket into another swimlane changes its category, not its identity. Uncategorized tickets are allowed.
-- **Ticket types and labels.** Filter the board by project, category, label, ticket type, and status. Labels are cross-cutting tags (`bug`, `urgent`) rather than a slicing mechanism — that's what categories are for.
-- **Project-scoped settings.** Statuses, ticket types, and label colors are configured per project, under that project's own settings — not shared workspace-wide. Adding or removing a status only affects that project's board.
+- Drag a card between columns to change its status.
+- Group cards into swimlanes by category, such as a sprint. Dragging a card to another swimlane changes its category.
+- **Filter** by category, label, type, and status, or **Search**.
 
-## Attachments, one mechanism everywhere
-
-Docs, tickets, and chat messages share the same attachment mechanism: a file uploads once to `/api/attachments/<id>`, and whatever it's attached to — a doc body, a ticket description, a chat message — references it by that stable URL rather than storing the bytes inline. Deleting the owning doc or ticket cascades to its files.
-
-Chat has its own page with channels, direct messages, document threads, and
-voice channels. See [Chat and voice](/docs/guide/chat-and-voice/). A ticket's
-thread stays on the ticket page, where a ticket play's trail appears as well.
+Columns, ticket types with their icons and body templates, labels, and categories are set per project, in the project's **Settings → Board** and **Categories**.
