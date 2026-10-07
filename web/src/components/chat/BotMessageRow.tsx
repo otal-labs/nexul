@@ -6,6 +6,7 @@ import { MessageReactions } from "@/components/chat/MessageReactions";
 import { MessageContinuationTime } from "@/components/chat/MessageRowHeader";
 import { Badge } from "@/components/ui/badge";
 import { Message, MessageAvatar, MessageContent, MessageHeader } from "@/components/ui/message";
+import { BotMessageIdContext } from "@/hooks/BotMediaHooks";
 import { cn } from "@/lib/utils";
 import type { Message as ChatMessage } from "@/models/Chat";
 import { formatFullTime, formatRelativeTime } from "@/utils/TimeUtility";
@@ -45,24 +46,26 @@ const BotMessageBubble = ({ message }: { message: ChatMessage }) => {
 
 // A bot's post under the name and avatar it posted with; the BOT tag keeps a post calling itself "GitHub" from passing for a person.
 export const BotMessageRow = ({ message, continuation }: { message: ChatMessage; continuation: boolean }) => (
-  <Message align="start" className="group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
-    {!continuation && (
-      <MessageAvatar className="size-6 self-start bg-transparent">
-        <BotAvatar src={message.author_avatar_url} />
-      </MessageAvatar>
-    )}
-    {continuation && (
-      <MessageAvatar className="w-8 self-center overflow-visible bg-transparent">
-        <MessageContinuationTime
-          createdAt={message.created_at}
-          className="opacity-0 transition-opacity duration-150 ease-standard group-focus-within:opacity-100 group-hover:opacity-100"
-        />
-      </MessageAvatar>
-    )}
-    <MessageContent>
-      {!continuation && <BotMessageHeader message={message} />}
-      <BotMessageBubble message={message} />
-      <MessageReactions message={message} />
-    </MessageContent>
-  </Message>
+  <BotMessageIdContext value={message.id}>
+    <Message align="start" className="group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
+      {!continuation && (
+        <MessageAvatar className="size-6 self-start bg-transparent">
+          <BotAvatar src={message.author_avatar_url} />
+        </MessageAvatar>
+      )}
+      {continuation && (
+        <MessageAvatar className="w-8 self-center overflow-visible bg-transparent">
+          <MessageContinuationTime
+            createdAt={message.created_at}
+            className="opacity-0 transition-opacity duration-150 ease-standard group-focus-within:opacity-100 group-hover:opacity-100"
+          />
+        </MessageAvatar>
+      )}
+      <MessageContent>
+        {!continuation && <BotMessageHeader message={message} />}
+        <BotMessageBubble message={message} />
+        <MessageReactions message={message} />
+      </MessageContent>
+    </Message>
+  </BotMessageIdContext>
 );

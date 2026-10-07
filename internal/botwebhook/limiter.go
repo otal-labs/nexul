@@ -1,6 +1,8 @@
 package botwebhook
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"sync"
 	"time"
 )
@@ -20,10 +22,13 @@ func newLimiter(limit int, window time.Duration) *limiter {
 	return &limiter{limit: limit, window: window, hits: map[string][]time.Time{}, now: time.Now}
 }
 
-// quota is a key's place in its window: what is left and how long until the oldest hit frees a slot.
+// quota is a key's place in its window: what is left, how long until the oldest hit frees a slot, and when that is.
 type quota struct {
 	limit, remaining int
 	resetAfter       time.Duration
+	reset            time.Time
+	// bucket names the key without revealing it, stable across restarts as Discord's bucket ids are.
+	bucket string
 }
 
 // take spends one hit of key's quota if any is left, reporting the quota after it.
@@ -53,9 +58,11 @@ func (l *limiter) quota(key string, now time.Time) quota {
 	if len(kept) < len(l.hits[key]) {
 		l.hits[key] = kept
 	}
-	q := quota{limit: l.limit, remaining: max(l.limit-len(kept), 0)}
+	sum := sha256.Sum256([]byte(key))
+	q := quota{limit: l.limit, remaining: max(l.limit-len(kept), 0), reset: now, bucket: hex.EncodeToString(sum[:8])}
 	if len(kept) > 0 {
 		q.resetAfter = kept[0].Add(l.window).Sub(now)
+		q.reset = kept[0].Add(l.window)
 	}
 	return q
 }

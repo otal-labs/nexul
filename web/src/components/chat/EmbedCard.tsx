@@ -1,12 +1,13 @@
 import { useState } from "react";
 
+import { BotMediaImage } from "@/components/chat/BotMediaImage";
 import { DiscordMarkdown } from "@/components/chat/DiscordMarkdown";
 import { EmbedFieldGrid } from "@/components/chat/EmbedFieldGrid";
 import { EmbedFooter } from "@/components/chat/EmbedFooter";
 import { EmbedHeading } from "@/components/chat/EmbedHeading";
 import { FoldBar } from "@/components/chat/FoldBar";
 import { cn } from "@/lib/utils";
-import { EMBED_FIELD_LIMIT, embedFold, embedFoldLabel, httpUrl, type Embed } from "@/models/Embed";
+import { EMBED_FIELD_LIMIT, embedFold, embedFoldLabel, type Embed } from "@/models/Embed";
 
 // One embed behind a neutral rule (a sender's color would misread as status); a narrow pane stacks the thumbnail on top.
 export const EmbedCard = ({ embed }: { embed: Embed }) => {
@@ -14,8 +15,6 @@ export const EmbedCard = ({ embed }: { embed: Embed }) => {
   const fold = embedFold(embed);
   const foldLabel = embedFoldLabel(fold);
   const fields = open ? (embed.fields ?? []) : (embed.fields ?? []).slice(0, EMBED_FIELD_LIMIT);
-  const image = httpUrl(embed.image?.url);
-  const thumbnail = httpUrl(embed.thumbnail?.url);
 
   return (
     <div className="@container">
@@ -30,14 +29,10 @@ export const EmbedCard = ({ embed }: { embed: Embed }) => {
         )}
         {fields.length > 0 && <EmbedFieldGrid fields={fields} />}
         {foldLabel && <FoldBar label={open ? "Show less" : foldLabel} open={open} onToggle={() => setOpen(!open)} />}
-        {image && (
-          <img src={image} alt="" loading="lazy" referrerPolicy="no-referrer" className="mt-1 max-h-72 w-full max-w-md rounded-md border border-border object-cover" />
-        )}
+        <BotMediaImage url={embed.image?.url} className="mt-1 max-h-72 w-full max-w-md rounded-md border border-border object-cover" />
         {(embed.footer || embed.timestamp) && <EmbedFooter embed={embed} />}
       </div>
-      {thumbnail && (
-        <img src={thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" className="size-16 shrink-0 self-start rounded-md border border-border object-cover" />
-      )}
+      <BotMediaImage url={embed.thumbnail?.url} className="size-16 shrink-0 self-start rounded-md border border-border object-cover" />
     </div>
     </div>
   );

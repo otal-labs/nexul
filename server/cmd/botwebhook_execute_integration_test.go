@@ -8,7 +8,9 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -320,4 +322,35 @@ func TestIntegration_BotAvatarFollowsConversationReaders(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, get(uOutsider, withAvatar).Code)
 	assert.Equal(t, http.StatusNotFound, get(uPlain, inDM).Code, "a DM's bot stays with its participants")
 	assert.Equal(t, http.StatusOK, get(uWriter, inDM).Code)
+}
+
+// TestIntegration_BotMediaFollowsConversationReaders reads the posted message through chat's own read rule: a DM's
+// image reaches only its participants and only for a URL the message shows, and the wired guard never dials loopback.
+func TestIntegration_BotMediaFollowsConversationReaders(t *testing.T) {
+	f := newPermFixture(t)
+	var hits atomic.Int32
+	host := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		_, _ = w.Write([]byte("\x89PNG\r\n\x1a\n"))
+	}))
+	t.Cleanup(host.Close)
+	inDM, err := f.svc.botwebhookSvc.Create(as(uOwner), f.dm.ID, "Reminders", "")
+	require.NoError(t, err)
+	image := host.URL + "/chart.png"
+	rec := postAs(botRoutes(f, &bytes.Buffer{}), botPath(inDM)+"?wait=true", `{"embeds":[{"title":"Chart","image":{"url":"`+image+`"}}]}`)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	var posted botwebhook.Message
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &posted))
+	routes := botwebhook.NewHandler(f.svc.botwebhookSvc).Routes()
+	get := func(user, raw string) int {
+		target := "/api/botwebhooks/media?message=" + url.QueryEscape(posted.ID) + "&url=" + url.QueryEscape(raw)
+		rec := httptest.NewRecorder()
+		routes.ServeHTTP(rec, httptest.NewRequestWithContext(as(user), http.MethodGet, target, nil))
+		return rec.Code
+	}
+
+	assert.Equal(t, http.StatusNotFound, get(uPlain, image), "a DM's images stay with its participants")
+	assert.Equal(t, http.StatusNotFound, get(uWriter, host.URL+"/other.png"))
+	assert.Equal(t, http.StatusBadGateway, get(uWriter, image), "a participant passes the gate, and the guard refuses loopback")
+	assert.Zero(t, hits.Load())
 }

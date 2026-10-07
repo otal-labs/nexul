@@ -284,6 +284,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	botwebhookSvc := botwebhook.NewService(botwebhook.Config{
 		Repo: store.Botwebhooks, Gate: accessSvc, Conversations: botwebhookConversations{svc: chatSvc}, Instance: dnsSettingsAdapter{store.Settings},
 		Poster: botwebhookPoster{svc: chatSvc}, People: botwebhookPeople{conversations: store.Chat, members: store.WorkspaceMembers, users: authSvc},
+		Messages: botwebhookMessages{chat: store.Chat},
 	})
 	// A note's file is its only stored state, so its live rooms keep theirs in memory; readers never join (ADR 0110).
 	notesHub := collab.NewHub(logger, collab.NewMemoryStore(), collabNoteRooms{chatSvc}, collabNoteRooms{chatSvc}, permissions.TicketsWrite, permissions.TicketsWrite)

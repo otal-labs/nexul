@@ -1,11 +1,11 @@
+import { BotMediaImage } from "@/components/chat/BotMediaImage";
 import { httpUrl, type Embed } from "@/models/Embed";
 
 const EmbedAuthor = ({ author }: { author: NonNullable<Embed["author"]> }) => {
-  const icon = httpUrl(author.icon_url);
   const url = httpUrl(author.url);
   return (
     <p className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-foreground/85">
-      {icon && <img src={icon} alt="" loading="lazy" referrerPolicy="no-referrer" className="size-4 shrink-0 rounded-full" />}
+      <BotMediaImage url={author.icon_url} className="size-4 shrink-0 rounded-full" />
       {url && (
         <a href={url} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">
           {author.name}

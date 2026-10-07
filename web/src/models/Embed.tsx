@@ -58,6 +58,13 @@ export const httpUrl = (raw: string | undefined): string | undefined => {
   }
 };
 
+// A sender's image as the media proxy serves it, so the sender's host never sees who reads the message.
+export const botMediaPath = (messageId: string, raw: string | undefined): string | undefined => {
+  const url = httpUrl(raw);
+  if (!url) return undefined;
+  return `/api/botwebhooks/media?message=${encodeURIComponent(messageId)}&url=${encodeURIComponent(url)}`;
+};
+
 const ZONELESS_TIME = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
 
 // Discord reads a timestamp without a zone as UTC; Uptime Kuma sends one, and the browser would read it as local.
