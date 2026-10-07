@@ -117,7 +117,9 @@ for a newer revision.
   reveal or mint a credential is its own tool, returns it once, and says so
   in its description; every other result for the same object has no field
   for it. A domain type that holds a secret also tags it `json:"-"`, so a
-  raw type can never leak it by accident.
+  raw type can never leak it by accident. The one exception is a bot's
+  webhook URL, which the use-case fills in only for a caller holding
+  `botwebhook:write` (ADR 0131).
 - **Tool output is untrusted data.** Docs, tickets, chat, memories, pull
   request text, and logs are authored by people or systems other than the
   caller. Never splice user-authored text into server instructions, tool

@@ -177,6 +177,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Roles:       svc.rolesSvc,
 		Mentions:    svc.mentionsSvc,
 		Chat:        svc.chatSvc,
+		Botwebhooks: svc.botwebhookSvc,
 		Plays:       svc.playsSvc,
 		PlayRuns:    svc.playsRunner,
 		Pairing:     svc.pairingSvc,
