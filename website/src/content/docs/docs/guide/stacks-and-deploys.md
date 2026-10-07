@@ -1,69 +1,66 @@
 ---
 title: Stacks and Deploys
-description: Turn a repository into a running stack, and the ways it can ship its next version.
+description: Ship a repository as a stack, roll it back, read its logs, and deploy its branches as their own copies.
 sidebar:
   order: 6
 ---
 
-A **stack** is one repository's worth of deployable containers — a compose file, or a single Dockerfile counted as a stack of one. The stack is what gets deployed, rolled back, and torn down; the containers inside it are observed, not deployed on their own.
+A stack is one repository's containers: a compose file, or a Dockerfile as a stack of one. You deploy, roll back and delete the stack as a whole.
 
-## Three ways to create a stack
+## Creating a stack
 
-**New project** — the project wizard at `/<workspace>/wizard/project/project` walks you through everything: pick or name a project, pick a repository, name the service, optionally fill in environment variables, and optionally give it a hostname. The project exists as soon as it is named, so **Skip for now** on any later step keeps it without a service; a workspace can also have no project at all.
+The project wizard creates stacks. It picks the repository, finds its compose file or Dockerfile, asks for the machine, environment values, a hostname and branches, then deploys. See [Projects and repositories](/docs/guide/projects-and-repositories/#creating-a-project) for each step.
 
-**Add a service to an existing project** — the same wizard, entered from a project page with the project already chosen, starting at the repository step.
-
-**Import from a machine** — adopt containers already running on a server instead of deploying from scratch. See [Runners](/docs/guide/runners/) for how discovery and import work.
-
-### The new-stack wizard, step by step
-
-1. **Project** — the stack's project.
-2. **Repository** — pick from your installed repositories; Nexul scans it for a compose file or a Dockerfile. If it finds several candidates (a monorepo), you choose one. If it finds nothing, you can point the wizard at a Dockerfile path yourself. If the GitHub App isn't installed on the repository, the wizard links you straight to installing it.
-3. **Service** — name the stack and pick the [machine](/docs/guide/runners/) it deploys to. A compose file becomes a `compose` stack; a Dockerfile becomes a `run` stack.
-4. **Environment** — only shown when the scan found `.env.example` keys. Values are optional; the first deploy waits until this step is done, since a compose file's `env_file: .env` or `${VAR}` needs the values in place first.
-5. **Reach** — optional. Give the service a hostname now (see [Topology and DNS](/docs/guide/topology-and-dns/)), or skip it and do it later from the stack page.
-6. **Deploy branches** — optional. The first row is the repository's default branch, redeployed in place on every push at the service's hostname. Add rows like `feature/*` or `staging`: each deploys its own copy, shows the URL an example branch would get (`feature/security-test` → `security-test.example.com`), and picks a network from the machine's networks, listed with what runs on each. Under **Advanced options**, a row's overrides replace the default branch's environment values for that branch. A row on the default branch's network with no overrides uses production's services, including its database, and is never offered to testers. The rows save as the stack's branch deploy rules.
-7. **Done** — a link to the stack's page, and a link to see it on the topology canvas.
+To adopt containers already running on a machine instead, see [Importing what's already running](/docs/guide/runners/#importing-whats-already-running).
 
 ## The stack page
 
-Each stack has its own page (`/<workspace>/stacks/<id>`), with a header showing its slug, repository, latest deploy, and hostnames, and a section nav:
+Open a stack from its project's services, or from its node on **Topology**. The page has these sections:
 
-| Section | What it shows |
+| Section | What you do there |
 | --- | --- |
-| Overview | Deploy actions and the containers table |
-| Exposures | Hostnames routed to this stack's containers |
-| Branch deploys | Rules that turn a push into its own deployment (base stacks only) |
-| Deploy history | Every build and deploy, oldest to newest |
-| Danger zone | Delete the stack |
+| **Overview** | Deploy, roll back, and see each container's image, status, networks and ports |
+| **Logs** | Read each container's output live |
+| **Exposures** | Route hostnames to the stack's containers (see [Topology and DNS](/docs/guide/topology-and-dns/#exposures)) |
+| **Branch deploys** | Deploy other branches as their own copies |
+| **Deploy history** | Every build and deploy, with its log |
+| **Danger zone** | Delete the stack |
 
-### Deploying: one action per stack shape
+The containers table is read-only. To change a container, change the compose file or Dockerfile and deploy again.
 
-The Deploy card offers exactly one way to ship a new version, depending on what the stack is:
+## Deploying
 
-- **A stack with a repository attached** — a **Build & deploy** form: type a ref (branch, tag, or commit), and Nexul builds it on the runner's machine and deploys the result.
-- **A run stack with no repository** (an image running standalone) — a **Redeploy** row: pulls the same image again and restarts the container.
-- **A compose stack with no repository, or nothing built yet** — nothing to trigger yet; attach a repository first.
+The **Deploy** card shows one way to ship, depending on the stack:
 
-**Rollback** re-deploys the image from the last deploy that reported healthy, and stays disabled until one exists.
+- **A stack with a repository**: type a branch, tag or commit in **Build & deploy ref** and click **Build & deploy**. The runner builds it on the stack's machine and deploys the result.
+- **A single container with no repository**: **Redeploy** pulls the same image again and restarts the container.
+- **A compose stack with no repository**: attach a repository first.
 
-### Containers
+**Rollback** deploys the image of the last deploy that came up healthy. It stays disabled until there is one.
 
-The containers table lists what the stack declares — one row per compose service, or one row for a run stack's single container — with the image, status, docker networks (and the address the runner reported on each), and ports. It's read-only: the compose file or Dockerfile is the only source of truth for a container.
+A deploy also starts on every push to a branch that matches one of the stack's branch deploy rules (see below).
 
-### Branch deploys
+## Logs
 
-A **branch deploy rule** maps a branch pattern — an exact name like `main`, or a single trailing wildcard like `feature/*` — to a docker network, and optionally a hostname template and a name suffix for the deployed clone. Every push is checked against the stack's rules; there's no separate "environment" concept, an exact rule for `main` and a wildcard rule for `feature/*` are just two rules on the same stack.
+**Logs** shows what each container prints, one tab per service: the last lines, then new ones as they arrive. Switch between **All** and **Errors**, or **Pause** to stop following. Values from the stack's environment are masked before they reach your browser. Reading container logs takes the `stacks:logs` permission.
 
-- An **exact** rule with no name suffix redeploys the base stack itself in place.
-- A **wildcard** rule spawns a **preview deployment**: one clone per matching branch, on its own network and (if a hostname template is set) its own hostname, torn down automatically when the branch is deleted.
+Nexul's own logs are elsewhere; see [Logs](/docs/guide/logs/).
 
-In a hostname template, `{branch}` becomes the branch as a hostname label: for a wildcard rule, only the part the wildcard matched, so `feature/dot.test` under `feature/*` with `{branch}.example.com` is served at `dot-test.example.com`. Dots, slashes, and capitals become dashes and lowercase, trimmed to 63 characters.
+## Branch deploys
 
-A rule that deploys its own copy (a wildcard, or an exact name with a name suffix) can carry **overrides**: `KEY=value` lines that replace the base stack's environment values for that branch only, like a `DATABASE_URL` pointing at a QA database. The copy runs with the overrides while the base keeps its own values. Remove an override and the next deploy of that branch goes back to the base value. An in-place rule deploys the base stack itself, so it has nothing to override; edit the base stack's environment instead. Edit overrides from a rule's **Overrides** button, or pass `overrides` on a rule in the `stack_update` MCP tool. Override values are stored and handled like the stack's own environment values.
+A branch deploy rule maps a branch pattern to a Docker network. The pattern is an exact name like `main`, or a name ending in one wildcard like `feature/*`. Nexul checks every push against the stack's rules.
 
-A stack that is itself a branch deployment (`derived_from` is set) has no rules of its own — it inherits from whatever created it.
+- An exact rule with no name suffix redeploys the stack itself. The rule for your default branch works this way.
+- A wildcard rule deploys a separate copy for each matching branch, a preview deployment, and tears it down when the branch is deleted.
+- An exact rule with a name suffix, like `staging`, deploys one separate copy.
 
-## Next steps
+To add a rule, open **Branch deploys** and fill in **Branch pattern**, **Docker network**, and optionally:
 
-Give a stack a hostname from its Exposures section — see [Topology and DNS](/docs/guide/topology-and-dns/). To scale where a stack runs, add more runners to its machine — see [Runners](/docs/guide/runners/).
+- **Hostname template**: `{branch}` becomes the branch as a hostname label. For a wildcard, only the part the wildcard matched counts, so `feature/dot.test` under `feature/*` with `{branch}.example.com` is served at `dot-test.example.com`. Dots, slashes and capitals become dashes and lower case, cut to 63 characters. A template needs a **Port**.
+- **Overrides**: `KEY=value` lines that replace the stack's environment values for this branch only, such as a `DATABASE_URL` pointing at a test database. Remove an override and the next deploy of that branch goes back to the stack's value. Rules that redeploy the stack itself have nothing to override; edit the stack's environment instead.
+
+**Live branch deployments** lists the copies running now. A copy has no rules of its own.
+
+A copy on the same network as the default branch, with no overrides, shares production's services, its database included. Nexul never offers one as a place to test a ticket.
+
+Agents set rules, overrides included, with the `stack_update` MCP tool.

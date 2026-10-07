@@ -1,32 +1,21 @@
 ---
 title: Using Nexul
-description: From a fresh server to a deployed stack, and everything the instance exposes once it runs.
+description: Go from a fresh server to a deployed stack, then find your way around everything else.
 sidebar:
   label: Overview
   order: 0
 ---
 
-Nexul is a self-hosted instance that holds your projects, documents, tickets, runners, and deployments in one place, and exposes all of it through the web UI, an HTTP API, and an MCP server.
+Nexul runs on your own server and keeps your projects, docs, tickets, chat and deploys in one place. You use it in the browser, agents use it through its MCP server, and scripts use its HTTP API.
 
-Read in order the first time:
+The first time, read these in order:
 
-1. [Install](/docs/guide/install/) — one command on Linux, macOS, or Windows, installing native services.
-2. [Setup wizard](/docs/guide/setup-wizard/) — instance URL, owner account, connectors.
-3. [GitHub App](/docs/guide/github-app/) — the app Nexul uses to read repositories and receive events.
-4. [Runners](/docs/guide/runners/) — the services that build and deploy, and how to add and remove them.
-5. [Stacks and deploys](/docs/guide/stacks-and-deploys/) — services, branches, and the deploy actions.
-6. [Topology and DNS](/docs/guide/topology-and-dns/) — the canvas, gateways, hostnames, tunnels.
-7. [Logs](/docs/guide/logs/) — the bundled log store at `/openobserve/`.
+1. [Install](/docs/guide/install/): one command on a Linux server, a Mac or a Windows PC.
+2. [Setup wizard](/docs/guide/setup-wizard/): give the instance its domain and sign in as the owner.
+3. [GitHub App](/docs/guide/github-app/): create the App Nexul signs people in and reads repositories with.
+4. [Runners](/docs/guide/runners/): add the services that build and deploy.
+5. [Stacks and deploys](/docs/guide/stacks-and-deploys/): ship a repository and its branches.
+6. [Topology and DNS](/docs/guide/topology-and-dns/): put your services on the internet.
+7. [Logs](/docs/guide/logs/): read the instance's own logs.
 
-Then, as you need them:
-
-- [Projects and repositories](/docs/guide/projects-and-repositories/)
-- [Docs, tickets, and the board](/docs/guide/docs-tickets-and-board/)
-- [Chat and voice](/docs/guide/chat-and-voice/)
-- [Paired computers](/docs/guide/paired-computers/)
-- [Plays](/docs/guide/plays/)
-- [Memories](/docs/guide/memories/)
-- [MCP server](/docs/guide/mcp-server/)
-- [Automations](/docs/guide/automations/)
-- [API and tokens](/docs/guide/api-and-tokens/)
-- [Desktop app](/docs/guide/desktop-app/)
+Keep [Upgrade](/docs/guide/upgrade/) for later. The rest of the guide covers projects, docs and tickets, chat, agents and automations. [API and tokens](/docs/guide/api-and-tokens/) and the [desktop app](/docs/guide/desktop-app/) are for when you connect something else to the instance.
