@@ -84,8 +84,9 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
         aria-hidden={collapsed}
         className={cn(
           "grid transition-[grid-template-rows,opacity] motion-reduce:transition-[opacity]",
+          // inline-size containment drops a collapsed lane's columns from the shared scroll width, so all-collapsed lanes need no scrollbar.
           collapsed
-            ? "[grid-template-rows:0fr] opacity-0 duration-150 ease-standard"
+            ? "[grid-template-rows:0fr] opacity-0 contain-inline-size duration-150 ease-standard"
             : "[grid-template-rows:1fr] opacity-100 duration-200 ease-out",
         )}
       >
