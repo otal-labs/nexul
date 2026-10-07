@@ -8,6 +8,7 @@ import type { Repo } from "@/models/Repository";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 export const getProjectsKey = "getProjects";
+export const getProjectKey = "getProject";
 export const getProjectAccessKey = "getProjectAccess";
 const getProjectReposKey = "getProjectRepos";
 
@@ -33,7 +34,7 @@ export const useFetchProjectAccess = (projectId: string, enabled = true) =>
 
 export const useFetchProject = (id: string | undefined) =>
   useQuery({
-    queryKey: ["getProject", id],
+    queryKey: [getProjectKey, id],
     queryFn: async () => (await api.get<Project>(`/api/projects/${id}`)).data,
     enabled: !!id,
   });
@@ -149,7 +150,7 @@ export const useSaveTestsAnswer = () => {
     },
     onSuccess: async (_, { projectId }) => {
       await client.invalidateQueries({ queryKey: [getProjectReposKey, projectId] });
-      await client.invalidateQueries({ queryKey: ["getProject", projectId] });
+      await client.invalidateQueries({ queryKey: [getProjectKey, projectId] });
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

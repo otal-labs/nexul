@@ -106,4 +106,21 @@ describe("boardCollisionDetection", () => {
     });
     expect(result.map((c) => c.id)).toEqual(["column-1"]);
   });
+
+  it("reads only the hovered column's card rects, since every rect read re-walks the scroll ancestors", () => {
+    const otherColumn = container("column-2", { type: "column", statusId: "open", categoryId: "c-1" });
+    const otherCard = container("t-8", { type: "card", ticketId: "t-8", statusId: "open", categoryId: "c-1" });
+    const read: string[] = [];
+    const rects = new Map([...droppableRects, ["column-2", rect(100, 0, 100, 200)] as const, ["t-8", rect(100, 0, 100, 40)] as const]);
+    const spied = { get: (id: string) => (read.push(id), rects.get(id)) } as unknown as typeof rects;
+    const result = boardCollisionDetection({
+      active: { id: "t-1" } as never,
+      collisionRect: rect(10, 10, 20, 20),
+      droppableRects: spied,
+      droppableContainers: [lane, column, card, otherColumn, otherCard],
+      pointerCoordinates: { x: 20, y: 20 },
+    });
+    expect(result.map((c) => c.id)).toEqual(["t-9"]);
+    expect(read).not.toContain("t-8");
+  });
 });

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import type { DndContextProps, DragOverEvent, DragStartEvent } from "@dnd-kit/core";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactElement } from "react";
@@ -24,6 +25,19 @@ const mockNavigate = vi.fn();
 vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");
   return { ...actual, useNavigate: () => mockNavigate };
+});
+
+// jsdom never lays anything out, so drags are driven through the handlers the board hands to DndContext.
+const dnd = vi.hoisted(() => ({ props: null as DndContextProps | null }));
+vi.mock("@dnd-kit/core", async () => {
+  const actual = await vi.importActual<typeof import("@dnd-kit/core")>("@dnd-kit/core");
+  return {
+    ...actual,
+    DndContext: (props: DndContextProps) => {
+      dnd.props = props;
+      return <actual.DndContext {...props} />;
+    },
+  };
 });
 
 const renderBoard = (ui: ReactElement) => {
@@ -137,5 +151,42 @@ describe("KanbanBoard", () => {
     );
     await user.click(screen.getByText("Fix login"));
     expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/t-1");
+  });
+
+  it("ignores an over change that arrives with the pointer still, so the ghost's own layout shift cannot flip it between two cells", () => {
+    const twoLanes = [
+      lane("Sprint 1", "Sprint 1", "c-1", [ticket("t-1", "Fix login", "open", "c-1")]),
+      lane("Sprint 2", "Sprint 2", "c-2", [ticket("t-3", "Ship search", "open", "c-2")]),
+    ];
+    renderBoard(
+      <KanbanBoard
+        columns={columns}
+        swimlanes={twoLanes}
+        onDrop={() => {}}
+        onReorderColumns={() => {}}
+        onAddTicket={() => {}}
+      />,
+    );
+    const active = { id: "t-1", data: { current: undefined }, rect: { current: { initial: null, translated: null } } };
+    const overDone = (categoryId: string, delta: { x: number; y: number }) =>
+      ({
+        active,
+        delta,
+        collisions: null,
+        activatorEvent: null,
+        over: { id: `done-${categoryId}`, rect: null, disabled: false, data: { current: { type: "column", statusId: "done", categoryId, kind: "done" } } },
+      }) as unknown as DragOverEvent;
+    const doneIn = (laneLabel: string) => within(screen.getByRole("region", { name: `Done column in ${laneLabel}` }));
+
+    act(() => dnd.props!.onDragStart!({ active } as unknown as DragStartEvent));
+    act(() => dnd.props!.onDragOver!(overDone("c-1", { x: 40, y: 10 })));
+    expect(doneIn("Sprint 1").getByText("Fix login")).toBeInTheDocument();
+
+    act(() => dnd.props!.onDragOver!(overDone("c-2", { x: 40, y: 10 })));
+    expect(doneIn("Sprint 1").getByText("Fix login")).toBeInTheDocument();
+    expect(doneIn("Sprint 2").queryByText("Fix login")).not.toBeInTheDocument();
+
+    act(() => dnd.props!.onDragOver!(overDone("c-2", { x: 40, y: 90 })));
+    expect(doneIn("Sprint 2").getByText("Fix login")).toBeInTheDocument();
   });
 });

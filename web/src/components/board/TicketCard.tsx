@@ -1,4 +1,5 @@
 import { useSortable } from "@dnd-kit/sortable";
+import { useQueryClient } from "@tanstack/react-query";
 import { CircleHelp, LoaderCircle, MessageSquare } from "lucide-react";
 import { memo, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router";
@@ -11,7 +12,7 @@ import { labelDotColor, pillClass, ticketTypeColor } from "@/components/board/ti
 import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { useFetchChatThreadIndicators } from "@/hooks/ChatHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
-import { useFetchProject } from "@/hooks/ProjectHooks";
+import { getProjectKey, useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchLabelColors } from "@/hooks/TicketHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
@@ -19,6 +20,7 @@ import { useTicketRunStartedAt, useTicketRunState } from "@/hooks/TrailHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import { personLabel } from "@/models/Person";
+import type { Project } from "@/models/Project";
 import { cardPerson, ticketPath, type Ticket } from "@/models/Ticket";
 
 interface TicketCardProps {
@@ -110,9 +112,10 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
 const TicketCardImpl = ({ ticket, index = 0 }: TicketCardProps) => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
-  // Same cached query as TicketCardBody below — one request per board, not per card.
-  const { data: project } = useFetchProject(ticket.project_id);
-  const path = wsPath(ticketPath(ticket, project?.prefix));
+  const queryClient = useQueryClient();
+  // Read at click time, not subscribed: cards re-render on every drag move and only the handlers need the prefix.
+  const open = () =>
+    navigate(wsPath(ticketPath(ticket, queryClient.getQueryData<Project>([getProjectKey, ticket.project_id])?.prefix)));
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: ticket.id,
     data: { type: "card", ticketId: ticket.id, statusId: ticket.status, categoryId: ticket.category_id } satisfies DropTargetData,
@@ -148,10 +151,10 @@ const TicketCardImpl = ({ ticket, index = 0 }: TicketCardProps) => {
       style={{ ...entranceStyle, transform: dragCssTransform, transition: dragTransition }}
       {...listeners}
       {...attributes}
-      onClick={() => navigate(path)}
+      onClick={open}
       onKeyDown={(event) => {
         // Space is dnd-kit's keyboard drag pickup; only Enter opens the ticket, matching native <button>.
-        if (event.key === "Enter") navigate(path);
+        if (event.key === "Enter") open();
       }}
       className={cn(
         "group flex select-none flex-col gap-2.5 rounded-lg border border-border bg-card p-3 transition-[opacity,border-color] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
