@@ -18,12 +18,13 @@ import (
 
 // Handler adapts the bot use-cases to the HTTP/JSON gateway (ADR 0019); the public execute route is not here.
 type Handler struct {
-	svc *Service
+	svc         *Service
+	mediaClient *http.Client
 }
 
-// NewHandler wires the bot management gateway over the given service.
+// NewHandler wires the bot management gateway over the given service; its media proxy dials public addresses only.
 func NewHandler(svc *Service) *Handler {
-	return &Handler{svc: svc}
+	return &Handler{svc: svc, mediaClient: newMediaClient(guardedDialer(publicAddr).DialContext)}
 }
 
 type createRequest struct {
@@ -39,6 +40,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PATCH /api/botwebhooks/{id}", h.update)
 	mux.HandleFunc("DELETE /api/botwebhooks/{id}", h.delete)
 	mux.HandleFunc("GET /api/botwebhooks/{id}/avatar", h.avatar)
+	mux.HandleFunc("GET /api/botwebhooks/media", h.media)
 	return mux
 }
 
@@ -231,6 +233,8 @@ func writeQuota(h http.Header, q quota) {
 	h.Set("X-RateLimit-Limit", strconv.Itoa(q.limit))
 	h.Set("X-RateLimit-Remaining", strconv.Itoa(q.remaining))
 	h.Set("X-RateLimit-Reset-After", strconv.FormatFloat(q.resetAfter.Seconds(), 'f', 3, 64))
+	h.Set("X-RateLimit-Reset", strconv.FormatFloat(float64(q.reset.UnixMilli())/1000, 'f', 3, 64))
+	h.Set("X-RateLimit-Bucket", q.bucket)
 }
 
 func writeRateLimited(w http.ResponseWriter, q quota) {

@@ -24,7 +24,7 @@ Review must cover:
 - [x] Bot webhook rate limit — per bot and per IP, enforced in code not prose
 - [x] Bot webhook 404 — a wrong token and a missing bot are indistinguishable
 - [x] Bot webhook revoke and regenerate — the old URL stops working at once
-- [ ] Bot embed images — they load straight from the sender's host, so it sees every reader's IP; decide whether to proxy them as Discord does
+- [x] Bot embed images — proxied as Discord does: the web loads every embed image, icon, and avatar override through `GET /api/botwebhooks/media`, which fetches only a URL the named message shows to a caller who reads its conversation, dials public addresses only (checked after DNS, on every redirect), and serves raster images up to 8 MiB under nosniff and `default-src 'none'`
 
 ## Surface when
 

@@ -1,4 +1,4 @@
-import { formatRelativeTime } from "@/lib/time";
+import { formatCalendarTime, formatRelativeTime } from "@/lib/time";
 
 const now = Date.parse("2026-09-28T12:00:00Z");
 
@@ -9,4 +9,18 @@ test.each([
   ["2026-09-26T12:00:00Z", "2d"],
 ])("%s reads as %s", (iso, expected) => {
   expect(formatRelativeTime(iso, now)).toBe(expected);
+});
+
+describe("formatCalendarTime", () => {
+  // Zoneless inputs read in the test's own zone, so these hold wherever the suite runs.
+  const lateEvening = Date.parse("2026-10-06T23:55:00");
+  const justAfterMidnight = Date.parse("2026-10-07T00:05:00");
+
+  test("the same calendar day is today", () => {
+    expect(formatCalendarTime("2026-10-06T21:11:00", lateEvening)).toBe("Today at 21:11");
+  });
+
+  test("ten minutes earlier across midnight is yesterday", () => {
+    expect(formatCalendarTime("2026-10-06T23:50:00", justAfterMidnight)).toBe("Yesterday at 23:50");
+  });
 });

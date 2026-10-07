@@ -34,7 +34,7 @@ The phone stays signed in for 90 days after you last used it. It shows under **D
 ## What's on the phone
 
 - **Inbox**: your notifications. **Mark all read** clears them.
-- **Chat**: your channels, direct messages, and threads. Read and reply, and open an agent's notes.
+- **Chat**: your channels, direct messages, and threads. Read and reply, open an agent's notes, and read a bot's posts with their embeds.
 - **Board**: a project's tickets by status. Show only tickets where you're developer or tester, change a ticket's status, **Assign to me**, or **Open thread**.
 - **Deploys**: your stacks and their deploys, with the deploy log and each service's live logs. A stack that runs an image can be redeployed from here; one built from a compose file redeploys from the web.
 - **More**: docs to read, runners (if you can see them), and your settings: appearance, devices, and which workspace the app shows.

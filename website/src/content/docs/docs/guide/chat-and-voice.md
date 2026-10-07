@@ -19,6 +19,10 @@ Messages are markdown. **Enter** sends, **Shift+Enter** starts a new line. Paste
 
 Hover a message to react, or to edit or delete your own. A deleted message leaves its place in the conversation.
 
+## Bots
+
+Outside tools such as CI, Grafana, or Uptime Kuma can post into any conversation through a webhook URL, the same JSON a Discord webhook takes. Their posts carry a **BOT** tag and show embeds as cards. Open a channel's **Settings**, or the **Bots** item in a direct message's or thread's menu, to create one. See [Bots](/docs/guide/bots/).
+
 ## Ask the agent
 
 Mention `@Agent` and an agent answers in the conversation, running on your own [paired computer](/docs/guide/paired-computers/) with your permissions. Its reply streams in as it works; press the stop button on it to interrupt. If it asks you something, answer the question card in the conversation.

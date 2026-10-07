@@ -5,12 +5,6 @@
 Small defects seen in passing that have no effort of their own. One heading
 each; delete the heading when it is fixed, delete the file when it is empty.
 
-## The agent's answer-forwarding test fails now and then under -race
-
-`TestAnswer_ActiveTurn_ForwardsToTheHarness` in `internal/agent` failed about
-3 runs in 300 with `-race` on 2026-10-07, while the host was loaded. Find the
-timing it depends on and make it deterministic.
-
 ## A data race shows up intermittently in the DNS tests
 
 One `make coverage` run on 2026-09-29 failed with a `-race` report in the
@@ -142,3 +136,12 @@ hint until a custom role exists
 (`web/src/components/member/InvitationGrantRow.tsx:60`, disabled while there
 are no assignable roles), so the inviter cannot tell why or what to do. Seen
 2026-10-04 in the Clarify via AI walkthrough.
+
+## Channel threads have no Bots menu item
+
+Bots can bind to any conversation kind, and DMs, ticket threads, and doc
+threads open the Bots section from their menu. Channel threads cannot be
+created yet (no use-case sets `parent_message_id`) and the web has no screen
+for one, so they have no menu to carry it. When channel threads get a screen,
+give its menu the same "Bots" item (`useBotsDialog`).
+

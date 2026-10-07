@@ -12,7 +12,7 @@
 dist/
 
 # Go
-coverage.out
+coverage*.out
 coverage.filtered.out
 coverage.html
 

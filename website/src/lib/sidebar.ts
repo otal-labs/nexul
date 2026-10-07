@@ -13,6 +13,7 @@ export const guideGroups = [
 			guide('people-and-access'),
 			guide('docs-tickets-and-board'),
 			guide('chat-and-voice'),
+			guide('bots'),
 			guide('automations'),
 		],
 	},

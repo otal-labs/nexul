@@ -857,8 +857,9 @@ functions when events happen, acting through the scoped API, on the
 automations hosts they are placed on.
 
 **Bot webhooks** (`botwebhook`) — bots: their URL and token, the execute
-route, limits, and lifecycle. Posts reach chat through one use-case chat
-exposes; chat never learns what a webhook is.
+route, limits, lifecycle, and the media proxy their messages' images load
+through. Posts reach chat through one use-case chat exposes; chat never
+learns what a webhook is.
 
 **Chat** — conversations inside a workspace: channels, direct messages,
 threads, and ticket threads, with the mentionable Agent and its memories.
