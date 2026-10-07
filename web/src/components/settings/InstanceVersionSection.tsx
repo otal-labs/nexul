@@ -110,7 +110,7 @@ const UpgradeButton = ({ latest }: { latest: InstanceUpgrade["latest"] }) => {
   const onUpgradeClick = async () => {
     const ok = await confirm({
       title: latest ? `Upgrade to ${latest.version}?` : "Upgrade this instance?",
-      message: "This pulls the release's images, restarts the stack, and the app reconnects once it's back.",
+      message: "This downloads the release, restarts Nexul's services, and the app reconnects once it's back.",
       confirmLabel: "Upgrade",
       destructive: false,
     });
