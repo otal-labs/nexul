@@ -57,3 +57,8 @@ export const httpUrl = (raw: string | undefined): string | undefined => {
     return undefined;
   }
 };
+
+const ZONELESS_TIME = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
+
+// Discord reads a timestamp without a zone as UTC; Uptime Kuma sends one, and the browser would read it as local.
+export const embedTimestamp = (raw: string): string => (ZONELESS_TIME.test(raw) ? `${raw.replace(" ", "T")}Z` : raw);

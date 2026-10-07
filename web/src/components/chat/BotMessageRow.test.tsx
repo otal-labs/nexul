@@ -143,4 +143,17 @@ describe("MessageRow for a bot", () => {
     expect(time).toHaveAttribute("dateTime", "2026-10-06T20:10:00Z");
     expect(time).toHaveAttribute("title", new Date("2026-10-06T20:10:00Z").toLocaleString());
   });
+
+  it("reads a footer time without a zone as UTC, as Uptime Kuma sends it and Discord reads it", () => {
+    vi.stubEnv("TZ", "Asia/Kolkata");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-06T22:00:00Z"));
+    try {
+      renderBot(botMessage({ embeds: [{ title: "Down", footer: { text: "Uptime Kuma" }, timestamp: "2026-10-06 20:10:00.000" }] }));
+      expect(screen.getByText("Today at 01:40")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllEnvs();
+    }
+  });
 });
