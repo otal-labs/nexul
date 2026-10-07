@@ -59,7 +59,7 @@ const inAppRoute = (path: string, canReadTickets: boolean): Href | null => {
   return `/board/ticket/${ticket[2]}`;
 };
 
-const openLink = (url: string, canReadTickets: boolean) => {
+export const openLink = (url: string, canReadTickets: boolean) => {
   const host = useSessionStore.getState().host ?? "";
   const path = host && url.startsWith(`${host}/`) ? url.slice(host.length) : url;
   const route = inAppRoute(path, canReadTickets);

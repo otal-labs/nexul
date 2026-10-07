@@ -30,7 +30,13 @@ jest.mock("expo-router", () => ({
   Stack: { Screen: () => null },
 }));
 jest.mock("expo-router/react-navigation", () => ({ useHeaderHeight: () => 0 }));
-jest.mock("lucide-react-native", () => ({ SendHorizontal: () => null, FileText: () => null, Bot: () => null }));
+jest.mock("lucide-react-native", () => ({
+  SendHorizontal: () => null,
+  FileText: () => null,
+  Bot: () => null,
+  ChevronDown: () => null,
+  ChevronUp: () => null,
+}));
 jest.mock("react-native-enriched-markdown", () => jest.requireActual("react-native-enriched-markdown/jest"));
 
 // Jest has no layout pass, so this stand-in renders every row in data order and keeps the props for the anchoring checks.
@@ -68,6 +74,15 @@ const message = (id: string, body: string, minute: number, author = "ana"): Mess
   created_at: `2026-09-28T10:${String(minute).padStart(2, "0")}:00Z`,
   updated_at: `2026-09-28T10:${String(minute).padStart(2, "0")}:00Z`,
 });
+
+const botPost = (id: string, overrides: Partial<Message>): Message => ({
+  ...message(id, "", 1, "bw_7f3a"),
+  author_kind: "bot",
+  author_name: "GitHub",
+  ...overrides,
+});
+
+const fields = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `Field ${i + 1}`, value: `value ${i + 1}` }));
 
 let thread: Message[] = [];
 
@@ -155,6 +170,43 @@ describe("ChatThreadScreen", () => {
     await renderThread();
 
     expect(await screen.findByText("via T3")).toBeTruthy();
+  });
+
+  test("a bot's post shows the name it posted with, the BOT tag, and via, never the bot's id", async () => {
+    thread = [botPost("b1", { body: "Deploy **finished**", via: "Release bot" })];
+    await renderThread();
+
+    expect(await screen.findByText("GitHub")).toBeTruthy();
+    expect(screen.getByText("Bot")).toBeTruthy();
+    expect(screen.getByText("via Release bot")).toBeTruthy();
+    expect(screen.getByText("finished")).toBeTruthy();
+    expect(screen.queryByText(/bw_7f3a/)).toBeNull();
+  });
+
+  test("a bot's served avatar loads with the bearer token", async () => {
+    thread = [botPost("b1", { body: "hi", author_avatar_url: "/api/botwebhooks/bw_7f3a/avatar?v=2" })];
+    await renderThread();
+
+    expect((await screen.findByLabelText("Avatar of GitHub")).props.source).toEqual([
+      { uri: `${host}/api/botwebhooks/bw_7f3a/avatar?v=2`, headers: { Authorization: "Bearer ses_abc" } },
+    ]);
+  });
+
+  test("a bot post folds the fields past six and the embeds past two, and each bar opens and closes them", async () => {
+    thread = [botPost("b1", { embeds: [{ title: "Checks", fields: fields(7) }, { title: "Second" }, { title: "Third" }] })];
+    await renderThread();
+
+    expect(await screen.findByText("Field 6")).toBeTruthy();
+    expect(screen.queryByText("Field 7")).toBeNull();
+    expect(screen.queryByText("Third")).toBeNull();
+
+    await userEvent.press(screen.getByRole("button", { name: "Show 1 more field" }));
+    expect(screen.getByText("Field 7")).toBeTruthy();
+    await userEvent.press(screen.getByRole("button", { name: "Show less" }));
+    expect(screen.queryByText("Field 7")).toBeNull();
+
+    await userEvent.press(screen.getByRole("button", { name: "Show 1 more embed" }));
+    expect(screen.getByText("Third")).toBeTruthy();
   });
 
   test("an agent message without a file shows no pill", async () => {

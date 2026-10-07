@@ -88,6 +88,8 @@ describe("isContinuation", () => {
     ["follows a deleted message", message({ deleted_at: at(10, 0, 30) }), message({ created_at: at(10, 1) }), false],
     ["crosses midnight within five minutes", message({ created_at: at(23, 58) }), message({ created_at: at(0, 1, 0, 29) }), false],
     ["arrives before the previous one", message({ created_at: at(10, 5) }), message({ created_at: at(10, 4) }), false],
+    ["is the same bot under the same name", message({ author_kind: "bot", author_name: "GitHub" }), message({ author_kind: "bot", author_name: "GitHub", created_at: at(10, 1) }), true],
+    ["is the same bot posting under another name", message({ author_kind: "bot", author_name: "GitHub" }), message({ author_kind: "bot", author_name: "Grafana", created_at: at(10, 1) }), false],
   ])("a message that %s", (_name, prev, curr, expected) => {
     expect(isContinuation(prev, curr)).toBe(expected);
   });
