@@ -55,13 +55,15 @@ func (s *Service) OnSessionUpdate(userID, computerID string, u harness.SessionUp
 		s.releaseFollow(conv.ID)
 		return
 	}
-	go s.follow(conv.ID, u.SessionID, userID, computerID, since)
+	go s.follow(conv.ID, u, userID, computerID, since)
 }
 
 // follow runs the catch-up through the follower when it takes it, else as a plain turn, and frees the conversation after.
-func (s *Service) follow(conversationID, threadID, userID, computerID, since string) {
+func (s *Service) follow(conversationID string, u harness.SessionUpdate, userID, computerID, since string) {
 	defer s.releaseFollow(conversationID)
 	ctx := context.Background()
+	defer s.seeNewest(ctx, conversationID, u, since)
+	threadID := u.SessionID
 	s.mu.Lock()
 	follower := s.follower
 	s.mu.Unlock()
@@ -72,6 +74,22 @@ func (s *Service) follow(conversationID, threadID, userID, computerID, since str
 		}
 	}
 	s.runChatTurn(TurnRequest{ConversationID: conversationID, ViaUserID: userID, Watch: true, Since: since, Target: &TargetOverride{ComputerID: computerID}})
+}
+
+// seeNewest takes an idle thread's newest turn as seen when a catch-up moved no marker, since T3 can name one no catch-up reaches (ADR 0127).
+func (s *Service) seeNewest(ctx context.Context, conversationID string, u harness.SessionUpdate, since string) {
+	if u.Working {
+		return
+	}
+	conv, err := s.conversations.GetConversation(ctx, conversationID)
+	if err != nil {
+		s.log.Warn("agent: read the conversation a catch-up ended on failed", "conversation", conversationID, "error", err)
+		return
+	}
+	if conv.SeenMarker != since {
+		return
+	}
+	s.markSeen(ctx, conversationID, &harness.TurnResult{Marker: u.Latest})
 }
 
 // claimFollow reserves a conversation no turn is running on for one catch-up; false when a turn or a catch-up has it.
