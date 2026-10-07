@@ -104,6 +104,8 @@ type Observer interface {
 	OnSnapshot()
 	// OnQuestion means the turn is waiting on the user; it is not terminal, the harness keeps the turn open.
 	OnQuestion(q harness.Question)
+	// OnAnswered is a question answered in the harness's own app, never through Nexul's Answer.
+	OnAnswered(a harness.AnsweredQuestion)
 	OnFinished(result harness.TurnResult, replyMessageID string)
 }
 
@@ -113,6 +115,7 @@ func (nopObserver) OnStarted(string)                      {}
 func (nopObserver) OnActivity(harness.Activity)           {}
 func (nopObserver) OnSnapshot()                           {}
 func (nopObserver) OnQuestion(harness.Question)           {}
+func (nopObserver) OnAnswered(harness.AnsweredQuestion)   {}
 func (nopObserver) OnFinished(harness.TurnResult, string) {}
 
 // TargetResolver is the pipeline's seam onto pairing.
@@ -765,6 +768,8 @@ func (s *Service) drainTurn(ctx context.Context, turn *activeTurn, conversationI
 				s.log.Error("agent: post question failed", "conversation", conversationID, "error", err)
 			}
 			obs.OnQuestion(*u.Question)
+		case u.Answered != nil:
+			obs.OnAnswered(*u.Answered)
 		case u.Handoff != nil:
 			handoffs = keepHandoff(handoffs, *u.Handoff)
 			h := chat.NewHandoff(*u.Handoff)
@@ -844,6 +849,7 @@ func (w *silenceWindow) receive(ctx context.Context, updates <-chan harness.Upda
 	for {
 		select {
 		case u, ok = <-updates:
+			w.paused = w.paused && u.Answered == nil
 			w.heard(u.Question != nil)
 			return u, nil, ok
 		case <-w.answered:

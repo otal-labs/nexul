@@ -321,6 +321,12 @@ type PendingAnswer struct {
 	Answer    QuestionAnswer
 }
 
+// AnsweredQuestion is a question the person answered in the harness's own app, with the answer it recorded.
+type AnsweredQuestion struct {
+	RequestID string
+	Answer    QuestionAnswer
+}
+
 // String renders one answer: the free text, else the chosen values comma-joined.
 func (v AnswerValue) String() string {
 	if v.Text != "" {
@@ -380,6 +386,7 @@ type Update struct {
 	Activity *Activity
 	Approval *Approval
 	Question *Question
+	Answered *AnsweredQuestion
 	Handoff  *Handoff
 	Terminal *TurnResult
 }

@@ -25,7 +25,7 @@ Every press leaves a trail, listed in the **Trail** section of the ticket, doc, 
 
 While a run is going:
 
-- **The agent asks you something.** A question card shows on the trail and in the thread. Answer it and the same run carries on.
+- **The agent asks you something.** A question card shows on the trail and in the thread. Answer it and the same run carries on. You can answer in T3 Code instead, picking an option or typing your own; the card then shows that answer.
 - **You want it to stop.** Press stop on the play's button. You, or anyone who manages plays, can stop it, even while it waits on a question.
 - **The computer drops off.** The trail shows **Reconnecting to T3 Code…** and Nexul keeps trying. The run fails only if the computer stays unreachable.
 - **Nothing happens for 15 minutes.** The run fails and its turn in T3 Code is stopped.

@@ -21,10 +21,11 @@ Decision: Nexul keeps the shell open on every computer it holds, and follows a t
   ADR 0126). It shows the snapshot's steps, which a restart's watch leaves out; each step replaces one the trail
   already has by its call id, and the Agent's text is named by its message and offset, so a replay never duplicates.
 - **Who takes it.** When the conversation's newest trail ran on that thread, as the computer's owner and on that
-  computer, and has ended, its trail reopens as `running` with the note "New activity on this run's thread in T3 Code;
-  following it again." and ends with the harness's outcome, announcing `play.run_finished` again. Otherwise a plain
-  turn follows it as the computer's owner and posts the reply in the thread. One catch-up runs per conversation at a
-  time, and none while a turn runs there.
+  computer, and has ended, or waits on a question whose turn has closed, its trail reopens as `running` with the note
+  "New activity on this run's thread in T3 Code; following it again." and ends with the harness's outcome, announcing
+  `play.run_finished` again. The catch-up reports a question answered in T3 Code with T3's recorded answer, which the
+  waiting trail takes as its own. Otherwise a plain turn follows it as the computer's owner and posts the reply in the
+  thread. One catch-up runs per conversation at a time, and none while a turn runs there.
 
 Rejected: a "Follow again" button, which only helps once a person notices the trail stopped; polling every linked
 thread, which T3's push already makes unnecessary; and holding every computer at all times, which would show Nexul as

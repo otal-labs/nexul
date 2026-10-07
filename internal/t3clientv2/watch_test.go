@@ -219,6 +219,8 @@ func TestWatch_RecordedToolSteps_ShowEachChangeOfTheTurnsOwnItems(t *testing.T) 
 			return string(u.Activity.Kind) + " " + strings.TrimPrefix(u.Activity.CallID, claudeItem)
 		case u.Question != nil:
 			return "asks " + u.Question.RequestID
+		case u.Answered != nil:
+			return "answered " + u.Answered.RequestID
 		case u.Approval != nil:
 			return "approval " + u.Approval.Summary
 		case u.Snapshot != nil:
@@ -232,7 +234,7 @@ func TestWatch_RecordedToolSteps_ShowEachChangeOfTheTurnsOwnItems(t *testing.T) 
 	}
 	assert.Equal(t, []string{
 		"tool_call native-1", "tool_result native-1", "tool_result native-2", "tool_result native-3", "tool_result native-4",
-		"tool_result native-5", "tool_result native-6", "question native-7", "asks " + question1, "question native-7",
+		"tool_result native-5", "tool_result native-6", "question native-7", "asks " + question1, "answered " + question1, "question native-7",
 		"approval " + approvalPrompt, "tool_call native-8", "tool_result native-8", "reply Done.", "end done",
 	}, got, "the answered question and the declined approval are not raised again, and the runs typed in T3 after the turn ended show nothing")
 }

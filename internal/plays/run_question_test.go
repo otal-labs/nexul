@@ -397,3 +397,59 @@ func TestSplitWhy(t *testing.T) {
 		})
 	}
 }
+
+func TestObserver_AnsweredInT3_TakesTheAnswerAndRunsAgain(t *testing.T) {
+	f := heldFixture(t)
+	trail, obs := driveTurn(t, f, ticketRun())
+	obs.OnStarted("sess-1")
+	obs.OnQuestion(askedQuestion())
+	typed := harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q1": {Text: "Use the VM"}}}
+
+	obs.OnAnswered(harness.AnsweredQuestion{RequestID: "req-other", Answer: typed})
+	assert.Equal(t, TrailWaiting, f.trails.all()[0].State, "another question's answer is not this one's")
+
+	obs.OnAnswered(harness.AnsweredQuestion{RequestID: "req-1", Answer: typed})
+	got, err := f.trails.GetTrail(t.Context(), trail.ID)
+	require.NoError(t, err)
+	assert.Equal(t, TrailRunning, got.State)
+	require.NotNil(t, got.Question.Answer)
+	assert.Equal(t, typed, *got.Question.Answer, "the card shows what was typed in T3")
+	assert.Empty(t, f.turns.answered, "T3 already has it; nothing is sent back")
+	_, err = f.runner.Answer(ctxAs(starter), trail.ID, yesAnswer())
+	assert.ErrorIs(t, err, apperrs.ErrConflict, "the card no longer takes an answer")
+}
+
+func TestFollowThread_NewsOnAThreadParkedOnAQuestion_ReopensItForTheAnswerGivenInT3(t *testing.T) {
+	f := newRunnerFixture()
+	seedTrail(f, "tr-asked", TrailWaiting, "th-1")
+	f.trails.byID["tr-asked"].Question = &TrailQuestion{Question: askedQuestion(), AskedAt: fixedNow}
+
+	done, ok := f.runner.FollowThread(t.Context(), "conv-tr-asked", "th-1", starter, "pc-1", "run-7")
+	require.True(t, ok, "the turn closed under the question, so nothing else is watching the thread")
+	<-f.turns.done
+	req := f.turns.last()
+	assert.True(t, req.Watch)
+	req.Observer.OnStarted("th-1")
+	typed := harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q1": {Text: "Use the VM"}}}
+	req.Observer.OnAnswered(harness.AnsweredQuestion{RequestID: "req-1", Answer: typed})
+
+	got, err := f.trails.GetTrail(t.Context(), "tr-asked")
+	require.NoError(t, err)
+	assert.Equal(t, TrailRunning, got.State)
+	require.NotNil(t, got.Question.Answer)
+	assert.Equal(t, typed, *got.Question.Answer)
+	req.Observer.OnFinished(harness.TurnResult{State: harness.TurnDone}, "reply-2")
+	<-done
+}
+
+func TestFollowThread_QuestionStillOnALiveTurn_LeavesItToThatTurn(t *testing.T) {
+	f := heldFixture(t)
+	trail, obs := driveTurn(t, f, ticketRun())
+	obs.OnStarted("th-1")
+	obs.OnQuestion(askedQuestion())
+	waiting := f.trails.all()[0]
+
+	_, ok := f.runner.FollowThread(t.Context(), trail.ConversationID, "th-1", starter, waiting.ComputerID, "run-7")
+
+	assert.False(t, ok, "the live turn hears the answer itself")
+}
