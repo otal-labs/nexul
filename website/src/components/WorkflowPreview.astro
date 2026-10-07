@@ -1,5 +1,5 @@
 ---
-import Icon from './Icon.astro';
+import { NexulIcon } from './NexulIcon';
 const tasks = [
 	['NX-42', 'Add the release endpoint', 'Merged'],
 	['NX-43', 'Write the release notes', 'In progress'],
@@ -9,7 +9,7 @@ const tasks = [
 
 <figure class="workflow-preview" aria-label="Example workflow connecting a release document, project tickets, and a deployment">
 	<figcaption class="preview-bar">
-		<span class="preview-project"><Icon /> <strong>Nexul</strong><span class="breadcrumb">/</span> Release workspace</span>
+		<span class="preview-project"><NexulIcon /> <strong>Nexul</strong><span class="breadcrumb">/</span> Release workspace</span>
 		<span class="example-label">Example workflow</span>
 	</figcaption>
 	<div class="preview-columns">
