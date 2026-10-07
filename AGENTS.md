@@ -134,6 +134,8 @@ this list and say which entries applied:
   it. Archive needs restore, close needs reopen. A one-way door is a bug.
 - Docs. Check whether the change makes an ADR, `CONTEXT.md`, or a practices
   file inaccurate, and fix it in the same change.
+- User guide. A feature added or changed updates its page under
+  `website/src/content/docs/docs/guide/` in the same change, or adds one.
 
 ## Plans and work artifacts
 
