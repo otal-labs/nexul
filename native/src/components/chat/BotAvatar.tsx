@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Image, View, type ImageSourcePropType } from "react-native";
+import { Image, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { useCSSVariable } from "uniwind";
 
-import { httpUrl } from "@/models/Embed";
-import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
+import { useApiImageSource, useBotMediaSource } from "@/hooks/BotMediaHooks";
 
 // assets/mark.svg, the default every bot starts with.
 const NexulGlyph = () => {
@@ -23,12 +22,6 @@ const NexulGlyph = () => {
   );
 };
 
-// The bot's own avatar is served under /api/ and needs the session; Android's Image only sends headers from an array source.
-const avatarSource = (src: string | undefined, host: string | null): ImageSourcePropType | undefined => {
-  if (src?.startsWith("/api/")) return [{ uri: `${host ?? ""}${src}`, headers: { Authorization: `Bearer ${readSessionToken() ?? ""}` } }];
-  const direct = httpUrl(src) ?? (src?.startsWith("data:image/") ? src : undefined);
-  return direct ? { uri: direct } : undefined;
-};
 
 interface BotAvatarProps {
   src: string | undefined;
@@ -37,9 +30,11 @@ interface BotAvatarProps {
 
 // A picture that is missing or fails to load shows the Nexul glyph.
 export const BotAvatar = ({ src, name }: BotAvatarProps) => {
-  const host = useSessionStore((s) => s.host);
+  const served = useApiImageSource(src?.startsWith("/api/") ? src : undefined);
+  const proxied = useBotMediaSource(src);
+  const inline = src?.startsWith("data:image/") ? { uri: src } : undefined;
   const [failedSrc, setFailedSrc] = useState<string | undefined>(undefined);
-  const source = failedSrc === src ? undefined : avatarSource(src, host);
+  const source = failedSrc === src ? undefined : (served ?? proxied ?? inline);
   return (
     <>
       {!source && <NexulGlyph />}

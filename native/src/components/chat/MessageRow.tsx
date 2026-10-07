@@ -7,6 +7,7 @@ import { HandoffPill } from "@/components/chat/HandoffPill";
 import { MessageBody } from "@/components/chat/MessageBody";
 import { MessageReactions } from "@/components/chat/MessageReactions";
 import { NoteFilePill } from "@/components/chat/NoteFilePill";
+import { BotMessageIdContext } from "@/hooks/BotMediaHooks";
 import { Text } from "@/components/ui/text";
 import { RelativeTime } from "@/components/RelativeTime";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ export const MessageRow = ({ message, authorName, continuation = false }: Messag
   // A bot is never resolved as a person: its id is not a member, so it shows the name it posted with.
   const isBot = message.author_kind === "bot";
   return (
+    <BotMessageIdContext value={isBot ? message.id : undefined}>
     <View className={cn("gap-1 px-4 pb-0.5", continuation ? "pt-0.5" : "pt-4", message.pending && "opacity-60")}>
       {isSystem && <Text className="text-xs italic text-muted-foreground">{message.body}</Text>}
       {isBot && !continuation && <BotMessageHeader message={message} />}
@@ -50,5 +52,6 @@ export const MessageRow = ({ message, authorName, continuation = false }: Messag
       )}
       {message.reactions && message.reactions.length > 0 && <MessageReactions reactions={message.reactions} />}
     </View>
+    </BotMessageIdContext>
   );
 };

@@ -192,6 +192,23 @@ describe("ChatThreadScreen", () => {
     ]);
   });
 
+  test("a bot's external pictures load through the media proxy, so the sender never sees the reader", async () => {
+    const proxied = (url: string) => [
+      { uri: `${host}/api/botwebhooks/media?message=b1&url=${encodeURIComponent(url)}`, headers: { Authorization: "Bearer ses_abc" } },
+    ];
+    thread = [
+      botPost("b1", {
+        author_avatar_url: "https://cdn.example.com/a.png",
+        embeds: [{ title: "Run", image: { url: "https://cdn.example.com/chart.png" }, thumbnail: { url: "https://cdn.example.com/t.png" } }],
+      }),
+    ];
+    await renderThread();
+
+    expect((await screen.findByLabelText("Avatar of GitHub")).props.source).toEqual(proxied("https://cdn.example.com/a.png"));
+    expect(screen.getByLabelText("Embed image").props.source).toEqual(proxied("https://cdn.example.com/chart.png"));
+    expect(screen.getByLabelText("Embed thumbnail").props.source).toEqual(proxied("https://cdn.example.com/t.png"));
+  });
+
   test("a bot post folds the fields past six and the embeds past two, and each bar opens and closes them", async () => {
     thread = [botPost("b1", { embeds: [{ title: "Checks", fields: fields(7) }, { title: "Second" }, { title: "Third" }] })];
     await renderThread();

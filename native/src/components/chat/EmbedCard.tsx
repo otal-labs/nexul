@@ -6,6 +6,7 @@ import { EmbedFieldGrid } from "@/components/chat/EmbedFieldGrid";
 import { FoldBar } from "@/components/chat/FoldBar";
 import { openLink } from "@/components/chat/MessageMarkdown";
 import { Text } from "@/components/ui/text";
+import { useBotMediaSource } from "@/hooks/BotMediaHooks";
 import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import { useClockStore } from "@/stores/clockStore";
 import { EMBED_FIELD_LIMIT, embedFold, embedFoldLabel, embedTimestamp, httpUrl, type Embed } from "@/models/Embed";
@@ -17,13 +18,14 @@ const CLAMPED_DESCRIPTION = "max-h-[120px] overflow-hidden";
 
 // A picture that fails to load drops out rather than leaving a broken frame.
 const EmbedImage = ({ uri }: { uri: string }) => {
+  const source = useBotMediaSource(uri);
   const [failed, setFailed] = useState(false);
   const [aspectRatio, setAspectRatio] = useState(16 / 9);
-  if (failed) return null;
+  if (failed || !source) return null;
   return (
     <Image
       accessibilityLabel="Embed image"
-      source={{ uri }}
+      source={source}
       resizeMode="cover"
       onError={() => setFailed(true)}
       onLoad={({ nativeEvent: { source } }) => source.height > 0 && setAspectRatio(source.width / source.height)}
@@ -33,7 +35,15 @@ const EmbedImage = ({ uri }: { uri: string }) => {
   );
 };
 
-const EmbedIcon = ({ uri }: { uri: string }) => <Image source={{ uri }} className="size-4 rounded-full" />;
+const EmbedIcon = ({ uri }: { uri: string }) => {
+  const source = useBotMediaSource(uri);
+  return source && <Image source={source} className="size-4 rounded-full" />;
+};
+
+const EmbedThumbnail = ({ uri }: { uri: string }) => {
+  const source = useBotMediaSource(uri);
+  return source && <Image accessibilityLabel="Embed thumbnail" source={source} className="size-16 rounded-md border border-border" />;
+};
 
 // The author line over the title, which links out when the sender gave it a URL.
 const EmbedHeading = ({ embed: { author, title, url } }: { embed: Embed }) => {
@@ -88,7 +98,7 @@ export const EmbedCard = ({ embed }: { embed: Embed }) => {
   const thumbnail = httpUrl(embed.thumbnail?.url);
   return (
     <View className="gap-1.5 border-l-2 border-muted-foreground/30 py-0.5 pl-3">
-      {thumbnail && <Image accessibilityLabel="Embed thumbnail" source={{ uri: thumbnail }} className="size-16 rounded-md border border-border" />}
+      {thumbnail && <EmbedThumbnail uri={thumbnail} />}
       <EmbedHeading embed={embed} />
       {embed.description && (
         <View className={cn(fold.longDescription && !open && CLAMPED_DESCRIPTION)}>
