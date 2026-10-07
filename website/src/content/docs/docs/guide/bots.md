@@ -97,9 +97,11 @@ curl -sS -H "Content-Type: application/json" \
   }'
 ```
 
-**Accepted.** `content`, `username`, `avatar_url`, `embeds`, and `allowed_mentions`. A post needs `content` or at least one embed. An embed keeps its title, description, url, timestamp, footer, image, thumbnail, author, and fields; `color` is accepted and ignored. Links and images must be absolute `http` or `https` URLs. File uploads and anything else Discord takes are ignored.
+### What a post may carry
 
-**Limits.**
+`content`, `username`, `avatar_url`, `embeds`, and `allowed_mentions`. A post needs `content` or at least one embed. An embed keeps its title, description, url, timestamp, footer, image, thumbnail, author, and fields; `color` is accepted and ignored. Links and images must be absolute `http` or `https` URLs. Other Discord fields are ignored. File uploads (a `multipart/form-data` post) are not supported and answer `400`.
+
+### Limits
 
 | What | Limit |
 |---|---|
@@ -113,7 +115,7 @@ curl -sS -H "Content-Type: application/json" \
 | Footer text | 2048 characters |
 | `username` | 80 characters |
 
-**Answers.**
+### Answers
 
 | Status | Meaning |
 |---|---|
