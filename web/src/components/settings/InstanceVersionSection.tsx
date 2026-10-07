@@ -1,8 +1,9 @@
-import { RefreshCw } from "lucide-react";
+import { ArrowUpRight, RefreshCw } from "lucide-react";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { Fact } from "@/components/Fact";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { InstanceUpgradeProgress, UpgradeElapsed } from "@/components/settings/InstanceUpgradeProgress";
+import { InstanceUpgradeProgress } from "@/components/settings/InstanceUpgradeProgress";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,80 +14,80 @@ import {
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/utils/TimeUtility";
-import { isUpgradeInProgress, type InstanceUpgrade } from "@/models/InstanceUpgrade";
+import { isUpgradeInProgress, UpgradeRecordStatus, type InstanceUpgrade } from "@/models/InstanceUpgrade";
 
 // "dev build" gets a friendlier line than the raw reason string; every other reason already reads as one.
 const reasonCopy = (reason: string): string =>
-  reason === "dev build" ? "This build cannot upgrade itself." : reason;
+  reason === "dev build" ? "This build cannot upgrade itself." : `Can't upgrade yet: ${reason}.`;
 
 const NEWEST_RELEASE_REASON = "already on the newest release";
+
+// The instance never moved, so the failure is still the story and the next click is a retry.
+const isUnresolvedFailure = (data: InstanceUpgrade): boolean =>
+  data.upgrade?.status === UpgradeRecordStatus.Failed && data.upgrade.to_version !== data.version;
 
 const statusOf = (data: InstanceUpgrade): { headline: string; dot: string } => {
   if (data.upgrade && isUpgradeInProgress(data.upgrade)) {
     return { headline: `Upgrading to ${data.upgrade.to_version}`, dot: "bg-warning" };
+  }
+  if (data.upgrade && isUnresolvedFailure(data)) {
+    return { headline: `Upgrade to ${data.upgrade.to_version} failed`, dot: "bg-destructive" };
   }
   if (!data.latest) return { headline: "No release to compare against", dot: "bg-muted-foreground" };
   if (data.update_available) return { headline: `${data.latest.version} is available`, dot: "bg-foreground" };
   return { headline: "Up to date", dot: "bg-success" };
 };
 
-const InstanceVersionStatus = ({ data }: { data: InstanceUpgrade }) => {
+const InstanceVersionFacts = ({ data }: { data: InstanceUpgrade }) => {
   const { headline, dot } = statusOf(data);
-  const showReason =
-    !data.can_upgrade && !isUpgradeInProgress(data.upgrade) && data.reason !== "" && data.reason !== NEWEST_RELEASE_REASON;
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between gap-2">
-        <p className="flex items-center gap-2 text-base font-semibold">
+    <dl className="grid grid-cols-3 gap-x-6 gap-y-4 @xl:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
+      <div className="col-span-3 @xl:col-span-1">
+        <Fact label="Status">
           <span aria-hidden className={cn("size-2 shrink-0 rounded-full", dot)} />
-          {headline}
-        </p>
-        {data.upgrade && isUpgradeInProgress(data.upgrade) && <UpgradeElapsed record={data.upgrade} />}
+          <span className="font-medium">{headline}</span>
+        </Fact>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Running <span className="font-mono">{data.version}</span> on the {data.channel} channel
+      <Fact label="Running">
+        <span className="font-mono break-all">{data.version}</span>
+      </Fact>
+      <Fact label="Channel">{data.channel}</Fact>
+      <Fact label="Newest">
+        {!data.latest && <span className="text-muted-foreground">None</span>}
         {data.latest && (
-          <>
-            {" · "}
-            <a
-              href={data.latest.url}
-              target="_blank"
-              rel="noreferrer"
-              className="whitespace-nowrap underline-offset-2 hover:text-foreground hover:underline"
-            >
-              Release notes
-            </a>
-          </>
+          <a
+            href={data.latest.url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Release notes for ${data.latest.version}`}
+            className="inline-flex min-w-0 items-center gap-1 font-mono underline-offset-2 hover:underline"
+          >
+            <span className="break-all">{data.latest.version}</span>
+            <ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          </a>
         )}
-      </p>
-      {showReason && <p className="text-xs text-muted-foreground">{reasonCopy(data.reason)}</p>}
-    </div>
+      </Fact>
+    </dl>
   );
 };
 
 const InstanceVersionBody = ({ data }: { data: InstanceUpgrade }) => {
   const record = data.upgrade;
   const inProgress = isUpgradeInProgress(record);
+  const showReason =
+    !data.can_upgrade && !inProgress && data.reason !== "" && data.reason !== NEWEST_RELEASE_REASON;
 
   return (
-    <div className="space-y-4">
-      <InstanceVersionStatus data={data} />
-      {record && inProgress && <InstanceUpgradeProgress record={record} />}
-      {record && !inProgress && record.status === "completed" && (
+    <div className="@container space-y-6">
+      <InstanceVersionFacts data={data} />
+      {showReason && <p className="text-sm text-muted-foreground">{reasonCopy(data.reason)}</p>}
+      {record && (inProgress || isUnresolvedFailure(data)) && <InstanceUpgradeProgress record={record} />}
+      {record && record.status === UpgradeRecordStatus.Completed && (
         <p className="text-xs text-muted-foreground">
-          Upgraded to {record.to_version} · {formatRelativeTime(record.updated_at)}
+          Upgraded from <span className="font-mono">{record.from_version}</span> ·{" "}
+          {formatRelativeTime(record.updated_at)}
         </p>
-      )}
-      {record && !inProgress && record.status === "failed" && (
-        <div className="space-y-1 rounded-md border border-destructive/30 bg-destructive/5 p-3">
-          <p className="text-sm text-destructive">{record.error}</p>
-          <p className="text-xs text-muted-foreground">
-            On a Linux host, run <code className="font-mono">journalctl -u &apos;nexul-upgrade-*&apos;</code> for the
-            upgrade&apos;s output; on a Mac or Windows PC it is in <code className="font-mono">nexul-upgrade.log</code>{" "}
-            in Nexul&apos;s folder.
-          </p>
-        </div>
       )}
     </div>
   );
@@ -103,7 +104,13 @@ const CheckAgainButton = () => {
   );
 };
 
-const UpgradeButton = ({ latest }: { latest: InstanceUpgrade["latest"] }) => {
+const upgradeLabel = (latest: InstanceUpgrade["latest"], retry: boolean): string => {
+  if (retry) return "Try again";
+  if (latest) return `Upgrade to ${latest.version}`;
+  return "Upgrade";
+};
+
+const UpgradeButton = ({ latest, retry }: { latest: InstanceUpgrade["latest"]; retry: boolean }) => {
   const requestUpgrade = useRequestInstanceUpgrade();
   const { open: confirm } = useConfirmationDialog();
 
@@ -119,7 +126,7 @@ const UpgradeButton = ({ latest }: { latest: InstanceUpgrade["latest"] }) => {
 
   return (
     <Button size="sm" onClick={() => void onUpgradeClick()} loading={requestUpgrade.isPending}>
-      {latest ? `Upgrade to ${latest.version}` : "Upgrade"}
+      {upgradeLabel(latest, retry)}
     </Button>
   );
 };
@@ -127,7 +134,7 @@ const UpgradeButton = ({ latest }: { latest: InstanceUpgrade["latest"] }) => {
 const InstanceVersionFooter = ({ data }: { data: InstanceUpgrade }) => (
   <>
     <CheckAgainButton />
-    {data.can_upgrade && <UpgradeButton latest={data.latest} />}
+    {data.can_upgrade && <UpgradeButton latest={data.latest} retry={isUnresolvedFailure(data)} />}
   </>
 );
 
