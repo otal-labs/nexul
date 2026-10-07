@@ -165,6 +165,14 @@ about in the follow-ups. New material redrafts only what it touches, and
 "Audit via AI" measures the old code against the new rules in a doc that
 "To tickets via AI" turns into work. ADRs 0122 and 0123.
 
+### Bots
+
+Anything that posts to a Discord channel webhook posts into a Nexul
+conversation by swapping the URL: Discord's payload, limits, and answers, with
+embeds shown as cards in the message bubble. Bots are made, renamed,
+regenerated, deleted, and restored from a conversation's settings or over MCP,
+and a post renaming itself still says which bot sent it. ADRs 0129 and 0131.
+
 ### The design pass
 
 A monochrome identity — "The Mono Console", light and dark as true inversions
@@ -221,11 +229,6 @@ repository yet" and "Attach without deploying" as plain choices instead of a
 muted skip, both end on a Done screen that says what was made, and a project
 with a repository waiting to deploy shows the way back to deploying it. The
 map is in `.scratch/project-paths/`.
-
-Planned: **bots**, webhook-driven bots that post into any conversation with
-Discord's payload and get their own section in channel settings. Specced in
-`.scratch/bots/spec.md`, with the message and settings looks picked from live
-prototypes; next it is sliced into build tickets.
 
 ---
 
