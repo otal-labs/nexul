@@ -1,0 +1,42 @@
+---
+import { render, type CollectionEntry } from 'astro:content';
+import DocsDocument from '../layouts/DocsDocument.astro';
+import DocsHome from '../components/docs/DocsHome.astro';
+import { DocsApp } from '../components/docs/DocsApp';
+import { docEntries, toDocPage } from '../lib/docs-content';
+import { docsGroups } from '../lib/docs-tree';
+
+export async function getStaticPaths() {
+	return (await docEntries()).map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props as { entry: CollectionEntry<'docs'> };
+const { Content, headings } = await render(entry);
+const pages = (await docEntries()).map(toDocPage);
+const groups = docsGroups(pages);
+const home = entry.id === 'docs';
+const toc = headings
+	.filter((heading) => heading.depth === 2 || heading.depth === 3)
+	.map((heading) => ({ depth: heading.depth, title: heading.text, url: `#${heading.slug}` }));
+const heading = {
+	eyebrow: groups.find((group) => group.pages.some((page) => page.id === entry.id))?.label,
+	title: entry.data.title,
+	description: entry.data.description,
+	markdownUrl: home ? undefined : `/${entry.id}.md`,
+};
+---
+
+<DocsDocument title={`${entry.data.title} · Nexul docs`} description={entry.data.description}>
+	<DocsApp
+		client:load
+		pathname={Astro.url.pathname}
+		pages={pages}
+		toc={toc}
+		heading={heading}
+		editUrl={`https://github.com/otal-labs/nexul/edit/master/website/src/content/docs/${entry.filePath?.replace('src/content/docs/', '')}`}
+		home={home}
+	>
+		<Content />
+		{home && <DocsHome groups={groups} />}
+	</DocsApp>
+</DocsDocument>

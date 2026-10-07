@@ -20,7 +20,7 @@ holds.
 | `automations/` | The automations host, compiled into the `nexul-automations` binary, that runs the automations placed on it. |
 | `docs/` | `adr/` — every durable decision, one file each; `agents/` — how the tracker and the glossary are used. The glossary itself is `CONTEXT.md` at the root. |
 | `.scratch/` | The issue tracker — markdown files committed to the repo, one directory per effort, each with its spec and tickets. |
-| `website/` | This documentation site — Astro + Starlight. |
+| `website/` | This documentation site — Astro with Fumadocs UI. |
 | `practices/` | The coding standard, one file per language or surface. `AGENTS.md` routes each task to the file it needs. |
 
 See [Architecture](/docs/contributing/architecture/) for how these pieces

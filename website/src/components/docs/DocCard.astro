@@ -1,0 +1,22 @@
+---
+import type { ComponentType } from 'react';
+import { docUrl, type DocPage } from '../../lib/docs-tree';
+
+interface Props {
+	page: DocPage;
+	icon: ComponentType<{ class?: string; 'aria-hidden'?: boolean }>;
+}
+
+const { page, icon: Icon } = Astro.props;
+---
+
+<a
+	href={docUrl(page.id)}
+	class="flex min-h-36 flex-col gap-6 rounded-xl bg-fd-card p-5 transition-colors duration-150 hover:bg-fd-accent"
+>
+	<Icon class="size-5 text-fd-muted-foreground" aria-hidden />
+	<span class="mt-auto flex flex-col gap-1">
+		<span class="text-sm font-medium text-fd-foreground">{page.label ?? page.title}</span>
+		<span class="line-clamp-2 text-[13px] leading-snug text-fd-muted-foreground">{page.description}</span>
+	</span>
+</a>

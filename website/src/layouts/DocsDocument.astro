@@ -1,0 +1,33 @@
+---
+import '../styles/docs.css';
+import interWoff2 from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+import monoWoff2 from '@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2?url';
+
+interface Props {
+	title: string;
+	description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:type" content="article" />
+		<link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="preload" as="font" type="font/woff2" href={interWoff2} crossorigin />
+		<link rel="preload" as="font" type="font/woff2" href={monoWoff2} crossorigin />
+	</head>
+	<body class="flex min-h-screen flex-col">
+		<a class="skip-link" href="#nd-page">Skip to content</a>
+		<slot />
+	</body>
+</html>

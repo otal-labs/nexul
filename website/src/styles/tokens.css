@@ -1,0 +1,85 @@
+/* Mono Console tokens (practices/design-language.md) as Fumadocs' color variables, shared by every page so the header reads the same everywhere. */
+
+:root {
+	color-scheme: dark;
+	--color-fd-background: #050505;
+	--color-fd-foreground: #f5f5f5;
+	--color-fd-surface: #0a0a0a;
+	--color-fd-card: #111111;
+	--color-fd-card-foreground: #f5f5f5;
+	--color-fd-popover: #161616;
+	--color-fd-popover-foreground: #f5f5f5;
+	--color-fd-muted: #161616;
+	--color-fd-muted-foreground: #9a9a9a;
+	--color-fd-secondary: #1a1a1a;
+	--color-fd-secondary-foreground: #d4d4d4;
+	--color-fd-accent: #202020;
+	--color-fd-accent-foreground: #f5f5f5;
+	--color-fd-primary: #f5f5f5;
+	--color-fd-primary-foreground: #0a0a0a;
+	--color-fd-border: #262626;
+	--color-fd-ring: #f5f5f5;
+	--color-fd-overlay: rgb(0 0 0 / 0.6);
+	--color-fd-success: #4ade80;
+	--color-fd-warning: #fbbf24;
+	--color-fd-idea: #fbbf24;
+	--color-fd-info: #5cc8f5;
+	--color-fd-error: #f97066;
+}
+
+@media (prefers-color-scheme: light) {
+	:root:not(.dark) {
+		color-scheme: light;
+		--color-fd-background: #ececec;
+		--color-fd-foreground: #0a0a0a;
+		--color-fd-surface: #f1f1f1;
+		--color-fd-card: #f6f6f6;
+		--color-fd-card-foreground: #0a0a0a;
+		--color-fd-popover: #fcfcfc;
+		--color-fd-popover-foreground: #0a0a0a;
+		--color-fd-muted: #e9e9e9;
+		--color-fd-muted-foreground: #656565;
+		--color-fd-secondary: #e5e5e5;
+		--color-fd-secondary-foreground: #2b2b2b;
+		--color-fd-accent: #dfdfdf;
+		--color-fd-accent-foreground: #0a0a0a;
+		--color-fd-primary: #0a0a0a;
+		--color-fd-primary-foreground: #f5f5f5;
+		--color-fd-border: #d9d9d9;
+		--color-fd-ring: #0a0a0a;
+		--color-fd-overlay: rgb(0 0 0 / 0.2);
+		--color-fd-success: #15803d;
+		--color-fd-warning: #b45309;
+		--color-fd-idea: #b45309;
+		--color-fd-info: #0369a1;
+		--color-fd-error: #dc2626;
+	}
+}
+
+/* The docs theme toggle sets .light on <html>; same values as the media query above. */
+:root.light {
+	color-scheme: light;
+	--color-fd-background: #ececec;
+	--color-fd-foreground: #0a0a0a;
+	--color-fd-surface: #f1f1f1;
+	--color-fd-card: #f6f6f6;
+	--color-fd-card-foreground: #0a0a0a;
+	--color-fd-popover: #fcfcfc;
+	--color-fd-popover-foreground: #0a0a0a;
+	--color-fd-muted: #e9e9e9;
+	--color-fd-muted-foreground: #656565;
+	--color-fd-secondary: #e5e5e5;
+	--color-fd-secondary-foreground: #2b2b2b;
+	--color-fd-accent: #dfdfdf;
+	--color-fd-accent-foreground: #0a0a0a;
+	--color-fd-primary: #0a0a0a;
+	--color-fd-primary-foreground: #f5f5f5;
+	--color-fd-border: #d9d9d9;
+	--color-fd-ring: #0a0a0a;
+	--color-fd-overlay: rgb(0 0 0 / 0.2);
+	--color-fd-success: #15803d;
+	--color-fd-warning: #b45309;
+	--color-fd-idea: #b45309;
+	--color-fd-info: #0369a1;
+	--color-fd-error: #dc2626;
+}

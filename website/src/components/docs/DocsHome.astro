@@ -1,0 +1,14 @@
+---
+import DocsGroupSection from './DocsGroupSection.astro';
+import type { docsGroups } from '../../lib/docs-tree';
+
+interface Props {
+	groups: ReturnType<typeof docsGroups>;
+}
+
+const { groups } = Astro.props;
+---
+
+<div class="not-prose mt-6 flex flex-col gap-12">
+	{groups.map((group) => <DocsGroupSection group={group} />)}
+</div>
