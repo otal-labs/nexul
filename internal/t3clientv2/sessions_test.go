@@ -58,6 +58,30 @@ func TestWatchSessions_ReportsEachThreadsNewsOnceUntilClosed(t *testing.T) {
 	}
 }
 
+func TestShellThreadUpdate_NewestRunThatNeverRan_IsNoLatest(t *testing.T) {
+	t.Parallel()
+	started := "2026-10-06T15:47:27.000Z"
+	tests := []struct {
+		name       string
+		status     string
+		startedAt  *string
+		wantLatest string
+	}{
+		{"cancelled before it started, its message steered into the run before", "cancelled", nil, ""},
+		{"queued behind a run still going", "queued", nil, ""},
+		{"cancelled after it started", "cancelled", &started, "run-2"},
+		{"completed", "completed", &started, "run-2"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			run := "run-2"
+			row := shellThread{ID: "th-1", LatestRunID: &run, Status: tt.status, LatestRunStartedAt: tt.startedAt}
+			assert.Equal(t, harness.SessionUpdate{SessionID: "th-1", Latest: tt.wantLatest}, row.update())
+		})
+	}
+}
+
 func TestWatchSessions_ServerOnTheOldOrchestrator_IsRefused(t *testing.T) {
 	t.Parallel()
 	f, h := newFake(t, 1)

@@ -31,17 +31,25 @@ type shellThread struct {
 	LatestRunID       *string `json:"latestRunId"`
 	ActivityRunStatus *string `json:"activityRunStatus"`
 	DeletedAt         *string `json:"deletedAt"`
+	// Status is the latest run's status, "idle" without one.
+	Status             string  `json:"status"`
+	LatestRunStartedAt *string `json:"latestRunStartedAt"`
 }
 
 func (t shellThread) update() harness.SessionUpdate {
 	u := harness.SessionUpdate{SessionID: t.ID, Gone: t.DeletedAt != nil}
-	if t.LatestRunID != nil {
+	if t.LatestRunID != nil && t.ran() {
 		u.Latest = *t.LatestRunID
 	}
 	if t.ActivityRunStatus != nil {
 		u.Working = slices.Contains(workingActivity, *t.ActivityRunStatus)
 	}
 	return u
+}
+
+// ran is T3's latestExecutedRun rule for the latest run: a queued one, or one cancelled before it started, never ran.
+func (t shellThread) ran() bool {
+	return t.Status != runQueued && (t.Status != "cancelled" || t.LatestRunStartedAt != nil)
 }
 
 // WatchSessions implements harness.SessionWatcher on the shell stream T3's own apps keep their sidebar on.
