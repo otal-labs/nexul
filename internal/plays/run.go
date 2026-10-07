@@ -964,7 +964,7 @@ func (r *Runner) start(ctx context.Context, o *trailObserver, req agent.TurnRequ
 const followedAgainNote = "New activity on this run's thread in T3 Code; following it again."
 
 // FollowThread implements agent.ThreadFollower: news on the thread of a conversation whose newest run ran there,
-// on userID's computerID, and has ended reopens that run's trail and catches it up from since (ADR 0127).
+// on userID's computerID, and has ended or is parked on a question reopens that run's trail and catches it up from since (ADR 0127).
 func (r *Runner) FollowThread(ctx context.Context, conversationID, threadID, userID, computerID, since string) (<-chan struct{}, bool) {
 	trail, err := r.trails.LatestTrailInConversation(ctx, conversationID)
 	if errors.Is(err, apperrs.ErrNotFound) {
@@ -974,7 +974,9 @@ func (r *Runner) FollowThread(ctx context.Context, conversationID, threadID, use
 		r.log.Warn("plays: read the run to follow again failed", "conversation", conversationID, "error", err)
 		return nil, false
 	}
-	if trail.State.Active() || trail.HarnessSessionID != threadID || trail.StarterID != userID || trail.ComputerID != computerID {
+	// A trail waiting on a question whose turn closed is parked, not running; its answer may have come in T3.
+	parked := trail.State == TrailWaiting && r.run(trail.ID) == nil
+	if (trail.State.Active() && !parked) || trail.HarnessSessionID != threadID || trail.StarterID != userID || trail.ComputerID != computerID {
 		return nil, false
 	}
 	tgt, err := r.readTarget(ctx, trail.TargetType, trail.TargetID)
@@ -1077,6 +1079,21 @@ func (o *trailObserver) OnQuestion(q harness.Question) {
 	o.trail.State = TrailWaiting
 	o.trail.Question = &TrailQuestion{Question: q, AskedAt: o.r.now().UTC()}
 	o.r.save(o.ctx, o.trail, o.r.waitingEvent(o.trail, o.targetTitle))
+}
+
+// OnAnswered takes the answer given in the harness's own app to the question the trail waits on, and sets the run going again.
+func (o *trailObserver) OnAnswered(a harness.AnsweredQuestion) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	q := o.trail.Question
+	if o.done || q == nil || q.RequestID != a.RequestID || q.Answer != nil {
+		return
+	}
+	q.Answer = &a.Answer
+	o.trail.State = TrailRunning
+	o.timer.Reset(o.r.silence)
+	o.r.save(o.ctx, o.trail)
+	o.r.recordFollowUps(o.ctx, o.trail, o.trail.StarterID, a.Answer)
 }
 
 // answer hands the answer to the live turn and sets the run going again; errTurnGone when the turn is no longer here.

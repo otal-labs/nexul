@@ -41,6 +41,10 @@ type turnItem struct {
 	RequestKind            string          `json:"requestKind"`
 	Prompt                 string          `json:"prompt"`
 	Questions              []userQuestion  `json:"questions"`
+	// QuestionAnswer is what a resolved question was answered with, wherever it was answered.
+	QuestionAnswer *struct {
+		Answers map[string]json.RawMessage `json:"answers"`
+	} `json:"questionAnswer"`
 }
 
 type userQuestion struct {
@@ -153,6 +157,38 @@ func question(it turnItem) *harness.Question {
 		q.Questions = append(q.Questions, harness.QuestionItem{ID: item.ID, Text: item.Question, Header: item.Header, Options: item.Options, MultiSelect: item.MultiSelect})
 	}
 	return q
+}
+
+// answered is a resolved question's answer, each value an option label it names or else free text; false while it is open.
+func answered(it turnItem) (*harness.AnsweredQuestion, bool) {
+	if it.Type != "user_input_request" || it.QuestionAnswer == nil || slices.Contains(openItems, it.Status) {
+		return nil, false
+	}
+	options := map[string][]harness.QuestionOption{}
+	for _, q := range it.Questions {
+		options[q.ID] = q.Options
+	}
+	a := &harness.AnsweredQuestion{RequestID: it.RequestID, Answer: harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{}}}
+	for id, raw := range it.QuestionAnswer.Answers {
+		a.Answer.Answers[id] = answerValue(raw, options[id])
+	}
+	return a, true
+}
+
+// answerValue reads one answer as T3 stores it: several choices as a list, one choice or free text as a string.
+func answerValue(raw json.RawMessage, options []harness.QuestionOption) harness.AnswerValue {
+	var many []string
+	if json.Unmarshal(raw, &many) == nil {
+		return harness.AnswerValue{Selected: many}
+	}
+	var one string
+	_ = json.Unmarshal(raw, &one) // any other shape reads as no answer
+	for _, o := range options {
+		if one == o.Label {
+			return harness.AnswerValue{Selected: []string{one}}
+		}
+	}
+	return harness.AnswerValue{Text: one}
 }
 
 // itemTime reads a turn item's updatedAt; T3 always sends one, so a zero time only marks a malformed item.
