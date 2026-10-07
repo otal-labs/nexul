@@ -47,10 +47,13 @@ func (s *Service) Execute(ctx context.Context, b *Bot, p Payload) (*Message, err
 	if err != nil {
 		return nil, err
 	}
-	name, avatar := cmp.Or(c.username, b.Name), cmp.Or(c.avatarURL, avatarPath(b))
+	name, avatar, via := cmp.Or(c.username, b.Name), cmp.Or(c.avatarURL, avatarPath(b)), ""
+	if name != b.Name {
+		via = b.Name
+	}
 	id, at, err := s.poster.PostBotMessage(ctx, Post{
 		ConversationID: b.ConversationID, BotID: b.ID, Name: name, AvatarURL: avatar, Body: c.content, Embeds: embeds,
-		Mentionable: mentionable, Audit: "POST /api/botwebhooks/" + b.ID,
+		Mentionable: mentionable, Via: via, Audit: "POST /api/botwebhooks/" + b.ID,
 	})
 	if errors.Is(err, apperrs.ErrNotFound) {
 		return nil, ErrUnknownWebhook

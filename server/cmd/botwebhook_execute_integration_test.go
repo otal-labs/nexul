@@ -148,6 +148,7 @@ func TestIntegration_BotPostsBecomeMessages(t *testing.T) {
 	ownAvatar := fmt.Sprintf("/api/botwebhooks/%s/avatar?v=%d", b.ID, b.UpdatedAt.Unix())
 	for i, want := range []struct{ name, avatar string }{{"GitHub Actions", "https://ci.example.com/actions.png"}, {"Grafana", ownAvatar}, {"Uptime Kuma", ownAvatar}} {
 		m := msgs[i]
+		assert.Equal(t, "CI", m.Via, "%s overrides the name, so the message says which bot sent it", want.name)
 		assert.Equal(t, chat.AuthorBot, m.AuthorKind, want.name)
 		assert.Equal(t, b.ID, m.AuthorID, want.name)
 		assert.Equal(t, want.name, m.AuthorName)
@@ -285,6 +286,7 @@ func TestIntegration_BotMentions(t *testing.T) {
 	assert.Equal(t, []string{uPlain}, handles(msgs[1]))
 	assert.Empty(t, handles(msgs[2]))
 	for _, m := range msgs {
+		assert.Empty(t, m.Via, "no username override, no via")
 		assert.Equal(t, chat.AuthorBot, m.AuthorKind, "the agent pipeline starts turns only on a person's message")
 		assert.Equal(t, content, m.Body)
 	}

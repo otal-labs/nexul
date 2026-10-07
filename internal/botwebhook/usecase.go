@@ -45,6 +45,8 @@ type Post struct {
 	Embeds                                       json.RawMessage
 	// Mentionable are the logins the body's @handles may mention; any other handle stays plain text.
 	Mentionable []string
+	// Via is the bot's own name when the post overrode it, empty otherwise.
+	Via string
 	// Audit is the post's audit action: the route with its token stripped.
 	Audit string
 }

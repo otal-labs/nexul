@@ -20,10 +20,10 @@ Review must cover:
 - [ ] Webhook HMAC signing — signatures verified, replay handled
 - [ ] The audit log — every scoped call attributable to an integration
 - [ ] `verified` vs `community` trust tiers — what each actually gates
-- [ ] Bot webhook tokens — 32 random bytes, encrypted at rest, never logged
-- [ ] Bot webhook rate limit — per bot and per IP, enforced in code not prose
-- [ ] Bot webhook 404 — a wrong token and a missing bot are indistinguishable
-- [ ] Bot webhook revoke and regenerate — the old URL stops working at once
+- [x] Bot webhook tokens — 32 random bytes, encrypted at rest, never logged
+- [x] Bot webhook rate limit — per bot and per IP, enforced in code not prose
+- [x] Bot webhook 404 — a wrong token and a missing bot are indistinguishable
+- [x] Bot webhook revoke and regenerate — the old URL stops working at once
 
 ## Surface when
 

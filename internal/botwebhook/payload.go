@@ -37,9 +37,9 @@ type Payload struct {
 
 // Embed is one embed as a message stores it.
 type Embed struct {
-	Title       string       `json:"title,omitempty"`
-	Description string       `json:"description,omitempty"`
-	URL         string       `json:"url,omitempty"`
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+	URL         string `json:"url,omitempty"`
 	// Timestamp is kept as the sender wrote it: Uptime Kuma, among others, sends a time that is not RFC 3339.
 	Timestamp string       `json:"timestamp,omitempty"`
 	Footer    *EmbedFooter `json:"footer,omitempty"`

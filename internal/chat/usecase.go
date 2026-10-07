@@ -971,9 +971,11 @@ type BotPost struct {
 	ConversationID, BotID string
 	// Name and AvatarURL are what the message shows, kept through the bot's rename or delete.
 	Name, AvatarURL, Body string
-	Embeds              json.RawMessage
+	Embeds                json.RawMessage
 	// Mentions are the @handles in Body the sender allowed; any other handle stays plain text and @Agent never fires.
 	Mentions []string
+	// Via is the bot's own name when Name overrides it, so the message says which bot sent it; empty otherwise.
+	Via string
 	// Audit is the action the post's audit row records under the bot.
 	Audit string
 }
@@ -996,7 +998,7 @@ func (s *Service) PostBotMessage(ctx context.Context, p BotPost) (*Message, erro
 	m := &Message{
 		ID: ids.New(), ConversationID: conversationID, AuthorID: botID, AuthorKind: AuthorBot,
 		AuthorName: name, AuthorAvatarURL: strings.TrimSpace(p.AvatarURL), Body: body, Mentions: allowedMentions(body, p.Mentions),
-		Embeds: p.Embeds, CreatedAt: now, UpdatedAt: now,
+		Embeds: p.Embeds, Via: strings.TrimSpace(p.Via), CreatedAt: now, UpdatedAt: now,
 	}
 	membersOnly, err := s.MembersOnly(ctx, conversationID)
 	if err != nil {

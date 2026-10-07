@@ -64,8 +64,11 @@ type ConversationMessage struct {
 	CreatedAt  time.Time
 	// Note is the markdown file a note carries, nil for any other message (ADR 0108).
 	Note *NoteFile
-	// Via names the harness the message was written in and relayed from, empty for one written in Nexul.
+	// Via names the harness a person's message was relayed from, empty for one written in Nexul; on a bot's message it
+	// names the bot behind an overridden name instead.
 	Via string
+	// AuthorName is the name a bot's message showed, the only name a bot has.
+	AuthorName string
 }
 
 // NoteFile is a note's markdown file, read as text: it never travels as an attachment.
@@ -574,9 +577,14 @@ func (s *Service) contextMessages(ctx context.Context, history []ConversationMes
 		if i == skip || m.AuthorKind == "system" {
 			continue
 		}
-		cm := ContextMessage{Author: s.authorLabel(ctx, m.AuthorID, m.AuthorKind), Body: noteBody(m), At: m.CreatedAt}
+		author := s.authorLabel(ctx, m.AuthorID, m.AuthorKind)
+		if m.AuthorKind == "bot" {
+			author = m.AuthorName + " (bot)"
+		}
+		cm := ContextMessage{Author: author, Body: noteBody(m), At: m.CreatedAt}
 		all = append(all, cm)
-		if m.Via == "" && (m.AuthorKind != "agent" || m.Note != nil) {
+		relayed := m.Via != "" && m.AuthorKind != "bot"
+		if !relayed && (m.AuthorKind != "agent" || m.Note != nil) {
 			others = append(others, cm)
 		}
 	}

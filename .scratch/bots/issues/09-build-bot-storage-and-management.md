@@ -31,7 +31,7 @@ table gains the `botwebhook` domain.
 - [x] Use-case tests, refusals first: read without write sees no URL, write
       without delete cannot delete, a non-participant on a DM, a ticket
       thread without the ticket, the eleventh bot, a duplicate name
-- [ ] Restore and regenerate issue a fresh token; the old one stops working
+- [x] Restore and regenerate issue a fresh token; the old one stops working
 - [x] Catalog rows, outbox writes, live audience rule; no token in any
       payload
 - [x] `CONTEXT.md` and `practices/architecture.md` checked

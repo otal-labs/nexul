@@ -31,7 +31,7 @@ type botwebhookPoster struct {
 func (b botwebhookPoster) PostBotMessage(ctx context.Context, p botwebhook.Post) (string, time.Time, error) {
 	m, err := b.svc.PostBotMessage(ctx, chat.BotPost{
 		ConversationID: p.ConversationID, BotID: p.BotID, Name: p.Name, AvatarURL: p.AvatarURL, Body: p.Body,
-		Embeds: p.Embeds, Mentions: p.Mentionable, Audit: p.Audit,
+		Embeds: p.Embeds, Mentions: p.Mentionable, Via: p.Via, Audit: p.Audit,
 	})
 	if err != nil {
 		return "", time.Time{}, err
