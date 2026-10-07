@@ -48,6 +48,8 @@ never a hard-coded palette class.
 | `destructive` | `#f97066` | `#dc2626` | errors, danger zone, closed pull requests |
 | `border` / `input` | `#262626` / `#333333` | `#d9d9d9` / `#cccccc` | hairlines |
 | `ring` | `#f5f5f5` | `#0a0a0a` | focus and selection |
+| `cell-line` | `foreground` at 10% | `foreground` at 12% | a field grid's cell edges (a bot embed's fields) |
+| `cell-label` | `foreground` at 4% | `foreground` at 4% | a field grid's shaded label cell |
 
 A token that a design needs and this table lacks is added to `index.css` and
 to this table in the same change. A one-off class is drift.
@@ -333,6 +335,16 @@ change shows as a destructive line above the footer while the rest stays
 held. Account actions (Disable, Remove account) sit at the footer's left and
 apply at once. `TeamPersonDialog` and `TeamWorkspaceTabs` in
 `web/src/components/team/` are the reference.
+
+Bot message. A bot's post sits in the same bubble as a person's, under the
+name and avatar it posted with (the Nexul glyph without one) and a `BOT`
+outline tag, widened to 38rem when it carries an embed. Each embed hangs
+behind a 2px `muted-foreground` rule; the sender's color is never painted.
+Fields are a framed two-column grid, `cell-line` on every edge and the label
+cell in `cell-label` at 40%. Past six fields, a long description, or two
+embeds, one hairline fold bar opens the rest. Only a bot's text renders
+Discord's markdown subset. `BotMessageRow` and `EmbedCard` in
+`web/src/components/chat/` are the reference.
 
 Logs view. The stack page's Logs section is a line tab row of the stack's
 services over one terminal-style block per service: a mono timestamp column

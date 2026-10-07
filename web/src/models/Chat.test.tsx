@@ -268,6 +268,10 @@ describe("isContinuation", () => {
     ["follows a deleted message", message({ deleted_at: at(10, 0, 30) }), message({ created_at: at(10, 1) }), false],
     ["crosses midnight within five minutes", message({ created_at: at(23, 58) }), message({ created_at: at(0, 1, 0, 29) }), false],
     ["arrives before the previous one", message({ created_at: at(10, 5) }), message({ created_at: at(10, 4) }), false],
+    ["is the same bot under the same name", message({ author_kind: "bot", author_id: "b1", author_name: "CI" }), message({ author_kind: "bot", author_id: "b1", author_name: "CI", created_at: at(10, 1) }), true],
+    ["is the same bot posting as another name", message({ author_kind: "bot", author_id: "b1", author_name: "CI" }), message({ author_kind: "bot", author_id: "b1", author_name: "GitHub", created_at: at(10, 1) }), false],
+    ["is the same bot with another avatar", message({ author_kind: "bot", author_id: "b1", author_name: "CI" }), message({ author_kind: "bot", author_id: "b1", author_name: "CI", author_avatar_url: "https://example.com/a.png", created_at: at(10, 1) }), false],
+    ["is a bot after a person sharing its id", message({}), message({ author_kind: "bot", created_at: at(10, 1) }), false],
   ])("a message that %s", (_name, prev, curr, expected) => {
     expect(isContinuation(prev, curr)).toBe(expected);
   });

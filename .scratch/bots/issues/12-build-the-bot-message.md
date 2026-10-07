@@ -20,11 +20,15 @@ prototype is a look reference, not code to copy.
 
 **Blocked by:** 09
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Worst-case fixture: 25 fields, a 4096-character description, ten
+- [x] Worst-case fixture: 25 fields, a 4096-character description, ten
       embeds, unbreakable values, a long override name
-- [ ] Markdown renderer tests, including links never opening `javascript:`
+- [x] Markdown renderer tests, including links never opening `javascript:`
       and image URLs only over http(s)
-- [ ] Verified at 768, 1024, and 1440px in both themes
-- [ ] People's and the Agent's messages unchanged
+- [x] Verified at 768, 1024, and 1440px in both themes
+- [x] People's and the Agent's messages unchanged
+
+`via <bot name>` is not shown yet: a message carries only the name it
+posted with, and the bot list is permission-gated and carries every bot's
+avatar, so the bot's own name needs a snapshot on the message (ticket 10).

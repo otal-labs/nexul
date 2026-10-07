@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { attachmentPath, isAttachmentPath, type Attachment } from "@/models/Attachment";
+import type { Embed } from "@/models/Embed";
 import type { Handoff } from "@/models/Handoff";
 import { personLabel, type Person } from "@/models/Person";
 import type { PlayType } from "@/models/Play";
@@ -64,7 +65,7 @@ export interface ChatMention {
 }
 
 // Who/what posted a message, for MessageRow's rendering.
-export type AuthorKind = "user" | "agent" | "system";
+export type AuthorKind = "user" | "agent" | "system" | "bot";
 
 export interface Message {
   id: string;
@@ -82,6 +83,10 @@ export interface Message {
   handoffs?: Handoff[];
   // via names the harness the author wrote it in, such as T3, when it was relayed from there.
   via?: string;
+  // A bot's name and avatar as the post showed them; author_id is then the bot's id, not a person's.
+  author_name?: string;
+  author_avatar_url?: string;
+  embeds?: Embed[];
   // Client-only: an optimistic row shown before the server acks the post.
   pending?: boolean;
 }
@@ -110,11 +115,18 @@ export const isNote = (message: Message): boolean => message.author_kind === "ag
 
 const CONTINUATION_WINDOW_MS = 5 * 60_000;
 
-// A message continues the previous one's group when it is the same person's ordinary message, at most five minutes after
-// it and on the same day. Agent turns and system lines carry trails and question cards, so they never group.
+// The same bot under another name or avatar is a new author on screen, so it starts its own group.
+const sameAuthor = (prev: Message, curr: Message): boolean => {
+  if (prev.author_kind !== curr.author_kind || prev.author_id !== curr.author_id) return false;
+  if (curr.author_kind === "bot") return prev.author_name === curr.author_name && prev.author_avatar_url === curr.author_avatar_url;
+  return curr.author_kind === "user";
+};
+
+// A message continues the previous one's group when it is the same person's or bot's ordinary message, at most five
+// minutes after it and on the same day. Agent turns and system lines carry trails and question cards, so they never group.
 export const isContinuation = (prev: Message | undefined, curr: Message): boolean => {
   if (prev === undefined || prev.deleted_at) return false;
-  if (prev.author_kind !== "user" || curr.author_kind !== "user" || prev.author_id !== curr.author_id) return false;
+  if (!sameAuthor(prev, curr)) return false;
   const gapMs = Date.parse(curr.created_at) - Date.parse(prev.created_at);
   if (!(gapMs >= 0 && gapMs <= CONTINUATION_WINDOW_MS)) return false;
   return new Date(prev.created_at).toDateString() === new Date(curr.created_at).toDateString();
