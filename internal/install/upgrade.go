@@ -20,6 +20,7 @@ func (h *Host) runUpgrade(ctx context.Context, args []string) error {
 	fs.SetOutput(h.Out)
 	target := fs.String("version", "", "release to upgrade or roll back to (default: the newest on this install's channel)")
 	detach := fs.Bool("detach", false, "run the upgrade outside the calling service and return at once")
+	report := fs.String("report", "", "write the upgrade's outcome to this file when it ends: empty on success, else the error")
 	fs.Bool("yes", false, "accepted for scripts; upgrade never asks")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -27,7 +28,29 @@ func (h *Host) runUpgrade(ctx context.Context, args []string) error {
 	if *detach {
 		return h.detach(ctx, append([]string{"upgrade"}, args...))
 	}
-	return h.Upgrade(ctx, *target)
+	if *report == "" {
+		return h.Upgrade(ctx, *target)
+	}
+	h.upgradeReport = *report
+	return writeUpgradeReport(*report, h.Upgrade(ctx, *target))
+}
+
+// writeUpgradeReport tells whoever started a detached upgrade how it ended; the rename keeps a reader from seeing
+// half a message.
+func writeUpgradeReport(path string, upgradeErr error) error {
+	if _, ok := errors.AsType[*ExitCodeError](upgradeErr); ok {
+		// Windows re-runs a switched binary as a child, which already wrote the report with the real error.
+		return upgradeErr
+	}
+	msg := ""
+	if upgradeErr != nil {
+		msg = upgradeErr.Error()
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, []byte(msg), 0o644); err != nil {
+		return errors.Join(upgradeErr, fmt.Errorf("write %s: %w", tmp, err))
+	}
+	return errors.Join(upgradeErr, wrapInstall(path, os.Rename(tmp, path)))
 }
 
 // Upgrade moves every unit on this machine to target, or to the newest release on this binary's channel. A
@@ -139,7 +162,11 @@ func (h *Host) switchBinary(ctx context.Context, tag string) error {
 	if err := h.releaseAsset(ctx, tag, h.assetName("nexul"), exe); err != nil {
 		return err
 	}
-	return h.Reexec(exe, []string{exe, "upgrade", "--version", tag})
+	args := []string{exe, "upgrade", "--version", tag}
+	if h.upgradeReport != "" {
+		args = append(args, "--report", h.upgradeReport)
+	}
+	return h.Reexec(exe, args)
 }
 
 func (h *Host) runUninstall(ctx context.Context, args []string) error {

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -78,7 +79,10 @@ type ShellExecutor struct {
 	gitToken  string
 	stackRoot string
 	ctl       string
-	log       *slog.Logger
+	// tempDir holds upgrade report files; reportPoll is how often a running upgrade's report is checked.
+	tempDir    string
+	reportPoll time.Duration
+	log        *slog.Logger
 }
 
 // NewShellExecutor wires the host executor; a nil cmd falls back to the real shell runner.
@@ -90,7 +94,10 @@ func NewShellExecutor(cmd CommandRunner, cfg ExecutorConfig, log *slog.Logger) *
 	if streams == nil {
 		streams = ShellStreamRunner
 	}
-	return &ShellExecutor{cmd: cmd, streams: streams, gitToken: cfg.GitToken, stackRoot: cfg.StackRoot, ctl: cfg.Ctl, log: log}
+	return &ShellExecutor{
+		cmd: cmd, streams: streams, gitToken: cfg.GitToken, stackRoot: cfg.StackRoot, ctl: cfg.Ctl,
+		tempDir: os.TempDir(), reportPoll: 2 * time.Second, log: log,
+	}
 }
 
 // Discover scans this host's docker containers and networks (spec §3); selfID (os.Hostname()) excludes the
@@ -527,15 +534,47 @@ func (e *ShellExecutor) start(ctx context.Context, req DeployRequestedEvent, log
 }
 
 // Upgrade hands the upgrade to `nexul upgrade --detach`, which outlives this runner's connection while the
-// server restarts, then reports started (ADR 0069).
+// server restarts, and reports started (ADR 0069). It then waits on the upgrade's report file, so an upgrade that
+// dies before the restart reports failed at once instead of when the server's resolve window runs out.
 func (e *ShellExecutor) Upgrade(ctx context.Context, req Frame, send func(Frame) error) error {
-	if _, err := e.output(ctx, e.ctl, "upgrade", "--detach", "--version", req.Version); err != nil {
+	report := filepath.Join(e.tempDir, "nexul-upgrade-"+req.ID+".report")
+	if _, err := e.output(ctx, e.ctl, "upgrade", "--detach", "--version", req.Version, "--report", report); err != nil {
 		return send(upgradeFailed(req, err.Error()))
 	}
 	if err := send(Frame{Type: FrameUpgradeProgress, ID: req.ID, Log: "started nexul upgrade --version " + req.Version}); err != nil {
 		return err
 	}
-	return send(Frame{Type: FrameUpgradeResult, ID: req.ID, Status: UpgradeStatusStarted, Log: "nexul upgrade"})
+	if err := send(Frame{Type: FrameUpgradeResult, ID: req.ID, Status: UpgradeStatusStarted, Log: "nexul upgrade"}); err != nil {
+		return err
+	}
+	msg := e.awaitUpgradeReport(ctx, report)
+	if msg == "" {
+		return nil
+	}
+	return send(upgradeFailed(req, msg))
+}
+
+// awaitUpgradeReport returns the error a detached upgrade wrote to its report, or "" once it succeeded, the
+// connection dropped for the restart, or upgradeResolveWindow passed.
+func (e *ShellExecutor) awaitUpgradeReport(ctx context.Context, path string) string {
+	ticker := time.NewTicker(e.reportPoll)
+	defer ticker.Stop()
+	deadline := time.After(upgradeResolveWindow)
+	for {
+		if data, err := os.ReadFile(path); err == nil {
+			if err := os.Remove(path); err != nil {
+				e.log.Warn("upgrade report cleanup failed", "path", path, "error", err)
+			}
+			return strings.TrimSpace(string(data))
+		}
+		select {
+		case <-ctx.Done():
+			return ""
+		case <-deadline:
+			return ""
+		case <-ticker.C:
+		}
+	}
 }
 
 // Uninstall hands removal to `nexul uninstall runner <name> --detach`, which stops this runner's service from outside it.

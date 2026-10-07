@@ -101,6 +101,61 @@ func TestUpgrade_FailingDownload_StopsAtThatUnit(t *testing.T) {
 	assert.False(t, th.exec.ran("systemctl restart"))
 }
 
+func TestUpgrade_ReleaseHostBriefly5xx_RetriesTheDownload(t *testing.T) {
+	th := newTestHost(t)
+	th.installed(t)
+	u, err := th.loadUnit("nexul-server")
+	require.NoError(t, err)
+	u.Version = "v0.1.0"
+	require.NoError(t, th.saveUnit(*u))
+	th.release.unavailable["nexul-server-linux-amd64"] = downloadAttempts - 1
+
+	require.NoError(t, th.Upgrade(t.Context(), "v0.2.1"))
+	assert.Equal(t, "nexul-server-binary", readFile(t, u.Exec))
+}
+
+func TestUpgrade_ReleaseHostDown_FailsAfterTheLastAttempt(t *testing.T) {
+	th := newTestHost(t)
+	th.installed(t)
+	u, err := th.loadUnit("nexul-server")
+	require.NoError(t, err)
+	u.Version = "v0.1.0"
+	require.NoError(t, th.saveUnit(*u))
+	th.release.unavailable["nexul-server-linux-amd64"] = downloadAttempts
+
+	require.ErrorContains(t, th.Upgrade(t.Context(), "v0.2.1"), "503 Service Unavailable")
+	assert.False(t, th.exec.ran("systemctl restart"))
+}
+
+func TestRunUpgrade_Report(t *testing.T) {
+	t.Run("a failed upgrade writes its error to the report", func(t *testing.T) {
+		th := newTestHost(t)
+		report := filepath.Join(t.TempDir(), "upgrade.report")
+
+		require.ErrorContains(t, th.runUpgrade(t.Context(), []string{"--version", "v0.2.1", "--report", report}), "nexul install")
+		assert.Contains(t, readFile(t, report), "nothing of Nexul is installed")
+	})
+
+	t.Run("a finished upgrade writes an empty report", func(t *testing.T) {
+		th := newTestHost(t)
+		th.installed(t)
+		report := filepath.Join(t.TempDir(), "upgrade.report")
+
+		require.NoError(t, th.runUpgrade(t.Context(), []string{"--version", "v0.2.1", "--report", report}))
+		assert.Empty(t, readFile(t, report))
+	})
+
+	t.Run("a version switch hands the report to the release binary", func(t *testing.T) {
+		th := newTestHost(t)
+		th.installed(t)
+		report := filepath.Join(t.TempDir(), "upgrade.report")
+
+		require.NoError(t, th.runUpgrade(t.Context(), []string{"--version", "v0.2.2", "--report", report}))
+		self, _ := th.Executable()
+		assert.Equal(t, []string{self, "upgrade", "--version", "v0.2.2", "--report", report}, th.reexec)
+	})
+}
+
 func TestRunUpgrade_Detach_StartsATransientUnit(t *testing.T) {
 	th := newTestHost(t)
 	require.NoError(t, th.runUpgrade(t.Context(), []string{"--detach", "--version", "v0.2.2"}))

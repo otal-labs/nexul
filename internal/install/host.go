@@ -95,6 +95,8 @@ type Host struct {
 	running *elapsed
 	// ctl is where the nexul command was installed, once installSelf has run.
 	ctl string
+	// upgradeReport is the --report file, carried into the release binary a version switch re-executes.
+	upgradeReport string
 }
 
 // NewHost returns a Host wired to this machine.

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -770,10 +771,24 @@ func TestShellExecutor_Deploy_ReportsServices(t *testing.T) {
 	})
 }
 
+// newUpgradeExecutor checks report files under its own temp dir, every millisecond.
+func newUpgradeExecutor(t *testing.T, cmd CommandRunner) *ShellExecutor {
+	t.Helper()
+	e := newTestExecutor(cmd)
+	e.tempDir = t.TempDir()
+	e.reportPoll = time.Millisecond
+	return e
+}
+
+func writeUpgradeReport(t *testing.T, e *ShellExecutor, id, msg string) {
+	t.Helper()
+	require.NoError(t, os.WriteFile(filepath.Join(e.tempDir, "nexul-upgrade-"+id+".report"), []byte(msg), 0o644))
+}
+
 func TestShellExecutor_Upgrade(t *testing.T) {
 	t.Run("a failing nexul upgrade reports upgrade_result failed with the error text", func(t *testing.T) {
 		cmd := &fakeCmd{failNext: 1, err: errors.New("nexul: no release v1")}
-		e := newTestExecutor(cmd.run)
+		e := newUpgradeExecutor(t, cmd.run)
 		var frames []Frame
 		send := func(fr Frame) error { frames = append(frames, fr); return nil }
 
@@ -785,7 +800,7 @@ func TestShellExecutor_Upgrade(t *testing.T) {
 	})
 
 	t.Run("a send failure stops before the result frame", func(t *testing.T) {
-		e := newTestExecutor((&fakeCmd{}).run)
+		e := newUpgradeExecutor(t, (&fakeCmd{}).run)
 		sendErr := errors.New("write failed")
 		sent := 0
 		send := func(fr Frame) error { sent++; return sendErr }
@@ -798,18 +813,52 @@ func TestShellExecutor_Upgrade(t *testing.T) {
 
 	t.Run("hands the upgrade to nexul upgrade --detach and reports started", func(t *testing.T) {
 		cmd := &fakeCmd{}
-		e := newTestExecutor(cmd.run)
+		e := newUpgradeExecutor(t, cmd.run)
+		writeUpgradeReport(t, e, "up-1", "")
 		var frames []Frame
 		send := func(fr Frame) error { frames = append(frames, fr); return nil }
 
 		require.NoError(t, e.Upgrade(t.Context(), Frame{Type: FrameAssignUpgrade, ID: "up-1", Version: "v0.2.2"}, send))
 
-		assert.Equal(t, [][]string{{"upgrade", "--detach", "--version", "v0.2.2"}}, cmd.argsFor("/usr/local/bin/nexul"))
+		report := filepath.Join(e.tempDir, "nexul-upgrade-up-1.report")
+		assert.Equal(t, [][]string{{"upgrade", "--detach", "--version", "v0.2.2", "--report", report}}, cmd.argsFor("/usr/local/bin/nexul"))
 		assert.Equal(t, []string{"/usr/local/bin/nexul"}, cmd.names(), "the runner never calls systemd-run itself")
 		require.Len(t, frames, 2)
 		assert.Equal(t, FrameUpgradeProgress, frames[0].Type)
 		assert.Equal(t, FrameUpgradeResult, frames[1].Type)
 		assert.Equal(t, UpgradeStatusStarted, frames[1].Status)
+		assert.NoFileExists(t, report)
+	})
+
+	t.Run("an upgrade that dies after the hand-off reports failed with its error", func(t *testing.T) {
+		e := newUpgradeExecutor(t, (&fakeCmd{}).run)
+		writeUpgradeReport(t, e, "up-5", "nexul-server: download https://example.com/nexul-server: 500 Internal Server Error\n")
+		var frames []Frame
+		send := func(fr Frame) error { frames = append(frames, fr); return nil }
+
+		require.NoError(t, e.Upgrade(t.Context(), Frame{Type: FrameAssignUpgrade, ID: "up-5", Version: "v1"}, send))
+
+		require.Len(t, frames, 3)
+		assert.Equal(t, UpgradeStatusStarted, frames[1].Status)
+		assert.Equal(t, UpgradeStatusFailed, frames[2].Status)
+		assert.Equal(t, "nexul-server: download https://example.com/nexul-server: 500 Internal Server Error", frames[2].Error)
+	})
+
+	t.Run("a dropped connection stops waiting for the report", func(t *testing.T) {
+		e := newUpgradeExecutor(t, (&fakeCmd{}).run)
+		ctx, cancel := context.WithCancel(t.Context())
+		var frames []Frame
+		send := func(fr Frame) error {
+			frames = append(frames, fr)
+			if fr.Status == UpgradeStatusStarted {
+				cancel()
+			}
+			return nil
+		}
+
+		require.NoError(t, e.Upgrade(ctx, Frame{Type: FrameAssignUpgrade, ID: "up-6", Version: "v1"}, send))
+
+		assert.Len(t, frames, 2)
 	})
 }
 
