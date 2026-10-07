@@ -31,7 +31,7 @@ const BotMessageBubble = ({ message }: { message: ChatMessage }) => {
       data-slot="bubble"
       className={cn(
         "relative w-fit max-w-[75%] space-y-1.5 rounded-2xl rounded-bl-md bg-accent px-3 py-2 text-sm break-words text-accent-foreground",
-        embeds.length > 0 && "w-full max-w-[min(75%,38rem)]",
+        embeds.length > 0 && "w-full max-w-[38rem]",
       )}
     >
       <MessageActions message={message} />
