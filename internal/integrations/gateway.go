@@ -64,6 +64,7 @@ var pathAliases = map[string]string{
 	"statuses":           "projects",
 	"agent":              "chat",
 	"automation-secrets": "automations",
+	"botwebhooks":        "botwebhook",
 }
 
 // exactDenylist blocks a path regardless of scopes: a runner enrollment code joins a machine to the fleet and an
@@ -73,7 +74,7 @@ var exactDenylist = map[string]bool{
 	http.MethodPost + " /api/instance/upgrade":    true,
 }
 
-// verbRouteScope names routes gated by other than the path's domain and method: a verb, channels, or watching (ADR 0057, 0094, 0101, 0107).
+// verbRouteScope names routes gated by other than the path's domain and method: a verb, channels, watching, or a conversation's bots (ADR 0057, 0094, 0101, 0107).
 var verbRouteScope = map[string]Scope{
 	"GET /api/stacks/{id}/services/{name}/logs":                  Scope(permissions.StacksLogs),
 	"GET /api/services/{id}/services/{name}/logs":                Scope(permissions.StacksLogs),
@@ -81,6 +82,8 @@ var verbRouteScope = map[string]Scope{
 	"POST /api/chat/voice-channels":                              Scope(permissions.ChannelsWrite),
 	"PATCH /api/chat/conversations/{id}":                         Scope(permissions.ChannelsWrite),
 	"DELETE /api/chat/conversations/{id}":                        Scope(permissions.ChannelsDelete),
+	"GET /api/conversations/{id}/botwebhooks":                    Scope(permissions.BotwebhookRead),
+	"POST /api/conversations/{id}/botwebhooks":                   Scope(permissions.BotwebhookWrite),
 	"PUT /api/docs/{id}/watchers/me":                             Scope(permissions.DocsRead),
 	"DELETE /api/docs/{id}/watchers/me":                          Scope(permissions.DocsRead),
 	"POST /api/docs/{id}/lock":                                   Scope(permissions.DocsLock),

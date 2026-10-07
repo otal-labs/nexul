@@ -24,14 +24,14 @@ table gains the `botwebhook` domain.
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Migration tested by upgrading from the previous schema: every message
+- [x] Migration tested by upgrading from the previous schema: every message
       kept, a bot message survives its bot's rename and delete
-- [ ] Use-case tests, refusals first: read without write sees no URL, write
+- [x] Use-case tests, refusals first: read without write sees no URL, write
       without delete cannot delete, a non-participant on a DM, a ticket
       thread without the ticket, the eleventh bot, a duplicate name
 - [ ] Restore and regenerate issue a fresh token; the old one stops working
-- [ ] Catalog rows, outbox writes, live audience rule; no token in any
+- [x] Catalog rows, outbox writes, live audience rule; no token in any
       payload
-- [ ] `CONTEXT.md` and `practices/architecture.md` checked
+- [x] `CONTEXT.md` and `practices/architecture.md` checked

@@ -10,6 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/attachments"
 	"github.com/otal-labs/nexul/internal/automations"
+	"github.com/otal-labs/nexul/internal/botwebhook"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/codereview"
 	"github.com/otal-labs/nexul/internal/connectors"
@@ -128,6 +129,9 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	mountGateway(apiMux, "/api/notifications", workspace.NewNotificationHandler(svc.notifSvc, currentUserID).Routes())
 	mountGateway(apiMux, "/api/chat", withUserID(chat.WithUserID)(chat.NewHandler(svc.chatSvc).Routes()))
 	mountGateway(apiMux, "/api/voice", withUserID(voice.WithUserID)(svc.voiceHandler.Routes()))
+	botwebhookRoutes := botwebhook.NewHandler(svc.botwebhookSvc).Routes()
+	mountGateway(apiMux, "/api/conversations", botwebhookRoutes)
+	mountGateway(apiMux, "/api/botwebhooks", botwebhookRoutes)
 	mountGateway(apiMux, "/api/agent", agentHandler.Routes())
 	integrationsRoutes := integrations.NewHandler(svc.integrationsSvc).Routes()
 	mountGateway(apiMux, "/api/integrations", integrationsRoutes)
@@ -266,6 +270,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.SetTagDescription("notifications", "Notification inbox")
 	spec.SetTagDescription("chat", "Workspace conversations, messages, and unread state")
 	spec.SetTagDescription("voice", "Voice channel join tokens and live occupancy")
+	spec.SetTagDescription("botwebhooks", "Bots: a conversation's webhook posters, their URLs, deletion, and restore")
 	spec.SetTagDescription("agent", "The @Agent chat pipeline's stop control")
 	spec.SetTagDescription("integrations", "Integration installs, subscriptions, deliveries")
 	spec.SetTagDescription("events", "Published event-schema catalog")
@@ -403,6 +408,10 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("POST", "/api/chat/conversations/{id}/members", "Add members to a private channel", "chat")
 	spec.Register("DELETE", "/api/chat/conversations/{id}/members/{userID}", "Remove a member from a private channel", "chat")
 	spec.Register("POST", "/api/chat/conversations/{id}/leave", "Leave a private channel", "chat")
+	spec.Register("GET", "/api/conversations/{id}/botwebhooks", "List a conversation's bots (botwebhook:read); URLs only with botwebhook:write; ?deleted=true lists the deleted ones (botwebhook:write)", "botwebhooks")
+	spec.Register("POST", "/api/conversations/{id}/botwebhooks", "Create a bot with a name and an avatar (botwebhook:write); ten live bots per conversation", "botwebhooks")
+	spec.Register("PATCH", "/api/botwebhooks/{id}", "Rename a bot, change or clear its avatar, regenerate its URL, or restore it with a new URL via deleted false (botwebhook:write)", "botwebhooks")
+	spec.Register("DELETE", "/api/botwebhooks/{id}", "Delete a bot: its URL stops working at once and its messages stay (botwebhook:delete)", "botwebhooks")
 	spec.Register("POST", "/api/voice/{conversationID}/token", "Mint a LiveKit join token for a voice channel", "voice")
 	spec.Register("POST", "/api/voice/{conversationID}/leave", "Leave a voice channel (removes optimistic presence)", "voice")
 	spec.Register("GET", "/api/voice/occupancy", "Current voice channel occupancy", "voice")

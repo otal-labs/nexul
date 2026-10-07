@@ -123,6 +123,21 @@ type AutomationVersion struct {
 	CreatedAt    int64
 }
 
+type Botwebhook struct {
+	ID             string
+	ConversationID string
+	Name           string
+	Avatar         string
+	Token          string
+	CreatedBy      string
+	CreatedAt      int64
+	UpdatedAt      int64
+	LastPostAt     sql.NullInt64
+	PostCount      int64
+	DeletedAt      sql.NullInt64
+	DeletedBy      string
+}
+
 type Category struct {
 	ID        string
 	ProjectID string
@@ -616,19 +631,22 @@ type MemoryVersion struct {
 }
 
 type Message struct {
-	ID             string
-	ConversationID string
-	AuthorID       string
-	Body           string
-	Mentions       string
-	AttachmentID   sql.NullString
-	EditedAt       sql.NullInt64
-	DeletedAt      sql.NullInt64
-	CreatedAt      int64
-	UpdatedAt      int64
-	AuthorKind     string
-	Handoffs       sql.NullString
-	Via            string
+	ID              string
+	ConversationID  string
+	AuthorID        string
+	Body            string
+	Mentions        string
+	AttachmentID    sql.NullString
+	EditedAt        sql.NullInt64
+	DeletedAt       sql.NullInt64
+	CreatedAt       int64
+	UpdatedAt       int64
+	AuthorKind      string
+	Handoffs        sql.NullString
+	Via             string
+	AuthorName      sql.NullString
+	AuthorAvatarUrl sql.NullString
+	Embeds          sql.NullString
 }
 
 type MessageReaction struct {

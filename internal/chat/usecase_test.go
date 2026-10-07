@@ -1435,6 +1435,47 @@ func TestConversationByAgentThread_FindsItAndKeepsWhatWasSeen(t *testing.T) {
 	require.ErrorIs(t, s.MarkAgentSeen(t.Context(), "missing", "run-2"), apperrs.ErrNotFound)
 }
 
+// TestPostBotMessage_StoresTheBotAndWhatItShowed: the bot is the author, its name and avatar are kept on the message,
+// embeds alone make a post, and an @Agent in it parses no mention.
+func TestPostBotMessage_StoresTheBotAndWhatItShowed(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	dm, err := s.CreateDM(t.Context(), "w-1", "u-1", []string{"u-2"})
+	require.NoError(t, err)
+
+	id, at, err := s.PostBotMessage(t.Context(), dm.ID, "b-ci", " GitHub ", "https://example.com/gh.png", " ask @Agent ", nil)
+	require.NoError(t, err)
+	m := repo.messages[id]
+	assert.Equal(t, AuthorBot, m.AuthorKind)
+	assert.Equal(t, "b-ci", m.AuthorID)
+	assert.Equal(t, "GitHub", m.AuthorName)
+	assert.Equal(t, "https://example.com/gh.png", m.AuthorAvatarURL)
+	assert.Equal(t, "ask @Agent", m.Body)
+	assert.Empty(t, m.Mentions)
+	assert.Equal(t, fixedNow, at)
+	created := repo.events[len(repo.events)-1].Payload.(MessageCreatedEvent)
+	assert.True(t, created.MembersOnly, "a DM's bot message never reaches integrations")
+
+	id, _, err = s.PostBotMessage(t.Context(), dm.ID, "b-ci", "GitHub", "", "", json.RawMessage(`[{"title":"build passed"}]`))
+	require.NoError(t, err)
+	assert.JSONEq(t, `[{"title":"build passed"}]`, string(repo.messages[id].Embeds))
+}
+
+func TestPostBotMessage_MissingParts_IsInvalid(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	for name, call := range map[string][4]string{
+		"no conversation":       {"", "b-ci", "CI", "hi"},
+		"no bot":                {"conv-1", " ", "CI", "hi"},
+		"no name":               {"conv-1", "b-ci", " ", "hi"},
+		"no content, no embeds": {"conv-1", "b-ci", "CI", " "},
+	} {
+		_, _, err := s.PostBotMessage(t.Context(), call[0], call[1], call[2], "", call[3], nil)
+		require.ErrorIs(t, err, apperrs.ErrInvalid, name)
+	}
+	_, _, err := s.PostBotMessage(t.Context(), "missing", "b-ci", "CI", "", "hi", nil)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
 func TestPostHarnessMessage_EmptyBody_IsRefused(t *testing.T) {
 	s := newTestService(newFakeRepo())
 	err := s.PostHarnessMessage(t.Context(), "conv-1", "u-1", "  ", "T3", "item-1", time.Now())

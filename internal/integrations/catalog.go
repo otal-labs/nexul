@@ -1513,7 +1513,7 @@ var catalogSchemas = map[string]string{
 		"type": "object",
 		"required": ["message"],
 		"properties": {
-			"message": {"type": "object", "description": "The message as chat stores it. Its attachment_id is set only on a note: an Agent message on a ticket's thread, posted on the author_id person's behalf, whose markdown file is that attachment of the conversation. Its handoffs are set only on an Agent reply that handed work to other agents: each one's id, driver, model, title, prompt, state (running, done, failed, interrupted or left_running), final reply and steps."},
+			"message": {"type": "object", "description": "The message as chat stores it. Its attachment_id is set only on a note: an Agent message on a ticket's thread, posted on the author_id person's behalf, whose markdown file is that attachment of the conversation. Its handoffs are set only on an Agent reply that handed work to other agents: each one's id, driver, model, title, prompt, state (running, done, failed, interrupted or left_running), final reply and steps. A message with author_kind bot has the bot's id as author_id, the name and avatar it showed as author_name and author_avatar_url, and its embeds as the sender posted them."},
 			"members_only": {"type": "boolean", "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."}
 		}
 	}`,
@@ -1550,6 +1550,10 @@ var catalogSchemas = map[string]string{
 			"members_only": {"type": "boolean", "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."}
 		}
 	}`,
+	"botwebhook.created":  botwebhookSchema(""),
+	"botwebhook.updated":  botwebhookSchema(`"changes": {"type": "array", "items": {"type": "string", "enum": ["renamed", "avatar", "regenerated"]}, "description": "What changed; regenerated means the old URL stopped working."},`),
+	"botwebhook.deleted":  botwebhookSchema(""),
+	"botwebhook.restored": botwebhookSchema(""),
 	"voice.occupancy.changed": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",
@@ -1570,6 +1574,24 @@ var catalogSchemas = map[string]string{
 			"members_only": {"type": "boolean", "description": "Set on a private voice channel's call, which is never delivered to integrations or automations."}
 		}
 	}`,
+}
+
+// botwebhookSchema is every botwebhook.* payload, extra being the topic's own properties; none carries the token or URL.
+func botwebhookSchema(extra string) string {
+	return `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["botwebhook_id", "conversation_id", "workspace_id", "name"],
+		"properties": {
+			"botwebhook_id": {"type": "string"},
+			"conversation_id": {"type": "string"},
+			"workspace_id": {"type": "string"},
+			"name": {"type": "string", "description": "The bot's name after the change."},
+			"actor_id": {"type": "string"},
+			` + extra + `
+			"members_only": {"type": "boolean", "description": "Set on a bot of a DM or private channel, whose events are never delivered to integrations or automations."}
+		}
+	}`
 }
 
 // PublishCatalog seeds catalog schemas idempotently before any integration installs.

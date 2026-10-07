@@ -57,6 +57,7 @@ var scopeRules = map[string]scopeRule{
 	"interview_source.removed": workspaceScope, "interview_draft.saved": workspaceScope, "interview_draft.dismissed": workspaceScope,
 	"play.run_started": workspaceScope, "play.run_waiting": workspaceScope, "play.run_finished": workspaceScope,
 	"chat.conversation.updated": workspaceScope, "chat.conversation.deleted": workspaceScope, "chat.conversation.members_changed": workspaceScope,
+	"botwebhook.created": workspaceScope, "botwebhook.updated": workspaceScope, "botwebhook.deleted": workspaceScope, "botwebhook.restored": workspaceScope,
 	"play.created": nestedWorkspaceScope("play"), "play.updated": nestedWorkspaceScope("play"),
 	"memory.created": nestedWorkspaceScope("memory"), "memory.updated": nestedWorkspaceScope("memory"),
 	"chat.conversation.created": nestedWorkspaceScope("conversation"),

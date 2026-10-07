@@ -48,7 +48,7 @@ nothing.
 
 Which domains this covers, as the tree stands:
 
-- Full five-file shape: `access`, `chat`, `codereview`, `deploy`, `dns`,
+- Full five-file shape: `access`, `botwebhook`, `chat`, `codereview`, `deploy`, `dns`,
   `docs`, `memories`, `pairing`, `plays`, `roles`, `runner`, `tenancy`,
   `tickets`, `topology`, `workspace`.
 - No `events.go` yet: `attachments`, `automations`, `connectors`,

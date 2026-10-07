@@ -12,6 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/attachments"
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/automations"
+	"github.com/otal-labs/nexul/internal/botwebhook"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/codereview"
 	"github.com/otal-labs/nexul/internal/collab"
@@ -92,6 +93,7 @@ type coreServices struct {
 	playsRunner *plays.Runner
 
 	chatSvc             *chat.Service
+	botwebhookSvc       *botwebhook.Service
 	voiceSvc            *voice.Service
 	voiceHandler        *voice.Handler
 	voiceWebhookHandler *voice.WebhookHandler
@@ -279,6 +281,9 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	chatSvc.SetThreadGate(chatThreadGate{projectEntityGate{access: accessSvc, projects: store.Projects, tickets: store.Tickets}})
 	chatSvc.SetStanding(chatStanding{roles: accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc}})
 	attachmentsSvc.SetConversations(chatAttachmentConversations{svc: chatSvc})
+	botwebhookSvc := botwebhook.NewService(botwebhook.Config{
+		Repo: store.Botwebhooks, Gate: accessSvc, Conversations: botwebhookConversations{svc: chatSvc}, Instance: dnsSettingsAdapter{store.Settings},
+	})
 	// A note's file is its only stored state, so its live rooms keep theirs in memory; readers never join (ADR 0110).
 	notesHub := collab.NewHub(logger, collab.NewMemoryStore(), collabNoteRooms{chatSvc}, collabNoteRooms{chatSvc}, permissions.TicketsWrite, permissions.TicketsWrite)
 	chatSvc.SetNoteLive(notesHub)
@@ -364,6 +369,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		playsSvc: playsSvc,
 
 		chatSvc:             chatSvc,
+		botwebhookSvc:       botwebhookSvc,
 		voiceSvc:            voiceSvc,
 		voiceHandler:        voiceHandler,
 		voiceWebhookHandler: voiceWebhookHandler,

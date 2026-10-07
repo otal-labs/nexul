@@ -54,6 +54,9 @@ const (
 	ChatWrite          Action = "chat:write"
 	ChannelsWrite      Action = "channels:write"
 	ChannelsDelete     Action = "channels:delete"
+	BotwebhookRead     Action = "botwebhook:read"
+	BotwebhookWrite    Action = "botwebhook:write"
+	BotwebhookDelete   Action = "botwebhook:delete"
 	WorkspacesWrite    Action = "workspaces:write"
 	WorkspacesCreate   Action = "workspaces:create"
 	MembersWrite       Action = "members:write"
@@ -153,6 +156,8 @@ var domainTable = []domainInfo{
 	// channels:read rounds out the role editor's ladder; reading a channel takes only membership (ADR 0087).
 	{"channels", "channels", []string{read, write, delete}, AreaWorkspace},
 	{"voice", "voice", []string{read, write}, AreaWorkspace},
+	// No implication between the three: read hides a bot's URL, write shows it, and only delete deletes.
+	{"botwebhook", "bots", []string{read, write, delete}, AreaWorkspace},
 	{"automations", "automations", []string{read, write, delete}, AreaInstance},
 	{"integrations", "integrations", []string{read, write, delete}, AreaInstance},
 	{"connectors", "connectors", []string{read, write}, AreaInstance},
