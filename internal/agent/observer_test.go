@@ -268,6 +268,14 @@ func TestAnswer_NoActiveTurn_NotFound(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
+// startedObserver signals OnStarted: a turn is active before it opens, and only then is its session id known.
+type startedObserver struct {
+	nopObserver
+	started chan struct{}
+}
+
+func (o startedObserver) OnStarted(string) { close(o.started) }
+
 func TestAnswer_ActiveTurn_ForwardsToTheHarness(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1"})
 	updates := make(chan harness.Update)
@@ -285,12 +293,17 @@ func TestAnswer_ActiveTurn_ForwardsToTheHarness(t *testing.T) {
 		return nil
 	}
 	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
+	obs := startedObserver{started: make(chan struct{})}
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
+		svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go", Observer: obs})
 	}()
-	waitFor(t, time.Second, func() bool { svc.mu.Lock(); defer svc.mu.Unlock(); return len(svc.active) == 1 })
+	select {
+	case <-obs.started:
+	case <-done:
+		t.Fatal("the turn ended before it opened")
+	}
 
 	answer := harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q1": {Selected: []string{"Yes"}}}}
 	require.NoError(t, svc.Answer(t.Context(), "conv-1", "req-1", answer))
