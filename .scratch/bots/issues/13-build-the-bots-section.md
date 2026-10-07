@@ -19,11 +19,11 @@ events.
 
 **Blocked by:** 09
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Tests for editor, read-only, and write-without-delete views; the cap
+- [x] Tests for editor, read-only, and write-without-delete views; the cap
       at ten; a duplicate name; the confirms
-- [ ] Worst case: ten long-named bots and long creator names
-- [ ] Verified at 768, 1024, and 1440px in both themes
-- [ ] Every way in has its way out: delete and restore, regenerate, the
+- [x] Worst case: ten long-named bots and long creator names
+- [x] Verified at 768, 1024, and 1440px in both themes
+- [x] Every way in has its way out: delete and restore, regenerate, the
       default avatar
