@@ -11,9 +11,9 @@ as a bot.
 
 **Blocked by:** 09
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Surface test at the new ceiling; tool descriptions follow
+- [x] Surface test at the new ceiling; tool descriptions follow
       `practices/mcp.md`
-- [ ] A read-only caller's list carries no URL or token
-- [ ] The ADR and `practices/mcp.md` updated together
+- [x] A read-only caller's list carries no URL or token
+- [x] The ADR and `practices/mcp.md` updated together
