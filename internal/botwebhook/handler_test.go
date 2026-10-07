@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -90,19 +91,29 @@ func (f *executeFixture) url() string { return "/api/botwebhooks/" + f.bot.ID + 
 func TestExecuteHandler_PerBotLimit(t *testing.T) {
 	f := newExecuteFixture(t)
 	assert.Equal(t, http.StatusBadRequest, f.post("192.0.2.1", f.url(), `{"content":" "}`).Code)
+	firstFrees := strconv.FormatFloat(float64(fixedNow.Add(time.Minute).UnixMilli())/1000, 'f', 3, 64)
+	bucket := ""
 	for i := range postsPerMinute {
 		rec := f.post("192.0.2.1", f.url(), `{"content":"build passed"}`)
 		require.Equal(t, http.StatusNoContent, rec.Code, "post %d", i)
 		assert.Equal(t, "30", rec.Header().Get("X-RateLimit-Limit"))
 		assert.Equal(t, fmt.Sprint(postsPerMinute-1-i), rec.Header().Get("X-RateLimit-Remaining"))
+		assert.Equal(t, firstFrees, rec.Header().Get("X-RateLimit-Reset"), "post %d: when the first post leaves the minute", i)
+		if i == 0 {
+			bucket = rec.Header().Get("X-RateLimit-Bucket")
+		}
+		assert.Equal(t, bucket, rec.Header().Get("X-RateLimit-Bucket"), "post %d", i)
 		f.now = f.now.Add(time.Second)
 	}
+	assert.Regexp(t, `^[0-9a-f]{16}$`, bucket, "an opaque id that never spells the bot's id")
 	rec := f.post("192.0.2.1", f.url(), `{"content":"build passed"}`)
 	require.Equal(t, http.StatusTooManyRequests, rec.Code)
 	assert.JSONEq(t, `{"message":"You are being rate limited.","retry_after":30,"global":false}`, rec.Body.String())
 	assert.Equal(t, "30", rec.Header().Get("Retry-After"))
 	assert.Equal(t, "0", rec.Header().Get("X-RateLimit-Remaining"))
 	assert.Equal(t, "30.000", rec.Header().Get("X-RateLimit-Reset-After"))
+	assert.Equal(t, firstFrees, rec.Header().Get("X-RateLimit-Reset"))
+	assert.Equal(t, bucket, rec.Header().Get("X-RateLimit-Bucket"))
 	assert.Len(t, f.poster.posts, postsPerMinute)
 
 	f.now = f.now.Add(30 * time.Second)

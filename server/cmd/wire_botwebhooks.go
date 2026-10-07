@@ -23,6 +23,19 @@ func (b botwebhookConversations) Conversation(ctx context.Context, id string) (*
 	return &botwebhook.Conversation{ID: c.ID, WorkspaceID: c.WorkspaceID, MembersOnly: c.MembersOnly()}, nil
 }
 
+// botwebhookMessages reads a message ungated; botwebhook checks its conversation as the caller before using it.
+type botwebhookMessages struct {
+	chat *storage.ChatRepo
+}
+
+func (b botwebhookMessages) BotMessage(ctx context.Context, id string) (*botwebhook.PostedMessage, error) {
+	m, err := b.chat.GetMessage(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &botwebhook.PostedMessage{ConversationID: m.ConversationID, AvatarURL: m.AuthorAvatarURL, Embeds: m.Embeds, Deleted: m.DeletedAt != nil}, nil
+}
+
 // botwebhookPoster posts through chat's bot use-case, so chat never imports botwebhook.
 type botwebhookPoster struct {
 	svc *chat.Service

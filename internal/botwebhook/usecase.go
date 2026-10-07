@@ -64,6 +64,7 @@ type Config struct {
 	Instance      InstanceURL
 	Poster        Poster
 	People        People
+	Messages      Messages
 }
 
 // Service is the botwebhook use-case layer; every mutation enqueues its event through the transactional outbox.
@@ -74,13 +75,14 @@ type Service struct {
 	instance      InstanceURL
 	poster        Poster
 	people        People
+	messages      Messages
 	now           func() time.Time
 }
 
 // NewService wires the bot use-cases over the given seams.
 func NewService(cfg Config) *Service {
 	return &Service{repo: cfg.Repo, gate: cfg.Gate, conversations: cfg.Conversations, instance: cfg.Instance,
-		poster: cfg.Poster, people: cfg.People, now: time.Now}
+		poster: cfg.Poster, people: cfg.People, messages: cfg.Messages, now: time.Now}
 }
 
 // List returns a conversation's live bots, URLs only for botwebhook:write; the deleted list is for editors alone.
