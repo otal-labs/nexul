@@ -1,61 +1,60 @@
 ---
 title: Setup Wizard
-description: What happens the first time you open a freshly installed Nexul instance.
+description: Give a fresh instance its domain, connect the GitHub App, and sign in as the owner.
 sidebar:
   order: 3
 ---
 
-The first time you open your instance, nobody exists yet, so there's nothing to sign in to. Setup gives Nexul its domain first, then connects the GitHub App from that domain, then runs the owner wizard.
+Setup runs in a fixed order: the domain first, then the GitHub App on that domain, then your owner account. GitHub sends you back to the instance's final `https://` address after sign-in, so that address has to exist before the App does.
 
-The order matters: GitHub sends you back to the instance's final `https://` address after sign-in, so that address has to exist before the GitHub App does.
+## 1. Enter the setup code
 
-## 1. Setup code
+Open the setup page the installer printed, `http://<server>:5123/`, and enter the **Setup code** from the same summary (`nxs_…`). Lost it? Run `sudo nexul status` on the server.
 
-Open the setup page the installer printed, `http://<server>:5123/`. It asks for the **setup code** from the same summary (`nxs_…`). Lost it? Run `sudo nexul status` on the server.
+The code proves you installed the server, so a stranger who finds the port cannot take over the instance. A correct code unlocks setup in this browser for an hour. The server writes a new code each time it starts, each one good for a day, and setup closes for good once someone has signed in.
 
-The code proves you're the one who installed the server, so nobody who stumbles on the port can take over the instance or use your Cloudflare token. A correct code unlocks setup in this browser for an hour. The code changes every time the server restarts and stops working once the first person has signed in.
+## 2. Give Nexul a domain
 
-## 2. Domain
+Pick how traffic reaches Nexul. There is no skip, because GitHub sign-in needs the domain.
 
-Choose how traffic reaches Nexul. There's no skip: nothing after this works without a domain.
+- **Cloudflare tunnel**: no open ports. Paste a Cloudflare API token (see [the permissions it needs](/docs/guide/topology-and-dns/#cloudflare-api-token-permissions)), pick the account that owns your domain, deploy the tunnel, then choose the subdomain and zone. Cloudflare issues the certificate.
+- **Reverse proxy**: type the domain. The page shows the A (and AAAA) record to create at your DNS provider and waits until the domain resolves to this server. Nexul then runs Traefik on ports 80 and 443 with a Let's Encrypt certificate. Both ports must be reachable from the internet.
+- **I already have HTTPS**: your own proxy already serves an `https://` address that forwards to `http://<server>:5123`. Type it in.
 
-- **Cloudflare tunnel.** No open ports. Paste a Cloudflare API token; each permission is checked before it's saved. Pick the Cloudflare account that owns your domain, deploy the tunnel, then choose the subdomain and zone. A checklist confirms the tunnel route, the proxied DNS record, and that the hostname answers over HTTPS. Cloudflare issues the certificate.
-- **Reverse proxy.** Type the domain. The page shows this server's public address and the A (and AAAA) record to create at your DNS provider, and waits until the domain resolves here. Nexul then runs Traefik on ports 80 and 443, which gets a Let's Encrypt certificate and forwards the domain to Nexul. Both ports must be reachable from the internet.
-- **I already have HTTPS.** Your own proxy (nginx, Caddy, a load balancer) already serves an `https://` address that forwards to `http://<server>:5123`. Type it and Nexul checks that it answers.
+Each path ends with Nexul checking that the address answers over HTTPS, then saving it as the instance URL.
 
-Every path ends the same way: Nexul checks that the address answers over HTTPS and stores it as the instance URL. See [Topology and DNS](/docs/guide/topology-and-dns/) for more on each path.
-
-On a Mac or Windows install, which is for trying Nexul on one computer, this step is skipped and the instance stays on `http://localhost:5123`.
+On a Mac or Windows install this step is skipped and the instance stays on `http://localhost:5123`.
 
 ## 3. Continue on your domain
 
-The page says where Nexul is live and links there. The link carries the setup code, so the domain opens straight at the next step.
+The page links to your new address. The link carries the setup code, so you land straight on the next step.
 
-## 4. GitHub App (on the domain)
+## 4. Connect a GitHub App
 
-Before anyone can sign in, the instance needs a [GitHub App](/docs/guide/github-app/) to authenticate through. The instance URL is fixed to the domain, and the page shows the exact OAuth callback URL to register on the App (`<instance-url>/auth/callback`). It asks for:
+Create the [GitHub App](/docs/guide/github-app/) if you haven't yet. The page shows the callback URL to register on it, `<instance-url>/auth/callback`, then asks for:
 
-- **GitHub OAuth client ID** and **client secret**, from the App's page.
-- **GitHub App slug**, the name in the App's own URL, `github.com/apps/<slug>`.
+- **GitHub OAuth client ID** and **GitHub OAuth client secret**, from the App's page.
+- **GitHub App slug**, the name in the App's URL, `github.com/apps/<slug>`.
 
-Each value is verified live, one row at a time: the instance URL reaches this server, the App slug resolves on GitHub, and the client secret is accepted. Once every row is green, **Set up instance** hands off to GitHub to sign you in as the first user.
+Click **Verify**. Three checks run: **Instance URL reaches this server**, **App slug resolves**, and **Client secret accepted**. When all three pass, **Set up instance** sends you to GitHub to sign in as the first user.
 
-Until someone has signed in, `/setup` on the domain lets you correct the GitHub App settings. Afterwards, use the settings in the app instead.
+Got a value wrong? Until someone has signed in, open `/setup` on your domain to correct it.
 
 ## 5. Owner wizard
 
-The very first person to sign in becomes the workspace owner and lands in a three-step wizard:
+The first person to sign in becomes the workspace owner and walks through three steps:
 
-1. **Introduce yourself.** Set the name and avatar other members will see, or keep the GitHub defaults.
-2. **Set up your workspace.** Name the workspace. That's all: a workspace starts with no project.
-3. **Connect your tools.** The same connectors list as Settings → Connectors. Cloudflare already shows as connected if you took the tunnel path.
+1. **Introduce yourself**: the name and avatar others see. The GitHub ones are the default.
+2. **Set up your workspace**: name it. A new workspace has no projects yet.
+3. **Connect your tools**: the same list as **Settings → Connectors**. Cloudflare already shows as connected if you used the tunnel.
 
-Finishing opens the [project wizard](/docs/guide/projects-and-repositories/#creating-a-project) to create your first project. The tunnel or reverse proxy set up in step 2 belongs to the instance, not to a project, so it's already running before any project exists.
+Then the [project wizard](/docs/guide/projects-and-repositories/#creating-a-project) opens to create your first project.
 
-## 6. Everyone else: first-login wizard
+Everyone who signs in after you only confirms their name and avatar, then lands in the app.
 
-Teammates who sign in after the owner don't see the workspace setup, because the workspace already exists. They confirm the name and avatar they want to use, then land straight in the app.
+## If something goes wrong
 
-## Next step
-
-The project wizard takes your first project from a name to a deployed service. See [Projects and repositories](/docs/guide/projects-and-repositories/) and [Stacks and deploys](/docs/guide/stacks-and-deploys/).
+- **"That code is wrong or has expired"**: the server restarted and wrote a new code, or yours is over a day old. Run `sudo nexul status` for the current one, or `sudo systemctl restart nexul-server` for a fresh one.
+- **"Too many wrong codes from this address"**: wait a few minutes and try again.
+- **"Setup is already done on this instance"**: someone has signed in. Sign in instead.
+- **The domain check never passes**: for the reverse proxy, check that the DNS record points at this server and that ports 80 and 443 are open. For your own proxy, check it forwards to the web port.

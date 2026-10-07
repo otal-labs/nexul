@@ -1,51 +1,52 @@
 ---
 title: Upgrade
-description: How to upgrade a running instance, pin or roll back a version, and restore a database snapshot.
+description: Move the instance to a new release from the web app or the server, roll back, and restore a database snapshot.
 sidebar:
   order: 2
 ---
 
-Nexul ships prebuilt binaries, so an upgrade replaces the `nexul` command with the release's, swaps the binary of every Nexul service on the machine, and restarts each one. You can start it from the web UI or from the server.
+An upgrade swaps the binary of every Nexul service on the machine and restarts each one. Expect under a minute of downtime.
 
-## From the web UI
+## From the web app
 
-Open **Settings → Instance**. The **Instance version** section shows the running version, its channel, and the newest release on that channel. When a newer release exists, **Upgrade to vX** starts the upgrade after a confirmation. The same action exists as the `instance_upgrade` MCP tool.
+1. Open **Settings → Instance**. **Instance version** shows what you run, its channel, and whether a newer release exists.
+2. Click **Upgrade to vX** and confirm.
 
-What happens: the server asks the `instance` runner to run `nexul upgrade --detach --version vX` on the server. `--detach` starts the upgrade outside the runner's own service, so it carries on while the runner and the server restart underneath it: on Linux as a transient systemd unit named `nexul-upgrade-<suffix>`, on a Mac or Windows PC as a background process. The browser reconnects on its own and the section reports **Upgraded to vX**. Expect under a minute of downtime while the services restart.
+The `instance` runner runs the upgrade on the server, so it keeps going while the server restarts. The page reconnects by itself and shows **Upgraded to vX**. The `instance_upgrade` MCP tool does the same.
 
-If the instance is still on the old version fifteen minutes later, the section reports the upgrade as failed. The upgrade's output is in the journal on Linux:
+The button is missing when the instance is a development build, is already on the newest release, or its `instance` runner is offline or busy. The section says which.
+
+If the instance is still on the old version after fifteen minutes, the section reports the upgrade as failed. Read the upgrade's output on the server:
 
 ```sh
 journalctl -u 'nexul-upgrade-*'
 ```
 
-On a Mac it is in `~/Library/Application Support/nexul/nexul-upgrade.log`, and on Windows in `%ProgramData%\Nexul\nexul-upgrade.log`.
-
-The UI upgrade needs an install made with `nexul install`, which is what gives the server an `instance` runner and the `nexul` command on the host.
+On a Mac it is in `~/Library/Application Support/nexul/nexul-upgrade.log`, on Windows in `%ProgramData%\Nexul\nexul-upgrade.log`.
 
 ## From the server
 
 ```sh
-nexul upgrade
+sudo nexul upgrade
 ```
 
-This finds the newest release on your install's channel (stable, or beta if you installed a beta), downloads that release's `nexul` and checks it against the release's `checksums.txt`, then hands over to it. The new version downloads each service's binary once, copies it to every service of that kind on the machine, and restarts them one at a time: the server, OpenObserve when its pinned version changed, then each runner and automations host. A service already on the target version is left running. `nexul status` shows each service's version afterwards.
+This takes the newest release on your channel (stable, or beta if you installed a beta), checks it against the release's `checksums.txt`, and moves every Nexul service on this machine to it. A service already on that release keeps running. `nexul status` shows each service's version afterwards.
 
-Runners on other machines need nothing run by hand: a runner updates itself the next time it connects to the upgraded server (see [Runners](/docs/guide/runners/#updates)). An automations host on another machine moves when you run `nexul upgrade` there, which also moves every runner on that machine straight away.
+Runners on other machines update themselves the next time they connect to the upgraded server (see [Runners](/docs/guide/runners/#updates)). An automations host on another machine moves when you run `nexul upgrade` on that machine.
 
 ## Pinning and rolling back
 
 ```sh
-nexul upgrade --version v0.2.0    # this release exactly, newer or older than the running one
+sudo nexul upgrade --version v0.2.0
 ```
 
-Rolling back is the same command with an older version. See [restoring a database snapshot](#restoring-a-database-snapshot) if the rollback crosses a schema change.
+This installs that exact release, newer or older than what runs now. If the rollback crosses a database change, [restore a snapshot](#restoring-a-database-snapshot) too.
 
-## What happens to the database on upgrade
+## What happens to the database
 
-Before the server applies any pending migration, it snapshots the SQLite database with `VACUUM INTO` to a file in `data/backups/` in the install directory, and keeps the five newest snapshots. If nothing is pending, no snapshot is written.
+Before the server applies a database migration, it copies the database to `data/backups/` in the install directory and keeps the newest five copies. No migration, no copy.
 
-An older binary refuses to start against a database with a newer schema. It names the snapshot to restore in its error rather than starting against data it doesn't understand. That refusal, plus the snapshot, is the rollback safety net: there's no separate downgrade migration path.
+An older server refuses to start on a database a newer one has migrated. Its error names the snapshot to restore. There are no downgrade migrations: the snapshot is the way back.
 
 ## Restoring a database snapshot
 
@@ -54,18 +55,19 @@ With the default install directory, `/data/nexul`:
 1. Stop the server:
 
    ```sh
-   systemctl stop nexul-server
+   sudo systemctl stop nexul-server
    ```
 
-2. Copy the snapshot over the live database and remove the WAL files, so SQLite doesn't replay them against the restored file:
+2. Copy the snapshot over the database and delete the WAL files, so SQLite doesn't replay them onto the restored copy:
 
    ```sh
-   cd /data/nexul/data
-   cp backups/<snapshot-file> nexul.db && rm -f nexul.db-wal nexul.db-shm
+   sudo sh -c 'cd /data/nexul/data && cp backups/<snapshot-file> nexul.db && rm -f nexul.db-wal nexul.db-shm'
    ```
 
-3. Start the version the snapshot came from:
+3. Install the release you ran before the upgrade, which starts the server again:
 
    ```sh
-   nexul upgrade --version <previous-version>
+   sudo nexul upgrade --version <previous-version>
    ```
+
+Snapshot files are named `nexul-<version>-<time>.db`. The version is the release that took the snapshot just before migrating, so the file holds the database as your previous release left it.
