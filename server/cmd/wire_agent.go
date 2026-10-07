@@ -67,7 +67,7 @@ func (a agentConversations) MessagesSince(ctx context.Context, conversationID st
 	}
 	out := make([]agent.ConversationMessage, len(ms))
 	for i, m := range ms {
-		out[i] = agent.ConversationMessage{AuthorID: m.AuthorID, AuthorKind: string(m.AuthorKind), Body: m.Body, CreatedAt: m.CreatedAt, Via: m.Via}
+		out[i] = agent.ConversationMessage{AuthorID: m.AuthorID, AuthorKind: string(m.AuthorKind), Body: m.Body, CreatedAt: m.CreatedAt, Via: m.Via, AuthorName: m.AuthorName}
 		if f, ok := files[m.AttachmentID]; ok {
 			out[i].Note = &agent.NoteFile{Name: f.Name, Markdown: f.Markdown}
 		}

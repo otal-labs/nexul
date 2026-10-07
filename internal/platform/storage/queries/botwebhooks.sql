@@ -9,3 +9,6 @@ SELECT * FROM botwebhooks WHERE conversation_id = ? AND (deleted_at IS NOT NULL)
 
 -- name: UpdateBotwebhook :execrows
 UPDATE botwebhooks SET name = ?, avatar = ?, token = ?, updated_at = ?, deleted_at = ?, deleted_by = ? WHERE id = ?;
+
+-- name: CountBotwebhookPost :execrows
+UPDATE botwebhooks SET post_count = post_count + 1, last_post_at = ? WHERE id = ? AND deleted_at IS NULL;

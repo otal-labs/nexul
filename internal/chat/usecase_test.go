@@ -33,6 +33,7 @@ type fakeRepo struct {
 	files         map[string]*NoteFile
 	unreadState   map[string]map[string]int64 // conversationID -> userID -> last_read_at unix
 	events        []eventbus.OutboxEvent
+	audits        []string
 
 	createConversationErr error
 	createMessageErr      error
@@ -289,6 +290,16 @@ func (f *fakeRepo) CreateMessage(_ context.Context, m *Message, evts ...eventbus
 	cp := *m
 	f.messages[m.ID] = &cp
 	f.events = append(f.events, evts...)
+	return nil
+}
+
+func (f *fakeRepo) CreateBotMessage(ctx context.Context, m *Message, audit string, evts ...eventbus.OutboxEvent) error {
+	if err := f.CreateMessage(ctx, m, evts...); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.audits = append(f.audits, audit)
 	return nil
 }
 
@@ -1436,43 +1447,47 @@ func TestConversationByAgentThread_FindsItAndKeepsWhatWasSeen(t *testing.T) {
 }
 
 // TestPostBotMessage_StoresTheBotAndWhatItShowed: the bot is the author, its name and avatar are kept on the message,
-// embeds alone make a post, and an @Agent in it parses no mention.
+// embeds alone make a post, only the handles the sender allowed become mentions, and an @Agent never does.
 func TestPostBotMessage_StoresTheBotAndWhatItShowed(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
 	dm, err := s.CreateDM(t.Context(), "w-1", "u-1", []string{"u-2"})
 	require.NoError(t, err)
 
-	id, at, err := s.PostBotMessage(t.Context(), dm.ID, "b-ci", " GitHub ", "https://example.com/gh.png", " ask @Agent ", nil)
+	m, err := s.PostBotMessage(t.Context(), BotPost{
+		ConversationID: dm.ID, BotID: "b-ci", Name: " GitHub ", AvatarURL: "https://example.com/gh.png",
+		Body: " @Alice and @bob, ask @Agent ", Mentions: []string{"alice", "Agent"}, Audit: "POST /api/botwebhooks/b-ci",
+	})
 	require.NoError(t, err)
-	m := repo.messages[id]
-	assert.Equal(t, AuthorBot, m.AuthorKind)
-	assert.Equal(t, "b-ci", m.AuthorID)
-	assert.Equal(t, "GitHub", m.AuthorName)
-	assert.Equal(t, "https://example.com/gh.png", m.AuthorAvatarURL)
-	assert.Equal(t, "ask @Agent", m.Body)
-	assert.Empty(t, m.Mentions)
-	assert.Equal(t, fixedNow, at)
+	stored := repo.messages[m.ID]
+	assert.Equal(t, AuthorBot, stored.AuthorKind)
+	assert.Equal(t, "b-ci", stored.AuthorID)
+	assert.Equal(t, "GitHub", stored.AuthorName)
+	assert.Equal(t, "https://example.com/gh.png", stored.AuthorAvatarURL)
+	assert.Equal(t, "@Alice and @bob, ask @Agent", stored.Body)
+	assert.Equal(t, []Mention{{Kind: MentionUser, Handle: "Alice"}}, stored.Mentions, "bob was not allowed and the Agent never is")
+	assert.Equal(t, fixedNow, m.CreatedAt)
+	assert.Equal(t, []string{"POST /api/botwebhooks/b-ci"}, repo.audits)
 	created := repo.events[len(repo.events)-1].Payload.(MessageCreatedEvent)
 	assert.True(t, created.MembersOnly, "a DM's bot message never reaches integrations")
 
-	id, _, err = s.PostBotMessage(t.Context(), dm.ID, "b-ci", "GitHub", "", "", json.RawMessage(`[{"title":"build passed"}]`))
+	m, err = s.PostBotMessage(t.Context(), BotPost{ConversationID: dm.ID, BotID: "b-ci", Name: "GitHub", Embeds: json.RawMessage(`[{"title":"build passed"}]`)})
 	require.NoError(t, err)
-	assert.JSONEq(t, `[{"title":"build passed"}]`, string(repo.messages[id].Embeds))
+	assert.JSONEq(t, `[{"title":"build passed"}]`, string(repo.messages[m.ID].Embeds))
 }
 
 func TestPostBotMessage_MissingParts_IsInvalid(t *testing.T) {
 	s := newTestService(newFakeRepo())
-	for name, call := range map[string][4]string{
-		"no conversation":       {"", "b-ci", "CI", "hi"},
-		"no bot":                {"conv-1", " ", "CI", "hi"},
-		"no name":               {"conv-1", "b-ci", " ", "hi"},
-		"no content, no embeds": {"conv-1", "b-ci", "CI", " "},
+	for name, p := range map[string]BotPost{
+		"no conversation":       {BotID: "b-ci", Name: "CI", Body: "hi"},
+		"no bot":                {ConversationID: "conv-1", BotID: " ", Name: "CI", Body: "hi"},
+		"no name":               {ConversationID: "conv-1", BotID: "b-ci", Name: " ", Body: "hi"},
+		"no content, no embeds": {ConversationID: "conv-1", BotID: "b-ci", Name: "CI", Body: " "},
 	} {
-		_, _, err := s.PostBotMessage(t.Context(), call[0], call[1], call[2], "", call[3], nil)
+		_, err := s.PostBotMessage(t.Context(), p)
 		require.ErrorIs(t, err, apperrs.ErrInvalid, name)
 	}
-	_, _, err := s.PostBotMessage(t.Context(), "missing", "b-ci", "CI", "", "hi", nil)
+	_, err := s.PostBotMessage(t.Context(), BotPost{ConversationID: "missing", BotID: "b-ci", Name: "CI", Body: "hi"})
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
