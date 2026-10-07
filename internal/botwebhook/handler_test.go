@@ -109,8 +109,8 @@ func TestExecuteHandler_PerBotLimit(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, f.post("192.0.2.1", f.url(), `{"content":"build passed"}`).Code)
 }
 
-// TestExecuteHandler_PerAddressRejects answers an address past 60 rejected requests a minute with 429 before any work,
-// even on a good URL, while another address still posts.
+// TestExecuteHandler_PerAddressRejects answers an address past 60 wrong URLs a minute with 429 instead of 404, while
+// another address still gets 404, and the window frees it again.
 func TestExecuteHandler_PerAddressRejects(t *testing.T) {
 	f := newExecuteFixture(t)
 	for i := range rejectsPerMinute {
@@ -120,14 +120,30 @@ func TestExecuteHandler_PerAddressRejects(t *testing.T) {
 		}
 		require.Equal(t, http.StatusNotFound, f.post("198.51.100.7", path, `{"content":"hi"}`).Code, "reject %d", i)
 	}
-	rec := f.post("198.51.100.7", f.url(), `{"content":"hi"}`)
+	rec := f.post("198.51.100.7", "/api/botwebhooks/b-missing/"+f.token, `{"content":"hi"}`)
 	require.Equal(t, http.StatusTooManyRequests, rec.Code)
 	assert.Equal(t, "60", rec.Header().Get("X-RateLimit-Limit"))
-	assert.Empty(t, f.poster.posts, "a refused address does no work")
+	assert.Contains(t, rec.Body.String(), "You are being rate limited.")
 
-	assert.Equal(t, http.StatusNoContent, f.post("198.51.100.8", f.url(), `{"content":"hi"}`).Code)
+	assert.Equal(t, http.StatusNotFound, f.post("198.51.100.8", f.url()+"x", `{"content":"hi"}`).Code)
 	f.now = f.now.Add(time.Minute)
-	assert.Equal(t, http.StatusNoContent, f.post("198.51.100.7", f.url(), `{"content":"hi"}`).Code)
+	assert.Equal(t, http.StatusNotFound, f.post("198.51.100.7", f.url()+"x", `{"content":"hi"}`).Code)
+}
+
+// TestExecuteHandler_ValidURL_IgnoresTheAddressLimit: behind a tunnel every sender shares one address, so a valid URL
+// posts even from an address over its rejects, and its own bad payloads never count against that address.
+func TestExecuteHandler_ValidURL_IgnoresTheAddressLimit(t *testing.T) {
+	f := newExecuteFixture(t)
+	for range rejectsPerMinute {
+		require.Equal(t, http.StatusBadRequest, f.post("198.51.100.7", f.url(), `{"content":" "}`).Code)
+	}
+	assert.Equal(t, http.StatusNotFound, f.post("198.51.100.7", f.url()+"x", `{"content":"hi"}`).Code, "a valid bot's 400s are its own")
+	for range rejectsPerMinute {
+		f.post("198.51.100.7", f.url()+"x", `{"content":"hi"}`)
+	}
+	require.Equal(t, http.StatusTooManyRequests, f.post("198.51.100.7", f.url()+"x", `{"content":"hi"}`).Code)
+	assert.Equal(t, http.StatusNoContent, f.post("198.51.100.7", f.url(), `{"content":"build passed"}`).Code)
+	assert.Len(t, f.poster.posts, 1)
 }
 
 // TestExecuteHandler_BadBodies answers a body Nexul cannot post with 400 and its normal error body, naming what broke.

@@ -26,13 +26,6 @@ type quota struct {
 	resetAfter       time.Duration
 }
 
-// peek reports key's quota without spending any.
-func (l *limiter) peek(key string) quota {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.quota(key, l.now())
-}
-
 // take spends one hit of key's quota if any is left, reporting the quota after it.
 func (l *limiter) take(key string) (quota, bool) {
 	l.mu.Lock()

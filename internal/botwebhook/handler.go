@@ -145,26 +145,22 @@ func (h *ExecuteHandler) Routes() http.Handler {
 	return mux
 }
 
-// execute answers as Discord does: 204, or the message with wait=true; 404 alike for every refused URL; 429 past
-// either limit, an address over its rejects answered before any work.
+// execute answers as Discord does: 204, or the message with wait=true; 404 alike for every refused URL; 429 past the
+// bot's posts, or for a refused URL from an address past its rejects. A valid URL never meets the address limit, since
+// behind a tunnel or proxy every sender shares one address.
 func (h *ExecuteHandler) execute(w http.ResponseWriter, r *http.Request) {
 	addr, id := httpx.ClientAddr(r), r.PathValue("id")
 	log := h.log.With("trace_id", logging.NewTraceID(), "botwebhook_id", id, "client", addr)
-	if q := h.rejects.peek(addr); q.remaining == 0 {
-		log.Info("bot post refused: too many rejected requests from this address")
-		writeRateLimited(w, q)
-		return
-	}
 	ctx, cancel := context.WithTimeout(r.Context(), executeTimeout)
 	defer cancel()
 	b, err := h.svc.Authenticate(ctx, id, r.PathValue("token"))
 	if err != nil {
-		h.reject(w, log, addr, err)
+		h.refuse(w, log, addr, err)
 		return
 	}
 	p, err := decodePayload(w, r)
 	if err != nil {
-		h.reject(w, log, addr, err)
+		h.fail(w, log, err)
 		return
 	}
 	q, ok := h.posts.take(b.ID)
@@ -174,9 +170,14 @@ func (h *ExecuteHandler) execute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	m, err := h.svc.Execute(ctx, b, p)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		h.posts.give(b.ID)
+		h.refuse(w, log, addr, err)
+		return
+	}
 	if err != nil {
 		h.posts.give(b.ID)
-		h.reject(w, log, addr, err)
+		h.fail(w, log, err)
 		return
 	}
 	writeQuota(w.Header(), q)
@@ -187,16 +188,24 @@ func (h *ExecuteHandler) execute(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, m)
 }
 
-// reject answers a refused post, counting a 404 or a 400 against the address; it is logged, never audited.
-func (h *ExecuteHandler) reject(w http.ResponseWriter, log *slog.Logger, addr string, err error) {
-	if errors.Is(err, apperrs.ErrNotFound) {
-		h.rejects.take(addr)
-		log.Info("bot post rejected: unknown webhook")
-		httpx.WriteJSON(w, http.StatusNotFound, unknownWebhook)
+// refuse answers a refused URL with 404, counted against the address, or 429 once the address is past its rejects.
+func (h *ExecuteHandler) refuse(w http.ResponseWriter, log *slog.Logger, addr string, err error) {
+	if !errors.Is(err, apperrs.ErrNotFound) {
+		h.fail(w, log, err)
 		return
 	}
+	if q, ok := h.rejects.take(addr); !ok {
+		log.Info("bot post refused: too many rejected requests from this address")
+		writeRateLimited(w, q)
+		return
+	}
+	log.Info("bot post rejected: unknown webhook")
+	httpx.WriteJSON(w, http.StatusNotFound, unknownWebhook)
+}
+
+// fail answers a valid bot's post that cannot go through; it is logged, never audited, and never counted against the address.
+func (h *ExecuteHandler) fail(w http.ResponseWriter, log *slog.Logger, err error) {
 	if errors.Is(err, apperrs.ErrInvalid) {
-		h.rejects.take(addr)
 		log.Info("bot post rejected: invalid payload", "reason", err.Error())
 		httpx.WriteError(w, err)
 		return
