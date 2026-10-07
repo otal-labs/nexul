@@ -1,4 +1,5 @@
 import {
+  BotIcon,
   CopyIcon,
   EyeIcon,
   EyeOffIcon,
@@ -38,12 +39,14 @@ interface RowActionsProps {
   /** The places the item can move to, the current one checked. */
   moveTo?: { label: string; options: { id: string; name: string }[]; currentId: string; onMove: (id: string) => void } | undefined;
   onSettings?: (() => void) | undefined;
+  /** A DM's or thread's bots, which have no settings page to live on. */
+  onBots?: (() => void) | undefined;
   onRename?: (() => void) | undefined;
   onClone?: (() => void) | undefined;
   onDelete?: (() => void) | undefined;
 }
 
-export const RowActions = ({ itemLabel, pin, lock, sidebar, moveTo, onSettings, onRename, onClone, onDelete }: RowActionsProps) => (
+export const RowActions = ({ itemLabel, pin, lock, sidebar, moveTo, onSettings, onBots, onRename, onClone, onDelete }: RowActionsProps) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <Button variant="ghost" size="icon" className="size-7" aria-label={`More actions for ${itemLabel}`}>
@@ -55,6 +58,12 @@ export const RowActions = ({ itemLabel, pin, lock, sidebar, moveTo, onSettings, 
         <DropdownMenuItem onSelect={onSettings}>
           <Settings2Icon aria-hidden />
           Settings
+        </DropdownMenuItem>
+      )}
+      {onBots && (
+        <DropdownMenuItem onSelect={onBots}>
+          <BotIcon aria-hidden />
+          Bots
         </DropdownMenuItem>
       )}
       {pin && (
@@ -116,7 +125,7 @@ export const RowActions = ({ itemLabel, pin, lock, sidebar, moveTo, onSettings, 
           Clone
         </DropdownMenuItem>
       )}
-      {onDelete && (!!onSettings || !!pin || !!sidebar || !!lock || !!moveTo || !!onRename || !!onClone) && <DropdownMenuSeparator />}
+      {onDelete && (!!onSettings || !!onBots || !!pin || !!sidebar || !!lock || !!moveTo || !!onRename || !!onClone) && <DropdownMenuSeparator />}
       {onDelete && (
         <DropdownMenuItem variant="destructive" onSelect={onDelete}>
           <Trash2Icon aria-hidden />

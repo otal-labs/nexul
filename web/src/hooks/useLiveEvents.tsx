@@ -24,6 +24,7 @@ import { getInterviewDraftsKey, getInterviewSourcesKey } from "@/hooks/Interview
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getMeKey, getPATsKey, getSessionsKey } from "@/hooks/AuthHooks";
 import { getAttachmentsKey } from "@/hooks/AttachmentHooks";
+import { getBotwebhooksKey } from "@/hooks/BotwebhookHooks";
 import { getNoteTextKey } from "@/hooks/NoteHooks";
 import { getComputerSetupKey } from "@/hooks/ComputerSetupHooks";
 import {
@@ -105,6 +106,11 @@ const pushTopics: Record<string, string[]> = {
   // The Devices list follows a phone connecting or a device being signed out, without a refresh.
   "session.created": [getSessionsKey],
   "session.revoked": [getSessionsKey],
+  // An open Bots section follows a bot made, changed, deleted, or restored anywhere, its URL included.
+  "botwebhook.created": [getBotwebhooksKey],
+  "botwebhook.updated": [getBotwebhooksKey],
+  "botwebhook.deleted": [getBotwebhooksKey],
+  "botwebhook.restored": [getBotwebhooksKey],
   "category.created": [getCategoriesKey, getProjectCategoriesKey],
   "category.updated": [getCategoriesKey, getProjectCategoriesKey],
   "category.deleted": [getCategoriesKey, getProjectCategoriesKey],

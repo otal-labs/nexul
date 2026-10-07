@@ -49,6 +49,10 @@ export interface ConversationDeleted {
 export const channelMention = (c: { kind: ConversationKind; name?: string | undefined }): string =>
   c.kind === "channel" ? `#${c.name ?? ""}` : (c.name ?? "");
 
+// Whether a channel's settings card has anything to show: the private switch, or a private channel's members.
+export const channelHasSettingsCard = (c: Conversation, canEditChannels: boolean): boolean =>
+  !!c.private || (canEditChannels && !c.general);
+
 // The ticket, doc, or project interview a thread belongs to, as a play target; null for a conversation no play can run on.
 export const conversationPlayTarget = (c: Conversation): { type: PlayType; id: string } | null => {
   if (c.kind === "ticket_thread" && c.ticket_id) return { type: "ticket", id: c.ticket_id };

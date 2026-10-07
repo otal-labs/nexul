@@ -9,9 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useUpdateProfile } from "@/hooks/AuthHooks";
 import { cn } from "@/lib/utils";
 import type { User } from "@/models/User";
-
-// Mirrors the backend's maxAvatarOverrideBytes so an oversized image is rejected before the round-trip.
-const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
+import { readAvatarFile } from "@/utils/AvatarFileUtility";
 
 const ProfileFormSchema = z.object({
   name: z.string().trim().min(1, "Display name is required"),
@@ -45,25 +43,17 @@ export const ProfileForm = ({ user, submitLabel, submitClassName, onSaved }: Pro
   const avatarError = form.formState.errors.avatarOverrideUrl?.message as string | undefined;
   const previewSrc = avatarOverrideUrl || user.avatar_url;
 
-  const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const onFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      form.setError("avatarOverrideUrl", { type: "manual", message: "Please choose an image file" });
+    const read = await readAvatarFile(file);
+    if ("error" in read) {
+      form.setError("avatarOverrideUrl", { type: "manual", message: read.error });
       return;
     }
-    if (file.size > MAX_AVATAR_BYTES) {
-      form.setError("avatarOverrideUrl", { type: "manual", message: "Image must be under 10MB" });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      form.clearErrors("avatarOverrideUrl");
-      form.setValue("avatarOverrideUrl", reader.result as string, { shouldDirty: true });
-    };
-    reader.readAsDataURL(file);
+    form.clearErrors("avatarOverrideUrl");
+    form.setValue("avatarOverrideUrl", read.dataUrl, { shouldDirty: true });
   };
 
   const onRemoveAvatar = () => {
@@ -118,7 +108,7 @@ export const ProfileForm = ({ user, submitLabel, submitClassName, onSaved }: Pro
             accept="image/*"
             aria-label="Upload avatar image"
             className="hidden"
-            onChange={onFileChange}
+            onChange={(e) => void onFileChange(e)}
           />
         </div>
       </div>

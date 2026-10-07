@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { ConversationThread } from "@/components/chat/ConversationThread";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { RowActions } from "@/components/listpane/RowActions";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +13,7 @@ import {
   useFetchOrCreateTicketThread,
   useFetchTicketThreadStatus,
 } from "@/hooks/ChatHooks";
+import { useBotsDialog } from "@/hooks/useBotsDialog";
 import { cn } from "@/lib/utils";
 
 interface TicketThreadSectionProps {
@@ -30,6 +32,7 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
   const shouldLoad = hasThread || starting;
   const showStart = !statusPending && !shouldLoad;
   const { data: conversation, error, isPending } = useFetchOrCreateTicketThread(workspaceId, ticketId, shouldLoad);
+  const { onBots, botsDialog } = useBotsDialog(conversation, "Ticket thread");
 
   useEffect(() => {
     if (!conversation) return;
@@ -45,7 +48,14 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
           "@min-[46rem]:sticky @min-[46rem]:top-4 @min-[46rem]:flex @min-[46rem]:h-[calc(100dvh-2rem)] @min-[46rem]:flex-col @min-[46rem]:border-t-0 @min-[46rem]:pt-0",
       )}
     >
-      <h2 className="shrink-0 text-sm font-semibold tracking-tight">Thread</h2>
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold tracking-tight">Thread</h2>
+        {onBots && (
+          <span className="-my-1.5">
+            <RowActions itemLabel="the thread" onBots={onBots} />
+          </span>
+        )}
+      </div>
       {statusPending && <LoadingDisplay label="Loading thread…" />}
       {showStart && pane && <p className="text-sm text-muted-foreground">No messages yet.</p>}
       {showStart && (
@@ -66,6 +76,7 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
           <ConversationThread workspaceId={workspaceId} conversation={conversation} showHeader={false} />
         </div>
       )}
+      {botsDialog}
     </div>
   );
 };
