@@ -26,7 +26,7 @@ export const useBotActions = () => {
     remove: async (bot: Botwebhook) => {
       const ok = await confirm({
         title: `Delete ${bot.name}?`,
-        message: "Anything posting to its URL gets a 404. Its messages stay in the channel, and you can restore it later with a new URL.",
+        message: "Anything posting to its URL gets a 404. Its messages stay where they were posted, and you can restore it later with a new URL.",
         confirmLabel: "Delete",
       });
       return ok && settled(remove.mutateAsync(bot));

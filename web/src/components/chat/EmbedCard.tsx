@@ -8,7 +8,7 @@ import { FoldBar } from "@/components/chat/FoldBar";
 import { cn } from "@/lib/utils";
 import { EMBED_FIELD_LIMIT, embedFold, embedFoldLabel, httpUrl, type Embed } from "@/models/Embed";
 
-// One embed behind a neutral rule: the sender's color would misread as a status hue, so it is never painted.
+// One embed behind a neutral rule (a sender's color would misread as status); a narrow pane stacks the thumbnail on top.
 export const EmbedCard = ({ embed }: { embed: Embed }) => {
   const [open, setOpen] = useState(false);
   const fold = embedFold(embed);
@@ -18,7 +18,8 @@ export const EmbedCard = ({ embed }: { embed: Embed }) => {
   const thumbnail = httpUrl(embed.thumbnail?.url);
 
   return (
-    <div className="flex gap-3 border-l-2 border-muted-foreground/30 py-0.5 pl-3">
+    <div className="@container">
+    <div className="flex flex-col-reverse gap-3 border-l-2 border-muted-foreground/30 py-0.5 pl-3 @[22rem]:flex-row">
       <div className="min-w-0 flex-1 space-y-1.5">
         <EmbedHeading embed={embed} />
         {embed.description && (
@@ -35,8 +36,9 @@ export const EmbedCard = ({ embed }: { embed: Embed }) => {
         {(embed.footer || embed.timestamp) && <EmbedFooter embed={embed} />}
       </div>
       {thumbnail && (
-        <img src={thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" className="size-16 shrink-0 rounded-md border border-border object-cover" />
+        <img src={thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" className="size-16 shrink-0 self-start rounded-md border border-border object-cover" />
       )}
+    </div>
     </div>
   );
 };
