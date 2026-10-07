@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // releaseAsset downloads name from the tag's release into dest, refusing it unless it matches the release's
@@ -112,20 +113,39 @@ func (h *Host) download(ctx context.Context, url, dest string, mode os.FileMode)
 	return nil
 }
 
+// downloadAttempts covers a release host's brief outage: GitHub answers 5xx for a minute now and then.
+const downloadAttempts = 3
+
+// get retries a failed connection or a 5xx/429 answer, waiting a little longer each time; any other status is final.
 func (h *Host) get(ctx context.Context, url string) (io.ReadCloser, error) {
+	for attempt := 1; ; attempt++ {
+		body, retry, err := h.getOnce(ctx, url)
+		if err == nil || !retry || attempt == downloadAttempts {
+			return body, err
+		}
+		select {
+		case <-ctx.Done():
+			return nil, errors.Join(err, ctx.Err())
+		case <-time.After(time.Duration(attempt) * h.PollInterval):
+		}
+	}
+}
+
+func (h *Host) getOnce(ctx context.Context, url string) (io.ReadCloser, bool, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("build request for %s: %w", url, err)
+		return nil, false, fmt.Errorf("build request for %s: %w", url, err)
 	}
 	resp, err := h.HTTP.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("download %s: %w", url, err)
+		return nil, ctx.Err() == nil, fmt.Errorf("download %s: %w", url, err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		_ = resp.Body.Close() // the error below is what matters
-		return nil, fmt.Errorf("download %s: %s", url, resp.Status)
+		retry := resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests
+		return nil, retry, fmt.Errorf("download %s: %s", url, resp.Status)
 	}
-	return resp.Body, nil
+	return resp.Body, false, nil
 }
 
 func fileSHA256(path string) (string, error) {
