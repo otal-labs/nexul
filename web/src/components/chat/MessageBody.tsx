@@ -5,7 +5,7 @@ import { MessageLink } from "@/components/chat/MessageLink";
 import { splitMessageBody, type MessageBodySegment } from "@/models/Chat";
 import { tokenizeMessageText, type MessageTextPart } from "@/utils/MessageTextUtility";
 
-// Plain text with line breaks kept, each @mention bolded, and http(s) URLs linked; no markdown-string renderer exists in the app yet.
+// Plain text with line breaks kept, each @mention bolded, and http(s) URLs linked; only a bot's text renders markdown.
 const MessageTextPartView = ({ part }: { part: MessageTextPart }) => (
   <>
     {part.kind === "text" && part.text}

@@ -592,6 +592,25 @@ func TestRunTurn_FollowUp_LeavesOutWhatWasRelayedFromTheHarness(t *testing.T) {
 	assert.Contains(t, turns[1].prompts.Full, "u-1: typed in T3", "a replacement session never saw it")
 }
 
+// TestRunTurn_BotMessage_IsNamedAsItShowedAndKeptInTheFollowUp: a bot's message reads under the name it showed, marked
+// a bot, never as the user its id is not; its via names the bot, not a harness, so a follow-up still carries it.
+func TestRunTurn_BotMessage_IsNamedAsItShowedAndKeptInTheFollowUp(t *testing.T) {
+	h := &followUpHarness{sessionIDs: []string{"thread-1", "thread-2"}, updates: []<-chan harness.Update{replyThenDone("first answer"), replyThenDone("second answer")}}
+	svc, conv := ticketThreadWithStandingRules(h)
+	conv.history = []ConversationMessage{{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent first", CreatedAt: minuteOf(32)}}
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first"})
+	conv.history = append(conv.history,
+		ConversationMessage{AuthorID: "b-ci", AuthorKind: "bot", AuthorName: "GitHub Actions", Via: "CI", Body: "build failed", CreatedAt: minuteOf(34)},
+		ConversationMessage{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent second", CreatedAt: minuteOf(35)},
+	)
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent second"})
+
+	turns := h.started()
+	require.Len(t, turns, 2)
+	assert.Contains(t, turns[1].prompts.Incremental, "GitHub Actions (bot): build failed")
+	assert.NotContains(t, turns[1].prompts.Full, "b-ci")
+}
+
 // --- memories index wiring ---------------------------------------------
 
 func TestRunTurn_PlainChat_NamesNoMemories(t *testing.T) {

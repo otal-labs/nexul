@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"reflect"
 
@@ -167,4 +168,14 @@ func mapSentinel(err error) (status int, code, message string) {
 	default:
 		return http.StatusInternalServerError, "INTERNAL", "internal error"
 	}
+}
+
+// ClientAddr is the peer's IP, the one client address the server trusts.
+// ponytail: callers behind the instance's own proxy share one address; trust a forwarded header if that bites.
+func ClientAddr(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }

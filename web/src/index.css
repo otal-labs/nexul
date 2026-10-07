@@ -52,6 +52,8 @@
   --color-info: var(--info);
   --color-merged: var(--merged);
   --color-surface-2: var(--surface-2);
+  --color-cell-line: var(--cell-line);
+  --color-cell-label: var(--cell-label);
   --font-sans: var(--font-sans-stack);
   --font-mono: var(--font-mono-stack);
   /* Radius system: 6px interactive, 8px cards, pills for badges. */
@@ -112,6 +114,10 @@
   --input: #cccccc;
   --ring: #0a0a0a;
 
+  /* a field grid's cell edges and its shaded label cell, mixed from the ink so they read on any surface and palette */
+  --cell-line: color-mix(in oklab, var(--foreground) 12%, transparent);
+  --cell-label: color-mix(in oklab, var(--foreground) 4%, transparent);
+
   /* elevation — hairline + contained, no blur glows */
   --shadow-card: 0 1px 2px rgb(13 20 36 / 0.06), 0 0 0 1px rgb(13 20 36 / 0.03);
   --shadow-elevated: 0 2px 4px rgb(13 20 36 / 0.08), 0 12px 28px rgb(13 20 36 / 0.12);
@@ -157,6 +163,9 @@
   --border: #262626;
   --input: #333333;
   --ring: #f5f5f5;
+
+  --cell-line: color-mix(in oklab, var(--foreground) 10%, transparent);
+  --cell-label: color-mix(in oklab, var(--foreground) 4%, transparent);
 
   --shadow-card: 0 2px 4px rgb(0 0 0 / 0.35), 0 0 0 1px rgb(0 0 0 / 0.3);
   --shadow-elevated: 0 4px 8px rgb(0 0 0 / 0.4), 0 16px 36px rgb(0 0 0 / 0.45);

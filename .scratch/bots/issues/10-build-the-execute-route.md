@@ -19,14 +19,14 @@ are filtered by `allowed_mentions`; `@Agent` never fires.
 
 **Blocked by:** 09
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] End to end over real SQLite with the GitHub Actions, Grafana, and
+- [x] End to end over real SQLite with the GitHub Actions, Grafana, and
       Uptime Kuma payloads from `research/01-discord-webhook-contract.md`
-- [ ] Rejections: the same 404 body for a wrong token and a wrong id, a
+- [x] Rejections: the same 404 body for a wrong token and a wrong id, a
       deleted bot, and a regenerated token; 429 from both limits; 400 for
       an empty post and an oversize body
-- [ ] The token never reaches a log line, an audit row, or an event
-- [ ] A disallowed mention is stored as plain text; the agent pipeline
+- [x] The token never reaches a log line, an audit row, or an event
+- [x] A disallowed mention is stored as plain text; the agent pipeline
       skips the message
-- [ ] The four bot lines on `.scratch/pre-release/issues/03-security-review-integration-model.md` can be ticked
+- [x] The four bot lines on `.scratch/pre-release/issues/03-security-review-integration-model.md` can be ticked

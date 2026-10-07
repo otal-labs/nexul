@@ -966,30 +966,59 @@ func (s *Service) PostHarnessMessage(ctx context.Context, conversationID, userID
 	return err
 }
 
-// PostBotMessage posts a bot's message under the name and avatar it shows; the URL that reached the bot is the
-// credential, so it checks no permission. Its mentions are not parsed here: the sender's allowed_mentions decide them.
-func (s *Service) PostBotMessage(ctx context.Context, conversationID, botID, name, avatarURL, body string, embeds json.RawMessage) (string, time.Time, error) {
-	conversationID, botID, name = strings.TrimSpace(conversationID), strings.TrimSpace(botID), strings.TrimSpace(name)
+// BotPost is one post through a bot's URL as chat stores it; the URL that reached the bot is the credential.
+type BotPost struct {
+	ConversationID, BotID string
+	// Name and AvatarURL are what the message shows, kept through the bot's rename or delete.
+	Name, AvatarURL, Body string
+	Embeds                json.RawMessage
+	// Mentions are the @handles in Body the sender allowed; any other handle stays plain text and @Agent never fires.
+	Mentions []string
+	// Via is the bot's own name when Name overrides it, so the message says which bot sent it; empty otherwise.
+	Via string
+	// Audit is the action the post's audit row records under the bot.
+	Audit string
+}
+
+// PostBotMessage posts a bot's message, counts it on its bot, and audits it, in one transaction; it checks no
+// permission, and a bot gone meanwhile is ErrNotFound.
+func (s *Service) PostBotMessage(ctx context.Context, p BotPost) (*Message, error) {
+	conversationID, botID, name := strings.TrimSpace(p.ConversationID), strings.TrimSpace(p.BotID), strings.TrimSpace(p.Name)
 	if conversationID == "" || botID == "" {
-		return "", time.Time{}, fmt.Errorf("%w: a bot message needs its conversation and bot ids", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: a bot message needs its conversation and bot ids", apperrs.ErrInvalid)
 	}
 	if name == "" {
-		return "", time.Time{}, fmt.Errorf("%w: a bot message needs the name it shows", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: a bot message needs the name it shows", apperrs.ErrInvalid)
 	}
-	body = strings.TrimSpace(body)
-	if body == "" && len(embeds) == 0 {
-		return "", time.Time{}, fmt.Errorf("%w: a bot message needs content or an embed", apperrs.ErrInvalid)
+	body := strings.TrimSpace(p.Body)
+	if body == "" && len(p.Embeds) == 0 {
+		return nil, fmt.Errorf("%w: a bot message needs content or an embed", apperrs.ErrInvalid)
 	}
 	now := s.now().UTC()
 	m := &Message{
 		ID: ids.New(), ConversationID: conversationID, AuthorID: botID, AuthorKind: AuthorBot,
-		AuthorName: name, AuthorAvatarURL: strings.TrimSpace(avatarURL), Body: body, Mentions: []Mention{}, Embeds: embeds,
-		CreatedAt: now, UpdatedAt: now,
+		AuthorName: name, AuthorAvatarURL: strings.TrimSpace(p.AvatarURL), Body: body, Mentions: allowedMentions(body, p.Mentions),
+		Embeds: p.Embeds, Via: strings.TrimSpace(p.Via), CreatedAt: now, UpdatedAt: now,
 	}
-	if _, err := s.create(ctx, m); err != nil {
-		return "", time.Time{}, err
+	membersOnly, err := s.MembersOnly(ctx, conversationID)
+	if err != nil {
+		return nil, fmt.Errorf("post bot message to conversation %s: %w", conversationID, err)
 	}
-	return m.ID, m.CreatedAt, nil
+	if err := s.repo.CreateBotMessage(ctx, m, p.Audit, messageCreated(m, membersOnly)); err != nil {
+		return nil, fmt.Errorf("post bot message to conversation %s: %w", conversationID, err)
+	}
+	return m, nil
+}
+
+// allowedMentions is body's person mentions whose handle is in allowed, ignoring case; never the Agent.
+func allowedMentions(body string, allowed []string) []Mention {
+	out := []Mention{}
+	for _, m := range ParseMentions(body) {
+		if m.Kind == MentionUser && slices.ContainsFunc(allowed, func(h string) bool { return strings.EqualFold(h, m.Handle) }) {
+			out = append(out, m)
+		}
+	}
+	return out
 }
 
 // maxHandoffBytes caps the hand-offs one reply stores, as JSON.

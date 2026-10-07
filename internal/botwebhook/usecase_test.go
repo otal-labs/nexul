@@ -143,6 +143,34 @@ type fakeInstance struct {
 
 func (f fakeInstance) GetInstanceURL(context.Context) (string, error) { return f.url, f.err }
 
+// fakePoster records each post as chat would receive it.
+type fakePoster struct {
+	mu    sync.Mutex
+	posts []Post
+	err   error
+}
+
+func (f *fakePoster) PostBotMessage(_ context.Context, p Post) (string, time.Time, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return "", time.Time{}, f.err
+	}
+	f.posts = append(f.posts, p)
+	return fmt.Sprintf("m-%d", len(f.posts)), fixedNow, nil
+}
+
+// fakePeople is every conversation's workspace members; asked counts the lookups.
+type fakePeople struct {
+	people []Person
+	asked  int
+}
+
+func (f *fakePeople) Members(context.Context, string) ([]Person, error) {
+	f.asked++
+	return f.people, nil
+}
+
 const (
 	editor   = "u-alice"
 	reader   = "u-bob"
@@ -166,6 +194,8 @@ func newTestService(repo *fakeRepo) *Service {
 			"c-dm":  {ID: "c-dm", WorkspaceID: "w-acme", MembersOnly: true},
 		},
 		Instance: fakeInstance{url: "https://nexul.example.com/"},
+		Poster:   &fakePoster{},
+		People:   &fakePeople{people: []Person{{ID: "u-alice", Login: "alice"}, {ID: "u-bob", Login: "bob"}}},
 	})
 	s.now = func() time.Time { return fixedNow }
 	return s

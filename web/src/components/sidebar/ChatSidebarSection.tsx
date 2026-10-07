@@ -1,8 +1,7 @@
-import { Users } from "lucide-react";
 import { useMatch, useNavigate } from "react-router";
 
 import { ChannelSidebarRow } from "@/components/sidebar/ChannelSidebarRow";
-import { ChatSidebarRow } from "@/components/sidebar/ChatSidebarRow";
+import { DMSidebarRow } from "@/components/sidebar/DMSidebarRow";
 import { DocThreadSidebarRow } from "@/components/sidebar/DocThreadSidebarRow";
 import { SidebarSectionHeader } from "@/components/sidebar/SidebarSectionHeader";
 import { VoiceChannelSidebarRow } from "@/components/sidebar/VoiceChannelSidebarRow";
@@ -84,11 +83,10 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
           onAction={canCreateDM ? () => void openNewDM() : undefined}
         />
         {dms.map((conversation) => (
-          <ChatSidebarRow
+          <DMSidebarRow
             key={conversation.id}
-            conversationId={conversation.id}
+            conversation={conversation}
             label={conversationLabel(conversation, dmCtx)}
-            icon={Users}
             unreadCount={unread?.[conversation.id] ?? 0}
           />
         ))}

@@ -9,6 +9,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 )
@@ -40,7 +41,7 @@ func deviceFromCtx(ctx context.Context) Device {
 // DeviceFromRequest reads the signing-in device off the request: a few lines of user-agent matching, no dependency.
 func DeviceFromRequest(r *http.Request) Device {
 	ua := r.UserAgent()
-	d := Device{Client: ClientBrowser, Platform: uaPlatform(ua), IP: clientAddr(r)}
+	d := Device{Client: ClientBrowser, Platform: uaPlatform(ua), IP: httpx.ClientAddr(r)}
 	if strings.Contains(ua, "Electron/") {
 		d.Client = ClientDesktop
 		d.Label = "Nexul desktop"

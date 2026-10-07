@@ -35,7 +35,25 @@ type InstanceURL interface {
 
 // Poster posts a bot's message into its conversation; chat satisfies it, so chat never learns what a webhook is.
 type Poster interface {
-	PostBotMessage(ctx context.Context, conversationID, botID, name, avatarURL, body string, embeds json.RawMessage) (string, time.Time, error)
+	// PostBotMessage writes the message, counts the post on its bot, and audits it, in one transaction.
+	PostBotMessage(ctx context.Context, p Post) (string, time.Time, error)
+}
+
+// Post is one post through a bot's URL, as the bot's message stores it.
+type Post struct {
+	ConversationID, BotID, Name, AvatarURL, Body string
+	Embeds                                       json.RawMessage
+	// Mentionable are the logins the body's @handles may mention; any other handle stays plain text.
+	Mentionable []string
+	// Via is the bot's own name when the post overrode it, empty otherwise.
+	Via string
+	// Audit is the post's audit action: the route with its token stripped.
+	Audit string
+}
+
+// People lists who a bot's post may mention: the members of its conversation's workspace.
+type People interface {
+	Members(ctx context.Context, conversationID string) ([]Person, error)
 }
 
 // Config wires Service's seams; the adapters live in the composition root.
@@ -44,6 +62,8 @@ type Config struct {
 	Gate          Gate
 	Conversations Conversations
 	Instance      InstanceURL
+	Poster        Poster
+	People        People
 }
 
 // Service is the botwebhook use-case layer; every mutation enqueues its event through the transactional outbox.
@@ -52,12 +72,15 @@ type Service struct {
 	gate          Gate
 	conversations Conversations
 	instance      InstanceURL
+	poster        Poster
+	people        People
 	now           func() time.Time
 }
 
 // NewService wires the bot use-cases over the given seams.
 func NewService(cfg Config) *Service {
-	return &Service{repo: cfg.Repo, gate: cfg.Gate, conversations: cfg.Conversations, instance: cfg.Instance, now: time.Now}
+	return &Service{repo: cfg.Repo, gate: cfg.Gate, conversations: cfg.Conversations, instance: cfg.Instance,
+		poster: cfg.Poster, people: cfg.People, now: time.Now}
 }
 
 // List returns a conversation's live bots, URLs only for botwebhook:write; the deleted list is for editors alone.

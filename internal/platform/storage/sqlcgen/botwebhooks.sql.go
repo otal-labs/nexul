@@ -10,6 +10,23 @@ import (
 	"database/sql"
 )
 
+const countBotwebhookPost = `-- name: CountBotwebhookPost :execrows
+UPDATE botwebhooks SET post_count = post_count + 1, last_post_at = ? WHERE id = ? AND deleted_at IS NULL
+`
+
+type CountBotwebhookPostParams struct {
+	LastPostAt sql.NullInt64
+	ID         string
+}
+
+func (q *Queries) CountBotwebhookPost(ctx context.Context, arg CountBotwebhookPostParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, countBotwebhookPost, arg.LastPostAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const createBotwebhook = `-- name: CreateBotwebhook :exec
 INSERT INTO botwebhooks (id, conversation_id, name, avatar, token, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `

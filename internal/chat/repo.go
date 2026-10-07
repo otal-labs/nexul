@@ -52,6 +52,9 @@ type Repo interface {
 	GetConversationByAgentThread(ctx context.Context, threadID string) (*Conversation, error)
 
 	CreateMessage(ctx context.Context, m *Message, evts ...eventbus.OutboxEvent) error
+	// CreateBotMessage inserts a bot's message, counts the post on its live bot, and records audit as the bot's action,
+	// in one transaction; ErrNotFound once the bot is deleted.
+	CreateBotMessage(ctx context.Context, m *Message, audit string, evts ...eventbus.OutboxEvent) error
 	GetMessage(ctx context.Context, id string) (*Message, error)
 	// ListMessages returns a conversation's messages oldest-first, capped at limit.
 	ListMessages(ctx context.Context, conversationID string, limit int) ([]*Message, error)

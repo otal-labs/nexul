@@ -177,6 +177,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Roles:       svc.rolesSvc,
 		Mentions:    svc.mentionsSvc,
 		Chat:        svc.chatSvc,
+		Botwebhooks: svc.botwebhookSvc,
 		Plays:       svc.playsSvc,
 		PlayRuns:    svc.playsRunner,
 		Pairing:     svc.pairingSvc,
@@ -228,6 +229,8 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("/.well-known/", http.NotFoundHandler())
 	httpMux.Handle("/hooks/github", gitprovider.NewWebhookHandler(githubWebhookSecret(cfg.AuthSecret), bus))
 	httpMux.Handle("/hooks/livekit", svc.voiceWebhookHandler)
+	// The token in the path is the credential, so the route stays outside the audit middleware, which records raw paths.
+	httpMux.Handle("POST /api/botwebhooks/{id}/{token}", botwebhook.NewExecuteHandler(svc.botwebhookSvc, logger).Routes())
 	mountLogsProxy(httpMux, cfg.LogsURL, logger)
 	routes := append(httpx.RoutesOf(apiMux), httpx.RoutesOf(httpMux)...)
 	registerOpenAPIRoutes(spec, routes)
@@ -412,6 +415,8 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("POST", "/api/conversations/{id}/botwebhooks", "Create a bot with a name and an avatar (botwebhook:write); ten live bots per conversation", "botwebhooks")
 	spec.Register("PATCH", "/api/botwebhooks/{id}", "Rename a bot, change or clear its avatar, regenerate its URL, or restore it with a new URL via deleted false (botwebhook:write)", "botwebhooks")
 	spec.Register("DELETE", "/api/botwebhooks/{id}", "Delete a bot: its URL stops working at once and its messages stay (botwebhook:delete)", "botwebhooks")
+	spec.Register("GET", "/api/botwebhooks/{id}/avatar", "A bot's own avatar, to anyone who reads its conversation", "botwebhooks")
+	spec.Register("POST", "/api/botwebhooks/{id}/{token}", "Post as a bot with Discord's execute-webhook JSON; the token is the credential; ?wait=true returns the message", "botwebhooks")
 	spec.Register("POST", "/api/voice/{conversationID}/token", "Mint a LiveKit join token for a voice channel", "voice")
 	spec.Register("POST", "/api/voice/{conversationID}/leave", "Leave a voice channel (removes optimistic presence)", "voice")
 	spec.Register("GET", "/api/voice/occupancy", "Current voice channel occupancy", "voice")

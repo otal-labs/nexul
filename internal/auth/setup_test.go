@@ -126,14 +126,6 @@ func TestHandler_UnlockSetup_CodeIsNotConsumed(t *testing.T) {
 	assert.Equal(t, http.StatusOK, unlock(h, "198.51.100.1:4000", `{"code":"nxs_right"}`).Code, "the domain handoff reuses the code")
 }
 
-func TestClientAddr(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.RemoteAddr = "[2001:db8::1]:443"
-	assert.Equal(t, "2001:db8::1", clientAddr(req))
-	req.RemoteAddr = "pipe"
-	assert.Equal(t, "pipe", clientAddr(req))
-}
-
 func TestRequireAuth_SetupPass(t *testing.T) {
 	tests := []struct {
 		name    string

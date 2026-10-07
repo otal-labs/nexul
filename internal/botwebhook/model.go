@@ -64,6 +64,11 @@ type Conversation struct {
 	MembersOnly bool
 }
 
+// Person is a workspace member a bot's post may mention.
+type Person struct {
+	ID, Login string
+}
+
 // botName is the one validation a bot's name goes through, on create, rename, and restore.
 func botName(raw string) (string, error) {
 	name := strings.TrimSpace(raw)

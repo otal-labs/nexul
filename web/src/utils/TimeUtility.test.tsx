@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { daysAgo, formatDurationMs, formatRelativeTime } from "@/utils/TimeUtility";
+import { daysAgo, formatCalendarTime, formatDiscordTimestamp, formatDurationMs, formatRelativeTime } from "@/utils/TimeUtility";
 
 describe("formatRelativeTime", () => {
   afterEach(() => {
@@ -52,5 +52,36 @@ describe("formatDurationMs", () => {
   it("formats one second and above in seconds", () => {
     expect(formatDurationMs(2300)).toBe("2.3s");
     expect(formatDurationMs(1000)).toBe("1.0s");
+  });
+});
+
+describe("formatCalendarTime", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("names today and yesterday by the reader's calendar day, else the date", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 6, 0, 5));
+    expect(formatCalendarTime(new Date(2026, 9, 6, 0, 1).toISOString())).toBe("Today at 00:01");
+    expect(formatCalendarTime(new Date(2026, 9, 5, 21, 11).toISOString())).toBe("Yesterday at 21:11");
+    expect(formatCalendarTime(new Date(2026, 9, 4, 21, 11).toISOString())).toBe(`${new Date(2026, 9, 4).toLocaleDateString()} 21:11`);
+  });
+
+  it("returns the raw string when the timestamp is unparseable", () => {
+    expect(formatCalendarTime("soon")).toBe("soon");
+  });
+});
+
+describe("formatDiscordTimestamp", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("reads R as a distance in either direction", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-06T20:00:00Z"));
+    expect(formatDiscordTimestamp(new Date("2026-10-06T19:55:00Z"), "R")).toBe("5 minutes ago");
+    expect(formatDiscordTimestamp(new Date("2026-10-09T20:00:00Z"), "R")).toBe("in 3 days");
   });
 });

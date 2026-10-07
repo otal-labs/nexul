@@ -62,7 +62,7 @@ A missing or wrong token gets `401`. Revoke the token in the same place to cut t
 
 ## What an agent can do
 
-107 tools, each named `<object>_<verb>` and shaped around a task rather than a button.
+110 tools, each named `<object>_<verb>` and shaped around a task rather than a button.
 
 | Area | Tools |
 |---|---|
@@ -73,6 +73,7 @@ A missing or wrong token gets `401`. Revoke the token in the same place to cut t
 | Attachments | `attachment_create`, `attachment_get` |
 | Templates | `template_get`, `template_update` |
 | Chat and notifications | `conversation_list`, `conversation_update`, `conversation_delete`, `message_list`, `message_post`, `mention_search`, `notification_list`, `notification_update` |
+| Bots | `botwebhook_list`, `botwebhook_create`, `botwebhook_update` |
 | Stacks and deploys | `stack_list`, `stack_get`, `stack_create`, `stack_update`, `stack_delete`, `stack_deploy`, `deploy_list`, `deploy_get`, `deploy_cancel` |
 | Machines and the instance | `machine_list`, `machine_discover`, `machine_import`, `host_create`, `host_delete`, `instance_get`, `instance_upgrade` |
 | DNS and routing | `dns_zone_list`, `dns_record_list`, `dns_record_create`, `dns_record_update`, `dns_record_delete`, `dns_tunnel_list`, `dns_tunnel_create`, `dns_tunnel_update`, `dns_tunnel_delete`, `gateway_list`, `gateway_create`, `gateway_delete`, `exposure_list`, `exposure_create`, `exposure_delete` |
