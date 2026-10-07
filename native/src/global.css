@@ -42,6 +42,10 @@
       --color-border: #262626;
       --color-input: #333333;
       --color-ring: #f5f5f5;
+
+      /* foreground at 10% and 4%: a field grid's cell edges and its shaded label cell */
+      --color-cell-line: #f5f5f51a;
+      --color-cell-label: #f5f5f50a;
     }
 
     @variant light {
@@ -70,6 +74,10 @@
       --color-border: #d9d9d9;
       --color-input: #cccccc;
       --color-ring: #0a0a0a;
+
+      /* foreground at 12% and 4% */
+      --color-cell-line: #0a0a0a1f;
+      --color-cell-label: #0a0a0a0a;
     }
   }
 }

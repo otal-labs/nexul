@@ -1,3 +1,4 @@
+import type { Embed } from "@/models/Embed";
 import { personLabel, type Person } from "@/models/Person";
 
 // Mirrors internal/chat/model.go; "voice_channel" and the interview and channel threads exist but the phone does not list them.
@@ -25,7 +26,7 @@ export interface Conversation {
   private?: boolean;
 }
 
-export type AuthorKind = "user" | "agent" | "system";
+export type AuthorKind = "user" | "agent" | "system" | "bot";
 
 export interface ChatMention {
   kind: "user" | "agent";
@@ -49,6 +50,10 @@ export interface Message {
   handoffs?: Handoff[];
   // The harness its author wrote it in, such as T3, when it was relayed from there (ADR 0126).
   via?: string;
+  // What a bot message showed when posted, kept through the bot's rename or delete; never set for people (ADR 0129).
+  author_name?: string;
+  author_avatar_url?: string;
+  embeds?: Embed[];
   // Client-only: the optimistic row shown until the server confirms the post.
   pending?: boolean;
 }
@@ -107,11 +112,18 @@ export interface Reaction {
 
 const CONTINUATION_WINDOW_MS = 5 * 60_000;
 
-// Mirrors web's isContinuation: the same person's ordinary message within five minutes and the same day of the
-// previous one shares its header. Agent and system lines never group.
+// The same bot under another name or avatar is a new author on screen, so it starts its own group.
+const sameAuthor = (prev: Message, curr: Message): boolean => {
+  if (prev.author_kind !== curr.author_kind || prev.author_id !== curr.author_id) return false;
+  if (curr.author_kind === "bot") return prev.author_name === curr.author_name && prev.author_avatar_url === curr.author_avatar_url;
+  return curr.author_kind === "user";
+};
+
+// Mirrors web's isContinuation: the same person's or bot's ordinary message within five minutes and the same day of
+// the previous one shares its header. Agent and system lines never group.
 export const isContinuation = (prev: Message | undefined, curr: Message): boolean => {
   if (prev === undefined || prev.deleted_at) return false;
-  if (prev.author_kind !== "user" || curr.author_kind !== "user" || prev.author_id !== curr.author_id) return false;
+  if (!sameAuthor(prev, curr)) return false;
   const gapMs = Date.parse(curr.created_at) - Date.parse(prev.created_at);
   if (!(gapMs >= 0 && gapMs <= CONTINUATION_WINDOW_MS)) return false;
   return new Date(prev.created_at).toDateString() === new Date(curr.created_at).toDateString();

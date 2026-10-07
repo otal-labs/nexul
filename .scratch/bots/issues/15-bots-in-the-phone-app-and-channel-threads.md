@@ -11,7 +11,7 @@ exists.
 
 **Blocked by:** 12, 13
 
-**Status:** needs-triage
+**Status:** phone half done (bot rows, embeds, and Discord markdown in `native/`); the channel-thread Bots item stays open until a channel-thread screen exists
 
-- [ ] A bot post on the phone shows its name and BOT tag, never an id
+- [x] A bot post on the phone shows its name and BOT tag, never an id
 - [ ] Embeds readable at phone width
