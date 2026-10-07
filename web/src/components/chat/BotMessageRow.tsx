@@ -16,6 +16,7 @@ const BotMessageHeader = ({ message }: { message: ChatMessage }) => (
     <Badge variant="outline" className="h-4 shrink-0 px-1 text-[9px] tracking-wide uppercase">
       Bot
     </Badge>
+    {message.via && <span className="shrink-0 text-[11px]">via {message.via}</span>}
     <span className="shrink-0 font-mono text-[11px]" title={formatFullTime(message.created_at)}>
       {formatRelativeTime(message.created_at)}
     </span>

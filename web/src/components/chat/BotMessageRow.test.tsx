@@ -73,6 +73,11 @@ describe("MessageRow for a bot", () => {
     expect(screen.queryByText("b-ci")).not.toBeInTheDocument();
   });
 
+  it("names the sending bot beside a post that renamed itself, so a fake 'GitHub' shows where it came from", () => {
+    renderBot(botMessage({ author_name: "GitHub", via: "CI", body: "hi" }));
+    expect(screen.getByText("via CI")).toBeInTheDocument();
+  });
+
   it("drops the avatar and header when it continues the same bot's group", () => {
     renderBot(botMessage({ body: "second" }), true);
     expect(screen.queryByText("CI")).not.toBeInTheDocument();
