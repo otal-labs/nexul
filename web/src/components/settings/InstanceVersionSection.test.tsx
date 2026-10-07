@@ -56,7 +56,29 @@ const upgrading = (status: "pending" | "started") => ({
   },
 });
 
-const rowState = (label: string) => screen.getByText(label).closest("li")?.getAttribute("data-state");
+// DeployStepRow names each phase's state for screen readers in a visually hidden span after the label.
+const phaseState = (label: string) => screen.getByText(label).nextElementSibling?.textContent;
+
+const failedUpgrade = (error: string) => ({
+  data: {
+    version: "v0.2.0-beta-003",
+    channel: "beta",
+    latest,
+    update_available: true,
+    can_upgrade: true,
+    reason: "",
+    upgrade: {
+      id: "u-1",
+      from_version: "v0.2.0-beta-003",
+      to_version: "v0.2.0-beta-004",
+      status: "failed",
+      error,
+      requested_by: "user-1",
+      created_at: "2026-09-15T00:00:00Z",
+      updated_at: "2026-09-15T00:00:02Z",
+    },
+  },
+});
 
 describe("InstanceVersionSection", () => {
   beforeEach(() => {
@@ -80,7 +102,7 @@ describe("InstanceVersionSection", () => {
     renderSection();
 
     expect(await screen.findByText("v0.2.0-beta-004 is available")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Release notes" })).toHaveAttribute("href", latest.url);
+    expect(screen.getByRole("link", { name: "Release notes for v0.2.0-beta-004" })).toHaveAttribute("href", latest.url);
     expect(screen.getByRole("button", { name: "Upgrade to v0.2.0-beta-004" })).toBeEnabled();
   });
 
@@ -118,7 +140,7 @@ describe("InstanceVersionSection", () => {
     renderSection();
 
     expect(await screen.findByText("v0.2.0-beta-004 is available")).toBeInTheDocument();
-    expect(screen.getByText("instance runner is not connected")).toBeInTheDocument();
+    expect(screen.getByText("Can't upgrade yet: instance runner is not connected.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^upgrade/i })).not.toBeInTheDocument();
   });
 
@@ -140,40 +162,40 @@ describe("InstanceVersionSection", () => {
     expect(screen.getByText("No release to compare against")).toBeInTheDocument();
     expect(screen.queryByText("Up to date")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^upgrade/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Release notes" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /release notes/i })).not.toBeInTheDocument();
   });
 
-  it("ticks off the hand-off and spins on the install once the upgrade has started", async () => {
+  it("ticks off the hand-off and runs the install once the upgrade has started", async () => {
     mocks.get.mockResolvedValue(upgrading("started"));
     renderSection();
 
-    await screen.findByText("Install v0.2.0-beta-004 and restart");
-    expect(rowState("Hand the upgrade to this machine")).toBe("ok");
-    expect(rowState("Install v0.2.0-beta-004 and restart")).toBe("pending");
-    expect(rowState("Come back on v0.2.0-beta-004")).toBe("idle");
+    await screen.findByText("Download and install v0.2.0-beta-004");
+    expect(phaseState("Hand off to this machine")).toBe("done");
+    expect(phaseState("Download and install v0.2.0-beta-004")).toBe("active");
+    expect(phaseState("Restart on v0.2.0-beta-004")).toBe("pending");
     expect(screen.getByText("Upgrading to v0.2.0-beta-004")).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("spins on the hand-off while the upgrade is only pending", async () => {
+  it("runs the hand-off while the upgrade is only pending", async () => {
     mocks.get.mockResolvedValue(upgrading("pending"));
     renderSection();
 
-    await screen.findByText("Hand the upgrade to this machine");
-    expect(rowState("Hand the upgrade to this machine")).toBe("pending");
-    expect(rowState("Install v0.2.0-beta-004 and restart")).toBe("idle");
+    await screen.findByText("Hand off to this machine");
+    expect(phaseState("Hand off to this machine")).toBe("active");
+    expect(phaseState("Download and install v0.2.0-beta-004")).toBe("pending");
   });
 
   it("reads a failed poll mid-upgrade as the restart, not an error", async () => {
     mocks.get.mockResolvedValueOnce(upgrading("started"));
     const client = renderSection();
-    await screen.findByText("Install v0.2.0-beta-004 and restart");
+    await screen.findByText("Download and install v0.2.0-beta-004");
 
     mocks.get.mockRejectedValueOnce(new Error("Network Error"));
     await client.refetchQueries();
 
-    await waitFor(() => expect(rowState("Come back on v0.2.0-beta-004")).toBe("pending"));
-    expect(rowState("Install v0.2.0-beta-004 and restart")).toBe("ok");
+    await waitFor(() => expect(phaseState("Restart on v0.2.0-beta-004")).toBe("active"));
+    expect(phaseState("Download and install v0.2.0-beta-004")).toBe("done");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -200,36 +222,35 @@ describe("InstanceVersionSection", () => {
     });
     renderSection();
 
-    expect(await screen.findByText("Upgraded to v0.2.0-beta-004 · 5m ago")).toBeInTheDocument();
+    expect(await screen.findByText(/Upgraded from/)).toHaveTextContent("Upgraded from v0.2.0-beta-003 · 5m ago");
     expect(screen.getByRole("button", { name: "Upgrade to v0.2.0-beta-005" })).toBeEnabled();
   });
 
-  it("shows the error and the journal hint when the upgrade failed", async () => {
+  it("fails the install phase with the upgrade's own error and offers to try again", async () => {
+    mocks.get.mockResolvedValue(
+      failedUpgrade("nexul-server: download https://example.com/nexul-server-linux-arm64: 500 Internal Server Error"),
+    );
+    renderSection();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("500 Internal Server Error");
+    expect(screen.getByText("Upgrade to v0.2.0-beta-004 failed", { selector: "span" })).toBeInTheDocument();
+    expect(phaseState("Hand off to this machine")).toBe("done");
+    expect(phaseState("Download and install v0.2.0-beta-004")).toBe("failed");
+    expect(screen.getByText("2s")).toBeInTheDocument();
+    expect(screen.getByText("journalctl -u 'nexul-upgrade-*'")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
+  });
+
+  it("drops an old failure once the instance runs that release anyway", async () => {
+    const failed = failedUpgrade("instance is still on v0.2.0-beta-003");
     mocks.get.mockResolvedValue({
-      data: {
-        version: "v0.2.0-beta-003",
-        channel: "beta",
-        latest,
-        update_available: true,
-        can_upgrade: true,
-        reason: "",
-        upgrade: {
-          id: "u-1",
-          from_version: "v0.2.0-beta-003",
-          to_version: "v0.2.0-beta-004",
-          status: "failed",
-          error: "instance is still on v0.2.0-beta-003; run journalctl -u nexul-upgrade on the host",
-          requested_by: "user-1",
-          created_at: "2026-09-15T00:00:00Z",
-          updated_at: "2026-09-15T00:00:00Z",
-        },
-      },
+      data: { ...failed.data, version: "v0.2.0-beta-004", update_available: false, can_upgrade: false, reason: "already on the newest release" },
     });
     renderSection();
 
-    await screen.findByText(/instance is still on v0.2.0-beta-003/);
-    expect(screen.getByText("journalctl -u 'nexul-upgrade-*'")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Upgrade to v0.2.0-beta-004" })).toBeEnabled();
+    expect(await screen.findByText("Up to date")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText("Download and install v0.2.0-beta-004")).not.toBeInTheDocument();
   });
 
   it("posts the upgrade request once the confirmation dialog is accepted", async () => {

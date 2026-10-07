@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { formatStepDuration, type DeployStep } from "@/utils/DeployLogUtility";
 
 interface DeployStepRowProps {
-  step: DeployStep;
+  step: Pick<DeployStep, "label" | "state" | "durationMs">;
 }
 
 export const DeployStepRow = ({ step }: DeployStepRowProps) => {

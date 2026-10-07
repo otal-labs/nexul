@@ -3,7 +3,7 @@ import type { DeployStep } from "@/utils/DeployLogUtility";
 
 interface DeployStepListProps {
   title: string;
-  steps: DeployStep[];
+  steps: (Pick<DeployStep, "label" | "state" | "durationMs"> & { key: string })[];
 }
 
 // The log panel itself is aria-live="off"; this one polite line is what a screen reader hears on a step change.

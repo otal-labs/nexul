@@ -90,11 +90,22 @@ func (f *fakeExec) set(prefix, out string, err error) {
 type fakeRelease struct {
 	files    map[string][]byte
 	checksum map[string]string
+	// unavailable answers 503 to that many requests for a file before serving it.
+	unavailable map[string]int
+	mu          sync.Mutex
 }
 
 func (r *fakeRelease) handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		name := filepath.Base(req.URL.Path)
+		r.mu.Lock()
+		down := r.unavailable[name] > 0
+		r.unavailable[name]--
+		r.mu.Unlock()
+		if down {
+			http.Error(w, "unavailable", http.StatusServiceUnavailable)
+			return
+		}
 		if name == "checksums.txt" {
 			var b strings.Builder
 			for n, data := range r.files {
@@ -182,7 +193,7 @@ var testTargets = []string{"linux-amd64", "darwin-arm64", "windows-amd64"}
 func newTestHost(t *testing.T) *testHost {
 	t.Helper()
 	root := t.TempDir()
-	rel := &fakeRelease{files: map[string][]byte{}}
+	rel := &fakeRelease{files: map[string][]byte{}, unavailable: map[string]int{}}
 	for _, target := range testTargets {
 		ext := ""
 		if strings.HasPrefix(target, "windows") {

@@ -9,14 +9,14 @@ An upgrade swaps the binary of every Nexul service on the machine and restarts e
 
 ## From the web app
 
-1. Open **Settings → Instance**. **Instance version** shows what you run, its channel, and whether a newer release exists.
+1. Open **Settings → Instance**. **Instance version** shows the status, the release you run, its channel, and the newest release, which links to its notes.
 2. Click **Upgrade to vX** and confirm.
 
-The `instance` runner runs the upgrade on the server, so it keeps going while the server restarts. The page reconnects by itself and shows **Upgraded to vX**. The `instance_upgrade` MCP tool does the same.
+The `instance` runner runs the upgrade on the server, so it keeps going while the server restarts. The section lists three phases, hand off, download and install, and restart, with the time spent on the current one. The page reconnects by itself and shows **Up to date** with the release you upgraded from. The `instance_upgrade` MCP tool does the same.
 
 The button is missing when the instance is a development build, is already on the newest release, or its `instance` runner is offline or busy. The section says which.
 
-If the instance is still on the old version after fifteen minutes, the section reports the upgrade as failed. Read the upgrade's output on the server:
+Each download is retried a few times, so a release host's brief outage doesn't stop an upgrade. If the upgrade still stops before the restart, the section marks the install phase failed within seconds, shows the upgrade's error, and its button reads **Try again**. If the instance is still on the old version after fifteen minutes, the section reports the upgrade as failed too. Read the upgrade's output on the server:
 
 ```sh
 journalctl -u 'nexul-upgrade-*'
