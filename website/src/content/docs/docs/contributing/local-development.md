@@ -1,5 +1,5 @@
 ---
-title: Local Development
+title: Local development
 description: Prerequisites, make targets, the debug stack, and running tests.
 sidebar:
   order: 3
@@ -119,5 +119,5 @@ The Makefile filters `cmd/*`, `testutil/`, `sqlcgen/`, and `t3rpctest/` from the
 computes the percentage over the remaining statements, and fails below 80%.
 It writes `coverage.filtered.out` and `coverage.html`, the same artifacts CI
 uploads. See
-[Coding Standards](/docs/contributing/coding-standards/) for what the gate
+[Coding standards](/docs/contributing/coding-standards/) for what the gate
 expects beyond the number.

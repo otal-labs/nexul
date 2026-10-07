@@ -1,5 +1,5 @@
 ---
-title: This Website
+title: This website
 description: How the documentation site itself is built and deployed.
 sidebar:
   order: 7
@@ -31,7 +31,7 @@ Every page needs frontmatter:
 
 ```yaml
 ---
-title: <Title Case, short>
+title: <Sentence case, short>
 description: <one sentence>
 sidebar:
   order: <position within its directory>
@@ -74,7 +74,7 @@ their components in `src/components/docs/`; code blocks use the monochrome
 theme pair in `src/lib/shiki-mono.ts`. The homepage, roadmap and changelog
 use `src/styles/landing.css`, with the example workflow in
 `src/components/WorkflowPreview.astro`. Fonts are bundled locally (see
-[Coding Standards](/docs/contributing/coding-standards/)).
+[Coding standards](/docs/contributing/coding-standards/)).
 
 The workflow is an illustration with example data, not a live instance.
 Keep its documents, ticket states, and deployment details consistent with

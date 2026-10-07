@@ -19,7 +19,7 @@ export function PageHeading({ eyebrow, title, description, markdownUrl }: PageHe
 					</MarkdownCopyButton>
 				)}
 			</div>
-			<p className="text-base text-fd-muted-foreground md:text-lg">{description}</p>
+			<p className="max-w-[65ch] text-base text-pretty text-fd-muted-foreground md:text-lg">{description}</p>
 		</header>
 	);
 }

@@ -1,5 +1,5 @@
 ---
-title: Setup Wizard
+title: Setup wizard
 description: Give a fresh instance its domain, connect the GitHub App, and sign in as the owner.
 sidebar:
   order: 3

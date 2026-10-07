@@ -1,5 +1,5 @@
 ---
-title: Repository Layout
+title: Repository layout
 description: What lives where in the Nexul monorepo.
 sidebar:
   order: 2
@@ -24,5 +24,5 @@ holds.
 | `practices/` | The coding standard, one file per language or surface. `AGENTS.md` routes each task to the file it needs. |
 
 See [Architecture](/docs/contributing/architecture/) for how these pieces
-relate to each other, and [Coding Standards](/docs/contributing/coding-standards/)
+relate to each other, and [Coding standards](/docs/contributing/coding-standards/)
 for the rules that govern what goes inside `server/`, `internal/`, and `web/`.

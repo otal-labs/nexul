@@ -20,7 +20,7 @@ its model, its storage interface, its use-cases, and the events it produces
 and consumes, and it never imports another domain directly. Most domains
 follow a five-file shape: `model.go`, `repo.go`, `usecase.go`, `handler.go`,
 `events.go`. Domains with no events yet, or a thinner shape, are exempt until
-they need it. See [Repository Layout](/docs/contributing/repository-layout/)
+they need it. See [Repository layout](/docs/contributing/repository-layout/)
 for the full directory map.
 
 ## Two adapters, one use-case layer

@@ -1,5 +1,5 @@
 ---
-title: Stacks and Deploys
+title: Stacks and deploys
 description: Ship a repository as a stack, roll it back, read its logs, and deploy its branches as their own copies.
 sidebar:
   order: 6

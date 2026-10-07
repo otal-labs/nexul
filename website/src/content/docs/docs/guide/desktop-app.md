@@ -1,5 +1,5 @@
 ---
-title: Desktop App
+title: Desktop app
 description: Open your instance in its own window with the desktop app, connected by a connection token.
 sidebar:
   order: 14

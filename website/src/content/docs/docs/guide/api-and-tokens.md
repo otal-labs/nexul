@@ -1,5 +1,5 @@
 ---
-title: API and Tokens
+title: API and tokens
 description: Call the HTTP API with a token, see what each token can do, and sign in a phone or desktop app.
 sidebar:
   order: 13
