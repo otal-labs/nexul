@@ -184,7 +184,7 @@ type Conn interface {
 // SessionUpdate is a change to one session on a held computer, as the harness's own apps see it.
 type SessionUpdate struct {
 	SessionID string
-	// Latest is the session's newest turn, in TurnResult.Marker's terms.
+	// Latest is the session's newest turn that ran, in TurnResult.Marker's terms; empty when none has.
 	Latest string
 	// Working is whether a turn on the session is under way.
 	Working bool
