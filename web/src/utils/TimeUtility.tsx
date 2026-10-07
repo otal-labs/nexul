@@ -45,3 +45,46 @@ export const formatClockTime = (ts: string): string => {
   if (Number.isNaN(date.getTime())) return ts;
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 };
+
+const calendarDay = (date: Date): number => new Date(date).setHours(0, 0, 0, 0);
+
+// Discord's footer form: "Today at 21:11", "Yesterday at 21:11", else the date and the minute.
+export const formatCalendarTime = (ts: string): string => {
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return ts;
+  const clock = formatClockTime(ts);
+  const days = Math.round((calendarDay(new Date()) - calendarDay(date)) / DAY_MS);
+  if (days === 0) return `Today at ${clock}`;
+  if (days === 1) return `Yesterday at ${clock}`;
+  return `${date.toLocaleDateString()} ${clock}`;
+};
+
+const DISCORD_STYLES: Record<string, Intl.DateTimeFormatOptions> = {
+  t: { timeStyle: "short" },
+  T: { timeStyle: "medium" },
+  d: { dateStyle: "short" },
+  D: { dateStyle: "long" },
+  f: { dateStyle: "long", timeStyle: "short" },
+  F: { dateStyle: "full", timeStyle: "short" },
+};
+
+const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["year", 365 * DAY_MS],
+  ["month", 30 * DAY_MS],
+  ["day", DAY_MS],
+  ["hour", HOUR_MS],
+  ["minute", MINUTE_MS],
+  ["second", 1000],
+];
+
+const formatRelativeDistance = (date: Date): string => {
+  const diffMs = date.getTime() - Date.now();
+  const [unit, size] = RELATIVE_UNITS.find(([, ms]) => Math.abs(diffMs) >= ms) ?? ["second", 1000];
+  return new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }).format(Math.round(diffMs / size), unit);
+};
+
+// A Discord <t:unix:style> code in the reader's own zone; no style reads as Discord's default "f".
+export const formatDiscordTimestamp = (date: Date, style: string | undefined): string => {
+  if (style === "R") return formatRelativeDistance(date);
+  return date.toLocaleString(undefined, DISCORD_STYLES[style ?? "f"]);
+};

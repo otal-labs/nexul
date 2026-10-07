@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 
+import { BotMessageRow } from "@/components/chat/BotMessageRow";
 import { ChatQuestionCard } from "@/components/chat/ChatQuestionCard";
 import { MessageActions } from "@/components/chat/MessageActions";
 import { MessageBody } from "@/components/chat/MessageBody";
@@ -100,6 +101,7 @@ export const MessageRow = ({ message, author, isOwn, continuation = false, quest
   if (message.deleted_at) return null;
 
   const isSystem = message.author_kind === "system";
+  const isBot = message.author_kind === "bot";
   const isAgent = message.author_kind === "agent";
   const canEditOrDelete = isOwn && !isAgent;
   const align: MessageAlign = canEditOrDelete ? "end" : "start";
@@ -127,7 +129,8 @@ export const MessageRow = ({ message, author, isOwn, continuation = false, quest
   return (
     <>
       {isSystem && <SystemMessageRow body={message.body} trailBlock={trailBlock} />}
-      {!isSystem && (
+      {isBot && <BotMessageRow message={message} continuation={continuation} />}
+      {!isSystem && !isBot && (
         <Message align={align} className={cn("group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent/40", message.pending && "opacity-60")}>
           {align === "start" && !continuation && (
             <MessageAvatar className="size-6 self-start bg-transparent">
