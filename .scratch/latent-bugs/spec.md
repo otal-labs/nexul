@@ -5,6 +5,12 @@
 Small defects seen in passing that have no effort of their own. One heading
 each; delete the heading when it is fixed, delete the file when it is empty.
 
+## The agent's answer-forwarding test fails now and then under -race
+
+`TestAnswer_ActiveTurn_ForwardsToTheHarness` in `internal/agent` failed about
+3 runs in 300 with `-race` on 2026-10-07, while the host was loaded. Find the
+timing it depends on and make it deterministic.
+
 ## A data race shows up intermittently in the DNS tests
 
 One `make coverage` run on 2026-09-29 failed with a `-race` report in the
