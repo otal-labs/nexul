@@ -2,6 +2,7 @@
 package chat
 
 import (
+	"encoding/json"
 	"regexp"
 	"strings"
 	"time"
@@ -62,8 +63,8 @@ type Conversation struct {
 	ParticipantIDs []string `json:"participant_ids,omitempty"`
 }
 
-// membersOnly reports a conversation read by its members alone: a DM or a private channel.
-func (c *Conversation) membersOnly() bool {
+// MembersOnly reports a conversation read by its members alone: a DM or a private channel.
+func (c *Conversation) MembersOnly() bool {
 	return c.Kind == KindDM || c.Private
 }
 
@@ -81,13 +82,15 @@ type Mention struct {
 	Handle string      `json:"handle"`
 }
 
-// AuthorKind distinguishes how a message renders; AuthorID is always a real user id, even for agent/system.
+// AuthorKind distinguishes how a message renders; AuthorID is a real user id for every kind but a bot (ADR 0129).
 type AuthorKind string
 
 const (
 	AuthorUser   AuthorKind = "user"
 	AuthorAgent  AuthorKind = "agent"
 	AuthorSystem AuthorKind = "system"
+	// AuthorBot is a bot's post through its webhook URL; AuthorID is the bot's id, not a user's.
+	AuthorBot AuthorKind = "bot"
 )
 
 // Message is one chat message: markdown body, own edit/delete, a nullable attachment door.
@@ -111,6 +114,11 @@ type Message struct {
 	Handoffs []Handoff `json:"handoffs,omitempty"`
 	// Via names the harness its author wrote it in, such as T3, when it was relayed from there; empty when written in Nexul.
 	Via string `json:"via,omitempty"`
+	// AuthorName and AuthorAvatarURL are what a bot message showed when posted, kept through the bot's rename or delete.
+	AuthorName      string `json:"author_name,omitempty"`
+	AuthorAvatarURL string `json:"author_avatar_url,omitempty"`
+	// Embeds are a bot message's embeds as the sender posted them, JSON chat stores without reading.
+	Embeds json.RawMessage `json:"embeds,omitempty"`
 }
 
 // Handoff is work an Agent reply handed to another agent, as the reply stores it and the live stream pushes it.

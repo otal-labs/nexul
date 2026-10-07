@@ -21,7 +21,7 @@ type Repo interface {
 	GetConversation(ctx context.Context, id string) (*Conversation, error)
 	// RenameConversation surfaces a duplicate channel name as ErrConflict, the same as CreateConversation.
 	RenameConversation(ctx context.Context, id, name string, at time.Time, evts ...eventbus.OutboxEvent) error
-	// DeleteConversation removes the conversation with its messages, participants, read state, and attachments.
+	// DeleteConversation removes the conversation with its messages, participants, read state, attachments, and bots.
 	DeleteConversation(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
 	// SetChannelPrivate switches a channel and replaces its members in one transaction; a public channel keeps none.
 	SetChannelPrivate(ctx context.Context, id string, private bool, memberIDs []string, at time.Time, evts ...eventbus.OutboxEvent) error

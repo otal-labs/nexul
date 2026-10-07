@@ -22,6 +22,7 @@ internal/
   attachments/           # attachment domain, bytes stored in SQLite
   auth/                  # sign-in, provider OAuth clients, sessions
   automations/           # automation dial-in and defaults
+  botwebhook/            # bots: a conversation's webhook posters, their tokens and lifecycle
   chat/                  # chat domain: conversations, messages, unread state
   codereview/            # code review linking domain
   collab/                # collaborative editing session hub

@@ -8,6 +8,7 @@ import (
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/auth"
+	"github.com/otal-labs/nexul/internal/botwebhook"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
@@ -137,6 +138,10 @@ var liveRules = map[string]liveRule{
 	voice.TopicOccupancyChanged:          conversationFrame,
 	agent.TopicAgentStream:               conversationFrame,
 	plays.TopicPlayRun:                   playRunFrame,
+	botwebhook.TopicCreated:              botwebhookFrame,
+	botwebhook.TopicUpdated:              botwebhookFrame,
+	botwebhook.TopicDeleted:              botwebhookFrame,
+	botwebhook.TopicRestored:             botwebhookFrame,
 
 	deploy.TopicStackCreated:         stackFrame,
 	deploy.TopicStackUpdated:         stackFrame,
@@ -353,6 +358,14 @@ func membersChangedFrame(ctx context.Context, a liveAudience, raw json.RawMessag
 		return false
 	}
 	return slices.Contains(p.RemovedUserIDs, actorID(ctx)) || conversationFrame(ctx, a, raw)
+}
+
+// botwebhookFrame reaches whoever lists the bot's conversation's bots: botwebhook:read and a read of the conversation.
+func botwebhookFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		WorkspaceID string `json:"workspace_id"`
+	}
+	return decode(raw, &p) && a.access.Require(ctx, p.WorkspaceID, permissions.BotwebhookRead) == nil && conversationFrame(ctx, a, raw)
 }
 
 func playRunFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {

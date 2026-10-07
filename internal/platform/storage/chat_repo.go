@@ -123,7 +123,7 @@ func (r *ChatRepo) RenameConversation(ctx context.Context, id, name string, at t
 	})
 }
 
-// DeleteConversation relies on ON DELETE CASCADE for messages, participants, read state, and attachments.
+// DeleteConversation relies on ON DELETE CASCADE for messages, participants, read state, attachments, and bots.
 func (r *ChatRepo) DeleteConversation(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).DeleteConversation(ctx, id)
@@ -256,8 +256,9 @@ func insertMessage(ctx context.Context, q *sqlcgen.Queries, m *chat.Message) err
 	}
 	err = q.CreateMessage(ctx, sqlcgen.CreateMessageParams{
 		ID: m.ID, ConversationID: m.ConversationID, AuthorID: m.AuthorID, AuthorKind: string(authorKind),
-		Body: m.Body, Mentions: string(mentionsJSON), AttachmentID: sql.NullString{String: m.AttachmentID, Valid: m.AttachmentID != ""},
-		Handoffs: handoffs, Via: m.Via, CreatedAt: m.CreatedAt.Unix(), UpdatedAt: m.UpdatedAt.Unix(),
+		AuthorName: nullStringOrNil(m.AuthorName), AuthorAvatarUrl: nullStringOrNil(m.AuthorAvatarURL),
+		Body: m.Body, Mentions: string(mentionsJSON), AttachmentID: nullStringOrNil(m.AttachmentID),
+		Handoffs: handoffs, Embeds: nullStringOrNil(string(m.Embeds)), Via: m.Via, CreatedAt: m.CreatedAt.Unix(), UpdatedAt: m.UpdatedAt.Unix(),
 	})
 	if err != nil {
 		return fmt.Errorf("insert message %s: %w", m.ID, classifyWriteErr(err))
@@ -574,7 +575,11 @@ func toMessage(row sqlcgen.Message) (*chat.Message, error) {
 	m := &chat.Message{
 		ID: row.ID, ConversationID: row.ConversationID, AuthorID: row.AuthorID, AuthorKind: chat.AuthorKind(row.AuthorKind),
 		Body: row.Body, AttachmentID: row.AttachmentID.String, Via: row.Via,
+		AuthorName: row.AuthorName.String, AuthorAvatarURL: row.AuthorAvatarUrl.String,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+	}
+	if row.Embeds.Valid {
+		m.Embeds = json.RawMessage(row.Embeds.String)
 	}
 	if err := json.Unmarshal([]byte(row.Mentions), &m.Mentions); err != nil {
 		return nil, fmt.Errorf("unmarshal mentions for message %s: %w", m.ID, err)

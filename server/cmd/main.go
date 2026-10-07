@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/automations"
+	"github.com/otal-labs/nexul/internal/botwebhook"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
@@ -267,6 +268,10 @@ var livePushTopics = []string{
 	chat.TopicMessageUpdated,
 	chat.TopicMessageDeleted,
 	chat.TopicMessageReactionsChanged,
+	botwebhook.TopicCreated,
+	botwebhook.TopicUpdated,
+	botwebhook.TopicDeleted,
+	botwebhook.TopicRestored,
 	voice.TopicOccupancyChanged,
 	pairing.TopicSetupConfirmed,
 	pairing.TopicSetupUnconfirmed,

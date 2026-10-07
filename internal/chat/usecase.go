@@ -754,7 +754,7 @@ func (s *Service) createConversation(ctx context.Context, c *Conversation, parti
 	c.ID = ids.New()
 	c.CreatedAt = now
 	c.UpdatedAt = now
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicConversationCreated, Payload: ConversationCreatedEvent{Conversation: *c, MembersOnly: c.membersOnly()}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicConversationCreated, Payload: ConversationCreatedEvent{Conversation: *c, MembersOnly: c.MembersOnly()}}
 	if err := s.repo.CreateConversation(ctx, c, participantIDs, evt); err != nil {
 		return nil, fmt.Errorf("create %s conversation: %w", c.Kind, err)
 	}
@@ -966,6 +966,32 @@ func (s *Service) PostHarnessMessage(ctx context.Context, conversationID, userID
 	return err
 }
 
+// PostBotMessage posts a bot's message under the name and avatar it shows; the URL that reached the bot is the
+// credential, so it checks no permission. Its mentions are not parsed here: the sender's allowed_mentions decide them.
+func (s *Service) PostBotMessage(ctx context.Context, conversationID, botID, name, avatarURL, body string, embeds json.RawMessage) (string, time.Time, error) {
+	conversationID, botID, name = strings.TrimSpace(conversationID), strings.TrimSpace(botID), strings.TrimSpace(name)
+	if conversationID == "" || botID == "" {
+		return "", time.Time{}, fmt.Errorf("%w: a bot message needs its conversation and bot ids", apperrs.ErrInvalid)
+	}
+	if name == "" {
+		return "", time.Time{}, fmt.Errorf("%w: a bot message needs the name it shows", apperrs.ErrInvalid)
+	}
+	body = strings.TrimSpace(body)
+	if body == "" && len(embeds) == 0 {
+		return "", time.Time{}, fmt.Errorf("%w: a bot message needs content or an embed", apperrs.ErrInvalid)
+	}
+	now := s.now().UTC()
+	m := &Message{
+		ID: ids.New(), ConversationID: conversationID, AuthorID: botID, AuthorKind: AuthorBot,
+		AuthorName: name, AuthorAvatarURL: strings.TrimSpace(avatarURL), Body: body, Mentions: []Mention{}, Embeds: embeds,
+		CreatedAt: now, UpdatedAt: now,
+	}
+	if _, err := s.create(ctx, m); err != nil {
+		return "", time.Time{}, err
+	}
+	return m.ID, m.CreatedAt, nil
+}
+
 // maxHandoffBytes caps the hand-offs one reply stores, as JSON.
 const maxHandoffBytes = 256 << 10
 
@@ -1122,7 +1148,7 @@ func (s *Service) PostNote(ctx context.Context, conversationID, callerID, body s
 		return nil, nil, err
 	}
 	m.AttachmentID = file.ID
-	if err := s.repo.CreateNote(ctx, m, file, messageCreated(m, c.membersOnly())); err != nil {
+	if err := s.repo.CreateNote(ctx, m, file, messageCreated(m, c.MembersOnly())); err != nil {
 		return nil, nil, fmt.Errorf("post note to conversation %s: %w", c.ID, err)
 	}
 	return m, file, nil
@@ -1197,7 +1223,7 @@ func (s *Service) ReplaceNote(ctx context.Context, messageID, callerID, markdown
 	if len(files) == 0 {
 		return nil, nil, fmt.Errorf("replace note %s: %w", m.ID, apperrs.ErrNotFound)
 	}
-	write := func(ctx context.Context) error { return s.writeNote(ctx, m, c.membersOnly(), markdown) }
+	write := func(ctx context.Context) error { return s.writeNote(ctx, m, c.MembersOnly(), markdown) }
 	if err := s.fenceNote(ctx, m.ID, write); err != nil {
 		return nil, nil, err
 	}
@@ -1310,7 +1336,7 @@ func (s *Service) MembersOnly(ctx context.Context, conversationID string) (bool,
 	if err != nil {
 		return false, err
 	}
-	return c.membersOnly(), nil
+	return c.MembersOnly(), nil
 }
 
 // EditMessage edits a message's body in place; only its author may edit it, and never a deleted one.
@@ -1453,7 +1479,7 @@ func (s *Service) deleteNote(ctx context.Context, m *Message, callerID string) e
 		}
 	}
 	now := s.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageDeleted, Payload: MessageDeletedEvent{ConversationID: c.ID, MessageID: m.ID, DeletedAt: now, MembersOnly: c.membersOnly()}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageDeleted, Payload: MessageDeletedEvent{ConversationID: c.ID, MessageID: m.ID, DeletedAt: now, MembersOnly: c.MembersOnly()}}
 	if err := s.repo.DeleteNote(ctx, m, slices.Compact(slices.Sorted(slices.Values(images))), now, evt); err != nil {
 		return fmt.Errorf("delete note %s: %w", m.ID, err)
 	}

@@ -202,6 +202,12 @@ func TestScopeAllows(t *testing.T) {
 		{"a channel is deleted with channels:delete", "DELETE", "/api/chat/conversations/c1", []Scope{Scope("channels:delete")}, true},
 		{"channels:write does not delete one", "DELETE", "/api/chat/conversations/c1", []Scope{Scope("channels:write"), Scope("chat:delete")}, false},
 		{"a DM still takes chat:write", "POST", "/api/chat/dms", []Scope{Scope("chat:write")}, true},
+		{"a conversation's bots are listed with botwebhook:read", "GET", "/api/conversations/c1/botwebhooks", []Scope{Scope("botwebhook:read")}, true},
+		{"botwebhook:read does not create a bot", "POST", "/api/conversations/c1/botwebhooks", []Scope{Scope("botwebhook:read")}, false},
+		{"a bot is created with botwebhook:write", "POST", "/api/conversations/c1/botwebhooks", []Scope{Scope("botwebhook:write")}, true},
+		{"a bot is changed with botwebhook:write", "PATCH", "/api/botwebhooks/b1", []Scope{Scope("botwebhook:write")}, true},
+		{"botwebhook:write does not delete a bot", "DELETE", "/api/botwebhooks/b1", []Scope{Scope("botwebhook:write")}, false},
+		{"a bot is deleted with botwebhook:delete", "DELETE", "/api/botwebhooks/b1", []Scope{Scope("botwebhook:delete")}, true},
 		{"a doc is locked with docs:lock", "POST", "/api/docs/d1/lock", []Scope{Scope("docs:lock")}, true},
 		{"a doc is unlocked with docs:lock", "POST", "/api/docs/d1/unlock", []Scope{Scope("docs:lock")}, true},
 		{"docs:write no longer locks a doc", "POST", "/api/docs/d1/lock", []Scope{ScopeDocsWrite}, false},
@@ -241,7 +247,7 @@ func TestCatalog_CoversEveryGrantableScopeOnce(t *testing.T) {
 		seen[sc] = true
 	}
 	assert.Len(t, seen, len(allScopes))
-	assert.Len(t, seen, 86)
+	assert.Len(t, seen, 89)
 }
 
 func TestCatalog_EveryValueParses(t *testing.T) {
