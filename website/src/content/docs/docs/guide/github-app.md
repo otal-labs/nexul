@@ -1,70 +1,62 @@
 ---
 title: GitHub App
-description: Create and configure the one GitHub App your instance uses for sign-in, repositories, and runner downloads.
+description: Create the GitHub App your instance signs people in with and reads repositories through.
 sidebar:
   order: 4
 ---
 
-Nexul talks to GitHub through a single GitHub App. It signs people in,
-connects your workspace to GitHub, and lets runners clone private application
-repositories to build them. You create this App once, then paste its details
-into the [setup wizard](/docs/guide/setup-wizard/).
-
-## Why a GitHub App and not an OAuth App
-
-It has to be a GitHub App, not an OAuth App: only a GitHub App has fine-grained repository permissions and installations, and an OAuth App can't be converted into one later.
+You create one GitHub App per instance, then paste its details into the [setup wizard](/docs/guide/setup-wizard/). It has to be a GitHub App, not an OAuth App: only a GitHub App has per-repository permissions and installations, and an OAuth App cannot be converted later.
 
 ## 1. Create the App
 
-Go to GitHub → Settings → Developer settings → **GitHub Apps** → New GitHub App.
+On GitHub, go to **Settings → Developer settings → GitHub Apps → New GitHub App** and fill in:
 
 | Field | Value |
 | --- | --- |
-| GitHub App name | Anything — the URL slug it produces is what Nexul asks for. |
-| Homepage URL | Your instance URL, e.g. `https://deploy.example.com`. |
-| Callback URLs | `<instance>/auth/callback` (sign-in) and `<instance>/auth/connectors/github/callback` (connector). For local dev, add the same two paths under `http://localhost:5173` and `http://localhost`. |
-| Expire user authorization tokens | On — Nexul refreshes tokens itself. |
-| Request user authorization (OAuth) during installation | On. |
-| Webhook | Leave inactive. Nexul registers a webhook on each repository when it is attached to a project, and removes it when the repository is detached. A pull request merged or closed while no webhook could reach Nexul catches up when the repository is attached and on every server start. |
+| GitHub App name | Anything. Nexul asks for the slug it produces. |
+| Homepage URL | Your instance URL, such as `https://nexul.example.com` |
+| Callback URLs | `<instance-url>/auth/callback` for sign-in and `<instance-url>/auth/connectors/github/callback` for the connector |
+| Expire user authorization tokens | On |
+| Request user authorization (OAuth) during installation | On |
+| Webhook | Off. Nexul adds a webhook to each repository you attach to a project. |
 
-Set these repository permissions:
+On a Mac or Windows install the instance URL is `http://localhost:5123`.
+
+Give it these repository permissions and nothing else:
 
 | Permission | Level |
 | --- | --- |
-| Metadata | Read (mandatory on every GitHub App) |
 | Contents | Read |
 | Pull requests | Read and write |
 | Webhooks | Read and write |
+| Metadata | Read (GitHub adds it) |
 
-Contents: Read matters more than it looks — without it, a runner cloning a private repository fails with "Write access to repository not granted". Grant no organization or account permissions, and no Actions permissions.
+Without Contents: Read, a runner cloning a private repository fails with "Write access to repository not granted".
 
-Generate a **client secret** on the App's page and save it. GitHub only shows it to you once.
+Generate a client secret on the App's page and copy it. GitHub shows it once.
 
 ## 2. Install it
 
-On the App's page, click Install App, choose your account, and pick **All repositories**, or select the repositories you need. Every private application repository you want to deploy needs the App installed on it. Public repositories do not need an installation for cloning.
+On the App's page, click **Install App**, pick your account, and choose **All repositories** or the ones you want to deploy. Nexul only sees repositories in accounts the App is installed on.
 
-## 3. Paste it into Nexul
+## 3. Connect it to Nexul
 
-- **First run** (`/setup` on your domain) — OAuth client ID, client secret, App slug. The instance URL is already fixed by the domain step. This page shows the exact callback URL and verifies the slug against GitHub before letting you continue. See [Setup wizard](/docs/guide/setup-wizard/).
-- **Owner wizard's "Connect your tools" step, or Settings → Connectors → GitHub → Connect** — the OAuth consent round trip. If you already authorized the App while installing it, there's no consent screen to click through.
-- **Rotating credentials** — the **GitHub App** tab under Settings → Connectors takes a new client ID and secret at any time. Nothing lives in environment variables.
+1. In the setup wizard, paste the client ID, client secret and App slug.
+2. In the owner wizard's **Connect your tools** step, or later under **Settings → Connectors**, click **Connect** on GitHub and approve. If you already authorized the App while installing it, GitHub skips the approval screen.
 
-## 4. When you change permissions later
+To change the client ID or secret later, open **Settings → Connectors → GitHub App** and click **Edit**.
 
-Raising or adding a permission on the App doesn't apply to installations that already exist. GitHub sends the installation owner a request instead: Settings → Applications → Installed GitHub Apps → Configure → **Review request** → accept. Until you accept it, the token keeps its old permissions, and anything that needed the new one — a clone, a webhook call — keeps failing.
+## Adding an account or organisation
 
-## Adding an organisation or another account
+**Settings → Connectors → GitHub App** lists every account the App is installed on under **Installations**, with whether it grants all repositories or a selection. Click **Add account or organisation** to install it somewhere else; the list updates when you come back to the tab.
 
-Nexul sees a repository only when its GitHub App is installed on the account or organisation that owns it. **Settings → Connectors → GitHub App** lists those accounts under **Installations** (once GitHub is connected), each with whether it grants all repositories or a selection, and a **Manage** link to change that on GitHub. **Add account or organisation** opens GitHub's install page, where you pick the account and its repositories; the list updates when you come back to the tab.
+Repositories you only collaborate on belong to someone else's account, so the owner of that account installs the App there, from `https://github.com/apps/<slug>/installations/new`. Agents see the same list through `repository_list` with `installations` set.
 
-Repositories you only collaborate on belong to someone else, so the App has to be installed on their account. Anyone with GitHub linked can do that from **Your settings → Profile → Sign-in accounts → Let Nexul deploy your repositories**. Once they have, the repositories among them that the connected GitHub account collaborates on show up in the repository picker. Agents see the same list through `repository_list` with `installations` set.
+## Changing permissions later
 
-## Which token is used where
+Adding or raising a permission on the App does not reach existing installations. GitHub asks each installation's owner to accept it: **Settings → Applications → Installed GitHub Apps → Configure → Review request**. Until they accept, anything that needs the new permission keeps failing.
 
-- Sign-in only uses the user's own token, and only to read their profile.
-- The connector token — the one Settings → Connectors stores when you connect — is what the server uses for repositories, pull requests, webhooks, and release downloads, and what it hands a runner for a build job. Reconnecting in Settings issues a fresh token; do that if a token ever ends up somewhere it shouldn't.
+## Which token does what
 
-## Next step
-
-Once the App is installed and connected, add a [runner](/docs/guide/runners/) and deploy your first [stack](/docs/guide/stacks-and-deploys/).
+- Sign-in uses your own GitHub token, only to read your profile.
+- The connector token, stored when you click **Connect**, is what the server uses for repositories, pull requests and webhooks, and what it hands a runner for a build. If it ever leaks, click **Disconnect** and then **Connect** for a fresh one.

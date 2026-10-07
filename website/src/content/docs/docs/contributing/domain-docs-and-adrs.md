@@ -65,5 +65,5 @@ How code is written, as opposed to what was decided, lives in
 file per language or surface (`go.md`, `react-guide.md`, `testing.md`,
 `architecture.md`, `mcp.md`, `design-language.md`, `borrowed-practices.md`). `AGENTS.md`
 routes every task to the file it needs, and a change is reviewed against
-those files. The [Coding Standards](/docs/contributing/coding-standards/)
+those files. The [Coding standards](/docs/contributing/coding-standards/)
 page is a digest of them.

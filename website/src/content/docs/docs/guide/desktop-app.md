@@ -1,36 +1,28 @@
 ---
-title: Desktop App
-description: A thin Electron client that connects to your instance with a connection token.
+title: Desktop app
+description: Open your instance in its own window with the desktop app, connected by a connection token.
 sidebar:
   order: 14
 ---
 
-The Nexul desktop app is a thin Electron shell around the same web app your server already serves — it isn't a separate frontend with its own features, just a native window and process for reaching your instance. It's the reference standalone client for connection tokens; a CLI and the runner are candidates for the same bootstrap flow later.
+The desktop app opens your instance's web app in a window of its own. It has no features of its own and holds no account: you sign in the same way you do in a browser.
 
 ## Connecting
 
-The app doesn't ask for a username or a server address on first run. Instead:
+1. In the web app, open **Settings → Security → Devices** and click **Copy connection token** on **Connect the desktop app**. The token holds your instance's address, not your account, and expires after 30 days.
+2. In the desktop app, paste it under **Add instance** and click **Import**.
+3. The instance appears under **Instances** with its status: **Connected**, **Unreachable** or **Token expired**.
+4. Click **Connect** and sign in.
 
-1. In the web app, open **Your settings → Security → Devices** and click **Copy connection token** on the *Connect the desktop app* card. This mints a signed [connection token](/docs/guide/api-and-tokens/) carrying your instance's URL and basic settings — no identity or credentials, so it isn't secret — and puts it on your clipboard. It expires 30 days after it's generated.
-2. Paste the token into the desktop app's **Add instance** field and click **Import**.
-3. The instance now shows in the app's list, with a live status (connecting, connected, unreachable, or expired) checked by probing `/api/auth/me` on that instance's origin.
-4. Click **Connect**. The app loads your instance's web app in place; you sign in the normal way through GitHub OAuth. Nothing about sign-in is special-cased for the desktop app — it's the same login flow the browser uses.
-
-You can import tokens for more than one instance and switch between them from the same instance list, and remove one without affecting the others.
+Import a token from each instance you use to switch between them. **Remove** drops one without touching the others. When a token expires, copy a new one and import it again.
 
 ## Building it
 
-The app lives under `desktop/` as an Electron project (`nexul-desktop`) with its own `package.json`:
+There is no prebuilt download yet. Build it from the `desktop/` folder of the repository:
 
 ```sh
 cd desktop
 bun install
-bun run build   # compiles the Electron main/preload bundle and the launcher UI
-bun run start   # build, then launch electron .
-```
-
-For a distributable package:
-
-```sh
-bun run dist     # electron-builder: AppImage + deb on Linux, nsis on Windows, dmg on macOS
+bun run start   # build and launch
+bun run dist    # package it: AppImage and deb on Linux, an installer on Windows, a dmg on macOS
 ```

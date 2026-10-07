@@ -1,5 +1,5 @@
 ---
-title: CI and Releases
+title: CI and releases
 description: What runs on every push, how releases are cut and versioned, and the merge policy.
 sidebar:
   order: 6

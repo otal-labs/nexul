@@ -1,13 +1,11 @@
 ---
 title: Install
-description: Put Nexul on a Linux server, a Mac or a Windows PC with one command.
+description: Put Nexul on a Linux server with one command, or try it on your Mac or Windows PC first.
 sidebar:
   order: 1
 ---
 
-Nexul runs as a self-hosted instance on your own server. One command installs it on a Linux server, and the same command on a Mac or Windows PC gives you an instance to try on your own computer first.
-
-Every part of Nexul runs as a native service under the system's own service manager: systemd on Linux, launchd on macOS, and Windows services on Windows. Nothing of Nexul runs in a container, and the only port it opens is the one you choose. Docker is still installed, because the runner deploys your stacks with it. Containers reach Nexul at `host.docker.internal`, so on Linux the server also accepts its port from Docker's bridge interfaces while it runs (see [Firewall](#firewall)).
+Every part of Nexul runs as a native service under the system's service manager: systemd on Linux, launchd on a Mac, Windows services on Windows. Nothing of Nexul runs in a container. Docker still gets installed, because the runner deploys your stacks with it.
 
 ## On a Linux server
 
@@ -17,7 +15,7 @@ Run this as root, or as a user who can `sudo`:
 curl -fsSL https://nexul.io/install.sh | sh
 ```
 
-You can [read the script](/install.sh) first. It downloads the `nexul` command for your server's CPU (amd64 or arm64), checks it against the release's `checksums.txt`, and runs `nexul install`. The installer asks two questions, each with a default you accept by pressing Enter:
+You can [read the script](/install.sh) first. It downloads the `nexul` command for your CPU (amd64 or arm64), checks it against the release's `checksums.txt`, and runs `nexul install`. Press Enter to accept each default:
 
 ```
 Nexul v0.2.1 installer
@@ -47,28 +45,9 @@ Nexul v0.2.1 is running.
   Upgrade        nexul upgrade
   Status         nexul status
   Firewall       port 5123 now accepts Docker containers on this machine, so a tunnel can reach Nexul
-Next: open the setup page and enter the setup code. The domain and HTTPS, including
-ports 80 and 443, are set up from there with a reverse proxy or a Cloudflare tunnel,
-not by this installer.
 ```
 
-The web port defaults to 5123 so that ports 80 and 443 stay free for the reverse proxy the setup page can deploy.
-
-What each step does:
-
-1. **Docker, Docker Compose and Git.** The runner deploys stacks with Docker and clones your repositories with git, so these are installed when missing. Docker Engine comes from Docker's own script, and the daemon is started when it is installed but stopped. Docker installed from snap is refused, because it cannot reach `/data`. Compose comes from your package manager (`docker-compose-plugin`, or `docker-compose-v2` next to Ubuntu's own `docker.io`), and otherwise from Docker's published build.
-2. **Command.** Puts `nexul` in `/usr/local/bin`, so you can run `nexul status` and `nexul upgrade` later.
-3. **User.** Creates the `nexul` system user the server, OpenObserve and the automations host run as.
-4. **Files.** Creates the install directory and writes its `.env` with the generated logs password and token.
-5. **Logs.** Downloads OpenObserve at the version and checksum pinned in `nexul`, and starts it as `nexul-openobserve`, listening on a free localhost port.
-6. **Server.** Downloads `nexul-server` and starts it as `nexul-server` on your web port, then waits until it answers. Until the instance has an owner, the server writes a one-time setup code at every start, and the summary prints it as `Setup code`.
-7. **Runner and Automations.** Installs the instance's own runner and automations host, both named `instance`, as `nexul-runner-instance` and `nexul-automations-instance`. They enroll with the server like any other runner or automations host, so this server can deploy and run automations straight away.
-
-A port that is already in use is caught before anything is installed, and you are asked for another one.
-
-### Firewall
-
-Deployed containers, cloudflared first, reach Nexul at `http://host.docker.internal:<web port>`. That traffic arrives at the server as inbound, which many cloud images reject unless it's SSH. So while `nexul-server` runs, it adds `iptables` rules accepting the web port from Docker's bridge interfaces (`docker0` and `br-*`), and it removes them when it stops. No other interface is opened, the rules aren't saved to your firewall configuration, and the install summary prints a `Firewall` line saying so. On a host without `iptables` the step is skipped.
+Open the setup page and enter the setup code. The [setup wizard](/docs/guide/setup-wizard/) takes it from there, including the domain and HTTPS. The web port defaults to 5123 so ports 80 and 443 stay free for the reverse proxy the wizard can deploy.
 
 To install without questions, pass the answers as flags:
 
@@ -76,90 +55,83 @@ To install without questions, pass the answers as flags:
 curl -fsSL https://nexul.io/install.sh | sh -s -- --dir /srv/nexul --port 8080 --yes
 ```
 
-`NEXUL_VERSION=v0.2.1` before `sh` pins a release. Without it the script takes the newest stable release, or the newest beta while no stable release exists.
+Put `NEXUL_VERSION=v0.2.1` before `sh` to pin a release. Without it you get the newest stable release, or the newest beta while there is no stable one.
 
-Running `nexul install` again is safe: it keeps the directory, the port and the logs credentials it chose the first time, so it also repairs an install. A directory that still holds a Docker Compose install from an earlier release is refused; run that release's `nexul uninstall` first.
+The installer:
 
-There's nothing else to configure first. The server generates its auth secret on first start. The domain, the instance URL, the GitHub App and connectors are collected in the [setup wizard](/docs/guide/setup-wizard/), which asks for the setup code first. Lost the terminal? `nexul status` prints the code again while it is still valid; once the instance has an owner, there is no code to print.
+- installs Docker, Docker Compose and git when they are missing. It refuses Docker from snap, which cannot reach `/data`.
+- creates a `nexul` system user and the install directory, and generates the logs password.
+- starts OpenObserve for [logs](/docs/guide/logs/), the server, and the instance's own runner and automations host, both named `instance`.
+
+If the port you pick is taken, it asks for another before installing anything. Running it again is safe: it keeps the directory, port and credentials it chose the first time, so it also repairs a broken install.
+
+### Firewall
+
+Deployed containers, cloudflared first, reach Nexul at `http://host.docker.internal:<web port>`. Many cloud images reject that inbound traffic. So while `nexul-server` runs, it adds `iptables` rules accepting the web port from Docker's bridge interfaces (`docker0` and `br-*`), and removes them when it stops. No other interface is opened and your saved firewall configuration is left alone. On a host without `iptables` this is skipped.
 
 ### What's installed
 
-| Service | Runs as | Purpose |
+| Service | Runs as | What it does |
 | --- | --- | --- |
-| `nexul-server` | `nexul` | The web UI, the API, the runner and automations WebSockets, the MCP server, and the logs UI at `/openobserve/`, all on the web port |
-| `nexul-openobserve` | `nexul` | Logs, metrics and traces, on localhost only. See [Logs](/docs/guide/logs/) |
-| `nexul-runner-instance` | root | The `instance` runner that builds and deploys on this server. See [Runners](/docs/guide/runners/) |
-| `nexul-automations-instance` | `nexul` | The `instance` automations host, which runs the default automations. See [Automations](/docs/guide/automations/) |
+| `nexul-server` | `nexul` | The web app, the API, the MCP server and the logs UI, all on the web port |
+| `nexul-openobserve` | `nexul` | Logs, metrics and traces, on localhost only |
+| `nexul-runner-instance` | root | Builds and deploys on this server. See [Runners](/docs/guide/runners/) |
+| `nexul-automations-instance` | `nexul` | Runs the default automations. See [Automations](/docs/guide/automations/) |
 
-Each service has its own directory under `/opt/nexul` (`server/`, `openobserve/`, `runner-instance/`, `automations-instance/`) holding its binary, its environment file and, for a runner or automations host, its credential. `journalctl -u <service>` shows what a service is doing.
+Each service's binary and settings live under `/opt/nexul`. Run `journalctl -u <service>` to see what one is doing.
 
-The install directory holds everything that belongs to the instance:
+Everything that belongs to the instance lives in the install directory:
 
 | Path | Contents |
 | --- | --- |
 | `.env` | The release, the ports and the logs credentials |
-| `data/` | The database, its automatic snapshots and the generated secrets |
+| `data/` | The database, its snapshots and the generated secrets |
 | `logs/` | OpenObserve's storage |
-| `stacks/` | Checkouts of the stacks you deploy to this server. The install directory is the instance runner's stack root, which you can change on the Runners page |
+| `stacks/` | Checkouts of the stacks this server deploys |
 
 Back up the install directory and you have backed up the instance.
-
-The server listens on plain HTTP on the web port. HTTPS comes from the setup page, not from the installer: it sets up a Cloudflare tunnel, or deploys a reverse proxy on ports 80 and 443 with a Let's Encrypt certificate, or checks an `https://` address your own proxy already serves, then saves that address as the instance URL. Every URL Nexul derives (OAuth callbacks, the runner install command, the MCP endpoint) comes from that saved instance URL rather than the incoming request, so the proxy doesn't need to forward any extra headers.
 
 ### Managing the install
 
 ```sh
-nexul status              # every Nexul service on this machine: kind, name, state and version, plus the setup code while there is one
-nexul upgrade             # the newest release on your channel; see Upgrade
-nexul uninstall           # stop and remove every Nexul service, keeping the install directory
-nexul uninstall --purge   # also delete the install directory and, on Linux, the nexul user
+sudo nexul status              # every Nexul service here, its state and version, plus the setup code while there is one
+sudo nexul upgrade             # see Upgrade
+sudo nexul uninstall           # remove every Nexul service, keep the install directory
+sudo nexul uninstall --purge   # also delete the install directory and the nexul user
 ```
 
-`nexul uninstall` asks before it removes anything, and it leaves the stacks you deployed running. Installing again with `nexul install --dir <the same directory>` brings the same instance back.
+Uninstall asks before it removes anything and leaves your deployed stacks running. `nexul install --dir <the same directory>` brings the same instance back.
 
 ## On a Mac
 
-Run this in Terminal as yourself, not with `sudo`:
+Run the same command in Terminal as yourself, not with `sudo`:
 
 ```sh
 curl -fsSL https://nexul.io/install.sh | sh
 ```
 
-It asks for your password once, to put the `nexul` command in `/usr/local/bin`. Then `nexul install` sets up Docker for the runner the way your Mac allows:
+It asks for your password once, to put `nexul` in `/usr/local/bin`. For Docker it uses an engine that is already running, starts Colima or Docker Desktop if one is installed but stopped, and otherwise installs Colima through Homebrew (installing Homebrew first if needed).
 
-- **Docker already running** (Docker Desktop, Colima or another engine): used as it is.
-- **Installed but stopped:** Colima is started, or Docker Desktop is opened, and the installer waits for it.
-- **No Docker at all:** it installs [Colima](https://github.com/abiosoft/colima), a free Docker engine without a desktop app, with the Docker CLI and Compose through Homebrew, and sets Colima to start when you log in. If Homebrew itself is missing, Homebrew's installer runs first and asks for your password.
-
-The services are LaunchAgents of your user (`io.nexul.nexul-server` and so on), so they run while you are logged in. Their directories are under `~/Library/Application Support/nexul`, and their output goes to `~/Library/Logs/nexul/<service>.log`. The install directory defaults to `~/nexul`.
+Run `nexul status` and the other `nexul` commands without `sudo` here. The services run while you are logged in. Their output goes to `~/Library/Logs/nexul/<service>.log`, and the install directory is `~/nexul`.
 
 ## On Windows
 
-Install [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) first (or run `winget install -e --id Docker.DockerDesktop`), start it, and wait until it shows the engine running. The runner needs it to deploy stacks. Then, in PowerShell:
+Install [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) (or `winget install -e --id Docker.DockerDesktop`), start it, and wait until the engine is running. Then, in PowerShell:
 
 ```powershell
 irm https://nexul.io/install.ps1 | iex
 ```
 
-You can [read the script](/install.ps1) first. Nexul installs as Windows services, so the script asks for administrator rights and re-runs itself elevated. It downloads `nexul.exe`, checks it against the release's `checksums.txt`, puts it in `%ProgramFiles%\Nexul` on the system PATH, and runs `nexul install`. The installer doesn't install Docker Desktop for you: if Docker is missing, stopped or has no Compose plugin, it stops and says what to do.
+You can [read the script](/install.ps1) first. It asks for administrator rights, puts `nexul.exe` in `%ProgramFiles%\Nexul`, and runs `nexul install`. If Docker is missing, stopped or has no Compose plugin, it stops and tells you what to do. Each service writes `service.log` in its folder under `%ProgramData%\Nexul`, and the install directory is `%USERPROFILE%\nexul`.
 
-Each service is registered with `nexul service-host <service>` as its program, which runs the component and restarts it if it stops. Service directories are under `%ProgramData%\Nexul`, and each one's output goes to `service.log` in its directory. The install directory defaults to `%USERPROFILE%\nexul`.
+On a Mac or Windows PC the instance stays on `http://localhost:5123` for you to try on your own computer. To serve a team, install on a server.
 
 ## Running the server by hand
 
-Any platform can also run just the server: download `nexul-server-<os>-<arch>` from the latest [release](https://github.com/otal-labs/nexul/releases) and run it:
+To run only the server, download `nexul-server-<os>-<arch>` from the [releases](https://github.com/otal-labs/nexul/releases) and start it:
 
 ```sh
 ./nexul-server
 ```
 
-The binary embeds the web UI, so it serves the UI and the API on port 8080 (`NEXUL_HTTP_ADDR` changes it) with nothing else installed. It doesn't include a runner or OpenObserve. Add runners from the Runners page (see [Runners](/docs/guide/runners/)), and point logs at any OTLP/HTTP backend with `NEXUL_OTLP_ENDPOINT` (see [Logs](/docs/guide/logs/)). You can also build it yourself:
-
-```sh
-make build-single
-./dist/nexul-server
-```
-
-## Next step
-
-Open the printed URL, enter the setup code, set up the domain, then connect your [GitHub App](/docs/guide/github-app/). See [Setup wizard](/docs/guide/setup-wizard/) for what each step asks for, and [Upgrade](/docs/guide/upgrade/) for keeping the instance current.
+It serves the web app and the API on port 8080 (`NEXUL_HTTP_ADDR` changes it). There is no runner and no OpenObserve: add runners from the **Runners** page, and send logs elsewhere with `NEXUL_OTLP_ENDPOINT` (see [Logs](/docs/guide/logs/#a-server-run-by-hand)).

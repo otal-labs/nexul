@@ -28,7 +28,7 @@ export const AddRunnerForm = ({ machineName, pending, onSubmit }: AddRunnerFormP
         control={form.control}
         name="machine"
         label="Machine"
-        placeholder="Defaults to the runner's name"
+        placeholder="Defaults to the computer's hostname"
         readOnly={!!machineName}
         className={cn(machineName && "text-muted-foreground")}
       />

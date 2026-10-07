@@ -1,0 +1,14 @@
+---
+import { docUrl, type DocPage } from '../../lib/docs-tree';
+
+interface Props {
+	page: DocPage;
+}
+
+const { page } = Astro.props;
+---
+
+<a href={docUrl(page.id)} class="flex flex-col gap-1 rounded-lg bg-fd-card p-5 transition-colors duration-150 hover:bg-fd-accent">
+	<span class="text-sm font-medium text-fd-foreground">{page.label ?? page.title}</span>
+	<span class="text-[13px] leading-snug text-fd-muted-foreground">{page.description}</span>
+</a>

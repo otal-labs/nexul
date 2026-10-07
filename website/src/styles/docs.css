@@ -1,0 +1,145 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/lib/default-colors.css';
+@import 'fumadocs-ui/css/preset.css';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+@import './tokens.css';
+@import './site-header.css';
+
+@theme {
+	--font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+	--font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+	/* Fumadocs rounds controls with rounded-lg and cards with rounded-xl; the Mono Console wants 6px and 8px. */
+	--radius-lg: 6px;
+	--radius-xl: 8px;
+}
+
+:root {
+	--fd-banner-height: var(--site-header-height);
+	--docs-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+html {
+	scroll-padding-top: calc(var(--site-header-height) + 3rem);
+}
+
+::selection {
+	background: var(--color-fd-foreground);
+	color: var(--color-fd-background);
+}
+
+/* In the base layer so a component that draws its own focus state (the search input) still wins. */
+@layer base {
+	:focus-visible {
+		outline: 2px solid var(--color-fd-ring);
+		outline-offset: 2px;
+	}
+}
+
+.skip-link {
+	position: fixed;
+	top: 8px;
+	left: 16px;
+	z-index: 50;
+	transform: translateY(-150%);
+	border-radius: 6px;
+	background: var(--color-fd-primary);
+	color: var(--color-fd-primary-foreground);
+	padding: 12px 16px;
+}
+
+.skip-link:focus {
+	transform: none;
+}
+
+/* sidebar: surface-2, group labels small, items grey, the open page a filled accent row */
+
+#nd-sidebar,
+#nd-sidebar-mobile {
+	background: var(--color-fd-surface);
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) p {
+	font-size: 11px;
+	font-weight: 500;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--color-fd-muted-foreground);
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a {
+	padding-block: 6px;
+	font-size: 13.5px;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active='true'] {
+	background: var(--color-fd-accent);
+	color: var(--color-fd-foreground);
+	font-weight: 500;
+}
+
+/* article */
+
+.prose {
+	--tw-prose-body: var(--color-fd-secondary-foreground);
+	line-height: 1.7;
+}
+
+.prose :is(h2, h3, h4) {
+	font-weight: 600;
+	letter-spacing: -0.022em;
+	text-wrap: balance;
+}
+
+.prose a:not([data-card]) {
+	text-decoration-color: var(--color-fd-muted-foreground);
+	text-underline-offset: 0.2em;
+}
+
+.prose :not(pre) > code {
+	border: 1px solid var(--color-fd-border);
+	border-radius: 4px;
+	padding: 0.0625rem 0.3125rem;
+	font-size: 0.8125em;
+}
+
+/* code: one card-surface block, long lines scroll inside it rather than the page */
+
+.prose pre.shiki {
+	overflow-x: auto;
+	margin-block: 1.25em;
+	border: 1px solid var(--color-fd-border);
+	border-radius: 8px;
+	background: var(--color-fd-card);
+	padding-block: 14px;
+	font-size: 13px;
+	line-height: 1.7;
+}
+
+.prose pre.shiki code {
+	border: 0;
+	padding: 0;
+	background: none;
+	font-size: inherit;
+}
+
+.prose table {
+	display: block;
+	overflow-x: auto;
+	font-size: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		transition-duration: 0.01ms !important;
+	}
+}
+
+/* Inside the docs grid the shared header spans the window, above the sidebar and the table of contents. */
+#nd-docs-layout .site-header {
+	position: fixed;
+	inset-inline: 0;
+}

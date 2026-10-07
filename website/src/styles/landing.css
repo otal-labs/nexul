@@ -49,16 +49,10 @@ h1, h2, h3 { text-wrap: balance; }
 .eyebrow { display: flex; align-items: center; gap: 10px; font: 10px/1.6 var(--page-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--page-muted); margin: 0 0 20px; }
 .wordmark { display: inline-flex; align-items: center; gap: 8px; font-size: 20px; letter-spacing: -.05em; font-weight: 600; min-height: 44px; }
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 16px; min-height: 48px; padding: 12px 20px; background: var(--page-primary); color: var(--page-primary-fg); border: 1px solid transparent; border-radius: 6px; font-size: 13px; font-weight: 500; white-space: nowrap; transition: opacity 150ms var(--page-ease), transform 150ms var(--page-ease); }
-.button-small { min-height: 44px; padding: 10px 12px; font-size: 12px; gap: 10px; }
 .text-link { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; font-size: 13px; font-weight: 500; }
 .text-link span, .capability-arrow, .detail-link > span { color: var(--page-muted); transition: transform 150ms var(--page-ease); }
 .skip-link { position: fixed; top: 8px; left: 16px; transform: translateY(-150%); z-index: 30; background: var(--page-primary); color: var(--page-primary-fg); padding: 12px 16px; border-radius: 6px; }
 .skip-link:focus { transform: translateY(0); }
-.site-header { height: 72px; border-bottom: 1px solid var(--page-border); background: var(--page-bg); }
-.nav-inner { height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.nav-inner nav { display: flex; align-items: center; gap: 16px; }
-.nav-inner nav > a:not(.button) { font-size: 12px; color: var(--page-muted); min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; gap: 6px; }
-.nav-inner nav > .nav-detail { display: none !important; }
 .hero { padding-top: 48px; }
 .brand-mark { width: 6px; height: 6px; background: var(--page-fg); }
 .hero-heading { margin-bottom: 32px; }
@@ -137,11 +131,10 @@ h2 { margin: 0; font-size: 32px; font-weight: 500; line-height: 1.12; letter-spa
 @media (hover: hover) and (pointer: fine) {
 	.button:hover { opacity: .85; }
 	.text-link:hover > span, .capability:hover .capability-arrow, .detail-link:hover > span { transform: translate(2px, -2px); }
-	.nav-inner nav > a:not(.button):hover, .footer-top nav a:hover { color: var(--page-fg); }
+	.footer-top nav a:hover { color: var(--page-fg); }
 }
 @media (min-width: 414px) {
 	h1 { font-size: 40px; }
-	.nav-inner nav { gap: 24px; }
 }
 @media (min-width: 768px) {
 	.wrap { padding-inline: 32px; }
@@ -151,7 +144,6 @@ h2 { margin: 0; font-size: 32px; font-weight: 500; line-height: 1.12; letter-spa
 	h2 { font-size: 40px; }
 	.hero-heading { margin-bottom: 48px; }
 	.hero-footnote { font-size: 11px; }
-	.nav-inner nav > .nav-detail { display: inline-flex !important; }
 	.workflow-steps { grid-template-columns: repeat(2, 1fr); }
 	.workflow-step { padding: 32px 24px 24px 0; }
 	.workflow-step:nth-child(even) { padding-left: 24px; border-left: 1px solid var(--page-border); }
@@ -166,9 +158,6 @@ h2 { margin: 0; font-size: 32px; font-weight: 500; line-height: 1.12; letter-spa
 }
 @media (min-width: 1100px) {
 	.wrap { padding-inline: 48px; }
-	.site-header { height: 80px; }
-	.nav-inner nav { gap: 32px; }
-	.nav-inner nav > a:not(.button) { font-size: 13px; }
 	.hero { padding-top: 88px; }
 	h1 { font-size: clamp(60px, 5vw, 72px); }
 	h2 { font-size: 48px; }

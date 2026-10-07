@@ -1,5 +1,5 @@
 ---
-title: Coding Standards
+title: Coding standards
 description: A digest of the practices that govern Go, MCP, React, testing, and visual design in this repo.
 sidebar:
   order: 4

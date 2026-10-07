@@ -1,73 +1,70 @@
 ---
-title: API and Tokens
-description: The HTTP/JSON API, its permission model, and the tokens that authenticate against it.
+title: API and tokens
+description: Call the HTTP API with a token, see what each token can do, and sign in a phone or desktop app.
 sidebar:
   order: 13
 ---
 
-The web UI uses the plain HTTP/JSON API under `/api`. MCP is a separate
-adapter over the same use-case layer.
+The web app runs on the same HTTP/JSON API under `/api` that you can call yourself. The [MCP server](/docs/guide/mcp-server/) sits on the same rules, so a person, a script and an agent can each do exactly what their permissions allow.
 
-## OpenAPI
+## Calling the API
 
-The server builds an OpenAPI 3.x document from the gateway's tracked mounted
-routes. Maintained summaries and tags are applied as annotations to those
-routes. The document is not a manually aligned route manifest or a separate
-YAML file.
+1. Open **Settings → Security → Tokens**, name a token and click **Create token**.
+2. Copy it. It starts with `dep_` and is shown once.
+3. Send it as a bearer token:
 
-- `/openapi.json` — the raw spec.
-- `/swagger` — a Swagger UI browsing it.
+   ```sh
+   curl -H "Authorization: Bearer dep_…" https://nexul.example.com/api/permissions/catalog
+   ```
+
+A personal access token carries exactly your permissions and lasts until you revoke it. Revoking cuts access at once. Use one for scripts, personal integrations and an agent's MCP connection.
+
+Each paired computer also gets a token of its own, "Nexul MCP on <computer>", listed here and marked as the computer's. Un-confirming the computer's setup or removing the computer revokes it.
+
+Browse the API at `/swagger`, or fetch the OpenAPI document at `/openapi.json`. Both are built from the routes the server actually mounts.
 
 ## Permissions
 
-One vocabulary covers every actor: a permission is `<domain>:<action>`, where
-the action is usually `read`, `write`, or `delete`. Some domains also declare
-a verb: `docs:thread`, `docs:clone`, `docs:lock`, `plays:run`, `memories:clone`, and `roles:clone`. The
-full catalog is served at:
+A permission is `<domain>:<action>`, where the action is `read`, `write` or `delete`, or a verb such as `plays:run` or `stacks:logs`. Roles, tokens and agents are all checked against the same list:
 
 ```
 GET /api/permissions/catalog
 ```
 
-A role, a personal access token, and an automation's scoped token are all checked against these same values — "what can this actor do" has one answer regardless of who's asking.
+Each domain in the catalog has an area: `project`, `workspace` or `instance`.
 
-**Roles** live per workspace membership. Every workspace has a singleton, unremovable **Owner** role that implicitly holds every permission. Beyond that, roles are fully custom: anyone holding `roles:write` can create a role with whichever permissions it needs.
+- Edit roles in **Configuration → Roles**. Every workspace has an **Owner** role that holds everything and can't be removed; every other role is yours to define.
+- A role's **Every project** levels apply to all projects, new ones included, for members whose **Every project** is **From role**.
+- A member set to **Chosen projects** sees only the projects you give them on **Team**, each at the level you set there. Their role still covers the workspace areas but opens no instance area.
+- Instance areas, such as runners, DNS and connectors, are checked against every workspace you belong to (except where you are on chosen projects only). Holding one in any of them is enough.
 
-Every domain in the catalog carries an `area`: `project` (tickets, docs, memories, stacks, deploys, pull requests, code reviews, repositories, attachments, doc sharing, projects and board settings), `workspace` (chat, channels, voice, notifications, mentions, plays, members and invites, roles, workspaces), or `instance` (runners, machines, topology, DNS, connectors, integrations, automations, events, the audit log, accounts, instance settings). The role editor in **Configuration → Roles** shows a role's levels under two headings from it: **Workspace**, with the instance areas, and **Every project**. A role's Every project levels apply on every project, new ones included, but only to members whose **Every project** is *From role*. A member whose Every project is *Chosen projects* sees only the projects they hold **Project access** to, and inside each one that access is the whole answer; their role still decides the workspace areas and opens no instance area. `GET /api/workspaces/{workspaceID}/me` reports `restricted` and, when it is on, `projects`: each project they may open with the actions they hold there.
+`GET /api/workspaces/{workspaceID}/me` tells a client whether the caller is on chosen projects and, if so, which projects with which actions.
 
-A custom role can be cloned into another workspace you belong to, from the Clone button on its row in **Settings → Roles**, or with `POST /api/workspaces/{workspaceID}/roles/{roleID}/clone` and a body of `{"workspace_id": "<target>"}`. The copy keeps the role's name and permissions. Cloning needs `roles:clone` (Clone, under "Also allow" in the Roles row's menu in the role editor) in the role's own workspace and `roles:write` in the target; a workspace Owner has both. A name the target already uses gets a suffix instead of failing: `Editors` arrives as `Editors (copy)`, then `Editors (copy 2)`, and so on. The Owner role can't be cloned, since every workspace has its own. Over MCP, `workspace_list` with a workspace's `id` returns its people, its roles, and the permission catalog, `role_update` creates, clones (with `clone_from_id`), or edits a role, and `role_delete` removes one.
+To copy a custom role into another workspace, click its clone button in **Configuration → Roles**. That takes `roles:clone` in this workspace and `roles:write` in the other. A clashing name gets a suffix, so `Editors` arrives as `Editors (copy)`. Over the API it is `POST /api/workspaces/{workspaceID}/roles/{roleID}/clone` with `{"workspace_id": "<target>"}`; over MCP, `role_update` with `clone_from_id`.
 
-## Personal access tokens
+## Integrations and outgoing webhooks
 
-Mint one from **Your settings → Security → Tokens**. A PAT is long-lived, revocable, and carries exactly your own permissions — it's the credential an agent or a personal integration uses to act as you, including for the [MCP server](/docs/guide/mcp-server/). The raw token (prefixed `dep_`) is shown once at creation and can never be retrieved again; revoking it cuts access immediately.
-
-A paired computer gets its own PAT, "Nexul MCP on <computer>", minted from the computer's row in **Your settings → T3 pairing**. It is listed here marked as the computer's, one is active per computer, and un-confirming the computer's setup or removing the computer revokes it.
-
-## Connection tokens
-
-A **connection token** is different: it carries no identity or credentials at all, just server information (the instance URL, derived MCP endpoint, and basic settings) as a signed JWT. It exists so a standalone client — the [desktop app](/docs/guide/desktop-app/) today — can be pointed at your instance without you typing a URL by hand. Copy one from **Your settings → Security → Devices**; after importing it, the client still signs you in through the normal GitHub OAuth flow.
-
-## Outgoing webhooks
-
-Third-party integrations receive events as signed, durable HTTP POST deliveries rather than polling:
-
-- Each delivery carries `X-Nexul-Signature` (an HMAC over the payload, `sha256=<hex>`, keyed to the integration's own webhook secret) and `X-Nexul-Delivery-Id`, so a receiver can verify authenticity and dedupe retries.
-- Delivery is backed by the transactional outbox with retry and a dead-letter queue — durable, at-least-once.
-- Events from a direct message or a private channel (messages, creation, renames, member changes, deletion, and a private voice channel's occupancy) are never delivered, so an integration hears only what the whole workspace could read.
-- Every event topic has a published, versioned JSON Schema. The full catalog is served at:
-
-```
-GET /api/events/catalog
-```
-
-Installing an integration (today an API call, `POST /api/integrations`; a store with a consent screen is planned) mints it a scoped token (never a raw connector credential) with the least-privilege scopes the install requested, recorded alongside the integration's trust tier (`verified` or `community`). Scopes come from:
+An integration is a service of yours that receives events and calls the API back. Register one with `POST /api/integrations`. It gets a scoped token (`int_`) with only the permissions you grant, from the same values as the catalog:
 
 ```
 GET /api/integrations/scopes
 ```
 
-which returns the identical values `GET /api/permissions/catalog` does, restricted to what that domain's routes actually expose — a scoped token can be granted exactly what a role can. Every action taken through a token, and by which token, is recorded in the audit log:
+Events arrive as signed HTTP POSTs:
 
-```
-GET /api/audit
-```
+- `X-Nexul-Signature` holds `sha256=<hex>`, an HMAC of the body keyed with the integration's webhook secret. Check it before trusting the payload.
+- `X-Nexul-Delivery-Id` is unique per delivery. A failed delivery is retried, so use it to drop duplicates.
+- Nothing from a direct message or a private channel is ever sent.
+
+Every event has a versioned JSON Schema in `GET /api/events/catalog`. Every action taken with a token is recorded in `GET /api/audit`.
+
+## Signing in a phone
+
+1. In **Settings → Security → Devices**, click **Generate code** on **Connect a phone**.
+2. Open the Nexul app on your phone and scan the QR code.
+
+The code works once, for two minutes. Only a signed-in device can make one, never a token, so no agent can sign a phone in. **Signed-in devices** lists every browser, desktop app and phone on your account. **Sign out** one, or **Sign out everywhere else**.
+
+## Connection tokens
+
+A connection token points a client at your instance without you typing its address. It holds the instance URL and a few settings, nothing about you, so it isn't secret. Copy one with **Copy connection token** under **Settings → Security → Devices**, and paste it into the [desktop app](/docs/guide/desktop-app/).
