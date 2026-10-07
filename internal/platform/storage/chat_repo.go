@@ -11,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/chat"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -232,6 +233,28 @@ func (r *ChatRepo) CreateMessage(ctx context.Context, m *chat.Message, evts ...e
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		if err := insertMessage(ctx, r.q.WithTx(tx), m); err != nil {
 			return err
+		}
+		return enqueueChatOutbox(ctx, tx, evts)
+	})
+}
+
+// CreateBotMessage counts the post first, so a bot deleted since its URL was checked writes nothing.
+func (r *ChatRepo) CreateBotMessage(ctx context.Context, m *chat.Message, audit string, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		n, err := q.CountBotwebhookPost(ctx, sqlcgen.CountBotwebhookPostParams{LastPostAt: sql.NullInt64{Int64: m.CreatedAt.Unix(), Valid: true}, ID: m.AuthorID})
+		if err != nil {
+			return fmt.Errorf("count post of bot %s: %w", m.AuthorID, classifyWriteErr(err))
+		}
+		if n == 0 {
+			return fmt.Errorf("count post of bot %s: %w", m.AuthorID, apperrs.ErrNotFound)
+		}
+		if err := insertMessage(ctx, q, m); err != nil {
+			return err
+		}
+		err = q.AppendAudit(ctx, sqlcgen.AppendAuditParams{ID: ids.New(), ActorType: "bot", ActorID: m.AuthorID, Action: audit, CreatedAt: m.CreatedAt.Unix()})
+		if err != nil {
+			return fmt.Errorf("audit post of bot %s: %w", m.AuthorID, err)
 		}
 		return enqueueChatOutbox(ctx, tx, evts)
 	})

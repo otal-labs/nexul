@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -88,21 +87,12 @@ func (h *Handler) unlockSetup(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	pass, err := h.svc.UnlockSetup(r.Context(), clientAddr(r), req.Code)
+	pass, err := h.svc.UnlockSetup(r.Context(), httpx.ClientAddr(r), req.Code)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, pass)
-}
-
-// ponytail: the peer's IP, so callers behind the instance's own proxy share one throttle; trust a forwarded header if that bites.
-func clientAddr(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
 }
 
 // SetupRoutes returns the first-run endpoints behind RequireAuth, mounted at /api/setup.
@@ -888,7 +878,7 @@ func (h *Handler) exchangeConnectCode(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	token, err := h.svc.ExchangeConnectCode(r.Context(), clientAddr(r), req.Code, req.Device)
+	token, err := h.svc.ExchangeConnectCode(r.Context(), httpx.ClientAddr(r), req.Code, req.Device)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

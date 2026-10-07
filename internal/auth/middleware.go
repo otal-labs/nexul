@@ -77,7 +77,7 @@ func (s *Service) authenticate(r *http.Request, token string) (*User, *Session, 
 		user, err := s.AuthenticatePAT(r.Context(), token)
 		return user, nil, err
 	}
-	return s.AuthenticateSession(r.Context(), token, clientAddr(r))
+	return s.AuthenticateSession(r.Context(), token, httpx.ClientAddr(r))
 }
 
 // RequireWS guards a WS endpoint: a browser can't set Authorization on a WS upgrade, so the SPA uses a query param.

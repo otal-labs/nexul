@@ -170,3 +170,11 @@ func TestWriteError_CodedInternalError_KeepsTheCodeHidden(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.JSONEq(t, `{"message":"internal error","code":"INTERNAL"}`, rec.Body.String())
 }
+
+func TestClientAddr(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "[2001:db8::1]:443"
+	assert.Equal(t, "2001:db8::1", ClientAddr(req))
+	req.RemoteAddr = "pipe"
+	assert.Equal(t, "pipe", ClientAddr(req))
+}
