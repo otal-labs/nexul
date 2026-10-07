@@ -21,6 +21,7 @@ type fakeObserver struct {
 	activity  []harness.Activity
 	snapshots int
 	questions []harness.Question
+	answered  []harness.AnsweredQuestion
 	result    *harness.TurnResult
 	replyID   string
 }
@@ -47,6 +48,12 @@ func (f *fakeObserver) OnQuestion(q harness.Question) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.questions = append(f.questions, q)
+}
+
+func (f *fakeObserver) OnAnswered(a harness.AnsweredQuestion) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.answered = append(f.answered, a)
 }
 
 func (f *fakeObserver) OnFinished(result harness.TurnResult, replyID string) {
@@ -234,8 +241,10 @@ func question() harness.Question {
 func TestRunTurn_Question_PostsTheCardAndTellsTheObserver(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1"})
 	q := question()
+	a := harness.AnsweredQuestion{RequestID: "req-1", Answer: harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q1": {Text: "in T3"}}}}
 	client := &fakeHarness{startResult: harness.StartResult{SessionID: "sess-1", Updates: updatesChan(
 		harness.Update{Question: &q},
+		harness.Update{Answered: &a},
 		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
 	)}}
 	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
@@ -244,6 +253,7 @@ func TestRunTurn_Question_PostsTheCardAndTellsTheObserver(t *testing.T) {
 	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go", Observer: obs})
 
 	assert.Equal(t, []harness.Question{q}, obs.questions)
+	assert.Equal(t, []harness.AnsweredQuestion{a}, obs.answered, "an answer given in the harness reaches the observer")
 	require.NotNil(t, obs.result)
 	assert.Equal(t, harness.TurnDone, obs.result.State, "a question is not terminal; the turn's own end still arrives")
 	replies, _ := conv.snapshot()

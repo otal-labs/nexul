@@ -150,3 +150,36 @@ func TestMapItem_RecordedItems(t *testing.T) {
 		})
 	}
 }
+
+func TestAnswered(t *testing.T) {
+	t.Parallel()
+	codexQuestion := func(status, answers string) turnItem {
+		var it turnItem
+		require.NoError(t, json.Unmarshal([]byte(`{"type":"user_input_request","status":"`+status+`","requestId":"rq-1",
+			"questions":[{"id":"0","question":"Where is the Windows target?","options":[{"label":"Defer it"},{"label":"Use a VM"}]}],
+			"questionAnswer":`+answers+`}`), &it))
+		return it
+	}
+	answer := func(v harness.AnswerValue) *harness.AnsweredQuestion {
+		return &harness.AnsweredQuestion{RequestID: "rq-1", Answer: harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"0": v}}}
+	}
+	tests := []struct {
+		name string
+		item turnItem
+		want *harness.AnsweredQuestion
+	}{
+		{"free text typed in T3 is the answer's text", codexQuestion("completed", `{"answers":{"0":"Use dockur/windows"}}`), answer(harness.AnswerValue{Text: "Use dockur/windows"})},
+		{"an option's label is that choice", codexQuestion("completed", `{"answers":{"0":"Use a VM"}}`), answer(harness.AnswerValue{Selected: []string{"Use a VM"}})},
+		{"a list is several choices", codexQuestion("completed", `{"answers":{"0":["Defer it","Use a VM"]}}`), answer(harness.AnswerValue{Selected: []string{"Defer it", "Use a VM"}})},
+		{"a question still waiting has no answer", codexQuestion("waiting", `null`), nil},
+		{"a question cancelled unanswered has no answer", codexQuestion("cancelled", `null`), nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, ok := answered(tt.item)
+			assert.Equal(t, tt.want != nil, ok)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

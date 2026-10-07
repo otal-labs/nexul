@@ -189,6 +189,8 @@ type watch struct {
 	steps map[string]harness.Activity
 	// asked holds the request ids of the questions and approvals already raised.
 	asked map[string]bool
+	// resolved holds the request ids of the answered questions already reported.
+	resolved map[string]bool
 	// declines are the approvals raised since the pump last answered them.
 	declines []string
 	ended    bool
@@ -199,7 +201,7 @@ type watch struct {
 func newWatch(messageID string) *watch {
 	return &watch{messageID: messageID, runs: map[string]run{}, followed: map[string]bool{}, deliveries: map[string]string{},
 		messages: map[string]message{}, typed: map[string]bool{}, typedRuns: map[string]bool{}, subagents: map[string]subagent{}, failures: map[string]failure{}, sent: map[string]harness.Snapshot{},
-		steps: map[string]harness.Activity{}, asked: map[string]bool{}}
+		steps: map[string]harness.Activity{}, asked: map[string]bool{}, resolved: map[string]bool{}}
 }
 
 // apply folds one stream item into the watch and returns what the harness should emit for it.
@@ -453,6 +455,11 @@ func (w *watch) sessionLastError(s providerSession) {
 func (w *watch) item(it turnItem) []harness.Update {
 	if it.Type == "user_message" {
 		w.userMessageSeen(it)
+	}
+	// Any run's: the question a trail waits on can sit in a run before the one a catch-up follows.
+	if a, ok := answered(it); ok && !w.ended && !w.resolved[it.RequestID] {
+		w.resolved[it.RequestID] = true
+		return []harness.Update{{Answered: a}}
 	}
 	if w.ended || w.run.ID == "" || !w.followed[it.RunID] {
 		return nil
