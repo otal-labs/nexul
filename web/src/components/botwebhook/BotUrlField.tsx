@@ -6,9 +6,10 @@ interface BotUrlFieldProps {
   url: string;
 }
 
-// The URL in a read-only field with the Copy button joined to its right edge.
-export const BotUrlField = ({ name, url }: BotUrlFieldProps) => {
+// The URL in a read-only field with the Copy button joined; a path alone (no instance URL set yet) is made absolute.
+export const BotUrlField = ({ name, url: sent }: BotUrlFieldProps) => {
   const [copied, setCopied] = useState(false);
+  const url = sent.startsWith("/") ? `${window.location.origin}${sent}` : sent;
   const copy = async () => {
     await navigator.clipboard.writeText(url);
     setCopied(true);
