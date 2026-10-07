@@ -13,12 +13,13 @@ import (
 	"github.com/otal-labs/nexul/internal/harness/harnesstest"
 )
 
-// followRig is a conversation on thread th-1 whose harness records each Watch and ends it done at run-9.
+// followRig is a conversation on thread th-1 whose harness records each Watch and ends it done at marker.
 type followRig struct {
 	svc     *Service
 	conv    *fakeConversations
 	targets *fakeTargets
 	watched chan harness.Target
+	marker  string
 }
 
 func newFollowRig(t *testing.T, seen string) *followRig {
@@ -27,12 +28,12 @@ func newFollowRig(t *testing.T, seen string) *followRig {
 	if seen != "" {
 		conv.seen["conv-1"] = seen
 	}
-	r := &followRig{conv: conv, targets: &fakeTargets{target: testTarget()}, watched: make(chan harness.Target, 4)}
+	r := &followRig{conv: conv, targets: &fakeTargets{target: testTarget()}, watched: make(chan harness.Target, 4), marker: "run-9"}
 	client := &harnesstest.Client{WatchFn: func(_ context.Context, target harness.Target) (harness.StartResult, error) {
 		r.watched <- target
 		return harness.StartResult{SessionID: "th-1", Updates: updatesChan(
 			harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-9", Text: "Built the worker.", Streaming: false}},
-			harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone, Marker: "run-9"}},
+			harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone, Marker: r.marker}},
 		)}, nil
 	}}
 	r.svc = NewService(Config{Conversations: conv, Targets: r.targets, Harnesses: harnesstest.Registry(client), Live: &fakeLive{}})
@@ -100,6 +101,47 @@ func TestOnSessionUpdate_NothingToFollow_LeavesTheThreadAlone(t *testing.T) {
 			assert.Empty(t, r.watched)
 		})
 	}
+}
+
+func TestOnSessionUpdate_CatchUpReachesNoNewerTurn_TakesTheThreadsNewestAsSeen(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		update   harness.SessionUpdate
+		wantSeen string
+	}{
+		{"a newest turn T3 never shows, so no catch-up can reach it", harness.SessionUpdate{SessionID: "th-1", Latest: "run-8"}, "run-8"},
+		{"work still under way, whose end is news of its own", harness.SessionUpdate{SessionID: "th-1", Latest: "run-8", Working: true}, "run-7"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			r := newFollowRig(t, "run-7")
+			r.marker = "run-7"
+
+			r.svc.OnSessionUpdate("u-1", "c-2", tt.update)
+
+			r.nextWatch(t)
+			waitFor(t, 5*time.Second, func() bool {
+				if !r.svc.claimFollow("conv-1") {
+					return false
+				}
+				r.svc.releaseFollow("conv-1")
+				return true
+			})
+			assert.Equal(t, tt.wantSeen, r.conv.seenMarker("conv-1"))
+		})
+	}
+}
+
+func TestSeeNewest_ConversationUnreadable_LeavesTheMarker(t *testing.T) {
+	t.Parallel()
+	r := newFollowRig(t, "run-7")
+	r.conv.getErr = fmt.Errorf("database locked")
+
+	r.svc.seeNewest(t.Context(), "conv-1", harness.SessionUpdate{SessionID: "th-1", Latest: "run-8"}, "run-7")
+
+	assert.Equal(t, "run-7", r.conv.seenMarker("conv-1"))
 }
 
 func TestOnSessionUpdate_ThreadFromBeforeMarkers_StartsFromNowAndFollowsOnlyLiveWork(t *testing.T) {

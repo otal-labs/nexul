@@ -16,6 +16,9 @@ Decision: Nexul keeps the shell open on every computer it holds, and follows a t
   records none. A thread linked to a conversation has news when no turn here runs on it and either a run is working
   (`activityRunStatus` preparing, starting or running) or its newest run is not the marker. A conversation from
   before markers takes the thread's newest run as seen and follows only work under way, so its past never replays.
+  A catch-up of an idle thread that ends without moving the marker takes the thread's newest run as seen too: T3 can
+  name as newest a run its thread snapshot leaves out (a queued message steered into the running run cancels the run
+  it was queued as), and no catch-up reaches that run, so its news would reopen the trail on every reconnect.
 - **How it catches up.** A `Watch` with `Since` set to the marker adopts the first run after it, or the marker's own
   run while it still runs, and follows on from there with the runs typed in T3 and the work handed off (ADR 0116,
   ADR 0126). It shows the snapshot's steps, which a restart's watch leaves out; each step replaces one the trail
