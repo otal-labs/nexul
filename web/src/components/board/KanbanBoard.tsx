@@ -10,9 +10,10 @@ import {
   type DragOverEvent,
   type DragStartEvent,
   type DropAnimation,
+  type Translate,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { SwimlaneSection } from "@/components/board/SwimlaneSection";
 import { boardCollisionDetection } from "@/components/board/dragCollisionDetection";
@@ -71,6 +72,8 @@ export const KanbanBoard = ({
   // Post-drop order, set inside dnd-kit's drag-end batch so the overlay measures the card in its final slot, held until the drop's refetch lands.
   const [settled, setSettled] = useState<Swimlane[] | null>(null);
   const [settledColumns, setSettledColumns] = useState<BoardStatus[] | null>(null);
+  // An over change with the pointer still is the ghost's own layout shift; following it flips between two cells until React gives up.
+  const lastOverDelta = useRef<Translate | null>(null);
 
   const allTickets = swimlanes.flatMap((lane) => lane.tickets);
   const findTicket = (ticketId: string) => allTickets.find((t) => t.id === ticketId);
@@ -85,6 +88,7 @@ export const KanbanBoard = ({
   const handleDragStart = (event: DragStartEvent) => {
     setActiveTicket(findTicket(String(event.active.id)) ?? null);
     setOverCell(null);
+    lastOverDelta.current = null;
     setSettled(null);
     setSettledColumns(null);
   };
@@ -92,6 +96,9 @@ export const KanbanBoard = ({
   const handleDragOver = (event: DragOverEvent) => {
     const active = findTicket(String(event.active.id));
     if (!active) return;
+    const pointerStill = lastOverDelta.current?.x === event.delta.x && lastOverDelta.current?.y === event.delta.y;
+    lastOverDelta.current = event.delta;
+    if (pointerStill) return;
     const target = event.over?.data.current as DropTargetData | undefined;
     // Entering a cell over a card: land above or below it by where the dragged card's midline sits.
     const dragged = event.active.rect.current.translated;
