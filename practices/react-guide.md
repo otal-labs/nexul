@@ -368,7 +368,7 @@ Rules:
 
 | Pattern | Name | Purpose |
 |---|---|---|
-| Page header | `PageHeader` | Semibold tracking-tight title + one-line subtitle (page-level marquee) |
+| Page header | `PageHeader` | Display-face title (`pageTitleClass`) + one-line subtitle (page-level marquee) |
 | List view | `XxxFeed` | Hairline-row list with search, filter, actions |
 | Create dialog | `CreateXxxDialog` | New-entity dialog |
 | Delete dialog | `DeleteXxxDialog` | Confirmation dialog |
@@ -1253,8 +1253,9 @@ accent (`bg-brand`, `text-brand-foreground`), the status tokens (`--success`,
 `cubic-bezier(0.25, 0.1, 0.25, 1)`, `ease-out` =
 `cubic-bezier(0.16, 1, 0.3, 1)`, and the springs `ease-spring` and
 `ease-spring-pop` as `linear()` curves), and the locally bundled type stack: Inter
-Variable (UI + display, tight tracking) + JetBrains Mono (technical data),
-via `@fontsource-variable`, no CDN. No serif or script type.
+Variable (UI), JetBrains Mono (technical data), and Fraunces (`font-display`,
+the `type-display` utility) for page titles, empty-state and showcase
+headlines only, via `@fontsource-variable`, no CDN. No script type.
 
 Radius system: **7px controls** (`rounded-md`), 9px cards (`rounded-lg`), 12px
 panels (`rounded-xl`), pills (`rounded-full`) only for chips/badges/avatars/status,
@@ -1289,6 +1290,7 @@ mounted in today.
   --color-info: var(--info);
   --font-sans: var(--font-sans-stack);
   --font-mono: var(--font-mono-stack);
+  --font-display: var(--font-display-stack);
   --shadow-card: var(--shadow-card);
   --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
   /* ...the rest of the shadcn tokens */

@@ -19,7 +19,7 @@
  *   cards   — a step lighter than their panel, 9px, hairline ring
  *   brand   — one ember accent: primary action, focus, active nav, selection, own messages, progress
  *   status  — success/warning/info/destructive/merged keep their own hues
- *   type    — Inter (UI + display), JetBrains Mono (technical data)
+ *   type    — Fraunces (display: page titles, empty-state and showcase headlines), Inter (UI), JetBrains Mono (data)
  */
 
 @theme inline {
@@ -53,6 +53,7 @@
   --color-panel: var(--panel);
   --font-sans: var(--font-sans-stack);
   --font-mono: var(--font-mono-stack);
+  --font-display: var(--font-display-stack);
   /* Radius system: 7px controls, 9px cards, 12px panels, pills for badges. */
   --radius-sm: var(--shape-sm);
   --radius-md: var(--shape-md);
@@ -73,6 +74,7 @@
 
   --font-sans-stack: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono-stack: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display-stack: "Fraunces Variable", ui-serif, Georgia, serif;
 
   /* Radius a theme can override (Brutalism zeroes these); default matches the radius system above. */
   --shape-sm: 0.25rem;
@@ -212,12 +214,24 @@ body {
   inherits: false;
 }
 
-/* Tight tracking on headings; balanced display text. */
-h1,
-h2,
-h3 {
-  letter-spacing: -0.022em;
-  text-wrap: balance;
+/* Tight tracking on headings; balanced display text. Layered, so a heading's own tracking utility still applies. */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+  }
+}
+
+/* The display face: Fraunces, soft and a little wonky. SOFT and WONK are custom axes with no property of their own. */
+@utility type-display {
+  font-family: var(--font-display-stack);
+  font-weight: 560;
+  font-optical-sizing: auto;
+  font-variation-settings: "SOFT" 50, "WONK" 1;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
 }
 
 ::selection {

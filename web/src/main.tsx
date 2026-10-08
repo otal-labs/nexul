@@ -1,3 +1,4 @@
+import "@fontsource-variable/fraunces/full.css";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/jetbrains-mono";
 import { StrictMode } from "react";

@@ -17,7 +17,8 @@ ember accent marks what you act on and where you are: the primary action,
 focus, the active nav item, selection, your own messages, checked controls and
 progress. Status keeps its own hues as a dot or icon beside plain text.
 Technical data (ids, repositories, targets, counts, timestamps) is set in a
-monospace face. Dense where the work is dense, calm everywhere else.
+monospace face, and page titles in a soft serif. Dense where the work is
+dense, calm everywhere else.
 
 Why one accent and only those roles: an accent everywhere stops meaning
 "here", and it competes with status colour; held to action, focus and
@@ -55,6 +56,9 @@ never a hard-coded palette class.
 | `field-warm` / `field-pink` / `field-cool` | `brand` at 34%, pink, blue | `brand` at 30%, pastel pink, pastel blue | the light field's three glows; the warm one follows the palette's accent |
 | `cell-line` | `foreground` at 10% | `foreground` at 12% | a field grid's cell edges (a bot embed's fields) |
 | `cell-label` | `foreground` at 4% | `foreground` at 4% | a field grid's shaded label cell |
+| `font-display` | Fraunces Variable | same | page titles, empty-state and showcase headlines, through `type-display` |
+| `font-sans` | Inter Variable | same | everything else: UI, body, card and section headings |
+| `font-mono` | JetBrains Mono Variable | same | technical data |
 
 A token that a design needs and this table lacks is added to `index.css` and
 to this table in the same change. A one-off class is drift.
@@ -67,15 +71,26 @@ its panels follow its `card`. The default palette is labelled Nexul (id
 
 ## Type
 
-- Inter Variable for everything: UI, body, headings, display. Headings use
-  tight tracking (`-0.022em`) and `text-wrap: balance`; page titles are
-  `font-semibold tracking-tight`.
+- Fraunces Variable is the display face: page titles, empty-state headlines
+  and the showcase screens (signed out, onboarding, the error page), nothing
+  else. The `type-display` utility sets it: weight 560, `"SOFT" 50, "WONK" 1`
+  (soft terminals, the irregular alternates), optical sizing on, `-0.025em`
+  tracking, `1.12` leading. A page title is 28px (`pageTitleClass`); a
+  headline takes `displayTitleClass` and its own size, never under 20px,
+  where the soft serif turns muddy.
+- Inter Variable for everything else: UI, body, card and section headings,
+  dialog titles. Headings use tight tracking (`-0.022em`) and
+  `text-wrap: balance`.
 - JetBrains Mono Variable for technical data: ids, repositories, targets,
   counts, timestamps, code, terminal output. Use `.technical` or `font-mono`.
-- Both are bundled locally through `@fontsource-variable`. No CDN, because a
-  font request to a third party is a render-blocking dependency the product
-  does not control.
-- No serif, no script, no display face. Two families is the whole type system.
+- All three are bundled locally through `@fontsource-variable` (Fraunces as
+  its `full` build, the one that carries the SOFT and WONK axes). No CDN,
+  because a font request to a third party is a render-blocking dependency the
+  product does not control.
+- A title in a script Fraunces lacks (Japanese, Arabic) falls back to the
+  system serif for that script; the 1.12 leading, looser than the 1.08 a Latin
+  serif wants, is what keeps two lines of Japanese from touching.
+- No script face, and no fourth family.
 
 ## Shape and depth
 
@@ -162,8 +177,9 @@ Don't: the accent on anything else in the chrome (headings, icons at rest,
 borders, chips, badges); a second accent hue; a panel inside a panel, or a
 border where a surface step already separates; tint a chip with the accent; a
 filled or tinted-background chip for status (type and label may be tinted
-pills, `pillClass` in `web/src/components/board/ticketTypeColor.tsx`); serif
-or script type; pill buttons or inputs; heavy shadows for co-planar depth; a
+pills, `pillClass` in `web/src/components/board/ticketTypeColor.tsx`); the
+serif anywhere but a page title or a showcase or empty-state headline; script
+type; pill buttons or inputs; heavy shadows for co-planar depth; a
 second ambient animation or anything animating layout behind the panels.
 
 ## Decision ledger
@@ -185,7 +201,7 @@ second ambient animation or anything animating layout behind the panels.
 | Doc body on a sheet, the ticket body open | Against an open doc body and the boxed card: the sheet with page margins makes the doc read as the thing being written; a ticket's body is short and sits beside its rail, where a box only framed the empty editing space |
 | Board header: a project mark and the stage bar beside the title | Against a full-width stage strip and a stat row of stages under the header: both cost the board 50 to 80px of height on the page where height is cards; beside the title the summary is free and still reads first |
 | Palettes theme the accent and the field | A palette's primary becomes its brand, so Ocean is blue and Grove is green everywhere the ember was, field included |
-| Inter plus JetBrains Mono only | A precise technical voice; two families is enough |
+| Fraunces for titles over Inter and JetBrains Mono | A serif display face over a neutral sans is contrast, not resemblance: the titles get a voice no other developer tool has while every control, row and number stays in the precise technical pair. Soft and a little wonky (SOFT 50, WONK 1) at 560, because a sharp high-contrast serif read as editorial and a thin one vanished at 21px |
 | 7px controls, 9px cards, 12px panels | Soft but precise; pills stay badge-only so controls and tags never look alike |
 | Terminal-window motif, neutral glow | Code, log, and hero surfaces read as consoles |
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
@@ -280,10 +296,10 @@ below its trigger.
 
 Page header. Every page opens with `PageHeader`: a breadcrumb of the
 ancestors (`PageBreadcrumb`, mono `text-xs`, muted, each crumb a link; the
-middle crumbs shrink and truncate first so the last stays readable), then the title left-aligned at `text-2xl font-semibold
-tracking-tight` (`pageTitleClass`; never centered, never another size, an
+middle crumbs shrink and truncate first so the last stays readable), then the title left-aligned in the display face at 28px
+(`pageTitleClass`; never centered, never another size, an
 editable title takes the same class), its actions top-aligned on the right,
-one muted meta line under the title (status as a dot plus text, counts,
+one muted meta line 8px under the title (status as a dot plus text, counts,
 who and when), and a `border-b border-border` hairline closing the header.
 Breadcrumbs replace back links everywhere; no page renders "← Back to …" or
 an arrow icon to leave. A workspace page leads with the workspace crumb
