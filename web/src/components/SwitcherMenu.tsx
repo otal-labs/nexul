@@ -13,7 +13,7 @@ interface SwitcherMenuProps {
 }
 
 export const SwitcherMenu = ({ children, createLabel, onCreate }: SwitcherMenuProps) => (
-  <PopoverContent side="bottom" align="start" sideOffset={6} className="w-56 p-1">
+  <PopoverContent side="bottom" align="start" sideOffset={6} className="w-72 p-1">
     <div className="flex max-h-80 flex-col overflow-y-auto">{children}</div>
     {onCreate && (
       <div className="flex flex-col">

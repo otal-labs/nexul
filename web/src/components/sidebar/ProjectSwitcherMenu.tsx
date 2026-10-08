@@ -10,7 +10,7 @@ interface ProjectSwitcherMenuProps {
 }
 
 export const ProjectSwitcherMenu = ({ projects, currentId, onSelect, onCreate }: ProjectSwitcherMenuProps) => (
-  <SwitcherMenu createLabel="New Project" onCreate={onCreate}>
+  <SwitcherMenu createLabel="New project" onCreate={onCreate}>
     {projects.map((project) => (
       <SwitcherMenuItem
         key={project.id}

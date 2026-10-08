@@ -108,7 +108,7 @@ describe("ProjectSection", () => {
     renderSection();
 
     await user.click(await screen.findByRole("button", { name: /BE.*Backend/ }));
-    await user.click(await screen.findByRole("button", { name: "New Project" }));
+    await user.click(await screen.findByRole("button", { name: "New project" }));
 
     expect(screen.getByTestId("location")).toHaveTextContent("/acme/wizard/project/project");
   });
@@ -134,7 +134,7 @@ describe("ProjectSection", () => {
     expect(items[0]).toHaveTextContent("Frontend");
   });
 
-  it("has no + beside the switcher; New Project only appears inside the menu", async () => {
+  it("has no + beside the switcher; New project only appears inside the menu", async () => {
     const user = userEvent.setup();
     renderSection();
 
@@ -142,17 +142,17 @@ describe("ProjectSection", () => {
     expect(screen.queryByRole("button", { name: /new/i })).not.toBeInTheDocument();
 
     await user.click(trigger);
-    expect(await screen.findByRole("button", { name: "New Project" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "New project" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /new doc/i })).not.toBeInTheDocument();
   });
 
-  it("a viewer who may read but not create gets no New Project", async () => {
+  it("a viewer who may read but not create gets no New project", async () => {
     const user = userEvent.setup();
     renderSection({ permissions: ["projects:read", "tickets:read"] });
 
     await user.click(await screen.findByRole("button", { name: /BE.*Backend/ }));
     expect(await screen.findByRole("button", { name: /FE.*Frontend/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "New Project" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New project" })).not.toBeInTheDocument();
   });
 
   it("collapsed rail: the switcher shows the prefix and every page is an icon row", async () => {
