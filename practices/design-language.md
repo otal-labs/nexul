@@ -176,7 +176,9 @@ second ambient animation or anything animating layout behind the panels.
 | Light mode as its own identity | A soft grey canvas, pastel field and white panels read intentional; an inversion of the dark look did not |
 | Ink on the dark accent, white on the light accent | White on the bright dark-mode ember is 3:1; dark ink holds 6:1 there, and the deeper light-mode ember holds 5:1 with white |
 | Status as icon or dot plus text, never a tinted chip | Readable in both themes and keeps status from competing with the accent; tinted fills washed out once several hues appeared together |
-| Board cards: type and label as tinted pills | Re-tested on the card layout where the pill row sits alone under the title with the id opposite; the 15% tint with an 800/400 text shade holds 4.5:1 in both themes. Type and label may use the same pill wherever they show as a tag group; status never does |
+| Board cards: type and label as tinted pills | The 15% tint with an 800/400 text shade holds 4.5:1 in both themes. Type and label may use the same pill wherever they show as a tag group; status never does |
+| Board cards: the key as an eyebrow, the person opposite the pills | Against the avatar-beside-title card and a card with a ruled footer: with the 28px avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the footer rule made every card taller for a line that spacing already separates |
+| Board header: a project mark and the stage bar beside the title | Against a full-width stage strip and a stat row of stages under the header: both cost the board 50 to 80px of height on the page where height is cards; beside the title the summary is free and still reads first |
 | Palettes theme the accent and the field | A palette's primary becomes its brand, so Ocean is blue and Grove is green everywhere the ember was, field included |
 | Inter plus JetBrains Mono only | A precise technical voice; two families is enough |
 | 7px controls, 9px cards, 12px panels | Soft but precise; pills stay badge-only so controls and tags never look alike |
@@ -246,6 +248,19 @@ the Docs pane's, its meta "4 docs · 7 updates", expanded until collapsed and
 kept per browser; inside it a title drops a leading folder name. Every other
 notification is its own row with the same trailing time, and all of them
 interleave by newest activity.
+
+Board. The header leads with the project mark (`ProjectMark`: the prefix in
+mono on a gradient seeded from it, 44px, 9px radius, the same family as a
+person's avatar) beside the title, a mono "55 tickets · 8 people" line under
+it, and the stage summary as the header's action (`BoardStageSummary`): one
+6px bar split by stage in the stage hues, backlog at half strength, over a
+legend of dot, stage and mono count. It counts every ticket in the project,
+whatever the filters show, and grows in like a progress fill. A card is the
+mono key as an eyebrow (with the run timer and thread mark trailing on its
+line), the title at full width, the blocked line, then the pills with the
+20px avatar of whoever acts next opposite. A swimlane header is a leading
+chevron, the lane name, and a 56px done bar beside the mono "4/11 tickets".
+An empty column is a dashed slot saying "No tickets".
 
 Filter bar. A horizontal row of pill controls directly under the page header:
 a search field, then filter pills (`h-9 rounded-md border border-border

@@ -49,57 +49,64 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const type = ticketType?.name ?? "";
   const labels = ticket.labels ?? [];
 
+  const avatar = person.login && (
+    <span role="img" aria-label={`${person.role} ${personLabel(shown)}`} className="shrink-0">
+      <PersonAvatar login={person.login} src={shown.avatar_url} className="size-5 text-[10px]" />
+    </span>
+  );
+  const pills = (
+    <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+      {type !== "" && (
+        <span
+          data-slot="pill"
+          className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", pillClass(ticketTypeColor(type, ticketType?.color)))}
+        >
+          <TicketTypeIcon typeName={type} className="size-3" aria-hidden />
+          {type}
+        </span>
+      )}
+      {labels.map((label) => (
+        <span
+          key={label}
+          data-slot="pill"
+          className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", pillClass(labelDotColor(label, labelColors?.[label])))}
+        >
+          {label}
+        </span>
+      ))}
+    </span>
+  );
+  const run = (
+    <>
+      {runState === "waiting" && (
+        <CircleHelp className="size-3 shrink-0 text-info" role="img" aria-label="A play is waiting for an answer" />
+      )}
+      {runState !== undefined && runState !== "waiting" && (
+        <span className="flex items-center gap-1">
+          <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="A play is running" />
+          {runStartedAt !== undefined && <RunTimer startedAt={runStartedAt} />}
+        </span>
+      )}
+    </>
+  );
+  const thread = hasThread && (
+    <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" role="img" aria-label="Has a chat thread" />
+  );
+
   return (
     <>
-      {/* The whole card is the drag handle and click target; a still click never activates dnd-kit, so no inner handler is needed. */}
-      <span className="flex items-center gap-2.5">
-        {person.login && (
-          <span role="img" aria-label={`${person.role} ${personLabel(shown)}`} className="shrink-0">
-            <PersonAvatar login={person.login} src={shown.avatar_url} className="size-7 text-xs" />
-          </span>
-        )}
-        <span title={ticket.title} className="line-clamp-3 min-w-0 flex-1 text-sm font-medium leading-snug break-words">
-          {ticket.title}
-        </span>
-        {hasThread && (
-          <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" role="img" aria-label="Has a chat thread" />
-        )}
+      {/* The key leads like an eyebrow so the title gets the card's full width; who acts next sits opposite the pills. */}
+      <span className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+        <span className="tabular-nums">{prefix}-{ticket.number}</span>
+        <span className="flex-1" />
+        {run}
+        {thread}
       </span>
+      <span title={ticket.title} className="-mt-1 line-clamp-3 text-sm font-medium leading-snug break-words">{ticket.title}</span>
       <TicketBlockedLine ticketId={ticket.id} />
-      {/* Tinted pills for type and labels, ticket id on the right; color stays inside the pills, never on the card. */}
       <span className="flex items-end justify-between gap-2">
-        <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-          {type !== "" && (
-            <span
-              data-slot="pill"
-              className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", pillClass(ticketTypeColor(type, ticketType?.color)))}
-            >
-              <TicketTypeIcon typeName={type} className="size-3" aria-hidden />
-              {type}
-            </span>
-          )}
-          {labels.map((label) => (
-            <span
-              key={label}
-              data-slot="pill"
-              className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", pillClass(labelDotColor(label, labelColors?.[label])))}
-            >
-              {label}
-            </span>
-          ))}
-        </span>
-        <span className="flex shrink-0 items-center gap-1.5 font-mono text-xs text-muted-foreground">
-          {runState === "waiting" && (
-            <CircleHelp className="size-3 shrink-0 text-info" role="img" aria-label="A play is waiting for an answer" />
-          )}
-          {runState !== undefined && runState !== "waiting" && (
-            <span className="flex items-center gap-1">
-              <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="A play is running" />
-              {runStartedAt !== undefined && <RunTimer startedAt={runStartedAt} />}
-            </span>
-          )}
-          {prefix}-{ticket.number}
-        </span>
+        {pills}
+        {avatar}
       </span>
     </>
   );
