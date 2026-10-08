@@ -49,7 +49,9 @@ const MessageBubble = ({ message, own, timeOnHover, actions }: MessageBubbleProp
     data-slot="bubble"
     className={cn(
       "relative w-fit max-w-[75%] space-y-1.5 rounded-lg px-3 py-2 text-sm break-words",
-      own ? "bg-brand text-brand-foreground" : "bg-accent text-accent-foreground",
+      // Yours is the one bubble; everyone else's text runs plain under their name, so a long thread reads as a transcript.
+      own && "bg-brand text-brand-foreground",
+      !own && "max-w-[72ch] px-0 py-0",
     )}
   >
     {timeOnHover && (
@@ -133,7 +135,7 @@ export const MessageRow = ({ message, author, isOwn, continuation = false, quest
       {!isSystem && !isBot && (
         <Message align={align} className={cn("group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent/40", message.pending && "opacity-60")}>
           {align === "start" && !continuation && (
-            <MessageAvatar className="size-6 self-start bg-transparent">
+            <MessageAvatar className="size-8 self-start bg-transparent">
               <MessageRowAvatar isAgent={isAgent} author={author} />
             </MessageAvatar>
           )}

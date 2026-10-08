@@ -383,6 +383,17 @@ describe("MessageList grouping", () => {
     expect(document.querySelectorAll("time")).toHaveLength(2);
   });
 
+  it("opens each day with a divider naming it, and none between messages of the same day", () => {
+    vi.useFakeTimers({ now: new Date(2026, 7, 27, 9, 0), toFake: ["Date"] });
+    renderList([
+      message({ id: "m1", author_id: "u2", created_at: new Date(2026, 7, 26, 10, 0).toISOString() }),
+      message({ id: "m2", author_id: "u3", created_at: new Date(2026, 7, 26, 18, 0).toISOString() }),
+      message({ id: "m3", author_id: "u2", created_at: new Date(2026, 7, 27, 8, 30).toISOString() }),
+    ]);
+    expect(screen.getAllByRole("separator").map((el) => el.textContent)).toEqual(["Yesterday", "Today"]);
+    vi.useRealTimers();
+  });
+
   it("keeps edit and delete on every message of your own run", () => {
     renderList([from("m1", "u1", "10:00:00"), from("m2", "u1", "10:00:20"), from("m3", "u1", "10:00:50")]);
     expect(screen.getAllByLabelText("Edit message")).toHaveLength(3);

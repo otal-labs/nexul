@@ -40,7 +40,7 @@ export const AgentStreamBubble = ({ frame, onInterrupt, live }: AgentStreamBubbl
   const label = streamingLabel(frame, elapsed, live !== null);
   return (
     <div className="flex gap-2.5 px-3 py-1.5">
-      <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
         <Bot className="size-3.5" aria-hidden />
       </div>
       <div className="min-w-0 flex-1 space-y-0.5">

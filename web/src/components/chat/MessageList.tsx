@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/message-scroller";
 
 import { AgentStreamBubble } from "@/components/chat/AgentStreamBubble";
+import { ChatDayDivider } from "@/components/chat/ChatDayDivider";
 import { ChatPaneState } from "@/components/chat/ChatPaneState";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { playSend } from "@/components/chat/sendMotion";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { isContinuation, isNote, type Conversation, type Message } from "@/models/Chat";
 import type { Person } from "@/models/Person";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
+import { startsDay } from "@/utils/ChatDayUtility";
 import { trailBlockFor } from "@/utils/ThreadTrailUtility";
 
 interface MessageListProps {
@@ -105,11 +107,12 @@ export const MessageList = ({
         <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
           <MessageScroller className="min-h-0 flex-1">
             <MessageScrollerViewport>
-              <MessageScrollerContent className="w-full gap-0 py-2" aria-busy={stream?.streaming ?? false}>
+              <MessageScrollerContent className="mx-auto w-full max-w-3xl gap-0 py-2" aria-busy={stream?.streaming ?? false}>
                 {messages.map((message, i) => {
                   const continuation = isContinuation(messages[i - 1], message);
                   const own = message.author_id === currentUserId;
                   const entrance = entranceOf(message, seen, own);
+                  const newDay = startsDay(messages[i - 1], message);
                   return (
                     // Only the newest message, when it is an @Agent turn, anchors: the scroller jumps to any older anchor on a same-count swap (pending row confirmed, stream bubble replaced).
                     <MessageScrollerItem
@@ -119,7 +122,7 @@ export const MessageList = ({
                       // The item's content-visibility clips paint to its box; the margin lets the Edit/Delete pill rise into the gap above.
                       // The newest row renders eagerly: its 10rem placeholder would park a just-sent message above the bottom edge.
                       className={cn(
-                        continuation ? "[overflow-clip-margin:1rem]" : "pt-4",
+                        continuation ? "pt-1.5 [overflow-clip-margin:1rem]" : "pt-4",
                         i === messages.length - 1 && "[content-visibility:visible]",
                         entrance === "arrive" && "arrive",
                       )}
@@ -127,6 +130,7 @@ export const MessageList = ({
                         i === messages.length - 1 && message.author_kind === "user" && (message.mentions ?? []).some((m) => m.kind === "agent")
                       }
                     >
+                      {newDay && <ChatDayDivider createdAt={message.created_at} />}
                       <MessageRow
                         message={message}
                         author={resolveAuthor(message.author_id)}

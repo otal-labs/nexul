@@ -178,6 +178,8 @@ second ambient animation or anything animating layout behind the panels.
 | Status as icon or dot plus text, never a tinted chip | Readable in both themes and keeps status from competing with the accent; tinted fills washed out once several hues appeared together |
 | Board cards: type and label as tinted pills | The 15% tint with an 800/400 text shade holds 4.5:1 in both themes. Type and label may use the same pill wherever they show as a tag group; status never does |
 | Board cards: the key as an eyebrow, the person opposite the pills | Against the avatar-beside-title card and a card with a ruled footer: with the 28px avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the footer rule made every card taller for a line that spacing already separates |
+| Others' chat messages as plain text, yours as the bubble | Against bubbles for everyone: a channel of bubbles was a column of boxes on a panel; plain text under the name reads as a conversation and leaves the ember bubble to mean "you" |
+| Chat in a 48rem column | Against the full panel width: at 1440 your reply sat over 1000px from the message it answered |
 | Stack status as one well split in three | Against three separate stat tiles: the tiles were three more boxes inside the panel and had no room to list the services, which are what the stack is |
 | Deploy steps beside the log | Against the steps over the log: beside it the timeline stays in view while the log scrolls, and the log gets the panel's height |
 | Doc body on a sheet, the ticket body open | Against an open doc body and the boxed card: the sheet with page margins makes the doc read as the thing being written; a ticket's body is short and sits beside its rail, where a box only framed the empty editing space |
@@ -242,9 +244,9 @@ folder carries a color. Below 1024px one pane
 shows at a time. `ListDetailLayout` and `ListPaneRow` in
 `web/src/components/listpane/` are the reference.
 
-Inbox. One row per doc however many notifications it has: the title over a
-muted summary of what happened ("created · 2 updates"), the newest time
-trailing in mono, unread while any of them is. Rows hover and select like the
+Inbox. One row per doc however many notifications it has: the title with
+the newest time trailing in mono on its line, over a muted summary of what
+happened ("created · 2 updates"), unread while any of them is. Rows hover and select like the
 list pane's. Docs outside their project's
 default folder sit under a folder row built from the same `FolderToggle` as
 the Docs pane's, its meta "4 docs · 7 updates", expanded until collapsed and
@@ -458,7 +460,26 @@ held. Account actions (Disable, Remove account) sit at the footer's left and
 apply at once. `TeamPersonDialog` and `TeamWorkspaceTabs` in
 `web/src/components/team/` are the reference.
 
-Bot message. A bot's post sits in the same bubble as a person's, under the
+Chat stream. The messages run in one centred column up to 48rem wide, the
+composer under it at the same width, so your bubble on the right never sits a
+panel away from the line it answers. Your own messages are the one bubble
+(`brand`); everyone else's text runs plain under a 32px avatar and a header
+of the name in 13px semibold and the mono clock time (the full time on hover),
+held to 72ch, so a long thread reads as a transcript instead of a stack of
+boxes. A run of one person's messages drops the avatar and header after the
+first and keeps 6px between messages. Each day opens with a divider: the
+microheader label ("Today", "Yesterday", "Mon 21 Sept", the year only when it
+is not this one) between two hairlines. The composer is one framed field
+(`bg-card`, `rounded-xl`, the `input` ring turning to the focus ring) holding
+attach, the text and emoji. `MessageList` and `ChatComposer` are the
+reference.
+
+Inbox row. A 28px `bg-muted/60` tile with a muted icon for what happened
+(assigned, mentioned, status, doc created or edited, questions, memory, a
+play run), a `foreground` dot on its corner while unread, then the title with
+the mono time on its first line and the summary under it.
+
+Bot message. A bot's post sits plain like a person's, under the
 name and avatar it posted with (the Nexul glyph without one) and a `BOT`
 outline tag, widened to 38rem when it carries an embed. Each embed hangs
 behind a 2px `muted-foreground` rule; the sender's color is never painted.

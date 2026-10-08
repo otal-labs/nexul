@@ -14,7 +14,7 @@ const BotAvatarImage = ({ src }: { src: string | undefined }) => {
       src={shown}
       alt=""
       onError={() => setFailedSrc(src)}
-      className="size-6 shrink-0 rounded-full bg-accent object-cover"
+      className="size-8 shrink-0 rounded-full bg-accent object-cover"
     />
   );
 };
