@@ -114,7 +114,14 @@ export const TopologyFlow = () => {
         <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} />
         <Controls />
         {/* Minimap is overview-only chrome, dropped below `md`; pan/zoom/drag/connect stay live at every width. */}
-        <MiniMap pannable zoomable className="hidden md:block" />
+        <MiniMap
+          pannable
+          zoomable
+          className="hidden md:block"
+          bgColor="var(--surface-2)"
+          maskColor="color-mix(in oklab, var(--background) 70%, transparent)"
+          nodeColor="color-mix(in oklab, var(--muted-foreground) 45%, transparent)"
+        />
         <ViewportPortal>
           {networkRects.map((rect) => (
             <NetworkBox key={rect.name} rect={rect} />
