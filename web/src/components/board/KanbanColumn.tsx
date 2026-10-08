@@ -4,6 +4,7 @@ import { GripVerticalIcon, PlusIcon } from "lucide-react";
 import { StatusMark } from "@/components/board/StatusIcon";
 import { TicketCard } from "@/components/board/TicketCard";
 import type { DropTargetData } from "@/components/board/dragMove";
+import { EmptyRow } from "@/components/EmptyRow";
 import { cn } from "@/lib/utils";
 import type { BoardStatus } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
@@ -41,7 +42,7 @@ export const KanbanColumn = ({
         transition,
       }}
       className={cn(
-        "flex w-72 shrink-0 flex-col gap-1.5 rounded-xl bg-muted p-1.5",
+        "flex w-72 shrink-0 flex-col gap-1.5 rounded-lg bg-muted p-1.5",
         // Columns drag in place (no overlay), so the moving one floats above its siblings.
         isDragging && "relative z-10 shadow-elevated",
       )}
@@ -51,7 +52,7 @@ export const KanbanColumn = ({
           ref={setActivatorNodeRef}
           type="button"
           aria-label={`Reorder ${column.name}`}
-          className="cursor-grab rounded p-0.5 text-muted-foreground/60 hover:text-foreground active:cursor-grabbing focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="cursor-grab rounded-md p-0.5 text-muted-foreground/60 hover:text-foreground active:cursor-grabbing focus-visible:ring-[3px] focus-visible:ring-ring/50"
           {...attributes}
           {...listeners}
         >
@@ -69,7 +70,7 @@ export const KanbanColumn = ({
           type="button"
           onClick={() => onAddTicket(column.id)}
           aria-label={`New ticket in ${column.name}`}
-          className="rounded p-1 text-muted-foreground/60 hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="rounded-md p-1 text-muted-foreground/60 hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
           <PlusIcon className="size-4" aria-hidden />
         </button>
@@ -82,9 +83,7 @@ export const KanbanColumn = ({
           ))}
         </SortableContext>
         {tickets.length === 0 && (
-          <p className="rounded-lg border border-dashed border-border py-4 text-center font-mono text-[11px] text-muted-foreground">
-            No tickets
-          </p>
+          <EmptyRow className="px-2 py-3">No tickets</EmptyRow>
         )}
       </div>
     </section>
