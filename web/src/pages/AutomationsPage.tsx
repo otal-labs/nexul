@@ -19,7 +19,7 @@ export const AutomationsPage = () => {
       <PageHeader
         crumbs={[workspaceCrumb]}
         title="Automations"
-        meta="First-party code that reacts to what happens in this workspace — Default automations ship with the instance, Custom ones are yours."
+        meta="Code that runs when something happens in this workspace. Default ones ship with Nexul, Custom ones are yours."
         actions={<NewAutomationDialog />}
       />
       <PageTabs

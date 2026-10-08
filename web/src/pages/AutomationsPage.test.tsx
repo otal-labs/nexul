@@ -69,10 +69,10 @@ describe("AutomationsPage", () => {
 
     await screen.findByRole("tab", { name: "Automations", selected: true });
     expect(mocks.get).toHaveBeenCalledWith("/api/automations", { params: { workspace_id: "ws-1" } });
-    expect(screen.queryByText("No automations host enrolled yet.")).not.toBeInTheDocument();
+    expect(screen.queryByText("No automations hosts yet. Add one to run automations on another machine.")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "Hosts" }));
-    expect(await screen.findByText("No automations host enrolled yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No automations hosts yet. Add one to run automations on another machine.")).toBeInTheDocument();
   });
 
   it("lists the decisions check among the defaults, off, and switches it for the workspace", async () => {

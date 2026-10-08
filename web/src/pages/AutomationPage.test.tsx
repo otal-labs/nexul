@@ -115,7 +115,7 @@ describe("AutomationPage", () => {
       "/automations/a1/configuration",
     );
 
-    await user.click(await screen.findByText(/pending review/));
+    await user.click(await screen.findByText(/waiting to be merged/));
 
     expect(await screen.findByRole("tab", { name: "Versions", selected: true })).toBeInTheDocument();
     expect(await screen.findByText("#1")).toBeInTheDocument();

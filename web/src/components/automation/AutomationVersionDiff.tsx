@@ -32,7 +32,7 @@ export const AutomationVersionDiff = ({ automationId, diff, canUpdate }: Automat
     <SettingsCard
       id="pending-version"
       title="Pending vs active"
-      description="A pushed version waits here until it's merged; the active one keeps running meanwhile."
+      description="A pushed version waits here until you merge it. The active one keeps running."
       footer={
         pending &&
         canUpdate && (

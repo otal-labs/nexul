@@ -29,7 +29,7 @@ export const AutomationConfigForm = ({ automation }: AutomationConfigFormProps) 
     <SettingsCard
       id="configuration"
       title="Configuration"
-      description="Settings the automation's code declares; its next run reads the saved values."
+      description="Declared by the automation's code. The next run uses the saved values."
       footer={
         fields.length > 0 && (
           <Button type="submit" form="automation-config" size="sm" loading={updateConfig.isPending}>
@@ -38,7 +38,7 @@ export const AutomationConfigForm = ({ automation }: AutomationConfigFormProps) 
         )
       }
     >
-      {fields.length === 0 && <EmptyRow>This automation has no config knobs</EmptyRow>}
+      {fields.length === 0 && <EmptyRow>This automation has no settings.</EmptyRow>}
       {fields.length > 0 && (
         <form id="automation-config" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           {fields.map((field) => (

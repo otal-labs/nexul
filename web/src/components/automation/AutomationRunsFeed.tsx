@@ -16,7 +16,7 @@ export const AutomationRunsFeed = ({ automationId, runs }: AutomationRunsFeedPro
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
   return (
-    <SettingsCard id="runs" title="Run history" description="Every event this automation handled. Open a run to read its log.">
+    <SettingsCard id="runs" title="Run history" description="Open a run to read its log.">
       {runs.length === 0 && <EmptyRow>No runs yet</EmptyRow>}
       {runs.length > 0 && (
         <EnterList className="divide-y divide-border overflow-hidden rounded-md border">

@@ -34,7 +34,7 @@ export const AutomationSecretsSection = () => {
     <SettingsCard
       id="automation-secrets"
       title="Automation secrets"
-      description="Shared with every automation as ctx.secrets.NAME. Values are write-only — once saved, they can never be read back, only replaced or deleted."
+      description="Every automation reads these as ctx.secrets.NAME. A saved value can't be read back, only replaced or deleted."
     >
       <div className="space-y-6">
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-wrap items-end gap-2">

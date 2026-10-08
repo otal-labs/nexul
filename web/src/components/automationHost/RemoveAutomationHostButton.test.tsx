@@ -55,7 +55,7 @@ describe("RemoveAutomationHostButton", () => {
     await user.click(screen.getByRole("button", { name: "Remove jobs-1" }));
 
     expect(mocks.confirm).toHaveBeenCalledWith(
-      expect.objectContaining({ message: expect.stringMatching(/next time it comes online.*back to the instance host/) }),
+      expect.objectContaining({ message: expect.stringMatching(/next time it comes online.*move to the instance host/) }),
     );
   });
 

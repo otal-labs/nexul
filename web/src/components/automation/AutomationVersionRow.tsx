@@ -27,7 +27,7 @@ export const AutomationVersionRow = ({ automationId, version, canUpdate }: Autom
   const onRollback = async () => {
     const ok = await confirm({
       title: "Roll back this version?",
-      message: `This repoints the active code to #${version.sequence} and respawns the automation's worker.`,
+      message: `#${version.sequence} becomes the active code and the automation's worker restarts.`,
       destructive: true,
     });
     if (ok) rollback.mutate(version.id);
