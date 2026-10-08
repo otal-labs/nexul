@@ -294,7 +294,7 @@ to its list and folder (Docs › Runbooks), no workspace crumb. Its body is
 a sheet (`bg-card`, hairline ring, `shadow-card`, 48px side margins once the
 page is 48rem wide) holding a reading measure (`max-w-3xl`), and the title
 stays out of the sheet. From a 48rem page the table of contents (a 12rem
-column) sits to its left.
+column) sits to its left. A memory's body takes the same sheet.
 
 Rich text (`.prose-rich` in `index.css`), the doc and ticket bodies alike:
 16px at 1.75, headings closer to their text than to the paragraph above
@@ -361,8 +361,9 @@ screens. `EmptyState` is for a whole empty page; an empty list inside a card is
 a single `EmptyRow` sentence where the rows would be, `flush` when it sits in a
 card body and lines up with the text around it.
 
-Stat and summary row. Three or four values in a single row above a list,
-label above value, value slightly larger, color-coded only when the metric is
+Stat and summary row. Three or four values in a single row above a list, in
+the same `surface-2` well as a stack's live status, split by hairlines,
+microheader label above a 20px mono value, color-coded only when the metric is
 inherently positive or negative (health counts). Only a page with a fleet or
 health rollup worth reading at a glance gets one; a page with nothing to
 summarise does not invent one.

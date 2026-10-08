@@ -18,7 +18,7 @@ interface AddRunnerDialogProps {
   // Set from the Runners page's per-machine action: the new runner joins that machine's pool.
   machineName?: string;
   triggerSize?: "default" | "sm";
-  triggerVariant?: "default" | "outline";
+  triggerVariant?: "default" | "outline" | "ghost";
 }
 
 // Closing the dialog drops the enrollment, so reopening always starts from a fresh form and a fresh code.

@@ -39,15 +39,16 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
             <span>root <EditableStackRoot machineId={machine.id} stackRoot={machine.stack_root} /></span>
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Ghost actions: pulled left by their padding so the icon lines up with the machine's name when they wrap under it. */}
+        <div className="-ml-2.5 flex flex-wrap items-center gap-1">
           {canImport && (
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="ghost" size="sm" asChild>
               <Link to={wsPath(`/wizard/project/import?machine=${machine.id}`)}>
                 <DownloadIcon className="size-3.5" /> Import from this machine
               </Link>
             </Button>
           )}
-          <AddRunnerDialog machineName={machine.name} triggerSize="sm" triggerVariant="outline" />
+          <AddRunnerDialog machineName={machine.name} triggerSize="sm" triggerVariant="ghost" />
         </div>
       </div>
       {runners.length === 0 && <EmptyRow flush>No runners on this machine yet.</EmptyRow>}
