@@ -1,4 +1,6 @@
+import { EmptyRow } from "@/components/EmptyRow";
 import { LabelColorRow } from "@/components/settings/LabelColorRow";
+import { SettingsCard } from "@/components/settings/SettingsCard";
 
 interface BoardLabelColorsSectionProps {
   projectId: string;
@@ -8,13 +10,14 @@ interface BoardLabelColorsSectionProps {
 
 // Labels aren't a real entity (ADR 0005) — no create/rename/delete, just color on existing ones.
 export const BoardLabelColorsSection = ({ projectId, allLabels, labelColors }: BoardLabelColorsSectionProps) => (
-  <div className="border-t pt-6">
-    <h3 className="text-sm font-semibold">Label colors</h3>
-    {allLabels && allLabels.length === 0 && (
-      <p className="mt-3 text-sm text-muted-foreground">No labels yet</p>
-    )}
+  <SettingsCard
+    id="label-colors"
+    title="Label colors"
+    description="Labels come from the tickets themselves; pick the color each one shows on this board."
+  >
+    {allLabels && allLabels.length === 0 && <EmptyRow>No labels yet</EmptyRow>}
     {allLabels && allLabels.length > 0 && (
-      <ul className="mt-3 divide-y divide-border">
+      <ul className="divide-y divide-border">
         {allLabels.map((label) => (
           <LabelColorRow
             key={label}
@@ -25,5 +28,5 @@ export const BoardLabelColorsSection = ({ projectId, allLabels, labelColors }: B
         ))}
       </ul>
     )}
-  </div>
+  </SettingsCard>
 );

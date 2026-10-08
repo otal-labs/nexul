@@ -50,7 +50,7 @@ export const StatusRow = ({ status, index, total, onMove }: StatusRowProps) => {
   const kindIconClass = cn("size-3.5 shrink-0", stage.text);
 
   return (
-    <li className="-mx-2 flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors duration-[120ms] ease-standard hover:bg-accent/40">
+    <li className="-mx-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-[120ms] ease-standard hover:bg-accent/40">
       {editing && (
         <div onBlur={handleGroupBlur} className="flex flex-1 flex-wrap items-center gap-3">
           <input
@@ -65,13 +65,10 @@ export const StatusRow = ({ status, index, total, onMove }: StatusRowProps) => {
         </div>
       )}
       {!editing && (
-        <span className="flex flex-1 items-center gap-2 text-sm font-medium">
-          {isStatusIconName(status.icon) ? (
-            <StatusIcon icon={status.icon} className={kindIconClass} />
-          ) : (
-            <span className={cn(kindDotClass, "mx-1")} aria-hidden />
-          )}
-          {status.name}
+        <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium">
+          {isStatusIconName(status.icon) && <StatusIcon icon={status.icon} className={kindIconClass} />}
+          {!isStatusIconName(status.icon) && <span className={cn(kindDotClass, "mx-1")} aria-hidden />}
+          <span className="truncate" title={status.name}>{status.name}</span>
         </span>
       )}
       <RowActionsMenu

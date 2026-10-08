@@ -4,6 +4,8 @@ import { Container } from "@/components/Container";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import type { Crumb } from "@/components/PageBreadcrumb";
+import { PageHeader } from "@/components/PageHeader";
 import {
   DEFAULT_PROJECT_SETTINGS_SECTION,
   isProjectSettingsSection,
@@ -12,6 +14,7 @@ import { ProjectSettingsContent } from "@/components/settings/ProjectSettingsCon
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchProject, useFetchProjects } from "@/hooks/ProjectHooks";
+import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { resolveProject } from "@/models/Project";
 
@@ -26,9 +29,25 @@ export const ProjectSettingsPage = () => {
   const notFound = !isPending && !error && !resolved;
   const { data: project } = useFetchProject(projectId);
   const section = isProjectSettingsSection(rawSection) ? rawSection : DEFAULT_PROJECT_SETTINGS_SECTION;
+  const workspaceCrumb = useWorkspaceCrumb();
+  const projectCrumb = useProjectCrumb(resolved?.id);
+  const crumbs: Crumb[] = projectCrumb ? [workspaceCrumb, projectCrumb] : [workspaceCrumb];
 
   return (
-    <Container className="mx-auto max-w-5xl py-8">
+    <Container size="page" className="py-8">
+      <PageHeader
+        className="mb-8"
+        crumbs={crumbs}
+        title="Settings"
+        meta={
+          project && (
+            <>
+              <span className="font-mono">{project.prefix}</span>
+              <span>Board, repositories, services, and who can open this project.</span>
+            </>
+          )
+        }
+      />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {notFound && (
