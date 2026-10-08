@@ -27,11 +27,12 @@ export const RunnerRow = ({ runner, index = 0 }: RunnerRowProps) => {
       >
         <RunnerStatusBadge connected={runner.connected} />
         <div className="min-w-0 flex-1">
-          <span className="block truncate font-mono font-medium">{runner.name || runner.id}</span>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <p className="truncate font-mono text-xs text-muted-foreground">
-              {runner.id} · last seen {formatRelativeTime(runner.last_seen)}
-            </p>
+          <span className="block truncate font-mono font-medium" title={runner.name || runner.id}>
+            {runner.name || runner.id}
+          </span>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-muted-foreground">
+            <span className="wrap-anywhere">{runner.id}</span>
+            <span>last seen {formatRelativeTime(runner.last_seen)}</span>
             {runner.version && <RunnerVersionChip version={runner.version} />}
           </div>
         </div>

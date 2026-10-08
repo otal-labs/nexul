@@ -38,8 +38,8 @@ export const RunnersPanel = () => {
       {runners.data && queue.data && (
         <FleetStatRow online={onlineCount} offline={runners.data.length - onlineCount} queued={queue.data.length} />
       )}
-      <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
-        <div className="space-y-8">
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-8">
           {machines.data && machines.data.length === 0 && <RunnersSection runners={runners.data} />}
           {machines.data && machines.data.length > 0 && (
             <>
