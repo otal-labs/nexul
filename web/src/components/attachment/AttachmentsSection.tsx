@@ -4,7 +4,6 @@ import { useRef } from "react";
 import { AttachmentRow } from "@/components/attachment/AttachmentRow";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
-import { microheaderClass } from "@/components/Microheader";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { microheaderClass } from "@/components/Microheader";
 import { useFetchAttachments, useUploadAttachment } from "@/hooks/AttachmentHooks";
