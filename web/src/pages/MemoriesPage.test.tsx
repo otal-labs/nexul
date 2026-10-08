@@ -87,7 +87,7 @@ describe("MemoriesPage", () => {
     const main = await screen.findByRole("region", { name: "Main" });
     const [first, second] = within(main).getAllByRole("link");
     expect(first).toHaveAccessibleName(/Deploy quirks/);
-    expect(within(main).getByText("required")).toBeInTheDocument();
+    expect(await rowSwitch("Deploy quirks")).toBeChecked();
     expect(second).toHaveAttribute("aria-current", "page");
     const footer = screen.getByRole("region", { name: "Footer" });
     expect(within(footer).getByRole("link", { name: /Where tickets go/ })).toBeInTheDocument();

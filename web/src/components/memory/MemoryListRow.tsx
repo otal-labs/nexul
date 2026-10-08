@@ -48,18 +48,7 @@ export const MemoryListRow = ({ memory, projectToken, selected }: MemoryListRowP
         title={memory.title}
         snippet={snippet}
         selected={selected}
-        meta={
-          <span className="flex flex-col items-end gap-0.5">
-            <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
-              {formatUpdatedAgo(memory.updated_at)}
-            </span>
-            {memory.always_included && (
-              <span className="rounded-full bg-muted px-1.5 py-px text-[10px] whitespace-nowrap text-muted-foreground">
-                required
-              </span>
-            )}
-          </span>
-        }
+        meta={<span className="font-mono text-xs text-muted-foreground tabular-nums">{formatUpdatedAgo(memory.updated_at)}</span>}
         actions={
           (moveTo || onClone || onDelete) && (
             <RowActions itemLabel={memory.title} moveTo={moveTo} onClone={onClone} onDelete={onDelete} />

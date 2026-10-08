@@ -1,6 +1,7 @@
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { MemoryVersionRow } from "@/components/memory/MemoryVersionRow";
+import { microheaderClass } from "@/components/Microheader";
 import { useFetchMemoryVersions } from "@/hooks/MemoryHooks";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +20,7 @@ export const MemoryVersionsFeed = ({ memoryId, currentVersion, canRevert, rowLay
 
   return (
     <section className={stacked ? "space-y-0.5" : "space-y-3"} aria-label="Versions">
-      <h2 className={cn("font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase", stacked && "pb-1")}>
+      <h2 className={cn(microheaderClass, stacked && "pb-1")}>
         Versions
       </h2>
       {isPending && <LoadingDisplay />}

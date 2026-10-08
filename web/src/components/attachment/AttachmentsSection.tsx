@@ -2,9 +2,11 @@ import { PlusIcon } from "lucide-react";
 import { useRef } from "react";
 
 import { AttachmentRow } from "@/components/attachment/AttachmentRow";
+import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { microheaderClass } from "@/components/Microheader";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { microheaderClass } from "@/components/Microheader";
 import { useFetchAttachments, useUploadAttachment } from "@/hooks/AttachmentHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { cn } from "@/lib/utils";
@@ -66,7 +68,7 @@ export const AttachmentsSection = ({ owner, className, actionPlacement = "beside
       </div>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {data && data.length === 0 && <p className="text-xs text-muted-foreground">No files yet.</p>}
+      {data && data.length === 0 && <EmptyRow className="p-0">No files yet.</EmptyRow>}
       {data && data.length > 0 && (
         <ul className="flex flex-wrap gap-1.5">
           {data.map((attachment) => (
