@@ -41,7 +41,7 @@ export const NameComputerForm = ({ onCreated, onPairByUrl }: NameComputerFormPro
         <FormInput control={form.control} name="port" label="T3 Code port" type="number" inputMode="numeric" />
         <div className="space-y-2 border-t border-border pt-4">
           <p className="text-sm text-muted-foreground">
-            This server can already reach the machine, such as a VPS or a computer on the same network? Skip the tunnel.
+            Can this server already reach the machine, like a VPS or a computer on your network? Skip the tunnel.
           </p>
           <Button type="button" variant="outline" onClick={onPairByUrl}>
             <LinkIcon className="size-4" aria-hidden />
