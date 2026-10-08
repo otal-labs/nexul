@@ -1,4 +1,4 @@
-import { Hash, Users, Volume2, type LucideIcon } from "lucide-react";
+import { FileText, Hash, Ticket, Users, Volume2, type LucideIcon } from "lucide-react";
 import { Suspense, useCallback, useRef } from "react";
 
 import { ChatComposer } from "@/components/chat/ChatComposer";
@@ -17,6 +17,8 @@ import {
   useMarkChatRead,
   usePostMessage,
 } from "@/hooks/ChatHooks";
+import { useFetchDoc } from "@/hooks/DocHooks";
+import { useFetchTicket } from "@/hooks/TicketHooks";
 import { conversationLabel, type Conversation } from "@/models/Chat";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 
@@ -27,7 +29,12 @@ interface ConversationThreadProps {
   showHeader?: boolean;
 }
 
-const CONVERSATION_ICONS: Partial<Record<Conversation["kind"], LucideIcon>> = { voice_channel: Volume2, dm: Users };
+const CONVERSATION_ICONS: Partial<Record<Conversation["kind"], LucideIcon>> = {
+  voice_channel: Volume2,
+  dm: Users,
+  doc_thread: FileText,
+  ticket_thread: Ticket,
+};
 
 export const ConversationThread = ({ workspaceId, conversation, showHeader = true }: ConversationThreadProps) => {
   const { data: me } = useFetchMe();
@@ -38,7 +45,10 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
   const deleteMessage = useDeleteMessage(conversation.id);
   const interruptAgent = useInterruptAgentTurn(conversation.id);
   const markRead = useMarkChatRead(workspaceId);
-  const label = conversationLabel(conversation, { currentUserId: me?.user.id, resolvePerson });
+  // A doc or ticket thread is titled with what it is about, like its sidebar row.
+  const { data: doc } = useFetchDoc(conversation.kind === "doc_thread" ? conversation.doc_id : undefined);
+  const { data: ticket } = useFetchTicket(conversation.kind === "ticket_thread" ? conversation.ticket_id : undefined);
+  const label = doc?.title ?? ticket?.title ?? conversationLabel(conversation, { currentUserId: me?.user.id, resolvePerson });
   const isVoiceChannel = conversation.kind === "voice_channel";
   const isCallActive = useVoiceCallStore((s) => s.activeConversationId === conversation.id);
 
@@ -61,7 +71,9 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
       {showHeader && (
         <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
           <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-          <span className="min-w-0 truncate text-sm font-semibold">{label}</span>
+          <span dir="auto" title={label} className="min-w-0 truncate text-sm font-semibold">
+            {label}
+          </span>
         </div>
       )}
       {isVoiceChannel && (
