@@ -1,7 +1,7 @@
 # 03: The run queue: slots, online computers, re-checks, and the daily cap
 
 Type: research
-Status: open
+Status: resolved
 Blocked by: None — can start immediately
 
 ## Question
@@ -30,3 +30,13 @@ and their computer is online, after its conditions are checked again.
   marking?
 
 Findings go in `research/03-the-run-queue.md`.
+
+## Answer
+
+Recommendation in `research/03-the-run-queue.md`, with one change from the
+owner (2026-10-08): **auto runs ignore the play's show-when stage.** The
+stage only decides where the button shows. `checkPlay`'s stage gate
+(`internal/plays/run.go:781`) applies to manual presses only; the re-check
+at the front of the queue leaves it out. An auto play that wants a stage
+limit adds "Stage is …" as a condition, and without one the stage does not
+matter. Default concurrency is one auto run per person.

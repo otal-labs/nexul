@@ -1,7 +1,7 @@
 # 01: How "ticket becomes unblocked" and "doc changed" become events
 
 Type: research
-Status: open
+Status: resolved
 Blocked by: None — can start immediately
 
 ## Question
@@ -23,3 +23,15 @@ Two of the six moments have no event today.
   existing debounce or scheduled-job seam to reuse?
 
 Findings go in `research/01-the-new-moments.md`.
+
+## Answer
+
+Recommendation in `research/01-the-new-moments.md`, taken as written:
+`ticket.unblocked` published inside the storage transaction on the three
+paths that clear the last open blocker (blocker reaches done, link deleted,
+blocker deleted), and a `doc_settles` table drained by a 30-second loop that
+emits `doc.settled` once a signed-in person's non-MCP edits have stopped for
+10 minutes. A doc created and edited inside the window fires once, as
+created. Every MCP edit counts as an agent's, including a person's own agent
+in a chat. The moment names are fixed here, before 09's migration stores
+them.

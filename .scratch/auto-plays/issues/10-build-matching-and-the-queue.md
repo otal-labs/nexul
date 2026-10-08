@@ -13,3 +13,8 @@ didn't-run records, per-auto-play limits, the per-ticket daily cap and
 resume, and the wake-ups (run ended, computer online, resume). HTTP and
 MCP to read and cancel queued runs and resume a paused ticket. Go tests
 for each path, integration tests against real SQLite.
+
+## Notes
+
+- Auto runs skip `checkPlay`'s show-when stage gate (03's answer); manual
+  presses keep it.
