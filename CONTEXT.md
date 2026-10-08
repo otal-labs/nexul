@@ -248,6 +248,21 @@ from one play: a permission overwrite denying that user `plays:run` on the
 play, set from the play's own settings page.
 _Avoid_: Agent action, button, automation (that is event-driven code)
 
+**Auto play**:
+A play starting by itself when a moment matches, set up on the play's own
+settings page; a play can have several. Each names one moment (a ticket
+becomes unblocked, enters a stage, is created, gets a developer or tester,
+fails a test; a doc is created, or changed once edits have settled and not
+by an agent), conditions on the ticket's or doc's existing fields in all/any
+groups, a priority, limits, and whom it runs on: the developer, the tester,
+or whoever caused the moment. A match waits in that person's queue, highest
+priority then oldest first, until they have a free slot and their computer
+is online, and is checked again before it starts. A ticket past the daily
+cap on automatic runs shows "Auto plays paused" until resumed. Managed with
+`autoplays:read`, `autoplays:write`, `autoplays:delete`; the person it runs
+on needs `plays:run`. An automation starts one in code with `runPlay`.
+_Avoid_: Rule, trigger, workflow, automation (that is event-driven code)
+
 **Trail**:
 What one press of a play leaves behind: who started it, on which ticket,
 doc, or project interview, with which memories and instructions, every step the Agent took,
