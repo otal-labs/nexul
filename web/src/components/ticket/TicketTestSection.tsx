@@ -1,6 +1,7 @@
 import { Check, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { microheaderClass } from "@/components/Microheader";
 import { AcceptanceCriteriaBlock } from "@/components/ticket/AcceptanceCriteriaBlock";
 import { TestTargetRow } from "@/components/ticket/TestTargetRow";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
@@ -8,9 +9,7 @@ import { useTestPass } from "@/hooks/TicketTestHooks";
 import { useTestFailDialog } from "@/hooks/useTestFailDialog";
 import { StatusKind } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
-
-const microheaderClass =
-  "px-2 font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase";
+import { cn } from "@/lib/utils";
 
 interface TicketTestSectionProps {
   ticket: Ticket;
@@ -26,7 +25,7 @@ export const TicketTestSection = ({ ticket }: TicketTestSectionProps) => {
 
   return (
     <section aria-labelledby="ticket-testing" className="space-y-2">
-      <h2 id="ticket-testing" className={microheaderClass}>
+      <h2 id="ticket-testing" className={cn(microheaderClass, "px-2")}>
         Testing
       </h2>
       {!testing && <p className="px-2 text-xs text-muted-foreground">Pass and fail open in a Testing column.</p>}

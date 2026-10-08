@@ -1,3 +1,4 @@
+import { microheaderClass } from "@/components/Microheader";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { AddTicketLinkMenu } from "@/components/ticket/AddTicketLinkMenu";
@@ -8,9 +9,6 @@ import { TicketSourceRow } from "@/components/ticket/TicketSourceRow";
 import { useSetTicketSource } from "@/hooks/TicketHooks";
 import { useFetchTicketLinkSet, useRemoveBlocker, useRemoveFoundIn } from "@/hooks/TicketLinkHooks";
 import type { Ticket } from "@/models/Ticket";
-
-const microheaderClass =
-  "font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase";
 
 interface TicketLinksSectionProps {
   ticket: Ticket;

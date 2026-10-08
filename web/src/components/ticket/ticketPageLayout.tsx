@@ -19,7 +19,7 @@ const STACKED: TicketPageLayout = {
 const PANE: TicketPageLayout = {
   container: "p-6 @container max-w-none",
   grid: "grid gap-8 @min-[46rem]:grid-cols-[clamp(18rem,var(--thread-pane-width,clamp(20rem,26cqw,28rem)),calc(100cqw_-_26rem))_minmax(0,1fr)] @min-[70rem]:grid-cols-[clamp(18rem,var(--thread-pane-width,clamp(20rem,26cqw,28rem)),calc(100cqw_-_48rem))_minmax(0,1fr)_18rem]",
-  body: "min-w-0 @min-[46rem]:col-start-2 @min-[46rem]:row-start-1 [&_.ProseMirror]:mx-auto [&_.ProseMirror]:max-w-[75ch]",
+  body: "min-w-0 @min-[46rem]:col-start-2 @min-[46rem]:row-start-1",
   thread: "min-w-0 @min-[46rem]:relative @min-[46rem]:col-start-1 @min-[46rem]:row-start-1 @min-[46rem]:row-span-2",
   rail: "min-w-0 @min-[46rem]:col-start-2 @min-[46rem]:row-start-2 @min-[70rem]:col-start-3 @min-[70rem]:row-start-1 @min-[70rem]:row-span-2",
 };

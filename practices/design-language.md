@@ -132,7 +132,7 @@ card's own pill row (`pillClass` in `web/src/components/board/ticketTypeColor.ts
 | 6px interactive radius, 8px cards | Soft but precise; pills stay badge-only so controls and tags never look alike |
 | Terminal-window motif, neutral glow | Code, log, and hero surfaces read as consoles; a neutral glow no longer implies an accent |
 | Status and label as icon or dot plus text | Readable in both themes; tinted fills washed out once several hues appeared together |
-| Board cards: type and label as tinted pills | Re-tested on the card layout where the pill row sits alone under the title with the id opposite; the 15% tint with a 700/400 text shade stayed legible in both themes, so the board keeps pills while every other surface stays icon-or-dot |
+| Board cards: type and label as tinted pills | Re-tested on the card layout where the pill row sits alone under the title with the id opposite; the 15% tint with an 800/400 text shade holds 4.5:1 in both themes, so the board keeps pills while every other surface stays icon-or-dot |
 | Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
 | Person dialog: a tab per workspace, changes held until Confirm | Several workspaces stacked in one scroll mixed their controls, and applying each change on the spot made the dialog change under the owner; tabs separate the workspaces and Confirm makes the edit one deliberate act |
 

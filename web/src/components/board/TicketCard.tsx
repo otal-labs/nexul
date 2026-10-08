@@ -61,10 +61,12 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
       <span className="flex items-center gap-2.5">
         {person.login && (
           <span role="img" aria-label={`${person.role} ${personLabel(shown)}`} className="shrink-0">
-            <PersonAvatar login={person.login} src={shown.avatar_url} className="size-7 text-[10px]" />
+            <PersonAvatar login={person.login} src={shown.avatar_url} className="size-7 text-xs" />
           </span>
         )}
-        <span className="min-w-0 flex-1 text-sm font-medium leading-snug">{ticket.title}</span>
+        <span title={ticket.title} className="line-clamp-3 min-w-0 flex-1 text-sm font-medium leading-snug break-words">
+          {ticket.title}
+        </span>
         {hasThread && (
           <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" role="img" aria-label="Has a chat thread" />
         )}
@@ -92,7 +94,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
             </span>
           ))}
         </span>
-        <span className="flex shrink-0 items-center gap-1.5 font-mono text-[10.5px] text-muted-foreground">
+        <span className="flex shrink-0 items-center gap-1.5 font-mono text-xs text-muted-foreground">
           {runState === "waiting" && (
             <CircleHelp className="size-3 shrink-0 text-info" role="img" aria-label="A play is waiting for an answer" />
           )}

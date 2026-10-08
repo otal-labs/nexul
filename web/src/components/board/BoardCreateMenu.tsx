@@ -11,7 +11,7 @@ interface BoardCreateMenuProps {
 }
 
 const menuItemClass =
-  "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13.5px] text-foreground outline-none transition-colors duration-150 ease-standard hover:bg-accent/60 focus-visible:bg-accent/60";
+  "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-sm text-foreground outline-none transition-colors duration-150 ease-standard hover:bg-accent/60 focus-visible:bg-accent/60";
 
 // One "+" entry point: separate buttons read as unrelated when both just add something to the board.
 export const BoardCreateMenu = ({ onNewTicket, onNewCategory }: BoardCreateMenuProps) => {

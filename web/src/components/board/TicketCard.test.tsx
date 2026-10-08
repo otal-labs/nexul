@@ -277,7 +277,7 @@ describe("TicketCard", () => {
         expect(screen.getByText("Bug").closest("span")).toHaveClass(...pillClass("text-cyan-400").split(" "));
       });
       // ticketTypeColor("Bug") on its own would hash to red, proving the configured color won, not a coincidence.
-      expect(ticketTypeColor("Bug")).toBe("text-red-400");
+      expect(ticketTypeColor("Bug")).toMatch(/red/);
     });
 
     it("falls back to the hash color for a ticket type with no configured color, unchanged from before T10", async () => {

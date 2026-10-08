@@ -60,7 +60,7 @@ export const BoardPage = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Full-bleed: the board is the one page where width is columns, so it gets the whole viewport. */}
-      <Container className="max-w-none space-y-4 py-6">
+      <Container className="max-w-none space-y-4 py-8">
         {!routeParam && (
           <BoardUnscopedStates
             isLoading={isPending}
@@ -73,7 +73,7 @@ export const BoardPage = () => {
         {routeParam && !scopedNotFound && (
           <ProjectBoardSection
             projectId={scopedProjectId}
-            projectName={scopedProject?.name}
+            project={scopedProject}
             isLoading={isPending || ticketsPending}
             error={error ?? ticketsError}
             tickets={tickets}
