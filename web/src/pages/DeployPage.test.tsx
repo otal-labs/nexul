@@ -115,8 +115,8 @@ describe("DeployPage", () => {
     renderPage();
     expect(await screen.findByRole("heading", { name: "Deployed" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cancel deployment" })).not.toBeInTheDocument();
-    expect(screen.getByText("Building").parentElement).toHaveTextContent("done8s");
-    expect(screen.getByText("Deploying").parentElement).toHaveTextContent("—");
+    expect(within(screen.getByRole("list", { name: "Steps" })).getByText("Building").parentElement).toHaveTextContent("done8s");
+    expect(within(screen.getByRole("list", { name: "Steps" })).getByText("Deploying").parentElement).toHaveTextContent("—");
   });
 
   it("marks the last started step failed and titles the page accordingly", async () => {
@@ -126,7 +126,7 @@ describe("DeployPage", () => {
     ]);
     renderPage();
     expect(await screen.findByRole("heading", { name: "Deploy failed" })).toBeInTheDocument();
-    expect(screen.getByText("Building").parentElement).toHaveTextContent("failed");
+    expect(within(screen.getByRole("list", { name: "Steps" })).getByText("Building").parentElement).toHaveTextContent("failed");
     expect(within(await screen.findByRole("log")).getByText("deploy failed: exit 1")).toBeInTheDocument();
   });
 

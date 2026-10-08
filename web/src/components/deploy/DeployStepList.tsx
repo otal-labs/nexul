@@ -15,7 +15,7 @@ export const DeployStepList = ({ title, steps }: DeployStepListProps) => {
         {title}
         {active && `: ${active.label}`}
       </p>
-      <ol>
+      <ol aria-label="Steps">
         {steps.map((step) => (
           <DeployStepRow key={step.key} step={step} />
         ))}
