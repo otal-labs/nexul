@@ -8,12 +8,11 @@ import { cn } from "@/lib/utils";
 
 interface SidebarHeaderProps {
   collapsed: boolean;
-  isLoggedIn: boolean;
   onToggleCollapse: () => void;
 }
 
-export const SidebarHeader = ({ collapsed, isLoggedIn, onToggleCollapse }: SidebarHeaderProps) => {
-  const { data: server } = useServerVersion(isLoggedIn);
+export const SidebarHeader = ({ collapsed, onToggleCollapse }: SidebarHeaderProps) => {
+  const { data: server } = useServerVersion();
 
   return (
     <>
@@ -25,25 +24,25 @@ export const SidebarHeader = ({ collapsed, isLoggedIn, onToggleCollapse }: Sideb
       >
         <Link to="/" className="flex min-w-0 items-center gap-2.5 font-semibold tracking-tight">
           <Logo />
-          {!collapsed && <span className="text-[15px]">Nexul</span>}
+          {!collapsed && <span className="text-base">Nexul</span>}
         </Link>
         {!collapsed && (
           <span
             title={server?.version}
-            className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+            className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
           >
             Beta
           </span>
         )}
         {!collapsed && (
           <div className="ml-auto flex items-center gap-0.5">
-            <UpdateButton enabled={isLoggedIn} />
+            <UpdateButton />
             <CollapseToggleButton collapsed={collapsed} onToggle={onToggleCollapse} />
           </div>
         )}
         {collapsed && <CollapseToggleButton collapsed={collapsed} onToggle={onToggleCollapse} />}
       </div>
-      {collapsed && <UpdateButton enabled={isLoggedIn} className="mx-auto mb-1.5" />}
+      {collapsed && <UpdateButton className="mx-auto mb-1.5" />}
     </>
   );
 };

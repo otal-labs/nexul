@@ -1385,7 +1385,8 @@ export const AppRouter = () => {
   with Inbox, Chat, the channels, and one project at a time behind a project
   switcher, its pages listed once; the workspace section (Runners, Topology,
   Automations, Configuration) docked under the scroll area and foldable; the
-  account menu (Support, Logout) and the Your settings gear at the bottom. Pages render inside `<main>` under
+  account menu (Support, Logout) and the Your settings gear at the bottom. The
+  signed-out pages and the wizards render without it. Pages render inside `<main>` under
   `Container` (`mx-auto w-full max-w-7xl`).
 - Every page reached from a workspace's sidebar lives under `/:workspace`, the
   workspace's slug (ADR 0089); personal and instance pages (`/settings/*`,

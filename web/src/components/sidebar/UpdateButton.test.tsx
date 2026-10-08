@@ -10,11 +10,11 @@ const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 
 vi.mock("@/api/client", () => ({ api: { get: mocks.get } }));
 
-const renderButton = (enabled = true) =>
+const renderButton = () =>
   render(
     <MemoryRouter>
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <UpdateButton enabled={enabled} />
+        <UpdateButton />
         <span>after</span>
       </QueryClientProvider>
     </MemoryRouter>,
@@ -83,10 +83,5 @@ describe("UpdateButton", () => {
       "href",
       "https://github.com/otal-labs/nexul/releases/tag/v0.2.0-beta.8",
     );
-  });
-
-  it("does not fetch the version when logged out", () => {
-    renderButton(false);
-    expect(mocks.get).not.toHaveBeenCalled();
   });
 });

@@ -61,7 +61,7 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
               end={entry.end ?? false}
             >
               {entry.wip && (
-                <span className="shrink-0 text-[10px] font-medium tracking-wide text-warning" title="Work in progress">
+                <span className="shrink-0 font-mono text-xs text-warning" title="Work in progress">
                   WIP
                 </span>
               )}
