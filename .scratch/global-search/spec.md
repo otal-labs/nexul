@@ -105,3 +105,9 @@ The original requirement made the global box conditional on there being more
 than docs and tickets indexed — worth deciding whether that condition still
 holds, or whether a box over just docs and tickets is already worth having on
 its own.
+
+The browser surface now exists as the command palette (⌘K, see
+`practices/design-language.md`): it searches tickets and docs through the `@`
+picker's endpoint and memories from their list, so this effort's fan-out
+endpoint would replace those two sources rather than add a box. That endpoint
+does not yet scope tickets and docs to the active workspace.

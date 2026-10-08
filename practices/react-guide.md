@@ -368,7 +368,7 @@ Rules:
 
 | Pattern | Name | Purpose |
 |---|---|---|
-| Page header | `PageHeader` | Semibold tracking-tight title + one-line subtitle (page-level marquee) |
+| Page header | `PageHeader` | Display-face title (`pageTitleClass`) + one-line subtitle (page-level marquee) |
 | List view | `XxxFeed` | Hairline-row list with search, filter, actions |
 | Create dialog | `CreateXxxDialog` | New-entity dialog |
 | Delete dialog | `DeleteXxxDialog` | Confirmation dialog |
@@ -1253,8 +1253,9 @@ accent (`bg-brand`, `text-brand-foreground`), the status tokens (`--success`,
 `cubic-bezier(0.25, 0.1, 0.25, 1)`, `ease-out` =
 `cubic-bezier(0.16, 1, 0.3, 1)`, and the springs `ease-spring` and
 `ease-spring-pop` as `linear()` curves), and the locally bundled type stack: Inter
-Variable (UI + display, tight tracking) + JetBrains Mono (technical data),
-via `@fontsource-variable`, no CDN. No serif or script type.
+Variable (UI), JetBrains Mono (technical data), and Fraunces (`font-display`,
+the `type-display` utility) for page titles, empty-state and showcase
+headlines only, via `@fontsource-variable`, no CDN. No script type.
 
 Radius system: **7px controls** (`rounded-md`), 9px cards (`rounded-lg`), 12px
 panels (`rounded-xl`), pills (`rounded-full`) only for chips/badges/avatars/status,
@@ -1289,6 +1290,7 @@ mounted in today.
   --color-info: var(--info);
   --font-sans: var(--font-sans-stack);
   --font-mono: var(--font-mono-stack);
+  --font-display: var(--font-display-stack);
   --shadow-card: var(--shadow-card);
   --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
   /* ...the rest of the shadcn tokens */
@@ -1392,11 +1394,13 @@ export const AppRouter = () => {
 - The shell is a **sidebar layout**: a sticky left rail
   (`components/sidebar/Sidebar.tsx`). Its header holds the logo, the update
   button, and the collapse toggle (instant width swap, no layout animation,
-  see the motion rules). Below it: the workspace switcher; a scrolling nav
-  with Inbox, Chat, the channels, and one project at a time behind a project
-  switcher, its pages listed once; the workspace section (Runners, Topology,
-  Automations, Configuration) docked under the scroll area and foldable; the
-  account menu (Support, Logout) and the Your settings gear at the bottom. The
+  see the motion rules). Below it: the workspace switcher; one scrolling nav
+  with Search (the command palette) and Inbox, then one project at a time
+  behind a project switcher, its pages listed once, then the foldable
+  workspace section (Runners, Topology, Automations, Configuration), then the
+  conversations (channels, voice channels, direct messages, threads); the
+  account menu (Support, Logout) and the Your settings gear at the bottom.
+  The icon rail keeps every page and adds one Chat link for the conversations. The
   signed-out pages and the wizards render without it. Pages render inside `<main>` under
   `Container` (`mx-auto w-full max-w-7xl`).
 - Every page reached from a workspace's sidebar lives under `/:workspace`, the

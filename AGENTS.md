@@ -88,7 +88,8 @@ these win.
     predates it. Run the self-review checklist before calling web work done.
 11. Extend the design language, never re-theme. Tokens only, no one-off
     colours: the one accent is `brand`, held to the roles the spec names, and
-    status keeps its own hues. No serif or script fonts. A design that needs a
+    status keeps its own hues. Fraunces is the one serif, for display
+    headlines only; no script fonts. A design that needs a
     missing token adds it to `web/src/index.css` and to the token table in
     `practices/design-language.md`, never as a one-off class.
 12. Tablet and desktop. Build `web/` at 768px first and verify at 768, 1024,
