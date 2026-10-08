@@ -112,7 +112,7 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
       <ChatComposer
         workspaceId={workspaceId}
         conversationId={conversation.id}
-        placeholder={`Message ${label}…`}
+        placeholder={doc || ticket ? "Message the thread…" : `Message ${label}…`}
         onSend={async (body) => {
           await postMessage.mutateAsync(body);
         }}
