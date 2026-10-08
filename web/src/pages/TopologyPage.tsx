@@ -9,7 +9,7 @@ export const TopologyPage = () => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const workspaceCrumb = useWorkspaceCrumb();
   return (
-    <Container className="flex h-screen flex-col py-8">
+    <Container className="flex h-full flex-col py-8">
       <PageHeader
         crumbs={[workspaceCrumb]}
         title="Topology"

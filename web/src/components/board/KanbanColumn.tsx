@@ -42,7 +42,7 @@ export const KanbanColumn = ({
         transition,
       }}
       className={cn(
-        "flex w-72 shrink-0 flex-col gap-1.5 rounded-lg bg-muted p-1.5",
+        "flex w-72 shrink-0 flex-col gap-1.5 rounded-lg bg-surface-2 p-1.5",
         // Columns drag in place (no overlay), so the moving one floats above its siblings.
         isDragging && "relative z-10 shadow-elevated",
       )}

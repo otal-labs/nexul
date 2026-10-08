@@ -83,7 +83,7 @@ export const SetupRunRows = ({ rows, selected, retryDisabled, onSelect, onRetry 
       </ul>
       <div className="h-0.5 overflow-hidden rounded-b-lg bg-surface-2">
         <span
-          className="block h-full w-full origin-left bg-foreground/60 transition-transform duration-300 ease-standard"
+          className="block h-full w-full origin-left bg-brand transition-transform duration-300 ease-standard"
           style={{ transform: `scaleX(${rows.length > 0 ? confirmed / rows.length : 0})` }}
         />
       </div>
