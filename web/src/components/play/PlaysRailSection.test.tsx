@@ -76,7 +76,7 @@ describe("PlaysRailSection", () => {
     const second = { ...play, id: "play-2", label: "Review with AI" };
     mockApi([play, second], ["plays:run"], { ok: false, reason: "no_default_computer" });
     renderSection();
-    const hint = "Several harnesses are paired, pick a default in Settings";
+    const hint = "Several computers are paired. Pick a default in Settings.";
     expect(await screen.findAllByText(hint)).toHaveLength(1);
     expect(screen.getByRole("button", { name: /Fix with AI/ })).toHaveAccessibleDescription(hint);
     expect(screen.getByRole("button", { name: /Review with AI/ })).toBeDisabled();

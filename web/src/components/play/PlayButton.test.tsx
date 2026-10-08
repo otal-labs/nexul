@@ -107,14 +107,14 @@ describe("PlayButton", () => {
   it("is disabled with the readiness reason when no harness is paired", async () => {
     mockApi({ resolve: { ok: false, reason: "unpaired" } });
     renderButton();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription("Pair a harness in Settings to run plays"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription("Pair a computer in Settings to run plays."));
     expect(screen.getByRole("button", { name: "Fix with AI" })).toBeDisabled();
   });
 
   it("is disabled with the offline reason when the resolved harness is not connected", async () => {
     mockApi({ presence: {} });
     renderButton();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription("Your harness is offline"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription("T3 Code on your computer is offline."));
     expect(screen.getByRole("button", { name: "Fix with AI" })).toBeDisabled();
   });
 

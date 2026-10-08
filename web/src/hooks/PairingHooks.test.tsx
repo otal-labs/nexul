@@ -48,7 +48,7 @@ describe("useHarnessReadiness", () => {
     mockRoutes({ resolve: { ok: true, computer_id: "c1" }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toEqual({ state: "offline", message: "Your harness is offline" }),
+      expect(result.current).toEqual({ state: "offline", message: "T3 Code on your computer is offline." }),
     );
   });
 
@@ -56,7 +56,7 @@ describe("useHarnessReadiness", () => {
     mockRoutes({ resolve: { ok: true, computer_id: "c1" }, presence: { c1: "connecting" } });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toEqual({ state: "offline", message: "Your harness is offline" }),
+      expect(result.current).toEqual({ state: "offline", message: "T3 Code on your computer is offline." }),
     );
   });
 
@@ -64,7 +64,7 @@ describe("useHarnessReadiness", () => {
     mockRoutes({ resolve: { ok: false, reason: "unpaired" }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toEqual({ state: "unpaired", message: "Pair a harness in Settings to run plays" }),
+      expect(result.current).toEqual({ state: "unpaired", message: "Pair a computer in Settings to run plays." }),
     );
   });
 
@@ -74,7 +74,7 @@ describe("useHarnessReadiness", () => {
     await waitFor(() =>
       expect(result.current).toEqual({
         state: "expired",
-        message: "Your harness pairing has expired, re-pair it in Settings",
+        message: "Your computer's pairing has expired. Re-pair it in Settings.",
       }),
     );
   });
@@ -85,7 +85,7 @@ describe("useHarnessReadiness", () => {
     await waitFor(() =>
       expect(result.current).toEqual({
         state: "no_harness_project",
-        message: "Link this project in Settings → T3 Code Setup → Projects, or set a fallback under Defaults",
+        message: "Link this project in Settings → T3 Code Setup → Projects, or set a fallback under Defaults.",
       }),
     );
   });
@@ -96,7 +96,7 @@ describe("useHarnessReadiness", () => {
     await waitFor(() =>
       expect(result.current).toEqual({
         state: "no_default_computer",
-        message: "Several harnesses are paired, pick a default in Settings",
+        message: "Several computers are paired. Pick a default in Settings.",
       }),
     );
   });

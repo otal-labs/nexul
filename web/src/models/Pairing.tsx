@@ -401,11 +401,11 @@ export type HarnessReadiness =
   | { state: "ready"; computerId: string; provider: string; model: string; modelOptions: OptionSetting[] }
   | { state: "unpaired" | "expired" | "no_harness_project" | "no_default_computer" | "offline"; message: string };
 
-// Copy for every non-ready state; shared by the hook's join and the settings readiness line. Says harness, never computer.
+// Copy for every non-ready state; shared by the hook's join and the settings readiness line.
 export const HARNESS_READINESS_COPY: Record<Exclude<HarnessReadiness["state"], "ready">, string> = {
-  unpaired: "Pair a harness in Settings to run plays",
-  expired: "Your harness pairing has expired, re-pair it in Settings",
-  no_harness_project: "Link this project in Settings → T3 Code Setup → Projects, or set a fallback under Defaults",
-  no_default_computer: "Several harnesses are paired, pick a default in Settings",
-  offline: "Your harness is offline",
+  unpaired: "Pair a computer in Settings to run plays.",
+  expired: "Your computer's pairing has expired. Re-pair it in Settings.",
+  no_harness_project: "Link this project in Settings → T3 Code Setup → Projects, or set a fallback under Defaults.",
+  no_default_computer: "Several computers are paired. Pick a default in Settings.",
+  offline: "T3 Code on your computer is offline.",
 };

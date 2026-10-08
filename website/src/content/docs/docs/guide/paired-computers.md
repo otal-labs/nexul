@@ -57,8 +57,8 @@ The page says why once, above or beside its play buttons, and each button repeat
 
 | Message | Fix |
 |---|---|
-| Pair a harness in Settings to run plays | Pair a computer, or finish one in progress. |
-| Your harness pairing has expired | Press **Re-pair** on the computer. |
-| Link this project in Settings → T3 Code Setup → Projects, or set a fallback under Defaults | Link the project, or set a **Fallback T3 project**. |
-| Several harnesses are paired, pick a default in Settings | Set a **Default computer**. |
-| Your harness is offline | Start T3 Code, and check the tunnel is up. |
+| Pair a computer in Settings to run plays. | Pair a computer, or finish one in progress. |
+| Your computer's pairing has expired. Re-pair it in Settings. | Press **Re-pair** on the computer. |
+| Link this project in Settings → T3 Code Setup → Projects, or set a fallback under Defaults. | Link the project, or set a **Fallback T3 project**. |
+| Several computers are paired. Pick a default in Settings. | Set a **Default computer**. |
+| T3 Code on your computer is offline. | Start T3 Code, and check the tunnel is up. |
