@@ -230,6 +230,11 @@ Microheader. The one small uppercase label is `microheaderClass`
 text-muted-foreground`): facts, group labels, rail sections, column heads.
 No other size, weight, or tracking for an uppercase label.
 
+Menu row. Every popover menu row, custom or a dropdown item, is `text-sm`
+with `px-2 py-1.5 gap-2` and a muted 16px icon (`menuItemClass` in
+`web/src/components/MenuItem.tsx`), in a `p-1` panel; the sidebar's nav rows
+keep their own height at the same `text-sm`.
+
 Detail page header. The page header above, with the record's mono id chip
 and status in the meta line. Only a page with a genuine single-record view gets this header. In-context
 inspection that does not warrant leaving a list opens a right-anchored drawer
