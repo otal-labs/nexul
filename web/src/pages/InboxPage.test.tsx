@@ -121,19 +121,19 @@ describe("InboxPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(await screen.findByText("Select a notification to view it")).toBeInTheDocument();
+    expect(await screen.findByText("Select a notification")).toBeInTheDocument();
     await user.click(await within(screen.getByRole("navigation", { name: "Notifications" })).findByRole("button", { name: /Write migrations/ }));
     expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("link", { name: "Inbox" }));
-    expect(await screen.findByText("Select a notification to view it")).toBeInTheDocument();
+    expect(await screen.findByText("Select a notification")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Write migrations" })).not.toBeInTheDocument();
   });
 
   it("falls back to the list when the path names a row that is gone", async () => {
     mockApi();
     renderPage("/acme/inbox/n:gone");
-    expect(await screen.findByText("Select a notification to view it")).toBeInTheDocument();
+    expect(await screen.findByText("Select a notification")).toBeInTheDocument();
   });
 
   it("shows when it happened on every row, tickets as well as docs", async () => {

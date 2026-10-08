@@ -19,7 +19,7 @@ const copyLink = async (link: string) => {
     await navigator.clipboard.writeText(new URL(link, window.location.origin).href);
     toast.success("Link copied");
   } catch {
-    toast.error("Could not copy the link");
+    toast.error("Couldn't copy the link");
   }
 };
 
