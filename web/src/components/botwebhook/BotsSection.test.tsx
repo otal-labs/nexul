@@ -200,7 +200,7 @@ describe("the Bots section", () => {
     await u.click(within(confirm).getByRole("button", { name: "Regenerate" }));
 
     await waitFor(() => expect(api.patch).toHaveBeenCalledWith("/api/botwebhooks/b1", { regenerate: true }));
-    expect(await within(dialog).findByText("New URL; the old one stopped working.")).toBeInTheDocument();
+    expect(await within(dialog).findByText("New URL. The old one no longer works.")).toBeInTheDocument();
     expect(within(dialog).getByRole("textbox", { name: "CI's webhook URL" })).toHaveValue(
       "https://nexul.example.com/api/botwebhooks/b1/token-b1-new",
     );

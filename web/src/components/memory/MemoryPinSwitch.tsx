@@ -22,7 +22,7 @@ export const MemoryPinSwitch = ({ memory, label, size = "default" }: MemoryPinSw
       disabled={!canWrite || fixed}
       onCheckedChange={(checked) => setAlwaysIncluded.mutate({ memory, value: checked })}
       aria-label={label}
-      title="Always included: every Agent turn and play run names it"
+      title="Included in every Agent turn and play run"
     />
   );
 };
