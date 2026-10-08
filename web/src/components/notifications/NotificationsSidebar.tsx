@@ -22,7 +22,7 @@ export const NotificationsSidebar = ({
   onMarkAllRead,
   isMarkingAllRead,
 }: NotificationsSidebarProps) => (
-  <div className="flex w-80 shrink-0 flex-col border-r border-border">
+  <div className="panel flex w-80 shrink-0 flex-col overflow-hidden">
     <div className="flex h-14 items-center justify-between border-b border-border pr-2 pl-4">
       <h1 className="text-sm font-semibold">Inbox</h1>
       {entries && entries.length > 0 && (

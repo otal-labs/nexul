@@ -18,12 +18,12 @@ export const ListDetailLayout = ({ list, detail, hasSelection, placeholder }: Li
   const width = useListPaneStore((s) => s.width);
 
   return (
-    <div className="flex h-screen">
+    <div data-pane-layout className="flex h-full gap-2">
       {/* The max-width keeps the open record readable whatever width was saved on a wider window. */}
       <div
         style={{ "--list-pane-width": `${width}px` } as CSSProperties}
         className={cn(
-          "relative min-h-0 lg:block lg:w-[var(--list-pane-width)] lg:max-w-[calc(100%_-_32rem)] lg:shrink-0 lg:border-r lg:border-border",
+          "panel relative min-h-0 lg:block lg:w-[var(--list-pane-width)] lg:max-w-[calc(100%_-_32rem)] lg:shrink-0",
           hasSelection ? "hidden" : "block w-full",
         )}
       >
@@ -31,7 +31,7 @@ export const ListDetailLayout = ({ list, detail, hasSelection, placeholder }: Li
         <ListPaneResizeHandle />
       </div>
       {/* relative keeps absolutely positioned content (sr-only file inputs) inside the scroll clip instead of stretching the page */}
-      <div className={cn("relative min-w-0 flex-1 overflow-y-auto lg:block", hasSelection ? "block" : "hidden")}>
+      <div className={cn("panel relative min-w-0 flex-1 overflow-y-auto lg:block", hasSelection ? "block" : "hidden")}>
         {hasSelection && detail}
         {!hasSelection && (
           <div className="flex h-full items-center justify-center">

@@ -17,7 +17,7 @@ interface NotificationDetailPanelProps {
 }
 
 export const NotificationDetailPanel = ({ selected, isLoading }: NotificationDetailPanelProps) => (
-  <div className="min-w-0 flex-1 overflow-y-auto">
+  <div className="panel min-w-0 flex-1 overflow-y-auto">
     {selected && selected.subject_type === SubjectType.Ticket && <TicketPage ticketId={selected.subject_id} />}
     {selected && selected.subject_type === SubjectType.Doc && (
       <Suspense fallback={<LoadingDisplay />}>

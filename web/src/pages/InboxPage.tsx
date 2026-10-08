@@ -8,7 +8,7 @@ export const InboxPage = () => {
   const markAllRead = useMarkAllNotificationsRead();
 
   return (
-    <div className="flex h-screen">
+    <div data-pane-layout className="flex h-full gap-2">
       <NotificationsSidebar
         entries={data}
         error={error}
