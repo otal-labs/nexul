@@ -18,18 +18,13 @@ export const Layout = () => {
   useLiveEvents(token ? buildLiveURL(token) : null);
   const { data: unread } = useFetchUnreadCount(isLoggedIn);
   useEnsureWorkspaceSelected(isLoggedIn);
-  // Wizards own the whole viewport; the sidebar's workspace nav has nothing to point at mid-wizard.
+  // Wizards and the signed-out pages own the whole viewport; the sidebar's nav has nothing to point at there.
   const onboarding = /^\/(?:[^/]+\/)?wizard\//.test(useLocation().pathname);
 
   return (
     <div className="flex min-h-screen">
-      {!onboarding && (
-        <Sidebar
-          collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed((c) => !c)}
-          isLoggedIn={isLoggedIn}
-          unreadCount={unread?.count ?? 0}
-        />
+      {isLoggedIn && !onboarding && (
+        <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((c) => !c)} unreadCount={unread?.count ?? 0} />
       )}
       <div className="flex min-w-0 flex-1 flex-col">
         <ServerUpdatedBanner />

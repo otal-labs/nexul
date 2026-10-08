@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/message-scroller";
 
 import { AgentStreamBubble } from "@/components/chat/AgentStreamBubble";
+import { ChatPaneState } from "@/components/chat/ChatPaneState";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { useThreadTrailBlocks } from "@/hooks/TrailHooks";
@@ -81,9 +82,9 @@ export const MessageList = ({
   return (
     <>
       {empty && (
-        <div className="min-h-0 flex-1 py-2">
+        <ChatPaneState>
           <NoDataDisplay message="No messages yet — say hello" size="compact" />
-        </div>
+        </ChatPaneState>
       )}
       {!empty && (
         <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">

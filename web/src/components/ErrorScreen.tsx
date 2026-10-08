@@ -1,7 +1,7 @@
-import { ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { microheaderClass } from "@/components/Microheader";
 import { NotFoundIllustration } from "@/components/NotFoundIllustration";
 import { Button } from "@/components/ui/button";
 
@@ -18,9 +18,7 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
     <div className="blueprint-bg min-h-screen">
       <div className="flex min-h-screen flex-col items-center gap-12 px-6 py-16 sm:flex-col-reverse sm:justify-center sm:gap-16 sm:px-8">
         <div className="flex max-w-3xl flex-col items-center gap-3 text-center">
-          <p className="font-mono text-[11px] font-medium tracking-[0.24em] text-primary/90 uppercase">
-            Nexul
-          </p>
+          <p className={microheaderClass}>Nexul</p>
           <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
             {isCrash && "Something went wrong"}
             {!isCrash && "Page not found"}
@@ -47,7 +45,7 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
               <ErrorDisplay error={error} />
             </div>
           )}
-          <div className="flex w-full flex-col gap-1.5 sm:w-fit sm:flex-row">
+          <div className="flex w-full flex-col gap-2 sm:w-fit sm:flex-row">
             {isCrash && (
               <Button variant="outline" onClick={() => window.location.reload()}>
                 Reload
@@ -60,7 +58,6 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
             )}
             {!isCrash && (
               <Button variant="outline" onClick={() => navigate(-1)}>
-                <ArrowLeft />
                 Go back
               </Button>
             )}
