@@ -20,7 +20,7 @@ const computer = (token_expires_at: string): Computer => ({
   updated_at: "2026-10-08T00:00:00Z",
 });
 
-const renderStep = () => render(<SetupT3CodeStep onFinish={vi.fn()} finishing={false} />);
+const renderStep = () => render(<SetupT3CodeStep onFinish={vi.fn()} />);
 
 describe("SetupT3CodeStep", () => {
   beforeEach(() => mocks.useListComputers.mockReset());

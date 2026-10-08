@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OnboardingGate } from "@/components/auth/OnboardingGate";
 import type { MeResponse } from "@/models/User";
+import { useOwnerWizardStore } from "@/stores/ownerWizardStore";
 import { useSessionStore } from "@/stores/sessionStore";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), errorMessage: vi.fn(() => "Something went wrong") }));
@@ -59,6 +60,7 @@ describe("OnboardingGate", () => {
   beforeEach(() => {
     mocks.get.mockReset();
     useSessionStore.setState({ token: "t", isLoggedIn: true });
+    useOwnerWizardStore.getState().reset();
   });
 
   it("renders children when onboarding is complete", async () => {
@@ -69,6 +71,13 @@ describe("OnboardingGate", () => {
 
   it("redirects to the owner wizard on a fresh instance", async () => {
     mocks.get.mockResolvedValue({ data: me({ needs_owner_wizard: true }) });
+    renderGate();
+    expect(await screen.findByText("owner-wizard")).toBeInTheDocument();
+  });
+
+  it("keeps the owner in the wizard after the server stops asking, until its last step finishes", async () => {
+    useOwnerWizardStore.getState().setStep(4);
+    mocks.get.mockResolvedValue({ data: me({}) });
     renderGate();
     expect(await screen.findByText("owner-wizard")).toBeInTheDocument();
   });

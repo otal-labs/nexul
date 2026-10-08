@@ -41,17 +41,13 @@ vi.mock("@/components/auth/IntroduceYourselfStep", () => ({
 const workspaceSetupFixture = { workspaceId: "workspace-default", workspaceName: "Acme" };
 
 vi.mock("@/components/auth/SetupWorkspaceStep", () => ({
-  SetupWorkspaceStep: ({ onContinue }: { onContinue: (data: typeof workspaceSetupFixture) => void }) => (
-    <button onClick={() => onContinue(workspaceSetupFixture)}>Step2 continue</button>
+  SetupWorkspaceStep: ({ onContinue }: { onContinue: (data: typeof workspaceSetupFixture) => Promise<void> }) => (
+    <button onClick={() => void onContinue(workspaceSetupFixture)}>Step2 continue</button>
   ),
 }));
 
 vi.mock("@/components/auth/SetupT3CodeStep", () => ({
-  SetupT3CodeStep: ({ onFinish, finishing }: { onFinish: () => void; finishing: boolean }) => (
-    <button onClick={onFinish} disabled={finishing}>
-      {finishing ? "Finishing…" : "Finish setup"}
-    </button>
-  ),
+  SetupT3CodeStep: ({ onFinish }: { onFinish: () => void }) => <button onClick={onFinish}>Finish setup</button>,
 }));
 
 vi.mock("@/hooks/AuthHooks", () => ({
@@ -108,7 +104,7 @@ describe("OwnerWizardPage", () => {
     expect(screen.getByText("Set up your workspace")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Step2 continue" }));
 
-    expect(screen.getByText("Connect your tools")).toBeInTheDocument();
+    expect(await screen.findByText("Connect your tools")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(screen.getByText("Set up T3 Code")).toBeInTheDocument();
@@ -140,7 +136,7 @@ describe("OwnerWizardPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Step1 continue" }));
     await user.click(screen.getByRole("button", { name: "Step2 continue" }));
-    expect(screen.getByText("Connect your tools")).toBeInTheDocument();
+    expect(await screen.findByText("Connect your tools")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /back/i }));
     expect(screen.getByText("Set up your workspace")).toBeInTheDocument();
@@ -160,7 +156,7 @@ describe("OwnerWizardPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Step1 continue" }));
     await user.click(screen.getByRole("button", { name: "Step2 continue" }));
-    expect(screen.getByText("Connect your tools")).toBeInTheDocument();
+    expect(await screen.findByText("Connect your tools")).toBeInTheDocument();
 
     // Step 3's Connect leaves the SPA via window.location.assign; coming back reloads everything, simulated here with a full unmount + fresh render.
     first.unmount();
@@ -169,46 +165,45 @@ describe("OwnerWizardPage", () => {
     expect(screen.getByText("Connect your tools")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await user.click(screen.getByRole("button", { name: /finish setup/i }));
-    expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme", slug: "acme" });
+    expect(await screen.findByText("Project wizard", {}, { timeout: 2000 })).toBeInTheDocument();
   });
 
-  it("finishes step 4 using the instance URL from settings (not empty), then opens the project wizard for the first project", async () => {
+  it("makes the caller owner and names the workspace when step 2 continues, so steps 3 and 4 run with owner permissions", async () => {
     const user = userEvent.setup();
     renderPage();
 
     await user.click(screen.getByRole("button", { name: "Step1 continue" }));
     await user.click(screen.getByRole("button", { name: "Step2 continue" }));
-    await user.click(screen.getByRole("button", { name: "Continue" }));
-    await user.click(screen.getByRole("button", { name: /finish setup/i }));
 
+    expect(await screen.findByText("Connect your tools")).toBeInTheDocument();
     expect(mocks.completeMutateAsync).toHaveBeenCalledWith("https://deploy.example.com");
     // Applied only after CompleteOwnerWizard resolves, since the rename endpoint 403s until the caller is the default workspace's Owner.
     expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme", slug: "acme" });
-    expect(await screen.findByText("Workspace ready")).toBeInTheDocument();
-    expect(await screen.findByText("Project wizard", {}, { timeout: 2000 })).toBeInTheDocument();
-    expect(screen.queryByText("Home page")).not.toBeInTheDocument();
-    expect(screen.queryByText("DNS page")).not.toBeInTheDocument();
   });
 
-  it("disables Finish setup for the whole sequence — a double click runs it once", async () => {
-    // Keep the first mutation in flight so the second click lands mid-sequence.
-    let release: (value: unknown) => void = () => {};
-    mocks.completeMutateAsync.mockImplementation(() => new Promise((r) => (release = r)));
+  it("stays on step 2 when making the owner fails, so it can be retried", async () => {
+    mocks.completeMutateAsync.mockRejectedValue(new Error("boom"));
     const user = userEvent.setup();
     renderPage();
 
     await user.click(screen.getByRole("button", { name: "Step1 continue" }));
     await user.click(screen.getByRole("button", { name: "Step2 continue" }));
-    await user.click(screen.getByRole("button", { name: "Continue" }));
 
-    const finish = screen.getByRole("button", { name: /finish setup/i });
-    await user.click(finish);
-    expect(screen.getByRole("button", { name: /finishing/i })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: /finishing/i })).catch(() => {});
-    release({});
+    expect(screen.getByText("Set up your workspace")).toBeInTheDocument();
+    expect(mocks.renameWorkspaceMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("finishes step 4 into the project wizard of the renamed workspace", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Step1 continue" }));
+    await user.click(screen.getByRole("button", { name: "Step2 continue" }));
+    await user.click(await screen.findByRole("button", { name: "Continue" }));
+    await user.click(screen.getByRole("button", { name: /finish setup/i }));
 
     expect(await screen.findByText("Workspace ready")).toBeInTheDocument();
-    expect(mocks.completeMutateAsync).toHaveBeenCalledTimes(1);
-    expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Project wizard", {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(useOwnerWizardStore.getState().step).toBe(1);
   });
 });

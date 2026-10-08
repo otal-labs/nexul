@@ -11,7 +11,7 @@ import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { useFetchPresence, useListComputers } from "@/hooks/PairingHooks";
 
 interface ComputersSectionProps {
-  // Drops the card chrome for the owner wizard, whose layout already frames the title.
+  // The owner wizard frames the title itself and is where pairing happens, so it drops the card and the readiness line.
   bare?: boolean;
 }
 
@@ -21,7 +21,7 @@ export const ComputersSection = ({ bare = false }: ComputersSectionProps = {}) =
 
   const content = (
     <div className="space-y-4">
-      <HarnessReadinessLine />
+      {!bare && <HarnessReadinessLine />}
       <div className="flex flex-wrap gap-2">
         <PairComputerDialog
           trigger={

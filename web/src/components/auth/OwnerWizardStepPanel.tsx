@@ -10,9 +10,8 @@ interface OwnerWizardStepPanelProps {
   step: number;
   settingsLoading: boolean;
   settingsError: unknown;
-  finishing: boolean;
   onStep1Continue: () => void;
-  onStep2Continue: (data: WorkspaceSetupData) => void;
+  onStep2Continue: (data: WorkspaceSetupData) => Promise<void>;
   onStep3Continue: () => void;
   onFinish: () => void;
 }
@@ -21,7 +20,6 @@ export const OwnerWizardStepPanel = ({
   step,
   settingsLoading,
   settingsError,
-  finishing,
   onStep1Continue,
   onStep2Continue,
   onStep3Continue,
@@ -29,12 +27,10 @@ export const OwnerWizardStepPanel = ({
 }: OwnerWizardStepPanelProps) => (
   <>
     {step === 1 && <IntroduceYourselfStep onContinue={onStep1Continue} />}
-    {step === 2 && <SetupWorkspaceStep onContinue={onStep2Continue} />}
-    {step === 3 && settingsLoading && <LoadingDisplay />}
-    {step === 3 && settingsError && <ErrorDisplay error={settingsError} />}
-    {step === 3 && !settingsLoading && !settingsError && (
-      <ConnectToolsStep onContinue={onStep3Continue} />
-    )}
-    {step === 4 && <SetupT3CodeStep onFinish={onFinish} finishing={finishing} />}
+    {step === 2 && settingsLoading && <LoadingDisplay />}
+    {step === 2 && settingsError && <ErrorDisplay error={settingsError} />}
+    {step === 2 && !settingsLoading && !settingsError && <SetupWorkspaceStep onContinue={onStep2Continue} />}
+    {step === 3 && <ConnectToolsStep onContinue={onStep3Continue} />}
+    {step === 4 && <SetupT3CodeStep onFinish={onFinish} />}
   </>
 );
