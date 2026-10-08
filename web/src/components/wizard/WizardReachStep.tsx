@@ -67,8 +67,8 @@ export const WizardReachStep = ({ onDone, onSkip }: WizardReachStepProps) => {
   return (
     <>
       {(zonesPending || servicesPending) && <LoadingDisplay />}
-      {zonesError && <ErrorDisplay error={zonesError} title="Couldn't load zones" />}
-      {servicesError && <ErrorDisplay error={servicesError} title="Couldn't load the stack's services" />}
+      {zonesError && <ErrorDisplay error={zonesError} title="Couldn't load zones." />}
+      {servicesError && <ErrorDisplay error={servicesError} title="Couldn't load the stack's services." />}
       {zones && services && stackId && (
         <ReachForm
           zones={zones}

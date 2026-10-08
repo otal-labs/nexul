@@ -53,7 +53,7 @@ export const RepositorySearch = ({ onSelect, excludeId, busyId, label = "Search 
           Type at least {REPOSITORY_SEARCH_MIN_LENGTH} letters to search your repositories.
         </p>
       )}
-      {searching && error && <ErrorDisplay error={error} title="Couldn't load repositories" />}
+      {searching && error && <ErrorDisplay error={error} title="Couldn't load repositories." />}
       {repos?.length === 0 && (
         <EmptyState title="No repositories match" message="Try a different search." size="compact" />
       )}

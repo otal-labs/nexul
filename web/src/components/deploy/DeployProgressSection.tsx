@@ -34,7 +34,7 @@ export const DeployProgressSection = ({ deploy }: DeployProgressSectionProps) =>
       <div className="min-w-0 space-y-2">
         <DeployLogActions deployId={deploy.id} lines={lines ?? []} />
         {isPending && <LoadingDisplay label="Loading log" />}
-        {error && <ErrorDisplay error={error} title="Couldn't load the log" />}
+        {error && <ErrorDisplay error={error} title="Couldn't load the log." />}
         {lines && <DeployLogPanel lines={lines} emptyMessage={emptyMessage} />}
       </div>
       {!terminal && (

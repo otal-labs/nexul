@@ -33,7 +33,7 @@ export const RunnersPanel = () => {
     <div className="space-y-6">
       {(runners.isPending || queue.isPending || machines.isPending) && <LoadingDisplay />}
       {(runners.isError || queue.isError || machines.isError) && (
-        <ErrorDisplay error={runners.error ?? queue.error ?? machines.error} title="Couldn't load runners" />
+        <ErrorDisplay error={runners.error ?? queue.error ?? machines.error} title="Couldn't load runners." />
       )}
       {runners.data && queue.data && (
         <FleetStatRow online={onlineCount} offline={runners.data.length - onlineCount} queued={queue.data.length} />

@@ -108,7 +108,7 @@ export const WizardRepositoryStep = ({ onDone }: WizardRepositoryStepProps) => {
           }
         />
       )}
-      {scanRepository.isError && !notInstalled && <ErrorDisplay error={scanRepository.error} title="Couldn't scan the repository" />}
+      {scanRepository.isError && !notInstalled && <ErrorDisplay error={scanRepository.error} title="Couldn't scan the repository." />}
       {nothingFound && (
         <EmptyState
           title="Nothing to deploy found"

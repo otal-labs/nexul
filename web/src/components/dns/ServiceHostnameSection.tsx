@@ -89,7 +89,7 @@ export const ServiceHostnameSection = ({ containers }: ServiceHostnameSectionPro
       }
     >
       {loading && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} title="Couldn't load DNS" />}
+      {error && <ErrorDisplay error={error} title="Couldn't load DNS." />}
       {!statusPending && !configured && <EmptyRow flush>Connect a DNS provider to expose this stack.</EmptyRow>}
       {ready && containers.length === 0 && <EmptyRow flush>No containers in this stack yet, so nothing to expose.</EmptyRow>}
       {canExpose && stackExposures.length === 0 && <EmptyRow flush>Not exposed yet.</EmptyRow>}

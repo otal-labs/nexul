@@ -53,7 +53,7 @@ export const useSetConnectorAppConfig = () => {
         })
       ).data,
     onSuccess: (_, payload) => {
-      toast.success("Connector app config saved");
+      toast.success("Connector app saved");
       void queryClient.invalidateQueries({ queryKey: [getConnectorsKey] });
       void queryClient.invalidateQueries({ queryKey: [getConnectorAppConfigKey, payload.id] });
     },

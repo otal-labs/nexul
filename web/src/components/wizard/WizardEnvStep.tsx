@@ -54,7 +54,7 @@ export const WizardEnvStep = ({ onDone }: WizardEnvStepProps) => {
     return (
       <>
         {isPending && <LoadingDisplay />}
-        {error && <ErrorDisplay error={error} title="Couldn't load the stack" />}
+        {error && <ErrorDisplay error={error} title="Couldn't load the stack." />}
       </>
     );
   }

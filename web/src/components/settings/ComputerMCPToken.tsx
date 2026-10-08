@@ -21,7 +21,7 @@ export const ComputerMCPToken = ({ computerId }: ComputerMCPTokenProps) => {
   return (
     <div className="space-y-2">
       {isPending && <LoadingDisplay label="Loading MCP token" className="justify-start p-0" />}
-      {error && <ErrorDisplay error={error} title="Couldn't load the MCP token" className="p-3" />}
+      {error && <ErrorDisplay error={error} title="Couldn't load the MCP token." className="p-3" />}
       {token === null && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">No MCP token, so agents here can't reach Nexul's MCP server.</p>

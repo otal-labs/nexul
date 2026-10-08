@@ -130,7 +130,7 @@ describe("RunnersPanel", () => {
     renderPanel({ retry: false });
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(screen.getByText("Couldn't load runners")).toBeInTheDocument();
+    expect(screen.getByText("Couldn't load runners.")).toBeInTheDocument();
     expect(screen.getByText("boom")).toBeInTheDocument();
   });
 

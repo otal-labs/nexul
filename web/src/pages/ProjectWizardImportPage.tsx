@@ -73,7 +73,7 @@ export const ProjectWizardImportPage = () => {
       />
       <div className="mt-6 space-y-6">
         {machinesPending && <LoadingDisplay />}
-        {machinesError && <ErrorDisplay error={machinesError} title="Couldn't load machines" />}
+        {machinesError && <ErrorDisplay error={machinesError} title="Couldn't load machines." />}
         {machines && !report && (
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-2">

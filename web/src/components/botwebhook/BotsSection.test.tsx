@@ -197,7 +197,7 @@ describe("the Bots section", () => {
 
     const confirm = await screen.findByRole("dialog", { name: "Regenerate CI's URL?" });
     expect(confirm).toHaveTextContent("Anything still posting to the old URL gets a 404 until it uses the new one.");
-    await u.click(within(confirm).getByRole("button", { name: "Regenerate" }));
+    await u.click(within(confirm).getByRole("button", { name: "Regenerate URL" }));
 
     await waitFor(() => expect(api.patch).toHaveBeenCalledWith("/api/botwebhooks/b1", { regenerate: true }));
     expect(await within(dialog).findByText("New URL. The old one no longer works.")).toBeInTheDocument();
