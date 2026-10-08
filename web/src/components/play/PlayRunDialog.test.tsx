@@ -97,7 +97,7 @@ describe("PlayRunDialog", () => {
     const always = await screen.findByRole("checkbox", { name: "Working in this project" });
     expect(always).toBeChecked();
     expect(always).toBeDisabled();
-    expect(screen.getByLabelText("Required")).toBeInTheDocument();
+    expect(screen.getByLabelText("Always included")).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "React guide" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Go practices" })).not.toBeChecked();
     expect(screen.getByText("Any change under web/")).toBeInTheDocument();

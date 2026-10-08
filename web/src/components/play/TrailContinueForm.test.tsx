@@ -50,7 +50,7 @@ describe("TrailContinueForm", () => {
     await user.type(screen.getByLabelText("Continue this run"), "More.");
     await user.click(screen.getByRole("button", { name: "Send" }));
 
-    await vi.waitFor(() => expect(toast.info).toHaveBeenCalledWith("Its thread was deleted in T3 Code, so the play started again as a new run"));
+    await vi.waitFor(() => expect(toast.info).toHaveBeenCalledWith("Its T3 Code thread is gone, so the play started as a new run"));
     expect(toast.success).not.toHaveBeenCalled();
   });
 

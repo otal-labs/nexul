@@ -22,7 +22,7 @@ export const PlaysRailSection = ({ ticket }: PlaysRailSectionProps) => {
     (hasPlays || Boolean(error)) && (
       <section className="space-y-0.5">
         <h2 className={cn(microheaderClass, "px-2 pb-1")}>Plays</h2>
-        {error && <ErrorDisplay error={error} title="Failed to load plays." />}
+        {error && <ErrorDisplay error={error} title="Couldn't load plays." />}
         {hasPlays && <HarnessReadinessNote projectId={ticket.project_id} className="px-2 pb-1" />}
         {hasPlays && (
           <div className="flex flex-col">

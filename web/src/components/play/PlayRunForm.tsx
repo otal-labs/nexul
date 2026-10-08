@@ -86,7 +86,7 @@ export const PlayRunForm = ({
         <Textarea
           rows={3}
           aria-label="Instructions for this run"
-          placeholder="Optional. Steer the play; these win over the play's own instructions."
+          placeholder="Optional. These override the play's own instructions."
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
         />
