@@ -98,18 +98,40 @@ its panels follow its `card`. The default palette is labelled Nexul (id
 
 ## Motion
 
-- One standard ease for state changes (`--ease-standard`) and `--ease-out`
-  for entrances. Microinteractions run 150 to 250ms; a page transition never
-  exceeds 400ms. Animate `transform` and `opacity` only; width and height
-  trigger layout on every frame.
+Fast and fluid, never slow: 150 to 250ms for anything small, up to 400ms only
+for the few moments that carry a gesture or a page. Only `transform`
+(`translate`, `scale`) and `opacity` move; a box that has to change size snaps
+in one layout step and its content does the moving.
+
+- Curves, all in `web/src/index.css`: `--ease-out` (`cubic-bezier(0.16, 1,
+  0.3, 1)`) for everything that enters; `--ease-standard` for state changes
+  (hover, colour, a status); `--ease-spring`, a bounce-free spring written as
+  a `linear()` curve and paired with 200ms, for anything that slides from one
+  place to another; `--ease-spring-pop`, the one small-bounce spring (0.2,
+  paired with 350ms), only on the checkbox mark. JavaScript motion uses the
+  same numbers from `web/src/lib/motion.ts`. Exits run about 20% faster than
+  entrances. Never `ease-in`, never from `scale(0)`.
+- Frequency decides: keyboard moves (Enter, Space, arrows) and dozens-an-hour
+  actions get no decoration. A page reached with a key, or with back and
+  forward, does not replay its entrance, and a highlight moved by the arrows
+  jumps instead of sliding.
+- Panels and the sidebar never move. On a route change only the content
+  inside the panels arrives.
+- `transition-property` defaults to `none` (base layer), so a bare
+  `duration-*` class never turns into `transition: all`; a transition names
+  its properties.
 - Sidebar collapse is instant: a width swap, no layout animation. The
   sidebar starts as the icon rail below 1024px.
 - The light field drifts on one 52s transform loop (`will-change: transform`,
-  gradients only, no filter), so it never lays out or repaints, and it holds
-  still under `prefers-reduced-motion`. It is the only ambient motion.
-- `prefers-reduced-motion` disables everything through the global block in
-  `index.css`. No per-component override is needed; each new animation is
-  checked to land in its correct final state under it.
+  gradients only, no filter), so it never lays out, and it holds still under
+  `prefers-reduced-motion`. It is the only ambient motion. Behind backdrop
+  blur it still costs a re-blur of every panel per frame on a software
+  renderer; nothing else may animate behind the panels.
+- Reduced motion is gentler, not none. The global block in `index.css`
+  flattens every CSS transition and keyframe to its end state; what tells the
+  reader something arrived keeps a 150ms fade instead (page and list
+  entrances, chat arrivals, the send, the done wash), and nothing travels,
+  scales or loops.
 
 ## Canvas (topology)
 
@@ -328,7 +350,8 @@ Project wizard. The `/wizard/project/<step>` flow (info, repository, service,
 environment when the scan found keys, reach, deploy branches, done) is a
 horizontal progress row above the active step, not the vertical rail. The row
 is an `ol` up to `max-w-3xl` of 20px nodes evenly spaced on a 1px connector;
-segments up to the current step fill with `brand` (a `scaleX` over 200ms),
+segments up to the current step fill with `brand` (a `scaleX` growing from
+the left, see the Motion baseline),
 the rest stay `border`. A done node is a check in the `success` token and is a
 button back to that step only when revisiting has no side effect (never Info,
 and none once the stack exists); the current node is a filled ring with
@@ -461,33 +484,110 @@ Questions while some wait. `DocQuestionsPanel` in
 
 ## Motion baseline
 
-The two eases in `web/src/index.css` cover every role; no new duration or
-easing token is added.
+The primitives carry the numbers; a new surface reuses them instead of
+writing its own.
 
-- Entrances and exits (list mount, filter results appearing or leaving, empty
-  and loading states, drawer, panel, popover, dialog): `--ease-out`, 150 to
-  200ms. The primitives carry the numbers: popovers, menus, hover cards and
-  selects open in 150ms and close in 120ms from 0.97 and 4px toward their
-  trigger; a dialog and its overlay open in 200ms and close in 150ms; a sheet
-  and its overlay in 250 and 200ms. A spinner waits 300ms before it shows. Start from `opacity-0 translate-y-1` (4px), or `scale-[0.97]` for a
-  popover with `transform-origin` at the trigger edge. Never `scale(0)`: a
-  real object always has a visible shape. Exit about 20% faster than entrance.
-- On-screen movement and state change (filter reflow while items stay
-  visible, hover lift, a status value changing): `--ease-standard`, 120 to
-  150ms.
-- Stagger: a list entrance staggers at most 8 items at 20 to 30ms each, about
-  200ms in total; beyond 8, the remaining rows appear together. Never stagger
-  a virtualised or 50-plus-row list.
+- Page entrance (`usePageEntrance` in `Layout.tsx`, `enterPage` in
+  `lib/motion.ts`): when the page (the path's first segment past the
+  workspace) changes by a click, the blocks inside its panels rise 6px and
+  fade in over 200ms `--ease-out`, the first three 30ms apart, the rest with
+  the third. Blocks that mount while the page's data lands (within 400ms) rise
+  as they arrive. A block holding an `EnterList` leaves the motion to its
+  rows; a block that runs its own entrance keeps it. A tab, a settings
+  section or another record inside the same page changes in place.
+- Lists (`EnterList`): the rows on screen at mount rise 4px and fade over
+  200ms, the first eight 25ms apart, the rest with the eighth; a list of 50 or
+  more mounts at once. A row added later (a filter or search bringing it
+  back) pops in from 0.97 over 150ms; `arrival="rise"` makes it rise 8px over
+  200ms instead, for news (the Inbox). A row React only moved keeps still. A
+  row opts out with `data-no-enter` (a board card mounted mid-drag).
+- Sliding highlight (`ActiveIndicator`): the sidebar's active row, the
+  settings section nav, the line tab row's underline (`TabUnderline`, on
+  `PageTabs` and the logs tabs) and the Doc | Questions switch each own one
+  highlight that slides to the active item, transform only, 200ms
+  `--ease-spring`. It sizes to the item and plays back from wherever it was,
+  so a click mid-slide carries on. Moving between the sidebar's two navs it
+  fades out of one and into the other.
+- Popovers, menus, hover cards and selects open in 150ms and close in 120ms
+  from 0.97 and 4px toward their trigger; a dialog and its overlay open in
+  200ms and close in 150ms; a sheet and its overlay in 250 and 200ms. Toasts
+  keep the library's choreography at 250ms `--ease-out` (a stacked toast leaves
+  in 200ms). A spinner waits 300ms before it shows.
+- Disclosure (`.disclosure` with `data-closed`: swimlanes, question rounds;
+  `AdvancedFields` does the same with the collapsible's enter and exit):
+  opening, the box snaps open and the content fades in as it settles 4px over
+  200ms; closing, the content fades out in 120ms and the box shuts after.
+  Chevrons turn in 150ms `--ease-standard`.
+- Hover and press: a draggable card lifts 1px with a soft elevated shadow
+  (an opacity fade on a pseudo layer), 150ms, on hover-capable pointers only;
+  a strip below the card keeps the vacated pixel inside it so the hover never
+  flickers. A labelled button presses to 0.97 over 150ms `--ease-out`; an icon
+  button answers with its background alone, 120ms. Row hover is a background
+  lift only.
+- Controls: the switch thumb slides on `--ease-spring`, 200ms. The checkbox
+  mark pops in from 0.6 on `--ease-spring-pop` (350ms) and fades out in 150ms;
+  a box that loads ticked shows still.
+- Progress fills grow from the left with `scaleX`, 300ms `--ease-out` the
+  first time they show, then follow a change in 250ms `--ease-standard`.
 - Live updates (runner status, execution log, `HealthDot`): reuse the
   `status-pulse` keyframe in `index.css`; no second pulse. A status change
-  gets one 150ms `--ease-standard` background cross-fade on the affected chip
-  or dot, never a full-row re-entrance.
+  gets one 150ms `--ease-standard` cross-fade on the affected chip or dot,
+  never a full-row re-entrance.
+- Chat: someone else's message, and the Agent's reply as its stream starts,
+  rise 8px and fade in over 200ms (`arrive`); what was on screen when the
+  conversation opened never animates. A confirmed message keeps its pending
+  row's identity (`client_key`), so nothing replays when the server answers.
+- Board: a ticket that lands in a done-stage column from a working one gets
+  a success wash, the `success` hue at 15% fading out over 800ms (400ms under
+  reduced motion).
 - Paired elements (overlay and dialog, drawer and backdrop, filter bar and
   result list) share identical duration and easing, or the pair reads as two
   events.
-- The one exception to the 150 to 250ms rule is the phone-connected hero on
-  the Devices tab, because it happens once per phone and the list has to
-  answer too: the QR content crossfades to a check tile at 800ms `--ease-out`
-  with a 4px blur and 0.98 scale; the new row enters Other devices with a 4px
-  rise over 800ms `--ease-out`; and a `bg-accent` glow behind it fades out
-  over 5600ms after an 800ms hold. Nothing else adopts these numbers.
+- The one exception to the 150 to 250ms rule beyond the heroes below is the
+  phone-connected moment on the Devices tab, because it happens once per
+  phone and the list has to answer too: the QR content crossfades to a check
+  tile at 800ms `--ease-out` with a 4px blur and 0.98 scale; the new row
+  enters Other devices with a 4px rise over 800ms `--ease-out`; and a
+  `bg-accent` glow behind it fades out over 5600ms after an 800ms hold.
+  Nothing else adopts these numbers.
+
+### Hero locks
+
+Each was built as three live variants on the real surface, recorded at 1x
+and 0.25x, and picked against the motion character above.
+
+Board drop: decided 2026-10-08.
+- Direction: Settle. Picked up, the card lifts to 1.03 with the elevated
+  shadow in 150ms (no tilt). Dropped, dnd-kit's overlay glides onto the slot
+  in 220ms `--ease-out`, coming down to 1 and losing its shadow on the way, and
+  hands over to the card already sitting there in the same frame (the card
+  never transitions its opacity, so the handover cannot blink).
+- Reduced motion: no lift scale; the glide stays (the card has to reach its
+  slot), the done wash stays as a fade.
+- Rejected: Land (a tilted card that levels as it glides, then a 1.04 and
+  -1.2° settle on a bouncy spring) took two stages and about 440ms and read as
+  playful on the gesture the board is used for all day. Snap and ring (a 160ms
+  snap, then a brand ring fading over 600ms) put the accent on something that
+  isn't action, focus or selection, and the ring read as the card having
+  focus.
+
+Sending a chat message: decided 2026-10-08.
+- Direction: Rise. Your message rises 12px into place over 240ms
+  `--ease-out` while its bubble grows from 0.96 out of its bottom-right
+  corner; nothing waits on it, the composer clears at once.
+- Reduced motion: a 150ms fade.
+- Rejected: composer to bubble (the bubble leaves from where the text was
+  typed and travels to its place) crossed the whole panel, over 1000px at
+  1440, on an action repeated dozens of times an hour. Slide and glow (a
+  180ms slide, then a brand halo fading over 600ms) lingered on every message
+  and animated a paint property.
+
+Opening a ticket from the board: decided 2026-10-08.
+- Direction: the standard page entrance; nothing extra.
+- Rejected: title morph (a view transition carrying the card's title into
+  the page title) cross-faded the whole page meanwhile, so the board and the
+  ticket's two panels showed through each other for 200ms, and it froze input
+  for the transition and depended on the ticket being cached. Panels grow
+  (the ticket's panels scale from 0.98 out of the card's spot) moved the
+  panels, which never move on a route change, and 0.98 was too small to read
+  as coming from the card.

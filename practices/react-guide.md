@@ -1217,10 +1217,13 @@ export const Button = ({ className, variant, size, ref, ...props }: ButtonProps)
 - Icons from `lucide-react`: `<Plus className="h-4 w-4" />`.
 - Named-export custom components; shadcn primitives follow whatever the CLI
   emits (it now generates React-19-compatible code).
-- Enter/exit motion uses `tw-animate-css` utilities (`animate-in`/`animate-out`
-  + `fade-in-0`, `zoom-in-95`, `slide-in-from-*`) with `ease-standard` and
-  150-250ms durations; the global `prefers-reduced-motion` block in
-  `index.css` disables all transitions/animations.
+- Enter/exit motion on primitives uses `tw-animate-css` utilities
+  (`animate-in`/`animate-out` + `fade-in-0`, `zoom-in-97`, `slide-in-from-*`)
+  with `ease-out` and 150-250ms durations. Page, list and highlight motion
+  goes through the shared primitives (`EnterList`, `ActiveIndicator`,
+  `usePageEntrance`, `lib/motion.ts`); the numbers are the Motion baseline in
+  `practices/design-language.md`. The global `prefers-reduced-motion` block in
+  `index.css` flattens CSS motion; the primitives keep a short fade.
 
 The shadcn CLI now defaults a fresh `init` to Base UI, not Radix; this repo
 stays on the unified `radix-ui` package (`components/ui/dialog.tsx` and every
@@ -1248,7 +1251,8 @@ accent (`bg-brand`, `text-brand-foreground`), the status tokens (`--success`,
 `--warning`, `--info`), an elevation scale
 (`shadow-card`/`-elevated`/`-overlay`), the motion tokens (`ease-standard` =
 `cubic-bezier(0.25, 0.1, 0.25, 1)`, `ease-out` =
-`cubic-bezier(0.16, 1, 0.3, 1)`), and the locally bundled type stack: Inter
+`cubic-bezier(0.16, 1, 0.3, 1)`, and the springs `ease-spring` and
+`ease-spring-pop` as `linear()` curves), and the locally bundled type stack: Inter
 Variable (UI + display, tight tracking) + JetBrains Mono (technical data),
 via `@fontsource-variable`, no CDN. No serif or script type.
 
