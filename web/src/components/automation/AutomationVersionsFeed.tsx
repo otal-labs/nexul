@@ -2,7 +2,8 @@ import { AutomationVersionDiff } from "@/components/automation/AutomationVersion
 import { AutomationVersionRow } from "@/components/automation/AutomationVersionRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { EmptyRow } from "@/components/EmptyRow";
+import { SettingsCard } from "@/components/settings/SettingsCard";
 import { useFetchAutomationVersionDiff, useFetchAutomationVersions } from "@/hooks/AutomationVersionHooks";
 
 interface AutomationVersionsFeedProps {
@@ -23,9 +24,8 @@ export const AutomationVersionsFeed = ({ automationId, canUpdate }: AutomationVe
         <AutomationVersionDiff automationId={automationId} diff={diff.data} canUpdate={canUpdate} />
       )}
       {versions.data && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold">Version history</h2>
-          {versions.data.length === 0 && <NoDataDisplay message="No versions yet" size="compact" />}
+        <SettingsCard id="version-history" title="Version history" description="Every version pushed for this automation, newest first.">
+          {versions.data.length === 0 && <EmptyRow>No versions yet</EmptyRow>}
           {versions.data.length > 0 && (
             <ul className="divide-y divide-border overflow-hidden rounded-md border">
               {versions.data.map((version) => (
@@ -38,7 +38,7 @@ export const AutomationVersionsFeed = ({ automationId, canUpdate }: AutomationVe
               ))}
             </ul>
           )}
-        </section>
+        </SettingsCard>
       )}
     </div>
   );

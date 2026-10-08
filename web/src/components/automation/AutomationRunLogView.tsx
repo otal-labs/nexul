@@ -1,4 +1,4 @@
-import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { EmptyRow } from "@/components/EmptyRow";
 
 interface AutomationRunLogViewProps {
   logs: string;
@@ -16,7 +16,7 @@ export const AutomationRunLogView = ({ logs }: AutomationRunLogViewProps) => (
     </div>
     {logs.trim() === "" && (
       <div className="terminal-window__body">
-        <NoDataDisplay message="No logs captured" size="compact" />
+        <EmptyRow>No logs captured</EmptyRow>
       </div>
     )}
     {logs.trim() !== "" && (

@@ -1,5 +1,6 @@
-import { Trash2 } from "lucide-react";
+import { Trash2, TriangleAlert } from "lucide-react";
 
+import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useDeleteAutomation } from "@/hooks/AutomationHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
@@ -25,11 +26,17 @@ export const AutomationDeleteButton = ({ automationId, onDeleted }: AutomationDe
   };
 
   return (
-    <div className="rounded-lg border border-destructive/30 p-4">
+    <SettingsCard
+      id="danger-zone"
+      title="Danger zone"
+      danger
+      icon={TriangleAlert}
+      description="Deleting removes this automation's config, token, run history, and version history for good."
+    >
       <Button type="button" variant="destructive" size="sm" onClick={onClick} loading={deleteAutomation.isPending}>
         <Trash2 className="size-4" />
         Delete automation
       </Button>
-    </div>
+    </SettingsCard>
   );
 };
