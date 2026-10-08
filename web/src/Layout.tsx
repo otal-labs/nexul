@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router";
 
+import { CommandPalette } from "@/components/command/CommandPalette";
 import { PhoneBanner } from "@/components/PhoneBanner";
 import { ServerUpdatedBanner } from "@/components/ServerUpdatedBanner";
 import { Sidebar } from "@/components/sidebar/Sidebar";
@@ -39,6 +40,7 @@ export const Layout = () => {
           {!onboarding && (
             <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((c) => !c)} unreadCount={unread?.count ?? 0} />
           )}
+          {!onboarding && <CommandPalette />}
           <div className="flex min-w-0 flex-1 flex-col">
             <ServerUpdatedBanner />
             <PhoneBanner />

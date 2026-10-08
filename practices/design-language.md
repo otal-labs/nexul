@@ -568,6 +568,25 @@ written and its reply under its header, folded or not. The page opens on
 Questions while some wait. `DocQuestionsPanel` in
 `web/src/components/doc/clarification/` is the reference.
 
+Command palette. ⌘K (Ctrl+K elsewhere), or the sidebar's Search row, opens
+one palette from any signed-in page: a frosted overlay (`glass-popover`) 40rem
+wide, hung at 14% of the viewport so a changing result count only moves its
+bottom edge, over the dialog family's scrim and on its clock (200ms in, 150ms
+out, from 0.97). A combobox input heads it, grouped results below, a footer of
+key hints at its foot. Empty, it leads with what changed lately in the
+current project, then every page the sidebar reaches under the same
+permissions, every project's board, the create dialogs that already exist,
+the other workspaces and the light or dark switch; typed, pages and boards
+filter by every word, then tickets and docs from the server's search, then
+memories by title, and the palettes join the theme group. Group heads are
+microheaders; a row is 36px with a muted icon, the label, a mono hint
+(ticket key, prefix, status) and an enter mark on the active row, which takes
+the sidebar's selection marks: `bg-accent`, a 2px `brand` edge and a `brand`
+icon. The highlight jumps, never slides: the palette is driven a dozen times
+an hour. Arrows wrap, Enter opens, Escape closes; the count is announced once
+a search settles. `CommandPalette` in `web/src/components/command/` is the
+reference.
+
 ## Motion baseline
 
 The primitives carry the numbers; a new surface reuses them instead of

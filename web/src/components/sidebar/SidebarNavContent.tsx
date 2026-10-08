@@ -1,3 +1,4 @@
+import { CommandPaletteTrigger } from "@/components/command/CommandPaletteTrigger";
 import { ChatSidebarSection } from "@/components/sidebar/ChatSidebarSection";
 import { SidebarActiveIndicator } from "@/components/sidebar/SidebarActiveIndicator";
 import { DeploySidebarNav } from "@/components/sidebar/DeploySidebarNav";
@@ -18,6 +19,7 @@ export const SidebarNavContent = ({ collapsed, unreadCount }: SidebarNavContentP
     <nav aria-label="Main" className="relative isolate flex-1 overflow-y-auto px-2 py-1">
       <SidebarActiveIndicator />
       <div className="flex flex-col gap-0.5">
+        <CommandPaletteTrigger collapsed={collapsed} />
         <SidebarInboxLink collapsed={collapsed} unreadCount={unreadCount} />
       </div>
       <ChatSidebarSection collapsed={collapsed} />
