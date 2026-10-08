@@ -356,7 +356,7 @@ type NotConfiguredError struct {
 // Error is the user-facing refusal for the gate's reasons, so chat, the play run dialog, and MCP all read the same line.
 func (e *NotConfiguredError) Error() string {
 	if e.Reason == ReasonSetupRequired {
-		return fmt.Sprintf("@Agent can't use %s on %s until its setup is done — run setup for %s in Settings → T3 pairing.", e.Provider, e.Computer, e.Computer)
+		return fmt.Sprintf("@Agent can't use %s on %s until its setup is done — run setup for %s in Settings → T3 Code Setup.", e.Provider, e.Computer, e.Computer)
 	}
 	if e.Reason == ReasonOffline {
 		return fmt.Sprintf("@Agent can't reach %s — is T3 Code running there?", e.Computer)

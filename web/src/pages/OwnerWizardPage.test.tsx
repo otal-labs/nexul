@@ -46,6 +46,14 @@ vi.mock("@/components/auth/SetupWorkspaceStep", () => ({
   ),
 }));
 
+vi.mock("@/components/auth/SetupT3CodeStep", () => ({
+  SetupT3CodeStep: ({ onFinish, finishing }: { onFinish: () => void; finishing: boolean }) => (
+    <button onClick={onFinish} disabled={finishing}>
+      {finishing ? "Finishing…" : "Finish setup"}
+    </button>
+  ),
+}));
+
 vi.mock("@/hooks/AuthHooks", () => ({
   useFetchSettings: mocks.useFetchSettings,
   useFetchMe: () => ({ data: { user: {}, instance_permissions: [] } }),
@@ -90,7 +98,7 @@ describe("OwnerWizardPage", () => {
     mocks.useFetchConnectors.mockReturnValue({ data: connectorFixture, isPending: false, error: undefined });
   });
 
-  it("walks through all three steps in sequence as each step's onContinue fires", async () => {
+  it("walks through all four steps in sequence as each step's onContinue fires", async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -101,6 +109,9 @@ describe("OwnerWizardPage", () => {
     await user.click(screen.getByRole("button", { name: "Step2 continue" }));
 
     expect(screen.getByText("Connect your tools")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(screen.getByText("Set up T3 Code")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /finish setup/i })).toBeInTheDocument();
   });
 
@@ -156,16 +167,18 @@ describe("OwnerWizardPage", () => {
     renderPage();
 
     expect(screen.getByText("Connect your tools")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continue" }));
     await user.click(screen.getByRole("button", { name: /finish setup/i }));
     expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme", slug: "acme" });
   });
 
-  it("finishes step 3 using the instance URL from settings (not empty), then opens the project wizard for the first project", async () => {
+  it("finishes step 4 using the instance URL from settings (not empty), then opens the project wizard for the first project", async () => {
     const user = userEvent.setup();
     renderPage();
 
     await user.click(screen.getByRole("button", { name: "Step1 continue" }));
     await user.click(screen.getByRole("button", { name: "Step2 continue" }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
     await user.click(screen.getByRole("button", { name: /finish setup/i }));
 
     expect(mocks.completeMutateAsync).toHaveBeenCalledWith("https://deploy.example.com");
@@ -186,6 +199,7 @@ describe("OwnerWizardPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Step1 continue" }));
     await user.click(screen.getByRole("button", { name: "Step2 continue" }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
 
     const finish = screen.getByRole("button", { name: /finish setup/i });
     await user.click(finish);

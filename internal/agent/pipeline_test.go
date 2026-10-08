@@ -464,11 +464,11 @@ func TestRunTurn_ResolveTargetNotConfigured_PostsSystemReply(t *testing.T) {
 	}{
 		{&pairing.NotConfiguredError{Reason: pairing.ReasonUnpaired}, "connect one in Settings"},
 		{&pairing.NotConfiguredError{Reason: pairing.ReasonExpiredToken}, "re-pair it"},
-		{&pairing.NotConfiguredError{Reason: pairing.ReasonNoDefault}, "link this project in Settings → T3 pairing → Projects"},
+		{&pairing.NotConfiguredError{Reason: pairing.ReasonNoDefault}, "link this project in Settings → T3 Code Setup → Projects"},
 		{&pairing.NotConfiguredError{Reason: pairing.ReasonNoDefaultComputer}, "pick a default one"},
 		{
 			&pairing.NotConfiguredError{Reason: pairing.ReasonSetupRequired, Provider: "Codex", Computer: "Onik's laptop"},
-			"@Agent can't use Codex on Onik's laptop until its setup is done — run setup for Onik's laptop in Settings → T3 pairing.",
+			"@Agent can't use Codex on Onik's laptop until its setup is done — run setup for Onik's laptop in Settings → T3 Code Setup.",
 		},
 		{
 			&pairing.NotConfiguredError{Reason: pairing.ReasonOffline, Computer: "Onik's laptop"},

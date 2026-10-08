@@ -19,7 +19,7 @@ const sectionLabels: Record<YourSettingsSection, string> = {
   profile: "Profile",
   appearance: "Appearance",
   security: "Security",
-  pairing: "T3 pairing",
+  pairing: "T3 Code Setup",
 };
 
 interface YourSettingsNavProps {

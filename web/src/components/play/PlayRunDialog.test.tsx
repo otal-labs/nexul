@@ -195,7 +195,7 @@ describe("PlayRunDialog", () => {
       response: {
         status: 400,
         data: {
-          message: "@Agent can't use Claude on Onik's PC until its setup is done — run setup for Onik's PC in Settings → T3 pairing.",
+          message: "@Agent can't use Claude on Onik's PC until its setup is done — run setup for Onik's PC in Settings → T3 Code Setup.",
           code: "INVALID",
           details: { reason: "setup_required", computer_id: "c-1", computer: "Onik's PC", provider_id: "claude", provider: "Claude" },
         },

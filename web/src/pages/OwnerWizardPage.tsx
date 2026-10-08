@@ -10,7 +10,7 @@ import { useOwnerWizardStore } from "@/stores/ownerWizardStore";
 import { slugify, workspacePath } from "@/models/Workspace";
 
 const CONFIRM_DELAY_MS = 900;
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 const FIRST_PROJECT_PATH = "/wizard/project/project";
 
 const STEP_COPY = [
@@ -25,6 +25,10 @@ const STEP_COPY = [
   {
     title: "Connect your tools",
     subtitle: "Hook up the services Nexul manages for you.",
+  },
+  {
+    title: "Set up T3 Code",
+    subtitle: "Agents run on your own computer through T3 Code. Pair it so Nexul can reach it from anywhere.",
   },
 ] as const;
 
@@ -92,6 +96,7 @@ export const OwnerWizardPage = () => {
             setWorkspaceSetup(data);
             setStep(3);
           }}
+          onStep3Continue={() => setStep(4)}
           onFinish={() => void onFinish()}
         />
       )}

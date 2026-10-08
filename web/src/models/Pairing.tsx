@@ -247,7 +247,7 @@ export interface RefusalDetails {
 // Mirrors pairing.ReasonSetupRequired, the refusal whose fix is running setup on the computer it names.
 export const SETUP_REQUIRED_REASON = "setup_required";
 
-// Your settings → T3 pairing with the computer's Set up step open.
+// Your settings → T3 Code Setup with the computer's Set up step open.
 export const computerSetupPath = (computerId: string) =>
   `/settings/pairing?setup=${encodeURIComponent(computerId)}`;
 
@@ -405,7 +405,7 @@ export type HarnessReadiness =
 export const HARNESS_READINESS_COPY: Record<Exclude<HarnessReadiness["state"], "ready">, string> = {
   unpaired: "Pair a harness in Settings to run plays",
   expired: "Your harness pairing has expired, re-pair it in Settings",
-  no_harness_project: "Link this project in Settings → T3 pairing → Projects, or set a fallback under Defaults",
+  no_harness_project: "Link this project in Settings → T3 Code Setup → Projects, or set a fallback under Defaults",
   no_default_computer: "Several harnesses are paired, pick a default in Settings",
   offline: "Your harness is offline",
 };

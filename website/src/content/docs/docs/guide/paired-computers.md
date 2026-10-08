@@ -11,7 +11,7 @@ Agent work in Nexul runs on your own computer, through T3 Code, with your permis
 
 You need T3 Code running on the computer, and the instance needs Cloudflare connected with Zero Trust enabled. The dialog tells you if either is missing and how to fix it.
 
-1. Open your settings, **T3 pairing → Computers**, and press **Pair a computer**.
+1. Open your settings, **T3 Code Setup → Computers**, and press **Pair a computer**.
 2. Enter a **Computer name** and press **Create tunnel**. Change **T3 Code port** under **Advanced options** only if T3 Code doesn't run on its default port.
 3. Run the command shown for your system on that computer. It installs `cloudflared` if needed and keeps a tunnel open to the instance's Cloudflare account as a background service. The token in it is secret, so keep it to that computer.
 4. Wait for both checks, **Tunnel online** and **T3 Code answering**, then press **Next**.
@@ -38,7 +38,7 @@ Setup gives the computer its own personal access token, "Nexul MCP on <computer>
 
 ## Choose where turns run
 
-Two tabs in **T3 pairing** decide which computer, T3 project, provider, and model a turn uses.
+Two tabs in **T3 Code Setup** decide which computer, T3 project, provider, and model a turn uses.
 
 **Defaults** apply to `@Agent` in a channel or direct message, and to every project you haven't linked:
 
@@ -59,6 +59,6 @@ The play button or the chat says why:
 |---|---|
 | Pair a harness in Settings to run plays | Pair a computer, or finish one in progress. |
 | Your harness pairing has expired | Press **Re-pair** on the computer. |
-| Link this project in Settings → T3 pairing → Projects, or set a fallback under Defaults | Link the project, or set a **Fallback T3 project**. |
+| Link this project in Settings → T3 Code Setup → Projects, or set a fallback under Defaults | Link the project, or set a **Fallback T3 project**. |
 | Several harnesses are paired, pick a default in Settings | Set a **Default computer**. |
 | Your harness is offline | Start T3 Code, and check the tunnel is up. |

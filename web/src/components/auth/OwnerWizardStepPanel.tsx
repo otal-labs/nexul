@@ -1,5 +1,6 @@
 import { ConnectToolsStep } from "@/components/auth/ConnectToolsStep";
 import { IntroduceYourselfStep } from "@/components/auth/IntroduceYourselfStep";
+import { SetupT3CodeStep } from "@/components/auth/SetupT3CodeStep";
 import { SetupWorkspaceStep } from "@/components/auth/SetupWorkspaceStep";
 import type { WorkspaceSetupData } from "@/components/auth/SetupWorkspaceStep";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -12,6 +13,7 @@ interface OwnerWizardStepPanelProps {
   finishing: boolean;
   onStep1Continue: () => void;
   onStep2Continue: (data: WorkspaceSetupData) => void;
+  onStep3Continue: () => void;
   onFinish: () => void;
 }
 
@@ -22,6 +24,7 @@ export const OwnerWizardStepPanel = ({
   finishing,
   onStep1Continue,
   onStep2Continue,
+  onStep3Continue,
   onFinish,
 }: OwnerWizardStepPanelProps) => (
   <>
@@ -30,7 +33,8 @@ export const OwnerWizardStepPanel = ({
     {step === 3 && settingsLoading && <LoadingDisplay />}
     {step === 3 && settingsError && <ErrorDisplay error={settingsError} />}
     {step === 3 && !settingsLoading && !settingsError && (
-      <ConnectToolsStep onFinish={onFinish} finishing={finishing} />
+      <ConnectToolsStep onContinue={onStep3Continue} />
     )}
+    {step === 4 && <SetupT3CodeStep onFinish={onFinish} finishing={finishing} />}
   </>
 );
