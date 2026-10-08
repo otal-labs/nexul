@@ -17,8 +17,8 @@ export const TeamSection = () => {
   const [params, setParams] = useSearchParams();
   const personId = params.get("person");
   const everyone = useHasInstancePermission("accounts:read");
-  const scope = everyone ? "Everyone registered on this instance" : "The people in the workspaces you manage";
-  const description = `${scope} and what they can reach in each workspace. New people join through invitation links.`;
+  const scope = everyone ? "Everyone on this instance" : "People in the workspaces you manage";
+  const description = `${scope}, and what they can reach in each workspace. Invite someone with a link.`;
 
   const open = (id: string | null) =>
     setParams(
@@ -40,7 +40,7 @@ export const TeamSection = () => {
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {team && team.people.length === 0 && <EmptyRow>No one is registered yet — create an invitation link to add someone.</EmptyRow>}
+      {team && team.people.length === 0 && <EmptyRow>No one here yet. Invite someone to add them.</EmptyRow>}
       {team && team.people.length > 0 && <TeamFeed people={team.people} onOpen={open} />}
       <InvitationsFeed />
       <TeamPersonDialog personId={personId} onClose={() => open(null)} />

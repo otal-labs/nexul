@@ -44,7 +44,7 @@ export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) =
 
   const close = async () => {
     if (steps.length > 0) {
-      const discard = await ask({ title: "Discard changes?", message: "What you changed here hasn't been confirmed and will be lost.", confirmLabel: "Discard" });
+      const discard = await ask({ title: "Discard changes?", message: "Your unconfirmed changes here will be lost.", confirmLabel: "Discard changes" });
       if (!discard) return;
     }
     finish();

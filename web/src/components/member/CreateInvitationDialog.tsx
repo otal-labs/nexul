@@ -19,7 +19,7 @@ export const CreateInvitationDialog = () => {
     setCopied(false);
     await open<CreateInvitationFormData>({
       title: "Create invitation link",
-      description: "Choose the workspaces and roles this one-use link grants.",
+      description: "Pick the workspaces and roles the link grants. It works once.",
       schema: CreateInvitationFormSchema,
       okLabel: "Create link",
       form: <CreateInvitationForm onCreated={setCreated} />,
@@ -43,7 +43,7 @@ export const CreateInvitationDialog = () => {
       <Button type="button" onClick={() => void create()}><Plus className="size-4" />Invite</Button>
       {created && (
         <div className="mt-4 space-y-3 rounded-md border bg-muted/30 p-4" role="status">
-          <p className="text-sm font-medium">Copy this invitation now — it won&apos;t be shown again.</p>
+          <p className="text-sm font-medium">Copy this link now. It won&apos;t be shown again.</p>
           <p className="break-all rounded-md bg-card p-2 font-mono text-xs">{created.url}</p>
           <Button type="button" variant="outline" size="sm" onClick={() => void copy()}>{copied ? <Check className="size-4" /> : <Copy className="size-4" />}{copied ? "Copied" : "Copy link"}</Button>
         </div>

@@ -27,7 +27,7 @@ export const InvitationsFeed = () => {
     <section className="mt-8 space-y-3" aria-labelledby="active-invitations-title">
       <div className="space-y-1">
         <Microheader id="active-invitations-title">Active invitation links</Microheader>
-        <p className="text-sm text-muted-foreground">Links are single-use and never shown again after creation.</p>
+        <p className="text-sm text-muted-foreground">Each link works once and is shown only when it's created.</p>
       </div>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}

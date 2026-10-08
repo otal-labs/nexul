@@ -71,7 +71,7 @@ export const InvitationGrantRow = ({ index, remove }: InvitationGrantRowProps) =
       <Collapsible>
         <CollapsibleTrigger type="button" className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Optional permission overrides</CollapsibleTrigger>
         <CollapsibleContent className="mt-3 space-y-3">
-          <p className="text-xs text-muted-foreground">These workspace-wide overrides apply on top of the selected role.</p>
+          <p className="text-xs text-muted-foreground">They apply across the workspace, on top of the role.</p>
           {catalog && <div className="space-y-1"><p className="text-xs font-medium">Allow</p><PermissionLevels entries={catalog} value={allow} onChange={(value) => setValue(`grants.${index}.allow`, value)} /></div>}
           {catalog && <div className="space-y-1"><p className="text-xs font-medium">Deny</p><PermissionGrid entries={catalog} value={deny} onChange={(value) => setValue(`grants.${index}.deny`, value)} /></div>}
         </CollapsibleContent>

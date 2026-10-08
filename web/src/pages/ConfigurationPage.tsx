@@ -35,7 +35,7 @@ export const ConfigurationPage = () => {
         className="mb-8"
         crumbs={[workspaceCrumb]}
         title="Configuration"
-        meta="What this workspace can contain and who holds keys."
+        meta="This workspace's settings, roles, and plays."
       />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
         <SettingsNav active={section} sections={sections} />
