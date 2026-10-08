@@ -1,3 +1,4 @@
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { EmptyRow } from "@/components/EmptyRow";
@@ -32,7 +33,7 @@ export const InvitationsFeed = () => {
       {error && <ErrorDisplay error={error} />}
       {invitations && invitations.length === 0 && <EmptyRow>No active invitation links</EmptyRow>}
       {invitations && invitations.length > 0 && (
-        <ul className="divide-y divide-border overflow-hidden rounded-md border">
+        <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
           {invitations.map((invitation) => (
             <InvitationRow
               key={invitation.id}
@@ -42,7 +43,7 @@ export const InvitationsFeed = () => {
               disabled={revoke.isPending}
             />
           ))}
-        </ul>
+        </EnterList>
       )}
     </section>
   );

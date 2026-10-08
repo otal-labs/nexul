@@ -1,3 +1,4 @@
+import { EnterList } from "@/components/EnterList";
 import { EmptyRow } from "@/components/EmptyRow";
 import { LabelColorRow } from "@/components/settings/LabelColorRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
@@ -17,7 +18,7 @@ export const BoardLabelColorsSection = ({ projectId, allLabels, labelColors }: B
   >
     {allLabels && allLabels.length === 0 && <EmptyRow>No labels yet</EmptyRow>}
     {allLabels && allLabels.length > 0 && (
-      <ul className="divide-y divide-border">
+      <EnterList className="divide-y divide-border">
         {allLabels.map((label) => (
           <LabelColorRow
             key={label}
@@ -26,7 +27,7 @@ export const BoardLabelColorsSection = ({ projectId, allLabels, labelColors }: B
             projectId={projectId}
           />
         ))}
-      </ul>
+      </EnterList>
     )}
   </SettingsCard>
 );

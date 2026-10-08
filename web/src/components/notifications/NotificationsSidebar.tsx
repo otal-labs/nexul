@@ -1,5 +1,6 @@
 import { InboxIcon } from "lucide-react";
 
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ListPaneEmpty } from "@/components/listpane/ListPaneEmpty";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -35,7 +36,11 @@ export const NotificationsSidebar = ({
       {isLoading && <LoadingDisplay />}
       {Boolean(error) && <ErrorDisplay error={error} />}
       {entries && entries.length === 0 && <ListPaneEmpty icon={InboxIcon} message="No notifications" />}
-      {entries?.map((e) => <InboxEntryRow key={e.key} entry={e} />)}
+      {entries && entries.length > 0 && (
+        <EnterList as="div" arrival="rise">
+          {entries.map((e) => <InboxEntryRow key={e.key} entry={e} />)}
+        </EnterList>
+      )}
     </nav>
   </div>
 );

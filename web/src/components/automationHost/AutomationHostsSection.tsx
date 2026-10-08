@@ -1,3 +1,4 @@
+import { EnterList } from "@/components/EnterList";
 import { AddAutomationHostDialog } from "@/components/automationHost/AddAutomationHostDialog";
 import { AutomationHostRow } from "@/components/automationHost/AutomationHostRow";
 import { EmptyRow } from "@/components/EmptyRow";
@@ -20,11 +21,11 @@ export const AutomationHostsSection = () => {
       {error && <ErrorDisplay error={error} />}
       {hosts && hosts.length === 0 && <EmptyRow>No automations host enrolled yet.</EmptyRow>}
       {hosts && hosts.length > 0 && (
-        <ul className="divide-y divide-border overflow-hidden rounded-md border border-border">
-          {hosts.map((host, index) => (
-            <AutomationHostRow key={host.id} host={host} index={index} />
+        <EnterList className="divide-y divide-border overflow-hidden rounded-md border border-border">
+          {hosts.map((host) => (
+            <AutomationHostRow key={host.id} host={host} />
           ))}
-        </ul>
+        </EnterList>
       )}
     </SettingsCard>
   );

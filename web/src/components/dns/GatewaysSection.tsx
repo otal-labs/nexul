@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 
+import { EnterList } from "@/components/EnterList";
 import { CreateGatewayDialog } from "@/components/dns/CreateGatewayDialog";
 import { GatewayRow } from "@/components/dns/GatewayRow";
 import { EmptyRow } from "@/components/EmptyRow";
@@ -31,11 +32,11 @@ export const GatewaysSection = () => {
       {error && <ErrorDisplay error={error} title="Could not load gateways" />}
       {gateways && gateways.length === 0 && <EmptyRow>No gateways yet.</EmptyRow>}
       {gateways && gateways.length > 0 && (
-        <ul className="divide-y divide-border overflow-hidden rounded-md border">
+        <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
           {gateways.map((gateway) => (
             <GatewayRow key={gateway.id} gateway={gateway} />
           ))}
-        </ul>
+        </EnterList>
       )}
     </SettingsCard>
   );

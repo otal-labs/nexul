@@ -43,7 +43,7 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
   const dirty = title !== memory.title || whenToUse !== memory.when_to_use || body !== memory.body;
 
   return (
-    <div className="@container animate-in fade-in-0 slide-in-from-bottom-1 mx-auto w-full max-w-5xl duration-200 ease-out">
+    <div className="@container mx-auto w-full max-w-5xl">
       <PageHeader
         crumbs={crumbs}
         title={<DocTitleField editable={canWrite} title={title} staticTitle={memory.title} onChange={setTitle} />}

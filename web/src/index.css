@@ -63,6 +63,9 @@
   --shadow-overlay: var(--shadow-overlay);
   --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* A bounce-free spring as a CSS curve (paired with 200ms) and the one small-bounce spring (paired with 350ms). */
+  --ease-spring: linear(0, 0.079, 0.236, 0.403, 0.551, 0.671, 0.764, 0.833, 0.883, 0.919, 0.944, 0.962, 0.974, 0.983, 0.988, 0.992, 0.995, 0.997, 1);
+  --ease-spring-pop: linear(0, 0.1, 0.303, 0.515, 0.693, 0.826, 0.915, 0.969, 0.998, 1.011, 1.015, 1.014, 1.011, 1.008, 1.005, 1.003, 1.002, 1.001, 1);
 }
 
 :root {
@@ -225,6 +228,8 @@ h3 {
 @layer base {
   * {
     border-color: var(--border);
+    /* A bare duration-* class would otherwise transition every property, layout included; a transition names its properties. */
+    transition-property: none;
   }
 }
 
@@ -842,8 +847,81 @@ a.mention-chip:hover {
 }
 
 /* ============ Motion ============
-   One standard ease for state changes, ease-out for entrances; transform /
-   opacity only; everything disabled under prefers-reduced-motion. */
+   The spec is the Motion section of practices/design-language.md. Entrances run --ease-out, state changes
+   --ease-standard, anything that slides between places --ease-spring; only transform and opacity move. Page and list
+   entrances run from lib/motion.ts. */
+
+/* News arriving (someone else's chat message, the Agent's reply starting) rises 8px as it fades in. */
+@keyframes arrive {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@utility arrive {
+  animation: arrive 200ms var(--ease-out) both;
+}
+
+/* A progress fill grows from the left the first time it shows; a change after that is the fill's own transition. */
+@keyframes grow-x {
+  from {
+    scale: 0 1;
+  }
+}
+@utility grow-in {
+  transform-origin: left;
+  animation: grow-x 300ms var(--ease-out) both;
+}
+
+/* A picked-up board card lifts off from where it lay. */
+@keyframes lift {
+  from {
+    scale: 1;
+  }
+}
+
+/* Disclosure: the box snaps open or shut in one layout step, never per frame, and only the content moves. Opening, it
+   fades in as it settles 4px; closing, it fades out in 120ms and the box shuts after. */
+.disclosure {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+.disclosure > * {
+  min-height: 0;
+  overflow: hidden;
+  transition:
+    opacity 200ms var(--ease-out),
+    translate 200ms var(--ease-out);
+}
+.disclosure[data-closed] {
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0s linear 120ms;
+}
+.disclosure[data-closed] > * {
+  opacity: 0;
+  translate: 0 -4px;
+  transition:
+    opacity 120ms var(--ease-standard),
+    translate 0s linear 120ms;
+}
+
+/* Toasts keep the library's choreography on the dialog family's clock: in over 250ms on the strong ease-out instead of
+   400ms, and a stacked toast leaves in 200ms. */
+[data-sonner-toaster] [data-sonner-toast] {
+  transition-duration: 250ms, 250ms, 250ms, 200ms;
+  transition-timing-function: var(--ease-out);
+}
+[data-sonner-toaster] [data-sonner-toast][data-removed="true"][data-front="false"][data-swipe-out="false"][data-expanded="false"] {
+  transition-duration: 200ms, 150ms;
+}
+
+/* Reduced motion flattens every transition and keyframe; what still needs to say "this arrived" does it with a fade
+   (the page and list entrances in lib/motion.ts check the preference themselves). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -852,6 +930,13 @@ a.mention-chip:hover {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  .disclosure,
+  .disclosure > * {
+    transition-delay: 0s !important;
+  }
+  .arrive {
+    animation: fade-in 150ms var(--ease-out) both !important;
   }
 }
 

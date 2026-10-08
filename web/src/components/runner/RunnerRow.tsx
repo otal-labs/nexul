@@ -1,4 +1,3 @@
-import { entranceDelayMs } from "@/components/runner/motion";
 import { RemoveRunnerButton } from "@/components/runner/RemoveRunnerButton";
 import { RunnerStatusBadge } from "@/components/runner/RunnerStatusBadge";
 import { RunnerVersionChip } from "@/components/runner/RunnerVersionChip";
@@ -8,11 +7,9 @@ import { formatRelativeTime } from "@/utils/TimeUtility";
 
 interface RunnerRowProps {
   runner: Runner;
-  index?: number;
 }
 
-// <li> owns hover, the inner <div> owns the entrance, so a refetch reusing key={runner.id} won't replay it.
-export const RunnerRow = ({ runner, index = 0 }: RunnerRowProps) => {
+export const RunnerRow = ({ runner }: RunnerRowProps) => {
   const job = runner.running_job;
   return (
     <li
@@ -22,8 +19,7 @@ export const RunnerRow = ({ runner, index = 0 }: RunnerRowProps) => {
       )}
     >
       <div
-        className="animate-in fade-in-0 slide-in-from-bottom-1 flex items-center gap-3 px-4 py-3 duration-150 ease-out"
-        style={{ animationDelay: `${entranceDelayMs(index)}ms` }}
+        className="flex items-center gap-3 px-4 py-3"
       >
         <RunnerStatusBadge connected={runner.connected} />
         <div className="min-w-0 flex-1">

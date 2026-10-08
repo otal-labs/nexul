@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router";
 
 import { PhoneBanner } from "@/components/PhoneBanner";
@@ -8,6 +8,7 @@ import { VoiceCallAudio } from "@/components/voice/VoiceCallAudio";
 import { useFetchUnreadCount } from "@/hooks/NotificationHooks";
 import { useEnsureWorkspaceSelected } from "@/hooks/WorkspaceHooks";
 import { useLiveEvents } from "@/hooks/useLiveEvents";
+import { usePageEntrance } from "@/hooks/usePageEntrance";
 import { buildLiveURL } from "@/lib/live";
 import { useSessionStore } from "@/stores/sessionStore";
 
@@ -21,6 +22,8 @@ export const Layout = () => {
   useEnsureWorkspaceSelected(isLoggedIn);
   // Wizards and the signed-out pages own the whole viewport; the sidebar's nav has nothing to point at there.
   const onboarding = /^\/(?:[^/]+\/)?wizard\//.test(useLocation().pathname);
+  const frame = useRef<HTMLDivElement>(null);
+  usePageEntrance(frame);
 
   // Signed out, the hero pages paint their own full-screen canvas; signed in, every page floats on the light field.
   return (
@@ -40,7 +43,7 @@ export const Layout = () => {
             <ServerUpdatedBanner />
             <PhoneBanner />
             <main className="min-h-0 flex-1 p-2">
-              <div className="app-frame">
+              <div ref={frame} className="app-frame">
                 <Outlet />
               </div>
             </main>

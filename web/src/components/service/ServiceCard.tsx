@@ -6,14 +6,9 @@ import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { DeployStatus as DeployStatusType, ServiceDef } from "@/models/Service";
 
-// Stagger the first screenful of rows in; the rest mounts together instantly (never stagger a long list).
-const STAGGER_LIMIT = 8;
-const STAGGER_STEP_MS = 25;
-
 interface ServiceCardProps {
   service: ServiceDef;
   status?: DeployStatusType;
-  index?: number;
 }
 
 // Build repo for repo-driven services, target server otherwise; the list endpoint carries no deploy image.
@@ -24,7 +19,7 @@ const imageLine = (service: ServiceDef): string => {
 };
 
 // `status` degrades gracefully to no dot/badge until a per-service health query is wired up.
-export const ServiceCard = ({ service, status, index }: ServiceCardProps) => {
+export const ServiceCard = ({ service, status }: ServiceCardProps) => {
   const canOpen = useAreaAccess()?.("stacks") ?? false;
   const wsPath = useWorkspacePath();
   const rowClass = "flex items-center gap-3 px-4 py-3";
@@ -44,14 +39,7 @@ export const ServiceCard = ({ service, status, index }: ServiceCardProps) => {
     </>
   );
   return (
-    <li
-      className={
-        index !== undefined && index < STAGGER_LIMIT
-          ? "animate-in fade-in-0 slide-in-from-bottom-1 fill-mode-backwards duration-150 ease-out"
-          : undefined
-      }
-      style={index !== undefined && index < STAGGER_LIMIT ? { animationDelay: `${index * STAGGER_STEP_MS}ms` } : undefined}
-    >
+    <li>
       {canOpen && (
         <Link
           to={wsPath(`/stacks/${service.id}`)}

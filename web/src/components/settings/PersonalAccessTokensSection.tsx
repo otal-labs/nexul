@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Copy } from "lucide-react";
 import { useForm } from "react-hook-form";
 
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -87,11 +88,11 @@ export const PersonalAccessTokensSection = () => {
             <EmptyRow>No personal access tokens yet</EmptyRow>
           )}
           {data.tokens.length > 0 && (
-            <ul className="divide-y divide-border overflow-hidden rounded-md border">
+            <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
               {data.tokens.map((token) => (
                 <PATRow key={token.id} token={token} />
               ))}
-            </ul>
+            </EnterList>
           )}
         </div>
       )}

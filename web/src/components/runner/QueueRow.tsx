@@ -1,20 +1,17 @@
 import { cn } from "@/lib/utils";
-import { entranceDelayMs } from "@/components/runner/motion";
 import type { QueuedJob } from "@/models/Runner";
 
 interface QueueRowProps {
   job: QueuedJob;
-  index?: number;
   /** 1-based queue place — draining, not accumulating, so it's worth calling out. */
   position?: number;
 }
 
-// Same split as RunnerRow; the position chip is also keyed on `position` so it fades alone on change.
-export const QueueRow = ({ job, index = 0, position }: QueueRowProps) => (
+// The position chip is keyed on `position` so it fades alone on change.
+export const QueueRow = ({ job, position }: QueueRowProps) => (
   <li className="transition-colors duration-150 ease-standard hover:bg-accent/40">
     <div
-      className="animate-in fade-in-0 slide-in-from-bottom-1 flex items-center gap-3 px-4 py-3 duration-150 ease-out"
-      style={{ animationDelay: `${entranceDelayMs(index)}ms` }}
+      className="flex items-center gap-3 px-4 py-3"
     >
       {position !== undefined && (
         <span
