@@ -228,18 +228,18 @@ describe("StackLogsSection", () => {
     expect(FakeSocket.all).toHaveLength(1);
   });
 
-  it("a refused handshake with the runner offline says so with the reason and retries", async () => {
+  it("a refused handshake with the runner offline says so in a sentence, keeps the server's words, and retries", async () => {
+    const reason = 'logs of web: retryable: no runner is connected on machine "m1"';
     mocks.get.mockImplementation((url: string) =>
-      url.endsWith("/services")
-        ? Promise.resolve({ data: services })
-        : Promise.reject(refusal(503, "no runner is connected on machine m1")),
+      url.endsWith("/services") ? Promise.resolve({ data: services }) : Promise.reject(refusal(503, reason)),
     );
     await renderSection();
     await dropSocket(1006);
 
     expect(screen.getAllByRole("status").map((el) => el.textContent)).toContain(
-      "Runner offline: no runner is connected on machine m1",
+      "The runner on m1 is offline, so live logs can't be read right now.",
     );
+    expect(screen.getByText(reason)).toBeInTheDocument();
     await advance(1_000);
     expect(FakeSocket.all).toHaveLength(2);
   });
