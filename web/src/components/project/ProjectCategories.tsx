@@ -13,6 +13,8 @@ import { PlusIcon } from "lucide-react";
 
 import { AddCategoryForm } from "@/components/project/AddCategoryForm";
 import { CategoryRow } from "@/components/project/CategoryRow";
+import { EmptyRow } from "@/components/EmptyRow";
+import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useFetchProjectCategories, useReorderCategories } from "@/hooks/CategoryHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
@@ -61,23 +63,24 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
   };
 
   return (
-    <div className="mt-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium">Categories</span>
-        <Button variant="ghost" size="sm" onClick={() => void onAdd()}>
-          <PlusIcon className="size-3.5" />
+    <SettingsCard
+      id="categories"
+      title="Categories"
+      description="The board groups tickets into one swimlane per category, in this order. Drag a row to reorder."
+      footer={
+        <Button variant="outline" size="sm" onClick={() => void onAdd()}>
+          <PlusIcon className="size-4" />
           New category
         </Button>
-      </div>
+      }
+    >
       {categories && categories.length === 0 && (
-        <p className="mt-2 text-sm text-muted-foreground">
-          No categories yet — the board groups tickets into swimlanes per category.
-        </p>
+        <EmptyRow>No categories yet — the board groups tickets into swimlanes per category.</EmptyRow>
       )}
       {categories && categories.length > 0 && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={categories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-            <ul className="mt-2 divide-y divide-border">
+            <ul className="divide-y divide-border">
               {categories.map((category, index) => (
                 <CategoryRow
                   key={category.id}
@@ -93,6 +96,6 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
           </SortableContext>
         </DndContext>
       )}
-    </div>
+    </SettingsCard>
   );
 };

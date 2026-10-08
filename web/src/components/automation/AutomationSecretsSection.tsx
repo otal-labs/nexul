@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { EmptyRow } from "@/components/EmptyRow";
 import { AutomationSecretRow } from "@/components/automation/AutomationSecretRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
@@ -60,7 +60,7 @@ export const AutomationSecretsSection = () => {
 
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} />}
-        {data && data.length === 0 && <NoDataDisplay message="No secrets yet" />}
+        {data && data.length === 0 && <EmptyRow>No secrets yet</EmptyRow>}
         {data && data.length > 0 && (
           <ul className="divide-y divide-border overflow-hidden rounded-md border">
             {data.map((secret) => (

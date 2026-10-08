@@ -2,6 +2,7 @@ import type { Control, FieldValues, Path } from "react-hook-form";
 
 import { FormCombobox } from "@/components/FormCombobox";
 import { FormInput } from "@/components/FormInput";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchHarnessProjects } from "@/hooks/PairingHooks";
 
 interface HarnessProjectFieldProps<T extends FieldValues> {
@@ -31,7 +32,7 @@ export const HarnessProjectField = <T extends FieldValues>({ control, name, labe
     <div className="space-y-1">
       <FormInput control={control} name={name} label={label} placeholder="e.g. proj_abc123" />
       {!computerId && <p className="text-xs text-muted-foreground">Pick a computer to load its projects.</p>}
-      {projects.isPending && !!computerId && <p className="text-xs text-muted-foreground">Loading projects…</p>}
+      {projects.isPending && !!computerId && <LoadingDisplay label="Loading projects" className="justify-start p-0" />}
       {projects.isError && (
         <p className="text-xs text-muted-foreground">
           Couldn't load projects from this computer — is it online? Paste the id manually.

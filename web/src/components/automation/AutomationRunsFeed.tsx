@@ -2,7 +2,8 @@ import { useState } from "react";
 
 import { AutomationRunDetailSheet } from "@/components/automation/AutomationRunDetailSheet";
 import { AutomationRunRow } from "@/components/automation/AutomationRunRow";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { EmptyRow } from "@/components/EmptyRow";
+import { SettingsCard } from "@/components/settings/SettingsCard";
 import type { AutomationRun } from "@/models/AutomationRun";
 
 interface AutomationRunsFeedProps {
@@ -14,9 +15,8 @@ export const AutomationRunsFeed = ({ automationId, runs }: AutomationRunsFeedPro
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
   return (
-    <section className="space-y-3 rounded-lg border border-border bg-card p-4">
-      <h2 className="text-sm font-semibold">Run history</h2>
-      {runs.length === 0 && <NoDataDisplay message="No runs yet" size="compact" />}
+    <SettingsCard id="runs" title="Run history" description="Every event this automation handled. Open a run to read its log.">
+      {runs.length === 0 && <EmptyRow>No runs yet</EmptyRow>}
       {runs.length > 0 && (
         <ul className="divide-y divide-border overflow-hidden rounded-md border">
           {runs.map((run) => (
@@ -29,6 +29,6 @@ export const AutomationRunsFeed = ({ automationId, runs }: AutomationRunsFeedPro
         runId={selectedRunId}
         onOpenChange={(open) => !open && setSelectedRunId(null)}
       />
-    </section>
+    </SettingsCard>
   );
 };

@@ -13,10 +13,10 @@ export const ProjectPeopleAccessRow = ({ entry }: ProjectPeopleAccessRowProps) =
   const areas = useProjectAreas();
   return (
     <li className="flex min-h-11 items-center gap-3 py-2">
-      <PersonAvatar login={person.login} src={person.avatar_url} label={entry.name} className="size-7 text-[11px]" />
+      <PersonAvatar login={person.login} src={person.avatar_url} label={entry.name} className="size-7 text-xs" />
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className="truncate text-sm">{entry.name}</p>
-        <p className="truncate font-mono text-[11px] text-muted-foreground">{accessSummary(areas, entry.actions)}</p>
+        <p className="truncate font-mono text-xs text-muted-foreground">{accessSummary(areas, entry.actions)}</p>
       </div>
     </li>
   );
