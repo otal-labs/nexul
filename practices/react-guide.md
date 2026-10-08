@@ -1242,7 +1242,9 @@ variant. **Tokens are not specified here, see
 `practices/design-language.md` (the visual spec of record) for the direction
 and `web/src/index.css` (the token source of record) for the values.**
 Structurally the theme adds, beyond the default shadcn set: a `surface-2`
-token (board fields, canvas, section breaks), the status tokens (`--success`,
+token (wells inside a panel: board columns, canvas, logs), the `panel` token
+and `panel` utility (the frosted surface every page floats in), the `brand`
+accent (`bg-brand`, `text-brand-foreground`), the status tokens (`--success`,
 `--warning`, `--info`), an elevation scale
 (`shadow-card`/`-elevated`/`-overlay`), the motion tokens (`ease-standard` =
 `cubic-bezier(0.25, 0.1, 0.25, 1)`, `ease-out` =
@@ -1250,9 +1252,13 @@ token (board fields, canvas, section breaks), the status tokens (`--success`,
 Variable (UI + display, tight tracking) + JetBrains Mono (technical data),
 via `@fontsource-variable`, no CDN. No serif or script type.
 
-Radius system: **6px interactive** (`rounded-md`), 8px large cards
-(`rounded-lg`), pills (`rounded-full`) only for chips/badges/avatars/status,
+Radius system: **7px controls** (`rounded-md`), 9px cards (`rounded-lg`), 12px
+panels (`rounded-xl`), pills (`rounded-full`) only for chips/badges/avatars/status,
 never buttons or inputs.
+
+Pages never draw their own outer surface: the layout's frame is the page's
+panel. A page built from panes puts `data-pane-layout` on its root and a
+`panel` on each pane (`ListDetailLayout` is the reference).
 
 Use container queries (`@container`, `@min-*`/`@max-*`) for component-level
 responsiveness, not viewport breakpoints, whenever a component's layout
@@ -1293,10 +1299,11 @@ mounted in today.
   `themeStore` initialises from the resulting class so it never disagrees
   with the DOM.
 - All colors are semantic tokens; never hard-code palette classes for themed
-  surfaces. Status hues come from `success` / `warning` / `info` /
-  `destructive` tokens, rendered as a colored icon or dot next to plain text,
-  never a filled or tinted-background chip, except the board card's own pill
-  row (see `practices/design-language.md`).
+  surfaces. The one accent is `brand`, held to the roles in
+  `practices/design-language.md`. Status hues come from `success` / `warning` /
+  `info` / `destructive` tokens, rendered as a colored icon or dot next to
+  plain text, never a filled or tinted-background chip; type and label may be
+  tinted pills (see `practices/design-language.md`).
 - Conditional classes via `cn()`:
 
 ```tsx

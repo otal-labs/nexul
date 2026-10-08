@@ -332,8 +332,7 @@ h3 {
   background-position: center top, center, center;
 }
 
-/* The terminal window: a console panel with a restrained, monochrome
-   (token-driven) glow — no accent hue. */
+/* The terminal window: a console panel with a restrained, token-driven glow. */
 .terminal-window {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);

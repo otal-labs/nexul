@@ -7,8 +7,8 @@ interface AutomationKindBadgeProps {
   kind: AutomationKind;
 }
 
-// Bounded enum (Default/Custom) → colored icon + text, per the Mono Console
-// badge convention (the Mono Console spec) — never a filled chip.
+// Bounded enum (Default/Custom) → colored icon + text, per the design language
+// badge convention — never a filled chip.
 export const AutomationKindBadge = ({ kind }: AutomationKindBadgeProps) => {
   if (kind === AutomationKind.Default) {
     return (
