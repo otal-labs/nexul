@@ -4,7 +4,9 @@ import { KanbanBoard, type Swimlane } from "@/components/board/KanbanBoard";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
-import { PageHeader } from "@/components/PageHeader";
+import { BoardStageSummary } from "@/components/board/BoardStageSummary";
+import { PageHeader, pageTitleClass } from "@/components/PageHeader";
+import { ProjectMark } from "@/components/project/ProjectMark";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import type { Project } from "@/models/Project";
 import type { BoardStatus } from "@/models/Status";
@@ -65,19 +67,28 @@ export const ProjectBoardSection = ({
   onAddTicket,
 }: ProjectBoardSectionProps) => {
   const workspaceCrumb = useWorkspaceCrumb();
-  const ticketCount = tickets?.filter((t) => t.project_id === projectId).length;
+  const projectTickets = tickets?.filter((t) => t.project_id === projectId);
+  const ticketCount = projectTickets?.length;
+  const people = new Set(projectTickets?.flatMap((t) => [t.developer, t.tester]).filter(Boolean)).size;
   return (
     <>
       <PageHeader
         crumbs={[workspaceCrumb]}
-        title={project?.name ?? "Board"}
-        meta={
-          ticketCount !== undefined && (
-            <span className="font-mono text-xs tabular-nums">
-              {ticketCount} {ticketCount === 1 ? "ticket" : "tickets"}
-            </span>
-          )
+        title={
+          <div className="flex items-center gap-3.5">
+            {project && <ProjectMark project={project} />}
+            <div className="min-w-0">
+              <h1 className={pageTitleClass}>{project?.name ?? "Board"}</h1>
+              {ticketCount !== undefined && (
+                <p className="mt-1 font-mono text-xs tabular-nums text-muted-foreground">
+                  {ticketCount} {ticketCount === 1 ? "ticket" : "tickets"}
+                  {people > 0 && ` · ${people} ${people === 1 ? "person" : "people"}`}
+                </p>
+              )}
+            </div>
+          </div>
         }
+        actions={<BoardStageSummary projectId={projectId} className="w-96" />}
       />
       {isLoading && <LoadingDisplay label="Loading board…" />}
       {error && <ErrorDisplay error={error} title="Failed to load the board." />}

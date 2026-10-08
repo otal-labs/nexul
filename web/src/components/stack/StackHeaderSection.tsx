@@ -5,9 +5,7 @@ import { Link } from "react-router";
 import { Fact } from "@/components/Fact";
 import { PageHeader } from "@/components/PageHeader";
 import type { Crumb } from "@/components/PageBreadcrumb";
-import { DeployStatusBadge } from "@/components/service/DeployStatusBadge";
-import { formatRelativeTime } from "@/components/service/DeployTime";
-import { ServicesFact } from "@/components/stack/ServicesFact";
+import { StackLiveHero } from "@/components/stack/StackLiveHero";
 import { NoFillBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
@@ -49,7 +47,6 @@ export const StackHeaderSection = ({ stack, latest, image, hostnames }: StackHea
   const wsPath = useWorkspacePath();
   const crumbs = useStackCrumbs(stack);
   const repo = repoLabel(stack);
-  const [firstHostname, ...moreHostnames] = hostnames;
 
   return (
     <div className="border-b border-border pb-6">
@@ -61,9 +58,6 @@ export const StackHeaderSection = ({ stack, latest, image, hostnames }: StackHea
           <>
             <span className="font-mono text-xs wrap-anywhere">{stack.slug}</span>
             {!stack.managed && <NoFillBadge color="bg-muted-foreground">unmanaged</NoFillBadge>}
-            {latest && <DeployStatusBadge status={latest.status} />}
-            {latest && <span>last deploy {formatRelativeTime(latest.created_at)}</span>}
-            {!latest && <span>No deploys yet</span>}
           </>
         }
         actions={
@@ -79,61 +73,41 @@ export const StackHeaderSection = ({ stack, latest, image, hostnames }: StackHea
         }
       />
 
-      <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-5 lg:grid-cols-3">
-        {stack.strategy === "compose" && (
-          <Fact label="Services">
-            <ServicesFact stackId={stack.id} />
-          </Fact>
-        )}
-        {stack.strategy !== "compose" && (
-          <Fact label="Image">
-            {image && <Mono>{image}</Mono>}
-            {!image && <span className="text-muted-foreground">—</span>}
-          </Fact>
-        )}
-        <Fact label="Runner">
-          <Mono>{stack.machine}</Mono>
-        </Fact>
-        <Fact label="Strategy">
-          <Mono>{stack.strategy}</Mono>
-          {stack.compose_path && <Mono>{stack.compose_path}</Mono>}
-        </Fact>
-        <Fact label="Hostnames">
-          {firstHostname && (
-            <a
-              href={`https://${firstHostname}`}
-              target="_blank"
-              rel="noreferrer"
-              className="min-w-0 font-mono text-xs wrap-anywhere underline underline-offset-2"
-            >
-              {firstHostname}
-            </a>
+      <div className="@container mt-6">
+        <StackLiveHero stackId={stack.id} latest={latest} hostnames={hostnames} />
+        <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-5 @xl:grid-cols-3">
+          {stack.strategy !== "compose" && (
+            <Fact label="Image">
+              {image && <Mono>{image}</Mono>}
+              {!image && <span className="text-muted-foreground">—</span>}
+            </Fact>
           )}
-          {moreHostnames.length > 0 && (
-            <span className="font-mono text-xs text-muted-foreground" title={moreHostnames.join(", ")}>
-              +{moreHostnames.length} more
-            </span>
+          <Fact label="Runner">
+            <Mono>{stack.machine}</Mono>
+          </Fact>
+          <Fact label="Strategy">
+            <Mono>{stack.strategy}</Mono>
+            {stack.compose_path && <Mono>{stack.compose_path}</Mono>}
+          </Fact>
+          {repo && (
+            <Fact label="Repository">
+              <Mono>{repo}</Mono>
+              {stack.build_source?.branch && (
+                <span className="inline-flex min-w-0 items-center gap-1 font-mono text-xs wrap-anywhere text-muted-foreground">
+                  <GitBranchIcon className="size-3 shrink-0" aria-hidden />
+                  {stack.build_source.branch}
+                </span>
+              )}
+            </Fact>
           )}
-          {!firstHostname && <span className="text-muted-foreground">None</span>}
-        </Fact>
-        {repo && (
-          <Fact label="Repository">
-            <Mono>{repo}</Mono>
-            {stack.build_source?.branch && (
-              <span className="inline-flex min-w-0 items-center gap-1 font-mono text-xs wrap-anywhere text-muted-foreground">
-                <GitBranchIcon className="size-3 shrink-0" aria-hidden />
-                {stack.build_source.branch}
-              </span>
-            )}
-          </Fact>
-        )}
-        {!repo && (
-          <Fact label="Network">
-            {stack.docker_network && <Mono>{stack.docker_network}</Mono>}
-            {!stack.docker_network && <span className="text-muted-foreground">—</span>}
-          </Fact>
-        )}
-      </dl>
+          {!repo && (
+            <Fact label="Network">
+              {stack.docker_network && <Mono>{stack.docker_network}</Mono>}
+              {!stack.docker_network && <span className="text-muted-foreground">—</span>}
+            </Fact>
+          )}
+        </dl>
+      </div>
     </div>
   );
 };

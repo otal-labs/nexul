@@ -84,7 +84,8 @@ export const KanbanColumn = ({
           ))}
         </SortableContext>
         {tickets.length === 0 && (
-          <EmptyRow className="px-2 py-3">No tickets</EmptyRow>
+          // A dashed slot reads as somewhere a card can land.
+          <EmptyRow className="rounded-md border border-dashed border-border px-2 py-6 text-center text-xs">No tickets</EmptyRow>
         )}
       </EnterList>
     </section>

@@ -10,7 +10,7 @@ import { Message, MessageAvatar, MessageContent, MessageHeader } from "@/compone
 import { BotMessageIdContext } from "@/hooks/BotMediaHooks";
 import { cn } from "@/lib/utils";
 import type { Message as ChatMessage } from "@/models/Chat";
-import { formatFullTime, formatRelativeTime } from "@/utils/TimeUtility";
+import { formatClockTime, formatFullTime } from "@/utils/TimeUtility";
 
 const BotMessageHeader = ({ message }: { message: ChatMessage }) => (
   <MessageHeader className="gap-2 px-1">
@@ -20,7 +20,7 @@ const BotMessageHeader = ({ message }: { message: ChatMessage }) => (
     </Badge>
     {message.via && <span className="shrink-0">via {message.via}</span>}
     <span className="shrink-0 font-mono" title={formatFullTime(message.created_at)}>
-      {formatRelativeTime(message.created_at)}
+      {formatClockTime(message.created_at)}
     </span>
   </MessageHeader>
 );
@@ -32,7 +32,7 @@ const BotMessageBubble = ({ message }: { message: ChatMessage }) => {
     <div
       data-slot="bubble"
       className={cn(
-        "relative w-fit max-w-[75%] space-y-1.5 rounded-lg bg-accent px-3 py-2 text-sm break-words text-accent-foreground",
+        "relative w-fit max-w-[72ch] space-y-1.5 text-sm break-words",
         embeds.length > 0 && "w-full max-w-[38rem]",
       )}
     >
@@ -50,7 +50,7 @@ export const BotMessageRow = ({ message, continuation }: { message: ChatMessage;
   <BotMessageIdContext value={message.id}>
     <Message align="start" className="group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
       {!continuation && (
-        <MessageAvatar className="size-6 self-start bg-transparent">
+        <MessageAvatar className="size-8 self-start bg-transparent">
           <BotAvatar src={message.author_avatar_url} />
         </MessageAvatar>
       )}

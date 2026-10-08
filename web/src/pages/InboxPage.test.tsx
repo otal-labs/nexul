@@ -140,7 +140,7 @@ describe("InboxPage", () => {
     mockApi();
     renderPage();
     const list = await screen.findByRole("navigation", { name: "Notifications" });
-    expect(await within(list).findByRole("button", { name: /Write migrations.*assigned to you.*\d+d ago/ })).toBeInTheDocument();
+    expect(await within(list).findByRole("button", { name: /Write migrations.*\d+d ago.*assigned to you/ })).toBeInTheDocument();
     expect(within(list).getByRole("button", { name: /Spec.*\d+d ago/ })).toBeInTheDocument();
   });
 

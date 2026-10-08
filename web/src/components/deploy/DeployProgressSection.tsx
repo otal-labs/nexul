@@ -23,16 +23,22 @@ export const DeployProgressSection = ({ deploy }: DeployProgressSectionProps) =>
   const emptyMessage = terminal ? "No output was recorded." : "Waiting for the runner to pick this up…";
 
   return (
-    <section aria-label="Progress" className="space-y-6 pt-6">
-      <DeployStepList title={progress.title} steps={progress.steps} />
-      <div className="space-y-2">
+    <section
+      aria-label="Progress"
+      // The steps run down beside the log from a 48rem page, held in view while the log scrolls.
+      className="grid gap-6 pt-6 @3xl:grid-cols-[15rem_minmax(0,1fr)] @3xl:gap-10"
+    >
+      <div className="@3xl:sticky @3xl:top-6 @3xl:self-start @3xl:pt-12">
+        <DeployStepList title={progress.title} steps={progress.steps} />
+      </div>
+      <div className="min-w-0 space-y-2">
         <DeployLogActions deployId={deploy.id} lines={lines ?? []} />
         {isPending && <LoadingDisplay label="Loading log" />}
         {error && <ErrorDisplay error={error} title="Could not load the log" />}
         {lines && <DeployLogPanel lines={lines} emptyMessage={emptyMessage} />}
       </div>
       {!terminal && (
-        <div className="flex justify-end">
+        <div className="flex justify-end @3xl:col-start-2">
           <DeployCancelButton deployId={deploy.id} />
         </div>
       )}

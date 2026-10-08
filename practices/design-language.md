@@ -176,7 +176,14 @@ second ambient animation or anything animating layout behind the panels.
 | Light mode as its own identity | A soft grey canvas, pastel field and white panels read intentional; an inversion of the dark look did not |
 | Ink on the dark accent, white on the light accent | White on the bright dark-mode ember is 3:1; dark ink holds 6:1 there, and the deeper light-mode ember holds 5:1 with white |
 | Status as icon or dot plus text, never a tinted chip | Readable in both themes and keeps status from competing with the accent; tinted fills washed out once several hues appeared together |
-| Board cards: type and label as tinted pills | Re-tested on the card layout where the pill row sits alone under the title with the id opposite; the 15% tint with an 800/400 text shade holds 4.5:1 in both themes. Type and label may use the same pill wherever they show as a tag group; status never does |
+| Board cards: type and label as tinted pills | The 15% tint with an 800/400 text shade holds 4.5:1 in both themes. Type and label may use the same pill wherever they show as a tag group; status never does |
+| Board cards: the key as an eyebrow, the person opposite the pills | Against the avatar-beside-title card and a card with a ruled footer: with the 28px avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the footer rule made every card taller for a line that spacing already separates |
+| Others' chat messages as plain text, yours as the bubble | Against bubbles for everyone: a channel of bubbles was a column of boxes on a panel; plain text under the name reads as a conversation and leaves the ember bubble to mean "you" |
+| Chat in a 48rem column | Against the full panel width: at 1440 your reply sat over 1000px from the message it answered |
+| Stack status as one well split in three | Against three separate stat tiles: the tiles were three more boxes inside the panel and had no room to list the services, which are what the stack is |
+| Deploy steps beside the log | Against the steps over the log: beside it the timeline stays in view while the log scrolls, and the log gets the panel's height |
+| Doc body on a sheet, the ticket body open | Against an open doc body and the boxed card: the sheet with page margins makes the doc read as the thing being written; a ticket's body is short and sits beside its rail, where a box only framed the empty editing space |
+| Board header: a project mark and the stage bar beside the title | Against a full-width stage strip and a stat row of stages under the header: both cost the board 50 to 80px of height on the page where height is cards; beside the title the summary is free and still reads first |
 | Palettes theme the accent and the field | A palette's primary becomes its brand, so Ocean is blue and Grove is green everywhere the ember was, field included |
 | Inter plus JetBrains Mono only | A precise technical voice; two families is enough |
 | 7px controls, 9px cards, 12px panels | Soft but precise; pills stay badge-only so controls and tags never look alike |
@@ -237,15 +244,28 @@ folder carries a color. Below 1024px one pane
 shows at a time. `ListDetailLayout` and `ListPaneRow` in
 `web/src/components/listpane/` are the reference.
 
-Inbox. One row per doc however many notifications it has: the title over a
-muted summary of what happened ("created · 2 updates"), the newest time
-trailing in mono, unread while any of them is. Rows hover and select like the
+Inbox. One row per doc however many notifications it has: the title with
+the newest time trailing in mono on its line, over a muted summary of what
+happened ("created · 2 updates"), unread while any of them is. Rows hover and select like the
 list pane's. Docs outside their project's
 default folder sit under a folder row built from the same `FolderToggle` as
 the Docs pane's, its meta "4 docs · 7 updates", expanded until collapsed and
 kept per browser; inside it a title drops a leading folder name. Every other
 notification is its own row with the same trailing time, and all of them
 interleave by newest activity.
+
+Board. The header leads with the project mark (`ProjectMark`: the prefix in
+mono on a gradient seeded from it, 44px, 9px radius, the same family as a
+person's avatar) beside the title, a mono "55 tickets · 8 people" line under
+it, and the stage summary as the header's action (`BoardStageSummary`): one
+6px bar split by stage in the stage hues, backlog at half strength, over a
+legend of dot, stage and mono count. It counts every ticket in the project,
+whatever the filters show, and grows in like a progress fill. A card is the
+mono key as an eyebrow (with the run timer and thread mark trailing on its
+line), the title at full width, the blocked line, then the pills with the
+20px avatar of whoever acts next opposite. A swimlane header is a leading
+chevron, the lane name, and a 56px done bar beside the mono "4/11 tickets".
+An empty column is a dashed slot saying "No tickets".
 
 Filter bar. A horizontal row of pill controls directly under the page header:
 a search field, then filter pills (`h-9 rounded-md border border-border
@@ -270,8 +290,20 @@ an arrow icon to leave. A workspace page leads with the workspace crumb
 (`useWorkspaceCrumb`), a project page adds the project (`useProjectCrumb`).
 A list pane (Docs, Memories, Inbox) keeps its pane title bar instead of a page
 header, and the open record beside it takes the page header with crumbs back
-to its list and folder (Docs › Runbooks), no workspace crumb. Its body card
-holds a reading measure (`max-w-3xl`) and the title stays out of the card.
+to its list and folder (Docs › Runbooks), no workspace crumb. Its body is
+a sheet (`bg-card`, hairline ring, `shadow-card`, 48px side margins once the
+page is 48rem wide) holding a reading measure (`max-w-3xl`), and the title
+stays out of the sheet. From a 48rem page the table of contents (a 12rem
+column) sits to its left. A memory's body takes the same sheet.
+
+Rich text (`.prose-rich` in `index.css`), the doc and ticket bodies alike:
+16px at 1.75, headings closer to their text than to the paragraph above
+(1.9em over, 0.45em under) and balanced, paragraphs `text-wrap: pretty`,
+muted list markers. Tables are ruled data, not boxed cells: a hairline under
+each row, a muted 13px header over a stronger rule, tabular figures. Images
+take the large radius, a black or white 10% outline drawn inside, and the
+card shadow. Code blocks stay consoles at 13px. A blockquote is a 2px rule in
+`foreground` at 25%.
 
 Page width. `Container` is `max-w-7xl` for lists and grids (Board, Runners,
 Automations, Topology) and `size="page"` (`max-w-5xl`) for settings and
@@ -299,13 +331,15 @@ page that works as a full detail view is not forced into a drawer.
 
 Ticket page. The page runs the full width beside the sidebar, with no centred
 cap: the Thread is its own full-height panel on the left with the composer at
-its foot, and the body is a second panel that scrolls on its own, holding an
-18rem rail flush right. The thread panel's width is dragged like the list pane
+its foot, and the body is a second panel that scrolls on its own. Its header
+spans the whole panel, so a long title reads across it, and under it sit the
+body and a 19.5rem rail behind a hairline rule. The thread panel's width is dragged like the list pane
 (handle in the gap on its right, 288 to 640px, arrow keys, double-click back to
 its share of the page, saved once on release, kept in the browser). The body
-text holds a readable measure inside its card. Breakpoints follow widths, not
+sits open on the panel, no card, held to a 68ch measure; a card around it only
+framed the empty editing space. Breakpoints follow widths, not
 the screen: the two panels from 736px of page width, the rail beside the body
-once the body panel is 52rem wide, and below 736px one panel holds the body,
+once the body panel is 52rem wide (under a hairline above it until then), and below 736px one panel holds the body,
 then the Thread, then the rail. A ticket opened inside
 another page (the Inbox split view) keeps the Thread under the body. The rail
 is a run of sections, each a mono uppercase microheader with its one action
@@ -327,8 +361,9 @@ screens. `EmptyState` is for a whole empty page; an empty list inside a card is
 a single `EmptyRow` sentence where the rows would be, `flush` when it sits in a
 card body and lines up with the text around it.
 
-Stat and summary row. Three or four values in a single row above a list,
-label above value, value slightly larger, color-coded only when the metric is
+Stat and summary row. Three or four values in a single row above a list, in
+the same `surface-2` well as a stack's live status, split by hairlines,
+microheader label above a 20px mono value, color-coded only when the metric is
 inherently positive or negative (health counts). Only a page with a fleet or
 health rollup worth reading at a glance gets one; a page with nothing to
 summarise does not invent one.
@@ -365,11 +400,16 @@ primary action; Info's reads "Continue to <next step>". No new stepper chrome
 beyond this row exists. The URL step is the whole navigation state.
 
 Stack detail page. The header keeps the detail-page shape (breadcrumb of the
-workspace and project, title, the mono slug and the latest deploy's status in
-the meta line, actions top right) and adds a facts grid: a mono microheader over
-each value (Image, Runner, Strategy, Hostnames, Repository, or Network
-when no repository is attached); a compose stack runs several images, so it shows
-Services, a count with how many are not running, in Image's place. Below it the page is the settings shell:
+workspace and project, title, the mono slug in the meta line, actions top
+right), then the live status (`StackLiveHero`): one `surface-2` well split in
+three by hairlines from a 36rem page. Last deploy is the deploy's state in
+20px semibold behind its `HealthDot` with the mono "last deploy 4h ago" under
+it; Services is the mono count with how many are up or not running, over one
+line per service (a status dot, the mono name, its state trailing, four at
+most then "+N more"); Hostnames is the first as a link with an arrow, then
+"+N more". Under the well a facts grid holds the rest: a mono microheader
+over each value (Image for a run stack, Runner, Strategy, Repository, or
+Network when no repository is attached). Below it the page is the settings shell:
 `SettingsSectionNav` driving a `/:section` path segment (Overview, Logs, Exposures, Branch deploys,
 Deploy history, Danger zone), one or two `SettingsCard`s per section. The nav
 is a scrolling top row below 1024px and a side column from it, on every
@@ -421,7 +461,26 @@ held. Account actions (Disable, Remove account) sit at the footer's left and
 apply at once. `TeamPersonDialog` and `TeamWorkspaceTabs` in
 `web/src/components/team/` are the reference.
 
-Bot message. A bot's post sits in the same bubble as a person's, under the
+Chat stream. The messages run in one centred column up to 48rem wide, the
+composer under it at the same width, so your bubble on the right never sits a
+panel away from the line it answers. Your own messages are the one bubble
+(`brand`); everyone else's text runs plain under a 32px avatar and a header
+of the name in 13px semibold and the mono clock time (the full time on hover),
+held to 72ch, so a long thread reads as a transcript instead of a stack of
+boxes. A run of one person's messages drops the avatar and header after the
+first and keeps 6px between messages. Each day opens with a divider: the
+microheader label ("Today", "Yesterday", "Mon 21 Sept", the year only when it
+is not this one) between two hairlines. The composer is one framed field
+(`bg-card`, `rounded-xl`, the `input` ring turning to the focus ring) holding
+attach, the text and emoji. `MessageList` and `ChatComposer` are the
+reference.
+
+Inbox row. A 28px `bg-muted/60` tile with a muted icon for what happened
+(assigned, mentioned, status, doc created or edited, questions, memory, a
+play run), a `foreground` dot on its corner while unread, then the title with
+the mono time on its first line and the summary under it.
+
+Bot message. A bot's post sits plain like a person's, under the
 name and avatar it posted with (the Nexul glyph without one) and a `BOT`
 outline tag, widened to 38rem when it carries an embed. Each embed hangs
 behind a 2px `muted-foreground` rule; the sender's color is never painted.
@@ -430,6 +489,18 @@ cell in `cell-label` at 40%. Past six fields, a long description, or two
 embeds, one hairline fold bar opens the rest. Only a bot's text renders
 Discord's markdown subset. `BotMessageRow` and `EmbedCard` in
 `web/src/components/chat/` are the reference.
+
+Deploy page. The header names the outcome ("Deployed", "Deploy failed")
+with the status, id, image and time in its meta line. From a 48rem page the
+steps run down a 15rem column beside the log and stay in view while it
+scrolls; narrower, they sit above it. Each step is a node on a rail: a filled
+`success` check once done (the rail below it in `success` at 50%), a spinner
+ringed in `info` while active, a filled `destructive` cross on failure, a
+hollow ring while pending and a dashed one when skipped, the label, and the
+mono duration trailing. The log names each phase above its first line
+(11px uppercase mono, muted), so it reads against the steps.
+`DeployProgressSection` is the reference; the instance upgrade uses the
+same step list.
 
 Logs view. The stack page's Logs section is a line tab row of the stack's
 services over one terminal-style block per service: a mono timestamp column

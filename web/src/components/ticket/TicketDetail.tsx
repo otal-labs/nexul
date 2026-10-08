@@ -7,6 +7,7 @@ import { useCollabSession } from "@/components/doc/collab/useCollabSession";
 import { formatUpdatedAgo } from "@/components/doc/docTime";
 import { PageHeader, pageTitleClass } from "@/components/PageHeader";
 import { TicketStatusBadge } from "@/components/ticket/TicketStatusBadge";
+import type { TicketPageLayout } from "@/components/ticket/ticketPageLayout";
 import { TitleTextarea } from "@/components/TitleTextarea";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchMe } from "@/hooks/AuthHooks";
@@ -19,17 +20,20 @@ import type { Project } from "@/models/Project";
 import { reporterLabel, type Ticket } from "@/models/Ticket";
 import { effectiveAvatar } from "@/models/User";
 import { useSessionStore } from "@/stores/sessionStore";
+import { cn } from "@/lib/utils";
 
 interface TicketDetailProps {
   ticket: Ticket;
   project?: Project;
+  /** Where the header and the body sit in the ticket page's grid; they stack when omitted. */
+  layout?: Pick<TicketPageLayout, "header" | "article">;
   /** Test seam: the session's socket factory. */
   wsFactory?: (url: string) => LiveSocket;
 }
 
 // Mounted with key={ticket.id}: the title seeds once, so switching tickets must remount, not update in place.
 // A writer edits the title and body live in the ticket's room, the way a doc is edited; a reader sees them static.
-export const TicketDetail = ({ ticket, project, wsFactory }: TicketDetailProps) => {
+export const TicketDetail = ({ ticket, project, layout, wsFactory }: TicketDetailProps) => {
   const token = useSessionStore((s) => s.token);
   const { data: me } = useFetchMe();
   const canEdit = useAreaAccess(ticket.project_id)?.("editTickets") ?? false;
@@ -49,8 +53,9 @@ export const TicketDetail = ({ ticket, project, wsFactory }: TicketDetailProps) 
   const crumbs = useEmbeddedCrumbs(projectCrumb ? [workspaceCrumb, projectCrumb, { ...projectCrumb, label: "Board" }] : [workspaceCrumb]);
 
   return (
-    <div className="space-y-6">
+    <div className={cn(!layout && "space-y-6", layout && "contents")}>
       <PageHeader
+        className={layout?.header ?? ""}
         crumbs={crumbs}
         title={
           <>
@@ -84,8 +89,9 @@ export const TicketDetail = ({ ticket, project, wsFactory }: TicketDetailProps) 
           </>
         }
       />
-      <div className="rounded-lg border border-border bg-card p-6 shadow-card sm:p-8">
-        <div className="max-w-prose">
+      <article className={layout?.article}>
+        {/* Open on the panel like a page, held to a reading measure; a card around it only framed empty space. */}
+        <div className="max-w-[68ch]">
           {session && (
             <CollabRichTextEditor
               session={session}
@@ -97,7 +103,7 @@ export const TicketDetail = ({ ticket, project, wsFactory }: TicketDetailProps) 
           )}
           {!session && <DocBodyView body={ticket.body} />}
         </div>
-      </div>
+      </article>
     </div>
   );
 };
