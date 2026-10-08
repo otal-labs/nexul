@@ -61,7 +61,7 @@ export const AgentStreamBubble = ({ frame, onInterrupt, live }: AgentStreamBubbl
         )}
         {frame.handoffs.length > 0 && <HandoffPills handoffs={frame.handoffs} />}
         {live === null && !frame.text && !frame.activity && frame.handoffs.length === 0 && (
-          <p className="max-w-[85%] rounded-lg bg-accent px-3 py-2 text-sm text-muted-foreground animate-pulse">…</p>
+          <p className="max-w-[85%] rounded-lg bg-accent px-3 py-2 text-sm text-muted-foreground animate-[status-pulse_2.4s_ease-standard_infinite] motion-reduce:animate-none">…</p>
         )}
       </div>
       {frame.streaming && (
