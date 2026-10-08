@@ -10,9 +10,42 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { useFetchPresence, useListComputers } from "@/hooks/PairingHooks";
 
-export const ComputersSection = () => {
+interface ComputersSectionProps {
+  // The owner wizard frames the title itself and is where pairing happens, so it drops the card and the readiness line.
+  bare?: boolean;
+}
+
+export const ComputersSection = ({ bare = false }: ComputersSectionProps = {}) => {
   const { data: computers, isPending, error } = useListComputers();
   const presence = useFetchPresence();
+
+  const content = (
+    <div className="space-y-4">
+      {!bare && <HarnessReadinessLine />}
+      <div className="flex flex-wrap gap-2">
+        <PairComputerDialog
+          trigger={
+            <Button type="button">
+              <PlusIcon className="size-4" aria-hidden />
+              Pair a computer
+            </Button>
+          }
+        />
+      </div>
+      {isPending && <LoadingDisplay />}
+      {error && <ErrorDisplay error={error} />}
+      {computers && computers.length === 0 && <NoDataDisplay message="No computers paired yet" />}
+      {computers && computers.length > 0 && (
+        <ul className="divide-y divide-border overflow-hidden rounded-md border">
+          {computers.map((computer) => (
+            <ComputerRow key={computer.id} computer={computer} presence={presence.data?.[computer.id]} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
+  if (bare) return content;
 
   return (
     <SettingsCard
@@ -22,29 +55,7 @@ export const ComputersSection = () => {
         one-time `t3 pair` token for a 30-day bearer session — there's no auto-refresh upstream, so
         re-pair before it expires or the computer starts acting exactly like unpaired."
     >
-      <div className="space-y-4">
-        <HarnessReadinessLine />
-        <div className="flex flex-wrap gap-2">
-          <PairComputerDialog
-            trigger={
-              <Button type="button">
-                <PlusIcon className="size-4" aria-hidden />
-                Pair a computer
-              </Button>
-            }
-          />
-        </div>
-        {isPending && <LoadingDisplay />}
-        {error && <ErrorDisplay error={error} />}
-        {computers && computers.length === 0 && <NoDataDisplay message="No computers paired yet" />}
-        {computers && computers.length > 0 && (
-          <ul className="divide-y divide-border overflow-hidden rounded-md border">
-            {computers.map((computer) => (
-              <ComputerRow key={computer.id} computer={computer} presence={presence.data?.[computer.id]} />
-            ))}
-          </ul>
-        )}
-      </div>
+      {content}
     </SettingsCard>
   );
 };

@@ -19,7 +19,7 @@ export interface WorkspaceSetupData {
 }
 
 interface SetupWorkspaceStepProps {
-  onContinue: (data: WorkspaceSetupData) => void;
+  onContinue: (data: WorkspaceSetupData) => Promise<void>;
 }
 
 // GET /api/workspaces comes back empty before the wizard makes the owner a member, so the seeded name is the fallback.
@@ -41,7 +41,7 @@ export const SetupWorkspaceStep = ({ onContinue }: SetupWorkspaceStepProps) => {
 
 interface SetupWorkspaceFormProps {
   workspaceName: string;
-  onContinue: (data: WorkspaceSetupData) => void;
+  onContinue: (data: WorkspaceSetupData) => Promise<void>;
 }
 
 // Split out so useForm's defaultValues (set once on mount) read the already-fetched name.
@@ -51,7 +51,7 @@ const SetupWorkspaceForm = ({ workspaceName, onContinue }: SetupWorkspaceFormPro
     resolver: zodResolver(SaveWorkspaceFormSchema),
   });
 
-  // Renaming needs workspaces:write, which the owner holds only once the wizard finishes, so hand the value to the wizard shell.
+  // Renaming needs workspaces:write, which the owner holds only once the wizard shell makes them owner, so it renames.
   const onSubmit = (data: SaveWorkspaceFormData) =>
     onContinue({ workspaceId: DEFAULT_WORKSPACE_ID, workspaceName: data.name });
 

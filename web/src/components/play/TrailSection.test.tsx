@@ -89,7 +89,7 @@ describe("TrailSection", () => {
   ])("a setup refusal on %s links to its setup: %s", async (_label, computers, offered) => {
     const refused = trail({
       id: "tr-setup", state: "failed", activity: [], computer_id: "c-mint", provider: "codex", failure_reason: "setup_required",
-      last_error: "@Agent can't use Codex on onik-mint until its setup is done — run setup for onik-mint in Settings → T3 pairing.",
+      last_error: "@Agent can't use Codex on onik-mint until its setup is done — run setup for onik-mint in Settings → T3 Code Setup.",
     });
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/plays/runs") return { data: [refused] };

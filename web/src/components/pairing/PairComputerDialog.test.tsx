@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
 import { Button } from "@/components/ui/button";
 import { setCachedTunnelStatus } from "@/hooks/PairingHooks";
+import { useOwnerWizardStore } from "@/stores/ownerWizardStore";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { useSetupDraftStore } from "@/stores/setupDraftStore";
 import type { Computer, ComputerSetup, HarnessProject, HarnessProvider, PairingDefaults, SetupTurnKind, SetupTurnState } from "@/models/Pairing";
@@ -18,6 +19,7 @@ vi.mock("@/hooks/AccessHooks", () => ({ useCanOpenSection: (section: string) => 
 
 beforeEach(() => {
   access.sections = ["connectors"];
+  useOwnerWizardStore.getState().reset();
 });
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn() }));
@@ -283,6 +285,18 @@ describe("PairComputerDialog", () => {
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
+  it("sends the owner wizard back to its tools step to connect Cloudflare, since Settings is out of reach there", async () => {
+    useOwnerWizardStore.getState().setStep(4);
+    mocks.post.mockRejectedValueOnce(apiError({ message: "missing", code: "INVALID", reason: "cloudflare_not_connected" }));
+    const user = userEvent.setup();
+    renderDialog();
+
+    await nameTheComputer(user);
+    await user.click(await screen.findByRole("button", { name: /connect cloudflare/i }));
+
+    expect(useOwnerWizardStore.getState().step).toBe(3);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
 });
 
 describe("PairComputerDialog opened at Set up", () => {

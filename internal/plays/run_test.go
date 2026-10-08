@@ -173,7 +173,7 @@ func TestRun_Refusals_LeaveNoTrail(t *testing.T) {
 func TestRun_SetupNotConfirmed_FailsOnPressWithTheChatRefusal(t *testing.T) {
 	f := newRunnerFixture()
 	f.harness.err = &pairing.NotConfiguredError{Reason: pairing.ReasonSetupRequired, Provider: "Codex", Computer: "Onik's laptop"}
-	want := "@Agent can't use Codex on Onik's laptop until its setup is done — run setup for Onik's laptop in Settings → T3 pairing."
+	want := "@Agent can't use Codex on Onik's laptop until its setup is done — run setup for Onik's laptop in Settings → T3 Code Setup."
 
 	_, err := f.runner.Run(ctxAs(starter), ticketRun())
 
