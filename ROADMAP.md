@@ -175,10 +175,11 @@ and a post renaming itself still says which bot sent it. ADRs 0129 and 0131.
 
 ### The design pass
 
-A monochrome identity — "The Mono Console", light and dark as true inversions
-of each other, color reserved for status signal — rolled out page by page
-across every nav page. Spec of record: the Mono Console spec; tokens
-in `web/src/index.css`.
+One page header with breadcrumbs, shared widths and one label style on every
+page, then frosted panels over a slow light field with one ember accent,
+gradient avatars and its own light mode (ADR 0132), replacing the earlier
+monochrome identity. Spec of record: `practices/design-language.md`; tokens in
+`web/src/index.css`.
 
 ---
 
