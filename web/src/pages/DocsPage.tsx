@@ -23,7 +23,7 @@ export const DocsPage = () => {
   const { data: bareDoc } = useFetchDoc(projectToken ? undefined : docId);
 
   return (
-    <div>
+    <div className="h-full">
       {bareDoc && projects && <Navigate replace to={wsPath(docPath(projectTokenById(projects, bareDoc.project_id), bareDoc.id))} />}
       {projects && projects.length === 0 && (
         <div className="p-6">
