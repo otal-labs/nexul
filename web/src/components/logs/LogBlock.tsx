@@ -11,18 +11,28 @@ import {
 } from "@/components/ui/message-scroller";
 import { LogChunk } from "@/components/logs/LogChunk";
 import type { ContainerLogLine } from "@/models/ContainerLog";
-import { chunkLogLines } from "@/utils/ContainerLogUtility";
+import { chunkLogLines, type EmptyLogMessage } from "@/utils/ContainerLogUtility";
 
 interface LogBlockProps {
   lines: ContainerLogLine[];
-  emptyMessage: string;
+  empty: EmptyLogMessage;
   onCopy: () => void;
 }
 
 // One terminal-style block: the scroller follows the newest line and lets go the moment the reader scrolls up.
-export const LogBlock = ({ lines, emptyMessage, onCopy }: LogBlockProps) => (
+export const LogBlock = ({ lines, empty, onCopy }: LogBlockProps) => (
   <div className="relative overflow-hidden rounded-lg border border-border bg-surface-2">
-    {lines.length === 0 && <EmptyRow className="h-96 rounded-none border-0 py-32 font-sans">{emptyMessage}</EmptyRow>}
+    {lines.length === 0 && (
+      <div className="h-96 px-4 py-32">
+        <EmptyRow className="p-0">{empty.text}</EmptyRow>
+        {empty.detail && (
+          <details className="mt-2 text-xs text-muted-foreground">
+            <summary className="w-fit cursor-pointer hover:text-foreground">Details</summary>
+            <p className="mt-1 font-mono break-words">{empty.detail}</p>
+          </details>
+        )}
+      </div>
+    )}
     {lines.length > 0 && (
       <MessageScroller className="h-[34rem] max-h-[70vh]">
         <MessageScrollerViewport aria-label="Container log" className="py-2">

@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import { useInboxStore } from "@/stores/inboxStore";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { Notification, UnreadCount } from "@/models/Notification";
 import { groupInbox, inboxRows, type InboxRow } from "@/utils/InboxUtility";
@@ -21,20 +22,22 @@ export const useFetchInbox = () => {
   });
 };
 
-// The row the inbox shows open: the one last chosen while it is still listed, otherwise the newest.
+export const inboxRowPath = (key: string) => `/inbox/${key}`;
+
+// The row the path names, while it is still listed.
 export const useSelectedInboxRow = (): InboxRow | undefined => {
   const { data } = useFetchInbox();
-  const key = useInboxStore((s) => s.selectedKey);
-  const rows = data ? inboxRows(data) : [];
-  return rows.find((r) => r.key === key) ?? rows[0];
+  const { rowKey } = useParams();
+  return data && rowKey ? inboxRows(data).find((r) => r.key === rowKey) : undefined;
 };
 
-// Opening a row selects it and marks every unread notification in it read.
+// Opening a row puts it in the path and marks every unread notification in it read.
 export const useOpenInboxRow = () => {
-  const select = useInboxStore((s) => s.select);
+  const navigate = useNavigate();
+  const wsPath = useWorkspacePath();
   const markRead = useMarkNotificationsRead();
   return (row: InboxRow) => {
-    select(row.key);
+    navigate(wsPath(inboxRowPath(row.key)));
     if (row.unreadIds.length > 0) markRead.mutate(row.unreadIds);
   };
 };

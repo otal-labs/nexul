@@ -6,13 +6,13 @@ export interface TicketPageLayout {
   rail: string;
 }
 
-// Beside the Inbox list the page is narrow, so the thread stays under the body and the rail waits for the viewport.
+// Inside another page (the Inbox) the thread stays under the body, and the rail joins it from the same 70rem of its own width.
 const STACKED: TicketPageLayout = {
-  container: "p-6",
-  grid: "grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]",
-  body: "min-w-0 lg:col-start-1 lg:row-start-1",
-  thread: "min-w-0 lg:col-start-1 lg:row-start-2",
-  rail: "min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2",
+  container: "p-6 @container",
+  grid: "grid gap-8 @min-[70rem]:grid-cols-[minmax(0,1fr)_18rem]",
+  body: "min-w-0 @min-[70rem]:col-start-1 @min-[70rem]:row-start-1",
+  thread: "min-w-0 @min-[70rem]:col-start-1 @min-[70rem]:row-start-2",
+  rail: "min-w-0 @min-[70rem]:col-start-2 @min-[70rem]:row-start-1 @min-[70rem]:row-span-2",
 };
 
 // The page is its own container so the breakpoints follow the width beside the sidebar: the pane from 46rem, the rail from 70rem.

@@ -46,12 +46,11 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
     });
   };
 
+  // The keeper reports "connecting" while it retries an unreachable computer too, so only connected earns a color.
   const dot =
     presence === "connected"
       ? { className: "bg-success", label: "Connected" }
-      : presence === "connecting"
-        ? { className: "bg-warning animate-pulse", label: "Connecting\u2026" }
-        : { className: "bg-muted-foreground/40", label: "Not connected" };
+      : { className: "bg-muted-foreground/40", label: presence === "connecting" ? "Not connected, trying to connect" : "Not connected" };
 
   return (
     <li className="space-y-2 bg-card px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40">

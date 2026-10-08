@@ -19,9 +19,10 @@ const ticket = { id: "t-1", project_id: "p-1", status: "st-backlog" } as Ticket;
 
 const play = { id: "play-1", label: "Fix with AI", type: "ticket", description: "Fix it", show_when_stage: "backlog" } as Play;
 
-const mockApi = (plays: Play[], permissions = ["plays:run"]) =>
+const mockApi = (plays: Play[], permissions = ["plays:run"], resolve: object = {}) =>
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
+    if (url === "/api/pairing/resolve") return { data: resolve };
     if (url.startsWith("/api/projects/p-1/statuses") || url === "/api/statuses") {
       return { data: [{ id: "st-backlog", name: "Backlog", kind: "backlog" }] };
     }
@@ -69,5 +70,15 @@ describe("PlaysRailSection", () => {
       expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/me");
     });
     expect(screen.queryByRole("heading", { name: "Plays" })).not.toBeInTheDocument();
+  });
+
+  it("says once why no play can run, however many plays apply", async () => {
+    const second = { ...play, id: "play-2", label: "Review with AI" };
+    mockApi([play, second], ["plays:run"], { ok: false, reason: "no_default_computer" });
+    renderSection();
+    const hint = "Several harnesses are paired, pick a default in Settings";
+    expect(await screen.findAllByText(hint)).toHaveLength(1);
+    expect(screen.getByRole("button", { name: /Fix with AI/ })).toHaveAccessibleDescription(hint);
+    expect(screen.getByRole("button", { name: /Review with AI/ })).toBeDisabled();
   });
 });
