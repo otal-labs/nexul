@@ -39,14 +39,7 @@ export const ProjectSettingsPage = () => {
         className="mb-8"
         crumbs={crumbs}
         title="Settings"
-        meta={
-          project && (
-            <>
-              <span className="font-mono">{project.prefix}</span>
-              <span>Board, repositories, services, and who can open this project.</span>
-            </>
-          )
-        }
+        meta={project && <span className="font-mono">{project.prefix}</span>}
       />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}

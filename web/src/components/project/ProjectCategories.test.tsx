@@ -117,7 +117,7 @@ describe("ProjectCategories", () => {
   it("shows an empty state when there are no categories", async () => {
     renderCategories([]);
     expect(
-      await screen.findByText("No categories yet — the board groups tickets into swimlanes per category."),
+      await screen.findByText("No categories yet. Add one to give the board a swimlane."),
     ).toBeInTheDocument();
   });
 
@@ -125,7 +125,7 @@ describe("ProjectCategories", () => {
     vi.mocked(api.get).mockReturnValue(new Promise(() => {}));
     renderCategories([]);
     expect(
-      screen.queryByText("No categories yet — the board groups tickets into swimlanes per category."),
+      screen.queryByText("No categories yet. Add one to give the board a swimlane."),
     ).not.toBeInTheDocument();
   });
 
