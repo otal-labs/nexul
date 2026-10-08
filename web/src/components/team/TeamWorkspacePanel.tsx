@@ -2,7 +2,7 @@ import { useState } from "react";
 import { UserMinus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Microheader } from "@/components/access/Microheader";
+import { Microheader } from "@/components/Microheader";
 import { TeamOverridesForm } from "@/components/team/TeamOverridesForm";
 import { TeamProjectAccess } from "@/components/team/TeamProjectAccess";
 import { TeamReadOnlyReason } from "@/components/team/TeamReadOnlyReason";

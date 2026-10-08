@@ -9,7 +9,6 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Ember orange fill, parchment text: the one CTA color in the whole system (CTA and active states only).
         default:
           "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]",
         destructive:

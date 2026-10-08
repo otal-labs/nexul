@@ -61,7 +61,7 @@ export const ProjectWizardImportPage = () => {
 
   return (
     <Container className="max-w-2xl py-10">
-      <PageHeader title="Import from this machine" subtitle="Adopt what's already running as unmanaged stacks." />
+      <PageHeader title="Import from this machine" meta="Adopt what's already running as unmanaged stacks." />
       <div className="mt-6 space-y-6">
         {machinesPending && <LoadingDisplay />}
         {machinesError && <ErrorDisplay error={machinesError} title="Could not load machines" />}

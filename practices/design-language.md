@@ -206,11 +206,32 @@ the reference; every list page converges on this shape. A filter popover is a
 `bg-popover` panel with a checkable row list (icon, label, checkmark) anchored
 below its trigger.
 
-Detail page header. Back link (`font-mono text-xs text-muted-foreground
-hover:text-foreground`), then a row of mono id chip plus status badge, then
-the title, then a muted meta line, then a `border-b border-border` hairline
-before the content. `DocDetail.tsx` and `TicketDetail.tsx` are the reference.
-Only a page with a genuine single-record view gets this header. In-context
+Page header. Every page opens with `PageHeader`: a breadcrumb of the
+ancestors (`PageBreadcrumb`, mono `text-xs`, muted, each crumb a link, the
+last one truncating), then the title left-aligned at `text-2xl font-semibold
+tracking-tight` (`pageTitleClass`; never centered, never another size, an
+editable title takes the same class), its actions top-aligned on the right,
+one muted meta line under the title (status as a dot plus text, counts,
+who and when), and a `border-b border-border` hairline closing the header.
+Breadcrumbs replace back links everywhere; no page renders "← Back to …" or
+an arrow icon to leave. A workspace page leads with the workspace crumb
+(`useWorkspaceCrumb`), a project page adds the project (`useProjectCrumb`).
+A list pane (Docs, Memories, Inbox) keeps its pane title bar instead, and the
+open record in it uses the breadcrumb alone.
+
+Page width. `Container` is `max-w-7xl` for lists and grids (Board, Runners,
+Automations, Topology) and `size="page"` (`max-w-5xl`) for settings and
+single-record pages (Configuration, Your settings, Project settings, Stack,
+Deploy, Automation); every page pads `py-8`. Pages built from panes (Chat,
+Docs, Memories, Inbox, Ticket) run the full width with no Container.
+
+Microheader. The one small uppercase label is `microheaderClass`
+(`font-mono text-[11px] font-medium tracking-[0.12em] uppercase
+text-muted-foreground`): facts, group labels, rail sections, column heads.
+No other size, weight, or tracking for an uppercase label.
+
+Detail page header. The page header above, with the record's mono id chip
+and status in the meta line. Only a page with a genuine single-record view gets this header. In-context
 inspection that does not warrant leaving a list opens a right-anchored drawer
 instead, or a centered dialog when the record is a short form of its own (the
 Team's person dialog, its body scrolling between a fixed header and footer); a
@@ -280,7 +301,7 @@ exists), then a ghost "Skip for now" where the step allows it, then the
 primary action; Info's reads "Continue to <next step>". No new stepper chrome
 beyond this row exists. The URL step is the whole navigation state.
 
-Stack detail page. The header keeps the detail-page shape (back link, mono
+Stack detail page. The header keeps the detail-page shape (breadcrumb, mono
 slug, title, actions top right) and adds a facts grid: a mono microheader over
 each value (Status, Image, Runner, Strategy, Hostnames, Repository, or Network
 when no repository is attached); a compose stack runs several images, so it shows
@@ -403,7 +424,10 @@ easing token is added.
 
 - Entrances and exits (list mount, filter results appearing or leaving, empty
   and loading states, drawer, panel, popover, dialog): `--ease-out`, 150 to
-  200ms. Start from `opacity-0 translate-y-1` (4px), or `scale-[0.97]` for a
+  200ms. The primitives carry the numbers: popovers, menus, hover cards and
+  selects open in 150ms and close in 120ms from 0.97 and 4px toward their
+  trigger; a dialog and its overlay open in 200ms and close in 150ms; a sheet
+  and its overlay in 250 and 200ms. A spinner waits 300ms before it shows. Start from `opacity-0 translate-y-1` (4px), or `scale-[0.97]` for a
   popover with `transform-origin` at the trigger edge. Never `scale(0)`: a
   real object always has a visible shape. Exit about 20% faster than entrance.
 - On-screen movement and state change (filter reflow while items stay

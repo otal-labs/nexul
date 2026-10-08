@@ -63,7 +63,7 @@ export const ProjectBoardSection = ({
   onAddTicket,
 }: ProjectBoardSectionProps) => (
   <>
-    <PageHeader title={projectName ?? "Board"} subtitle="Every ticket in its lane, traffic optional." />
+    <PageHeader title={projectName ?? "Board"} />
     {isLoading && <LoadingDisplay label="Loading board…" />}
     {error && <ErrorDisplay error={error} title="Failed to load the board." />}
     {tickets && (

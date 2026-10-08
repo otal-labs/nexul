@@ -252,7 +252,7 @@ h3 {
 }
 
 /* Blueprint canvas for hero surfaces (home, sign-in, error): a faint
-   engineering grid + one soft electric glow rising from the top. */
+   engineering grid + one soft monochrome glow rising from the top. */
 .blueprint-bg {
   background-color: var(--background);
   background-image:
@@ -268,7 +268,7 @@ h3 {
 .terminal-window {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  background: #0a101e;
+  background: #0b0b0b;
   box-shadow:
     0 0 40px 0 color-mix(in oklab, var(--ring) 14%, transparent),
     var(--shadow-elevated);
@@ -279,14 +279,14 @@ h3 {
   align-items: center;
   gap: 0.375rem;
   padding: 0.625rem 0.875rem;
-  border-bottom: 1px solid #1d2a45;
+  border-bottom: 1px solid #232323;
 }
 
 .terminal-window__dot {
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 9999px;
-  background: #2b3a5e;
+  background: #3a3a3a;
 }
 
 .terminal-window__title {
@@ -295,7 +295,7 @@ h3 {
   font-size: 0.6875rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #8b96ab;
+  color: #9a9a9a;
 }
 
 .terminal-window__action {
@@ -304,17 +304,17 @@ h3 {
   width: 1.75rem;
   height: 1.75rem;
   border-radius: var(--radius-md);
-  color: #8b96ab;
+  color: #9a9a9a;
   transition: color 150ms var(--ease-standard), background-color 150ms var(--ease-standard);
 }
 
 .terminal-window__action:hover {
-  color: #dbe4f5;
-  background: #1d2a45;
+  color: #ededed;
+  background: #1c1c1c;
 }
 
 .terminal-window__prompt {
-  color: #8b96ab;
+  color: #9a9a9a;
   user-select: none;
 }
 
@@ -323,7 +323,7 @@ h3 {
   font-family: var(--font-mono-stack);
   font-size: 0.8125rem;
   line-height: 1.75;
-  color: #dbe4f5;
+  color: #ededed;
   overflow-x: auto;
 }
 
@@ -458,11 +458,11 @@ h3 {
 
 /* Code blocks: a dark console panel on any canvas. */
 .prose-rich pre {
-  background: #0a101e;
-  border: 1px solid #1d2a45;
+  background: #0b0b0b;
+  border: 1px solid #232323;
   border-radius: var(--radius-lg);
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--ring) 8%, transparent);
-  color: #dbe4f5;
+  color: #ededed;
   font-family: var(--font-mono-stack);
   font-size: 0.85em;
   line-height: 1.6;
@@ -490,14 +490,14 @@ h3 {
 
 .code-block-view__lang select,
 .code-block-view__lang span {
-  color: #8ea2c9;
+  color: #9a9a9a;
   font-family: var(--font-mono-stack);
   font-size: 0.75em;
 }
 
 .code-block-view__lang select {
   background: transparent;
-  border: 1px solid #1d2a45;
+  border: 1px solid #232323;
   border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 0.15em 0.5em;
@@ -508,7 +508,7 @@ h3 {
 }
 
 /* lowlight/highlight.js token colors — cool family, same accent language as
-   the presence palette, tuned for readability on the #0a101e panel. */
+   the presence palette, tuned for readability on the #0b0b0b panel. */
 .hljs-comment,
 .hljs-quote {
   color: #64748b;
@@ -645,7 +645,7 @@ h3 {
 }
 
 /* Editor surface: the page is the editor — no box, no toolbar; the writing
-   area breathes and the caret is the blue accent. The placeholder hint is a
+   area breathes and the caret is the primary ink. The placeholder hint is a
    React overlay (.doc-editor.is-empty), so no extension needed. */
 .prose-rich .tiptap {
   min-height: 12rem;
@@ -738,20 +738,18 @@ a.mention-chip:hover {
   cursor: default;
 }
 
-/* Selection bubble: dark glass pill with a blue accent, ease-out entrance. */
+/* Selection bubble: a popover-surface pill on either theme, ease-out entrance. */
 .format-bubble {
   display: flex;
   align-items: center;
   gap: 0.125rem;
   z-index: 40;
-  border: 1px solid rgb(255 255 255 / 0.12);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgb(10 15 28 / 0.92);
-  box-shadow:
-    0 0 0 1px rgb(0 0 0 / 0.4),
-    0 8px 28px rgb(0 0 0 / 0.45);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elevated);
   padding: 0.25rem;
-  backdrop-filter: blur(8px);
   animation: bubble-in 150ms var(--ease-out) both;
 }
 
