@@ -16,8 +16,8 @@ export const TrailUserBubble = ({ body, at, via }: TrailUserBubbleProps) => (
     <MessageContent>
       {at !== null && (
         <MessageHeader className="justify-end gap-2 px-1">
-          <span className="shrink-0 font-mono text-xs">{formatRelativeTime(at)}</span>
-          {via !== null && <span className="shrink-0 text-xs">via {via}</span>}
+          <span className="shrink-0 font-mono text-[11px]">{formatRelativeTime(at)}</span>
+          {via !== null && <span className="shrink-0 text-[11px]">via {via}</span>}
         </MessageHeader>
       )}
       <div

@@ -1,6 +1,5 @@
 import { Navigate, useParams } from "react-router";
 
-import { ChatPaneState } from "@/components/chat/ChatPaneState";
 import { ConversationThread } from "@/components/chat/ConversationThread";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -20,27 +19,19 @@ export const ChatPage = () => {
   const fallback = conversations && !conversationId ? defaultConversation(conversations) : undefined;
 
   return (
-    <div className="flex h-full min-w-0 flex-col">
-      {isPending && (
-        <ChatPaneState>
-          <LoadingDisplay label="Loading chat…" />
-        </ChatPaneState>
-      )}
-      {error && (
-        <ChatPaneState>
-          <ErrorDisplay error={error} title="Failed to load chat." />
-        </ChatPaneState>
-      )}
+    <div className="flex h-screen min-w-0 flex-col">
+      {isPending && <LoadingDisplay label="Loading chat…" />}
+      {error && <ErrorDisplay error={error} title="Failed to load chat." />}
       {fallback && <Navigate replace to={wsPath(`/chat/${fallback.id}`)} />}
       {conversations && !conversationId && !fallback && (
-        <ChatPaneState>
+        <div className="flex h-full items-center justify-center">
           <NoDataDisplay message="No conversations yet" size="compact" />
-        </ChatPaneState>
+        </div>
       )}
       {conversations && conversationId && !selected && (
-        <ChatPaneState>
+        <div className="flex h-full items-center justify-center">
           <NoDataDisplay message="Conversation not found" size="compact" />
-        </ChatPaneState>
+        </div>
       )}
       {selected && <ConversationThread workspaceId={workspaceId} conversation={selected} />}
     </div>

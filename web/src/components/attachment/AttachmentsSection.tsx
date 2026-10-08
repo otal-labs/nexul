@@ -2,10 +2,8 @@ import { PlusIcon } from "lucide-react";
 import { useRef } from "react";
 
 import { AttachmentRow } from "@/components/attachment/AttachmentRow";
-import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { microheaderClass } from "@/components/Microheader";
 import { useFetchAttachments, useUploadAttachment } from "@/hooks/AttachmentHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { cn } from "@/lib/utils";
@@ -36,7 +34,7 @@ export const AttachmentsSection = ({ owner, className, actionPlacement = "beside
   return (
     <section className={cn("space-y-2", className)} aria-label="Attachments">
       <div className={cn("flex items-center gap-1.5", actionPlacement === "end" && "justify-between")}>
-        <h2 className={microheaderClass}>
+        <h2 className="font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase">
           Attachments
           {data && data.length > 0 && <span className="ml-1.5 tabular-nums">{data.length}</span>}
         </h2>
@@ -67,7 +65,7 @@ export const AttachmentsSection = ({ owner, className, actionPlacement = "beside
       </div>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {data && data.length === 0 && <EmptyRow flush>No files yet.</EmptyRow>}
+      {data && data.length === 0 && <p className="text-xs text-muted-foreground">No files yet.</p>}
       {data && data.length > 0 && (
         <ul className="flex flex-wrap gap-1.5">
           {data.map((attachment) => (

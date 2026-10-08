@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 import type { DocHeading } from "@/components/doc/docHeadings";
-import { microheaderClass } from "@/components/Microheader";
 import { cn } from "@/lib/utils";
 
 interface DocTocProps {
@@ -75,7 +74,7 @@ export const DocToc = ({ headings }: DocTocProps) => {
   if (headings.length === 0) return null;
   return (
     <section aria-label="On this page">
-      <h2 className={microheaderClass}>
+      <h2 className="font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase">
         On this page
       </h2>
       <ul className="mt-2.5 space-y-0.5 border-l border-border">
@@ -93,7 +92,7 @@ export const DocToc = ({ headings }: DocTocProps) => {
                 heading.level === 1 && "pl-3",
                 heading.level === 2 && "pl-5",
                 heading.level >= 3 && "pl-7",
-                activeId === heading.id && "border-brand font-medium text-foreground",
+                activeId === heading.id && "border-primary font-medium text-primary",
               )}
             >
               {heading.text}

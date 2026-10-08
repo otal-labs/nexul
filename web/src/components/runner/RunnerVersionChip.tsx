@@ -14,10 +14,9 @@ export const RunnerVersionChip = ({ version }: RunnerVersionChipProps) => {
       <span className="font-mono text-xs text-muted-foreground">{version}</span>
       {server.data && version !== "dev" && server.data.version !== "dev" && version !== server.data.version && (
         <span
-          className="inline-flex shrink-0 items-center gap-1.5 font-mono text-xs text-muted-foreground"
+          className="inline-flex shrink-0 items-center rounded-full bg-warning/15 px-2 py-0.5 font-mono text-[11px] font-medium text-warning"
           title="Runners update themselves on their next connect"
         >
-          <span aria-hidden className="size-1.5 rounded-full bg-warning" />
           updating · {server.data.version}
         </span>
       )}

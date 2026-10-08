@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TabUnderline } from "@/components/ActiveIndicator";
 import { UpdateDot } from "@/components/UpdateDot";
 import { useTabPath } from "@/hooks/useTabPath";
 import { cn } from "@/lib/utils";
@@ -41,14 +40,13 @@ export const PageTabs = ({ label, tabs, children, className }: PageTabsProps) =>
         <TabsList
           variant="line"
           aria-label={label}
-          className="relative isolate w-full justify-start overflow-x-auto border-b border-border p-0"
+          className="w-full justify-start overflow-x-auto border-b border-border p-0"
         >
-          <TabUnderline />
           {visible.map((tab) => (
             <TabsTrigger
               key={tab.value}
               value={tab.value}
-              className="flex-none px-3 after:hidden"
+              className="flex-none px-3 group-data-[orientation=horizontal]/tabs:after:bottom-[-1px]"
             >
               <span className="relative">
                 {tab.label}

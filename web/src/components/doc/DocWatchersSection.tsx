@@ -5,10 +5,8 @@ import { DocWatcherRow } from "@/components/doc/DocWatcherRow";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { microheaderClass } from "@/components/Microheader";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchDocWatchers, useSetDocWatching } from "@/hooks/DocHooks";
-import { cn } from "@/lib/utils";
 
 interface DocWatchersSectionProps {
   docId: string;
@@ -22,7 +20,7 @@ export const DocWatchersSection = ({ docId }: DocWatchersSectionProps) => {
 
   return (
     <section aria-label="Watchers">
-      <h3 className={cn(microheaderClass, "border-b border-border px-3 py-2")}>
+      <h3 className="border-b border-border px-3 py-2 font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
         Watchers
       </h3>
       {isPending && <LoadingDisplay className="p-4" />}
@@ -48,7 +46,7 @@ export const DocWatchersSection = ({ docId }: DocWatchersSectionProps) => {
             {!data.watching && <Eye className="size-3.5" aria-hidden />}
             {data.watching ? "Stop watching" : "Watch"}
           </Button>
-          <p className="mt-1.5 px-1 text-xs leading-snug text-muted-foreground">
+          <p className="mt-1.5 px-1 text-[11px] leading-snug text-muted-foreground">
             Watchers hear about every edit. Creating or editing a doc makes you one.
           </p>
         </div>

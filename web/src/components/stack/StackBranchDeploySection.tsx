@@ -1,9 +1,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { EnterList } from "@/components/EnterList";
 import { EmptyRow } from "@/components/EmptyRow";
-import { Microheader } from "@/components/Microheader";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { AddBranchDeployRuleForm } from "@/components/stack/AddBranchDeployRuleForm";
 import { BranchDeployRuleRow } from "@/components/stack/BranchDeployRuleRow";
@@ -13,6 +11,8 @@ import type { StackWithBranches } from "@/models/Stack";
 interface StackBranchDeploySectionProps {
   stack: StackWithBranches;
 }
+
+const microheader = "font-mono text-[11px] font-medium tracking-[0.18em] text-muted-foreground uppercase";
 
 // A derived stack (stack.branch set) never gets this section — it has no rules of its own.
 export const StackBranchDeploySection = ({ stack }: StackBranchDeploySectionProps) => {
@@ -29,6 +29,7 @@ export const StackBranchDeploySection = ({ stack }: StackBranchDeploySectionProp
       footer={
         <>
           <p className="text-xs text-muted-foreground">
+            {rules.length === 0 && "No rules yet — every branch is ignored until one matches."}
             {rules.length === 1 && "1 rule."}
             {rules.length > 1 && `${rules.length} rules.`}
           </p>
@@ -47,29 +48,27 @@ export const StackBranchDeploySection = ({ stack }: StackBranchDeploySectionProp
     >
       <div className="space-y-6">
         <div className="space-y-2">
-          <Microheader>Rules</Microheader>
-          {rules.length === 0 && !adding && (
-            <EmptyRow flush>No rules yet, so every branch is ignored until one matches.</EmptyRow>
-          )}
+          <p className={microheader}>Rules</p>
+          {rules.length === 0 && !adding && <EmptyRow>No branch deploy rules yet.</EmptyRow>}
           {rules.length > 0 && (
-            <EnterList className="divide-y divide-border rounded-lg border border-border">
+            <ul className="divide-y divide-border rounded-lg border border-border">
               {rules.map((rule, i) => (
                 <BranchDeployRuleRow key={`${rule.pattern}-${i}`} stack={stack} rule={rule} index={i} />
               ))}
-            </EnterList>
+            </ul>
           )}
           {adding && <AddBranchDeployRuleForm stack={stack} onDone={() => setAdding(false)} />}
         </div>
 
         <div className="space-y-2">
-          <Microheader>Live branch deployments</Microheader>
-          {branchDeployments.length === 0 && <EmptyRow flush>No branch deployments yet.</EmptyRow>}
+          <p className={microheader}>Live branch deployments</p>
+          {branchDeployments.length === 0 && <EmptyRow>No branch deployments yet.</EmptyRow>}
           {branchDeployments.length > 0 && (
-            <EnterList className="divide-y divide-border rounded-lg border border-border">
+            <ul className="divide-y divide-border rounded-lg border border-border">
               {branchDeployments.map((d) => (
                 <BranchDeploymentRow key={d.id} deployment={d} />
               ))}
-            </EnterList>
+            </ul>
           )}
         </div>
       </div>

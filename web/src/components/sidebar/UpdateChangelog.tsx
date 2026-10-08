@@ -16,14 +16,14 @@ const UpdateChangeItem = ({ change }: { change: VersionChange }) => (
       href={change.url}
       target="_blank"
       rel="noreferrer"
-      className="font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
+      className="font-mono text-[11px] text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
     >
       {change.version}
     </a>
     {change.notes.length > 0 && (
       <ul className="mt-1 list-disc space-y-1 pl-4 marker:text-muted-foreground">
         {change.notes.map((note) => (
-          <li key={note} className="text-sm leading-snug">
+          <li key={note} className="text-[12.5px] leading-snug">
             {note}
           </li>
         ))}
@@ -35,8 +35,8 @@ const UpdateChangeItem = ({ change }: { change: VersionChange }) => (
 export const UpdateChangelog = ({ current, latest, changes }: UpdateChangelogProps) => (
   <div className="flex flex-col">
     <div className="border-b border-border px-3 py-2.5">
-      <p className="text-sm font-medium">Update available</p>
-      <p className="font-mono text-xs text-muted-foreground">
+      <p className="text-[13px] font-medium">Update available</p>
+      <p className="font-mono text-[11px] text-muted-foreground">
         {current} → {latest.version}
       </p>
     </div>
@@ -52,14 +52,14 @@ export const UpdateChangelog = ({ current, latest, changes }: UpdateChangelogPro
         href={latest.url}
         target="_blank"
         rel="noreferrer"
-        className="px-3 py-2.5 text-sm text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
+        className="px-3 py-2.5 text-[12.5px] text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
       >
         Read the release notes
       </a>
     )}
     <Link
       to={INSTANCE_VERSION_SECTION_URL}
-      className="border-t border-border px-3 py-2 text-sm font-medium transition-colors duration-150 ease-standard hover:bg-accent/40"
+      className="border-t border-border px-3 py-2 text-[12.5px] font-medium transition-colors duration-150 ease-standard hover:bg-accent/40"
     >
       Upgrade from Settings
     </Link>

@@ -19,7 +19,7 @@ export const MemoriesPage = () => {
   const { data: memories, error, isPending } = useFetchMemoriesByProject(current?.id ?? "");
 
   return (
-    <div className="h-full">
+    <div>
       {projects && projects.length === 0 && (
         <div className="p-6">
           <NoProjectsState message="Memories live in a project. Create a project to start." />

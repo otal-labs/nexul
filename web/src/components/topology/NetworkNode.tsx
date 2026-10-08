@@ -8,7 +8,7 @@ import type { NetworkNode as NetworkNodeType } from "@/models/Topology";
 export const NetworkNode = ({ data, selected }: NodeProps<NetworkNodeType>) => (
   <div
     className={cn(
-      "group w-max min-w-48 rounded-lg border border-border bg-card p-3 shadow-card ring-0 transition-[transform,box-shadow,border-color] duration-150 ease-standard hover:-translate-y-0.5 hover:border-ring/40 hover:shadow-elevated",
+      "group w-48 rounded-lg border border-border bg-card p-3 shadow-card ring-0 transition-[transform,box-shadow,border-color] duration-150 ease-standard hover:-translate-y-0.5 hover:border-ring/40 hover:shadow-elevated",
       selected && "ring-2 ring-ring",
     )}
     data-selected={selected}
@@ -20,7 +20,7 @@ export const NetworkNode = ({ data, selected }: NodeProps<NetworkNodeType>) => (
     />
     <div className="flex items-center gap-2">
       <NetworkIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      <span className="whitespace-nowrap text-sm font-medium">{data.name}</span>
+      <span className="truncate text-sm font-medium">{data.name}</span>
     </div>
     <span className="font-mono text-xs text-muted-foreground">network</span>
     <Handle

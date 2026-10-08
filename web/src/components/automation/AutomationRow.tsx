@@ -19,19 +19,13 @@ export const AutomationRow = ({ automation }: AutomationRowProps) => {
     <li className="flex items-center gap-3 p-4 transition-colors duration-150 ease-standard hover:bg-accent/40">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <Link
-            to={wsPath(`/automations/${automation.id}`)}
-            title={automation.name}
-            className="line-clamp-2 min-w-0 text-sm font-medium break-words hover:underline"
-          >
+          <Link to={wsPath(`/automations/${automation.id}`)} className="truncate text-sm font-medium hover:underline">
             {automation.name}
           </Link>
           <AutomationKindBadge kind={automation.kind} />
           <AutomationConfigStatusBadge automation={automation} />
         </div>
-        <p className="truncate text-sm text-muted-foreground" title={automation.description}>
-          {automation.description}
-        </p>
+        <p className="truncate text-sm text-muted-foreground">{automation.description}</p>
       </div>
       <Switch
         aria-label={automation.enabled ? `Disable ${automation.name}` : `Enable ${automation.name}`}

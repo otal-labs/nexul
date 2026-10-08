@@ -1,11 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
-import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { EmptyRow } from "@/components/EmptyRow";
+import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { AutomationSecretRow } from "@/components/automation/AutomationSecretRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
@@ -61,13 +60,13 @@ export const AutomationSecretsSection = () => {
 
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} />}
-        {data && data.length === 0 && <EmptyRow>No secrets yet</EmptyRow>}
+        {data && data.length === 0 && <NoDataDisplay message="No secrets yet" />}
         {data && data.length > 0 && (
-          <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
+          <ul className="divide-y divide-border overflow-hidden rounded-md border">
             {data.map((secret) => (
               <AutomationSecretRow key={secret.name} secret={secret} />
             ))}
-          </EnterList>
+          </ul>
         )}
       </div>
     </SettingsCard>

@@ -18,7 +18,7 @@ export const LinkedTicketPreview = ({ ticket }: LinkedTicketPreviewProps) => {
 
   return (
     <div className="space-y-1.5">
-      <p className="font-mono text-xs text-muted-foreground">
+      <p className="font-mono text-[11px] text-muted-foreground">
         {linkedTicketKey(ticket)}
         {statusName && ` · ${statusName}`}
       </p>

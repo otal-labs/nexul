@@ -1,10 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
-import { EnterList } from "@/components/EnterList";
-import { EmptyRow } from "@/components/EmptyRow";
 import { FormInput } from "@/components/FormInput";
-import { SettingsCard } from "@/components/settings/SettingsCard";
 import { TicketTypeRow } from "@/components/settings/TicketTypeRow";
 import { Button } from "@/components/ui/button";
 import { useCreateTicketType } from "@/hooks/TicketTypeHooks";
@@ -25,18 +22,17 @@ export const BoardTicketTypesSection = ({ projectId, ticketTypes }: BoardTicketT
   });
 
   return (
-    <SettingsCard
-      id="ticket-types"
-      title="Ticket types"
-      description="What a ticket on this board can be. Each type carries a color and a body template new tickets start from."
-    >
-      {ticketTypes && ticketTypes.length === 0 && <EmptyRow>No ticket types yet</EmptyRow>}
+    <div className="border-t pt-6">
+      <h3 className="text-sm font-semibold">Ticket types</h3>
+      {ticketTypes && ticketTypes.length === 0 && (
+        <p className="mt-3 text-sm text-muted-foreground">No ticket types yet</p>
+      )}
       {ticketTypes && ticketTypes.length > 0 && (
-        <EnterList className="divide-y divide-border">
+        <ul className="mt-3 divide-y divide-border">
           {ticketTypes.map((type) => (
             <TicketTypeRow key={type.id} type={type} projectId={projectId} />
           ))}
-        </EnterList>
+        </ul>
       )}
 
       <form
@@ -58,6 +54,6 @@ export const BoardTicketTypesSection = ({ projectId, ticketTypes }: BoardTicketT
           Add type
         </Button>
       </form>
-    </SettingsCard>
+    </div>
   );
 };

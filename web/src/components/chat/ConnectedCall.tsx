@@ -12,7 +12,7 @@ interface ConnectedCallProps {
   room: Room;
 }
 
-// Built from shadcn Button, not the library's ControlBar, so controls read as the app's own, not the default look.
+// Built from shadcn Button, not the library's ControlBar, so controls read as Mono Console, not the default look.
 export const ConnectedCall = ({ room }: ConnectedCallProps) => {
   const { micEnabled, cameraEnabled, screenShareEnabled, leave, toggleMic, toggleCamera, toggleScreenShare } = useVoiceCallStore(
     useShallow((s) => ({
@@ -27,7 +27,7 @@ export const ConnectedCall = ({ room }: ConnectedCallProps) => {
   );
   return (
     <RoomContext.Provider value={room}>
-      {/* Remaps the library's --lk-* theme onto the app's tokens; bounded height leaves room for chat below. */}
+      {/* Remaps the library's --lk-* theme onto Mono Console tokens; bounded height leaves room for chat below. */}
       <div
         data-lk-theme="default"
         className="voice-call-stage flex h-[45vh] min-h-56 shrink-0 flex-col gap-2 border-b border-border bg-background p-2"

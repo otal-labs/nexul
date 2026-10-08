@@ -40,7 +40,7 @@ export const LogsView = ({ stackId, service }: LogsViewProps) => {
           onDownload={() => saveTextFile(`${service}.log`, containerLogToText(shown))}
           empty={shown.length === 0}
         />
-        <LogBlock lines={shown} empty={emptyLogMessage(logs, filter)} onCopy={() => void copy()} />
+        <LogBlock lines={shown} emptyMessage={emptyLogMessage(logs, filter)} onCopy={() => void copy()} />
       </div>
     </MessageScrollerProvider>
   );

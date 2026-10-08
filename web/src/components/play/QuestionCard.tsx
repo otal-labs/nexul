@@ -69,7 +69,7 @@ export const QuestionCard = ({ question, answer, onSubmit, pending = false, clas
       {readOnly && <QuestionAnsweredList question={question} answer={answer} />}
       {!readOnly && item && (
         <div>
-          <p className="font-mono text-xs text-info">
+          <p className="font-mono text-[11px] text-info">
             Question {index + 1} of {items.length}
           </p>
           <h4 className="mt-1 text-sm font-medium text-balance">{item.text}</h4>

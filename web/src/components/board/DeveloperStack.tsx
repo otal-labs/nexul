@@ -35,7 +35,7 @@ const DeveloperStackAvatar = ({ login, active, dimmed, onToggle }: DeveloperTogg
       dimmed && "opacity-50 hover:opacity-100",
     )}
   >
-    <PersonAvatar login={login} src={person.avatar_url} className="size-8 text-xs" />
+    <PersonAvatar login={login} src={person.avatar_url} className="size-8 text-[11px]" />
   </button>
   );
 };
@@ -48,7 +48,7 @@ const DeveloperStackMenuItem = ({ login, active, onToggle }: Omit<DeveloperToggl
     aria-pressed={active}
     aria-label={`Developer ${personLabel(person)}`}
     onClick={() => onToggle(login)}
-    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
   >
     <PersonAvatar login={login} src={person.avatar_url} className="size-6" />
     <span className="min-w-0 flex-1 truncate">{personLabel(person)}</span>
@@ -82,7 +82,7 @@ export const DeveloperStack = ({ developers, selected, onToggle }: DeveloperStac
             <button
               type="button"
               aria-label={`${overflow.length} more developers`}
-              className="relative flex size-8 items-center justify-center rounded-full bg-muted font-mono text-xs text-muted-foreground ring-2 ring-card transition-[color,background-color] duration-150 ease-standard hover:bg-accent hover:text-foreground focus-visible:z-10 focus-visible:outline-none focus-visible:ring-ring"
+              className="relative flex size-8 items-center justify-center rounded-full bg-muted font-mono text-[10.5px] text-muted-foreground ring-2 ring-card transition-[color,background-color] duration-150 ease-standard hover:bg-accent hover:text-foreground focus-visible:z-10 focus-visible:outline-none focus-visible:ring-ring"
             >
               +{overflow.length}
             </button>

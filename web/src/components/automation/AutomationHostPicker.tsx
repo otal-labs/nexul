@@ -1,4 +1,3 @@
-import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSetAutomationHost } from "@/hooks/AutomationHooks";
 import { useFetchAutomationHosts } from "@/hooks/AutomationHostHooks";
@@ -18,13 +17,19 @@ export const AutomationHostPicker = ({ automation }: AutomationHostPickerProps) 
   const others = (hosts ?? []).filter((host) => host.name !== InstanceHostName);
 
   return (
-    <SettingsCard id="runs-on" title="Runs on" description="The automations host whose worker runs this automation.">
+    <section className="space-y-3 rounded-lg border border-border bg-card p-4">
+      <div className="space-y-1">
+        <h2 className="text-sm font-semibold">
+          <label htmlFor="automation-host">Runs on</label>
+        </h2>
+        <p className="text-xs text-muted-foreground">The automations host whose worker runs this automation.</p>
+      </div>
       <Select
         value={automation.host_id ?? instanceValue}
         disabled={setHost.isPending}
         onValueChange={(value) => setHost.mutate(value === instanceValue ? null : value)}
       >
-        <SelectTrigger aria-labelledby="runs-on-title" className="w-full font-mono sm:w-72">
+        <SelectTrigger id="automation-host" className="w-full font-mono sm:w-72">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -38,6 +43,6 @@ export const AutomationHostPicker = ({ automation }: AutomationHostPickerProps) 
           ))}
         </SelectContent>
       </Select>
-    </SettingsCard>
+    </section>
   );
 };

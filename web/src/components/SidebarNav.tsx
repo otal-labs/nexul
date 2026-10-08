@@ -1,6 +1,5 @@
 import type { ComponentType } from "react";
 
-import { microheaderClass } from "@/components/Microheader";
 import type { RouteArea } from "@/models/Access";
 import { cn } from "@/lib/utils";
 
@@ -13,12 +12,12 @@ export interface SidebarNavEntry {
   wip?: boolean;
 }
 
-export const sectionLabelClass = cn(microheaderClass, "px-2.5 pt-4 pb-1");
+export const sectionLabelClass = "px-2.5 pt-4 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground/70";
 
 export const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    "relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors duration-150 ease-standard",
+    "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13.5px] transition-colors duration-150 ease-standard",
     isActive
-      ? "font-medium text-foreground [&_svg]:text-brand"
+      ? "bg-accent font-medium text-primary"
       : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
   );

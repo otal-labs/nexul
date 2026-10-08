@@ -49,7 +49,7 @@ export interface NoFillBadgeProps extends Omit<React.ComponentProps<"span">, "co
 }
 
 /**
- * The "no pill fills" badge language (practices/design-language.md): a colored icon or dot next to plain text, never a filled/bordered chip background.
+ * The "no pill fills" badge language (the Mono Console spec): a colored icon or dot next to plain text, never a filled/bordered chip background.
  * Use this, not the filled `Badge` variants above, for any new status/type/tag chip; the filled variants remain only for consumers not yet converted.
  */
 export const NoFillBadge = ({ color, icon: Icon, iconClassName, children, className, ...props }: NoFillBadgeProps) => {

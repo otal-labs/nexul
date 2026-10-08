@@ -15,7 +15,7 @@ export const StackLogsSection = ({ stackId, service }: StackLogsSectionProps) =>
   return (
     <div>
       {canRead === undefined && <LoadingDisplay />}
-      {canRead === false && <EmptyRow className="px-0">You can't read logs for this stack.</EmptyRow>}
+      {canRead === false && <EmptyRow>You can't read logs for this stack.</EmptyRow>}
       {canRead === true && <StackLogsTabs stackId={stackId} service={service} />}
     </div>
   );

@@ -24,7 +24,7 @@ export const MemoryPage = ({ memoryId: memoryIdProp }: MemoryPageProps = {}) => 
   const confirmDelete = useConfirmDeleteMemory();
 
   return (
-    <Container className="py-8">
+    <Container className="p-6">
       {isPending && <LoadingDisplay />}
       {error && <DetailErrorDisplay error={error} embedded={memoryIdProp !== undefined} />}
       {memory && (

@@ -1,7 +1,6 @@
 import { useWatch, type Control, type FieldValues, type Path } from "react-hook-form";
 
 import { FormInput } from "@/components/FormInput";
-import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ModelChoice } from "@/components/model/ModelChoice";
 import { ModelSettingRow } from "@/components/model/ModelSettingRow";
 import { useFetchHarnessProviders } from "@/hooks/PairingHooks";
@@ -57,7 +56,7 @@ export const HarnessProviderModelFields = <T extends FieldValues>({
           <FormInput control={control} name={modelName} label="Model" placeholder="e.g. claude-sonnet-4-5" />
         </div>
       )}
-      {providers.isPending && !!computerId && <LoadingDisplay label="Loading providers" className="justify-start p-0" />}
+      {providers.isPending && !!computerId && <p className="text-xs text-muted-foreground">Loading providers…</p>}
       {providers.isError && (
         <p className="text-xs text-muted-foreground">
           Couldn't load providers from this computer — is it online? Type them manually.

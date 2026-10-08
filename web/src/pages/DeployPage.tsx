@@ -12,7 +12,7 @@ export const DeployPage = () => {
   const { data: deploy, isPending, error } = useFetchDeploy(deployId);
 
   return (
-    <Container size="page" className="py-8">
+    <Container className="max-w-3xl py-8">
       {isPending && <LoadingDisplay />}
       {error && <DetailErrorDisplay error={error} />}
       {deploy && <DeployHeaderSection deploy={deploy} />}

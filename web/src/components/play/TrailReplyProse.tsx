@@ -21,7 +21,7 @@ export const TrailReplyProse = ({ text }: TrailReplyProseProps) => {
           href={pr.url}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 font-mono text-xs transition-colors duration-150 ease-standard hover:bg-accent/40"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 font-mono text-[11px] transition-colors duration-150 ease-standard hover:bg-accent/40"
         >
           <GitPullRequest className="size-3.5" aria-hidden />
           {pr.label}

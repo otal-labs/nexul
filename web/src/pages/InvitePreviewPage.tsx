@@ -7,7 +7,6 @@ import { InvitationAcceptancePanel } from "@/components/invitation/InvitationAcc
 import { InvitationGrantSummary } from "@/components/invitation/InvitationGrantSummary";
 import { InvitationProviderList } from "@/components/invitation/InvitationProviderList";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { microheaderClass } from "@/components/Microheader";
 import { Button } from "@/components/ui/button";
 import {
   useCreateInvitationAcceptance,
@@ -64,8 +63,6 @@ export const InvitePreviewPage = () => {
   if (bootstrapStatus?.google_configured) providers.push("google");
   if (bootstrapStatus?.discord_configured) providers.push("discord");
   const instanceName = details?.instance_name ?? (details?.instance_url ? new URL(details.instance_url).host : "this instance");
-  // A preview with no token to read is disabled, and a disabled query stays pending, so only a running fetch counts.
-  const checking = (preview.isPending && preview.isFetching) || exchange.isPending;
   const invalid = fragment.malformed || Boolean((fragment.token === "" && !publicPreview && !exchange.isPending) || preview.error || exchange.error);
 
   // The link left the address bar on arrival, so a reload would lose it; retry with the token already read.
@@ -98,11 +95,11 @@ export const InvitePreviewPage = () => {
       <Container className="mx-auto flex min-h-screen w-full max-w-xl items-center py-12">
         <div className="w-full space-y-6">
           <header className="space-y-2 text-center">
-            <p className={microheaderClass}>Nexul invitation</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-primary/80">Nexul invitation</p>
             <h1 className="text-2xl font-semibold tracking-tight">Join {instanceName}</h1>
             <p className="text-sm text-muted-foreground">This one-use link expires {details ? new Date(details.expires_at).toLocaleString() : "soon"}.</p>
           </header>
-          {checking && <LoadingDisplay label="Checking invitation…" />}
+          {(preview.isPending || exchange.isPending) && <LoadingDisplay label="Checking invitation…" />}
           {invalid && <div className="space-y-3"><ErrorDisplay title={INVALID_MESSAGE} />{fragment.token && <Button type="button" variant="outline" onClick={retry}>Try again</Button>}</div>}
           {!invalid && details && <InvitationGrantSummary invitation={details} detailed={acceptance != null} />}
           {!invalid && acceptance && <InvitationAcceptancePanel pending={redeem.isPending} onAccept={accept} onDecline={() => navigate("/", { replace: true })} />}

@@ -20,10 +20,7 @@ vi.mock("@/api/client", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 const perms = vi.hoisted(() => ({ denied: [] as string[] }));
-vi.mock("@/hooks/WorkspaceHooks", () => ({
-  useHasPermission: (value: string) => !perms.denied.includes(value),
-  useSelectedWorkspace: () => undefined,
-}));
+vi.mock("@/hooks/WorkspaceHooks", () => ({ useHasPermission: (value: string) => !perms.denied.includes(value) }));
 const access = vi.hoisted(() => ({ areas: ["tickets"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 vi.mock("@/components/doc/DocBodyView", () => ({ DocBodyView: ({ body }: { body: string }) => <div>{body}</div> }));

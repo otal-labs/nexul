@@ -42,7 +42,7 @@ const MessageSegment = ({ segment, mentionHandles }: MessageSegmentProps) => (
       </pre>
     )}
     {segment.kind === "text" && (
-      <p dir="auto" className="whitespace-pre-wrap" onCopy={copyPillUrls}>
+      <p className="whitespace-pre-wrap" onCopy={copyPillUrls}>
         {tokenizeMessageText(segment.text, mentionHandles).map((part, i) => (
           <MessageTextPartView key={i} part={part} />
         ))}

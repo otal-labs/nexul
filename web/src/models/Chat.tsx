@@ -93,8 +93,6 @@ export interface Message {
   embeds?: Embed[];
   // Client-only: an optimistic row shown before the server acks the post.
   pending?: boolean;
-  // Client-only: the optimistic row's id this server copy confirmed, so the row keeps its identity (and its entrance) on screen.
-  client_key?: string | undefined;
 }
 
 // Reaction is one emoji on a message and who reacted with it, earliest first.

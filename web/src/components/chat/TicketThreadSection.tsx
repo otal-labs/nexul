@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 interface TicketThreadSectionProps {
   workspaceId: string;
   ticketId: string;
-  /** The thread is its own full-height panel beside the body, composer at its foot. */
+  /** The thread is a sticky, viewport-tall pane beside the body, composer at its foot. */
   pane?: boolean;
 }
 
@@ -45,7 +45,7 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
       className={cn(
         "space-y-3 border-t border-border pt-6",
         pane &&
-          "@min-[46rem]:flex @min-[46rem]:min-h-0 @min-[46rem]:flex-1 @min-[46rem]:flex-col @min-[46rem]:border-t-0 @min-[46rem]:pt-0",
+          "@min-[46rem]:sticky @min-[46rem]:top-4 @min-[46rem]:flex @min-[46rem]:h-[calc(100dvh-2rem)] @min-[46rem]:flex-col @min-[46rem]:border-t-0 @min-[46rem]:pt-0",
       )}
     >
       <div className="flex shrink-0 items-center justify-between gap-2">
@@ -70,7 +70,7 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
         <div
           className={cn(
             "h-96 overflow-hidden rounded-lg border border-border",
-            pane && "@min-[46rem]:h-auto @min-[46rem]:min-h-0 @min-[46rem]:flex-1 @min-[46rem]:rounded-none @min-[46rem]:border-0",
+            pane && "@min-[46rem]:h-auto @min-[46rem]:min-h-0 @min-[46rem]:flex-1",
           )}
         >
           <ConversationThread workspaceId={workspaceId} conversation={conversation} showHeader={false} />

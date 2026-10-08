@@ -1,4 +1,3 @@
-import { HarnessReadinessNote } from "@/components/play/HarnessReadinessNote";
 import { PlayButton } from "@/components/play/PlayButton";
 import { Button } from "@/components/ui/button";
 import { useCloseClarification, useFetchDoc } from "@/hooks/DocHooks";
@@ -20,7 +19,6 @@ export const ClarificationActions = ({ clarification, docId }: ClarificationActi
   const changed = answersChangedSinceWritten(clarification) > 0;
   const clarifyShown = phase !== "noGaps" || changed;
   const clarifyPrimary = phase === "none" || phase === "answered" || changed;
-  const playShown = (!!clarify && clarifyShown) || (phase === "closed" && !!toTickets);
   return (
     <span className="flex min-w-0 flex-wrap items-start gap-2">
       {clarify && clarifyShown && (
@@ -34,7 +32,6 @@ export const ClarificationActions = ({ clarification, docId }: ClarificationActi
       {phase === "closed" && toTickets && (
         <PlayButton play={toTickets} projectId={projectId} targetType="doc" targetId={docId} variant="default" />
       )}
-      {playShown && <HarnessReadinessNote projectId={projectId} className="basis-full font-mono" />}
     </span>
   );
 };

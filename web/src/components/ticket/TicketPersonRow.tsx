@@ -30,7 +30,7 @@ export const TicketPersonRow = ({ ticket, role }: TicketPersonRowProps) => {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger className={editableRowClass} aria-label={`${label}: ${name || "no one"}`}>
         <span className={rowIconClass}>
-          {login && <PersonAvatar login={login} src={person.avatar_url} className="size-4" />}
+          {login && <PersonAvatar login={login} src={person.avatar_url} className="size-4 text-[8px]" />}
           {!login && <UserIcon className="size-3.5" aria-hidden />}
         </span>
         <span className={rowLabelClass}>{label}</span>

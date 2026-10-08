@@ -90,7 +90,7 @@ export const HarnessPickerPill = ({ value, onChange }: HarnessPickerPillProps) =
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent/40"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 font-mono text-[11px] text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent/40"
         >
           {label}
           <ChevronDown className="size-3" aria-hidden />

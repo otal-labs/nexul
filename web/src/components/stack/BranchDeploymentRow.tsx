@@ -11,10 +11,8 @@ export const BranchDeploymentRow = ({ deployment }: BranchDeploymentRowProps) =>
   return (
     <li className="flex items-center justify-between gap-3 px-3 py-2.5 text-xs">
       <div className="min-w-0 space-y-0.5">
-        <p className="truncate font-mono" title={deployment.name}>
-          {deployment.name}
-        </p>
-        <p className="wrap-anywhere text-muted-foreground">branch {deployment.branch}</p>
+        <p className="truncate font-mono">{deployment.name}</p>
+        <p className="truncate text-muted-foreground">branch {deployment.branch}</p>
       </div>
       <Button variant="outline" size="sm" onClick={() => deleteStack.mutate(deployment.id)} loading={deleteStack.isPending}>
         Tear down

@@ -13,9 +13,9 @@ interface ErrorDisplayProps {
 export const ErrorDisplay = ({ error, message, title = "Something went wrong", className }: ErrorDisplayProps) => (
   <div
     role="alert"
-    className={cn("flex flex-col items-center gap-2 rounded-lg border border-border p-8 text-center", className)}
+    className={cn("flex flex-col items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-8 text-center", className)}
   >
-    <span className="flex size-11 items-center justify-center rounded-lg border border-border bg-muted/60">
+    <span className="flex size-11 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/10">
       <AlertTriangle className="size-5 text-destructive" aria-hidden />
     </span>
     <h2 className="text-lg font-semibold tracking-tight">{title}</h2>

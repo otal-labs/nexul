@@ -63,7 +63,7 @@ export const PlaysMenu = ({ workspaceId, projectId, docId }: PlaysMenuProps) => 
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-72 p-1">
-          {reason !== "" && <p className="px-2 py-1.5 font-mono text-xs text-muted-foreground">{reason}</p>}
+          {reason !== "" && <p className="px-2 py-1.5 font-mono text-[11px] text-muted-foreground">{reason}</p>}
           {canStop && (
             <Button
               variant="outline"

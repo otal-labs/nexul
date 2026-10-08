@@ -17,16 +17,23 @@ interface ProjectSettingsContentProps {
 export const ProjectSettingsContent = ({ project, section }: ProjectSettingsContentProps) => {
   const canManageMembers = useHasPermission("members:write");
   return (
-    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-      <ProjectSettingsNav project={project} active={section} />
-      <div className="min-w-0 flex-1 space-y-6">
-        {section === "general" && <ProjectGeneralSection project={project} />}
-        {section === "general" && canManageMembers && <ProjectPeopleAccessSection project={project} />}
-        {section === "categories" && <ProjectCategories projectId={project.id} />}
-        {section === "repositories" && <ProjectRepos projectId={project.id} />}
-        {section === "services" && <ProjectServices projectId={project.id} />}
-        {section === "board" && <BoardSettingsSection projectId={project.id} />}
-        {section === "danger" && <ProjectDangerZoneSection project={project} />}
+    <div>
+      <div className="mb-6 flex items-center gap-2 border-b border-border pb-6">
+        <span className="font-mono text-sm text-muted-foreground">{project.prefix}</span>
+        <span className="text-muted-foreground">/</span>
+        <h1 className="text-lg font-semibold tracking-tight">{project.name}</h1>
+      </div>
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+        <ProjectSettingsNav project={project} active={section} />
+        <div className="min-w-0 flex-1 space-y-6">
+          {section === "general" && <ProjectGeneralSection project={project} />}
+          {section === "general" && canManageMembers && <ProjectPeopleAccessSection project={project} />}
+          {section === "categories" && <ProjectCategories projectId={project.id} />}
+          {section === "repositories" && <ProjectRepos projectId={project.id} />}
+          {section === "services" && <ProjectServices projectId={project.id} />}
+          {section === "board" && <BoardSettingsSection projectId={project.id} />}
+          {section === "danger" && <ProjectDangerZoneSection project={project} />}
+        </div>
       </div>
     </div>
   );

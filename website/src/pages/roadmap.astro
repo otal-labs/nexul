@@ -6,7 +6,6 @@ type Status = 'planned' | 'in-progress' | 'shipped';
 const label: Record<Status, string> = { planned: 'Planned', 'in-progress': 'In progress', shipped: 'Shipped' };
 
 const items: { name: string; status: Status; summary: string }[] = [
-	{ name: 'A new look', status: 'shipped', summary: 'Frosted panels over a soft light field, one ember accent, breadcrumbs and one header on every page, and motion that makes the app feel quick.' },
 	{ name: 'Phone app', status: 'in-progress', summary: 'Your inbox, chat, board, docs, deploys and logs on Android or iPhone, signed in by scanning a QR code.' },
 	{ name: 'Channel webhooks', status: 'shipped', summary: 'Point anything that already posts to a Discord webhook at a Nexul channel instead, by swapping the URL, and manage those bots from the channel\'s settings.' },
 	{ name: 'Interview from what you have', status: 'shipped', summary: 'Point a project\'s interview at its standards, docs, or the project it replaces, confirm the drafted answers, and audit the old code against the new rules.' },

@@ -7,11 +7,12 @@ interface AutomationKindBadgeProps {
   kind: AutomationKind;
 }
 
-// Kind is a tag, not a status, so both read as a muted icon and text.
+// Bounded enum (Default/Custom) → colored icon + text, per the Mono Console
+// badge convention (the Mono Console spec) — never a filled chip.
 export const AutomationKindBadge = ({ kind }: AutomationKindBadgeProps) => {
   if (kind === AutomationKind.Default) {
     return (
-      <NoFillBadge icon={Sparkles} color="text-muted-foreground">
+      <NoFillBadge icon={Sparkles} color="text-info">
         Default
       </NoFillBadge>
     );

@@ -89,18 +89,19 @@ state transitions, and idempotency come before happy paths. Mock at the
 interface boundary; prefer fakes over mocks for repos. A flaky test is a
 bug: fix it or delete it, never skip or retry-mask it.
 
-## Design language — frosted panels and one ember accent
+## Design language — the Mono Console
 
 Full text: [`practices/design-language.md`](https://github.com/otal-labs/nexul/blob/master/practices/design-language.md).
 
-Every page's content floats in a raised, frosted panel over a near-black
-canvas that carries a soft light field; light mode is its own soft grey
-canvas with white panels. One ember accent, the `brand` token, marks the
-primary action, focus, the active nav item, selection, your own chat
-messages, checked controls and progress, and nothing else; status keeps its
-own hues as a dot or icon beside plain text. Technical data (ids, repos,
-timestamps) is set in JetBrains Mono. Extend the token set in
-`web/src/index.css` when a design needs one; never a one-off colour.
+
+Nexul is strictly monochrome and dark-first, with no accent color
+anywhere in the chrome — near-black or near-white surfaces, true mirror
+inversions of each other, layered by 1px hairlines rather than blur shadows.
+Technical data (ids, repos, timestamps) is set in JetBrains Mono, and code
+or log surfaces read like terminal windows. Color is reserved entirely for
+badge and status signal, never for chrome decoration — extend the token set
+in `web/src/index.css` when a design needs one, never re-theme with a new
+hue.
 
 ## What enforces the rules
 

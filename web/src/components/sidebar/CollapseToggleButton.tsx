@@ -15,7 +15,7 @@ export const CollapseToggleButton = ({ collapsed, onToggle }: CollapseToggleButt
     size="icon"
     className={cn(
       "size-7 text-muted-foreground hover:text-foreground",
-      collapsed && "absolute top-1/2 -right-3 size-6 -translate-y-1/2 rounded-full bg-popover shadow-sm",
+      collapsed && "absolute top-1/2 -right-3 size-6 -translate-y-1/2 rounded-full bg-surface-2 shadow-sm",
     )}
     onClick={onToggle}
     aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}

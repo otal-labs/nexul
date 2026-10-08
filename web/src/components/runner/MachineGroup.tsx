@@ -1,11 +1,10 @@
 import { DownloadIcon, ServerIcon } from "lucide-react";
 import { Link } from "react-router";
 
-import { EnterList } from "@/components/EnterList";
-import { EmptyRow } from "@/components/EmptyRow";
 import { AddRunnerDialog } from "@/components/runner/AddRunnerDialog";
 import { EditableStackRoot } from "@/components/runner/EditableStackRoot";
 import { RunnerRow } from "@/components/runner/RunnerRow";
+import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -24,14 +23,12 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
     <section className="space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <h2 className="flex items-start gap-2 text-sm font-semibold">
-            <ServerIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <span className="min-w-0 wrap-anywhere">{machine.name}</span>
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <ServerIcon className="size-4 shrink-0" aria-hidden />
+            {machine.name}
           </h2>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-muted-foreground">
-            {machine.reported_hostname && machine.reported_hostname !== machine.name && (
-              <span className="wrap-anywhere">{machine.reported_hostname}</span>
-            )}
+            {machine.reported_hostname && machine.reported_hostname !== machine.name && <span>{machine.reported_hostname}</span>}
             <span>
               {runners.length} runner{runners.length === 1 ? "" : "s"}
             </span>
@@ -50,13 +47,13 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
           <AddRunnerDialog machineName={machine.name} triggerSize="sm" triggerVariant="outline" />
         </div>
       </div>
-      {runners.length === 0 && <EmptyRow flush>No runners on this machine yet.</EmptyRow>}
+      {runners.length === 0 && <NoDataDisplay size="compact" message="No runners on this machine yet." />}
       {runners.length > 0 && (
-        <EnterList className="divide-y divide-border rounded-lg border border-border bg-card">
-          {runners.map((runner) => (
-            <RunnerRow key={runner.id} runner={runner} />
+        <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+          {runners.map((runner, index) => (
+            <RunnerRow key={runner.id} runner={runner} index={index} />
           ))}
-        </EnterList>
+        </ul>
       )}
     </section>
   );

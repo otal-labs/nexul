@@ -1,4 +1,4 @@
-import { Ban, Monitor, Trash2 } from "lucide-react";
+import { Monitor, Trash2 } from "lucide-react";
 
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { useRevokePAT } from "@/hooks/AuthHooks";
@@ -15,19 +15,16 @@ export const PATRow = ({ token }: PATRowProps) => {
   return (
     <li className="flex items-center justify-between gap-3 bg-card px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40">
       <div className="min-w-0">
-        <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
-          <span className="truncate" title={token.name}>
-            {token.name}
-          </span>
+        <p className="truncate text-sm font-medium">
+          {token.name}
           {token.computer_id && (
-            <span className="inline-flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
+            <span className="ml-2 inline-flex items-center gap-1 text-xs font-normal text-muted-foreground">
               <Monitor className="size-3" aria-hidden />
               paired computer
             </span>
           )}
           {token.revoked_at && (
-            <span className="inline-flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
-              <Ban className="size-3" aria-hidden />
+            <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
               revoked
             </span>
           )}

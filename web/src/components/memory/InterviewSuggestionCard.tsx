@@ -27,7 +27,7 @@ export const InterviewSuggestionCard = ({ row, draft, projectId, progress, onMov
 
   return (
     <div className="animate-in fade-in-0 slide-in-from-top-1 pr-1.5 pb-5 pl-9.5 duration-200 ease-out">
-      <p className="font-mono text-xs text-muted-foreground">{progress}</p>
+      <p className="font-mono text-[11px] text-muted-foreground">{progress}</p>
       <div className="mt-2 divide-y divide-border rounded-md border border-border">
         <div className="px-3 py-2">
           <p className="text-xs text-muted-foreground">Your answer</p>

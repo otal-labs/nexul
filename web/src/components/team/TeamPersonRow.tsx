@@ -7,16 +7,18 @@ import { personName, presenceText } from "@/utils/TeamUtility";
 
 interface TeamPersonRowProps {
   person: TeamPerson;
+  index: number;
   onOpen: (id: string) => void;
 }
 
-export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => (
+export const TeamPersonRow = ({ person, index, onOpen }: TeamPersonRowProps) => (
     <li>
       <button
         type="button"
         onClick={() => onOpen(person.id)}
         aria-label={`Open ${personName(person)}`}
-        className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors duration-150 ease-standard hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-4"
+        className="animate-in fade-in-0 slide-in-from-bottom-1 flex w-full items-center gap-3 px-3 py-3 text-left duration-150 ease-out transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-4"
+        style={{ animationDelay: `${Math.min(index, 7) * 25}ms` }}
       >
         <PersonAvatar login={person.login} src={person.avatar_url} className="size-8" />
         <span className="min-w-0 flex-1">

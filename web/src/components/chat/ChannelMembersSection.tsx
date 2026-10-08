@@ -1,9 +1,7 @@
 import { LogOutIcon, UserPlusIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { EnterList } from "@/components/EnterList";
 import { ChannelMemberRow } from "@/components/chat/ChannelMemberRow";
-import { microheaderClass } from "@/components/Microheader";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useChannelSettingsActions } from "@/hooks/useChannelSettingsActions";
 import type { Conversation } from "@/models/Chat";
@@ -22,7 +20,7 @@ export const ChannelMembersSection = ({ channel }: ChannelMembersSectionProps) =
   return (
     <section aria-label="Members">
       <div className="flex min-h-11 items-center justify-between gap-2 border-b border-border">
-        <p className={microheaderClass}>
+        <p className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
           {memberIds.length} {memberIds.length === 1 ? "member" : "members"}
         </p>
         <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={addPeople}>
@@ -30,11 +28,11 @@ export const ChannelMembersSection = ({ channel }: ChannelMembersSectionProps) =
           Add people
         </Button>
       </div>
-      <EnterList className="divide-y divide-border border-b border-border">
+      <ul className="divide-y divide-border border-b border-border">
         {memberIds.map((userId) => (
           <ChannelMemberRow key={userId} channel={channel} userId={userId} isYou={userId === me?.user.id} />
         ))}
-      </EnterList>
+      </ul>
       {isMember && memberIds.length > 1 && (
         <Button variant="ghost" size="sm" className="mt-3 -ml-2 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={leave}>
           <LogOutIcon className="size-4" aria-hidden />

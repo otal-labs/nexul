@@ -76,7 +76,9 @@ const RedeployRow = ({ stack, image, deploy }: RedeployRowProps) => {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="min-w-0 space-y-1">
-        <p className="font-mono text-sm wrap-anywhere">{image}</p>
+        <p className="truncate font-mono text-sm" title={image}>
+          {image}
+        </p>
         <p className="text-xs text-muted-foreground">Pulls the image again and restarts the container.</p>
       </div>
       <Button
@@ -134,7 +136,7 @@ export const StackDeployActions = ({ stack, lastHealthy, canRollback, image }: S
       description="How this stack gets its next version."
       footer={
         <>
-          <p className="min-w-0 flex-1 text-xs break-words text-muted-foreground">
+          <p className="min-w-0 flex-1 text-xs text-muted-foreground">
             {lastHealthy?.image && `Rollback re-deploys ${lastHealthy.image}, the last healthy image.`}
             {lastHealthy && !lastHealthy.image && `Rollback re-deploys ${rollbackTarget(lastHealthy)}, the last healthy one.`}
             {!canRollback && "Rollback needs at least one healthy deploy in this stack's history."}

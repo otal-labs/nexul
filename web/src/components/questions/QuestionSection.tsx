@@ -35,7 +35,16 @@ export const QuestionSection = ({ label, meta, folded, onToggle, action, childre
       </button>
       {action}
     </h3>
-    <div inert={folded} aria-hidden={folded} data-closed={folded || undefined} className="disclosure">
+    <div
+      inert={folded}
+      aria-hidden={folded}
+      className={cn(
+        "grid transition-[grid-template-rows,opacity] motion-reduce:transition-[opacity]",
+        folded
+          ? "[grid-template-rows:0fr] opacity-0 duration-150 ease-standard"
+          : "[grid-template-rows:1fr] opacity-100 duration-200 ease-out",
+      )}
+    >
       <div className="min-h-0 overflow-hidden">{children}</div>
     </div>
   </section>

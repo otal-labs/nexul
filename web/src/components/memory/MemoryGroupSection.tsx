@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-import { EnterList } from "@/components/EnterList";
 import { EmptyRow } from "@/components/EmptyRow";
 import { FolderToggle } from "@/components/listpane/FolderToggle";
 import { MemoryListRow } from "@/components/memory/MemoryListRow";
@@ -23,11 +22,11 @@ export const MemoryGroupSection = ({ group, projectToken, selectedId, forceOpen 
         <FolderToggle name={group.label} open={open} onToggle={() => setCollapsed((c) => !c)} meta={group.memories.length} />
       </div>
       {open && group.memories.length > 0 && (
-        <EnterList className="divide-y divide-border border-b border-border">
+        <ul className="divide-y divide-border border-b border-border">
           {group.memories.map((memory) => (
             <MemoryListRow key={memory.id} memory={memory} projectToken={projectToken} selected={memory.id === selectedId} />
           ))}
-        </EnterList>
+        </ul>
       )}
       {open && group.memories.length === 0 && (
         <EmptyRow className="rounded-none border-0 border-b py-2 pl-13 text-left text-xs">No memories</EmptyRow>

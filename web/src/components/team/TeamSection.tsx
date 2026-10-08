@@ -2,7 +2,7 @@ import { useSearchParams } from "react-router";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { EmptyRow } from "@/components/EmptyRow";
+import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { CreateInvitationDialog } from "@/components/member/CreateInvitationDialog";
 import { InvitationsFeed } from "@/components/member/InvitationsFeed";
 import { SettingsCard } from "@/components/settings/SettingsCard";
@@ -40,7 +40,7 @@ export const TeamSection = () => {
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {team && team.people.length === 0 && <EmptyRow>No one is registered yet — create an invitation link to add someone.</EmptyRow>}
+      {team && team.people.length === 0 && <NoDataDisplay message="No one is registered yet — create an invitation link to add someone." />}
       {team && team.people.length > 0 && <TeamFeed people={team.people} onOpen={open} />}
       <InvitationsFeed />
       <TeamPersonDialog personId={personId} onClose={() => open(null)} />

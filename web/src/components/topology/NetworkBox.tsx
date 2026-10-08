@@ -1,5 +1,3 @@
-import { microheaderClass } from "@/components/Microheader";
-import { cn } from "@/lib/utils";
 import type { NetworkRect } from "@/utils/TopologyLayout";
 
 interface NetworkBoxProps {
@@ -13,7 +11,7 @@ export const NetworkBox = ({ rect }: NetworkBoxProps) => (
     style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height, zIndex: -1, pointerEvents: "none" }}
     data-network={rect.name}
   >
-    <span className={cn("absolute top-2 left-3 whitespace-nowrap", microheaderClass)}>
+    <span className="absolute left-3 top-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
       network · {rect.name}
     </span>
   </div>

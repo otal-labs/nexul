@@ -108,11 +108,12 @@ describe("Layout", () => {
     vi.unstubAllEnvs();
   });
 
-  it("gives guests the page alone, with no sidebar", () => {
+  it("renders the sidebar shell and outlet content for guests without nav links", () => {
     renderLayout();
+    expect(screen.getByRole("link", { name: "Nexul" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Topology/ })).not.toBeInTheDocument();
     expect(screen.getByText("page-content")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Nexul" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /collapse sidebar|expand sidebar/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /collapse sidebar|expand sidebar/i })).toBeInTheDocument();
   });
 
   it("shows the signed-in nav and account menu trigger", async () => {
@@ -152,6 +153,11 @@ describe("Layout", () => {
     expect(inboxLink.compareDocumentPosition(await screen.findByRole("button", { name: "New project" }))).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
+  });
+
+  it("hides the Inbox link for guests", () => {
+    renderLayout();
+    expect(screen.queryByRole("link", { name: "Inbox" })).not.toBeInTheDocument();
   });
 
   it("shows the unread count badge on the Inbox link", () => {

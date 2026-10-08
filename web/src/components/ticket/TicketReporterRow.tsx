@@ -27,7 +27,7 @@ export const TicketReporterRow = ({ ticket }: TicketReporterRowProps) => {
             <Bot className="size-3" aria-hidden />
           </span>
         )}
-        {!isNexul && name && <PersonAvatar login={person.login} src={person.avatar_url} className="size-4" />}
+        {!isNexul && name && <PersonAvatar login={person.login} src={person.avatar_url} className="size-4 text-[8px]" />}
       </span>
       <span className={rowLabelClass}>Reporter</span>
       <span className={rowValueClass}>

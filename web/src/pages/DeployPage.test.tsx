@@ -80,15 +80,13 @@ describe("DeployPage", () => {
   it("renders the header, derived steps, and the log lines for a running build", async () => {
     mockApi(deploy({}), lines);
     renderPage();
-    expect(await screen.findByRole("heading", { level: 1, name: "Building and deploying" })).toBeInTheDocument();
-    expect(await screen.findByRole("link", { name: "api" })).toHaveAttribute("href", "/acme/stacks/stack-1");
-    expect(screen.getByRole("link", { name: "Deploys" })).toHaveAttribute("href", "/acme/stacks/stack-1/history");
+    expect(await screen.findByRole("heading", { name: "api" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /back to deploy history/i })).toHaveAttribute("href", "/acme/stacks/stack-1/history");
     expect(screen.getByText("d-1")).toBeInTheDocument();
     expect(screen.getByText("running")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Building and deploying" })).toBeInTheDocument();
 
-    const steps = screen
-      .getAllByRole("listitem")
-      .filter((li) => li.closest("ol") && !li.closest("[role='log']") && !li.closest("nav"));
+    const steps = screen.getAllByRole("listitem").filter((li) => li.closest("ol") && !li.closest("[role='log']"));
     expect(steps.map((li) => li.textContent)).toEqual([
       "Waiting for a runnerdone5s",
       "Cloning repositorydone7s",
@@ -191,13 +189,11 @@ describe("DeployPage", () => {
     expect(await screen.findByRole("alert")).toBeInTheDocument();
   });
 
-  it("drops the stack and deploy history crumbs when the viewer can't read stacks", async () => {
+  it("drops the back link to deploy history when the viewer can't read stacks", async () => {
     access.areas = [];
     mockApi(deploy({}), lines);
     renderPage();
-    expect(await screen.findByRole("heading", { level: 1, name: "Building and deploying" })).toBeInTheDocument();
-    await screen.findByRole("log");
-    expect(mocks.get).toHaveBeenCalledWith("/api/stacks/stack-1");
-    expect(screen.queryByRole("link", { name: "Deploys" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "api" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /back to deploy history/i })).not.toBeInTheDocument();
   });
 });

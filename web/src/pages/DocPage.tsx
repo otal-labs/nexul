@@ -53,7 +53,7 @@ export const DocPage = ({ wsFactory, docId: docIdProp }: DocPageProps = {}) => {
     });
 
   return (
-    <Container className="py-8">
+    <Container className="p-6">
       {isPending && <LoadingDisplay />}
       {error && <DetailErrorDisplay error={error} embedded={docIdProp !== undefined} />}
       {doc && (

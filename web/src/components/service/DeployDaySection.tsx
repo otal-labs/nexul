@@ -1,5 +1,3 @@
-import { EnterList } from "@/components/EnterList";
-import { Microheader } from "@/components/Microheader";
 import { DeployRow } from "@/components/service/DeployRow";
 import type { Deploy } from "@/models/Stack";
 
@@ -9,12 +7,14 @@ interface DeployDaySectionProps {
 }
 
 export const DeployDaySection = ({ label, deploys }: DeployDaySectionProps) => (
-  <li>
-    <Microheader className="px-3 pt-3 pb-1">{label}</Microheader>
-    <EnterList className="divide-y divide-border">
+  <div>
+    <h3 className="mb-2 font-mono text-[11px] font-medium tracking-[0.18em] text-muted-foreground uppercase">
+      {label}
+    </h3>
+    <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
       {deploys.map((deploy) => (
         <DeployRow key={deploy.id} deploy={deploy} />
       ))}
-    </EnterList>
-  </li>
+    </ul>
+  </div>
 );

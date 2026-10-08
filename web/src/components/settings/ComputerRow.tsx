@@ -1,4 +1,4 @@
-import { CircleAlert, Clock3, RefreshCwIcon, Trash2 } from "lucide-react";
+import { Clock3, RefreshCwIcon, Trash2 } from "lucide-react";
 
 import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
 import { ComputerMCPToken } from "@/components/settings/ComputerMCPToken";
@@ -46,30 +46,27 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
     });
   };
 
-  // The keeper reports "connecting" while it retries an unreachable computer too, so only connected earns a color.
   const dot =
     presence === "connected"
       ? { className: "bg-success", label: "Connected" }
-      : { className: "bg-muted-foreground/40", label: presence === "connecting" ? "Not connected, trying to connect" : "Not connected" };
+      : presence === "connecting"
+        ? { className: "bg-warning animate-pulse", label: "Connecting\u2026" }
+        : { className: "bg-muted-foreground/40", label: "Not connected" };
 
   return (
     <li className="space-y-2 bg-card px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
+          <p className="flex items-center gap-1.5 truncate text-sm font-medium">
             <span title={dot.label} aria-label={dot.label} className={`inline-block size-2 shrink-0 rounded-full ${dot.className}`} />
-            <span className="truncate" title={computer.name}>
-              {computer.name}
-            </span>
+            {computer.name}
             {expired && (
-              <span className="ml-1 flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
-                <CircleAlert className="size-3.5 text-destructive" aria-hidden />
+              <span className="ml-2 rounded bg-destructive/15 px-1.5 py-0.5 text-xs text-destructive">
                 expired — acts as unpaired
               </span>
             )}
             {expiringSoon && (
-              <span className="ml-1 flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
-                <Clock3 className="size-3.5 text-warning" aria-hidden />
+              <span className="ml-2 rounded bg-warning/15 px-1.5 py-0.5 text-xs text-warning">
                 expires in {days}d
               </span>
             )}
@@ -80,7 +77,7 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
               pairing in progress
             </p>
           )}
-          <p className="truncate font-mono text-xs text-muted-foreground tabular-nums" title={computer.server_url}>
+          <p className="truncate font-mono text-xs text-muted-foreground tabular-nums">
             {computer.server_url} · {harnessLabel(computer.kind)} {computer.harness_version}
           </p>
         </div>

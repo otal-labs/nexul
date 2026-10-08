@@ -1,15 +1,15 @@
-import { microheaderClass } from "@/components/Microheader";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
-import { HarnessReadinessNote } from "@/components/play/HarnessReadinessNote";
 import { PlayButton } from "@/components/play/PlayButton";
 import { useApplicableTicketPlays } from "@/hooks/PlayHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import type { Ticket } from "@/models/Ticket";
-import { cn } from "@/lib/utils";
 
 interface PlaysRailSectionProps {
   ticket: Ticket;
 }
+
+const microheaderClass =
+  "px-2 pb-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase";
 
 // Plays are stage-bound, so the section only appears when a play applies or the load failed.
 export const PlaysRailSection = ({ ticket }: PlaysRailSectionProps) => {
@@ -21,9 +21,8 @@ export const PlaysRailSection = ({ ticket }: PlaysRailSectionProps) => {
     canRun &&
     (hasPlays || Boolean(error)) && (
       <section className="space-y-0.5">
-        <h2 className={cn(microheaderClass, "px-2 pb-1")}>Plays</h2>
+        <h2 className={microheaderClass}>Plays</h2>
         {error && <ErrorDisplay error={error} title="Failed to load plays." />}
-        {hasPlays && <HarnessReadinessNote projectId={ticket.project_id} className="px-2 pb-1" />}
         {hasPlays && (
           <div className="flex flex-col">
             {plays.map((play) => (

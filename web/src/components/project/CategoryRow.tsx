@@ -95,7 +95,7 @@ export const CategoryRow = ({ category, count, first, last, onMoveUp, onMoveDown
         transition,
       }}
       className={cn(
-        "-mx-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-[120ms] ease-standard hover:bg-accent/40",
+        "-mx-2 flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors duration-[120ms] ease-standard hover:bg-accent/40",
         isDragging && "relative z-10 bg-card shadow-elevated",
       )}
     >
@@ -103,7 +103,7 @@ export const CategoryRow = ({ category, count, first, last, onMoveUp, onMoveDown
         ref={setActivatorNodeRef}
         type="button"
         aria-label={`Reorder ${category.name}`}
-        className="-ml-1 cursor-grab rounded-md p-0.5 text-muted-foreground/60 hover:text-foreground active:cursor-grabbing focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="-ml-1 cursor-grab rounded p-0.5 text-muted-foreground/60 hover:text-foreground active:cursor-grabbing focus-visible:ring-[3px] focus-visible:ring-ring/50"
         {...attributes}
         {...listeners}
       >
@@ -117,7 +117,7 @@ export const CategoryRow = ({ category, count, first, last, onMoveUp, onMoveDown
         )}
         aria-hidden
       />
-      <span className="min-w-0 flex-1 truncate" title={category.name}>{category.name}</span>
+      <span className="flex-1 truncate">{category.name}</span>
       <span className="font-mono text-xs tabular-nums text-muted-foreground">{count}</span>
       <RowActionsMenu
         subject={category.name}

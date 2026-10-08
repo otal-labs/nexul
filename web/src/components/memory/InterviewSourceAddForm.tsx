@@ -66,7 +66,7 @@ export const InterviewSourceAddForm = ({ projectId, onClose }: InterviewSourceAd
         </ToggleGroup>
         {kind === "path" && (
           <div className="space-y-2">
-            <FormInput control={form.control} name="path" label="Path" placeholder="practices/ or docs/standards.md" className="font-mono" />
+            <FormInput control={form.control} name="path" label="Path" placeholder="practices/ or docs/standards.md" className="font-mono text-[13px]" />
             <p className="text-xs text-muted-foreground">A file or folder, relative to the project's checkout.</p>
           </div>
         )}

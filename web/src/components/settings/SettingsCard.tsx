@@ -27,7 +27,7 @@ export const SettingsCard = ({
     id={id}
     aria-labelledby={`${id}-title`}
     className={cn(
-      "scroll-mt-6 rounded-lg border bg-card shadow-card",
+      "animate-in fade-in-0 slide-in-from-bottom-1 scroll-mt-6 rounded-lg border bg-card shadow-card duration-200 ease-out",
       danger ? "border-destructive/30" : "border-border",
     )}
   >

@@ -1,4 +1,4 @@
-import { Microheader } from "@/components/Microheader";
+import { Microheader } from "@/components/access/Microheader";
 import { ProjectAccessBlock } from "@/components/access/ProjectAccessBlock";
 import { useFetchWorkspaceProjects } from "@/hooks/ProjectHooks";
 import { useMemberDraft } from "@/hooks/useMemberDraft";

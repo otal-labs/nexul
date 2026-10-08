@@ -40,7 +40,7 @@ export const ServiceRow = ({ container, hostnames }: ServiceRowProps) => {
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-8 px-4 py-3">
       <div className="min-w-0 space-y-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="min-w-0 text-sm font-medium wrap-anywhere text-foreground">{container.name}</span>
+          <span className="text-sm font-medium text-foreground">{container.name}</span>
           <ContainerStatusBadge status={container.status} />
           {canReadLogs && (
             <Link
@@ -51,9 +51,13 @@ export const ServiceRow = ({ container, hostnames }: ServiceRowProps) => {
             </Link>
           )}
         </div>
-        {image && <p className="font-mono text-xs wrap-anywhere text-muted-foreground">{image}</p>}
+        {image && (
+          <p className="truncate font-mono text-xs text-muted-foreground" title={image}>
+            {image}
+          </p>
+        )}
         {container.container_name && (
-          <p className="font-mono text-xs wrap-anywhere text-muted-foreground/70" title="Docker container name">
+          <p className="truncate font-mono text-[11px] text-muted-foreground/70" title="Docker container name">
             container {container.container_name}
           </p>
         )}
@@ -65,7 +69,7 @@ export const ServiceRow = ({ container, hostnames }: ServiceRowProps) => {
               href={`https://${hostname}`}
               target="_blank"
               rel="noreferrer"
-              className="wrap-anywhere text-foreground underline underline-offset-2"
+              className="break-all text-foreground underline underline-offset-2"
             >
               {hostname}
             </a>

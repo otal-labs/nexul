@@ -21,7 +21,7 @@ describe("ticketTypeColor", () => {
   });
 
   it("prefers a configured backend color over the hash, even for a recognized type", () => {
-    expect(ticketTypeColor("bug", "cyan")).toMatch(/cyan/);
+    expect(ticketTypeColor("bug", "cyan")).toBe("text-cyan-400");
     expect(ticketTypeColor("bug", "cyan")).not.toBe(ticketTypeColor("bug"));
   });
 
@@ -62,8 +62,8 @@ describe("labelDotColor", () => {
 });
 
 describe("pillClass", () => {
-  it("tints a pill from the hue of a type's light/dark icon color or a label's dot color", () => {
-    expect(pillClass(ticketTypeColor("widget", "cyan"))).toBe(pillClass("bg-cyan-500"));
+  it("tints a pill from the hue of a text or bg color class", () => {
+    expect(pillClass("text-cyan-400")).toBe(pillClass("bg-cyan-500"));
     expect(pillClass("text-cyan-400")).toMatch(/bg-cyan-500\/15/);
     expect(pillClass("text-red-400")).not.toBe(pillClass("text-cyan-400"));
   });

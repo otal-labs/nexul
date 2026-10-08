@@ -11,7 +11,7 @@ interface InterviewSourceStanceProps {
   size?: "xs" | "sm";
 }
 
-const itemClass = { xs: "h-6 px-2 text-xs", sm: "h-7 px-3 text-xs" };
+const itemClass = { xs: "h-6 px-2 text-[11px]", sm: "h-7 px-3 text-xs" };
 
 // Follow | Question as a segmented pair.
 export const InterviewSourceStance = ({ label, value, onChange, disabled = false, size = "xs" }: InterviewSourceStanceProps) => (

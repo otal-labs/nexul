@@ -1,9 +1,11 @@
 import { LifeBuoyIcon, LogOutIcon } from "lucide-react";
 
 import { PopoverContent } from "@/components/ui/popover";
-import { menuItemClass, menuItemDestructiveClass } from "@/components/MenuItem";
 import { useLogout } from "@/hooks/AuthHooks";
 import { cn } from "@/lib/utils";
+
+const menuItemClass =
+  "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13.5px] text-muted-foreground outline-none transition-colors duration-150 ease-standard hover:bg-accent/60 hover:text-foreground focus-visible:bg-accent/60 focus-visible:text-foreground";
 
 interface AccountMenuActionsProps {
   onClose: () => void;
@@ -18,8 +20,8 @@ export const AccountMenuActions = ({ onClose }: AccountMenuActionsProps) => {
   };
 
   return (
-    <PopoverContent side="top" align="start" sideOffset={8} className="w-56 p-1">
-      <div className="flex flex-col">
+    <PopoverContent side="top" align="start" sideOffset={8} className="w-56 p-1.5">
+      <div className="flex flex-col gap-0.5">
         <a
           href="https://github.com/otal-labs/nexul/issues"
           target="_blank"
@@ -27,15 +29,18 @@ export const AccountMenuActions = ({ onClose }: AccountMenuActionsProps) => {
           className={menuItemClass}
           onClick={onClose}
         >
-          <LifeBuoyIcon aria-hidden />
+          <LifeBuoyIcon className="size-4 shrink-0" aria-hidden />
           <span>Support</span>
         </a>
         <button
           type="button"
           onClick={onLogout}
-          className={cn(menuItemClass, menuItemDestructiveClass)}
+          className={cn(
+            menuItemClass,
+            "text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive",
+          )}
         >
-          <LogOutIcon aria-hidden />
+          <LogOutIcon className="size-4 shrink-0" aria-hidden />
           <span>Logout</span>
         </button>
       </div>

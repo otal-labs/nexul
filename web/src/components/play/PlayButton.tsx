@@ -52,10 +52,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
   const canStop = running && activeTrail.play_id === play.id && (activeTrail.starter_id === me?.user.id || canWrite);
   // Only the play that asked reads as waiting; its siblings stay disabled with the reason.
   const waiting = running && (liveState ?? activeTrail.state) === "waiting" && activeTrail.play_id === play.id;
-  const anyWaiting = (liveState ?? activeTrail?.state) === "waiting";
-  const reason = disabledReason(running, anyWaiting, readiness);
-  // Readiness holds for every button on the page, so HarnessReadinessNote says it once; only a run's state is said here.
-  const runReason = disabledReason(running, anyWaiting, undefined);
+  const reason = disabledReason(running, (liveState ?? activeTrail?.state) === "waiting", readiness);
 
   return (
     <span className={cn("inline-flex flex-col items-start gap-1", className)}>
@@ -115,7 +112,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
           {label ?? play.label}
         </Button>
       )}
-      {!waiting && !canStop && runReason !== "" && <span className="font-mono text-xs text-muted-foreground">{runReason}</span>}
+      {!waiting && !canStop && reason !== "" && <span className="font-mono text-[11px] text-muted-foreground">{reason}</span>}
       {activeTrail && <TrailDetail trailId={trailOpen ? activeTrail.id : null} onClose={() => setTrailOpen(false)} />}
       <PlayRunDialog
         play={play}

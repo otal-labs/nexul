@@ -6,7 +6,6 @@ import {
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
 
-import { microheaderClass } from "@/components/Microheader";
 import { SetupRefusalLink } from "@/components/pairing/SetupRefusalLink";
 import { TrailContinueForm } from "@/components/play/TrailContinueForm";
 import { TrailFacts } from "@/components/play/TrailFacts";
@@ -19,6 +18,8 @@ import { isTrailActive, trailSummary, type Trail } from "@/models/Trail";
 interface TrailDetailBodyProps {
   trail: Trail;
 }
+
+const microheaderClass = "font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase";
 
 // Run facts above a hairline, then the transcript filling the rest of the dialog; the scroller follows the live
 // edge while the run grows and offers "Scroll to end" once the reader has scrolled away. An ended run can be continued.

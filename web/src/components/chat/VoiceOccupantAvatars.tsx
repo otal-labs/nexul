@@ -17,7 +17,7 @@ export const VoiceOccupantList = ({ occupants }: VoiceOccupantListProps) => {
         // pl-[3.25rem] = navLinkClass px-2.5 + w-8 icon column + gap-2.5, so the avatar starts where the channel name does.
         <div
           key={occupant.identity}
-          className="flex min-w-0 items-center gap-2.5 rounded-md py-1 pr-2.5 pl-[3.25rem] text-sm text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent/60 hover:text-foreground"
+          className="flex min-w-0 items-center gap-2.5 rounded-md py-1 pr-2.5 pl-[3.25rem] text-[13.5px] text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent/60 hover:text-foreground"
           title={occupant.name}
         >
           <PersonAvatar login={lookup(occupant.identity).login} src={lookup(occupant.identity).avatar_url} />

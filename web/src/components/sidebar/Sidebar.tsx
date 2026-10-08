@@ -7,19 +7,21 @@ import { cn } from "@/lib/utils";
 interface SidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
+  isLoggedIn: boolean;
   unreadCount: number;
 }
 
-export const Sidebar = ({ collapsed, onToggleCollapse, unreadCount }: SidebarProps) => (
+export const Sidebar = ({ collapsed, onToggleCollapse, isLoggedIn, unreadCount }: SidebarProps) => (
   <aside
     className={cn(
-      "relative z-20 flex h-full shrink-0 flex-col",
+      "sticky top-0 z-20 flex h-screen shrink-0 flex-col border-r border-border bg-surface-2",
       collapsed ? "w-14" : "w-60",
     )}
   >
-    <SidebarHeader collapsed={collapsed} onToggleCollapse={onToggleCollapse} />
-    <SidebarNavContent collapsed={collapsed} unreadCount={unreadCount} />
-    <VoiceDock collapsed={collapsed} />
-    <SidebarFooter collapsed={collapsed} />
+    <SidebarHeader collapsed={collapsed} isLoggedIn={isLoggedIn} onToggleCollapse={onToggleCollapse} />
+    {isLoggedIn && <SidebarNavContent collapsed={collapsed} unreadCount={unreadCount} />}
+    {!isLoggedIn && <div className="flex-1" />}
+    {isLoggedIn && <VoiceDock collapsed={collapsed} />}
+    {isLoggedIn && <SidebarFooter collapsed={collapsed} />}
   </aside>
 );

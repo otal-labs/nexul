@@ -2,14 +2,12 @@ import { Link } from "react-router";
 
 import { Container } from "@/components/Container";
 import { Logo } from "@/components/Logo";
-import { microheaderClass } from "@/components/Microheader";
 import { PlayTrailPreview } from "@/components/play/PlayTrailPreview";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useSessionStore } from "@/stores/sessionStore";
-import { cn } from "@/lib/utils";
 
 export const HomePage = () => {
   const isLoggedIn = useSessionStore((s) => s.isLoggedIn);
@@ -23,8 +21,8 @@ export const HomePage = () => {
   return (
     <div className="blueprint-bg min-h-screen">
       <Container className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center py-16 text-center">
-        <Logo className="size-12 rounded-lg" />
-        <p className={cn(microheaderClass, "mt-6")}>
+        <Logo className="size-12 rounded-xl" />
+        <p className="mt-6 font-mono text-[11px] font-medium tracking-[0.24em] text-primary/90 uppercase">
           {showsAgent ? "MCP-first deployment console" : "Project workspace"}
         </p>
         <h1 className="mt-5 max-w-3xl text-4xl leading-[1.08] font-semibold tracking-tight sm:text-6xl">

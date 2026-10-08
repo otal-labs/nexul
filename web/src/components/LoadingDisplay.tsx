@@ -11,8 +11,6 @@ export const LoadingDisplay = ({ label = "Loading", className }: LoadingDisplayP
   <div
     role="status"
     className={cn("animate-in fade-in-0 flex items-center justify-center gap-2 p-8 text-muted-foreground duration-150 ease-out", className)}
-    // Held back so a fast load never flashes a spinner.
-    style={{ animationDelay: "300ms", animationFillMode: "both" }}
   >
     <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />
     <span className="text-sm">{label}</span>

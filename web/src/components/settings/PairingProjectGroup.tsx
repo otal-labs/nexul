@@ -1,4 +1,4 @@
-import { Microheader } from "@/components/Microheader";
+import { Microheader } from "@/components/access/Microheader";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";

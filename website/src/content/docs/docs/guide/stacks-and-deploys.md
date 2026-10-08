@@ -44,8 +44,6 @@ A deploy also starts on every push to a branch that matches one of the stack's b
 
 **Logs** shows what each container prints, one tab per service: the last lines, then new ones as they arrive. Switch between **All** and **Errors**, or **Pause** to stop following. Values from the stack's environment are masked before they reach your browser. Reading container logs takes the `stacks:logs` permission.
 
-When the stack's runner is offline, the view says so and keeps retrying; **Details** under the sentence shows the server's own message.
-
 Nexul's own logs are elsewhere; see [Logs](/docs/guide/logs/).
 
 ## Branch deploys

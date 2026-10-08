@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { EmptyRow } from "@/components/EmptyRow";
+import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,7 +67,7 @@ export const CloneRoleDialog = ({ role, open, onClose }: CloneRoleDialogProps) =
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} />}
         {targets && targets.length === 0 && (
-          <EmptyRow>You aren't in any other workspace to clone this role into.</EmptyRow>
+          <NoDataDisplay size="compact" message="You aren't in any other workspace to clone this role into." />
         )}
         {hasTargets && (
           <form id="clone-role-form" onSubmit={form.handleSubmit(onSubmit)}>

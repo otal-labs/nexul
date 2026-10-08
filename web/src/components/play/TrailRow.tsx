@@ -40,7 +40,7 @@ export const TrailRow = ({ workspaceId, trail, onOpen, layout = "inline" }: Trai
             <span className="font-medium">{trail.play_label}</span>
             <span className="text-muted-foreground"> · {trailSummary(state, trail.last_error, activity ?? lastStep)}</span>
           </span>
-          <span className={cn("font-mono text-xs text-muted-foreground", stacked ? "truncate" : "shrink-0")}>
+          <span className={cn("font-mono text-[11px] text-muted-foreground", stacked ? "truncate" : "shrink-0")}>
             {personLabel(lookup(trail.starter_id))} · {formatUpdatedAgo(trail.started_at)}
           </span>
         </span>

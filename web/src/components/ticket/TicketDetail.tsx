@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+
 import type { LiveSocket } from "@/api/ws";
 import { DocBodyView } from "@/components/doc/DocBodyView";
 import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
@@ -5,15 +7,13 @@ import { CollabRichTextEditor } from "@/components/doc/collab/CollabRichTextEdit
 import { useCollabCommit } from "@/components/doc/collab/useCollabCommit";
 import { useCollabSession } from "@/components/doc/collab/useCollabSession";
 import { formatUpdatedAgo } from "@/components/doc/docTime";
-import { PageHeader, pageTitleClass } from "@/components/PageHeader";
 import { TicketStatusBadge } from "@/components/ticket/TicketStatusBadge";
 import { TitleTextarea } from "@/components/TitleTextarea";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { getTicketKey } from "@/hooks/TicketHooks";
-import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
-import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { personLabel } from "@/models/Person";
 import type { Project } from "@/models/Project";
 import { reporterLabel, type Ticket } from "@/models/Ticket";
@@ -42,61 +42,57 @@ export const TicketDetail = ({ ticket, project, wsFactory }: TicketDetailProps) 
   });
   const { title, titleInputRef, onTitleChange, confirmTitle, onBodyChange } = useCollabCommit(session, ticket.title, ticket.body);
   const reporterPerson = usePerson(ticket.reporter.login ?? "");
+  const wsPath = useWorkspacePath();
   const reporter = reporterLabel(ticket.reporter, () => personLabel(reporterPerson));
-
-  const workspaceCrumb = useWorkspaceCrumb();
-  const projectCrumb = useProjectCrumb(ticket.project_id);
-  const crumbs = useEmbeddedCrumbs(projectCrumb ? [workspaceCrumb, projectCrumb, { ...projectCrumb, label: "Board" }] : [workspaceCrumb]);
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        crumbs={crumbs}
-        title={
-          <>
-            {session && (
-              <h1>
-                <TitleTextarea
-                  ref={titleInputRef}
-                  value={title}
-                  onValueChange={onTitleChange}
-                  onBlur={confirmTitle}
-                  blurOnEnter
-                  aria-label="Ticket title"
-                  className={pageTitleClass}
-                />
-              </h1>
-            )}
-            {!session && <h1 className={pageTitleClass}>{ticket.title}</h1>}
-          </>
-        }
-        meta={
-          <>
-            <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs whitespace-nowrap text-foreground">
-              {project ? `${project.prefix}-${ticket.number}` : ticket.id}
-            </span>
-            <TicketStatusBadge ticket={ticket} />
-            <span className="font-mono text-xs">
-              created {formatUpdatedAgo(ticket.created_at)}
-              {reporter && ` by ${reporter}`}
-            </span>
-            <DocPresenceBar participants={session?.participants ?? []} connected={session?.connected} updatedAt={ticket.updated_at} />
-          </>
-        }
-      />
-      <div className="rounded-lg border border-border bg-card p-6 shadow-card sm:p-8">
-        <div className="max-w-prose">
-          {session && (
-            <CollabRichTextEditor
-              session={session}
-              value={ticket.body}
-              onChange={onBodyChange}
-              aria-label="Ticket description"
-              attachTo={{ ticket_id: ticket.id }}
-            />
-          )}
-          {!session && <DocBodyView body={ticket.body} />}
+      <Link
+        to={wsPath("/board")}
+        className="inline-block font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
+      >
+        ← Board
+      </Link>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-muted-foreground">
+            {project ? `${project.prefix}-${ticket.number}` : ticket.id}
+          </span>
+          <TicketStatusBadge ticket={ticket} />
         </div>
+        {session && (
+          <h1>
+            <TitleTextarea
+              ref={titleInputRef}
+              value={title}
+              onValueChange={onTitleChange}
+              onBlur={confirmTitle}
+              blurOnEnter
+              aria-label="Ticket title"
+              className="text-3xl sm:text-4xl"
+            />
+          </h1>
+        )}
+        {!session && <h1 className="text-center text-3xl font-semibold tracking-tight sm:text-4xl">{ticket.title}</h1>}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="font-mono text-xs text-muted-foreground">
+            created {formatUpdatedAgo(ticket.created_at)}
+            {reporter && ` by ${reporter}`}
+          </p>
+          <DocPresenceBar participants={session?.participants ?? []} connected={session?.connected} updatedAt={ticket.updated_at} />
+        </div>
+      </div>
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-10">
+        {session && (
+          <CollabRichTextEditor
+            session={session}
+            value={ticket.body}
+            onChange={onBodyChange}
+            aria-label="Ticket description"
+            attachTo={{ ticket_id: ticket.id }}
+          />
+        )}
+        {!session && <DocBodyView body={ticket.body} />}
       </div>
     </div>
   );

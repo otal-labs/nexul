@@ -5,14 +5,12 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { PageHeader } from "@/components/PageHeader";
-import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
-import type { Project } from "@/models/Project";
 import type { BoardStatus } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
 
 interface ProjectBoardSectionProps {
   projectId?: string | undefined;
-  project?: Project | undefined;
+  projectName?: string | undefined;
   isLoading: boolean;
   error: unknown;
   tickets: Ticket[] | undefined;
@@ -40,7 +38,7 @@ interface ProjectBoardSectionProps {
 // Project-scoped title + filter bar + kanban board; BoardPage keeps only fetching and the no-project gate.
 export const ProjectBoardSection = ({
   projectId,
-  project,
+  projectName,
   isLoading,
   error,
   tickets,
@@ -63,68 +61,54 @@ export const ProjectBoardSection = ({
   onDrop,
   onReorderColumns,
   onAddTicket,
-}: ProjectBoardSectionProps) => {
-  const workspaceCrumb = useWorkspaceCrumb();
-  const ticketCount = tickets?.filter((t) => t.project_id === projectId).length;
-  return (
-    <>
-      <PageHeader
-        crumbs={[workspaceCrumb]}
-        title={project?.name ?? "Board"}
-        meta={
-          ticketCount !== undefined && (
-            <span className="font-mono text-xs tabular-nums">
-              {ticketCount} {ticketCount === 1 ? "ticket" : "tickets"}
-            </span>
-          )
+}: ProjectBoardSectionProps) => (
+  <>
+    <PageHeader title={projectName ?? "Board"} subtitle="Every ticket in its lane, traffic optional." />
+    {isLoading && <LoadingDisplay label="Loading board…" />}
+    {error && <ErrorDisplay error={error} title="Failed to load the board." />}
+    {tickets && (
+      // The board is always project-scoped (ticket 08), so the multi-project filter row would always be redundant with the URL.
+      <BoardFilterBar
+        projectId={projectId}
+        hideProjectFilter
+        developers={developers}
+        showWaitingForMeToTest={showWaitingForMeToTest}
+        filters={filters}
+        onToggleProject={onToggleProject}
+        onToggleCategory={onToggleCategory}
+        onToggleLabel={onToggleLabel}
+        onSelectType={onSelectType}
+        onToggleStatus={onToggleStatus}
+        onToggleDeveloper={onToggleDeveloper}
+        onToggleWaitingForMeToTest={onToggleWaitingForMeToTest}
+        onSearch={onSearch}
+        onClear={onClear}
+        onNewTicket={onNewTicket}
+        onNewCategory={onNewCategory}
+      />
+    )}
+    {tickets && swimlanes.length === 0 && (
+      <NoDataDisplay
+        message={
+          // projectIds is the route's scope here, not a user-picked filter (same rule as BoardFilterBar's count).
+          filters.categoryId ||
+          filters.typeId ||
+          filters.waitingForMeToTest ||
+          filters.search.trim() !== "" ||
+          filters.labels.length + filters.statusIds.length + filters.developers.length > 0
+            ? "No tickets match the active filters."
+            : "No tickets yet — create the first one."
         }
       />
-      {isLoading && <LoadingDisplay label="Loading board…" />}
-      {error && <ErrorDisplay error={error} title="Failed to load the board." />}
-      {tickets && (
-        // The board is always project-scoped (ticket 08), so the multi-project filter row would always be redundant with the URL.
-        <BoardFilterBar
-          projectId={projectId}
-          hideProjectFilter
-          developers={developers}
-          showWaitingForMeToTest={showWaitingForMeToTest}
-          filters={filters}
-          onToggleProject={onToggleProject}
-          onToggleCategory={onToggleCategory}
-          onToggleLabel={onToggleLabel}
-          onSelectType={onSelectType}
-          onToggleStatus={onToggleStatus}
-          onToggleDeveloper={onToggleDeveloper}
-          onToggleWaitingForMeToTest={onToggleWaitingForMeToTest}
-          onSearch={onSearch}
-          onClear={onClear}
-          onNewTicket={onNewTicket}
-          onNewCategory={onNewCategory}
-        />
-      )}
-      {tickets && swimlanes.length === 0 && (
-        <NoDataDisplay
-          message={
-            // projectIds is the route's scope here, not a user-picked filter (same rule as BoardFilterBar's count).
-            filters.categoryId ||
-            filters.typeId ||
-            filters.waitingForMeToTest ||
-            filters.search.trim() !== "" ||
-            filters.labels.length + filters.statusIds.length + filters.developers.length > 0
-              ? "No tickets match the active filters."
-              : "No tickets yet — create the first one."
-          }
-        />
-      )}
-      {tickets && swimlanes.length > 0 && (
-        <KanbanBoard
-          columns={columns}
-          swimlanes={swimlanes}
-          onDrop={onDrop}
-          onReorderColumns={onReorderColumns}
-          onAddTicket={onAddTicket}
-        />
-      )}
-    </>
-  );
-};
+    )}
+    {tickets && swimlanes.length > 0 && (
+      <KanbanBoard
+        columns={columns}
+        swimlanes={swimlanes}
+        onDrop={onDrop}
+        onReorderColumns={onReorderColumns}
+        onAddTicket={onAddTicket}
+      />
+    )}
+  </>
+);

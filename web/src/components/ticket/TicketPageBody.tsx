@@ -44,48 +44,42 @@ export const TicketPageBody = ({
   const threadWidth = useThreadPaneStore((s) => s.widths[ticket.id]?.width ?? null);
   const gridStyle = !embedded && threadWidth !== null ? ({ "--thread-pane-width": `${threadWidth}px` } as CSSProperties) : undefined;
   return (
-    <div className={layout.page} data-pane-layout={embedded ? undefined : ""}>
-      <div className={layout.grid} data-thread-grid="" style={gridStyle}>
-        <div className={layout.main}>
-          <div className={layout.mainGrid}>
-            <div className={layout.body}>
-              <TicketDetail key={ticket.id} ticket={ticket} {...(project ? { project } : {})} />
-            </div>
-            <div className={layout.rail}>
-              <TicketPropertiesPanel
-                ticket={ticket}
-                onTransition={onTransition}
-                onSetType={onSetType}
-                onAddLabel={onAddLabel}
-                onRemoveLabel={onRemoveLabel}
-              >
-                <PlaysRailSection ticket={ticket} />
-                <DevelopmentSection ticketId={ticket.id} />
-                <ReviewPanel ticketId={ticket.id} />
-                <AttachmentsSection owner={{ ticket_id: ticket.id }} className="px-2" actionPlacement="end" />
-                <TicketLinksSection ticket={ticket} />
-                <DecisionsCheckNotice ticketId={ticket.id} />
-                <TicketTestSection ticket={ticket} />
-                <TicketBugsSection ticket={ticket} />
-                {workspaceId !== "" && (
-                  <TrailSection
-                    workspaceId={workspaceId}
-                    targetType="ticket"
-                    targetId={ticket.id}
-                    emptyMessage="No plays have run on this ticket yet."
-                    className="border-t-0 pt-0"
-                  />
-                )}
-              </TicketPropertiesPanel>
-            </div>
-          </div>
+    <div className={layout.grid} data-thread-grid="" style={gridStyle}>
+      <div className={layout.body}>
+        <TicketDetail key={ticket.id} ticket={ticket} {...(project ? { project } : {})} />
+      </div>
+      {workspaceId !== "" && (
+        <div className={layout.thread}>
+          <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} pane={!embedded} />
+          {!embedded && <ThreadPaneResizeHandle ticketId={ticket.id} />}
         </div>
-        {workspaceId !== "" && (
-          <div className={layout.thread}>
-            <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} pane={!embedded} />
-            {!embedded && <ThreadPaneResizeHandle ticketId={ticket.id} />}
-          </div>
-        )}
+      )}
+      <div className={layout.rail}>
+        <TicketPropertiesPanel
+          ticket={ticket}
+          onTransition={onTransition}
+          onSetType={onSetType}
+          onAddLabel={onAddLabel}
+          onRemoveLabel={onRemoveLabel}
+        >
+          <PlaysRailSection ticket={ticket} />
+          <DevelopmentSection ticketId={ticket.id} />
+          <ReviewPanel ticketId={ticket.id} />
+          <AttachmentsSection owner={{ ticket_id: ticket.id }} className="px-2" actionPlacement="end" />
+          <TicketLinksSection ticket={ticket} />
+          <DecisionsCheckNotice ticketId={ticket.id} />
+          <TicketTestSection ticket={ticket} />
+          <TicketBugsSection ticket={ticket} />
+          {workspaceId !== "" && (
+            <TrailSection
+              workspaceId={workspaceId}
+              targetType="ticket"
+              targetId={ticket.id}
+              emptyMessage="No plays have run on this ticket yet."
+              className="border-t-0 pt-0"
+            />
+          )}
+        </TicketPropertiesPanel>
       </div>
     </div>
   );

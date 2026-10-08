@@ -13,7 +13,7 @@ interface DocBodySectionProps {
 }
 
 export const DocBodySection = ({ doc, session, onBodyChange, onHeadingsChange }: DocBodySectionProps) => (
-  <div className="mx-auto max-w-3xl">
+  <div className="mt-7">
     {!session && <DocBodyView body={doc.body} />}
     {session && (
       <CollabRichTextEditor

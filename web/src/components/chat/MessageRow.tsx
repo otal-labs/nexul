@@ -39,17 +39,17 @@ interface MessageRowProps {
 // timeOnHover is the clock time a grouped message of yours reveals beside its bubble, in place of the header it dropped.
 interface MessageBubbleProps {
   message: ChatMessage;
-  own: boolean;
+  align: MessageAlign;
   timeOnHover: boolean;
   actions: ReactNode;
 }
 
-const MessageBubble = ({ message, own, timeOnHover, actions }: MessageBubbleProps) => (
+const MessageBubble = ({ message, align, timeOnHover, actions }: MessageBubbleProps) => (
   <div
     data-slot="bubble"
     className={cn(
-      "relative w-fit max-w-[75%] space-y-1.5 rounded-lg px-3 py-2 text-sm break-words",
-      own ? "bg-brand text-brand-foreground" : "bg-accent text-accent-foreground",
+      "relative w-fit max-w-[75%] space-y-1.5 rounded-2xl bg-accent px-3 py-2 text-sm break-words text-accent-foreground",
+      align === "end" ? "rounded-br-md" : "rounded-bl-md",
     )}
   >
     {timeOnHover && (
@@ -153,7 +153,7 @@ export const MessageRow = ({ message, author, isOwn, continuation = false, quest
             {!editing && !isAgent && (
               <MessageBubble
                 message={message}
-                own={align === "end"}
+                align={align}
                 timeOnHover={continuation && align === "end"}
                 actions={
                   !message.pending && (

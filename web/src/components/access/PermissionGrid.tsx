@@ -1,8 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
-import { microheaderClass } from "@/components/Microheader";
 import type { PermissionInfo } from "@/models/Permission";
 import { domainLabel, groupByDomain } from "@/models/PermissionLevel";
-import { cn } from "@/lib/utils";
 
 interface PermissionGridProps {
   entries: PermissionInfo[];
@@ -65,7 +63,7 @@ export const PermissionGrid = ({ entries, value, onChange }: PermissionGridProps
     >
       <span />
       {columns.map((action) => (
-        <span key={action} className={cn(microheaderClass, "text-center")}>
+        <span key={action} className="text-center text-[11px] font-medium text-muted-foreground">
           {capitalize(action)}
         </span>
       ))}

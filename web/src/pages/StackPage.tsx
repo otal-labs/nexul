@@ -59,13 +59,14 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
   const image = latest?.image || (stack?.strategy === "run" ? imageOf(services?.[0]) : undefined);
 
   return (
-    <Container size="page" className="py-8">
+    <Container className="mx-auto max-w-5xl py-8">
       {isPending && <LoadingDisplay />}
       {error && <DetailErrorDisplay error={error} />}
       {stack && (
         <>
           <StackHeaderSection
             stack={stack}
+            projectPath={projectPath}
             latest={latest}
             image={image}
             hostnames={hostnames}

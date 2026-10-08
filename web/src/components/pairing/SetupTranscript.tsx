@@ -79,7 +79,7 @@ export const SetupTranscript = ({ row, runningName, retryDisabled, onRetry }: Se
             {SETUP_STATE_LABEL[row.state]}
             {row.kind === "skills" && " · skills update"}
           </span>
-          {row.model && <span className="ml-auto truncate font-mono text-xs text-muted-foreground">{row.model}</span>}
+          {row.model && <span className="ml-auto truncate font-mono text-[11px] text-muted-foreground">{row.model}</span>}
         </header>
       )}
       {row && (

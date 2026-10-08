@@ -1,4 +1,3 @@
-import { microheaderClass } from "@/components/Microheader";
 import { EmptyRow } from "@/components/EmptyRow";
 import { MemoryPickRow } from "@/components/play/MemoryPickRow";
 import type { Memory } from "@/models/Memory";
@@ -10,6 +9,8 @@ interface MemoryPickSectionProps {
   selected: string[];
   onToggle: (id: string) => void;
 }
+
+const microheaderClass = "font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase";
 
 export const MemoryPickSection = ({ title, emptyMessage, memories, selected, onToggle }: MemoryPickSectionProps) => (
   <section className="space-y-2">

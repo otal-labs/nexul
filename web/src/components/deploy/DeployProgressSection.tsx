@@ -23,7 +23,8 @@ export const DeployProgressSection = ({ deploy }: DeployProgressSectionProps) =>
   const emptyMessage = terminal ? "No output was recorded." : "Waiting for the runner to pick this up…";
 
   return (
-    <section aria-label="Progress" className="space-y-6 pt-6">
+    <section className="space-y-6 pt-6">
+      <h2 className="text-center text-xl font-semibold tracking-tight">{progress.title}</h2>
       <DeployStepList title={progress.title} steps={progress.steps} />
       <div className="space-y-2">
         <DeployLogActions deployId={deploy.id} lines={lines ?? []} />

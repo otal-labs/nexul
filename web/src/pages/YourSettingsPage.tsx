@@ -35,11 +35,12 @@ export const YourSettingsPage = () => {
     <>
       {moved && <Navigate to={moved} replace />}
       {!moved && (
-        <Container size="page" className="py-8">
+        <Container className="mx-auto max-w-5xl py-10">
           <PageHeader
             className="mb-8"
+            eyebrow="You"
             title="Settings"
-            meta="Your profile, how Nexul looks, and where you're signed in."
+            subtitle="Your profile, how Nexul looks, and where you're signed in."
           />
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
             <YourSettingsNav active={instanceSection ?? section} />

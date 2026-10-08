@@ -19,7 +19,7 @@ export const InterviewPage = () => {
   const project = projects && resolveProject(projects, routeParam);
 
   return (
-    <Container className="py-8">
+    <Container className="p-6">
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {projects && !project && (

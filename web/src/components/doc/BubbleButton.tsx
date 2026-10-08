@@ -21,8 +21,8 @@ export const BubbleButton = ({ label, active, disabled, className, onClick, chil
     disabled={disabled}
     onClick={onClick}
     className={cn(
-      "h-7 w-7 rounded-md p-0 text-muted-foreground hover:bg-accent hover:text-foreground",
-      active && "bg-accent text-foreground hover:bg-accent",
+      "h-7 w-7 rounded-md p-0 text-foreground/80 hover:bg-white/10 hover:text-foreground",
+      active && "bg-primary/15 text-primary hover:bg-primary/15 hover:text-primary",
       className,
     )}
   >
@@ -30,4 +30,4 @@ export const BubbleButton = ({ label, active, disabled, className, onClick, chil
   </Button>
 );
 
-export const BubbleDivider = () => <span className="mx-0.5 h-4 w-px bg-border" aria-hidden="true" />;
+export const BubbleDivider = () => <span className="mx-0.5 h-4 w-px bg-white/15" aria-hidden="true" />;

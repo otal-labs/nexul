@@ -20,7 +20,7 @@ export const TitleTextarea = ({ onValueChange, blurOnEnter = false, className, o
       if (blurOnEnter) e.currentTarget.blur();
     }}
     className={cn(
-      "field-sizing-content min-h-0 resize-none rounded-none border-0 bg-transparent p-0 text-left font-semibold tracking-tight text-balance shadow-none focus-visible:ring-0 dark:bg-transparent",
+      "field-sizing-content min-h-0 resize-none rounded-none border-0 bg-transparent p-0 text-center font-semibold tracking-tight shadow-none focus-visible:ring-0 dark:bg-transparent",
       className,
     )}
     {...props}

@@ -1,6 +1,6 @@
 import { useFieldArray, useFormContext, useFormState, Controller } from "react-hook-form";
 
-import { Microheader } from "@/components/Microheader";
+import { Microheader } from "@/components/access/Microheader";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { InvitationGrantRow } from "@/components/member/InvitationGrantRow";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";

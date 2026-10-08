@@ -1,13 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { InboxPage } from "@/pages/InboxPage";
 import { useInboxFolderStore } from "@/stores/inboxFolderStore";
-import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { useInboxStore } from "@/stores/inboxStore";
 
 vi.mock("@/components/doc/collab/useCollabSession", () => ({
   useCollabSession: () => null,
@@ -73,14 +73,12 @@ const docData = {
   updated_at: "2026-08-02T12:00:00Z",
 };
 
-const renderPage = (path = "/acme/inbox") => {
+const renderPage = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/acme/inbox/:rowKey?/:tab?" element={<InboxPage />} />
-        </Routes>
+      <MemoryRouter>
+        <InboxPage />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -102,38 +100,17 @@ const mockApi = () => vi.mocked(api.get).mockImplementation(mockApiResponse);
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
-  useWorkspaceStore.setState({ selectedWorkspaceSlug: "acme" });
+  useInboxStore.setState({ selectedKey: null });
   useInboxFolderStore.setState({ collapsed: [] });
 });
 
 describe("InboxPage", () => {
-  it("opens the row its path names", async () => {
+  it("shows the first notification's source selected by default", async () => {
     mockApi();
-    renderPage("/acme/inbox/doc:doc-1");
-    expect(await screen.findByRole("heading", { name: "Spec" })).toBeInTheDocument();
-    const list = screen.getByRole("navigation", { name: "Notifications" });
-    expect(within(list).getByRole("button", { name: /Spec/ })).toHaveAttribute("aria-current", "true");
-  });
-
-  it("opens a row into the path and leads back to the list from the Inbox crumb", async () => {
-    mockApi();
-    vi.mocked(api.post).mockResolvedValue({ data: undefined });
-    const user = userEvent.setup();
     renderPage();
-
-    expect(await screen.findByText("Select a notification to view it")).toBeInTheDocument();
-    await user.click(await within(screen.getByRole("navigation", { name: "Notifications" })).findByRole("button", { name: /Write migrations/ }));
     expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("link", { name: "Inbox" }));
-    expect(await screen.findByText("Select a notification to view it")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Write migrations" })).not.toBeInTheDocument();
-  });
-
-  it("falls back to the list when the path names a row that is gone", async () => {
-    mockApi();
-    renderPage("/acme/inbox/n:gone");
-    expect(await screen.findByText("Select a notification to view it")).toBeInTheDocument();
+    const list = screen.getByRole("navigation", { name: "Notifications" });
+    expect(within(list).getByRole("button", { name: /Write migrations/ })).toHaveAttribute("aria-current", "true");
   });
 
   it("shows when it happened on every row, tickets as well as docs", async () => {
@@ -163,8 +140,9 @@ describe("InboxPage", () => {
     const user = userEvent.setup();
     renderPage();
 
+    await screen.findByRole("heading", { name: "Write migrations" });
     const list = screen.getByRole("navigation", { name: "Notifications" });
-    await user.click(await within(list).findByRole("button", { name: /Write migrations/ }));
+    await user.click(within(list).getByRole("button", { name: /Write migrations/ }));
     expect(api.post).toHaveBeenCalledWith("/api/notifications/n1/read");
   });
 

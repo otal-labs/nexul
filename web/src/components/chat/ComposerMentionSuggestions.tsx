@@ -28,7 +28,7 @@ export const ComposerMentionSuggestions = ({ matches, selectedIndex, onPick }: C
         )}
       >
         @{candidate.handle}
-        {candidate.kind === "agent" && <span className="ml-auto text-xs text-muted-foreground">Agent</span>}
+        {candidate.kind === "agent" && <span className="ml-auto text-[10px] text-muted-foreground">Agent</span>}
       </button>
     ))}
   </div>

@@ -1,4 +1,3 @@
-import { EnterList } from "@/components/EnterList";
 import { AutomationRow } from "@/components/automation/AutomationRow";
 import { DecisionsCheckRow } from "@/components/automation/DecisionsCheckRow";
 import { AutomationKind } from "@/enums/Automation";
@@ -10,7 +9,7 @@ interface AutomationsFeedProps {
 
 // The decisions check lists after the shipped defaults, before the workspace's own automations.
 export const AutomationsFeed = ({ automations }: AutomationsFeedProps) => (
-  <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
+  <ul className="divide-y divide-border overflow-hidden rounded-md border">
     {automations
       .filter((a) => a.kind === AutomationKind.Default)
       .map((automation) => (
@@ -22,5 +21,5 @@ export const AutomationsFeed = ({ automations }: AutomationsFeedProps) => (
       .map((automation) => (
         <AutomationRow key={automation.id} automation={automation} />
       ))}
-  </EnterList>
+  </ul>
 );

@@ -17,7 +17,7 @@ export const ThreadPaneResizeHandle = ({ ticketId }: { ticketId: string }) => {
       onReset={() => reset(ticketId)}
       variable="--thread-pane-width"
       paneSelector="[data-thread-grid]"
-      className="-right-2 @min-[46rem]:block"
+      className="-right-5 @min-[46rem]:block"
     />
   );
 };

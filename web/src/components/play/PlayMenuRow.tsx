@@ -15,6 +15,6 @@ export const PlayMenuRow = ({ play, disabled, onChoose }: PlayMenuRowProps) => (
     className="flex w-full flex-col items-start rounded-md px-2 py-1.5 text-left transition-colors duration-150 ease-standard hover:bg-accent disabled:opacity-50"
   >
     <span className="text-sm font-medium">{play.label}</span>
-    {play.description !== "" && <span className="font-mono text-xs text-muted-foreground">{play.description}</span>}
+    {play.description !== "" && <span className="font-mono text-[11px] text-muted-foreground">{play.description}</span>}
   </button>
 );

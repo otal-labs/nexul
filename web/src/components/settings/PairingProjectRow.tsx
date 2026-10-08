@@ -24,7 +24,7 @@ export const PairingProjectRow = ({ project, open, onToggle }: PairingProjectRow
     <li>
       <div className="flex min-h-11 items-center gap-3 py-1.5">
         <p className="min-w-0 flex-1 truncate text-sm">{project.name}</p>
-        <p className="min-w-0 max-w-[60%] truncate font-mono text-xs text-muted-foreground">{summary}</p>
+        <p className="min-w-0 max-w-[60%] truncate font-mono text-[11px] text-muted-foreground">{summary}</p>
         <Button
           type="button"
           variant="ghost"

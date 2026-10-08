@@ -16,6 +16,7 @@ export const DnsOnboardingPage = () => {
 
   return (
     <WizardLayout
+      step={{ current: 1, total: 1 }}
       title="Set up DNS"
       subtitle="Optional. Give this instance a hostname and choose how traffic reaches it."
     >

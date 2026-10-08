@@ -6,7 +6,6 @@ import { isSettingsSection, SettingsNav } from "@/components/settings/SettingsNa
 import { SettingsPageContent } from "@/components/settings/SettingsPageContent";
 import { useConfigurationSections, useHasInstancePermission } from "@/hooks/AccessHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
-import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 
 // Same section-per-view shape as ProjectSettingsPage: the :section path segment drives the card, SettingsNav lists sections.
 export const ConfigurationPage = () => {
@@ -18,7 +17,6 @@ export const ConfigurationPage = () => {
   const canManageWorkspace = useHasPermission("workspaces:write");
   const teamIsInstanceWide = useHasInstancePermission("accounts:read");
   const sections = useConfigurationSections() ?? [];
-  const workspaceCrumb = useWorkspaceCrumb();
 
   const { section: rawSection } = useParams();
   const { search, hash } = useLocation();
@@ -29,13 +27,13 @@ export const ConfigurationPage = () => {
   const section = isSettingsSection(rawSection) && sections.includes(rawSection) ? rawSection : fallback;
 
   return (
-    <Container size="page" className="py-8">
+    <Container className="mx-auto max-w-5xl py-10">
       {teamMoved && <Navigate to={teamMoved} replace />}
       <PageHeader
         className="mb-8"
-        crumbs={[workspaceCrumb]}
+        eyebrow="Workspace"
         title="Configuration"
-        meta="What this workspace can contain and who holds keys."
+        subtitle="What this workspace can contain and who holds keys."
       />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
         <SettingsNav active={section} sections={sections} />
