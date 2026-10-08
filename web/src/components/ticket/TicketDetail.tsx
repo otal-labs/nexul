@@ -13,6 +13,7 @@ import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { getTicketKey } from "@/hooks/TicketHooks";
 import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
+import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import { personLabel } from "@/models/Person";
 import type { Project } from "@/models/Project";
 import { reporterLabel, type Ticket } from "@/models/Ticket";
@@ -45,7 +46,7 @@ export const TicketDetail = ({ ticket, project, wsFactory }: TicketDetailProps) 
 
   const workspaceCrumb = useWorkspaceCrumb();
   const projectCrumb = useProjectCrumb(ticket.project_id);
-  const crumbs = projectCrumb ? [workspaceCrumb, projectCrumb, { ...projectCrumb, label: "Board" }] : [workspaceCrumb];
+  const crumbs = useEmbeddedCrumbs(projectCrumb ? [workspaceCrumb, projectCrumb, { ...projectCrumb, label: "Board" }] : [workspaceCrumb]);
 
   return (
     <div className="space-y-6">

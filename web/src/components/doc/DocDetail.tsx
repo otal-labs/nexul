@@ -20,6 +20,7 @@ import { PlaysMenu } from "@/components/play/PlaysMenu";
 import { TrailSection } from "@/components/play/TrailSection";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useDocCrumbs } from "@/hooks/useDocCrumbs";
+import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import { useDocView } from "@/hooks/useDocView";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { effectiveAvatar } from "@/models/User";
@@ -60,7 +61,7 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
   const participants = session?.participants ?? [];
   const { articleRef, onPointerMove, onPointerLeave } = useArticlePointer(session);
   const { switchable, waiting, view, setView } = useDocView(doc);
-  const crumbs = useDocCrumbs(doc);
+  const crumbs = useEmbeddedCrumbs(useDocCrumbs(doc));
 
   const { title, titleInputRef, onTitleChange, confirmTitle, onBodyChange } = useCollabCommit(session, doc.title, doc.body);
 

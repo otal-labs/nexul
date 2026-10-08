@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { isDecisionsLogMemory, isInterviewMemory, type Memory } from "@/models/Memory";
 import { bodyToMarkdown } from "@/utils/RichtextUtility";
@@ -34,6 +35,7 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
   const [body, setBody] = useState(memory.body);
   const [cloneOpen, setCloneOpen] = useState(false);
   const wsPath = useWorkspacePath();
+  const crumbs = useEmbeddedCrumbs([{ label: "Memories", to: wsPath("/memories") }]);
   const interview = isInterviewMemory(memory);
   const decisionsLog = isDecisionsLogMemory(memory);
   const interviewLength = useMemo(() => (interview ? bodyToMarkdown(body).length : 0), [interview, body]);
@@ -43,7 +45,7 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
   return (
     <div className="@container animate-in fade-in-0 slide-in-from-bottom-1 mx-auto w-full max-w-5xl duration-200 ease-out">
       <PageHeader
-        crumbs={[{ label: "Memories", to: wsPath("/memories") }]}
+        crumbs={crumbs}
         title={<DocTitleField editable={canWrite} title={title} staticTitle={memory.title} onChange={setTitle} />}
         meta={<span className="font-mono text-xs tabular-nums">updated {formatUpdatedAgo(memory.updated_at)}</span>}
         actions={
