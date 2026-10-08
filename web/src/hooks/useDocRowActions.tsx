@@ -35,7 +35,7 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
     const result = await openForm<CloneDocFormData>({
       title: "Clone to…",
       schema: CloneDocFormSchema,
-      okLabel: "Clone",
+      okLabel: "Clone doc",
       form: <CloneDocForm docId={doc.id} />,
       formOptions: { defaultValues: { project_id: doc.project_id } },
     });
@@ -44,7 +44,7 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
   };
 
   const remove = async () => {
-    const ok = await confirm({ title: "Delete doc?", message: `"${doc.title}" and its history are deleted for good.`, confirmLabel: "Delete" });
+    const ok = await confirm({ title: "Delete doc?", message: `"${doc.title}" and its history are deleted for good.`, confirmLabel: "Delete doc" });
     if (!ok) return;
     deleteDoc.mutate(doc.id, {
       onSuccess: () => {

@@ -31,7 +31,7 @@ export const DocsPage = () => {
         </div>
       )}
       {current && isPending && <LoadingDisplay label="Loading docs…" />}
-      {error && <ErrorDisplay error={error} title="Failed to load docs." />}
+      {error && <ErrorDisplay error={error} title="Couldn't load docs." />}
       {current && docs && (
         <ListDetailLayout
           hasSelection={!!docId}

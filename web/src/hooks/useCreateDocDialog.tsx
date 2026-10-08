@@ -19,7 +19,7 @@ export const useCreateDocDialog = (projectId: string, folderId?: string): (() =>
     void open<SaveDocFormData>({
       title: "New doc",
       schema: SaveDocFormSchema,
-      okLabel: "Create",
+      okLabel: "Create doc",
       header: (
         <ProjectDialogHeader title="New doc">
           <DocFolderPill />

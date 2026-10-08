@@ -107,7 +107,7 @@ describe("New doc dialog", () => {
     mockApi();
     const { user, dialog } = await openDialog("f-gs");
     await user.type(await within(dialog).findByLabelText("Title"), "EP01");
-    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    await user.click(within(dialog).getByRole("button", { name: "Create doc" }));
     await vi.waitFor(() => expect(docPosts()).toHaveLength(1));
     expect(docPosts()[0]?.[1]).toMatchObject({ project_id: "p-1", folder_id: "f-gs" });
   });
@@ -119,7 +119,7 @@ describe("New doc dialog", () => {
     await user.click(await within(dialog).findByRole("button", { name: "Main" }));
     await user.click(await screen.findByRole("button", { name: "Get Source" }));
     expect(within(dialog).getByRole("button", { name: "Get Source" })).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    await user.click(within(dialog).getByRole("button", { name: "Create doc" }));
     await vi.waitFor(() => expect(docPosts()).toHaveLength(1));
     expect(docPosts()[0]?.[1]).toMatchObject({ project_id: "p-1", folder_id: "f-gs" });
   });
@@ -130,7 +130,7 @@ describe("New doc dialog", () => {
     await user.type(await within(dialog).findByLabelText("Title"), "Elsewhere");
     await user.click(within(dialog).getByRole("button", { name: "Backend" }));
     await user.click(await screen.findByRole("button", { name: "Frontend" }));
-    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    await user.click(within(dialog).getByRole("button", { name: "Create doc" }));
     await vi.waitFor(() => expect(docPosts()).toHaveLength(1));
     expect(docPosts()[0]?.[1]).toMatchObject({ project_id: "p-2" });
     expect(docPosts()[0]?.[1]).not.toHaveProperty("folder_id");
@@ -141,7 +141,7 @@ describe("New doc dialog", () => {
     const { user, dialog } = await openDialog();
 
     await within(dialog).findByLabelText("Title");
-    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    await user.click(within(dialog).getByRole("button", { name: "Create doc" }));
 
     expect(await within(dialog).findByText("Title is required")).toBeInTheDocument();
     expect(docPosts()).toHaveLength(0);
@@ -153,7 +153,7 @@ describe("New doc dialog", () => {
     const { user, dialog } = await openDialog();
 
     expect(await within(dialog).findByText(/create a project first/i)).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Create" })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: "Create doc" })).toBeDisabled();
     await user.keyboard("{Escape}");
   });
 
@@ -173,7 +173,7 @@ describe("New doc dialog", () => {
     fireEvent.paste(within(dialog).getByLabelText("Body"), {
       clipboardData: { files: [new File(["png"], "shot.png", { type: "image/png" })], items: [], types: ["Files"], getData: () => "" },
     });
-    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    await user.click(within(dialog).getByRole("button", { name: "Create doc" }));
 
     await vi.waitFor(() => expect(api.put).toHaveBeenCalled());
     const upload = vi.mocked(api.post).mock.calls.find(([url]) => url === "/api/attachments")?.[1] as FormData;

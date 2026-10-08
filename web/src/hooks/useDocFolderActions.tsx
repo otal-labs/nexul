@@ -28,8 +28,8 @@ export const useDocFolderActions = (folder: DocFolder, total: number) => {
     });
 
   const remove = async () => {
-    const message = total === 0 ? "It holds no docs." : `${moveLine(total, defaultName)}; none is deleted.`;
-    const ok = await confirm({ title: `Delete ${folder.name}?`, message, confirmLabel: "Delete" });
+    const message = total === 0 ? "It's empty." : `${moveLine(total, defaultName)}. None are deleted.`;
+    const ok = await confirm({ title: `Delete ${folder.name}?`, message, confirmLabel: "Delete folder" });
     if (ok) deleteFolder.mutate(folder.id);
   };
 

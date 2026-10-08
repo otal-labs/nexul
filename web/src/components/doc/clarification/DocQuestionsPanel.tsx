@@ -33,7 +33,7 @@ export const DocQuestionsPanel = ({ docId }: DocQuestionsPanelProps) => {
           </header>
         )}
         {clarification && clarification.can_close && clarificationPhase(clarification) === "none" && (
-          <EmptyRow className="mt-5">Clarify via AI asks the doc's authors about what it leaves open, a round at a time.</EmptyRow>
+          <EmptyRow className="mt-5">No questions yet. Clarify via AI asks about what the doc leaves open, one round at a time.</EmptyRow>
         )}
         {clarification && <ClarificationRoundsFeed clarification={clarification} readOnly={!canWrite} />}
       </section>
