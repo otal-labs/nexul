@@ -24,7 +24,7 @@ export const StackLogsTabs = ({ stackId, service }: StackLogsTabsProps) => {
     <div className="space-y-4">
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} title="Could not load services" />}
-      {services && services.length === 0 && <EmptyRow>No services parsed for this stack yet.</EmptyRow>}
+      {services && services.length === 0 && <EmptyRow className="px-0 py-0">No services parsed for this stack yet.</EmptyRow>}
       {services && active && (
         <Tabs value={active.name} onValueChange={(name) => navigate(wsPath(`/stacks/${stackId}/logs/${name}`))}>
           <TabsList variant="line" aria-label="Service" className="w-full justify-start overflow-x-auto border-b border-border p-0">

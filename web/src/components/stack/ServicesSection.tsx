@@ -37,7 +37,7 @@ export const ServicesSection = ({ stackId }: ServicesSectionProps) => {
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} title="Could not load services" />}
-      {services && services.length === 0 && <EmptyRow>No services parsed for this stack yet.</EmptyRow>}
+      {services && services.length === 0 && <EmptyRow className="px-0 py-0">No services parsed for this stack yet.</EmptyRow>}
       {services && services.length > 0 && (
         <ul className="divide-y divide-border rounded-lg border border-border">
           {services.map((c) => (
