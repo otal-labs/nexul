@@ -64,7 +64,7 @@ its checksum and run `nexul install`; everything else lives in the binary
 
 ## Styling
 
-`website/src/styles/tokens.css` maps the product's monochrome tokens onto
+`website/src/styles/tokens.css` maps a monochrome palette onto
 Fumadocs' `--color-fd-*` variables for both color schemes; every page loads
 it. The one header (`src/components/SiteHeader.tsx`) is styled by
 `src/styles/site-header.css` and shared by every page; on docs pages it also

@@ -1,8 +1,9 @@
 import { PlusIcon } from "lucide-react";
 
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { EmptyRow } from "@/components/EmptyRow";
 import { PlayForm } from "@/components/play/PlayForm";
 import { PlayRow } from "@/components/play/PlayRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
@@ -69,9 +70,9 @@ export const PlaySettingsSection = ({ canWrite, canDelete }: PlaySettingsSection
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {plays && plays.length === 0 && <NoDataDisplay message="No plays yet" />}
+      {plays && plays.length === 0 && <EmptyRow>No plays yet</EmptyRow>}
       {plays && plays.length > 0 && (
-        <ul className="divide-y divide-border overflow-hidden rounded-md border">
+        <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
           {plays.map((play) => (
             <PlayRow
               key={play.id}
@@ -82,7 +83,7 @@ export const PlaySettingsSection = ({ canWrite, canDelete }: PlaySettingsSection
               onEdit={() => void openDialog(play)}
             />
           ))}
-        </ul>
+        </EnterList>
       )}
     </SettingsCard>
   );

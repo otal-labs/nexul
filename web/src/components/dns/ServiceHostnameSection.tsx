@@ -30,7 +30,7 @@ const ExposureRow = ({ exposure, gateway, container, removing, onRemove }: Expos
       href={`https://${exposure.hostname}`}
       target="_blank"
       rel="noreferrer"
-      className="break-all font-mono text-sm underline underline-offset-2"
+      className="wrap-anywhere font-mono text-sm underline underline-offset-2"
     >
       {exposure.hostname}
     </a>
@@ -90,9 +90,9 @@ export const ServiceHostnameSection = ({ containers }: ServiceHostnameSectionPro
     >
       {loading && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} title="Could not load DNS state" />}
-      {!statusPending && !configured && <EmptyRow>Connect a DNS provider to expose this stack.</EmptyRow>}
-      {ready && containers.length === 0 && <EmptyRow>No containers parsed for this stack yet — nothing to expose.</EmptyRow>}
-      {canExpose && stackExposures.length === 0 && <EmptyRow>Not exposed yet.</EmptyRow>}
+      {!statusPending && !configured && <EmptyRow flush>Connect a DNS provider to expose this stack.</EmptyRow>}
+      {ready && containers.length === 0 && <EmptyRow flush>No containers parsed for this stack yet — nothing to expose.</EmptyRow>}
+      {canExpose && stackExposures.length === 0 && <EmptyRow flush>Not exposed yet.</EmptyRow>}
       {ready && stackExposures.length > 0 && (
         <ul className="divide-y divide-border rounded-lg border border-border">
           {stackExposures.map((exposure) => (

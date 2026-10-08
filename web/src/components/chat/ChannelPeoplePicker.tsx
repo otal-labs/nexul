@@ -4,10 +4,12 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { ChannelPersonOption } from "@/components/chat/ChannelPersonOption";
 import { EmptyRow } from "@/components/EmptyRow";
+import { microheaderClass } from "@/components/Microheader";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { personLabel } from "@/models/Person";
+import { cn } from "@/lib/utils";
 
 interface ChannelPeoplePickerProps {
   value: string[];
@@ -34,7 +36,7 @@ export const ChannelPeoplePicker = ({ value, onChange, excludeIds = [], keepsVie
   return (
     <div className="min-w-0">
       <div className="flex min-h-11 items-center gap-3 py-1.5">
-        <p className="min-w-0 flex-1 truncate font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
+        <p className={cn(microheaderClass, "min-w-0 flex-1 truncate")}>
           {picked} of {shown.length} people
         </p>
         <div className="relative w-44 shrink-0">
@@ -44,7 +46,7 @@ export const ChannelPeoplePicker = ({ value, onChange, excludeIds = [], keepsVie
             placeholder="Search people"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="h-8 pl-8 text-[13px]"
+            className="h-8 pl-8 text-sm"
           />
         </div>
       </div>

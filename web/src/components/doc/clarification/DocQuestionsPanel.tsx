@@ -19,8 +19,8 @@ export const DocQuestionsPanel = ({ docId }: DocQuestionsPanelProps) => {
   const { data: doc } = useFetchDoc(docId);
   const canWrite = useHasPermission("docs:write");
   return (
-    <div className="mt-4 rounded-2xl border border-border bg-card p-6 shadow-card sm:p-10">
-      <section aria-label="Questions" className="mx-auto min-w-0 max-w-2xl">
+    <div className="rounded-lg border border-border bg-card p-6 shadow-card sm:p-8">
+      <section aria-label="Questions" className="mx-auto min-w-0 max-w-3xl">
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} />}
         {clarification && (

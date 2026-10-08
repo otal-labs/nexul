@@ -2,6 +2,7 @@ import { ChevronDownIcon, Cpu, Network, SlidersHorizontal, Workflow } from "luci
 import { useShallow } from "zustand/react/shallow";
 
 import { sectionLabelClass, type SidebarNavEntry } from "@/components/SidebarNav";
+import { SidebarActiveIndicator } from "@/components/sidebar/SidebarActiveIndicator";
 import { SidebarNavLink } from "@/components/sidebar/SidebarNavLink";
 import { useCanOpen } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -31,7 +32,8 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
   if (entries.length === 0) return null;
 
   return (
-    <nav aria-label="Workspace" className="shrink-0 border-t border-border px-2 py-1">
+    <nav aria-label="Workspace" className="relative isolate shrink-0 border-t border-border px-2 py-1">
+      <SidebarActiveIndicator />
       {!collapsed && (
         <button
           type="button"
@@ -61,7 +63,7 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
               end={entry.end ?? false}
             >
               {entry.wip && (
-                <span className="shrink-0 text-[10px] font-medium tracking-wide text-warning" title="Work in progress">
+                <span className="shrink-0 font-mono text-xs text-warning" title="Work in progress">
                   WIP
                 </span>
               )}

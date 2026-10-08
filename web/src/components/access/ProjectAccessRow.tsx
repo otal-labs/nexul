@@ -27,7 +27,7 @@ export const ProjectAccessRow = ({ name, value, onChange }: ProjectAccessRowProp
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 px-2 py-2 @md:px-3 @md:grid-cols-[minmax(0,1fr)_auto_auto]">
         <div className="min-w-0">
           <p className="truncate text-sm">{name}</p>
-          {uniform === undefined && <p className="truncate font-mono text-[11px] text-muted-foreground">{accessSummary(areas, value)}</p>}
+          {uniform === undefined && <p className="truncate font-mono text-xs text-muted-foreground">{accessSummary(areas, value)}</p>}
         </div>
         <button
           type="button"

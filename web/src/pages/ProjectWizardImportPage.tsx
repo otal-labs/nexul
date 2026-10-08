@@ -8,10 +8,12 @@ import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { GatewayAdoptionItem } from "@/components/wizard/GatewayAdoptionItem";
 import { ImportContainerRow } from "@/components/wizard/ImportContainerRow";
 import { ImportGatewayRow } from "@/components/wizard/ImportGatewayRow";
 import { ImportStackGroupSection } from "@/components/wizard/ImportStackGroupSection";
 import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useDiscoverMachine, useFetchMachines, useImportMachine } from "@/hooks/MachineHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useImportSelection } from "@/hooks/useImportSelection";
@@ -24,8 +26,11 @@ import { NEW_PROJECT_PATH } from "@/models/Project";
 // the way the project wizard's steps do.
 export const ProjectWizardImportPage = () => {
   const [searchParams] = useSearchParams();
-  const canOpenTopology = useAreaAccess()?.("topology") ?? false;
+  const can = useAreaAccess();
+  const canOpenTopology = can?.("topology") ?? false;
+  const workspaceCrumb = useWorkspaceCrumb();
   const wsPath = useWorkspacePath();
+  const crumbs = can?.("runners") ? [workspaceCrumb, { label: "Runners", to: wsPath("/runners") }] : [workspaceCrumb];
   const [machineId, setMachineId] = useState(() => searchParams.get("machine") ?? "");
   const [projectId, setProjectId] = useState("");
   const [report, setReport] = useState<GroupedDiscovery | null>(null);
@@ -60,8 +65,12 @@ export const ProjectWizardImportPage = () => {
     report && report.stacks.length === 0 && report.standalone.length === 0 && report.gateways.length === 0;
 
   return (
-    <Container className="max-w-2xl py-10">
-      <PageHeader title="Import from this machine" subtitle="Adopt what's already running as unmanaged stacks." />
+    <Container size="page" className="py-8">
+      <PageHeader
+        crumbs={crumbs}
+        title="Import from this machine"
+        meta="Adopt what's already running as unmanaged stacks."
+      />
       <div className="mt-6 space-y-6">
         {machinesPending && <LoadingDisplay />}
         {machinesError && <ErrorDisplay error={machinesError} title="Could not load machines" />}
@@ -151,25 +160,7 @@ export const ProjectWizardImportPage = () => {
           <div className="space-y-4">
             <p className="text-sm">Imported {result.stacks.length} stack(s) as unmanaged.</p>
             {result.gateways.map((g) => (
-              <div key={g.name} className="space-y-1 text-sm">
-                <p className="font-medium">{g.name}</p>
-                {g.error && <p className="text-xs text-destructive">Not adopted as a gateway: {g.error}</p>}
-                {g.gateway_id && g.exposed.length === 0 && g.unmatched.length === 0 && (
-                  <p className="text-xs text-muted-foreground">Adopted as a gateway; no hostnames routed through it yet.</p>
-                )}
-                {g.exposed.length > 0 && (
-                  <ul aria-label={`Hostnames now on the canvas via ${g.name}`} className="space-y-0.5 font-mono text-xs text-muted-foreground">
-                    {g.exposed.map((host) => (
-                      <li key={host}>{host}</li>
-                    ))}
-                  </ul>
-                )}
-                {g.unmatched.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Not linked, their target is not a container here: {g.unmatched.join(", ")}
-                  </p>
-                )}
-              </div>
+              <GatewayAdoptionItem key={g.name} adoption={g} />
             ))}
             {canOpenTopology && (
               <Button asChild>

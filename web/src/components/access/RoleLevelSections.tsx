@@ -1,4 +1,4 @@
-import { Microheader } from "@/components/access/Microheader";
+import { Microheader } from "@/components/Microheader";
 import { PermissionLevels } from "@/components/access/PermissionLevels";
 import { PermissionArea, type PermissionInfo } from "@/models/Permission";
 

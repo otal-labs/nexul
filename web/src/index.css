@@ -3,7 +3,7 @@
 @import "@xyflow/react/dist/style.css";
 /* Lean subset of LiveKit's stylesheet: only the theme vars + the participant/layout component
    CSS the call view actually renders (GridLayout/ParticipantTile/FocusLayout/CarouselLayout) — skips
-   the controls/prefabs CSS since VoiceCallSection builds its own Mono Console controls bar instead
+   the controls/prefabs CSS since VoiceCallSection builds its own controls bar instead
    of the library's ControlBar. Every class/var ships "lk-"-prefixed (packages/styles/README.md), so a
    global import can't collide with the app's own classes. */
 @import "@livekit/components-styles/themes/default";
@@ -13,19 +13,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Nexul design tokens — "The Mono Console" direction.
- * Dark-first, strictly monochrome, engineered for a deployment platform:
- *   canvas   — near-black in dark, near-white in light; true inversions
- *   surfaces — graphite stack: background < surface-2 < card < popover
- *   accent   — NONE. `primary` is near-white-on-near-black (dark) / mirrored
- *              in light; ink-on-primary buttons, no hue. Color lives only in badge/status icons and dots.
- *   status   — green = success/health only; amber/cyan/red for the rest
- *   shape    — 6px interactive, 8px cards, pills only for badges
- *   depth    — surface stepping + contained 1px shadows, never blur glows
- *   type     — Inter (UI + display, tight tracking), JetBrains Mono
- *              (technical data, ids, code). No serif, no script.
- *   motion   — one standard ease for state changes, ease-out for entrances,
- *              transform/opacity only, reduced-motion kills everything
+ * Nexul design tokens. The spec of record is practices/design-language.md.
+ *   canvas  — near-black (dark) / soft grey (light) with a still light field behind the app
+ *   panels  — frosted, raised, 12px; every page's content floats in one, 8px from the canvas edge
+ *   cards   — a step lighter than their panel, 9px, hairline ring
+ *   brand   — one ember accent: primary action, focus, active nav, selection, own messages, progress
+ *   status  — success/warning/info/destructive/merged keep their own hues
+ *   type    — Inter (UI + display), JetBrains Mono (technical data)
  */
 
 @theme inline {
@@ -54,9 +48,12 @@
   --color-surface-2: var(--surface-2);
   --color-cell-line: var(--cell-line);
   --color-cell-label: var(--cell-label);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-panel: var(--panel);
   --font-sans: var(--font-sans-stack);
   --font-mono: var(--font-mono-stack);
-  /* Radius system: 6px interactive, 8px cards, pills for badges. */
+  /* Radius system: 7px controls, 9px cards, 12px panels, pills for badges. */
   --radius-sm: var(--shape-sm);
   --radius-md: var(--shape-md);
   --radius-lg: var(--shape-lg);
@@ -66,6 +63,9 @@
   --shadow-overlay: var(--shadow-overlay);
   --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* A bounce-free spring as a CSS curve (paired with 200ms) and the one small-bounce spring (paired with 350ms). */
+  --ease-spring: linear(0, 0.079, 0.236, 0.403, 0.551, 0.671, 0.764, 0.833, 0.883, 0.919, 0.944, 0.962, 0.974, 0.983, 0.988, 0.992, 0.995, 0.997, 1);
+  --ease-spring-pop: linear(0, 0.1, 0.303, 0.515, 0.693, 0.826, 0.915, 0.969, 0.998, 1.011, 1.015, 1.014, 1.011, 1.008, 1.005, 1.003, 1.002, 1.001, 1);
 }
 
 :root {
@@ -76,31 +76,30 @@
 
   /* Radius a theme can override (Brutalism zeroes these); default matches the radius system above. */
   --shape-sm: 0.25rem;
-  --shape-md: 0.375rem;
-  --shape-lg: 0.5rem;
+  --shape-md: 0.4375rem;
+  --shape-lg: 0.5625rem;
   --shape-xl: 0.75rem;
 
-  /* canvas + surfaces — near-white, strictly monochrome. Mirrors .dark's
-     structural ladder (background < surface-2 < card < popover, most-
-     recessed to most-raised) at the opposite end of the lightness range. */
-  --background: #ececec;
-  --surface-2: #f1f1f1;
-  --foreground: #0a0a0a;
-  --card: #f6f6f6;
-  --card-foreground: #0a0a0a;
-  --popover: #fcfcfc;
-  --popover-foreground: #0a0a0a;
-  --secondary: #e5e5e5;
-  --secondary-foreground: #2b2b2b;
-  --muted: #e9e9e9;
-  --muted-foreground: #656565;
-  --accent: #dfdfdf;
-  --accent-foreground: #0a0a0a;
+  /* canvas < surface-2 (wells inside a panel) < panel < card < popover */
+  --background: oklch(0.95 0.004 265);
+  --surface-2: oklch(0.965 0.004 265);
+  --foreground: oklch(0.2 0.01 265);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.01 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.01 265);
+  --secondary: oklch(0.93 0.004 265);
+  --secondary-foreground: oklch(0.3 0.01 265);
+  --muted: oklch(0.945 0.004 265);
+  --muted-foreground: oklch(0.48 0.01 265);
+  --accent: oklch(0.2 0.01 265 / 0.06);
+  --accent-foreground: oklch(0.2 0.01 265);
 
-  /* no accent hue — near-black primary, near-white text on it (the
-     light-mode mirror of .dark's near-white-on-near-black). */
-  --primary: #0a0a0a;
-  --primary-foreground: #f5f5f5;
+  /* primary is the strong ink (text-primary emphasis); the coloured action is brand */
+  --primary: oklch(0.2 0.01 265);
+  --primary-foreground: oklch(0.99 0 0);
+  --brand: oklch(0.565 0.19 35);
+  --brand-foreground: oklch(1 0 0);
 
   /* status — green for success/health only; the rest cool + AA-checked */
   --success: #15803d;
@@ -109,19 +108,30 @@
   --merged: #8250df;
   --destructive: #dc2626;
 
-  /* hairlines — neutral gray, no blue undertone */
-  --border: #d9d9d9;
-  --input: #cccccc;
-  --ring: #0a0a0a;
+  /* hairlines are ink at low alpha so they read the same on canvas, panel, card and popover */
+  --border: oklch(0.2 0.01 265 / 0.1);
+  --input: oklch(0.2 0.01 265 / 0.16);
+  --ring: var(--brand);
 
   /* a field grid's cell edges and its shaded label cell, mixed from the ink so they read on any surface and palette */
   --cell-line: color-mix(in oklab, var(--foreground) 12%, transparent);
   --cell-label: color-mix(in oklab, var(--foreground) 4%, transparent);
 
-  /* elevation — hairline + contained, no blur glows */
-  --shadow-card: 0 1px 2px rgb(13 20 36 / 0.06), 0 0 0 1px rgb(13 20 36 / 0.03);
-  --shadow-elevated: 0 2px 4px rgb(13 20 36 / 0.08), 0 12px 28px rgb(13 20 36 / 0.12);
-  --shadow-overlay: 0 20px 56px rgb(13 20 36 / 0.22);
+  --shadow-card: 0 1px 2px oklch(0.2 0.02 265 / 0.06);
+  --shadow-elevated: 0 2px 4px oklch(0.2 0.02 265 / 0.08), 0 12px 28px oklch(0.2 0.02 265 / 0.12);
+  --shadow-overlay: 0 20px 56px oklch(0.2 0.02 265 / 0.22);
+
+  /* The frosted panel every page floats in; derived from card so a palette's panels follow it. */
+  --panel: var(--card);
+  --panel-opacity: 85%;
+  --panel-ring: oklch(0.2 0.01 265 / 0.08);
+  --panel-highlight: oklch(1 0 0 / 0.9);
+  --panel-shadow: 0 1px 2px oklch(0.2 0.02 265 / 0.05), 0 12px 32px -12px oklch(0.2 0.02 265 / 0.18);
+
+  /* The light field's hues: the warm corner follows the brand, so a palette's accent tints it. */
+  --field-warm: color-mix(in oklab, var(--brand) 30%, transparent);
+  --field-pink: oklch(0.75 0.14 350 / 0.2);
+  --field-cool: oklch(0.72 0.12 250 / 0.3);
 
   /* Glass opacity/blur for overlay surfaces (dialog/sheet scrims); user-
      controlled via the Appearance settings slider, 40–100%. */
@@ -132,27 +142,24 @@
 .dark {
   color-scheme: dark;
 
-  /* the ink room — strictly monochrome console, background #050505 <
-     surface-2 #0a0a0a < card #111111 < popover #161616. These values were
-     Board's `.board-bw` experiment (ADR 0003), adopted app-wide as the
-     shared tokens. */
-  --background: #050505;
-  --surface-2: #0a0a0a;
-  --foreground: #f5f5f5;
-  --card: #111111;
-  --card-foreground: #f5f5f5;
-  --popover: #161616;
-  --popover-foreground: #f5f5f5;
-  --secondary: #1a1a1a;
-  --secondary-foreground: #d4d4d4;
-  --muted: #161616;
-  --muted-foreground: #9a9a9a;
-  --accent: #202020;
-  --accent-foreground: #f5f5f5;
+  --background: oklch(0.13 0.005 265);
+  --surface-2: oklch(0.155 0.005 265);
+  --foreground: oklch(0.97 0.003 265);
+  --card: oklch(0.21 0.005 265);
+  --card-foreground: oklch(0.97 0.003 265);
+  --popover: oklch(0.225 0.006 265);
+  --popover-foreground: oklch(0.97 0.003 265);
+  --secondary: oklch(0.25 0.005 265);
+  --secondary-foreground: oklch(0.88 0.005 265);
+  --muted: oklch(0.24 0.005 265);
+  --muted-foreground: oklch(0.71 0.01 265);
+  --accent: oklch(1 0 0 / 0.07);
+  --accent-foreground: oklch(0.97 0.003 265);
 
-  /* no accent hue — near-white primary, ink text on it */
-  --primary: #f5f5f5;
-  --primary-foreground: #0a0a0a;
+  --primary: oklch(0.97 0.003 265);
+  --primary-foreground: oklch(0.17 0.005 265);
+  --brand: oklch(0.68 0.2 35);
+  --brand-foreground: oklch(0.16 0.03 35);
 
   --success: #4ade80;
   --warning: #fbbf24;
@@ -160,16 +167,24 @@
   --merged: #a371f7;
   --destructive: #f97066;
 
-  --border: #262626;
-  --input: #333333;
-  --ring: #f5f5f5;
+  --border: oklch(1 0 0 / 0.08);
+  --input: oklch(1 0 0 / 0.12);
 
   --cell-line: color-mix(in oklab, var(--foreground) 10%, transparent);
   --cell-label: color-mix(in oklab, var(--foreground) 4%, transparent);
 
-  --shadow-card: 0 2px 4px rgb(0 0 0 / 0.35), 0 0 0 1px rgb(0 0 0 / 0.3);
-  --shadow-elevated: 0 4px 8px rgb(0 0 0 / 0.4), 0 16px 36px rgb(0 0 0 / 0.45);
-  --shadow-overlay: 0 24px 64px rgb(0 0 0 / 0.6);
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.3);
+  --shadow-elevated: 0 4px 8px oklch(0 0 0 / 0.4), 0 16px 36px oklch(0 0 0 / 0.45);
+  --shadow-overlay: 0 24px 64px oklch(0 0 0 / 0.6);
+
+  --panel: color-mix(in oklab, var(--card) 60%, var(--background));
+  --panel-ring: oklch(1 0 0 / 0.07);
+  --panel-highlight: oklch(1 0 0 / 0.05);
+  --panel-shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 16px 40px -12px oklch(0 0 0 / 0.6);
+
+  --field-warm: color-mix(in oklab, var(--brand) 34%, transparent);
+  --field-pink: oklch(0.6 0.17 350 / 0.12);
+  --field-cool: oklch(0.55 0.16 255 / 0.3);
 }
 
 html {
@@ -206,13 +221,15 @@ h3 {
 }
 
 ::selection {
-  background: color-mix(in oklab, var(--primary) 26%, transparent);
+  background: color-mix(in oklab, var(--brand) 32%, transparent);
 }
 
-/* Tailwind v4 defaults a bare `border` to currentColor; the Mono Console hairline is --border. */
+/* Tailwind v4 defaults a bare `border` to currentColor; the hairline is --border. */
 @layer base {
   * {
     border-color: var(--border);
+    /* A bare duration-* class would otherwise transition every property, layout included; a transition names its properties. */
+    transition-property: none;
   }
 }
 
@@ -242,6 +259,46 @@ h3 {
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
+/* A raised frosted panel: content floats in one on the canvas. The transparent border keeps its edge in forced-colors mode. */
+@utility panel {
+  border: 1px solid transparent;
+  border-radius: var(--radius-xl);
+  background-color: color-mix(in oklab, var(--panel) var(--panel-opacity), transparent);
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  box-shadow:
+    inset 0 1px 0 0 var(--panel-highlight),
+    0 0 0 1px var(--panel-ring),
+    var(--panel-shadow);
+}
+
+/* The layout's frame is the page's one scrolling panel, unless the page splits into its own panes (data-pane-layout). */
+.app-frame {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.app-frame:not(:has([data-pane-layout])) {
+  @apply panel;
+}
+
+.app-frame:has([data-pane-layout]) {
+  overflow: visible;
+}
+
+/* The light field behind the app: ember top right, blue bottom left, a hint of pink between.
+   Soft by gradient falloff (no filter) and still: moving it would re-blur every panel each frame. */
+.light-field {
+  position: fixed;
+  inset: -12%;
+  z-index: -10;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 42% at 86% 10%, var(--field-warm), transparent 72%),
+    radial-gradient(30% 34% at 60% 38%, var(--field-pink), transparent 70%),
+    radial-gradient(44% 48% at 10% 92%, var(--field-cool), transparent 72%);
+}
+
 /* ============ Technical surfaces ============
    Mono identity lines (ids, repos, targets) read as data, not decoration. */
 
@@ -252,7 +309,7 @@ h3 {
 }
 
 /* Blueprint canvas for hero surfaces (home, sign-in, error): a faint
-   engineering grid + one soft electric glow rising from the top. */
+   engineering grid + one soft monochrome glow rising from the top. */
 .blueprint-bg {
   background-color: var(--background);
   background-image:
@@ -263,12 +320,11 @@ h3 {
   background-position: center top, center, center;
 }
 
-/* The terminal window: a console panel with a restrained, monochrome
-   (token-driven) glow — no accent hue. */
+/* The terminal window: a console panel with a restrained, token-driven glow. */
 .terminal-window {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  background: #0a101e;
+  background: #0b0b0b;
   box-shadow:
     0 0 40px 0 color-mix(in oklab, var(--ring) 14%, transparent),
     var(--shadow-elevated);
@@ -279,14 +335,14 @@ h3 {
   align-items: center;
   gap: 0.375rem;
   padding: 0.625rem 0.875rem;
-  border-bottom: 1px solid #1d2a45;
+  border-bottom: 1px solid #232323;
 }
 
 .terminal-window__dot {
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 9999px;
-  background: #2b3a5e;
+  background: #3a3a3a;
 }
 
 .terminal-window__title {
@@ -295,7 +351,7 @@ h3 {
   font-size: 0.6875rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #8b96ab;
+  color: #9a9a9a;
 }
 
 .terminal-window__action {
@@ -304,17 +360,17 @@ h3 {
   width: 1.75rem;
   height: 1.75rem;
   border-radius: var(--radius-md);
-  color: #8b96ab;
+  color: #9a9a9a;
   transition: color 150ms var(--ease-standard), background-color 150ms var(--ease-standard);
 }
 
 .terminal-window__action:hover {
-  color: #dbe4f5;
-  background: #1d2a45;
+  color: #ededed;
+  background: #1c1c1c;
 }
 
 .terminal-window__prompt {
-  color: #8b96ab;
+  color: #9a9a9a;
   user-select: none;
 }
 
@@ -323,7 +379,7 @@ h3 {
   font-family: var(--font-mono-stack);
   font-size: 0.8125rem;
   line-height: 1.75;
-  color: #dbe4f5;
+  color: #ededed;
   overflow-x: auto;
 }
 
@@ -342,6 +398,9 @@ h3 {
   --xy-controls-button-color: var(--foreground);
   --xy-controls-button-border-color: var(--border);
   --xy-attribution-background-color: transparent;
+  --xy-minimap-background-color: var(--surface-2);
+  --xy-minimap-mask-background-color: color-mix(in oklab, var(--background) 70%, transparent);
+  --xy-minimap-node-background-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
   background-color: var(--surface-2);
 }
 
@@ -364,7 +423,6 @@ h3 {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  background: var(--card);
 }
 
 .react-flow__attribution {
@@ -422,7 +480,7 @@ h3 {
    -state placeholder (.doc-editor.is-empty) and the gutter "+" both
    position themselves against that edge, so a leftover margin here would
    throw all three out of alignment with each other. */
-.prose-rich .tiptap > p:first-child {
+.prose-rich .tiptap > :first-child {
   margin-top: 0;
 }
 
@@ -458,11 +516,11 @@ h3 {
 
 /* Code blocks: a dark console panel on any canvas. */
 .prose-rich pre {
-  background: #0a101e;
-  border: 1px solid #1d2a45;
+  background: #0b0b0b;
+  border: 1px solid #232323;
   border-radius: var(--radius-lg);
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--ring) 8%, transparent);
-  color: #dbe4f5;
+  color: #ededed;
   font-family: var(--font-mono-stack);
   font-size: 0.85em;
   line-height: 1.6;
@@ -490,14 +548,14 @@ h3 {
 
 .code-block-view__lang select,
 .code-block-view__lang span {
-  color: #8ea2c9;
+  color: #9a9a9a;
   font-family: var(--font-mono-stack);
   font-size: 0.75em;
 }
 
 .code-block-view__lang select {
   background: transparent;
-  border: 1px solid #1d2a45;
+  border: 1px solid #232323;
   border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 0.15em 0.5em;
@@ -508,7 +566,7 @@ h3 {
 }
 
 /* lowlight/highlight.js token colors — cool family, same accent language as
-   the presence palette, tuned for readability on the #0a101e panel. */
+   the presence palette, tuned for readability on the #0b0b0b panel. */
 .hljs-comment,
 .hljs-quote {
   color: #64748b;
@@ -565,7 +623,7 @@ h3 {
 
 /* Pointer even inside the editable body, where a plain click still opens the link. */
 .prose-rich a:not(.mention-chip) {
-  color: var(--primary);
+  color: var(--brand);
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
@@ -645,11 +703,11 @@ h3 {
 }
 
 /* Editor surface: the page is the editor — no box, no toolbar; the writing
-   area breathes and the caret is the blue accent. The placeholder hint is a
+   area breathes and the caret is the primary ink. The placeholder hint is a
    React overlay (.doc-editor.is-empty), so no extension needed. */
 .prose-rich .tiptap {
   min-height: 12rem;
-  caret-color: var(--primary);
+  caret-color: var(--brand);
   outline: none;
 }
 
@@ -667,10 +725,6 @@ h3 {
 .doc-editor-compact .tiptap :is(h1, h2, h3) {
   font-size: 1em;
   margin: 0.5em 0 0;
-}
-
-.doc-editor-compact .tiptap > :first-child {
-  margin-top: 0;
 }
 
 /* Gutter "+" (PlusMenuExtension): a bare glyph, not a boxed button — appears
@@ -738,20 +792,18 @@ a.mention-chip:hover {
   cursor: default;
 }
 
-/* Selection bubble: dark glass pill with a blue accent, ease-out entrance. */
+/* Selection bubble: a popover-surface pill on either theme, ease-out entrance. */
 .format-bubble {
   display: flex;
   align-items: center;
   gap: 0.125rem;
   z-index: 40;
-  border: 1px solid rgb(255 255 255 / 0.12);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgb(10 15 28 / 0.92);
-  box-shadow:
-    0 0 0 1px rgb(0 0 0 / 0.4),
-    0 8px 28px rgb(0 0 0 / 0.45);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-elevated);
   padding: 0.25rem;
-  backdrop-filter: blur(8px);
   animation: bubble-in 150ms var(--ease-out) both;
 }
 
@@ -778,8 +830,81 @@ a.mention-chip:hover {
 }
 
 /* ============ Motion ============
-   One standard ease for state changes, ease-out for entrances; transform /
-   opacity only; everything disabled under prefers-reduced-motion. */
+   The spec is the Motion section of practices/design-language.md. Entrances run --ease-out, state changes
+   --ease-standard, anything that slides between places --ease-spring; only transform and opacity move. Page and list
+   entrances run from lib/motion.ts. */
+
+/* News arriving (someone else's chat message, the Agent's reply starting) rises 8px as it fades in. */
+@keyframes arrive {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@utility arrive {
+  animation: arrive 200ms var(--ease-out) both;
+}
+
+/* A progress fill grows from the left the first time it shows; a change after that is the fill's own transition. */
+@keyframes grow-x {
+  from {
+    scale: 0 1;
+  }
+}
+@utility grow-in {
+  transform-origin: left;
+  animation: grow-x 300ms var(--ease-out) both;
+}
+
+/* A picked-up board card lifts off from where it lay. */
+@keyframes lift {
+  from {
+    scale: 1;
+  }
+}
+
+/* Disclosure: the box snaps open or shut in one layout step, never per frame, and only the content moves. Opening, it
+   fades in as it settles 4px; closing, it fades out in 120ms and the box shuts after. */
+.disclosure {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+.disclosure > * {
+  min-height: 0;
+  overflow: hidden;
+  transition:
+    opacity 200ms var(--ease-out),
+    translate 200ms var(--ease-out);
+}
+.disclosure[data-closed] {
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0s linear 120ms;
+}
+.disclosure[data-closed] > * {
+  opacity: 0;
+  translate: 0 -4px;
+  transition:
+    opacity 120ms var(--ease-standard),
+    translate 0s linear 120ms;
+}
+
+/* Toasts keep the library's choreography on the dialog family's clock: in over 250ms on the strong ease-out instead of
+   400ms, and a stacked toast leaves in 200ms. */
+[data-sonner-toaster] [data-sonner-toast] {
+  transition-duration: 250ms, 250ms, 250ms, 200ms;
+  transition-timing-function: var(--ease-out);
+}
+[data-sonner-toaster] [data-sonner-toast][data-removed="true"][data-front="false"][data-swipe-out="false"][data-expanded="false"] {
+  transition-duration: 200ms, 150ms;
+}
+
+/* Reduced motion flattens every transition and keyframe; what still needs to say "this arrived" does it with a fade
+   (the page and list entrances in lib/motion.ts check the preference themselves). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -788,6 +913,13 @@ a.mention-chip:hover {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  .disclosure,
+  .disclosure > * {
+    transition-delay: 0s !important;
+  }
+  .arrive {
+    animation: fade-in 150ms var(--ease-out) both !important;
   }
 }
 
@@ -855,7 +987,7 @@ a.mention-chip:hover {
 }
 
 /* LiveKit components ship their own dark-only default theme (--lk-*, all values hardcoded hex — see
-   default.css). Scoped to the call stage and remapped onto the Mono Console tokens above so a voice
+   default.css). Scoped to the call stage and remapped onto the tokens above so a voice
    call reads as part of the app in both light and dark mode, not an embedded third-party widget
    in the chat surface. */
 .voice-call-stage[data-lk-theme="default"] {
@@ -869,8 +1001,8 @@ a.mention-chip:hover {
   --lk-fg3: var(--muted-foreground);
   --lk-fg4: var(--muted-foreground);
   --lk-border-color: var(--border);
-  --lk-accent-bg: var(--primary);
-  --lk-accent-fg: var(--primary-foreground);
+  --lk-accent-bg: var(--brand);
+  --lk-accent-fg: var(--brand-foreground);
   --lk-danger: var(--destructive);
   --lk-danger-fg: #fff;
   --lk-control-fg: var(--foreground);

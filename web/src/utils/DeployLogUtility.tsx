@@ -26,7 +26,7 @@ const phasesFor = (deploy: Deploy): Phase[] => (deploy.kind === "build" ? ["chec
 
 export const isTerminal = (deploy: Deploy): boolean => deploy.status === "healthy" || deploy.status === "failed";
 
-const titleFor = (deploy: Deploy): string => {
+export const deployTitle = (deploy: Deploy): string => {
   if (deploy.status === "failed") return "Deploy failed";
   if (deploy.status === "healthy") return "Deployed";
   if (deploy.kind === "build") return "Building and deploying";
@@ -83,7 +83,7 @@ export const deriveDeployProgress = (deploy: Deploy, lines: DeployLogLine[], now
     });
   });
 
-  return { title: titleFor(deploy), steps };
+  return { title: deployTitle(deploy), steps };
 };
 
 export const formatStepDuration = (ms: number | undefined): string => {

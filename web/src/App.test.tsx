@@ -18,7 +18,7 @@ describe("App", () => {
   });
 
   // Each test re-imports the whole app graph (vi.resetModules above); under full-suite load that alone can pass vitest's 5s default.
-  const wholeAppImport = 20_000;
+  const wholeAppImport = 45_000;
 
   it("renders the home page through the router", async () => {
     const { App } = await import("./App");

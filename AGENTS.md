@@ -20,7 +20,7 @@ The product is implemented. The work now is improving it domain by domain.
 | Frontend (React) | `practices/react-guide.md`, the F1 to F7 commandments are enforced | `practices/design-language.md` |
 | SDK, automations host, desktop | `practices/typescript.md` | `practices/react-guide.md` for the desktop launcher |
 | Phone app (React Native) | `practices/native.md` | `practices/react-guide.md`, the rules it inherits |
-| Design or visual work | `practices/design-language.md`, the Mono Console spec | `practices/react-guide.md` |
+| Design or visual work | `practices/design-language.md`, the design language | `practices/react-guide.md` |
 | Testing | `practices/testing.md` | The language file above |
 | Any code | `practices/borrowed-practices.md`, the cross-cutting rules | `practices/README.md` for the index |
 | Install, CI, release | [CI and releases](https://nexul.io/docs/contributing/ci-and-releases/) | `internal/install/`, `.goreleaser.yaml`, `docker-compose.debug.yml` for development |
@@ -86,9 +86,10 @@ these win.
     over ternary; no gratuitous `useState` or `useEffect`; no prop drilling;
     thin files. Implement against the rule, not against nearby code that
     predates it. Run the self-review checklist before calling web work done.
-11. Extend the Mono Console, never re-theme. No new hues, no serif or script
-    fonts. Color is reserved for status signal. A design that needs a missing
-    token adds it to `web/src/index.css` and to the token table in
+11. Extend the design language, never re-theme. Tokens only, no one-off
+    colours: the one accent is `brand`, held to the roles the spec names, and
+    status keeps its own hues. No serif or script fonts. A design that needs a
+    missing token adds it to `web/src/index.css` and to the token table in
     `practices/design-language.md`, never as a one-off class.
 12. Tablet and desktop. Build `web/` at 768px first and verify at 768, 1024,
     and 1440px before calling web work done; phones are served by the

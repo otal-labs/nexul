@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { ThemeId } from "@/enums/Theme";
-import { applyThemePalette, THEME_DEFINITIONS } from "@/lib/themePalettes";
+import { applyThemePalette, getThemeDefinition, THEME_DEFINITIONS } from "@/lib/themePalettes";
 
 const OKLCH_PATTERN = /^oklch\(/;
 
@@ -49,6 +49,15 @@ describe("applyThemePalette", () => {
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--shape-md")).toBe("");
     expect(root.style.getPropertyValue("--foreground")).toBe("");
+  });
+
+  it("a palette's primary becomes the accent, and the default palette clears it again", () => {
+    const root = document.documentElement;
+    applyThemePalette(ThemeId.Ocean, "dark");
+    expect(root.style.getPropertyValue("--brand")).toBe(getThemeDefinition(ThemeId.Ocean).colors?.dark.primary);
+    expect(root.style.getPropertyValue("--brand-foreground")).toBe("var(--primary-foreground)");
+    applyThemePalette(ThemeId.Console, "dark");
+    expect(root.style.getPropertyValue("--brand")).toBe("");
   });
 
   it("Console leaves no overridden vars on the root", () => {

@@ -27,13 +27,13 @@ export const InterviewSourceRow = ({ source, change, readOnly }: InterviewSource
         {source.gone && <span className="truncate text-sm text-muted-foreground">{SOURCE_KIND_LABEL[source.kind]} · No longer there</span>}
         {source.not_visible && <span className="truncate text-sm text-muted-foreground">{SOURCE_KIND_LABEL[source.kind]} · Not visible to you</span>}
         {named && (
-          <span className={cn("truncate", source.kind === "path" ? "font-mono text-[13px]" : "text-sm")} title={name}>
+          <span className={cn("truncate", source.kind === "path" ? "font-mono text-sm" : "text-sm")} title={name}>
             {name}
           </span>
         )}
-        {change !== null && <span className="shrink-0 font-mono text-[10px] text-muted-foreground uppercase">{change}</span>}
+        {change !== null && <span className="shrink-0 font-mono text-xs text-muted-foreground">{change}</span>}
       </span>
-      {readOnly && !source.gone && <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{SOURCE_STANCE_LABEL[source.stance]}</span>}
+      {readOnly && !source.gone && <span className="shrink-0 font-mono text-xs text-muted-foreground">{SOURCE_STANCE_LABEL[source.stance]}</span>}
       {!readOnly && !source.gone && (
         <InterviewSourceStance
           label={name}

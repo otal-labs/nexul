@@ -36,7 +36,7 @@ const Endpoint = ({ x, label, children }: EndpointProps) => (
     style={{ left: `${(x / VB.w) * 100}%`, top: `${(Y / VB.h) * 100}%` }}
   >
     <span className="grid size-11 place-items-center rounded-lg border border-border bg-card shadow-card">{children}</span>
-    <span className="absolute top-full mt-1.5 text-[11px] whitespace-nowrap text-muted-foreground">{label}</span>
+    <span className="absolute top-full mt-1.5 text-xs whitespace-nowrap text-muted-foreground">{label}</span>
   </div>
 );
 
@@ -85,7 +85,7 @@ export const ConnectionPanel = ({ connected, hostname }: ConnectionPanelProps) =
           />
           {connected ? "Connected" : "Waiting for connection…"}
         </span>
-        <span className="max-w-full font-mono text-[11px] break-all text-muted-foreground">{hostname}</span>
+        <span className="max-w-full font-mono text-xs break-all text-muted-foreground">{hostname}</span>
       </div>
     </div>
   );

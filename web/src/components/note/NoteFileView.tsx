@@ -47,7 +47,7 @@ export const NoteFileView = ({ message, fileName, canEdit }: NoteFileViewProps) 
           {canEdit && <NoteDeleteButton message={message} />}
         </div>
       </div>
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-10">
+      <div className="rounded-lg border border-border bg-card p-6 shadow-card sm:p-8">
         {isPending && <LoadingDisplay label="Loading note…" />}
         {error && <ErrorDisplay error={error} title="Failed to load the note." />}
         {markdown !== undefined && session && (

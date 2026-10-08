@@ -45,7 +45,7 @@ export const AppearanceSection = () => {
                   className={cn(
                     "flex flex-col items-center gap-1.5 rounded-md border p-3 text-sm transition-colors duration-150 ease-standard",
                     active
-                      ? "border-primary bg-accent/60 text-foreground"
+                      ? "border-brand bg-accent/60 text-foreground"
                       : "border-border text-muted-foreground hover:bg-accent/30",
                   )}
                 >
@@ -71,7 +71,7 @@ export const AppearanceSection = () => {
                   onClick={() => setThemeId(theme.id)}
                   className={cn(
                     "flex flex-col items-center gap-2 rounded-md border p-3 transition-colors duration-150 ease-standard",
-                    active ? "border-primary bg-accent/60" : "border-border hover:bg-accent/30",
+                    active ? "border-brand bg-accent/60" : "border-border hover:bg-accent/30",
                   )}
                 >
                   <span className="flex -space-x-1.5">

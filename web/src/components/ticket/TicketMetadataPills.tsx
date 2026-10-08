@@ -145,7 +145,7 @@ export const PersonPill = ({ field, label }: PersonPillProps) => {
       <PopoverTrigger asChild>
         <button type="button" aria-label={`${label}: ${name || "no one"}`} className={pillTriggerClass}>
           {!login && <UserIcon className="size-3.5 text-muted-foreground" aria-hidden />}
-          {login && <PersonAvatar login={login} src={person.avatar_url} className="size-4 text-[8px]" />}
+          {login && <PersonAvatar login={login} src={person.avatar_url} className="size-4" />}
           {name || label}
         </button>
       </PopoverTrigger>

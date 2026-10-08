@@ -75,10 +75,11 @@ describe("ProjectSettingsPage", () => {
     expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
   });
 
-  it("renders the page context line and the full section nav", async () => {
+  it("names the project in the breadcrumb and renders the full section nav", async () => {
     renderPage();
 
-    expect(await screen.findByRole("heading", { name: "Backend" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Backend" })).toHaveAttribute("href", "/acme/board/p-1");
     expect(screen.getByRole("link", { name: "Categories" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Repositories" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Services" })).toBeInTheDocument();

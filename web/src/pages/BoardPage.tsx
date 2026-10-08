@@ -58,47 +58,45 @@ export const BoardPage = () => {
   } = useBoardActions({ projects, selectedProjectIds: filters.projectIds, projectId: scopedProjectId });
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Full-bleed: the board is the one page where width is columns, so it gets the whole viewport. */}
-      <Container className="max-w-none space-y-4 py-6">
-        {!routeParam && (
-          <BoardUnscopedStates
-            isLoading={isPending}
-            error={error}
-            hasProjects={projects.length > 0}
-          />
-        )}
-        {scopedNotFound && <BoardNotFoundState />}
-        {scopedProject && <InterviewBanner project={scopedProject} />}
-        {routeParam && !scopedNotFound && (
-          <ProjectBoardSection
-            projectId={scopedProjectId}
-            projectName={scopedProject?.name}
-            isLoading={isPending || ticketsPending}
-            error={error ?? ticketsError}
-            tickets={tickets}
-            swimlanes={swimlanes}
-            columns={statuses}
-            filters={filters}
-            developers={developers}
-            showWaitingForMeToTest={showWaitingForMeToTest}
-            onToggleProject={toggleProject}
-            onToggleCategory={toggleCategory}
-            onToggleLabel={toggleLabel}
-            onSelectType={selectType}
-            onToggleStatus={toggleStatus}
-            onToggleDeveloper={toggleDeveloper}
-            onToggleWaitingForMeToTest={toggleWaitingForMeToTest}
-            onSearch={setSearch}
-            onClear={clearAll}
-            onNewTicket={() => void openCreateTicketDialog()}
-            onNewCategory={() => void openCreateCategoryDialog()}
-            onDrop={dropTicket}
-            onReorderColumns={reorderColumns}
-            onAddTicket={(categoryId, statusId) => void addTicketToColumn(categoryId, statusId)}
-          />
-        )}
-      </Container>
-    </div>
+    // Full-bleed: the board is the one page where width is columns, so it gets the whole panel.
+    <Container className="max-w-none space-y-4 py-8">
+      {!routeParam && (
+        <BoardUnscopedStates
+          isLoading={isPending}
+          error={error}
+          hasProjects={projects.length > 0}
+        />
+      )}
+      {scopedNotFound && <BoardNotFoundState />}
+      {scopedProject && <InterviewBanner project={scopedProject} />}
+      {routeParam && !scopedNotFound && (
+        <ProjectBoardSection
+          projectId={scopedProjectId}
+          project={scopedProject}
+          isLoading={isPending || ticketsPending}
+          error={error ?? ticketsError}
+          tickets={tickets}
+          swimlanes={swimlanes}
+          columns={statuses}
+          filters={filters}
+          developers={developers}
+          showWaitingForMeToTest={showWaitingForMeToTest}
+          onToggleProject={toggleProject}
+          onToggleCategory={toggleCategory}
+          onToggleLabel={toggleLabel}
+          onSelectType={selectType}
+          onToggleStatus={toggleStatus}
+          onToggleDeveloper={toggleDeveloper}
+          onToggleWaitingForMeToTest={toggleWaitingForMeToTest}
+          onSearch={setSearch}
+          onClear={clearAll}
+          onNewTicket={() => void openCreateTicketDialog()}
+          onNewCategory={() => void openCreateCategoryDialog()}
+          onDrop={dropTicket}
+          onReorderColumns={reorderColumns}
+          onAddTicket={(categoryId, statusId) => void addTicketToColumn(categoryId, statusId)}
+        />
+      )}
+    </Container>
   );
 };

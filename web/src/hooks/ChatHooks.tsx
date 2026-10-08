@@ -190,9 +190,11 @@ export const useGetOrCreateDocThread = (workspaceId: string) => {
 export const upsertCachedMessage = (client: QueryClient, message: Message) =>
   client.setQueriesData<Message[]>({ queryKey: [getChatMessagesKey, message.conversation_id] }, (old) => {
     if (!old) return old;
-    const kept = old.filter((m) => !(m.pending && m.author_id === message.author_id && m.body === message.body));
-    if (kept.some((m) => m.id === message.id)) return kept.map((m) => (m.id === message.id ? message : m));
-    return [...kept, message];
+    const confirms = (m: Message) => m.pending && m.author_id === message.author_id && m.body === message.body;
+    const retired = old.find(confirms);
+    const kept = old.filter((m) => !confirms(m));
+    if (kept.some((m) => m.id === message.id)) return kept.map((m) => (m.id === message.id ? { ...message, client_key: m.client_key } : m));
+    return [...kept, { ...message, client_key: retired?.id }];
   });
 
 export const removeCachedMessage = (client: QueryClient, conversationId: string, messageId: string) =>

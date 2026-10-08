@@ -27,7 +27,7 @@ export const PRChip = ({ pr }: PRChipProps) => (
     rel="noreferrer"
     title={pr.title}
     aria-label={`#${pr.number} ${pr.title}, ${pr.state}`}
-    className="rounded-sm hover:underline"
+    className="rounded-md hover:underline"
   >
     <NoFillBadge icon={stateIcons[pr.state]} color={stateColors[pr.state]} className="font-mono tabular-nums">
       #{pr.number}

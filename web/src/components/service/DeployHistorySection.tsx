@@ -18,9 +18,9 @@ export const DeployHistorySection = ({ deploys, isLoading }: DeployHistorySectio
     description="Every image or build this stack has run, newest first."
   >
     {isLoading && <LoadingDisplay label="Loading deploy history" />}
-    {!isLoading && (!deploys || deploys.length === 0) && <EmptyRow>No deploys yet.</EmptyRow>}
+    {!isLoading && (!deploys || deploys.length === 0) && <EmptyRow flush>No deploys yet.</EmptyRow>}
     {deploys && deploys.length > 0 && (
-      <div className="space-y-6">
+      <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
         {groupDeploysByDay(deploys).map((group) => (
           <DeployDaySection
             key={`${group.label}-${group.deploys[0]?.id}`}
@@ -28,7 +28,7 @@ export const DeployHistorySection = ({ deploys, isLoading }: DeployHistorySectio
             deploys={group.deploys}
           />
         ))}
-      </div>
+      </ul>
     )}
   </SettingsCard>
 );

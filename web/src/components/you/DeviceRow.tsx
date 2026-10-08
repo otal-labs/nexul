@@ -2,6 +2,7 @@ import { XIcon } from "lucide-react";
 
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { DeviceIcon } from "@/components/you/DeviceIcon";
+import { microheaderClass } from "@/components/Microheader";
 import type { Session } from "@/models/User";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/utils/TimeUtility";
@@ -33,7 +34,7 @@ export const DeviceRow = ({ session, arrived = false, leaving = false, onSignOut
       <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
         <span className="truncate">{[session.platform, session.label].filter(Boolean).join(" · ")}</span>
         {session.current && (
-          <span className="shrink-0 font-mono text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
+          <span className={cn(microheaderClass, "shrink-0")}>
             This device
           </span>
         )}

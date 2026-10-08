@@ -13,7 +13,7 @@ export const RepoRow = ({ repo }: RepoRowProps) => {
   const removeRepo = useRemoveProjectRepo();
 
   return (
-    <li className="-mx-2 flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors duration-[120ms] ease-standard hover:bg-accent/40">
+    <li className="-mx-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-[120ms] ease-standard hover:bg-accent/40">
       <span className="flex min-w-0 flex-1 items-center gap-2">
         <span className="truncate font-mono text-xs">{repo.full_name}</span>
         {repo.role === RepoRole.Tests && (

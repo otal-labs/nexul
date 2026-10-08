@@ -2,6 +2,7 @@ import { ChevronsUpDownIcon } from "lucide-react";
 
 import { PopoverTrigger } from "@/components/ui/popover";
 import type { MyWorkspaceInfo } from "@/models/Permission";
+import { avatarGradient } from "@/lib/avatarGradient";
 import { cn } from "@/lib/utils";
 import { effectiveAvatar, userLabel } from "@/models/User";
 import type { User } from "@/models/User";
@@ -40,15 +41,18 @@ export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTrigger
         />
       )}
       {effectiveAvatar(user) === "" && (
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-[12px] font-semibold text-primary">
+        <span
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white"
+          style={{ backgroundImage: avatarGradient(user.login) }}
+        >
           {initials(userLabel(user))}
         </span>
       )}
       {!collapsed && (
         <>
           <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="truncate text-[13px] font-medium">{userLabel(user)}</span>
-            {role && <span className="truncate text-[11px] text-muted-foreground">{role.role_name}</span>}
+            <span className="truncate text-sm font-medium">{userLabel(user)}</span>
+            {role && <span className="truncate text-xs text-muted-foreground">{role.role_name}</span>}
           </span>
           <ChevronsUpDownIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
         </>

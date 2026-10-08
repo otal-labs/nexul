@@ -51,9 +51,9 @@ const TunnelCheckRow = ({ check }: TunnelCheckRowProps) => {
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="truncate text-xs font-medium">{check.name}</span>
-        <span className="truncate font-mono text-[11px] text-muted-foreground">{check.detail}</span>
+        <span className="truncate font-mono text-xs text-muted-foreground">{check.detail}</span>
       </span>
-      <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+      <span className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
         <span className={cn("size-1.5 rounded-full transition-colors duration-150 ease-standard", STATE_DOT[check.state])} aria-hidden />
         {check.label}
       </span>
@@ -70,7 +70,7 @@ export const TunnelChecks = ({ status }: TunnelChecksProps) => (
   <div className="rounded-lg border border-border bg-card" role="status" aria-live="polite">
     <div className="flex items-center justify-between border-b border-border px-3 py-2">
       <span className="text-xs font-semibold">Checks</span>
-      <span className="text-[11px] text-muted-foreground">{tunnelConnected(status) ? "Both passed" : "Waiting"}</span>
+      <span className="text-xs text-muted-foreground">{tunnelConnected(status) ? "Both passed" : "Waiting"}</span>
     </div>
     <ul className="divide-y divide-border">
       <TunnelCheckRow check={tunnelCheck(status)} />

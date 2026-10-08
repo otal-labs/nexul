@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ChevronRightIcon, FolderIcon, FolderOpenIcon } from "lucide-react";
 
+import { microheaderClass } from "@/components/Microheader";
 import { cn } from "@/lib/utils";
 
 interface FolderToggleProps {
@@ -20,7 +21,8 @@ export const FolderToggle = ({ name, open, onToggle, meta, metaClassName, classN
     onClick={onToggle}
     aria-expanded={open}
     className={cn(
-      "flex min-w-0 flex-1 items-center gap-1.5 self-stretch font-mono text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase outline-none hover:text-foreground focus-visible:text-foreground",
+      microheaderClass,
+      "flex min-w-0 flex-1 items-center gap-1.5 self-stretch outline-none hover:text-foreground focus-visible:text-foreground",
       className,
     )}
   >
