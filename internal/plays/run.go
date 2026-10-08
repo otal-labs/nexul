@@ -1233,7 +1233,8 @@ func (r *Runner) ResumeRunsAfterRestart(ctx context.Context) error {
 		return fmt.Errorf("list running trails: %w", err)
 	}
 	for _, trail := range trails {
-		tgt, err := r.readTarget(ctx, trail.TargetType, trail.TargetID)
+		// Boot has no signed-in actor and the target reads check permissions, so read as the run's starter.
+		tgt, err := r.readTarget(identity.WithActor(ctx, identity.Actor{ID: trail.StarterID}), trail.TargetType, trail.TargetID)
 		if err != nil {
 			r.log.Warn("plays: restart could not read the run's target", "trail", trail.ID, "error", err)
 		}
