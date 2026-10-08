@@ -72,7 +72,7 @@ export const TicketPageBody = ({
                     workspaceId={workspaceId}
                     targetType="ticket"
                     targetId={ticket.id}
-                    emptyMessage="No plays have run on this ticket yet."
+                    emptyMessage="No play runs yet."
                     className="border-t-0 pt-0"
                   />
                 )}

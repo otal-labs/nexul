@@ -28,7 +28,7 @@ export const TicketTestSection = ({ ticket }: TicketTestSectionProps) => {
       <h2 id="ticket-testing" className={cn(microheaderClass, "px-2")}>
         Testing
       </h2>
-      {!testing && <p className="px-2 text-xs text-muted-foreground">Pass and fail open in a Testing column.</p>}
+      {!testing && <p className="px-2 text-xs text-muted-foreground">Pass and Fail show in a testing column.</p>}
       {testing && (
         <div className="space-y-3">
           <TestTargetRow ticket={ticket} />

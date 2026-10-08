@@ -30,8 +30,8 @@ export const TicketLinksSection = ({ ticket }: TicketLinksSectionProps) => {
         <AddTicketLinkMenu ticket={ticket} />
       </div>
       {isPending && <LoadingDisplay label="Loading linked tickets…" />}
-      {error && <ErrorDisplay error={error} title="Failed to load linked tickets." />}
-      {empty && <p className="px-2 text-xs text-muted-foreground">No source doc, blockers, or found-in links.</p>}
+      {error && <ErrorDisplay error={error} title="Couldn't load linked tickets." />}
+      {empty && <p className="px-2 text-xs text-muted-foreground">No links yet.</p>}
       {ticket.doc_id && (
         <LinkGroupSection title="Source">
           <TicketSourceRow docId={ticket.doc_id} onRemove={() => setSource.mutate({ id: ticketId, docId: "" })} />

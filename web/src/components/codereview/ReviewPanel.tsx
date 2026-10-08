@@ -15,7 +15,7 @@ export const ReviewPanel = ({ ticketId }: ReviewPanelProps) => {
 
   return (
     <>
-      {error && <ErrorDisplay error={error} title="Failed to load reviews" />}
+      {error && <ErrorDisplay error={error} title="Couldn't load reviews." />}
       {data && data.length > 0 && (
         <section className="space-y-3">
           <h2 className={cn(microheaderClass, "px-2 pb-1")}>
