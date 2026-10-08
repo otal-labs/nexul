@@ -14,7 +14,7 @@ export const InterviewLengthMeter = ({ length }: InterviewLengthMeterProps) => {
       className={cn("font-mono text-xs tabular-nums text-muted-foreground", over && "text-destructive")}
     >
       {length.toLocaleString("en-US")} / {MAX_INTERVIEW_CHARS.toLocaleString("en-US")} characters
-      {over && " · over the cap, a save will be refused. Keep it to rules, not a transcript."}
+      {over && " · over the limit, so saving fails. Keep it to rules, not a transcript."}
     </p>
   );
 };

@@ -54,7 +54,7 @@ export const MemoryListRow = ({ memory, projectToken, selected }: MemoryListRowP
             <RowActions itemLabel={memory.title} moveTo={moveTo} onClone={onClone} onDelete={onDelete} />
           )
         }
-        trailing={<MemoryPinSwitch memory={memory} label={`Require ${memory.title}`} size="sm" />}
+        trailing={<MemoryPinSwitch memory={memory} label={`Always include ${memory.title}`} size="sm" />}
       />
       {cloneOpen && <CloneMemoryDialog memoryId={memory.id} open onClose={() => setCloneOpen(false)} />}
     </>

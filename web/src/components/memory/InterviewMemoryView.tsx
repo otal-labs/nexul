@@ -24,7 +24,7 @@ export const InterviewMemoryView = ({ memory, projectToken }: InterviewMemoryVie
           Open in Memories →
         </Link>
       </div>
-      <p className="mb-6 text-sm text-muted-foreground">Always included in every agent turn in this project; it can't be switched off.</p>
+      <p className="mb-6 text-sm text-muted-foreground">Every agent turn in this project reads it first. It can't be switched off.</p>
       <DocBodyView body={memory.body} />
     </article>
   );

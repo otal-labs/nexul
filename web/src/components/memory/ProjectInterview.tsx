@@ -20,7 +20,7 @@ export const ProjectInterview = ({ project }: ProjectInterviewProps) => {
     <PageHeader
       crumbs={[workspaceCrumb, { label: project.name, to: wsPath(`/board/${project.id}`) }]}
       title="Interview"
-      meta="Answer a few questions about how this project works. The agent asks about any gaps, then writes the rules every agent turn here follows."
+      meta="Answer questions about how this project works. The agent asks about gaps, then writes the rules every agent turn here follows."
     />
     <div className="@container space-y-6">
       <HarnessReadinessNote projectId={project.id} className="text-sm" />

@@ -75,7 +75,7 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
                   <Input
                     value={whenToUse}
                     onChange={(e) => setWhenToUse(e.target.value)}
-                    placeholder="When should Agent use this? e.g. writing React code"
+                    placeholder="When to use it, e.g. when writing React code"
                     aria-label="When to use"
                     className="text-sm"
                   />

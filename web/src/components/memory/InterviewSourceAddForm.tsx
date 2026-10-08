@@ -26,7 +26,7 @@ interface InterviewSourceAddFormProps {
 
 const STANCE_HINT: Record<SourceStance, string> = {
   follow: "The agent drafts answers from it.",
-  question: "Never drafted from; the follow-ups ask about it.",
+  question: "Never drafted from. The follow-ups ask about it.",
 };
 
 const kindClass = "h-7 px-2.5 text-xs text-muted-foreground data-[state=on]:bg-accent data-[state=on]:text-foreground";

@@ -111,7 +111,7 @@ export const buildSections = (
   rounds.forEach((round, i) => {
     sections.push({
       key: String(round),
-      label: `Follow-ups from the agent ${i + 1}`,
+      label: `Follow-ups, round ${i + 1}`,
       rows: answers
         .filter((a) => a.round === round)
         .map((a) => ({
@@ -155,7 +155,7 @@ export const liveSection = (question: HarnessQuestion, stored: InterviewSectionD
   const round = Math.max(0, ...stored.flatMap((s) => s.rows.map((r) => r.round))) + 1;
   return {
     key: `live:${question.request_id}`,
-    label: `Follow-ups from the agent ${round}`,
+    label: `Follow-ups, round ${round}`,
     rows: question.questions.map((item) => {
       const { question: text, why } = splitWhy(item.text);
       const draft = drafts[item.id];

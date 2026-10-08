@@ -16,7 +16,7 @@ const wsPath = useWorkspacePath();
     const ok = await confirm({
       title: "Delete memory?",
       message: `"${memory.title}" and its versions are deleted for good.`,
-      confirmLabel: "Delete",
+      confirmLabel: "Delete memory",
     });
     if (!ok) return;
     deleteMemory.mutate(memory.id, {

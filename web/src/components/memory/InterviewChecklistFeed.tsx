@@ -62,7 +62,7 @@ export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, 
     <div className="min-w-0 space-y-6">
       {memoryWithoutAnswers && (
         <p className="text-sm text-muted-foreground">
-          This memory came from an earlier interview. Answering these questions lets the agent update it.
+          An earlier interview wrote this memory. Answer these and the agent updates it.
         </p>
       )}
       {sections.map((section) => (
