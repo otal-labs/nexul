@@ -80,7 +80,7 @@ describe("StackPage", () => {
     expect(screen.getByText("compose")).toBeInTheDocument();
     expect(screen.getByText("instance")).toBeInTheDocument();
     expect(screen.getByText("No deploys yet")).toBeInTheDocument();
-    expect(screen.getByText("api", { selector: "span.font-mono" })).toBeInTheDocument();
+    expect(screen.getByText("api", { selector: "header span.font-mono" })).toBeInTheDocument();
   });
 
   it("an instance stack with no project has Topology as its parent crumb and offers no repository to attach", async () => {

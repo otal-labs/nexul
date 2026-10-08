@@ -16,7 +16,7 @@ export interface DeployProgress {
 
 type Phase = Exclude<DeployPhase, "">;
 
-const phaseLabels: Record<Phase, string> = {
+export const phaseLabels: Record<Phase, string> = {
   checkout: "Cloning repository",
   build: "Building",
   deploy: "Deploying",

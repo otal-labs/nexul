@@ -178,6 +178,8 @@ second ambient animation or anything animating layout behind the panels.
 | Status as icon or dot plus text, never a tinted chip | Readable in both themes and keeps status from competing with the accent; tinted fills washed out once several hues appeared together |
 | Board cards: type and label as tinted pills | The 15% tint with an 800/400 text shade holds 4.5:1 in both themes. Type and label may use the same pill wherever they show as a tag group; status never does |
 | Board cards: the key as an eyebrow, the person opposite the pills | Against the avatar-beside-title card and a card with a ruled footer: with the 28px avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the footer rule made every card taller for a line that spacing already separates |
+| Stack status as one well split in three | Against three separate stat tiles: the tiles were three more boxes inside the panel and had no room to list the services, which are what the stack is |
+| Deploy steps beside the log | Against the steps over the log: beside it the timeline stays in view while the log scrolls, and the log gets the panel's height |
 | Doc body on a sheet, the ticket body open | Against an open doc body and the boxed card: the sheet with page margins makes the doc read as the thing being written; a ticket's body is short and sits beside its rail, where a box only framed the empty editing space |
 | Board header: a project mark and the stage bar beside the title | Against a full-width stage strip and a stat row of stages under the header: both cost the board 50 to 80px of height on the page where height is cards; beside the title the summary is free and still reads first |
 | Palettes theme the accent and the field | A palette's primary becomes its brand, so Ocean is blue and Grove is green everywhere the ember was, field included |
@@ -395,11 +397,16 @@ primary action; Info's reads "Continue to <next step>". No new stepper chrome
 beyond this row exists. The URL step is the whole navigation state.
 
 Stack detail page. The header keeps the detail-page shape (breadcrumb of the
-workspace and project, title, the mono slug and the latest deploy's status in
-the meta line, actions top right) and adds a facts grid: a mono microheader over
-each value (Image, Runner, Strategy, Hostnames, Repository, or Network
-when no repository is attached); a compose stack runs several images, so it shows
-Services, a count with how many are not running, in Image's place. Below it the page is the settings shell:
+workspace and project, title, the mono slug in the meta line, actions top
+right), then the live status (`StackLiveHero`): one `surface-2` well split in
+three by hairlines from a 36rem page. Last deploy is the deploy's state in
+20px semibold behind its `HealthDot` with the mono "last deploy 4h ago" under
+it; Services is the mono count with how many are up or not running, over one
+line per service (a status dot, the mono name, its state trailing, four at
+most then "+N more"); Hostnames is the first as a link with an arrow, then
+"+N more". Under the well a facts grid holds the rest: a mono microheader
+over each value (Image for a run stack, Runner, Strategy, Repository, or
+Network when no repository is attached). Below it the page is the settings shell:
 `SettingsSectionNav` driving a `/:section` path segment (Overview, Logs, Exposures, Branch deploys,
 Deploy history, Danger zone), one or two `SettingsCard`s per section. The nav
 is a scrolling top row below 1024px and a side column from it, on every
@@ -460,6 +467,18 @@ cell in `cell-label` at 40%. Past six fields, a long description, or two
 embeds, one hairline fold bar opens the rest. Only a bot's text renders
 Discord's markdown subset. `BotMessageRow` and `EmbedCard` in
 `web/src/components/chat/` are the reference.
+
+Deploy page. The header names the outcome ("Deployed", "Deploy failed")
+with the status, id, image and time in its meta line. From a 48rem page the
+steps run down a 15rem column beside the log and stay in view while it
+scrolls; narrower, they sit above it. Each step is a node on a rail: a filled
+`success` check once done (the rail below it in `success` at 50%), a spinner
+ringed in `info` while active, a filled `destructive` cross on failure, a
+hollow ring while pending and a dashed one when skipped, the label, and the
+mono duration trailing. The log names each phase above its first line
+(11px uppercase mono, muted), so it reads against the steps.
+`DeployProgressSection` is the reference; the instance upgrade uses the
+same step list.
 
 Logs view. The stack page's Logs section is a line tab row of the stack's
 services over one terminal-style block per service: a mono timestamp column
