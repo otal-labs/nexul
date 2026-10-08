@@ -31,7 +31,7 @@ const SetupRunRow = ({ row, index, selected, retryDisabled, onSelect, onRetry }:
           type="button"
           aria-pressed={selected}
           onClick={() => onSelect(row.provider)}
-          className="block w-full rounded-sm text-left text-sm break-words outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring/30 focus-visible:after:ring-inset"
+          className="block w-full rounded-md text-left text-sm break-words outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring/30 focus-visible:after:ring-inset"
         >
           <span className={cn("transition-opacity duration-150 ease-standard", done && "text-muted-foreground line-through opacity-70")}>{row.name}</span>
           <span className="sr-only">: {SETUP_STATE_LABEL[row.state]}</span>
@@ -64,7 +64,7 @@ export const SetupRunRows = ({ rows, selected, retryDisabled, onSelect, onRetry 
         <span id="setup-providers" className="text-xs font-semibold">
           Providers
         </span>
-        <span role="status" className="font-mono text-[11px] text-muted-foreground tabular-nums">
+        <span role="status" className="font-mono text-xs text-muted-foreground tabular-nums">
           {confirmed}/{rows.length} confirmed
         </span>
       </div>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
-import { EmptyState } from "@/components/EmptyState";
+import { EmptyRow } from "@/components/EmptyRow";
 import { PermissionCheckRow } from "@/components/access/PermissionCheckRow";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { useFetchPermissionCatalog, useFetchPermissionUsers, useSetPermissions } from "@/hooks/PermissionHooks";
@@ -94,7 +94,7 @@ export const PermissionsForm = ({ resourceType, resourceIds }: PermissionsFormPr
               <span className="flex-1">{user.login}</span>
             </PermissionCheckRow>
           ))}
-          {users?.length === 0 && <EmptyState title="No users yet" className="border-0 p-3" />}
+          {users?.length === 0 && <EmptyRow className="px-2 py-2">No users yet</EmptyRow>}
         </div>
       </section>
 

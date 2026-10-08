@@ -7,7 +7,7 @@ interface TeamFeedProps {
 }
 
 export const TeamFeed = ({ people, onOpen }: TeamFeedProps) => (
-  <ul aria-label="Team" className="divide-y divide-border overflow-hidden rounded-md border bg-card shadow-card">
+  <ul aria-label="Team" className="divide-y divide-border overflow-hidden rounded-md border">
     {people.map((person, index) => (
       <TeamPersonRow key={person.id} person={person} index={index} onOpen={onOpen} />
     ))}

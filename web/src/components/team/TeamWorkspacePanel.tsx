@@ -2,7 +2,7 @@ import { useState } from "react";
 import { UserMinus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Microheader } from "@/components/Microheader";
+import { Microheader, microheaderClass } from "@/components/Microheader";
 import { TeamOverridesForm } from "@/components/team/TeamOverridesForm";
 import { TeamProjectAccess } from "@/components/team/TeamProjectAccess";
 import { TeamReadOnlyReason } from "@/components/team/TeamReadOnlyReason";
@@ -10,6 +10,7 @@ import { TeamRemovedNotice } from "@/components/team/TeamRemovedNotice";
 import { TeamRoleSelect } from "@/components/team/TeamRoleSelect";
 import { useMemberDraft } from "@/hooks/useMemberDraft";
 import type { TeamMembership, TeamWorkspace } from "@/models/Team";
+import { cn } from "@/lib/utils";
 
 interface TeamWorkspacePanelProps {
   workspace: TeamWorkspace;
@@ -17,8 +18,6 @@ interface TeamWorkspacePanelProps {
   membership: TeamMembership;
 }
 
-const roleChipClass =
-  "inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
 
 export const TeamWorkspacePanel = ({ workspace, membership }: TeamWorkspacePanelProps) => {
   const { draft, dispatch } = useMemberDraft();
@@ -35,7 +34,7 @@ export const TeamWorkspacePanel = ({ workspace, membership }: TeamWorkspacePanel
         <section className="space-y-2">
           <div className="flex min-h-9 items-center gap-2">
             <Microheader className="flex-1">Role</Microheader>
-            {membership.is_owner && <span className={roleChipClass}>Owner</span>}
+            {membership.is_owner && <span className={cn(microheaderClass, "shrink-0 text-foreground")}>Owner</span>}
             {readOnly && <span className="text-sm text-muted-foreground">{membership.role_name}</span>}
             {editable && (
               <TeamRoleSelect

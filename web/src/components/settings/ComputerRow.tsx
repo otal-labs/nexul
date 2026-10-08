@@ -1,4 +1,4 @@
-import { Clock3, RefreshCwIcon, Trash2 } from "lucide-react";
+import { CircleAlert, Clock3, RefreshCwIcon, Trash2 } from "lucide-react";
 
 import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
 import { ComputerMCPToken } from "@/components/settings/ComputerMCPToken";
@@ -57,16 +57,20 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
     <li className="space-y-2 bg-card px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex items-center gap-1.5 truncate text-sm font-medium">
+          <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
             <span title={dot.label} aria-label={dot.label} className={`inline-block size-2 shrink-0 rounded-full ${dot.className}`} />
-            {computer.name}
+            <span className="truncate" title={computer.name}>
+              {computer.name}
+            </span>
             {expired && (
-              <span className="ml-2 rounded bg-destructive/15 px-1.5 py-0.5 text-xs text-destructive">
+              <span className="ml-1 flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
+                <CircleAlert className="size-3.5 text-destructive" aria-hidden />
                 expired — acts as unpaired
               </span>
             )}
             {expiringSoon && (
-              <span className="ml-2 rounded bg-warning/15 px-1.5 py-0.5 text-xs text-warning">
+              <span className="ml-1 flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
+                <Clock3 className="size-3.5 text-warning" aria-hidden />
                 expires in {days}d
               </span>
             )}
@@ -77,7 +81,7 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
               pairing in progress
             </p>
           )}
-          <p className="truncate font-mono text-xs text-muted-foreground tabular-nums">
+          <p className="truncate font-mono text-xs text-muted-foreground tabular-nums" title={computer.server_url}>
             {computer.server_url} · {harnessLabel(computer.kind)} {computer.harness_version}
           </p>
         </div>

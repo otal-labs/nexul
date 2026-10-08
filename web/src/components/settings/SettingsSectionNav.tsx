@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { Link } from "react-router";
 
+import { microheaderClass } from "@/components/Microheader";
 import { UpdateDot } from "@/components/UpdateDot";
 import { cn } from "@/lib/utils";
 
@@ -43,7 +44,8 @@ export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: Setti
           {item.group !== undefined && item.group !== items[index - 1]?.group && (
             <li
               className={cn(
-                "shrink-0 px-3 font-mono text-[11px] font-medium tracking-wide text-muted-foreground/70 uppercase lg:pb-1",
+                microheaderClass,
+                "shrink-0 px-3 lg:pb-1",
                 index > 0 && "ml-2 lg:ml-0 lg:pt-4",
               )}
             >
