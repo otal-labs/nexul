@@ -8,17 +8,15 @@ import { Spinner } from "@/components/ui/spinner";
 import { useCommandActionItems } from "@/hooks/useCommandActionItems";
 import { useCommandNavItems } from "@/hooks/useCommandNavItems";
 import { useCommandSearch } from "@/hooks/useCommandSearch";
+import { useCommandPaletteStore } from "@/stores/commandPaletteStore";
 import { commandOptionId, filterCommandGroups, type CommandItem } from "@/models/Command";
-
-interface CommandPaletteBodyProps {
-  onSelect: (item: CommandItem) => void;
-}
 
 const LIST_ID = "command-palette-list";
 
 // Mounted only while the palette is open, so its queries run only then.
-export const CommandPaletteBody = ({ onSelect }: CommandPaletteBodyProps) => {
+export const CommandPaletteBody = () => {
   const [query, setQuery] = useState("");
+  const pick = useCommandPaletteStore((s) => s.pick);
   const [active, setActive] = useState(0);
   const list = useRef<HTMLDivElement>(null);
   const browsing = query.trim() === "";
@@ -31,6 +29,11 @@ export const CommandPaletteBody = ({ onSelect }: CommandPaletteBodyProps) => {
   const items = groups.flatMap((group) => group.items);
   const activeIndex = Math.min(active, items.length - 1);
   const starts = groups.map((_, g) => groups.slice(0, g).reduce((sum, group) => sum + group.items.length, 0));
+
+  const onSelect = (item: CommandItem) => {
+    pick();
+    item.run();
+  };
 
   const move = (next: number) => {
     setActive(next);

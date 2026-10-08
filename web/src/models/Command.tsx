@@ -30,17 +30,21 @@ const rank = (item: CommandItem, words: string[]): number => {
   return 0;
 };
 
+// Groups follow their best match, so a typed "new" puts New ticket above tickets that only mention it; the server's
+// results count as plain matches and keep the server's order.
 export const filterCommandGroups = (groups: CommandGroup[], query: string): CommandGroup[] => {
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return groups.filter((group) => group.items.length > 0);
   return groups
     .map((group) => {
-      if (words.length === 0 || group.searched) return group;
-      const items = group.items
+      if (group.searched) return { group, best: 0 };
+      const ranked = group.items
         .map((item) => ({ item, score: rank(item, words) }))
         .filter((entry) => entry.score >= 0)
-        .sort((a, b) => b.score - a.score)
-        .map((entry) => entry.item);
-      return { ...group, items };
+        .sort((a, b) => b.score - a.score);
+      return { group: { ...group, items: ranked.map((entry) => entry.item) }, best: ranked[0]?.score ?? -1 };
     })
-    .filter((group) => group.items.length > 0);
+    .filter((entry) => entry.group.items.length > 0)
+    .sort((a, b) => b.best - a.best)
+    .map((entry) => entry.group);
 };
