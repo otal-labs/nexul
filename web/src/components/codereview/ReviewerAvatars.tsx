@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { avatarGradient } from "@/lib/avatarGradient";
+
 interface ReviewerAvatarsProps {
   names: string[];
 }
@@ -10,7 +12,11 @@ const AvatarFace = ({ name }: { name: string }) => {
 
   return (
     <>
-      {failed && name.charAt(0).toUpperCase()}
+      {failed && (
+        <span className="flex size-full items-center justify-center text-white" style={{ backgroundImage: avatarGradient(name) }}>
+          {name.charAt(0).toUpperCase()}
+        </span>
+      )}
       {!failed && (
         <img
           src={`https://github.com/${name}.png`}
@@ -40,7 +46,7 @@ export const ReviewerAvatars = ({ names }: ReviewerAvatarsProps) => {
           <span
             tabIndex={0}
             aria-label={name}
-            className="flex size-5 items-center justify-center overflow-hidden rounded-full bg-secondary text-[9px] font-semibold text-secondary-foreground ring-2 ring-background transition-transform duration-150 ease-out hover:z-10 hover:scale-110 focus-visible:z-10 focus-visible:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex size-5 items-center justify-center overflow-hidden rounded-full bg-secondary text-[10px] font-semibold text-secondary-foreground ring-2 ring-background transition-transform duration-150 ease-out hover:z-10 hover:scale-110 focus-visible:z-10 focus-visible:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <AvatarFace name={name} />
           </span>

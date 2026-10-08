@@ -48,7 +48,7 @@ export const StackBranchDeploySection = ({ stack }: StackBranchDeploySectionProp
         <div className="space-y-2">
           <Microheader>Rules</Microheader>
           {rules.length === 0 && !adding && (
-            <EmptyRow className="px-0 py-0">No rules yet, so every branch is ignored until one matches.</EmptyRow>
+            <EmptyRow flush>No rules yet, so every branch is ignored until one matches.</EmptyRow>
           )}
           {rules.length > 0 && (
             <ul className="divide-y divide-border rounded-lg border border-border">
@@ -62,7 +62,7 @@ export const StackBranchDeploySection = ({ stack }: StackBranchDeploySectionProp
 
         <div className="space-y-2">
           <Microheader>Live branch deployments</Microheader>
-          {branchDeployments.length === 0 && <EmptyRow className="px-0 py-0">No branch deployments yet.</EmptyRow>}
+          {branchDeployments.length === 0 && <EmptyRow flush>No branch deployments yet.</EmptyRow>}
           {branchDeployments.length > 0 && (
             <ul className="divide-y divide-border rounded-lg border border-border">
               {branchDeployments.map((d) => (

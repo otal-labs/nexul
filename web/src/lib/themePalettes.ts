@@ -1,7 +1,7 @@
 import { ThemeId, type ThemeId as ThemeIdType } from "@/enums/Theme";
 
 // Every role a theme may override, text-on-surface included; a role a theme leaves out keeps
-// Console's zero-chroma default painted by index.css.
+// the default painted by index.css.
 type Role =
   | "background"
   | "foreground"
@@ -18,6 +18,8 @@ type Role =
   | "accent-foreground"
   | "primary"
   | "primary-foreground"
+  | "brand"
+  | "brand-foreground"
   | "border"
   | "input"
   | "ring";
@@ -29,18 +31,18 @@ export interface ThemeDefinition {
   label: string;
   /** Two-dot preview swatch shown on the theme library card: [light, dark]. */
   swatch: readonly [string, string];
-  /** `null` for Console: it's the static default already painted by index.css. */
+  /** `null` for the default (Nexul): it's what index.css already paints. */
   colors: { light: ThemeRoleOverrides; dark: ThemeRoleOverrides } | null;
   /** Corner radius override for all four Tailwind radius steps; unset keeps the default. */
   radius?: { sm: string; md: string; lg: string; xl: string };
 }
 
-// Generated from Console's OKLCH lightness ladder and WCAG-contrast-checked; see the `color` skill for the method.
+// Generated from an OKLCH lightness ladder and WCAG-contrast-checked; see the `color` skill for the method.
 export const THEME_DEFINITIONS: readonly ThemeDefinition[] = [
   {
     id: ThemeId.Console,
-    label: "Console",
-    swatch: ["oklch(0.943 0 0)", "oklch(0.115 0 0)"],
+    label: "Nexul",
+    swatch: ["oklch(0.565 0.19 35)", "oklch(0.68 0.2 35)"],
     colors: null,
   },
   {
@@ -540,6 +542,8 @@ const ROLE_CSS_VAR: Record<Role, string> = {
   "accent-foreground": "--accent-foreground",
   primary: "--primary",
   "primary-foreground": "--primary-foreground",
+  brand: "--brand",
+  "brand-foreground": "--brand-foreground",
   border: "--border",
   input: "--input",
   ring: "--ring",
@@ -552,15 +556,21 @@ const RADIUS_CSS_VAR: Record<"sm" | "md" | "lg" | "xl", string> = {
   xl: "--shape-xl",
 };
 
-/** Paints (or clears, for Console) a theme's CSS variable overrides onto the root. */
+// A palette's primary is its accent unless it names one: buttons, focus, the active nav marker and the light field's warm corner follow it.
+const withBrand = (overrides: ThemeRoleOverrides | undefined): ThemeRoleOverrides => {
+  if (!overrides?.primary) return { ...overrides };
+  return { brand: overrides.primary, "brand-foreground": "var(--primary-foreground)", ...overrides };
+};
+
+/** Paints (or clears, for the default) a theme's CSS variable overrides onto the root. */
 export const applyThemePalette = (id: ThemeIdType, mode: "light" | "dark"): void => {
   const root = document.documentElement;
   const definition = getThemeDefinition(id);
   root.dataset.themeId = id === ThemeId.Console ? "" : id;
-  const overrides = definition.colors?.[mode];
+  const overrides = withBrand(definition.colors?.[mode]);
   for (const role of Object.keys(ROLE_CSS_VAR) as Role[]) {
     const cssVar = ROLE_CSS_VAR[role];
-    const value = overrides?.[role];
+    const value = overrides[role];
     if (!value) {
       root.style.removeProperty(cssVar);
       continue;

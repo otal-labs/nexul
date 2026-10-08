@@ -14,7 +14,7 @@ export const AppearanceMode = {
 
 export type AppearanceMode = (typeof AppearanceMode)[keyof typeof AppearanceMode];
 
-// Named palette, independent of light/dark; "Console" needs no override — it's what :root/.dark already paint.
+// Named palette, independent of light/dark; the "console" id is the default look (labelled Nexul), what :root/.dark already paint.
 export const ThemeId = {
   Console: "console",
   Ember: "ember",

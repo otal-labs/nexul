@@ -22,7 +22,7 @@ export const NotificationItem = ({ row, inset = false }: NotificationItemProps) 
       className={cn(
         "flex w-full items-start gap-2.5 border-b border-l-2 border-b-border px-4 py-3 text-left transition-colors duration-150 ease-standard",
         inset && "pl-9",
-        selected ? "border-l-muted-foreground bg-accent" : "border-l-transparent hover:bg-accent/40",
+        selected ? "border-l-brand bg-accent" : "border-l-transparent hover:bg-accent/40",
       )}
     >
       <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", unread && "bg-primary")} aria-label={unread ? "Unread" : undefined} />

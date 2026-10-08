@@ -34,7 +34,7 @@ export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selec
       className={cn(
         "group relative flex items-center gap-2 border-l-2 px-3 transition-colors duration-150 ease-standard",
         snippet === "" ? "min-h-10" : "min-h-14",
-        selected ? "border-muted-foreground bg-accent" : "border-transparent hover:bg-accent/40",
+        selected ? "border-l-brand bg-accent" : "border-l-transparent hover:bg-accent/40",
       )}
     >
       <Link

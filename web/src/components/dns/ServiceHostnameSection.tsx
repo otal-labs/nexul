@@ -90,9 +90,9 @@ export const ServiceHostnameSection = ({ containers }: ServiceHostnameSectionPro
     >
       {loading && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} title="Could not load DNS state" />}
-      {!statusPending && !configured && <EmptyRow className="px-0 py-0">Connect a DNS provider to expose this stack.</EmptyRow>}
-      {ready && containers.length === 0 && <EmptyRow className="px-0 py-0">No containers parsed for this stack yet — nothing to expose.</EmptyRow>}
-      {canExpose && stackExposures.length === 0 && <EmptyRow className="px-0 py-0">Not exposed yet.</EmptyRow>}
+      {!statusPending && !configured && <EmptyRow flush>Connect a DNS provider to expose this stack.</EmptyRow>}
+      {ready && containers.length === 0 && <EmptyRow flush>No containers parsed for this stack yet — nothing to expose.</EmptyRow>}
+      {canExpose && stackExposures.length === 0 && <EmptyRow flush>Not exposed yet.</EmptyRow>}
       {ready && stackExposures.length > 0 && (
         <ul className="divide-y divide-border rounded-lg border border-border">
           {stackExposures.map((exposure) => (

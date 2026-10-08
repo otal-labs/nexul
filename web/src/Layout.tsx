@@ -12,7 +12,8 @@ import { buildLiveURL } from "@/lib/live";
 import { useSessionStore } from "@/stores/sessionStore";
 
 export const Layout = () => {
-  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768);
+  // At 768px an open sidebar leaves the page too little width, so it starts as the icon rail below 1024px.
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 1024);
   const isLoggedIn = useSessionStore((s) => s.isLoggedIn);
   const token = useSessionStore((s) => s.token);
   useLiveEvents(token ? buildLiveURL(token) : null);
@@ -21,19 +22,32 @@ export const Layout = () => {
   // Wizards and the signed-out pages own the whole viewport; the sidebar's nav has nothing to point at there.
   const onboarding = /^\/(?:[^/]+\/)?wizard\//.test(useLocation().pathname);
 
+  // Signed out, the hero pages paint their own full-screen canvas; signed in, every page floats on the light field.
   return (
-    <div className="flex min-h-screen">
-      {isLoggedIn && !onboarding && (
-        <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((c) => !c)} unreadCount={unread?.count ?? 0} />
-      )}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <ServerUpdatedBanner />
-        <PhoneBanner />
-        <main className="flex-1">
+    <>
+      {!isLoggedIn && (
+        <main className="min-h-screen">
           <Outlet />
         </main>
-      </div>
+      )}
+      {isLoggedIn && (
+        <div className="flex h-dvh">
+          <div className="light-field" aria-hidden />
+          {!onboarding && (
+            <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((c) => !c)} unreadCount={unread?.count ?? 0} />
+          )}
+          <div className="flex min-w-0 flex-1 flex-col">
+            <ServerUpdatedBanner />
+            <PhoneBanner />
+            <main className="min-h-0 flex-1 p-2">
+              <div className="app-frame">
+                <Outlet />
+              </div>
+            </main>
+          </div>
+        </div>
+      )}
       <VoiceCallAudio />
-    </div>
+    </>
   );
 };

@@ -67,7 +67,7 @@ export const AttachmentsSection = ({ owner, className, actionPlacement = "beside
       </div>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {data && data.length === 0 && <EmptyRow className="p-0">No files yet.</EmptyRow>}
+      {data && data.length === 0 && <EmptyRow flush>No files yet.</EmptyRow>}
       {data && data.length > 0 && (
         <ul className="flex flex-wrap gap-1.5">
           {data.map((attachment) => (

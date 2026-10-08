@@ -38,7 +38,7 @@ export const WizardProgress = ({ step }: WizardProgressProps) => {
           );
         })}
       </ol>
-      <p className="mt-3 text-center font-mono text-[11px] @2xl:hidden">
+      <p className="mt-3 text-center font-mono text-xs @2xl:hidden">
         <span className="font-bold text-foreground">{wizardStepLabel(step, isAttach)}</span>{" "}
         <span className="text-muted-foreground">
           {current + 1} / {order.length}

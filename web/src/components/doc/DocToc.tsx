@@ -93,7 +93,7 @@ export const DocToc = ({ headings }: DocTocProps) => {
                 heading.level === 1 && "pl-3",
                 heading.level === 2 && "pl-5",
                 heading.level >= 3 && "pl-7",
-                activeId === heading.id && "border-primary font-medium text-primary",
+                activeId === heading.id && "border-brand font-medium text-foreground",
               )}
             >
               {heading.text}

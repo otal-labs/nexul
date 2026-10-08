@@ -8,7 +8,7 @@ interface AutomationRunOutcomeBadgeProps {
 }
 
 // Success/fail need to read as visually distinct at a glance (AM10) — bounded
-// enum, so a colored icon leads per the Mono Console badge convention.
+// enum, so a colored icon leads per the design language's badge convention.
 export const AutomationRunOutcomeBadge = ({ outcome }: AutomationRunOutcomeBadgeProps) => {
   if (outcome === AutomationRunOutcome.Success) {
     return (
