@@ -965,7 +965,7 @@ Model Context Protocol — the standard LLM agents use to call tools. The
 The web app's visual spec of record: frosted panels floating on a light field,
 dark first, one ember accent (`brand`) for action, focus and selection, status
 in its own hues. Tokens in `web/src/index.css`, spec in
-`practices/design-language.md` (ADR 0132).
+`practices/design-language.md` (ADR 0133).
 _Avoid_: the Mono Console (the monochrome direction it replaced).
 
 **Page → Feed → Section → Card**:

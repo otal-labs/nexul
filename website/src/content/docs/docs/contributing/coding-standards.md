@@ -94,7 +94,7 @@ bug: fix it or delete it, never skip or retry-mask it.
 Full text: [`practices/design-language.md`](https://github.com/otal-labs/nexul/blob/master/practices/design-language.md).
 
 Every page's content floats in a raised, frosted panel over a near-black
-canvas that carries a slow, soft light field; light mode is its own soft grey
+canvas that carries a soft light field; light mode is its own soft grey
 canvas with white panels. One ember accent, the `brand` token, marks the
 primary action, focus, the active nav item, selection, your own chat
 messages, checked controls and progress, and nothing else; status keeps its

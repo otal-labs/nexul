@@ -8,7 +8,7 @@ flat and wanted it to stand out, and lifted the monochrome rules.
 Decision: every page's content floats in a raised, frosted panel (12px radius,
 8px from the canvas edges and from a neighbouring pane, the panel colour at 85%
 with a backdrop blur, a hairline ring and a soft shadow) over a near-black
-canvas that carries a slow, soft light field (an ember glow top right, blue
+canvas that carries a soft light field (an ember glow top right, blue
 bottom left, a hint of pink). One ember accent, the `brand` token, marks the
 primary action, focus, the active nav item, selection, your own chat messages,
 checked controls and progress, and nothing else. People without a photo get a
@@ -18,11 +18,12 @@ the values and the rules.
 
 The trade-offs, accepted:
 
-- Backdrop blur is the most expensive thing a browser paints, and the field
-  moving behind the panels makes it repaint while it drifts. The field is
-  gradients only, animated on transform alone, still under reduced motion,
-  and the panels are opaque enough (85%) that dropping the blur on a slow
-  machine changes little.
+- Backdrop blur is the most expensive thing a browser paints, and anything
+  moving behind the panels makes every panel re-blur each frame: a drifting
+  field held 50ms idle frames under a 4x CPU throttle. So the field is still
+  (gradients only, no animation), nothing animates behind the panels, and the
+  panels are opaque enough (85%) that dropping the blur on a slow machine
+  changes little.
 - An accent competes with status colour for attention, the reason the
   monochrome direction dropped it. It is held to the roles above; status
   stays a dot or icon beside plain text in its own hues, and the accent never

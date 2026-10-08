@@ -14,7 +14,7 @@
 
 /*
  * Nexul design tokens. The spec of record is practices/design-language.md.
- *   canvas  — near-black (dark) / soft grey (light) with a slow light field behind the app
+ *   canvas  — near-black (dark) / soft grey (light) with a still light field behind the app
  *   panels  — frosted, raised, 12px; every page's content floats in one, 8px from the canvas edge
  *   cards   — a step lighter than their panel, 9px, hairline ring
  *   brand   — one ember accent: primary action, focus, active nav, selection, own messages, progress
@@ -287,7 +287,7 @@ h3 {
 }
 
 /* The light field behind the app: ember top right, blue bottom left, a hint of pink between.
-   Soft by gradient falloff (no filter), drifting on transform only so it never lays out or repaints. */
+   Soft by gradient falloff (no filter) and still: moving it would re-blur every panel each frame. */
 .light-field {
   position: fixed;
   inset: -12%;
@@ -297,23 +297,6 @@ h3 {
     radial-gradient(38% 42% at 86% 10%, var(--field-warm), transparent 72%),
     radial-gradient(30% 34% at 60% 38%, var(--field-pink), transparent 70%),
     radial-gradient(44% 48% at 10% 92%, var(--field-cool), transparent 72%);
-  will-change: transform;
-  animation: field-drift 52s ease-in-out infinite alternate;
-}
-
-@keyframes field-drift {
-  from {
-    transform: translate3d(-2%, 1.5%, 0) scale(1);
-  }
-  to {
-    transform: translate3d(2.5%, -2%, 0) scale(1.06);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .light-field {
-    animation: none;
-  }
 }
 
 /* ============ Technical surfaces ============

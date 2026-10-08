@@ -176,8 +176,8 @@ and a post renaming itself still says which bot sent it. ADRs 0129 and 0131.
 ### The design pass
 
 One page header with breadcrumbs, shared widths and one label style on every
-page, then frosted panels over a slow light field with one ember accent,
-gradient avatars and its own light mode (ADR 0132), replacing the earlier
+page, then frosted panels over a soft light field with one ember accent,
+gradient avatars and its own light mode (ADR 0133), replacing the earlier
 monochrome identity. Spec of record: `practices/design-language.md`; tokens in
 `web/src/index.css`.
 

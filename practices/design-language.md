@@ -8,7 +8,7 @@ is the defect.
 ## The direction in one paragraph
 
 Content floats. The canvas is near-black in dark mode and a soft grey in light
-mode, and behind everything sits a slow light field: an ember glow top right,
+mode, and behind everything sits a still, soft light field: an ember glow top right,
 a cool blue glow bottom left, a hint of pink between. Every page's content
 lives in a raised, frosted panel that floats 8px from the canvas edges and from
 its neighbours; the sidebar sits straight on the canvas with no surface of its
@@ -22,7 +22,7 @@ monospace face. Dense where the work is dense, calm everywhere else.
 Why one accent and only those roles: an accent everywhere stops meaning
 "here", and it competes with status colour; held to action, focus and
 selection it reads as the app's voice while a red, amber or green dot still
-reads as state (ADR 0132).
+reads as state (ADR 0133).
 
 ## Token quick reference
 
@@ -122,11 +122,10 @@ in one layout step and its content does the moving.
   its properties.
 - Sidebar collapse is instant: a width swap, no layout animation. The
   sidebar starts as the icon rail below 1024px.
-- The light field drifts on one 52s transform loop (`will-change: transform`,
-  gradients only, no filter), so it never lays out, and it holds still under
-  `prefers-reduced-motion`. It is the only ambient motion. Behind backdrop
-  blur it still costs a re-blur of every panel per frame on a software
-  renderer; nothing else may animate behind the panels.
+- The light field is still: gradients only, no filter, no animation. Behind
+  backdrop blur any motion re-blurs every panel each frame, which held 50ms
+  idle frames under a 4x CPU throttle while the field drifted; nothing may
+  animate behind the panels, and the app has no ambient motion.
 - Reduced motion is gentler, not none. The global block in `index.css`
   flattens every CSS transition and keyframe to its end state; what tells the
   reader something arrived keeps a 150ms fade instead (page and list
@@ -171,7 +170,7 @@ second ambient animation or anything animating layout behind the panels.
 
 | Decision | Why |
 |---|---|
-| Glass over a light field, dark first (ADR 0132) | The monochrome console read flat after every page was cleaned up; floating panels over a soft moving field give depth and a recognisable look without decorating the content |
+| Glass over a light field, dark first (ADR 0133) | The monochrome console read flat after every page was cleaned up; floating panels over a soft light field give depth and a recognisable look without decorating the content |
 | One ember accent, held to action, focus, active nav, selection, own messages, checked controls and progress | Used everywhere an accent stops meaning "here" and fights status colour; held to these roles it is the app's voice |
 | Panels at 85% with a 20px blur, not the mock's lower opacity | The field glows through the edges while body and muted text keep at least 6:1 on the panel |
 | Light mode as its own identity | A soft grey canvas, pastel field and white panels read intentional; an inversion of the dark look did not |
