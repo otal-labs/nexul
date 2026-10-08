@@ -1394,11 +1394,13 @@ export const AppRouter = () => {
 - The shell is a **sidebar layout**: a sticky left rail
   (`components/sidebar/Sidebar.tsx`). Its header holds the logo, the update
   button, and the collapse toggle (instant width swap, no layout animation,
-  see the motion rules). Below it: the workspace switcher; a scrolling nav
-  with Inbox, Chat, the channels, and one project at a time behind a project
-  switcher, its pages listed once; the workspace section (Runners, Topology,
-  Automations, Configuration) docked under the scroll area and foldable; the
-  account menu (Support, Logout) and the Your settings gear at the bottom. The
+  see the motion rules). Below it: the workspace switcher; one scrolling nav
+  with Search (the command palette) and Inbox, then one project at a time
+  behind a project switcher, its pages listed once, then the foldable
+  workspace section (Runners, Topology, Automations, Configuration), then the
+  conversations (channels, voice channels, direct messages, threads); the
+  account menu (Support, Logout) and the Your settings gear at the bottom.
+  The icon rail keeps every page and adds one Chat link for the conversations. The
   signed-out pages and the wizards render without it. Pages render inside `<main>` under
   `Container` (`mx-auto w-full max-w-7xl`).
 - Every page reached from a workspace's sidebar lives under `/:workspace`, the

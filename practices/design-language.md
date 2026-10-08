@@ -205,6 +205,7 @@ second ambient animation or anything animating layout behind the panels.
 | 7px controls, 9px cards, 12px panels | Soft but precise; pills stay badge-only so controls and tags never look alike |
 | Terminal-window motif, neutral glow | Code, log, and hero surfaces read as consoles |
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
+| Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
 | Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
 | Person dialog: a tab per workspace, changes held until Confirm | Several workspaces stacked in one scroll mixed their controls, and applying each change on the spot made the dialog change under the owner; tabs separate the workspaces and Confirm makes the edit one deliberate act |
 
@@ -567,6 +568,20 @@ open round ends in its "Anything else?" box; an earlier round shows what was
 written and its reply under its header, folded or not. The page opens on
 Questions while some wait. `DocQuestionsPanel` in
 `web/src/components/doc/clarification/` is the reference.
+
+Sidebar. Straight on the canvas, never a panel. Top to bottom: the logo row,
+the workspace switcher (a 32px initial tile), then one scroll: Search and
+Inbox, the project (its switcher shows the prefix in a 28px mono tile, then
+its pages), the foldable Workspace section, and last the conversations:
+Channels, Voice channels, Direct messages and Threads. Places come before
+conversations because their length is fixed, so a long channel list never
+pushes Board or Runners below the fold. Section labels are microheaders with
+their create `+` trailing; a direct message with one other person leads with
+their avatar, a group with the people icon. Counts are `UnreadBadge`s. The
+account row sits under the scroll on a hairline. The icon rail (below 1024px
+or collapsed) keeps every page in the same order, with hairlines between the
+groups, and stands one Chat link with a dot for unread messages in for the
+conversation lists.
 
 Command palette. ⌘K (Ctrl+K elsewhere), or the sidebar's Search row, opens
 one palette from any signed-in page: a frosted overlay (`glass-popover`) 40rem

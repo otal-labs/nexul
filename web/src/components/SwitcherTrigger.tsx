@@ -7,9 +7,11 @@ interface SwitcherTriggerProps {
   tile: string;
   name: string;
   collapsed: boolean;
+  // A project's tile is its ticket prefix, technical data, so it sets in mono a step smaller than the workspace's.
+  prefix?: boolean;
 }
 
-export const SwitcherTrigger = ({ tile, name, collapsed }: SwitcherTriggerProps) => (
+export const SwitcherTrigger = ({ tile, name, collapsed, prefix = false }: SwitcherTriggerProps) => (
   <PopoverTrigger asChild>
     <button
       type="button"
@@ -19,7 +21,12 @@ export const SwitcherTrigger = ({ tile, name, collapsed }: SwitcherTriggerProps)
         collapsed ? "justify-center px-0 py-1" : "px-2.5 py-1.5",
       )}
     >
-      <span className="flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg bg-accent px-1 text-xs font-semibold text-primary">
+      <span
+        className={cn(
+          "flex shrink-0 items-center justify-center bg-accent px-1 text-primary",
+          prefix ? "h-7 min-w-8 rounded-md font-mono text-[11px] font-medium" : "h-8 min-w-8 rounded-lg text-xs font-semibold",
+        )}
+      >
         {tile}
       </span>
       {!collapsed && (

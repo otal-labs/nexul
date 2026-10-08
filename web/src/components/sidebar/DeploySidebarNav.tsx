@@ -2,7 +2,6 @@ import { ChevronDownIcon, Cpu, Network, SlidersHorizontal, Workflow } from "luci
 import { useShallow } from "zustand/react/shallow";
 
 import { sectionLabelClass, type SidebarNavEntry } from "@/components/SidebarNav";
-import { SidebarActiveIndicator } from "@/components/sidebar/SidebarActiveIndicator";
 import { SidebarNavLink } from "@/components/sidebar/SidebarNavLink";
 import { useCanOpen } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -20,7 +19,7 @@ interface DeploySidebarNavProps {
   collapsed: boolean;
 }
 
-// Docked under the scrolling nav like an editor's bottom pane; folding it leaves only its header.
+// The workspace's own pages, under the project's; folding it leaves only its header.
 export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
   const { open, toggle } = useSidebarStore(
     useShallow((s) => ({ open: s.workspaceNavOpen, toggle: s.toggleWorkspaceNav })),
@@ -32,8 +31,8 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
   if (entries.length === 0) return null;
 
   return (
-    <nav aria-label="Workspace" className="relative isolate shrink-0 border-t border-border px-2 py-1">
-      <SidebarActiveIndicator />
+    <div role="group" aria-label="Workspace" className="flex flex-col gap-0.5">
+      {collapsed && <div className="mx-2 my-2 border-t border-border" aria-hidden />}
       {!collapsed && (
         <button
           type="button"
@@ -41,7 +40,7 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
           aria-expanded={open}
           className={cn(
             sectionLabelClass,
-            "flex w-full items-center justify-between rounded-md pt-1.5 outline-none transition-colors duration-150 ease-standard hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40",
+            "flex w-full items-center justify-between rounded-md outline-none transition-colors duration-150 ease-standard hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40",
           )}
         >
           <span>Workspace</span>
@@ -52,7 +51,7 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
         </button>
       )}
       {(open || collapsed) && (
-        <div className="flex flex-col gap-0.5 pb-1">
+        <div className="flex flex-col gap-0.5">
           {entries.map((entry) => (
             <SidebarNavLink
               key={entry.to}
@@ -71,6 +70,6 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
           ))}
         </div>
       )}
-    </nav>
+    </div>
   );
 };

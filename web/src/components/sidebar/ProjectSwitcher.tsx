@@ -37,7 +37,7 @@ export const ProjectSwitcher = ({ projects, current, collapsed }: ProjectSwitche
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <SwitcherTrigger tile={projectTile(current)} name={current.name} collapsed={collapsed} />
+      <SwitcherTrigger tile={projectTile(current)} name={current.name} collapsed={collapsed} prefix />
       <ProjectSwitcherMenu
         projects={projects}
         currentId={current.id}

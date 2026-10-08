@@ -30,6 +30,7 @@ export const ProjectSection = ({ collapsed }: ProjectSectionProps) => {
   return (
     <div className="flex flex-col gap-0.5">
       {!collapsed && <div className={sectionLabelClass}>Project</div>}
+      {collapsed && <div className="mx-2 my-2 border-t border-border" aria-hidden />}
       {offerCreate && (
         <button
           type="button"
