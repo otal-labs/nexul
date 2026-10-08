@@ -14,9 +14,10 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
   const navigate = useNavigate();
   const isCrash = error != null;
 
+  // Fits the panel it sits in when signed in (the viewport less its 8px margins); signed out it fills the screen bar 1rem.
   return (
-    <div className="blueprint-bg min-h-screen">
-      <div className="flex min-h-screen flex-col items-center gap-12 px-6 py-16 sm:flex-col-reverse sm:justify-center sm:gap-16 sm:px-8">
+    <div className="blueprint-bg min-h-[calc(100dvh-1rem)]">
+      <div className="flex min-h-[calc(100dvh-1rem)] flex-col items-center gap-12 px-6 py-16 sm:flex-col-reverse sm:justify-center sm:gap-16 sm:px-8">
         <div className="flex max-w-3xl flex-col items-center gap-3 text-center">
           <p className={microheaderClass}>Nexul</p>
           <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
