@@ -171,8 +171,8 @@ type NoteFile struct {
 	Markdown string
 }
 
-// mentionPattern matches a login-shaped @token; it doesn't validate against real workspace members.
-var mentionPattern = regexp.MustCompile(`@([\w-]+)`)
+// mentionPattern matches a login-shaped @token not inside a word, so an email's domain is no mention; it doesn't validate against real workspace members.
+var mentionPattern = regexp.MustCompile(`(?:^|[^\w.])@([\w-]+)`)
 
 // ParseMentions extracts @user and @Agent tokens; "agent" matches case-insensitively but stores as AgentHandle.
 func ParseMentions(body string) []Mention {
