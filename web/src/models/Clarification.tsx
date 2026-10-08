@@ -125,15 +125,15 @@ export const clarificationStatus = (c: Clarification, dev: boolean, locked: bool
   const rounds = plural(asked.length, "round");
   const newest = c.rounds.at(-1);
   if (phase === "running" && dev) return { icon: "running", label: `Round ${newest ? roundNumber(c, newest) : 1} running`, detail: locked ? "The doc is locked until it ends" : "" };
-  if (phase === "running") return { icon: null, label: "More questions are on the way", detail: "" };
+  if (phase === "running") return { icon: null, label: "More questions coming", detail: "" };
   if (phase === "closed" && dev) return { icon: "done", label: "Closed", detail: `${rounds} · ${answeredCount(c)} answered` };
   if (phase === "closed") return { icon: "done", label: "All answered", detail: rounds };
-  if (phase === "noGaps" && dev) return { icon: "done", label: "No gaps left", detail: "The doc now holds every answer" };
+  if (phase === "noGaps" && dev) return { icon: "done", label: "No gaps left", detail: "Every answer is in the doc" };
   if (phase === "waiting") {
     const waitingRound = asked.filter((r) => r.questions.some(isPending)).at(-1);
     return { icon: "waiting", label: `${plural(waitingCount(c), "question")} waiting`, detail: `Round ${waitingRound ? roundNumber(c, waitingRound) : asked.length}` };
   }
   if (phase === "answered" && dev) return { icon: "done", label: `Round ${asked.length} answered`, detail: "" };
   if (phase === "none") return { icon: null, label: "No questions yet", detail: "" };
-  return { icon: "done", label: "All answered", detail: "Thanks, nothing is waiting on you." };
+  return { icon: "done", label: "All answered", detail: "Nothing is waiting on you." };
 };

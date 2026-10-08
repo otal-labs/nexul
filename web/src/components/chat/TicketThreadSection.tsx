@@ -23,7 +23,7 @@ interface TicketThreadSectionProps {
   pane?: boolean;
 }
 
-// "starting" is local UI state for the one-shot "Start chat" click; an existing thread loads on its own.
+// "starting" is local UI state for the one-shot "Start thread" click; an existing thread loads on its own.
 export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: TicketThreadSectionProps) => {
   const [starting, setStarting] = useState(false);
   const client = useQueryClient();
@@ -61,11 +61,11 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
       {showStart && (
         <Button variant="outline" size="sm" className={cn(pane && "w-full")} onClick={() => setStarting(true)}>
           <MessageSquare className="size-4" aria-hidden />
-          Start chat
+          Start thread
         </Button>
       )}
       {shouldLoad && isPending && <LoadingDisplay label="Loading thread…" />}
-      {shouldLoad && error && <ErrorDisplay error={error} title="Failed to load the thread." />}
+      {shouldLoad && error && <ErrorDisplay error={error} title="Couldn't load the thread." />}
       {conversation && (
         <div
           className={cn(

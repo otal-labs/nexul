@@ -37,7 +37,7 @@ export const TicketBugsSection = ({ ticket }: TicketBugsSectionProps) => {
         </button>
       </div>
       {isPending && <LoadingDisplay label="Loading bugs…" />}
-      {error && <ErrorDisplay error={error} title="Failed to load bugs." />}
+      {error && <ErrorDisplay error={error} title="Couldn't load bugs." />}
       {links && links.bugs_found.length === 0 && <p className="px-2 text-xs text-muted-foreground">No bugs reported.</p>}
       {links && links.bugs_found.length > 0 && (
         <LinkGroupSection title={done ? "Found after done" : "Found in this ticket"}>

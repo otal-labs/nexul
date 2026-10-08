@@ -17,8 +17,8 @@ export const NoteDeleteButton = ({ message }: NoteDeleteButtonProps) => {
   const onDelete = async () => {
     const ok = await confirmDelete({
       title: "Delete note",
-      message: "Delete this note? Its file and the images in it are deleted with it.",
-      confirmLabel: "Delete",
+      message: "Delete this note? Its file and images go with it.",
+      confirmLabel: "Delete note",
     });
     if (ok) deleteMessage.mutate(message.id);
   };

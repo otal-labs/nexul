@@ -14,9 +14,9 @@ export const BoardUnscopedStates = ({ isLoading, error, hasProjects }: BoardUnsc
   <>
     <PageHeader title="Board" />
     {isLoading && <LoadingDisplay label="Loading board…" />}
-    {!isLoading && error && <ErrorDisplay error={error} title="Failed to load the board." />}
+    {!isLoading && error && <ErrorDisplay error={error} title="Couldn't load the board." />}
     {!isLoading && !error && !hasProjects && (
-      <NoProjectsState message="Create a project to start building its board." />
+      <NoProjectsState message="Create one to start its board." />
     )}
     {!isLoading && !error && hasProjects && <LoadingDisplay label="Loading board…" />}
   </>

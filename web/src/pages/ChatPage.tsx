@@ -28,7 +28,7 @@ export const ChatPage = () => {
       )}
       {error && (
         <ChatPaneState>
-          <ErrorDisplay error={error} title="Failed to load chat." />
+          <ErrorDisplay error={error} title="Couldn't load chat." />
         </ChatPaneState>
       )}
       {fallback && <Navigate replace to={wsPath(`/chat/${fallback.id}`)} />}

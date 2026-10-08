@@ -23,7 +23,7 @@ export const AttachmentRow = ({ attachment, canDelete }: AttachmentRowProps) => 
   const { open: confirmDelete } = useConfirmationDialog();
 
   const onDelete = async () => {
-    const ok = await confirmDelete({ message: `Delete ${attachment.name}? Bodies that show it will lose the image.` });
+    const ok = await confirmDelete({ message: `Delete ${attachment.name}? Anything that shows it loses the image.`, confirmLabel: "Delete file" });
     if (ok) deleteAttachment.mutate(attachment.id);
   };
 

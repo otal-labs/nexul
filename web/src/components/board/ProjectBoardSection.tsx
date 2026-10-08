@@ -91,7 +91,7 @@ export const ProjectBoardSection = ({
         actions={<BoardStageSummary projectId={projectId} className="w-96" />}
       />
       {isLoading && <LoadingDisplay label="Loading board…" />}
-      {error && <ErrorDisplay error={error} title="Failed to load the board." />}
+      {error && <ErrorDisplay error={error} title="Couldn't load the board." />}
       {tickets && (
         // The board is always project-scoped (ticket 08), so the multi-project filter row would always be redundant with the URL.
         <BoardFilterBar
@@ -122,8 +122,8 @@ export const ProjectBoardSection = ({
             filters.waitingForMeToTest ||
             filters.search.trim() !== "" ||
             filters.labels.length + filters.statusIds.length + filters.developers.length > 0
-              ? "No tickets match the active filters."
-              : "No tickets yet — create the first one."
+              ? "No tickets match these filters."
+              : "No tickets yet. Create one to start the board."
           }
         />
       )}

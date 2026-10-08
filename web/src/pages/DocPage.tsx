@@ -37,7 +37,7 @@ export const DocPage = ({ wsFactory, docId: docIdProp }: DocPageProps = {}) => {
     openCreateTicket<SaveTicketFormData>({
       title: "New ticket",
       schema: SaveTicketFormSchema,
-      okLabel: "Create",
+      okLabel: "Create ticket",
       header: <ProjectDialogHeader title="New ticket" />,
       footerStart: <CreateTicketFooter />,
       form: <CreateTicketForm docId={targetDocId} defaultProjectId={doc?.project_id ?? ""} />,

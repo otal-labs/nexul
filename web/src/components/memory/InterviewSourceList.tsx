@@ -26,7 +26,7 @@ export const InterviewSourceList = ({ projectId, sources, readOnly }: InterviewS
       {sources.length === 0 && readOnly && <EmptyRow className={emptyClass}>No sources.</EmptyRow>}
       {sources.length === 0 && !readOnly && !adding && (
         <EmptyRow className={emptyClass}>
-          Point the interview at what this project already has: a practices folder, a standards doc, the project it replaces.
+          No sources yet. Add a practices folder, a standards doc, or the project this one replaces.
         </EmptyRow>
       )}
       {sources.length > 0 && (

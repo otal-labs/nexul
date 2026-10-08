@@ -159,7 +159,7 @@ export const useContinueTrail = () => {
       await client.invalidateQueries({ queryKey: [getTrailKey, trailId] });
       await client.invalidateQueries({ queryKey: [getActiveTrailsKey] });
       if (trail.id !== trailId) {
-        toast.info("Its thread was deleted in T3 Code, so the play started again as a new run");
+        toast.info("Its T3 Code thread is gone, so the play started as a new run");
         return;
       }
       toast.success("Sent to the run");

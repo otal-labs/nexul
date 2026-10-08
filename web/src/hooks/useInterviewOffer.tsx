@@ -17,9 +17,8 @@ export const useInterviewOffer = (projectId: string | null, projectName: string)
     const ok = await confirm({
       title: "Skip the interview?",
       message:
-        `Without an interview, agents in ${projectName} work without its rules: the stack, paradigm, testing ` +
-        "strategy, principles, and vocabulary the interview records. A cheaper model guesses where it would have " +
-        "followed them. A banner stays on the project until the interview exists.",
+        `Without an interview, agents in ${projectName} don't know its stack, testing strategy, principles, or ` +
+        "vocabulary, and a cheaper model guesses instead. A banner stays on the project until the interview exists.",
       confirmLabel: "Skip the interview",
       cancelLabel: "Back",
       destructive: false,

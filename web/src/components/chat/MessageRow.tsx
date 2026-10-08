@@ -124,7 +124,7 @@ export const MessageRow = ({ message, author, isOwn, continuation = false, quest
   };
 
   const remove = async () => {
-    const confirmed = await confirmDelete({ message: "Delete this message?" });
+    const confirmed = await confirmDelete({ message: "Delete this message?", confirmLabel: "Delete message" });
     if (confirmed) await onDelete(message.id);
   };
 

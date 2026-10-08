@@ -95,7 +95,7 @@ export const DevelopmentSection = ({ ticketId }: DevelopmentSectionProps) => {
       </div>
 
       {isPending && <LoadingDisplay label="Loading development links…" />}
-      {error && <ErrorDisplay error={error} title="Failed to load development links." />}
+      {error && <ErrorDisplay error={error} title="Couldn't load development links." />}
 
       {data && (
         <>

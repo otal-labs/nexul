@@ -28,7 +28,7 @@ export const InboxPage = () => {
             isMarkingAllRead={markAllRead.isPending}
           />
         }
-        placeholder="Select a notification to view it"
+        placeholder="Select a notification"
         detail={<NotificationDetailPanel selected={selected?.notification} />}
       />
     </EmbeddedCrumbsContext>

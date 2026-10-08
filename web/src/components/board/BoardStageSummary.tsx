@@ -30,7 +30,7 @@ export const BoardStageSummary = ({ projectId, className }: BoardStageSummaryPro
   if (total === 0) return null;
 
   return (
-    <div className={cn("space-y-2", className)} role="group" aria-label="Where work stands">
+    <div className={cn("space-y-2", className)} role="group" aria-label="Tickets by stage">
       <div className="grow-in flex h-1.5 w-full gap-0.5" aria-hidden>
         {stages.filter((s) => s.count > 0).map((s) => (
           <span key={s.kind} className={cn("h-full rounded-full", stageBar(s.kind, s.dot))} style={{ flexGrow: s.count }} />

@@ -12,7 +12,7 @@ export const useCreateMemoryDialog = (projectId: string): (() => void) | undefin
     void open<CreateMemoryFormData>({
       title: "New memory",
       schema: CreateMemoryFormSchema,
-      okLabel: "Create",
+      okLabel: "Create memory",
       form: <CreateMemoryForm defaultProjectId={projectId} />,
       formOptions: { defaultValues: emptyCreateMemoryForm() },
     });

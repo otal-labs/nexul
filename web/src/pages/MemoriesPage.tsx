@@ -22,11 +22,11 @@ export const MemoriesPage = () => {
     <div className="h-full">
       {projects && projects.length === 0 && (
         <div className="p-6">
-          <NoProjectsState message="Memories live in a project. Create a project to start." />
+          <NoProjectsState message="Every memory belongs to a project. Create one to start." />
         </div>
       )}
       {current && isPending && <LoadingDisplay label="Loading memories…" />}
-      {error && <ErrorDisplay error={error} title="Failed to load memories." />}
+      {error && <ErrorDisplay error={error} title="Couldn't load memories." />}
       {current && memories && (
         <ListDetailLayout
           hasSelection={!!memoryId}

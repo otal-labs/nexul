@@ -79,18 +79,18 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const run = (
     <>
       {runState === "waiting" && (
-        <CircleHelp className="size-3 shrink-0 text-info" role="img" aria-label="A play is waiting for an answer" />
+        <CircleHelp className="size-3 shrink-0 text-info" role="img" aria-label="Play waiting for an answer" />
       )}
       {runState !== undefined && runState !== "waiting" && (
         <span className="flex items-center gap-1">
-          <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="A play is running" />
+          <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="Play running" />
           {runStartedAt !== undefined && <RunTimer startedAt={runStartedAt} />}
         </span>
       )}
     </>
   );
   const thread = hasThread && (
-    <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" role="img" aria-label="Has a chat thread" />
+    <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" role="img" aria-label="Has a thread" />
   );
 
   return (

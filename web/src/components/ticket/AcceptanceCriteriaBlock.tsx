@@ -15,7 +15,7 @@ export const AcceptanceCriteriaBlock = ({ ticket }: AcceptanceCriteriaBlockProps
       <h3 className="px-2 text-xs text-muted-foreground">What to check</h3>
       {criteria === "" && (
         <p role="status" className="px-2 text-sm text-muted-foreground">
-          This ticket has no Acceptance criteria section. Check what its description asks for.
+          No Acceptance criteria section. Check what the description asks for.
         </p>
       )}
       {criteria !== "" && (

@@ -27,7 +27,7 @@ export const DocWatchersSection = ({ docId }: DocWatchersSectionProps) => {
       </h3>
       {isPending && <LoadingDisplay className="p-4" />}
       {error && <ErrorDisplay error={error} className="m-2 p-4" />}
-      {data && data.watchers.length === 0 && <EmptyRow className="m-2 border-0 py-3">Nobody is watching this doc</EmptyRow>}
+      {data && data.watchers.length === 0 && <EmptyRow className="m-2 border-0 py-3">No watchers yet</EmptyRow>}
       {data && data.watchers.length > 0 && (
         <ul className="max-h-64 overflow-y-auto py-1">
           {data.watchers.map((w) => (

@@ -12,7 +12,7 @@ describe("ConflictBanner", () => {
     render(<ConflictBanner onKeepMine={onKeepMine} onTakeServer={onTakeServer} />);
 
     expect(screen.getByRole("alert")).toBeInTheDocument();
-    expect(screen.getByText(/cannot merge it automatically/)).toBeInTheDocument();
+    expect(screen.getByText(/can't be merged/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Keep my version" }));
     expect(onKeepMine).toHaveBeenCalled();

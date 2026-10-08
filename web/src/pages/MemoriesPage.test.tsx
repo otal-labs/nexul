@@ -72,7 +72,7 @@ const renderPage = (path: string, permissions: string[], overrides: Record<strin
   );
 };
 
-const rowSwitch = (title: string) => screen.findByRole("switch", { name: `Require ${title}` });
+const rowSwitch = (title: string) => screen.findByRole("switch", { name: `Always include ${title}` });
 
 beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
@@ -164,6 +164,6 @@ describe("MemoriesPage", () => {
   it("shows the shared error display when the list fails", async () => {
     renderPage("/memories", ["memories:read"], { "/api/memories": new Error("boom") });
 
-    expect(await screen.findByText("Failed to load memories.")).toBeInTheDocument();
+    expect(await screen.findByText("Couldn't load memories.")).toBeInTheDocument();
   });
 });

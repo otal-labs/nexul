@@ -21,7 +21,7 @@ export const BoardFilterMenu = ({ filterRows, activeCount, onClear }: BoardFilte
       <div className="border-t border-border pt-3">
         <Button variant="ghost" size="sm" onClick={onClear} className="w-full justify-start text-xs">
           <FilterXIcon className="size-3.5" />
-          Clear filter
+          Clear filters
         </Button>
       </div>
     )}

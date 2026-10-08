@@ -63,7 +63,7 @@ export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps
       )}
       {phase === "joinPrompt" && (
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-muted/30 px-3 py-2">
-          <span className="text-xs text-muted-foreground">Not connected to this voice channel</span>
+          <span className="text-xs text-muted-foreground">You're not in this call</span>
           <Button size="sm" onClick={joinThis}>
             Join call
           </Button>
@@ -85,12 +85,12 @@ export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps
         <div className="flex shrink-0 flex-col gap-2 border-b border-border bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
           <span className="flex items-start gap-2 text-xs text-muted-foreground">
             <Settings className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            Voice needs a LiveKit connector — ask someone who manages connectors to set one up in Settings.
+            Voice needs a LiveKit connector. Ask someone who manages connectors to add one in Settings.
           </span>
           <div className="flex shrink-0 items-center gap-2">
             {canConfigure && (
               <Button asChild size="sm" variant="outline">
-                <Link to="/settings/connectors">Open Settings</Link>
+                <Link to="/settings/connectors">Open connectors</Link>
               </Button>
             )}
             <Button size="sm" variant="ghost" onClick={leave}>

@@ -25,7 +25,7 @@ export const NewDocFolderButton = ({ projectId }: NewDocFolderButtonProps) => {
         void open<DocFolderFormData>({
           title: "New folder",
           schema: DocFolderFormSchema,
-          okLabel: "Create",
+          okLabel: "Create folder",
           form: <DocFolderNameForm projectId={projectId} />,
           formOptions: { defaultValues: { name: "" } },
         })

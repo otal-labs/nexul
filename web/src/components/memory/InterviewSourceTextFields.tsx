@@ -15,7 +15,7 @@ export const InterviewSourceTextFields = () => {
   const take = async (file: File | undefined) => {
     if (!file) return;
     if (!isReadableTextFile(file)) {
-      setRefused(`${file.name} isn't a text or markdown file; paste its text instead.`);
+      setRefused(`${file.name} isn't text or markdown. Paste its text instead.`);
       return;
     }
     setRefused("");

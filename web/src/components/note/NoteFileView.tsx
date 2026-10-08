@@ -49,7 +49,7 @@ export const NoteFileView = ({ message, fileName, canEdit }: NoteFileViewProps) 
       </div>
       <div className="rounded-lg border border-border bg-card p-6 shadow-card sm:p-8">
         {isPending && <LoadingDisplay label="Loading note…" />}
-        {error && <ErrorDisplay error={error} title="Failed to load the note." />}
+        {error && <ErrorDisplay error={error} title="Couldn't load the note." />}
         {markdown !== undefined && session && (
           <NoteFileEditor session={session} markdown={markdown} conversationId={message.conversation_id} />
         )}

@@ -337,7 +337,7 @@ const dispatch = (client: ReturnType<typeof useQueryClient>, router: RouterFollo
       void client.invalidateQueries({ queryKey: [getInterviewAnswersKey, p.target_id] });
     }
     if (p.target_type !== "ticket") return;
-    // Starting shows the Thread section's Started message in place of "Start chat" without a reload.
+    // Starting shows the Thread section's Started message in place of "Start thread" without a reload.
     if (p.state === "starting") void client.invalidateQueries({ queryKey: [getChatTicketThreadStatusKey, p.target_id] });
     // A done run's new column and linked branch/PR show up without a reload.
     if (!isTrailActive(p.state)) {

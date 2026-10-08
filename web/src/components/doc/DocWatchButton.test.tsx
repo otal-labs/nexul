@@ -68,6 +68,6 @@ describe("DocWatchButton", () => {
     renderButton();
 
     await user.click(await screen.findByRole("button", { name: "Watchers: 0" }));
-    expect(await screen.findByText("Nobody is watching this doc")).toBeInTheDocument();
+    expect(await screen.findByText("No watchers yet")).toBeInTheDocument();
   });
 });
