@@ -107,7 +107,7 @@ _Avoid_: Device, host, runner (a runner builds and deploys)
 **Project link**:
 One person's choice of paired computer, T3 project, provider, model, model
 options, and start-in for one project they can open, set in Your settings →
-T3 pairing → Projects. Each person has their own; nobody else's turns use it.
+T3 Code Setup → Projects. Each person has their own; nobody else's turns use it.
 A person with no link for a project runs there on their own pairing
 defaults (ADR 0102).
 _Avoid_: Project pairing, shared link
@@ -255,7 +255,8 @@ becomes unblocked, enters a stage, is created, gets a developer or tester,
 fails a test; a doc is created, or changed once edits have settled and not
 by an agent), conditions on the ticket's or doc's existing fields in all/any
 groups, a priority, limits, and whom it runs on: the developer, the tester,
-or whoever caused the moment. A match waits in that person's queue, highest
+or whoever caused the moment. The play's show-when stage does not apply; a
+"Stage is" condition does that. A match waits in that person's queue, highest
 priority then oldest first, until they have a free slot and their computer
 is online, and is checked again before it starts. A ticket past the daily
 cap on automatic runs shows "Auto plays paused" until resumed. Managed with

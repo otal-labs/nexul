@@ -42,11 +42,12 @@ Got a value wrong? Until someone has signed in, open `/setup` on your domain to 
 
 ## 5. Owner wizard
 
-The first person to sign in becomes the workspace owner and walks through three steps:
+The first person to sign in becomes the workspace owner and walks through four steps:
 
 1. **Introduce yourself**: the name and avatar others see. The GitHub ones are the default.
 2. **Set up your workspace**: name it. A new workspace has no projects yet.
 3. **Connect your tools**: the same list as **Settings → Connectors**. Cloudflare already shows as connected if you used the tunnel.
+4. **Set up T3 Code**: pair the computer your agents run on, the same dialog as **Settings → T3 Code Setup**. This step is required: setup finishes once one computer is paired. Pairing through a tunnel needs Cloudflare connected with Zero Trust enabled, so connect it in the previous step if you chose another way to reach Nexul. See [paired computers](/docs/guide/paired-computers/).
 
 Then the [project wizard](/docs/guide/projects-and-repositories/#creating-a-project) opens to create your first project.
 

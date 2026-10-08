@@ -1,7 +1,7 @@
 # 07: Write the ADR for plays that start by themselves
 
 Type: task
-Status: open
+Status: resolved
 Blocked by: 01, 02, 03
 
 ## Question
@@ -13,3 +13,10 @@ person it runs on, through their queue, with the per-ticket daily cap as
 the loop guard, and the decisions check becomes an ordinary play with a
 seeded auto play. Mark 0055 and 0066 amended. Update `CONTEXT.md`'s Play
 and Decisions check entries to match.
+
+## Answer
+
+ADR 0132, with 0055 and 0066 marked amended. `CONTEXT.md`'s Auto play
+entry says the show-when stage does not apply. The Play and Decisions
+check entries describe what ships today, so 13 rewrites them when the
+decisions check moves.

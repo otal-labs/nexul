@@ -73,7 +73,7 @@ describe("YourSettingsPage", () => {
     expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "/settings/security");
   });
 
-  it("marks T3 pairing and its Computers tab while one of your computers has out-of-date skills", async () => {
+  it("marks T3 Code Setup and its Computers tab while one of your computers has out-of-date skills", async () => {
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/pairing/computers")
         return Promise.resolve({ data: { computers: [{ id: "c1", name: "Home", token_expires_at: "2099-01-01T00:00:00Z", kind: "t3code" }] } });
@@ -85,7 +85,7 @@ describe("YourSettingsPage", () => {
     });
     renderPage("/settings/pairing");
 
-    expect(await screen.findByRole("link", { name: "T3 pairing, skills out of date" })).toHaveAttribute("href", "/settings/pairing");
+    expect(await screen.findByRole("link", { name: "T3 Code Setup, skills out of date" })).toHaveAttribute("href", "/settings/pairing");
     expect(screen.getByRole("tab", { name: "Computers, skills out of date" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Projects" })).toBeInTheDocument();
   });

@@ -7,7 +7,7 @@ turn runs on the mentioning user's own environment, and it put a personal choice
 model, in a shared settings page that anyone with the project open could overwrite.
 
 Decision: a project link is per person. Each person sets their own for each project they can open, from Your
-settings → T3 pairing → Projects, and the link's computer is always one of their own. Someone with no link for a
+settings → T3 Code Setup → Projects, and the link's computer is always one of their own. Someone with no link for a
 project falls back to their own pairing defaults, exactly as an unlinked project did before.
 
 - **Storage.** `pairing_project_links` is keyed by `(user_id, project_id)`, with `user_id` cascading from the user,

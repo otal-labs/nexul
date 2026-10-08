@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 
 import { OwnerWizardStepPanel } from "@/components/auth/OwnerWizardStepPanel";
+import type { WorkspaceSetupData } from "@/components/auth/SetupWorkspaceStep";
 import { WizardConfirmation } from "@/components/auth/WizardConfirmation";
 import { WizardLayout } from "@/components/auth/WizardLayout";
 import { useCompleteOwnerWizard, useFetchSettings } from "@/hooks/AuthHooks";
@@ -10,7 +11,7 @@ import { useOwnerWizardStore } from "@/stores/ownerWizardStore";
 import { slugify, workspacePath } from "@/models/Workspace";
 
 const CONFIRM_DELAY_MS = 900;
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 const FIRST_PROJECT_PATH = "/wizard/project/project";
 
 const STEP_COPY = [
@@ -26,6 +27,10 @@ const STEP_COPY = [
     title: "Connect your tools",
     subtitle: "Hook up the services Nexul manages for you.",
   },
+  {
+    title: "Set up T3 Code",
+    subtitle: "Agents run on your own computer through T3 Code. Pair it so Nexul can reach it from anywhere.",
+  },
 ] as const;
 
 // Progress lives in the store, not local state, because step 3's Connect leaves the SPA and remounts this page.
@@ -33,12 +38,10 @@ export const OwnerWizardPage = () => {
   const navigate = useNavigate();
   const step = useOwnerWizardStore((s) => s.step);
   const setStep = useOwnerWizardStore((s) => s.setStep);
-  const workspaceSetup = useOwnerWizardStore((s) => s.workspaceSetup);
-  const setWorkspaceSetup = useOwnerWizardStore((s) => s.setWorkspaceSetup);
+  const workspaceSlug = useOwnerWizardStore((s) => s.workspaceSlug);
+  const setWorkspaceSlug = useOwnerWizardStore((s) => s.setWorkspaceSlug);
   const resetProgress = useOwnerWizardStore((s) => s.reset);
   const [confirmed, setConfirmed] = useState(false);
-  // Covers the whole multi-mutation finish sequence, so a second click mid-sequence can't race itself.
-  const [finishing, setFinishing] = useState(false);
   const { data: settings, isPending: settingsPending, error: settingsError } = useFetchSettings();
   const complete = useCompleteOwnerWizard();
   const renameWorkspace = useRenameWorkspace();
@@ -52,46 +55,42 @@ export const OwnerWizardPage = () => {
     setStep(step - 1);
   };
 
-  const onFinish = async () => {
-    if (!settings || finishing) return;
-    setFinishing(true);
+  // Steps 3 and 4 connect tools and pair a computer, which need the owner's permissions, so the owner is made here.
+  const onStep2Continue = async ({ workspaceId, workspaceName }: WorkspaceSetupData) => {
+    if (!settings) return;
     try {
       await complete.mutateAsync(settings.instance_url);
-      let slug = selected?.slug ?? "";
-      if (workspaceSetup?.workspaceName) {
-        // Nothing links to the workspace yet, so naming it here also names its URL.
-        const name = workspaceSetup.workspaceName;
-        slug = (await renameWorkspace.mutateAsync({ id: workspaceSetup.workspaceId, name, slug: slugify(name) })).slug;
-      }
-      resetProgress();
-      setConfirmed(true);
-      // Warm confirmation beat; a workspace starts with no project, so the project wizard is next.
-      await new Promise((resolve) => setTimeout(resolve, CONFIRM_DELAY_MS));
-      navigate(workspacePath(slug, FIRST_PROJECT_PATH), { replace: true });
+      // Nothing links to the workspace yet, so naming it here also names its URL.
+      const renamed = await renameWorkspace.mutateAsync({ id: workspaceId, name: workspaceName, slug: slugify(workspaceName) });
+      setWorkspaceSlug(renamed.slug);
+      setStep(3);
     } catch {
       // Error is surfaced by the hook's toast; the step stays open to retry.
-      setFinishing(false);
     }
+  };
+
+  const onFinish = async () => {
+    const slug = workspaceSlug ?? selected?.slug ?? "";
+    resetProgress();
+    setConfirmed(true);
+    // Warm confirmation beat; a workspace starts with no project, so the project wizard is next.
+    await new Promise((resolve) => setTimeout(resolve, CONFIRM_DELAY_MS));
+    navigate(workspacePath(slug, FIRST_PROJECT_PATH), { replace: true });
   };
 
   const { title, subtitle } = STEP_COPY[step - 1] ?? STEP_COPY[0];
 
   return (
     <WizardLayout step={{ current: step, total: TOTAL_STEPS }} title={title} subtitle={subtitle} onBack={onBack}>
-      {confirmed && (
-        <WizardConfirmation title="Workspace ready" subtitle="Next, your first project." />
-      )}
+      {confirmed && <WizardConfirmation title="Workspace ready" subtitle="Next, your first project." />}
       {!confirmed && (
         <OwnerWizardStepPanel
           step={step}
           settingsLoading={settingsPending}
           settingsError={settingsError}
-          finishing={finishing}
           onStep1Continue={() => setStep(2)}
-          onStep2Continue={(data) => {
-            setWorkspaceSetup(data);
-            setStep(3);
-          }}
+          onStep2Continue={onStep2Continue}
+          onStep3Continue={() => setStep(4)}
           onFinish={() => void onFinish()}
         />
       )}

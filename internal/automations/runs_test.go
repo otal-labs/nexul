@@ -176,7 +176,7 @@ func withActor(r *http.Request, id string) *http.Request {
 
 func TestRunsHandler_List_ReturnsRuns(t *testing.T) {
 	repo := newFakeRunsRepo()
-	require.NoError(t, repo.Create(context.Background(), &Run{ID: "r1", AutomationID: "a1", CreatedAt: time.Now()}))
+	require.NoError(t, repo.Create(context.Background(), &Run{ID: "r1", AutomationID: "a1", Outcome: RunOutcomeSuccess, DurationMS: 42, CreatedAt: time.Now()}))
 	h := NewRunsHandler(NewRunsService(repo, runsAutomations(), allowAll("u1")))
 
 	req := withActor(httptest.NewRequest(http.MethodGet, "/api/automations/a1/runs", nil), "u1")
@@ -185,9 +185,14 @@ func TestRunsHandler_List_ReturnsRuns(t *testing.T) {
 	h.Routes().ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	var runs []Run
+	// The web reads snake_case keys (web/src/models/AutomationRun.tsx), so decode the wire shape, not the Go struct.
+	var runs []map[string]any
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &runs))
 	require.Len(t, runs, 1)
+	assert.Equal(t, "r1", runs[0]["id"])
+	assert.Equal(t, "a1", runs[0]["automation_id"])
+	assert.Equal(t, string(RunOutcomeSuccess), runs[0]["outcome"])
+	assert.InDelta(t, 42, runs[0]["duration_ms"], 0)
 }
 
 func TestRunsHandler_List_Forbidden_ReturnsError(t *testing.T) {

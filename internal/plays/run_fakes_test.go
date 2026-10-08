@@ -15,6 +15,7 @@ import (
 	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
 // fakeTrailRepo is the in-memory TrailRepo; terminal receives every trail saved in a terminal state.
@@ -201,11 +202,21 @@ type fakeTargets struct {
 	tickets  map[string]TicketTarget
 	docs     map[string]DocTarget
 	statuses map[string]StatusTarget
+	// needActor refuses reads without an actor, the way the real ticket and doc services check permissions.
+	needActor bool
 }
 
-func (f *fakeTargets) GetTicket(_ context.Context, id string) (TicketTarget, error) {
+func (f *fakeTargets) refuses(ctx context.Context) bool {
+	_, ok := identity.ActorFromCtx(ctx)
+	return f.needActor && !ok
+}
+
+func (f *fakeTargets) GetTicket(ctx context.Context, id string) (TicketTarget, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.refuses(ctx) {
+		return TicketTarget{}, apperrs.ErrForbidden
+	}
 	t, ok := f.tickets[id]
 	if !ok {
 		return TicketTarget{}, apperrs.ErrNotFound
@@ -213,7 +224,10 @@ func (f *fakeTargets) GetTicket(_ context.Context, id string) (TicketTarget, err
 	return t, nil
 }
 
-func (f *fakeTargets) GetDoc(_ context.Context, id string) (DocTarget, error) {
+func (f *fakeTargets) GetDoc(ctx context.Context, id string) (DocTarget, error) {
+	if f.refuses(ctx) {
+		return DocTarget{}, apperrs.ErrForbidden
+	}
 	d, ok := f.docs[id]
 	if !ok {
 		return DocTarget{}, apperrs.ErrNotFound

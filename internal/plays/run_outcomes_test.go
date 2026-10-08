@@ -409,6 +409,18 @@ func TestResumeRunsAfterRestart_FollowsRunningRunsAndEndsUnstartedOnes(t *testin
 	assert.Len(t, f.trails.eventsFor(TopicRunFinished), 2)
 }
 
+func TestResumeRunsAfterRestart_NamesTheTargetAsTheStarter(t *testing.T) {
+	f := newRunnerFixture()
+	f.targets.needActor = true
+	seedTrail(f, "tr-starting", TrailStarting, "")
+
+	require.NoError(t, f.runner.ResumeRunsAfterRestart(t.Context()))
+
+	finished := f.trails.eventsFor(TopicRunFinished)
+	require.Len(t, finished, 1)
+	assert.Equal(t, "NEX-1", finished[0].Payload.(RunFinishedEvent).TargetTitle, "boot has no signed-in actor, so the target is read as the run's starter")
+}
+
 func TestResumeRunsAfterRestart_ListFails_ReturnsTheError(t *testing.T) {
 	f := newRunnerFixture()
 	f.trails.listErr = errors.New("db down")

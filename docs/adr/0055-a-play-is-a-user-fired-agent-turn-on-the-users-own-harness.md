@@ -1,5 +1,7 @@
 # 0055. A play is a user-fired Agent turn that runs on the user's own harness
 
+Amended by ADR 0132: an auto play may start a play when a moment matches, still on one person's own harness.
+
 Its move-on-success consequence is superseded by ADR 0112: a play never moves its ticket; footer memories tell the agent where it goes.
 
 Superseded in part by ADR 0115: an interview run's thread is hidden plumbing holding its session; the run is read on the

@@ -82,11 +82,18 @@ resolved.
 
 ## Decisions so far
 
+- 01, the new moments: `ticket.unblocked` and `doc.settled`; see the
+  ticket's answer.
+- 02, the record and surfaces: `autoplays:*` backfilled from the matching
+  `plays:*` bits, nothing from `automations:write`.
+- 03, the run queue: one auto run per person by default; auto runs ignore
+  the play's show-when stage, which only places the button.
+- 04, `runPlay`: play names become unique per workspace.
+
 ## Not yet specified
 
 - Whether the phone app shows the queued, skipped, and paused signals on a
   ticket, or only what the web already sends it; settled in the walkthrough.
-- The default number of concurrent auto runs per person; answered in 03.
 
 ## Out of scope
 

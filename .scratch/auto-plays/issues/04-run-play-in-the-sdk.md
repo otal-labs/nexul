@@ -1,7 +1,7 @@
 # 04: runPlay in the SDK, with the play name checked as a literal union
 
 Type: research
-Status: open
+Status: resolved
 Blocked by: None — can start immediately
 
 ## Question
@@ -25,3 +25,13 @@ play fails the type check.
   SDK.
 
 Findings go in `research/04-run-play-in-the-sdk.md`.
+
+## Answer
+
+Recommendation in `research/04-run-play-in-the-sdk.md`, with one change from
+the owner (2026-10-08): **play names are unique per workspace.** A forward
+migration renames existing duplicates by appending " (2)", " (3)" in
+creation order, a unique index on `(workspace_id, label)` holds it after,
+and create and rename refuse a taken name with a plain error in the play
+dialog and on `play_create`/`play_update`. So a name is an identity, and
+`runPlay` and `nexul types` no longer need the skip-duplicates rule.
