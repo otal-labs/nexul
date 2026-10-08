@@ -37,8 +37,8 @@ export const ServicesSection = ({ stackId }: ServicesSectionProps) => {
       footer={services && services.length > 0 && <p className="text-xs text-muted-foreground">{summary(services)}</p>}
     >
       {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} title="Could not load services" />}
-      {services && services.length === 0 && <EmptyRow flush>No services parsed for this stack yet.</EmptyRow>}
+      {error && <ErrorDisplay error={error} title="Couldn't load services" />}
+      {services && services.length === 0 && <EmptyRow flush>No services found in this stack yet.</EmptyRow>}
       {services && services.length > 0 && (
         <EnterList className="divide-y divide-border rounded-lg border border-border">
           {services.map((c) => (

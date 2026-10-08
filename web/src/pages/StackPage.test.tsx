@@ -348,7 +348,7 @@ describe("StackPage", () => {
     });
     renderPage("/acme/stacks/stack-1/history");
     expect(await screen.findAllByText("ghcr.io/onik/api:v1")).not.toHaveLength(0);
-    expect(screen.getByText("last deploy 3h ago")).toBeInTheDocument();
+    expect(screen.getByText("deployed 3h ago")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Deploy history" })).toBeInTheDocument();
     expect(screen.getByText("d-1")).toBeInTheDocument();
   });

@@ -113,7 +113,7 @@ describe("RunnersPanel", () => {
     mocks.get.mockResolvedValue({ data: [] });
     renderPanel();
 
-    expect(await screen.findByText("No runners connected yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No runners yet. Add one to start building and deploying.")).toBeInTheDocument();
     expect(screen.getByText("Nothing queued.")).toBeInTheDocument();
   });
 
@@ -130,7 +130,7 @@ describe("RunnersPanel", () => {
     renderPanel({ retry: false });
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(screen.getByText("Failed to load runners")).toBeInTheDocument();
+    expect(screen.getByText("Couldn't load runners")).toBeInTheDocument();
     expect(screen.getByText("boom")).toBeInTheDocument();
   });
 

@@ -44,7 +44,7 @@ export const AddRunnerDialog = ({ machineName, triggerSize = "default", triggerV
           <DialogDescription>
             {machineName
               ? `Name the runner, then run its install command on ${machineName}.`
-              : "Name the runner, then run its install command on the machine that should pick up builds and deploys."}
+              : "Name the runner, then run its install command on the machine that should build and deploy."}
           </DialogDescription>
         </DialogHeader>
 
