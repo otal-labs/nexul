@@ -27,17 +27,17 @@ const maxRunLogBytes = 1 << 20
 
 // Run is one delivery attempt's report; a redelivered crash makes a second Run row for the same EventID.
 type Run struct {
-	ID           string
-	AutomationID string
-	EventTopic   string
-	EventID      string
-	Outcome      RunOutcome
-	Error        string
-	StartedAt    time.Time
-	FinishedAt   time.Time
-	DurationMS   int64
-	Logs         string
-	CreatedAt    time.Time
+	ID           string     `json:"id"`
+	AutomationID string     `json:"automation_id"`
+	EventTopic   string     `json:"event_topic"`
+	EventID      string     `json:"event_id"`
+	Outcome      RunOutcome `json:"outcome"`
+	Error        string     `json:"error,omitempty"`
+	StartedAt    time.Time  `json:"started_at"`
+	FinishedAt   time.Time  `json:"finished_at"`
+	DurationMS   int64      `json:"duration_ms"`
+	Logs         string     `json:"logs"`
+	CreatedAt    time.Time  `json:"created_at"`
 }
 
 // RunsRepo persists run reports; implementation lives in internal/platform/storage.
