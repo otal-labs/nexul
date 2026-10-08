@@ -32,7 +32,7 @@ export const BoardStatusColumnsSection = ({ projectId, statuses }: BoardStatusCo
     <SettingsCard
       id="status-columns"
       title="Status columns"
-      description="Columns sit under five fixed stages and every swimlane on this project's board shows the same ones. Leave a stage empty to skip it; a column still holding tickets can't be removed."
+      description="Every swimlane on this board shows these columns, grouped under five fixed stages. Leave a stage empty to skip it. A column with tickets in it can't be removed."
     >
       <div className="space-y-6">
         {STATUS_STAGES.map(({ kind, label }) => (

@@ -65,13 +65,13 @@ describe("ProjectRepos", () => {
 
   it("shows an empty state when there are no repos", async () => {
     renderRepos([]);
-    expect(await screen.findByText("No repositories associated yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No repositories yet. Add one to link its pull requests to tickets.")).toBeInTheDocument();
   });
 
   it("does not show the empty state while repos are still loading", () => {
     vi.mocked(api.get).mockReturnValue(new Promise(() => {}));
     renderRepos([]);
-    expect(screen.queryByText("No repositories associated yet.")).not.toBeInTheDocument();
+    expect(screen.queryByText("No repositories yet. Add one to link its pull requests to tickets.")).not.toBeInTheDocument();
   });
 
   it("does not submit empty repo fields", async () => {

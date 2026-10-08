@@ -17,7 +17,7 @@ export const ProjectServices = ({ projectId }: ProjectServicesProps) => {
     <SettingsCard
       id="services"
       title="Services"
-      description="What this project deploys. Each service is a stack with its own deploys, logs, and hostnames."
+      description="What this project deploys, each with its own deploys, logs, and hostnames."
       footer={
         canAdd && (
           <AddServiceLink projectId={projectId} variant="outline" size="sm">
@@ -27,7 +27,7 @@ export const ProjectServices = ({ projectId }: ProjectServicesProps) => {
       }
     >
       {services && services.length === 0 && (
-        <EmptyRow>No services in this project yet — create one to define its first deploy.</EmptyRow>
+        <EmptyRow>No services yet. Create one to set up its first deploy.</EmptyRow>
       )}
       {services && services.length > 0 && <ServicesFeed services={services} />}
     </SettingsCard>

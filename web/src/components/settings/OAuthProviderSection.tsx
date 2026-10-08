@@ -24,9 +24,8 @@ export const OAuthProviderSection = ({ provider, settings }: OAuthProviderSectio
       title={`${copy.label} sign-in`}
       description={
         <>
-          Lets people without a GitHub account — clients, stakeholders — sign in with {copy.label} through an
-          invitation link. {copy.console} and register <code className="font-mono text-xs">{callback}</code> as its
-          redirect URI.
+          Lets invited people without GitHub, such as clients, sign in with {copy.label}. {copy.console} and register{" "}
+          <code className="font-mono text-xs">{callback}</code> as its redirect URI.
         </>
       }
       footer={enabled && <OAuthProviderActions provider={provider} clientId={clientId} />}

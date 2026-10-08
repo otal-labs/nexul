@@ -29,8 +29,7 @@ export const RoleSettingsSection = () => {
     <SettingsCard
       id="roles"
       title="Roles & permissions"
-      description="Custom roles this workspace can assign when inviting someone. The Owner role is a
-        protected singleton and can't be renamed, edited, or deleted here."
+      description="Roles you can give people in this workspace. The Owner role can't be renamed, edited, or deleted."
       footer={
         roles &&
         catalog &&

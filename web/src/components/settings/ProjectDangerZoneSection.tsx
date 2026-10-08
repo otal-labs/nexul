@@ -14,12 +14,12 @@ interface ProjectDangerZoneSectionProps {
 
 const buildImpactMessage = (impact: DeleteImpact): string =>
   [
-    "This project still has affected work:",
+    "This project still has work in it:",
     `- ${impact.tickets} ticket${impact.tickets === 1 ? "" : "s"}`,
     `- ${impact.repos} repo${impact.repos === 1 ? "" : "s"}`,
     `- ${impact.services} service${impact.services === 1 ? "" : "s"}`,
     "",
-    "Move or delete them first — every ticket, repo, and service must belong to a project.",
+    "Move or delete them first. Every ticket, repo, and service needs a project.",
   ].join("\n");
 
 // SettingsCard's `danger` prop supplies the red-outlined border and icon-badge tone here.
@@ -43,7 +43,7 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
     }
     const losing = impact.restricted_members ?? [];
     const ok = await confirmDelete({
-      message: "This project is empty and can be removed. This cannot be undone.",
+      message: "The project is empty. Removing it can't be undone.",
       title: `Remove ${project.name}?`,
       confirmLabel: "Remove",
       details: losing.length > 0 && <RestrictedMembersLoseAccess members={losing} />,
@@ -57,7 +57,7 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
     <SettingsCard id="danger-zone" title="Danger zone" danger icon={TriangleAlert}>
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <p className="text-sm text-muted-foreground">
-          Remove this project and all associated data. This cannot be undone.
+          Removes this project for good. Only an empty project can be removed.
         </p>
         <Button variant="destructive" className="shrink-0" loading={deleteProject.isPending} onClick={() => void onDelete()}>
           Remove project

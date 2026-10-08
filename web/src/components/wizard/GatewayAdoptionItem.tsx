@@ -9,7 +9,7 @@ export const GatewayAdoptionItem = ({ adoption: g }: GatewayAdoptionItemProps) =
     <p className="font-medium wrap-anywhere">{g.name}</p>
     {g.error && <p className="text-xs text-destructive">Not adopted as a gateway: {g.error}</p>}
     {g.gateway_id && g.exposed.length === 0 && g.unmatched.length === 0 && (
-      <p className="text-xs text-muted-foreground">Adopted as a gateway; no hostnames routed through it yet.</p>
+      <p className="text-xs text-muted-foreground">Adopted as a gateway. No hostnames route through it yet.</p>
     )}
     {g.exposed.length > 0 && (
       <ul
@@ -23,7 +23,7 @@ export const GatewayAdoptionItem = ({ adoption: g }: GatewayAdoptionItemProps) =
     )}
     {g.unmatched.length > 0 && (
       <p className="text-xs break-words text-muted-foreground">
-        Not linked, their target is not a container here: {g.unmatched.join(", ")}
+        Not linked, because they don&apos;t point at a container here: {g.unmatched.join(", ")}
       </p>
     )}
   </div>

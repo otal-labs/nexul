@@ -34,6 +34,6 @@ export const machineNetworks = (
 export const noGatewayReason = "no gateway, hostnames unavailable";
 
 export const networkLabel = (network: MachineNetwork): string => {
-  const base = network.services.length > 0 ? `${network.name} — ${network.services.join(", ")}` : network.name;
+  const base = network.services.length > 0 ? `${network.name} · ${network.services.join(", ")}` : network.name;
   return network.hasGateway ? base : `${base} · ${noGatewayReason}`;
 };

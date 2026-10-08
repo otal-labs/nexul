@@ -74,7 +74,7 @@ export const connectorAppConfigFormSchema = (githubApp: boolean, secretRequired 
           .string()
           .trim()
           .min(1, "App slug is required")
-          .refine((v) => !/^\d+$/.test(v), "That's the numeric App ID — enter the slug from your app's URL (github.com/apps/<slug>)")
+          .refine((v) => !/^\d+$/.test(v), "That's the numeric App ID. Enter the slug from your App's URL, github.com/apps/<slug>.")
       : z.string().trim(),
   });
 

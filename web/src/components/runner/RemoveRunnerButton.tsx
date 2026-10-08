@@ -20,7 +20,7 @@ export const RemoveRunnerButton = ({ runner }: RemoveRunnerButtonProps) => {
       : "It uninstalls itself the next time it comes online.";
     const ok = await confirm({
       title: `Remove ${name}?`,
-      message: `${effect} Its credential stops working for good; to bring it back, add it again.`,
+      message: `${effect} Its credential stops working. Add it again to bring it back.`,
       confirmLabel: "Remove runner",
     });
     if (ok) remove.mutate(runner.id);

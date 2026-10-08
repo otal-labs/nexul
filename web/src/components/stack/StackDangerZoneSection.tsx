@@ -21,10 +21,10 @@ export const StackDangerZoneSection = ({ stack, projectPath, hostnames }: StackD
   const onDelete = async () => {
     const releaseClause =
       hostnames.length > 0
-        ? `releases ${hostnames.join(", ")} from the reverse proxy or Cloudflare tunnel`
-        : "releases its hostnames from the reverse proxy or Cloudflare tunnel";
+        ? `${hostnames.join(", ")} stop routing to it`
+        : "its hostnames stop routing to it";
     const ok = await confirmDelete({
-      message: `This removes the stack definition and its containers, and ${releaseClause}. Deploy history is kept for audit.`,
+      message: `The stack and its containers are removed, and ${releaseClause}. Deploy history is kept.`,
       title: `Delete ${stack.name}?`,
       confirmLabel: "Delete",
     });
@@ -38,8 +38,7 @@ export const StackDangerZoneSection = ({ stack, projectPath, hostnames }: StackD
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            Remove this stack definition and its containers, and release its hostnames from the reverse proxy
-            or Cloudflare tunnel. Deploy history is kept for audit.
+            Deleting removes the stack and its containers, and its hostnames stop routing to it. Deploy history is kept.
           </p>
           {hostnames.length > 0 && (
             <ul className="space-y-0.5">

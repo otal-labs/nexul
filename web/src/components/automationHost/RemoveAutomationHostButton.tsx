@@ -19,7 +19,7 @@ export const RemoveAutomationHostButton = ({ host }: RemoveAutomationHostButtonP
       : "It uninstalls itself the next time it comes online.";
     const ok = await confirm({
       title: `Remove ${host.name}?`,
-      message: `${effect} Its automations move back to the instance host. Its credential stops working for good; to bring it back, add it again.`,
+      message: `${effect} Its automations move to the instance host and its credential stops working. Add it again to bring it back.`,
       confirmLabel: "Remove automations host",
     });
     if (ok) remove.mutate(host.id);

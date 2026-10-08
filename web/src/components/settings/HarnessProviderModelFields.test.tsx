@@ -171,7 +171,7 @@ describe("HarnessProviderModelFields", () => {
   it("falls back to free-text inputs when the computer is unreachable", async () => {
     vi.spyOn(api, "get").mockRejectedValueOnce(new Error("down"));
     renderFields();
-    expect(await screen.findByText(/Type them manually/)).toBeInTheDocument();
+    expect(await screen.findByText(/type them in/)).toBeInTheDocument();
     expect(screen.getByPlaceholderText("e.g. claude, opencode")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("e.g. claude-sonnet-4-5")).toBeInTheDocument();
   });

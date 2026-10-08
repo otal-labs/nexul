@@ -48,7 +48,7 @@ export const StackLiveHero = ({ stackId, latest, hostnames }: StackLiveHeroProps
             <HealthDot status={latest.status} className="size-2.5" />
             {latest.status}
           </p>
-          <p className="mt-1 font-mono text-xs text-muted-foreground">last deploy {formatRelativeTime(latest.created_at)}</p>
+          <p className="mt-1 font-mono text-xs text-muted-foreground">deployed {formatRelativeTime(latest.created_at)}</p>
         </>
       )}
       {!latest && <p className="mt-1.5 text-sm text-muted-foreground">No deploys yet</p>}

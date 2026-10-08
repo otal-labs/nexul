@@ -14,9 +14,9 @@ export const BoardLabelColorsSection = ({ projectId, allLabels, labelColors }: B
   <SettingsCard
     id="label-colors"
     title="Label colors"
-    description="Labels come from the tickets themselves; pick the color each one shows on this board."
+    description="Labels come from tickets. Pick the color each one shows on this board."
   >
-    {allLabels && allLabels.length === 0 && <EmptyRow>No labels yet</EmptyRow>}
+    {allLabels && allLabels.length === 0 && <EmptyRow>No labels yet. Add one to a ticket and it shows up here.</EmptyRow>}
     {allLabels && allLabels.length > 0 && (
       <EnterList className="divide-y divide-border">
         {allLabels.map((label) => (

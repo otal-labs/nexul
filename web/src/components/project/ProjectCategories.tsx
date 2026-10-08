@@ -67,7 +67,7 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
     <SettingsCard
       id="categories"
       title="Categories"
-      description="The board groups tickets into one swimlane per category, in this order. Drag a row to reorder."
+      description="Each category is a swimlane on the board, in this order. Drag a row to reorder."
       footer={
         <Button variant="outline" size="sm" onClick={() => void onAdd()}>
           <PlusIcon className="size-4" />
@@ -76,7 +76,7 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
       }
     >
       {categories && categories.length === 0 && (
-        <EmptyRow>No categories yet — the board groups tickets into swimlanes per category.</EmptyRow>
+        <EmptyRow>No categories yet. Add one to give the board a swimlane.</EmptyRow>
       )}
       {categories && categories.length > 0 && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>

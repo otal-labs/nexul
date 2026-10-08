@@ -28,9 +28,9 @@ export const BoardTicketTypesSection = ({ projectId, ticketTypes }: BoardTicketT
     <SettingsCard
       id="ticket-types"
       title="Ticket types"
-      description="What a ticket on this board can be. Each type carries a color and a body template new tickets start from."
+      description="Each type has a color and a body template its new tickets start from."
     >
-      {ticketTypes && ticketTypes.length === 0 && <EmptyRow>No ticket types yet</EmptyRow>}
+      {ticketTypes && ticketTypes.length === 0 && <EmptyRow>No ticket types yet. Add one below.</EmptyRow>}
       {ticketTypes && ticketTypes.length > 0 && (
         <EnterList className="divide-y divide-border">
           {ticketTypes.map((type) => (
@@ -51,7 +51,7 @@ export const BoardTicketTypesSection = ({ projectId, ticketTypes }: BoardTicketT
           name="name"
           id="new-ticket-type-name"
           label="New ticket type"
-          placeholder="New ticket type (bug, feature, task, ...)"
+          placeholder="e.g. bug, feature, task"
           className="w-full sm:w-80"
         />
         <Button type="submit" loading={typeForm.formState.isSubmitting}>

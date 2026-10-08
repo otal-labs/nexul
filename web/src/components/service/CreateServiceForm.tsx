@@ -127,8 +127,7 @@ export const CreateServiceForm = ({ projectId }: CreateServiceFormProps) => {
       <fieldset className="rounded-lg border border-border p-3">
         <legend className="px-1 text-sm font-medium">Build source (repo-driven)</legend>
         <p className="mb-3 text-xs text-muted-foreground">
-          Optional. When set, the runner clones this repository and builds from it
-          (build &amp; deploy actions). Required before a ref deploy can trigger.
+          Optional. Set it and the runner clones this repository and builds from it. A ref deploy needs it.
         </p>
         <div className="grid gap-3">
           <FormInput control={control} name="build_repo_owner" label="Repo owner" placeholder="acme" />

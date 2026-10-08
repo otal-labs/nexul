@@ -42,7 +42,7 @@ export const AddRunnerForm = ({ machineName, pending, onSubmit }: AddRunnerFormP
           placeholder="ghp_..."
         />
         <p className="text-xs text-muted-foreground">
-          Optional. Used to clone private repositories; it goes into the command, never to this instance.
+          Optional, for cloning private repositories. It goes into the command, never to this instance.
         </p>
       </div>
       <Button type="submit" loading={pending}>

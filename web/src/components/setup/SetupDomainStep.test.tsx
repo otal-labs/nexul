@@ -191,7 +191,7 @@ describe("SetupDomainStep", () => {
       await user.click(screen.getByRole("button", { name: /advanced options/i }));
       await user.type(screen.getByLabelText(/email/i), "ops@example.com");
       await user.click(screen.getByRole("button", { name: /i've added the record/i }));
-      expect(await screen.findByText(/does not resolve yet/i)).toBeInTheDocument();
+      expect(await screen.findByText(/doesn.t resolve yet/i)).toBeInTheDocument();
 
       answers = ["203.0.113.10"];
       await vi.waitFor(

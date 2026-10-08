@@ -35,8 +35,8 @@ export const SetupFolderPick = ({ projects, folder, disabled, onPick }: SetupFol
       </Select>
     </div>
     <p className="text-xs text-muted-foreground">
-      Runs in <span className="font-mono break-all">{folder}</span>. Setup only writes user-level files, so any folder T3 Code
-      opens works; pick another if this one is gone.
+      Runs in <span className="font-mono break-all">{folder}</span>. Setup only writes user-level files, so any folder works.
+      Pick another if this one is gone.
     </p>
   </div>
 );

@@ -12,7 +12,7 @@ export const GitHubInstallationsList = () => {
   return (
     <>
       {isPending && <LoadingDisplay className="p-4" />}
-      {error && <ErrorDisplay error={error} title="Couldn't load the accounts" className="p-4" />}
+      {error && <ErrorDisplay error={error} title="Couldn't load the accounts." className="p-4" />}
       {installations && installations.length === 0 && (
         <EmptyRow>The GitHub App isn't installed on any account you can see yet.</EmptyRow>
       )}

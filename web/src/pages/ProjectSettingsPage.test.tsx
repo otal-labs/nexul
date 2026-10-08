@@ -92,7 +92,7 @@ describe("ProjectSettingsPage", () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "General" })).toBeInTheDocument();
-    expect(screen.getByText("Used in ticket IDs")).toBeInTheDocument();
+    expect(screen.getByText("Starts every ticket key")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "General" })).toHaveAttribute("aria-current", "page");
   });
 
@@ -104,7 +104,7 @@ describe("ProjectSettingsPage", () => {
     await user.click(screen.getByRole("link", { name: "Categories" }));
 
     expect(await screen.findByText("Sprint 1")).toBeInTheDocument();
-    expect(screen.queryByText("Used in ticket IDs")).not.toBeInTheDocument();
+    expect(screen.queryByText("Starts every ticket key")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Categories" })).toHaveAttribute("aria-current", "page");
   });
 
@@ -154,7 +154,7 @@ describe("ProjectSettingsPage", () => {
     renderPage("/acme/projects/p-1/settings/danger");
 
     await user.click(await screen.findByRole("button", { name: "Remove project" }));
-    expect(await screen.findByText(/still has affected work/i)).toBeInTheDocument();
+    expect(await screen.findByText(/still has work in it/i)).toBeInTheDocument();
     expect(screen.getByText(/3 tickets/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Got it" }));
 

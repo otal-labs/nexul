@@ -19,7 +19,7 @@ export const useBotActions = () => {
       const ok = await confirm({
         title: `Regenerate ${bot.name}'s URL?`,
         message: "Anything still posting to the old URL gets a 404 until it uses the new one.",
-        confirmLabel: "Regenerate",
+        confirmLabel: "Regenerate URL",
       });
       return ok && settled(update.mutateAsync({ bot, change: { regenerate: true } }));
     },

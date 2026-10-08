@@ -14,12 +14,12 @@ export const AutomationHostsSection = () => {
     <SettingsCard
       id="automation-hosts"
       title="Automations hosts"
-      description="Machines whose worker runs this workspace's automations, beside the one built into the instance."
+      description="Where this workspace's automations run, besides the instance's own host."
       footer={<AddAutomationHostDialog />}
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {hosts && hosts.length === 0 && <EmptyRow>No automations host enrolled yet.</EmptyRow>}
+      {hosts && hosts.length === 0 && <EmptyRow>No automations hosts yet. Add one to run automations on another machine.</EmptyRow>}
       {hosts && hosts.length > 0 && (
         <EnterList className="divide-y divide-border overflow-hidden rounded-md border border-border">
           {hosts.map((host) => (

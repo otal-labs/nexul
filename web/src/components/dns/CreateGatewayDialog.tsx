@@ -113,7 +113,7 @@ export const CreateGatewayDialog = () => {
         <DialogHeader>
           <DialogTitle>Create a gateway</DialogTitle>
           <DialogDescription>
-            Give a docker network internet reachability via a Cloudflare tunnel or a reverse proxy.
+            Makes a Docker network reachable from the internet through a Cloudflare tunnel or a reverse proxy.
           </DialogDescription>
         </DialogHeader>
         {loading && <LoadingDisplay />}

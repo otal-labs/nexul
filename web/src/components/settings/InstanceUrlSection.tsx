@@ -47,8 +47,8 @@ export const InstanceUrlSection = ({ settings }: InstanceUrlSectionProps) => {
       title="Instance"
       description={
         <>
-          The address this instance is reached at. Changing it regenerates connection tokens.
-          Register the callback below as the GitHub OAuth callback.
+          Where people reach this instance. Changing it issues new connection tokens. Register the callback below
+          as the GitHub OAuth callback.
         </>
       }
     >

@@ -51,7 +51,7 @@ export const BotsSection = ({ conversation, className }: BotsSectionProps) => {
           </p>
           {isPending && <LoadingDisplay label="Loading bots…" className="p-4" />}
           {error && <ErrorDisplay error={error} title="Couldn't load bots." className="p-4" />}
-          {bots && bots.length === 0 && <EmptyRow>No bots yet</EmptyRow>}
+          {bots && bots.length === 0 && <EmptyRow>No bots yet. Create one to post here from another tool.</EmptyRow>}
           {bots && bots.length > 0 && <BotsFeed bots={bots} onOpen={editor ? (bot) => setView({ id: bot.id }) : undefined} />}
           {editor && bots && (
             <div className="space-y-1.5">

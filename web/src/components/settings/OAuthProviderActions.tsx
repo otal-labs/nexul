@@ -29,7 +29,7 @@ export const OAuthProviderActions = ({ provider, clientId }: OAuthProviderAction
   const disable = async () => {
     const ok = await confirm({
       title: `Disable ${copy.label} sign-in?`,
-      message: `People who sign in with ${copy.label} can't until it is enabled again. Nobody is signed out.`,
+      message: `Nobody can sign in with ${copy.label} until you enable it again. Anyone already signed in stays signed in.`,
       confirmLabel: "Disable",
       destructive: true,
     });

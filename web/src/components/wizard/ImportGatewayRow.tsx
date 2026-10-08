@@ -19,7 +19,7 @@ export const ImportGatewayRow = ({ container, checked, onToggle }: ImportGateway
   return (
     <div className="space-y-1.5">
       <ImportContainerRow container={container} checked={checked} onToggle={onToggle} />
-      {tunnelError && <p className="pl-7 text-xs text-destructive">Could not read the tunnel: {tunnelError}</p>}
+      {tunnelError && <p className="pl-7 text-xs text-destructive">Couldn&apos;t read the tunnel: {tunnelError}</p>}
       {tunnel && (
         <div className="space-y-1 pl-7 text-xs">
           <div className="flex flex-wrap items-center gap-2">

@@ -86,7 +86,7 @@ describe("DnsOnboardingPage", () => {
     expect(await screen.findByText(/connect cloudflare first/i)).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: /bare public address/i })).not.toBeInTheDocument();
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: /go to settings/i }));
+    await user.click(screen.getByRole("button", { name: /^connect cloudflare$/i }));
     expect(await screen.findByText("settings-page")).toBeInTheDocument();
   });
 
@@ -129,6 +129,6 @@ describe("DnsOnboardingPage", () => {
     });
     renderPage();
     expect(await screen.findByText(/connect cloudflare first/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /go to settings/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^connect cloudflare$/i })).not.toBeInTheDocument();
   });
 });

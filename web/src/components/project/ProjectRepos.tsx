@@ -32,7 +32,7 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
     <SettingsCard
       id="repositories"
       title="Repositories"
-      description="Where this project's code lives. Tickets link their pull requests here, and a tests repository is never deployed."
+      description="Where this project's code lives. A tests repository is never deployed."
       footer={
         <Button variant="outline" size="sm" onClick={() => void onAdd()}>
           <PlusIcon className="size-4" />
@@ -40,7 +40,7 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
         </Button>
       }
     >
-      {repos && repos.length === 0 && <EmptyRow>No repositories associated yet.</EmptyRow>}
+      {repos && repos.length === 0 && <EmptyRow>No repositories yet. Add one to link its pull requests to tickets.</EmptyRow>}
       {repos && repos.length > 0 && (
         <EnterList className="divide-y divide-border">
           {repos.map((repo) => (

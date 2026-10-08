@@ -36,7 +36,7 @@ export const ProxyResolveWatch = ({ domain, address, onResolved }: ProxyResolveW
           {!resolved && `Waiting for ${domain} to point at this server…`}
           {!resolved && (
             <span className="block break-all font-mono text-xs text-muted-foreground">
-              {answers.length > 0 ? `resolves to ${answers.join(", ")} now` : "does not resolve yet"}
+              {answers.length > 0 ? `resolves to ${answers.join(", ")} now` : "doesn't resolve yet"}
             </span>
           )}
         </span>

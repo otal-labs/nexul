@@ -38,10 +38,10 @@ export const DevicesFeed = () => {
     <SettingsCard
       id="devices"
       title="Signed-in devices"
-      description="Every browser, desktop app, and phone signed in to your account. Sign out any you don't recognise."
+      description="Sign out any you don't recognise."
       footer={
         <>
-          <p className="text-sm text-muted-foreground">Everything except this device will need to sign in again.</p>
+          <p className="text-sm text-muted-foreground">Every other device will have to sign in again.</p>
           <Button
             variant="destructive"
             size="sm"
@@ -67,7 +67,7 @@ export const DevicesFeed = () => {
           <div className="space-y-2">
             <h3 className="text-xs font-medium text-muted-foreground">Other devices</h3>
             {others.length === 0 && (
-              <EmptyRow className="animate-in fade-in-0 duration-200 ease-out">No other devices are signed in.</EmptyRow>
+              <EmptyRow className="animate-in fade-in-0 duration-200 ease-out">No other devices signed in.</EmptyRow>
             )}
             {others.length > 0 && (
               <ul className="divide-y divide-border overflow-hidden rounded-md border border-border">

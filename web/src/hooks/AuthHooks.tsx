@@ -87,7 +87,7 @@ export const useUpdateSettings = () => {
       (await api.put<InstanceSettings>("/api/auth/settings", { instance_url })).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getSettingsKey] });
-      toast.success("Instance URL updated — connection tokens regenerate on next issue");
+      toast.success("Instance URL updated. New connection tokens use it.");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -135,7 +135,7 @@ export const useMintPAT = () => {
     mutationFn: async (name: string) => (await api.post<MintPATResponse>("/api/auth/tokens", { name })).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getPATsKey] });
-      toast.success("Token created — copy it now, it won't be shown again");
+      toast.success("Token created. Copy it now. It won't be shown again.");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

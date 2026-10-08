@@ -60,7 +60,7 @@ export const HarnessProviderModelFields = <T extends FieldValues>({
       {providers.isPending && !!computerId && <LoadingDisplay label="Loading providers" className="justify-start p-0" />}
       {providers.isError && (
         <p className="text-xs text-muted-foreground">
-          Couldn't load providers from this computer — is it online? Type them manually.
+          Couldn't load this computer's providers. Check it's online, or type them in.
         </p>
       )}
     </div>

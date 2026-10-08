@@ -15,9 +15,8 @@ export const WizardInterviewOffer = ({ projectName, onStart, onSkip }: WizardInt
       <div className="space-y-1">
         <p className="text-sm font-medium">Run the interview</p>
         <p className="text-sm text-muted-foreground">
-          An agent asks you one question at a time, each with a recommended answer, and records {projectName}'s
-          stack, paradigm, testing strategy, principles, and vocabulary as rules every agent turn here follows. It can
-          read the codebase for answers first.
+          Answer questions about {projectName}&apos;s stack, testing, and conventions. An agent then asks follow-ups and
+          writes the rules every agent turn here reads first.
         </p>
       </div>
     </div>

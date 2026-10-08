@@ -73,7 +73,7 @@ export const ProjectWizardImportPage = () => {
       />
       <div className="mt-6 space-y-6">
         {machinesPending && <LoadingDisplay />}
-        {machinesError && <ErrorDisplay error={machinesError} title="Could not load machines" />}
+        {machinesError && <ErrorDisplay error={machinesError} title="Couldn't load machines." />}
         {machines && !report && (
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-2">
@@ -96,7 +96,7 @@ export const ProjectWizardImportPage = () => {
             </Button>
           </div>
         )}
-        {nothingFound && <NoDataDisplay message="Nothing found on this machine." />}
+        {nothingFound && <NoDataDisplay message="Nothing running on this machine to import." />}
         {report && !result && !nothingFound && (
           <div className="space-y-6">
             <div className="space-y-4 divide-y divide-border">
@@ -158,7 +158,9 @@ export const ProjectWizardImportPage = () => {
         )}
         {result && (
           <div className="space-y-4">
-            <p className="text-sm">Imported {result.stacks.length} stack(s) as unmanaged.</p>
+            <p className="text-sm">
+              Imported {result.stacks.length} {result.stacks.length === 1 ? "stack" : "stacks"} as unmanaged.
+            </p>
             {result.gateways.map((g) => (
               <GatewayAdoptionItem key={g.name} adoption={g} />
             ))}

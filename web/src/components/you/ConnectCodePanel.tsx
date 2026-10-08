@@ -28,7 +28,7 @@ export const ConnectCodePanel = () => {
             </Button>
           }
         >
-          <p className="text-muted-foreground">Generates a code that works once, for two minutes.</p>
+          <p className="text-muted-foreground">The code works once, for two minutes.</p>
         </QrFrame>
       )}
       {data && <IssuedConnectCode code={data} onNewCode={generate} generating={isPending} />}

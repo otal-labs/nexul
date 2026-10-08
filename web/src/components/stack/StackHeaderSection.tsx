@@ -82,7 +82,7 @@ export const StackHeaderSection = ({ stack, latest, image, hostnames }: StackHea
               {!image && <span className="text-muted-foreground">—</span>}
             </Fact>
           )}
-          <Fact label="Runner">
+          <Fact label="Machine">
             <Mono>{stack.machine}</Mono>
           </Fact>
           <Fact label="Strategy">

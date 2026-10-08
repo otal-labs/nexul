@@ -33,7 +33,7 @@ describe("HarnessProjectField", () => {
   it("falls back to manual entry when the computer is unreachable", async () => {
     vi.spyOn(api, "get").mockRejectedValueOnce(new Error("down"));
     renderField("comp-1");
-    expect(await screen.findByText(/Paste the id manually/)).toBeInTheDocument();
+    expect(await screen.findByText(/paste the project id/)).toBeInTheDocument();
     expect(screen.getByPlaceholderText("e.g. proj_abc123")).toBeInTheDocument();
   });
 

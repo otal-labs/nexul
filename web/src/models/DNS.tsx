@@ -85,7 +85,7 @@ export const entryPathOptions: EntryPathOption[] = [
     value: EntryPaths.Proxy,
     label: "Reverse proxy",
     description: "Traefik runs as a service on the server and routes hostnames to containers.",
-    stepDescription: "Nexul deploys Traefik on your runner and points the instance record at the server.",
+    stepDescription: "Nexul deploys Traefik on a machine and points the instance record at the server.",
   },
 ];
 

@@ -106,9 +106,9 @@ export const GitHubAppForm = ({ instanceUrl }: GitHubAppFormProps) => {
         Webhooks (read and write). Metadata is always included.
       </p>
       <p className="text-sm text-muted-foreground">
-        The name in your app's own URL — github.com/apps/
-        <span className="font-mono text-xs text-foreground">&lt;slug&gt;</span>. Needed later to install
-        the app when connecting GitHub.
+        The last part of your App&apos;s URL, github.com/apps/
+        <span className="font-mono text-xs text-foreground">&lt;slug&gt;</span>. Nexul needs it to install the App
+        when GitHub is connected.
       </p>
       <ul className="space-y-2" aria-label="GitHub App checks">
         {APP_CHECKS.map((c) => (

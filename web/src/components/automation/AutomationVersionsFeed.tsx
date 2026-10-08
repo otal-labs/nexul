@@ -25,7 +25,7 @@ export const AutomationVersionsFeed = ({ automationId, canUpdate }: AutomationVe
         <AutomationVersionDiff automationId={automationId} diff={diff.data} canUpdate={canUpdate} />
       )}
       {versions.data && (
-        <SettingsCard id="version-history" title="Version history" description="Every version pushed for this automation, newest first.">
+        <SettingsCard id="version-history" title="Version history" description="Every pushed version, newest first.">
           {versions.data.length === 0 && <EmptyRow>No versions yet</EmptyRow>}
           {versions.data.length > 0 && (
             <EnterList className="divide-y divide-border overflow-hidden rounded-md border">

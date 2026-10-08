@@ -110,7 +110,7 @@ export const ComputerSetupSummary = ({ computer }: ComputerSetupSummaryProps) =>
   return (
     <div className="border-t border-border pt-2">
       {isPending && <LoadingDisplay label="Reading setup" className="justify-start p-0" />}
-      {error && <ErrorDisplay error={error} title="Couldn't read setup" className="p-3" />}
+      {error && <ErrorDisplay error={error} title="Couldn't read setup." className="p-3" />}
       {setup && <SetupDetails computer={computer} setup={setup} />}
     </div>
   );

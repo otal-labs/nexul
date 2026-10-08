@@ -67,8 +67,7 @@ export const SetupTranscript = ({ row, runningName, retryDisabled, onRetry }: Se
     >
       {!row && (
         <EmptyRow className="m-4 text-left">
-          Nothing has run here yet. Start setup and each provider takes one turn: it connects Nexul's MCP server with this
-          computer's own token, installs the skills, and confirms the skills it found. Its steps stream here as it works.
+          Nothing has run yet. Start setup and each provider's steps show here as it works.
         </EmptyRow>
       )}
       {row && (

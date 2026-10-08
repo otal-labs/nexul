@@ -31,7 +31,7 @@ export const useCreateInvitation = () => {
       (await api.post<CreatedInvitation>("/api/invitations", invitationRequest(input))).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getInvitationsKey] });
-      toast.success("Invitation created — copy the link now");
+      toast.success("Invitation created. Copy the link now.");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

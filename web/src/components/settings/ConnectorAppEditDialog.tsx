@@ -32,7 +32,7 @@ export const ConnectorAppEditDialog = ({ connectorId, current }: ConnectorAppEdi
         <DialogHeader>
           <DialogTitle>Edit the GitHub App</DialogTitle>
           <DialogDescription>
-            Each change is checked against GitHub before it is saved. Leave the secret blank to keep the current one.
+            Nexul checks each change with GitHub before saving. Leave the secret blank to keep the current one.
           </DialogDescription>
         </DialogHeader>
         <ConnectorAppConfigForm connectorId={connectorId} current={current} onSaved={() => setOpen(false)} />

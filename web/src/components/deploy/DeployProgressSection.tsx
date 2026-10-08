@@ -20,7 +20,7 @@ export const DeployProgressSection = ({ deploy }: DeployProgressSectionProps) =>
   const terminal = isTerminal(deploy);
   const now = useNow(!terminal);
   const progress = useMemo(() => deriveDeployProgress(deploy, lines ?? [], now), [deploy, lines, now]);
-  const emptyMessage = terminal ? "No output was recorded." : "Waiting for the runner to pick this up…";
+  const emptyMessage = terminal ? "No output recorded." : "Waiting for the runner to pick this up…";
 
   return (
     <section
@@ -34,7 +34,7 @@ export const DeployProgressSection = ({ deploy }: DeployProgressSectionProps) =>
       <div className="min-w-0 space-y-2">
         <DeployLogActions deployId={deploy.id} lines={lines ?? []} />
         {isPending && <LoadingDisplay label="Loading log" />}
-        {error && <ErrorDisplay error={error} title="Could not load the log" />}
+        {error && <ErrorDisplay error={error} title="Couldn't load the log." />}
         {lines && <DeployLogPanel lines={lines} emptyMessage={emptyMessage} />}
       </div>
       {!terminal && (

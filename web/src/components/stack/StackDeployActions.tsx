@@ -137,7 +137,7 @@ export const StackDeployActions = ({ stack, lastHealthy, canRollback, image }: S
           <p className="min-w-0 flex-1 text-xs break-words text-muted-foreground">
             {lastHealthy?.image && `Rollback re-deploys ${lastHealthy.image}, the last healthy image.`}
             {lastHealthy && !lastHealthy.image && `Rollback re-deploys ${rollbackTarget(lastHealthy)}, the last healthy one.`}
-            {!canRollback && "Rollback needs at least one healthy deploy in this stack's history."}
+            {!canRollback && "Rollback needs a healthy deploy in this stack's history."}
           </p>
           <RollbackButton
             stack={stack}

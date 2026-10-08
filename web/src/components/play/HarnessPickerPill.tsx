@@ -36,7 +36,7 @@ const HarnessPickerForm = ({ value, onChange }: HarnessPickerPillProps) => {
   return (
     <div className="space-y-3">
       {(!computers || computers.length === 0) && (
-        <p className="text-xs text-muted-foreground">Pair a harness in Settings to run plays.</p>
+        <p className="text-xs text-muted-foreground">Pair a computer in Settings to run plays.</p>
       )}
       {computers && computers.length > 0 && (
         <HarnessComputerField

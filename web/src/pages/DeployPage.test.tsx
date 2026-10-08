@@ -107,14 +107,14 @@ describe("DeployPage", () => {
   it("shows the cancel button only while the deploy is active", async () => {
     mockApi(deploy({}), lines);
     renderPage();
-    expect(await screen.findByRole("button", { name: "Cancel deployment" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Cancel deploy" })).toBeInTheDocument();
   });
 
   it("hides cancel, checks every started step, and titles a healthy deploy as deployed", async () => {
     mockApi(deploy({ status: "healthy", updated_at: new Date(T0 + 20_000).toISOString() }), lines);
     renderPage();
     expect(await screen.findByRole("heading", { name: "Deployed" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Cancel deployment" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel deploy" })).not.toBeInTheDocument();
     expect(within(screen.getByRole("list", { name: "Steps" })).getByText("Building").parentElement).toHaveTextContent("done8s");
     expect(within(screen.getByRole("list", { name: "Steps" })).getByText("Deploying").parentElement).toHaveTextContent("—");
   });
@@ -135,7 +135,7 @@ describe("DeployPage", () => {
     mocks.post.mockResolvedValue({ data: {} });
     renderPage();
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    await user.click(await screen.findByRole("button", { name: "Cancel deployment" }));
+    await user.click(await screen.findByRole("button", { name: "Cancel deploy" }));
     expect(mocks.post).toHaveBeenCalledWith("/api/deploys/d-1/cancel");
     await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Cancel requested"));
   });
@@ -182,7 +182,7 @@ describe("DeployPage", () => {
   it("shows the no-output empty state for a terminal deploy without lines", async () => {
     mockApi(deploy({ status: "failed" }), []);
     renderPage();
-    expect(await screen.findByText("No output was recorded.")).toBeInTheDocument();
+    expect(await screen.findByText("No output recorded.")).toBeInTheDocument();
   });
 
   it("renders the error display when the deploy cannot be loaded", async () => {

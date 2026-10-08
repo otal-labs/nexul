@@ -18,8 +18,7 @@ export const ConnectorAppConfigSection = () => {
     <SettingsCard
       id="connector-app-config"
       title="GitHub App"
-      description="The GitHub App this instance uses to let people connect their own GitHub account. Register
-          your own App and paste its credentials here — Nexul never holds or manages the App itself."
+      description="People connect their GitHub accounts through this App. Register your own App and paste its credentials here. It stays yours to manage."
       footer={app && registered && <ConnectorAppEditDialog connectorId="github" current={app} />}
     >
       {isPending && <LoadingDisplay />}

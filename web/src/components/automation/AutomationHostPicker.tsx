@@ -18,7 +18,7 @@ export const AutomationHostPicker = ({ automation }: AutomationHostPickerProps) 
   const others = (hosts ?? []).filter((host) => host.name !== InstanceHostName);
 
   return (
-    <SettingsCard id="runs-on" title="Runs on" description="The automations host whose worker runs this automation.">
+    <SettingsCard id="runs-on" title="Runs on" description="The automations host that runs this automation.">
       <Select
         value={automation.host_id ?? instanceValue}
         disabled={setHost.isPending}

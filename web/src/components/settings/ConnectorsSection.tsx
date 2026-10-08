@@ -93,7 +93,7 @@ export const ConnectorsSection = ({ bare = false }: ConnectorsSectionProps = {})
     <SettingsCard
       id="connectors"
       title="Connectors"
-      description="Let this instance call out to third-party tools on your behalf."
+      description="Third-party tools this instance calls for you, each with one stored credential."
     >
       {content}
     </SettingsCard>

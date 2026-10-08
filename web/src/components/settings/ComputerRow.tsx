@@ -36,7 +36,7 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
   const repair = async () => {
     await openRepair<PairComputerFormData>({
       title: `Re-pair ${computer.name}`,
-      description: "Run `t3 pair` on the machine, then paste the one-time token it prints.",
+      description: "Run `t3 pair` on the computer and paste the one-time token it prints.",
       schema: PairComputerFormSchema,
       okLabel: "Re-pair",
       form: <PairComputerForm computer={computer} />,
@@ -64,7 +64,7 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
             {expired && (
               <span className="ml-1 flex shrink-0 items-center gap-1 text-xs font-normal text-muted-foreground">
                 <CircleAlert className="size-3.5 text-destructive" aria-hidden />
-                expired — acts as unpaired
+                expired, acts as unpaired
               </span>
             )}
             {expiringSoon && (

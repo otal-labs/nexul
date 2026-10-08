@@ -11,7 +11,7 @@ export const RunnersPage = () => {
     <PageHeader
       crumbs={[workspaceCrumb]}
       title="Runners"
-      meta="The machines that pick up builds and deploys the moment they land in the queue."
+      meta="Services on your machines that take builds and deploys off the queue."
       actions={<AddRunnerDialog />}
     />
     <RunnersPanel />

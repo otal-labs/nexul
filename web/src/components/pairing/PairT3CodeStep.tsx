@@ -11,7 +11,7 @@ interface PairT3CodeStepProps {
 export const PairT3CodeStep = ({ computer, onPaired }: PairT3CodeStepProps) => {
   const lead = computer
     ? `Run this on ${computer.name}, then paste the one-time token it prints. Nexul pairs over the computer's tunnel.`
-    : "For a machine this server can already reach, such as a VPS or a computer on the same network. Run this on it, then enter its T3 Code URL and the one-time token it prints.";
+    : "For a machine this server can already reach. Run this on it, then enter its T3 Code URL and the one-time token it prints.";
   return (
     <div className="max-w-xl space-y-5">
       <div className="space-y-3">

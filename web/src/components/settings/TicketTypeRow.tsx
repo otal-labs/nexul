@@ -28,7 +28,7 @@ export const TicketTypeRow = ({ type, projectId }: TicketTypeRowProps) => {
   const editTemplate = () =>
     openTemplate<SaveTicketTypeTemplateFormData>({
       title: `Template for ${type.name}`,
-      description: `Pre-fills the body of new ${type.name} tickets. Tickets already created keep their body.`,
+      description: `New ${type.name} tickets start with this body. Existing tickets keep theirs.`,
       schema: SaveTicketTypeTemplateFormSchema,
       okLabel: "Save template",
       form: <TicketTypeTemplateForm typeId={type.id} />,

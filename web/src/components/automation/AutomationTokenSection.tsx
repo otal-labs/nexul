@@ -25,7 +25,7 @@ export const AutomationTokenSection = ({ automation }: AutomationTokenSectionPro
     <SettingsCard
       id="token"
       title="Token"
-      description="What this automation's token may do. Rotating shows a new token once; revoking cuts its access at once."
+      description="What this automation's token may do. Rotate shows a new token once. Revoke cuts its access at once."
       footer={
         <div className="flex items-center gap-1">
           <Button type="button" variant="outline" size="sm" onClick={onRotate} loading={mint.isPending}>
