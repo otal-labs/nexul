@@ -15,3 +15,9 @@ and in `play_update` goes, and the hardcoded consumer in
 `internal/plays/decisions_check.go` is replaced by the auto play path. The
 existing "Decisions check didn't run" retry keeps working. Update the user
 guide's decisions check and automations pages.
+
+## Notes
+
+- Rewrite `CONTEXT.md`'s Decisions check entry (an ordinary play with a
+  seeded auto play, switched on the play's page) and the Play entry's
+  "fires with one button" to allow auto plays.
