@@ -67,7 +67,7 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
 
         <div className="min-w-0 flex-1">
           <article className="rounded-lg border border-border bg-card p-6 shadow-card sm:p-8">
-            <div className="mx-auto max-w-3xl [&_.tiptap>:first-child]:mt-0!">
+            <div className="mx-auto max-w-3xl">
               {canWrite && (
                 <div className="mb-6 space-y-3">
                   <Input

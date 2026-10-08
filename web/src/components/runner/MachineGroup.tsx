@@ -49,7 +49,7 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
           <AddRunnerDialog machineName={machine.name} triggerSize="sm" triggerVariant="outline" />
         </div>
       </div>
-      {runners.length === 0 && <EmptyRow className="px-0 py-0">No runners on this machine yet.</EmptyRow>}
+      {runners.length === 0 && <EmptyRow flush>No runners on this machine yet.</EmptyRow>}
       {runners.length > 0 && (
         <ul className="divide-y divide-border rounded-lg border border-border bg-card">
           {runners.map((runner, index) => (

@@ -29,7 +29,7 @@ interface CrumbItemProps {
 const CrumbItem = ({ crumb, first, last }: CrumbItemProps) => (
   <>
     {!first && <BreadcrumbSeparator className="[&>svg]:size-3" />}
-    <BreadcrumbItem className={cn("min-w-0", !last && "max-w-48 shrink-0")}>
+    <BreadcrumbItem className={cn("min-w-0", !last && "max-w-48 min-w-8 shrink-[100]")}>
       {crumb.to && (
         <BreadcrumbLink asChild className="truncate duration-150 ease-standard">
           <Link to={crumb.to}>{crumb.label}</Link>

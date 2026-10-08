@@ -118,9 +118,6 @@ export const TopologyFlow = () => {
           pannable
           zoomable
           className="hidden md:block"
-          bgColor="var(--surface-2)"
-          maskColor="color-mix(in oklab, var(--background) 70%, transparent)"
-          nodeColor="color-mix(in oklab, var(--muted-foreground) 45%, transparent)"
         />
         <ViewportPortal>
           {networkRects.map((rect) => (
