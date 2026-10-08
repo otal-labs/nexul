@@ -60,14 +60,13 @@ export const CloneRoleDialog = ({ role, open, onClose }: CloneRoleDialogProps) =
         <DialogHeader>
           <DialogTitle>Clone {role.name} to another workspace</DialogTitle>
           <DialogDescription>
-            The copy keeps this role's name and permissions. If the workspace already has a role with that name, the
-            copy is named "{role.name} (copy)".
+            The copy keeps the name and permissions. If the name is taken there, it becomes "{role.name} (copy)".
           </DialogDescription>
         </DialogHeader>
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} />}
         {targets && targets.length === 0 && (
-          <EmptyRow>You aren't in any other workspace to clone this role into.</EmptyRow>
+          <EmptyRow>You're not in any other workspace.</EmptyRow>
         )}
         {hasTargets && (
           <form id="clone-role-form" onSubmit={form.handleSubmit(onSubmit)}>

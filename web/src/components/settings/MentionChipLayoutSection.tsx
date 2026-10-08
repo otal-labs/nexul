@@ -28,7 +28,7 @@ export const MentionChipLayoutSection = ({ workspace }: MentionChipLayoutSection
     <SettingsCard
       id="mention-layout"
       title="Mention chip layout"
-      description="What a @-mention ticket chip shows in this workspace. The icon stays fixed — everything else comes from this format string."
+      description="What a ticket mention shows in this workspace. The icon is fixed; the rest comes from this format."
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <TemplateOriginLine

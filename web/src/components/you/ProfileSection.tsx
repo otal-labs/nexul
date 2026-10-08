@@ -13,7 +13,7 @@ export const ProfileSection = () => {
       <SettingsCard
         id="profile"
         title="Profile"
-        description="The name and picture everyone in your workspaces sees. Leave the picture out to use your sign-in account's."
+        description="Shown to everyone in your workspaces. With no picture, your sign-in account's is used."
       >
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} />}

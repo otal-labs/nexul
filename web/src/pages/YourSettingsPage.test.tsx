@@ -94,7 +94,7 @@ describe("YourSettingsPage", () => {
     renderPage("/settings/security");
     expect(await screen.findByRole("tab", { name: "Devices", selected: true })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy connection token" })).toBeInTheDocument();
-    expect(await screen.findByText(/no other devices are signed in/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no other devices signed in/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/token name/i)).not.toBeInTheDocument();
   });
 

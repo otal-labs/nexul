@@ -57,9 +57,7 @@ export const ComputersSection = ({ bare = false }: ComputersSectionProps = {}) =
         <SettingsCard
           id="pairing-computers"
           title="Paired computers"
-          description="Every computer running T3 Code that @Agent can act through on your behalf. Pairing trades a
-        one-time `t3 pair` token for a 30-day bearer session — there's no auto-refresh upstream, so
-        re-pair before it expires or the computer starts acting exactly like unpaired."
+          description="Computers running T3 Code that @Agent works through for you. A pairing lasts 30 days and can't renew itself, so re-pair before it expires or @Agent can't use the computer."
           footer={pairButton}
         >
           <div className="space-y-4">

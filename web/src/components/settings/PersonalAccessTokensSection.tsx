@@ -50,9 +50,7 @@ export const PersonalAccessTokensSection = () => {
     <SettingsCard
       id="personal-tokens"
       title="Personal access tokens"
-      description="Long-lived credentials agents and personal integrations use to talk to this instance. They
-        act as you with your full permissions. The raw token is shown once when created — it can
-        never be listed again. Revoke one to cut its access immediately."
+      description="For agents and scripts that call this instance. A token acts as you, with all your permissions. It's shown once, when you create it. Revoking it cuts access at once."
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
@@ -74,7 +72,7 @@ export const PersonalAccessTokensSection = () => {
 
           {newToken && (
             <div className="animate-in fade-in-0 slide-in-from-top-1 space-y-2 rounded-md bg-muted p-4 duration-200 ease-out">
-              <p className="text-sm font-medium">Copy this token now — it won't be shown again.</p>
+              <p className="text-sm font-medium">Copy this token now. It won't be shown again.</p>
               <p className="break-all rounded-md bg-card p-2 font-mono text-xs">{newToken}</p>
               <Button type="button" variant="outline" size="sm" onClick={copyToken}>
                 {copied && <Check className="size-4" />}

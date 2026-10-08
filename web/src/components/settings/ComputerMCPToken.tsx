@@ -21,10 +21,10 @@ export const ComputerMCPToken = ({ computerId }: ComputerMCPTokenProps) => {
   return (
     <div className="space-y-2">
       {isPending && <LoadingDisplay label="Loading MCP token" className="justify-start p-0" />}
-      {error && <ErrorDisplay error={error} title="MCP token unavailable" className="p-3" />}
+      {error && <ErrorDisplay error={error} title="Couldn't load the MCP token" className="p-3" />}
       {token === null && (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-muted-foreground">No MCP token — its providers can't reach Nexul's MCP server.</p>
+          <p className="text-xs text-muted-foreground">No MCP token, so agents here can't reach Nexul's MCP server.</p>
           <Button type="button" variant="ghost" size="sm" loading={mint.isPending} disabled={busy} onClick={() => mint.mutate()}>
             <KeyRound className="size-4" />
             Mint MCP token

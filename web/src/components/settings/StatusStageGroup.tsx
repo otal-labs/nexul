@@ -28,7 +28,7 @@ export const StatusStageGroup = ({ projectId, kind, label, rows, total, adding, 
         <PlusIcon className="size-3.5" />
       </Button>
     </div>
-    {rows.length === 0 && <EmptyRow className="px-0 py-2">No {kind} statuses — skipped on this board</EmptyRow>}
+    {rows.length === 0 && <EmptyRow className="px-0 py-2">No {kind} statuses, so the board skips this stage.</EmptyRow>}
     {rows.length > 0 && (
       // Named for assistive tech since the header states kind once and rows don't repeat it.
       <EnterList aria-label={`${label} statuses`} className="divide-y divide-border">

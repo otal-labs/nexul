@@ -34,9 +34,9 @@ export const ProjectGeneralSection = ({ project }: ProjectGeneralSectionProps) =
           </div>
         </div>
         <div className="sm:pl-6">
-          <Microheader>Identifier</Microheader>
+          <Microheader>Prefix</Microheader>
           <p className="mt-2 font-mono text-sm">{project.prefix}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Used in ticket IDs</p>
+          <p className="mt-1 text-xs text-muted-foreground">Starts every ticket key</p>
         </div>
       </div>
     </SettingsCard>

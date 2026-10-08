@@ -21,10 +21,10 @@ export const ConnectDesktopCard = () => {
     <SettingsCard
       id="connect-desktop"
       title="Connect the desktop app"
-      description="Paste this instance's connection token into the Nexul desktop app, then sign in there."
+      description="Paste the token into the desktop app, then sign in there."
     >
       <div className="space-y-3 text-sm">
-        <p className="text-muted-foreground">Holds only this server's address, never your account.</p>
+        <p className="text-muted-foreground">It holds this server's address, not your account.</p>
         <Button variant="outline" size="sm" onClick={copy} loading={copyToken.isPending} aria-live="polite">
           {copied && (
             <Check

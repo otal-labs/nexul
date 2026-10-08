@@ -15,7 +15,7 @@ export const InterviewTemplateSection = () => {
     <SettingsCard
       id="interview-template"
       title="Interview template"
-      description="Where every new project's interview starts. It follows the instance template until this workspace saves its own. A project copies it once: editing the template later never changes an existing interview."
+      description="Every new project's interview starts from this. It follows the instance template until this workspace saves its own. Editing it never changes an existing interview."
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}

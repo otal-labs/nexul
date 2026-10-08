@@ -35,7 +35,7 @@ export const HarnessProjectField = <T extends FieldValues>({ control, name, labe
       {projects.isPending && !!computerId && <LoadingDisplay label="Loading projects" className="justify-start p-0" />}
       {projects.isError && (
         <p className="text-xs text-muted-foreground">
-          Couldn't load projects from this computer — is it online? Paste the id manually.
+          Couldn't load this computer's projects. Check it's online, or paste the project id.
         </p>
       )}
       {projects.data?.length === 0 && (

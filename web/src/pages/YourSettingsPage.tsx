@@ -39,7 +39,7 @@ export const YourSettingsPage = () => {
           <PageHeader
             className="mb-8"
             title="Settings"
-            meta="Your profile, how Nexul looks, and where you're signed in."
+            meta="Your profile, appearance, devices, and T3 Code Setup."
           />
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
             <YourSettingsNav active={instanceSection ?? section} />

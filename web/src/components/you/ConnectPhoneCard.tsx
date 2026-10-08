@@ -11,7 +11,7 @@ export const ConnectPhoneCard = () => {
   const connected = useDeviceArrivalStore((s) => s.arrivals.filter((a) => a.at >= mountedAt).at(-1));
 
   return (
-    <SettingsCard id="connect-phone" title="Connect a phone" description="Open the Nexul app on your phone and scan this code.">
+    <SettingsCard id="connect-phone" title="Connect a phone" description="Scan the code with the Nexul phone app.">
       {connected && <PhoneConnected label={connected.label} />}
       {!connected && <ConnectCodePanel />}
     </SettingsCard>

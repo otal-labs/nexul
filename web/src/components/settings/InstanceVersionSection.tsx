@@ -18,7 +18,7 @@ import { isUpgradeInProgress, UpgradeRecordStatus, type InstanceUpgrade } from "
 
 // "dev build" gets a friendlier line than the raw reason string; every other reason already reads as one.
 const reasonCopy = (reason: string): string =>
-  reason === "dev build" ? "This build cannot upgrade itself." : `Can't upgrade yet: ${reason}.`;
+  reason === "dev build" ? "This build can't upgrade itself." : `Can't upgrade yet: ${reason}.`;
 
 const NEWEST_RELEASE_REASON = "already on the newest release";
 
@@ -117,7 +117,7 @@ const UpgradeButton = ({ latest, retry }: { latest: InstanceUpgrade["latest"]; r
   const onUpgradeClick = async () => {
     const ok = await confirm({
       title: latest ? `Upgrade to ${latest.version}?` : "Upgrade this instance?",
-      message: "This downloads the release, restarts Nexul's services, and the app reconnects once it's back.",
+      message: "Nexul downloads the release and restarts its services. The app reconnects when it's back.",
       confirmLabel: "Upgrade",
       destructive: false,
     });
@@ -145,7 +145,6 @@ export const InstanceVersionSection = () => {
     <SettingsCard
       id="instance-version"
       title="Instance version"
-      description="What this instance is running, and the newest release on its channel."
       footer={data && !isUpgradeInProgress(data.upgrade) && <InstanceVersionFooter data={data} />}
     >
       {isPending && <LoadingDisplay />}
