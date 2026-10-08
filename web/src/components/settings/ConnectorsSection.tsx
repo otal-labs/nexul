@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { EmptyRow } from "@/components/EmptyRow";
@@ -75,11 +76,11 @@ export const ConnectorsSection = ({ bare = false }: ConnectorsSectionProps = {})
 
           {filtered.length === 0 && <EmptyRow>No connectors here</EmptyRow>}
           {filtered.length > 0 && (
-            <ul className="divide-y divide-border overflow-hidden rounded-md border">
+            <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
               {filtered.map((entry) => (
                 <ConnectorCard key={entry.connector.id} entry={entry} />
               ))}
-            </ul>
+            </EnterList>
           )}
         </div>
       )}

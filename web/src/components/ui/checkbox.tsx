@@ -15,9 +15,11 @@ export const Checkbox = ({
     )}
     {...props}
   >
+    {/* Always mounted so a box that loads ticked shows still; ticking pops the mark on the small-bounce spring, unticking fades it. */}
     <CheckboxPrimitive.Indicator
       data-slot="checkbox-indicator"
-      className="flex items-center justify-center text-current"
+      forceMount
+      className="flex items-center justify-center text-current transition-[scale,opacity] duration-[350ms,150ms] ease-spring-pop data-[state=unchecked]:scale-60 data-[state=unchecked]:opacity-0 data-[state=unchecked]:duration-150 data-[state=unchecked]:ease-out"
     >
       <CheckIcon className="size-3.5" />
     </CheckboxPrimitive.Indicator>

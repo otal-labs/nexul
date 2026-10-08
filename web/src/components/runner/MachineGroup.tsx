@@ -1,6 +1,7 @@
 import { DownloadIcon, ServerIcon } from "lucide-react";
 import { Link } from "react-router";
 
+import { EnterList } from "@/components/EnterList";
 import { EmptyRow } from "@/components/EmptyRow";
 import { AddRunnerDialog } from "@/components/runner/AddRunnerDialog";
 import { EditableStackRoot } from "@/components/runner/EditableStackRoot";
@@ -51,11 +52,11 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
       </div>
       {runners.length === 0 && <EmptyRow flush>No runners on this machine yet.</EmptyRow>}
       {runners.length > 0 && (
-        <ul className="divide-y divide-border rounded-lg border border-border bg-card">
-          {runners.map((runner, index) => (
-            <RunnerRow key={runner.id} runner={runner} index={index} />
+        <EnterList className="divide-y divide-border rounded-lg border border-border bg-card">
+          {runners.map((runner) => (
+            <RunnerRow key={runner.id} runner={runner} />
           ))}
-        </ul>
+        </EnterList>
       )}
     </section>
   );

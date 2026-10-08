@@ -93,6 +93,8 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
       )}
       {messages && (
         <MessageList
+          // What counts as already seen restarts with each conversation.
+          key={conversation.id}
           conversation={conversation}
           messages={messages}
           onNewestSeen={onNewestSeen}

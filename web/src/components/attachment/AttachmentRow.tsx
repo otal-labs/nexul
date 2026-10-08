@@ -9,9 +9,10 @@ interface AttachmentRowProps {
   canDelete: boolean;
 }
 
-// Collapsed until the pill is hovered or focused, so a resting pill is only thumb, name, and size.
+// Hidden until the pill is hovered or focused, so a resting pill is only thumb, name, and size; the actions then fade in
+// over the size, so the pill never changes width under the pointer.
 const actionsClass =
-  "flex max-w-0 items-center gap-0.5 overflow-hidden opacity-0 transition-all duration-150 ease-standard group-hover/pill:max-w-12 group-hover/pill:opacity-100 group-focus-within/pill:max-w-12 group-focus-within/pill:opacity-100";
+  "absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-full bg-card pr-1 pl-1.5 opacity-0 transition-opacity duration-150 ease-standard group-hover/pill:opacity-100 group-focus-within/pill:opacity-100";
 const iconButtonClass =
   "flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 ease-standard hover:bg-muted/60 hover:text-foreground";
 
@@ -27,7 +28,7 @@ export const AttachmentRow = ({ attachment, canDelete }: AttachmentRowProps) => 
   };
 
   return (
-    <li className="group/pill inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-card py-0.5 pr-1 pl-1 text-xs">
+    <li className="group/pill relative inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-card py-0.5 pr-1 pl-1 text-xs">
       <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted/60">
         {thumb && <img src={thumb} alt="" className="size-full object-cover" />}
         {!thumb && <FileIcon className="size-3 text-muted-foreground" aria-hidden />}

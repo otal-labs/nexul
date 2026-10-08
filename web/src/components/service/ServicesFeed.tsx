@@ -1,3 +1,4 @@
+import { EnterList } from "@/components/EnterList";
 import { ServiceCard } from "@/components/service/ServiceCard";
 import type { ServiceDef } from "@/models/Service";
 
@@ -13,10 +14,10 @@ export const ServicesFeed = ({ services }: ServicesFeedProps) => (
       <span className="hidden w-48 shrink-0 sm:inline">Source</span>
       <span className="w-20 shrink-0 text-right sm:inline">Strategy</span>
     </div>
-    <ul className="divide-y divide-border">
-      {services.map((svc, index) => (
-        <ServiceCard key={svc.id} service={svc} index={index} />
+    <EnterList className="divide-y divide-border">
+      {services.map((svc) => (
+        <ServiceCard key={svc.id} service={svc} />
       ))}
-    </ul>
+    </EnterList>
   </div>
 );

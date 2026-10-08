@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
+import { EnterList } from "@/components/EnterList";
 import { EmptyRow } from "@/components/EmptyRow";
 import { FormInput } from "@/components/FormInput";
 import { SettingsCard } from "@/components/settings/SettingsCard";
@@ -31,11 +32,11 @@ export const BoardTicketTypesSection = ({ projectId, ticketTypes }: BoardTicketT
     >
       {ticketTypes && ticketTypes.length === 0 && <EmptyRow>No ticket types yet</EmptyRow>}
       {ticketTypes && ticketTypes.length > 0 && (
-        <ul className="divide-y divide-border">
+        <EnterList className="divide-y divide-border">
           {ticketTypes.map((type) => (
             <TicketTypeRow key={type.id} type={type} projectId={projectId} />
           ))}
-        </ul>
+        </EnterList>
       )}
 
       <form

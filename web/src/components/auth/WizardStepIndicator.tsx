@@ -12,7 +12,7 @@ export const WizardStepIndicator = ({ current, total }: WizardStepIndicatorProps
     </p>
     <div className="h-px w-full bg-border" aria-hidden>
       <div
-        className="h-px origin-left bg-brand transition-transform duration-250 ease-standard"
+        className="h-px origin-left bg-brand transition-transform duration-250 ease-standard grow-in"
         style={{ transform: `scaleX(${current / total})` }}
       />
     </div>

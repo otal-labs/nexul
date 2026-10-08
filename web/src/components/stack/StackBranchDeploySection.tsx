@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { EnterList } from "@/components/EnterList";
 import { EmptyRow } from "@/components/EmptyRow";
 import { Microheader } from "@/components/Microheader";
 import { SettingsCard } from "@/components/settings/SettingsCard";
@@ -51,11 +52,11 @@ export const StackBranchDeploySection = ({ stack }: StackBranchDeploySectionProp
             <EmptyRow flush>No rules yet, so every branch is ignored until one matches.</EmptyRow>
           )}
           {rules.length > 0 && (
-            <ul className="divide-y divide-border rounded-lg border border-border">
+            <EnterList className="divide-y divide-border rounded-lg border border-border">
               {rules.map((rule, i) => (
                 <BranchDeployRuleRow key={`${rule.pattern}-${i}`} stack={stack} rule={rule} index={i} />
               ))}
-            </ul>
+            </EnterList>
           )}
           {adding && <AddBranchDeployRuleForm stack={stack} onDone={() => setAdding(false)} />}
         </div>
@@ -64,11 +65,11 @@ export const StackBranchDeploySection = ({ stack }: StackBranchDeploySectionProp
           <Microheader>Live branch deployments</Microheader>
           {branchDeployments.length === 0 && <EmptyRow flush>No branch deployments yet.</EmptyRow>}
           {branchDeployments.length > 0 && (
-            <ul className="divide-y divide-border rounded-lg border border-border">
+            <EnterList className="divide-y divide-border rounded-lg border border-border">
               {branchDeployments.map((d) => (
                 <BranchDeploymentRow key={d.id} deployment={d} />
               ))}
-            </ul>
+            </EnterList>
           )}
         </div>
       </div>

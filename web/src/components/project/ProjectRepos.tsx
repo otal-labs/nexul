@@ -1,5 +1,6 @@
 import { PlusIcon } from "lucide-react";
 
+import { EnterList } from "@/components/EnterList";
 import { AddRepoForm } from "@/components/project/AddRepoForm";
 import { RepoRow } from "@/components/project/RepoRow";
 import { EmptyRow } from "@/components/EmptyRow";
@@ -41,11 +42,11 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
     >
       {repos && repos.length === 0 && <EmptyRow>No repositories associated yet.</EmptyRow>}
       {repos && repos.length > 0 && (
-        <ul className="divide-y divide-border">
+        <EnterList className="divide-y divide-border">
           {repos.map((repo) => (
             <RepoRow key={`${repo.owner}/${repo.name}`} repo={repo} />
           ))}
-        </ul>
+        </EnterList>
       )}
     </SettingsCard>
   );

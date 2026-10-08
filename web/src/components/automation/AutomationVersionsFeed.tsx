@@ -1,3 +1,4 @@
+import { EnterList } from "@/components/EnterList";
 import { AutomationVersionDiff } from "@/components/automation/AutomationVersionDiff";
 import { AutomationVersionRow } from "@/components/automation/AutomationVersionRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -27,7 +28,7 @@ export const AutomationVersionsFeed = ({ automationId, canUpdate }: AutomationVe
         <SettingsCard id="version-history" title="Version history" description="Every version pushed for this automation, newest first.">
           {versions.data.length === 0 && <EmptyRow>No versions yet</EmptyRow>}
           {versions.data.length > 0 && (
-            <ul className="divide-y divide-border overflow-hidden rounded-md border">
+            <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
               {versions.data.map((version) => (
                 <AutomationVersionRow
                   key={version.id}
@@ -36,7 +37,7 @@ export const AutomationVersionsFeed = ({ automationId, canUpdate }: AutomationVe
                   canUpdate={canUpdate}
                 />
               ))}
-            </ul>
+            </EnterList>
           )}
         </SettingsCard>
       )}

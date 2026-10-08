@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { EnterList } from "@/components/EnterList";
 import { AutomationRunDetailSheet } from "@/components/automation/AutomationRunDetailSheet";
 import { AutomationRunRow } from "@/components/automation/AutomationRunRow";
 import { EmptyRow } from "@/components/EmptyRow";
@@ -18,11 +19,11 @@ export const AutomationRunsFeed = ({ automationId, runs }: AutomationRunsFeedPro
     <SettingsCard id="runs" title="Run history" description="Every event this automation handled. Open a run to read its log.">
       {runs.length === 0 && <EmptyRow>No runs yet</EmptyRow>}
       {runs.length > 0 && (
-        <ul className="divide-y divide-border overflow-hidden rounded-md border">
+        <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
           {runs.map((run) => (
             <AutomationRunRow key={run.id} run={run} onSelect={setSelectedRunId} />
           ))}
-        </ul>
+        </EnterList>
       )}
       <AutomationRunDetailSheet
         automationId={automationId}

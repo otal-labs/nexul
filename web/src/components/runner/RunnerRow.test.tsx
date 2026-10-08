@@ -61,14 +61,6 @@ describe("RunnerRow", () => {
     expect(online.querySelector("li")).not.toHaveClass("opacity-60");
   });
 
-  it("staggers the mount entrance by row index, capped at the eighth row", () => {
-    const { container: third } = renderRow({ runner: onlineRunner, index: 2 });
-    expect(third.querySelector("li > div")).toHaveStyle({ animationDelay: "48ms" });
-
-    const { container: farDown } = renderRow({ runner: onlineRunner, index: 20 });
-    expect(farDown.querySelector("li > div")).toHaveStyle({ animationDelay: "0ms" });
-  });
-
   it("shows the runner's build version when known", () => {
     renderRow({ runner: onlineRunner });
     expect(screen.getByText("v0.1.4")).toBeInTheDocument();

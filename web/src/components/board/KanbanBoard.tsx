@@ -9,7 +9,6 @@ import {
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
-  type DropAnimation,
   type Translate,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
@@ -21,6 +20,7 @@ import { boardKeyboardCoordinates } from "@/components/board/dragKeyboardCoordin
 import { resolveDragMove, ticketsInCell, type DragMoveAction, type DropTargetData } from "@/components/board/dragMove";
 import { applyDragPreview, applyDropResult, resolveDragCell, sameDragCell, type DragCell } from "@/components/board/dragPreview";
 import { TicketCardOverlay } from "@/components/board/TicketCardOverlay";
+import { dropAnimationFor, landsInDone, startLanding } from "@/components/board/dropMotion";
 import type { BoardStatus } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
 
@@ -31,18 +31,6 @@ interface KanbanBoardProps {
   onReorderColumns: (statusIds: string[]) => Promise<void> | void;
   onAddTicket: (categoryId: string | null, statusId: string) => void;
 }
-
-// Same as dnd-kit's default drop animation, plus levelling the tilted overlay card as it glides home.
-const dropAnimation: DropAnimation = {
-  sideEffects: ({ active, dragOverlay }) => {
-    const card = dragOverlay.node.firstElementChild as HTMLElement | null;
-    if (card) card.style.rotate = "0deg";
-    active.node.style.opacity = "0";
-    return () => {
-      active.node.style.opacity = "";
-    };
-  },
-};
 
 export interface Swimlane {
   key: string;
@@ -74,6 +62,7 @@ export const KanbanBoard = ({
   const [settledColumns, setSettledColumns] = useState<BoardStatus[] | null>(null);
   // An over change with the pointer still is the ghost's own layout shift; following it flips between two cells until React gives up.
   const lastOverDelta = useRef<Translate | null>(null);
+  const dropAnimation = useMemo(() => dropAnimationFor(), []);
 
   const allTickets = swimlanes.flatMap((lane) => lane.tickets);
   const findTicket = (ticketId: string) => allTickets.find((t) => t.id === ticketId);
@@ -86,6 +75,7 @@ export const KanbanBoard = ({
 
   // A column drag has no ticket, so the overlay stays empty and dnd-kit moves the column in place.
   const handleDragStart = (event: DragStartEvent) => {
+    startLanding(event.activatorEvent instanceof KeyboardEvent);
     setActiveTicket(findTicket(String(event.active.id)) ?? null);
     setOverCell(null);
     lastOverDelta.current = null;
@@ -146,6 +136,8 @@ export const KanbanBoard = ({
       cellTickets,
     );
     if (actions.length === 0) return;
+    const kindOf = (statusId: string) => columns.find((column) => column.id === statusId)?.kind;
+    landsInDone(kindOf(cell.status) === "done" && kindOf(active.status) !== "done");
     setSettled(applyDropResult(swimlanes, active.id, actions));
     void Promise.resolve(onDrop(actions)).finally(() => setSettled(null));
   };

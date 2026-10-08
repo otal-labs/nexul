@@ -1,3 +1,4 @@
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { microheaderClass } from "@/components/Microheader";
 import { ReviewRow } from "@/components/codereview/ReviewRow";
@@ -16,15 +17,15 @@ export const ReviewPanel = ({ ticketId }: ReviewPanelProps) => {
     <>
       {error && <ErrorDisplay error={error} title="Failed to load reviews" />}
       {data && data.length > 0 && (
-        <section className="animate-in fade-in-0 slide-in-from-bottom-1 space-y-3 duration-200 ease-out">
+        <section className="space-y-3">
           <h2 className={cn(microheaderClass, "px-2 pb-1")}>
             Reviews <span className="tabular-nums">({data.length})</span>
           </h2>
-          <ul className="divide-y divide-border rounded-md border border-border bg-card">
-            {data.map((review, index) => (
-              <ReviewRow key={review.id} review={review} index={index} />
+          <EnterList className="divide-y divide-border rounded-md border border-border bg-card">
+            {data.map((review) => (
+              <ReviewRow key={review.id} review={review} />
             ))}
-          </ul>
+          </EnterList>
         </section>
       )}
     </>

@@ -78,17 +78,12 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
           </span>
         </button>
       </h3>
-      {/* Grid-row 1fr→0fr collapse needs no measured height; content stays mounted (inert) so expanding never replays entrances. */}
+      {/* Content stays mounted (inert) so expanding never replays entrances; inline-size containment drops a collapsed lane's columns from the shared scroll width. */}
       <div
         inert={collapsed}
         aria-hidden={collapsed}
-        className={cn(
-          "grid transition-[grid-template-rows,opacity] motion-reduce:transition-[opacity]",
-          // inline-size containment drops a collapsed lane's columns from the shared scroll width, so all-collapsed lanes need no scrollbar.
-          collapsed
-            ? "[grid-template-rows:0fr] opacity-0 contain-inline-size duration-150 ease-standard"
-            : "[grid-template-rows:1fr] opacity-100 duration-200 ease-out",
-        )}
+        data-closed={collapsed || undefined}
+        className={cn("disclosure", collapsed && "contain-inline-size")}
       >
         <div className="min-h-0 overflow-hidden">
           <SortableContext

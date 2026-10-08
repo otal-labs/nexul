@@ -11,6 +11,7 @@ import {
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { PlusIcon } from "lucide-react";
 
+import { EnterList } from "@/components/EnterList";
 import { AddCategoryForm } from "@/components/project/AddCategoryForm";
 import { CategoryRow } from "@/components/project/CategoryRow";
 import { EmptyRow } from "@/components/EmptyRow";
@@ -80,7 +81,7 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
       {categories && categories.length > 0 && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={categories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-            <ul className="divide-y divide-border">
+            <EnterList className="divide-y divide-border">
               {categories.map((category, index) => (
                 <CategoryRow
                   key={category.id}
@@ -92,7 +93,7 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
                   onMoveDown={() => reorder(index, index + 1)}
                 />
               ))}
-            </ul>
+            </EnterList>
           </SortableContext>
         </DndContext>
       )}

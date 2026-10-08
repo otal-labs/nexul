@@ -1,6 +1,7 @@
 import { Fragment, useState } from "react";
 import { PlusIcon } from "lucide-react";
 
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { EmptyRow } from "@/components/EmptyRow";
@@ -47,14 +48,14 @@ export const RoleSettingsSection = () => {
         <div className="space-y-4">
           {roles.length === 0 && <EmptyRow>No roles yet</EmptyRow>}
           {roles.length > 0 && (
-            <ul className="divide-y divide-border overflow-hidden rounded-md border">
+            <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
               {roles.map((role) => (
                 <Fragment key={role.id}>
                   {role.is_owner_role && <OwnerRoleRow role={role} />}
                   {!role.is_owner_role && <RoleRow role={role} workspaceId={workspaceId} catalog={catalog} />}
                 </Fragment>
               ))}
-            </ul>
+            </EnterList>
           )}
 
           {creating && (

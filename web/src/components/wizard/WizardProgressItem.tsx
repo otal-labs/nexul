@@ -22,7 +22,7 @@ export const WizardProgressItem = ({ label, state, first, onSelect }: WizardProg
       <span aria-hidden className="absolute top-2.5 right-1/2 h-px w-full bg-border">
         <span
           className={cn(
-            "block h-full origin-left bg-brand transition-transform duration-200 ease-out motion-reduce:transition-none",
+            "block h-full origin-left bg-brand transition-transform duration-250 ease-standard grow-in",
             state === "future" ? "scale-x-0" : "scale-x-100",
           )}
         />

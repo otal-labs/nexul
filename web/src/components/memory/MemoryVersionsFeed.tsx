@@ -1,3 +1,4 @@
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { MemoryVersionRow } from "@/components/memory/MemoryVersionRow";
@@ -26,7 +27,7 @@ export const MemoryVersionsFeed = ({ memoryId, currentVersion, canRevert, rowLay
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {data && (
-        <ul className={cn(stacked ? "-mx-2" : "divide-y divide-border overflow-hidden rounded-md border")}>
+        <EnterList className={cn(stacked ? "-mx-2" : "divide-y divide-border overflow-hidden rounded-md border")}>
           {data.map((version) => (
             <MemoryVersionRow
               key={version.id}
@@ -37,7 +38,7 @@ export const MemoryVersionsFeed = ({ memoryId, currentVersion, canRevert, rowLay
               layout={rowLayout}
             />
           ))}
-        </ul>
+        </EnterList>
       )}
     </section>
   );

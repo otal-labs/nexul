@@ -52,7 +52,7 @@ export const ReviewerAvatars = ({ names }: ReviewerAvatarsProps) => {
           </span>
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute -top-8 left-1/2 z-20 -translate-x-1/2 translate-y-1 scale-95 rounded-md border border-border bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground opacity-0 shadow-elevated transition-all duration-150 ease-out group-hover/avatar:translate-y-0 group-hover/avatar:scale-100 group-hover/avatar:opacity-100 group-focus-within/avatar:translate-y-0 group-focus-within/avatar:scale-100 group-focus-within/avatar:opacity-100"
+            className="pointer-events-none absolute -top-8 left-1/2 z-20 -translate-x-1/2 translate-y-1 scale-95 rounded-md border border-border bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground opacity-0 shadow-elevated transition-[opacity,translate,scale] duration-150 ease-out group-hover/avatar:translate-y-0 group-hover/avatar:scale-100 group-hover/avatar:opacity-100 group-focus-within/avatar:translate-y-0 group-focus-within/avatar:scale-100 group-focus-within/avatar:opacity-100"
           >
             {name}
           </span>

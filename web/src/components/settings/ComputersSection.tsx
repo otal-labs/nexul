@@ -1,6 +1,7 @@
 import { PlusIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { EnterList } from "@/components/EnterList";
 import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
 import { ComputerRow } from "@/components/settings/ComputerRow";
 import { HarnessReadinessLine } from "@/components/settings/HarnessReadinessLine";
@@ -38,11 +39,11 @@ export const ComputersSection = () => {
         {error && <ErrorDisplay error={error} />}
         {computers && computers.length === 0 && <EmptyRow>No computers paired yet</EmptyRow>}
         {computers && computers.length > 0 && (
-          <ul className="divide-y divide-border overflow-hidden rounded-md border">
+          <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
             {computers.map((computer) => (
               <ComputerRow key={computer.id} computer={computer} presence={presence.data?.[computer.id]} />
             ))}
-          </ul>
+          </EnterList>
         )}
       </div>
     </SettingsCard>

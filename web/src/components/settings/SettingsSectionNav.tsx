@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { Link } from "react-router";
 
+import { ActiveIndicator } from "@/components/ActiveIndicator";
 import { microheaderClass } from "@/components/Microheader";
 import { UpdateDot } from "@/components/UpdateDot";
 import { cn } from "@/lib/utils";
@@ -9,7 +10,7 @@ const itemClass = (isActive: boolean, danger: boolean) =>
   cn(
     "block rounded-md px-3 py-1.5 text-sm whitespace-nowrap transition-colors duration-150 ease-standard",
     danger && "text-destructive",
-    isActive && (danger ? "bg-destructive/10 font-medium" : "bg-accent font-medium text-foreground"),
+    isActive && (danger ? "bg-destructive/10 font-medium" : "font-medium text-foreground"),
     !isActive &&
       (danger ? "hover:bg-destructive/10" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"),
   );
@@ -38,7 +39,9 @@ interface SettingsSectionNavProps {
 // A top row below `lg:` (at 768px a side column left too little width for the content) and a side column from it; shared by every settings-style page so they can't drift.
 export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: SettingsSectionNavProps) => (
   <nav aria-label={ariaLabel} className="lg:w-48 lg:shrink-0">
-    <ul className="flex items-center gap-1 overflow-x-auto pb-1 lg:flex-col lg:items-stretch lg:gap-0.5 lg:overflow-visible lg:pb-0">
+    <ul className="relative isolate flex items-center gap-1 overflow-x-auto pb-1 lg:flex-col lg:items-stretch lg:gap-0.5 lg:overflow-visible lg:pb-0">
+      {/* The danger section paints its own red fill; the sliding highlight serves the rest. */}
+      <ActiveIndicator selector='[aria-current="page"]:not([data-danger])' className="rounded-md bg-accent" />
       {items.map((item, index) => (
         <Fragment key={item.section}>
           {item.group !== undefined && item.group !== items[index - 1]?.group && (
@@ -57,6 +60,7 @@ export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: Setti
               to={`${basePath}/${item.section}`}
               ref={active === item.section ? revealActive : undefined}
               aria-current={active === item.section ? "page" : undefined}
+              data-danger={item.danger || undefined}
               className={itemClass(active === item.section, item.danger ?? false)}
             >
               <span className="relative">

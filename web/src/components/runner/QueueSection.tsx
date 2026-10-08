@@ -1,3 +1,4 @@
+import { EnterList } from "@/components/EnterList";
 import { EmptyRow } from "@/components/EmptyRow";
 import { Microheader } from "@/components/Microheader";
 import { QueueRow } from "@/components/runner/QueueRow";
@@ -12,11 +13,11 @@ export const QueueSection = ({ queue }: QueueSectionProps) => (
     <Microheader>Waiting for a runner</Microheader>
     {queue && queue.length === 0 && <EmptyRow flush>Nothing queued.</EmptyRow>}
     {queue && queue.length > 0 && (
-      <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+      <EnterList className="divide-y divide-border rounded-lg border border-border bg-card">
         {queue.map((job, index) => (
-          <QueueRow key={job.id} job={job} index={index} position={index + 1} />
+          <QueueRow key={job.id} job={job} position={index + 1} />
         ))}
-      </ul>
+      </EnterList>
     )}
   </section>
 );
