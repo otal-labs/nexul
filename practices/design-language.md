@@ -311,9 +311,10 @@ exists), then a ghost "Skip for now" where the step allows it, then the
 primary action; Info's reads "Continue to <next step>". No new stepper chrome
 beyond this row exists. The URL step is the whole navigation state.
 
-Stack detail page. The header keeps the detail-page shape (breadcrumb, mono
-slug, title, actions top right) and adds a facts grid: a mono microheader over
-each value (Status, Image, Runner, Strategy, Hostnames, Repository, or Network
+Stack detail page. The header keeps the detail-page shape (breadcrumb of the
+workspace and project, title, the mono slug and the latest deploy's status in
+the meta line, actions top right) and adds a facts grid: a mono microheader over
+each value (Image, Runner, Strategy, Hostnames, Repository, or Network
 when no repository is attached); a compose stack runs several images, so it shows
 Services, a count with how many are not running, in Image's place. Below it the page is the settings shell:
 `SettingsSectionNav` driving a `/:section` path segment (Overview, Logs, Exposures, Branch deploys,

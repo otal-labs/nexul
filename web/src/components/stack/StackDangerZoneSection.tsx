@@ -44,7 +44,7 @@ export const StackDangerZoneSection = ({ stack, projectPath, hostnames }: StackD
           {hostnames.length > 0 && (
             <ul className="space-y-0.5">
               {hostnames.map((hostname) => (
-                <li key={hostname} className="text-xs text-muted-foreground font-mono">
+                <li key={hostname} className="font-mono text-xs wrap-anywhere text-muted-foreground">
                   {hostname}
                 </li>
               ))}

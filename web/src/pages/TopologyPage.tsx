@@ -9,17 +9,15 @@ export const TopologyPage = () => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const workspaceCrumb = useWorkspaceCrumb();
   return (
-  <Container className="py-6">
-    <PageHeader
-      crumbs={[workspaceCrumb]}
-      title="Topology"
-      meta="Every service, the network it runs on, and how traffic reaches it."
-      className="mb-4"
-    />
-    {/* Reserved chrome height grows on narrow viewports since the subtitle wraps to 2-3 lines below `sm`. */}
-    <div className="h-[calc(100vh-11.5rem)] overflow-hidden rounded-xl border border-border bg-card shadow-card sm:h-[calc(100vh-10rem)] md:h-[calc(100vh-9.5rem)]">
-      <TopologyCanvas key={workspaceId} />
-    </div>
-  </Container>
+    <Container className="flex h-screen flex-col py-8">
+      <PageHeader
+        crumbs={[workspaceCrumb]}
+        title="Topology"
+        meta="Every service, the network it runs on, and how traffic reaches it."
+      />
+      <div className="mt-6 min-h-96 flex-1 overflow-hidden rounded-lg border border-border bg-card shadow-card">
+        <TopologyCanvas key={workspaceId} />
+      </div>
+    </Container>
   );
 };

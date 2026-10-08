@@ -40,11 +40,11 @@ export const DeployLogPanel = ({ lines, emptyMessage }: DeployLogPanelProps) => 
     >
       {lines.length === 0 && <EmptyRow className="border-0 font-sans">{emptyMessage}</EmptyRow>}
       {lines.length > 0 && (
-        <ol className="w-max min-w-full px-3 py-2">
+        <ol className="px-3 py-2">
           {lines.map((line) => (
-            <li key={line.seq} className="flex gap-3 whitespace-pre">
-              <span className="shrink-0 select-none text-muted-foreground">{formatLogTimestamp(line.ts)}</span>
-              <span>{line.text}</span>
+            <li key={line.seq} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3">
+              <span className="select-none text-muted-foreground tabular-nums">{formatLogTimestamp(line.ts)}</span>
+              <span className="[overflow-wrap:anywhere] whitespace-pre-wrap">{line.text}</span>
             </li>
           ))}
         </ol>

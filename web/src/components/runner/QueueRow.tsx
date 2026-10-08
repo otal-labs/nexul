@@ -19,19 +19,17 @@ export const QueueRow = ({ job, index = 0, position }: QueueRowProps) => (
       {position !== undefined && (
         <span
           key={position}
-          className="animate-in fade-in-0 shrink-0 rounded-full bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground duration-150 ease-standard"
+          className="animate-in fade-in-0 shrink-0 font-mono text-xs text-muted-foreground tabular-nums duration-150 ease-standard"
           aria-label={`Queue position ${position}`}
         >
           #{position}
         </span>
       )}
-      {job.service && <span className="flex-1 truncate text-sm font-medium">{job.service}</span>}
-      <span className={cn("font-mono text-xs text-muted-foreground", !job.service && "flex-1")}>
+      {job.service && <span className="min-w-0 flex-1 truncate text-sm font-medium">{job.service}</span>}
+      <span className={cn("min-w-0 font-mono text-xs wrap-anywhere text-muted-foreground", !job.service && "flex-1")}>
         {job.id}
       </span>
-      <span className="shrink-0 rounded-full border border-border bg-surface-2 px-2 py-0.5 font-mono text-xs text-muted-foreground">
-        {job.kind}
-      </span>
+      <span className="shrink-0 font-mono text-xs text-muted-foreground">{job.kind}</span>
     </div>
   </li>
 );
