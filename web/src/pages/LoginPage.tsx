@@ -6,11 +6,13 @@ import { api, joinAPIURL } from "@/api/client";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Logo } from "@/components/Logo";
+import { microheaderClass } from "@/components/Microheader";
 import { DiscordMark, GithubMark, GoogleMark } from "@/components/ProviderMarks";
 import { Button } from "@/components/ui/button";
 import { useBootstrapStatus } from "@/hooks/AuthHooks";
 import { signInErrorMessage } from "@/models/SignInError";
 import { useSessionStore } from "@/stores/sessionStore";
+import { cn } from "@/lib/utils";
 
 export const LoginPage = () => {
   const [searchParams] = useSearchParams();
@@ -63,8 +65,8 @@ export const LoginPage = () => {
         <div className="flex min-h-screen flex-col items-center justify-center px-4 py-16">
           <div className="w-full max-w-sm">
             <div className="flex flex-col items-center text-center">
-              <Logo className="size-11 rounded-xl" />
-              <p className="mt-5 font-mono text-[11px] font-medium tracking-[0.24em] text-primary/90 uppercase">
+              <Logo className="size-11 rounded-lg" />
+              <p className={cn(microheaderClass, "mt-5")}>
                 Nexul
               </p>
               <h1 className="mt-3 text-2xl font-semibold tracking-tight">
@@ -110,7 +112,7 @@ export const LoginPage = () => {
                 </Link>
               </p>
             )}
-            <p className="mt-6 text-center font-mono text-[11px] text-muted-foreground">
+            <p className="mt-6 text-center font-mono text-xs text-muted-foreground">
               self-hosted · sqlite · no cloud required
             </p>
           </div>

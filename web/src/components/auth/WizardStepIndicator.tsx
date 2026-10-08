@@ -1,3 +1,5 @@
+import { microheaderClass } from "@/components/Microheader";
+
 interface WizardStepIndicatorProps {
   current: number;
   total: number;
@@ -5,7 +7,7 @@ interface WizardStepIndicatorProps {
 
 export const WizardStepIndicator = ({ current, total }: WizardStepIndicatorProps) => (
   <div role="status" aria-label={`Step ${current} of ${total}`} className="space-y-2">
-    <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+    <p className={microheaderClass}>
       {current} / {total}
     </p>
     <div className="h-px w-full bg-border" aria-hidden>

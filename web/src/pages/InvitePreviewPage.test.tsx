@@ -82,6 +82,13 @@ describe("InvitePreviewPage", () => {
     expect(mocks.post).toHaveBeenLastCalledWith("/api/invitations/preview", { token: "raw-token" });
   });
 
+  it("says a link with no token is invalid, with no check still spinning", async () => {
+    window.history.replaceState(null, "", "/invite");
+    renderPage();
+    expect(await screen.findByText("This invitation is invalid or has expired.")).toBeInTheDocument();
+    expect(screen.queryByText("Checking invitation…")).not.toBeInTheDocument();
+  });
+
   it("renders the generic invalid state for malformed percent encoding", async () => {
     window.history.replaceState(null, "", "/invite#%E0%A4%A");
     renderPage();
