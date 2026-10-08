@@ -18,7 +18,7 @@ export const GatewaysSection = () => {
     <SettingsCard
       id="gateways"
       title="Gateways"
-      description="One gateway per docker network gives its services internet reachability. To put a hostname on a service, use the DNS wizard."
+      description="A gateway makes one Docker network reachable from the internet. To put a hostname on a service, use Set up DNS."
       footer={
         <>
           <Button asChild variant="outline" size="sm">
@@ -29,8 +29,8 @@ export const GatewaysSection = () => {
       }
     >
       {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} title="Could not load gateways" />}
-      {gateways && gateways.length === 0 && <EmptyRow>No gateways yet.</EmptyRow>}
+      {error && <ErrorDisplay error={error} title="Couldn't load gateways" />}
+      {gateways && gateways.length === 0 && <EmptyRow>No gateways yet. Create one to reach a network from the internet.</EmptyRow>}
       {gateways && gateways.length > 0 && (
         <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
           {gateways.map((gateway) => (
