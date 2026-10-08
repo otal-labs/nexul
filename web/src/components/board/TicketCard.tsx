@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { CircleHelp, LoaderCircle, MessageSquare } from "lucide-react";
-import { memo, useState, type CSSProperties } from "react";
+import { memo, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
@@ -25,13 +25,7 @@ import { cardPerson, ticketPath, type Ticket } from "@/models/Ticket";
 
 interface TicketCardProps {
   ticket: Ticket;
-  /** Position within its column — drives the mount stagger. */
-  index?: number;
 }
-
-// Reflow/entrance stagger; matches the `window.matchMedia?.(...) ?? false` reduced-motion idiom used elsewhere.
-const STAGGER_STEP_MS = 24;
-const STAGGER_MAX_INDEX = 7;
 
 interface TicketCardBodyProps {
   ticket: Ticket;
@@ -111,7 +105,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   );
 });
 
-const TicketCardImpl = ({ ticket, index = 0 }: TicketCardProps) => {
+const TicketCardImpl = ({ ticket }: TicketCardProps) => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const queryClient = useQueryClient();
@@ -123,23 +117,12 @@ const TicketCardImpl = ({ ticket, index = 0 }: TicketCardProps) => {
     data: { type: "card", ticketId: ticket.id, statusId: ticket.status, categoryId: ticket.category_id } satisfies DropTargetData,
     transition: { duration: 200, easing: "ease" },
   });
-  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-  // The ghost remounts in every column it's dragged through; replaying the staggered entrance there reads as lag.
+  // The ghost remounts in every column it's dragged through; an entrance there reads as lag.
   const [mountedWhileDragging] = useState(isDragging);
-  const entrance = !reduceMotion && !mountedWhileDragging;
 
-  // Explicit inline animation-* longhands so the mount animation never fights the permanent hover transition.
-  const entranceStyle: CSSProperties = !entrance
-    ? {}
-    : {
-        animationDelay: `${Math.min(index, STAGGER_MAX_INDEX) * STAGGER_STEP_MS}ms`,
-        animationDuration: "200ms",
-        animationTimingFunction: "var(--ease-out)",
-      };
-
-  // dnd-kit's inline `transition` fully replaces the className's, which would kill hover transitions, so append.
+  // dnd-kit's inline `transition` replaces the className's, so append; never opacity, or the drop's handover blinks.
   const dragTransition = transition
-    ? `${transition}, opacity 150ms var(--ease-standard), border-color 150ms var(--ease-standard)`
+    ? `${transition}, border-color 150ms var(--ease-standard), translate 150ms var(--ease-standard)`
     : undefined;
 
   // Equivalent to dnd-kit's CSS.Transform.toString: translate3d plus per-axis scale while dragging.
@@ -150,7 +133,8 @@ const TicketCardImpl = ({ ticket, index = 0 }: TicketCardProps) => {
   return (
     <div
       ref={setNodeRef}
-      style={{ ...entranceStyle, transform: dragCssTransform, transition: dragTransition }}
+      style={{ transform: dragCssTransform, transition: dragTransition }}
+      data-no-enter={mountedWhileDragging || undefined}
       {...listeners}
       {...attributes}
       onClick={open}
@@ -159,13 +143,16 @@ const TicketCardImpl = ({ ticket, index = 0 }: TicketCardProps) => {
         if (event.key === "Enter") open();
       }}
       className={cn(
-        "group flex select-none flex-col gap-2.5 rounded-lg border border-border bg-card p-3 transition-[opacity,border-color] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "group relative flex select-none flex-col gap-2.5 rounded-lg border border-border bg-card p-3 transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         "cursor-grab active:cursor-grabbing",
-        entrance && "animate-in fade-in-0 slide-in-from-bottom-1 fill-mode-both",
+        // A 1px lift on hover; the before strip keeps the vacated pixel inside the card so the hover never flickers off.
+        "before:absolute before:inset-x-0 before:-bottom-px before:h-px motion-safe:hover:-translate-y-px",
+        "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:opacity-0 after:shadow-elevated after:transition-opacity after:duration-150 after:ease-standard hover:after:opacity-50",
         // TicketCardOverlay carries the "lifted" look; this is just a dimmed placeholder for the slot.
         isDragging && "opacity-40",
       )}
     >
+      <span data-wash aria-hidden className="pointer-events-none absolute inset-0 rounded-[inherit] bg-success/15 opacity-0" />
       <TicketCardBody ticket={ticket} />
     </div>
   );

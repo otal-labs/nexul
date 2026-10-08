@@ -255,17 +255,6 @@ describe("TicketCard", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/REF-142");
   });
 
-  it("still renders and stays clickable when prefers-reduced-motion is on", async () => {
-    const matchMedia = vi.fn().mockReturnValue({ matches: true });
-    vi.stubGlobal("matchMedia", matchMedia);
-    const user = userEvent.setup();
-    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} index={3} />);
-    await screen.findByText("REF-142");
-    await user.click(screen.getByRole("button", { name: /Fix login/ }));
-    expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/REF-142");
-    vi.unstubAllGlobals();
-  });
-
   // T10: colors come from the backend (ticket_types.color, label_colors) once fetched, hash as
   // fallback for anything unset; an unconfigured workspace must look pixel-identical to before.
   describe("backend-sourced colors (T10)", () => {
