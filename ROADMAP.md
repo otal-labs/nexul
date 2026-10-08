@@ -230,6 +230,14 @@ muted skip, both end on a Done screen that says what was made, and a project
 with a repository waiting to deploy shows the way back to deploying it. The
 map is in `.scratch/project-paths/`.
 
+Planned: **auto plays**. A play starts by itself when something happens:
+a ticket becomes unblocked, enters a stage, fails a test, or a doc settles
+after edits. Each auto play is composed on the play's settings page from
+dropdowns (when, if, priority, limits, whose computer), runs queue per
+person with bugs first if you say so, and a daily cap per ticket stops
+loops. Automations can start a play in code with `runPlay`. The map is in
+`.scratch/auto-plays/`.
+
 ---
 
 ## Next — ecosystem & reach

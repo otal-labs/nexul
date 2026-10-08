@@ -94,6 +94,11 @@ git history, and anything durable it decided is an ADR.
   "No repository yet" and "Attach without deploying" on the wizard's
   Repository step, the early Done screens, and the way back to deploying.
   Wayfinder map charted 2026-10-05; carries the build.
+- `.scratch/auto-plays/` — plays that start by themselves: auto plays
+  composed on a play's settings page (when, if, priority, limits, run on),
+  a per-person run queue, the decisions check as an ordinary play, and
+  `runPlay` in the SDK. Wayfinder map charted 2026-10-08; carries the
+  build. Research findings in `research/`.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
