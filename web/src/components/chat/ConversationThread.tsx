@@ -2,6 +2,7 @@ import { Hash, Users, Volume2, type LucideIcon } from "lucide-react";
 import { Suspense, useCallback, useRef } from "react";
 
 import { ChatComposer } from "@/components/chat/ChatComposer";
+import { ChatPaneState } from "@/components/chat/ChatPaneState";
 import { LazyVoiceCallSection } from "@/components/chat/LazyVoiceCallSection";
 import { MessageList } from "@/components/chat/MessageList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -68,8 +69,16 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
           <LazyVoiceCallSection conversation={conversation} active={isCallActive} />
         </Suspense>
       )}
-      {isPending && <LoadingDisplay label="Loading messages…" />}
-      {error && <ErrorDisplay error={error} title="Failed to load messages." />}
+      {isPending && (
+        <ChatPaneState>
+          <LoadingDisplay label="Loading messages…" />
+        </ChatPaneState>
+      )}
+      {error && (
+        <ChatPaneState>
+          <ErrorDisplay error={error} title="Failed to load messages." />
+        </ChatPaneState>
+      )}
       {messages && (
         <MessageList
           conversation={conversation}
