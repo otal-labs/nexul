@@ -57,7 +57,7 @@ describe("ProjectSection", () => {
   it("lists one project's pages once, not a copy per project", async () => {
     renderSection();
 
-    expect(await screen.findByRole("button", { name: /BE.*Backend/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Backend/ })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Settings" })).toHaveLength(1);
     expect(screen.getByRole("link", { name: "Board" })).toHaveAttribute("href", "/acme/board/BE");
     expect(screen.getByRole("link", { name: "Interview" })).toHaveAttribute("href", "/acme/projects/BE/interview");
@@ -70,7 +70,7 @@ describe("ProjectSection", () => {
   it("follows the project in the URL and remembers it", async () => {
     renderSection({ path: "/acme/projects/FE/settings" });
 
-    expect(await screen.findByRole("button", { name: /FE.*Frontend/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Frontend/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/acme/projects/FE/settings");
     expect(useWorkspaceStore.getState().selectedProjectId).toBe("p-2");
   });
@@ -79,15 +79,15 @@ describe("ProjectSection", () => {
     useWorkspaceStore.setState({ selectedProjectId: "p-2" });
     renderSection({ path: "/acme/runners" });
 
-    expect(await screen.findByRole("button", { name: /FE.*Frontend/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Frontend/ })).toBeInTheDocument();
   });
 
   it("switching project keeps you on the same project page", async () => {
     const user = userEvent.setup();
     renderSection({ path: "/acme/projects/BE/settings" });
 
-    await user.click(await screen.findByRole("button", { name: /BE.*Backend/ }));
-    await user.click(await screen.findByRole("button", { name: /FE.*Frontend/ }));
+    await user.click(await screen.findByRole("button", { name: /Backend/ }));
+    await user.click(await screen.findByRole("button", { name: /Frontend/ }));
 
     expect(screen.getByTestId("location")).toHaveTextContent("/acme/projects/FE/settings");
     expect(useWorkspaceStore.getState().selectedProjectId).toBe("p-2");
@@ -97,8 +97,8 @@ describe("ProjectSection", () => {
     const user = userEvent.setup();
     renderSection({ path: "/acme/runners" });
 
-    await user.click(await screen.findByRole("button", { name: /BE.*Backend/ }));
-    await user.click(await screen.findByRole("button", { name: /FE.*Frontend/ }));
+    await user.click(await screen.findByRole("button", { name: /Backend/ }));
+    await user.click(await screen.findByRole("button", { name: /Frontend/ }));
 
     expect(screen.getByTestId("location")).toHaveTextContent("/acme/board/FE");
   });
@@ -107,7 +107,7 @@ describe("ProjectSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: /BE.*Backend/ }));
+    await user.click(await screen.findByRole("button", { name: /Backend/ }));
     await user.click(await screen.findByRole("button", { name: "New project" }));
 
     expect(screen.getByTestId("location")).toHaveTextContent("/acme/wizard/project/project");
@@ -126,9 +126,9 @@ describe("ProjectSection", () => {
     const user = userEvent.setup();
     renderSection({ path: "/acme/projects/FE/settings" });
 
-    await user.click(await screen.findByRole("button", { name: /FE.*Frontend/ }));
+    await user.click(await screen.findByRole("button", { name: /Frontend/ }));
 
-    expect(await screen.findByRole("button", { name: /BE.*Backend/ })).not.toHaveAttribute("aria-current");
+    expect(await screen.findByRole("button", { name: /Backend/ })).not.toHaveAttribute("aria-current");
     const items = screen.getAllByRole("button", { current: true });
     expect(items).toHaveLength(1);
     expect(items[0]).toHaveTextContent("Frontend");
@@ -138,7 +138,7 @@ describe("ProjectSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    const trigger = await screen.findByRole("button", { name: /BE.*Backend/ });
+    const trigger = await screen.findByRole("button", { name: /Backend/ });
     expect(screen.queryByRole("button", { name: /new/i })).not.toBeInTheDocument();
 
     await user.click(trigger);
@@ -150,15 +150,15 @@ describe("ProjectSection", () => {
     const user = userEvent.setup();
     renderSection({ permissions: ["projects:read", "tickets:read"] });
 
-    await user.click(await screen.findByRole("button", { name: /BE.*Backend/ }));
-    expect(await screen.findByRole("button", { name: /FE.*Frontend/ })).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: /Backend/ }));
+    expect(await screen.findByRole("button", { name: /Frontend/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "New project" })).not.toBeInTheDocument();
   });
 
   it("collapsed rail: the switcher shows the prefix and every page is an icon row", async () => {
     renderSection({ collapsed: true });
 
-    const trigger = await screen.findByRole("button", { name: "BE" });
+    const trigger = await screen.findByRole("button", { name: "Backend" });
     expect(trigger).toHaveAttribute("title", "Backend");
     expect(screen.getByRole("link", { name: "Board" })).toHaveAttribute("href", "/acme/board/BE");
     expect(screen.queryByText("Project")).not.toBeInTheDocument();
@@ -174,7 +174,7 @@ describe("ProjectSection", () => {
     };
     renderSection({ path: "/acme/board/BE", permissions: ["chat:read"], me });
 
-    expect(await screen.findByRole("button", { name: /BE.*Backend/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Backend/ })).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: "Board" })).toHaveAttribute("href", "/acme/board/BE");
     expect(screen.queryByRole("link", { name: "Docs" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Popover } from "@/components/ui/popover";
+import { ProjectMark } from "@/components/project/ProjectMark";
 import { ProjectSwitcherMenu } from "@/components/sidebar/ProjectSwitcherMenu";
 import { SwitcherTrigger } from "@/components/SwitcherTrigger";
 import { useAreaAccess } from "@/hooks/AccessHooks";
@@ -37,7 +38,12 @@ export const ProjectSwitcher = ({ projects, current, collapsed }: ProjectSwitche
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <SwitcherTrigger tile={projectTile(current)} name={current.name} collapsed={collapsed} prefix />
+      <SwitcherTrigger
+        tile={projectTile(current)}
+        name={current.name}
+        collapsed={collapsed}
+        mark={<ProjectMark project={current} className="h-7 w-auto min-w-8 rounded-md px-1 text-[11px] shadow-none" />}
+      />
       <ProjectSwitcherMenu
         projects={projects}
         currentId={current.id}

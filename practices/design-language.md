@@ -302,7 +302,8 @@ middle crumbs shrink and truncate first so the last stays readable), then the ti
 editable title takes the same class), its actions top-aligned on the right,
 one muted meta line 8px under the title (status as a dot plus text, counts,
 who and when), and a `border-b border-border` hairline closing the header.
-Breadcrumbs replace back links everywhere; no page renders "← Back to …" or
+A mark that names the record (the board's project mark) goes in the
+`leading` slot, centred on the title and meta pair. Breadcrumbs replace back links everywhere; no page renders "← Back to …" or
 an arrow icon to leave. A workspace page leads with the workspace crumb
 (`useWorkspaceCrumb`), a project page adds the project (`useProjectCrumb`).
 A list pane (Docs, Memories, Inbox) keeps its pane title bar instead of a page
@@ -571,7 +572,7 @@ Questions while some wait. `DocQuestionsPanel` in
 
 Sidebar. Straight on the canvas, never a panel. Top to bottom: the logo row,
 the workspace switcher (a 32px initial tile), then one scroll: Search and
-Inbox, the project (its switcher shows the prefix in a 28px mono tile, then
+Inbox, the project (its switcher leads with the project mark at 28px, then
 its pages), the foldable Workspace section, and last the conversations:
 Channels, Voice channels, Direct messages and Threads. Places come before
 conversations because their length is fixed, so a long channel list never

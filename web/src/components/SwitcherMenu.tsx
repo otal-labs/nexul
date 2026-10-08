@@ -29,17 +29,22 @@ export const SwitcherMenu = ({ children, createLabel, onCreate }: SwitcherMenuPr
 
 interface SwitcherMenuItemProps {
   tile: string;
+  // Stands in for the initial tile: a project shows its mark.
+  mark?: ReactNode;
   name: string;
   selected: boolean;
   onSelect: () => void;
   unreadCount?: number;
 }
 
-export const SwitcherMenuItem = ({ tile, name, selected, onSelect, unreadCount = 0 }: SwitcherMenuItemProps) => (
+export const SwitcherMenuItem = ({ tile, mark, name, selected, onSelect, unreadCount = 0 }: SwitcherMenuItemProps) => (
   <button type="button" onClick={onSelect} aria-current={selected || undefined} title={name} className={menuItemClass}>
-    <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md bg-accent px-1 text-xs font-semibold text-primary">
-      {tile}
-    </span>
+    {mark}
+    {!mark && (
+      <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md bg-accent px-1 text-xs font-semibold text-primary">
+        {tile}
+      </span>
+    )}
     <span className="min-w-0 flex-1 truncate">{name}</span>
     <UnreadBadge count={unreadCount} />
     {selected && <CheckIcon className="text-primary" aria-hidden />}

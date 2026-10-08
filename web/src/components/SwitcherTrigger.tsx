@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ChevronsUpDownIcon } from "lucide-react";
 
 import { PopoverTrigger } from "@/components/ui/popover";
@@ -7,11 +8,11 @@ interface SwitcherTriggerProps {
   tile: string;
   name: string;
   collapsed: boolean;
-  // A project's tile is its ticket prefix, technical data, so it sets in mono a step smaller than the workspace's.
-  prefix?: boolean;
+  // Stands in for the initial tile: a project shows its mark.
+  mark?: ReactNode;
 }
 
-export const SwitcherTrigger = ({ tile, name, collapsed, prefix = false }: SwitcherTriggerProps) => (
+export const SwitcherTrigger = ({ tile, name, collapsed, mark }: SwitcherTriggerProps) => (
   <PopoverTrigger asChild>
     <button
       type="button"
@@ -21,14 +22,12 @@ export const SwitcherTrigger = ({ tile, name, collapsed, prefix = false }: Switc
         collapsed ? "justify-center px-0 py-1" : "px-2.5 py-1.5",
       )}
     >
-      <span
-        className={cn(
-          "flex shrink-0 items-center justify-center bg-accent px-1 text-primary",
-          prefix ? "h-7 min-w-8 rounded-md font-mono text-[11px] font-medium" : "h-8 min-w-8 rounded-lg text-xs font-semibold",
-        )}
-      >
-        {tile}
-      </span>
+      {mark}
+      {!mark && (
+        <span className="flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg bg-accent px-1 text-xs font-semibold text-primary">
+          {tile}
+        </span>
+      )}
       {!collapsed && (
         <>
           <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>

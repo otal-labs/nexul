@@ -13,21 +13,26 @@ interface PageHeaderProps {
   crumbs?: Crumb[];
   meta?: ReactNode;
   actions?: ReactNode;
+  // A mark before the title and its meta line, centred on the pair: the board's project mark.
+  leading?: ReactNode;
   className?: string;
 }
 
-export const PageHeader = ({ title, crumbs, meta, actions, className }: PageHeaderProps) => (
+export const PageHeader = ({ title, crumbs, meta, actions, leading, className }: PageHeaderProps) => (
   <header className={cn("border-b border-border pb-5", className)}>
     {crumbs && crumbs.length > 0 && <PageBreadcrumb crumbs={crumbs} className="mb-2" />}
     <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-      <div className="min-w-0 flex-1 basis-80">
-        {typeof title === "string" && <h1 className={pageTitleClass}>{title}</h1>}
-        {typeof title !== "string" && title}
-        {meta && (
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-            {meta}
-          </div>
-        )}
+      <div className="flex min-w-0 flex-1 basis-80 items-center gap-3.5">
+        {leading}
+        <div className="min-w-0 flex-1">
+          {typeof title === "string" && <h1 className={pageTitleClass}>{title}</h1>}
+          {typeof title !== "string" && title}
+          {meta && (
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              {meta}
+            </div>
+          )}
+        </div>
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
