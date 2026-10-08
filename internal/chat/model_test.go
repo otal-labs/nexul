@@ -25,6 +25,11 @@ func TestParseMentions(t *testing.T) {
 			{Kind: MentionAgent, Handle: AgentHandle},
 		}, got)
 	})
+	t.Run("the domain of an email address is never a mention", func(t *testing.T) {
+		assert.Nil(t, ParseMentions("write to ann@bob.example.com or a.b@globex.example.com"))
+		got := ParseMentions("ann@bob.example.com, cc @sam")
+		assert.Equal(t, []Mention{{Kind: MentionUser, Handle: "sam"}}, got)
+	})
 	t.Run("hyphenated login", func(t *testing.T) {
 		got := ParseMentions("@onik-97 take a look")
 		assert.Equal(t, []Mention{{Kind: MentionUser, Handle: "onik-97"}}, got)
