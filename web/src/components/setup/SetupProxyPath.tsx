@@ -33,7 +33,7 @@ export const SetupProxyPath = ({ onFinish }: SetupProxyPathProps) => {
   return (
     <div className="space-y-5">
       {isPending && <LoadingDisplay label="Looking up this server's public address" />}
-      {error && <ErrorDisplay error={error} title="Could not find this server's public address" />}
+      {error && <ErrorDisplay error={error} title="Couldn't find this server's public address." />}
       {address && !target && <ProxyDomainForm address={address} onSubmit={setTarget} />}
       {address && target && !serviceId && (
         <ProxyResolveWatch domain={target.domain} address={address} onResolved={deploy} />
