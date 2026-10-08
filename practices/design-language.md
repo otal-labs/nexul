@@ -160,6 +160,8 @@ kept in the browser), but never so wide that the open record drops below
 32rem. The list heads with its title and a mono count, a ghost `+` icon button, and a
 search field. Rows are about 56px with 12px sides and hairline dividers: a
 13px medium title over a muted one-line preview, mono meta trailing right. A
+title wraps to two lines at most, the full text in its tooltip, and sets its
+own direction so an Arabic title reads right to left. A
 row whose record already shows its details when open (Docs) is the title alone
 at about 40px, with a muted state icon after it (a lock) and no meta. The
 selected row is `bg-accent` with a 2px `muted-foreground` left edge, a hover
@@ -188,7 +190,8 @@ shows at a time. `ListDetailLayout` and `ListPaneRow` in
 
 Inbox. One row per doc however many notifications it has: the title over a
 muted summary of what happened ("created · 2 updates"), the newest time
-trailing in mono, unread while any of them is. Docs outside their project's
+trailing in mono, unread while any of them is. Rows hover and select like the
+list pane's. Docs outside their project's
 default folder sit under a folder row built from the same `FolderToggle` as
 the Docs pane's, its meta "4 docs · 7 updates", expanded until collapsed and
 kept per browser; inside it a title drops a leading folder name. Every other
@@ -216,8 +219,10 @@ who and when), and a `border-b border-border` hairline closing the header.
 Breadcrumbs replace back links everywhere; no page renders "← Back to …" or
 an arrow icon to leave. A workspace page leads with the workspace crumb
 (`useWorkspaceCrumb`), a project page adds the project (`useProjectCrumb`).
-A list pane (Docs, Memories, Inbox) keeps its pane title bar instead, and the
-open record in it uses the breadcrumb alone.
+A list pane (Docs, Memories, Inbox) keeps its pane title bar instead of a page
+header, and the open record beside it takes the page header with crumbs back
+to its list and folder (Docs › Runbooks), no workspace crumb. Its body card
+holds a reading measure (`max-w-3xl`) and the title stays out of the card.
 
 Page width. `Container` is `max-w-7xl` for lists and grids (Board, Runners,
 Automations, Topology) and `size="page"` (`max-w-5xl`) for settings and
