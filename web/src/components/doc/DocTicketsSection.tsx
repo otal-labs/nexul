@@ -1,5 +1,6 @@
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { microheaderClass } from "@/components/Microheader";
 import { useFetchTicketsByDoc } from "@/hooks/TicketHooks";
 
 interface DocTicketsSectionProps {
@@ -16,7 +17,7 @@ export const DocTicketsSection = ({ docId }: DocTicketsSectionProps) => {
       {error && <ErrorDisplay error={error} />}
       {data && data.length > 0 && (
         <section aria-label="Tickets from this doc">
-          <h2 className="font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase">
+          <h2 className={microheaderClass}>
             Tickets from this doc
           </h2>
           <ul className="mt-2.5 space-y-1.5">

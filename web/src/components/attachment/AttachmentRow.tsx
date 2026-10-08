@@ -33,7 +33,7 @@ export const AttachmentRow = ({ attachment, canDelete }: AttachmentRowProps) => 
         {!thumb && <FileIcon className="size-3 text-muted-foreground" aria-hidden />}
       </span>
       <span className="truncate text-foreground">{attachment.name}</span>
-      <span className="shrink-0 font-mono text-[11px] text-muted-foreground tabular-nums">
+      <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
         {formatBytes(attachment.size)}
       </span>
       <span className={actionsClass}>
