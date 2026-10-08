@@ -3,7 +3,10 @@ import { Link, useNavigate } from "react-router";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { microheaderClass } from "@/components/Microheader";
 import { NotFoundIllustration } from "@/components/NotFoundIllustration";
+import { displayTitleClass } from "@/components/PageHeader";
+import { ShowcaseSurface } from "@/components/showcase/ShowcaseSurface";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ErrorScreenProps {
   // A route's crash; without one the screen is the app's not-found page.
@@ -14,13 +17,12 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
   const navigate = useNavigate();
   const isCrash = error != null;
 
-  // Fits the panel it sits in when signed in (the viewport less its 8px margins); signed out it fills the screen bar 1rem.
   return (
-    <div className="blueprint-bg min-h-[calc(100dvh-1rem)]">
-      <div className="flex min-h-[calc(100dvh-1rem)] flex-col items-center gap-12 px-6 py-16 sm:flex-col-reverse sm:justify-center sm:gap-16 sm:px-8">
+    <ShowcaseSurface quiet>
+      <div className="flex min-h-full flex-col items-center gap-12 px-6 py-16 sm:flex-col-reverse sm:justify-center sm:gap-16 sm:px-8">
         <div className="flex max-w-3xl flex-col items-center gap-3 text-center">
           <p className={microheaderClass}>Nexul</p>
-          <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
+          <h1 className={cn(displayTitleClass, "text-[clamp(2.75rem,6vw,4rem)]")}>
             {isCrash && "Something went wrong"}
             {!isCrash && "Page not found"}
           </h1>
@@ -66,6 +68,6 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
         </div>
         <NotFoundIllustration />
       </div>
-    </div>
+    </ShowcaseSurface>
   );
 };
