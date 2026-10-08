@@ -1,7 +1,7 @@
 # 02: The auto play record, its permissions, and its HTTP and MCP surface
 
 Type: research
-Status: open
+Status: resolved
 Blocked by: None — can start immediately
 
 ## Question
@@ -28,3 +28,16 @@ limits (once per ticket per occurrence over a period), and run on
   per-person concurrency cap are workspace settings or instance templates.
 
 Findings go in `research/02-auto-play-record-and-surfaces.md`.
+
+## Answer
+
+Recommendation in `research/02-auto-play-record-and-surfaces.md`, with
+one change from the owner (2026-10-08) to the permission backfill:
+
+- `autoplays:read` wherever `plays:read` is held.
+- `autoplays:read` and `autoplays:write` wherever `plays:write` is held,
+  and `autoplays:delete` wherever `plays:delete` is held. Auto plays belong
+  to plays, so whoever edits a play edits its auto plays.
+- Nothing from `automations:write`. Someone who could switch the decisions
+  check only through `automations:write` loses that switch unless they also
+  edit plays; the ADR says so.
