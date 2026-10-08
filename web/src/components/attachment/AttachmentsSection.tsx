@@ -3,6 +3,7 @@ import { useRef } from "react";
 
 import { AttachmentRow } from "@/components/attachment/AttachmentRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { microheaderClass } from "@/components/Microheader";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchAttachments, useUploadAttachment } from "@/hooks/AttachmentHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
@@ -34,7 +35,7 @@ export const AttachmentsSection = ({ owner, className, actionPlacement = "beside
   return (
     <section className={cn("space-y-2", className)} aria-label="Attachments">
       <div className={cn("flex items-center gap-1.5", actionPlacement === "end" && "justify-between")}>
-        <h2 className="font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase">
+        <h2 className={microheaderClass}>
           Attachments
           {data && data.length > 0 && <span className="ml-1.5 tabular-nums">{data.length}</span>}
         </h2>

@@ -112,7 +112,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
           {label ?? play.label}
         </Button>
       )}
-      {!waiting && !canStop && reason !== "" && <span className="font-mono text-[11px] text-muted-foreground">{reason}</span>}
+      {!waiting && !canStop && reason !== "" && <span className="font-mono text-xs text-muted-foreground">{reason}</span>}
       {activeTrail && <TrailDetail trailId={trailOpen ? activeTrail.id : null} onClose={() => setTrailOpen(false)} />}
       <PlayRunDialog
         play={play}

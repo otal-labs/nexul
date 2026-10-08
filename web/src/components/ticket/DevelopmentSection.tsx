@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { FormInput } from "@/components/FormInput";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { microheaderClass } from "@/components/Microheader";
 import { RepoLinksRow } from "@/components/ticket/RepoLinksRow";
 import { menuItemClass } from "@/components/ticket/ticketFormPillStyles";
 import { Button } from "@/components/ui/button";
@@ -53,9 +54,7 @@ export const DevelopmentSection = ({ ticketId }: DevelopmentSectionProps) => {
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between px-2">
-        <h2 className="font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase">
-          Development
-        </h2>
+        <h2 className={microheaderClass}>Development</h2>
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger asChild>
             <button
