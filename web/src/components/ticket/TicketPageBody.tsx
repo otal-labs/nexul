@@ -49,7 +49,7 @@ export const TicketPageBody = ({
         <div className={layout.main}>
           <div className={layout.mainGrid}>
             <div className={layout.body}>
-              <TicketDetail key={ticket.id} ticket={ticket} {...(project ? { project } : {})} />
+              <TicketDetail key={ticket.id} ticket={ticket} layout={layout} {...(project ? { project } : {})} />
             </div>
             <div className={layout.rail}>
               <TicketPropertiesPanel
@@ -62,7 +62,7 @@ export const TicketPageBody = ({
                 <PlaysRailSection ticket={ticket} />
                 <DevelopmentSection ticketId={ticket.id} />
                 <ReviewPanel ticketId={ticket.id} />
-                <AttachmentsSection owner={{ ticket_id: ticket.id }} className="px-2" actionPlacement="end" />
+                <AttachmentsSection owner={{ ticket_id: ticket.id }} className="px-2 [&_[role=status]]:text-xs" actionPlacement="end" />
                 <TicketLinksSection ticket={ticket} />
                 <DecisionsCheckNotice ticketId={ticket.id} />
                 <TicketTestSection ticket={ticket} />
