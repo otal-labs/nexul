@@ -13,7 +13,9 @@ interface ImportContainerRowProps {
 export const ImportContainerRow = ({ container, checked, onToggle, indent = false }: ImportContainerRowProps) => (
   <label className={cn("flex items-center gap-3 py-1.5 text-sm", indent && "pl-6")}>
     <Checkbox checked={checked} onCheckedChange={onToggle} />
-    <span className="min-w-0 truncate">{container.name}</span>
-    <span className="truncate font-mono text-xs text-muted-foreground">{container.image}</span>
+    <span className="min-w-0 truncate" title={container.name}>
+      {container.name}
+    </span>
+    <span className="min-w-0 font-mono text-xs wrap-anywhere text-muted-foreground">{container.image}</span>
   </label>
 );
