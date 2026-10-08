@@ -96,9 +96,9 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
           </>
         }
       />
-      <div className="mt-6 @4xl:flex @4xl:gap-8">
-        {/* Hidden below @4xl; the has() rule keeps the column from reserving 14rem when neither section renders. */}
-        <div className="hidden w-56 shrink-0 @4xl:has-[section]:block">
+      <div className="mt-6 @3xl:flex @3xl:gap-8">
+        {/* Hidden below @3xl; the has() rule keeps the column from reserving 14rem when neither section renders. */}
+        <div className="hidden w-48 shrink-0 @3xl:has-[section]:block">
           <div className="sticky top-6 -mx-2 flex max-h-[calc(100vh-3rem)] flex-col gap-8 overflow-y-auto px-2">
             <DocToc headings={view === "doc" ? headings : []} />
             {canThread && (
@@ -120,7 +120,8 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
           <article
             ref={articleRef}
             hidden={view === "questions"}
-            className="relative rounded-lg border border-border bg-card p-6 shadow-card sm:p-8"
+            // A sheet of its own inside the panel, with page margins, so the doc reads as the thing being written.
+            className="relative rounded-lg bg-card px-6 py-8 shadow-card ring-1 ring-border @3xl:px-12 @3xl:py-11"
             onPointerMove={onPointerMove}
             onPointerLeave={onPointerLeave}
           >
@@ -133,9 +134,9 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
             />
           </article>
 
-          {/* The rail holds the trail from @4xl; both read the same query, so there is one request. */}
+          {/* The rail holds the trail from @3xl; both read the same query, so there is one request. */}
           {canThread && (
-            <div className="@4xl:hidden">
+            <div className="@3xl:hidden">
               <TrailSection workspaceId={workspaceId} targetType="doc" targetId={doc.id} />
             </div>
           )}

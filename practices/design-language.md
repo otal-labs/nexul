@@ -178,6 +178,7 @@ second ambient animation or anything animating layout behind the panels.
 | Status as icon or dot plus text, never a tinted chip | Readable in both themes and keeps status from competing with the accent; tinted fills washed out once several hues appeared together |
 | Board cards: type and label as tinted pills | The 15% tint with an 800/400 text shade holds 4.5:1 in both themes. Type and label may use the same pill wherever they show as a tag group; status never does |
 | Board cards: the key as an eyebrow, the person opposite the pills | Against the avatar-beside-title card and a card with a ruled footer: with the 28px avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the footer rule made every card taller for a line that spacing already separates |
+| Doc body on a sheet, the ticket body open | Against an open doc body and the boxed card: the sheet with page margins makes the doc read as the thing being written; a ticket's body is short and sits beside its rail, where a box only framed the empty editing space |
 | Board header: a project mark and the stage bar beside the title | Against a full-width stage strip and a stat row of stages under the header: both cost the board 50 to 80px of height on the page where height is cards; beside the title the summary is free and still reads first |
 | Palettes theme the accent and the field | A palette's primary becomes its brand, so Ocean is blue and Grove is green everywhere the ember was, field included |
 | Inter plus JetBrains Mono only | A precise technical voice; two families is enough |
@@ -285,8 +286,20 @@ an arrow icon to leave. A workspace page leads with the workspace crumb
 (`useWorkspaceCrumb`), a project page adds the project (`useProjectCrumb`).
 A list pane (Docs, Memories, Inbox) keeps its pane title bar instead of a page
 header, and the open record beside it takes the page header with crumbs back
-to its list and folder (Docs › Runbooks), no workspace crumb. Its body card
-holds a reading measure (`max-w-3xl`) and the title stays out of the card.
+to its list and folder (Docs › Runbooks), no workspace crumb. Its body is
+a sheet (`bg-card`, hairline ring, `shadow-card`, 48px side margins once the
+page is 48rem wide) holding a reading measure (`max-w-3xl`), and the title
+stays out of the sheet. From a 48rem page the table of contents (a 12rem
+column) sits to its left.
+
+Rich text (`.prose-rich` in `index.css`), the doc and ticket bodies alike:
+16px at 1.75, headings closer to their text than to the paragraph above
+(1.9em over, 0.45em under) and balanced, paragraphs `text-wrap: pretty`,
+muted list markers. Tables are ruled data, not boxed cells: a hairline under
+each row, a muted 13px header over a stronger rule, tabular figures. Images
+take the large radius, a black or white 10% outline drawn inside, and the
+card shadow. Code blocks stay consoles at 13px. A blockquote is a 2px rule in
+`foreground` at 25%.
 
 Page width. `Container` is `max-w-7xl` for lists and grids (Board, Runners,
 Automations, Topology) and `size="page"` (`max-w-5xl`) for settings and

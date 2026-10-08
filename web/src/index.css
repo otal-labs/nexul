@@ -436,8 +436,14 @@ h3 {
 /* ============ Rich text (Tiptap editor + read-only body) ============ */
 .prose-rich {
   color: var(--foreground);
-  line-height: 1.7;
-  font-size: 0.9375rem;
+  line-height: 1.75;
+  font-size: 1rem;
+}
+
+/* A reply set small inside a chat bubble keeps its size; the base rule above sits outside the utility layer. */
+.prose-rich.text-sm {
+  font-size: 0.875rem;
+  line-height: 1.6;
 }
 
 /* Remembered block sizes let a list-pane drag skip laying out off-screen blocks without the scroll height jumping. */
@@ -449,31 +455,42 @@ h3 {
   content-visibility: auto;
 }
 
+/* Headings sit closer to the text they open than to the paragraph above them. */
 .prose-rich h1,
 .prose-rich h2,
 .prose-rich h3 {
   color: var(--foreground);
   font-weight: 600;
-  letter-spacing: -0.018em;
+  letter-spacing: -0.02em;
   line-height: 1.25;
-  margin-top: 1.25em;
-  margin-bottom: 0.5em;
+  margin-top: 1.9em;
+  margin-bottom: 0.45em;
+  text-wrap: balance;
 }
 
 .prose-rich h1 {
-  font-size: 1.5rem;
+  font-size: 1.625rem;
 }
 
 .prose-rich h2 {
-  font-size: 1.25rem;
+  font-size: 1.3125rem;
 }
 
 .prose-rich h3 {
-  font-size: 1.125rem;
+  font-size: 1.0625rem;
 }
 
 .prose-rich p {
-  margin: 0.5em 0;
+  margin: 0.7em 0;
+  text-wrap: pretty;
+}
+
+.prose-rich li > p {
+  margin: 0.2em 0;
+}
+
+.prose-rich li::marker {
+  color: var(--muted-foreground);
 }
 
 /* The first line's top must be exactly the editor's top edge — the empty
@@ -499,10 +516,10 @@ h3 {
 }
 
 .prose-rich blockquote {
-  border-left: 3px solid var(--border);
+  border-left: 2px solid color-mix(in oklab, var(--foreground) 25%, transparent);
   color: var(--muted-foreground);
-  margin: 0.75em 0;
-  padding-left: 1em;
+  margin: 1.25em 0;
+  padding-left: 1.1em;
 }
 
 .prose-rich code {
@@ -522,10 +539,11 @@ h3 {
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--ring) 8%, transparent);
   color: #ededed;
   font-family: var(--font-mono-stack);
-  font-size: 0.85em;
-  line-height: 1.6;
+  font-size: 0.8125rem;
+  line-height: 1.65;
   overflow-x: auto;
-  padding: 0.9em 1.1em;
+  padding: 1em 1.25em;
+  tab-size: 2;
 }
 
 .prose-rich pre code {
@@ -537,7 +555,7 @@ h3 {
 /* CodeBlockView's language picker header — same dark terminal panel, a
    quiet row above the code rather than an overlay fighting the scrollbar. */
 .code-block-view {
-  margin: 0.75em 0;
+  margin: 1.25em 0;
 }
 
 .code-block-view__lang {
@@ -630,15 +648,22 @@ h3 {
 }
 
 .prose-rich .doc-image {
-  margin: 0.75em 0;
+  margin: 1.5em 0;
 }
 
+/* An image's edge is pure black or white at 10%, drawn inside it; a tinted hairline reads as grime on a photo. */
 .prose-rich .doc-image img {
   display: block;
   max-width: 100%;
   height: auto;
-  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
+  outline: 1px solid oklch(0 0 0 / 0.1);
+  outline-offset: -1px;
+  box-shadow: var(--shadow-card);
+}
+
+.dark .prose-rich .doc-image img {
+  outline-color: oklch(1 0 0 / 0.1);
 }
 
 .prose-rich .doc-image.is-selected img {
@@ -661,12 +686,13 @@ h3 {
 .prose-rich hr {
   border: none;
   border-top: 1px solid var(--border);
-  margin: 1.5em 0;
+  margin: 2.25em 0;
 }
 
 /* A wide table scrolls inside its own wrapper so the card around the body never overflows. */
+/* Tables read as ruled data, not a grid of boxes: hairlines between rows, a quiet header over a stronger rule. */
 .prose-rich .tableWrapper {
-  margin: 0.75em 0;
+  margin: 1.25em 0;
   overflow-x: auto;
 }
 
@@ -674,20 +700,23 @@ h3 {
   border-collapse: collapse;
   font-size: 0.875rem;
   line-height: 1.5;
+  font-variant-numeric: tabular-nums;
 }
 
 .prose-rich :is(th, td) {
   position: relative;
   min-width: 6rem;
-  border: 1px solid var(--border);
-  padding: 0.375em 0.75em;
+  border-bottom: 1px solid var(--border);
+  padding: 0.55em 1.25em 0.55em 0;
   text-align: left;
   vertical-align: top;
 }
 
 .prose-rich th {
-  background: var(--muted);
-  font-weight: 600;
+  border-bottom-color: color-mix(in oklab, var(--foreground) 22%, transparent);
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .prose-rich :is(th, td) p {
