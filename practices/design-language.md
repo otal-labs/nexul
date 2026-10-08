@@ -141,6 +141,9 @@ in one layout step and its content does the moving.
   backdrop blur any motion re-blurs every panel each frame, which held 50ms
   idle frames under a 4x CPU throttle while the field drifted; nothing may
   animate behind the panels, and the app has no ambient motion.
+  The one exception is a showcase surface (Pattern spec), which replaces the
+  frame instead of sitting behind it and appears only on the signed-out
+  pages, the wizards and the error page.
 - Reduced motion is gentler, not none. The global block in `index.css`
   flattens every CSS transition and keyframe to its end state; what tells the
   reader something arrived keeps a 150ms fade instead (page and list
@@ -204,6 +207,9 @@ second ambient animation or anything animating layout behind the panels.
 | Fraunces for titles over Inter and JetBrains Mono | A serif display face over a neutral sans is contrast, not resemblance: the titles get a voice no other developer tool has while every control, row and number stays in the precise technical pair. Soft and a little wonky (SOFT 50, WONK 1) at 560, because a sharp high-contrast serif read as editorial and a thin one vanished at 21px |
 | 7px controls, 9px cards, 12px panels | Soft but precise; pills stay badge-only so controls and tags never look alike |
 | Terminal-window motif, neutral glow | Code, log, and hero surfaces read as consoles |
+| The live light field on showcase surfaces only | Picked over a fluted-glass refraction (busy vertical bands fought the text and the frosted vocabulary, and no CSS still could stand in for it) and an aurora (a band across the top only, nearly invisible in light mode); the field is the app's own light field moving, so its fallback still is exact and every palette retints it |
+| Empty states: the orbit mark | Picked over a placeholder card grid (generic, implied an add action the callers do not have, and looped) and a tile of the live field (a GPU canvas inside an everyday panel, grainy at 96px, impossible at compact size); the static orbit carries the field's colours at any size and costs nothing |
+| Loading: the orbit at spinner size | Over the plain spinner and a gradient arc; it ties loading to the empty mark, keeps the ember to progress, and stays one small SVG |
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
 | Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
@@ -371,13 +377,37 @@ card with the title, two clamped lines of description, and the status, and a
 remove `×` shows on the row's hover and focus. `TicketPageBody` is the
 reference.
 
-Empty and loading state. A centered icon in a `bg-muted/60` square (not a
-circle), a title, an optional message, an optional action, inside a
-dashed-border container; this is `EmptyState.tsx`. One muted icon, no
-illustration. Loading is the existing spinner plus a label; no skeleton
-screens. `EmptyState` is for a whole empty page; an empty list inside a card is
-a single `EmptyRow` sentence where the rows would be, `flush` when it sits in a
-card body and lines up with the text around it.
+Empty and loading state. `EmptyState` is the orbit mark (the muted icon on a
+card-coloured disc, ringed by two thin orbits stroked from the field's blue
+through pink to `brand`, an ember dot top right and a blue one bottom left),
+then a Fraunces headline at 26px, one plain muted line, and the action. No
+border around it: an empty page reads as a first-run screen, not a
+placeholder box. The `compact` size (list panes, sub-sections) keeps the same
+mark at 56px with a 14px Inter title, because Fraunces never goes under 20px.
+The mark is static SVG on every surface; the live field never runs inside a
+panel. `NoDataDisplay` passes an `icon` through for the glyph that names the
+page. Loading is the same orbit at 16px, the ember dot circling a faint ring
+(1.2s a turn, still under reduced motion), plus a label, held back 300ms; no
+skeleton screens. `EmptyState` is for a whole empty page; an empty list inside
+a card is a single `EmptyRow` sentence where the rows would be, `flush` when it
+sits in a card body and lines up with the text around it.
+
+Showcase surfaces. The signed-out pages (home, sign in, invitation), the
+wizard frames and the error page sit on `ShowcaseSurface`: the light field
+made live, the same ember top right, pink between and blue bottom left,
+drifting slowly through a flow field with a little grain (`ShowcaseField`,
+built on the shaders library and coloured from the tokens at runtime, so a
+palette retints it). Signed out it fills the screen; signed in it takes the
+frame's place as one opaque rounded surface (`data-pane-layout`), so nothing
+moves behind a backdrop blur. The home, sign-in and invitation pages run it at
+full strength; the wizards and the error page run it `quiet`, at about half,
+so form text sits on near-plain canvas. Its still, the light field's own three
+radial gradients, is the container background: it shows while the shader
+compiles, without WebGPU, and as the whole reduced-motion variant (the shader
+is never mounted then); the live layer fades in over 700ms once ready. The
+sign-in and invitation cards are a `panel` at 72% over it, the one place a
+blur sits over motion, for a single small card. Headlines on these surfaces
+are Fraunces. Never on an everyday screen, never behind a panel.
 
 Stat and summary row. Three or four values in a single row above a list, in
 the same `surface-2` well as a stack's live status, split by hairlines,

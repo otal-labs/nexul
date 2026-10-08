@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 
-import { Container } from "@/components/Container";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { InvitationAcceptancePanel } from "@/components/invitation/InvitationAcceptancePanel";
 import { InvitationGrantSummary } from "@/components/invitation/InvitationGrantSummary";
 import { InvitationProviderList } from "@/components/invitation/InvitationProviderList";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { microheaderClass } from "@/components/Microheader";
+import { displayTitleClass } from "@/components/PageHeader";
+import { ShowcaseSurface } from "@/components/showcase/ShowcaseSurface";
 import { Button } from "@/components/ui/button";
 import {
   useCreateInvitationAcceptance,
@@ -19,6 +20,7 @@ import { useBootstrapStatus } from "@/hooks/AuthHooks";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { parseInvitationFragment, type InvitationAcceptance, type InvitationProvider } from "@/models/Invitation";
+import { cn } from "@/lib/utils";
 
 const INVALID_MESSAGE = "This invitation is invalid or has expired.";
 
@@ -94,12 +96,12 @@ export const InvitePreviewPage = () => {
   };
 
   return (
-    <div className="blueprint-bg min-h-screen">
-      <Container className="mx-auto flex min-h-screen w-full max-w-xl items-center py-12">
-        <div className="w-full space-y-6">
-          <header className="space-y-2 text-center">
+    <ShowcaseSurface>
+      <div className="flex min-h-full items-center justify-center px-6 py-12">
+        <div className="panel w-full max-w-xl space-y-6 p-8 [--panel-opacity:72%]">
+          <header className="space-y-3">
             <p className={microheaderClass}>Nexul invitation</p>
-            <h1 className="text-2xl font-semibold tracking-tight">Join {instanceName}</h1>
+            <h1 className={cn(displayTitleClass, "text-[2rem]")}>Join {instanceName}</h1>
             <p className="text-sm text-muted-foreground">This one-use link expires {details ? new Date(details.expires_at).toLocaleString() : "soon"}.</p>
           </header>
           {checking && <LoadingDisplay label="Checking invitation…" />}
@@ -108,7 +110,7 @@ export const InvitePreviewPage = () => {
           {!invalid && acceptance && <InvitationAcceptancePanel pending={redeem.isPending} onAccept={accept} onDecline={() => navigate("/", { replace: true })} />}
           {!invalid && !acceptance && publicPreview && <InvitationProviderList providers={providers} disabled={oauth.isPending} onSelect={startOAuth} />}
         </div>
-      </Container>
-    </div>
+      </div>
+    </ShowcaseSurface>
   );
 };

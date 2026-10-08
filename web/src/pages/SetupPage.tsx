@@ -9,11 +9,15 @@ export const SetupPage = () => {
   const { data: status, isPending, error } = useBootstrapStatus();
 
   return (
-    // No padding of its own: WizardLayout brings the page gutter, and 320px has none to spare.
-    <Container className="px-0 sm:px-0">
+    // No frame of its own: WizardLayout brings the surface and the page gutter.
+    <div className="h-full">
       {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
+      {error && (
+        <Container className="py-10">
+          <ErrorDisplay error={error} />
+        </Container>
+      )}
       {status && <SetupFlow status={status} />}
-    </Container>
+    </div>
   );
 };
