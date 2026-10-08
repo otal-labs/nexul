@@ -142,7 +142,7 @@ describe("WizardRepositoryStep", () => {
 
     await search(user);
     await user.click(screen.getByText("onik97/api"));
-    expect(await screen.findByText("Not installed on this repository")).toBeInTheDocument();
+    expect(await screen.findByText("The GitHub App isn't installed on this repository")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /install the github app/i })).toHaveAttribute(
       "href",
       "https://github.com/apps/nexul/installations/new",

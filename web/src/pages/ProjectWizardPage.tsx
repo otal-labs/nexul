@@ -74,7 +74,7 @@ const wizardTitle = (isAttach: boolean, projectPreselected: boolean, firstProjec
 const wizardSubtitle = (isAttach: boolean, firstProject: boolean): string => {
   if (isAttach) return "Point this stack at a repository so Nexul can build and deploy it.";
   if (firstProject) return "Tickets, docs, and deploys all live in a project. Name it, then point Nexul at its repository.";
-  return "Point Nexul at a repository and it takes care of the rest.";
+  return "Name the project, then pick the repository to deploy.";
 };
 
 // An unknown step goes to the first one; a step past the furthest reachable one goes back to that one.

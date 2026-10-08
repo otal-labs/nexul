@@ -23,7 +23,7 @@ const ReachFormSchema = z.object({
   zone_id: z.string().min(1, "Choose a zone"),
   zone: z.string().min(1, "Choose a zone"),
   service_id: z.string().min(1, "Choose a service"),
-  port: z.coerce.number<number>().int().positive("Port must be positive"),
+  port: z.coerce.number<number>().int().positive("Enter a port above 0"),
 });
 type ReachFormData = z.infer<typeof ReachFormSchema>;
 
@@ -67,8 +67,8 @@ export const WizardReachStep = ({ onDone, onSkip }: WizardReachStepProps) => {
   return (
     <>
       {(zonesPending || servicesPending) && <LoadingDisplay />}
-      {zonesError && <ErrorDisplay error={zonesError} title="Could not load zones" />}
-      {servicesError && <ErrorDisplay error={servicesError} title="Could not load the stack's services" />}
+      {zonesError && <ErrorDisplay error={zonesError} title="Couldn't load zones" />}
+      {servicesError && <ErrorDisplay error={servicesError} title="Couldn't load the stack's services" />}
       {zones && services && stackId && (
         <ReachForm
           zones={zones}

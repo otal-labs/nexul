@@ -97,7 +97,7 @@ export const WizardServiceStep = ({ onDone, onBack }: WizardServiceStepProps) =>
       return (
         <>
           {isAttachPending && <LoadingDisplay />}
-          {attachError && <ErrorDisplay error={attachError} title="Could not load the stack" />}
+          {attachError && <ErrorDisplay error={attachError} title="Couldn't load the stack" />}
         </>
       );
     }
