@@ -45,7 +45,7 @@ export const useBoardActions = ({ projects, selectedProjectIds, projectId }: Use
     open<SaveTicketFormData>({
       title: "New ticket",
       schema: SaveTicketFormSchema,
-      okLabel: "Create",
+      okLabel: "Create ticket",
       header: <ProjectDialogHeader title="New ticket" />,
       footerStart: <CreateTicketFooter />,
       form: <CreateTicketForm />,
@@ -72,7 +72,7 @@ export const useBoardActions = ({ projects, selectedProjectIds, projectId }: Use
     const result = await open<SaveTicketFormData>({
       title: "New ticket",
       schema: SaveTicketFormSchema,
-      okLabel: "Create",
+      okLabel: "Create ticket",
       header: <ProjectDialogHeader title="New ticket" />,
       footerStart: <CreateTicketFooter />,
       form: <CreateTicketForm defaultCategoryId={categoryId ?? ""} />,

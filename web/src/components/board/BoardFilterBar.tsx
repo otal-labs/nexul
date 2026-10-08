@@ -117,7 +117,7 @@ export const BoardFilterBar = ({
               className="h-9 px-3 text-xs"
             >
               <FlaskConicalIcon className="size-3.5" />
-              Waiting for me to test
+              Mine to test
             </Button>
           )}
           {summaryLabel && <span className="whitespace-nowrap text-xs text-muted-foreground">{summaryLabel}</span>}

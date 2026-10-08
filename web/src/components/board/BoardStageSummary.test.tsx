@@ -37,7 +37,7 @@ describe("BoardStageSummary", () => {
       </QueryClientProvider>,
     );
 
-    const summary = await screen.findByRole("group", { name: "Where work stands" });
+    const summary = await screen.findByRole("group", { name: "Tickets by stage" });
     const stages = within(summary).getAllByRole("listitem").map((li) => li.textContent);
     expect(stages).toEqual(["Backlog1", "Progress2", "Done1"]);
   });
