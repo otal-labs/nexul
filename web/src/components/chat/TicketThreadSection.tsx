@@ -65,7 +65,7 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
         </Button>
       )}
       {shouldLoad && isPending && <LoadingDisplay label="Loading thread…" />}
-      {shouldLoad && error && <ErrorDisplay error={error} title="Failed to load the thread." />}
+      {shouldLoad && error && <ErrorDisplay error={error} title="Couldn't load the thread." />}
       {conversation && (
         <div
           className={cn(

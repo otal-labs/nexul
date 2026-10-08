@@ -88,7 +88,7 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
       )}
       {error && (
         <ChatPaneState>
-          <ErrorDisplay error={error} title="Failed to load messages." />
+          <ErrorDisplay error={error} title="Couldn't load messages." />
         </ChatPaneState>
       )}
       {messages && (

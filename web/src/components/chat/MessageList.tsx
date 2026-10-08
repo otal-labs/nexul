@@ -100,7 +100,7 @@ export const MessageList = ({
     <>
       {empty && (
         <ChatPaneState>
-          <NoDataDisplay message="No messages yet — say hello" size="compact" />
+          <NoDataDisplay message="No messages yet. Say hello." size="compact" />
         </ChatPaneState>
       )}
       {!empty && (

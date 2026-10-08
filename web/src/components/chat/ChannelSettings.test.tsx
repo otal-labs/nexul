@@ -183,7 +183,7 @@ describe("a channel's settings", () => {
     const form = await screen.findByRole("dialog", { name: "Add people to #eng" });
     expect(within(form).queryByRole("checkbox", { name: "Bob" })).not.toBeInTheDocument();
     await u.click(within(form).getByRole("checkbox", { name: "Sam" }));
-    await u.click(within(form).getByRole("button", { name: "Add" }));
+    await u.click(within(form).getByRole("button", { name: "Add people" }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/chat/conversations/c5/members", { user_ids: ["u3"] }));
     expect(mocks.toast.success).toHaveBeenCalledWith("Added 1 person to #eng");

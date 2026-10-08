@@ -150,7 +150,7 @@ describe("the Bots section", () => {
     const dialog = await openSettings(u);
     await u.click(await within(dialog).findByRole("button", { name: "New bot" }));
     await u.type(within(dialog).getByRole("textbox", { name: "Name" }), "Uptime");
-    await u.click(within(dialog).getByRole("button", { name: "Create" }));
+    await u.click(within(dialog).getByRole("button", { name: "Create bot" }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/conversations/c5/botwebhooks", { name: "Uptime", avatar: "" }));
     expect(await within(dialog).findByRole("textbox", { name: "Uptime's webhook URL" })).toHaveValue(
@@ -170,7 +170,7 @@ describe("the Bots section", () => {
 
     await u.clear(name);
     await u.type(name, "Deploys");
-    await u.click(within(dialog).getByRole("button", { name: "Create" }));
+    await u.click(within(dialog).getByRole("button", { name: "Create bot" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("this conversation already has a bot named Deploys");
     expect(within(dialog).getByRole("textbox", { name: "Name" })).toHaveValue("Deploys");
   });
@@ -196,7 +196,7 @@ describe("the Bots section", () => {
     await u.click(within(dialog).getByRole("button", { name: "Regenerate URL" }));
 
     const confirm = await screen.findByRole("dialog", { name: "Regenerate CI's URL?" });
-    expect(confirm).toHaveTextContent("Anything still posting to the old URL gets a 404 from now on, until you paste the new URL into it.");
+    expect(confirm).toHaveTextContent("Anything still posting to the old URL gets a 404 until it uses the new one.");
     await u.click(within(confirm).getByRole("button", { name: "Regenerate" }));
 
     await waitFor(() => expect(api.patch).toHaveBeenCalledWith("/api/botwebhooks/b1", { regenerate: true }));
@@ -215,7 +215,7 @@ describe("the Bots section", () => {
 
     const confirm = await screen.findByRole("dialog", { name: "Delete CI?" });
     expect(confirm).toHaveTextContent("you can restore it later with a new URL.");
-    await u.click(within(confirm).getByRole("button", { name: "Delete" }));
+    await u.click(within(confirm).getByRole("button", { name: "Delete bot" }));
 
     await waitFor(() => expect(api.delete).toHaveBeenCalledWith("/api/botwebhooks/b1"));
     expect(await within(dialog).findByText("1 of 10")).toBeInTheDocument();

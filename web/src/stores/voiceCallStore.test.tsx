@@ -150,7 +150,7 @@ describe("voiceCallStore leaving a call nobody else is in", () => {
     vi.advanceTimersByTime(1);
 
     const s = useVoiceCallStore.getState();
-    const reason = "You left developers because you were alone in the call for 5 minutes.";
+    const reason = "You left developers after 5 minutes alone in the call.";
     expect(s.status).toBe("idle");
     expect(disconnect).toHaveBeenCalled();
     expect(api.post).toHaveBeenCalledWith("/api/voice/c1/leave");
