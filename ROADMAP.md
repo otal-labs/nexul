@@ -173,13 +173,26 @@ embeds shown as cards in the message bubble. Bots are made, renamed,
 regenerated, deleted, and restored from a conversation's settings or over MCP,
 and a post renaming itself still says which bot sent it. ADRs 0129 and 0131.
 
-### The design pass
+### A new look
 
 One page header with breadcrumbs, shared widths and one label style on every
 page, then frosted panels over a soft light field with one ember accent,
 gradient avatars and its own light mode (ADR 0133), replacing the earlier
-monochrome identity. Spec of record: `practices/design-language.md`; tokens in
-`web/src/index.css`.
+monochrome identity. nexul.io and the phone app speak the same language: the
+same tokens and Fraunces titles, the site with one header and real product
+shots, the phone on solid surfaces with its own motion. Spec of record:
+`practices/design-language.md`; tokens in `web/src/index.css`,
+`website/src/styles/tokens.css` and `native/src/global.css`.
+
+### Faster everywhere
+
+Measured on heavy data and made faster on every surface. The web app starts
+on less than half the JavaScript, and a board or chat update renders only
+the rows that changed. The phone sends no requests while you scroll chat and
+writes new messages straight from the socket. The server keeps its database
+connections warm, answers permission checks once per request, and reads
+agent lists one page at a time with totals that count every match. Live
+updates refetch only what a change names.
 
 ---
 
@@ -275,9 +288,8 @@ without changing the core architecture.
   has no manual ordering; MCP tools for automation versions and
   secrets; the GitHub webhook subscribes only `pull_request`; permission
   overwrites are wired for documents only, and the grid has no `comment`
-  action; the profile display-name override is read only by the wizard; the
-  HTTP error envelope carries only `message`/`code`, so field-level validation
-  errors have no machine-readable shape and a 503 carries no `Retry-After`; no
+  action; the profile display-name override is read only by the wizard; a
+  503 carries no `Retry-After`; no
   default automation posts deploy results to a chat channel, and automations
   cannot yet auto-push from a connected git repository; a failed deploy is never
   rolled back automatically (rollback is the manual one-click action only — a
