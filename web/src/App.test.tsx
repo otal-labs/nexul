@@ -24,7 +24,7 @@ describe("App", () => {
     const { App } = await import("./App");
     render(<App />);
     expect(
-      await screen.findByRole("heading", { name: "One button. The trail shows every step the agent took." }),
+      await screen.findByRole("heading", { name: "Docs, tickets, chat, and deploys in one place." }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
   }, wholeAppImport);

@@ -23,24 +23,23 @@ export const WorkspaceHome = () => {
   return (
     <Container className="flex min-h-full flex-col items-center justify-center py-16 text-center">
       <Logo className="size-12 rounded-lg" />
-      <p className={cn(microheaderClass, "mt-6")}>{showsAgent ? "MCP-first deployment console" : "Project workspace"}</p>
+      <p className={cn(microheaderClass, "mt-6")}>Self-hosted workspace</p>
       <h1 className={cn(displayTitleClass, "mt-5 max-w-3xl text-5xl")}>
-        {showsAgent ? "One button. The trail shows every step the agent took." : "Docs, tickets, chat, and deploys in one place."}
+        Docs, tickets, chat, and deploys in one place.
       </h1>
       <p className="mt-5 max-w-xl text-lg text-pretty text-muted-foreground">
-        Nexul runs the whole loop: project management, docs as the source of truth, CI/CD runners, and deploys to
-        servers you own.
-        {showsAgent && " An MCP server puts every one of those tools in reach of a play, not just the browser."}
+        Runners build and deploy to servers you own.
+        {showsAgent && " Agents use the same tools over MCP, and each play run leaves a trail of every step."}
       </p>
       <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
         {can?.("tickets") && (
           <Button asChild size="lg">
-            <Link to={wsPath("/board")}>Open the board</Link>
+            <Link to={wsPath("/board")}>Open board</Link>
           </Button>
         )}
         {can?.("topology") && (
           <Button asChild variant="outline" size="lg">
-            <Link to={wsPath("/topology")}>View topology</Link>
+            <Link to={wsPath("/topology")}>Open topology</Link>
           </Button>
         )}
       </div>

@@ -20,7 +20,7 @@ export const PlayTrailPreview = () => (
         <span className="text-primary">▸</span> patched scheduler.go, ran go test ./...
       </p>
       <p>
-        <span className="text-success">✓</span> done in 48s — trail saved, ticket moved to Review
+        <span className="text-success">✓</span> done in 48s, ticket moved to Review
       </p>
     </div>
   </div>

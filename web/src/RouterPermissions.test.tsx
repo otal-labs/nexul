@@ -104,7 +104,7 @@ describe("workspace URLs", () => {
     mockApi([], everything);
     renderAt("/");
 
-    expect(await screen.findByRole("link", { name: "Open the board" })).toHaveAttribute("href", "/acme/board");
+    expect(await screen.findByRole("link", { name: "Open board" })).toHaveAttribute("href", "/acme/board");
     expect(window.location.pathname).toBe("/acme");
   });
 

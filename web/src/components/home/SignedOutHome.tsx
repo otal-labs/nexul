@@ -14,15 +14,15 @@ export const SignedOutHome = () => (
       Nexul
     </header>
     <section className="flex flex-1 flex-col justify-center py-14">
-      <p className={microheaderClass}>MCP-first deployment console</p>
+      <p className={microheaderClass}>Open source, self-hosted</p>
       <h1 className={cn(displayTitleClass, "mt-5 max-w-4xl text-[clamp(2.75rem,6.4vw,4.75rem)]")}>
-        One button. The trail shows every step the agent took.
+        Docs, tickets, chat, and deploys in one place.
       </h1>
       <div className="mt-12 grid items-end gap-12 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-16">
         <div>
           <p className="text-lg text-pretty text-muted-foreground">
-            Nexul runs the whole loop: project management, docs as the source of truth, CI/CD runners, and deploys to
-            servers you own. An MCP server puts every one of those tools in reach of a play, not just the browser.
+            Runners build and deploy to servers you own. Agents use the same tools over MCP, and each play run
+            leaves a trail of every step.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg">
