@@ -298,12 +298,10 @@ func TestDocsRepo_CreateNamedVersion_RejectsDuplicateKey(t *testing.T) {
 	require.Error(t, s.Docs.CreateNamedVersion(ctx, v))
 }
 
-// TestDocsRepo_Page_FiltersAndSearchesInSQL: browsing pages oldest first and a search ranks as Search does, each
-// keeping only the docs its project, folder, archived state, and scope allow.
-func TestDocsRepo_Page_FiltersAndSearchesInSQL(t *testing.T) {
-	t.Parallel()
+// seedPagedDocs files 40 docs, three to a second, across two projects and two folders, a sixth of them archived.
+func seedPagedDocs(t *testing.T, s *Store) []*docs.Doc {
+	t.Helper()
 	ctx := t.Context()
-	s := newTestStore(t)
 	seedProject(t, s, "p-hidden", "workspace-default", "HID")
 	require.NoError(t, s.Docs.CreateFolder(ctx, &docs.Folder{ID: "f-ops", ProjectID: "project-general", Name: "Ops"}))
 	var all []*docs.Doc
@@ -311,10 +309,7 @@ func TestDocsRepo_Page_FiltersAndSearchesInSQL(t *testing.T) {
 		d := newTestDoc(fmt.Sprintf("doc-%02d", i))
 		d.Title = strings.Repeat("rollback ", 1+i%3) + "plan"
 		d.CreatedAt = d.CreatedAt.Add(time.Duration(i/4) * time.Second)
-		d.FolderID = "folder-general-main"
-		if i%5 == 0 {
-			d.FolderID = "f-ops"
-		}
+		d.FolderID = map[bool]string{true: "f-ops", false: "folder-general-main"}[i%5 == 0]
 		if i%4 == 0 {
 			d.ProjectID, d.FolderID = "p-hidden", ""
 		}
@@ -325,58 +320,63 @@ func TestDocsRepo_Page_FiltersAndSearchesInSQL(t *testing.T) {
 		}
 		all = append(all, d)
 	}
-	keeps := func(d *docs.Doc, f docs.DocFilter, scope docs.DocScope) bool {
-		return (scope.All || slices.Contains(scope.ProjectIDs, d.ProjectID)) && (f.ProjectID == "" || d.ProjectID == f.ProjectID) &&
-			(f.FolderID == "" || d.FolderID == f.FolderID) && (f.IncludeArchived || !d.Archived)
-	}
-	hits, err := s.Docs.Search(ctx, "rollback", 1000)
+	return all
+}
+
+// docKept is the per-row rule a doc page applies in SQL.
+func docKept(d *docs.Doc, f docs.DocFilter, scope docs.DocScope) bool {
+	read := scope.Read
+	readable := read == nil || slices.Contains(read.Allowed, d.ID) || (slices.Contains(read.ProjectIDs, d.ProjectID) && !slices.Contains(read.Denied, d.ID))
+	return readable && (scope.All || slices.Contains(scope.ProjectIDs, d.ProjectID)) && (f.ProjectID == "" || d.ProjectID == f.ProjectID) &&
+		(f.FolderID == "" || d.FolderID == f.FolderID) && (f.Query != "" || f.IncludeArchived || !d.Archived) && (f.Query == "" || !d.Archived)
+}
+
+func pageDocIDs(t *testing.T, s *Store, f docs.DocFilter, scope docs.DocScope) []string {
+	t.Helper()
+	return pageAll(t, 6, func(offset, limit int) ([]string, int) {
+		ds, total, err := s.Docs.Page(t.Context(), f, scope, paging.Window{Offset: offset, Limit: limit})
+		require.NoError(t, err)
+		ids := make([]string, len(ds))
+		for i, d := range ds {
+			ids[i] = d.ID
+		}
+		return ids, total
+	})
+}
+
+// TestDocsRepo_Page_FiltersAndSearchesInSQL: browsing pages oldest first and a search ranks as Search does, each keeping
+// only the docs its project, folder, archived state, and scope allow, and a search only those its read scope reads.
+func TestDocsRepo_Page_FiltersAndSearchesInSQL(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	all := seedPagedDocs(t, s)
+	hits, err := s.Docs.Search(t.Context(), "rollback", 1000)
 	require.NoError(t, err)
 	byID := map[string]*docs.Doc{}
 	for _, d := range all {
 		byID[d.ID] = d
 	}
+	read := &docs.DocReadScope{ProjectIDs: []string{"project-general"}, Allowed: []string{"doc-04"}, Denied: []string{"doc-01", "doc-02"}}
 	filters := []docs.DocFilter{{}, {IncludeArchived: true}, {ProjectID: "project-general"}, {FolderID: "f-ops"}, {ProjectID: "p-hidden", IncludeArchived: true}}
 	for _, scope := range []docs.DocScope{{All: true}, {ProjectIDs: []string{"project-general"}}, {ProjectIDs: []string{}}} {
 		for _, f := range filters {
 			var want []string
 			for _, d := range all {
-				if keeps(d, f, scope) {
+				if docKept(d, f, scope) {
 					want = append(want, d.ID)
 				}
 			}
-			got := pageAll(t, 6, func(offset, limit int) ([]string, int) {
-				ds, total, err := s.Docs.Page(ctx, f, scope, paging.Window{Offset: offset, Limit: limit})
-				require.NoError(t, err)
-				ids := make([]string, len(ds))
-				for i, d := range ds {
-					ids[i] = d.ID
-				}
-				return ids, total
-			})
-			assert.Equal(t, want, got, "browse %+v %+v", f, scope)
+			assert.Equal(t, want, pageDocIDs(t, s, f, scope), "browse %+v %+v", f, scope)
 
 			f.Query = "rollback"
-			read := &docs.DocReadScope{ProjectIDs: []string{"project-general"}, Allowed: []string{"doc-04"}, Denied: []string{"doc-01", "doc-02"}}
-			for _, read := range []*docs.DocReadScope{nil, read} {
+			for _, scope.Read = range []*docs.DocReadScope{nil, read} {
 				var ranked []string
 				for _, h := range hits {
-					d := byID[h.ID]
-					readable := read == nil || slices.Contains(read.Allowed, d.ID) || (slices.Contains(read.ProjectIDs, d.ProjectID) && !slices.Contains(read.Denied, d.ID))
-					if keeps(d, f, scope) && readable {
+					if docKept(byID[h.ID], f, scope) {
 						ranked = append(ranked, h.ID)
 					}
 				}
-				scope.Read = read
-				searched := pageAll(t, 6, func(offset, limit int) ([]string, int) {
-					ds, total, err := s.Docs.Page(ctx, f, scope, paging.Window{Offset: offset, Limit: limit})
-					require.NoError(t, err)
-					ids := make([]string, len(ds))
-					for i, d := range ds {
-						ids[i] = d.ID
-					}
-					return ids, total
-				})
-				assert.Equal(t, ranked, searched, "search %+v %+v %+v", f, scope, read)
+				assert.Equal(t, ranked, pageDocIDs(t, s, f, scope), "search %+v %+v", f, scope)
 			}
 			scope.Read = nil
 		}

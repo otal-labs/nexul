@@ -221,71 +221,25 @@ func listParityFixture(t *testing.T) permFixture {
 func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
 	f := listParityFixture(t)
 	s := f.svc
-	ctx := context.Background()
 	ticketList := tool(t, composite.TicketTools(s.ticketsSvc, s.workspaceSvc, s.reviewSvc), "ticket_list")
 	docList := tool(t, docs.MCPTools(s.docsSvc), "doc_list")
 	deployList := tool(t, deploy.MCPTools(s.deploySvc), "deploy_list")
 	notificationList := tool(t, workspace.NotificationMCPTools(s.notifSvc), "notification_list")
-	viewers := []string{uOwner, uReader, uWriter, uPlain, uOverwrite, uOutsider, uClient}
 
-	for _, user := range viewers {
-		viewer := as(user)
+	for _, user := range []string{uOwner, uReader, uWriter, uPlain, uOverwrite, uOutsider, uClient} {
 		t.Run(user, func(t *testing.T) {
-			listed, err := s.ticketsSvc.List(viewer)
-			require.NoError(t, err)
-			assert.Equal(t, ticketIDs(listed), pageThrough(t, s.accessSvc, ticketList, user, ""), "ticket_list")
-
-			hits, err := s.ticketsSvc.Search(viewer, "login", 1000)
-			require.NoError(t, err)
-			var searched []string
-			for _, h := range hits {
-				searched = append(searched, h.ID)
-			}
+			listed, searched, blocked := rowByRowTickets(t, f, user)
+			assert.Equal(t, listed, pageThrough(t, s.accessSvc, ticketList, user, ""), "ticket_list")
 			assert.Equal(t, searched, pageThrough(t, s.accessSvc, ticketList, user, `"query":"login",`), "ticket_list query")
-
-			blockers, err := s.ticketsSvc.UnclearedBlockers(viewer)
-			require.NoError(t, err)
-			var blocked []string
-			for _, tk := range listed {
-				if len(blockers[tk.ID]) > 0 {
-					blocked = append(blocked, tk.ID)
-				}
-			}
 			assert.Equal(t, blocked, pageThrough(t, s.accessSvc, ticketList, user, `"blocked_only":true,`), "ticket_list blocked_only")
 
-			docItems, err := s.docsSvc.List(viewer)
-			require.NoError(t, err)
-			var docIDs, openable []string
-			for _, d := range docItems {
-				docIDs = append(docIDs, d.ID)
-				if d.CanOpen {
-					openable = append(openable, d.ID)
-				}
-			}
+			docIDs, openable, ranked := rowByRowDocs(t, f, user)
 			assert.Equal(t, docIDs, pageThrough(t, s.accessSvc, docList, user, ""), "doc_list")
-			_, page := callPage(t, s.accessSvc, docList, user, `{"limit":100}`)
-			var openedNow []string
-			for _, raw := range page.Items {
-				var item docs.DocListItem
-				require.NoError(t, json.Unmarshal(raw, &item))
-				if item.CanOpen {
-					openedNow = append(openedNow, item.ID)
-				}
-			}
-			assert.Equal(t, openable, openedNow, "doc_list can_open")
-
-			docHits, err := s.docsSvc.Search(viewer, "spec", 1000)
-			require.NoError(t, err)
-			var ranked []string
-			for _, h := range docHits {
-				if slices.Contains(docIDs, h.ID) {
-					ranked = append(ranked, h.ID)
-				}
-			}
+			assert.Equal(t, openable, openedOnFirstPage(t, s.accessSvc, docList, user), "doc_list can_open")
 			// Docs that rank alike come in insertion order from Search and by id from the page; the storage test pins order.
 			assert.ElementsMatch(t, ranked, pageThrough(t, s.accessSvc, docList, user, `"query":"spec",`), "doc_list query")
 
-			ds, err := s.deploySvc.List(viewer)
+			ds, err := s.deploySvc.List(as(user))
 			require.NoError(t, err)
 			var deployIDs []string
 			for _, d := range slices.Backward(ds) {
@@ -293,21 +247,84 @@ func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
 			}
 			assert.Equal(t, deployIDs, pageThrough(t, s.accessSvc, deployList, user, ""), "deploy_list")
 
-			all, _, err := f.store.Notifications.Page(ctx, user, workspace.InboxFilter{}, nil, paging.Window{Limit: 100})
-			require.NoError(t, err)
-			memberOf, _, err := s.accessSvc.ProjectsAnywhere(ctx, user, permissions.Member)
-			require.NoError(t, err)
-			var inbox []string
-			for _, n := range all {
-				member := n.WorkspaceID == "" || slices.Contains(memberOf, n.WorkspaceID)
-				opens := n.ProjectID == "" || s.accessSvc.CanInProject(ctx, user, n.ProjectID, permissions.Member)
-				if member && opens {
-					inbox = append(inbox, n.ID)
-				}
-			}
-			assert.Equal(t, inbox, pageThrough(t, s.accessSvc, notificationList, user, ""), "notification_list")
+			assert.Equal(t, rowByRowInbox(t, f, user), pageThrough(t, s.accessSvc, notificationList, user, ""), "notification_list")
 		})
 	}
+}
+
+// rowByRowTickets is what the tickets use-cases that check each row show user: every ticket, a search, and the blocked.
+func rowByRowTickets(t *testing.T, f permFixture, user string) (listed, searched, blocked []string) {
+	t.Helper()
+	ts, err := f.svc.ticketsSvc.List(as(user))
+	require.NoError(t, err)
+	hits, err := f.svc.ticketsSvc.Search(as(user), "login", 1000)
+	require.NoError(t, err)
+	for _, h := range hits {
+		searched = append(searched, h.ID)
+	}
+	blockers, err := f.svc.ticketsSvc.UnclearedBlockers(as(user))
+	require.NoError(t, err)
+	for _, tk := range ts {
+		if len(blockers[tk.ID]) > 0 {
+			blocked = append(blocked, tk.ID)
+		}
+	}
+	return ticketIDs(ts), searched, blocked
+}
+
+// rowByRowDocs is what the docs use-cases that check each row show user: every doc, those they open, and a search.
+func rowByRowDocs(t *testing.T, f permFixture, user string) (listed, openable, searched []string) {
+	t.Helper()
+	items, err := f.svc.docsSvc.List(as(user))
+	require.NoError(t, err)
+	for _, d := range items {
+		listed = append(listed, d.ID)
+		if d.CanOpen {
+			openable = append(openable, d.ID)
+		}
+	}
+	hits, err := f.svc.docsSvc.Search(as(user), "spec", 1000)
+	require.NoError(t, err)
+	for _, h := range hits {
+		if slices.Contains(listed, h.ID) {
+			searched = append(searched, h.ID)
+		}
+	}
+	return listed, openable, searched
+}
+
+// rowByRowInbox is user's inbox as the adapter filtered it: a notice from a workspace they belong to, about a project
+// they may open.
+func rowByRowInbox(t *testing.T, f permFixture, user string) []string {
+	t.Helper()
+	ctx := context.Background()
+	all, _, err := f.store.Notifications.Page(ctx, user, workspace.InboxFilter{}, nil, paging.Window{Limit: 100})
+	require.NoError(t, err)
+	memberOf, _, err := f.svc.accessSvc.ProjectsAnywhere(ctx, user, permissions.Member)
+	require.NoError(t, err)
+	var inbox []string
+	for _, n := range all {
+		member := n.WorkspaceID == "" || slices.Contains(memberOf, n.WorkspaceID)
+		if member && (n.ProjectID == "" || f.svc.accessSvc.CanInProject(ctx, user, n.ProjectID, permissions.Member)) {
+			inbox = append(inbox, n.ID)
+		}
+	}
+	return inbox
+}
+
+// openedOnFirstPage is the ids doc_list marks can_open on a page that holds every doc.
+func openedOnFirstPage(t *testing.T, a *access.Service, docList mcptool.Tool, user string) []string {
+	t.Helper()
+	_, page := callPage(t, a, docList, user, `{"limit":100}`)
+	var opened []string
+	for _, raw := range page.Items {
+		var item docs.DocListItem
+		require.NoError(t, json.Unmarshal(raw, &item))
+		if item.CanOpen {
+			opened = append(opened, item.ID)
+		}
+	}
+	return opened
 }
 
 func ticketIDs(ts []*tickets.Ticket) []string {

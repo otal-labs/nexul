@@ -255,77 +255,68 @@ func pageTicketIDs(t *testing.T, s *Store, f tickets.TicketFilter, scope tickets
 	})
 }
 
-// TestTicketsRepo_Page_RanksAsSearchAndFiltersInSQL: past the 200 matches search used to stop at, the pages hold every
-// match in Search's own order, note-only matches last, and each filter and scope keeps what the per-row rule keeps.
-func TestTicketsRepo_Page_RanksAsSearchAndFiltersInSQL(t *testing.T) {
-	t.Parallel()
+// seedPagedTickets files 230 tickets, five to a second, a third in a second project and a seventh from a doc, with
+// "login" in every title, then a ticket matched by a note alone, and returns them all oldest first.
+func seedPagedTickets(t *testing.T, s *Store) []*tickets.Ticket {
+	t.Helper()
 	ctx := t.Context()
-	s := newTestStore(t)
 	seedChatUser(t, s, "u-1")
 	seedProject(t, s, "p-hidden", "workspace-default", "HID")
 	require.NoError(t, s.Docs.Create(ctx, newTestDoc("doc-1")))
-	var created []*tickets.Ticket
+	var all []*tickets.Ticket
 	for i := range 230 {
 		tk := newTestTicket(fmt.Sprintf("t-%03d", i), "")
 		tk.Title = strings.Repeat("login ", 1+i%4) + "times out"
 		tk.CreatedAt = tk.CreatedAt.Add(time.Duration(i/5) * time.Second)
-		if i%3 == 0 {
-			tk.ProjectID = "p-hidden"
-		}
-		if i%7 == 0 {
-			tk.DocID = "doc-1"
-		}
+		tk.ProjectID = map[bool]string{true: "p-hidden", false: "project-general"}[i%3 == 0]
+		tk.DocID = map[bool]string{true: "doc-1", false: ""}[i%7 == 0]
 		require.NoError(t, s.Tickets.Create(ctx, tk))
-		created = append(created, tk)
+		all = append(all, tk)
 	}
 	seedNoteThread(t, s, "t-note", "Slow board", "columns lag")("n-1", "login fails behind the proxy")
 	noteTicket, err := s.Tickets.GetByID(ctx, "t-note")
 	require.NoError(t, err)
-	byAge := append(slices.Clone(created), noteTicket)
-	slices.SortStableFunc(byAge, func(a, b *tickets.Ticket) int {
+	all = append(all, noteTicket)
+	slices.SortStableFunc(all, func(a, b *tickets.Ticket) int {
 		if c := a.CreatedAt.Compare(b.CreatedAt); c != 0 {
 			return c
 		}
 		return strings.Compare(a.ID, b.ID)
 	})
+	return all
+}
 
-	hits, err := s.Tickets.Search(ctx, "login", 1000)
+// TestTicketsRepo_Page_RanksAsSearchAndFiltersInSQL: past the 200 matches search used to stop at, the pages hold every
+// match in Search's own order, note-only matches last, and each filter and scope keeps what the per-row rule keeps.
+func TestTicketsRepo_Page_RanksAsSearchAndFiltersInSQL(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	byAge := seedPagedTickets(t, s)
+	byID := map[string]*tickets.Ticket{}
+	var ageOrder []string
+	for _, tk := range byAge {
+		byID[tk.ID] = tk
+		ageOrder = append(ageOrder, tk.ID)
+	}
+	hits, err := s.Tickets.Search(t.Context(), "login", 1000)
 	require.NoError(t, err)
 	var ranked []string
 	for _, h := range hits {
 		ranked = append(ranked, h.ID)
 	}
 	require.Len(t, ranked, 231)
-	assert.Equal(t, ranked, pageTicketIDs(t, s, tickets.TicketFilter{Query: "login"}, tickets.TicketScope{All: true}))
 
-	general := tickets.TicketScope{ProjectIDs: []string{"project-general"}}
-	keep := func(f tickets.TicketFilter, scope tickets.TicketScope, order []string) []string {
-		byID := map[string]*tickets.Ticket{noteTicket.ID: noteTicket}
-		for _, tk := range created {
-			byID[tk.ID] = tk
-		}
-		var out []string
-		for _, id := range order {
-			tk := byID[id]
-			require.NotNil(t, tk, id)
-			if (scope.All || slices.Contains(scope.ProjectIDs, tk.ProjectID)) &&
-				(f.ProjectID == "" || tk.ProjectID == f.ProjectID) && (f.DocID == "" || tk.DocID == f.DocID) {
-				out = append(out, id)
-			}
-		}
-		return out
-	}
-	var ageOrder []string
-	for _, tk := range byAge {
-		ageOrder = append(ageOrder, tk.ID)
-	}
 	for _, f := range []tickets.TicketFilter{{}, {ProjectID: "project-general"}, {DocID: "doc-1"}, {Query: "login"}, {Query: "login", DocID: "doc-1"}} {
-		for _, scope := range []tickets.TicketScope{{All: true}, general, {ProjectIDs: []string{}}} {
-			order := ageOrder
-			if f.Query != "" {
-				order = ranked
+		for _, scope := range []tickets.TicketScope{{All: true}, {ProjectIDs: []string{"project-general"}}, {ProjectIDs: []string{}}} {
+			order := map[bool][]string{true: ranked, false: ageOrder}[f.Query != ""]
+			var want []string
+			for _, id := range order {
+				tk := byID[id]
+				if (scope.All || slices.Contains(scope.ProjectIDs, tk.ProjectID)) && (f.ProjectID == "" || tk.ProjectID == f.ProjectID) && (f.DocID == "" || tk.DocID == f.DocID) {
+					want = append(want, id)
+				}
 			}
-			assert.Equal(t, keep(f, scope, order), pageTicketIDs(t, s, f, scope), "%+v %+v", f, scope)
+			assert.Equal(t, want, pageTicketIDs(t, s, f, scope), "%+v %+v", f, scope)
 		}
 	}
 }
