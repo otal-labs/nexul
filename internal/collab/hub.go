@@ -112,7 +112,7 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.removeSession(docID)
 	}()
 
-	go h.pump(c, conn, s)
+	go h.pump(r.Context(), c, conn, s)
 
 	if err := s.sendInit(r.Context(), c); err != nil {
 		h.log.Warn("collab replay failed", "doc", docID, "user", actor.ID, "error", err)
@@ -130,9 +130,17 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_ = conn.Close(websocket.StatusNormalClosure, "")
 }
 
-// pump closes the connection and done on a write failure, so blocking session sends give up on the dead peer.
-func (h *Hub) pump(c *client, conn *websocket.Conn, s *session) {
-	for data := range c.send {
+// pump writes until the connection's request ends or a write fails, then closes done so blocking session sends give
+// up on the peer; a failed write also closes the connection.
+func (h *Hub) pump(ctx context.Context, c *client, conn *websocket.Conn, s *session) {
+	for {
+		var data []byte
+		select {
+		case <-ctx.Done():
+			close(c.done)
+			return
+		case data = <-c.send:
+		}
 		if err := writeFrame(conn, data); err != nil {
 			h.log.Warn("collab write failed; dropping client", "user", c.id, "error", err)
 			s.leave(c)
