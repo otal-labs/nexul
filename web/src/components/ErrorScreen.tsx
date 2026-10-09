@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router";
 
-import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { errorMessage } from "@/api/client";
 import { microheaderClass } from "@/components/Microheader";
 import { NotFoundIllustration } from "@/components/NotFoundIllustration";
 import { displayTitleClass } from "@/components/PageHeader";
@@ -26,12 +26,14 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
             {isCrash && "Something went wrong"}
             {!isCrash && "Page not found"}
           </h1>
-          <p className="max-w-sm font-mono text-sm text-muted-foreground">
+          <p role={isCrash ? "alert" : undefined} className="max-w-sm font-mono text-sm break-words text-muted-foreground">
             {isCrash && (
               <>
                 $ app --resume
                 <br />
-                <span className="text-destructive">crash</span> If a new version shipped, reloading picks it up.
+                <span className="text-destructive">crash</span> {errorMessage(error)}
+                <br />
+                If a new version shipped, reloading picks it up.
               </>
             )}
             {!isCrash && (
@@ -42,11 +44,6 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
               </>
             )}
           </p>
-          {isCrash && (
-            <div className="w-full max-w-sm text-left">
-              <ErrorDisplay error={error} />
-            </div>
-          )}
           <div className="flex w-full flex-col gap-2 sm:w-fit sm:flex-row">
             {isCrash && (
               <Button variant="outline" onClick={() => window.location.reload()}>

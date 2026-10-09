@@ -144,6 +144,24 @@ func TestMemoriesRepo_Update_PersistsFieldsAndAppendsVersion(t *testing.T) {
 	assert.Equal(t, 1, versions[1].Version)
 }
 
+func TestMemoriesRepo_Update_TwoWritersFromTheSameRead_BothLand(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.Memories.Create(t.Context(), newTestMemory("mem-1", "project-general"), ""))
+
+	first, second := newTestMemory("mem-1", "project-general"), newTestMemory("mem-1", "project-general")
+	first.Version, second.Version = 2, 2
+	second.AlwaysIncluded = true
+	require.NoError(t, s.Memories.Update(t.Context(), first, ""))
+	require.NoError(t, s.Memories.Update(t.Context(), second, ""))
+
+	got, err := s.Memories.GetByID(t.Context(), "mem-1")
+	require.NoError(t, err)
+	assert.True(t, got.AlwaysIncluded)
+	assert.Equal(t, 3, got.Version)
+	assert.Equal(t, 3, second.Version)
+}
+
 func TestMemoriesRepo_Update_NotFound(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

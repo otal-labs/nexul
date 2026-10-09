@@ -17,12 +17,14 @@ export const BranchDeployRuleRow = ({ stack, rule, index }: BranchDeployRuleRowP
   const rules = stack.branch_deploy_rules ?? [];
   const overrideKeys = Object.keys(rule.overrides ?? {}).sort();
 
-  const saveOverrides = async (overrides: Record<string, string>) => {
+  const saveOverrides = (overrides: Record<string, string>) => {
     const next: BranchDeployRule = { ...rule };
     delete next.overrides;
     if (Object.keys(overrides).length > 0) next.overrides = overrides;
-    await updateStack.mutateAsync({ ...stack, branch_deploy_rules: rules.map((r, i) => (i === index ? next : r)) });
-    setEditing(false);
+    updateStack.mutate(
+      { ...stack, branch_deploy_rules: rules.map((r, i) => (i === index ? next : r)) },
+      { onSuccess: () => setEditing(false) },
+    );
   };
 
   const remove = () => updateStack.mutate({ ...stack, branch_deploy_rules: rules.filter((_, i) => i !== index) });

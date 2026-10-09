@@ -33,7 +33,14 @@ export const MemoriesPage = () => {
         <ListDetailLayout
           hasSelection={!!memoryId}
           list={<MemoriesListPane memories={memories} project={current} selectedId={memoryId} />}
-          placeholder={<ListDetailPlaceholder icon={BrainIcon} title="Select a memory" summary={`${memories.length} ${memories.length === 1 ? "memory" : "memories"} in ${current.name}`} searchable />}
+          placeholder={
+            <ListDetailPlaceholder
+              icon={BrainIcon}
+              title={memories.length === 0 ? "Nothing to open yet" : "Select a memory"}
+              summary={memories.length === 0 ? `${current.name} has no memories.` : `${memories.length} ${memories.length === 1 ? "memory" : "memories"} in ${current.name}`}
+              searchable={memories.length > 0}
+            />
+          }
           detail={
             <Suspense fallback={<LoadingDisplay />}>
               <MemoryPage key={memoryId} />

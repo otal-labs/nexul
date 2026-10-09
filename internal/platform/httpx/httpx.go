@@ -45,17 +45,11 @@ func normalizeNilSlice(v any) any {
 	if !rv.IsValid() {
 		return v
 	}
-	// Structs/slices/maps arrive by value (unaddressable), so copy them into
-	// an addressable slot before walking — reflect requires settable fields.
-	if rv.Kind() == reflect.Struct || rv.Kind() == reflect.Slice || rv.Kind() == reflect.Map {
-		ptr := reflect.New(rv.Type())
-		ptr.Elem().Set(rv)
-		rv = ptr.Elem()
-	}
 	return normalizeNilSlicesValue(rv).Interface()
 }
 
-// normalizeNilSlicesValue walks a value and replaces every nil slice with an empty one, including nested fields.
+// normalizeNilSlicesValue returns a copy of a value with every nil slice, nested ones included, replaced by an
+// empty one. It never writes into the value it was given: handlers pass pointers other goroutines still hold.
 func normalizeNilSlicesValue(rv reflect.Value) reflect.Value {
 	switch rv.Kind() {
 	case reflect.Slice:
@@ -64,48 +58,70 @@ func normalizeNilSlicesValue(rv reflect.Value) reflect.Value {
 		return normalizeNilSliceStruct(rv)
 	case reflect.Map:
 		return normalizeNilSliceMap(rv)
+	case reflect.Pointer:
+		return normalizeNilSlicePointer(rv)
+	case reflect.Interface:
+		return normalizeNilSliceInterface(rv)
 	default:
 		return rv
 	}
 }
 
 func normalizeNilSliceKind(rv reflect.Value) reflect.Value {
+	// An empty json.RawMessage fails to marshal and an empty []byte reads as "", so byte slices keep their null.
+	if rv.Type().Elem().Kind() == reflect.Uint8 {
+		return rv
+	}
 	if rv.IsNil() {
 		return reflect.MakeSlice(rv.Type(), 0, 0)
 	}
+	out := reflect.MakeSlice(rv.Type(), rv.Len(), rv.Len())
 	for i := 0; i < rv.Len(); i++ {
-		item := rv.Index(i)
-		if !item.CanInterface() || !item.CanSet() {
-			continue
-		}
-		item.Set(normalizeNilSlicesValue(item))
+		out.Index(i).Set(normalizeNilSlicesValue(rv.Index(i)))
 	}
-	return rv
+	return out
 }
 
 func normalizeNilSliceStruct(rv reflect.Value) reflect.Value {
-	for i := 0; i < rv.NumField(); i++ {
-		f := rv.Field(i)
-		if !f.CanInterface() || !f.CanSet() {
+	out := reflect.New(rv.Type()).Elem()
+	out.Set(rv)
+	for i := 0; i < out.NumField(); i++ {
+		f := out.Field(i)
+		if !f.CanSet() {
 			continue
 		}
 		f.Set(normalizeNilSlicesValue(f))
 	}
-	return rv
+	return out
+}
+
+func normalizeNilSlicePointer(rv reflect.Value) reflect.Value {
+	if rv.IsNil() {
+		return rv
+	}
+	out := reflect.New(rv.Elem().Type())
+	out.Elem().Set(normalizeNilSlicesValue(rv.Elem()))
+	return out
+}
+
+func normalizeNilSliceInterface(rv reflect.Value) reflect.Value {
+	if rv.IsNil() {
+		return rv
+	}
+	out := reflect.New(rv.Type()).Elem()
+	out.Set(normalizeNilSlicesValue(rv.Elem()))
+	return out
 }
 
 func normalizeNilSliceMap(rv reflect.Value) reflect.Value {
 	if rv.IsNil() {
 		return rv
 	}
-	for _, key := range rv.MapKeys() {
-		item := rv.MapIndex(key)
-		if !item.CanInterface() {
-			continue
-		}
-		rv.SetMapIndex(key, normalizeNilSlicesValue(item))
+	out := reflect.MakeMapWithSize(rv.Type(), rv.Len())
+	for iter := rv.MapRange(); iter.Next(); {
+		out.SetMapIndex(iter.Key(), normalizeNilSlicesValue(iter.Value()))
 	}
-	return rv
+	return out
 }
 
 // WriteError maps a domain error to its status + envelope and writes it.

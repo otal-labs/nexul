@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/otal-labs/nexul/internal/harness"
 )
 
 func TestRunHandler_Run_Accepted(t *testing.T) {
@@ -129,7 +131,7 @@ func TestRunHandler_LatestChoices(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	var c Choices
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &c))
-	assert.Equal(t, Choices{MemoryIDs: []string{alwaysMem}, ComputerID: "comp-tr-1"}, c)
+	assert.Equal(t, Choices{MemoryIDs: []string{alwaysMem}, ComputerID: "comp-tr-1", ModelOptions: []harness.OptionSetting{}}, c)
 
 	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodGet, "/api/plays/latest-choices?play_id="+fixPlayID, "", starter).Code)
 	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodGet, "/api/plays/latest-choices?play_id="+fixPlayID+"&project_id="+projectID, "", "stranger").Code)

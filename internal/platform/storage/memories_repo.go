@@ -116,6 +116,12 @@ func (r *MemoriesRepo) ListByProject(ctx context.Context, projectID string) ([]*
 func (r *MemoriesRepo) Update(ctx context.Context, m *memories.Memory, authorVia string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
+		// Two saves that read the same version would both claim the next one; numbering inside the write keeps both.
+		cur, err := q.GetMemory(ctx, m.ID)
+		if err != nil {
+			return fmt.Errorf("update memory %s: %w", m.ID, notFoundIfNoRows(err))
+		}
+		m.Version = int(cur.Version) + 1
 		n, err := q.UpdateMemory(ctx, sqlcgen.UpdateMemoryParams{
 			Title: m.Title, WhenToUse: m.WhenToUse, Body: m.Body,
 			AlwaysIncluded: int64(boolInt(m.AlwaysIncluded)),

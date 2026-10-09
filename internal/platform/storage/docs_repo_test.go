@@ -117,6 +117,23 @@ func TestDocsRepo_Update_PersistsChanges(t *testing.T) {
 	assert.Equal(t, 2, got.Version)
 }
 
+func TestDocsRepo_Update_TwoWritersFromTheSameRead_BothLand(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.Docs.Create(t.Context(), newTestDoc("doc-1")))
+
+	first, second := newTestDoc("doc-1"), newTestDoc("doc-1")
+	first.Version, second.Version = 2, 2
+	second.Title = "Renamed last"
+	require.NoError(t, s.Docs.Update(t.Context(), first, ""))
+	require.NoError(t, s.Docs.Update(t.Context(), second, ""))
+
+	got, err := s.Docs.GetByID(t.Context(), "doc-1")
+	require.NoError(t, err)
+	assert.Equal(t, "Renamed last", got.Title)
+	assert.Equal(t, 3, got.Version)
+}
+
 func TestDocsRepo_Delete_NotFound(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

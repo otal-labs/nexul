@@ -21,10 +21,14 @@ export const EditableStackRoot = ({ machineId, stackRoot }: EditableStackRootPro
     setEditing(true);
   };
 
-  const save = async () => {
+  const save = () => {
     const next = draft.trim();
-    if (next && next !== stackRoot) await updateMachine.mutateAsync({ id: machineId, stackRoot: next });
-    setEditing(false);
+    if (updateMachine.isPending) return;
+    if (!next || next === stackRoot) {
+      setEditing(false);
+      return;
+    }
+    updateMachine.mutate({ id: machineId, stackRoot: next }, { onSuccess: () => setEditing(false) });
   };
 
   if (editing) {
@@ -33,7 +37,7 @@ export const EditableStackRoot = ({ machineId, stackRoot }: EditableStackRootPro
         className="flex items-center gap-1"
         onSubmit={(e) => {
           e.preventDefault();
-          void save();
+          save();
         }}
       >
         <Input
@@ -41,11 +45,18 @@ export const EditableStackRoot = ({ machineId, stackRoot }: EditableStackRootPro
           aria-label="Stack root"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => void save()}
+          onBlur={save}
           className="h-7 w-56 font-mono text-xs"
           disabled={updateMachine.isPending}
         />
-        <Button type="submit" size="sm" variant="ghost" aria-label="Save stack root" loading={updateMachine.isPending}>
+        <Button
+          type="submit"
+          size="sm"
+          variant="ghost"
+          aria-label="Save stack root"
+          loading={updateMachine.isPending}
+          onMouseDown={(e) => e.preventDefault()}
+        >
           <CheckIcon className="size-3.5" />
         </Button>
         <Button

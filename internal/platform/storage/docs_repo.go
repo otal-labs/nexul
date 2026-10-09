@@ -78,6 +78,12 @@ func (r *DocsRepo) ListByProject(ctx context.Context, projectID string) ([]*docs
 func (r *DocsRepo) Update(ctx context.Context, d *docs.Doc, editorID string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
+		// Two saves that read the same version would both claim the next one; numbering inside the write keeps both.
+		cur, err := q.GetDoc(ctx, d.ID)
+		if err != nil {
+			return fmt.Errorf("update doc %s: %w", d.ID, notFoundIfNoRows(err))
+		}
+		d.Version = int(cur.Version) + 1
 		n, err := q.UpdateDoc(ctx, sqlcgen.UpdateDocParams{
 			Title: d.Title, Body: d.Body, BodyMd: richtext.SearchText(d.Body),
 			Version: int64(d.Version), UpdatedAt: d.UpdatedAt.Unix(), ID: d.ID,
