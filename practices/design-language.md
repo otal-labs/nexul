@@ -283,7 +283,7 @@ person's avatar) beside the title, a mono "55 tickets · 8 people" line under
 it, and the stage summary as the header's action (`BoardStageSummary`): one
 6px bar split by stage in the stage hues, backlog at half strength, over a
 legend of dot, stage and mono count. It counts every ticket in the project,
-whatever the filters show, and grows in like a progress fill. A card is the
+whatever the filters show, and moves as the Motion baseline's Board entry says. A card is the
 mono key as an eyebrow (with the run timer and thread mark trailing on its
 line), the title at full width, the blocked line, then the pills with the
 20px avatar of whoever acts next opposite. A swimlane header is a leading
@@ -692,6 +692,13 @@ writing its own.
 - Board: a ticket that lands in a done-stage column from a working one gets
   a success wash, the `success` hue at 15% fading out over 800ms (400ms under
   reduced motion).
+- Board stage bar (`BoardStageSummary`, `stageBarMotion.ts`): the first time
+  it shows, each segment grows from its own left edge, `scaleX` over 300ms
+  `--ease-out`, all together, so the bar never moves as a whole. When tickets
+  change stage each segment glides to its new place and share (a FLIP of
+  `translateX` and `scaleX`) over 250ms `--ease-standard`, and a count that
+  changed rises 6px as it fades in over 200ms. Reduced motion: no scale, the
+  changed count fades in 150ms.
 - Paired elements (overlay and dialog, drawer and backdrop, filter bar and
   result list) share identical duration and easing, or the pair reads as two
   events.
@@ -743,3 +750,18 @@ Opening a ticket from the board: decided 2026-10-08.
   (the ticket's panels scale from 0.98 out of the card's spot) moved the
   panels, which never move on a route change, and 0.98 was too small to read
   as coming from the card.
+
+### Round-three locks
+
+Decided 2026-10-09 without the owner in the loop: each built as two to four
+live variants on the real surface with seeded data, scrubbed frame by frame
+and recorded at 1x and 0.25x, and judged against the baseline above.
+
+Board stage bar.
+- Load: each segment grows from its own edge, all together (300ms). Rejected:
+  the whole bar scaling from the left (the gaps and caps squashed and every
+  segment slid right as it grew) and a 30ms cascade across the segments (it
+  ran 340ms and read as five bars arriving, not one measure).
+- Change: glide plus the changed counts rising in. Rejected: a glide alone,
+  which showed the shares moving but not which stages changed when someone
+  else moved a ticket.

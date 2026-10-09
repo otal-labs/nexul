@@ -1,5 +1,6 @@
 // The JavaScript half of the Motion baseline in practices/design-language.md; the CSS half is in index.css.
 export const EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
+export const EASE_STANDARD = "cubic-bezier(0.25, 0.1, 0.25, 1)";
 
 const STAGGER_STEP_MS = 25;
 const STAGGER_ROWS = 8;
