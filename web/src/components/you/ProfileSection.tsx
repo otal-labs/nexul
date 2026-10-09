@@ -1,7 +1,7 @@
-import { ProfileForm } from "@/components/auth/ProfileForm";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { ProfileCard } from "@/components/you/ProfileCard";
 import { SignInAccountsSection } from "@/components/you/SignInAccountsSection";
 import { useFetchMe } from "@/hooks/AuthHooks";
 
@@ -10,15 +10,17 @@ export const ProfileSection = () => {
 
   return (
     <>
-      <SettingsCard
-        id="profile"
-        title="Profile"
-        description="Shown to everyone in your workspaces. With no picture, your sign-in account's is used."
-      >
-        {isPending && <LoadingDisplay />}
-        {error && <ErrorDisplay error={error} />}
-        {data && <ProfileForm user={data.user} submitLabel="Save" />}
-      </SettingsCard>
+      {isPending && (
+        <SettingsCard id="profile" title="Profile">
+          <LoadingDisplay />
+        </SettingsCard>
+      )}
+      {error && (
+        <SettingsCard id="profile" title="Profile">
+          <ErrorDisplay error={error} />
+        </SettingsCard>
+      )}
+      {data && <ProfileCard user={data.user} />}
       <SignInAccountsSection />
     </>
   );

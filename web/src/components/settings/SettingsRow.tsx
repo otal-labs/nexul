@@ -20,7 +20,7 @@ export const SettingsRow = ({ label, description, htmlFor, children, stacked = f
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 py-4 first:pt-0 last:pb-0",
+        "flex flex-col gap-3 py-4 last:pb-0",
         !stacked && "@[34rem]:flex-row @[34rem]:items-center @[34rem]:justify-between @[34rem]:gap-8",
         className,
       )}
@@ -47,5 +47,5 @@ interface SettingsRowsProps {
 
 // Rows split by hairlines; the container query lets a row put its control beside the text only when the card has room.
 export const SettingsRows = ({ children, className }: SettingsRowsProps) => (
-  <div className={cn("@container divide-y divide-border", className)}>{children}</div>
+  <div className={cn("@container divide-y divide-border border-t border-border", className)}>{children}</div>
 );

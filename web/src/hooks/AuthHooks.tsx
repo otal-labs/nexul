@@ -67,8 +67,8 @@ export const useUpdateProfile = () => {
     mutationFn: async (payload: { display_name: string; avatar_override_url: string }) =>
       (await api.put<User>("/api/auth/profile", payload)).data,
     onSuccess: async () => {
+      // No toast: Settings answers in its Save button and the wizard moves on.
       await client.invalidateQueries({ queryKey: [getMeKey], refetchType: "all" });
-      toast.success("Profile updated");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

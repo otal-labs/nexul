@@ -35,9 +35,9 @@ export const SettingsSaveBar = ({ form, dirty, saving, saved, onDiscard, saveLab
         type={saved && !dirty ? "button" : "submit"}
         form={form}
         size="sm"
+        variant={dirty || saved ? "default" : "outline"}
         loading={saving}
         disabled={!dirty && !saved}
-        className="disabled:opacity-40"
       >
         <span className="swap">
           <span {...(saved ? { "data-off": "" } : {})}>{saveLabel}</span>
