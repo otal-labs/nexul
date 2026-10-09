@@ -128,8 +128,10 @@ export const rowGlide = (container: HTMLElement) => {
     container.style.minHeight = `${height}px`;
     const glides = rows().flatMap((row) => {
       const top = before.get(row);
-      const dy = top === undefined ? 0 : top - row.getBoundingClientRect().top;
-      if (dy === 0 || typeof row.animate !== "function") return [];
+      const now = row.getBoundingClientRect().top;
+      const dy = top === undefined ? 0 : top - now;
+      // Rows off screen just take their place; a long list would otherwise start hundreds of animations nobody sees.
+      if (dy === 0 || now > innerHeight || now + dy < 0 || typeof row.animate !== "function") return [];
       return [row.animate([{ translate: `0 ${dy}px` }, { translate: "0 0" }], { duration: GLIDE_MS, easing: EASE_OUT })];
     });
     void Promise.allSettled(glides.map((glide) => glide.finished)).then(() => (container.style.minHeight = ""));
