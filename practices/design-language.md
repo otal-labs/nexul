@@ -849,3 +849,7 @@ Sidebar.
 - Workspace fold: the disclosure's 4px settle on open. Rejected: a snap (the
   pages popped in under the header) and a 25ms cascade per page (a list
   entrance in the nav, a second vocabulary for opening a section).
+
+Toasts, dialogs, sheets, popovers, menus: already on the baseline's clocks;
+nothing changed but the sheet, whose open and close are animations and no
+longer carry an unnamed transition list.
