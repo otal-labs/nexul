@@ -37,7 +37,8 @@ const collabIdentity = (me: MeResponse | undefined) => ({
 interface DocDetailProps {
   doc: Doc;
   workspaceId: string;
-  onCreateTicket: () => void;
+  /** Omitted when the viewer may not create tickets, which hides the action. */
+  onCreateTicket?: (() => void) | undefined;
   onPermissions: () => void;
   onArchive: () => void;
   onRestore: () => void;

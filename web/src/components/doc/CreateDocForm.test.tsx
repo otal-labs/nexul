@@ -47,22 +47,22 @@ const mockApi = (list: unknown[] = projects) => {
   });
 };
 
-const Opener = ({ folderId }: { folderId?: string | undefined }) => {
+const Opener = ({ folderId, onCreated }: { folderId?: string | undefined; onCreated?: ((id: string | undefined) => void) | undefined }) => {
   const open = useCreateDocDialog("p-1", folderId);
   return (
-    <button type="button" onClick={open}>
+    <button type="button" onClick={() => void Promise.resolve(open?.()).then(onCreated)}>
       Open
     </button>
   );
 };
 
-const openDialog = async (folderId?: string) => {
+const openDialog = async (folderId?: string, onCreated?: (id: string | undefined) => void) => {
   const user = userEvent.setup();
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter>
         <ContextAwareConfirmation.ConfirmationRoot />
-        <Opener folderId={folderId} />
+        <Opener folderId={folderId} onCreated={onCreated} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -101,6 +101,20 @@ describe("New doc dialog", () => {
     expect(payload.title).toBe("Rollback plan");
     expect(JSON.parse(payload.body)).toMatchObject({ type: "doc" });
     expect(payload.body).toContain("Drain first");
+  });
+
+  it("resolves with the id of the doc it created, and with nothing when cancelled", async () => {
+    mockApi();
+    const onCreated = vi.fn();
+    const { user, dialog } = await openDialog(undefined, onCreated);
+    await user.type(await within(dialog).findByLabelText("Title"), "Runbook");
+    await user.click(within(dialog).getByRole("button", { name: "Create doc" }));
+    await vi.waitFor(() => expect(onCreated).toHaveBeenCalledWith("doc-1"));
+
+    await user.click(await screen.findByRole("button", { name: "Open" }));
+    await within(await screen.findByRole("dialog", { name: "New doc" })).findByLabelText("Title");
+    await user.keyboard("{Escape}");
+    await vi.waitFor(() => expect(onCreated).toHaveBeenLastCalledWith(undefined));
   });
 
   it("files a doc started from a folder in that folder", async () => {

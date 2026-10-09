@@ -9,7 +9,7 @@ import type { Doc } from "@/models/Doc";
 
 interface DocActionsMenuProps {
   doc: Doc;
-  onCreateTicket: () => void;
+  onCreateTicket?: (() => void) | undefined;
   onPermissions: () => void;
   onArchive: () => void;
   onRestore: () => void;
@@ -32,9 +32,11 @@ export const DocActionsMenu = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 p-1">
-        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onCreateTicket}>
-          Create ticket from this doc
-        </Button>
+        {onCreateTicket && (
+          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onCreateTicket}>
+            Create ticket from this doc
+          </Button>
+        )}
         <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onPermissions}>
           Permissions
         </Button>
