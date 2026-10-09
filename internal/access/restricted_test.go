@@ -25,7 +25,7 @@ func restrictedFixture(t *testing.T) (*Service, *fakeRepo) {
 	roles.set("ws", "owner", RoleInfo{IsOwnerRole: true, Restricted: true})
 	s := newService(repo, newFakeUsers())
 	s.SetRoles(roles)
-	s.SetScopes(fakeScopes{projects: map[string]string{"p-open": "ws", "p-hidden": "ws"}, workspaces: map[string][]string{"team": {"ws"}}})
+	s.SetScopes(fakeScopes{projects: map[string]string{"p-open": "ws", "p-hidden": "ws"}, workspaces: map[string][]string{"team": {"ws"}}, restricted: map[string][]string{"client": {"ws"}, "owner": {"ws"}}})
 	s.SetDocWorkspaces(&fakeDocWorkspace{byDoc: map[string]string{"d-open": "ws", "d-hidden": "ws"}, projectOf: map[string]string{"d-open": "p-open", "d-hidden": "p-hidden"}})
 	setOverwrite(repo, "project", "p-open", "client", permissions.SetOf(permissions.TicketsRead, permissions.DocsRead))
 	return s, repo

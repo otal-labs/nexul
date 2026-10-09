@@ -32,6 +32,9 @@ SELECT * FROM workspace_members WHERE workspace_id = ? AND user_id = ?;
 -- name: SetWorkspaceMemberRestricted :execrows
 UPDATE workspace_members SET restricted = ? WHERE workspace_id = ? AND user_id = ?;
 
+-- name: ListWorkspaceIDsForUser :many
+SELECT workspace_id FROM workspace_members WHERE user_id = ? ORDER BY created_at, workspace_id;
+
 -- name: ListUnrestrictedWorkspaceIDsForUser :many
 SELECT workspace_id FROM workspace_members WHERE user_id = ? AND restricted = 0 ORDER BY created_at, workspace_id;
 

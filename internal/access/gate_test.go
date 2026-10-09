@@ -16,6 +16,8 @@ import (
 type fakeScopes struct {
 	projects   map[string]string
 	workspaces map[string][]string
+	// restricted lists each person's Restricted memberships, which only WorkspaceIDsForUser counts.
+	restricted map[string][]string
 }
 
 func (f fakeScopes) WorkspaceIDForProject(_ context.Context, projectID string) (string, error) {
@@ -39,6 +41,10 @@ func (f fakeScopes) ProjectIDs(_ context.Context, workspaceID string) ([]string,
 
 func (f fakeScopes) UnrestrictedWorkspaceIDsForUser(_ context.Context, userID string) ([]string, error) {
 	return f.workspaces[userID], nil
+}
+
+func (f fakeScopes) WorkspaceIDsForUser(_ context.Context, userID string) ([]string, error) {
+	return append(f.workspaces[userID], f.restricted[userID]...), nil
 }
 
 // TestRequire covers what the gate adds over HasPermission: who is let through without a person to resolve, the

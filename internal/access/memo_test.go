@@ -71,6 +71,60 @@ func TestProjectsWith_ReadsARestrictedMembersAccessOnce(t *testing.T) {
 	assert.Equal(t, readCounts{get: 1, getMany: 1}, repo.readCounts(), "the workspace overwrite, then every project's access at once")
 }
 
+// TestCallerProjects_AnswersAsRequireProject: the set a list filters by in SQL is exactly the projects RequireProject
+// lets each kind of caller through, so a list filtered by it shows what the row-by-row check showed (ADR 0140).
+func TestCallerProjects_AnswersAsRequireProject(t *testing.T) {
+	s, repo := restrictedFixture(t)
+	require.NoError(t, repo.Set(t.Context(), "workspace", "ws", "team", nil, permissions.SetOf(permissions.TicketsWrite)))
+	s.SetScopes(fakeScopes{
+		projects:   map[string]string{"p-open": "ws", "p-hidden": "ws", "p-other": "ws-2"},
+		workspaces: map[string][]string{"team": {"ws"}},
+		restricted: map[string][]string{"client": {"ws"}, "owner": {"ws"}},
+	})
+	callers := map[string]context.Context{
+		"no actor":           context.Background(),
+		"default automation": identity.WithActor(context.Background(), identity.Actor{Automation: &identity.AutomationRef{ID: "a-1", WorkspaceID: "ws"}}),
+		"anonymous actor":    identity.WithActor(context.Background(), identity.Actor{}),
+	}
+	for _, user := range []string{"client", "team", "owner", "stranger"} {
+		callers[user] = identity.WithActor(context.Background(), identity.Actor{ID: user})
+	}
+	actions := []permissions.Action{permissions.Member, permissions.TicketsRead, permissions.TicketsWrite, permissions.DocsRead}
+
+	for name, ctx := range callers {
+		for _, action := range actions {
+			got, all, err := s.CallerProjects(ctx, action)
+			require.NoError(t, err)
+			var want []string
+			for _, projectID := range []string{"p-hidden", "p-open", "p-other"} {
+				if s.RequireProject(ctx, projectID, action) == nil {
+					want = append(want, projectID)
+				}
+			}
+			if all {
+				assert.Len(t, want, 3, "%s %q", name, action)
+				continue
+			}
+			assert.ElementsMatch(t, want, got, "%s %q", name, action)
+		}
+	}
+}
+
+type failingMembershipScopes struct{ fakeScopes }
+
+func (failingMembershipScopes) WorkspaceIDsForUser(context.Context, string) ([]string, error) {
+	return nil, apperrs.ErrConflict
+}
+
+func TestProjectsAnywhere_FailsWhenTheMembershipsCannotBeListed(t *testing.T) {
+	s, _ := restrictedFixture(t)
+	s.SetScopes(failingMembershipScopes{})
+
+	_, _, err := s.ProjectsAnywhere(t.Context(), "team", permissions.TicketsRead)
+
+	assert.ErrorIs(t, err, apperrs.ErrConflict)
+}
+
 type failingProjectScopes struct{ fakeScopes }
 
 func (failingProjectScopes) ProjectIDs(context.Context, string) ([]string, error) {

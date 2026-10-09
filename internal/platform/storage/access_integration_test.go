@@ -71,6 +71,10 @@ func (sc testScopes) UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID
 	return sc.s.WorkspaceMembers.UnrestrictedWorkspaceIDs(ctx, userID)
 }
 
+func (sc testScopes) WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
+	return sc.s.WorkspaceMembers.WorkspaceIDs(ctx, userID)
+}
+
 // joinDefaultWorkspace wires accessSvc's role and scope lookups over real storage and makes each user a member of
 // the default workspace under a role holding docs:write, since only members create or list its docs.
 func joinDefaultWorkspace(t *testing.T, s *storage.Store, accessSvc *access.Service, userIDs ...string) {

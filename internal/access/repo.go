@@ -54,6 +54,8 @@ type Scopes interface {
 	ProjectIDs(ctx context.Context, workspaceID string) ([]string, error)
 	// UnrestrictedWorkspaceIDsForUser lists the workspaces userID is a member of and not a Restricted member of.
 	UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error)
+	// WorkspaceIDsForUser lists every workspace userID is a member of, a Restricted membership included.
+	WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error)
 }
 
 // PlayWorkspaceResolver resolves a play's own workspace so HasPermission/canManage apply to plays too (ADR 0017).

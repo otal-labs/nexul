@@ -404,6 +404,33 @@ func (q *Queries) ListUnrestrictedWorkspaceIDsForUser(ctx context.Context, userI
 	return items, nil
 }
 
+const listWorkspaceIDsForUser = `-- name: ListWorkspaceIDsForUser :many
+SELECT workspace_id FROM workspace_members WHERE user_id = ? ORDER BY created_at, workspace_id
+`
+
+func (q *Queries) ListWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listWorkspaceIDsForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var workspace_id string
+		if err := rows.Scan(&workspace_id); err != nil {
+			return nil, err
+		}
+		items = append(items, workspace_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkspaceInvitesByLogin = `-- name: ListWorkspaceInvitesByLogin :many
 SELECT workspace_id, login, role_id, invited_by, created_at
 FROM workspace_invites WHERE login = ? ORDER BY created_at, workspace_id

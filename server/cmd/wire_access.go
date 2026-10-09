@@ -107,6 +107,10 @@ func (a accessScopes) UnrestrictedWorkspaceIDsForUser(ctx context.Context, userI
 	return a.members.UnrestrictedWorkspaceIDs(ctx, userID)
 }
 
+func (a accessScopes) WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
+	return a.members.WorkspaceIDs(ctx, userID)
+}
+
 // workspaceTicketProjects reads a ticket's project from storage for the workspace domain's ticket moves (ADR 0017).
 type workspaceTicketProjects struct {
 	tickets *storage.TicketsRepo
