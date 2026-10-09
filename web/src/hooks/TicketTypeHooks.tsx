@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import type { TicketType } from "@/models/TicketType";
+import { dropRow, replaceRow, type LiveFollower } from "@/lib/live";
 
 export const getTicketTypesKey = "getTicketTypes";
 export const getProjectTicketTypesKey = "getProjectTicketTypes";
@@ -69,4 +70,15 @@ export const useDeleteTicketType = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+interface TicketTypePayload {
+  ticket_type: TicketType & { project_id: string };
+}
+
+export const ticketTypeFollower: LiveFollower = {
+  "ticket_type.created": ({ ticket_type: type }: TicketTypePayload, { client }) =>
+    client.invalidateQueries({ queryKey: [getProjectTicketTypesKey, type.project_id], exact: true }),
+  "ticket_type.updated": ({ ticket_type: type }: TicketTypePayload, { client }) => replaceRow(client, [getProjectTicketTypesKey, type.project_id], type),
+  "ticket_type.deleted": ({ ticket_type: type }: TicketTypePayload, { client }) => dropRow(client, [getProjectTicketTypesKey, type.project_id], type.id),
 };

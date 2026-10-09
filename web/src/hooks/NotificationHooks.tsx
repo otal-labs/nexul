@@ -1,12 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import type { Notification, UnreadCount } from "@/models/Notification";
+import type { DocFolder } from "@/models/DocFolder";
+import { SubjectType, type Notification, type UnreadCount } from "@/models/Notification";
 import { groupInbox, inboxRows, type InboxRow } from "@/utils/InboxUtility";
+import { refetchHolding, type LiveFollower } from "@/lib/live";
 
 export const getNotificationsKey = "getNotifications";
 export const getUnreadCountKey = "getUnreadCount";
@@ -87,4 +89,24 @@ export const useMarkAllNotificationsRead = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+const refetchInboxes = (client: QueryClient, holds: (row: Notification) => boolean) =>
+  refetchHolding(client, [getNotificationsKey], (rows: Notification[]) => rows.some(holds));
+
+interface FolderPayload {
+  folder: DocFolder;
+}
+
+// The inbox groups doc rows by the folder each doc is in now, so a move, rename, or delete regroups them.
+export const notificationFollower: LiveFollower = {
+  // The frame names nobody and no workspace, so every open inbox and badge refetches.
+  "notification.created": (_payload: unknown, { client }) =>
+    Promise.all([client.invalidateQueries({ queryKey: [getNotificationsKey] }), client.invalidateQueries({ queryKey: [getUnreadCountKey] })]),
+  "doc.moved": ({ doc }: { doc: { id: string } }, { client }) => refetchInboxes(client, (n) => n.subject_type === SubjectType.Doc && n.subject_id === doc.id),
+  "doc.folder.updated": ({ folder }: FolderPayload, { client }) =>
+    client.setQueriesData<Notification[]>({ queryKey: [getNotificationsKey] }, (rows) =>
+      rows?.some((n) => n.folder_id === folder.id) ? rows.map((n) => (n.folder_id === folder.id ? { ...n, folder_name: folder.name, folder_is_default: folder.is_default } : n)) : rows,
+    ),
+  "doc.folder.deleted": ({ folder }: FolderPayload, { client }) => refetchInboxes(client, (n) => n.folder_id === folder.id),
 };

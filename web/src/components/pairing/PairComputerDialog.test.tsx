@@ -6,12 +6,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
 import { Button } from "@/components/ui/button";
-import { setCachedTunnelStatus } from "@/hooks/PairingHooks";
+import { pairingFollower } from "@/hooks/PairingHooks";
 import { useOwnerWizardStore } from "@/stores/ownerWizardStore";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { useSetupDraftStore } from "@/stores/setupDraftStore";
 import type { Computer, ComputerSetup, HarnessProject, HarnessProvider, PairingDefaults, SetupTurnKind, SetupTurnState } from "@/models/Pairing";
 import type { ActivityKind } from "@/models/Trail";
+import { followFrame } from "@/test/followFrame";
 import { pickOption } from "@/test/pickOption";
 
 const access = vi.hoisted(() => ({ sections: ["connectors"] as string[] }));
@@ -70,7 +71,7 @@ const reachPairStep = async (user: ReturnType<typeof userEvent.setup>, client: Q
   mocks.post.mockResolvedValueOnce({ data: created });
   await nameTheComputer(user);
   await screen.findByText(/waiting for connection/i);
-  act(() => setCachedTunnelStatus(client, { computer_id: "c1", tunnel: "healthy", harness_reachable: true }));
+  await act(() => followFrame(pairingFollower, "computer.tunnel_status_changed", { computer_id: "c1", tunnel: "healthy", harness_reachable: true }, client));
   await user.click(await screen.findByRole("button", { name: /^next$/i }));
   await screen.findByLabelText(/one-time pairing token/i);
 };
@@ -103,12 +104,12 @@ describe("PairComputerDialog", () => {
     await user.click(screen.getByRole("tab", { name: /windows/i }));
     expect(screen.getByText(/tunnel\.ps1\)\)\) eyJ-connector-token/)).toBeInTheDocument();
 
-    act(() => setCachedTunnelStatus(client, { computer_id: "c1", tunnel: "healthy", harness_reachable: false }));
+    await act(() => followFrame(pairingFollower, "computer.tunnel_status_changed", { computer_id: "c1", tunnel: "healthy", harness_reachable: false }, client));
     expect(await screen.findByText("Online")).toBeInTheDocument();
     expect(screen.getByText(/start t3 code on this computer/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^next$/i })).toBeDisabled();
 
-    act(() => setCachedTunnelStatus(client, { computer_id: "c1", tunnel: "healthy", harness_reachable: true, harness_version: "0.0.40" }));
+    await act(() => followFrame(pairingFollower, "computer.tunnel_status_changed", { computer_id: "c1", tunnel: "healthy", harness_reachable: true, harness_version: "0.0.40" }, client));
     expect(await screen.findByText("Connected")).toBeInTheDocument();
     expect(screen.getByText("T3 Code 0.0.40")).toBeInTheDocument();
 
@@ -268,7 +269,7 @@ describe("PairComputerDialog", () => {
     expect(await screen.findByText(/waiting for connection/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/computer name/i)).not.toBeInTheDocument();
 
-    act(() => setCachedTunnelStatus(client, { computer_id: "c1", tunnel: "healthy", harness_reachable: true }));
+    await act(() => followFrame(pairingFollower, "computer.tunnel_status_changed", { computer_id: "c1", tunnel: "healthy", harness_reachable: true }, client));
     await user.click(await screen.findByRole("button", { name: /^next$/i }));
     expect(await screen.findByLabelText(/one-time pairing token/i)).toBeInTheDocument();
     expect(mocks.post).not.toHaveBeenCalled();

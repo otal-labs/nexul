@@ -1,8 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import { useDeviceArrivalStore } from "@/stores/deviceArrivalStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { providerLabel } from "@/models/User";
 import type {
@@ -18,8 +19,10 @@ import type {
   PersonalAccessToken,
   Provider,
   Session,
+  SessionClient,
   User,
 } from "@/models/User";
+import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getMeKey = "getMe";
 const getSettingsKey = "getSettings";
@@ -242,4 +245,30 @@ export const useBootstrap = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+// The metadata of a session that just signed in; never the token.
+interface SessionCreatedPayload {
+  session_id: string;
+  user_id: string;
+  client: SessionClient;
+  platform: string;
+  label: string;
+}
+
+const refetch = (client: QueryClient, key: string) => client.invalidateQueries({ queryKey: [key], exact: true });
+
+export const authFollower: LiveFollower = {
+  // The Devices list follows a phone connecting or a device being signed out; the viewer's own phone flips the page.
+  "session.created": (p: SessionCreatedPayload, { client }) => {
+    if (p.client === "phone" && p.user_id === client.getQueryData<MeResponse>([getMeKey])?.user.id) {
+      useDeviceArrivalStore.getState().arrive({ id: p.session_id, platform: p.platform, label: p.label });
+    }
+    return refetch(client, getSessionsKey);
+  },
+  "session.revoked": (_payload: unknown, { client }) => refetch(client, getSessionsKey),
+  ...followEach(["personal_access_token.minted", "personal_access_token.revoked"], (_payload: unknown, { client }) => refetch(client, getPATsKey)),
+  // Someone else's new name or picture changes nothing in the viewer's own account.
+  "account.profile_updated": ({ account_id }: { account_id: string }, { client }) =>
+    account_id === client.getQueryData<MeResponse>([getMeKey])?.user.id && refetch(client, getMeKey),
 };

@@ -9,8 +9,11 @@ import {
   useFetchUnreadCount,
   useMarkAllNotificationsRead,
   useMarkNotificationsRead,
+  notificationFollower,
 } from "@/hooks/NotificationHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import type { Notification } from "@/models/Notification";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 vi.mock("@/api/client", () => ({
   api: {
@@ -87,5 +90,43 @@ describe("useMarkAllNotificationsRead", () => {
     expect(api.post).toHaveBeenCalledWith("/api/notifications/read-all", undefined, {
       params: { workspace_id: "ws-1" },
     });
+  });
+});
+
+describe("the notification follower", () => {
+  const row = (id: string, subject: string, folder: string) =>
+    ({
+    ...notification,
+    id,
+    subject_type: "doc",
+    subject_id: subject,
+    folder_id: folder,
+    folder_name: "Specs",
+    folder_is_default: false,
+    }) as Notification;
+  const inboxes = () =>
+    seeded([
+      [["getNotifications", "ws-1"], [row("n-1", "d-1", "f-1")]],
+      [["getNotifications", "ws-2"], [row("n-2", "d-2", "f-2")]],
+    ]);
+
+  it("refetches only the inbox with a row about a moved doc", async () => {
+    const client = inboxes();
+    await followFrame(notificationFollower, "doc.moved", { doc: { id: "d-1" }, from_folder_id: "f-1" }, client);
+    expect([isStale(client, ["getNotifications", "ws-1"]), isStale(client, ["getNotifications", "ws-2"])]).toEqual([true, false]);
+  });
+
+  it("renames a folder on the inbox rows grouped under it without a request", async () => {
+    const client = inboxes();
+    await followFrame(notificationFollower, "doc.folder.updated", { folder: { id: "f-2", project_id: "p-1", name: "Plans", is_default: false } }, client);
+    expect(client.getQueryData<Notification[]>(["getNotifications", "ws-2"])?.[0]?.folder_name).toBe("Plans");
+    expect(isStale(client, ["getNotifications", "ws-2"])).toBe(false);
+  });
+
+  it("refetches every inbox and badge on a new notice, which names no workspace", async () => {
+    const client = inboxes();
+    client.setQueryData(["getUnreadCount"], { count: 0, workspaces: {} });
+    await followFrame(notificationFollower, "notification.created", {}, client);
+    expect([["getNotifications", "ws-1"], ["getNotifications", "ws-2"], ["getUnreadCount"]].map((key) => isStale(client, key))).toEqual([true, true, true]);
   });
 });
