@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useRef, useState, type KeyboardEvent } from "react";
 import { SearchIcon } from "lucide-react";
 
 import { EmptyRow } from "@/components/EmptyRow";
@@ -13,12 +13,19 @@ import { commandOptionId, filterCommandGroups, type CommandItem } from "@/models
 
 const LIST_ID = "command-palette-list";
 
+// Rows shown at open appear with the palette; only rows that join the list after it fade in (index.css).
+const settled = (el: HTMLDivElement) => requestAnimationFrame(() => (el.dataset.settled = ""));
+
 // Mounted only while the palette is open, so its queries run only then.
 export const CommandPaletteBody = () => {
   const [query, setQuery] = useState("");
   const pick = useCommandPaletteStore((s) => s.pick);
   const [active, setActive] = useState(0);
   const list = useRef<HTMLDivElement>(null);
+  const settle = useCallback((el: HTMLDivElement | null) => {
+    list.current = el;
+    if (el) settled(el);
+  }, []);
   const browsing = query.trim() === "";
   const nav = useCommandNavItems();
   const actions = useCommandActionItems(browsing);
@@ -86,7 +93,13 @@ export const CommandPaletteBody = () => {
         />
         {searching && <Spinner className="size-3.5 text-muted-foreground" />}
       </div>
-      <div ref={list} id={LIST_ID} role="listbox" aria-label="Results" className="max-h-[min(26rem,60dvh)] overflow-y-auto overscroll-contain px-2 pb-1">
+      <div
+        ref={settle}
+        id={LIST_ID}
+        role="listbox"
+        aria-label="Results"
+        className="command-results max-h-[min(26rem,60dvh)] overflow-y-auto overscroll-contain px-2 pb-1"
+      >
         {groups.map((group, g) => (
           <CommandPaletteGroup
             key={group.heading}

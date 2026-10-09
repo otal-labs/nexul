@@ -958,6 +958,15 @@ a.mention-chip:hover {
   transition-duration: 200ms, 150ms;
 }
 
+/* Command palette rows that join the list after it opened fade in; opacity only, since the list is being read. */
+.command-results[data-settled] [role="group"],
+.command-results[data-settled] [role="option"] {
+  transition: opacity 120ms var(--ease-out);
+  @starting-style {
+    opacity: 0;
+  }
+}
+
 /* Reduced motion flattens every transition and keyframe; what still needs to say "this arrived" does it with a fade
    (the page and list entrances in lib/motion.ts check the preference themselves). */
 @media (prefers-reduced-motion: reduce) {
@@ -1067,3 +1076,4 @@ a.mention-chip:hover {
   --lk-font-family: var(--font-sans);
   --lk-border-radius: var(--radius-md);
 }
+

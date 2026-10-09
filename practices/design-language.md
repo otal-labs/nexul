@@ -617,8 +617,13 @@ conversation lists.
 Command palette. ⌘K (Ctrl+K elsewhere), or the sidebar's Search row, opens
 one palette from any signed-in page: a frosted overlay (`glass-popover`) 40rem
 wide, hung at 14% of the viewport so a changing result count only moves its
-bottom edge, over the dialog family's scrim and on its clock (200ms in, 150ms
-out, from 0.97). A combobox input heads it, grouped results below, a footer of
+bottom edge, over the dialog family's scrim. Opened from the Search row it
+runs the dialog clock (200ms in, from 0.97) and an overlay click closes it in
+150ms; opened or closed with a key, or closed by a pick, it shows and goes in
+the same frame, since it is driven a dozen times an hour and a fading scrim
+would swallow the next click. A row or group that joins the list after it
+opened (a search landing, a letter that matches more) fades in over 120ms,
+opacity only. A combobox input heads it, grouped results below, a footer of
 key hints at its foot. Empty, it leads with what changed lately in the
 current project, then every page the sidebar reaches under the same
 permissions, every project's board, the create dialogs that already exist,
@@ -685,6 +690,8 @@ writing its own.
   `status-pulse` keyframe in `index.css`; no second pulse. A status change
   gets one 150ms `--ease-standard` cross-fade on the affected chip or dot,
   never a full-row re-entrance.
+- Command palette: see its pattern above; the one keyboard surface with any
+  motion, and only for a pointer open and for results landing late.
 - Chat: someone else's message, and the Agent's reply as its stream starts,
   rise 8px and fade in over 200ms (`arrive`); what was on screen when the
   conversation opened never animates. A confirmed message keeps its pending
@@ -765,3 +772,16 @@ Board stage bar.
 - Change: glide plus the changed counts rising in. Rejected: a glide alone,
   which showed the shares moving but not which stages changed when someone
   else moved a ticket.
+
+Command palette.
+- Open and close: no motion from a key (⌘K, Escape, Enter) or a pick, the
+  dialog clock from the Search row. Rejected: the dialog clock for every open
+  (on Escape or Enter the closing scrim covered the page for 150ms and ate
+  the next click, and on a pick it faded over the arriving page) and a
+  quicker 120ms clock for both (the same problem, shorter).
+- Results: rows that join after opening fade in over 120ms. Rejected: no
+  motion (a search landing popped six rows at once) and a pop from 0.97 (a
+  full-width row scaling from its centre shifted its text sideways).
+- Active row: still jumps. Rejected: a sliding highlight on pointer moves,
+  which trailed the cursor and split from the brand icon and enter mark that
+  jump with it.
