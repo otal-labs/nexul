@@ -11,7 +11,10 @@ interface RailTooltipProps {
 
 export const RailTooltip = ({ label, collapsed, children }: RailTooltipProps) => (
   <Tooltip {...(collapsed ? {} : { open: false })}>
-    <TooltipTrigger asChild>{children}</TooltipTrigger>
+    {/* A wrapper, not the item itself: the trigger's Slot would turn a NavLink's className function into a string. */}
+    <TooltipTrigger asChild>
+      <span className="block">{children}</span>
+    </TooltipTrigger>
     <TooltipContent side="right">{label}</TooltipContent>
   </Tooltip>
 );
