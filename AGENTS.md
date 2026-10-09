@@ -118,7 +118,7 @@ skipped and lint errors do not.
 | Native lint, types, tests | `bun run lint`, `typecheck`, `test` in `native/`, in CI |
 | SDK and automations host types and tests | `bun run typecheck` and `bun run test` in each package, in CI |
 | Desktop types, tests, build | the desktop CI job |
-| Live topics the server pushes match the ones the web followers follow | `make live-topics`, `TestLiveTopicsFile_MatchesTheRules` and `web/src/hooks/liveTopics.test.tsx` |
+| Every pushed topic has an audience rule, and the topics the server pushes match the ones the web followers follow | `make live-topics`, `TestLiveRules_MatchWhatIsPushed`, `TestLiveTopicsFile_MatchesTheRules` and `web/src/hooks/liveTopics.test.tsx` |
 | Event schemas match the payload types and the published contract only grows | `make event-schemas`, `TestSchemas_MatchThePublishedContract` in `internal/eventcatalog/contract_test.go` |
 | HTTP bodies through `jsonx` match the encoder it replaced | `server/cmd/json_parity_test.go` |
 | An event payload's empty list is `[]`, never `null` | the contract test above, and `TestInsertOutboxRow_WritesAnEmptyListAsAnArray` |
@@ -156,7 +156,8 @@ this list and say which entries applied:
   followed by `make event-schemas`. A client that refreshes too much because
   a frame lacks an id is fixed by adding that id this way.
 - Live WebSocket push, if the UI should update without a refresh. A new
-  topic gets an audience rule, `make live-topics`, a follower in the web
+  topic is bridged in `livePushTopics`, gets an audience rule,
+  `make live-topics`, a follower in the web
   domain's hooks file (`practices/react-guide.md`, The live topic contract),
   and a line in the `refreshes` of each phone query that shows the entity
   (`practices/native.md`, section 4).

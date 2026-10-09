@@ -918,11 +918,13 @@ Rules:
 
 ### The live topic contract
 
-The server's audience rules (`liveRules` in `server/cmd/live_audience.go`)
-decide which topics reach a browser at all; a topic without a rule reaches
-nobody. `make live-topics` writes their names to
-`web/src/hooks/liveTopics.generated.json`, and two tests hold the tables
-together:
+The server bridges the bus topics in `livePushTopics` (`server/cmd/main.go`)
+onto the socket, and its audience rules (`liveRules` in
+`server/cmd/live_audience.go`) decide who receives each; a topic without a
+rule reaches nobody, and `TestLiveRules_MatchWhatIsPushed` fails when the two
+lists disagree. `make live-topics` writes the rules' topics to
+`web/src/hooks/liveTopics.generated.json`, and two more tests hold the
+server and the browser together:
 
 - `TestLiveTopicsFile_MatchesTheRules` (Go) fails when the generated file is
   stale, the way `sqlc diff` does.
@@ -934,9 +936,9 @@ Adding a live topic is four steps in one change:
 
 1. Publish it from the domain (`events.go`, `practices/architecture.md`
    section 2).
-2. Add its audience rule to `liveRules`, checked through the permission table
-   the entity's own read uses, so a socket never receives what its person
-   could not load.
+2. Bridge it in `livePushTopics` and add its audience rule to `liveRules`,
+   checked through the permission table the entity's own read uses, so a
+   socket never receives what its person could not load.
 3. Run `make live-topics` and commit the regenerated JSON.
 4. Follow it in the domain's follower (patch from the payload, or invalidate
    by its ids), and in the phone query's `refreshes` (`practices/native.md`

@@ -32,8 +32,8 @@ risks.
   entity's settings rather than a route of their own, are three entries (`bots`, `editBots`, `deleteBots`,
   lines 17-19). The phone reads the shared table in `client-core/permissions.ts`. Plays are gated in `ConfigurationPage.tsx:14-16`
   and `AccessHooks.tsx:47`.
-- Live push: a topic reaches a browser only if it has a rule in `liveRules` (`server/cmd/live_audience.go`);
-  `make live-topics` copies the rule names to the web, and a domain's live follower decides what a frame
+- Live push: a topic reaches a browser only if it is bridged in `livePushTopics` (`server/cmd/main.go`) and
+  has a rule in `liveRules` (`server/cmd/live_audience.go`); `make live-topics` copies the rule names to the web, and a domain's live follower decides what a frame
   refreshes. `play.created`, `play.updated` and `play.deleted` are pushed under `plays:read`.
 - Every catalogued topic is declared in its domain's `Topics()` with its payload type, and `make event-schemas`
   generates its schema and the SDK types (enforced by `internal/eventcatalog/contract_test.go`). It also needs
@@ -256,7 +256,7 @@ child-collection case in `practices/mcp.md` §4 and has a working precedent in `
   `DeletedEvent` (`events.go:31-46`); write them through the outbox in the same transaction, as plays do.
 - Each is declared in `Topics()` with its payload type, then `make event-schemas` (ADR 0137), and gets its
   automation scope (`nestedWorkspaceScope("auto_play")` for created and updated, `workspaceScope` for deleted).
-- Live: one rule in `liveRules` that reads `workspace_id` from the top level or under `auto_play` and
+- Live: bridge the three in `livePushTopics`, with one rule in `liveRules` that reads `workspace_id` from the top level or under `auto_play` and
   requires `autoplays:read` in that workspace, then `make live-topics`. In the web, the plays domain's live
   follower refreshes the auto plays query for them, and `play.deleted` does too
   (`practices/react-guide.md`, The live topic contract). The play topics themselves are already pushed under
