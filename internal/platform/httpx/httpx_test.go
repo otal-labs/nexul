@@ -165,13 +165,23 @@ func TestWriteJSON_NilSlicesBehindPointersAndInterfacesMarshalAsEmptyArrays(t *t
 	}
 }
 
-func TestWriteJSON_PointerArgumentIsNotMutated(t *testing.T) {
-	type entity struct {
+func TestWriteJSON_LeavesTheCallersValueUntouched(t *testing.T) {
+	type child struct {
 		Topics []string `json:"topics"`
 	}
-	e := &entity{}
-	WriteJSON(httptest.NewRecorder(), http.StatusOK, e)
+	type entity struct {
+		Topics   []string         `json:"topics"`
+		Children []child          `json:"children"`
+		ByName   map[string]child `json:"by_name"`
+	}
+	e := &entity{Children: []child{{}}, ByName: map[string]child{"a": {}}}
+	rec := httptest.NewRecorder()
+	WriteJSON(rec, http.StatusOK, e)
+
+	assert.JSONEq(t, `{"topics":[],"children":[{"topics":[]}],"by_name":{"a":{"topics":[]}}}`, rec.Body.String())
 	assert.Nil(t, e.Topics)
+	assert.Nil(t, e.Children[0].Topics)
+	assert.Nil(t, e.ByName["a"].Topics)
 }
 
 func TestDecodeJSON_ValidBody(t *testing.T) {
