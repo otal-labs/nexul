@@ -13,8 +13,10 @@ import {
   useUpdateTicket,
   useUpdateTicketPosition,
   useUpdateTicketStatus,
+  ticketFollower,
 } from "@/hooks/TicketHooks";
 import { TicketStatus } from "@/models/Ticket";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
 vi.mock("@/api/client", () => ({
   api: {
     get: vi.fn(),
@@ -180,5 +182,36 @@ describe("useUpdateTicketPosition", () => {
     const { result } = renderHook(() => useUpdateTicketPosition(), { wrapper });
     await result.current.mutateAsync({ id: "t-1", position: 3 }).catch(() => {});
     await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+describe("the ticket follower", () => {
+  const inColumn = (id: string, status: string) => ({ id, project_id: "p-1", doc_id: "", status, title: id, updated_at: "" });
+
+  it("refetches the tickets of a deleted column and the lists holding them, and leaves other lists alone", async () => {
+    const client = seeded([
+      [["getTicketsByProject", "p-1"], [inColumn("t-1", "st-gone"), inColumn("t-2", "st-kept")]],
+      [["getTicketsByProject", "p-2"], [{ ...inColumn("t-3", "st-other"), project_id: "p-2" }]],
+      [["getTicket", "t-1"], inColumn("t-1", "st-gone")],
+      [["getTicket", "t-2"], inColumn("t-2", "st-kept")],
+    ]);
+    await followFrame(ticketFollower, "status.deleted", { status: { id: "st-gone", project_id: "p-1" } }, client);
+    expect([["getTicketsByProject", "p-1"], ["getTicket", "t-1"]].map((key) => isStale(client, key))).toEqual([true, true]);
+    expect([["getTicketsByProject", "p-2"], ["getTicket", "t-2"]].map((key) => isStale(client, key))).toEqual([false, false]);
+  });
+
+  it("refetches a ticket and its branches once its run ends, and nothing for a run still going or on a doc", async () => {
+    const client = seeded([
+      [["getTickets"], [inColumn("t-9", "st-1")]],
+      [["getTicket", "t-9"], inColumn("t-9", "st-1")],
+      [["getTicketLinks", "t-9"], { prs: [], branches: [] }],
+    ]);
+    const run = { trail_id: "tr-1", play_id: "pl-1", target_type: "ticket", target_id: "t-9", activity: null, ended_at: null, last_error: "" };
+    await followFrame(ticketFollower, "play.run", { ...run, state: "running" }, client);
+    await followFrame(ticketFollower, "play.run", { ...run, target_type: "doc", state: "done" }, client);
+    expect(isStale(client, ["getTicket", "t-9"])).toBe(false);
+
+    await followFrame(ticketFollower, "play.run", { ...run, state: "done" }, client);
+    expect([["getTickets"], ["getTicket", "t-9"], ["getTicketLinks", "t-9"]].map((key) => isStale(client, key))).toEqual([true, true, true]);
   });
 });

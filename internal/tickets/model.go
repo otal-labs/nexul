@@ -50,7 +50,7 @@ type Ticket struct {
 // ticketJSON is a ticket's wire shape: its fields plus the deprecated assignee, always equal to developer, so the published payload stays additive (ADR 0044).
 type ticketJSON struct {
 	ticketFields
-	Assignee string `json:"assignee"`
+	Assignee string `json:"assignee" deprecated:"true" jsonschema:"Deprecated in favour of developer; always carries the same value."`
 }
 
 type ticketFields Ticket
@@ -121,7 +121,7 @@ type LabelColor struct {
 
 // Actor records who performed a transition for provenance: a human user, a named automation, or a play run.
 type Actor struct {
-	Kind           string `json:"kind"`
+	Kind           string `json:"kind" enum:"user,user:mcp,automation,play,play:mcp"`
 	AutomationID   string `json:"automation_id,omitempty"`
 	AutomationName string `json:"automation_name,omitempty"`
 	PlayLabel      string `json:"play_label,omitempty"`
@@ -140,7 +140,7 @@ const (
 
 // Reporter is who filed a ticket: a person (user), Nexul for a person via MCP (user:mcp), or an automation.
 type Reporter struct {
-	Kind           string `json:"kind"`
+	Kind           string `json:"kind" enum:"user,user:mcp,automation"`
 	Login          string `json:"login,omitempty"`
 	AutomationID   string `json:"automation_id,omitempty"`
 	AutomationName string `json:"automation_name,omitempty"`
@@ -171,7 +171,7 @@ const (
 // TicketLink is a directed link record; an empty TargetID on a found_in link marks the origin unknown.
 type TicketLink struct {
 	TicketID  string    `json:"ticket_id"`
-	Kind      LinkKind  `json:"kind"`
+	Kind      LinkKind  `json:"kind" enum:"found_in,blocked_by"`
 	TargetID  string    `json:"target_id"`
 	CreatedAt time.Time `json:"created_at"`
 }

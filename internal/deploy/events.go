@@ -1,6 +1,10 @@
 package deploy
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
+)
 
 // Topics the deploy domain publishes onto the bus; shapes mirror the runner's contracts (ADR 0017).
 // Topic strings keep their original "service.*" names so existing bus consumers keep matching.
@@ -19,22 +23,21 @@ const (
 )
 
 // Topics returns every topic the deploy domain publishes.
-func Topics() []string {
-	return []string{
-		TopicDeployRequested,
-		TopicDeployCancelRequested,
-		TopicDeployStatusChanged,
-		TopicDeployUpdated,
-		TopicStackCreated,
-		TopicStackUpdated,
-		TopicStackDeleted,
+func Topics() []eventbus.Topic {
+	return []eventbus.Topic{
+		{Name: TopicDeployRequested, Payload: DeployRequestedEvent{}},
+		{Name: TopicDeployCancelRequested, Payload: DeployCancelRequestedEvent{}},
+		{Name: TopicDeployUpdated, Payload: DeployUpdatedEvent{}},
+		{Name: TopicStackCreated, Payload: StackEvent{}},
+		{Name: TopicStackUpdated, Payload: StackEvent{}},
+		{Name: TopicStackDeleted, Payload: StackDeletedEvent{}},
 	}
 }
 
 // DeployUpdatedEvent is the deploy.updated payload: the record's status or its log changed.
 type DeployUpdatedEvent struct {
 	ID     string `json:"id"`
-	Status string `json:"status"`
+	Status string `json:"status" enum:"pending,running,healthy,failed"`
 }
 
 // DeployCancelRequestedEvent asks the runner to stop a queued or running job.
@@ -47,11 +50,11 @@ type DeployCancelRequestedEvent struct {
 // independently and is out of this ticket's scope, so the JSON tags stay put even where the Go field renamed.
 type DeployRequestedEvent struct {
 	ID       string            `json:"id"`
-	Kind     string            `json:"kind"`
+	Kind     string            `json:"kind" enum:"build,deploy"`
 	Service  string            `json:"service,omitempty"`
 	Target   string            `json:"target,omitempty"`
 	Image    string            `json:"image,omitempty"`
-	Env      map[string]string `json:"env,omitempty"`
+	Env      map[string]string `json:"env,omitempty" jsonschema:"Deploy environment keys; values are always empty strings. The deploy domain redacts them before publish, so every consumer of this event, not just webhook delivery, only ever sees keys."`
 	Strategy string            `json:"strategy,omitempty"`
 	Repo     string            `json:"repo,omitempty"`
 	Ref      string            `json:"ref,omitempty"`

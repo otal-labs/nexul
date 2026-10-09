@@ -7,9 +7,10 @@ import { api, errorMessage } from "@/api/client";
 import { conversationPlayTarget, type Conversation } from "@/models/Chat";
 import type { PlayType } from "@/models/Play";
 import type { QuestionAnswers } from "@/models/Question";
-import { DECISIONS_CHECK_PLAY_ID, isTrailActive, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
+import { DECISIONS_CHECK_PLAY_ID, isTrailActive, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunFrame, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
 import { targetKey, usePlayRunStore, type PlayRunStore } from "@/stores/playRunStore";
 import { threadTrailBlocks, type ThreadTrailBlocks } from "@/utils/ThreadTrailUtility";
+import type { LiveFollower } from "@/lib/live";
 
 export const getTrailsKey = "getTrails";
 export const getTrailKey = "getTrail";
@@ -244,3 +245,17 @@ export const useTicketRunCounts = (projectId: string | undefined, ticketIds: str
 // The doc list row's question.
 export const useDocRunState = (projectId: string, docId: string): TrailState | undefined =>
   useRunState("doc", docId, useFetchActiveDocTrails(projectId).data);
+
+export const trailFollower: LiveFollower = {
+  // Activity lines only move the store; a state change refetches the run, its target's runs, and that kind's active set.
+  "play.run": (run: RunFrame, { client }) => {
+    const previous = usePlayRunStore.getState().frames[run.trail_id]?.state;
+    usePlayRunStore.getState().applyFrame(run);
+    if (previous === run.state) return;
+    return Promise.all([
+      client.invalidateQueries({ queryKey: [getTrailsKey, run.target_type, run.target_id], exact: true }),
+      client.invalidateQueries({ queryKey: [getTrailKey, run.trail_id], exact: true }),
+      client.invalidateQueries({ queryKey: [getActiveTrailsKey, run.target_type] }),
+    ]);
+  },
+};

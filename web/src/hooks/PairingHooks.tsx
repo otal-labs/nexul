@@ -23,6 +23,7 @@ import {
   type TunnelPrerequisite,
   type TunnelStatus,
 } from "@/models/Pairing";
+import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getComputersKey = "getComputers";
 export const getPairingDefaultsKey = "getPairingDefaults";
@@ -99,7 +100,7 @@ export const useCreateComputerTunnel = () => {
   });
 };
 
-// Read once; every later change arrives as a computer.tunnel_status_changed frame patched in by setCachedTunnelStatus.
+// Read once; every later change arrives as a computer.tunnel_status_changed frame that pairingFollower patches in.
 export const useFetchTunnelStatus = (computerId: string) =>
   useQuery({
     queryKey: [getTunnelStatusKey, computerId],
@@ -122,17 +123,6 @@ export const tunnelPrerequisite = (error: unknown): TunnelPrerequisite | undefin
   return undefined;
 };
 
-export interface TunnelStatusChangedPayload extends TunnelStatus {
-  computer_id: string;
-}
-
-export const setCachedTunnelStatus = (client: QueryClient, p: TunnelStatusChangedPayload) => {
-  client.setQueryData<TunnelStatus>([getTunnelStatusKey, p.computer_id], {
-    tunnel: p.tunnel,
-    harness_reachable: p.harness_reachable,
-    ...(p.harness_version && { harness_version: p.harness_version }),
-  });
-};
 
 // The note carries commands to copy, so it stays until closed.
 const sessionNoteToast = (note?: string) => (note ? { description: note, duration: Infinity, closeButton: true } : undefined);
@@ -279,4 +269,32 @@ export const useUpdatePairingDefaults = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+// Pairing frames name the computer they are about (internal/pairing/events.go).
+interface ComputerPayload {
+  computer_id: string;
+}
+
+const refetchComputers = (client: QueryClient, readiness: boolean) =>
+  Promise.all([client.invalidateQueries({ queryKey: [getComputersKey] }), readiness && client.invalidateQueries({ queryKey: [getHarnessResolveKey] })]);
+
+export const pairingFollower: LiveFollower = {
+  // A computer row goes from pairing to paired, gains or loses its tunnel, or shows its T3 Code's new version.
+  ...followEach(["computer.paired", "computer.harness_switched", "computer.tunnel_removed"], (_p: unknown, { client }) => refetchComputers(client, true)),
+  "computer.tunnel_created": (_p: unknown, { client }) => refetchComputers(client, false),
+  "computer.tunnel_status_changed": (p: ComputerPayload & TunnelStatus, { client }) =>
+    client.setQueryData<TunnelStatus>([getTunnelStatusKey, p.computer_id], {
+      tunnel: p.tunnel,
+      harness_reachable: p.harness_reachable,
+      ...(p.harness_version && { harness_version: p.harness_version }),
+    }),
+  // The pickers' "needs setup" tags follow a setup turn confirming or withdrawing a provider.
+  ...followEach(["computer.setup_confirmed", "computer.setup_unconfirmed", "computer.setup_finished"], ({ computer_id }: ComputerPayload, { client }) =>
+    client.invalidateQueries({ queryKey: [getHarnessProvidersKey, computer_id], exact: true }),
+  ),
+  // A computer row's MCP token line follows a mint or revoke from setup, the row, or an MCP tool.
+  ...followEach(["personal_access_token.minted", "personal_access_token.revoked"], ({ computer_id }: Partial<ComputerPayload>, { client }) =>
+    computer_id && client.invalidateQueries({ queryKey: [getMCPTokenKey, computer_id], exact: true }),
+  ),
 };

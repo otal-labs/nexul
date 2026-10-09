@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/harness"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 // Topics published by the pairing domain.
@@ -23,10 +24,18 @@ const (
 )
 
 // Topics returns every topic the pairing domain publishes.
-func Topics() []string {
-	return []string{
-		TopicComputerPaired, TopicSetupConfirmed, TopicSetupUnconfirmed, TopicTunnelCreated, TopicTunnelRemoved, TopicTunnelStatusChanged,
-		TopicSetupTurnChanged, TopicSetupFinished, TopicSetupTurnActivity, TopicHarnessSwitched,
+func Topics() []eventbus.Topic {
+	return []eventbus.Topic{
+		{Name: TopicComputerPaired, Payload: ComputerPairedEvent{}},
+		{Name: TopicSetupConfirmed, Payload: SetupChangedEvent{}},
+		{Name: TopicSetupUnconfirmed, Payload: SetupChangedEvent{}},
+		{Name: TopicTunnelCreated, Payload: TunnelChangedEvent{}},
+		{Name: TopicTunnelRemoved, Payload: TunnelChangedEvent{}},
+		{Name: TopicTunnelStatusChanged, Payload: TunnelStatusChangedEvent{}},
+		{Name: TopicSetupTurnChanged, Payload: SetupTurnChangedEvent{}},
+		{Name: TopicSetupFinished, Payload: SetupFinishedEvent{}},
+		{Name: TopicSetupTurnActivity, Payload: SetupTurnActivityEvent{}},
+		{Name: TopicHarnessSwitched, Payload: HarnessSwitchedEvent{}},
 	}
 }
 
@@ -69,9 +78,9 @@ type ComputerPairedEvent struct {
 type HarnessSwitchedEvent struct {
 	ComputerID     string       `json:"computer_id"`
 	UserID         string       `json:"user_id"`
-	FromKind       harness.Kind `json:"from_kind"`
-	ToKind         harness.Kind `json:"to_kind"`
-	HarnessVersion string       `json:"harness_version"`
+	FromKind       harness.Kind `json:"from_kind" jsonschema:"The harness kind the computer was stored under, for example t3code."`
+	ToKind         harness.Kind `json:"to_kind" jsonschema:"The harness kind it moved forward to, for example t3code-v2; a computer never moves back."`
+	HarnessVersion string       `json:"harness_version" jsonschema:"The harness version read when the computer moved."`
 }
 
 // SetupTurnChangedEvent is one provider's setup turn starting, confirming, or failing, with its short status line.
@@ -83,7 +92,7 @@ type SetupTurnChangedEvent struct {
 	Provider     string         `json:"provider"`
 	ProviderName string         `json:"provider_name"`
 	Model        string         `json:"model,omitempty"`
-	State        SetupTurnState `json:"state"`
+	State        SetupTurnState `json:"state" enum:"running,confirmed,failed"`
 	Status       string         `json:"status"`
 	StartedAt    time.Time      `json:"started_at"`
 	EndedAt      *time.Time     `json:"ended_at,omitempty"`
@@ -101,7 +110,7 @@ type SetupFinishedEvent struct {
 // SetupTurnOutcome is one provider's end state in a finished setup run.
 type SetupTurnOutcome struct {
 	Provider string         `json:"provider"`
-	State    SetupTurnState `json:"state"`
+	State    SetupTurnState `json:"state" enum:"running,confirmed,failed"`
 	Status   string         `json:"status"`
 }
 
@@ -116,7 +125,7 @@ type SetupTurnActivityEvent struct {
 	// CallID names the tool call the step belongs to, so a consumer updates that step's line instead of adding one.
 	CallID string `json:"call_id,omitempty"`
 	// Kind is the step's harness.ActivityKind; tool_call means the call is still open.
-	Kind string `json:"kind,omitempty"`
+	Kind string `json:"kind,omitempty" enum:"tool_call,tool_result,text,question,other,note,user_message"`
 	// Tool names the tool a call ran, so the dialog tells a command from any other tool.
 	Tool string `json:"tool,omitempty"`
 	// Text is a text step's whole message, which the dialog shows as prose; Status stays its one-line preview.

@@ -7,8 +7,10 @@ import {
   getTicketsByDocKey,
   getTicketsByProjectKey,
   getTicketsKey,
+  statusRemoved,
   ticketChanged,
   ticketCreated,
+  ticketRemoved,
 } from "@/hooks/TicketCache";
 import { getTicketLinkSetKey } from "@/hooks/TicketLinkHooks";
 import {
@@ -19,6 +21,8 @@ import {
   type Ticket,
   type TicketLinks,
 } from "@/models/Ticket";
+import { isTrailActive, type RunFrame } from "@/models/Trail";
+import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getTicketLinksKey = "getTicketLinks";
 export const getAllLabelsKey = "getAllLabels";
@@ -239,4 +243,25 @@ export const useSetLabelColor = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+// Ticket frames carry the whole ticket after the change (internal/tickets/events.go).
+interface TicketPayload {
+  ticket: Ticket;
+}
+
+const changedTopics = ["ticket.updated", "ticket.status_changed", "ticket.developer_changed", "ticket.tester_changed", "ticket.finished"];
+
+export const ticketFollower: LiveFollower = {
+  "ticket.created": ({ ticket }: TicketPayload, { client }) => ticketCreated(client, ticket),
+  ...followEach(changedTopics, ({ ticket }: TicketPayload, { client }) => ticketChanged(client, ticket)),
+  // A category move re-appends the ticket server-side, and the frame names only its id.
+  "ticket.category_changed": ({ ticket_id }: { ticket_id: string }, { client }) => ticketChanged(client, ticket_id),
+  "ticket.deleted": ({ id }: { id: string }, { client }) => ticketRemoved(client, id),
+  "status.deleted": ({ status }: { status: { id: string } }, { client }) => statusRemoved(client, status.id),
+  // A finished run has moved its ticket to its new column and may have linked a branch or pull request.
+  "play.run": (run: RunFrame, { client }) =>
+    run.target_type === "ticket" &&
+    !isTrailActive(run.state) &&
+    Promise.all([ticketChanged(client, run.target_id), client.invalidateQueries({ queryKey: [getTicketLinksKey, run.target_id], exact: true })]),
 };

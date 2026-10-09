@@ -1,5 +1,7 @@
 package dns
 
+import "github.com/otal-labs/nexul/internal/platform/eventbus"
+
 // TopicRecordChanged is published on every record lifecycle change via the outbox.
 const TopicRecordChanged = "dns.record_changed"
 
@@ -17,7 +19,7 @@ type RecordChangedEvent struct {
 	ZoneID   string     `json:"zone_id"`
 	Zone     string     `json:"zone,omitempty"`
 	RecordID string     `json:"record_id,omitempty"`
-	Action   string     `json:"action"` // created | updated | deleted
+	Action   string     `json:"action" enum:"created,updated,deleted"`
 	Type     RecordType `json:"type,omitempty"`
 	Name     string     `json:"name,omitempty"`
 	Service  string     `json:"service,omitempty"`
@@ -27,7 +29,7 @@ type RecordChangedEvent struct {
 type TunnelChangedEvent struct {
 	TunnelID string `json:"tunnel_id"`
 	Name     string `json:"name,omitempty"`
-	Action   string `json:"action"` // created | routed | rotated | deleted
+	Action   string `json:"action" enum:"created,routed,rotated,deleted"`
 	Hostname string `json:"hostname,omitempty"`
 	Service  string `json:"service,omitempty"`
 }
@@ -37,12 +39,17 @@ type GatewayChangedEvent struct {
 	GatewayID     string      `json:"gateway_id"`
 	Kind          GatewayKind `json:"kind,omitempty"`
 	DockerNetwork string      `json:"docker_network,omitempty"`
-	Action        string      `json:"action"` // created | deleted
+	Action        string      `json:"action" enum:"created,deleted"`
 }
 
 // Topics returns every topic the dns domain publishes.
-func Topics() []string {
-	return []string{TopicRecordChanged, TopicTunnelChanged, TopicGatewayChanged, TopicExposureChanged}
+func Topics() []eventbus.Topic {
+	return []eventbus.Topic{
+		{Name: TopicRecordChanged, Payload: RecordChangedEvent{}},
+		{Name: TopicTunnelChanged, Payload: TunnelChangedEvent{}},
+		{Name: TopicGatewayChanged, Payload: GatewayChangedEvent{}},
+		{Name: TopicExposureChanged, Payload: ExposureChangedEvent{}},
+	}
 }
 
 // ExposureChangedEvent is the dns.exposure_changed payload.
@@ -52,5 +59,5 @@ type ExposureChangedEvent struct {
 	Hostname   string `json:"hostname,omitempty"`
 	Service    string `json:"service,omitempty"`
 	Port       int    `json:"port,omitempty"`
-	Action     string `json:"action"` // created | deleted
+	Action     string `json:"action" enum:"created,deleted"`
 }

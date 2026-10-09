@@ -24,8 +24,15 @@ const (
 const TopicPlayRun = "play.run"
 
 // Topics returns every topic the plays domain publishes.
-func Topics() []string {
-	return []string{TopicCreated, TopicUpdated, TopicDeleted, TopicRunStarted, TopicRunWaiting, TopicRunFinished}
+func Topics() []eventbus.Topic {
+	return []eventbus.Topic{
+		{Name: TopicCreated, Payload: CreatedEvent{}},
+		{Name: TopicUpdated, Payload: UpdatedEvent{}},
+		{Name: TopicDeleted, Payload: DeletedEvent{}},
+		{Name: TopicRunStarted, Payload: RunStartedEvent{}},
+		{Name: TopicRunWaiting, Payload: RunWaitingEvent{}},
+		{Name: TopicRunFinished, Payload: RunFinishedEvent{}},
+	}
 }
 
 // CreatedEvent is the payload for play.created; field names are part of the event contract (ADR 0044).
@@ -50,11 +57,11 @@ type RunRef struct {
 	TrailID     string     `json:"trail_id"`
 	PlayID      string     `json:"play_id"`
 	PlayLabel   string     `json:"play_label"`
-	TargetType  TargetType `json:"target_type"`
+	TargetType  TargetType `json:"target_type" enum:"ticket,doc,interview"`
 	TargetID    string     `json:"target_id"`
 	TargetTitle string     `json:"target_title"`
 	StarterID   string     `json:"starter_id"`
-	Via         Via        `json:"via"`
+	Via         Via        `json:"via" enum:"web,mcp"`
 	WorkspaceID string     `json:"workspace_id,omitempty"`
 }
 
@@ -72,7 +79,7 @@ type RunWaitingEvent struct {
 // RunFinishedEvent is the play.run_finished payload; Outcome is done, failed, or interrupted.
 type RunFinishedEvent struct {
 	RunRef
-	Outcome        TrailState `json:"outcome"`
+	Outcome        TrailState `json:"outcome" enum:"done,failed,interrupted"`
 	LastError      string     `json:"last_error,omitempty"`
 	ReplyMessageID string     `json:"reply_message_id,omitempty"`
 }

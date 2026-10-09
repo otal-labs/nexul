@@ -1,7 +1,6 @@
 package integrations
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -11,48 +10,34 @@ import (
 	"github.com/otal-labs/nexul/internal/eventcatalog"
 )
 
-func TestPublishCatalogSeedsAllTopics(t *testing.T) {
-	f := newFakeData()
-	svc := newTestServiceWithOwner(f, true)
-	require.NoError(t, svc.PublishCatalog(context.Background()))
+func TestPublishCatalog_OnAFreshDatabase_SeedsEveryTopicAsVersionOne(t *testing.T) {
+	schemas := eventcatalog.Schemas()
+	svc := newTestServiceWithOwner(newFakeData(), true)
+	require.NoError(t, svc.PublishCatalog(t.Context(), schemas))
 
-	entries, err := svc.Catalog(context.Background())
+	entries, err := svc.Catalog(t.Context())
 	require.NoError(t, err)
-	require.Len(t, entries, len(catalogSchemas))
-
-	// Every schema must be valid JSON and carry a draft-2020-12 marker.
+	require.Len(t, entries, len(schemas))
 	for _, entry := range entries {
-		_, ok := catalogSchemas[entry.Topic]
-		assert.True(t, ok, "catalog contains unexpected topic %s", entry.Topic)
+		assert.Equal(t, schemas[entry.Topic], entry.Schema)
 		assert.Equal(t, 1, entry.Version)
 		var doc map[string]any
 		require.NoError(t, json.Unmarshal([]byte(entry.Schema), &doc), "invalid schema JSON for %s", entry.Topic)
-		assert.Contains(t, doc, "$schema")
+		assert.Equal(t, "https://json-schema.org/draft/2020-12/schema", doc["$schema"])
 		assert.Equal(t, "object", doc["type"])
 	}
-}
-
-func TestPublishCatalogIdempotent(t *testing.T) {
-	f := newFakeData()
-	svc := newTestServiceWithOwner(f, true)
-	require.NoError(t, svc.PublishCatalog(context.Background()))
-	require.NoError(t, svc.PublishCatalog(context.Background()))
-
-	entries, err := svc.Catalog(context.Background())
-	require.NoError(t, err)
-	assert.Len(t, entries, len(catalogSchemas))
 }
 
 // TestPublishCatalog_AfterASchemaEdit_PublishesTheNewTextAsTheNextVersion guards an upgraded instance: a topic seeded
 // with an older schema text gets the current text as its next version, and an unchanged topic gets no new row.
 func TestPublishCatalog_AfterASchemaEdit_PublishesTheNewTextAsTheNextVersion(t *testing.T) {
-	f := newFakeData()
-	svc := newTestServiceWithOwner(f, true)
+	schemas := map[string]string{"doc.created": `{"type":"object","properties":{"doc":{"type":"object"}}}`, "ticket.created": `{"type":"object"}`}
+	svc := newTestServiceWithOwner(newFakeData(), true)
 	require.NoError(t, svc.cfg.Schemas.Publish(t.Context(), SchemaEntry{Topic: "doc.created", Version: 1, Schema: `{"type":"object"}`}))
-	require.NoError(t, svc.cfg.Schemas.Publish(t.Context(), SchemaEntry{Topic: "ticket.created", Version: 1, Schema: catalogSchemas["ticket.created"]}))
+	require.NoError(t, svc.cfg.Schemas.Publish(t.Context(), SchemaEntry{Topic: "ticket.created", Version: 1, Schema: schemas["ticket.created"]}))
 
-	require.NoError(t, svc.PublishCatalog(t.Context()))
-	require.NoError(t, svc.PublishCatalog(t.Context()))
+	require.NoError(t, svc.PublishCatalog(t.Context(), schemas))
+	require.NoError(t, svc.PublishCatalog(t.Context(), schemas))
 
 	entries, err := svc.Catalog(t.Context())
 	require.NoError(t, err)
@@ -63,28 +48,9 @@ func TestPublishCatalog_AfterASchemaEdit_PublishesTheNewTextAsTheNextVersion(t *
 	require.Len(t, versions["doc.created"], 2, "the old version stays beside the new one")
 	for _, e := range versions["doc.created"] {
 		if e.Version == 2 {
-			assert.Equal(t, catalogSchemas["doc.created"], e.Schema)
+			assert.Equal(t, schemas["doc.created"], e.Schema)
 		}
 	}
 	require.Len(t, versions["ticket.created"], 1, "an unchanged schema publishes no new version")
-	assert.Len(t, entries, len(catalogSchemas)+1)
-}
-
-func TestCatalogSchemasAreCompleteContracts(t *testing.T) {
-	// Guard against an empty catalog regressing the published surface: the
-	// catalog is the frozen public contract (ADR 0044), so it must keep every topic
-	// documented. Additive changes add rows; this floor just catches an empty
-	// wipe.
-	assert.GreaterOrEqual(t, len(catalogSchemas), 20)
-}
-
-func TestCatalogSchemasCoverEveryPublishedTopic(t *testing.T) {
-	// The schema catalog must reach full coverage of eventcatalog's
-	// enumerable topic set, not lag it the way the hand-maintained list did
-	// before (23/41 at the time of ticket 07). A new domain topic with no
-	// schema here fails this test instead of silently shipping undocumented.
-	for _, topic := range eventcatalog.AllTopics() {
-		_, ok := catalogSchemas[topic]
-		assert.True(t, ok, "missing event schema for published topic %s", topic)
-	}
+	assert.Len(t, entries, 3)
 }

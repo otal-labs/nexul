@@ -314,7 +314,7 @@ func wireIntegrationFanout(ctx context.Context, bus *inprocess.Bus, store *stora
 			logger.Error("integration delivery relay stopped", "error", err)
 		}
 	}()
-	if err := svc.integrationsSvc.PublishCatalog(ctx); err != nil {
+	if err := svc.integrationsSvc.PublishCatalog(ctx, eventcatalog.Schemas()); err != nil {
 		fail(fmt.Errorf("publish event schema catalog: %w", err))
 	}
 }

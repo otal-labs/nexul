@@ -25,8 +25,9 @@ describe("ticket-finished default", () => {
 
   test("fails when the event carries no ticket id", async () => {
     const ctx = createMockContext(automation.configSchema, { config: { completedStatusId: "status-done" } });
+    const payload = { ticket: { ...eventFixtures["ticket.finished"].ticket, id: "" } };
 
-    const result = await automation.getHandler("ticket.finished")!(eventFixtures["ticket.finished"], ctx);
+    const result = await automation.getHandler("ticket.finished")!(payload, ctx);
 
     expect(result).toBe(false);
     expect(ctx.calls).toEqual([]);

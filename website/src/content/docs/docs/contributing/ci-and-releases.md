@@ -17,7 +17,7 @@ against seven filters, and each job is gated on its own tag:
 | `web` | `web/**` | `web-test` |
 | `desktop` | `desktop/**` | `desktop-test` |
 | `website` | `website/**` | `website-build` |
-| `sdk` | `sdk/**`, `internal/integrations/catalog.go` | `sdk-test` |
+| `sdk` | `sdk/**`, `internal/eventcatalog/schemas.json` | `sdk-test` |
 | `automations` | `automations/**` | `automations-test` |
 | `native` | `native/**` | `native-test` |
 
