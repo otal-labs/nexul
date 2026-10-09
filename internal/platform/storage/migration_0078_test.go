@@ -37,16 +37,9 @@ INSERT INTO tickets (id, project_id, title, status, created_at, updated_at) VALU
 
 	require.NoError(t, Migrate(db), "0078 and every later migration apply on top, as an upgrade would")
 
-	var ids []string
-	rows, err := db.Query(`SELECT id FROM tickets ORDER BY created_at`)
-	require.NoError(t, err)
-	for rows.Next() {
-		var id string
-		require.NoError(t, rows.Scan(&id))
-		ids = append(ids, id)
-	}
-	require.NoError(t, rows.Close())
-	assert.Equal(t, []string{"t-a", "t-b", "t-c"}, ids)
+	var ids string
+	require.NoError(t, db.QueryRow(`SELECT group_concat(id) FROM (SELECT id FROM tickets ORDER BY created_at)`).Scan(&ids))
+	assert.Equal(t, "t-a,t-b,t-c", ids)
 	assert.NotContains(t, queryPlan(t, db, `SELECT * FROM tickets ORDER BY created_at`), "TEMP B-TREE")
 	assert.NotContains(t, queryPlan(t, db, `SELECT * FROM tickets WHERE project_id = ? ORDER BY created_at`, "p-web"), "TEMP B-TREE")
 }
