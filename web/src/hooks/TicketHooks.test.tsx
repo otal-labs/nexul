@@ -113,19 +113,6 @@ describe("useUpdateTicketStatus", () => {
     expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "done" });
   });
 
-  it("invalidates the board, single-ticket, and scoped-list keys", async () => {
-    vi.mocked(api.patch).mockResolvedValue({ data: { ...ticket, status: TicketStatus.Done } });
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
-    const { result } = renderHook(() => useUpdateTicketStatus(), {
-      wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
-    });
-    await result.current.mutateAsync({ id: "t-1", status: TicketStatus.Done });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTickets"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTicket", "t-1"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTicketsByDoc"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTicketsByProject"] });
-  });
 });
 
 describe("useUpdateTicket", () => {
@@ -136,19 +123,6 @@ describe("useUpdateTicket", () => {
     expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1", { title: "New title", body: "New body" });
   });
 
-  it("invalidates the board, single-ticket, and scoped-list keys", async () => {
-    vi.mocked(api.patch).mockResolvedValue({ data: { ...ticket, title: "New title" } });
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
-    const { result } = renderHook(() => useUpdateTicket(), {
-      wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
-    });
-    await result.current.mutateAsync({ id: "t-1", title: "New title", body: "" });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTickets"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTicket", "t-1"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTicketsByDoc"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTicketsByProject"] });
-  });
 
   it("surfaces the error toast on failure", async () => {
     vi.mocked(api.patch).mockRejectedValue(new Error("boom"));
@@ -161,6 +135,25 @@ describe("useUpdateTicket", () => {
   });
 });
 
+// Each edit hands the server's ticket to the cache, so every view shows it without a refetch.
+type Wrapper = ({ children }: { children: ReactNode }) => ReactNode;
+describe.each([
+  ["useUpdateTicket", async (w: Wrapper) => renderHook(() => useUpdateTicket(), { wrapper: w }).result.current.mutateAsync({ id: "t-1", title: "New title", body: "" })],
+  ["useUpdateTicketStatus", async (w: Wrapper) => renderHook(() => useUpdateTicketStatus(), { wrapper: w }).result.current.mutateAsync({ id: "t-1", status: TicketStatus.Done })],
+])("%s", (_, save) => {
+  it("puts the server's ticket in every cached view", async () => {
+    const saved = { ...ticket, title: "New title", status: TicketStatus.Done, updated_at: "2026-08-02T12:00:05Z" };
+    vi.mocked(api.patch).mockResolvedValue({ data: saved });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const views = [["getTickets"], ["getTicketsByDoc", "doc-1"], ["getTicketsByProject", "p-1"]];
+    for (const key of views) client.setQueryData(key, [ticket]);
+    client.setQueryData(["getTicket", "t-1"], ticket);
+    await save(({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>);
+    for (const key of views) expect(client.getQueryData(key)).toEqual([saved]);
+    expect(client.getQueryData(["getTicket", "t-1"])).toEqual(saved);
+  });
+});
+
 describe("useUpdateTicketPosition", () => {
   it("patches the position", async () => {
     vi.mocked(api.patch).mockResolvedValue({ data: { ...ticket, position: 3 } });
@@ -169,17 +162,16 @@ describe("useUpdateTicketPosition", () => {
     expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/position", { position: 3 });
   });
 
-  it("invalidates the board and single-ticket keys, without a success toast", async () => {
+  it("takes the server's new position into the board without a success toast", async () => {
     vi.mocked(api.patch).mockResolvedValue({ data: { ...ticket, position: 3 } });
     vi.mocked(toast.success).mockClear();
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    client.setQueryData(["getTickets"], [ticket]);
     const { result } = renderHook(() => useUpdateTicketPosition(), {
       wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
     });
     await result.current.mutateAsync({ id: "t-1", position: 3 });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTickets"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTicket", "t-1"] });
+    expect(client.getQueryData<{ position: number }[]>(["getTickets"])?.[0]?.position).toBe(3);
     expect(toast.success).not.toHaveBeenCalled();
   });
 

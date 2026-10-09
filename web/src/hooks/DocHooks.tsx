@@ -39,6 +39,18 @@ export const useFetchDocClarification = (id: string | undefined) =>
     enabled: !!id,
   });
 
+// Lists go stale rather than refetch: only their snippet, which the server derives from the body, can lag.
+export const docChanged = (client: QueryClient, doc: Doc) => {
+  client.setQueryData<Doc>([getDocKey, doc.id], (old) => old && doc);
+  const { title, folder_id, version, archived, locked, updated_at } = doc;
+  client.setQueriesData<DocListItem[]>({ queryKey: [getDocsKey] }, (list) =>
+    list?.some((item) => item.id === doc.id)
+      ? list.map((item) => (item.id === doc.id ? { ...item, title, folder_id, version, archived, locked, updated_at } : item))
+      : list,
+  );
+  void client.invalidateQueries({ queryKey: [getDocsKey], refetchType: "none" });
+};
+
 export const useCreateDoc = () => {
   const client = useQueryClient();
   return useMutation({

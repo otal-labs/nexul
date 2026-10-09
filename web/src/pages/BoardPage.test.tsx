@@ -6,7 +6,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
-import { getTicketsKey } from "@/hooks/TicketHooks";
+import { getTicketsKey } from "@/hooks/TicketCache";
 import { BoardPage } from "@/pages/BoardPage";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { pickOption } from "@/test/pickOption";

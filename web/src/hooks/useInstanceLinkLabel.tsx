@@ -4,7 +4,7 @@ import { getMeKey } from "@/hooks/AuthHooks";
 import { getChatConversationsKey } from "@/hooks/ChatHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
-import { getTicketKey, getTicketsKey } from "@/hooks/TicketHooks";
+import { getTicketKey, getTicketsKey } from "@/hooks/TicketCache";
 import { channelMention, conversationLabel, type Conversation } from "@/models/Chat";
 import { unknownPerson, type Person } from "@/models/Person";
 import { parseTicketKey } from "@/models/Ticket";
