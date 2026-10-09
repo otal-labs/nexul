@@ -1,11 +1,12 @@
 import { Bot } from "lucide-react";
 
+import { personLabel, type Person } from "@nexul/client-core/person";
+
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { microheaderClass } from "@/components/Microheader";
 import { Badge } from "@/components/ui/badge";
 import { MessageHeader } from "@/components/ui/message";
 import type { Message as ChatMessage } from "@/models/Chat";
-import { personLabel, type Person } from "@/models/Person";
 import { cn } from "@/lib/utils";
 import { formatClockTime, formatFullTime } from "@/utils/TimeUtility";
 

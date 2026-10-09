@@ -7,12 +7,13 @@ import Users from "lucide-react-native/icons/users";
 import { Pressable, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 
+import type { Conversation, DMLabelContext } from "@nexul/client-core/chat";
+
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { Text } from "@/components/ui/text";
 import { UnreadBadge } from "@/components/UnreadBadge";
 import { useConversationLabel } from "@/hooks/ChatHooks";
 import { cn } from "@/lib/utils";
-import type { Conversation, DMLabelContext } from "@/models/Chat";
 
 interface ConversationRowProps {
   conversation: Conversation;

@@ -4,10 +4,12 @@ import { Link } from "react-router";
 import type { Room } from "livekit-client";
 import { useShallow } from "zustand/react/shallow";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { ConnectedCall } from "@/components/chat/ConnectedCall";
 import { Button } from "@/components/ui/button";
 import { useCanOpenSection } from "@/hooks/AccessHooks";
-import { channelMention, type Conversation } from "@/models/Chat";
+import { channelMention } from "@/models/Chat";
 import { useVoiceCallStore, type VoiceCallStatus } from "@/stores/voiceCallStore";
 
 interface VoiceCallSectionProps {

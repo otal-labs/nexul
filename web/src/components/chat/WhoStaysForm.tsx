@@ -1,9 +1,11 @@
 import { Controller } from "react-hook-form";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { ChannelPeoplePicker } from "@/components/chat/ChannelPeoplePicker";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { useSetChannelPrivate } from "@/hooks/ChannelHooks";
-import type { ChannelPeopleFormData, Conversation } from "@/models/Chat";
+import type { ChannelPeopleFormData } from "@/models/Chat";
 
 interface WhoStaysFormProps {
   channel: Conversation;

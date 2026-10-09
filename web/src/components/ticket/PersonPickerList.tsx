@@ -1,9 +1,10 @@
 import { useState } from "react";
 
+import { personLabel } from "@nexul/client-core/person";
+
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { Input } from "@/components/ui/input";
 import { useFetchProjectPeople } from "@/hooks/PeopleHooks";
-import { personLabel } from "@/models/Person";
 
 const menuItemClass =
   "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-foreground outline-none transition-colors duration-150 ease-standard hover:bg-accent/60 focus-visible:bg-accent/60";

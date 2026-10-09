@@ -1,6 +1,7 @@
+import { personLabel, type Person } from "@nexul/client-core/person";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import { PersonAvatar } from "@/components/PersonAvatar";
-import { personLabel, type Person } from "@/models/Person";
 
 interface ChannelPersonOptionProps {
   person: Person;

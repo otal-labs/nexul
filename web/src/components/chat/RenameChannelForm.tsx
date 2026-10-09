@@ -1,7 +1,9 @@
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { FormInput } from "@/components/FormInput";
 import { useRenameChannel } from "@/hooks/ChatHooks";
-import type { Conversation, SaveChannelFormData } from "@/models/Chat";
+import type { SaveChannelFormData } from "@/models/Chat";
 
 interface RenameChannelFormProps {
   conversation: Conversation;

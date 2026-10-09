@@ -1,10 +1,12 @@
 import type { Location } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { chatFollower } from "@/hooks/ChatFollower";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
-import type { Conversation, Message } from "@/models/Chat";
+import type { Message } from "@/models/Chat";
 import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 const channel: Conversation = { id: "c-1", workspace_id: "ws-1", kind: "channel", name: "eng", created_by: "u-1", created_at: "", updated_at: "" };

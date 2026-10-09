@@ -3,8 +3,10 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { api, errorMessage } from "@/api/client";
-import { conversationPlayTarget, type Conversation } from "@/models/Chat";
+import { conversationPlayTarget } from "@/models/Chat";
 import type { PlayType } from "@/models/Play";
 import type { QuestionAnswers } from "@/models/Question";
 import { DECISIONS_CHECK_PLAY_ID, isTrailActive, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunFrame, type RunPlace, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";

@@ -1,9 +1,11 @@
 import { Hash } from "lucide-react";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { RowActions } from "@/components/listpane/RowActions";
 import { ChatSidebarRow } from "@/components/sidebar/ChatSidebarRow";
 import { useChannelRowActions } from "@/hooks/useChannelRowActions";
-import { channelMention, type Conversation } from "@/models/Chat";
+import { channelMention } from "@/models/Chat";
 
 interface ChannelSidebarRowProps {
   conversation: Conversation;

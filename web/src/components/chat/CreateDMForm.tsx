@@ -1,13 +1,15 @@
 import { Controller } from "react-hook-form";
 
+import type { Conversation } from "@nexul/client-core/chat";
+import { personLabel } from "@nexul/client-core/person";
+
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useCreateDM } from "@/hooks/ChatHooks";
 import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
-import type { Conversation, SaveDMFormData } from "@/models/Chat";
-import { personLabel } from "@/models/Person";
+import type { SaveDMFormData } from "@/models/Chat";
 
 interface CreateDMFormProps {
   workspaceId: string;

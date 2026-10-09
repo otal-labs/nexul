@@ -4,6 +4,8 @@ import { CircleHelp, LoaderCircle, MessageSquare } from "lucide-react";
 import { memo, useState } from "react";
 import { useNavigate } from "react-router";
 
+import { personLabel } from "@nexul/client-core/person";
+
 import { PersonAvatar } from "@/components/PersonAvatar";
 import type { DropTargetData } from "@/components/board/dragMove";
 import { RunTimer } from "@/components/board/RunTimer";
@@ -19,7 +21,6 @@ import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import { useTicketRunStartedAt, useTicketRunState } from "@/hooks/TrailHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
-import { personLabel } from "@/models/Person";
 import type { Project } from "@/models/Project";
 import { cardPerson, ticketPath, type Ticket } from "@/models/Ticket";
 

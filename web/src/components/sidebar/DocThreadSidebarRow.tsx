@@ -1,11 +1,12 @@
 import { FileText } from "lucide-react";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { RowActions } from "@/components/listpane/RowActions";
 import { ChatSidebarRow } from "@/components/sidebar/ChatSidebarRow";
 import { useFetchDoc } from "@/hooks/DocHooks";
 import { useBotsDialog } from "@/hooks/useBotsDialog";
 import { useHiddenThreads } from "@/hooks/useHiddenThreads";
-import type { Conversation } from "@/models/Chat";
 
 interface DocThreadSidebarRowProps {
   conversation: Conversation;

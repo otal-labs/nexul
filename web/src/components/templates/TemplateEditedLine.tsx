@@ -1,6 +1,7 @@
+import { personLabel } from "@nexul/client-core/person";
+
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { usePerson } from "@/hooks/PeopleHooks";
-import { personLabel } from "@/models/Person";
 import type { Template } from "@/models/Template";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 

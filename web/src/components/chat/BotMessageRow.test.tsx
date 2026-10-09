@@ -5,11 +5,11 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Embed } from "@nexul/client-core/embed";
+import { unknownPerson } from "@nexul/client-core/person";
 
 import { api } from "@/api/client";
 import { MessageRow } from "@/components/chat/MessageRow";
 import type { Message } from "@/models/Chat";
-import { unknownPerson } from "@/models/Person";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn() },

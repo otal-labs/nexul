@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { isNote } from "@nexul/client-core/chat";
+
 import { api } from "@/api/client";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { getAttachmentsKey } from "@/hooks/AttachmentHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
 import { attachmentPath } from "@/models/Attachment";
-import { isNote, type Message } from "@/models/Chat";
+import type { Message } from "@/models/Chat";
 import type { LiveFollower } from "@/lib/live";
 
 export const getNoteTextKey = "getNoteText";

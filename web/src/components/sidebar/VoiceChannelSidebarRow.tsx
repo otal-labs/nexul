@@ -1,10 +1,12 @@
 import { Volume2 } from "lucide-react";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { VoiceOccupantList } from "@/components/chat/VoiceOccupantAvatars";
 import { RowActions } from "@/components/listpane/RowActions";
 import { ChatSidebarRow } from "@/components/sidebar/ChatSidebarRow";
 import { useChannelRowActions } from "@/hooks/useChannelRowActions";
-import { channelMention, type Conversation } from "@/models/Chat";
+import { channelMention } from "@/models/Chat";
 import type { VoiceOccupant } from "@/models/Voice";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 

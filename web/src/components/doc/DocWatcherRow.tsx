@@ -1,6 +1,7 @@
+import { personLabel } from "@nexul/client-core/person";
+
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { usePerson } from "@/hooks/PeopleHooks";
-import { personLabel } from "@/models/Person";
 
 interface DocWatcherRowProps {
   userId: string;

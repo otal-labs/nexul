@@ -1,7 +1,8 @@
+import { personLabel } from "@nexul/client-core/person";
+
 import { BotUrlField } from "@/components/botwebhook/BotUrlField";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { botActivityLine, type Botwebhook } from "@/models/Botwebhook";
-import { personLabel } from "@/models/Person";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
 interface BotUrlBlockProps {

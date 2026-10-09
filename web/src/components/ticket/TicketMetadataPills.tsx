@@ -1,6 +1,8 @@
 import { FileIcon, TagIcon, UserIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 
+import { personLabel } from "@nexul/client-core/person";
+
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
@@ -13,7 +15,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useFetchDoc } from "@/hooks/DocHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
 import type { Category } from "@/models/Category";
-import { personLabel } from "@/models/Person";
 import type { SaveTicketFormData } from "@/models/Ticket";
 import type { TicketType } from "@/models/TicketType";
 

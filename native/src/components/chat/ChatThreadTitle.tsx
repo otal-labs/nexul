@@ -1,12 +1,13 @@
 import { Stack } from "expo-router";
 
+import { conversationLabel } from "@nexul/client-core/chat";
+
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchConversations } from "@/hooks/ChatHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
-import { conversationLabel } from "@/models/Chat";
 import { ticketKey } from "@/models/Ticket";
 
 interface ChatThreadTitleProps {

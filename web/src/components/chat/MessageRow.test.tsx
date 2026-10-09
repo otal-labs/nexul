@@ -4,11 +4,13 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { AuthorKind } from "@nexul/client-core/chat";
+import { unknownPerson } from "@nexul/client-core/person";
+
 import { api } from "@/api/client";
 import { MessageRow } from "@/components/chat/MessageRow";
-import type { AuthorKind, Message } from "@/models/Chat";
+import type { Message } from "@/models/Chat";
 import type { Handoff, HandoffState } from "@/models/Handoff";
-import { unknownPerson } from "@/models/Person";
 import type { Trail } from "@/models/Trail";
 
 vi.mock("@/api/client", () => ({

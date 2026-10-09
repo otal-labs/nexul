@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { BotForm, type BotView } from "@/components/botwebhook/BotForm";
 import { BotsFeed } from "@/components/botwebhook/BotsFeed";
 import { DeletedBotsFold } from "@/components/botwebhook/DeletedBotsFold";
@@ -11,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchBotwebhooks } from "@/hooks/BotwebhookHooks";
 import { BOT_CAP, capNote } from "@/models/Botwebhook";
-import type { Conversation } from "@/models/Chat";
 import { cn } from "@/lib/utils";
 
 interface BotsSectionProps {

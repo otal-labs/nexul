@@ -1,18 +1,14 @@
 import { toast } from "sonner";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { errorMessage } from "@/api/client";
 import { AddChannelPeopleForm } from "@/components/chat/AddChannelPeopleForm";
 import { WhoStaysForm } from "@/components/chat/WhoStaysForm";
 import { useLeaveChannel, useSetChannelPrivate } from "@/hooks/ChannelHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
-import {
-  AddChannelPeopleFormSchema,
-  ChannelPeopleFormSchema,
-  channelMention,
-  type ChannelPeopleFormData,
-  type Conversation,
-} from "@/models/Chat";
+import { AddChannelPeopleFormSchema, ChannelPeopleFormSchema, channelMention, type ChannelPeopleFormData } from "@/models/Chat";
 
 // The private switch, Add people, and Leave of a channel's settings, each behind its own dialog.
 export const useChannelSettingsActions = (channel: Conversation) => {

@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { personLabel, unknownPerson, type PeopleList, type Person } from "@nexul/client-core/person";
+
 import { api } from "@/api/client";
 import { defineQuery } from "@/lib/liveQuery";
 import type { MentionName } from "@/models/Doc";
-import { personLabel, unknownPerson, type PeopleList, type Person } from "@/models/Person";
 
 export const getWorkspacePeopleKey = "getWorkspacePeople";
 

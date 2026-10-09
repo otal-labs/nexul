@@ -1,12 +1,13 @@
 import { Users } from "lucide-react";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { RowActions } from "@/components/listpane/RowActions";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { ChatSidebarRow } from "@/components/sidebar/ChatSidebarRow";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useBotsDialog } from "@/hooks/useBotsDialog";
-import type { Conversation } from "@/models/Chat";
 
 interface DMSidebarRowProps {
   conversation: Conversation;
