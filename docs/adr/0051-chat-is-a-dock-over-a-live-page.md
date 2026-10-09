@@ -24,4 +24,4 @@ conversation because a floating panel over a phone-width page is neither.
 
 The structural lock is placement and behaviour, not the reference's palette — this is
 executed in Mono Console tokens. The borrow and its screenshots are recorded in
-the [Mono Console spec](https://nexul.io/docs/contributing/coding-standards/#design-language--the-mono-console).
+the Mono Console spec (replaced by ADR 0133).

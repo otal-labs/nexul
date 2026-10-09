@@ -33,3 +33,7 @@ The trade-offs, accepted:
 
 Decided 2026-10-08. Supersedes the "no accent" rule recorded in
 `practices/design-language.md`; ADR 0003's monochrome resolution is history.
+
+Amended 2026-10-09: focus left the accent for an ink outline, because an ember
+ring on a field read as a field in error; the decision ledger in
+`practices/design-language.md` records it.
