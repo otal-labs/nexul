@@ -18,7 +18,6 @@ jest.mock("expo-secure-store", () => {
 });
 
 jest.mock("@/api/client", () => ({ api: { get: jest.fn() } }));
-jest.mock("lucide-react-native", () => ({ ArrowDown: () => null }));
 
 const mockAccess: { current: boolean | undefined } = { current: true };
 jest.mock("@/hooks/WorkspaceHooks", () => ({ useAreaAccess: () => (mockAccess.current === undefined ? undefined : () => mockAccess.current) }));
@@ -128,7 +127,7 @@ describe("ContainerLogsScreen", () => {
     mockAccess.current = false;
     await render(<ContainerLogsScreen />);
 
-    expect(screen.getByText("You can't read logs for this stack.")).toBeTruthy();
+    expect(screen.getByText("No access to these logs")).toBeTruthy();
     expect(FakeSocket.all).toHaveLength(0);
   });
 
@@ -137,7 +136,7 @@ describe("ContainerLogsScreen", () => {
     await render(<ContainerLogsScreen />);
     await dropSocket(1006);
 
-    expect(await screen.findByText("You can't read logs for this stack.")).toBeTruthy();
+    expect(await screen.findByText("No access to these logs")).toBeTruthy();
     await advance(60_000);
     expect(FakeSocket.all).toHaveLength(1);
   });
@@ -147,7 +146,8 @@ describe("ContainerLogsScreen", () => {
     await render(<ContainerLogsScreen />);
     await dropSocket(1006);
 
-    expect(await screen.findByText("Runner offline: no runner is connected on machine m1")).toBeTruthy();
+    expect(await screen.findByText("Runner offline")).toBeTruthy();
+    expect(screen.getByText("no runner is connected on machine m1")).toBeTruthy();
     await advance(1_000);
     expect(FakeSocket.all).toHaveLength(2);
   });

@@ -1,26 +1,28 @@
 import { Pressable, View } from "react-native";
 
-import { Text } from "@/components/ui/text";
 import { RelativeTime } from "@/components/RelativeTime";
+import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
-import { deployStatusDot, type Deploy } from "@/models/Stack";
+import { deployStatusDot, deployTitle, type Deploy } from "@/models/Stack";
 
 interface DeployRowProps {
   deploy: Deploy;
+  first: boolean;
   onPress: () => void;
 }
 
-export const DeployRow = ({ deploy, onPress }: DeployRowProps) => (
+export const DeployRow = ({ deploy, first, onPress }: DeployRowProps) => (
   <Pressable
     role="button"
     onPress={onPress}
-    className="min-h-11 flex-row items-center gap-2.5 border-b border-border py-2.5 active:bg-accent"
+    className={cn("min-h-12 flex-row items-center gap-3 px-4 py-2.5 active:bg-accent", !first && "border-t border-border")}
   >
-    <View className={cn("size-2 shrink-0 rounded-full", deployStatusDot(deploy.status))} />
-    <Text className="min-w-0 flex-1 font-mono text-xs" numberOfLines={1}>
-      {deploy.image || "repo build"}
+    <View className={cn("size-2 rounded-full", deployStatusDot(deploy.status))} />
+    <Text className="w-16 text-[13px]">{deploy.status}</Text>
+    <Text className="min-w-0 flex-1 font-mono text-xs text-muted-foreground" numberOfLines={1}>
+      {deployTitle(deploy)}
     </Text>
-    <Text variant="small" className="shrink-0 font-mono text-muted-foreground">
+    <Text className="font-mono text-xs text-muted-foreground">
       <RelativeTime iso={deploy.created_at} />
     </Text>
   </Pressable>

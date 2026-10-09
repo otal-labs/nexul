@@ -70,6 +70,6 @@ describe("DeploysScreen", () => {
     jest.mocked(api.get).mockImplementation((url: string) => (url.startsWith("/api/stacks?") ? Promise.resolve([]) : mockGet(url)));
     await renderScreen();
 
-    expect(await screen.findByText("No stacks yet.")).toBeTruthy();
+    expect(await screen.findByText("Nothing deployed yet")).toBeTruthy();
   });
 });
