@@ -1,33 +1,16 @@
 import type { ThemeRegistration } from 'shiki';
 
-type Ramp = { background: string; text: string; strong: string; muted: string; faint: string };
-
-// Code stays monochrome like the rest of the Mono Console: emphasis comes from the grey ramp, never a hue.
-const mono = (name: string, type: 'dark' | 'light', ramp: Ramp): ThemeRegistration => ({
-	name,
-	type,
-	colors: { 'editor.background': ramp.background, 'editor.foreground': ramp.text },
+// Code is the app's console in both modes: dark, with emphasis from a grey ramp and never a hue, so no token reads as
+// state or as the ember's "act here".
+export const codeTheme: ThemeRegistration = {
+	name: 'nexul-console',
+	type: 'dark',
+	colors: { 'editor.background': '#0b0b0b', 'editor.foreground': '#d4d4d4' },
 	tokenColors: [
-		{ settings: { foreground: ramp.text } },
-		{ scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: ramp.faint, fontStyle: 'italic' } },
-		{ scope: ['keyword', 'storage', 'entity.name.function', 'support.function', 'entity.name.tag'], settings: { foreground: ramp.strong } },
-		{ scope: ['string', 'constant', 'variable.other.constant', 'markup.inline.raw'], settings: { foreground: ramp.muted } },
-		{ scope: ['punctuation', 'meta.brace', 'keyword.operator'], settings: { foreground: ramp.faint } },
+		{ settings: { foreground: '#d4d4d4' } },
+		{ scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#737373', fontStyle: 'italic' } },
+		{ scope: ['keyword', 'storage', 'entity.name.tag', 'entity.name.function', 'support.function', 'entity.name.type'], settings: { foreground: '#f5f5f5' } },
+		{ scope: ['string', 'constant', 'variable.other.constant', 'markup.inline.raw'], settings: { foreground: '#a3a3a3' } },
+		{ scope: ['punctuation', 'meta.brace', 'keyword.operator'], settings: { foreground: '#737373' } },
 	],
-});
-
-export const monoDark = mono('mono-console-dark', 'dark', {
-	background: '#111111',
-	text: '#d4d4d4',
-	strong: '#f5f5f5',
-	muted: '#9a9a9a',
-	faint: '#656565',
-});
-
-export const monoLight = mono('mono-console-light', 'light', {
-	background: '#f6f6f6',
-	text: '#2b2b2b',
-	strong: '#0a0a0a',
-	muted: '#656565',
-	faint: '#999999',
-});
+};

@@ -20,8 +20,8 @@ export function SearchDialog(props: SharedProps) {
 
 	return (
 		<Dialog search={search} onSearchChange={setSearch} isLoading={query.isLoading} {...props}>
-			<SearchDialogOverlay />
-			<SearchDialogContent>
+			<SearchDialogOverlay className="site-search-overlay" />
+			<SearchDialogContent className="site-search-dialog">
 				<SearchDialogHeader>
 					<SearchDialogIcon />
 					<SearchDialogInput />

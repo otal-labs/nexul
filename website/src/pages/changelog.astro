@@ -1,4 +1,5 @@
 ---
+import '../styles/pages.css';
 import SiteLayout from '../layouts/SiteLayout.astro';
 import { fetchReleases } from '../lib/releases';
 
@@ -6,39 +7,67 @@ const repo = 'otal-labs/nexul';
 const releases = await fetchReleases(repo);
 const date = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 const archive = (tag: string, ext: string) => `https://github.com/${repo}/archive/refs/tags/${tag}.${ext}`;
+const plural = (n: number) => `${n} ${n === 1 ? 'change' : 'changes'}`;
 ---
 
 <SiteLayout title="Changelog · Nexul" description="Every Nexul release and the pull requests that went into it.">
-	<section class="page-hero release-hero wrap" aria-labelledby="changelog-title">
+	<section class="page-hero releases-hero wrap" aria-labelledby="changelog-title">
 		<p class="eyebrow">Changelog</p>
-		<h1 id="changelog-title">Every release,<br />and what changed<span class="muted">.</span></h1>
+		<h1 id="changelog-title">Every release, and what changed</h1>
 		<p class="page-lede">A beta ships every day that master moves, listing the pull requests merged since the last one. What comes next is on the <a href="/roadmap/">roadmap</a>.</p>
 	</section>
-	<section class="rail-section release-section wrap" aria-label="Releases">
+	<section class="releases wrap" aria-label="Releases">
 		{releases.length === 0 && <p class="release-empty">No releases yet.</p>}
-		<ol class="rail release-rail">
-			{releases.map((release, index) => (
-				<li class="rail-item" id={release.tag}>
-					<span class="rail-dot" data-status={index === 0 ? 'latest' : undefined} aria-hidden="true"></span>
-					<div class="release-gutter">
-						<a class="version-pill" href={`#${release.tag}`}>{release.tag}</a>
-						<time datetime={release.publishedAt.toISOString()}>{date.format(release.publishedAt)}</time>
-						{index === 0 && <span class="rail-status">Latest</span>}
-					</div>
-					<div class="release-meta">
-						{release.sha && <a href={`https://github.com/${repo}/commit/${release.sha}`}>{release.sha.slice(0, 7)}</a>}
-						<a href={archive(release.tag, 'zip')}>zip</a>
-						<a href={archive(release.tag, 'tar.gz')}>tar.gz</a>
-						<a href={release.url}>Downloads <span aria-hidden="true">↗</span></a>
-					</div>
-					{release.changes.length > 0 && (
-						<ul class="release-changes">
-							{release.changes.map((change) => <li>{change.title}<a href={change.url}>#{change.number}</a></li>)}
-						</ul>
-					)}
-					{release.compare && <a class="detail-link" href={release.compare.url}>Compare with {release.compare.previousTag}<span aria-hidden="true">→</span></a>}
-				</li>
-			))}
+		<ol>
+			{releases.map((release, index) => {
+				const product = release.changes.filter((change) => !change.dependency);
+				const dependencies = release.changes.filter((change) => change.dependency);
+				return (
+					<li class="release" id={release.tag}>
+						<details open={index === 0}>
+							<summary>
+								<span class="release-version">{release.tag}</span>
+								{index === 0 && <span class="release-latest">Latest</span>}
+								<span class="release-facts">
+									<time datetime={release.publishedAt.toISOString()}>{date.format(release.publishedAt)}</time>
+									{release.changes.length > 0 && <span class="count">{plural(release.changes.length)}</span>}
+								</span>
+							</summary>
+							<div class="release-body">
+								{product.length > 0 && (
+									<ul class="release-changes">
+										{product.map((change) => <li>{change.title}<a href={change.url}>#{change.number}</a></li>)}
+									</ul>
+								)}
+								{dependencies.length > 0 && <p class="release-group">Dependency updates</p>}
+								{dependencies.length > 0 && (
+									<ul class="release-changes dependencies">
+										{dependencies.map((change) => <li>{change.title}<a href={change.url}>#{change.number}</a></li>)}
+									</ul>
+								)}
+								<div class="release-meta">
+									<a href={`#${release.tag}`} aria-label={`Link to ${release.tag}`}>Link</a>
+									{release.sha && <a href={`https://github.com/${repo}/commit/${release.sha}`} aria-label={`Commit ${release.sha.slice(0, 7)}`}>{release.sha.slice(0, 7)}</a>}
+									<a href={archive(release.tag, 'zip')}>zip</a>
+									<a href={archive(release.tag, 'tar.gz')}>tar.gz</a>
+									<a href={release.url}>Downloads ↗</a>
+									{release.compare && <a href={release.compare.url}>Compare with {release.compare.previousTag} ↗</a>}
+								</div>
+							</div>
+						</details>
+					</li>
+				);
+			})}
 		</ol>
 	</section>
+	<script>
+		// A link to a release opens it: fragment navigation scrolls to a closed <details> but leaves it shut.
+		const openTarget = () => {
+			const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+			const details = target?.querySelector('details');
+			if (details) details.open = true;
+		};
+		addEventListener('hashchange', openTarget);
+		openTarget();
+	</script>
 </SiteLayout>

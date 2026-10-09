@@ -1,37 +1,36 @@
 @import 'tailwindcss';
 @import 'fumadocs-ui/css/lib/default-colors.css';
 @import 'fumadocs-ui/css/preset.css';
-@import '@fontsource-variable/inter';
-@import '@fontsource-variable/jetbrains-mono';
 @import './tokens.css';
 @import './site-header.css';
 
 @theme {
-	--font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
-	--font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
-	/* Fumadocs rounds controls with rounded-lg and cards with rounded-xl; the Mono Console wants 6px and 8px. */
-	--radius-lg: 6px;
-	--radius-xl: 8px;
+	--font-sans: var(--font-sans-stack);
+	--font-mono: var(--font-mono-stack);
+	/* Fumadocs rounds controls with rounded-lg and cards with rounded-xl; the app's controls are 7px and cards 9px. */
+	--radius-md: 7px;
+	--radius-lg: 7px;
+	--radius-xl: 9px;
 }
 
 :root {
 	--fd-banner-height: var(--site-header-height);
-	--docs-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 html {
 	scroll-padding-top: calc(var(--site-header-height) + 3rem);
+	font-feature-settings: 'cv11', 'ss01';
 }
 
-::selection {
-	background: var(--color-fd-foreground);
-	color: var(--color-fd-background);
+body {
+	background: var(--background);
+	-webkit-font-smoothing: antialiased;
 }
 
 /* In the base layer so a component that draws its own focus state (the search input) still wins. */
 @layer base {
 	:focus-visible {
-		outline: 2px solid var(--color-fd-ring);
+		outline: 2px solid var(--focus);
 		outline-offset: 2px;
 	}
 }
@@ -42,9 +41,9 @@ html {
 	left: 16px;
 	z-index: 50;
 	transform: translateY(-150%);
-	border-radius: 6px;
-	background: var(--color-fd-primary);
-	color: var(--color-fd-primary-foreground);
+	border-radius: var(--shape-md);
+	background: var(--brand);
+	color: var(--brand-foreground);
 	padding: 12px 16px;
 }
 
@@ -52,68 +51,197 @@ html {
 	transform: none;
 }
 
-/* sidebar: surface-2, group labels small, items grey, the open page a filled accent row */
+/* Sidebar, in the app sidebar's grammar: on the canvas, microheader groups, muted rows, the open page lifted with an
+   ember edge. */
 
 #nd-sidebar,
-#nd-sidebar-mobile {
-	background: var(--color-fd-surface);
+#nd-sidebar > div {
+	background: var(--background);
 }
 
 :is(#nd-sidebar, #nd-sidebar-mobile) p {
+	margin-top: 1.75rem;
+	font-family: var(--font-mono-stack);
 	font-size: 11px;
 	font-weight: 500;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.12em;
 	text-transform: uppercase;
-	color: var(--color-fd-muted-foreground);
+	color: var(--muted-foreground);
 }
 
-:is(#nd-sidebar, #nd-sidebar-mobile) a {
+:is(#nd-sidebar, #nd-sidebar-mobile) p:first-child {
+	margin-top: 0;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active] {
 	padding-block: 6px;
-	font-size: 13.5px;
+	border-radius: var(--shape-md);
+	font-size: 14px;
+	color: var(--muted-foreground);
+	transition:
+		background-color 150ms var(--ease-standard),
+		color 150ms var(--ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+	:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active='false']:hover {
+		background: color-mix(in oklab, var(--accent) 60%, transparent);
+		color: var(--foreground);
+		transition-duration: 0ms;
+	}
 }
 
 :is(#nd-sidebar, #nd-sidebar-mobile) a[data-active='true'] {
-	background: var(--color-fd-accent);
-	color: var(--color-fd-foreground);
+	background: var(--accent);
+	color: var(--foreground);
 	font-weight: 500;
 }
 
-/* article */
+:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active='true']::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 8px;
+	bottom: 8px;
+	width: 2px;
+	border-radius: 2px;
+	background: var(--brand);
+}
+
+/* The phone drawer is the shared sheet (site-header.css); its scrim is the app's dialog scrim. */
+#nd-sidebar-mobile {
+	inset-inline-end: 8px;
+	max-width: none;
+}
+
+#nd-sidebar-mobile + div,
+div:has(+ #nd-sidebar-mobile) {
+	background: color-mix(in oklab, var(--background) 60%, transparent);
+	-webkit-backdrop-filter: blur(4px);
+	backdrop-filter: blur(4px);
+}
+
+/* The drawer's own close button carries a sidebar glyph; it closes a sheet, so it shows the sheet's close mark. */
+#nd-sidebar-mobile [aria-controls='nd-sidebar-mobile'] svg {
+	visibility: hidden;
+}
+
+#nd-sidebar-mobile [aria-controls='nd-sidebar-mobile'] {
+	width: 44px;
+	height: 44px;
+	background: currentColor;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E") center / 18px no-repeat;
+}
+
+#nd-sidebar-mobile .site-menu-links {
+	padding: 4px 0 0;
+}
+
+/* Page heading: the title in the display face, as the app's page titles. */
+
+.docs-eyebrow {
+	font-family: var(--font-mono-stack);
+	font-size: 12px;
+	color: var(--muted-foreground);
+}
+
+.docs-title {
+	font-size: 28px;
+	text-wrap: balance;
+}
+
+@media (min-width: 768px) {
+	.docs-title {
+		font-size: 32px;
+	}
+}
+
+/* The app's still light field, at half strength and only beside the reading column (the sidebar and the
+   on-this-page rail), so no glow ever sits behind body text. */
+@media (min-width: 1280px) {
+	body::before {
+		content: '';
+		position: fixed;
+		inset: -12%;
+		z-index: -1;
+		pointer-events: none;
+		opacity: 0.5;
+		background:
+			radial-gradient(38% 42% at 86% 10%, var(--field-warm), transparent 72%),
+			radial-gradient(44% 48% at 10% 92%, var(--field-cool), transparent 72%);
+	}
+
+	#nd-sidebar,
+	#nd-sidebar > div {
+		background: transparent;
+	}
+}
+
+/* Article: the app's rich-text body at reading size. */
 
 .prose {
-	--tw-prose-body: var(--color-fd-secondary-foreground);
-	line-height: 1.7;
+	--tw-prose-body: var(--secondary-foreground);
+	--tw-prose-headings: var(--foreground);
+	--tw-prose-bold: var(--foreground);
+	--tw-prose-bullets: var(--muted-foreground);
+	--tw-prose-counters: var(--muted-foreground);
+	--tw-prose-hr: var(--border);
+	line-height: 1.75;
 }
 
 .prose :is(h2, h3, h4) {
 	font-weight: 600;
-	letter-spacing: -0.022em;
+	letter-spacing: -0.02em;
+	line-height: 1.25;
 	text-wrap: balance;
 }
 
-.prose a:not([data-card]) {
-	text-decoration-color: var(--color-fd-muted-foreground);
-	text-underline-offset: 0.2em;
+.prose p {
+	text-wrap: pretty;
+}
+
+/* Links in ink over an ember underline: the ember as text measures 4.3:1 on the light canvas, under the 4.5:1 body text needs. */
+.prose a:not([data-card], .not-prose *) {
+	color: var(--foreground);
+	font-weight: inherit;
+	text-decoration: underline;
+	text-decoration-color: var(--brand);
+	text-decoration-thickness: 1px;
+	text-underline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.prose a:not([data-card], .not-prose *):hover {
+		text-decoration-thickness: 2px;
+	}
 }
 
 .prose :not(pre) > code {
-	border: 1px solid var(--color-fd-border);
-	border-radius: 4px;
+	border: 1px solid var(--border);
+	border-radius: var(--shape-sm);
+	background: var(--muted);
 	padding: 0.0625rem 0.3125rem;
-	font-size: 0.8125em;
+	font-size: 0.85em;
+	font-weight: 400;
 }
 
-/* code: one card-surface block, long lines scroll inside it rather than the page */
+.prose blockquote {
+	border-left: 2px solid color-mix(in oklab, var(--foreground) 25%, transparent);
+	color: var(--muted-foreground);
+	font-style: normal;
+}
+
+/* Code: the app's console, dark on either canvas; long lines scroll inside it rather than the page. */
 
 .prose pre.shiki {
 	overflow-x: auto;
 	margin-block: 1.25em;
-	border: 1px solid var(--color-fd-border);
-	border-radius: 8px;
-	background: var(--color-fd-card);
-	padding-block: 14px;
+	border: 1px solid #232323;
+	border-radius: var(--shape-lg);
+	background: #0b0b0b !important;
+	padding: 14px 0;
 	font-size: 13px;
-	line-height: 1.7;
+	line-height: 1.65;
 }
 
 .prose pre.shiki code {
@@ -123,23 +251,215 @@ html {
 	font-size: inherit;
 }
 
+/* Tables are ruled data, not boxed cells: a hairline under each row, a muted header over a stronger rule. */
+
 .prose table {
 	display: block;
 	overflow-x: auto;
 	font-size: 14px;
+	font-variant-numeric: tabular-nums;
 }
 
-@media (prefers-reduced-motion: reduce) {
-	*,
-	*::before,
-	*::after {
-		animation-duration: 0.01ms !important;
-		transition-duration: 0.01ms !important;
-	}
+.prose thead {
+	border-bottom: 1px solid color-mix(in oklab, var(--foreground) 22%, transparent);
+}
+
+.prose thead th {
+	color: var(--muted-foreground);
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.prose tbody tr {
+	border-bottom: 1px solid var(--border);
+}
+
+.prose :is(th, td) {
+	border: 0;
+	padding: 8px 16px 8px 0;
+	background: none;
+}
+
+/* The on-this-page rail: muted rows, the section in view in ink. */
+
+#nd-toc a {
+	color: var(--muted-foreground);
+}
+
+#nd-toc a[data-active='true'] {
+	color: var(--foreground);
+}
+
+/* Copy page and Edit this page: quiet outline controls. */
+
+[data-copy-page],
+.docs-copy-page {
+	border-color: var(--border) !important;
+	background: transparent !important;
+	color: var(--muted-foreground) !important;
+	border-radius: var(--shape-md) !important;
 }
 
 /* Inside the docs grid the shared header spans the window, above the sidebar and the table of contents. */
 #nd-docs-layout .site-header {
 	position: fixed;
 	inset-inline: 0;
+}
+
+/* The docs home: one card per page, the app's card on the canvas. */
+
+.docs-group-label {
+	font-family: var(--font-mono-stack);
+	font-size: 11px;
+	font-weight: 500;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--muted-foreground);
+}
+
+.doc-card {
+	box-shadow:
+		inset 0 1px 0 0 var(--panel-highlight),
+		0 0 0 1px var(--panel-ring),
+		var(--shadow-card);
+	transition: background-color 150ms var(--ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.doc-card:hover {
+		background: color-mix(in oklab, var(--card) 92%, var(--foreground));
+	}
+}
+
+/* Search: the app's command palette surface, hung at 14% of the viewport so a changing result count only moves its foot. */
+
+.site-search-dialog {
+	border: 1px solid transparent !important;
+	border-radius: var(--shape-xl) !important;
+	background: color-mix(in oklab, var(--popover) 88%, transparent) !important;
+	-webkit-backdrop-filter: blur(24px) saturate(1.4);
+	backdrop-filter: blur(24px) saturate(1.4);
+	box-shadow:
+		inset 0 1px 0 0 var(--panel-highlight),
+		0 0 0 1px var(--panel-ring),
+		var(--shadow-overlay) !important;
+}
+
+.site-search-dialog > * {
+	border-color: var(--border) !important;
+}
+
+@media (min-width: 768px) {
+	.site-search-dialog {
+		top: 14vh !important;
+	}
+}
+
+
+/* Motion. The drawer is the phone menu's sheet on the same clock (site-header.css); Radix waits for these keyframes
+   before it unmounts the drawer. Search opens on the app's dialog clock from a pointer and at once from a key. */
+
+@keyframes sheet-in {
+	from {
+		opacity: 0;
+		transform: translateX(calc(100% + 8px));
+	}
+}
+
+@keyframes sheet-out {
+	to {
+		opacity: 0;
+		transform: translateX(calc(100% + 8px));
+	}
+}
+
+@keyframes overlay-in {
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes overlay-out {
+	to {
+		opacity: 0;
+	}
+}
+
+@keyframes dialog-in {
+	from {
+		opacity: 0;
+		transform: translateY(6px) scale(0.97);
+	}
+}
+
+@keyframes dialog-out {
+	to {
+		opacity: 0;
+		transform: scale(0.98);
+	}
+}
+
+#nd-sidebar-mobile[data-state='open'] {
+	animation: sheet-in 300ms var(--ease-drawer) both;
+}
+
+#nd-sidebar-mobile[data-state='closed'] {
+	animation: sheet-out 220ms var(--ease-out) both;
+}
+
+div:has(+ #nd-sidebar-mobile)[data-state='open'] {
+	animation: overlay-in 300ms var(--ease-drawer) both;
+}
+
+div:has(+ #nd-sidebar-mobile)[data-state='closed'] {
+	animation: overlay-out 220ms var(--ease-out) both;
+}
+
+.site-search-dialog[data-state='open'] {
+	animation: dialog-in 220ms var(--ease-out) both;
+}
+
+.site-search-dialog[data-state='closed'] {
+	animation: dialog-out 150ms var(--ease-out) both;
+}
+
+.site-search-overlay[data-state='open'] {
+	animation: overlay-in 220ms var(--ease-out) both;
+}
+
+.site-search-overlay[data-state='closed'] {
+	animation: overlay-out 150ms var(--ease-out) both;
+}
+
+:root[data-input='key'] :is(#nd-sidebar-mobile, div:has(+ #nd-sidebar-mobile), .site-search-dialog, .site-search-overlay) {
+	animation: none;
+}
+
+/* Reduced motion: everything Fumadocs moves lands at its end state; the overlays above keep a 150ms fade. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0ms;
+		transition-duration: 0ms;
+	}
+
+	#nd-sidebar-mobile[data-state='open'],
+	div:has(+ #nd-sidebar-mobile)[data-state='open'],
+	.site-search-dialog[data-state='open'],
+	.site-search-overlay[data-state='open'] {
+		animation: overlay-in 150ms var(--ease-standard) both;
+	}
+
+	#nd-sidebar-mobile[data-state='closed'],
+	div:has(+ #nd-sidebar-mobile)[data-state='closed'],
+	.site-search-dialog[data-state='closed'],
+	.site-search-overlay[data-state='closed'] {
+		animation: overlay-out 150ms var(--ease-standard) both;
+	}
+
+	:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active],
+	.doc-card {
+		transition: none;
+	}
 }

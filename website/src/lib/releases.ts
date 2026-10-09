@@ -2,6 +2,7 @@ export interface Change {
 	title: string;
 	number: number;
 	url: string;
+	dependency: boolean;
 }
 
 export interface Release {
@@ -22,7 +23,7 @@ interface ApiRelease {
 	body: string | null;
 }
 
-const changeLine = /^\* (.+) by @\S+ in (https:\/\/github\.com\/\S+\/pull\/(\d+))$/;
+const changeLine = /^\* (.+) by @(\S+) in (https:\/\/github\.com\/\S+\/pull\/(\d+))$/;
 const compareLine = /^\*\*Full Changelog\*\*: (https:\/\/github\.com\/\S+\/compare\/(\S+)\.\.\.\S+)$/;
 
 export function parseNotes(body: string): Pick<Release, 'changes' | 'compare'> {
@@ -31,7 +32,7 @@ export function parseNotes(body: string): Pick<Release, 'changes' | 'compare'> {
 	for (const line of body.split(/\r?\n/)) {
 		const change = changeLine.exec(line.trim());
 		if (change) {
-			changes.push({ title: change[1]!, url: change[2]!, number: Number(change[3]) });
+			changes.push({ title: change[1]!, url: change[3]!, number: Number(change[4]), dependency: change[2] === 'dependabot[bot]' });
 			continue;
 		}
 		const link = compareLine.exec(line.trim());
@@ -50,13 +51,19 @@ export function toRelease(api: ApiRelease): Release {
 	};
 }
 
-// ponytail: first 100 releases only; follow the Link header once the list outgrows one page.
+const nextPage = (link: string | null) => link?.match(/<([^>]+)>;\s*rel="next"/)?.[1];
+
 export async function fetchReleases(repo: string): Promise<Release[]> {
 	const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
 	if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-	const response = await fetch(`https://api.github.com/repos/${repo}/releases?per_page=100`, { headers });
-	if (!response.ok) throw new Error(`GET ${repo} releases failed: ${response.status}`);
-	const releases = (await response.json()) as ApiRelease[];
+	const releases: ApiRelease[] = [];
+	let url: string | undefined = `https://api.github.com/repos/${repo}/releases?per_page=100`;
+	while (url) {
+		const response = await fetch(url, { headers });
+		if (!response.ok) throw new Error(`GET ${repo} releases failed: ${response.status}`);
+		releases.push(...((await response.json()) as ApiRelease[]));
+		url = nextPage(response.headers.get('link'));
+	}
 	// phone-v* and android-v* releases are the phone app's; GitHub lists by day then tag text, so sort by publish time.
 	return releases
 		.filter((release) => !release.draft && release.tag_name.startsWith('v'))
