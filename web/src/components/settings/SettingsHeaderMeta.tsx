@@ -5,7 +5,6 @@ import type { YourSettingsSection } from "@/components/you/YourSettingsNav";
 import { useFetchMe, useFetchSettings, useListPATs, useListSessions } from "@/hooks/AuthHooks";
 import { useFetchConnectors } from "@/hooks/ConnectorsHooks";
 import { useFetchExposures, useFetchGateways } from "@/hooks/DnsHooks";
-import { useInstanceUpgrade } from "@/hooks/InstanceUpgradeHooks";
 import { useFetchInvitations } from "@/hooks/InvitationHooks";
 import { useListComputers } from "@/hooks/PairingHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
@@ -65,16 +64,8 @@ const PairingMeta = () => {
 };
 
 const InstanceMeta = () => {
-  const { data } = useInstanceUpgrade();
-  return (
-    <Facts
-      parts={[
-        "Instance-wide",
-        data && <span>Running <span className="font-mono">{data.version}</span></span>,
-        data && `${data.channel} channel`,
-      ]}
-    />
-  );
+  const { data: settings } = useFetchSettings();
+  return <Facts parts={["Instance-wide", settings && <span className="font-mono">{settings.instance_url}</span>]} />;
 };
 
 const TeamMeta = () => {

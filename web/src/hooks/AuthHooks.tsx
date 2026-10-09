@@ -86,8 +86,8 @@ export const useUpdateSettings = () => {
     mutationFn: async (instance_url: string) =>
       (await api.put<InstanceSettings>("/api/auth/settings", { instance_url })).data,
     onSuccess: async () => {
+      // No toast: the card's Save answers, and its row already says new connection tokens use the address.
       await client.invalidateQueries({ queryKey: [getSettingsKey] });
-      toast.success("Instance URL updated. New connection tokens use it.");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

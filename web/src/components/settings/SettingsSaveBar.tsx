@@ -40,7 +40,9 @@ export const SettingsSaveBar = ({ form, dirty, saving, saved, onDiscard, saveLab
         disabled={!dirty && !saved}
       >
         <span className="swap">
-          <span {...(saved ? { "data-off": "" } : {})}>{saveLabel}</span>
+          <span {...(saved ? { "data-off": "" } : {})} aria-hidden={saved}>
+            {saveLabel}
+          </span>
           <span {...(saved ? {} : { "data-off": "" })} aria-hidden={!saved} className="inline-flex items-center gap-1.5">
             {saved && <Check className="pop-in size-4" aria-hidden />}
             Saved
