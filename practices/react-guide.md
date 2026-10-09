@@ -893,8 +893,8 @@ Adding a live topic is four steps in one change:
    could not load.
 3. Run `make live-topics` and commit the regenerated JSON.
 4. Follow it in `liveFrameHandlers.tsx` (patch from the payload) or
-   `livePushTopics.tsx` (invalidate keys), and in the phone's `useLiveEvents`
-   if the phone shows the entity.
+   `livePushTopics.tsx` (invalidate keys), and in the phone query's
+   `refreshes` (`practices/native.md` section 4) if the phone shows the entity.
 
 ---
 
