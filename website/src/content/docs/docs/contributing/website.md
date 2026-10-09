@@ -106,14 +106,30 @@ Verify docs pages at 320, 375, 414, 768, 1024 and 1440px in both color
 schemes, with the phone menu open below 768px.
 
 The homepage shows the product as screenshots of the app running the seeded
-example workspace (Northwind), never a real instance. The sources are
+example workspace (Northwind), never a real instance. Every shot follows one
+feature, passkey sign-in, in its Accounts project, and the step copy narrates
+the same feature, so change both together. The sources are
 `src/assets/home/<name>-<dark|light>.webp`, captured at 1440x900 and 2x in each
-mode with avatar photos blocked so people show their gradient avatars, then
-cropped; `src/components/ProductShot.astro` turns each pair into AVIF and WebP
-at several widths and lets the page's theme pick one. Recapture them when the
-screens they show change, keeping the same crops: the full board for the
-hero, its top-left 480x600 for phones, and 640x480 of the doc, ticket, deploy
-and channel pages for the steps.
+mode, then cropped; `src/components/ProductShot.astro` turns each pair into
+AVIF and WebP at several widths and lets the page's theme pick one. Seeded
+people have logins no GitHub account can have (`bob_nw`), so they show their
+gradient avatars; never capture people whose login could be a real GitHub
+account, because the app shows `github.com/<login>.png` for anyone without a
+picture.
+
+Recapture them when the screens they show change. Set the app's appearance
+for each mode (the app keeps its own, it does not follow the system), dismiss
+the board's interview banner, and keep the crops, given in CSS pixels on the
+1440x900 page:
+
+| Shot | Page | Crop (x, y, width, height) |
+|---|---|---|
+| `board` | the Accounts board | the whole page |
+| `board-narrow` | the same board, for phones | 256, 24, 480, 600 |
+| `doc` | the Passkey sign-in doc | 790, 176, 640, 480 (the Doc tab and the text) |
+| `ticket` | ticket ACC-3 | 580, 25, 640, 480 |
+| `deploy` | the latest accounts-api deploy | 345, 30, 640, 480 |
+| `chat` | #engineering, scrolled to the end | 462, 339, 640, 480 (the bot card and the replies) |
 
 Verify the homepage at 320, 375, 414, 768, 1024 and 1440px in both color
 schemes and with the header's theme toggle, including keyboard navigation and

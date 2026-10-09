@@ -113,25 +113,15 @@
 	height: 18px;
 }
 
-.site-button {
+/* The filled mark reads heavier than the stroked icons beside it, so it is drawn 2px smaller. */
+.site-header .site-github {
 	display: none;
-	align-items: center;
-	height: 32px;
-	padding-inline: 12px;
-	margin-left: 6px;
-	border-radius: var(--shape-md);
-	background: var(--brand);
-	color: var(--brand-foreground) !important;
-	font-size: 13px;
-	font-weight: 500;
-	white-space: nowrap;
-	transition:
-		background-color 150ms var(--ease-standard),
-		transform 150ms var(--ease-out);
+	color: var(--muted-foreground);
 }
 
-.site-button:active {
-	transform: scale(0.97);
+.site-github svg {
+	width: 16px;
+	height: 16px;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -144,10 +134,6 @@
 		background: var(--accent);
 		color: var(--foreground);
 		transition-duration: 0ms;
-	}
-
-	.site-button:hover {
-		background: color-mix(in oklab, var(--brand) 88%, var(--foreground));
 	}
 }
 
@@ -259,7 +245,7 @@
 	padding: 4px 8px 12px;
 }
 
-.site-menu-links a:not(.site-button) {
+.site-menu-links a {
 	display: flex;
 	align-items: center;
 	min-height: 44px;
@@ -287,17 +273,17 @@
 	background: var(--brand);
 }
 
-.site-menu-links .site-menu-cta {
-	display: flex;
-	justify-content: center;
-	height: 44px;
-	margin: 10px 0 0;
-	font-size: 14px;
-	text-decoration: none;
+.site-menu-external {
+	gap: 10px;
+}
+
+.site-menu-external svg {
+	width: 16px;
+	height: 16px;
 }
 
 @media (hover: hover) and (pointer: fine) {
-	.site-menu-links a:not(.site-button):hover {
+	.site-menu-links a:hover {
 		background: color-mix(in oklab, var(--accent) 60%, transparent);
 		color: var(--foreground);
 		transition-duration: 0ms;
@@ -311,8 +297,8 @@
 	}
 
 	.site-nav,
-	.site-button {
-		display: flex;
+	.site-header .site-github {
+		display: inline-flex;
 	}
 
 	.site-menu-trigger,
@@ -402,14 +388,9 @@
 	}
 
 	.site-icon-button,
-	.site-button,
 	.site-nav a,
 	.site-menu-links a {
 		transition: none;
-	}
-
-	.site-button:active {
-		transform: none;
 	}
 
 	:root.light .theme-icon-dark,

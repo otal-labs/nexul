@@ -1436,20 +1436,31 @@ schemes, frame strips and 1x and 0.25x recordings. The home page
 site's tokens and adds none.
 
 Showing the product.
-- Real 2x screenshots of the seeded example workspace (Northwind, Atlas
-  Platform), one per scheme, served by `ProductShot.astro` through Astro's
-  image pipeline as AVIF and WebP with width and height set; the page's
-  `.light` or `.dark` class picks the scheme, so the header toggle swaps them.
-  The hero is the board; the four steps are the doc, the ticket, the deploy
-  and a channel's bot cards, each cropped to 640x480 so they show close to
-  1:1 on a desktop. People without a photo show their gradient avatar: the
-  capture blocks avatar photos, so no real face or name ships.
+- Real 2x screenshots of the seeded example workspace (Northwind), one per
+  scheme, served by `ProductShot.astro` through Astro's image pipeline as AVIF
+  and WebP with width and height set; the page's `.light` or `.dark` class
+  picks the scheme, so the header toggle swaps them.
+- Every shot follows one feature, passkey sign-in, in the Accounts project:
+  the hero is its board, and the four steps are its spec, ticket ACC-3, the
+  accounts-api 1.4.0 deploy and the deploy bot's card in #engineering with
+  the team's replies, each cropped to 640x480 so they show close to 1:1 on a
+  desktop. A sign-in feature needs no explaining, and its spec has the edge
+  cases (a lost device, rate limits, the email code fallback) that make the
+  tickets read like real work. Rejected: unrelated records from the busiest
+  project (a runbook, a retry bug, an older deploy, a failed health check),
+  which showed each screen but no thread between them. Passkeys won over
+  sign-in with an email code alone: here the code is the passkey flow's
+  fallback, so one feature carries both.
+- People show their gradient avatar. The seeded logins carry an underscore and
+  a two-letter suffix (`bob_nw`), which no GitHub account can have, so the
+  app's `github.com/<login>.png` fallback finds nothing and no real face
+  ships.
 - The hero shot sits on a field panel (`surface-2` with the light field's
   three glows, the panel ring) and bleeds off its right and bottom edges, the
   screenshot's top-left corner rounded at 9px. Below 768px it switches to a
   480x600 crop of the board's top-left so cards stay legible.
-- Weight: the hero is about 18KB on a phone and 32KB on a 1x desktop; the four
-  lazy step shots add about 60KB on a 1x desktop and 100KB on a 2x phone.
+- Weight: the hero is about 16KB on a phone and 36KB on a 1x desktop; the four
+  lazy step shots add about 65KB on a 1x desktop and 105KB on a 2x phone.
 - Rejected: a muted loop of the app (board, palette, ticket; 85KB at 1x and
   soft on a retina screen, about three times that at 2x, unreadable at 375px,
   motion beside the headline, and the reduced-motion still is the same
@@ -1510,7 +1521,8 @@ with `light-dark()`; shadows, which change geometry between modes, are
 restated for light. The scheme follows the system until the header's toggle
 sets `.light` or `.dark` on `<html>`, which a head script restores before
 first paint. Selection is `brand` at 32%, as in the app. The ember holds the
-app's roles here too: the primary action (Get started), the active nav marker
+app's roles here too: the primary action (the home page's copy button, the
+404's Open the docs), the active nav marker
 (header and docs sidebar), selection, and the link underline.
 
 Fraunces. Docs titles, the 404 and the landing headlines use `.type-display`
@@ -1544,23 +1556,39 @@ hover. Rejected: `brand` text, as the app's prose links (4.3:1 on the light
 canvas, under the 4.5:1 body text needs; it passes only on the app's white
 sheet) and a 2px underline at rest (heavy in a paragraph with several links).
 
-Header. One header on every page: the wordmark, then from 768px Docs,
-Roadmap, Changelog and GitHub, docs search (an icon below 1024px, the field
-from there), the theme toggle and Get started in `brand`. The current page
-is ink with a 2px `brand` edge along the header's foot. Rejected: the
-section nav's `bg-accent` block (read as a button beside Get started) and ink
-text alone (the current page barely differed from the rest). The header is
-the canvas colour with a hairline foot, not frosted: text scrolls under it all
-the time, and nothing may move behind a blur.
+Header. One header on every page: the wordmark, then from 768px Docs, Roadmap
+and Changelog as words, docs search (an icon below 1024px, the field from
+there), GitHub as an icon button and the theme toggle. No button in `brand`:
+the home page's install block is the call to action, and a header button
+repeated it on pages where nobody was about to install. The current page is
+ink with a 2px `brand` edge along the header's foot. Rejected: the section
+nav's `bg-accent` block (read as a button) and ink text alone (the current
+page barely differed from the rest). The header is the canvas colour with a
+hairline foot, not frosted: text scrolls under it all the time, and nothing
+may move behind a blur.
+
+Icons over words. Well-known destinations and tools are icon-only: GitHub,
+theme, search, menu. Each is a 44px ghost icon button, muted until hovered,
+with an `aria-label` and a native `title` tooltip of the same words. The
+product's own places (Docs, Roadmap, Changelog) stay words, because no icon
+says what they are. A filled brand mark sits 2px smaller (16px) than the
+stroked icons beside it (18px), or it reads heavier. GitHub goes before the
+theme toggle: the toggle is a setting and ends the row. Rejected: GitHub
+after the toggle (the setting landed between two destinations), the GitHub
+icon in the phone bar too (four icons beside the wordmark on a docs page at
+320px; it fit, but the menu already lists it), and the mark in ink (the
+filled shape outweighed every other control).
 
 Phone menu. Below 768px every page shows the wordmark, search on docs pages,
 the theme toggle and a menu button. The menu is one sheet everywhere: the
 app's sheet, frosted, 8px from the right edge at 12px, up to 320px wide, over
 the dialog scrim. On the landing pages it is a `<dialog>` holding Docs,
-Roadmap, Changelog, GitHub and Get started, as tall as its links; on docs
-pages it is the sidebar drawer, the page tree first and the same links at its
-foot. Rows are 44px, the current one `bg-accent` with the `brand` edge; its
-close mark is an X on both.
+Roadmap, Changelog and GitHub, as tall as its links; on docs pages it is the
+sidebar drawer, the page tree first and the same links at its foot. GitHub is
+a row like the others with its mark before the word: in a list of words an
+icon alone would be the one row nobody can read, and a phone has no tooltip.
+Rows are 44px, the current one `bg-accent` with the `brand` edge; its close
+mark is an X on both.
 
 Theme toggle. A 44px ghost icon button showing the mode you are in (moon in
 dark, sun in light). The palette lands in one frame with every colour
