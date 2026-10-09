@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Image, Pressable, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 
+import { EMBED_FIELD_LIMIT, embedCardTone, embedFold, embedFoldLabel, embedTimestamp, httpUrl, type Embed, type EmbedTone } from "@nexul/client-core/embed";
+
 import { DiscordMarkdown } from "@/components/chat/DiscordMarkdown";
 import { EmbedFieldGrid } from "@/components/chat/EmbedFieldGrid";
 import { toneBg, toneIcon, toneVar } from "@/components/chat/EmbedTone";
@@ -11,7 +13,6 @@ import { Text } from "@/components/ui/text";
 import { useBotMediaSource } from "@/hooks/BotMediaHooks";
 import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import { useClockStore } from "@/stores/clockStore";
-import { EMBED_FIELD_LIMIT, embedCardTone, embedFold, embedFoldLabel, embedTimestamp, httpUrl, type Embed, type EmbedTone } from "@/models/Embed";
 import { formatCalendarTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 

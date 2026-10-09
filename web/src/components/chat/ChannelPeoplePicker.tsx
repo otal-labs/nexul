@@ -1,6 +1,8 @@
 import { SearchIcon } from "lucide-react";
 import { useState } from "react";
 
+import { personLabel } from "@nexul/client-core/person";
+
 import { Input } from "@/components/ui/input";
 import { ChannelPersonOption } from "@/components/chat/ChannelPersonOption";
 import { EmptyRow } from "@/components/EmptyRow";
@@ -8,7 +10,6 @@ import { microheaderClass } from "@/components/Microheader";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { personLabel } from "@/models/Person";
 import { cn } from "@/lib/utils";
 
 interface ChannelPeoplePickerProps {

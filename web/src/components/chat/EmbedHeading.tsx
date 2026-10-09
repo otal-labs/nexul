@@ -1,7 +1,8 @@
+import { httpUrl, type Embed, type EmbedTone } from "@nexul/client-core/embed";
+
 import { BotMediaImage } from "@/components/chat/BotMediaImage";
 import { toneIcon, toneText } from "@/components/chat/EmbedTone";
 import { cn } from "@/lib/utils";
-import { httpUrl, type Embed, type EmbedTone } from "@/models/Embed";
 
 const EmbedAuthor = ({ author }: { author: NonNullable<Embed["author"]> }) => {
   const url = httpUrl(author.url);

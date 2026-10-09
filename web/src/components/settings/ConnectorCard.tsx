@@ -1,6 +1,8 @@
 import { Blocks, Cloud, Mic } from "lucide-react";
 import type { ComponentType } from "react";
 
+import { personLabel } from "@nexul/client-core/person";
+
 import { GithubMark } from "@/components/ProviderMarks";
 import { ConnectorAppConfigDialog } from "@/components/settings/ConnectorAppConfigDialog";
 import { ManualConnectorDialog } from "@/components/settings/ManualConnectorDialog";
@@ -10,7 +12,6 @@ import { useHasInstancePermission } from "@/hooks/AccessHooks";
 import { useDisconnectConnector, useStartConnectorOAuth } from "@/hooks/ConnectorsHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
-import { personLabel } from "@/models/Person";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 import type { ConnectorStatus } from "@/models/Connectors";
 

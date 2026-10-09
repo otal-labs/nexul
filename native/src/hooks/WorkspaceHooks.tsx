@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
+import { AREA_PERMISSION, projectPermissions, type Area, type MyWorkspaceInfo } from "@nexul/client-core/permissions";
+
 import { api } from "@/api/client";
 import { defineQuery } from "@/lib/liveQuery";
-import { AREA_PERMISSION, type Area } from "@/models/Access";
-import { projectPermissions, type MyWorkspaceInfo, type Workspace } from "@/models/Workspace";
+import type { Workspace } from "@/models/Workspace";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 export const getWorkspacesKey = "getWorkspaces";

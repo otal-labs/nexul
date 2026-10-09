@@ -3,8 +3,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { VoiceCallSection } from "@/components/chat/VoiceCallSection";
-import type { Conversation } from "@/models/Chat";
 import { useVoiceCallStore, type VoiceCallStatus } from "@/stores/voiceCallStore";
 
 const access = vi.hoisted(() => ({ sections: ["connectors"] as string[] }));

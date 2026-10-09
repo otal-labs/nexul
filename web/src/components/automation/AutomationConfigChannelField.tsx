@@ -1,8 +1,9 @@
 import { Controller, type Control } from "react-hook-form";
 
+import { conversationLabel } from "@nexul/client-core/chat";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFetchConversations } from "@/hooks/ChatHooks";
-import { conversationLabel } from "@/models/Chat";
 import type { AutomationConfigField } from "@/models/Automation";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 

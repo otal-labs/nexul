@@ -2,11 +2,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router";
 import { useShallow } from "zustand/react/shallow";
 
+import { workspaceWidePermissions } from "@nexul/client-core/permissions";
+
 import { workspaceAccess } from "@/hooks/AccessHooks";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { myRoleQuery, useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { workspaceWidePermissions } from "@/models/Permission";
 import { switchWorkspacePath, workspacePath } from "@/models/Workspace";
 
 // The workspaces and the one in view, and a switch that keeps the reader on the same section in the other one.

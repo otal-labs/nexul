@@ -1,9 +1,10 @@
 import { ChevronRight } from "lucide-react";
 
+import { personLabel } from "@nexul/client-core/person";
+
 import { BotAvatar } from "@/components/botwebhook/BotAvatar";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { botActivityLine, type Botwebhook } from "@/models/Botwebhook";
-import { personLabel } from "@/models/Person";
 
 interface BotRowProps {
   bot: Botwebhook;

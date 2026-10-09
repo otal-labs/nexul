@@ -1,12 +1,13 @@
 import { memo } from "react";
 
+import type { Person } from "@nexul/client-core/person";
+
 import { ChatDayDivider } from "@/components/chat/ChatDayDivider";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { playSend } from "@/components/chat/sendMotion";
 import { MessageScrollerItem } from "@/components/ui/message-scroller";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/models/Chat";
-import type { Person } from "@/models/Person";
 import type { TrailBlock } from "@/utils/ThreadTrailUtility";
 
 export type Entrance = "send" | "arrive";

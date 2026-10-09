@@ -1,8 +1,9 @@
 import type { ClipboardEvent } from "react";
 
+import { splitMessageBody, type MessageBodySegment } from "@nexul/client-core/chat";
+
 import { MessageImage } from "@/components/chat/MessageImage";
 import { MessageLink } from "@/components/chat/MessageLink";
-import { splitMessageBody, type MessageBodySegment } from "@/models/Chat";
 import { tokenizeMessageText, type MessageTextPart } from "@/utils/MessageTextUtility";
 
 // Plain text with line breaks kept, each @mention bolded, and http(s) URLs linked; only a bot's text renders markdown.

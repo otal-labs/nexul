@@ -1,4 +1,6 @@
-import type { LiveSocket } from "@/api/ws";
+import type { LiveSocket } from "@nexul/client-core/liveSocket";
+import { personLabel } from "@nexul/client-core/person";
+
 import { DocBodyView } from "@/components/doc/DocBodyView";
 import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
 import { CollabRichTextEditor } from "@/components/doc/collab/CollabRichTextEditor";
@@ -15,7 +17,6 @@ import { usePerson } from "@/hooks/PeopleHooks";
 import { getTicketKey } from "@/hooks/TicketCache";
 import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
-import { personLabel } from "@/models/Person";
 import type { Project } from "@/models/Project";
 import { reporterLabel, type Ticket } from "@/models/Ticket";
 import { effectiveAvatar } from "@/models/User";

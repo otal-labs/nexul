@@ -1,7 +1,8 @@
 import { createContext, useContext } from "react";
 import type { ImageSourcePropType } from "react-native";
 
-import { botMediaPath } from "@/models/Embed";
+import { botMediaPath } from "@nexul/client-core/embed";
+
 import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
 
 // Set around a bot message so its images, however deep, ask the media proxy on that message's behalf.

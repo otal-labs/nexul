@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { embedCardTone, embedFold, embedFoldLabel, fieldTone, moreEmbedsLabel, type Embed, type EmbedTone } from "@/models/Embed";
+import {
+  dropEchoedAuthor,
+  embedCardTone,
+  embedFold,
+  embedFoldLabel,
+  embedTimestamp,
+  fieldTone,
+  httpUrl,
+  moreEmbedsLabel,
+  type Embed,
+  type EmbedTone,
+} from "@nexul/client-core/embed";
 
 const fields = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `f${i}`, value: "v" }));
 
@@ -21,6 +32,32 @@ describe("embedFold", () => {
   it("names the embeds past two", () => {
     expect(moreEmbedsLabel(1)).toBe("Show 1 more embed");
     expect(moreEmbedsLabel(8)).toBe("Show 8 more embeds");
+  });
+});
+
+describe("httpUrl", () => {
+  // The one guard keeping a sender's script or data URL out of a link or an image, on both platforms.
+  it.each<[string, string | undefined]>([
+    ["javascript:alert(document.cookie)", undefined],
+    ["data:image/png;base64,iVBORw0KGgo=", undefined],
+    ["https://", undefined],
+    ["https://example.com/a b", undefined],
+    ["HTTPS://example.com/x.png", "HTTPS://example.com/x.png"],
+    ["http://example.com", "http://example.com"],
+  ])("httpUrl(%j) is %j", (raw, expected) => {
+    expect(httpUrl(raw)).toBe(expected);
+  });
+});
+
+describe("embedTimestamp", () => {
+  it("reads a timestamp without a zone as UTC, as Discord does", () => {
+    expect(embedTimestamp("2026-10-06 21:11:00")).toBe("2026-10-06T21:11:00Z");
+    expect(embedTimestamp("2026-10-06T21:11")).toBe("2026-10-06T21:11Z");
+  });
+
+  it("leaves a timestamp with a zone alone", () => {
+    expect(embedTimestamp("2026-10-06T21:11:00+02:00")).toBe("2026-10-06T21:11:00+02:00");
+    expect(embedTimestamp("2026-10-06T21:11:00.000Z")).toBe("2026-10-06T21:11:00.000Z");
   });
 });
 
@@ -49,5 +86,16 @@ describe("fieldTone", () => {
     ["ghcr.io/example/atlas-api:0.4.11", null],
   ])("%s", (value, tone) => {
     expect(fieldTone(value)).toBe(tone);
+  });
+});
+
+describe("dropEchoedAuthor", () => {
+  it("drops an author that only repeats the bot's name", () => {
+    expect(dropEchoedAuthor({ title: "t", author: { name: "Deployer" } }, "Deployer").author).toBeUndefined();
+  });
+
+  it("keeps an author with a link or an icon", () => {
+    const embed: Embed = { title: "t", author: { name: "Deployer", url: "https://example.com" } };
+    expect(dropEchoedAuthor(embed, "Deployer")).toBe(embed);
   });
 });

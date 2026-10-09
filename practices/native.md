@@ -46,7 +46,11 @@ as written. In particular:
   server state in TanStack Query, cross-screen client state in Zustand,
   derived values in `useMemo`.
 - Imports by full path through the `@/` alias (`native/src`), `import type`
-  for types, no barrels, no `index.ts`.
+  for types, no barrels, no `index.ts`. A module the web runs too is imported
+  from `client-core/` as `@nexul/client-core/<module>` (ADR 0139), never copied:
+  the permission table, chat and embed rules, people, the live socket and the
+  query retry rule. tsconfig's `paths` name it for Metro, which watches the
+  folder, and `jest.config.js` maps it; its tests run once, in the web's job.
 - Naming: `XxxScreen`, `XxxFeed`, `XxxRow`, `XxxHooks.tsx`, `xxxStore.tsx`,
   `src/models/Xxx.tsx` with the interface and its Zod schema together.
 - Enums mirror the backend as string unions, never numeric enums.
@@ -68,7 +72,7 @@ as written. In particular:
   which scrolls with the list. A pushed screen keeps the native bar with the
   back arrow and a short Inter title, and puts the record's own title in a
   `ScreenHeader` in its content, on the plain canvas. Board, Deploys and More's Runners follow the viewer's read
-  permission through `src/models/Access.tsx`, the mirror of the web table; a
+  permission through `@nexul/client-core/permissions`, the web's own table; a
   deep link into one the viewer can't read renders the plain not-found state.
   For a Restricted member (ADR 0097) a tab opens on what they hold in any
   project and a project's own screen on that project's levels
@@ -171,10 +175,17 @@ as written. In particular:
   refetches them, dozens of requests per scroll. `untilPushed` with no topic is
   a type error: nothing would ever refresh it. It claims the listed topics
   cover every change, so it stays opt-in.
+- The socket is `LiveEventsClient` from `@nexul/client-core/liveSocket`, open
+  while the app is in front. After it reconnects every open read refetches,
+  since frames sent while it was down are lost; a return to the foreground is
+  caught up by the focus manager instead. A 4xx is never retried.
 - Chat message frames patch the cached thread in place (`upsertCachedMessage`,
   `markCachedMessageDeleted`, `applyCachedReaction`, declared as `patch`
   refreshes), the same as the web client; a frame that carries the message
-  never downloads the thread page again.
+  never downloads the thread page again. The server's copy of a message sent
+  from the phone takes the optimistic row's id as `client_key`
+  (`upsertMessage`), and the list keys a row by `client_key ?? id`, so the row
+  stays mounted through the confirmation and any later edit.
 - A record's detail query is keyed by its id, or by its key and workspace
   slug when a link opened it. A `record` refresh and mutations reach it
   through `recordQueries(key, id)` from `src/lib/queryClient.ts`, which

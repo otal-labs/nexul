@@ -1,8 +1,9 @@
+import { personLabel } from "@nexul/client-core/person";
+
 import { MemoryVersionRevertButton } from "@/components/memory/MemoryVersionRevertButton";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { cn } from "@/lib/utils";
 import type { MemoryVersion } from "@/models/MemoryVersion";
-import { personLabel } from "@/models/Person";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
 interface MemoryVersionRowProps {

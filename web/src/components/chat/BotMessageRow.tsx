@@ -1,3 +1,5 @@
+import { dropEchoedAuthor } from "@nexul/client-core/embed";
+
 import { BotAvatar } from "@/components/chat/BotAvatar";
 import { DiscordMarkdown } from "@/components/chat/DiscordMarkdown";
 import { EmbedStack } from "@/components/chat/EmbedStack";
@@ -10,7 +12,6 @@ import { Message, MessageAvatar, MessageContent, MessageHeader } from "@/compone
 import { BotMessageIdContext } from "@/hooks/BotMediaHooks";
 import { cn } from "@/lib/utils";
 import type { Message as ChatMessage } from "@/models/Chat";
-import { dropEchoedAuthor } from "@/models/Embed";
 import { formatClockTime, formatFullTime } from "@/utils/TimeUtility";
 
 const BotMessageHeader = ({ message }: { message: ChatMessage }) => (

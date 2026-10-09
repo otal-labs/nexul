@@ -1,7 +1,8 @@
 import { View } from "react-native";
 
+import type { Reaction } from "@nexul/client-core/chat";
+
 import { Text } from "@/components/ui/text";
-import type { Reaction } from "@/models/Chat";
 
 // Reactions read here as emoji and count; adding one happens on the web, phones type emoji from their keyboard.
 export const MessageReactions = ({ reactions }: { reactions: Reaction[] }) => (

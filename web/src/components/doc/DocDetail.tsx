@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import type { LiveSocket } from "@nexul/client-core/liveSocket";
+
 import { DocThreadButton } from "@/components/chat/DocThreadButton";
 import { DocActionsMenu } from "@/components/doc/DocActionsMenu";
 import { DocBodySection } from "@/components/doc/DocBodySection";
@@ -25,7 +27,6 @@ import { useDocView } from "@/hooks/useDocView";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { effectiveAvatar } from "@/models/User";
 import { useSessionStore } from "@/stores/sessionStore";
-import type { LiveSocket } from "@/api/ws";
 import type { Doc } from "@/models/Doc";
 import type { MeResponse } from "@/models/User";
 

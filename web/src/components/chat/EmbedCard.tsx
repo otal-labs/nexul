@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { EMBED_FIELD_LIMIT, embedCardTone, embedFold, embedFoldLabel, type Embed } from "@nexul/client-core/embed";
+
 import { BotMediaImage } from "@/components/chat/BotMediaImage";
 import { DiscordMarkdown } from "@/components/chat/DiscordMarkdown";
 import { EmbedFieldGrid } from "@/components/chat/EmbedFieldGrid";
@@ -8,7 +10,6 @@ import { EmbedHeading } from "@/components/chat/EmbedHeading";
 import { toneBg } from "@/components/chat/EmbedTone";
 import { FoldBar } from "@/components/chat/FoldBar";
 import { cn } from "@/lib/utils";
-import { EMBED_FIELD_LIMIT, embedCardTone, embedFold, embedFoldLabel, type Embed } from "@/models/Embed";
 
 // One embed as a card with its state on the leading edge; a narrow pane stacks the thumbnail on top.
 export const EmbedCard = ({ embed }: { embed: Embed }) => {

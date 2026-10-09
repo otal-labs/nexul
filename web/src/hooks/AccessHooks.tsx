@@ -1,9 +1,10 @@
+import { AREA_PERMISSION, hasPermission, projectPermissions, workspaceWidePermissions, type Area } from "@nexul/client-core/permissions";
+
 import { isInstanceSection, type SettingsSection, visibleSettingsSections } from "@/components/settings/SettingsNav";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { AREA_PERMISSION, INSTANCE_SECTION_PERMISSION, type Area, type InstanceSection, type RouteArea } from "@/models/Access";
-import { hasPermission, projectPermissions, workspaceWidePermissions } from "@/models/Permission";
+import { INSTANCE_SECTION_PERMISSION, type InstanceSection, type RouteArea } from "@/models/Access";
 import type { WorkspaceAccess } from "@/models/Workspace";
 
 // Undefined until permissions first arrive; isFetched, since a failed read refetches as pending and must not blink.

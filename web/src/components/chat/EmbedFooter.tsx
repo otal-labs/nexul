@@ -1,5 +1,6 @@
+import { embedTimestamp, type Embed } from "@nexul/client-core/embed";
+
 import { BotMediaImage } from "@/components/chat/BotMediaImage";
-import { embedTimestamp, type Embed } from "@/models/Embed";
 import { formatCalendarTime, formatFullTime } from "@/utils/TimeUtility";
 
 export const EmbedFooter = ({ embed: { footer, timestamp } }: { embed: Embed }) => {

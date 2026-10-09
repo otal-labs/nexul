@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 
-import { botMediaPath } from "@/models/Embed";
+import { botMediaPath } from "@nexul/client-core/embed";
 
 // Set around a bot message so its images, however deep, ask the media proxy on that message's behalf.
 export const BotMessageIdContext = createContext<string | undefined>(undefined);

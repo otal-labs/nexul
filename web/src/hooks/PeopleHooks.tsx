@@ -1,8 +1,9 @@
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 
+import { unknownPerson, type PeopleList, type Person } from "@nexul/client-core/person";
+
 import { api } from "@/api/client";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { unknownPerson, type PeopleList, type Person } from "@/models/Person";
 import { followEach, refetchHolding, type LiveFollower } from "@/lib/live";
 
 export const getWorkspacePeopleKey = "getWorkspacePeople";

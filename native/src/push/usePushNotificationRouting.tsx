@@ -2,14 +2,14 @@ import { useRouter, type Href, type ImperativeRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
 
+import { AREA_PERMISSION, projectPermissions } from "@nexul/client-core/permissions";
+
 import { api } from "@/api/client";
 import { subjectRoute } from "@/components/inbox/InboxScreen";
 import { getNotificationsKey } from "@/hooks/NotificationHooks";
 import { myRoleQuery } from "@/hooks/WorkspaceHooks";
 import { queryClient } from "@/lib/queryClient";
-import { AREA_PERMISSION } from "@/models/Access";
 import type { Notification } from "@/models/Notification";
-import { projectPermissions } from "@/models/Workspace";
 
 // The Inbox caches one list per workspace and a push can come from any of them; the unscoped list holds them all.
 const findNotification = async (notificationId: string): Promise<Notification | undefined> => {

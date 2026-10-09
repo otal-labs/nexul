@@ -1,10 +1,11 @@
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { ChannelMembersSection } from "@/components/chat/ChannelMembersSection";
 import { PrivateChannelRow } from "@/components/chat/PrivateChannelRow";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useChannelSettingsActions } from "@/hooks/useChannelSettingsActions";
 import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import type { Conversation } from "@/models/Chat";
 import { cn } from "@/lib/utils";
 
 interface ChannelSettingsCardProps {

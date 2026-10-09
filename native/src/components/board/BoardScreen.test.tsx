@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, userEvent } from "@testing-library/react-native";
 
+import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
+
 import { api } from "@/api/client";
 import { BoardScreen } from "@/components/board/BoardScreen";
 import type { Project } from "@/models/Project";
-import type { MyWorkspaceInfo } from "@/models/Workspace";
 import { useBoardStore } from "@/stores/boardStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 

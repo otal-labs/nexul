@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { Awareness, encodeAwarenessUpdate } from "y-protocols/awareness";
 
-import type { LiveSocket } from "@/api/ws";
+import type { LiveSocket } from "@nexul/client-core/liveSocket";
+
 import { fromBase64, toBase64 } from "@/lib/collab/binary";
 import { RelayCollabProvider } from "@/lib/collab/provider";
 

@@ -2,7 +2,9 @@ import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
-import { buildLiveURL, LiveEventsClient, type ServerFrame } from "@/api/events";
+import { LiveEventsClient, type ServerFrame } from "@nexul/client-core/liveSocket";
+
+import { buildLiveURL } from "@/api/events";
 import { getMeKey } from "@/hooks/AuthHooks";
 import { applyRefresh, liveQueries } from "@/lib/liveQuery";
 import type { MeResponse } from "@/models/User";
@@ -46,7 +48,8 @@ export const useLiveEvents = () => {
     const open = () => {
       const token = readSessionToken();
       if (events || !token) return;
-      events = new LiveEventsClient(buildLiveURL(host, token));
+      // Frames sent while it was down are lost, so every open read refetches; the focus manager covers a foreground.
+      events = new LiveEventsClient(buildLiveURL(host, token), { onReconnect: () => void client.invalidateQueries() });
       events.subscribe(dispatch(client));
       events.connect();
     };

@@ -1,10 +1,11 @@
 import { CheckIcon } from "lucide-react";
 
+import { personLabel } from "@nexul/client-core/person";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { cn } from "@/lib/utils";
-import { personLabel } from "@/models/Person";
 
 interface DeveloperStackProps {
   developers: string[];

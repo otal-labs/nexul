@@ -283,6 +283,35 @@ describe("ChatThreadScreen", () => {
     expect(screen.getAllByText("hello from the phone")).toHaveLength(1);
   });
 
+  test("your sent message keeps its row through the server's copy and a later edit of it", async () => {
+    let confirm: (m: Message) => void = () => {};
+    post.mockImplementation((path: string) => {
+      if (path.endsWith("/read")) return Promise.resolve(null);
+      return new Promise((resolve) => (confirm = resolve as (m: Message) => void));
+    });
+    const client = await renderThread();
+    await screen.findByText("newest");
+
+    await userEvent.type(screen.getByLabelText("Message"), "on it");
+    await userEvent.press(screen.getByRole("button", { name: "Send" }));
+    const row = await screen.findByText("on it");
+    await act(async () => confirm(message("m4", "on it", 4, "me")));
+    expect(screen.getByText("on it")).toBe(row);
+
+    const edited = { ...message("m4", "on it, give me 5", 4, "me"), edited_at: "2026-09-28T10:05:00Z" };
+    await act(async () => dispatch(client)({ topic: "chat.message.updated", type: "event", payload: { message: edited } }));
+    expect(screen.getByText("on it, give me 5")).toBe(row);
+  });
+
+  test("a fenced code block shows its code as typed, apart from the text around it", async () => {
+    thread = [message("m1", "try this\n```go\nif err != nil {\n  return err\n}\n```", 1), message("m2", "```make test```", 2)];
+    await renderThread();
+
+    expect(await screen.findByText("if err != nil {\n  return err\n}")).toBeTruthy();
+    expect(screen.getByText("try this")).toBeTruthy();
+    expect(screen.getByText("make test")).toBeTruthy();
+  });
+
   test("a live message event shows in the open thread", async () => {
     const client = await renderThread();
     await screen.findByText("newest");

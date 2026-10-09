@@ -14,12 +14,12 @@ against seven filters, and each job is gated on its own tag:
 | Filter | Paths | Job |
 |---|---|---|
 | `go` | `server/**`, `runner/**`, `internal/**`, root `*.go`, `go.mod`, `go.sum`, `sqlc.yaml`, `.goreleaser.yaml` | `go-test` |
-| `web` | `web/**` | `web-test` |
+| `web` | `web/**`, `client-core/**` | `web-test` |
 | `desktop` | `desktop/**` | `desktop-test` |
 | `website` | `website/**` | `website-build` |
 | `sdk` | `sdk/**`, `internal/eventcatalog/schemas.json` | `sdk-test` |
 | `automations` | `automations/**` | `automations-test` |
-| `native` | `native/**` | `native-test` |
+| `native` | `native/**`, `client-core/**`, `sdk/src/events.generated.ts` | `native-test` |
 
 - **`go-test`** — checks the committed `sqlcgen` output is current
   (`sqlc vet` + `sqlc diff`), builds, vets, lints, validates

@@ -1,14 +1,10 @@
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { CreateChannelForm } from "@/components/chat/CreateChannelForm";
 import { CreateDMForm } from "@/components/chat/CreateDMForm";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
-import {
-  CreateChannelFormSchema,
-  SaveDMFormSchema,
-  type Conversation,
-  type CreateChannelFormData,
-  type SaveDMFormData,
-} from "@/models/Chat";
+import { CreateChannelFormSchema, SaveDMFormSchema, type CreateChannelFormData, type SaveDMFormData } from "@/models/Chat";
 
 // The create dialogs for a channel, a voice channel and a direct message, shared by the chat list and the sidebar.
 export const useNewConversationDialogs = (workspaceId: string, onCreated: (conversation: Conversation) => void) => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { projectPermissions, workspaceWidePermissions, type MyWorkspaceInfo } from "@/models/Permission";
+import { projectPermissions, workspaceWidePermissions, type MyWorkspaceInfo } from "@nexul/client-core/permissions";
 
 const restricted: MyWorkspaceInfo = {
   role_name: "Client",

@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
+import { applyReaction, conversationLabel, upsertMessage, type Conversation, type DMLabelContext, type UnreadCounts } from "@nexul/client-core/chat";
+
 import { api } from "@/api/client";
 import { getMeKey } from "@/hooks/AuthHooks";
 import { useFetchDoc } from "@/hooks/DocHooks";
@@ -8,7 +10,7 @@ import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
 import { defineQuery } from "@/lib/liveQuery";
-import { applyReaction, conversationLabel, type Conversation, type DMLabelContext, type Message, type UnreadCounts } from "@/models/Chat";
+import type { Message } from "@/models/Chat";
 import { ticketKey } from "@/models/Ticket";
 import type { MeResponse } from "@/models/User";
 
@@ -80,14 +82,8 @@ export const useConversationLabel = (conversation: Conversation, dmCtx: DMLabelC
   return conversationLabel(conversation, dmCtx);
 };
 
-// The server copy retires the optimistic row it confirms, whichever of the POST reply or the refetch lands first.
 export const upsertCachedMessage = (client: QueryClient, message: Message) =>
-  client.setQueriesData<Message[]>({ queryKey: [getChatMessagesKey, message.conversation_id] }, (old) => {
-    if (!old) return old;
-    const kept = old.filter((m) => !(m.pending && m.author_id === message.author_id && m.body === message.body));
-    if (kept.some((m) => m.id === message.id)) return kept.map((m) => (m.id === message.id ? message : m));
-    return [...kept, message];
-  });
+  client.setQueriesData<Message[]>({ queryKey: [getChatMessagesKey, message.conversation_id] }, (old) => old && upsertMessage(old, message));
 
 const removeCachedMessage = (client: QueryClient, conversationId: string, messageId: string) =>
   client.setQueriesData<Message[]>({ queryKey: [getChatMessagesKey, conversationId] }, (old) =>

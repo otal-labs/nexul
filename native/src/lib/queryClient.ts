@@ -1,17 +1,11 @@
 import { QueryClient, onlineManager, type Query } from "@tanstack/react-query";
 
+import { retryUnlessClientError } from "@nexul/client-core/queryRetry";
+
 import { ApiError } from "@/api/errors";
 import { networkOnlineListener } from "@/lib/onlineStatus";
 
 onlineManager.setEventListener(networkOnlineListener);
-
-const maxRetries = 3;
-
-// A 4xx is the server's final answer; only network failures and 5xx are worth another attempt.
-const shouldRetry = (failureCount: number, error: unknown) => {
-  if (error instanceof ApiError && error.status >= 400 && error.status < 500) return false;
-  return failureCount < maxRetries;
-};
 
 // A record's detail query is keyed by its id, or by its key when a link opened it; the cached record names it either way.
 export const recordQueries = (key: string, id: string) => ({
@@ -19,4 +13,9 @@ export const recordQueries = (key: string, id: string) => ({
   predicate: (query: Query) => query.queryKey[1] === id || (query.state.data as { id?: unknown } | undefined)?.id === id,
 });
 
-export const queryClient = new QueryClient({ defaultOptions: { queries: { retry: shouldRetry } } });
+// staleTime stays 0: the socket closes in the background, so a query is cached until pushed only by opting in (ADR 0136).
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: (failureCount, error) => retryUnlessClientError(failureCount, error instanceof ApiError ? error.status : undefined) },
+  },
+});

@@ -3,8 +3,9 @@ import { queryOptions, useMutation, useQuery, useQueryClient, type QueryClient }
 import { useLocation, useNavigate, type Location, type NavigateFunction } from "react-router";
 import { toast } from "sonner";
 
+import { hasPermission, projectPermissions, type MyWorkspaceInfo } from "@nexul/client-core/permissions";
+
 import { api, errorMessage } from "@/api/client";
-import { hasPermission, projectPermissions, type MyWorkspaceInfo } from "@/models/Permission";
 import { replaceWorkspaceSlug, type Workspace, type WorkspaceUpdate } from "@/models/Workspace";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { LiveFollower } from "@/lib/live";
