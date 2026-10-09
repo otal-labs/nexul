@@ -15,6 +15,7 @@ holds.
 | `runner/` | The `nexul-runner` binary — connects out to the server over WebSocket and executes builds and deploys on its host. |
 | `internal/` | Every domain package (`internal/<domain>/`) plus `internal/platform/` (eventbus, storage, logging, config) shared by the binaries. |
 | `web/` | The React app served to the browser — Vite, Tailwind, shadcn/ui — talking to the server over the HTTP/JSON gateway and a WebSocket. |
+| `client-core/` | The modules the web app and the phone app both run (permissions, chat and embed rules, the live socket), imported as `@nexul/client-core/<module>`. |
 | `desktop/` | The Electron shell that wraps the served web app for a native-feeling install. |
 | `sdk/` | The TypeScript package automations are written against — client, API client, generated event types, config schema. |
 | `automations/` | The automations host, compiled into the `nexul-automations` binary, that runs the automations placed on it. |
