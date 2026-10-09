@@ -213,6 +213,7 @@ second ambient animation or anything animating layout behind the panels.
 | Loading: the orbit at spinner size | Over the plain spinner and a gradient arc; it ties loading to the empty mark, keeps the ember to progress, and stays one small SVG |
 | Long page titles step down to 24 and 20px and clamp at three lines | Against stepping alone (a sentence-long ticket title still ran six lines at 20px and pushed the body below the fold, and nothing bounds a title's length) and clamping at 28px alone (three lines held about half as many words); the step keeps short titles at full voice and the clamp bounds the rest |
 | Bot embeds as status-edged cards with facts | Against a header strip over hairline key and value rows (scanned well for long values but read as the old table again, nine summary rows tall) and a 2px status bar across the top (the same card, but the bar read as the accent's decoration rather than state); the leading edge is the topology node's status signal reused |
+| List pane placeholder: icon, count and the palette shortcut, compact | Against the icon alone (said nothing about the list) and the full empty-state size with a Fraunces headline (read as an empty page beside a full list) |
 | A doc's first heading that repeats its title stays | The title and the body are separate fields; hiding a matching heading in a collaborative editor would put the caret in invisible text and show readers and writers different docs, so the author's content is shown as written |
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
@@ -255,7 +256,12 @@ needs no permission and lifts the doc into a leading Pinned group kept in the
 browser, and Move to folder after Lock, a submenu of the project's folders with
 the current one checked. The menu takes the meta's place on hover and focus and
 stays on the selected row.
-Group labels are 11px uppercase mono over a hairline. Docs groups its rows by
+Group labels are 11px uppercase mono over a hairline. Before a row is picked, the open pane says
+so with the compact orbit around the list's own icon (the one its sidebar
+link uses), "Select a doc", a muted count of what the list holds ("27 docs
+in Atlas Platform"), and, where the command palette finds these records,
+its shortcut ("Ctrl K to search"); `ListDetailPlaceholder` is the
+reference. Docs groups its rows by
 folder below Pinned, the default folder first and the rest in creation order:
 a folder row is a chevron, a muted lucide `Folder` (`FolderOpen` while open),
 the name in the group-label style, and a muted mono count, and it toggles on
