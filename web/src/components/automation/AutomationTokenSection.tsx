@@ -4,13 +4,13 @@ import { useState } from "react";
 import { AutomationTokenReveal } from "@/components/automation/AutomationTokenReveal";
 import { Microheader } from "@/components/Microheader";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { Button } from "@/components/ui/button";
 import { useMintAutomationToken, useRevokeAutomationToken } from "@/hooks/AutomationHooks";
 import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
-import { cn } from "@/lib/utils";
 import type { Automation } from "@/models/Automation";
-import { formatRelativeTime } from "@/utils/TimeUtility";
+import { formatShortDate } from "@/utils/TimeUtility";
 
 interface AutomationTokenSectionProps {
   automation: Automation;
@@ -50,6 +50,13 @@ export const AutomationTokenSection = ({ automation }: AutomationTokenSectionPro
       id="token"
       title="Token"
       description="How this automation's code signs in, and what it may do."
+      aside={
+        automation.token_prefix && (
+          <SettingsStatus tone={revoked ? "destructive" : "success"}>
+            {revoked && automation.token_revoked_at ? `Revoked ${formatShortDate(automation.token_revoked_at)}` : "Active"}
+          </SettingsStatus>
+        )
+      }
       footer={
         <>
           <p className="text-xs text-muted-foreground">A new token shows once.</p>
@@ -74,11 +81,6 @@ export const AutomationTokenSection = ({ automation }: AutomationTokenSectionPro
             </span>
             <div className="min-w-0">
               <p className="font-mono text-sm">dep_…{automation.token_prefix}</p>
-              <p className={cn("inline-flex items-center gap-1.5 text-xs", revoked ? "text-destructive" : "text-muted-foreground")}>
-                <span className={cn("size-1.5 rounded-full", revoked ? "bg-destructive" : "bg-success")} aria-hidden />
-                {revoked && automation.token_revoked_at && `Revoked ${formatRelativeTime(automation.token_revoked_at)}`}
-                {!revoked && "Active"}
-              </p>
             </div>
           </div>
         )}
