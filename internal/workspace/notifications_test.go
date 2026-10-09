@@ -81,6 +81,19 @@ func (f *fakeNotifRepo) pushItems() []NotificationPushItem {
 	return out
 }
 
+// createdEvents returns every notification.created payload enqueued so far.
+func (f *fakeNotifRepo) createdEvents() []NotificationCreatedEvent {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []NotificationCreatedEvent
+	for _, evt := range f.outbox {
+		if e, ok := evt.Payload.(NotificationCreatedEvent); ok {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
 // topics returns the topics of every outbox event enqueued so far.
 func (f *fakeNotifRepo) topics() []string {
 	f.mu.Lock()
@@ -742,17 +755,18 @@ func TestFanOut_StampsTheSubjectsWorkspace(t *testing.T) {
 	})
 
 	tests := []struct {
-		name   string
-		handle func(context.Context, *NotificationService, eventbus.Event) error
-		topic  string
-		body   map[string]any
+		name    string
+		handle  func(context.Context, *NotificationService, eventbus.Event) error
+		topic   string
+		body    map[string]any
+		project string
 	}{
 		{"ticket.created", HandleTicketCreated, "ticket.created",
-			map[string]any{"ticket": map[string]any{"id": "t-1", "project_id": "p-1", "developer": "alice"}}},
+			map[string]any{"ticket": map[string]any{"id": "t-1", "project_id": "p-1", "developer": "alice"}}, "p-1"},
 		{"ticket.status_changed", HandleTicketStatusChanged, "ticket.status_changed",
-			map[string]any{"ticket": map[string]any{"id": "t-1", "project_id": "p-1", "developer": "alice"}}},
+			map[string]any{"ticket": map[string]any{"id": "t-1", "project_id": "p-1", "developer": "alice"}}, "p-1"},
 		{"play.run_finished", HandlePlayRunFinished, "play.run_finished",
-			map[string]any{"trail_id": "tr-1", "target_type": "ticket", "target_id": "t-1", "starter_id": "u2", "workspace_id": "ws-1", "outcome": "done"}},
+			map[string]any{"trail_id": "tr-1", "target_type": "ticket", "target_id": "t-1", "starter_id": "u2", "workspace_id": "ws-1", "outcome": "done"}, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -762,6 +776,7 @@ func TestFanOut_StampsTheSubjectsWorkspace(t *testing.T) {
 			require.Len(t, repo.notifsFor("u2"), 1)
 			assert.Equal(t, "ws-1", repo.notifsFor("u2")[0].WorkspaceID)
 			assert.Equal(t, []NotificationPushItem{{ID: "evt-1:u2", UserID: "u2", WorkspaceID: "ws-1"}}, repo.pushItems())
+			assert.Equal(t, []NotificationCreatedEvent{{UserIDs: []string{"u2"}, WorkspaceID: "ws-1", ProjectID: tt.project}}, repo.createdEvents(), "the live frame names its recipients and place")
 		})
 	}
 }

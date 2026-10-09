@@ -39,30 +39,33 @@ describe("the chat follower", () => {
 
   it("appends, edits and marks deleted the messages of an open conversation from the frames alone", async () => {
     const client = chat();
-    await followFrame(chatFollower, "chat.message.created", { message: message("m-2") }, client);
+    await followFrame(chatFollower, "chat.message.created", { message: message("m-2"), workspace_id: "ws-1" }, client);
     await followFrame(chatFollower, "chat.message.updated", { message: message("m-2", { body: "edited" }) }, client);
-    await followFrame(chatFollower, "chat.message.deleted", { conversation_id: "c-1", message_id: "m-1", deleted_at: "2026-09-15T00:00:00Z" }, client);
+    await followFrame(chatFollower, "chat.message.deleted", { conversation_id: "c-1", message_id: "m-1", deleted_at: "2026-09-15T00:00:00Z", workspace_id: "ws-1" }, client);
     expect(client.getQueryData<Message[]>(["getChatMessages", "c-1", undefined])?.map((m) => [m.id, m.body, m.deleted_at])).toEqual([
       ["m-1", "m-1", "2026-09-15T00:00:00Z"],
       ["m-2", "edited", undefined],
     ]);
   });
 
-  it("refetches only the unread counts of the workspace holding a message's conversation", async () => {
+  const keys = [["getChatUnread", "ws-1"], ["getChatUnread", "ws-2"], ["getChatConversations", "ws-1"], ["getChatConversations", "ws-2"]];
+
+  it("refetches only the unread counts of a message's workspace when its list holds the conversation", async () => {
     const client = chat();
-    await followFrame(chatFollower, "chat.message.created", { message: message("m-2") }, client);
-    const keys = [["getChatUnread", "ws-1"], ["getChatUnread", "ws-2"], ["getChatConversations", "ws-1"], ["getChatConversations", "ws-2"]];
+    await followFrame(chatFollower, "chat.message.created", { message: message("m-2"), workspace_id: "ws-1" }, client);
     expect(keys.map((key) => isStale(client, key))).toEqual([true, false, false, false]);
   });
 
-  it("refetches every list for a message in a conversation no loaded list holds yet", async () => {
+  it("refetches the list and unread counts of only the message's workspace for a conversation its list does not hold yet", async () => {
     const client = chat();
-    await followFrame(chatFollower, "chat.message.created", { message: message("m-9", { conversation_id: "dm-new" }) }, client);
-    expect([["getChatConversations", "ws-1"], ["getChatConversations", "ws-2"], ["getChatUnread", "ws-2"]].map((key) => isStale(client, key))).toEqual([
-      true,
-      true,
-      true,
-    ]);
+    await followFrame(chatFollower, "chat.message.created", { message: message("m-9", { conversation_id: "dm-new" }), workspace_id: "ws-2" }, client);
+    expect(keys.map((key) => isStale(client, key))).toEqual([false, true, false, true]);
+  });
+
+  it("refetches only the unread counts of a deleted message's workspace", async () => {
+    const client = chat();
+    await followFrame(chatFollower, "chat.message.deleted", { conversation_id: "c-1", message_id: "m-1", deleted_at: "2026-09-15T00:00:00Z", workspace_id: "ws-1" }, client);
+    expect(keys.map((key) => isStale(client, key))).toEqual([true, false, false, false]);
   });
 
   it("drops a deleted conversation from its list, ends its call, and sends its viewer to the chat home", async () => {

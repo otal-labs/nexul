@@ -2,7 +2,9 @@ package tenancy
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +17,8 @@ import (
 // fakeProjects answers where a project lives (projectWorkspace) and what each person holds inside it; a project
 // missing from held is hidden from that person.
 type fakeProjects struct {
-	held map[string]map[string][]string // userID -> projectID -> actions
+	held    map[string]map[string][]string // userID -> projectID -> actions
+	listErr error
 }
 
 func (f fakeProjects) ProjectWorkspace(_ context.Context, projectID string) (string, error) {
@@ -24,6 +27,20 @@ func (f fakeProjects) ProjectWorkspace(_ context.Context, projectID string) (str
 		return "", apperrs.ErrNotFound
 	}
 	return ws, nil
+}
+
+func (f fakeProjects) WorkspaceProjects(_ context.Context, workspaceID string) ([]string, error) {
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	var ids []string
+	for projectID, ws := range projectWorkspace {
+		if ws == workspaceID {
+			ids = append(ids, projectID)
+		}
+	}
+	slices.Sort(ids)
+	return ids, nil
 }
 
 func (f fakeProjects) ProjectPermissions(_ context.Context, userID, projectID string) ([]string, bool) {
@@ -141,6 +158,15 @@ func TestSetEveryProject(t *testing.T) {
 			topics = append(topics, e.Topic)
 		}
 		assert.Equal(t, []string{TopicWorkspaceMemberUpdated, TopicWorkspaceMemberUpdated}, topics)
+		assert.Equal(t, []string{"p-api", "p-web"}, f.repo.events[0].Payload.(MemberEvent).ProjectIDs, "the event names the projects the switch opens or closes")
+	})
+	t.Run("a failed project lookup changes nothing", func(t *testing.T) {
+		f := newAccessFixture(t)
+		f.wsPerms.perms["actor"] = []string{"members:write", "tickets:read"}
+		f.svc.SetProjects(fakeProjects{listErr: errors.New("disk gone")})
+		require.Error(t, f.svc.SetEveryProject(t.Context(), "actor", "ws-1", "bob", EveryProjectNone))
+		assert.False(t, f.repo.restricted["ws-1/bob"])
+		assert.Empty(t, f.repo.events)
 	})
 	t.Run("an unchanged row publishes nothing", func(t *testing.T) {
 		f := newAccessFixture(t)

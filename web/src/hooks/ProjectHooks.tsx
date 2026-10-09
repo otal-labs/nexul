@@ -172,7 +172,8 @@ export const useRemoveProjectRepo = () => {
 
 // Who a manager sees with access to a project follows someone else's Project access moving.
 export const projectFollower: LiveFollower = {
-  "workspace.member.updated": (_payload: unknown, { client }) => client.invalidateQueries({ queryKey: [getProjectAccessKey] }),
+  "workspace.member.updated": ({ project_ids }: { project_ids?: string[] }, { client }) =>
+    Promise.all((project_ids ?? []).map((id) => client.invalidateQueries({ queryKey: [getProjectAccessKey, id], exact: true }))),
   "access.grant.changed": ({ resource_type, resource_id }: { resource_type: string; resource_id: string }, { client }) =>
     client.invalidateQueries({ queryKey: resource_type === "project" ? [getProjectAccessKey, resource_id] : [getProjectAccessKey] }),
 };

@@ -167,10 +167,11 @@ func (s *Service) MoveTicketToCategory(ctx context.Context, ticketID, categoryID
 			return fmt.Errorf("move ticket %s to category %s: %w", ticketID, categoryID, err)
 		}
 	}
-	if err := s.requireOnTicket(ctx, ticketID); err != nil {
+	projectID, err := s.requireOnTicket(ctx, ticketID)
+	if err != nil {
 		return fmt.Errorf("move ticket %s: %w", ticketID, err)
 	}
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicTicketCategoryChanged, Payload: TicketCategoryChangedEvent{TicketID: ticketID, CategoryID: strings.TrimSpace(categoryID)}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicTicketCategoryChanged, Payload: TicketCategoryChangedEvent{TicketID: ticketID, CategoryID: strings.TrimSpace(categoryID), ProjectID: projectID}}
 	if err := s.cats.SetTicketCategory(ctx, ticketID, strings.TrimSpace(categoryID), evt); err != nil {
 		return fmt.Errorf("move ticket %s: %w", ticketID, err)
 	}

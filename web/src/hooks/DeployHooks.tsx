@@ -1,9 +1,9 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import type { Deploy, DeployLogLine } from "@/models/Stack";
-import { refetchHolding, type LiveFollower } from "@/lib/live";
+import type { Deploy, DeployLogLine, DeployStatus } from "@/models/Stack";
+import type { LiveFollower } from "@/lib/live";
 
 export const getDeployKey = "getDeploy";
 export const getDeployLogKey = "getDeployLog";
@@ -34,17 +34,24 @@ export const useCancelDeploy = () => {
   });
 };
 
-// The frame names no stack: the histories holding the deploy refetch, or all of them for a deploy none holds yet.
-export const refetchDeployHistories = (client: QueryClient, queryKey: QueryKey, id: string) => {
-  const holds = (deploys: Deploy[]) => deploys.some((d) => d.id === id);
-  const held = client.getQueriesData<Deploy[]>({ queryKey }).some(([, deploys]) => deploys && holds(deploys));
-  return held ? refetchHolding(client, queryKey, holds) : client.invalidateQueries({ queryKey });
+// A deploy.updated frame: the record's status, or its log, changed (internal/deploy/events.go).
+export interface DeployFrame {
+  id: string;
+  status: DeployStatus;
+  stack_id: string;
+}
+
+// A log batch leaves the history row as it was, so the stack's history refetches only for a new deploy or a new status.
+export const refetchDeployHistory = (client: QueryClient, key: string, { id, status, stack_id }: DeployFrame) => {
+  const queryKey = [key, stack_id];
+  if (client.getQueryData<Deploy[]>(queryKey)?.find((d) => d.id === id)?.status === status) return;
+  return client.invalidateQueries({ queryKey, exact: true });
 };
 
 export const deployFollower: LiveFollower = {
   // Only deploy.updated refetches the record; the runner's topics fire before the deploy domain commits the change.
   // ponytail: whole-log refetch per batch (≤ 4/s); append lines into the cache if logs get large.
-  "deploy.updated": ({ id }: { id: string }, { client }) =>
+  "deploy.updated": ({ id }: DeployFrame, { client }) =>
     Promise.all([
       client.invalidateQueries({ queryKey: [getDeployKey, id], exact: true }),
       client.invalidateQueries({ queryKey: [getDeployLogKey, id], exact: true }),

@@ -129,7 +129,7 @@ describe("the service follower", () => {
 
   it("refetches the deploy history holding a deploy that moved", async () => {
     const client = lists();
-    await followFrame(serviceFollower, "deploy.updated", { id: "d-1", status: "healthy" }, client);
+    await followFrame(serviceFollower, "deploy.updated", { id: "d-1", status: "healthy", stack_id: "svc-1" }, client);
     expect([isStale(client, ["getServiceDeploys", "svc-1"]), isStale(client, ["getServiceDeploys", "svc-2"])]).toEqual([true, false]);
   });
 });

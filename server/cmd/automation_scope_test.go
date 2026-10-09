@@ -49,6 +49,8 @@ INSERT INTO deploys (id, stack_id, service, target, image, status, strategy, cre
 		{"a PR linking nothing is its repository's", "git.pr_merged", map[string]any{"owner": "acme", "repo": "web", "pr": map[string]any{}}, []string{"ws-b"}, false},
 		{"a project stack's deploy is the project's", "deploy.status_changed", map[string]any{"id": "d-b"}, []string{"ws-b"}, false},
 		{"an instance stack's deploy reaches every workspace", "deploy.status_changed", map[string]any{"id": "d-instance"}, nil, true},
+		{"a notice names the workspace whose inbox holds it", "notification.created", map[string]any{"user_ids": []string{"u"}, "workspace_id": "ws-b"}, []string{"ws-b"}, false},
+		{"a notice outside any workspace reaches every workspace", "notification.created", map[string]any{"user_ids": []string{"u"}, "workspace_id": ""}, nil, true},
 		{"a runner event reaches every workspace", "runner.connected", map[string]any{"runner_id": "r"}, nil, true},
 		{"a workspace's canvas change is that workspace's", "topology.updated", map[string]any{"environment": "ws-b", "workspace_id": "ws-b"}, []string{"ws-b"}, false},
 		{"a service registry change reaches nobody", "topology.updated", map[string]any{"environment": "default"}, nil, false},

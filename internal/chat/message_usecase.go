@@ -120,11 +120,11 @@ func (s *Service) PostBotMessage(ctx context.Context, p BotPost) (*Message, erro
 		AuthorName: name, AuthorAvatarURL: strings.TrimSpace(p.AvatarURL), Body: body, Mentions: allowedMentions(body, p.Mentions),
 		Embeds: p.Embeds, Via: strings.TrimSpace(p.Via), CreatedAt: now, UpdatedAt: now,
 	}
-	membersOnly, err := s.MembersOnly(ctx, conversationID)
+	c, err := s.repo.GetConversation(ctx, conversationID)
 	if err != nil {
 		return nil, fmt.Errorf("post bot message to conversation %s: %w", conversationID, err)
 	}
-	if err := s.repo.CreateBotMessage(ctx, m, p.Audit, messageCreated(m, membersOnly)); err != nil {
+	if err := s.repo.CreateBotMessage(ctx, m, p.Audit, messageCreated(m, c)); err != nil {
 		return nil, fmt.Errorf("post bot message to conversation %s: %w", conversationID, err)
 	}
 	return m, nil
@@ -236,11 +236,11 @@ func (s *Service) postMessage(ctx context.Context, conversationID, authorID, bod
 }
 
 func (s *Service) create(ctx context.Context, m *Message) (*Message, error) {
-	membersOnly, err := s.MembersOnly(ctx, m.ConversationID)
+	c, err := s.repo.GetConversation(ctx, m.ConversationID)
 	if err != nil {
 		return nil, fmt.Errorf("post message to conversation %s: %w", m.ConversationID, err)
 	}
-	if err := s.repo.CreateMessage(ctx, m, messageCreated(m, membersOnly)); err != nil {
+	if err := s.repo.CreateMessage(ctx, m, messageCreated(m, c)); err != nil {
 		return nil, fmt.Errorf("post message to conversation %s: %w", m.ConversationID, err)
 	}
 	return m, nil
@@ -272,8 +272,14 @@ func (s *Service) newMessage(conversationID, authorID, body string, kind AuthorK
 	}, nil
 }
 
-func messageCreated(m *Message, membersOnly bool) eventbus.OutboxEvent {
-	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageCreated, Payload: MessageCreatedEvent{Message: *m, MembersOnly: membersOnly}}
+func messageCreated(m *Message, c *Conversation) eventbus.OutboxEvent {
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageCreated, Payload: MessageCreatedEvent{Message: *m, MembersOnly: c.MembersOnly(), WorkspaceID: c.WorkspaceID}}
+}
+
+func messageDeleted(m *Message, c *Conversation, at time.Time) eventbus.OutboxEvent {
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageDeleted, Payload: MessageDeletedEvent{
+		ConversationID: c.ID, MessageID: m.ID, DeletedAt: at, MembersOnly: c.MembersOnly(), WorkspaceID: c.WorkspaceID,
+	}}
 }
 
 // MembersOnly reports whether a conversation is read by its members alone; the server's own seam, so unchecked.
@@ -393,13 +399,12 @@ func (s *Service) DeleteMessage(ctx context.Context, messageID, authorID string)
 	if current.AuthorID != authorID {
 		return fmt.Errorf("%w: only the author may delete this message", apperrs.ErrForbidden)
 	}
-	membersOnly, err := s.MembersOnly(ctx, current.ConversationID)
+	c, err := s.repo.GetConversation(ctx, current.ConversationID)
 	if err != nil {
 		return fmt.Errorf("delete message %s: %w", messageID, err)
 	}
 	now := s.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageDeleted, Payload: MessageDeletedEvent{ConversationID: current.ConversationID, MessageID: messageID, DeletedAt: now, MembersOnly: membersOnly}}
-	if err := s.repo.DeleteMessage(ctx, messageID, now, evt); err != nil {
+	if err := s.repo.DeleteMessage(ctx, messageID, now, messageDeleted(current, c, now)); err != nil {
 		return fmt.Errorf("delete message %s: %w", messageID, err)
 	}
 	return nil

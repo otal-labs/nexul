@@ -35,7 +35,7 @@ func (s *Service) PostNote(ctx context.Context, conversationID, callerID, body s
 		return nil, nil, err
 	}
 	m.AttachmentID = file.ID
-	if err := s.repo.CreateNote(ctx, m, file, messageCreated(m, c.MembersOnly())); err != nil {
+	if err := s.repo.CreateNote(ctx, m, file, messageCreated(m, c)); err != nil {
 		return nil, nil, fmt.Errorf("post note to conversation %s: %w", c.ID, err)
 	}
 	return m, file, nil
@@ -237,8 +237,7 @@ func (s *Service) deleteNote(ctx context.Context, m *Message, callerID string) e
 		}
 	}
 	now := s.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageDeleted, Payload: MessageDeletedEvent{ConversationID: c.ID, MessageID: m.ID, DeletedAt: now, MembersOnly: c.MembersOnly()}}
-	if err := s.repo.DeleteNote(ctx, m, slices.Compact(slices.Sorted(slices.Values(images))), now, evt); err != nil {
+	if err := s.repo.DeleteNote(ctx, m, slices.Compact(slices.Sorted(slices.Values(images))), now, messageDeleted(m, c, now)); err != nil {
 		return fmt.Errorf("delete note %s: %w", m.ID, err)
 	}
 	return nil

@@ -24,6 +24,7 @@ import (
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
+	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 var updateLiveTopics = flag.Bool("update-live-topics", false, "rewrite the browser's copy of the pushed topic list")
@@ -141,8 +142,8 @@ func TestLiveAudience_PlayFramesReachWhoSeesThePlay(t *testing.T) {
 	}
 }
 
-// TestLiveAudience_InstanceAndDeletedTicketFrames: the upgrade card follows instance:read, held in any workspace, and
-// a deleted ticket's title reaches only readers of its project's tickets.
+// TestLiveAudience_InstanceAndDeletedTicketFrames: the upgrade card follows instance:read, held in any workspace,
+// a deleted ticket's title reaches only readers of its project's tickets, and a new notice only its recipients.
 func TestLiveAudience_InstanceAndDeletedTicketFrames(t *testing.T) {
 	f := newPermFixture(t)
 	a := liveAudience{access: f.svc.accessSvc}
@@ -154,6 +155,7 @@ func TestLiveAudience_InstanceAndDeletedTicketFrames(t *testing.T) {
 		{runner.TopicInstanceUpgradeChanged, runner.Upgrade{ID: "upgrade-1", ToVersion: "v0.3.0", Status: runner.UpgradeStatusPending}, map[string]bool{uOwner: true, uSteward: true, uReader: false, uPlain: false, uOutsider: false}},
 		{tickets.TopicDeleted, tickets.DeletedEvent{ID: "t-1", Title: "Login times out", ProjectID: "project-general"}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
 		{tickets.TopicDeleted, tickets.DeletedEvent{ID: "t-1", Title: "Login times out"}, map[string]bool{uOwner: false}},
+		{workspace.TopicNotificationCreated, workspace.NotificationCreatedEvent{UserIDs: []string{uPlain, uReader}, WorkspaceID: "workspace-default"}, map[string]bool{uPlain: true, uReader: true, uOwner: false, uOutsider: false}},
 	}
 	for _, tc := range cases {
 		raw, err := json.Marshal(tc.payload)

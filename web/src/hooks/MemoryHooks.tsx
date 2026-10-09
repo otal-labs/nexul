@@ -8,7 +8,7 @@ import type { InterviewTemplate } from "@/models/InterviewTemplate";
 import type { CreateMemoryFormData, Memory } from "@/models/Memory";
 import type { MemoryVersion } from "@/models/MemoryVersion";
 import type { Project } from "@/models/Project";
-import { isTrailActive, type RunFrame } from "@/models/Trail";
+import { isTrailActive, type RunFrame, type RunPlace } from "@/models/Trail";
 import type { Workspace } from "@/models/Workspace";
 import { followEach, type LiveFollower } from "@/lib/live";
 
@@ -270,12 +270,12 @@ export const memoryFollower: LiveFollower = {
   ...followEach(["interview_answer.saved", "interview_answer.cleared"], ({ project_id }: { project_id: string }, { client }) =>
     refetch(client, [getInterviewAnswersKey, project_id]),
   ),
-  // A finished interview run has written its project's memory and recorded its rounds; the frame names no workspace.
-  "play.run": (run: RunFrame, { client }) =>
+  // A finished interview run has written its project's memory and recorded its rounds.
+  "play.run": (run: RunFrame & RunPlace, { client }) =>
     run.target_type === "interview" &&
     !isTrailActive(run.state) &&
     Promise.all([
-      client.invalidateQueries({ queryKey: [getMemoriesKey, "byWorkspace"] }),
+      refetch(client, [getMemoriesKey, "byWorkspace", run.workspace_id]),
       refetch(client, [getMemoriesKey, "byProject", run.target_id]),
       refetch(client, [getInterviewAnswersKey, run.target_id]),
     ]),

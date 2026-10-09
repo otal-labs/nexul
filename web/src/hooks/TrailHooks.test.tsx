@@ -219,18 +219,19 @@ describe("useFetchActiveTrails / useTicketRunState", () => {
 });
 
 describe("the trail follower", () => {
-  it("writes each run frame into the run store, and refetches the run's views only when its state moves", async () => {
+  it("writes each run frame into the run store, and refetches the run's views and its project's active set only when its state moves", async () => {
     const client = seeded([
       [["getTrails", "ticket", "t-1"], []],
       [["getTrail", "tr-1"], {}],
       [["getActiveTrails", "ticket", "p-1"], {}],
+      [["getActiveTrails", "ticket", "p-2"], {}],
       [["getActiveTrails", "doc", "p-1"], {}],
     ]);
-    const run = { trail_id: "tr-1", play_id: "pl-1", target_type: "ticket", target_id: "t-1", ended_at: null, last_error: "" };
+    const run = { trail_id: "tr-1", play_id: "pl-1", target_type: "ticket", target_id: "t-1", ended_at: null, last_error: "", project_id: "p-1", workspace_id: "ws-1" };
     await followFrame(trailFollower, "play.run", { ...run, state: "running", activity: null }, client);
     expect(usePlayRunStore.getState().activeByTarget["ticket:t-1"]).toBe("tr-1");
-    const keys = [["getTrails", "ticket", "t-1"], ["getTrail", "tr-1"], ["getActiveTrails", "ticket", "p-1"], ["getActiveTrails", "doc", "p-1"]];
-    expect(keys.map((key) => isStale(client, key))).toEqual([true, true, true, false]);
+    const keys = [["getTrails", "ticket", "t-1"], ["getTrail", "tr-1"], ["getActiveTrails", "ticket", "p-1"], ["getActiveTrails", "ticket", "p-2"], ["getActiveTrails", "doc", "p-1"]];
+    expect(keys.map((key) => isStale(client, key))).toEqual([true, true, true, false, false]);
 
     const settled = seeded([[["getTrail", "tr-1"], {}]]);
     const activity = { kind: "tool_call", call_id: "c-1", tool: "Read", summary: "main.go", at: "2026-09-18T10:00:00Z" };

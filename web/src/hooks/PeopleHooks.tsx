@@ -42,6 +42,8 @@ const refetchShowing = (client: QueryClient, userId: string) =>
 interface MemberPayload {
   user_id: string;
   workspace_id: string;
+  // Set on workspace.member.updated: the workspace's projects, whose access the change can move.
+  project_ids?: string[];
 }
 
 export const peopleFollower: LiveFollower = {
@@ -51,7 +53,8 @@ export const peopleFollower: LiveFollower = {
     client.invalidateQueries({ queryKey: [getWorkspacePeopleKey, workspace_id], exact: true }),
   "workspace.member.removed": ({ user_id }: MemberPayload, { client }) => refetchShowing(client, user_id),
   // A role or Restricted change can open or close projects for the member; the pickers offer who may open each.
-  "workspace.member.updated": (_payload: MemberPayload, { client }) => client.invalidateQueries({ queryKey: [getProjectPeopleKey] }),
+  "workspace.member.updated": ({ project_ids }: MemberPayload, { client }) =>
+    Promise.all((project_ids ?? []).map((id) => client.invalidateQueries({ queryKey: [getProjectPeopleKey, id], exact: true }))),
   "access.grant.changed": ({ resource_type, resource_id }: { resource_type: string; resource_id: string }, { client }) =>
     client.invalidateQueries({ queryKey: resource_type === "project" ? [getProjectPeopleKey, resource_id] : [getProjectPeopleKey] }),
 };

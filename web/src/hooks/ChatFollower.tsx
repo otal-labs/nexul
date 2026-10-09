@@ -34,10 +34,16 @@ interface MessagePayload {
   message: Message;
 }
 
+// Created and deleted message frames also name the conversation's workspace (internal/chat/events.go).
+interface MessageCreatedPayload extends MessagePayload {
+  workspace_id: string;
+}
+
 interface MessageDeletedPayload {
   conversation_id: string;
   message_id: string;
   deleted_at: string;
+  workspace_id: string;
 }
 
 // Conversation frames after the created one name the conversation and its workspace (internal/chat/events.go).
@@ -47,16 +53,6 @@ interface ConversationPlace {
 }
 
 const refetch = (client: QueryClient, queryKey: unknown[]) => client.invalidateQueries({ queryKey, exact: true });
-
-// A message frame names no workspace; the conversation lists the viewer has loaded say which one holds it.
-const holdingWorkspace = (client: QueryClient, conversationId: string) =>
-  client
-    .getQueriesData<Conversation[]>({ queryKey: [getChatConversationsKey] })
-    .find(([, list]) => list?.some((c) => c.id === conversationId))?.[0][1] as string | undefined;
-
-// Unread counts follow every message, in the workspace whose list holds its conversation, or every one when none does.
-const refetchUnread = (client: QueryClient, workspaceId: string | undefined) =>
-  client.invalidateQueries({ queryKey: workspaceId ? [getChatUnreadKey, workspaceId] : [getChatUnreadKey], exact: !!workspaceId });
 
 const refetchWorkspace = (client: QueryClient, workspaceId: string) =>
   Promise.all([refetch(client, [getChatConversationsKey, workspaceId]), refetch(client, [getChatUnreadKey, workspaceId])]);
@@ -99,16 +95,17 @@ export const chatFollower: LiveFollower = {
     client.setQueryData<Conversation[]>([getChatConversationsKey, deleted.workspace_id], (list) => list?.filter((c) => c.id !== deleted.conversation_id));
     return refetch(client, [getChatUnreadKey, deleted.workspace_id]);
   },
-  // A message in a conversation no loaded list holds is the viewer's first sight of it, so the lists refetch too.
-  "chat.message.created": (payload: MessagePayload, live) => {
+  // A message in a conversation its workspace's list does not hold yet is the viewer's first sight of it, so that list refetches too.
+  "chat.message.created": (payload: MessageCreatedPayload, live) => {
     followMessage(payload, live);
-    const workspaceId = holdingWorkspace(live.client, payload.message.conversation_id);
-    return Promise.all([refetchUnread(live.client, workspaceId), !workspaceId && live.client.invalidateQueries({ queryKey: [getChatConversationsKey] })]);
+    const listed = live.client.getQueryData<Conversation[]>([getChatConversationsKey, payload.workspace_id])?.some((c) => c.id === payload.message.conversation_id);
+    if (listed) return refetch(live.client, [getChatUnreadKey, payload.workspace_id]);
+    return refetchWorkspace(live.client, payload.workspace_id);
   },
   "chat.message.updated": followMessage,
-  "chat.message.deleted": ({ conversation_id: conversationId, message_id: messageId, deleted_at: deletedAt }: MessageDeletedPayload, { client }) => {
+  "chat.message.deleted": ({ conversation_id: conversationId, message_id: messageId, deleted_at: deletedAt, workspace_id: workspaceId }: MessageDeletedPayload, { client }) => {
     markCachedMessageDeleted(client, conversationId, messageId, deletedAt);
-    return refetchUnread(client, holdingWorkspace(client, conversationId));
+    return refetch(client, [getChatUnreadKey, workspaceId]);
   },
   "chat.agent.stream": (p: AgentStreamPayload) => {
     // An empty non-streaming frame is the pipeline's clear signal, or the bubble spins forever.
