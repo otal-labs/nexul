@@ -7,7 +7,8 @@ import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
-import { CreateServiceForm, emptyServiceForm } from "@/components/service/CreateServiceForm";
+import { CreateServiceForm } from "@/components/service/CreateServiceForm";
+import { emptyServiceForm } from "@/models/Service";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { ServiceFormSchema, type ServiceFormData } from "@/models/Service";
 import { pickOption } from "@/test/pickOption";

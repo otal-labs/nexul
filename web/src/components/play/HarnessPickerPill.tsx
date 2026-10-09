@@ -1,6 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { HarnessComputerField } from "@/components/settings/HarnessComputerField";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
@@ -28,10 +28,9 @@ const HarnessPickerForm = ({ value, onChange }: HarnessPickerPillProps) => {
   const { data: presence } = useFetchPresence();
   const form = useForm<HarnessPick>({ defaultValues: value });
 
-  useEffect(() => {
-    const subscription = form.watch((watched) => onChange(watched as HarnessPick));
-    return () => subscription.unsubscribe();
-  }, [form, onChange]);
+  const computerId = useWatch({ control: form.control, name: "computer_id" });
+
+  useEffect(() => form.subscribe({ formState: { values: true }, callback: ({ values }) => onChange(values) }), [form, onChange]);
 
   return (
     <div className="space-y-3">
@@ -57,7 +56,7 @@ const HarnessPickerForm = ({ value, onChange }: HarnessPickerPillProps) => {
           providerName="provider"
           modelName="model"
           optionsName="model_options"
-          computerId={form.watch("computer_id")}
+          computerId={computerId}
           description="For this run only"
           onPick={(provider, model, options) => {
             form.setValue("provider", provider);

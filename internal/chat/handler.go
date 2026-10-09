@@ -27,12 +27,18 @@ func UserIDFromCtx(ctx context.Context) string {
 
 // Handler adapts the chat use-cases to the HTTP/JSON gateway (ADR 0019); the browser never talks to MCP directly.
 type Handler struct {
-	svc *Service
+	svc     *Service
+	tickets ProjectTickets
 }
 
-// NewHandler wires the chat REST gateway over the given service.
-func NewHandler(svc *Service) *Handler {
-	return &Handler{svc: svc}
+// ProjectTickets lists the tickets of a project the caller may read, so a board asks for its thread markers by project.
+type ProjectTickets interface {
+	TicketIDs(ctx context.Context, projectID string) ([]string, error)
+}
+
+// NewHandler wires the chat REST gateway over the given service and the project lookup the thread markers take.
+func NewHandler(svc *Service, tickets ProjectTickets) *Handler {
+	return &Handler{svc: svc, tickets: tickets}
 }
 
 type createChannelRequest struct {
@@ -264,11 +270,20 @@ func (h *Handler) getOrCreateInterviewThread(w http.ResponseWriter, r *http.Requ
 	httpx.WriteJSON(w, http.StatusOK, c)
 }
 
+// hasTicketThreads takes ticket_ids, or project_id for every ticket in the project, so a board's URL stays one size.
 func (h *Handler) hasTicketThreads(w http.ResponseWriter, r *http.Request) {
 	raw := r.URL.Query().Get("ticket_ids")
 	var ids []string
 	if raw != "" {
 		ids = strings.Split(raw, ",")
+	}
+	if projectID := r.URL.Query().Get("project_id"); projectID != "" {
+		listed, err := h.tickets.TicketIDs(r.Context(), projectID)
+		if err != nil {
+			httpx.WriteError(w, err)
+			return
+		}
+		ids = append(ids, listed...)
 	}
 	out, err := h.svc.HasTicketThreads(r.Context(), ids)
 	if err != nil {

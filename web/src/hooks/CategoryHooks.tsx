@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import { getTicketKey, getTicketsKey } from "@/hooks/TicketHooks";
+import { ticketChanged } from "@/hooks/TicketCache";
 import type { Category } from "@/models/Category";
 
 export const getCategoriesKey = "getCategories";
@@ -95,8 +95,7 @@ export const useMoveTicketToCategory = () => {
     onSuccess: async (_, vars) => {
       if (vars.silent) return;
       await client.invalidateQueries({ queryKey: [getCategoriesKey] });
-      await client.invalidateQueries({ queryKey: [getTicketsKey] });
-      await client.invalidateQueries({ queryKey: [getTicketKey, vars.ticketId] });
+      await ticketChanged(client, vars.ticketId);
       toast.success("Ticket moved");
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -110,8 +109,7 @@ export const useClearTicketCategory = () => {
     onSuccess: async (_, vars) => {
       if (vars.silent) return;
       await client.invalidateQueries({ queryKey: [getCategoriesKey] });
-      await client.invalidateQueries({ queryKey: [getTicketsKey] });
-      await client.invalidateQueries({ queryKey: [getTicketKey, vars.ticketId] });
+      await ticketChanged(client, vars.ticketId);
       toast.success("Ticket uncategorized");
     },
     onError: (error) => toast.error(errorMessage(error)),

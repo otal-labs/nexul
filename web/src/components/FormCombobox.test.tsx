@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { describe, expect, it } from "vitest";
 
 import { FormCombobox } from "@/components/FormCombobox";
@@ -13,10 +13,11 @@ const OPTIONS = [
 
 const Harness = () => {
   const form = useForm<{ project: string }>({ defaultValues: { project: "" } });
+  const project = useWatch({ control: form.control, name: "project" });
   return (
     <div>
       <FormCombobox control={form.control} name="project" label="Project" placeholder="Pick a project" options={OPTIONS} />
-      <output data-testid="value">{form.watch("project")}</output>
+      <output data-testid="value">{project}</output>
     </div>
   );
 };

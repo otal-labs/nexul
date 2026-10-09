@@ -12,7 +12,7 @@ import { TitleTextarea } from "@/components/TitleTextarea";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
-import { getTicketKey } from "@/hooks/TicketHooks";
+import { getTicketKey } from "@/hooks/TicketCache";
 import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import { personLabel } from "@/models/Person";

@@ -4,8 +4,6 @@ import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 
 import { api, errorMessage } from "@/api/client";
-import { useFetchDocsByProject } from "@/hooks/DocHooks";
-import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { conversationPlayTarget, type Conversation } from "@/models/Chat";
 import type { PlayType } from "@/models/Play";
 import type { QuestionAnswers } from "@/models/Question";
@@ -48,26 +46,20 @@ interface ActiveTargets {
   started: Record<string, string>;
 }
 
-// One request per project and target type: every row of a board or list shares the key.
-const useFetchActiveTargets = (targetType: PlayType, projectId: string | undefined, ids: string[]) =>
+// One request per project and target type, named by the project so the URL stays one size however big the board.
+const useFetchActiveTargets = (targetType: PlayType, projectId: string | undefined) =>
   useQuery({
-    queryKey: [getActiveTrailsKey, targetType, projectId, ids],
+    queryKey: [getActiveTrailsKey, targetType, projectId],
     queryFn: async (): Promise<ActiveTargets> => {
-      const { data } = await api.get<Partial<ActiveTargets>>("/api/plays/runs/active", { params: { target_type: targetType, target_ids: ids.join(",") } });
+      const { data } = await api.get<Partial<ActiveTargets>>("/api/plays/runs/active", { params: { target_type: targetType, project_id: projectId } });
       return { active: data.active ?? {}, waiting: data.waiting ?? {}, started: data.started ?? {} };
     },
-    enabled: !!projectId && ids.length > 0,
+    enabled: !!projectId,
   });
 
-export const useFetchActiveTrails = (projectId: string | undefined) => {
-  const { data: tickets } = useFetchTicketsByProject(projectId);
-  return useFetchActiveTargets("ticket", projectId, tickets?.map((t) => t.id) ?? []);
-};
+export const useFetchActiveTrails = (projectId: string | undefined) => useFetchActiveTargets("ticket", projectId);
 
-export const useFetchActiveDocTrails = (projectId: string) => {
-  const { data: docs } = useFetchDocsByProject(projectId);
-  return useFetchActiveTargets("doc", projectId, docs?.map((d) => d.id) ?? []);
-};
+export const useFetchActiveDocTrails = (projectId: string) => useFetchActiveTargets("doc", projectId);
 
 // Errors render inside the run dialog, so no toast here.
 export const useRunPlay = () => {

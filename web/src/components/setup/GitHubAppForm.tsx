@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { AxiosError } from "axios";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { api, errorMessage, joinAPIURL } from "@/api/client";
 import { FormInput } from "@/components/FormInput";
@@ -44,7 +44,7 @@ export const GitHubAppForm = ({ instanceUrl }: GitHubAppFormProps) => {
   });
 
   // Ticker (the Frontend Commandments): Verify lights the rows, then the button turns into Set up instance.
-  const { verified, verifying, verify, outcomeFor } = useTicker(APP_CHECKS, form.watch(), (key, data) =>
+  const { verified, verifying, verify, outcomeFor } = useTicker(APP_CHECKS, useWatch({ control: form.control }), (key, data) =>
     api.post("/api/auth/bootstrap/verify", data, { params: { check: key } }),
   );
 

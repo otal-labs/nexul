@@ -1,14 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { z } from "zod";
-
 import { EmptyRow } from "@/components/EmptyRow";
 import { PermissionCheckRow } from "@/components/access/PermissionCheckRow";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { useFetchPermissionCatalog, useFetchPermissionUsers, useSetPermissions } from "@/hooks/PermissionHooks";
-
-export const PermissionsFormSchema = z.object({});
-
-export type PermissionsFormData = z.infer<typeof PermissionsFormSchema>;
+import type { PermissionsFormData } from "@/models/Permission";
 
 interface PermissionsFormProps {
   resourceType: "doc" | "play";

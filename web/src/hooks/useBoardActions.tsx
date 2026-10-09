@@ -4,7 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { DragMoveAction } from "@/components/board/dragMove";
 import { useClearTicketCategory, useMoveTicketToCategory } from "@/hooks/CategoryHooks";
 import { getProjectStatusesKey, useReorderStatuses } from "@/hooks/StatusHooks";
-import { getTicketsKey, useUpdateTicketPosition, useUpdateTicketStatus } from "@/hooks/TicketHooks";
+import { ticketChanged } from "@/hooks/TicketCache";
+import { useUpdateTicketPosition, useUpdateTicketStatus } from "@/hooks/TicketHooks";
 import { useCreateTicketDialog } from "@/hooks/useCreateTicketDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { SaveCategoryFormSchema, type SaveCategoryFormData } from "@/models/Category";
@@ -85,7 +86,9 @@ export const useBoardActions = ({ projects, selectedProjectIds, projectId }: Use
       } catch {
         // The failing step already toasted; the refetch below restores the server's order.
       }
-      await client.invalidateQueries({ queryKey: [getTicketsKey] });
+      // Every ticket a drop moves sits in the dragged one's lists, so refetching those restores the whole order.
+      const dragged = actions.map((a) => (a.kind === "reorder" ? a.updates[0]?.ticketId : a.ticketId)).find(Boolean);
+      if (dragged) await ticketChanged(client, dragged);
     });
   };
 

@@ -27,17 +27,6 @@ interface CreateTicketFormProps {
   allowOriginUnknown?: boolean;
 }
 
-export const emptyTicketForm = (): SaveTicketFormData => ({
-  title: "",
-  body: "",
-  project_id: "",
-  doc_id: "",
-  developer: "",
-  tester: "",
-  category_id: "",
-  type_id: "",
-});
-
 const resolveActiveProjectId = (projectId: string, defaultProjectId: string, projects: Project[] | undefined) =>
   projectId || defaultProjectId || projects?.[0]?.id;
 

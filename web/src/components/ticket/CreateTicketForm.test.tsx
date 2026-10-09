@@ -10,7 +10,8 @@ import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import { CreateTicketFooter } from "@/components/ticket/CreateTicketFooter";
-import { CreateTicketForm, emptyTicketForm } from "@/components/ticket/CreateTicketForm";
+import { CreateTicketForm } from "@/components/ticket/CreateTicketForm";
+import { emptyTicketForm } from "@/models/Ticket";
 import { ProjectDialogHeader } from "@/components/project/ProjectDialogHeader";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { SaveTicketFormSchema, type SaveTicketFormData } from "@/models/Ticket";

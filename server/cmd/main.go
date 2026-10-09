@@ -29,6 +29,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/version"
+	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/templates"
@@ -252,6 +253,7 @@ var livePushTopics = []string{
 	tickets.TopicDeveloperChanged,
 	tickets.TopicTesterChanged,
 	tickets.TopicFinished,
+	tickets.TopicDeleted,
 	tickets.TopicLinkCreated,
 	tickets.TopicLinkDeleted,
 	workspace.TopicTicketTypeCreated,
@@ -310,6 +312,10 @@ var livePushTopics = []string{
 	roles.TopicUpdated,
 	access.TopicGrantChanged,
 	templates.TopicUpdated,
+	plays.TopicCreated,
+	plays.TopicUpdated,
+	plays.TopicDeleted,
+	runner.TopicInstanceUpgradeChanged,
 }
 
 func fail(err error) {

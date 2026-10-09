@@ -1,6 +1,7 @@
 package plays
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -11,12 +12,18 @@ import (
 
 // RunHandler adapts the run pipeline to the HTTP/JSON gateway (ADR 0019); mounted under /api/plays.
 type RunHandler struct {
-	runner *Runner
+	runner  *Runner
+	targets ProjectTargets
 }
 
-// NewRunHandler wires the run gateway over the given runner.
-func NewRunHandler(r *Runner) *RunHandler {
-	return &RunHandler{runner: r}
+// ProjectTargets lists the tickets or docs of a project the caller may read, so a board asks about its runs by project.
+type ProjectTargets interface {
+	TargetIDs(ctx context.Context, targetType TargetType, projectID string) ([]string, error)
+}
+
+// NewRunHandler wires the run gateway over the given runner and the project lookup the active-runs question takes.
+func NewRunHandler(r *Runner, targets ProjectTargets) *RunHandler {
+	return &RunHandler{runner: r, targets: targets}
 }
 
 type runRequest struct {
@@ -148,7 +155,8 @@ func (h *RunHandler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 // active answers the one batched question per project: which of these targets has a run going, when it started, and
-// which of those runs waits on an answer. ticket_ids alone stays accepted as target_type=ticket (ADR 0082: the HTTP API only grows).
+// which of those runs waits on an answer. project_id names every target in the project; target_ids, and ticket_ids
+// alone as target_type=ticket, stay accepted (ADR 0082: the HTTP API only grows).
 func (h *RunHandler) active(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	targetType, raw := TargetType(q.Get("target_type")), q.Get("target_ids")
@@ -158,6 +166,14 @@ func (h *RunHandler) active(w http.ResponseWriter, r *http.Request) {
 	var ids []string
 	if raw != "" {
 		ids = strings.Split(raw, ",")
+	}
+	if projectID := q.Get("project_id"); projectID != "" {
+		listed, err := h.targets.TargetIDs(r.Context(), targetType, projectID)
+		if err != nil {
+			httpx.WriteError(w, err)
+			return
+		}
+		ids = append(ids, listed...)
 	}
 	trails, err := h.runner.ActiveTrails(r.Context(), targetType, ids)
 	if err != nil {

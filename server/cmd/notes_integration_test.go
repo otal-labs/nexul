@@ -39,7 +39,7 @@ func TestIntegration_Note(t *testing.T) {
 		require.NoError(t, err)
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/chat/conversations/"+thread.ID+"/messages", bytes.NewReader(body))
-		chat.NewHandler(s.chatSvc).Routes().ServeHTTP(rec, req.WithContext(chat.WithUserID(as(uOwner), uOwner)))
+		chat.NewHandler(s.chatSvc, nil).Routes().ServeHTTP(rec, req.WithContext(chat.WithUserID(as(uOwner), uOwner)))
 		require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
 		var m chat.Message
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &m))

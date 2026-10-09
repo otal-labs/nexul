@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { useForm, type UseFormReturn } from "react-hook-form";
+import { useForm, useWatch, type UseFormReturn } from "react-hook-form";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
@@ -88,7 +88,7 @@ export const CreateGatewayDialog = () => {
     resolver: zodResolver(CreateGatewayFormSchema),
   });
 
-  const kind = form.watch("kind");
+  const kind = useWatch({ control: form.control, name: "kind" });
   const loading = zonesPending || tunnelsPending;
   const loadError = zonesError ?? tunnelsError;
 

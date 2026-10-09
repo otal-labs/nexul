@@ -265,7 +265,7 @@ func TestRetryDecisionsCheck_Refusals(t *testing.T) {
 
 func TestDecisionsCheckRun_HTTPAndMCP(t *testing.T) {
 	f := newDecisionsFixture()
-	h := NewRunHandler(f.runner).Routes()
+	h := NewRunHandler(f.runner, nil).Routes()
 	rec := do(t, h, http.MethodPost, "/api/plays/decisions-check", `{"ticket_id":"`+ticketID+`"}`, starter)
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
 	<-f.turns.done

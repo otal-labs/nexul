@@ -186,7 +186,7 @@ func putNote(t *testing.T, svc *chat.Service, user, noteID, markdown string) int
 	require.NoError(t, err)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPut, "/api/chat/messages/"+noteID+"/note", bytes.NewReader(body))
-	chat.NewHandler(svc).Routes().ServeHTTP(rec, req.WithContext(chat.WithUserID(as(user), user)))
+	chat.NewHandler(svc, nil).Routes().ServeHTTP(rec, req.WithContext(chat.WithUserID(as(user), user)))
 	return rec.Code
 }
 

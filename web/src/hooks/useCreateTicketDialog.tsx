@@ -1,7 +1,7 @@
 import { ProjectDialogHeader } from "@/components/project/ProjectDialogHeader";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
-import { SaveTicketFormSchema, type SaveTicketFormData } from "@/models/Ticket";
+import { emptyTicketForm, SaveTicketFormSchema, type SaveTicketFormData } from "@/models/Ticket";
 import { loadTicketForm } from "@/utils/loadTicketForm";
 
 interface CreateTicketOptions {
@@ -20,7 +20,7 @@ export const useCreateTicketDialog = (
   const { open } = useFormDialog();
   if (!canCreate) return undefined;
   return async ({ docId = "", categoryId = "" }: CreateTicketOptions = {}) => {
-    const { CreateTicketForm, CreateTicketFooter, emptyTicketForm } = await loadTicketForm();
+    const { CreateTicketForm, CreateTicketFooter } = await loadTicketForm();
     const result = await open<SaveTicketFormData>({
       title: "New ticket",
       schema: SaveTicketFormSchema,
