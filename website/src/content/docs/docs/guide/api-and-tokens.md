@@ -56,7 +56,7 @@ Events arrive as signed HTTP POSTs:
 - `X-Nexul-Delivery-Id` is unique per delivery. A failed delivery is retried, so use it to drop duplicates.
 - Nothing from a direct message or a private channel is ever sent.
 
-Every event has a versioned JSON Schema in `GET /api/events/catalog`. Every action taken with a token is recorded in `GET /api/audit`.
+Every event has a versioned JSON Schema in `GET /api/events/catalog`. Every change made through the API or by an agent over MCP, with a token or a session, is recorded in `GET /api/audit` and kept for 45 days. Reads are not recorded.
 
 ## Signing in a phone
 

@@ -439,5 +439,5 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("DELETE", "/api/templates/{kind}", "Needs templates:write: reset an instance template to its code default; ?key= names a play or ticket type", "templates")
 	spec.Register("POST", "/api/templates/clone", "Copy a template's text from one layer over another; read where the source lives, write where the target does", "templates")
 	spec.Register("POST", "/api/templates/reset", "Reset a template at a layer: the instance to its code default, a workspace or project to the instance's text", "templates")
-	spec.Register("GET", "/api/audit", "Audit log", "audit")
+	spec.Register("GET", "/api/audit", "Audit log: changes made through the API and over MCP, kept 45 days; reads are not recorded", "audit")
 }
