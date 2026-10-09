@@ -3,6 +3,8 @@ const { resolveBabelOptions } = require("jest-expo/src/resolveBabelOptions");
 module.exports = {
   preset: "jest-expo",
   setupFiles: ["<rootDir>/jest.setup.ts"],
+  // The app imports the SDK's event catalog for its types only; tests also read its topic list and fixtures.
+  moduleNameMapper: { "^@nexul/sdk/events$": "<rootDir>/../sdk/src/events.generated.ts" },
   transformIgnorePatterns: [
     "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation|uniwind|@rn-primitives|lucide-react-native|react-native-svg))",
   ],

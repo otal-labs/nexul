@@ -50,6 +50,7 @@ jobs:
               - 'automations/**'
             native:
               - 'native/**'
+              - 'sdk/src/events.generated.ts'
 
   go-test:
     needs: detect-changes

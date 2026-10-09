@@ -7,6 +7,7 @@ import { useFetchDoc } from "@/hooks/DocHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
+import { defineQuery } from "@/lib/liveQuery";
 import { applyReaction, conversationLabel, type Conversation, type DMLabelContext, type Message, type UnreadCounts } from "@/models/Chat";
 import { ticketKey } from "@/models/Ticket";
 import type { MeResponse } from "@/models/User";
@@ -18,28 +19,56 @@ export const getChatUnreadKey = "getChatUnread";
 // The server returns the newest page; scrolling further back than this stays on the web for now.
 const threadMessageLimit = 100;
 
+const conversationsQuery = defineQuery({
+  key: getChatConversationsKey,
+  fetch: (workspaceId: string | undefined) =>
+    api.get<Conversation[]>(`/api/chat/conversations?workspace_id=${encodeURIComponent(workspaceId ?? "")}`),
+  refreshes: {
+    "chat.conversation.created": { key: (p) => p.conversation.workspace_id },
+    "chat.conversation.updated": { key: (p) => p.workspace_id },
+    "chat.conversation.deleted": { key: (p) => p.workspace_id },
+    // A private channel the viewer lost drops from the list.
+    "chat.conversation.members_changed": { key: (p) => p.workspace_id },
+  },
+});
+
 export const useFetchConversations = (workspaceId: string | undefined) =>
-  useQuery({
-    queryKey: [getChatConversationsKey, workspaceId],
-    queryFn: () =>
-      api.get<Conversation[]>(`/api/chat/conversations?workspace_id=${encodeURIComponent(workspaceId ?? "")}`),
-    enabled: !!workspaceId,
-  });
+  useQuery({ ...conversationsQuery.options(workspaceId), enabled: !!workspaceId });
+
+const unreadQuery = defineQuery({
+  key: getChatUnreadKey,
+  fetch: (workspaceId: string | undefined) =>
+    api.get<UnreadCounts>(`/api/chat/unread?workspace_id=${encodeURIComponent(workspaceId ?? "")}`),
+  refreshes: {
+    "chat.conversation.deleted": { key: (p) => p.workspace_id },
+    "chat.conversation.members_changed": { key: (p) => p.workspace_id },
+    "chat.message.created": "all",
+    "chat.message.deleted": "all",
+  },
+});
 
 export const useFetchChatUnread = (workspaceId: string | undefined) =>
-  useQuery({
-    queryKey: [getChatUnreadKey, workspaceId],
-    queryFn: () => api.get<UnreadCounts>(`/api/chat/unread?workspace_id=${encodeURIComponent(workspaceId ?? "")}`),
-    enabled: !!workspaceId,
-  });
+  useQuery({ ...unreadQuery.options(workspaceId), enabled: !!workspaceId });
+
+// Message frames carry the change, so an open thread is patched in place and its page never downloads again; a
+// deleted channel or a lost private one refetches into its error state instead of showing stale messages.
+const messagesQuery = defineQuery({
+  key: getChatMessagesKey,
+  fetch: (conversationId: string | undefined) =>
+    api.get<Message[]>(`/api/chat/conversations/${conversationId}/messages?limit=${threadMessageLimit}`),
+  refreshes: {
+    "chat.conversation.deleted": { key: (p) => p.conversation_id },
+    "chat.conversation.members_changed": { key: (p) => p.conversation_id },
+    // The catalog types a message as an open object; it is the same Message the thread route returns.
+    "chat.message.created": { patch: (client, p) => upsertCachedMessage(client, p.message as unknown as Message) },
+    "chat.message.updated": { patch: (client, p) => upsertCachedMessage(client, p.message as unknown as Message) },
+    "chat.message.deleted": { patch: (client, p) => markCachedMessageDeleted(client, p.conversation_id, p.message_id, p.deleted_at) },
+    "chat.message.reactions_changed": { patch: (client, p) => applyCachedReaction(client, p) },
+  },
+});
 
 export const useFetchMessages = (conversationId: string | undefined) =>
-  useQuery({
-    queryKey: [getChatMessagesKey, conversationId],
-    queryFn: () =>
-      api.get<Message[]>(`/api/chat/conversations/${conversationId}/messages?limit=${threadMessageLimit}`),
-    enabled: !!conversationId,
-  });
+  useQuery({ ...messagesQuery.options(conversationId), enabled: !!conversationId });
 
 // A ticket thread reads "KEY-N Title" and a doc thread reads the doc's title, like the web; every other kind keeps its own label.
 export const useConversationLabel = (conversation: Conversation, dmCtx: DMLabelContext): string => {
