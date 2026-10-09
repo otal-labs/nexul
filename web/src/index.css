@@ -938,6 +938,28 @@ a.mention-chip:hover {
    --ease-standard, anything that slides between places --ease-spring; only transform and opacity move. Page and list
    entrances run from lib/motion.ts. */
 
+/* Nav rows (sidebar, section nav): the hover lift lands at once and lets go over 150ms, so it never trails the pointer. */
+.nav-row {
+  transition:
+    background-color 150ms var(--ease-standard),
+    color 150ms var(--ease-standard);
+}
+@media (hover: hover) {
+  .nav-row:hover {
+    transition-duration: 0ms;
+  }
+}
+/* A scrolling list under fixed chrome fades out over its last 24px instead of cutting a row in half at the edge; the
+   list's own bottom padding clears the fade once it is scrolled to the end. */
+.scroll-edge {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+}
+
+/* Two layers trading places in one spot (the rail's logo and its expand glyph). */
+.nav-swap {
+  transition: opacity 120ms var(--ease-standard);
+}
+
 /* News arriving (someone else's chat message, the Agent's reply starting) rises 8px as it fades in. */
 @keyframes arrive {
   from {

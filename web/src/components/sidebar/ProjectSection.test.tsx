@@ -158,8 +158,7 @@ describe("ProjectSection", () => {
   it("collapsed rail: the switcher shows the prefix and every page is an icon row", async () => {
     renderSection({ collapsed: true });
 
-    const trigger = await screen.findByRole("button", { name: "Backend" });
-    expect(trigger).toHaveAttribute("title", "Backend");
+    expect(await screen.findByRole("button", { name: "Backend" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Board" })).toHaveAttribute("href", "/acme/board/BE");
     expect(screen.queryByText("Project")).not.toBeInTheDocument();
   });

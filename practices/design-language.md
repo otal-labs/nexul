@@ -141,8 +141,11 @@ in one layout step and its content does the moving.
 - `transition-property` defaults to `none` (base layer), so a bare
   `duration-*` class never turns into `transition: all`; a transition names
   its properties.
-- Sidebar collapse is instant: a width swap, no layout animation. The
-  sidebar starts as the icon rail below 1024px.
+- Sidebar collapse: the width swaps in one layout step, never a width
+  animation, and since the rail keeps every icon where it was, only the
+  labels change. Opening wipes them in from the rail's edge (`revealSidebar`,
+  a clip-path over 220ms `--ease-out`); closing snaps. The sidebar starts as
+  the icon rail below 1024px.
 - The light field is still: gradients only, no filter, no animation. Behind
   backdrop blur any motion re-blurs every panel each frame, which held 50ms
   idle frames under a 4x CPU throttle while the field drifted; nothing may
@@ -240,6 +243,8 @@ second ambient animation or anything animating layout behind the panels.
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
 | Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
+| Segmented control: a well with a raised thumb | Against joined outline buttons with an accent fill (read as a toolbar of buttons, the same box as Copy and Download beside it in the logs) and a ghost row with an accent thumb (the same grey block as the section nav's top row, so a filter looked like navigation); the well and card step is the panel's own depth vocabulary, and it reads as one control |
+| Section nav in the sidebar's grammar | Against the grey block alone (the sidebar marks where you are with the ember edge, the section nav with nothing, so the two navs on one screen read as unrelated) and a hairline rail with a sliding ember segment (a table of contents, not navigation, and the rows lost their click target) |
 | Settings cards: a quiet header, settings as rows | Against the old header band (an 18px title over a full-width rule, so every section read as the same generic form) and the title outside the card (heading on the glass, content in the card: two surfaces for one unit, and a paired card's heading wrapped out of line with its neighbour's); a 15px title flowing into its rows keeps the unit whole and saves the rule |
 | Settings save from a strip that is always there | Against a strip that opens when something changes (it pushed every card below it 52px on the first keystroke), a bar floating over the page (detached from the card it saves and covering the next one) and a Save beside the field (fits one field, not a card of them) |
 | Save answers in its button, not a toast | Against the toast (it lands a panel away from the click) and a Saved line at the strip's left (opposite the pointer); the button the pointer is on turns into Saved |
@@ -714,11 +719,39 @@ brand's own fills (a light and dark pair where the brand has one), an exception
 to color being status signal. `ModelChoice` in `web/src/components/model/`
 is the reference; a settings row puts it right of the label and description.
 
+Navigation. Three controls move between things, each one component with one
+look, and the job picks the control, never the page:
+
+- Section nav (`SettingsSectionNav`): a page of five or more sections, each
+  its own job and its own path segment (Your settings, Configuration, Project
+  settings, Stack). The sidebar's row grammar at settings scale: muted rows,
+  the `bg-accent/60` hover lift, and the sidebar's sliding block (`bg-accent`
+  with the 2px `brand` edge on its left) on the current one. A side column
+  from 1024px, a scrolling top row below it, where the block drops its edge.
+  Danger zone is a plain row set apart at the end by a hairline (a gap in the
+  top row): the red lives on its card, and a red label at rest pulled the eye
+  to the rarest action on every visit.
+- Line tabs (`PageTabs`): two to four separate jobs inside one view or
+  section, addressed by the path (below). A neutral row on a hairline with a
+  `foreground` underline that slides to the active tab.
+- Segmented control (`ToggleGroup variant="segmented"`, size `xs`): two to
+  five views, filters or modes of the same content, held in the page and
+  never in the path: Connected / Not connected, All / Errors, Doc |
+  Questions, Fields / Paste .env, Follow | Question, a sort. A `surface-2`
+  well with a hairline ring and a 2px inset, holding a raised thumb (`card`,
+  the hairline ring, `shadow-card`) that slides to the chosen side; the
+  items are muted text, the chosen one `foreground`. It is radios to a
+  screen reader. The permission level strip is not one: its rungs fill up to
+  the level (Permission rows).
+
+Never two of one kind stacked: a section holds tabs, tabs hold a segmented
+control, and nothing nests deeper.
+
 Tabs. A view whose cards or sections are separate jobs (two or more of them)
 splits them into tabs instead of stacking them; a single-card view gets none,
 and a left section nav stays as it is, the tabs live inside the section. Tabs
-are `PageTabs` in `web/src/components/PageTabs.tsx`: a neutral line tab row
-on a hairline that scrolls sideways at narrow widths, the active tab the last
+are `PageTabs` in `web/src/components/PageTabs.tsx`: the line tab row above,
+scrolling sideways at narrow widths, the active tab the last
 path segment (`/settings/connectors/github-app`) with the query left alone,
 the first visible tab when the segment is missing or unknown. The first tab
 has no segment of its own. A tab the viewer lacks permission for is hidden,
@@ -726,12 +759,12 @@ not disabled, and a view left with one tab drops the row. Anything that
 deep-links into a tabbed view builds its path with `useTabPath`, never by
 hand: `tabPath("versions")` names a tab and `tabPath()` the first one. A tab never opens blank: a section that renders
 nothing when empty says so in an `EmptyRow` instead. A filter that narrows one
-list (`ConnectorsSection`'s Connected and Not connected) is not a tab.
+list (`ConnectorsSection`'s Connected and Not connected) is not a tab; it is a
+segmented control.
 
 Doc questions. A doc with a clarification heads its page with a "Doc |
-Questions N" segmented switch (an outline `ToggleGroup`, not `PageTabs`: the
-two are views of one record, and the choice stays in the page, never the
-path), N being the questions waiting in mono. Questions takes the article's
+Questions N" segmented control (not `PageTabs`: the two are views of one
+record, and the choice stays in the page, never the path), N being the questions waiting in mono. Questions takes the article's
 place in the same card: a "Questions" heading over one state line (the trail
 icon, a medium label, a muted detail), the next action trailing right for
 people who may close it, then one `QuestionSection` per round of numbered
@@ -749,11 +782,27 @@ Channels, Voice channels, Direct messages and Threads. Places come before
 conversations because their length is fixed, so a long channel list never
 pushes Board or Runners below the fold. Section labels are microheaders with
 their create `+` trailing; a direct message with one other person leads with
-their avatar, a group with the people icon. Counts are `UnreadBadge`s. The
-account row sits under the scroll on a hairline. The icon rail (below 1024px
-or collapsed) keeps every page in the same order, with hairlines between the
-groups, and stands one Chat link with a dot for unread messages in for the
-conversation lists.
+their avatar, a group with the people icon, and a private channel's lock
+takes the place of its `#` or speaker. A row with unread messages sets its
+name in medium `foreground` and trails the count as an `UnreadBadge`, the
+solid ink pill (a muted pill vanished on the light canvas and a bare number
+read as a count of items). Rows are `nav-row`s: muted at rest, the
+`bg-accent/60` lift on hover, `bg-accent` while pressed, never a scale (a
+full-width row scaling from its centre shifts its text). The scroll fades
+out over its last 24px under the account row (`scroll-edge`) instead of
+cutting a heading in half, and its bottom padding clears the fade at the
+end. The account row sits under the scroll on a hairline, the gear beside it
+named by a tooltip. The icon rail (below 1024px or collapsed) is 68px, so
+every icon, tile and avatar keeps the x it has in the open sidebar; it keeps
+every page in the same order, with hairlines between the groups, and stands
+one Chat link with a dot for unread messages in for the conversation lists.
+Its logo is the way back out: under the pointer or focus it turns into the
+expand glyph on an accent tile (120ms crossfade), where a separate button
+crowded the logo and hung over the panel's edge. Every rail item names
+itself in a tooltip to its right (`RailTooltip`, on the app's tooltip clock,
+so the next item along the rail names itself at once), and a count or dot sits on
+its icon's top-right corner, cut out by a canvas ring (`railBadgeClass`).
+The switchers work the same on the rail: the tile opens the same menu.
 
 Command palette. ⌘K (Ctrl+K elsewhere), or the sidebar's Search row, opens
 one palette from any signed-in page: a frosted overlay (`glass-popover`) 40rem
@@ -793,7 +842,17 @@ writing its own.
   as they arrive. A block holding an `EnterList` or an `EmptyState`
   (`data-enter-list`, `data-enter-own`) leaves the motion to them; a block
   that runs its own entrance keeps it. A tab, a settings
-  section or another record inside the same page changes in place.
+  section or another record inside the same page does not replay it (Tab and
+  section swap, below).
+- Tab and section swap (`swapIn` in `lib/motion.ts`, through
+  `useSwapEntrance`; `PageTabs` and `SettingsShell` carry it): picked by a
+  pointer, the new content comes in 6px from the side of the item it was
+  picked from and fades in over 160ms `--ease-out`, sideways under a tab row
+  or the section nav's top row, up or down beside its column. Nothing leaves:
+  the old content is gone in the same frame, so a click never waits, and the
+  transform never moves the layout. A list inside it that would cascade
+  arrives with it instead (one entrance per container). A key press swaps at
+  once; reduced motion is a 120ms fade.
 - Lists (`EnterList`): the rows on screen at mount rise 4px and fade over
   200ms, the first eight 25ms apart, the rest with the eighth; a list of 50 or
   more mounts at once. A row added later (a filter or search bringing it
@@ -801,9 +860,9 @@ writing its own.
   200ms instead, for news (the Inbox). A row React only moved keeps still. A
   row opts out with `data-no-enter` (a board card mounted mid-drag).
 - Sliding highlight (`ActiveIndicator`): the sidebar's active row, the
-  settings section nav, the line tab row's underline (`TabUnderline`, on
-  `PageTabs` and the logs tabs) and the Doc | Questions switch each own one
-  highlight that slides to the active item, transform only, 200ms
+  section nav's block, the line tab row's underline (`TabUnderline`, on
+  `PageTabs` and the logs tabs) and every segmented control's thumb each own
+  one highlight that slides to the active item, transform only, 200ms
   `--ease-spring`. It sizes to the item and plays back from wherever it was,
   so a click mid-slide carries on. Moving between the sidebar's two navs it
   fades out of one and into the other.
@@ -828,6 +887,12 @@ writing its own.
   Chevrons turn in 150ms `--ease-standard`. The sidebar's Workspace section (`settleIn`)
   settles its pages in the same way when a click opens it, and shuts at once;
   a key opens it without motion, and it never plays as the sidebar mounts.
+- Nav rows (`nav-row`: the sidebar, the section nav, the switchers and the
+  account row): the hover lift lands at once and lets go over 150ms
+  `--ease-standard`, so the highlight is under the pointer the moment it
+  arrives and leaves a short trail. Rejected: 150ms both ways (the incoming
+  row lagged the pointer as it ran down the list) and no transition (the
+  sweep flickered row by row).
 - Hover and press: a draggable card lifts 1px with a soft elevated shadow
   (an opacity fade on a pseudo layer), 150ms, on hover-capable pointers only;
   a strip below the card keeps the vacated pixel inside it so the hover never
@@ -1102,3 +1167,43 @@ an error) and an ink border with a soft halo (a focused field in error was
 barely different from one unfocused). Destructive button: white on a deeper
 red. Rejected: a tinted outline (too quiet for the act it confirms) and the
 coral with dark ink (the ember's twin beside the primary).
+
+### Round-four locks: navigation
+
+Decided 2026-10-09 without the owner in the loop, each built as live
+variants on the seeded app, recorded at 1x and 0.25x with frame strips at
+0.1x, and judged against the baseline.
+
+Sliding highlight (underline, segmented thumb, section nav block).
+- Unchanged: transform only, 200ms `--ease-spring`, interruptible from where
+  it is; a key moves it at once. Rejected: a crossfade (the old mark vanished
+  and the new one faded in, so nothing said where the selection went) and a
+  stretch that reaches the new item before letting go of the old (it
+  underlined every tab in between for 260ms, ran past the label's own
+  change, and on a two-sided control read as both sides chosen).
+
+Tab and section swap.
+- Directional: 6px from the picked item's side and a fade, 160ms
+  `--ease-out`, enter only. Rejected: none (the card's content popped with
+  nothing tying it to the row above), an opacity fade alone (every switch
+  blinked to an empty card for a frame or two), a 4px rise (the page
+  entrance's vocabulary on an act that is not a page change), and a 2px blur
+  crossfade (a filter on a whole card for no gain). Tuned against 8px over
+  200ms and 12px over 220ms, which read as travel on an act repeated through
+  a whole settings session.
+
+Sidebar collapse.
+- A 68px rail that keeps every icon in place, layout swapped in one step,
+  labels wiped in by a clip-path on open (220ms `--ease-out`), close snaps.
+  Rejected: animating the width (every frame relaid the board and re-truncated
+  the switcher names; 4x CPU throttle p95 16ms against 2.5ms for the wipe)
+  and gliding the page beside it (moved the frosted panels, which never move,
+  and its backdrop re-blur peaked at 130ms frames). Measured on the board at
+  1440 under a 4x throttle: the toggle's own render and layout costs 165 to
+  640ms whichever variant runs, and is the thing to make cheaper next.
+
+Nav row hover: lands at once, lets go over 150ms (Motion baseline).
+
+Switchers: the overlay clock (Round-four locks: overlays), from the
+trigger's corner, with the trigger holding its pressed fill while the menu
+is open so the menu reads as coming from it.

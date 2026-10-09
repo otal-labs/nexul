@@ -119,7 +119,7 @@ describe("OwnerWizardPage", () => {
     await user.click(screen.getByRole("button", { name: "Step2 continue" }));
 
     expect(await screen.findByText("GitHub")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /not connected/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /not connected/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Connectors" })).not.toBeInTheDocument();
     expect(screen.queryByText(/tool connections coming soon/i)).not.toBeInTheDocument();
   });

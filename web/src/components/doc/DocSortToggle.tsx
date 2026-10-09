@@ -10,8 +10,8 @@ export const DocSortToggle = () => {
   return (
     <ToggleGroup
       type="single"
-      variant="outline"
-      size="sm"
+      variant="segmented"
+      size="xs"
       value={sortBy}
       // Radix reports "" when the active item is clicked again; keep the current sort.
       onValueChange={(value) => value && setSortBy(value as DocSortField)}

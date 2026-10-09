@@ -7,6 +7,7 @@ import { SettingsHeaderMeta } from "@/components/settings/SettingsHeaderMeta";
 import { InstanceSettingsContent } from "@/components/settings/InstanceSettingsContent";
 import { isSettingsSection } from "@/components/settings/SettingsNav";
 import { YourSettingsContent } from "@/components/you/YourSettingsContent";
+import { SettingsShell } from "@/components/settings/SettingsShell";
 import {
   DEFAULT_YOUR_SETTINGS_SECTION,
   isYourSettingsSection,
@@ -42,14 +43,11 @@ export const YourSettingsPage = () => {
             title="Settings"
             meta={!resolving && <SettingsHeaderMeta section={instanceSection ?? section} />}
           />
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-            <YourSettingsNav active={instanceSection ?? section} />
-            <div className="min-w-0 flex-1 space-y-6">
-              {resolving && <LoadingDisplay />}
-              {!resolving && instanceSection && <InstanceSettingsContent section={instanceSection} />}
-              {!resolving && !instanceSection && <YourSettingsContent section={section} />}
-            </div>
-          </div>
+          <SettingsShell section={instanceSection ?? section} nav={<YourSettingsNav active={instanceSection ?? section} />}>
+            {resolving && <LoadingDisplay />}
+            {!resolving && instanceSection && <InstanceSettingsContent section={instanceSection} />}
+            {!resolving && !instanceSection && <YourSettingsContent section={section} />}
+          </SettingsShell>
         </Container>
       )}
     </>

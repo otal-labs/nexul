@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TabUnderline } from "@/components/ActiveIndicator";
 import { UpdateDot } from "@/components/UpdateDot";
+import { useSwapEntrance } from "@/hooks/useSwapEntrance";
 import { useTabPath } from "@/hooks/useTabPath";
 import { cn } from "@/lib/utils";
 
@@ -28,15 +29,22 @@ export const PageTabs = ({ label, tabs, children, className }: PageTabsProps) =>
   const navigate = useNavigate();
   const { search } = useLocation();
   const { current, tabPath } = useTabPath();
+  const root = useRef<HTMLDivElement>(null);
   const visible = tabs.filter((tab) => !tab.hidden);
   const active = visible.find((tab) => tab.value === current) ?? visible[0];
+  useSwapEntrance(
+    active?.value ?? "",
+    () => (active ? visible.indexOf(active) : 0),
+    () => root.current?.querySelector(':scope > [role="tabpanel"][data-state="active"]'),
+    () => "x",
+  );
   if (!active) return null;
 
   const select = (value: string) =>
     navigate({ pathname: tabPath(value === visible[0]?.value ? undefined : value), search });
 
   return (
-    <Tabs value={active.value} onValueChange={select} className={cn("gap-6", className)}>
+    <Tabs ref={root} value={active.value} onValueChange={select} className={cn("gap-6", className)}>
       {visible.length > 1 && (
         <TabsList
           variant="line"

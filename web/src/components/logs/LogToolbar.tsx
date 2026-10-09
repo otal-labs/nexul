@@ -21,8 +21,8 @@ export const LogToolbar = ({ filter, onFilterChange, status, reason, paused, onP
   <div className="flex flex-wrap items-center gap-2">
     <ToggleGroup
       type="single"
-      variant="outline"
-      size="sm"
+      variant="segmented"
+      size="xs"
       value={filter}
       onValueChange={(value) => value && onFilterChange(value as LogFilter)}
       aria-label="Show"

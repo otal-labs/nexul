@@ -6,13 +6,11 @@ import { microheaderClass } from "@/components/Microheader";
 import { UpdateDot } from "@/components/UpdateDot";
 import { cn } from "@/lib/utils";
 
-const itemClass = (isActive: boolean, danger: boolean) =>
+// The sidebar's row grammar at settings scale: muted at rest, a hover lift, the sliding block marks the current one.
+const itemClass = (isActive: boolean) =>
   cn(
-    "block rounded-md px-3 py-1.5 text-sm whitespace-nowrap transition-colors duration-150 ease-standard",
-    danger && "text-destructive",
-    isActive && (danger ? "bg-destructive/10 font-medium" : "font-medium text-foreground"),
-    !isActive &&
-      (danger ? "hover:bg-destructive/10" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"),
+    "nav-row block rounded-md px-3 py-1.5 text-sm whitespace-nowrap",
+    isActive ? "font-medium text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
   );
 
 // A deep link can land on an item past the right edge of the narrow top row; bring it into view.
@@ -40,8 +38,9 @@ interface SettingsSectionNavProps {
 export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: SettingsSectionNavProps) => (
   <nav aria-label={ariaLabel} className="lg:w-48 lg:shrink-0">
     <ul className="relative isolate flex items-center gap-1 overflow-x-auto pb-1 lg:flex-col lg:items-stretch lg:gap-0.5 lg:overflow-visible lg:pb-0">
-      {/* The danger section paints its own red fill; the sliding highlight serves the rest. */}
-      <ActiveIndicator selector='[aria-current="page"]:not([data-danger])' className="rounded-md bg-accent" />
+      <ActiveIndicator selector='[aria-current="page"]' className="rounded-md bg-accent">
+        <span className="absolute inset-y-2 left-0 hidden w-0.5 rounded-full bg-brand lg:block" />
+      </ActiveIndicator>
       {items.map((item, index) => (
         <Fragment key={item.section}>
           {item.group !== undefined && item.group !== items[index - 1]?.group && (
@@ -55,13 +54,12 @@ export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: Setti
               {item.group}
             </li>
           )}
-          <li className="shrink-0">
+          <li className={cn("shrink-0", item.danger && index > 0 && "ml-2 lg:ml-0 lg:mt-3 lg:border-t lg:border-border lg:pt-3")}>
             <Link
               to={`${basePath}/${item.section}`}
               ref={active === item.section ? revealActive : undefined}
               aria-current={active === item.section ? "page" : undefined}
-              data-danger={item.danger || undefined}
-              className={itemClass(active === item.section, item.danger ?? false)}
+              className={itemClass(active === item.section)}
             >
               <span className="relative">
                 {item.label}
