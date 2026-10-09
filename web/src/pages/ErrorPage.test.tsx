@@ -51,6 +51,8 @@ describe("ErrorPage", () => {
     );
     render(<RouterProvider router={router} />);
     expect(screen.getByRole("heading", { name: "Something went wrong", level: 1 })).toBeInTheDocument();
+    expect(screen.getAllByText("Something went wrong")).toHaveLength(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("Failed to fetch dynamically imported module");
     expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
   });
 });
