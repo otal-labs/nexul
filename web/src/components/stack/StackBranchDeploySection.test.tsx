@@ -72,6 +72,17 @@ describe("StackBranchDeploySection overrides", () => {
     ]);
   });
 
+  it("a rejected save keeps the overrides open without an unhandled rejection", async () => {
+    mocks.patch.mockRejectedValue(new Error("Request failed with status code 400"));
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(screen.getByRole("button", { name: "Overrides" }));
+    await user.click(screen.getByRole("button", { name: "Save overrides" }));
+
+    expect(mocks.patch).toHaveBeenCalled();
+    expect(screen.getByRole("textbox", { name: "Overrides" })).toBeInTheDocument();
+  });
+
   it("clearing every override drops the overrides from the rule", async () => {
     const user = userEvent.setup();
     renderSection();

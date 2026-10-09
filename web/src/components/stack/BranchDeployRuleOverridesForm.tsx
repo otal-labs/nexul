@@ -9,7 +9,7 @@ import { formatEnv, parseEnv } from "@/lib/env";
 interface BranchDeployRuleOverridesFormProps {
   overrides: Record<string, string> | undefined;
   saving: boolean;
-  onSave: (overrides: Record<string, string>) => Promise<unknown>;
+  onSave: (overrides: Record<string, string>) => void;
   onCancel: () => void;
 }
 
