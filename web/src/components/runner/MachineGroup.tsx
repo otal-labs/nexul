@@ -79,7 +79,7 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
           <AddRunnerDialog machineName={machine.name} triggerSize="sm" triggerVariant="ghost" />
         </div>
         <div className="col-span-2 overflow-hidden">
-          <p className="-ml-4 flex flex-wrap gap-y-1 font-mono text-xs text-muted-foreground">
+          <div className="-ml-4 flex flex-wrap gap-y-1 font-mono text-xs text-muted-foreground">
             {machine.reported_hostname && machine.reported_hostname !== machine.name && (
               <span className={factClass}>{machine.reported_hostname}</span>
             )}
@@ -90,7 +90,7 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
             <span className={factClass}>
               <EditableStackRoot machineId={machine.id} stackRoot={machine.stack_root} />
             </span>
-          </p>
+          </div>
         </div>
       </header>
       {runners.length === 0 && <EmptyRow className="border-t border-border">No runners on this machine yet.</EmptyRow>}
