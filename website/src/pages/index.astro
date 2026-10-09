@@ -10,38 +10,38 @@ const steps = [
 	{
 		number: '01',
 		title: 'Write the plan',
-		body: 'Several people edit a doc at once. Clarify via AI asks about what the doc leaves open, round by round.',
+		body: 'Write the passkey sign-in spec together, in real time. Clarify via AI asks about what it leaves open, round by round.',
 		href: '/docs/guide/docs-tickets-and-board/#docs',
 		link: 'Docs',
 		shot: 'doc',
-		alt: 'The Incident response runbook open in the Docs pane, a numbered list under its Fraunces title.',
+		alt: 'The Passkey sign-in spec open in Docs: its Problem and Flow sections.',
 	},
 	{
 		number: '02',
 		title: 'Cut it into tickets',
-		body: 'A ticket keeps its doc as the source, links its branch and pull request, and has a thread where agents post their runs.',
+		body: 'Ten tickets come from the spec. Each keeps it as the source, links its branch and pull request, and has a thread where agents post their runs.',
 		href: '/docs/guide/docs-tickets-and-board/#tickets',
 		link: 'Tickets and the board',
 		shot: 'ticket',
-		alt: 'Ticket ATL-14, Retry wrapper swallows the final error: what needs doing, the faulty code and the ticket’s properties.',
+		alt: 'Ticket ACC-3, Sign in with a passkey on the login page: what needs doing, its acceptance criteria and the ticket’s properties.',
 	},
 	{
 		number: '03',
 		title: 'Ship to your servers',
-		body: 'A runner on your machine builds and deploys the stack. Each step and its log stay on the deploy page.',
+		body: 'A runner on your machine builds accounts-api 1.4.0 and deploys it. Each step and its log stay on the deploy page.',
 		href: '/docs/guide/stacks-and-deploys/',
 		link: 'Stacks and deploys',
 		shot: 'deploy',
-		alt: 'A finished deploy of atlas-api: two completed steps beside the build and deploy log.',
+		alt: 'A finished deploy of accounts-api 1.4.0: four completed steps beside the clone, build and deploy log.',
 	},
 	{
 		number: '04',
 		title: 'Hear what happened',
-		body: 'Bots post CI runs and alerts into the channel your team already reads, as cards that show their status.',
+		body: 'The deploy bot posts the rollout as a card, with its ticket and pull request, in the channel your team already reads.',
 		href: '/docs/guide/bots/',
 		link: 'Bots',
 		shot: 'chat',
-		alt: 'Bot cards in the engineering channel: a failed health check that rolled back, and a nightly deploy summary.',
+		alt: 'The deploy bot’s card in #engineering, accounts-api 1.4.0 deployed and healthy, then the team’s replies about the rollout.',
 	},
 ];
 const capabilities = [
@@ -73,7 +73,7 @@ const capabilities = [
 					widths={[960, 1440, 1920, 2336]}
 					sizes="(min-width: 1264px) 1136px, calc(100vw - 72px)"
 					narrow={{ name: 'board-narrow', widths: [480, 720, 960], sizes: 'calc(100vw - 56px)' }}
-					alt="The Atlas Platform board in the Northwind example workspace: tickets in Backlog, In progress, In review and Testing columns, the stage bar above them."
+					alt="The Accounts board in the Northwind example workspace: passkey sign-in tickets in Backlog, In progress, In review and Testing, split into Sign-in and Security lanes, the stage bar above them."
 					priority
 				/>
 				<script is:inline>
@@ -105,7 +105,7 @@ const capabilities = [
 			<div class="section-intro">
 				<p class="eyebrow">One project, every stage</p>
 				<h2 id="product-title">The plan, the work and what’s running, linked.</h2>
-				<p class="section-description">A ticket keeps the doc it came from. A deploy names its ticket and pull request. Nothing gets copied between tools.</p>
+				<p class="section-description">One feature, passkey sign-in, from its spec to the rollout. A ticket keeps the doc it came from, a deploy names its ticket and pull request, and nothing gets copied between tools.</p>
 			</div>
 			<ol class="steps">
 				{steps.map((step) => (
@@ -132,11 +132,11 @@ const capabilities = [
 				</div>
 				<div class="tool-console" role="group" aria-label="Example of an agent using the Nexul MCP server">
 					<div class="console-header"><span class="connection-dot"></span><span>nexul / mcp</span><span class="console-label">Example</span></div>
-					<div class="console-prompt"><span aria-hidden="true">›</span><p>Find the retry bug and what it blocks.</p></div>
-					<div class="tool-call"><span class="tool-symbol" aria-hidden="true">↳</span><div><span class="tool-name">ticket_list</span><code>"retry"</code></div><span class="tool-check" aria-hidden="true">✓</span></div>
-					<div class="tool-result result-tickets"><span>ATL-14</span><span>Retry wrapper swallows the final error</span></div>
-					<div class="tool-call"><span class="tool-symbol" aria-hidden="true">↳</span><div><span class="tool-name">ticket_get</span><code>"ATL-14"</code></div><span class="tool-check" aria-hidden="true">✓</span></div>
-					<div class="tool-result result-tickets"><span>Blocks</span><span>ATL-42 · Add a read-only share link for docs</span><span>Status</span><span>In review</span></div>
+					<div class="console-prompt"><span aria-hidden="true">›</span><p>What is blocking the code rate limits?</p></div>
+					<div class="tool-call"><span class="tool-symbol" aria-hidden="true">↳</span><div><span class="tool-name">ticket_list</span><code>"rate limit"</code></div><span class="tool-check" aria-hidden="true">✓</span></div>
+					<div class="tool-result result-tickets"><span>ACC-5</span><span>Rate limit code requests and wrong codes</span></div>
+					<div class="tool-call"><span class="tool-symbol" aria-hidden="true">↳</span><div><span class="tool-name">ticket_get</span><code>"ACC-5"</code></div><span class="tool-check" aria-hidden="true">✓</span></div>
+					<div class="tool-result result-tickets"><span>Blocked by</span><span>ACC-4 · Email a one-time code when no passkey is available</span><span>Status</span><span>In progress</span></div>
 					<div class="console-footer"><NexulIcon /><span>One workspace. One set of permissions.</span></div>
 				</div>
 			</div>

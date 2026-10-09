@@ -1349,20 +1349,31 @@ schemes, frame strips and 1x and 0.25x recordings. The home page
 site's tokens and adds none.
 
 Showing the product.
-- Real 2x screenshots of the seeded example workspace (Northwind, Atlas
-  Platform), one per scheme, served by `ProductShot.astro` through Astro's
-  image pipeline as AVIF and WebP with width and height set; the page's
-  `.light` or `.dark` class picks the scheme, so the header toggle swaps them.
-  The hero is the board; the four steps are the doc, the ticket, the deploy
-  and a channel's bot cards, each cropped to 640x480 so they show close to
-  1:1 on a desktop. People without a photo show their gradient avatar: the
-  capture blocks avatar photos, so no real face or name ships.
+- Real 2x screenshots of the seeded example workspace (Northwind), one per
+  scheme, served by `ProductShot.astro` through Astro's image pipeline as AVIF
+  and WebP with width and height set; the page's `.light` or `.dark` class
+  picks the scheme, so the header toggle swaps them.
+- Every shot follows one feature, passkey sign-in, in the Accounts project:
+  the hero is its board, and the four steps are its spec, ticket ACC-3, the
+  accounts-api 1.4.0 deploy and the deploy bot's card in #engineering with
+  the team's replies, each cropped to 640x480 so they show close to 1:1 on a
+  desktop. A sign-in feature needs no explaining, and its spec has the edge
+  cases (a lost device, rate limits, the email code fallback) that make the
+  tickets read like real work. Rejected: unrelated records from the busiest
+  project (a runbook, a retry bug, an older deploy, a failed health check),
+  which showed each screen but no thread between them. Passkeys won over
+  sign-in with an email code alone: here the code is the passkey flow's
+  fallback, so one feature carries both.
+- People show their gradient avatar. The seeded logins carry an underscore and
+  a two-letter suffix (`bob_nw`), which no GitHub account can have, so the
+  app's `github.com/<login>.png` fallback finds nothing and no real face
+  ships.
 - The hero shot sits on a field panel (`surface-2` with the light field's
   three glows, the panel ring) and bleeds off its right and bottom edges, the
   screenshot's top-left corner rounded at 9px. Below 768px it switches to a
   480x600 crop of the board's top-left so cards stay legible.
-- Weight: the hero is about 18KB on a phone and 32KB on a 1x desktop; the four
-  lazy step shots add about 60KB on a 1x desktop and 100KB on a 2x phone.
+- Weight: the hero is about 16KB on a phone and 36KB on a 1x desktop; the four
+  lazy step shots add about 65KB on a 1x desktop and 105KB on a 2x phone.
 - Rejected: a muted loop of the app (board, palette, ticket; 85KB at 1x and
   soft on a retina screen, about three times that at 2x, unreadable at 375px,
   motion beside the headline, and the reduced-motion still is the same
