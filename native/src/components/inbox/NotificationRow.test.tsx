@@ -17,21 +17,21 @@ const unread: Notification = {
 
 describe("NotificationRow", () => {
   test("an unread row shows the unread marker", async () => {
-    await render(<NotificationRow notification={unread} onPress={jest.fn()} />);
+    await render(<NotificationRow notification={unread} onPress={jest.fn()} onMarkRead={jest.fn()} />);
 
     expect(screen.getByLabelText("Unread")).toBeTruthy();
     expect(screen.getByText("Write migrations")).toBeTruthy();
   });
 
   test("a read row shows no unread marker", async () => {
-    await render(<NotificationRow notification={{ ...unread, read: true }} onPress={jest.fn()} />);
+    await render(<NotificationRow notification={{ ...unread, read: true }} onPress={jest.fn()} onMarkRead={jest.fn()} />);
 
     expect(screen.queryByLabelText("Unread")).toBeNull();
   });
 
   test("pressing the row reports the notification", async () => {
     const onPress = jest.fn();
-    await render(<NotificationRow notification={unread} onPress={onPress} />);
+    await render(<NotificationRow notification={unread} onPress={onPress} onMarkRead={jest.fn()} />);
 
     await userEvent.setup().press(screen.getByRole("button", { name: /Write migrations/ }));
 
@@ -39,10 +39,10 @@ describe("NotificationRow", () => {
   });
 
   test.each([
-    ["doc.questions_asked", "New questions on Spec", "new questions"],
-    ["doc.questions_answered", "Questions answered on Spec", "questions answered"],
+    ["doc.questions_asked", "New questions on Spec", "New questions"],
+    ["doc.questions_answered", "Questions answered on Spec", "Questions answered"],
   ] as const)("a %s notice labels itself", async (kind, title, label) => {
-    await render(<NotificationRow notification={{ ...unread, kind, subject_type: "doc", subject_title: title }} onPress={jest.fn()} />);
+    await render(<NotificationRow notification={{ ...unread, kind, subject_type: "doc", subject_title: title }} onPress={jest.fn()} onMarkRead={jest.fn()} />);
 
     expect(screen.getByText(title)).toBeTruthy();
     expect(screen.getByText(label)).toBeTruthy();
