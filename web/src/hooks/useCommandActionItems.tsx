@@ -12,6 +12,7 @@ import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useThemeStore } from "@/stores/themeStore";
 import { ThemeName } from "@/enums/Theme";
 import type { CommandGroup, CommandItem } from "@/models/Command";
+import { docPath, projectToken } from "@/models/Project";
 import { THEME_DEFINITIONS } from "@/lib/themePalettes";
 
 // The create dialogs that already exist, the other workspaces, and the theme. Palettes only show once something is typed.
@@ -39,7 +40,13 @@ export const useCommandActionItems = (browsing: boolean): CommandGroup[] => {
     };
     create.push({ id: "create:ticket", label: "New ticket", icon: SquarePlusIcon, hint: project.prefix, keywords: "create", run: () => void run() });
   }
-  if (project && createDoc) create.push({ id: "create:doc", label: "New doc", icon: FilePlusIcon, hint: project.prefix, keywords: "create document", run: createDoc });
+  if (project && createDoc) {
+    const run = async () => {
+      const id = await createDoc();
+      if (id) void navigate(wsPath(docPath(projectToken(project), id)));
+    };
+    create.push({ id: "create:doc", label: "New doc", icon: FilePlusIcon, hint: project.prefix, keywords: "create document", run: () => void run() });
+  }
   if (can?.("editChannels")) create.push({ id: "create:channel", label: "New channel", icon: HashIcon, keywords: "create chat", run: () => void openNewChannel(false) });
   if (can?.("newConversation")) {
     create.push({ id: "create:dm", label: "New direct message", icon: MessageSquarePlusIcon, keywords: "create chat dm", run: () => void openNewDM() });

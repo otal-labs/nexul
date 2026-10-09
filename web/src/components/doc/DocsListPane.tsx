@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { FileTextIcon } from "lucide-react";
+import { useNavigate } from "react-router";
 
 import { DocFolderSection } from "@/components/doc/DocFolderSection";
 import { DocGroupSection } from "@/components/doc/DocGroupSection";
@@ -13,10 +14,11 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
 import { useCreateDocDialog } from "@/hooks/useCreateDocDialog";
 import { useDocPins } from "@/hooks/useDocPins";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useDocFolderStore } from "@/stores/docFolderStore";
 import { useDocSortStore } from "@/stores/docSortStore";
 import type { DocListItem } from "@/models/Doc";
-import { projectToken, type Project } from "@/models/Project";
+import { docPath, projectToken, type Project } from "@/models/Project";
 
 interface DocsListPaneProps {
   docs: DocListItem[];
@@ -32,13 +34,21 @@ export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) =
   const [search, setSearch] = useState("");
   const sortBy = useDocSortStore((s) => s.sortBy);
   const { pinnedIds } = useDocPins();
-  const openCreateDoc = useCreateDocDialog(project.id);
+  const createDoc = useCreateDocDialog(project.id);
+  const navigate = useNavigate();
+  const wsPath = useWorkspacePath();
   const { data: folders, error, isPending } = useFetchDocFolders(project.id);
   const openable = docs.filter((doc) => doc.can_open);
   const query = search.trim().toLowerCase();
   const searching = query !== "";
   const groups = folders && groupDocs({ docs: openable, folders, sortBy, pinnedIds, match: searching ? matches(query) : undefined });
   const token = projectToken(project);
+  const openCreateDoc =
+    createDoc &&
+    (async () => {
+      const id = await createDoc();
+      if (id) void navigate(wsPath(docPath(token, id)));
+    });
   const expandFolder = useDocFolderStore((s) => s.expand);
   const selectedFolderId = docs.find((doc) => doc.id === selectedId)?.folder_id;
 
