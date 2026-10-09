@@ -54,8 +54,6 @@ never a hard-coded palette class.
 | `ring` | `brand` | `brand` | focus and canvas selection |
 | `panel-ring` / `panel-highlight` | white at 7% / 5% | ink at 8% / white at 90% | a panel's hairline and its inner top edge |
 | `field-warm` / `field-pink` / `field-cool` | `brand` at 34%, pink, blue | `brand` at 30%, pastel pink, pastel blue | the light field's three glows; the warm one follows the palette's accent |
-| `cell-line` | `foreground` at 10% | `foreground` at 12% | a field grid's cell edges (a bot embed's fields) |
-| `cell-label` | `foreground` at 4% | `foreground` at 4% | a field grid's shaded label cell |
 | `font-display` | Fraunces Variable | same | page titles, empty-state and showcase headlines, through `type-display` |
 | `font-sans` | Inter Variable | same | everything else: UI, body, card and section headings |
 | `font-mono` | JetBrains Mono Variable | same | technical data |
@@ -214,6 +212,7 @@ second ambient animation or anything animating layout behind the panels.
 | Empty states: the orbit mark | Picked over a placeholder card grid (generic, implied an add action the callers do not have, and looped) and a tile of the live field (a GPU canvas inside an everyday panel, grainy at 96px, impossible at compact size); the static orbit carries the field's colours at any size and costs nothing |
 | Loading: the orbit at spinner size | Over the plain spinner and a gradient arc; it ties loading to the empty mark, keeps the ember to progress, and stays one small SVG |
 | Long page titles step down to 24 and 20px and clamp at three lines | Against stepping alone (a sentence-long ticket title still ran six lines at 20px and pushed the body below the fold, and nothing bounds a title's length) and clamping at 28px alone (three lines held about half as many words); the step keeps short titles at full voice and the clamp bounds the rest |
+| Bot embeds as status-edged cards with facts | Against a header strip over hairline key and value rows (scanned well for long values but read as the old table again, nine summary rows tall) and a 2px status bar across the top (the same card, but the bar read as the accent's decoration rather than state); the leading edge is the topology node's status signal reused |
 | A doc's first heading that repeats its title stays | The title and the body are separate fields; hiding a matching heading in a collaborative editor would put the caret in invisible text and show readers and writers different docs, so the author's content is shown as written |
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
@@ -536,12 +535,21 @@ the mono time on its first line and the summary under it.
 
 Bot message. A bot's post sits plain like a person's, under the
 name and avatar it posted with (the Nexul glyph without one) and a `BOT`
-outline tag, widened to 38rem when it carries an embed. Each embed hangs
-behind a 2px `muted-foreground` rule; the sender's color is never painted.
-Fields are a framed two-column grid, `cell-line` on every edge and the label
-cell in `cell-label` at 40%. Past six fields, a long description, or two
-embeds, one hairline fold bar opens the rest. Only a bot's text renders
-Discord's markdown subset. `BotMessageRow` and `EmbedCard` in
+outline tag, widened to 38rem when it carries an embed. Each embed is a card
+(`bg-card`, hairline ring, `shadow-card`). The server drops the sender's
+color, so the card's state is read from its title's words (`embedTone`:
+failed, healthy, stopped, running and their kin, worst first) and shows as a
+3px leading edge and an icon before the title in the status hue, the way a
+topology node shows its status; a title that names no state leaves the card
+neutral. An author line that only repeats the bot's name is dropped. Fields
+are facts: a mono microheader over the value, inline fields three across
+(two in a narrow pane), a value past 24 characters across two, a field the
+sender did not mark inline across the row, and a value that is a state word
+or two gets its status dot. The footer text and time sit in a hairline strip
+at the card's foot in mono 11px, with the ghost fold toggle ("Show 3 more
+fields", its chevron turning) on its right, past six fields or a long
+description; past two embeds the same toggle opens the rest. Only a bot's
+text renders Discord's markdown subset. `BotMessageRow` and `EmbedCard` in
 `web/src/components/chat/` are the reference.
 
 Deploy page. The header names the outcome ("Deployed", "Deploy failed")

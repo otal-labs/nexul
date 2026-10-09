@@ -10,6 +10,7 @@ import { Message, MessageAvatar, MessageContent, MessageHeader } from "@/compone
 import { BotMessageIdContext } from "@/hooks/BotMediaHooks";
 import { cn } from "@/lib/utils";
 import type { Message as ChatMessage } from "@/models/Chat";
+import { dropEchoedAuthor } from "@/models/Embed";
 import { formatClockTime, formatFullTime } from "@/utils/TimeUtility";
 
 const BotMessageHeader = ({ message }: { message: ChatMessage }) => (
@@ -27,7 +28,7 @@ const BotMessageHeader = ({ message }: { message: ChatMessage }) => (
 
 // Text and every embed share one bubble, widened when it carries an embed. Readers only react: bots are managed in settings.
 const BotMessageBubble = ({ message }: { message: ChatMessage }) => {
-  const embeds = message.embeds ?? [];
+  const embeds = (message.embeds ?? []).map((embed) => dropEchoedAuthor(embed, message.author_name ?? ""));
   return (
     <div
       data-slot="bubble"
