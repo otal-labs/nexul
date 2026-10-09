@@ -525,7 +525,8 @@ reference.
 
 Inbox row. A 28px `bg-muted/60` tile with a muted icon for what happened
 (assigned, mentioned, status, doc created or edited, questions, memory, a
-play run), a `foreground` dot on its corner while unread, then the title with
+play run), a `foreground` dot on its corner while unread (it shrinks to 0.6
+as it fades over 150ms when the row is read), then the title with
 the mono time on its first line and the summary under it.
 
 Bot message. A bot's post sits plain like a person's, under the
@@ -824,3 +825,12 @@ Deploy steps.
   and the next spinner changed in the same frame and the timeline lost its
   sense of order). A deploy changes step a few times a day, so the 440ms
   hand-down is affordable.
+
+Inbox.
+- Unread dot: shrinks and fades over 150ms, in step with the title losing
+  weight. Rejected: dropping it (nothing showed what the click changed) and
+  a 300ms fade (a grey dot lingered after the title had already gone read).
+- Selection: unchanged colour crossfade. Rejected: the sidebar's sliding
+  highlight, which slid a full-width box across the hairline rows on an
+  action repeated through a whole triage, and which the Docs list pane the
+  Inbox mirrors does not use.

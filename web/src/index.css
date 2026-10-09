@@ -1037,6 +1037,19 @@ a.mention-chip:hover {
   }
 }
 
+/* An inbox row's unread dot shrinks to 0.6 as it fades when the row is read, in step with its title losing weight. */
+.unread-dot {
+  opacity: 0;
+  scale: 0.6;
+  transition:
+    opacity 150ms var(--ease-out),
+    scale 150ms var(--ease-out);
+}
+.unread-dot[data-unread] {
+  opacity: 1;
+  scale: 1;
+}
+
 /* Command palette rows that join the list after it opened fade in; opacity only, since the list is being read. */
 .command-results[data-settled] [role="group"],
 .command-results[data-settled] [role="option"] {
@@ -1156,5 +1169,6 @@ a.mention-chip:hover {
   --lk-font-family: var(--font-sans);
   --lk-border-radius: var(--radius-md);
 }
+
 
 
