@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { api } from "@/api/client";
@@ -27,14 +27,17 @@ export const useCurrentWorkspaceId = (): string | undefined => useSelectedWorksp
 
 export const getMyRoleKey = "getMyRole";
 
-export const useFetchMyRole = () => {
-  const workspaceId = useCurrentWorkspaceId();
-  return useQuery({
+// Shared with push routing, which checks a tapped ticket's workspace outside any screen.
+export const myRoleQuery = (workspaceId: string | undefined) =>
+  queryOptions({
     queryKey: [getMyRoleKey, workspaceId],
     queryFn: () => api.get<MyWorkspaceInfo>(`/api/workspaces/${workspaceId}/me`),
-    enabled: !!workspaceId,
     ...referenceDataOptions,
   });
+
+export const useFetchMyRole = () => {
+  const workspaceId = useCurrentWorkspaceId();
+  return useQuery({ ...myRoleQuery(workspaceId), enabled: !!workspaceId });
 };
 
 // Undefined until permissions first arrive; isFetched, since a failed read refetches as pending and must not blink.
