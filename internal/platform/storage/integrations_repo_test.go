@@ -268,3 +268,37 @@ func TestAuditRepo(t *testing.T) {
 		assert.Len(t, entries, 1)
 	})
 }
+
+// TestAuditRepo_DeleteBefore_DeletesOneBoundedBatchOfOldRowsThroughTheSerializer: newer rows stay, a call deletes at
+// most limit rows, and the delete is a serialized write, so it commits through the serializer and wakes its waiters.
+func TestAuditRepo_DeleteBefore_DeletesOneBoundedBatchOfOldRowsThroughTheSerializer(t *testing.T) {
+	store := newTestIntegrationsStore(t)
+	ctx := t.Context()
+	cutoff := time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC)
+	for i, at := range []time.Time{cutoff.Add(-3 * time.Hour), cutoff.Add(-2 * time.Hour), cutoff.Add(-time.Hour), cutoff, cutoff.Add(time.Hour)} {
+		require.NoError(t, store.Audit.Append(ctx, integrations.AuditEntry{
+			ID: string(rune('a' + i)), ActorType: "user", ActorID: "u-alice", Action: "PATCH /api/tickets/t1", CreatedAt: at,
+		}))
+	}
+
+	committed := store.Commits().Next()
+	n, err := store.Audit.DeleteBefore(ctx, cutoff, 2)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), n, "one call deletes at most limit rows")
+	select {
+	case <-committed:
+	default:
+		t.Fatal("the delete did not commit through the serializer")
+	}
+
+	n, err = store.Audit.DeleteBefore(ctx, cutoff, 2)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), n)
+	entries, err := store.Audit.List(ctx, 10)
+	require.NoError(t, err)
+	var kept []string
+	for _, e := range entries {
+		kept = append(kept, e.ID)
+	}
+	assert.Equal(t, []string{"e", "d"}, kept, "rows at or after the cutoff stay, newest first")
+}

@@ -3,20 +3,17 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { ApiError, errorMessage } from "@/api/errors";
 import { exchangeConnectCode, fetchAbout } from "@/api/connect";
 import { deviceInfo } from "@/lib/deviceInfo";
+import { defineQuery } from "@/lib/liveQuery";
 import { serverIsSupported } from "@/lib/serverVersion";
 import type { ConnectResult } from "@/models/Connect";
 import { useSessionStore } from "@/stores/sessionStore";
 
 export const getAboutKey = "getAbout";
 
+const aboutQuery = defineQuery({ key: getAboutKey, fetch: (host: string | null) => fetchAbout(host ?? ""), refreshes: {} });
+
 // Refetches on every foreground through the focus manager, which is the version gate re-running.
-export const useFetchAbout = (host: string | null) =>
-  useQuery({
-    queryKey: [getAboutKey, host],
-    queryFn: () => fetchAbout(host ?? ""),
-    enabled: !!host,
-    retry: false,
-  });
+export const useFetchAbout = (host: string | null) => useQuery({ ...aboutQuery.options(host), enabled: !!host, retry: false });
 
 export interface ConnectInput {
   host: string;

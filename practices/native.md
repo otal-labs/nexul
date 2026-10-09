@@ -148,27 +148,43 @@ as written. In particular:
 
 ## 4. Server state and the socket
 
+- Every query is one `defineQuery` in its domain's hooks file
+  (`src/lib/liveQuery.ts`, ADR 0136): its key, its fetcher, and `refreshes`,
+  the topics that refresh it and how a frame finds its entry: `"all"`, `key`
+  (the entry whose first argument the payload names: a workspace, project or
+  conversation), `record` (the record the payload names), or `patch` (the
+  frame carries the change and is written into the cache). Hooks spread
+  `xxxQuery.options(...args)` into `useQuery` and add `enabled`. Topic names
+  and payloads are the event catalog's types, imported with `import type` from
+  `@nexul/sdk/events`; a misspelled topic or a missing payload field is a type
+  error, and a value import fails lint, so no SDK code reaches the app.
+- The live dispatcher in `useLiveEvents` is derived from the definitions: a
+  frame reaches exactly the queries that list its topic, and nothing else does
+  except the viewer's own access change, which refetches every open read.
+  Following a new topic is one line in the query's `refreshes`. A topic the
+  server publishes twice for one change (`ticket.assignee_changed` beside
+  `ticket.developer_changed`) is followed once.
 - A reference query (the viewer, their workspaces and role, a workspace's
-  people) spreads `referenceDataOptions` from `src/lib/queryClient.ts`:
-  `staleTime: Infinity`, refetched on foreground and on reconnect. With the
-  default `staleTime` of 0, every row that mounts during a chat scroll
-  refetches them, dozens of requests per scroll.
-- A query cached forever refreshes only when a pushed topic invalidates it,
-  so each one has a topic in `useLiveEvents` (`account.profile_updated`,
-  `workspace.updated`, `role.updated`) and a row in the reference table in
-  `useLiveEvents.test.tsx`. That test also scans `src/` for every query with
-  `referenceDataOptions` or `staleTime: Infinity` and fails while one has no
-  row; a new reference query ships with its topic.
-- Chat message frames patch the cached thread in place
-  (`upsertCachedMessage`, `markCachedMessageDeleted`, `applyCachedReaction`),
-  the same as the web client; a frame that carries the message never
-  downloads the thread page again.
+  people) sets `untilPushed: true`: `staleTime: Infinity`, refetched on
+  foreground and on reconnect, since the socket is closed in the background.
+  With the default `staleTime` of 0, every row that mounts during a chat scroll
+  refetches them, dozens of requests per scroll. `untilPushed` with no topic is
+  a type error: nothing would ever refresh it. It claims the listed topics
+  cover every change, so it stays opt-in.
+- Chat message frames patch the cached thread in place (`upsertCachedMessage`,
+  `markCachedMessageDeleted`, `applyCachedReaction`, declared as `patch`
+  refreshes), the same as the web client; a frame that carries the message
+  never downloads the thread page again.
 - A record's detail query is keyed by its id, or by its key and workspace
-  slug when a link opened it. Socket frames and mutations reach it through
-  `recordQueries(key, id)` from `src/lib/queryClient.ts`, which matches the
-  id segment or the cached record's own id; a filter on `[key, id]` alone
-  misses the key-addressed entry and leaves that screen stale. A frame
-  invalidates the detail of the id it carries, never every detail.
+  slug when a link opened it. A `record` refresh and mutations reach it
+  through `recordQueries(key, id)` from `src/lib/queryClient.ts`, which
+  matches the id segment or the cached record's own id; a filter on
+  `[key, id]` alone misses the key-addressed entry and leaves that screen
+  stale. A frame invalidates the detail of the id it carries, never every
+  detail; one whose payload lacks the field falls back to every entry.
+- `src/hooks/requestCounts.test.tsx` mounts a session that has visited every
+  tab and counts the requests a foreground, a chat scroll and a ticket frame
+  send. A change that moves a count updates the test on purpose.
 - Interaction state that many rows read (the board's lifted card in
   `boardDrag.tsx`) lives in a small store each row selects from, so a drag
   re-renders the cards it touches, not the whole board.

@@ -8,6 +8,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@nexul/sdk/events": [
+        "../sdk/src/events.generated.ts"
       ]
     },
     "types": [

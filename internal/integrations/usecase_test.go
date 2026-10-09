@@ -3,6 +3,7 @@ package integrations
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -25,6 +26,8 @@ type fakeData struct {
 	deliveries map[string]*Delivery
 	schemas    map[string]SchemaEntry
 	audit      []AuditEntry
+	purges     []int
+	purgeErr   error
 }
 
 func newFakeData() *fakeData {
@@ -293,6 +296,32 @@ func (f *fakeAuditStore) List(ctx context.Context, limit int) ([]AuditEntry, err
 	out := make([]AuditEntry, 0, len(f.d.audit))
 	out = append(out, f.d.audit...)
 	return out, nil
+}
+
+func (f *fakeAuditStore) DeleteBefore(ctx context.Context, before time.Time, limit int) (int64, error) {
+	f.d.mu.Lock()
+	defer f.d.mu.Unlock()
+	f.d.purges = append(f.d.purges, limit)
+	if f.d.purgeErr != nil {
+		return 0, f.d.purgeErr
+	}
+	kept := f.d.audit[:0]
+	var n int64
+	for _, e := range f.d.audit {
+		if int(n) < limit && e.CreatedAt.Before(before) {
+			n++
+			continue
+		}
+		kept = append(kept, e)
+	}
+	f.d.audit = kept
+	return n, nil
+}
+
+func (f *fakeData) purgeCalls() []int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.purges)
 }
 
 func itoa(n int) string {

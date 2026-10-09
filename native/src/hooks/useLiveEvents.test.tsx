@@ -1,16 +1,19 @@
+import { eventFixtures, TOPICS } from "@nexul/sdk/events";
 import { QueryClient } from "@tanstack/react-query";
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { getMeKey } from "@/hooks/AuthHooks";
-import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
-import { getDocKey } from "@/hooks/DocHooks";
-import { getTicketKey } from "@/hooks/TicketHooks";
 import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@/hooks/ChatHooks";
+import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
+import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
+import { getProjectStatusesKey } from "@/hooks/StatusHooks";
+import { getTicketKey, getTicketsByProjectKey } from "@/hooks/TicketHooks";
 import { dispatch } from "@/hooks/useLiveEvents";
 import { getMyRoleKey, getWorkspacesKey } from "@/hooks/WorkspaceHooks";
+import { liveQueries } from "@/lib/liveQuery";
 import type { Message } from "@/models/Chat";
 
 jest.mock("expo-secure-store", () => ({ getItem: () => null, setItem: jest.fn(), deleteItemAsync: jest.fn() }));
@@ -138,23 +141,55 @@ describe("dispatch", () => {
     expect(client.getQueryState([key, "ws-1"])?.isInvalidated).toBe(true);
   });
 
-  // Read from the source, so a new query cached forever fails here until it gets a row and a topic above.
-  const infinityQueryKeys = () => {
-    const root = join(__dirname, "..");
-    const sources = readdirSync(root, { recursive: true, encoding: "utf8" })
-      .filter((file) => /\.tsx?$/.test(file) && !file.includes(".test."))
-      .map((file) => readFileSync(join(root, file), "utf8"));
-    const values = new Map(sources.flatMap((source) => [...source.matchAll(/export const (\w+) = "([^"]+)"/g)].map(([, name, value]) => [name, value])));
-    return sources.flatMap((source) =>
-      source
-        .split(/\buseQuery\(|\bqueryOptions\(/)
-        .slice(1)
-        .filter((query) => /referenceDataOptions|staleTime: Infinity/.test(query))
-        .map((query) => values.get(/queryKey: \[(\w+)/.exec(query)?.[1] ?? "")),
-    );
-  };
+  // Each frame finds its entry from the payload, so a frame about one workspace, project or thread leaves the others alone.
+  test.each([
+    ["chat.conversation.deleted", { conversation_id: "c1", workspace_id: "ws-1", kind: "channel", name: "x" }, getChatMessagesKey, "c1", "c2"],
+    ["chat.conversation.members_changed", { conversation_id: "c1", workspace_id: "ws-1" }, getChatUnreadKey, "ws-1", "ws-2"],
+    ["role.updated", { role_id: "r1", workspace_id: "ws-1" }, getMyRoleKey, "ws-1", "ws-2"],
+    ["workspace.member.removed", { user_id: "u2", workspace_id: "ws-1" }, getWorkspacePeopleKey, "ws-1", "ws-2"],
+    ["ticket.status_changed", { ticket: { id: "t-1", project_id: "p-1" }, from: "a", to: "b" }, getTicketsByProjectKey, "p-1", "p-2"],
+    ["status.updated", { status: { id: "st-1", project_id: "p-1" } }, getProjectStatusesKey, "p-1", "p-2"],
+    ["doc.created", { doc: { id: "d1", project_id: "p-1", title: "Spec", version: 1 } }, getDocsKey, "p-1", "p-2"],
+  ])("%s refetches only the entry its payload names", (topic, payload, key, named, other) => {
+    const client = new QueryClient();
+    client.setQueryData([key, named], []);
+    client.setQueryData([key, other], []);
 
-  test("every query cached forever has a row in the table above", () => {
-    expect(new Set(infinityQueryKeys())).toEqual(new Set(referenceKeys.map(([key]) => key)));
+    dispatch(client)({ topic, type: "event", payload });
+
+    expect(client.getQueryState([key, named])?.isInvalidated).toBe(true);
+    expect(client.getQueryState([key, other])?.isInvalidated).toBe(false);
   });
+
+  test("a frame that names no record refetches every cached one, rather than none", () => {
+    const client = new QueryClient();
+    client.setQueryData([getTicketKey, "t-1", ""], { id: "t-1" });
+    client.setQueryData([getTicketKey, "t-2", ""], { id: "t-2" });
+
+    dispatch(client)({ topic: "ticket.updated", type: "event", payload: { ticket: {} } });
+
+    expect(client.getQueryState([getTicketKey, "t-1", ""])?.isInvalidated).toBe(true);
+    expect(client.getQueryState([getTicketKey, "t-2", ""])?.isInvalidated).toBe(true);
+  });
+});
+
+// Every definition registers as its module loads, so loading every hooks module gives the whole declaration table.
+readdirSync(__dirname)
+  .filter((file) => /Hooks\.tsx$/.test(file))
+  .forEach((file) => jest.requireActual(join(__dirname, file)));
+
+// Derived from the definitions: a catalog topic touches the cache of exactly the queries that declare it, and no other.
+test.each(TOPICS)("%s reaches exactly the queries that declare it", (topic) => {
+  const client = new QueryClient();
+  const reached = new Set<unknown>();
+  jest.spyOn(client, "invalidateQueries").mockImplementation(async (filters) => void reached.add(filters?.queryKey?.[0]));
+  jest.spyOn(client, "setQueriesData").mockImplementation((filters) => {
+    reached.add(filters.queryKey?.[0]);
+    return [];
+  });
+
+  dispatch(client)({ topic, type: "event", payload: eventFixtures[topic] });
+
+  const declared = [...liveQueries()].filter((query) => topic in query.refreshes).map((query) => query.key);
+  expect(reached).toEqual(new Set(declared));
 });

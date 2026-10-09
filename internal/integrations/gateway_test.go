@@ -117,7 +117,7 @@ func TestAuditLog(t *testing.T) {
 	t.Run("records integration request with token id", func(t *testing.T) {
 		f := newFakeData()
 		svc := newTestServiceWithOwner(f, true)
-		raw, _, install, err := svc.Install(context.Background(), "owner-1", "discord", TrustCommunity, "", []Scope{ScopeDocsRead})
+		raw, _, install, err := svc.Install(context.Background(), "owner-1", "discord", TrustCommunity, "", []Scope{ScopeDocsWrite})
 		require.NoError(t, err)
 
 		tokens, err := f.tokensList(install.ID)
@@ -134,7 +134,7 @@ func TestAuditLog(t *testing.T) {
 		}, okHandler())
 		handler := svc.RequireIntegration(fakeUserAuth, audited)
 
-		req := httptest.NewRequest(http.MethodGet, "/api/docs", nil)
+		req := httptest.NewRequest(http.MethodPost, "/api/docs", nil)
 		req.Header.Set("Authorization", "Bearer "+raw)
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, req)
@@ -145,7 +145,7 @@ func TestAuditLog(t *testing.T) {
 		assert.Equal(t, "integration", entries[0].ActorType)
 		assert.Equal(t, install.ID, entries[0].ActorID)
 		assert.Equal(t, tokens[0].ID, entries[0].TokenID)
-		assert.Equal(t, "GET /api/docs", entries[0].Action)
+		assert.Equal(t, "POST /api/docs", entries[0].Action)
 	})
 
 	t.Run("records user request", func(t *testing.T) {
@@ -154,7 +154,7 @@ func TestAuditLog(t *testing.T) {
 		handler := svc.AuditLog(func(ctx context.Context) (string, string, string) {
 			return "user", "owner-1", ""
 		}, okHandler())
-		req := httptest.NewRequest(http.MethodGet, "/api/tickets", nil)
+		req := httptest.NewRequest(http.MethodPatch, "/api/tickets/t1", nil)
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -168,8 +168,10 @@ func TestAuditLog(t *testing.T) {
 func TestAuditLog_WrappedHandler_CanFlushAndHijack(t *testing.T) {
 	svc := newTestServiceWithOwner(newFakeData(), true)
 	var flushErr, hijackErr error
+	handled := make(chan struct{})
 	srv := httptest.NewServer(svc.AuditLog(func(context.Context) (string, string, string) { return "user", "owner-1", "" },
 		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			defer close(handled)
 			rc := http.NewResponseController(w)
 			flushErr = rc.Flush()
 			conn, buf, err := rc.Hijack()
@@ -186,6 +188,7 @@ func TestAuditLog_WrappedHandler_CanFlushAndHijack(t *testing.T) {
 	res, err := http.Get(srv.URL + "/api/stream")
 	require.NoError(t, err)
 	require.NoError(t, res.Body.Close())
+	<-handled
 	require.NoError(t, flushErr)
 	require.NoError(t, hijackErr)
 }
