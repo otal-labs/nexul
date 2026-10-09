@@ -1,11 +1,8 @@
 ---
-import '@fontsource-variable/inter';
-import '@fontsource-variable/jetbrains-mono';
 import '../styles/landing.css';
 import '../styles/tokens.css';
 import '../styles/site-header.css';
-import interWoff2 from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
-import monoWoff2 from '@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2?url';
+import SiteHead from '../components/SiteHead.astro';
 import { NexulIcon } from '../components/NexulIcon';
 import { SiteHeader, github } from '../components/SiteHeader';
 
@@ -28,11 +25,8 @@ const { title, description, ogDescription = description } = Astro.props;
 		<meta property="og:title" content={title} />
 		<meta property="og:description" content={ogDescription} />
 		<meta property="og:type" content="website" />
-		<meta name="theme-color" content="#050505" media="(prefers-color-scheme: dark)" />
-		<meta name="theme-color" content="#ececec" media="(prefers-color-scheme: light)" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="preload" as="font" type="font/woff2" href={interWoff2} crossorigin />
-		<link rel="preload" as="font" type="font/woff2" href={monoWoff2} crossorigin />
+		<SiteHead />
 	</head>
 	<body>
 		<a class="skip-link" href="#main">Skip to content</a>

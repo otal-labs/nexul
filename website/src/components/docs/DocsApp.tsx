@@ -5,9 +5,9 @@ import { DocsBody, DocsPage, EditOnGitHub } from 'fumadocs-ui/layouts/docs/page'
 import type { TOCItemType } from 'fumadocs-core/toc';
 import { docsTree, type DocPage } from '../../lib/docs-tree';
 import { DocsHeader } from './DocsHeader';
-import { DrawerLinks } from './DrawerLinks';
 import { PageHeading, type PageHeadingProps } from './PageHeading';
 import { SearchDialog } from './SearchDialog';
+import { SiteMenuLinks } from '../SiteHeader';
 
 interface Props {
 	pathname: string;
@@ -25,12 +25,12 @@ export function DocsApp({ pathname, pages, toc, heading, editUrl, home, children
 	const tree = useMemo(() => docsTree(pages), [pages]);
 
 	return (
-		<RootProvider pathname={pathname} theme={{ hotKey: false }} search={{ SearchDialog }}>
+		<RootProvider pathname={pathname} theme={{ enabled: false }} search={{ SearchDialog }}>
 			<DocsLayout
 				tree={tree}
 				searchToggle={{ enabled: false }}
 				themeSwitch={{ enabled: false }}
-				sidebar={{ collapsible: false, footer: <DrawerLinks /> }}
+				sidebar={{ collapsible: false, footer: <SiteMenuLinks pathname={pathname} /> }}
 				slots={{ header: DocsHeader, navTitle: noTitle }}
 				containerProps={{ style: { paddingTop: 'var(--site-header-height)' } }}
 			>

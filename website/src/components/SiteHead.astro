@@ -1,0 +1,25 @@
+---
+// What every page's <head> shares: the three bundled faces, their preloads, and the theme class set before first paint.
+import '@fontsource-variable/inter';
+import '@fontsource-variable/jetbrains-mono';
+import '@fontsource-variable/fraunces/full.css';
+import interWoff2 from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+import monoWoff2 from '@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2?url';
+import frauncesWoff2 from '@fontsource-variable/fraunces/files/fraunces-latin-full-normal.woff2?url';
+---
+
+<link rel="preload" as="font" type="font/woff2" href={interWoff2} crossorigin />
+<link rel="preload" as="font" type="font/woff2" href={monoWoff2} crossorigin />
+<link rel="preload" as="font" type="font/woff2" href={frauncesWoff2} crossorigin />
+<meta name="theme-color" content="#060709" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#edeef1" media="(prefers-color-scheme: light)" />
+<script is:inline>
+	(() => {
+		const stored = localStorage.getItem('theme');
+		const dark = stored === 'dark' || (stored !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+		document.documentElement.classList.add(dark ? 'dark' : 'light');
+	})();
+</script>
+<script>
+	import '../lib/site-chrome';
+</script>
