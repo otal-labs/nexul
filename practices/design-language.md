@@ -744,7 +744,17 @@ writing its own.
   as they arrive. A block holding an `EnterList` or an `EmptyState`
   (`data-enter-list`, `data-enter-own`) leaves the motion to them; a block
   that runs its own entrance keeps it. A tab, a settings
-  section or another record inside the same page changes in place.
+  section or another record inside the same page does not replay it (Tab and
+  section swap, below).
+- Tab and section swap (`swapIn` in `lib/motion.ts`, through
+  `useSwapEntrance`; `PageTabs` and `SettingsShell` carry it): picked by a
+  pointer, the new content comes in 6px from the side of the item it was
+  picked from and fades in over 160ms `--ease-out`, sideways under a tab row
+  or the section nav's top row, up or down beside its column. Nothing leaves:
+  the old content is gone in the same frame, so a click never waits, and the
+  transform never moves the layout. A list inside it that would cascade
+  arrives with it instead (one entrance per container). A key press swaps at
+  once; reduced motion is a 120ms fade.
 - Lists (`EnterList`): the rows on screen at mount rise 4px and fade over
   200ms, the first eight 25ms apart, the rest with the eighth; a list of 50 or
   more mounts at once. A row added later (a filter or search bringing it
@@ -752,9 +762,9 @@ writing its own.
   200ms instead, for news (the Inbox). A row React only moved keeps still. A
   row opts out with `data-no-enter` (a board card mounted mid-drag).
 - Sliding highlight (`ActiveIndicator`): the sidebar's active row, the
-  settings section nav, the line tab row's underline (`TabUnderline`, on
-  `PageTabs` and the logs tabs) and the Doc | Questions switch each own one
-  highlight that slides to the active item, transform only, 200ms
+  section nav's block, the line tab row's underline (`TabUnderline`, on
+  `PageTabs` and the logs tabs) and every segmented control's thumb each own
+  one highlight that slides to the active item, transform only, 200ms
   `--ease-spring`. It sizes to the item and plays back from wherever it was,
   so a click mid-slide carries on. Moving between the sidebar's two navs it
   fades out of one and into the other.

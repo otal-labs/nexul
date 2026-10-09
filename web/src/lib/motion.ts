@@ -111,3 +111,24 @@ export const enterPage = (frame: HTMLElement) => {
     observer.disconnect();
   };
 };
+
+export type SwapAxis = "x" | "y";
+
+const SWAP_DISTANCE_PX = 6;
+const SWAP_MS = 160;
+
+// A tab or section's new content arrives from the side of the item it was picked from; nothing leaves, so input never waits.
+export const swapIn = (el: Element | null | undefined, step: number, axis: SwapAxis) => {
+  if (!el || typeof el.animate !== "function" || lastInputWasKeyboard()) return;
+  if (prefersReducedMotion()) {
+    el.animate(fade, { duration: 120, easing: EASE_OUT });
+    return;
+  }
+  // One entrance per container: a list that cascaded in with the new content arrives with it instead.
+  for (const running of el.getAnimations?.({ subtree: true }) ?? []) {
+    if (running.effect?.getTiming().iterations !== Infinity) running.finish();
+  }
+  const offset = Math.sign(step) * SWAP_DISTANCE_PX;
+  const from = axis === "x" ? `${offset}px 0` : `0 ${offset}px`;
+  el.animate([{ opacity: 0, translate: from }, { opacity: 1, translate: "0 0" }], { duration: SWAP_MS, easing: EASE_OUT });
+};
