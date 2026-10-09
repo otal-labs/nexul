@@ -676,7 +676,9 @@ writing its own.
   `AdvancedFields` does the same with the collapsible's enter and exit):
   opening, the box snaps open and the content fades in as it settles 4px over
   200ms; closing, the content fades out in 120ms and the box shuts after.
-  Chevrons turn in 150ms `--ease-standard`.
+  Chevrons turn in 150ms `--ease-standard`. The sidebar's Workspace section (`settleIn`)
+  settles its pages in the same way when a click opens it, and shuts at once;
+  a key opens it without motion, and it never plays as the sidebar mounts.
 - Hover and press: a draggable card lifts 1px with a soft elevated shadow
   (an opacity fade on a pseudo layer), 150ms, on hover-capable pointers only;
   a strip below the card keeps the vacated pixel inside it so the hover never
@@ -840,3 +842,10 @@ Inbox.
 Chat day divider.
 - Hairlines draw outward from the label. Rejected: riding in with the
   message (nothing marked that a new day had begun). It happens once a day.
+
+Sidebar.
+- Active indicator: unchanged; at 0.1x it carries the longest jump (Docs to
+  Configuration, about 240px) cleanly in 200ms.
+- Workspace fold: the disclosure's 4px settle on open. Rejected: a snap (the
+  pages popped in under the header) and a 25ms cascade per page (a list
+  entrance in the nav, a second vocabulary for opening a section).

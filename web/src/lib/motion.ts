@@ -35,6 +35,9 @@ const enter = (el: Element, keyframes: Keyframe[], duration: number, delay = 0) 
   el.animate(keyframes, { duration: reduced ? 150 : duration, delay: reduced ? 0 : delay, easing: EASE_OUT, fill: "backwards" });
 };
 
+// A section opened by a click settles in like a disclosure's content: 4px over 200ms.
+export const settleIn = (el: Element | null | undefined) => el && enter(el, rise(4), 200);
+
 const isRow = (node: Node): node is HTMLElement => node instanceof HTMLElement && !node.hasAttribute("data-no-enter");
 
 export type Arrival = "pop" | "rise";
