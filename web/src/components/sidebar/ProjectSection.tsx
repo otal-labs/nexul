@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { navLinkClass, sectionLabelClass } from "@/components/SidebarNav";
 import { ProjectNav } from "@/components/sidebar/ProjectNav";
 import { ProjectSwitcher } from "@/components/sidebar/ProjectSwitcher";
+import { RailTooltip } from "@/components/sidebar/RailTooltip";
 import { useAnyProjectAreaAccess } from "@/hooks/AccessHooks";
 import { useSidebarProject } from "@/hooks/useSidebarProject";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -32,17 +33,19 @@ export const ProjectSection = ({ collapsed }: ProjectSectionProps) => {
       {!collapsed && <div className={sectionLabelClass}>Project</div>}
       {collapsed && <div className="mx-2 my-2 border-t border-border" aria-hidden />}
       {offerCreate && (
-        <button
-          type="button"
-          onClick={() => void navigate(wsPath(NEW_PROJECT_PATH))}
-          title={collapsed ? "New project" : undefined}
-          className={cn(navLinkClass({ isActive: false }), "w-full", collapsed && "justify-center px-0")}
-        >
-          <span className="flex w-8 shrink-0 justify-center">
-            <PlusIcon className="size-4" aria-hidden />
-          </span>
-          {!collapsed && <span className="flex-1 text-left">New project</span>}
-        </button>
+        <RailTooltip label="New project" collapsed={collapsed}>
+          <button
+            type="button"
+            onClick={() => void navigate(wsPath(NEW_PROJECT_PATH))}
+            aria-label={collapsed ? "New project" : undefined}
+            className={cn(navLinkClass({ isActive: false }), "w-full")}
+          >
+            <span className="flex w-8 shrink-0 justify-center">
+              <PlusIcon className="size-4" aria-hidden />
+            </span>
+            {!collapsed && <span className="flex-1 text-left">New project</span>}
+          </button>
+        </RailTooltip>
       )}
       {projects && current && showSwitcher && (
         <ProjectSwitcher projects={projects} current={current} collapsed={collapsed} />

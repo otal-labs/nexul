@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { ConfigurationHeaderMeta } from "@/components/settings/ConfigurationHeaderMeta";
 import { isSettingsSection, SettingsNav } from "@/components/settings/SettingsNav";
 import { SettingsPageContent } from "@/components/settings/SettingsPageContent";
+import { SettingsShell } from "@/components/settings/SettingsShell";
 import { useConfigurationSections, useHasInstancePermission } from "@/hooks/AccessHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
@@ -38,19 +39,16 @@ export const ConfigurationPage = () => {
         title="Configuration"
         meta={<ConfigurationHeaderMeta section={section} />}
       />
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-        <SettingsNav active={section} sections={sections} />
-        <div className="min-w-0 flex-1 space-y-6">
-          <SettingsPageContent
-            section={section}
-            canManageRoles={canManageRoles}
-            canReadPlays={canReadPlays}
-            canWritePlays={canWritePlays}
-            canDeletePlays={canDeletePlays}
-            canManageWorkspace={canManageWorkspace}
-          />
-        </div>
-      </div>
+      <SettingsShell section={section} nav={<SettingsNav active={section} sections={sections} />}>
+        <SettingsPageContent
+          section={section}
+          canManageRoles={canManageRoles}
+          canReadPlays={canReadPlays}
+          canWritePlays={canWritePlays}
+          canDeletePlays={canDeletePlays}
+          canManageWorkspace={canManageWorkspace}
+        />
+      </SettingsShell>
     </Container>
   );
 };

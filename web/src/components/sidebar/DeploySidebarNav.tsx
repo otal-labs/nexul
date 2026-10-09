@@ -45,7 +45,7 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
           aria-expanded={open}
           className={cn(
             sectionLabelClass,
-            "flex w-full items-center justify-between rounded-md outline-none transition-colors duration-150 ease-standard hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40",
+            "flex w-full items-center justify-between rounded-md transition-colors duration-150 ease-standard hover:text-foreground",
           )}
         >
           <span>Workspace</span>

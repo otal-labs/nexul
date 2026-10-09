@@ -12,6 +12,7 @@ import { StackDeployActions } from "@/components/stack/StackDeployActions";
 import { StackLogsSection } from "@/components/stack/StackLogsSection";
 import { StackHeaderSection } from "@/components/stack/StackHeaderSection";
 import { DEFAULT_STACK_SECTION, isStackSection, StackNav, type StackSection } from "@/components/stack/StackNav";
+import { SettingsShell } from "@/components/settings/SettingsShell";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchExposures } from "@/hooks/DnsHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
@@ -70,24 +71,21 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
             image={image}
             hostnames={hostnames}
           />
-          <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-            <StackNav stackId={stack.id} active={section} showBranches={showBranches} showExposures={showExposures} showLogs={showLogs} />
-            <div className="min-w-0 flex-1 space-y-6">
-              {section === "overview" && (
-                <>
-                  <StackDeployActions stack={stack} lastHealthy={lastHealthy} canRollback={canRollback} image={image} />
-                  <ServicesSection stackId={stack.id} />
-                </>
-              )}
-              {section === "logs" && <StackLogsSection stackId={stack.id} service={service} />}
-              {section === "exposures" && <ServiceHostnameSection containers={services ?? []} />}
-              {section === "branches" && <StackBranchDeploySection stack={stack} />}
-              {section === "history" && <DeployHistorySection deploys={deploys} isLoading={deploysPending} error={deploysError} />}
-              {section === "danger" && (
-                <StackDangerZoneSection stack={stack} projectPath={projectPath} hostnames={hostnames} />
-              )}
-            </div>
-          </div>
+          <SettingsShell className="mt-6" section={section} nav={<StackNav stackId={stack.id} active={section} showBranches={showBranches} showExposures={showExposures} showLogs={showLogs} />}>
+            {section === "overview" && (
+              <>
+                <StackDeployActions stack={stack} lastHealthy={lastHealthy} canRollback={canRollback} image={image} />
+                <ServicesSection stackId={stack.id} />
+              </>
+            )}
+            {section === "logs" && <StackLogsSection stackId={stack.id} service={service} />}
+            {section === "exposures" && <ServiceHostnameSection containers={services ?? []} />}
+            {section === "branches" && <StackBranchDeploySection stack={stack} />}
+            {section === "history" && <DeployHistorySection deploys={deploys} isLoading={deploysPending} error={deploysError} />}
+            {section === "danger" && (
+              <StackDangerZoneSection stack={stack} projectPath={projectPath} hostnames={hostnames} />
+            )}
+          </SettingsShell>
         </>
       )}
     </Container>

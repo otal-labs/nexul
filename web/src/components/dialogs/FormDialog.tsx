@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -140,12 +141,14 @@ export const FormDialog = ({
               )}
               {description !== undefined && <DialogDescription>{description}</DialogDescription>}
             </DialogHeader>
-            {typeof form === "function" ? createElement(form) : form}
-            {methods.formState.errors.root?.serverError && (
-              <p role="alert" className="text-sm text-destructive">
-                {methods.formState.errors.root.serverError.message}
-              </p>
-            )}
+            <DialogBody className="flex flex-col gap-4">
+              {typeof form === "function" ? createElement(form) : form}
+              {methods.formState.errors.root?.serverError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {methods.formState.errors.root.serverError.message}
+                </p>
+              )}
+            </DialogBody>
             <DialogFooter className={cn(footerStart && "sm:justify-between")}>
               {footerStart}
               <div className="flex flex-col-reverse gap-2 sm:flex-row">

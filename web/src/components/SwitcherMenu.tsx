@@ -2,7 +2,7 @@ import { CheckIcon, PlusIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { PopoverContent } from "@/components/ui/popover";
-import { menuItemClass } from "@/components/MenuItem";
+import { MenuSeparator, menuItemClass } from "@/components/MenuItem";
 import { UnreadBadge } from "@/components/UnreadBadge";
 
 interface SwitcherMenuProps {
@@ -17,7 +17,7 @@ export const SwitcherMenu = ({ children, createLabel, onCreate }: SwitcherMenuPr
     <div className="flex max-h-80 flex-col overflow-y-auto">{children}</div>
     {onCreate && (
       <div className="flex flex-col">
-        <div className="-mx-1 my-1 h-px bg-border" />
+        <MenuSeparator />
         <button type="button" onClick={onCreate} className={menuItemClass}>
           <PlusIcon aria-hidden />
           <span>{createLabel}</span>
