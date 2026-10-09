@@ -251,7 +251,10 @@ func CtxWithLogger(ctx context.Context, l *slog.Logger) context.Context {
   opening a connection re-parses the whole schema, so the default idle cap
   of 2 made every burst of parallel requests reopen the rest. Writes stay
   serialized in the storage layer; do not raise the pool without a written
-  rationale.
+  rationale. Transactions begin `IMMEDIATE` (`_txlock=immediate`): a
+  deferred transaction that reads before it writes fails at once with
+  `database is locked` when another connection holds the write lock, and
+  `busy_timeout` never gets the chance to wait.
 
 ---
 

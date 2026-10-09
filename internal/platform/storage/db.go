@@ -8,8 +8,8 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// WAL gives concurrent readers, busy_timeout absorbs lock contention, and synchronous(NORMAL) is safe under WAL while being faster than FULL.
-const pragmas = "_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(ON)"
+// WAL gives concurrent readers, synchronous(NORMAL) is safe under it, and busy_timeout waits on a writer only because transactions begin immediate.
+const pragmas = "_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(ON)&_txlock=immediate"
 
 func OpenDB(path string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", path+"?"+pragmas)
