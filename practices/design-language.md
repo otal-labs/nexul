@@ -210,6 +210,7 @@ second ambient animation or anything animating layout behind the panels.
 | The live light field on showcase surfaces only | Picked over a fluted-glass refraction (busy vertical bands fought the text and the frosted vocabulary, and no CSS still could stand in for it) and an aurora (a band across the top only, nearly invisible in light mode); the field is the app's own light field moving, so its fallback still is exact and every palette retints it |
 | Empty states: the orbit mark | Picked over a placeholder card grid (generic, implied an add action the callers do not have, and looped) and a tile of the live field (a GPU canvas inside an everyday panel, grainy at 96px, impossible at compact size); the static orbit carries the field's colours at any size and costs nothing |
 | Loading: the orbit at spinner size | Over the plain spinner and a gradient arc; it ties loading to the empty mark, keeps the ember to progress, and stays one small SVG |
+| Runners: one card per machine, actions in its header, dashed when offline | Against a facts grid band per machine (a second header's worth of height, truncated the host and stack root, and hid the actions in a menu) and one table with machine group rows (aligned, but machines stopped reading as units and an offline machine looked like any other); greying a whole row to 60% made offline runners hard to read, a dashed unlit card says offline at full contrast |
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
 | Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
@@ -415,6 +416,23 @@ microheader label above a 20px mono value, color-coded only when the metric is
 inherently positive or negative (health counts). Only a page with a fleet or
 health rollup worth reading at a glance gets one; a page with nothing to
 summarise does not invent one.
+
+Runners. Under the fleet well (Online "2 of 3", Busy, Offline, Queued), one
+card per machine: a 36px server mark on `surface-2` with a status dot on its
+corner (`success` when every runner is connected, `warning` when some are,
+muted when none), the name with its state in words beside it ("online",
+"2 of 3 online", "offline"), and its actions on the same line as ghost buttons
+(Import, Add runner) that drop to icons with a tooltip in a narrow card. Under
+them a mono facts line (host, runner count, last seen, the editable stack root),
+each fact carrying its own leading dot under a clip so no line starts with one.
+Runner rows share fixed columns across every card, the connection dot under
+the machine's mark: the name (or `runner <short id>` when it only repeats the
+machine's), the version under it, the mono last-seen time, then what it is
+doing (`idle`, a pulsing `info` dot and the job, or `offline`), then remove. A
+machine with nothing connected keeps full-contrast text but loses the card
+fill and shadow and draws a dashed edge, so it reads as unplugged rather than
+faded. `MachineGroup` and `RunnerRow` in `web/src/components/runner/` are the
+reference.
 
 Setup stepper. A multi-step setup inside the wizard shell is a vertical rail
 of `DnsStep` rungs (hollow dot upcoming, filled dot active, check done), with

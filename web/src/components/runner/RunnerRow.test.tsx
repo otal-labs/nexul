@@ -42,23 +42,21 @@ describe("RunnerRow", () => {
   it("shows name, status, and the running job for a connected runner", () => {
     renderRow({ runner: onlineRunner });
     expect(screen.getByText("alpha")).toBeInTheDocument();
-    expect(screen.getByText("online")).toBeInTheDocument();
-    expect(screen.getByText(/last seen/i)).toBeInTheDocument();
+    expect(screen.getByTitle("Last seen")).toBeInTheDocument();
     expect(screen.getByText("api")).toBeInTheDocument();
   });
 
-  it("shows idle for a disconnected runner without a job", () => {
+  it("says offline, not idle, for a disconnected runner", () => {
     renderRow({ runner: idleRunner });
     expect(screen.getByText("beta")).toBeInTheDocument();
     expect(screen.getByText("offline")).toBeInTheDocument();
-    expect(screen.getByText("idle")).toBeInTheDocument();
+    expect(screen.queryByText("idle")).not.toBeInTheDocument();
   });
 
-  it("recedes offline runners at reduced opacity", () => {
-    const { container } = renderRow({ runner: idleRunner });
-    expect(container.querySelector("li")).toHaveClass("opacity-60");
-    const { container: online } = renderRow({ runner: onlineRunner });
-    expect(online.querySelector("li")).not.toHaveClass("opacity-60");
+  it("names a runner by its short id when it shares the machine's name", () => {
+    renderRow({ runner: { ...idleRunner, id: "12aa2fd2-c2ac-7416", name: "prod" }, machineName: "prod" });
+    expect(screen.getByText("runner 12aa2fd2")).toBeInTheDocument();
+    expect(screen.queryByText("prod")).not.toBeInTheDocument();
   });
 
   it("shows the runner's build version when known", () => {
