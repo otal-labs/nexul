@@ -26,16 +26,16 @@ const (
 )
 
 // Topics returns every topic gitprovider publishes; TopicProviderEvent is declared in envelope.go but lives here.
-func Topics() []string {
-	return []string{
-		TopicProviderEvent,
-		TopicPROpened,
-		TopicPRReviewSubmitted,
-		TopicPRMerged,
-		TopicPRClosed,
-		TopicPush,
-		TopicBranchDeleted,
-		TopicPRCommentCreated,
+func Topics() []eventbus.Topic {
+	return []eventbus.Topic{
+		{Name: TopicProviderEvent, Payload: ProviderEvent{}},
+		{Name: TopicPROpened, Payload: PREvent{}},
+		{Name: TopicPRReviewSubmitted, Payload: ReviewSubmittedEvent{}},
+		{Name: TopicPRMerged, Payload: PREvent{}},
+		{Name: TopicPRClosed, Payload: PREvent{}},
+		{Name: TopicPush, Payload: PushEvent{}},
+		{Name: TopicBranchDeleted, Payload: BranchDeletedEvent{}},
+		{Name: TopicPRCommentCreated, Payload: PRCommentEvent{}},
 	}
 }
 

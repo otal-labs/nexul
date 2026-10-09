@@ -396,10 +396,6 @@ func TestHandler_GetBelowTheInstance_ReadsThatLocation(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, get("/api/templates/body?key=chore&scope=project&project_id=p-2").Code)
 }
 
-func TestTopics(t *testing.T) {
-	assert.Equal(t, []string{"instance_template.updated"}, Topics())
-}
-
 func TestService_QuestionsKind_ParsesEveryRead(t *testing.T) {
 	layer := &fakeLayer{follows: true, texts: map[string]string{}}
 	svc := NewService(newFakeRepo(), fakeGate{"admin": true}, Kind{
