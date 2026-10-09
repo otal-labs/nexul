@@ -38,7 +38,14 @@ export const DocsPage = () => {
         <ListDetailLayout
           hasSelection={!!docId}
           list={<DocsListPane docs={docs} project={current} selectedId={docId} />}
-          placeholder={<ListDetailPlaceholder icon={FileTextIcon} title="Select a doc" summary={`${docs.length} ${docs.length === 1 ? "doc" : "docs"} in ${current.name}`} searchable />}
+          placeholder={
+            <ListDetailPlaceholder
+              icon={FileTextIcon}
+              title={docs.length === 0 ? "Nothing to open yet" : "Select a doc"}
+              summary={docs.length === 0 ? `${current.name} has no docs.` : `${docs.length} ${docs.length === 1 ? "doc" : "docs"} in ${current.name}`}
+              searchable={docs.length > 0}
+            />
+          }
           detail={
             <Suspense fallback={<LoadingDisplay />}>
               <DocPage key={docId} />

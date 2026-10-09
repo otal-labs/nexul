@@ -98,6 +98,13 @@ describe("DocsPage", () => {
     expect(await screen.findByText("editing doc-2")).toBeInTheDocument();
   });
 
+  it("says the project has no docs instead of asking to pick one", async () => {
+    renderPage("/acme/docs", ["docs:read"], { "/api/docs": [] });
+
+    expect(await screen.findByText("Nothing to open yet")).toBeInTheDocument();
+    expect(screen.queryByText("Select a doc")).not.toBeInTheDocument();
+  });
+
   it("moves a bare doc link to its project's URL", async () => {
     renderPage("/acme/docs/doc-2", ["docs:read"], { "/api/docs/doc-2": { ...doc("doc-2", "Rollback plan", ""), body: "" } });
 
@@ -190,7 +197,7 @@ describe("DocsPage", () => {
   it("says so when the viewer can open no doc, so the server shows them no folder", async () => {
     renderPage("/acme/docs", ["docs:read"], { "/api/docs": [], "/api/docs/folders": [] });
 
-    expect(await screen.findByText("No docs yet")).toBeInTheDocument();
+    expect(await screen.findByText("Nothing to open yet")).toBeInTheDocument();
   });
 
   it("moves a doc to another folder from its row menu", async () => {
