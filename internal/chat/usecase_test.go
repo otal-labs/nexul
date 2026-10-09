@@ -888,6 +888,10 @@ func (projectMemoriesGate) Require(_ context.Context, _ string, action permissio
 	return nil
 }
 
+func (projectMemoriesGate) RequireTickets(context.Context, []string, permissions.Action) (map[string]bool, error) {
+	return map[string]bool{}, nil
+}
+
 func (projectMemoriesGate) RequireProject(_ context.Context, projectID string, _ permissions.Action) error {
 	if projectID != "p-1" {
 		return apperrs.ErrForbidden

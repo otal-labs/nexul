@@ -531,6 +531,22 @@ func (r *TicketsRepo) LabelColors(ctx context.Context, projectID string, labels 
 }
 
 // attachLabels loads labels for every ticket in one query, so responses carry the filter bar's label dimension.
+// ProjectsOf maps each of ids naming a ticket to its project id; an unknown id is left out.
+func (r *TicketsRepo) ProjectsOf(ctx context.Context, ids []string) (map[string]string, error) {
+	out := make(map[string]string, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	rows, err := r.q.ListTicketProjects(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("projects of tickets: %w", err)
+	}
+	for _, row := range rows {
+		out[row.ID] = row.ProjectID.String
+	}
+	return out, nil
+}
+
 func ticketIDs(ts []*tickets.Ticket) []string {
 	ids := make([]string, len(ts))
 	for i, t := range ts {

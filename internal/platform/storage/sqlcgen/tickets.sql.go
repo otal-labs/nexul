@@ -553,6 +553,48 @@ func (q *Queries) ListTicketPRLinksBatch(ctx context.Context, ids []string) ([]L
 	return items, nil
 }
 
+const listTicketProjects = `-- name: ListTicketProjects :many
+SELECT id, project_id FROM tickets WHERE id IN (/*SLICE:ids*/?)
+`
+
+type ListTicketProjectsRow struct {
+	ID        string
+	ProjectID sql.NullString
+}
+
+func (q *Queries) ListTicketProjects(ctx context.Context, ids []string) ([]ListTicketProjectsRow, error) {
+	query := listTicketProjects
+	var queryParams []interface{}
+	if len(ids) > 0 {
+		for _, v := range ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTicketProjectsRow
+	for rows.Next() {
+		var i ListTicketProjectsRow
+		if err := rows.Scan(&i.ID, &i.ProjectID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTickets = `-- name: ListTickets :many
 SELECT id, title, body, status, doc_id, developer, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name FROM tickets ORDER BY created_at
 `

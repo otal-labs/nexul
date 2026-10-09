@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"maps"
+	"slices"
 
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/auth"
@@ -146,6 +148,32 @@ func (g projectEntityGate) RequireTicket(ctx context.Context, ticketID string, a
 		return err
 	}
 	return g.access.RequireProject(ctx, t.ProjectID, action)
+}
+
+// RequireTickets is RequireTicket for many tickets, asking access once per project rather than once per ticket.
+func (g projectEntityGate) RequireTickets(ctx context.Context, ticketIDs []string, action permissions.Action) (map[string]bool, error) {
+	out := make(map[string]bool, len(ticketIDs))
+	if identity.Internal(ctx) {
+		for _, id := range ticketIDs {
+			out[id] = true
+		}
+		return out, nil
+	}
+	projectOf, err := g.tickets.ProjectsOf(ctx, ticketIDs)
+	if err != nil {
+		return nil, err
+	}
+	known := slices.Collect(maps.Keys(projectOf))
+	allowed, err := permissions.Filter(known, func(id string) string { return projectOf[id] }, func(projectID string) error {
+		return g.access.RequireProject(ctx, projectID, action)
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range allowed {
+		out[id] = true
+	}
+	return out, nil
 }
 
 // ticketProjectPeople resolves a ticket person's login and asks access whether they may open the project; a login

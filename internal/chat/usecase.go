@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"path"
 	"regexp"
 	"slices"
@@ -49,6 +50,8 @@ type Membership interface {
 // ThreadGate checks a ticket or interview thread through its project, so threads follow Project access (ADR 0097).
 type ThreadGate interface {
 	RequireTicket(ctx context.Context, ticketID string, action permissions.Action) error
+	// RequireTickets is RequireTicket for many tickets: the ids it lets through, each refused ticket left out.
+	RequireTickets(ctx context.Context, ticketIDs []string, action permissions.Action) (map[string]bool, error)
 	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
 }
 
@@ -789,6 +792,13 @@ func (s *Service) HasTicketThreads(ctx context.Context, ticketIDs []string) (map
 	if err != nil {
 		return nil, fmt.Errorf("has ticket threads: %w", err)
 	}
+	if s.threads != nil {
+		visible, err := s.threads.RequireTickets(ctx, slices.Collect(maps.Keys(out)), permissions.TicketsRead)
+		if err != nil {
+			return nil, fmt.Errorf("has ticket threads: %w", err)
+		}
+		return visible, nil
+	}
 	threads := make([]*Conversation, 0, len(out))
 	for ticketID := range out {
 		thread, err := s.repo.GetTicketThread(ctx, ticketID)
@@ -797,7 +807,6 @@ func (s *Service) HasTicketThreads(ctx context.Context, ticketIDs []string) (map
 		}
 		threads = append(threads, thread)
 	}
-	// ponytail: one check per thread through its ticket's project; ask once per project if boards get slow.
 	visible := make(map[string]bool, len(threads))
 	for _, c := range threads {
 		err := s.requireGate(ctx, c)
