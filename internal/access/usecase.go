@@ -74,7 +74,11 @@ func (s *Service) HasPermission(ctx context.Context, userID, workspaceID string,
 }
 
 func (s *Service) check(ctx context.Context, userID, workspaceID, projectID string, action permissions.Action, resourceType, resourceID string) bool {
-	ws := s.layers(ctx, userID, workspaceID, projectID)
+	return s.decide(ctx, s.layers(ctx, userID, workspaceID, projectID), userID, action, resourceType, resourceID)
+}
+
+// decide answers check from layers already read, adding only the resource's own overwrite.
+func (s *Service) decide(ctx context.Context, ws workspaceLayers, userID string, action permissions.Action, resourceType, resourceID string) bool {
 	if ws.owner {
 		return true
 	}
@@ -228,6 +232,28 @@ func (s *Service) Can(ctx context.Context, userID, docID string, action permissi
 	}
 	workspaceID, projectID := s.resolveDoc(ctx, docID)
 	return s.check(ctx, userID, workspaceID, projectID, action, resourceTypeDoc, docID), nil
+}
+
+// CanDocs answers Can for each of docIDs, all in projectID, reading the workspace and project layers once for the
+// lot instead of once per doc; a list of a project's docs would otherwise pay for them per row.
+func (s *Service) CanDocs(ctx context.Context, userID, projectID string, docIDs []string, action permissions.Action) map[string]bool {
+	out := make(map[string]bool, len(docIDs))
+	if userID == "" {
+		return out
+	}
+	workspaceID := ""
+	if projectID != "" {
+		ws, err := s.projectWorkspace(ctx, projectID)
+		if err != nil {
+			projectID = ""
+		}
+		workspaceID = ws
+	}
+	ws := s.layers(ctx, userID, workspaceID, projectID)
+	for _, id := range docIDs {
+		out[id] = s.decide(ctx, ws, userID, action, resourceTypeDoc, id)
+	}
+	return out
 }
 
 // resolveDoc resolves docID's workspace and project for the workspace- and project-scoped layers.

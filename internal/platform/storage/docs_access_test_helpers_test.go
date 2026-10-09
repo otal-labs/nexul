@@ -15,6 +15,14 @@ func (allowAll) Can(context.Context, string, string, permissions.Action) (bool, 
 	return true, nil
 }
 
+func (allowAll) CanDocs(_ context.Context, _, _ string, docIDs []string, _ permissions.Action) map[string]bool {
+	out := make(map[string]bool, len(docIDs))
+	for _, id := range docIDs {
+		out[id] = true
+	}
+	return out
+}
+
 func (allowAll) GrantCreator(context.Context, string, string) error {
 	return nil
 }

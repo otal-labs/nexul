@@ -304,6 +304,15 @@ func (f fakeAccess) Can(_ context.Context, _, _ string, action permissions.Actio
 	return f.can, f.canErr
 }
 
+func (f fakeAccess) CanDocs(ctx context.Context, userID, _ string, docIDs []string, action permissions.Action) map[string]bool {
+	out := map[string]bool{}
+	for _, id := range docIDs {
+		ok, err := f.Can(ctx, userID, id, action)
+		out[id] = ok && err == nil
+	}
+	return out
+}
+
 func (f fakeAccess) GrantCreator(_ context.Context, _, _ string) error {
 	return f.grant
 }
