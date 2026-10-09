@@ -1,9 +1,10 @@
 import { QueryClient } from "@tanstack/react-query";
 
 import { getMeKey } from "@/hooks/AuthHooks";
-import { getChatConversationsKey, getChatUnreadKey } from "@/hooks/ChatHooks";
+import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@/hooks/ChatHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { dispatch } from "@/hooks/useLiveEvents";
+import type { Message } from "@/models/Chat";
 
 jest.mock("expo-secure-store", () => ({ getItem: () => null, setItem: jest.fn(), deleteItemAsync: jest.fn() }));
 
@@ -42,4 +43,41 @@ describe("dispatch", () => {
       expect(invalidate).toHaveBeenCalledWith();
     },
   );
+
+  // A frame names the change, so an open thread updates without downloading its page of messages again.
+  const message = (id: string, body: string): Message => ({
+    id,
+    conversation_id: "c1",
+    author_id: "u2",
+    author_kind: "user",
+    body,
+    mentions: null,
+    created_at: "2026-10-09T10:00:00Z",
+    updated_at: "2026-10-09T10:00:00Z",
+  });
+  const first = { ...message("m1", "hello"), reactions: [{ emoji: "👍", user_ids: ["u1"] }] };
+
+  test.each([
+    ["chat.message.created", { message: message("m2", "new") }, [first, message("m2", "new")]],
+    ["chat.message.updated", { message: { ...first, body: "edited" } }, [{ ...first, body: "edited" }]],
+    [
+      "chat.message.deleted",
+      { conversation_id: "c1", message_id: "m1", deleted_at: "2026-10-09T11:00:00Z" },
+      [{ ...first, deleted_at: "2026-10-09T11:00:00Z" }],
+    ],
+    [
+      "chat.message.reactions_changed",
+      { conversation_id: "c1", message_id: "m1", user_id: "u2", emoji: "👍", reacted: true },
+      [{ ...first, reactions: [{ emoji: "👍", user_ids: ["u1", "u2"] }] }],
+    ],
+  ])("%s patches the cached thread instead of refetching it", (topic, payload, want) => {
+    const client = new QueryClient();
+    client.setQueryData([getChatMessagesKey, "c1"], [first]);
+    const invalidate = jest.spyOn(client, "invalidateQueries").mockResolvedValue();
+
+    dispatch(client)({ topic, type: "event", payload });
+
+    expect(client.getQueryData([getChatMessagesKey, "c1"])).toEqual(want);
+    expect(invalidate.mock.calls.flatMap(([filters]) => filters?.queryKey ?? [])).not.toContain(getChatMessagesKey);
+  });
 });

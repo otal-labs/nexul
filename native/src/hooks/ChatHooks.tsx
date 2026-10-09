@@ -7,7 +7,7 @@ import { useFetchDoc } from "@/hooks/DocHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
-import { conversationLabel, type Conversation, type DMLabelContext, type Message, type UnreadCounts } from "@/models/Chat";
+import { applyReaction, conversationLabel, type Conversation, type DMLabelContext, type Message, type UnreadCounts } from "@/models/Chat";
 import { ticketKey } from "@/models/Ticket";
 import type { MeResponse } from "@/models/User";
 
@@ -64,6 +64,28 @@ const removeCachedMessage = (client: QueryClient, conversationId: string, messag
   client.setQueriesData<Message[]>({ queryKey: [getChatMessagesKey, conversationId] }, (old) =>
     old?.filter((m) => m.id !== messageId),
   );
+
+const patchCachedMessage = (client: QueryClient, conversationId: string, messageId: string, patch: (m: Message) => Message) =>
+  client.setQueriesData<Message[]>({ queryKey: [getChatMessagesKey, conversationId] }, (old) =>
+    old?.map((m) => (m.id === messageId ? patch(m) : m)),
+  );
+
+export const markCachedMessageDeleted = (client: QueryClient, conversationId: string, messageId: string, deletedAt: string) =>
+  patchCachedMessage(client, conversationId, messageId, (m) => ({ ...m, deleted_at: deletedAt }));
+
+export interface ReactionChange {
+  conversation_id: string;
+  message_id: string;
+  user_id: string;
+  emoji: string;
+  reacted: boolean;
+}
+
+export const applyCachedReaction = (client: QueryClient, change: ReactionChange) =>
+  patchCachedMessage(client, change.conversation_id, change.message_id, (m) => ({
+    ...m,
+    reactions: applyReaction(m.reactions, change.emoji, change.user_id, change.reacted),
+  }));
 
 export const usePostMessage = (conversationId: string) => {
   const client = useQueryClient();

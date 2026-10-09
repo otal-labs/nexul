@@ -148,13 +148,13 @@ describe("ChatThreadScreen", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/chat/handoff/[id]", params: { id: "h2", conversationId: "c1", messageId: "r1" } });
   });
 
-  test("a reacted message shows each emoji with its count, and a reaction push refetches the thread", async () => {
+  test("a reacted message shows each emoji with its count, and a reaction push updates it", async () => {
     thread = [{ ...message("m1", "shipped", 1), reactions: [{ emoji: "👍", user_ids: ["ana", "me"] }] }];
     const client = await renderThread();
 
     expect(await screen.findByLabelText("👍 2")).toBeTruthy();
-    thread = [{ ...message("m1", "shipped", 1), reactions: [{ emoji: "👍", user_ids: ["ana"] }] }];
-    await act(async () => dispatch(client)({ topic: "chat.message.reactions_changed", type: "event", payload: { conversation_id: "c1" } }));
+    const unreact = { conversation_id: "c1", message_id: "m1", user_id: "me", emoji: "👍", reacted: false };
+    await act(async () => dispatch(client)({ topic: "chat.message.reactions_changed", type: "event", payload: unreact }));
     expect(await screen.findByLabelText("👍 1")).toBeTruthy();
   });
 
@@ -283,16 +283,11 @@ describe("ChatThreadScreen", () => {
     expect(screen.getAllByText("hello from the phone")).toHaveLength(1);
   });
 
-  test("a live message event refreshes the open thread", async () => {
+  test("a live message event shows in the open thread", async () => {
     const client = await renderThread();
     await screen.findByText("newest");
 
-    thread = [...thread, message("m4", "sent from the web", 4)];
-    const invalidate = jest.spyOn(client, "invalidateQueries");
-    await act(async () => {
-      dispatch(client)({ topic: "chat.message.created", type: "event", payload: {} });
-      await Promise.all(invalidate.mock.results.map((result) => result.value));
-    });
+    await act(async () => dispatch(client)({ topic: "chat.message.created", type: "event", payload: { message: message("m4", "sent from the web", 4) } }));
 
     expect(await screen.findByText("sent from the web")).toBeTruthy();
   });

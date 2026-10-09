@@ -4,7 +4,15 @@ import { AppState, type AppStateStatus } from "react-native";
 
 import { buildLiveURL, LiveEventsClient, type ServerFrame } from "@/api/events";
 import { getMeKey } from "@/hooks/AuthHooks";
-import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@/hooks/ChatHooks";
+import {
+  applyCachedReaction,
+  getChatConversationsKey,
+  getChatMessagesKey,
+  getChatUnreadKey,
+  markCachedMessageDeleted,
+  upsertCachedMessage,
+  type ReactionChange,
+} from "@/hooks/ChatHooks";
 import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
@@ -13,6 +21,7 @@ import { getRunnersKey } from "@/hooks/RunnerHooks";
 import { getStackDeploysKey } from "@/hooks/StackHooks";
 import { getProjectStatusesKey } from "@/hooks/StatusHooks";
 import { getTicketKey, getTicketsByProjectKey } from "@/hooks/TicketHooks";
+import type { Message } from "@/models/Chat";
 import type { MeResponse } from "@/models/User";
 import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
 
@@ -29,10 +38,9 @@ const pushTopics: Record<string, string[]> = {
   "account.removed": [getWorkspacePeopleKey],
   "workspace.member.added": [getWorkspacePeopleKey],
   "workspace.member.removed": [getWorkspacePeopleKey],
-  "chat.message.created": [getChatMessagesKey, getChatUnreadKey],
-  "chat.message.updated": [getChatMessagesKey],
-  "chat.message.deleted": [getChatMessagesKey, getChatUnreadKey],
-  "chat.message.reactions_changed": [getChatMessagesKey],
+  // A message frame also patches the open thread in place (patchChatMessages), so its page is never downloaded again.
+  "chat.message.created": [getChatUnreadKey],
+  "chat.message.deleted": [getChatUnreadKey],
   "ticket.created": [getTicketsByProjectKey],
   "ticket.updated": [getTicketsByProjectKey, getTicketKey],
   "ticket.status_changed": [getTicketsByProjectKey, getTicketKey],
@@ -68,11 +76,26 @@ const isViewersAccessChange = (client: QueryClient, frame: ServerFrame) => {
   return !!userID && userID === client.getQueryData<MeResponse>([getMeKey])?.user.id;
 };
 
+const patchChatMessages = (client: QueryClient, { topic, payload }: ServerFrame) => {
+  if (topic === "chat.message.created" || topic === "chat.message.updated") {
+    const { message } = payload as { message?: Message };
+    if (message) upsertCachedMessage(client, message);
+    return;
+  }
+  if (topic === "chat.message.deleted") {
+    const p = payload as { conversation_id: string; message_id: string; deleted_at: string };
+    markCachedMessageDeleted(client, p.conversation_id, p.message_id, p.deleted_at);
+    return;
+  }
+  if (topic === "chat.message.reactions_changed") applyCachedReaction(client, payload as ReactionChange);
+};
+
 export const dispatch = (client: QueryClient) => (frame: ServerFrame) => {
   if (isViewersAccessChange(client, frame)) {
     void client.invalidateQueries();
     return;
   }
+  patchChatMessages(client, frame);
   pushTopics[frame.topic]?.forEach((key) => void client.invalidateQueries({ queryKey: [key] }));
 };
 
