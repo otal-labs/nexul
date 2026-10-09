@@ -356,7 +356,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	svc.playsRunner = plays.NewRunner(plays.RunnerConfig{
 		Plays:     store.Plays,
 		Trails:    store.PlayTrails,
-		Perm:      playsPermissionGate{svc: svc.accessSvc},
+		Perm:      svc.accessSvc,
 		Targets:   playsTargetReader{tickets: svc.ticketsSvc, docs: svc.docsSvc, workspace: svc.workspaceSvc},
 		Docs:      svc.docsSvc,
 		Rounds:    svc.docsSvc,

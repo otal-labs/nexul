@@ -207,15 +207,6 @@ func (g roleNameGate) RolePermissions(ctx context.Context, workspaceID, roleID s
 	return r.Permissions, nil
 }
 
-// workspacePermissionGate adapts access's HasPermission to tenancy's seam (ADR 0017); backs the `/me` permissions field.
-type workspacePermissionGate struct {
-	svc *access.Service
-}
-
-func (g workspacePermissionGate) WorkspacePermissions(ctx context.Context, userID, workspaceID string) []string {
-	return g.svc.WorkspacePermissions(ctx, userID, workspaceID)
-}
-
 // tenancyProjectGate reads a project's workspace from storage and what someone holds inside it from access, for
 // tenancy's Project access use-cases (ADR 0017).
 type tenancyProjectGate struct {
@@ -304,15 +295,6 @@ func (g workspaceDefaultsGate) SeedWorkspaceDefaults(ctx context.Context, worksp
 		return err
 	}
 	return g.automations.SeedWorkspace(ctx, workspaceID)
-}
-
-// playsPermissionGate adapts access's HasPermission to plays' seam (ADR 0017).
-type playsPermissionGate struct {
-	svc *access.Service
-}
-
-func (g playsPermissionGate) HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action, resourceType, resourceID string) bool {
-	return g.svc.HasPermission(ctx, userID, workspaceID, action, resourceType, resourceID)
 }
 
 // clarifyPlayGate answers docs' Clarify check (ADR 0017): plays:run on the workspace's Clarify play, or workspace-wide
