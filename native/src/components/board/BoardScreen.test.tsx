@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, userEvent } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, userEvent } from "@testing-library/react-native";
 
 import { api } from "@/api/client";
 import { BoardScreen } from "@/components/board/BoardScreen";
@@ -8,13 +8,9 @@ import type { MyWorkspaceInfo } from "@/models/Workspace";
 import { useBoardStore } from "@/stores/boardStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
-jest.mock("@/api/client", () => ({ api: { get: jest.fn() } }));
+jest.mock("@/api/client", () => ({ api: { get: jest.fn(), patch: jest.fn() } }));
 
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
-
-// lucide-react-native ships ESM-only under the "react-native" package.json field, which this project's
-// jest transform (`\.[jt]sx?$`) doesn't cover; a hand-written fake sidesteps that instead of rendering icons.
-jest.mock("lucide-react-native", () => ({ ChevronDown: () => null, FolderLock: () => null }));
 
 jest.mock("expo-sqlite/kv-store", () => ({
   __esModule: true,
@@ -85,13 +81,24 @@ describe("BoardScreen", () => {
     expect(doing).toBeLessThan(shipped);
   });
 
-  test("Mine hides tickets where the viewer holds neither role", async () => {
+  test("a card's Move to action changes its column, the same move a drop makes", async () => {
+    jest.mocked(api.patch).mockResolvedValue({});
+    await renderScreen();
+    const card = await screen.findByRole("button", { name: "NEX-12 Fix login" });
+
+    expect(card.props.accessibilityActions.map((a: { label: string }) => a.label)).toEqual(["Move to Doing", "Move to Shipped"]);
+    await act(() => fireEvent(card, "accessibilityAction", { nativeEvent: { actionName: "st-shipped" } }));
+
+    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "st-shipped" });
+  });
+
+  test("Only mine hides tickets where the viewer holds neither role", async () => {
     await renderScreen();
     await screen.findByText("Fix login");
     expect(screen.getByText("Add board")).toBeTruthy();
     expect(screen.getByText("Ship it")).toBeTruthy();
 
-    await userEvent.setup().press(screen.getByRole("button", { name: "Mine" }));
+    await userEvent.setup().press(screen.getByRole("switch", { name: "Only my tickets" }));
 
     expect(screen.getByText("Fix login")).toBeTruthy();
     expect(screen.getByText("Add board")).toBeTruthy();
@@ -109,7 +116,7 @@ describe("BoardScreen", () => {
     await act(() => client.invalidateQueries());
 
     expect(await screen.findByText("You no longer have access to this project")).toBeTruthy();
-    expect(screen.getByText("Choose a project")).toBeTruthy();
+    expect(screen.getByText("Board")).toBeTruthy();
     expect(screen.queryByText("Website")).toBeNull();
     expect(screen.queryByText("Fix login")).toBeNull();
   });
@@ -125,7 +132,7 @@ describe("BoardScreen", () => {
 
   test.each([
     { picked: "p-1", shows: "Fix login" },
-    { picked: "p-2", shows: "This page doesn't exist." },
+    { picked: "p-2", shows: "This page doesn't exist" },
   ])("a Restricted member's board on $picked follows that project's own access", async ({ picked, shows }) => {
     projects = [project, other];
     myRole = {

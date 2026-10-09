@@ -27,6 +27,14 @@ export const useUpdateTicketStatus = () => {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.patch<Ticket>(`/api/tickets/${id}/status`, { status }),
+    // The board moves the card at once, so a drop lands where it was let go; a refusal puts it back with the refetch.
+    onMutate: async ({ id, status }) => {
+      await client.cancelQueries({ queryKey: [getTicketsByProjectKey] });
+      client.setQueriesData<Ticket[]>({ queryKey: [getTicketsByProjectKey] }, (old) =>
+        old?.map((ticket) => (ticket.id === id ? { ...ticket, status } : ticket)),
+      );
+    },
+    onError: () => client.invalidateQueries({ queryKey: [getTicketsByProjectKey] }),
     onSuccess: async (_, vars) => {
       await client.invalidateQueries({ queryKey: [getTicketsByProjectKey] });
       await client.invalidateQueries({ queryKey: [getTicketKey, vars.id] });
