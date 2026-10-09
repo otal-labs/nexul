@@ -1423,7 +1423,8 @@ with `light-dark()`; shadows, which change geometry between modes, are
 restated for light. The scheme follows the system until the header's toggle
 sets `.light` or `.dark` on `<html>`, which a head script restores before
 first paint. Selection is `brand` at 32%, as in the app. The ember holds the
-app's roles here too: the primary action (Get started), the active nav marker
+app's roles here too: the primary action (the home page's copy button, the
+404's Open the docs), the active nav marker
 (header and docs sidebar), selection, and the link underline.
 
 Fraunces. Docs titles, the 404 and the landing headlines use `.type-display`
@@ -1457,23 +1458,39 @@ hover. Rejected: `brand` text, as the app's prose links (4.3:1 on the light
 canvas, under the 4.5:1 body text needs; it passes only on the app's white
 sheet) and a 2px underline at rest (heavy in a paragraph with several links).
 
-Header. One header on every page: the wordmark, then from 768px Docs,
-Roadmap, Changelog and GitHub, docs search (an icon below 1024px, the field
-from there), the theme toggle and Get started in `brand`. The current page
-is ink with a 2px `brand` edge along the header's foot. Rejected: the
-section nav's `bg-accent` block (read as a button beside Get started) and ink
-text alone (the current page barely differed from the rest). The header is
-the canvas colour with a hairline foot, not frosted: text scrolls under it all
-the time, and nothing may move behind a blur.
+Header. One header on every page: the wordmark, then from 768px Docs, Roadmap
+and Changelog as words, docs search (an icon below 1024px, the field from
+there), GitHub as an icon button and the theme toggle. No button in `brand`:
+the home page's install block is the call to action, and a header button
+repeated it on pages where nobody was about to install. The current page is
+ink with a 2px `brand` edge along the header's foot. Rejected: the section
+nav's `bg-accent` block (read as a button) and ink text alone (the current
+page barely differed from the rest). The header is the canvas colour with a
+hairline foot, not frosted: text scrolls under it all the time, and nothing
+may move behind a blur.
+
+Icons over words. Well-known destinations and tools are icon-only: GitHub,
+theme, search, menu. Each is a 44px ghost icon button, muted until hovered,
+with an `aria-label` and a native `title` tooltip of the same words. The
+product's own places (Docs, Roadmap, Changelog) stay words, because no icon
+says what they are. A filled brand mark sits 2px smaller (16px) than the
+stroked icons beside it (18px), or it reads heavier. GitHub goes before the
+theme toggle: the toggle is a setting and ends the row. Rejected: GitHub
+after the toggle (the setting landed between two destinations), the GitHub
+icon in the phone bar too (four icons beside the wordmark on a docs page at
+320px; it fit, but the menu already lists it), and the mark in ink (the
+filled shape outweighed every other control).
 
 Phone menu. Below 768px every page shows the wordmark, search on docs pages,
 the theme toggle and a menu button. The menu is one sheet everywhere: the
 app's sheet, frosted, 8px from the right edge at 12px, up to 320px wide, over
 the dialog scrim. On the landing pages it is a `<dialog>` holding Docs,
-Roadmap, Changelog, GitHub and Get started, as tall as its links; on docs
-pages it is the sidebar drawer, the page tree first and the same links at its
-foot. Rows are 44px, the current one `bg-accent` with the `brand` edge; its
-close mark is an X on both.
+Roadmap, Changelog and GitHub, as tall as its links; on docs pages it is the
+sidebar drawer, the page tree first and the same links at its foot. GitHub is
+a row like the others with its mark before the word: in a list of words an
+icon alone would be the one row nobody can read, and a phone has no tooltip.
+Rows are 44px, the current one `bg-accent` with the `brand` edge; its close
+mark is an X on both.
 
 Theme toggle. A 44px ghost icon button showing the mode you are in (moon in
 dark, sun in light). The palette lands in one frame with every colour
