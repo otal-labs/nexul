@@ -112,9 +112,6 @@ func Paginate[T any](items []T, p PageArgs) Page[T] {
 	offset := min(max(p.Offset, 0), len(items))
 	end := min(offset+limit, len(items))
 	page := Page[T]{Items: items[offset:end], Total: len(items), HasMore: end < len(items)}
-	if page.Items == nil {
-		page.Items = []T{}
-	}
 	if page.HasMore {
 		page.NextOffset = end
 	}

@@ -53,8 +53,7 @@ func Scan(ctx context.Context, g Gate, s Scanner, owner, name, ref string) (*Sca
 		return nil, fmt.Errorf("scan %s/%s: %w", owner, name, err)
 	}
 
-	normalizeCandidateSlices(candidates)
-	return &ScanResult{DefaultBranch: resolvedRef, Candidates: candidates, EnvKeys: nonNil(envKeys)}, nil
+	return &ScanResult{DefaultBranch: resolvedRef, Candidates: candidates, EnvKeys: envKeys}, nil
 }
 
 // classifyScanEntries buckets a tree's blobs into compose files, standalone Dockerfiles, and .env.example
@@ -104,27 +103,6 @@ func scanCandidates(ctx context.Context, s Scanner, owner, name, resolvedRef str
 	return candidates, nil
 }
 
-// normalizeCandidateSlices turns every service's nil Ports/Expose/EnvKeys into an empty slice, so the JSON
-// the wizard indexes is never null.
-func normalizeCandidateSlices(candidates []Candidate) {
-	for i := range candidates {
-		for j := range candidates[i].Services {
-			svc := &candidates[i].Services[j]
-			svc.Ports = nonNil(svc.Ports)
-			svc.Expose = nonNil(svc.Expose)
-			svc.EnvKeys = nonNil(svc.EnvKeys)
-		}
-	}
-}
-
-// nonNil turns a nil slice into an empty one so the JSON lists the wizard indexes are never null.
-func nonNil[T any](s []T) []T {
-	if s == nil {
-		return []T{}
-	}
-	return s
-}
-
 // MinSearchLength is the shortest q accepted; fewer characters match too much of an installation to be worth it.
 const MinSearchLength = 3
 
@@ -142,7 +120,7 @@ func ListRepos(ctx context.Context, g Gate, s Scanner, q string, refresh bool) (
 		return nil, fmt.Errorf("list installation repositories: %w", err)
 	}
 	if q == "" {
-		return nonNil(repos), nil
+		return repos, nil
 	}
 	matches := []Repo{}
 	for _, r := range repos {
@@ -162,7 +140,7 @@ func ListInstallations(ctx context.Context, g Gate, l InstallationLister) ([]Ins
 	if err != nil {
 		return nil, fmt.Errorf("list installations: %w", err)
 	}
-	return nonNil(installs), nil
+	return installs, nil
 }
 
 // candidateName derives a candidate's display name from the repo name plus the file's directory, when not root.

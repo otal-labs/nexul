@@ -111,11 +111,7 @@ func versionChanges(r *http.Request, runnerSvc *runner.Service) []versionChange 
 	}
 	changes := make([]versionChange, 0, len(releases))
 	for _, rel := range releases {
-		notes := rel.Notes()
-		if notes == nil {
-			notes = []string{}
-		}
-		changes = append(changes, versionChange{Version: rel.Tag, URL: rel.URL, Notes: notes})
+		changes = append(changes, versionChange{Version: rel.Tag, URL: rel.URL, Notes: rel.Notes()})
 	}
 	return changes
 }

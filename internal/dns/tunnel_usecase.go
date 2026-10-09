@@ -89,9 +89,6 @@ func (s *Service) DescribeTunnel(ctx context.Context, tunnelID string) (*TunnelI
 			tracked = true
 		}
 	}
-	if routes == nil {
-		routes = []TunnelRoute{}
-	}
 	return &TunnelInfo{ID: t.ID, Name: t.Name, Status: t.Status, Tracked: tracked, Routes: routes, Records: records}, nil
 }
 

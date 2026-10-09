@@ -83,9 +83,6 @@ func GetChangeContext(ctx context.Context, g Gate, p GitProvider, r ChangeContex
 		}
 		decisions = append(decisions, entries...)
 	}
-	if tickets == nil {
-		tickets = []ChangeTicket{}
-	}
 	return &ChangeContext{Owner: ref.Owner, Repo: ref.Repo, PR: pr, Tickets: tickets, Decisions: decisions}, nil
 }
 

@@ -66,9 +66,6 @@ func (h *Handler) listProjects(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	if projects == nil {
-		projects = []harness.Project{}
-	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"projects": projects})
 }
 

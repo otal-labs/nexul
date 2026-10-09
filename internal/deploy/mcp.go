@@ -247,7 +247,7 @@ func stackDetailFor(ctx context.Context, s *Service, stack *Stack) (stackDetail,
 	}
 	out := stackDetail{
 		stackResult:   toStackResult(stack),
-		Services:      nonNil(services),
+		Services:      services,
 		RecentDeploys: toDeployResults(deploys[:min(len(deploys), recentDeploys)]),
 	}
 	if stack.DerivedFrom != "" {
@@ -671,13 +671,6 @@ func withHint(err error, hint string) error {
 	return err
 }
 
-func nonNil[T any](s []T) []T {
-	if s == nil {
-		return []T{}
-	}
-	return s
-}
-
 // deployResult is a deploy as an agent reads it: the deprecated service_id alias and rule id left out.
 type deployResult struct {
 	ID          string    `json:"id"`
@@ -775,7 +768,7 @@ func toStackResult(st *Stack) stackResult {
 		stackSummary: toStackSummary(st),
 		ComposePath:  st.ComposePath, DockerNetwork: st.DockerNetwork,
 		Ports: st.Ports, Mounts: st.Mounts, Command: st.Command,
-		EnvKeys:           nonNil(slices.Sorted(maps.Keys(st.Env))),
+		EnvKeys:           slices.Sorted(maps.Keys(st.Env)),
 		BranchDeployRules: rules,
 		DerivedFrom:       st.DerivedFrom,
 	}

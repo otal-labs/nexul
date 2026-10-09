@@ -64,9 +64,6 @@ func jsonList(ts []*Ticket) []ticketJSON {
 	out := make([]ticketJSON, len(ts))
 	for i, t := range ts {
 		out[i] = ticketJSON{ticketFields(*t), t.Developer}
-		if out[i].Labels == nil {
-			out[i].Labels = []string{}
-		}
 	}
 	return out
 }
