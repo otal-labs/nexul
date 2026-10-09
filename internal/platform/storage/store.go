@@ -9,6 +9,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
+	"github.com/otal-labs/nexul/internal/platform/wake"
 )
 
 type Store struct {
@@ -76,7 +77,7 @@ type Store struct {
 
 // New builds a Store over db; encKey is the AES-256 key repos use to encrypt secrets, derived once at startup.
 func New(db *sql.DB, encKey []byte) *Store {
-	w := &Serializer{committed: make(chan struct{}, 1)}
+	w := &Serializer{}
 	q := sqlcgen.New(db)
 	return &Store{
 		db:                    db,
@@ -142,9 +143,9 @@ func New(db *sql.DB, encKey []byte) *Store {
 	}
 }
 
-// Commits signals after a write transaction commits, coalescing a burst into one; the outbox relay is its one reader.
-func (s *Store) Commits() <-chan struct{} {
-	return s.w.committed
+// Commits wakes every waiter after a write transaction commits; the delivery loops wait on it between their fallback polls.
+func (s *Store) Commits() *wake.Broadcast {
+	return &s.w.committed
 }
 
 func (s *Store) Close() error {

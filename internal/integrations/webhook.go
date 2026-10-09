@@ -133,7 +133,8 @@ func redactEventPayload(topic string, payload json.RawMessage) (json.RawMessage,
 
 // RelayConfig tunes the webhook delivery relay (ADR 0043); zero values get the documented defaults.
 type RelayConfig struct {
-	// Interval between polls of the due queue; default 1s.
+	// Interval is the fallback poll that picks up retries once their backoff passes; a commit wakes the relay
+	// sooner. Default 5s.
 	Interval time.Duration
 	// BatchSize is the max deliveries fetched per poll; default 50.
 	BatchSize int
@@ -144,6 +145,9 @@ type RelayConfig struct {
 	BackoffMax     time.Duration
 	// Logger for failed deliveries.
 	Logger *slog.Logger
+	// Wake returns a channel that closes at the next commit, which is when a delivery gets queued. Optional; nil
+	// leaves only the fallback poll.
+	Wake func() <-chan struct{}
 }
 
 // Relay polls due deliveries, POSTing at-least-once: marked delivered only after a 2xx, so a crash re-delivers (ADR 0043).
@@ -154,13 +158,14 @@ type Relay struct {
 	batch    int
 	max      int
 	backoff  *RelayBackoff
+	wake     func() <-chan struct{}
 	log      *slog.Logger
 }
 
 // NewRelay wires a delivery relay over the store and a real HTTP client.
 func NewRelay(store DeliveryStore, cfg RelayConfig) *Relay {
 	if cfg.Interval <= 0 {
-		cfg.Interval = time.Second
+		cfg.Interval = 5 * time.Second
 	}
 	if cfg.BatchSize <= 0 {
 		cfg.BatchSize = 50
@@ -174,6 +179,9 @@ func NewRelay(store DeliveryStore, cfg RelayConfig) *Relay {
 	if cfg.BackoffMax <= 0 {
 		cfg.BackoffMax = 30 * time.Second
 	}
+	if cfg.Wake == nil {
+		cfg.Wake = func() <-chan struct{} { return nil }
+	}
 	if cfg.Logger == nil {
 		cfg.Logger = slog.Default()
 	}
@@ -184,22 +192,26 @@ func NewRelay(store DeliveryStore, cfg RelayConfig) *Relay {
 		batch:    cfg.BatchSize,
 		max:      cfg.MaxAttempts,
 		backoff:  NewRelayBackoff(cfg.BackoffInitial, cfg.BackoffMax, rand.New(rand.NewSource(time.Now().UnixNano()))),
+		wake:     cfg.Wake,
 		log:      cfg.Logger,
 	}
 }
 
-// Run polls the due queue until cancelled; a failed poll is logged and retried next tick, never dropping a row.
+// Run flushes the due queue at start, after every commit, and on each fallback tick until cancelled; a failed poll
+// is logged and retried on the next one, never dropping a row.
 func (r *Relay) Run(ctx context.Context) error {
 	ticker := time.NewTicker(r.interval)
 	defer ticker.Stop()
 	for {
+		committed := r.wake()
+		if err := r.flush(ctx); err != nil {
+			r.log.Error("webhook relay flush", "err", err)
+		}
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			if err := r.flush(ctx); err != nil {
-				r.log.Error("webhook relay flush", "err", err)
-			}
+		case <-committed:
 		}
 	}
 }

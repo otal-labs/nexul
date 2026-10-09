@@ -154,7 +154,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	p, err := h.svc.Create(r.Context(), UserIDFromCtx(r.Context()), req.WorkspaceID, req.Name, req.Prefix, ProjectIcon(req.Icon))
+	p, err := h.svc.Create(r.Context(), req.WorkspaceID, req.Name, req.Prefix, ProjectIcon(req.Icon))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -177,7 +177,7 @@ func (h *Handler) rename(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	p, err := h.svc.Rename(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), req.Name, (*ProjectIcon)(req.Icon))
+	p, err := h.svc.Rename(r.Context(), r.PathValue("id"), req.Name, (*ProjectIcon)(req.Icon))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -191,7 +191,7 @@ func (h *Handler) setPrefix(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	p, err := h.svc.SetPrefix(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), req.Prefix)
+	p, err := h.svc.SetPrefix(r.Context(), r.PathValue("id"), req.Prefix)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -205,7 +205,7 @@ func (h *Handler) setTestsLocation(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	p, err := h.svc.SetTestsLocation(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), TestsLocation(req.TestsLocation))
+	p, err := h.svc.SetTestsLocation(r.Context(), r.PathValue("id"), TestsLocation(req.TestsLocation))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -214,7 +214,7 @@ func (h *Handler) setTestsLocation(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.Delete(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id")); err != nil {
+	if err := h.svc.Delete(r.Context(), r.PathValue("id")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -246,7 +246,7 @@ func (h *Handler) reorder(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	if err := h.svc.Reorder(r.Context(), UserIDFromCtx(r.Context()), req.WorkspaceID, req.IDs); err != nil {
+	if err := h.svc.Reorder(r.Context(), req.WorkspaceID, req.IDs); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -268,7 +268,7 @@ func (h *Handler) addRepo(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	if err := h.svc.AddRepo(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), req.Owner, req.Name, req.ConnectorID, RepoRole(req.Role)); err != nil {
+	if err := h.svc.AddRepo(r.Context(), r.PathValue("id"), req.Owner, req.Name, req.ConnectorID, RepoRole(req.Role)); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -276,7 +276,7 @@ func (h *Handler) addRepo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) removeRepo(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.RemoveRepo(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("owner"), r.PathValue("name")); err != nil {
+	if err := h.svc.RemoveRepo(r.Context(), r.PathValue("owner"), r.PathValue("name")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -315,7 +315,7 @@ func (h *Handler) createCategory(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	c, err := h.svc.CreateCategory(r.Context(), UserIDFromCtx(r.Context()), req.ProjectID, req.Name, colors.Color(req.Color))
+	c, err := h.svc.CreateCategory(r.Context(), req.ProjectID, req.Name, colors.Color(req.Color))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -338,7 +338,7 @@ func (h *Handler) renameCategory(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	c, err := h.svc.RenameCategory(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), req.Name, colors.Color(req.Color))
+	c, err := h.svc.RenameCategory(r.Context(), r.PathValue("id"), req.Name, colors.Color(req.Color))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -347,7 +347,7 @@ func (h *Handler) renameCategory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) deleteCategory(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.DeleteCategory(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id")); err != nil {
+	if err := h.svc.DeleteCategory(r.Context(), r.PathValue("id")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -360,7 +360,7 @@ func (h *Handler) reorderCategories(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	if err := h.svc.ReorderCategories(r.Context(), UserIDFromCtx(r.Context()), req.ProjectID, req.IDs); err != nil {
+	if err := h.svc.ReorderCategories(r.Context(), req.ProjectID, req.IDs); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -398,7 +398,7 @@ func (h *Handler) createTicketType(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	tt, err := h.svc.CreateTicketType(r.Context(), UserIDFromCtx(r.Context()), req.ProjectID, req.Name, colors.Color(req.Color))
+	tt, err := h.svc.CreateTicketType(r.Context(), req.ProjectID, req.Name, colors.Color(req.Color))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -421,7 +421,7 @@ func (h *Handler) renameTicketType(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	tt, err := h.svc.RenameTicketType(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), req.Name, colors.Color(req.Color))
+	tt, err := h.svc.RenameTicketType(r.Context(), r.PathValue("id"), req.Name, colors.Color(req.Color))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -435,7 +435,7 @@ func (h *Handler) setTicketTypeTemplate(w http.ResponseWriter, r *http.Request) 
 		httpx.WriteError(w, err)
 		return
 	}
-	tt, err := h.svc.SetTicketTypeTemplate(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), req.BodyTemplate)
+	tt, err := h.svc.SetTicketTypeTemplate(r.Context(), r.PathValue("id"), req.BodyTemplate)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -444,7 +444,7 @@ func (h *Handler) setTicketTypeTemplate(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *Handler) deleteTicketType(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.DeleteTicketType(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id")); err != nil {
+	if err := h.svc.DeleteTicketType(r.Context(), r.PathValue("id")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -457,7 +457,7 @@ func (h *Handler) reorderTicketTypes(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	if err := h.svc.ReorderTicketTypes(r.Context(), UserIDFromCtx(r.Context()), req.ProjectID, req.IDs); err != nil {
+	if err := h.svc.ReorderTicketTypes(r.Context(), req.ProjectID, req.IDs); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -479,7 +479,7 @@ func (h *Handler) createStatus(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	st, err := h.svc.CreateStatus(r.Context(), UserIDFromCtx(r.Context()), req.ProjectID, req.Name, StatusKind(req.Kind), StatusIcon(req.Icon))
+	st, err := h.svc.CreateStatus(r.Context(), req.ProjectID, req.Name, StatusKind(req.Kind), StatusIcon(req.Icon))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -502,7 +502,7 @@ func (h *Handler) renameStatus(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	st, err := h.svc.RenameStatus(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), req.Name, StatusKind(req.Kind), StatusIcon(req.Icon))
+	st, err := h.svc.RenameStatus(r.Context(), r.PathValue("id"), req.Name, StatusKind(req.Kind), StatusIcon(req.Icon))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -511,7 +511,7 @@ func (h *Handler) renameStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) deleteStatus(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.DeleteStatus(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id")); err != nil {
+	if err := h.svc.DeleteStatus(r.Context(), r.PathValue("id")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -524,7 +524,7 @@ func (h *Handler) reorderStatuses(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	if err := h.svc.ReorderStatuses(r.Context(), UserIDFromCtx(r.Context()), req.ProjectID, req.IDs); err != nil {
+	if err := h.svc.ReorderStatuses(r.Context(), req.ProjectID, req.IDs); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

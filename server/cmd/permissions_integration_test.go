@@ -255,7 +255,7 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		}, map[string]string{uWriter: forbidden, uOutsider: notFound}},
 		{"projects: create", func(ctx context.Context) error {
 			actor, _ := identity.ActorFromCtx(ctx)
-			_, err := s.workspaceSvc.Create(ctx, actor.ID, "workspace-default", "Mobile", "MOB"+actor.ID[2:4], workspace.ProjectIcon(""))
+			_, err := s.workspaceSvc.Create(ctx, "workspace-default", "Mobile", "MOB"+actor.ID[2:4], workspace.ProjectIcon(""))
 			return err
 		}, map[string]string{uOwner: ok, uWriter: ok, uReader: forbidden, uPlain: forbidden, uOutsider: notFound}},
 		{"projects: list", func(ctx context.Context) error {
