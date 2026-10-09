@@ -155,15 +155,12 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 					return nil, fmt.Errorf("%w: pass id for one trail, or target_type (ticket, doc, or interview) and target_id "+
 						"for a target's trails, which play_id only narrows; ticket_list, doc_list, and project_list give target ids", apperrs.ErrInvalid)
 				}
-				list, err := r.ListTrails(ctx, in.TargetType, in.TargetID)
+				list, err := r.ListTrails(ctx, in.TargetType, in.TargetID, in.PlayID)
 				if err != nil {
 					return nil, err
 				}
 				out := make([]trailSummary, 0, len(list))
 				for _, t := range list {
-					if in.PlayID != "" && t.PlayID != in.PlayID {
-						continue
-					}
 					out = append(out, toTrailSummary(t))
 				}
 				return mcptool.Paginate(out, in.PageArgs), nil

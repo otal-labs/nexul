@@ -146,7 +146,7 @@ func (h *RunHandler) get(w http.ResponseWriter, r *http.Request) {
 
 func (h *RunHandler) list(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	list, err := h.runner.ListTrails(r.Context(), TargetType(q.Get("target_type")), q.Get("target_id"))
+	list, err := h.runner.ListTrails(r.Context(), TargetType(q.Get("target_type")), q.Get("target_id"), q.Get("play_id"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
