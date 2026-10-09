@@ -1,4 +1,6 @@
 import { EmptyRow } from "@/components/EmptyRow";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ServicesFeed } from "@/components/service/ServicesFeed";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { AddServiceLink } from "@/components/wizard/AddServiceLink";
@@ -10,7 +12,7 @@ interface ProjectServicesProps {
 }
 
 export const ProjectServices = ({ projectId }: ProjectServicesProps) => {
-  const { data: services } = useFetchServices(projectId);
+  const { data: services, isPending, error } = useFetchServices(projectId);
   const canAdd = useAreaAccess()?.("newProject") ?? false;
 
   return (
@@ -26,6 +28,8 @@ export const ProjectServices = ({ projectId }: ProjectServicesProps) => {
         )
       }
     >
+      {isPending && <LoadingDisplay />}
+      {error && <ErrorDisplay error={error} />}
       {services && services.length === 0 && (
         <EmptyRow>No services yet. Create one to set up its first deploy.</EmptyRow>
       )}

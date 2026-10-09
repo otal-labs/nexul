@@ -1,14 +1,12 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { GripVerticalIcon } from "lucide-react";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
 
 import { CONFIGURABLE_COLOR_NAMES, HUE_DOT_CLASS, type ConfigurableColorName } from "@/components/board/ticketTypeColor";
-import { ColorPicker } from "@/components/settings/ColorPicker";
+import { CategoryEditForm } from "@/components/project/CategoryEditForm";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useDeleteCategory, useRenameCategory } from "@/hooks/CategoryHooks";
+import { useDeleteCategory } from "@/hooks/CategoryHooks";
+import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/models/Category";
 
@@ -24,110 +22,69 @@ interface CategoryRowProps {
   onMoveDown: () => void;
 }
 
-// Edit/reorder/delete collapse into the shared RowActionsMenu so the row reads as dot+name+count+one affordance.
+// Edit, reorder and delete sit in one menu so the row reads as grip, dot, name, count and one affordance.
 export const CategoryRow = ({ category, count, first, last, onMoveUp, onMoveDown }: CategoryRowProps) => {
-  const renameCategory = useRenameCategory();
   const deleteCategory = useDeleteCategory();
+  const { open: confirm } = useConfirmationDialog();
   const [editing, setEditing] = useState(false);
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: category.id,
     disabled: editing,
   });
-  const form = useForm<{ name: string; color: string }>({
-    defaultValues: { name: category.name, color: category.color },
-  });
 
-  // The rename endpoint is full-replacement, so every save carries the color from the form, changed or not.
-  const saveRename = () => {
-    void form.handleSubmit(async ({ name, color }) => {
-      const trimmed = name.trim();
-      if (trimmed && (trimmed !== category.name || color !== category.color)) {
-        await renameCategory.mutateAsync({ id: category.id, name: trimmed, color });
-      }
-      setEditing(false);
-    })();
+  const remove = async () => {
+    const ok = await confirm({
+      title: `Delete ${category.name}?`,
+      message:
+        count > 0
+          ? `Its swimlane goes. ${count === 1 ? "Its 1 ticket stays" : `Its ${count} tickets stay`} on the board without a category.`
+          : "Its swimlane goes from the board.",
+      confirmLabel: "Delete category",
+    });
+    if (ok) deleteCategory.mutate(category.id);
   };
-
-  if (editing) {
-    return (
-      <li ref={setNodeRef} className="flex flex-col gap-1.5 py-1.5">
-        <Controller
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <Input
-              id="category-name"
-              className="flex-1"
-              aria-label="Category name"
-              autoFocus
-              {...field}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") saveRename();
-                if (event.key === "Escape") {
-                  form.reset({ name: category.name, color: category.color });
-                  setEditing(false);
-                }
-              }}
-            />
-          )}
-        />
-        <div className="flex items-center justify-between gap-2">
-          <Controller
-            control={form.control}
-            name="color"
-            render={({ field }) => (
-              <ColorPicker label="Category color" value={field.value} onChange={field.onChange} />
-            )}
-          />
-          <Button variant="ghost" size="sm" loading={renameCategory.isPending} onClick={saveRename}>
-            Save
-          </Button>
-        </div>
-      </li>
-    );
-  }
 
   return (
     <li
       ref={setNodeRef}
-      style={{
-        transform: transform ? `translate3d(0, ${Math.round(transform.y)}px, 0)` : undefined,
-        transition,
-      }}
-      className={cn(
-        "-mx-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-[120ms] ease-standard hover:bg-accent/40",
-        isDragging && "relative z-10 bg-card shadow-elevated",
-      )}
+      style={{ transform: transform ? `translate3d(0, ${Math.round(transform.y)}px, 0)` : undefined, transition }}
+      className={cn("relative bg-card", isDragging && "z-10 rounded-md shadow-elevated")}
     >
-      <button
-        ref={setActivatorNodeRef}
-        type="button"
-        aria-label={`Reorder ${category.name}`}
-        className="-ml-1 cursor-grab rounded-md p-0.5 text-muted-foreground/60 hover:text-foreground active:cursor-grabbing focus-visible:ring-[3px] focus-visible:ring-ring/50"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVerticalIcon className="size-3.5" aria-hidden />
-      </button>
-      {/* Always occupies the dot column so names align whether or not a category has a color. */}
-      <span
-        className={cn(
-          "size-2 shrink-0 rounded-full",
-          isConfigurableColor(category.color) ? HUE_DOT_CLASS[category.color] : "bg-transparent",
-        )}
-        aria-hidden
-      />
-      <span className="min-w-0 flex-1 truncate" title={category.name}>{category.name}</span>
-      <span className="font-mono text-xs tabular-nums text-muted-foreground">{count}</span>
-      <RowActionsMenu
-        subject={category.name}
-        actions={[
-          { label: "Edit", onSelect: () => setEditing(true) },
-          { label: "Move up", disabled: first, onSelect: onMoveUp },
-          { label: "Move down", disabled: last, onSelect: onMoveDown },
-          { label: "Delete", destructive: true, onSelect: () => deleteCategory.mutate(category.id) },
-        ]}
-      />
+      {editing && <CategoryEditForm category={category} onDone={() => setEditing(false)} />}
+      {!editing && (
+        <div className="flex items-center gap-2 px-3 py-2 text-sm transition-colors duration-150 ease-standard hover:bg-accent/40">
+          <button
+            ref={setActivatorNodeRef}
+            type="button"
+            aria-label={`Reorder ${category.name}`}
+            className="-ml-1 cursor-grab touch-none rounded-md p-0.5 text-muted-foreground/60 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVerticalIcon className="size-3.5" aria-hidden />
+          </button>
+          {/* Always holds the dot column so names line up with or without a color. */}
+          <span
+            className={cn("size-2 shrink-0 rounded-full", isConfigurableColor(category.color) ? HUE_DOT_CLASS[category.color] : "bg-transparent")}
+            aria-hidden
+          />
+          <span className="min-w-0 flex-1 truncate" title={category.name}>
+            {category.name}
+          </span>
+          <span className="font-mono text-xs tabular-nums text-muted-foreground" title={`${count} tickets`}>
+            {count}
+          </span>
+          <RowActionsMenu
+            subject={category.name}
+            actions={[
+              { label: "Edit", onSelect: () => setEditing(true) },
+              { label: "Move up", disabled: first, onSelect: onMoveUp },
+              { label: "Move down", disabled: last, onSelect: onMoveDown },
+              { label: "Delete", destructive: true, onSelect: () => void remove() },
+            ]}
+          />
+        </div>
+      )}
     </li>
   );
 };

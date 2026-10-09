@@ -4,6 +4,8 @@ import { EnterList } from "@/components/EnterList";
 import { AddRepoForm } from "@/components/project/AddRepoForm";
 import { RepoRow } from "@/components/project/RepoRow";
 import { EmptyRow } from "@/components/EmptyRow";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useFetchProjectRepos } from "@/hooks/ProjectHooks";
@@ -15,7 +17,7 @@ interface ProjectReposProps {
 }
 
 export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
-  const { data: repos } = useFetchProjectRepos(projectId);
+  const { data: repos, isPending, error } = useFetchProjectRepos(projectId);
   const { open: openAdd } = useFormDialog();
 
   const onAdd = async () => {
@@ -40,9 +42,11 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
         </Button>
       }
     >
+      {isPending && <LoadingDisplay />}
+      {error && <ErrorDisplay error={error} />}
       {repos && repos.length === 0 && <EmptyRow>No repositories yet. Add one to link its pull requests to tickets.</EmptyRow>}
       {repos && repos.length > 0 && (
-        <EnterList className="divide-y divide-border">
+        <EnterList className="divide-y divide-border overflow-hidden rounded-md border border-border">
           {repos.map((repo) => (
             <RepoRow key={`${repo.owner}/${repo.name}`} repo={repo} />
           ))}

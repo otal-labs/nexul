@@ -15,6 +15,8 @@ import { EnterList } from "@/components/EnterList";
 import { AddCategoryForm } from "@/components/project/AddCategoryForm";
 import { CategoryRow } from "@/components/project/CategoryRow";
 import { EmptyRow } from "@/components/EmptyRow";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useFetchProjectCategories, useReorderCategories } from "@/hooks/CategoryHooks";
@@ -27,7 +29,7 @@ interface ProjectCategoriesProps {
 }
 
 export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
-  const { data: categories } = useFetchProjectCategories(projectId);
+  const { data: categories, isPending, error } = useFetchProjectCategories(projectId);
   const { data: tickets } = useFetchTicketsByProject(projectId);
   const reorderCategories = useReorderCategories();
   const { open: openAdd } = useFormDialog();
@@ -75,13 +77,15 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
         </Button>
       }
     >
+      {isPending && <LoadingDisplay />}
+      {error && <ErrorDisplay error={error} />}
       {categories && categories.length === 0 && (
         <EmptyRow>No categories yet. Add one to give the board a swimlane.</EmptyRow>
       )}
       {categories && categories.length > 0 && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={categories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-            <EnterList className="divide-y divide-border">
+            <EnterList className="divide-y divide-border rounded-md border border-border">
               {categories.map((category, index) => (
                 <CategoryRow
                   key={category.id}
