@@ -20,6 +20,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -319,6 +320,41 @@ func TestChatRepo_ListMessages_NewestLimitedOldestFirst(t *testing.T) {
 	require.Len(t, got, 2)
 	assert.Equal(t, "msg-2", got[0].ID)
 	assert.Equal(t, "msg-3", got[1].ID)
+}
+
+func TestChatRepo_PageLiveMessages_CoversTheLiveHistoryOnceNewestFirst(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	seedChatUser(t, s, "u-1")
+	for _, id := range []string{"conv-1", "conv-2"} {
+		require.NoError(t, s.Chat.CreateConversation(ctx, newTestConversation(id, chat.KindChannel, id, "", "u-1"), []string{"u-1"}))
+	}
+	var want []string
+	for i := range 11 {
+		id := fmt.Sprintf("msg-%02d", i)
+		// Three messages a second, so the order between them rests on the id.
+		at := chatFixedNow.Add(time.Duration(i/3) * time.Second)
+		require.NoError(t, s.Chat.CreateMessage(ctx, &chat.Message{ID: id, ConversationID: "conv-1", AuthorID: "u-1", Body: id, CreatedAt: at, UpdatedAt: at}))
+		if i%4 == 0 {
+			require.NoError(t, s.Chat.DeleteMessage(ctx, id, at))
+			continue
+		}
+		want = append([]string{id}, want...)
+	}
+	require.NoError(t, s.Chat.CreateMessage(ctx, &chat.Message{ID: "elsewhere", ConversationID: "conv-2", AuthorID: "u-1", Body: "x", CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow}))
+
+	got := pageAll(t, 3, func(offset, limit int) ([]string, int) {
+		ms, total, err := s.Chat.PageLiveMessages(ctx, "conv-1", paging.Window{Offset: offset, Limit: limit})
+		require.NoError(t, err)
+		ids := make([]string, len(ms))
+		for i, m := range ms {
+			ids[i] = m.ID
+		}
+		return ids, total
+	})
+
+	assert.Equal(t, want, got)
 }
 
 func TestChatRepo_UpdateMessage_RoundTrip(t *testing.T) {

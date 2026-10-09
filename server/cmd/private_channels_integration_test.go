@@ -17,6 +17,7 @@ import (
 	"github.com/otal-labs/nexul/internal/connectors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 // TestIntegration_PrivateChannel walks every read of a private channel through the wired services: its members and
@@ -49,6 +50,10 @@ func TestIntegration_PrivateChannel(t *testing.T) {
 		}, lists},
 		{"messages", func(ctx context.Context, user string) error {
 			_, err := s.chatSvc.ListMessages(ctx, room.ID, user, 50)
+			return err
+		}, reads},
+		{"message page", func(ctx context.Context, user string) error {
+			_, _, err := s.chatSvc.PageMessages(ctx, room.ID, user, paging.Window{})
 			return err
 		}, reads},
 		{"post", func(ctx context.Context, user string) error {

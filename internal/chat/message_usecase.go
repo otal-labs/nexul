@@ -14,6 +14,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 // ListMessages returns a conversation's messages oldest-first; callerID gates a doc thread's messages.
@@ -33,6 +34,23 @@ func (s *Service) ListMessages(ctx context.Context, conversationID, callerID str
 		return nil, fmt.Errorf("list messages for conversation %s: %w", conversationID, err)
 	}
 	return ms, nil
+}
+
+// PageMessages returns one window of a conversation's messages that are not deleted, newest first, and how many there
+// are; callerID gates the conversation as ListMessages does.
+func (s *Service) PageMessages(ctx context.Context, conversationID, callerID string, w paging.Window) ([]*Message, int, error) {
+	conversationID = strings.TrimSpace(conversationID)
+	if conversationID == "" {
+		return nil, 0, fmt.Errorf("%w: conversation id is required", apperrs.ErrInvalid)
+	}
+	if err := s.requireConversation(ctx, conversationID, callerID); err != nil {
+		return nil, 0, err
+	}
+	ms, total, err := s.repo.PageLiveMessages(ctx, conversationID, w.Clamped())
+	if err != nil {
+		return nil, 0, fmt.Errorf("page messages for conversation %s: %w", conversationID, err)
+	}
+	return ms, total, nil
 }
 
 // ListMessagesSince returns non-deleted messages created strictly after since, oldest-first.

@@ -19,6 +19,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -328,6 +329,24 @@ func (f *fakeRepo) ListMessages(_ context.Context, conversationID string, limit 
 		out = out[:limit]
 	}
 	return out, nil
+}
+
+func (f *fakeRepo) PageLiveMessages(_ context.Context, conversationID string, w paging.Window) ([]*Message, int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*Message
+	for _, m := range f.messages {
+		if m.ConversationID == conversationID && m.DeletedAt == nil {
+			out = append(out, m)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if !out[i].CreatedAt.Equal(out[j].CreatedAt) {
+			return out[i].CreatedAt.After(out[j].CreatedAt)
+		}
+		return out[i].ID > out[j].ID
+	})
+	return out[min(w.Offset, len(out)):min(w.Offset+w.Limit, len(out))], len(out), nil
 }
 
 func (f *fakeRepo) ListMessagesSince(_ context.Context, conversationID string, since time.Time) ([]*Message, error) {

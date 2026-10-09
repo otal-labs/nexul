@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -191,6 +192,13 @@ func TestAccessMemo_ConcurrentRequestsShareNothing(t *testing.T) {
 // newCountedFixture is the permission fixture over a database that counts every statement it runs.
 func newCountedFixture(t *testing.T) (permFixture, *testutil.Statements) {
 	t.Helper()
+	f, st, _ := newCountedFixtureDB(t)
+	return f, st
+}
+
+// newCountedFixtureDB is newCountedFixture with the database itself, for a test that bulk-loads rows in SQL.
+func newCountedFixtureDB(t *testing.T) (permFixture, *testutil.Statements, *sql.DB) {
+	t.Helper()
 	path := filepath.Join(t.TempDir(), "counted.db")
 	plain, err := storage.OpenDB(path)
 	require.NoError(t, err)
@@ -203,7 +211,7 @@ func newCountedFixture(t *testing.T) (permFixture, *testutil.Statements) {
 	db, st := testutil.OpenCounted(inner)
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
 	svc, store := wiredOver(t, db)
-	return seedPermFixture(t, svc, store), st
+	return seedPermFixture(t, svc, store), st, db
 }
 
 // grow adds n of every listed thing to the fixture's project: docs shared with the reader, tickets with threads the
