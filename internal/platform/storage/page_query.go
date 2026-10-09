@@ -18,10 +18,14 @@ type pageQuery struct {
 	from string
 	// fromArgs bind the placeholders in from, which come before every condition's.
 	fromArgs []any
-	id       string
-	order    string
-	conds    []string
-	args     []any
+	// countFrom, when set, is what the count reads in place of from, with countFromArgs: the same rows without the cost
+	// of ordering them.
+	countFrom     string
+	countFromArgs []any
+	id            string
+	order         string
+	conds         []string
+	args          []any
 }
 
 // where adds a condition the rows must meet, with the values its placeholders bind in order.
@@ -39,10 +43,14 @@ func (q *pageQuery) clause() string {
 
 // page reads the ids of window w in order, and how many rows match in all.
 func (q *pageQuery) page(ctx context.Context, db *sql.DB, w paging.Window) (ids []string, total int, err error) {
-	args := append(slices.Clip(q.fromArgs), q.args...)
-	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+q.from+q.clause(), args...).Scan(&total); err != nil {
+	countFrom, countArgs := q.from, append(slices.Clip(q.fromArgs), q.args...)
+	if q.countFrom != "" {
+		countFrom, countArgs = q.countFrom, append(slices.Clip(q.countFromArgs), q.args...)
+	}
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+countFrom+q.clause(), countArgs...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
+	args := append(slices.Clip(q.fromArgs), q.args...)
 	if total <= w.Offset {
 		return []string{}, total, nil
 	}

@@ -73,6 +73,10 @@ const ticketHits = `(WITH body AS MATERIALIZED (SELECT j.id, bm25(tickets_fts) A
 	UNION ALL SELECT ticket_id, 1, MIN(rank) FROM note WHERE ticket_id NOT IN (SELECT id FROM body) GROUP BY ticket_id) h
 	JOIN tickets t ON t.id = h.id`
 
+// ticketMatches is every ticket ticketHits ranks, unranked, for counting them; its one placeholder pair is the query.
+const ticketMatches = `(SELECT * FROM tickets WHERE rowid IN (SELECT rowid FROM tickets_fts WHERE tickets_fts MATCH ?)
+	OR id IN (SELECT ticket_id FROM ticket_notes_fts WHERE ticket_notes_fts MATCH ?)) t`
+
 // excludeArchived adds `AND j.archived = 0` so archived docs never appear in search; tickets have no archived flag.
 func queryFTS(ctx context.Context, db *sql.DB, ftsTable, joinTable, idCol, query string, limit int, excludeArchived bool) ([]ftsHit, error) {
 	archived := ""

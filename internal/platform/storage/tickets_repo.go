@@ -137,6 +137,7 @@ func (r *TicketsRepo) Page(ctx context.Context, f tickets.TicketFilter, scope ti
 	if f.Query != "" {
 		match := ftsQuery(f.Query)
 		q.from, q.fromArgs, q.order = ticketHits, []any{match, match}, "h.tier, h.rank, t.id"
+		q.countFrom, q.countFromArgs = ticketMatches, []any{match, match}
 	}
 	if f.ProjectID != "" {
 		q.where("t.project_id = ?", f.ProjectID)
@@ -149,9 +150,9 @@ func (r *TicketsRepo) Page(ctx context.Context, f tickets.TicketFilter, scope ti
 		q.where("t.project_id IN (SELECT value FROM json_each(?))", readable)
 	}
 	if f.BlockedOnly {
-		q.where(`EXISTS (SELECT 1 FROM ticket_links l JOIN tickets b ON b.id = l.target_id LEFT JOIN statuses st ON st.id = b.status
-			WHERE l.ticket_id = t.id AND l.kind = 'blocked_by' AND COALESCE(st.kind, '') != 'done'
-			AND (? OR b.project_id IN (SELECT value FROM json_each(?))))`, scope.All, readable)
+		// Drawn from the links once, where a test per ticket would read every ticket's links.
+		q.where(`t.id IN (SELECT l.ticket_id FROM ticket_links l JOIN tickets b ON b.id = l.target_id LEFT JOIN statuses st ON st.id = b.status
+			WHERE l.kind = 'blocked_by' AND COALESCE(st.kind, '') != 'done' AND (? OR b.project_id IN (SELECT value FROM json_each(?))))`, scope.All, readable)
 	}
 	ids, total, err := q.page(ctx, r.db, w)
 	if err != nil {
