@@ -43,6 +43,15 @@ export const TEMPLATE_GROUP_LABELS: Record<TemplateKind, string> = {
   agent_prompt: "Agent prompt",
 };
 
+// How each kind reaches workspaces and projects, under its group on the instance's Templates.
+export const TEMPLATE_GROUP_HINTS: Record<TemplateKind, string> = {
+  interview: "Every workspace follows it until it edits its own.",
+  mention_chip: "Every workspace follows it until it edits its own.",
+  play_instructions: "Copied into each workspace when it is created.",
+  ticket_body: "Copied into each project when it is created.",
+  agent_prompt: "Opens and closes every Agent prompt.",
+};
+
 // The layer under the instance, or null when the kind lives only at the instance and can never be cloned below it.
 export const BELOW_SCOPE: Record<TemplateKind, "workspace" | "project" | null> = {
   interview: "workspace",
