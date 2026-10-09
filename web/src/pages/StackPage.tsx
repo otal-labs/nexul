@@ -35,7 +35,7 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
   const { data: stack, isPending, error } = useFetchStack(stackId);
   const { data: projects = [] } = useFetchProjects();
   const { data: services } = useFetchStackServices(stackId);
-  const { data: deploys, isPending: deploysPending } = useFetchStackDeploys(stackId);
+  const { data: deploys, isPending: deploysPending, error: deploysError } = useFetchStackDeploys(stackId);
   const can = useAreaAccess(stack?.project_id || undefined);
   const showExposures = can?.("dns") ?? false;
   const showLogs = can?.("stackLogs") ?? false;
@@ -82,7 +82,7 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
               {section === "logs" && <StackLogsSection stackId={stack.id} service={service} />}
               {section === "exposures" && <ServiceHostnameSection containers={services ?? []} />}
               {section === "branches" && <StackBranchDeploySection stack={stack} />}
-              {section === "history" && <DeployHistorySection deploys={deploys} isLoading={deploysPending} />}
+              {section === "history" && <DeployHistorySection deploys={deploys} isLoading={deploysPending} error={deploysError} />}
               {section === "danger" && (
                 <StackDangerZoneSection stack={stack} projectPath={projectPath} hostnames={hostnames} />
               )}

@@ -52,12 +52,18 @@ describe("DeployHistorySection", () => {
 
   it("shows a no-data state instead of a silent empty list", () => {
     renderSection(<DeployHistorySection deploys={[]} isLoading={false} />);
-    expect(screen.getByText("No deploys yet.")).toBeInTheDocument();
+    expect(screen.getByText("No deploys yet. Deploy the stack and each run shows here.")).toBeInTheDocument();
+  });
+
+  it("shows a failed load as an error, not as a stack that never deployed", () => {
+    renderSection(<DeployHistorySection deploys={undefined} isLoading={false} error={new Error("boom")} />);
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+    expect(screen.queryByText(/No deploys yet/)).not.toBeInTheDocument();
   });
 
   it("shows no-data even when deploys are undefined", () => {
     renderSection(<DeployHistorySection deploys={undefined} isLoading={false} />);
-    expect(screen.getByText("No deploys yet.")).toBeInTheDocument();
+    expect(screen.getByText("No deploys yet. Deploy the stack and each run shows here.")).toBeInTheDocument();
   });
 
   it("lists deploys with image, status, mono id, and relative time", () => {

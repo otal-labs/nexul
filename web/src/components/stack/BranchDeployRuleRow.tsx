@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { BranchDeployRuleOverridesForm } from "@/components/stack/BranchDeployRuleOverridesForm";
 import { useUpdateStack } from "@/hooks/StackHooks";
+import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { derivesClone, type BranchDeployRule, type Stack } from "@/models/Stack";
 
 interface BranchDeployRuleRowProps {
@@ -14,6 +15,7 @@ interface BranchDeployRuleRowProps {
 export const BranchDeployRuleRow = ({ stack, rule, index }: BranchDeployRuleRowProps) => {
   const updateStack = useUpdateStack();
   const [editing, setEditing] = useState(false);
+  const { open: confirm } = useConfirmationDialog();
   const rules = stack.branch_deploy_rules ?? [];
   const overrideKeys = Object.keys(rule.overrides ?? {}).sort();
 
@@ -25,7 +27,15 @@ export const BranchDeployRuleRow = ({ stack, rule, index }: BranchDeployRuleRowP
     setEditing(false);
   };
 
-  const remove = () => updateStack.mutate({ ...stack, branch_deploy_rules: rules.filter((_, i) => i !== index) });
+  // Live branch deployments stay up; only new pushes stop matching.
+  const remove = async () => {
+    const ok = await confirm({
+      title: `Remove the ${rule.pattern} rule?`,
+      message: "Pushes to matching branches stop deploying. Branch deployments already running stay until you tear them down.",
+      confirmLabel: "Remove rule",
+    });
+    if (ok) updateStack.mutate({ ...stack, branch_deploy_rules: rules.filter((_, i) => i !== index) });
+  };
 
   return (
     <li className="@container space-y-3 px-3 py-2.5 text-xs">
@@ -46,18 +56,20 @@ export const BranchDeployRuleRow = ({ stack, rule, index }: BranchDeployRuleRowP
               Overrides
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={remove} loading={updateStack.isPending}>
+          <Button variant="ghost" size="sm" className="hover:text-destructive" onClick={() => void remove()} loading={updateStack.isPending}>
             Remove
           </Button>
         </div>
       </div>
       {editing && (
-        <BranchDeployRuleOverridesForm
-          overrides={rule.overrides}
-          saving={updateStack.isPending}
-          onSave={saveOverrides}
-          onCancel={() => setEditing(false)}
-        />
+        <div className="settle-in">
+          <BranchDeployRuleOverridesForm
+            overrides={rule.overrides}
+            saving={updateStack.isPending}
+            onSave={saveOverrides}
+            onCancel={() => setEditing(false)}
+          />
+        </div>
       )}
     </li>
   );
