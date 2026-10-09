@@ -1,5 +1,3 @@
-import { AnimatePresence } from "motion/react";
-
 import { EnterList } from "@/components/EnterList";
 import { AddAutomationHostDialog } from "@/components/automationHost/AddAutomationHostDialog";
 import { AutomationHostRow } from "@/components/automationHost/AutomationHostRow";
@@ -23,12 +21,10 @@ export const AutomationHostsSection = () => {
       {error && <ErrorDisplay error={error} />}
       {hosts && hosts.length === 0 && <EmptyRow>No automations hosts yet. Add one to run automations on another machine.</EmptyRow>}
       {hosts && hosts.length > 0 && (
-        <EnterList className="relative divide-y divide-border overflow-hidden rounded-md border border-border">
-          <AnimatePresence initial={false} mode="popLayout">
-            {hosts.map((host, index) => (
-              <AutomationHostRow key={host.id} index={index} host={host} />
-            ))}
-          </AnimatePresence>
+        <EnterList className="divide-y divide-border overflow-hidden rounded-md border border-border">
+          {hosts.map((host) => (
+            <AutomationHostRow key={host.id} host={host} />
+          ))}
         </EnterList>
       )}
     </SettingsCard>

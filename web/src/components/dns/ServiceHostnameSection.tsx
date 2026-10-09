@@ -1,5 +1,3 @@
-import { AnimatePresence } from "motion/react";
-
 import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -7,6 +5,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ExposeServiceDialog } from "@/components/dns/ExposeServiceDialog";
 import { ExposureRow } from "@/components/dns/ExposureRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFetchExposures, useFetchGateways } from "@/hooks/DnsHooks";
 import { useFetchConnectorStatus } from "@/hooks/ConnectorsHooks";
 import type { Container } from "@/models/Stack";
@@ -21,6 +20,7 @@ export const ServiceHostnameSection = ({ containers }: ServiceHostnameSectionPro
   const { data: cloudflare, isPending: statusPending } = useFetchConnectorStatus("cloudflare");
   const { data: gateways, isPending: gatewaysPending, error: gatewaysError } = useFetchGateways();
   const { data: exposures, isPending: exposuresPending, error: exposuresError } = useFetchExposures();
+  const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
 
   const configured = cloudflare?.status.configured ?? false;
   const loading = statusPending || gatewaysPending || exposuresPending;
@@ -56,19 +56,19 @@ export const ServiceHostnameSection = ({ containers }: ServiceHostnameSectionPro
       {ready && containers.length === 0 && <EmptyRow flush>No containers in this stack yet, so nothing to expose.</EmptyRow>}
       {canExpose && stackExposures.length === 0 && <EmptyRow flush>Not exposed yet.</EmptyRow>}
       {ready && stackExposures.length > 0 && (
-        <EnterList className="relative divide-y divide-border rounded-md border border-border">
-          <AnimatePresence initial={false} mode="popLayout">
-            {stackExposures.map((exposure, index) => (
+        <div ref={glideRef}>
+          <EnterList className="divide-y divide-border rounded-md border border-border">
+            {stackExposures.map((exposure) => (
               <ExposureRow
                 key={exposure.id}
-                index={index}
+                onLeave={prepareGlide}
                 exposure={exposure}
                 gateway={gatewayById.get(exposure.gateway_id)}
                 container={exposure.service_id ? containerById.get(exposure.service_id) : undefined}
               />
             ))}
-          </AnimatePresence>
-        </EnterList>
+          </EnterList>
+        </div>
       )}
     </SettingsCard>
   );

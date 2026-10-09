@@ -183,7 +183,6 @@ export const useSaveInterviewTemplate = () => {
       (await api.put<InterviewTemplate>("/api/memories/interview-template", { workspace_id: workspaceId, body })).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getInterviewTemplateKey] });
-      toast.success("Interview template saved");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

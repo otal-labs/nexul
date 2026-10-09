@@ -1,6 +1,4 @@
 import { PlusIcon } from "lucide-react";
-import { AnimatePresence } from "motion/react";
-
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -9,6 +7,7 @@ import { PlayForm } from "@/components/play/PlayForm";
 import { PlayRow } from "@/components/play/PlayRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
+import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useFetchWorkspacePlays } from "@/hooks/PlayHooks";
 import { SavePlayFormSchema, type Play, type SavePlayFormData } from "@/models/Play";
@@ -44,6 +43,7 @@ export const PlaySettingsSection = ({ canWrite, canDelete }: PlaySettingsSection
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: plays, isPending, error } = useFetchWorkspacePlays(workspaceId);
   const { open } = useFormDialog();
+  const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
 
   const openDialog = (play: Play | null) =>
     open<SavePlayFormData>({
@@ -72,21 +72,21 @@ export const PlaySettingsSection = ({ canWrite, canDelete }: PlaySettingsSection
       {error && <ErrorDisplay error={error} />}
       {plays && plays.length === 0 && <EmptyRow>No plays yet</EmptyRow>}
       {plays && plays.length > 0 && (
-        <EnterList className="relative divide-y divide-border overflow-hidden rounded-md border">
-          <AnimatePresence initial={false} mode="popLayout">
-            {plays.map((play, index) => (
+        <div ref={glideRef}>
+          <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
+            {plays.map((play) => (
               <PlayRow
                 key={play.id}
-                index={index}
                 play={play}
                 workspaceId={workspaceId}
                 canWrite={canWrite}
                 canDelete={canDelete}
                 onEdit={() => void openDialog(play)}
+                onLeave={prepareGlide}
               />
             ))}
-          </AnimatePresence>
-        </EnterList>
+          </EnterList>
+        </div>
       )}
     </SettingsCard>
   );

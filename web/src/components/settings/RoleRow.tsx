@@ -1,7 +1,6 @@
-import { useState, type Ref } from "react";
+import { useState } from "react";
 import { ChevronRightIcon } from "lucide-react";
 
-import { MotionRow } from "@/components/MotionRow";
 import { CloneRoleDialog } from "@/components/settings/CloneRoleDialog";
 import { RoleAccessDetail } from "@/components/settings/RoleAccessDetail";
 import { RoleAccessSummary } from "@/components/settings/RoleAccessSummary";
@@ -10,6 +9,7 @@ import { RoleHolders } from "@/components/settings/RoleHolders";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
 import { useCreateWorkspaceRole, useDeleteWorkspaceRole, useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
+import { leavingRowClass } from "@/hooks/useRowGlide";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { cn } from "@/lib/utils";
 import type { PermissionInfo } from "@/models/Permission";
@@ -17,15 +17,15 @@ import { copyName, type Role } from "@/models/Role";
 import type { TeamPerson } from "@/models/Team";
 
 interface RoleRowProps {
-  ref?: Ref<HTMLLIElement>;
-  index: number;
+  // Called as the row starts to leave, so the list can glide the rows under it up once it is gone.
+  onLeave?: () => void;
   role: Role;
   workspaceId: string;
   catalog: PermissionInfo[];
   holders: TeamPerson[] | undefined;
 }
 
-export const RoleRow = ({ ref, index, role, workspaceId, catalog, holders }: RoleRowProps) => {
+export const RoleRow = ({ onLeave, role, workspaceId, catalog, holders }: RoleRowProps) => {
   const { data: roles = [] } = useFetchWorkspaceRoles(workspaceId);
   const createRole = useCreateWorkspaceRole(workspaceId);
   const deleteRole = useDeleteWorkspaceRole(workspaceId);
@@ -34,6 +34,7 @@ export const RoleRow = ({ ref, index, role, workspaceId, catalog, holders }: Rol
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
   const [cloning, setCloning] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   const duplicate = () =>
     createRole.mutate({ name: copyName(role.name, roles.map((r) => r.name)), actions: role.permissions });
@@ -55,7 +56,10 @@ export const RoleRow = ({ ref, index, role, workspaceId, catalog, holders }: Rol
       message: "Nobody holds this role. Deleting it can't be undone.",
       confirmLabel: "Delete role",
     });
-    if (ok) deleteRole.mutate(role.id);
+    if (!ok) return;
+    setLeaving(true);
+    onLeave?.();
+    deleteRole.mutate(role.id, { onError: () => setLeaving(false) });
   };
 
   const actions: RowAction[] = [
@@ -66,7 +70,7 @@ export const RoleRow = ({ ref, index, role, workspaceId, catalog, holders }: Rol
   ];
 
   return (
-    <MotionRow ref={ref} index={index} className="bg-card px-4 py-3.5">
+    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "bg-card px-4 py-3.5")}>
       {editing && (
         <div className="settle-in">
           <RoleEditForm role={role} workspaceId={workspaceId} catalog={catalog} onDone={() => setEditing(false)} />
@@ -106,6 +110,6 @@ export const RoleRow = ({ ref, index, role, workspaceId, catalog, holders }: Rol
         </div>
       )}
       {canClone && <CloneRoleDialog role={role} open={cloning} onClose={() => setCloning(false)} />}
-    </MotionRow>
+    </li>
   );
 };

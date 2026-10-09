@@ -1,6 +1,5 @@
-import type { Ref } from "react";
+import { useState } from "react";
 
-import { MotionRow } from "@/components/MotionRow";
 import { PermissionsForm, PermissionsFormSchema, type PermissionsFormData } from "@/components/access/PermissionsForm";
 import { PlayTemplateLine } from "@/components/play/PlayTemplateLine";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
@@ -9,12 +8,13 @@ import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useDeletePlay } from "@/hooks/PlayHooks";
 import { useFetchGrants } from "@/hooks/PermissionHooks";
+import { leavingRowClass } from "@/hooks/useRowGlide";
+import { cn } from "@/lib/utils";
 import { PLAY_STAGE_LABELS, PLAY_TYPE_LABELS, type Play } from "@/models/Play";
 
 interface PlayRowProps {
-  ref?: Ref<HTMLLIElement>;
-  // Its place in the list, so the rows after a removed one glide up.
-  index: number;
+  // Called as the row starts to leave, so the list can glide the rows under it up once it is gone.
+  onLeave?: () => void;
   play: Play;
   workspaceId: string;
   canWrite: boolean;
@@ -24,8 +24,9 @@ interface PlayRowProps {
 
 // canWrite gates "Exclude users" too: managing a play's plays:run exclusions takes the same plays:write
 // bit as editing the play itself (ticket 21), so no separate permission wire is needed.
-export const PlayRow = ({ ref, index, play, workspaceId, canWrite, canDelete, onEdit }: PlayRowProps) => {
+export const PlayRow = ({ onLeave, play, workspaceId, canWrite, canDelete, onEdit }: PlayRowProps) => {
   const deletePlay = useDeletePlay(workspaceId);
+  const [leaving, setLeaving] = useState(false);
   const { open: openExclusions } = useFormDialog();
   const { open: confirm } = useConfirmationDialog();
   const openClone = useCloneTemplateDialog();
@@ -46,7 +47,10 @@ export const PlayRow = ({ ref, index, play, workspaceId, canWrite, canDelete, on
       message: "Its button goes from every ticket, doc and Interview page. Runs it already made keep their trails.",
       confirmLabel: "Delete play",
     });
-    if (ok) deletePlay.mutate(play.id);
+    if (!ok) return;
+    setLeaving(true);
+    onLeave?.();
+    deletePlay.mutate(play.id, { onError: () => setLeaving(false) });
   };
 
   const at = { scope: "workspace" as const, workspace_id: play.workspace_id };
@@ -60,7 +64,7 @@ export const PlayRow = ({ ref, index, play, workspaceId, canWrite, canDelete, on
   ];
 
   return (
-    <MotionRow ref={ref} index={index} className="flex items-start gap-3 bg-card px-4 py-3">
+    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "flex items-start gap-3 bg-card px-4 py-3")}>
       <div className="min-w-0 flex-1 space-y-1">
         <p className="line-clamp-2 text-sm font-medium break-words" title={play.label}>
           {play.label}
@@ -93,6 +97,6 @@ export const PlayRow = ({ ref, index, play, workspaceId, canWrite, canDelete, on
         {play.builtin_key && <PlayTemplateLine play={play} canWrite={canWrite} />}
       </div>
       {actions.length > 0 && <RowActionsMenu subject={play.label} actions={actions} />}
-    </MotionRow>
+    </li>
   );
 };

@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { PlusIcon } from "lucide-react";
-import { AnimatePresence } from "motion/react";
-
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -10,12 +8,14 @@ import { AutomationSecretForm } from "@/components/automation/AutomationSecretFo
 import { AutomationSecretRow } from "@/components/automation/AutomationSecretRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
+import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFetchAutomationSecrets } from "@/hooks/AutomationSecretHooks";
 
 // Shared workspace pool (ADR 0047). One form at a time: a new secret, or a new value for one already saved.
 export const AutomationSecretsSection = () => {
   const { data, isPending, error } = useFetchAutomationSecrets();
   const [editing, setEditing] = useState<{ name?: string } | null>(null);
+  const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
 
   return (
     <SettingsCard
@@ -39,13 +39,13 @@ export const AutomationSecretsSection = () => {
         {error && <ErrorDisplay error={error} />}
         {data && data.length === 0 && !editing && <EmptyRow>No secrets yet. Add one for automations to read.</EmptyRow>}
         {data && data.length > 0 && (
-          <EnterList className="relative divide-y divide-border overflow-hidden rounded-md border">
-            <AnimatePresence initial={false} mode="popLayout">
-              {data.map((secret, index) => (
-                <AutomationSecretRow key={secret.name} index={index} secret={secret} onReplace={() => setEditing({ name: secret.name })} />
+          <div ref={glideRef}>
+            <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
+              {data.map((secret) => (
+                <AutomationSecretRow key={secret.name} secret={secret} onReplace={() => setEditing({ name: secret.name })} onLeave={prepareGlide} />
               ))}
-            </AnimatePresence>
-          </EnterList>
+            </EnterList>
+          </div>
         )}
       </div>
     </SettingsCard>

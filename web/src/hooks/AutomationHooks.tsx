@@ -54,7 +54,6 @@ export const useUpdateAutomationConfig = (id: string) => {
       (await api.patch<Automation>(`/api/automations/${id}/config`, { config_values: configValues })).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["getAutomation", id] });
-      toast.success("Configuration saved");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

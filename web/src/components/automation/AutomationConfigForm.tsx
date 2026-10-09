@@ -3,8 +3,9 @@ import { useForm } from "react-hook-form";
 import { AutomationConfigFieldControl } from "@/components/automation/AutomationConfigFieldControl";
 import { EmptyRow } from "@/components/EmptyRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { SaveButton } from "@/components/SaveButton";
+import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
 import { useUpdateAutomationConfig } from "@/hooks/AutomationHooks";
+import { useFlash } from "@/hooks/useFlash";
 import { parseConfigSchema, parseConfigValues } from "@/models/Automation";
 import type { Automation } from "@/models/Automation";
 
@@ -23,7 +24,14 @@ export const AutomationConfigForm = ({ automation }: AutomationConfigFormProps) 
     defaultValues: Object.fromEntries(fields.map((f) => [f.key, values[f.key] ?? f.default ?? ""])),
   });
 
-  const onSubmit = (data: Record<string, string>) => updateConfig.mutate(data);
+  const [saved, flash] = useFlash();
+  const onSubmit = (data: Record<string, string>) =>
+    updateConfig.mutate(data, {
+      onSuccess: () => {
+        form.reset(data);
+        flash();
+      },
+    });
 
   return (
     <SettingsCard
@@ -32,15 +40,14 @@ export const AutomationConfigForm = ({ automation }: AutomationConfigFormProps) 
       description="Declared by the automation's code. The next run uses the saved values."
       footer={
         fields.length > 0 && (
-          <SaveButton
-            type="submit"
+          <SettingsSaveBar
             form="automation-config"
-            size="sm"
-            loading={updateConfig.isPending}
-            savedAt={updateConfig.isSuccess ? updateConfig.submittedAt : undefined}
-          >
-            Save configuration
-          </SaveButton>
+            dirty={form.formState.isDirty}
+            saving={updateConfig.isPending}
+            saved={saved}
+            onDiscard={() => form.reset()}
+            saveLabel="Save configuration"
+          />
         )
       }
     >

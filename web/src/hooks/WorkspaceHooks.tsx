@@ -118,7 +118,6 @@ export const useUpdateMentionChipTemplate = () => {
       ).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getWorkspacesKey] });
-      toast.success("Mention chip layout updated");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

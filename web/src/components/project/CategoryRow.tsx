@@ -8,7 +8,8 @@ import { CategoryEditForm } from "@/components/project/CategoryEditForm";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { useDeleteCategory } from "@/hooks/CategoryHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
-import { lastInputWasKeyboard, ROW_GLIDE, SPRING } from "@/lib/motion";
+import { leavingRowClass } from "@/hooks/useRowGlide";
+import { EASE_OUT, lastInputWasKeyboard, ROW_GLIDE } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/models/Category";
 
@@ -25,20 +26,23 @@ interface CategoryRowProps {
   last: boolean;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  // Called as the row starts to leave, so the list can glide the rows under it up once it is gone.
+  onLeave?: () => void;
 }
 
 // Edit, reorder and delete sit in one menu so the row reads as grip, dot, name, count and one affordance.
-export const CategoryRow = ({ category, index, lifted, count, first, last, onMoveUp, onMoveDown }: CategoryRowProps) => {
+export const CategoryRow = ({ category, index, lifted, count, first, last, onMoveUp, onMoveDown, onLeave }: CategoryRowProps) => {
   const reduced = useReducedMotion() ?? false;
   // A move made with the keyboard lands at once; a pointer's glides, so the eye follows the row to its new place.
   const glide = !reduced && !lastInputWasKeyboard();
   const deleteCategory = useDeleteCategory();
   const { open: confirm } = useConfirmationDialog();
   const [editing, setEditing] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: category.id,
     disabled: editing,
-    transition: { duration: 200, easing: SPRING },
+    transition: { duration: 200, easing: EASE_OUT },
   });
 
   const remove = async () => {
@@ -50,14 +54,18 @@ export const CategoryRow = ({ category, index, lifted, count, first, last, onMov
           : "Its swimlane goes from the board.",
       confirmLabel: "Delete category",
     });
-    if (ok) deleteCategory.mutate(category.id);
+    if (!ok) return;
+    setLeaving(true);
+    onLeave?.();
+    deleteCategory.mutate(category.id, { onError: () => setLeaving(false) });
   };
 
   return (
     <li
       ref={setNodeRef}
       style={{ transform: transform ? `translate3d(0, ${Math.round(transform.y)}px, 0)` : undefined, transition }}
-      className={cn("relative bg-card", isDragging && "z-10 rounded-md shadow-elevated")}
+      data-leaving={leaving || undefined}
+      className={cn(leavingRowClass, "relative bg-card", isDragging && "z-10 rounded-md shadow-elevated")}
     >
       {editing && <CategoryEditForm category={category} onDone={() => setEditing(false)} />}
       {!editing && (

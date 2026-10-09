@@ -1,27 +1,28 @@
+import { useState } from "react";
 import { CloudIcon, RouteIcon, Trash2 } from "lucide-react";
-import type { Ref } from "react";
 
-import { MotionRow } from "@/components/MotionRow";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { NoFillBadge } from "@/components/ui/badge";
 import { useDeleteExposure } from "@/hooks/DnsHooks";
+import { leavingRowClass } from "@/hooks/useRowGlide";
+import { cn } from "@/lib/utils";
 import type { Exposure, Gateway } from "@/models/DNS";
 import type { Container } from "@/models/Stack";
 
 interface ExposureRowProps {
-  ref?: Ref<HTMLLIElement>;
-  // Its place in the list, so the rows after a removed one glide up.
-  index: number;
+  // Called as the row starts to leave, so the list can glide the rows under it up once it is gone.
+  onLeave?: () => void;
   exposure: Exposure;
   gateway: Gateway | undefined;
   container: Container | undefined;
 }
 
 // Each row owns its removal, so unexposing one hostname spins only its own button.
-export const ExposureRow = ({ ref, index, exposure, gateway, container }: ExposureRowProps) => {
+export const ExposureRow = ({ onLeave, exposure, gateway, container }: ExposureRowProps) => {
   const removeExposure = useDeleteExposure();
+  const [leaving, setLeaving] = useState(false);
   return (
-    <MotionRow ref={ref} index={index} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5">
+    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5")}>
       <div className="min-w-0 flex-1 space-y-0.5">
         <a
           href={`https://${exposure.hostname}`}
@@ -47,8 +48,12 @@ export const ExposureRow = ({ ref, index, exposure, gateway, container }: Exposu
         idleLabel={`Unexpose ${exposure.hostname}`}
         confirmLabel="Unexpose"
         loading={removeExposure.isPending}
-        onConfirm={() => removeExposure.mutate(exposure.id)}
+        onConfirm={() => {
+          setLeaving(true);
+          onLeave?.();
+          removeExposure.mutate(exposure.id, { onError: () => setLeaving(false) });
+        }}
       />
-    </MotionRow>
+    </li>
   );
 };

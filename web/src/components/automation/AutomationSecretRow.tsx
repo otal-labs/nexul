@@ -1,27 +1,28 @@
+import { useState } from "react";
 import { Trash2 } from "lucide-react";
-import type { Ref } from "react";
 
-import { MotionRow } from "@/components/MotionRow";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { Button } from "@/components/ui/button";
 import { useDeleteAutomationSecret } from "@/hooks/AutomationSecretHooks";
+import { leavingRowClass } from "@/hooks/useRowGlide";
+import { cn } from "@/lib/utils";
 import type { AutomationSecretMeta } from "@/models/AutomationSecret";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
 interface AutomationSecretRowProps {
-  ref?: Ref<HTMLLIElement>;
-  // Its place in the list, so the rows after a removed one glide up.
-  index: number;
+  // Called as the row starts to leave, so the list can glide the rows under it up once it is gone.
+  onLeave?: () => void;
   secret: AutomationSecretMeta;
   onReplace: () => void;
 }
 
 // Value is write-only, never shown again, matching GitHub Actions secrets (ADR 0047).
-export const AutomationSecretRow = ({ ref, index, secret, onReplace }: AutomationSecretRowProps) => {
+export const AutomationSecretRow = ({ onLeave, secret, onReplace }: AutomationSecretRowProps) => {
   const deleteSecret = useDeleteAutomationSecret();
+  const [leaving, setLeaving] = useState(false);
 
   return (
-    <MotionRow ref={ref} index={index} className="flex items-center justify-between gap-3 px-4 py-2.5">
+    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "flex items-center justify-between gap-3 px-4 py-2.5")}>
       <div className="min-w-0">
         <p className="truncate font-mono text-sm font-medium">{secret.name}</p>
         <p className="font-mono text-xs text-muted-foreground">
@@ -37,9 +38,13 @@ export const AutomationSecretRow = ({ ref, index, secret, onReplace }: Automatio
           idleLabel={`Delete ${secret.name}`}
           confirmLabel="Delete"
           loading={deleteSecret.isPending}
-          onConfirm={() => deleteSecret.mutate(secret.name)}
+          onConfirm={() => {
+            setLeaving(true);
+            onLeave?.();
+            deleteSecret.mutate(secret.name, { onError: () => setLeaving(false) });
+          }}
         />
       </div>
-    </MotionRow>
+    </li>
   );
 };

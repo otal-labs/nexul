@@ -1,6 +1,4 @@
 import { PlusIcon } from "lucide-react";
-import { AnimatePresence } from "motion/react";
-
 import { EnterList } from "@/components/EnterList";
 import { AddRepoForm } from "@/components/project/AddRepoForm";
 import { RepoRow } from "@/components/project/RepoRow";
@@ -9,6 +7,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
+import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFetchProjectRepos } from "@/hooks/ProjectHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { AddProjectRepoFormSchema, type AddProjectRepoFormData } from "@/models/Project";
@@ -20,6 +19,7 @@ interface ProjectReposProps {
 export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
   const { data: repos, isPending, error } = useFetchProjectRepos(projectId);
   const { open: openAdd } = useFormDialog();
+  const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
 
   const onAdd = async () => {
     await openAdd<AddProjectRepoFormData>({
@@ -47,13 +47,13 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
       {error && <ErrorDisplay error={error} />}
       {repos && repos.length === 0 && <EmptyRow>No repositories yet. Add one to link its pull requests to tickets.</EmptyRow>}
       {repos && repos.length > 0 && (
-        <EnterList className="relative divide-y divide-border overflow-hidden rounded-md border border-border">
-          <AnimatePresence initial={false} mode="popLayout">
-            {repos.map((repo, index) => (
-              <RepoRow key={`${repo.owner}/${repo.name}`} index={index} repo={repo} />
+        <div ref={glideRef}>
+          <EnterList className="divide-y divide-border overflow-hidden rounded-md border border-border">
+            {repos.map((repo) => (
+              <RepoRow key={`${repo.owner}/${repo.name}`} repo={repo} onLeave={prepareGlide} />
             ))}
-          </AnimatePresence>
-        </EnterList>
+          </EnterList>
+        </div>
       )}
     </SettingsCard>
   );

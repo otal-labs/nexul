@@ -22,6 +22,7 @@ import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useFetchProjectCategories, useReorderCategories } from "@/hooks/CategoryHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
+import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { SaveCategoryFormSchema, type SaveCategoryFormData } from "@/models/Category";
 
@@ -44,6 +45,7 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
   const [movedId, setMovedId] = useState<string | undefined>(undefined);
 
   const reorder = (from: number, to: number) => {
@@ -87,25 +89,28 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
         <EmptyRow>No categories yet. Add one to give the board a swimlane.</EmptyRow>
       )}
       {categories && categories.length > 0 && (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={categories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-            <EnterList className="divide-y divide-border rounded-md border border-border">
-              {categories.map((category, index) => (
-                <CategoryRow
-                  key={category.id}
-                  category={category}
-                  index={index}
-                  lifted={category.id === movedId}
-                  count={countFor(category.id)}
-                  first={index === 0}
-                  last={index === categories.length - 1}
-                  onMoveUp={() => reorder(index, index - 1)}
-                  onMoveDown={() => reorder(index, index + 1)}
-                />
-              ))}
-            </EnterList>
-          </SortableContext>
-        </DndContext>
+        <div ref={glideRef}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={categories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+              <EnterList className="divide-y divide-border rounded-md border border-border">
+                {categories.map((category, index) => (
+                  <CategoryRow
+                    key={category.id}
+                    category={category}
+                    index={index}
+                    lifted={category.id === movedId}
+                    onLeave={prepareGlide}
+                    count={countFor(category.id)}
+                    first={index === 0}
+                    last={index === categories.length - 1}
+                    onMoveUp={() => reorder(index, index - 1)}
+                    onMoveDown={() => reorder(index, index + 1)}
+                  />
+                ))}
+              </EnterList>
+            </SortableContext>
+          </DndContext>
+        </div>
       )}
     </SettingsCard>
   );

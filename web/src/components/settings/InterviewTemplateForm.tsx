@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from "react";
 
-import { SaveButton } from "@/components/SaveButton";
 import { InterviewTemplateField } from "@/components/settings/InterviewTemplateField";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
 import { TemplateOriginLine } from "@/components/templates/TemplateOriginLine";
 import { Button } from "@/components/ui/button";
 import { useSaveInterviewTemplate } from "@/hooks/MemoryHooks";
 import { useCloneTemplateDialog } from "@/hooks/useCloneTemplateDialog";
+import { useFlash } from "@/hooks/useFlash";
 import type { InterviewTemplate } from "@/models/InterviewTemplate";
 
 export const INTERVIEW_TEMPLATE_CARD = {
@@ -15,6 +16,8 @@ export const INTERVIEW_TEMPLATE_CARD = {
   description:
     "Every new project's interview starts from this. It follows the instance template until this workspace saves its own. Editing it never changes an existing interview.",
 };
+
+const FORM_ID = "interview-template-form";
 
 interface InterviewTemplateFormProps {
   template: InterviewTemplate;
@@ -25,51 +28,33 @@ export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateF
   const [body, setBody] = useState(template.body);
   const saveTemplate = useSaveInterviewTemplate();
   const openClone = useCloneTemplateDialog();
+  const [saved, flash] = useFlash();
   const at = { scope: "workspace" as const, workspace_id: template.workspace_id };
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
-    saveTemplate.mutate({ workspaceId: template.workspace_id, body });
+    saveTemplate.mutate({ workspaceId: template.workspace_id, body }, { onSuccess: flash });
   };
 
   return (
     <SettingsCard
       {...INTERVIEW_TEMPLATE_CARD}
+      aside={
+        <TemplateOriginLine kind="interview" templateKey="" at={at} state={template.edited ? "edited" : "following"} canReset={canWrite} />
+      }
       footer={
-        <>
-          <TemplateOriginLine
-            kind="interview"
-            templateKey=""
-            at={at}
-            state={template.edited ? "edited" : "following"}
-            canReset={canWrite}
+        canWrite && (
+          <SettingsSaveBar
+            form={FORM_ID}
+            dirty={body !== template.body}
+            saving={saveTemplate.isPending}
+            saved={saved}
+            onDiscard={() => setBody(template.body)}
           />
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => void openClone({ kind: "interview", key: "", name: "Interview", from: at })}
-            >
-              Clone to…
-            </Button>
-            {canWrite && (
-              <SaveButton
-                type="submit"
-                form="interview-template-form"
-                size="sm"
-                loading={saveTemplate.isPending}
-                disabled={body === template.body}
-                savedAt={saveTemplate.isSuccess ? saveTemplate.submittedAt : undefined}
-              >
-                Save
-              </SaveButton>
-            )}
-          </div>
-        </>
+        )
       }
     >
-      <form id="interview-template-form" onSubmit={onSubmit}>
+      <form id={FORM_ID} onSubmit={onSubmit} className="space-y-3">
         <InterviewTemplateField
           id="interview-template-body"
           value={body}
@@ -78,6 +63,15 @@ export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateF
           error={saveTemplate.error}
           readOnly={!canWrite}
         />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="-ml-2.5"
+          onClick={() => void openClone({ kind: "interview", key: "", name: "Interview", from: at })}
+        >
+          Clone to…
+        </Button>
       </form>
     </SettingsCard>
   );
