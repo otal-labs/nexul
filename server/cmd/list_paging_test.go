@@ -5,16 +5,25 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/chat"
+	"github.com/otal-labs/nexul/internal/deploy"
+	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/mcp/composite"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/paging"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/tickets"
+	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 // tool finds name among tools, failing the test when it is missing.
@@ -89,4 +98,175 @@ func explain(t *testing.T, db interface {
 	}
 	require.NoError(t, rows.Err())
 	return strings.Join(lines, "\n")
+}
+
+// pageThrough calls a list tool page by page as user, two items at a time, and returns every id it gave, failing on a
+// repeat or on a total that does not match what the pages held.
+func pageThrough(t *testing.T, a *access.Service, tl mcptool.Tool, user, filter string) []string {
+	t.Helper()
+	var all []string
+	seen := map[string]bool{}
+	for offset := 0; ; {
+		args := fmt.Sprintf(`{%s"limit":2,"offset":%d}`, filter, offset)
+		ids, page := callPage(t, a, tl, user, args)
+		for _, id := range ids {
+			require.False(t, seen[id], "%s gave %s twice as %s", tl.Name, id, user)
+			seen[id] = true
+		}
+		all = append(all, ids...)
+		if !page.HasMore {
+			require.Equal(t, len(all), page.Total, "%s %s as %s", tl.Name, filter, user)
+			return all
+		}
+		offset = page.NextOffset
+	}
+}
+
+// listParityFixture is the permission fixture with uClient restricted to p-client, a ticket, stack, and deploy in each
+// project, blockers across them, a doc each in a private and a shared state, an instance stack and a deleted stack's
+// deploy, and notices in every state an inbox filters.
+func listParityFixture(t *testing.T) permFixture {
+	t.Helper()
+	f := newPermFixture(t)
+	restrictedClient(t, f)
+	ctx := context.Background()
+	now := time.Now()
+	clientTicket, err := f.svc.ticketsSvc.Create(ctx, pClient, "Login page for the portal", "", "", "")
+	require.NoError(t, err)
+	blocker, err := f.svc.ticketsSvc.Create(ctx, pGeneral, "Login rate limit", "", "", "")
+	require.NoError(t, err)
+	require.NoError(t, f.store.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: f.ticket.ID, Kind: tickets.LinkBlockedBy, TargetID: clientTicket.ID, CreatedAt: now}))
+	require.NoError(t, f.store.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: clientTicket.ID, Kind: tickets.LinkBlockedBy, TargetID: blocker.ID, CreatedAt: now}))
+
+	for id, project := range map[string]string{"doc-private": pGeneral, "doc-shared": pGeneral, "doc-client": pClient} {
+		require.NoError(t, f.store.Docs.Create(ctx, &docs.Doc{ID: id, ProjectID: project, Title: "Spec " + id, Body: `{"type":"doc","content":[]}`, Version: 1, CreatedAt: now, UpdatedAt: now}))
+	}
+	require.NoError(t, f.store.Access.Set(ctx, "doc", "doc-private", uReader, nil, grant("docs:read")))
+	require.NoError(t, f.store.Access.Set(ctx, "doc", "doc-shared", uPlain, grant("docs:read"), nil))
+	require.NoError(t, f.store.Access.Set(ctx, "doc", "doc-shared", uClient, grant("docs:read"), nil))
+
+	require.NoError(t, f.store.Stacks.Create(ctx, &deploy.Stack{ID: "stack-client", ProjectID: pClient, Name: "portal", Slug: "portal", Machine: "m1", Strategy: deploy.StrategyRun, CreatedAt: now, UpdatedAt: now}))
+	require.NoError(t, f.store.Stacks.Create(ctx, &deploy.Stack{ID: "stack-gone", ProjectID: pGeneral, Name: "old", Slug: "old", Machine: "m1", Strategy: deploy.StrategyRun, CreatedAt: now, UpdatedAt: now}))
+	for i, stack := range []string{f.infra, "stack-client", "stack-gone", f.stack} {
+		at := now.Add(time.Duration(i+1) * time.Second)
+		require.NoError(t, f.store.Deploys.Create(ctx, &deploy.Deploy{ID: "deploy-" + stack, StackID: stack, Service: stack, Status: deploy.StatusHealthy, CreatedAt: at, UpdatedAt: at}))
+	}
+	require.NoError(t, f.store.Stacks.Delete(ctx, "stack-gone"))
+
+	var notices []*workspace.Notification
+	for i, user := range []string{uOwner, uReader, uPlain, uClient, uOutsider} {
+		for j, n := range []struct{ kind, subject, workspace string }{
+			{string(workspace.SubjectTicket), f.ticket.ID, wsDefault}, {string(workspace.SubjectTicket), clientTicket.ID, wsDefault},
+			{string(workspace.SubjectDoc), "doc-client", wsDefault}, {string(workspace.SubjectDoc), "doc-deleted", wsDefault},
+			{string(workspace.SubjectTicket), f.ticket.ID, "workspace-left"}, {string(workspace.SubjectDoc), "doc-shared", ""},
+		} {
+			at := now.Add(time.Duration(i*10+j) * time.Second)
+			notices = append(notices, &workspace.Notification{ID: fmt.Sprintf("n-%s-%d", user, j), UserID: user, WorkspaceID: n.workspace,
+				Kind: workspace.Kind(fmt.Sprintf("kind-%d", j)), SubjectType: workspace.SubjectType(n.kind), SubjectID: n.subject, CreatedAt: at})
+		}
+	}
+	require.NoError(t, f.store.Notifications.CreateMany(ctx, notices))
+	return f
+}
+
+// TestListTools_ShowWhatTheRowByRowCheckShowed holds each list tool, now filtered in SQL, to what the path it replaced
+// showed each viewer: the use-cases that still check row by row, or the per-row rule the adapter applied.
+func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
+	f := listParityFixture(t)
+	s := f.svc
+	ctx := context.Background()
+	ticketList := tool(t, composite.TicketTools(s.ticketsSvc, s.workspaceSvc, s.reviewSvc), "ticket_list")
+	docList := tool(t, docs.MCPTools(s.docsSvc), "doc_list")
+	deployList := tool(t, deploy.MCPTools(s.deploySvc), "deploy_list")
+	notificationList := tool(t, workspace.NotificationMCPTools(s.notifSvc), "notification_list")
+	viewers := []string{uOwner, uReader, uWriter, uPlain, uOverwrite, uOutsider, uClient}
+
+	for _, user := range viewers {
+		viewer := as(user)
+		t.Run(user, func(t *testing.T) {
+			listed, err := s.ticketsSvc.List(viewer)
+			require.NoError(t, err)
+			assert.Equal(t, ticketIDs(listed), pageThrough(t, s.accessSvc, ticketList, user, ""), "ticket_list")
+
+			hits, err := s.ticketsSvc.Search(viewer, "login", 1000)
+			require.NoError(t, err)
+			var searched []string
+			for _, h := range hits {
+				searched = append(searched, h.ID)
+			}
+			assert.Equal(t, searched, pageThrough(t, s.accessSvc, ticketList, user, `"query":"login",`), "ticket_list query")
+
+			blockers, err := s.ticketsSvc.UnclearedBlockers(viewer)
+			require.NoError(t, err)
+			var blocked []string
+			for _, tk := range listed {
+				if len(blockers[tk.ID]) > 0 {
+					blocked = append(blocked, tk.ID)
+				}
+			}
+			assert.Equal(t, blocked, pageThrough(t, s.accessSvc, ticketList, user, `"blocked_only":true,`), "ticket_list blocked_only")
+
+			docItems, err := s.docsSvc.List(viewer)
+			require.NoError(t, err)
+			var docIDs, openable []string
+			for _, d := range docItems {
+				docIDs = append(docIDs, d.ID)
+				if d.CanOpen {
+					openable = append(openable, d.ID)
+				}
+			}
+			assert.Equal(t, docIDs, pageThrough(t, s.accessSvc, docList, user, ""), "doc_list")
+			_, page := callPage(t, s.accessSvc, docList, user, `{"limit":100}`)
+			var openedNow []string
+			for _, raw := range page.Items {
+				var item docs.DocListItem
+				require.NoError(t, json.Unmarshal(raw, &item))
+				if item.CanOpen {
+					openedNow = append(openedNow, item.ID)
+				}
+			}
+			assert.Equal(t, openable, openedNow, "doc_list can_open")
+
+			docHits, err := s.docsSvc.Search(viewer, "spec", 1000)
+			require.NoError(t, err)
+			var ranked []string
+			for _, h := range docHits {
+				if slices.Contains(docIDs, h.ID) {
+					ranked = append(ranked, h.ID)
+				}
+			}
+			// Docs that rank alike come in insertion order from Search and by id from the page; the storage test pins order.
+			assert.ElementsMatch(t, ranked, pageThrough(t, s.accessSvc, docList, user, `"query":"spec",`), "doc_list query")
+
+			ds, err := s.deploySvc.List(viewer)
+			require.NoError(t, err)
+			var deployIDs []string
+			for _, d := range slices.Backward(ds) {
+				deployIDs = append(deployIDs, d.ID)
+			}
+			assert.Equal(t, deployIDs, pageThrough(t, s.accessSvc, deployList, user, ""), "deploy_list")
+
+			all, _, err := f.store.Notifications.Page(ctx, user, workspace.InboxFilter{}, nil, paging.Window{Limit: 100})
+			require.NoError(t, err)
+			memberOf, _, err := s.accessSvc.ProjectsAnywhere(ctx, user, permissions.Member)
+			require.NoError(t, err)
+			var inbox []string
+			for _, n := range all {
+				member := n.WorkspaceID == "" || slices.Contains(memberOf, n.WorkspaceID)
+				opens := n.ProjectID == "" || s.accessSvc.CanInProject(ctx, user, n.ProjectID, permissions.Member)
+				if member && opens {
+					inbox = append(inbox, n.ID)
+				}
+			}
+			assert.Equal(t, inbox, pageThrough(t, s.accessSvc, notificationList, user, ""), "notification_list")
+		})
+	}
+}
+
+func ticketIDs(ts []*tickets.Ticket) []string {
+	var out []string
+	for _, tk := range ts {
+		out = append(out, tk.ID)
+	}
+	return out
 }
