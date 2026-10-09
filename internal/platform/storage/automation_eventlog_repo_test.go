@@ -97,7 +97,7 @@ func TestAutomationEventLogRepo_After_SameSecond_TiebreaksByID(t *testing.T) {
 	s := newTestStore(t)
 	same := time.Now().UTC()
 	// Same created_at second, ids in reverse insertion order — the tiebreak
-	// must be by id, not insertion order (borrowed-practices ordering rule).
+	// must be by id, not insertion order (practices/go.md, the tiebreaker rule).
 	insertOutboxTestRowAt(t, s, "b", "ticket.created", []byte(`{}`), same)
 	insertOutboxTestRowAt(t, s, "a", "ticket.created", []byte(`{}`), same)
 

@@ -44,7 +44,7 @@ behind a `dorny/paths-filter` entry: install, lint, typecheck, test.
 
 ## Read first
 
-`AGENTS.md`, `practices/react-guide.md`, `practices/typescript.md`, `practices/design-language.md`, `practices/testing.md`, `practices/borrowed-practices.md`, tickets 10 and 12, and `research/react-native-best-practices.md`.
+`AGENTS.md`, `practices/react-guide.md`, `practices/typescript.md`, `practices/design-language.md`, `practices/testing.md`, tickets 10 and 12, and `research/react-native-best-practices.md`.
 
 ## Verification
 

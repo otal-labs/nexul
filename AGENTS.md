@@ -21,8 +21,8 @@ The product is implemented. The work now is improving it domain by domain.
 | SDK, automations host, desktop | `practices/typescript.md` | `practices/react-guide.md` for the desktop launcher |
 | Phone app (React Native) | `practices/native.md` | `practices/react-guide.md`, the rules it inherits; `practices/design-language.md`, the shared core and the phone app section |
 | Design or visual work in `web/`, `website/` or `native/` | `practices/design-language.md`, one language for all three: the shared core, then your surface's section | `practices/react-guide.md`, or `practices/native.md` on the phone |
-| Testing | `practices/testing.md` | The language file above |
-| Any code | `practices/borrowed-practices.md`, the cross-cutting rules | `practices/README.md` for the index |
+| Testing, or making something faster | `practices/testing.md` | The language file above |
+| Any code | `practices/architecture.md`, Principles | `practices/README.md` for the index |
 | Install, CI, release | [CI and releases](https://nexul.io/docs/contributing/ci-and-releases/) | `internal/install/`, `.goreleaser.yaml`, `docker-compose.debug.yml` for development |
 | MCP server or a domain's `mcp.go` | `practices/mcp.md` | `practices/architecture.md`, section 8 |
 | Event bus or resilience | `practices/architecture.md`, sections 2 to 6 | `docs/adr/` |

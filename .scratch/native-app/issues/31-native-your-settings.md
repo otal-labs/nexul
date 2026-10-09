@@ -27,7 +27,7 @@ instance host and app version at the bottom.
 
 ## Read first
 
-`AGENTS.md`, `practices/native.md` (written by ticket 24), `practices/react-guide.md` (F1–F7 and the self-review checklist, applied to React Native), `practices/testing.md`, `practices/borrowed-practices.md`, tickets 05 and 11.
+`AGENTS.md`, `practices/native.md` (written by ticket 24), `practices/react-guide.md` (F1–F7 and the self-review checklist, applied to React Native), `practices/testing.md`, tickets 05 and 11.
 
 ## Verification
 

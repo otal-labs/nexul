@@ -41,7 +41,7 @@ fanning events into query invalidation.
 
 ## Read first
 
-`AGENTS.md`, `practices/native.md` (written by ticket 24), `practices/react-guide.md` (F1–F7 and the self-review checklist, applied to React Native), `practices/testing.md`, `practices/borrowed-practices.md`, tickets 06, 09 and 18's answer.
+`AGENTS.md`, `practices/native.md` (written by ticket 24), `practices/react-guide.md` (F1–F7 and the self-review checklist, applied to React Native), `practices/testing.md`, tickets 06, 09 and 18's answer.
 
 ## Verification
 

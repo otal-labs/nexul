@@ -1,6 +1,6 @@
 ---
 title: Coding standards
-description: A digest of the practices that govern Go, MCP, React, testing, and visual design in this repo.
+description: A digest of the practices that govern Go, MCP, React, the phone app, testing, and visual design in this repo.
 sidebar:
   order: 4
 ---
@@ -31,6 +31,20 @@ and [`practices/architecture.md`](https://github.com/otal-labs/nexul/blob/master
   for checks).
 - Queries are hand-written `.sql` files; `sqlc` generates the typed Go. See
   ADR [0009](https://github.com/otal-labs/nexul/blob/master/docs/adr/0009-sqlc-generates-the-storage-queries.md).
+- SQLite has one writer: every write goes through the storage serializer,
+  transactions begin `IMMEDIATE`, pooled connections stay warm, and lists
+  paginate by keyset with indexes that carry their tiebreaker.
+- Loops that deliver committed rows wake on the serializer's commit
+  broadcast instead of polling, and a slow client gets its own bounded send
+  queue so it never stalls the others. Packages that start goroutines guard
+  them with `goleak`.
+- Every adapter (HTTP, MCP, live frames) encodes through one JSON encoder,
+  `jsonx`, so an empty list is always `[]`; long lists encode through plain
+  wire structs, and permission checks on a list run once per project, not
+  once per row.
+- The architecture guide opens with three principles: a one-way door is a
+  bug, build the smallest model that makes behavior unsurprising, and keep
+  complexity in the adapters.
 
 ## MCP
 
@@ -70,6 +84,27 @@ done, regardless of what nearby code does:
 - **F7 — Files own one concern.** Pages stay thin; sub-components live in
   `components/<domain>/`.
 
+Live data follows a few rules of its own. The server's audience rules and
+the browser's topic tables are pinned together: `make live-topics`
+regenerates the topic list and tests on both sides fail when they drift, so
+a new live topic ships with its rule, the regenerated list and a handler. A
+frame that carries the entity patches the cache from its payload instead of
+refetching lists, every ticket view goes through one cache module, and a
+page's batch reads are keyed by project rather than by every id. Every page
+is its own chunk that the shell never imports, and rows of a live list are
+memoised components with stable props.
+
+## The phone app
+
+Full text: [`practices/native.md`](https://github.com/otal-labs/nexul/blob/master/practices/native.md).
+
+The Expo app inherits the web guide, F1–F7 included, with a Screen in place
+of a Page. Reference data is cached forever and refreshed by a pushed topic,
+and a test fails for any such query without one; chat frames patch the
+cached thread; record queries are matched by id or key through one helper;
+the session token is read once at launch; and icons import by path, which a
+lint rule enforces.
+
 ## TypeScript outside the browser
 
 Full text: [`practices/typescript.md`](https://github.com/otal-labs/nexul/blob/master/practices/typescript.md).
@@ -87,7 +122,10 @@ Full text: [`practices/testing.md`](https://github.com/otal-labs/nexul/blob/mast
 Coverage (80% gate, 90% target) is a floor, not a goal — error paths,
 state transitions, and idempotency come before happy paths. Mock at the
 interface boundary; prefer fakes over mocks for repos. A flaky test is a
-bug: fix it or delete it, never skip or retry-mask it.
+bug: fix it or delete it, never skip or retry-mask it, and async code is
+tested by draining, never by sleeping. A performance fix ships with a guard
+test that fails when the fix is reverted, and its numbers come from a
+production or release build on realistic data.
 
 ## Design language — frosted panels and one ember accent
 
@@ -117,7 +155,10 @@ A rule a linter can check is checked by a linter. Go runs `golangci-lint`
 and `make vuln`; the coverage gate is `make coverage`; `sqlc vet` and
 `sqlc diff` keep generated code honest. Every TypeScript package runs its
 `typecheck` and `test` scripts in CI, and Dependabot opens grouped weekly
-update pull requests per directory.
+update pull requests per directory. Tests guard the rest: the live topic
+contract, the JSON encoder's parity with the old output, goroutine leaks,
+the web shell's import graph, and the phone's forever-cached queries; a lint
+rule keeps phone icons imported by path.
 
 ## Hard rules from AGENTS.md
 
