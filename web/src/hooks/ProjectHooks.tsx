@@ -6,6 +6,7 @@ import { RepoRole, TestsLocation } from "@/enums/Project";
 import type { DeleteImpact, Project, ProjectAccessEntry, RepoRef } from "@/models/Project";
 import type { Repo } from "@/models/Repository";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import type { LiveFollower } from "@/lib/live";
 
 export const getProjectsKey = "getProjects";
 export const getProjectKey = "getProject";
@@ -167,4 +168,11 @@ export const useRemoveProjectRepo = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+// Who a manager sees with access to a project follows someone else's Project access moving.
+export const projectFollower: LiveFollower = {
+  "workspace.member.updated": (_payload: unknown, { client }) => client.invalidateQueries({ queryKey: [getProjectAccessKey] }),
+  "access.grant.changed": ({ resource_type, resource_id }: { resource_type: string; resource_id: string }, { client }) =>
+    client.invalidateQueries({ queryKey: resource_type === "project" ? [getProjectAccessKey, resource_id] : [getProjectAccessKey] }),
 };

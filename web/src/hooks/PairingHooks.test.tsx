@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
-import { useHarnessReadiness } from "@/hooks/PairingHooks";
+import { useHarnessReadiness, pairingFollower } from "@/hooks/PairingHooks";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
@@ -112,5 +113,38 @@ describe("useHarnessReadiness", () => {
     vi.mocked(api.get).mockImplementation(() => new Promise(() => {}));
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     expect(result.current).toBeUndefined();
+  });
+});
+
+describe("the pairing follower", () => {
+  it("patches a computer's tunnel checks from the frame, dropping a version the frame no longer carries", async () => {
+    const client = seeded([]);
+    await followFrame(pairingFollower, "computer.tunnel_status_changed", { computer_id: "c1", user_id: "u1", tunnel: "healthy", harness_reachable: true, harness_version: "0.0.40" }, client);
+    expect(client.getQueryData(["getTunnelStatus", "c1"])).toEqual({ tunnel: "healthy", harness_reachable: true, harness_version: "0.0.40" });
+    await followFrame(pairingFollower, "computer.tunnel_status_changed", { computer_id: "c1", user_id: "u1", tunnel: "down", harness_reachable: false }, client);
+    expect(client.getQueryData(["getTunnelStatus", "c1"])).toEqual({ tunnel: "down", harness_reachable: false });
+  });
+
+  it("refetches the providers and MCP token of the computer a frame names, and no other computer's", async () => {
+    const client = seeded([
+      [["getHarnessProviders", "c1"], []],
+      [["getHarnessProviders", "c2"], []],
+      [["getMCPToken", "c1"], null],
+      [["getMCPToken", "c2"], null],
+    ]);
+    await followFrame(pairingFollower, "computer.setup_confirmed", { computer_id: "c2", user_id: "u1", provider: "codex" }, client);
+    await followFrame(pairingFollower, "personal_access_token.minted", { token_id: "tok-1", user_id: "u1", name: "Nexul MCP", computer_id: "c2" }, client);
+    await followFrame(pairingFollower, "personal_access_token.revoked", { token_id: "tok-2", user_id: "u1", name: "CI" }, client);
+    const keys = [["getHarnessProviders", "c1"], ["getHarnessProviders", "c2"], ["getMCPToken", "c1"], ["getMCPToken", "c2"]];
+    expect(keys.map((key) => isStale(client, key))).toEqual([false, true, false, true]);
+  });
+
+  it("refetches the computer rows and readiness when a computer finishes pairing", async () => {
+    const client = seeded([
+      [["getComputers"], []],
+      [["getHarnessResolve", null], {}],
+    ]);
+    await followFrame(pairingFollower, "computer.paired", { computer_id: "c1", user_id: "u1" }, client);
+    expect([isStale(client, ["getComputers"]), isStale(client, ["getHarnessResolve", null])]).toEqual([true, true]);
   });
 });

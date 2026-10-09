@@ -11,8 +11,11 @@ import {
   useFetchSettings,
   useCopyConnectionToken,
   useUpdateSettings,
+  authFollower,
 } from "@/hooks/AuthHooks";
 import type { MeResponse } from "@/models/User";
+import { useDeviceArrivalStore } from "@/stores/deviceArrivalStore";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 vi.mock("@/api/client", () => ({
   api: {
@@ -131,5 +134,32 @@ describe("useCopyConnectionToken", () => {
     await result.current.mutateAsync();
     expect(api.post).toHaveBeenCalledWith("/api/auth/connection-token");
     expect(writeText).toHaveBeenCalledWith("t");
+  });
+});
+
+describe("the auth follower", () => {
+  const signedIn = () =>
+    seeded([
+      [["getMe"], { user: { id: "u-1" }, instance_permissions: [] }],
+      [["getSessions"], { sessions: [] }],
+    ]);
+
+  it("records only the viewer's own phone as it connects, and refetches the devices list for every session", async () => {
+    useDeviceArrivalStore.setState({ arrivals: [] });
+    const client = signedIn();
+    const connect = (payload: Record<string, string>) => followFrame(authFollower, "session.created", payload, client);
+    await connect({ session_id: "s-browser", user_id: "u-1", client: "browser", platform: "Linux", label: "Chrome" });
+    await connect({ session_id: "s-other", user_id: "u-2", client: "phone", platform: "Android", label: "Pixel 8" });
+    await connect({ session_id: "s-phone", user_id: "u-1", client: "phone", platform: "Android", label: "Pixel 8" });
+    expect(useDeviceArrivalStore.getState().arrivals.map((a) => a.id)).toEqual(["s-phone"]);
+    expect(isStale(client, ["getSessions"])).toBe(true);
+  });
+
+  it("refetches the viewer's own account only when it is their name or picture that changed", async () => {
+    const client = signedIn();
+    await followFrame(authFollower, "account.profile_updated", { account_id: "u-2" }, client);
+    expect(isStale(client, ["getMe"])).toBe(false);
+    await followFrame(authFollower, "account.profile_updated", { account_id: "u-1" }, client);
+    expect(isStale(client, ["getMe"])).toBe(true);
   });
 });

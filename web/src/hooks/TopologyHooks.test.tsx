@@ -3,9 +3,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router";
 
-import { useFetchTopology } from "@/hooks/TopologyHooks";
+import { topologyFollower, useFetchTopology } from "@/hooks/TopologyHooks";
 import { useFlowStore } from "@/stores/flowStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { followFrame } from "@/test/followFrame";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 
@@ -94,5 +95,24 @@ describe("useFetchTopology across workspaces", () => {
     await screen.findByText("loaded");
     expect(useFlowStore.getState().workspaceId).toBe("ws-2");
     expect(screen.getByTestId("nodes").textContent).toBe("0");
+  });
+});
+
+describe("the topology follower", () => {
+  const canvas = (workspaceId: string) => ({
+    workspace_id: workspaceId,
+    schema_version: 2,
+    nodes: [{ id: "svc-api", type: "service", position: { x: 0, y: 0 }, data: { service_id: "svc-api", name: "api", status: "running" } }],
+    edges: [],
+  });
+
+  it("applies the pushed canvas of the workspace on screen, and ignores another workspace's", async () => {
+    useFlowStore.setState({ workspaceId: "ws-1", nodes: [], edges: [], selectedNodeId: null });
+    await followFrame(topologyFollower, "topology", canvas("ws-2"), new QueryClient());
+    expect(useFlowStore.getState().nodes).toHaveLength(0);
+
+    await followFrame(topologyFollower, "topology", canvas("ws-1"), new QueryClient());
+    const node = useFlowStore.getState().nodes[0];
+    expect(node?.type === "service" ? node.data.status : undefined).toBe("running");
   });
 });

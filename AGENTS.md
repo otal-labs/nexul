@@ -140,7 +140,7 @@ this list and say which entries applied:
 - Events. A `Topics()` entry naming the payload type, `make event-schemas`,
   and an outbox write, designed for publication (ADR 0044, ADR 0137).
 - Live WebSocket push, if the UI should update without a refresh. A new
-  topic gets an audience rule, `make live-topics`, and a handler in the web
+  topic gets an audience rule, `make live-topics`, and a follower in the web
   client (`practices/react-guide.md`, The live topic contract).
 - Search, if the entity is indexed.
 - Permissions. Enforced through the permission table, not assumed.

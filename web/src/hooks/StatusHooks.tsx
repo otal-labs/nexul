@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import { stageMoved } from "@/hooks/TicketLinkHooks";
 import { StatusKind, type BoardStatus } from "@/models/Status";
 import { TicketStatus, type Ticket } from "@/models/Ticket";
+import { dropRow, replaceRow, type LiveFollower } from "@/lib/live";
 
 export const getStatusesKey = "getStatuses";
 export const getProjectStatusesKey = "getProjectStatuses";
@@ -101,4 +103,28 @@ export const useDeleteStatus = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+interface StatusPayload {
+  status: BoardStatus & { project_id: string };
+}
+
+// Columns sort by stage, then position, so a row keeps its place only while both hold.
+const sameOrder = (a: BoardStatus, b: BoardStatus) => a.kind === b.kind && a.position === b.position;
+
+export const statusFollower: LiveFollower = {
+  "status.created": ({ status }: StatusPayload, { client }) =>
+    client.invalidateQueries({ queryKey: [getProjectStatusesKey, status.project_id], exact: true }),
+  // Only this follower sees a column's stage before the frame, so it tells the link views when done-ness may have moved.
+  "status.updated": ({ status }: StatusPayload, { client }) => {
+    const key = [getProjectStatusesKey, status.project_id];
+    const before = client.getQueryData<BoardStatus[]>(key)?.find((s) => s.id === status.id);
+    void replaceRow(client, key, status, sameOrder);
+    if (before?.kind === status.kind) return;
+    return stageMoved(client, status.id);
+  },
+  "status.deleted": ({ status }: StatusPayload, { client }) => {
+    dropRow(client, [getProjectStatusesKey, status.project_id], status.id);
+    return stageMoved(client, status.id);
+  },
 };

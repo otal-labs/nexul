@@ -1,27 +1,15 @@
-import { act, render } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router";
+import type { QueryClient } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { api } from "@/api/client";
-import type { LiveSocket } from "@/api/ws";
 import { useFetchDoc, useFetchDocs, useFetchDocsByProject, useFetchDocWatchers } from "@/hooks/DocHooks";
 import { useFetchTicket, useFetchTicketLinks, useFetchTickets, useFetchTicketsByDoc, useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { useFetchBlockers, useFetchTicketLinkSet } from "@/hooks/TicketLinkHooks";
 import { useFetchTrails } from "@/hooks/TrailHooks";
-import { useLiveEvents } from "@/hooks/useLiveEvents";
 import type { Doc } from "@/models/Doc";
 import type { Ticket } from "@/models/Ticket";
+import { mountLive } from "@/test/liveHarness";
 
 vi.mock("@/api/client", () => ({ api: { get: vi.fn() }, errorMessage: vi.fn() }));
-
-class FakeSocket implements LiveSocket {
-  onopen: ((ev: unknown) => void) | null = null;
-  onmessage: ((ev: { data: string }) => void) | null = null;
-  onclose: ((ev: unknown) => void) | null = null;
-  onerror: ((ev: unknown) => void) | null = null;
-  close = vi.fn();
-}
 
 const ticket: Ticket = {
   id: "t-1",
@@ -94,52 +82,16 @@ const DocViews = () => {
   return null;
 };
 
-const Live = ({ wsFactory }: { wsFactory: () => LiveSocket }) => {
-  useLiveEvents("ws://live/ws/events", { wsFactory });
-  return null;
-};
-
 describe("a live ticket or doc frame", () => {
-  let socket: FakeSocket;
   let client: QueryClient;
+  let requestsAfter: (topic: string, payload: unknown) => Promise<string[]>;
 
   beforeEach(() => {
     server = { ticket, doc };
-    vi.mocked(api.get).mockReset();
-    vi.mocked(api.get).mockImplementation(async (url: string) => ({ data: respond(url) }));
   });
 
   const mount = async (views: React.ReactNode) => {
-    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const sockets: FakeSocket[] = [];
-    render(
-      <QueryClientProvider client={client}>
-        <MemoryRouter>
-          <Live
-            wsFactory={() => {
-              const s = new FakeSocket();
-              sockets.push(s);
-              return s;
-            }}
-          />
-          {views}
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-    await vi.waitFor(() => expect(sockets[0]?.onmessage).toBeTruthy());
-    socket = sockets[0]!;
-    await vi.waitFor(() => expect(client.isFetching()).toBe(0));
-    vi.mocked(api.get).mockClear();
-  };
-
-  // Requests the frame set off, counted once every refetch has settled.
-  const requestsAfter = async (topic: string, payload: unknown) => {
-    act(() => socket.onmessage?.({ data: JSON.stringify({ topic, type: "event", payload }) }));
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-    await vi.waitFor(() => expect(client.isFetching()).toBe(0));
-    return vi.mocked(api.get).mock.calls.map(([url]) => url);
+    ({ client, requestsAfter } = await mountLive(views, respond));
   };
 
   it("sends no request for a ticket's body commit, which a live editor saves every few seconds", async () => {

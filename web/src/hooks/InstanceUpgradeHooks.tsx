@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api, errorMessage } from "@/api/client";
 import { getServerVersionKey } from "@/hooks/VersionHooks";
 import { isUpgradeInProgress, type InstanceUpgrade, type InstanceUpgradeRecord } from "@/models/InstanceUpgrade";
+import type { LiveFollower } from "@/lib/live";
 
 export const getInstanceUpgradeKey = "instanceUpgrade";
 
@@ -48,4 +49,9 @@ export const useRefreshInstanceUpgrade = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+export const instanceUpgradeFollower: LiveFollower = {
+  "instance.upgrade_changed": (_payload: unknown, { client }) =>
+    Promise.all([client.invalidateQueries({ queryKey: [getInstanceUpgradeKey] }), client.invalidateQueries({ queryKey: [getServerVersionKey] })]),
 };

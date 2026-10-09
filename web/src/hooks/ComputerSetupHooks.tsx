@@ -3,7 +3,10 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { useListComputers } from "@/hooks/PairingHooks";
+import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { hasOutdatedSkills, stillPairing, type ComputerSetup, type OptionSetting, type SetupChoices, type SetupRun } from "@/models/Pairing";
+import type { ActivityKind } from "@/models/Trail";
+import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getComputerSetupKey = "getComputerSetup";
 
@@ -78,4 +81,28 @@ export const useSaveSetupChoices = (computerId: string) => {
     onSuccess: (setup) => client.setQueryData([getComputerSetupKey, computerId], setup),
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+// The running setup turn's latest step as one line, for the commentary under its row.
+interface SetupTurnActivityPayload {
+  turn_id: string;
+  status: string;
+  call_id?: string;
+  kind?: ActivityKind;
+  tool?: string;
+  text?: string;
+  at?: string;
+}
+
+const setupTopics = ["computer.setup_confirmed", "computer.setup_unconfirmed", "computer.setup_turn_changed", "computer.setup_finished"];
+
+export const computerSetupFollower: LiveFollower = {
+  // The Set up step's rows and the computer's row follow its run turn by turn.
+  ...followEach(setupTopics, ({ computer_id }: { computer_id: string }, { client }) =>
+    client.invalidateQueries({ queryKey: [getComputerSetupKey, computer_id], exact: true }),
+  ),
+  "computer.setup_turn_activity": (p: SetupTurnActivityPayload) =>
+    useSetupActivityStore
+      .getState()
+      .push(p.turn_id, { kind: p.kind ?? "other", call_id: p.call_id ?? "", tool: p.tool ?? "", summary: p.status, detail: p.text ?? "", at: p.at ?? "" }),
 };

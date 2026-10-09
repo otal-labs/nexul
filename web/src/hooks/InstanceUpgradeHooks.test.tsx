@@ -2,7 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useInstanceUpgrade, useRequestInstanceUpgrade } from "@/hooks/InstanceUpgradeHooks";
+import { useInstanceUpgrade, useRequestInstanceUpgrade, instanceUpgradeFollower } from "@/hooks/InstanceUpgradeHooks";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -72,5 +73,16 @@ describe("useRequestInstanceUpgrade", () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error?.message).toBe("instance runner is busy");
     expect(mocks.toast.error).toHaveBeenCalled();
+  });
+});
+
+describe("the instance upgrade follower", () => {
+  it("refetches the upgrade's progress and the server's version", async () => {
+    const client = seeded([
+      [["instanceUpgrade"], idleStatus],
+      [["serverVersion"], { version: "0.3.20" }],
+    ]);
+    await followFrame(instanceUpgradeFollower, "instance.upgrade_changed", {}, client);
+    expect([isStale(client, ["instanceUpgrade"]), isStale(client, ["serverVersion"])]).toEqual([true, true]);
   });
 });

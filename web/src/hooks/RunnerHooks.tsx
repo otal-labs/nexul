@@ -1,8 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import type { Machine, QueuedJob, Runner, RunnerEnrollment, RunnerEnrollmentFormData } from "@/models/Runner";
+import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getRunnersKey = "runners";
 export const getRunnerQueueKey = "runnerQueue";
@@ -60,4 +61,20 @@ export const useUpdateMachine = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+const refetch = (client: QueryClient, key: string) => client.invalidateQueries({ queryKey: [key], exact: true });
+
+// A job frame names its deploy: the runners list refetches until a runner shows it, and the queue while it holds it.
+const followJob = ({ id }: { id: string }, { client }: { client: QueryClient }) =>
+  Promise.all([
+    !client.getQueryData<Runner[]>([getRunnersKey])?.some((r) => r.running_job?.id === id) && refetch(client, getRunnersKey),
+    !!client.getQueryData<QueuedJob[]>([getRunnerQueueKey])?.some((j) => j.id === id) && refetch(client, getRunnerQueueKey),
+  ]);
+
+export const runnerFollower: LiveFollower = {
+  ...followEach(["runner.connected", "runner.disconnected"], (_payload: unknown, { client }) => refetch(client, getRunnersKey)),
+  ...followEach(["deploy.build_started", "deploy.build_progress", "deploy.build_completed", "deploy.deploy_progress"], followJob),
+  // A finished job frees its runner, which takes the next queued one.
+  "deploy.status_changed": (_payload: unknown, { client }) => Promise.all([refetch(client, getRunnersKey), refetch(client, getRunnerQueueKey)]),
 };

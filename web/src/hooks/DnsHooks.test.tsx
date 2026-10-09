@@ -7,7 +7,9 @@ import {
   useProvisionReverseProxy,
   useProvisionTunnelAgent,
   useRouteTunnelHostname,
+  dnsFollower,
 } from "@/hooks/DnsHooks";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -92,5 +94,18 @@ describe("DnsHooks tunnel hooks", () => {
       target: "10.0.0.1",
       docker_network: "net",
     });
+  });
+});
+
+describe("the dns follower", () => {
+  it("refetches the list of the kind that changed, and leaves the others", async () => {
+    const client = seeded([
+      [["dnsZones"], []],
+      [["dnsTunnels"], []],
+      [["dnsGateways"], []],
+      [["dnsExposures"], []],
+    ]);
+    await followFrame(dnsFollower, "dns.tunnel_changed", {}, client);
+    expect([["dnsZones"], ["dnsTunnels"], ["dnsGateways"], ["dnsExposures"]].map((key) => isStale(client, key))).toEqual([false, true, false, false]);
   });
 });

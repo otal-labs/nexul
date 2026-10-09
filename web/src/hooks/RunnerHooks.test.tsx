@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getRunnersKey, useCreateRunnerEnrollment, useRemoveRunner, useRunnerQueue, useRunners } from "@/hooks/RunnerHooks";
+import { getRunnersKey, useCreateRunnerEnrollment, useRemoveRunner, useRunnerQueue, useRunners, runnerFollower } from "@/hooks/RunnerHooks";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), delete: vi.fn(), toastError: vi.fn(), toastSuccess: vi.fn() }));
 
@@ -112,5 +113,31 @@ describe("RunnerHooks", () => {
     await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith("Runner removed"));
     expect(mocks.delete).toHaveBeenCalledWith("/api/runners/r-1");
     expect(invalidate).toHaveBeenCalledWith({ queryKey: [getRunnersKey] });
+  });
+});
+
+describe("the runner follower", () => {
+  const busy = () =>
+    seeded([
+      [["runners"], [{ ...runner, running_job: { id: "d-1", kind: "build" } }]],
+      [["runnerQueue"], [{ id: "d-2", kind: "deploy" }]],
+    ]);
+
+  it("sends nothing for progress on a job the runners list already shows", async () => {
+    const client = busy();
+    await followFrame(runnerFollower, "deploy.build_progress", { id: "d-1", step: 2, total: 5, log: "step 2" }, client);
+    expect([isStale(client, ["runners"]), isStale(client, ["runnerQueue"])]).toEqual([false, false]);
+  });
+
+  it("refetches the runners for a job they do not show yet, and the queue that held it", async () => {
+    const client = busy();
+    await followFrame(runnerFollower, "deploy.build_started", { id: "d-2", total: 5, log: "step 1" }, client);
+    expect([isStale(client, ["runners"]), isStale(client, ["runnerQueue"])]).toEqual([true, true]);
+  });
+
+  it("refetches the runners and the queue once a job ends, since its runner takes the next one", async () => {
+    const client = busy();
+    await followFrame(runnerFollower, "deploy.status_changed", { id: "d-1", status: "healthy" }, client);
+    expect([isStale(client, ["runners"]), isStale(client, ["runnerQueue"])]).toEqual([true, true]);
   });
 });

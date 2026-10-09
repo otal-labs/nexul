@@ -9,6 +9,7 @@ import { getWorkspacesKey, myRoleQuery, useFetchWorkspaces } from "@/hooks/Works
 import { hasPermission } from "@/models/Permission";
 import type { Template, TemplateKind, TemplateLocation } from "@/models/Template";
 import type { Workspace } from "@/models/Workspace";
+import type { LiveFollower } from "@/lib/live";
 
 export const getTemplatesKey = "getTemplates";
 export const getTemplateKey = "getTemplate";
@@ -101,4 +102,9 @@ export const useEditableWorkspaces = (permission: string): Workspace[] | undefin
   const roles = useQueries({ queries: (workspaces ?? []).map((w) => myRoleQuery(w.id)) });
   if (!workspaces || roles.some((r) => r.isPending)) return undefined;
   return workspaces.filter((_, i) => hasPermission(roles[i]?.data?.permissions, permission));
+};
+
+// An instance template changes what every unedited workspace shows and what each copy is compared with.
+export const templateFollower: LiveFollower = {
+  "instance_template.updated": (_payload: unknown, { client }) => refreshTemplates(client),
 };

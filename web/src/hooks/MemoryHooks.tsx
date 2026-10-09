@@ -1,4 +1,4 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
@@ -8,7 +8,9 @@ import type { InterviewTemplate } from "@/models/InterviewTemplate";
 import type { CreateMemoryFormData, Memory } from "@/models/Memory";
 import type { MemoryVersion } from "@/models/MemoryVersion";
 import type { Project } from "@/models/Project";
+import { isTrailActive, type RunFrame } from "@/models/Trail";
 import type { Workspace } from "@/models/Workspace";
+import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getMemoriesKey = "getMemories";
 export const getMemoryKey = "getMemory";
@@ -243,4 +245,38 @@ export const useFetchCloneDestinations = () => {
       : undefined;
 
   return { data, isPending, error };
+};
+
+// Memory frames carry the memory's place (internal/memories/events.go MemoryRef); a delete sends the same fields flat.
+interface MemoryPlace {
+  id: string;
+  workspace_id: string;
+  project_id: string;
+}
+
+const refetch = (client: QueryClient, queryKey: unknown[]) => client.invalidateQueries({ queryKey, exact: true });
+
+// The workspace's list and the project's list are the two that hold a memory.
+const refetchLists = (client: QueryClient, m: MemoryPlace) =>
+  Promise.all([refetch(client, [getMemoriesKey, "byWorkspace", m.workspace_id]), refetch(client, [getMemoriesKey, "byProject", m.project_id])]);
+
+const refetchMemory = (client: QueryClient, m: MemoryPlace) =>
+  Promise.all([refetchLists(client, m), refetch(client, [getMemoryKey, m.id]), refetch(client, [getMemoryVersionsKey, m.id])]);
+
+export const memoryFollower: LiveFollower = {
+  "memory.created": ({ memory }: { memory: MemoryPlace }, { client }) => refetchLists(client, memory),
+  "memory.updated": ({ memory }: { memory: MemoryPlace }, { client }) => refetchMemory(client, memory),
+  "memory.deleted": (memory: MemoryPlace, { client }) => refetchMemory(client, memory),
+  ...followEach(["interview_answer.saved", "interview_answer.cleared"], ({ project_id }: { project_id: string }, { client }) =>
+    refetch(client, [getInterviewAnswersKey, project_id]),
+  ),
+  // A finished interview run has written its project's memory and recorded its rounds; the frame names no workspace.
+  "play.run": (run: RunFrame, { client }) =>
+    run.target_type === "interview" &&
+    !isTrailActive(run.state) &&
+    Promise.all([
+      client.invalidateQueries({ queryKey: [getMemoriesKey, "byWorkspace"] }),
+      refetch(client, [getMemoriesKey, "byProject", run.target_id]),
+      refetch(client, [getInterviewAnswersKey, run.target_id]),
+    ]),
 };

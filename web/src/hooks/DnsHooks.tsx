@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
@@ -14,6 +14,7 @@ import type {
 } from "@/models/DNS";
 import { getServicesKey } from "@/hooks/ServiceHooks";
 import { resolvesHere, type PublicAddress } from "@/models/Setup";
+import type { LiveFollower } from "@/lib/live";
 
 export const getDnsZonesKey = "dnsZones";
 
@@ -238,3 +239,13 @@ export const useDeployInstanceProxy = () =>
     mutationFn: async ({ domain, email }: { domain: string; email: string }) =>
       (await api.post<{ service_id: string }>("/api/dns/instance-proxy", email ? { domain, email } : { domain })).data,
   });
+
+// Each DNS list is one instance-wide read; a change refetches the list of its kind.
+const refetchList = (key: string) => (_payload: unknown, { client }: { client: QueryClient }) => client.invalidateQueries({ queryKey: [key] });
+
+export const dnsFollower: LiveFollower = {
+  "dns.record_changed": refetchList(getDnsZonesKey),
+  "dns.tunnel_changed": refetchList(getDnsTunnelsKey),
+  "dns.gateway_changed": refetchList(getDnsGatewaysKey),
+  "dns.exposure_changed": refetchList(getDnsExposuresKey),
+};

@@ -11,10 +11,12 @@ import {
   useFetchApplicablePlays,
   useFetchWorkspacePlays,
   useUpdatePlay,
+  playFollower,
 } from "@/hooks/PlayHooks";
 import type { SavePlayFormData } from "@/models/Play";
 import type { Ticket, TicketStatus } from "@/models/Ticket";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 const ticketAt = (status: string): Ticket => ({
   id: "t-1",
@@ -161,5 +163,22 @@ describe("useDeletePlay", () => {
     const { result } = renderHook(() => useDeletePlay("ws-1"), { wrapper });
     await result.current.mutateAsync("play-1").catch(() => {});
     await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+describe("the play follower", () => {
+  it("refetches the plays and run menus of the play's workspace only", async () => {
+    const client = seeded([
+      [["getWorkspacePlays", "ws-1"], []],
+      [["getWorkspacePlays", "ws-2"], []],
+      [["getApplicablePlays", "ws-1", "p-1", "ticket", null], []],
+      [["getApplicablePlays", "ws-2", "p-2", "ticket", null], []],
+    ]);
+    await followFrame(playFollower, "play.updated", { play: { id: "pl-1", workspace_id: "ws-2" } }, client);
+    const keys = [["getWorkspacePlays", "ws-1"], ["getWorkspacePlays", "ws-2"], ["getApplicablePlays", "ws-1", "p-1", "ticket", null], ["getApplicablePlays", "ws-2", "p-2", "ticket", null]];
+    expect(keys.map((key) => isStale(client, key))).toEqual([false, true, false, true]);
+
+    await followFrame(playFollower, "play.deleted", { id: "pl-1", label: "Review", workspace_id: "ws-1" }, client);
+    expect(isStale(client, ["getWorkspacePlays", "ws-1"])).toBe(true);
   });
 });

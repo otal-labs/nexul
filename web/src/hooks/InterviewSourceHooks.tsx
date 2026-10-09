@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
@@ -7,6 +7,7 @@ import { useFetchTrails } from "@/hooks/TrailHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { AUDIT_KEY, DRAFT_INTERVIEW_KEY } from "@/models/Play";
 import type { AddInterviewSourceInput, InterviewDraft, InterviewSource, SourceStance } from "@/models/InterviewSource";
+import { followEach, refetchHolding, type LiveFollower } from "@/lib/live";
 
 export const getInterviewSourcesKey = "getInterviewSources";
 export const getInterviewDraftsKey = "getInterviewDrafts";
@@ -116,4 +117,25 @@ export const useInterviewTrails = (projectId: string) => {
     drafting: trails?.filter((t) => t.play_id === draftId),
     audit: trails?.filter((t) => t.play_id === auditId),
   };
+};
+
+// Source and draft frames name the project whose interview they belong to (internal/memories/events.go).
+interface InterviewPayload {
+  project_id: string;
+}
+
+// A source names its doc or memory and dates its change, so only a project list that holds it refetches.
+const refetchNaming = (client: QueryClient, projectId: string, ref: string) =>
+  refetchHolding(client, [getInterviewSourcesKey, projectId], (sources: InterviewSource[]) => sources.some((s) => s.ref === ref));
+
+export const interviewSourceFollower: LiveFollower = {
+  ...followEach(["interview_source.added", "interview_source.changed", "interview_source.removed"], ({ project_id }: InterviewPayload, { client }) =>
+    client.invalidateQueries({ queryKey: [getInterviewSourcesKey, project_id], exact: true }),
+  ),
+  ...followEach(["interview_draft.saved", "interview_draft.dismissed"], ({ project_id }: InterviewPayload, { client }) =>
+    client.invalidateQueries({ queryKey: [getInterviewDraftsKey, project_id], exact: true }),
+  ),
+  "doc.updated": ({ doc }: { doc: { id: string; project_id: string } }, { client }) => refetchNaming(client, doc.project_id, doc.id),
+  "memory.updated": ({ memory }: { memory: { id: string; project_id: string } }, { client }) => refetchNaming(client, memory.project_id, memory.id),
+  "memory.deleted": ({ id, project_id }: { id: string; project_id: string }, { client }) => refetchNaming(client, project_id, id),
 };

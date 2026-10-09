@@ -1,8 +1,8 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 
-import { getBlockersKey, getTicketLinkSetKey } from "@/hooks/TicketLinkHooks";
+import { getBlockersKey, getTicketLinkSetKey, linkedTickets } from "@/hooks/TicketLinkHooks";
 import type { Ticket } from "@/models/Ticket";
-import type { BlockersByTicket, LinkedTicket, TicketLinkSet } from "@/models/TicketLink";
+import type { BlockersByTicket, TicketLinkSet } from "@/models/TicketLink";
 
 export const getTicketsKey = "getTickets";
 export const getTicketKey = "getTicket";
@@ -27,8 +27,7 @@ const cachedTicket = (client: QueryClient, id: string): Ticket | undefined =>
 
 const refetch = (client: QueryClient, queryKey: QueryKey) => client.invalidateQueries({ queryKey, exact: true });
 
-const linkedIds = (set: TicketLinkSet): string[] =>
-  [set.found_in, ...set.bugs_found, ...set.blocked_by, ...set.blocks].filter((t): t is LinkedTicket => !!t).map((t) => t.id);
+const linkedIds = (set: TicketLinkSet): string[] => linkedTickets(set).map((t) => t.id);
 
 // Other tickets' link sets and the board's blockers show a ticket's title and stage, so they follow those two fields.
 const refetchMentions = (client: QueryClient, id: string, stageMayMove: boolean) => {
@@ -81,4 +80,13 @@ export const ticketRemoved = (client: QueryClient, id: string): Promise<void> =>
     if (list?.some((t) => t.id === id)) client.setQueryData<Ticket[]>(key, list.filter((t) => t.id !== id));
   }
   return settle([refetch(client, [getTicketKey, id]), ...refetchMentions(client, id, true)]);
+};
+
+// A deleted column's tickets move to another one server-side, so every view holding one of them refetches.
+export const statusRemoved = (client: QueryClient, statusId: string): Promise<void> => {
+  const lists = cachedLists(client);
+  const singles = client.getQueriesData<Ticket>({ queryKey: [getTicketKey] }).flatMap(([, t]) => (t ? [t] : []));
+  const moved = new Set([...lists.flatMap(({ list }) => list ?? []), ...singles].filter((t) => t.status === statusId).map((t) => t.id));
+  const holders = lists.filter(({ list }) => list?.some((t) => moved.has(t.id)));
+  return settle([...holders.map(({ key }) => refetch(client, key)), ...[...moved].map((id) => refetch(client, [getTicketKey, id]))]);
 };
