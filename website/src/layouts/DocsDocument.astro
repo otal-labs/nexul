@@ -1,7 +1,6 @@
 ---
 import '../styles/docs.css';
-import interWoff2 from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
-import monoWoff2 from '@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2?url';
+import SiteHead from '../components/SiteHead.astro';
 
 interface Props {
 	title: string;
@@ -23,8 +22,7 @@ const { title, description } = Astro.props;
 		<meta property="og:type" content="article" />
 		<link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="preload" as="font" type="font/woff2" href={interWoff2} crossorigin />
-		<link rel="preload" as="font" type="font/woff2" href={monoWoff2} crossorigin />
+		<SiteHead />
 	</head>
 	<body class="flex min-h-screen flex-col">
 		<a class="skip-link" href="#nd-page">Skip to content</a>
