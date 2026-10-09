@@ -1142,7 +1142,8 @@ a.mention-chip:hover {
 .float-surface {
   --float-from: 0 0;
   transition-property: opacity, scale, translate;
-  transition-duration: 150ms;
+  /* Opaque before the scale settles, so the text underneath never reads through a menu. */
+  transition-duration: 90ms, 150ms, 150ms;
   transition-timing-function: var(--ease-out);
   @starting-style {
     opacity: 0;

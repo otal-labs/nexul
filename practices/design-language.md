@@ -872,7 +872,8 @@ writing its own.
   shows and goes in the same frame (the root's `data-input`, written by
   `lib/motion.ts`). Popovers, menus, hover cards and selects open in 150ms
   and close in 120ms from 0.97 and 4px toward their trigger, from the
-  trigger's corner. A dialog rises 6px from 0.97 over 220ms and leaves in
+  trigger's corner; their opacity lands in 90ms, before the scale settles,
+  so the sidebar text never reads through a switcher. A dialog rises 6px from 0.97 over 220ms and leaves in
   150ms to 0.98; its scrim fades on the same clock. A sheet slides in 300ms
   on `--ease-drawer` and out in 220ms, its scrim with it. A tooltip that
   waited fades in from 0.97 over 125ms; one shown at once beside another
