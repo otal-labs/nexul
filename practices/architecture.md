@@ -107,7 +107,10 @@ the outbox so a crash between commit and publish cannot lose them:
 2. A background relay publishes each row under the row's own ID as the bus
    event ID (ADR 0018). That is what makes a redelivered row dedupeable. The
    storage serializer wakes it after every commit, so a row goes out at once;
-   its poll is the retry path for a publish that failed.
+   its 5-second poll is the retry path for a publish that failed. The wake is
+   a broadcast (`internal/platform/wake`), so the webhook delivery relay and
+   each automation connection wait on the same commits instead of running
+   their own fast tickers.
 3. After a crash between commit and publish, the relay re-emits on restart.
 4. Consumers are idempotent: they check the processed-events store before
    acting.

@@ -72,6 +72,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		Runs:     store.AutomationRuns,
 		Secrets:  svc.automationSecretsSvc,
 		Scope:    automationScope{lookup: store.EventWorkspaces},
+		Wake:     store.Commits().Next,
 		Logger:   logger,
 	})
 	svc.automationsSvc.SetConnectionRegistry(automationsDialin)
