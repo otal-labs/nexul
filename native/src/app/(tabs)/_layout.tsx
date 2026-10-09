@@ -9,9 +9,13 @@ import { useAreaAccess, useEnsureWorkspaceSelected } from "@/hooks/WorkspaceHook
 import type { Area } from "@/models/Access";
 
 export default function TabsLayout() {
-  const [foreground, mutedForeground] = useCSSVariable([
-    "--color-foreground",
+  const [brand, mutedForeground, panel, border, foreground, background] = useCSSVariable([
+    "--color-brand",
     "--color-muted-foreground",
+    "--color-panel",
+    "--color-border",
+    "--color-foreground",
+    "--color-background",
   ]);
   const offline = useIsOffline();
   useEnsureWorkspaceSelected();
@@ -27,9 +31,12 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         sceneStyle: { paddingBottom: offline ? OFFLINE_BANNER_HEIGHT : 0 },
-        tabBarActiveTintColor: String(foreground),
+        // The active tab is the ember's "where you are"; the unread count is the solid ink pill.
+        tabBarActiveTintColor: String(brand),
         tabBarInactiveTintColor: String(mutedForeground),
-        tabBarLabelStyle: { fontFamily: "Inter", fontWeight: "500" },
+        tabBarLabelStyle: { fontFamily: "Inter", fontWeight: "500", fontSize: 11 },
+        tabBarStyle: { backgroundColor: String(panel), borderTopColor: String(border), elevation: 0 },
+        tabBarBadgeStyle: { backgroundColor: String(foreground), color: String(background), fontFamily: "JetBrains Mono", fontSize: 10 },
       }}
     >
       <Tabs.Screen

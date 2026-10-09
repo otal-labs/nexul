@@ -1,17 +1,16 @@
 import { Stack } from "expo-router";
 
+import { stackOptions } from "@/lib/stackOptions";
+
 export const unstable_settings = { initialRouteName: "index" };
 
 export default function SettingsLayout() {
   return (
     <Stack
-      screenOptions={{
-        headerShadowVisible: false,
-        headerTitleStyle: { fontFamily: "Inter", fontWeight: "600" },
-      }}
+      screenOptions={stackOptions}
     >
-      <Stack.Screen name="index" options={{ title: "Your settings" }} />
-      <Stack.Screen name="devices" options={{ title: "Devices" }} />
+      <Stack.Screen name="index" options={{ title: "" }} />
+      <Stack.Screen name="devices" options={{ title: "" }} />
     </Stack>
   );
 }

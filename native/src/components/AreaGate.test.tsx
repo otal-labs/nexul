@@ -98,7 +98,7 @@ describe("tabs by permission", () => {
     permissions = ["stacks:read"];
     await renderApp("/board");
 
-    expect(await screen.findByText("This page doesn't exist.")).toBeTruthy();
+    expect(await screen.findByText("This page doesn't exist")).toBeTruthy();
     expect(screen.queryByText("Board list")).toBeNull();
   });
 });

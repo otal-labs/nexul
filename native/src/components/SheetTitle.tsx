@@ -6,8 +6,9 @@ interface SheetTitleProps {
   className?: string;
 }
 
+// What a sheet acts on, in the dialog title's 17pt semibold.
 export const SheetTitle = ({ title, className }: SheetTitleProps) => (
-  <Text role="heading" className={cn("px-4 pb-3 pt-5 text-lg font-semibold", className)} numberOfLines={1}>
+  <Text role="heading" className={cn("px-5 pb-3 pt-6 text-[17px] font-semibold", className)} numberOfLines={2}>
     {title}
   </Text>
 );
