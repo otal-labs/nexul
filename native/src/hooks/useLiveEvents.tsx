@@ -61,6 +61,20 @@ const pushTopics: Record<string, string[]> = {
   "deploy.updated": [getDeployKey, getDeployLogKey, getStackDeploysKey],
 };
 
+// Cached once per record (each ticket thread's label in Chat holds one), so a frame refetches only the record it names.
+const detailKeys = new Set([getTicketKey, getDocKey, getDeployKey, getDeployLogKey]);
+
+const subjectId = (payload: unknown): string | undefined => {
+  const p = payload as { id?: string; ticket?: { id?: string }; doc?: { id?: string } } | null;
+  return p?.ticket?.id ?? p?.doc?.id ?? p?.id;
+};
+
+const invalidationKey = (key: string, frame: ServerFrame): string[] => {
+  const id = detailKeys.has(key) ? subjectId(frame.payload) : undefined;
+  if (!id) return [key];
+  return [key, id];
+};
+
 // Topics that can change what the person named as user_id may do, Project access included (ADR 0097).
 const permissionTopics = new Set([
   "workspace.member.added",
@@ -96,7 +110,7 @@ export const dispatch = (client: QueryClient) => (frame: ServerFrame) => {
     return;
   }
   patchChatMessages(client, frame);
-  pushTopics[frame.topic]?.forEach((key) => void client.invalidateQueries({ queryKey: [key] }));
+  pushTopics[frame.topic]?.forEach((key) => void client.invalidateQueries({ queryKey: invalidationKey(key, frame) }));
 };
 
 // One socket for the signed-in instance: open while the app is in front, closed in the background.

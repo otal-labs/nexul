@@ -1,6 +1,9 @@
 import { QueryClient } from "@tanstack/react-query";
 
 import { getMeKey } from "@/hooks/AuthHooks";
+import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
+import { getDocKey } from "@/hooks/DocHooks";
+import { getTicketKey } from "@/hooks/TicketHooks";
 import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@/hooks/ChatHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { dispatch } from "@/hooks/useLiveEvents";
@@ -79,5 +82,23 @@ describe("dispatch", () => {
 
     expect(client.getQueryData([getChatMessagesKey, "c1"])).toEqual(want);
     expect(invalidate.mock.calls.flatMap(([filters]) => filters?.queryKey ?? [])).not.toContain(getChatMessagesKey);
+  });
+
+  // Each record opened or listed caches its own detail query, so a frame refetches only the one it names.
+  test.each([
+    ["ticket.status_changed", { ticket: { id: "t-1" }, from: "a", to: "b" }, [[getTicketKey, "t-1"]]],
+    ["ticket.updated", { ticket: { id: "t-1" } }, [[getTicketKey, "t-1"]]],
+    ["ticket.deleted", { id: "t-1", title: "Gone" }, [[getTicketKey, "t-1"]]],
+    ["doc.updated", { doc: { id: "d-1", title: "Spec", version: 2 } }, [[getDocKey, "d-1"]]],
+    ["deploy.updated", { id: "dep-1", status: "running" }, [[getDeployKey, "dep-1"], [getDeployLogKey, "dep-1"]]],
+  ])("%s refetches only the record it names", (topic, payload, want) => {
+    const client = new QueryClient();
+    const invalidate = jest.spyOn(client, "invalidateQueries").mockResolvedValue();
+
+    dispatch(client)({ topic, type: "event", payload });
+
+    const keys = invalidate.mock.calls.map(([filters]) => filters?.queryKey);
+    want.forEach((key) => expect(keys).toContainEqual(key));
+    [getTicketKey, getDocKey, getDeployKey, getDeployLogKey].forEach((key) => expect(keys).not.toContainEqual([key]));
   });
 });
