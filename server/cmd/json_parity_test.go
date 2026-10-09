@@ -80,16 +80,6 @@ func randomFill(v reflect.Value, r *rand.Rand, depth int) {
 		return
 	}
 	switch v.Kind() {
-	case reflect.String:
-		v.SetString([]string{"", "a", "<b & c>"}[r.IntN(3)])
-	case reflect.Bool:
-		v.SetBool(r.IntN(2) == 0)
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		v.SetInt(int64(r.IntN(5)))
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		v.SetUint(uint64(r.IntN(5)))
-	case reflect.Float32, reflect.Float64:
-		v.SetFloat(float64(r.IntN(5)) / 2)
 	case reflect.Slice:
 		randomSlice(v, r, depth)
 	case reflect.Array:
@@ -113,6 +103,23 @@ func randomFill(v reflect.Value, r *rand.Rand, depth int) {
 		}
 	case reflect.Interface:
 		randomInterface(v, r)
+	default:
+		randomScalar(v, r)
+	}
+}
+
+func randomScalar(v reflect.Value, r *rand.Rand) {
+	switch v.Kind() {
+	case reflect.String:
+		v.SetString([]string{"", "a", "<b & c>"}[r.IntN(3)])
+	case reflect.Bool:
+		v.SetBool(r.IntN(2) == 0)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		v.SetInt(int64(r.IntN(5)))
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		v.SetUint(uint64(r.IntN(5)))
+	case reflect.Float32, reflect.Float64:
+		v.SetFloat(float64(r.IntN(5)) / 2)
 	}
 }
 
