@@ -6,10 +6,11 @@ import { describe, expect, it, vi } from "vitest";
 import { Awareness, encodeAwarenessUpdate } from "y-protocols/awareness";
 import { Doc } from "yjs";
 
+import type { LiveSocket } from "@nexul/client-core/liveSocket";
+
 import { api } from "@/api/client";
 import { useCollabSession } from "@/components/doc/collab/useCollabSession";
 import { useFetchDoc } from "@/hooks/DocHooks";
-import type { LiveSocket } from "@/api/ws";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },

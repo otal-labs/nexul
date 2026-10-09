@@ -1,6 +1,7 @@
 import type { AxiosError } from "axios";
 
-import { closeSocket, type LiveSocket } from "@/api/ws";
+import { closeSocket, type LiveSocket } from "@nexul/client-core/liveSocket";
+
 import { api, errorMessage } from "@/api/client";
 import { buildLogsURL } from "@/lib/live";
 import type { ContainerLogWireLine, LogStatus } from "@/models/ContainerLog";

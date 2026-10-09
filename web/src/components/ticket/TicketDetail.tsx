@@ -1,6 +1,6 @@
+import type { LiveSocket } from "@nexul/client-core/liveSocket";
 import { personLabel } from "@nexul/client-core/person";
 
-import type { LiveSocket } from "@/api/ws";
 import { DocBodyView } from "@/components/doc/DocBodyView";
 import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
 import { CollabRichTextEditor } from "@/components/doc/collab/CollabRichTextEditor";

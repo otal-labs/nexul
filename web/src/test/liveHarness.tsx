@@ -4,8 +4,9 @@ import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { expect, vi } from "vitest";
 
+import type { LiveSocket } from "@nexul/client-core/liveSocket";
+
 import { api } from "@/api/client";
-import type { LiveSocket } from "@/api/ws";
 import { useLiveEvents } from "@/hooks/useLiveEvents";
 
 // The calling test file mocks "@/api/client"; this harness drives that mock's get.

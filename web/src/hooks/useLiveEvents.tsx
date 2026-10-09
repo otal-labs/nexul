@@ -3,8 +3,8 @@ import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router";
 
 import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
+import { LiveEventsClient, type LiveEventsClientOptions, type ServerFrame } from "@nexul/client-core/liveSocket";
 
-import { LiveEventsClient, type LiveEventsClientOptions, type ServerFrame } from "@/api/ws";
 import { authFollower, getMeKey } from "@/hooks/AuthHooks";
 import { botwebhookFollower } from "@/hooks/BotwebhookHooks";
 import { categoryFollower } from "@/hooks/CategoryHooks";
@@ -128,9 +128,11 @@ export const useLiveEvents = (url: string | null, opts: LiveEventsClientOptions 
     if (!url) return;
     const events = new LiveEventsClient(url, {
       ...optsRef.current,
+      // Frames sent while the socket was down are lost, so every open read refetches, as after an access change.
       onReconnect: () => {
         optsRef.current.onReconnect?.();
         void notifyIfServerUpdated(client);
+        void client.invalidateQueries();
       },
     });
     const unsubscribe = events.subscribe(dispatch(() => ({ client, ...routerRef.current })));

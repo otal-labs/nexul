@@ -3,7 +3,8 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react"
 
 import * as Y from "yjs";
 
-import type { LiveSocket } from "@/api/ws";
+import type { LiveSocket } from "@nexul/client-core/liveSocket";
+
 import { getDocKey } from "@/hooks/DocHooks";
 import { buildCollabURL } from "@/lib/collab/url";
 import { RelayCollabProvider } from "@/lib/collab/provider";

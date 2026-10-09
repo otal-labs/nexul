@@ -1,5 +1,7 @@
 import { useParams } from "react-router";
 
+import type { LiveSocket } from "@nexul/client-core/liveSocket";
+
 import { PermissionsForm } from "@/components/access/PermissionsForm";
 import { PermissionsFormSchema, type PermissionsFormData } from "@/models/Permission";
 import { Container } from "@/components/Container";
@@ -10,7 +12,6 @@ import { useArchiveDoc, useFetchDoc, useFetchDocClarification, useRestoreDoc } f
 import { useCreateTicketDialog } from "@/hooks/useCreateTicketDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import type { LiveSocket } from "@/api/ws";
 
 interface DocPageProps {
   /** Test seam: forwarded to the doc's collaboration session. */

@@ -1,7 +1,10 @@
 import { eventFixtures, TOPICS } from "@nexul/sdk/events";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, renderHook } from "@testing-library/react-native";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
+import type { ReactNode } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 
 import { getMeKey } from "@/hooks/AuthHooks";
 import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@/hooks/ChatHooks";
@@ -11,10 +14,11 @@ import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHook
 import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
 import { getProjectStatusesKey } from "@/hooks/StatusHooks";
 import { getTicketKey, getTicketsByProjectKey } from "@/hooks/TicketHooks";
-import { dispatch } from "@/hooks/useLiveEvents";
+import { dispatch, useLiveEvents } from "@/hooks/useLiveEvents";
 import { getMyRoleKey, getWorkspacesKey } from "@/hooks/WorkspaceHooks";
 import { liveQueries } from "@/lib/liveQuery";
 import type { Message } from "@/models/Chat";
+import { useSessionStore } from "@/stores/sessionStore";
 
 jest.mock("expo-secure-store", () => ({ getItem: () => null, setItem: jest.fn(), deleteItemAsync: jest.fn() }));
 
@@ -170,6 +174,87 @@ describe("dispatch", () => {
 
     expect(client.getQueryState([getTicketKey, "t-1", ""])?.isInvalidated).toBe(true);
     expect(client.getQueryState([getTicketKey, "t-2", ""])?.isInvalidated).toBe(true);
+  });
+});
+
+class FakeSocket {
+  static all: FakeSocket[] = [];
+  onopen: ((ev: unknown) => void) | null = null;
+  onmessage: ((ev: { data: string }) => void) | null = null;
+  onclose: ((ev: unknown) => void) | null = null;
+  onerror: ((ev: unknown) => void) | null = null;
+  readyState = 0;
+  close = jest.fn();
+
+  constructor(readonly url: string) {
+    FakeSocket.all.push(this);
+  }
+
+  open() {
+    this.readyState = 1;
+    this.onopen?.({});
+  }
+}
+
+describe("useLiveEvents", () => {
+  let appStateListeners: ((status: AppStateStatus) => void)[] = [];
+  const appStateChange = (status: AppStateStatus) => appStateListeners.forEach((listener) => listener(status));
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.spyOn(Math, "random").mockReturnValue(0);
+    Object.assign(AppState, { currentState: "active" });
+    appStateListeners = [];
+    jest.spyOn(AppState, "addEventListener").mockImplementation((_, listener) => {
+      appStateListeners.push(listener as (status: AppStateStatus) => void);
+      return { remove: jest.fn() };
+    });
+    FakeSocket.all = [];
+    global.WebSocket = FakeSocket as unknown as typeof WebSocket;
+    useSessionStore.getState().signIn("https://nexul.example.com", "ses_a");
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  const mount = async () => {
+    const client = new QueryClient();
+    const invalidate = jest.spyOn(client, "invalidateQueries").mockResolvedValue();
+    await renderHook(() => useLiveEvents(), {
+      wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    });
+    return invalidate;
+  };
+
+  test("a dropped socket reconnects and refetches every open read, since the frames sent meanwhile are lost", async () => {
+    const invalidate = await mount();
+    FakeSocket.all[0]?.open();
+    expect(invalidate).not.toHaveBeenCalled();
+
+    jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    await act(async () => {
+      FakeSocket.all[0]?.onclose?.({});
+      jest.advanceTimersByTime(500);
+    });
+    FakeSocket.all[1]?.open();
+
+    expect(FakeSocket.all[1]?.url).toBe("wss://nexul.example.com/ws/events?token=ses_a");
+    expect(invalidate).toHaveBeenCalledWith();
+  });
+
+  test("the background closes the socket and the foreground opens a new one, leaving the refetch to the focus manager", async () => {
+    const invalidate = await mount();
+    FakeSocket.all[0]?.open();
+
+    await act(async () => appStateChange("background"));
+    expect(FakeSocket.all[0]?.close).toHaveBeenCalled();
+    await act(async () => appStateChange("active"));
+    FakeSocket.all[1]?.open();
+
+    expect(FakeSocket.all).toHaveLength(2);
+    expect(invalidate).not.toHaveBeenCalled();
   });
 });
 
