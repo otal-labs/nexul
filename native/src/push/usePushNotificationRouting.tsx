@@ -8,14 +8,14 @@ import { getNotificationsKey } from "@/hooks/NotificationHooks";
 import { queryClient } from "@/lib/queryClient";
 import type { Notification } from "@/models/Notification";
 
+// The Inbox caches one list per workspace and a push can come from any of them; the unscoped list holds them all.
 const findNotification = async (notificationId: string): Promise<Notification | undefined> => {
-  const cached = queryClient.getQueryData<Notification[]>([getNotificationsKey]);
-  const notifications =
-    cached ??
-    (await queryClient.fetchQuery<Notification[]>({
-      queryKey: [getNotificationsKey],
-      queryFn: () => api.get<Notification[]>("/api/notifications"),
-    }));
+  const cached = queryClient
+    .getQueriesData<Notification[]>({ queryKey: [getNotificationsKey] })
+    .flatMap(([, list]) => list ?? [])
+    .find((n) => n.id === notificationId);
+  if (cached) return cached;
+  const notifications = await api.get<Notification[]>("/api/notifications");
   return notifications.find((n) => n.id === notificationId);
 };
 

@@ -1,6 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react-native";
 import * as Notifications from "expo-notifications";
 
+import { api } from "@/api/client";
 import { getNotificationsKey } from "@/hooks/NotificationHooks";
 import { queryClient } from "@/lib/queryClient";
 import type { Notification } from "@/models/Notification";
@@ -42,21 +43,23 @@ describe("usePushNotificationRouting", () => {
     mockPush.mockReset();
     queryClient.clear();
     responseListener = undefined;
+    jest.mocked(api.get).mockReset();
     jest.mocked(Notifications.getLastNotificationResponse).mockReturnValue(null);
   });
 
-  test("a warm tap opens the Inbox, then the notification's subject", async () => {
-    queryClient.setQueryData([getNotificationsKey], [notification]);
+  test("a warm tap finds the notification the Inbox already holds, opens the Inbox, then its subject", async () => {
+    queryClient.setQueryData([getNotificationsKey, "ws-1"], [notification]);
     await renderHook(() => usePushNotificationRouting());
 
     responseListener?.(respond({ notification_id: "n1" }));
 
     await waitFor(() => expect(mockPush).toHaveBeenNthCalledWith(2, "/board/ticket/t1", { withAnchor: true }));
     expect(mockPush).toHaveBeenNthCalledWith(1, "/inbox");
+    expect(api.get).not.toHaveBeenCalled();
   });
 
-  test("a cold start with a pending response routes the same way", async () => {
-    queryClient.setQueryData([getNotificationsKey], [notification]);
+  test("a cold start with a pending response asks the server and routes the same way", async () => {
+    jest.mocked(api.get).mockResolvedValue([notification]);
     jest.mocked(Notifications.getLastNotificationResponse).mockReturnValue(respond({ notification_id: "n1" }) as never);
 
     await renderHook(() => usePushNotificationRouting());
@@ -66,7 +69,8 @@ describe("usePushNotificationRouting", () => {
   });
 
   test("an unknown notification id still opens the Inbox and stops there", async () => {
-    queryClient.setQueryData([getNotificationsKey], [notification]);
+    queryClient.setQueryData([getNotificationsKey, "ws-1"], [notification]);
+    jest.mocked(api.get).mockResolvedValue([notification]);
     await renderHook(() => usePushNotificationRouting());
 
     responseListener?.(respond({ notification_id: "missing" }));
