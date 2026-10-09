@@ -111,7 +111,7 @@ export const CommandPaletteBody = () => {
           />
         ))}
       </div>
-      {items.length === 0 && !searching && <EmptyRow className="-mt-1 pt-0">No results for “{query.trim()}”</EmptyRow>}
+      {items.length === 0 && !searching && <EmptyRow className="-mt-1 pt-0 wrap-anywhere">No results for “{query.trim()}”</EmptyRow>}
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>
