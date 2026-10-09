@@ -1275,3 +1275,67 @@ Settings save) apply to roles, plays, categories, repositories, exposures,
 secrets and the workspace, template and automation configuration cards. A
 Motion `layout` glide on a bounce-free spring was built first and lost to the
 shared glide only for being a second vocabulary for the same act.
+
+## Site: roadmap and changelog
+
+Decided 2026-10-09 without the owner in the loop, each built as live variants
+on the real pages with real release data, shot at 320 to 1440px in both
+schemes, and the motion recorded at 1x and 0.25x with frame strips.
+`website/src/styles/pages.css` holds the rules; the 404 page shares its hero.
+
+Page hero. A microheader eyebrow, the headline in Fraunces (the app's display
+settings, 36px rising to 56px from 1100px), a muted lede whose links take the
+prose-link role (`--color-fd-primary`). The hero matches the width of the
+content under it, so both start on one edge.
+
+Roadmap.
+- Grouped by status, In progress, then Planned, then Shipped, each newest
+  first, under an Inter heading with its status dot and a mono count; a row of
+  the same three as jump links sits under the lede. Rejected: the one
+  interleaved list it replaces (nothing said what was next).
+- Items are hairline rows: the name in 16px Inter medium (a feature name is
+  not technical data, so not mono), the summary muted under it at 62ch.
+  Shipped runs in two columns from 1024px, about 1700px shorter at 1440.
+  Rejected: one column at every width (5900px tall at 1440) and cards for In
+  progress and Planned (a box per item where rows already separate, and two
+  vocabularies on one page).
+- Status: `warning` dot for in progress, `success` for shipped, a hollow muted
+  ring for planned, the deploy steps' pending mark. No accent anywhere on it.
+
+Changelog.
+- One row per release: a leading chevron, the version in 15px mono, the date
+  and the change count in 12px mono, the newest marked Latest and open; the
+  rest are closed `<details>`. From 768px the version holds a 9.5rem gutter
+  and the changes align under the date. Below it, the date and count drop to a
+  second line. Rejected: each release as a card (a box per row, against the
+  row rule) and the full open list it replaces (one long wall).
+- Changes keep the pull request titles; Dependabot's bumps sit last under a
+  "Dependency updates" microheader, muted. Grouping by verb was rejected: only
+  5 of 469 titles start with Fix, so a Fixes group would have been mostly
+  wrong.
+- Each release is a permalink (`/changelog/#v0.3.31-beta`), from its Link in
+  the meta row; landing on one opens it.
+
+Motion.
+- A release opening: the disclosure (the box snaps open, the content fades in
+  as it settles 4px over 200ms `--ease-out`; closing, it fades out in 120ms and
+  the box shuts after), built on `::details-content` with `content-visibility`
+  as a discrete transition; a browser without it snaps. Chevron turns 90° in
+  150ms `--ease-standard`. Rejected: a snap (only the chevron said anything
+  opened) and a height animation with `interpolate-size` (the rows below glide,
+  but every frame re-lays the page: 89 layouts across six toggles of the
+  33-change release under a 4x CPU throttle against 7 for the disclosure, 2.5
+  times the layout time, growing with the page; the app's rule is that a box
+  changing size snaps). A grid-rows height animation was not built: it costs
+  the same layout per frame.
+- A jump to a roadmap group or a release lands at once and its heading row
+  takes a wash, `foreground` at 9% fading out over 900ms `--ease-out`.
+  Rejected: native smooth scrolling (about 800ms to travel 1850px at 375px,
+  its curve out of our hands, and it delays reading on every keyboard jump)
+  and smooth scrolling plus the wash (slower still).
+- Status markers stay still. Rejected: the `status-pulse` loop on the in
+  progress dots (it says live, and a roadmap is not live; ambient motion on a
+  reading page) and a one-time ring on load (decoration with nothing behind
+  it).
+- Reduced motion: the release content fades in 150ms with no travel, and the
+  wash shortens to 400ms.
