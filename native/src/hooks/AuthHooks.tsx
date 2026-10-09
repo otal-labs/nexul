@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
+import { referenceDataOptions } from "@/lib/queryClient";
 import type { Identity, MeResponse } from "@/models/User";
 
 export const getMeKey = "getMe";
@@ -12,6 +13,7 @@ export const useFetchMe = (signedIn: boolean) =>
     queryKey: [getMeKey],
     queryFn: () => api.get<MeResponse>("/api/auth/me"),
     enabled: signedIn,
+    ...referenceDataOptions,
   });
 
 // Read-only on the phone: Profile shows these, linking/unlinking stays web-only for now.

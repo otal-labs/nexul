@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
 import { api } from "@/api/client";
+import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useAreaAccess, useCurrentWorkspaceId, useEnsureWorkspaceSelected } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -52,11 +53,12 @@ describe("useEnsureWorkspaceSelected", () => {
   });
 });
 
-// Chat rows, board cards and embeds read these as they mount, and a list mounts rows on every scroll.
+// Chat rows, board cards and embeds read these as they mount, a list mounts rows on every scroll, and screens read the viewer.
 describe.each([
+  ["useFetchMe", (): unknown => useFetchMe(true), "/api/auth/me"],
   ["useAreaAccess", (): unknown => useAreaAccess(), "/api/workspaces/ws-1/me"],
   ["usePersonLookup", (): unknown => usePersonLookup(useCurrentWorkspaceId()), "/api/workspaces/ws-1/people"],
-])("%s, as a list row reads it", (_name, useRowRead, leafPath) => {
+])("%s, read as rows and screens mount", (_name, useRowRead, leafPath) => {
   // One client across mounts, as in the app, so rows share its cache.
   const rows = () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -72,7 +74,7 @@ describe.each([
   beforeEach(() => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     jest.mocked(api.get).mockImplementation((path: string) =>
-      Promise.resolve(path === "/api/workspaces" ? workspaces : { people: [], permissions: [] }),
+      Promise.resolve(path === "/api/workspaces" ? workspaces : { people: [], permissions: [], user: { id: "u1" } }),
     );
   });
 
