@@ -311,7 +311,7 @@ person's avatar) beside the title, a mono "55 tickets · 8 people" line under
 it, and the stage summary as the header's action (`BoardStageSummary`): one
 6px bar split by stage in the stage hues, backlog at half strength, over a
 legend of dot, stage and mono count. It counts every ticket in the project,
-whatever the filters show, and grows in like a progress fill. A card is the
+whatever the filters show, and moves as the Motion baseline's Board entry says. A card is the
 mono key as an eyebrow (with the run timer and thread mark trailing on its
 line), the title at full width, the blocked line, then the pills with the
 20px avatar of whoever acts next opposite. A swimlane header is a leading
@@ -413,8 +413,8 @@ then a Fraunces headline at 26px, one plain muted line, and the action. No
 border around it: an empty page reads as a first-run screen, not a
 placeholder box. The `compact` size (list panes, sub-sections) keeps the same
 mark at 56px with a 14px Inter title, because Fraunces never goes under 20px.
-The mark is static SVG on every surface; the live field never runs inside a
-panel. `NoDataDisplay` passes an `icon` through for the glyph that names the
+The mark is SVG on every surface and still once it has arrived (its entrance
+is in the Motion baseline); the live field never runs inside a panel. `NoDataDisplay` passes an `icon` through for the glyph that names the
 page. Loading is the same orbit at 16px, the ember dot circling a faint ring
 (1.2s a turn, still under reduced motion), plus a label, held back 300ms; no
 skeleton screens. `EmptyState` is for a whole empty page; an empty list inside
@@ -577,7 +577,8 @@ reference.
 
 Inbox row. A 28px `bg-muted/60` tile with a muted icon for what happened
 (assigned, mentioned, status, doc created or edited, questions, memory, a
-play run), a `foreground` dot on its corner while unread, then the title with
+play run), a `foreground` dot on its corner while unread (it shrinks to 0.6
+as it fades over 150ms when the row is read), then the title with
 the mono time on its first line and the summary under it.
 
 Bot message. A bot's post sits plain like a person's, under the
@@ -607,8 +608,8 @@ scrolls; narrower, they sit above it. Each step is a node on a rail: a filled
 ringed in `info` while active, a filled `destructive` cross on failure, a
 hollow ring while pending and a dashed one when skipped, the label, and the
 mono duration trailing. The log names each phase above its first line
-(11px uppercase mono, muted), so it reads against the steps.
-`DeployProgressSection` is the reference; the instance upgrade uses the
+(11px uppercase mono, muted), so it reads against the steps. The steps move
+rail-led (Motion baseline). `DeployProgressSection` is the reference; the instance upgrade uses the
 same step list.
 
 Logs view. The stack page's Logs section is a line tab row of the stack's
@@ -678,8 +679,13 @@ conversation lists.
 Command palette. ⌘K (Ctrl+K elsewhere), or the sidebar's Search row, opens
 one palette from any signed-in page: a frosted overlay (`glass-popover`) 40rem
 wide, hung at 14% of the viewport so a changing result count only moves its
-bottom edge, over the dialog family's scrim and on its clock (200ms in, 150ms
-out, from 0.97). A combobox input heads it, grouped results below, a footer of
+bottom edge, over the dialog family's scrim. Opened from the Search row it
+runs the dialog clock (200ms in, from 0.97) and an overlay click closes it in
+150ms; opened or closed with a key, or closed by a pick, it shows and goes in
+the same frame, since it is driven a dozen times an hour and a fading scrim
+would swallow the next click. A row or group that joins the list after it
+opened (a search landing, a letter that matches more) fades in over 120ms,
+opacity only. A combobox input heads it, grouped results below, a footer of
 key hints at its foot. Empty, it leads with what changed lately in the
 current project, then every page the sidebar reaches under the same
 permissions, every project's board, the create dialogs that already exist,
@@ -705,8 +711,9 @@ writing its own.
   workspace) changes by a click, the blocks inside its panels rise 6px and
   fade in over 200ms `--ease-out`, the first three 30ms apart, the rest with
   the third. Blocks that mount while the page's data lands (within 400ms) rise
-  as they arrive. A block holding an `EnterList` leaves the motion to its
-  rows; a block that runs its own entrance keeps it. A tab, a settings
+  as they arrive. A block holding an `EnterList` or an `EmptyState`
+  (`data-enter-list`, `data-enter-own`) leaves the motion to them; a block
+  that runs its own entrance keeps it. A tab, a settings
   section or another record inside the same page changes in place.
 - Lists (`EnterList`): the rows on screen at mount rise 4px and fade over
   200ms, the first eight 25ms apart, the rest with the eighth; a list of 50 or
@@ -730,7 +737,9 @@ writing its own.
   `AdvancedFields` does the same with the collapsible's enter and exit):
   opening, the box snaps open and the content fades in as it settles 4px over
   200ms; closing, the content fades out in 120ms and the box shuts after.
-  Chevrons turn in 150ms `--ease-standard`.
+  Chevrons turn in 150ms `--ease-standard`. The sidebar's Workspace section (`settleIn`)
+  settles its pages in the same way when a click opens it, and shuts at once;
+  a key opens it without motion, and it never plays as the sidebar mounts.
 - Hover and press: a draggable card lifts 1px with a soft elevated shadow
   (an opacity fade on a pseudo layer), 150ms, on hover-capable pointers only;
   a strip below the card keeps the vacated pixel inside it so the hover never
@@ -746,13 +755,44 @@ writing its own.
   `status-pulse` keyframe in `index.css`; no second pulse. A status change
   gets one 150ms `--ease-standard` cross-fade on the affected chip or dot,
   never a full-row re-entrance.
+- Command palette: see its pattern above; the one keyboard surface with any
+  motion, and only for a pointer open and for results landing late.
 - Chat: someone else's message, and the Agent's reply as its stream starts,
   rise 8px and fade in over 200ms (`arrive`); what was on screen when the
-  conversation opened never animates. A confirmed message keeps its pending
+  conversation opened never animates. A day divider that arrives with the
+  day's first message draws its hairlines outward from the label (`scaleX`,
+  320ms `--ease-out`, 40ms in). A confirmed message keeps its pending
   row's identity (`client_key`), so nothing replays when the server answers.
 - Board: a ticket that lands in a done-stage column from a working one gets
   a success wash, the `success` hue at 15% fading out over 800ms (400ms under
   reduced motion).
+- Board stage bar (`BoardStageSummary`, `stageBarMotion.ts`): the first time
+  it shows, each segment grows from its own left edge, `scaleX` over 300ms
+  `--ease-out`, all together, so the bar never moves as a whole. When tickets
+  change stage each segment glides to its new place and share (a FLIP of
+  `translateX` and `scaleX`) over 250ms `--ease-standard`, and a count that
+  changed rises 6px as it fades in over 200ms. Reduced motion: no scale, the
+  changed count fades in 150ms.
+- Empty state (`.empty-state` in `index.css`): a whole-page one turns its
+  orbit into place. The outer ring settles from 0.92 (520ms), the dashed one
+  turns in from -40° and 0.9 (620ms), the ember and blue dots swing 75° along
+  their orbits (700ms, 60 and 100ms in), the disc settles from 0.94 (320ms),
+  and the headline, line and action rise 6px over 260ms at 90, 140 and 190ms,
+  all `--ease-out`: readable by 350ms, still by 760ms, which a rare first-run
+  screen can afford. A compact one fades and rises 4px over 200ms. Reduced
+  motion: one 150ms fade.
+- Loader hand-off (`LoadingDisplay`, `enterAfterLoader`): content that
+  replaces a loader that was on screen rises 6px and fades in over 200ms where
+  the loader stood, the page entrance's own numbers, so late data arrives the
+  same way as data that landed inside the entrance's 400ms; never a panel,
+  and never outside the page frame. The loader itself stays a linear 1.2s
+  turn.
+- Deploy steps (`DeployStepList`, `stepMotion.ts`): the steps cascade in as
+  an `EnterList`. A step that finishes pops its mark from 0.6 on the
+  checkbox's `--ease-spring-pop` (350ms) while its rail draws down to the next
+  rung (`scaleY` from the top, 260ms `--ease-out`); the next node lights from
+  0.85 over 200ms once the rail reaches it (180ms in), the same rail-led order
+  as the DNS stepper. Reduced motion: the changed node fades in 150ms.
 - Paired elements (overlay and dialog, drawer and backdrop, filter bar and
   result list) share identical duration and easing, or the pair reads as two
   events.
@@ -804,3 +844,73 @@ Opening a ticket from the board: decided 2026-10-08.
   (the ticket's panels scale from 0.98 out of the card's spot) moved the
   panels, which never move on a route change, and 0.98 was too small to read
   as coming from the card.
+
+### Round-three locks
+
+Decided 2026-10-09 without the owner in the loop: each built as two to four
+live variants on the real surface with seeded data, scrubbed frame by frame
+and recorded at 1x and 0.25x, and judged against the baseline above.
+
+Board stage bar.
+- Load: each segment grows from its own edge, all together (300ms). Rejected:
+  the whole bar scaling from the left (the gaps and caps squashed and every
+  segment slid right as it grew) and a 30ms cascade across the segments (it
+  ran 340ms and read as five bars arriving, not one measure).
+- Change: glide plus the changed counts rising in. Rejected: a glide alone,
+  which showed the shares moving but not which stages changed when someone
+  else moved a ticket.
+
+Command palette.
+- Open and close: no motion from a key (⌘K, Escape, Enter) or a pick, the
+  dialog clock from the Search row. Rejected: the dialog clock for every open
+  (on Escape or Enter the closing scrim covered the page for 150ms and ate
+  the next click, and on a pick it faded over the arriving page) and a
+  quicker 120ms clock for both (the same problem, shorter).
+- Results: rows that join after opening fade in over 120ms. Rejected: no
+  motion (a search landing popped six rows at once) and a pop from 0.97 (a
+  full-width row scaling from its centre shifted its text sideways).
+- Active row: still jumps. Rejected: a sliding highlight on pointer moves,
+  which trailed the cursor and split from the brand icon and enter mark that
+  jump with it.
+
+Empty state and loader.
+- Entrance: the orbit turns into place (above). Rejected: the block's plain
+  fade and 4px rise (it also doubled with the page entrance's rise of the
+  block around it) and a quiet stagger of mark, headline, line and action
+  (correct and forgettable; the mark's motion is what says it is an orbit).
+- Loader idle: unchanged, linear. Rejected: a two-dot comet tail (a smear at
+  16px) and an eased turn (it slowed at the top of every turn, which read as
+  the load stalling).
+- Hand-off: the rise. Rejected: a snap (content popped where the loader
+  was) and an opacity-only fade (a second arrival vocabulary beside the page
+  entrance's rise).
+
+Deploy steps.
+- Rail-led (above). Rejected: everything at once (the check, the rail colour
+  and the next spinner changed in the same frame and the timeline lost its
+  sense of order). A deploy changes step a few times a day, so the 440ms
+  hand-down is affordable.
+
+Inbox.
+- Unread dot: shrinks and fades over 150ms, in step with the title losing
+  weight. Rejected: dropping it (nothing showed what the click changed) and
+  a 300ms fade (a grey dot lingered after the title had already gone read).
+- Selection: unchanged colour crossfade. Rejected: the sidebar's sliding
+  highlight, which slid a full-width box across the hairline rows on an
+  action repeated through a whole triage, and which the Docs list pane the
+  Inbox mirrors does not use.
+
+Chat day divider.
+- Hairlines draw outward from the label. Rejected: riding in with the
+  message (nothing marked that a new day had begun). It happens once a day.
+
+Sidebar.
+- Active indicator: unchanged; at 0.1x it carries the longest jump (Docs to
+  Configuration, about 240px) cleanly in 200ms.
+- Workspace fold: the disclosure's 4px settle on open. Rejected: a snap (the
+  pages popped in under the header) and a 25ms cascade per page (a list
+  entrance in the nav, a second vocabulary for opening a section).
+
+Toasts, dialogs, sheets, popovers, menus: already on the baseline's clocks;
+nothing changed but the sheet, whose open and close are animations and no
+longer carry an unnamed transition list.

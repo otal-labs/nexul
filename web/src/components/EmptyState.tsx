@@ -30,12 +30,12 @@ const OrbitMark = ({ icon: Icon, compact }: { icon: Icon; compact: boolean }) =>
             <stop offset="1" stopColor="var(--brand)" />
           </linearGradient>
         </defs>
-        <circle cx="56" cy="56" r="54" stroke={`url(#${id})`} strokeOpacity="0.45" />
-        <circle cx="56" cy="56" r="40" stroke={`url(#${id})`} strokeOpacity="0.85" strokeDasharray="2 5" strokeLinecap="round" />
-        <circle cx="94.2" cy="39.8" r="3" fill="var(--brand)" />
-        <circle cx="21.8" cy="78" r="2.5" fill="oklch(from var(--field-cool) l c h)" />
+        <circle data-orbit-outer cx="56" cy="56" r="54" stroke={`url(#${id})`} strokeOpacity="0.45" />
+        <circle data-orbit-inner cx="56" cy="56" r="40" stroke={`url(#${id})`} strokeOpacity="0.85" strokeDasharray="2 5" strokeLinecap="round" />
+        <circle data-orbit-ember cx="94.2" cy="39.8" r="3" fill="var(--brand)" />
+        <circle data-orbit-cool cx="21.8" cy="78" r="2.5" fill="oklch(from var(--field-cool) l c h)" />
       </svg>
-      <span className={cn("relative grid place-items-center rounded-full bg-card shadow-card ring-1 ring-border", compact ? "size-7" : "size-12")}>
+      <span data-orbit-disc className={cn("relative grid place-items-center rounded-full bg-card shadow-card ring-1 ring-border", compact ? "size-7" : "size-12")}>
         <Icon className={cn("text-muted-foreground", compact ? "size-3.5" : "size-5")} aria-hidden />
       </span>
     </span>
@@ -55,8 +55,10 @@ export const EmptyState = ({
   return (
     <div
       role={role}
+      data-enter-own=""
+      data-size={size}
       className={cn(
-        "animate-in fade-in-0 slide-in-from-bottom-1 flex flex-col items-center text-center duration-200 ease-out",
+        "empty-state flex flex-col items-center text-center",
         compact ? "gap-2 p-5" : "px-6 py-14",
         className,
       )}

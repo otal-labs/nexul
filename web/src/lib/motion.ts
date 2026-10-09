@@ -1,5 +1,7 @@
 // The JavaScript half of the Motion baseline in practices/design-language.md; the CSS half is in index.css.
 export const EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
+export const EASE_STANDARD = "cubic-bezier(0.25, 0.1, 0.25, 1)";
+export const SPRING_POP = "linear(0, 0.1, 0.303, 0.515, 0.693, 0.826, 0.915, 0.969, 0.998, 1.011, 1.015, 1.014, 1.011, 1.008, 1.005, 1.003, 1.002, 1.001, 1)";
 
 const STAGGER_STEP_MS = 25;
 const STAGGER_ROWS = 8;
@@ -32,6 +34,9 @@ const enter = (el: Element, keyframes: Keyframe[], duration: number, delay = 0) 
   const reduced = prefersReducedMotion();
   el.animate(keyframes, { duration: reduced ? 150 : duration, delay: reduced ? 0 : delay, easing: EASE_OUT, fill: "backwards" });
 };
+
+// A section opened by a click settles in like a disclosure's content: 4px over 200ms.
+export const settleIn = (el: Element | null | undefined) => el && enter(el, rise(4), 200);
 
 const isRow = (node: Node): node is HTMLElement => node instanceof HTMLElement && !node.hasAttribute("data-no-enter");
 
@@ -67,16 +72,28 @@ const findPanels = (el: Element, depth: number): Element[] =>
 
 const unwrap = (el: Element): Element[] => (getComputedStyle(el).display === "contents" ? [...el.children].flatMap(unwrap) : [el]);
 
-// A block that holds an entering list leaves the motion to its rows; one that runs its own entrance keeps it.
+// A block that holds an entering list or an empty state leaves the motion to them; one that runs its own entrance keeps it.
+const OWN_ENTRANCE = "[data-enter-list], [data-enter-own]";
 const pageBlocks = (frame: HTMLElement): Element[] => {
   const panels = isPanel(frame) ? [frame.firstElementChild].filter((el) => el !== null) : findPanels(frame, 4);
   return panels
     .flatMap((panel) => [...panel.children].flatMap(unwrap))
-    .filter((block) => !block.matches("[data-enter-list]") && !block.querySelector("[data-enter-list]") && (block.getAnimations?.().length ?? 0) === 0);
+    .filter((block) => !block.matches(OWN_ENTRANCE) && !block.querySelector(OWN_ENTRANCE) && (block.getAnimations?.().length ?? 0) === 0);
+};
+
+let pageEnteredAt = -Infinity;
+
+// Content replacing a loader that was on screen rises in like a late page block; never a panel, since panels never move.
+export const enterAfterLoader = (parent: HTMLElement, before: Set<Element>) => {
+  if (performance.now() - pageEnteredAt < PAGE_WINDOW_MS || !parent.closest(".app-frame")) return;
+  [...parent.children]
+    .filter((child) => !before.has(child) && !isPanel(child) && !child.matches(OWN_ENTRANCE) && !child.querySelector(OWN_ENTRANCE))
+    .forEach((child) => enter(child, rise(6), 200));
 };
 
 // The page's content rises inside its panels, which never move; blocks that mount while its data lands rise as they arrive.
 export const enterPage = (frame: HTMLElement) => {
+  pageEnteredAt = performance.now();
   const seen = new WeakSet<Element>();
   const run = (stagger: boolean) =>
     pageBlocks(frame)

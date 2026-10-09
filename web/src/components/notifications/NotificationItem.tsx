@@ -30,9 +30,11 @@ export const NotificationItem = ({ row, inset = false }: NotificationItemProps) 
     >
       <span className="relative mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground">
         <KindIcon className="size-3.5" aria-hidden />
-        {unread && (
-          <span aria-label="Unread" role="img" className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-foreground ring-2 ring-panel" />
-        )}
+        <span
+          {...(unread ? { role: "img", "aria-label": "Unread" } : { "aria-hidden": true })}
+          data-unread={unread || undefined}
+          className="unread-dot absolute -top-0.5 -right-0.5 size-2 rounded-full bg-foreground ring-2 ring-panel"
+        />
       </span>
       <div className="min-w-0 flex-1">
         <p className="flex items-baseline gap-2">

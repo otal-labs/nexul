@@ -5,6 +5,7 @@ import { sectionLabelClass, type SidebarNavEntry } from "@/components/SidebarNav
 import { SidebarNavLink } from "@/components/sidebar/SidebarNavLink";
 import { useCanOpen } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { lastInputWasKeyboard, settleIn } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/stores/sidebarStore";
 
@@ -36,7 +37,11 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
       {!collapsed && (
         <button
           type="button"
-          onClick={toggle}
+          onClick={(event) => {
+            const group = event.currentTarget.parentElement;
+            toggle();
+            if (!open && !lastInputWasKeyboard()) requestAnimationFrame(() => settleIn(group?.querySelector("[data-fold]")));
+          }}
           aria-expanded={open}
           className={cn(
             sectionLabelClass,
@@ -51,7 +56,7 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
         </button>
       )}
       {(open || collapsed) && (
-        <div className="flex flex-col gap-0.5">
+        <div data-fold className="flex flex-col gap-0.5">
           {entries.map((entry) => (
             <SidebarNavLink
               key={entry.to}
