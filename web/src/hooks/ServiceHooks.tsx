@@ -1,8 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import { refetchDeployHistories } from "@/hooks/DeployHooks";
 import { latestDeploy, type Deploy, type ServiceDef } from "@/models/Service";
+import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getServicesKey = "getServices";
 const getServiceKey = "getService";
@@ -99,4 +101,14 @@ export const useRollbackService = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+// A stack is listed under its project and in the every-project list; one with no project is the instance's own.
+const refetchLists = (client: QueryClient, projectId: string) =>
+  Promise.all([...new Set([projectId || "all", "all"])].map((list) => client.invalidateQueries({ queryKey: [getServicesKey, list], exact: true })));
+
+export const serviceFollower: LiveFollower = {
+  ...followEach(["service.created", "service.updated"], ({ stack }: { stack: { project_id: string } }, { client }) => refetchLists(client, stack.project_id)),
+  "service.deleted": ({ project_id }: { project_id?: string }, { client }) => refetchLists(client, project_id ?? ""),
+  "deploy.updated": ({ id }: { id: string }, { client }) => refetchDeployHistories(client, [getServiceDeploysKey], id),
 };

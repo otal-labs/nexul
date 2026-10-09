@@ -13,7 +13,9 @@ import {
   useFetchServices,
   useRollbackService,
   useUpdateService,
+  serviceFollower,
 } from "@/hooks/ServiceHooks";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -99,5 +101,35 @@ describe("ServiceHooks", () => {
     const { result } = renderHook(() => useCreateService(), { wrapper });
     await result.current.mutateAsync({ name: "api" }).catch(() => {});
     await waitFor(() => expect(vi.mocked(api.post)).toHaveBeenCalled());
+  });
+});
+
+describe("the service follower", () => {
+  const lists = () =>
+    seeded([
+      [["getServices", "all"], []],
+      [["getServices", "proj-1"], []],
+      [["getServices", "proj-2"], []],
+      [["getServiceDeploys", "svc-1"], [deploy]],
+      [["getServiceDeploys", "svc-2"], []],
+    ]);
+  const keys = [["getServices", "all"], ["getServices", "proj-1"], ["getServices", "proj-2"]];
+
+  it("refetches the stack's project list and the every-project list, and no other project's", async () => {
+    const client = lists();
+    await followFrame(serviceFollower, "service.updated", { stack: { id: "svc-1", project_id: "proj-1" } }, client);
+    expect(keys.map((key) => isStale(client, key))).toEqual([true, true, false]);
+  });
+
+  it("refetches only the every-project list for the instance's own stack", async () => {
+    const client = lists();
+    await followFrame(serviceFollower, "service.deleted", { id: "svc-9", name: "gateway" }, client);
+    expect(keys.map((key) => isStale(client, key))).toEqual([true, false, false]);
+  });
+
+  it("refetches the deploy history holding a deploy that moved", async () => {
+    const client = lists();
+    await followFrame(serviceFollower, "deploy.updated", { id: "d-1", status: "healthy" }, client);
+    expect([isStale(client, ["getServiceDeploys", "svc-1"]), isStale(client, ["getServiceDeploys", "svc-2"])]).toEqual([true, false]);
   });
 });

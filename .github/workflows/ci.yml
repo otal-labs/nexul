@@ -45,7 +45,7 @@ jobs:
               - 'website/**'
             sdk:
               - 'sdk/**'
-              - 'internal/integrations/catalog.go'
+              - 'internal/eventcatalog/schemas.json'
             automations:
               - 'automations/**'
             native:

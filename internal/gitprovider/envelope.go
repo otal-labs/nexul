@@ -27,6 +27,6 @@ type ProviderEvent struct {
 	DeliveryID string          `json:"delivery_id"`
 	Action     string          `json:"action,omitempty"`
 	Repository *RepositoryRef  `json:"repository,omitempty"`
-	Payload    json.RawMessage `json:"payload"`
+	Payload    json.RawMessage `json:"payload" type:"object"`
 	ReceivedAt time.Time       `json:"received_at"`
 }

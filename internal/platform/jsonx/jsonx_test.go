@@ -122,5 +122,6 @@ func TestMarshal_CopiesOnlyRowsHoldingANilSlice(t *testing.T) {
 	v := rows(100)
 	plain := testing.AllocsPerRun(20, func() { _, _ = json.Marshal(v) })
 	ours := testing.AllocsPerRun(20, func() { _, _ = Marshal(v) })
-	assert.LessOrEqual(t, ours, plain+50+10, "50 rows hold a nil slice")
+	// Slack covers -race, where sync.Pool drops cached encoders at random; copying every row would add 50 more.
+	assert.LessOrEqual(t, ours, plain+50+25, "50 rows hold a nil slice")
 }

@@ -8,7 +8,7 @@ GO_LDFLAGS := -ldflags="-s -w -X github.com/otal-labs/nexul/internal/platform/ve
 # Version is pinned in go.mod's tool directive; local and CI both resolve it from there.
 SQLC ?= go tool sqlc
 
-.PHONY: build build-cli build-server build-runner build-web build-single test vet lint vuln coverage sqlc sqlc-check live-topics clean
+.PHONY: build build-cli build-server build-runner build-web build-single test vet lint vuln coverage sqlc sqlc-check live-topics event-schemas clean
 
 build: build-cli build-server build-runner build-web
 
@@ -65,6 +65,11 @@ sqlc-check:
 # Rewrites the browser's copy of the topics the live socket pushes, from the server's audience rules.
 live-topics:
 	go test ./server/cmd -run TestLiveTopicsFile_MatchesTheRules -update-live-topics
+
+# Rewrites the published event contract and the SDK's event types from the payload types; refuses a breaking change.
+event-schemas:
+	go test ./internal/eventcatalog -run TestSchemas_MatchThePublishedContract -update-event-schemas
+	bun run --cwd sdk generate:events
 
 clean:
 	rm -rf $(BIN_DIR) server/webui/dist

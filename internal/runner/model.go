@@ -108,7 +108,7 @@ type Upgrade struct {
 	ID          string `json:"id"`
 	FromVersion string `json:"from_version"`
 	ToVersion   string `json:"to_version"`
-	Status      string `json:"status"`
+	Status      string `json:"status" enum:"pending,started,completed,failed"`
 	Error       string `json:"error"`
 	RequestedBy string `json:"requested_by"`
 	// RunnerID is the instance runner's id when the upgrade was requested.

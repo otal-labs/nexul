@@ -1,5 +1,7 @@
 package tenancy
 
+import "github.com/otal-labs/nexul/internal/platform/eventbus"
+
 const (
 	TopicInvitationCreated      = "invitation.created"
 	TopicInvitationRevoked      = "invitation.revoked"
@@ -14,25 +16,28 @@ const (
 	TopicProjectAccessChanged = "access.grant.changed"
 )
 
-func Topics() []string {
-	return []string{
-		TopicInvitationCreated,
-		TopicInvitationRevoked,
-		TopicInvitationRedeemed,
-		TopicInvitationDeleted,
-		TopicAccountAdmitted,
-		TopicWorkspaceMemberAdded,
-		TopicWorkspaceMemberRemoved,
-		TopicWorkspaceMemberUpdated,
-		TopicWorkspaceUpdated,
-		TopicProjectAccessChanged,
+// Topics declares each topic with its payload; workspace.member.added carries an InvitationEvent when an
+// invitation admits the member, a MemberEvent otherwise.
+func Topics() []eventbus.Topic {
+	return []eventbus.Topic{
+		{Name: TopicInvitationCreated, Payload: InvitationEvent{}},
+		{Name: TopicInvitationRevoked, Payload: InvitationEvent{}},
+		{Name: TopicInvitationRedeemed, Payload: InvitationEvent{}},
+		{Name: TopicInvitationDeleted, Payload: InvitationEvent{}},
+		{Name: TopicAccountAdmitted, Payload: InvitationEvent{}},
+		{Name: TopicWorkspaceMemberAdded, Payload: InvitationEvent{}},
+		{Name: TopicWorkspaceMemberAdded, Payload: MemberEvent{}},
+		{Name: TopicWorkspaceMemberRemoved, Payload: MemberEvent{}},
+		{Name: TopicWorkspaceMemberUpdated, Payload: MemberEvent{}},
+		{Name: TopicWorkspaceUpdated, Payload: WorkspaceEvent{}},
+		{Name: TopicProjectAccessChanged, Payload: ProjectAccessEvent{}},
 	}
 }
 
 // ProjectAccessEvent is access.grant.changed for one person's Project access; it reaches them and the workspace's
 // holders of members:write.
 type ProjectAccessEvent struct {
-	ResourceType string `json:"resource_type"`
+	ResourceType string `json:"resource_type" enum:"doc,play,project"`
 	ResourceID   string `json:"resource_id"`
 	UserID       string `json:"user_id"`
 	ActorID      string `json:"actor_id,omitempty"`

@@ -3,9 +3,11 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import { refetchDeployHistories } from "@/hooks/DeployHooks";
 import { useFetchGateways } from "@/hooks/DnsHooks";
 import { latestDeploy, type Container, type CreateStackInput, type CreateStackResponse, type Deploy, type Stack, type StackWithBranches } from "@/models/Stack";
 import { machineNetworks, type MachineNetwork } from "@/utils/MachineNetworkUtility";
+import type { LiveFollower } from "@/lib/live";
 
 export const getStacksKey = "getStacks";
 export const getStackKey = "getStack";
@@ -163,4 +165,8 @@ export const useCreateStack = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+export const stackFollower: LiveFollower = {
+  "deploy.updated": ({ id }: { id: string }, { client }) => refetchDeployHistories(client, [getStackDeploysKey], id),
 };

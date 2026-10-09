@@ -44,7 +44,3 @@ func TestStage_Valid(t *testing.T) {
 	assert.True(t, StageDone.valid())
 	assert.False(t, Stage("nope").valid())
 }
-
-func TestTopics_ListsEveryPublishedEvent(t *testing.T) {
-	assert.ElementsMatch(t, []string{"play.created", "play.updated", "play.deleted", "play.run_started", "play.run_waiting", "play.run_finished"}, Topics())
-}

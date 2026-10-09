@@ -182,14 +182,6 @@ func TestSetup_RePair_KeepsTheConfirmation(t *testing.T) {
 	assert.NotNil(t, setup.ConfirmedAt)
 }
 
-func TestTopics_ListsSetupAndTunnelTopics(t *testing.T) {
-	t.Parallel()
-	assert.Equal(t, []string{
-		"computer.paired", "computer.setup_confirmed", "computer.setup_unconfirmed", "computer.tunnel_created", "computer.tunnel_removed", "computer.tunnel_status_changed",
-		"computer.setup_turn_changed", "computer.setup_finished", "computer.setup_turn_activity", "computer.harness_switched",
-	}, Topics())
-}
-
 func TestHandler_GetSetup(t *testing.T) {
 	t.Parallel()
 	h, repo, _ := newTestHandler()

@@ -6,6 +6,7 @@ import { getProjectPeopleKey, getWorkspacePeopleKey } from "@/hooks/PeopleHooks"
 import { getProjectAccessKey } from "@/hooks/ProjectHooks";
 import type { MemberStep } from "@/models/MemberDraft";
 import { getTeamKey, type Team } from "@/models/Team";
+import { followEach, type LiveFollower } from "@/lib/live";
 
 // The server scopes it: everything for an accounts:read holder, else only the workspaces the viewer manages.
 export const useFetchTeam = (enabled = true) =>
@@ -61,3 +62,21 @@ export const useUpdateAccountStatus = () =>
 
 export const useRemoveAccount = () =>
   useTeamMutation((id: string) => api.delete(`/api/auth/accounts/${encodeURIComponent(id)}`), "Account removed");
+
+// The Team follows account and membership changes made anywhere; presence frames name nobody, so it refetches whole.
+export const teamFollower: LiveFollower = followEach(
+  [
+    "account.admitted",
+    "account.disabled",
+    "account.reactivated",
+    "account.removed",
+    "account.restored",
+    "account.presence_changed",
+    "account.profile_updated",
+    "workspace.member.added",
+    "workspace.member.removed",
+    "workspace.member.updated",
+    "access.grant.changed",
+  ],
+  (_payload: unknown, { client }) => client.invalidateQueries({ queryKey: [getTeamKey], exact: true }),
+);

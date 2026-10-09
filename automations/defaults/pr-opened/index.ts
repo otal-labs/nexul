@@ -1,8 +1,6 @@
 import { defineAutomation } from "@nexul/sdk/automation";
 
-// git.pr_opened's pr field is a loose object on the wire (internal/gitprovider.PR
-// serialized generically per internal/integrations/catalog.go); linked_ticket_ids
-// is the one field this automation reads off it (internal/gitprovider/model.go).
+// Narrows linked_ticket_ids, the one field this automation reads, which may be null on a PR that names no ticket.
 function linkedTicketIDs(pr: unknown): string[] {
   const ids = (pr as { linked_ticket_ids?: unknown } | null)?.linked_ticket_ids;
   if (!Array.isArray(ids)) return [];

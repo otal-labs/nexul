@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 // Topics the runner domain publishes onto the bus; deploy.requested is the inverse, consumed not published.
@@ -28,19 +29,19 @@ const (
 )
 
 // Topics returns every topic the runner domain publishes.
-func Topics() []string {
-	return []string{
-		TopicRunnerConnected,
-		TopicRunnerDisconnected,
-		TopicRunnerHeartbeat,
-		TopicDeployBuildStarted,
-		TopicDeployBuildProgress,
-		TopicDeployBuildCompleted,
-		TopicDeployDeployProgress,
-		TopicDeployLog,
-		TopicDeployStatusChanged,
-		TopicInstanceUpgradeRequested,
-		TopicInstanceUpgradeChanged,
+func Topics() []eventbus.Topic {
+	return []eventbus.Topic{
+		{Name: TopicRunnerConnected, Payload: RunnerConnectedEvent{}},
+		{Name: TopicRunnerDisconnected, Payload: RunnerDisconnectedEvent{}},
+		{Name: TopicRunnerHeartbeat, Payload: RunnerHeartbeatEvent{}},
+		{Name: TopicDeployBuildStarted, Payload: BuildStartedEvent{}},
+		{Name: TopicDeployBuildProgress, Payload: BuildProgressEvent{}},
+		{Name: TopicDeployBuildCompleted, Payload: BuildCompletedEvent{}},
+		{Name: TopicDeployDeployProgress, Payload: DeployProgressEvent{}},
+		{Name: TopicDeployLog, Payload: DeployLogEvent{}},
+		{Name: TopicDeployStatusChanged, Payload: DeployStatusChangedEvent{}},
+		{Name: TopicInstanceUpgradeRequested, Payload: InstanceUpgradeRequestedEvent{}},
+		{Name: TopicInstanceUpgradeChanged, Payload: Upgrade{}},
 	}
 }
 
@@ -218,7 +219,7 @@ type DeployProgressEvent struct {
 // DeployLogEvent is one deploy_log batch: newline-joined output lines from one phase, TS in unix milliseconds.
 type DeployLogEvent struct {
 	ID    string `json:"id"`
-	Phase string `json:"phase"`
+	Phase string `json:"phase" enum:"checkout,build,deploy"`
 	Log   string `json:"log"`
 	TS    int64  `json:"ts"`
 }
@@ -226,7 +227,7 @@ type DeployLogEvent struct {
 // DeployStatusChangedEvent is the terminal deploy state; the runner is the only entity that observes container health.
 type DeployStatusChangedEvent struct {
 	ID      string `json:"id"`
-	Status  string `json:"status"`
+	Status  string `json:"status" enum:"pending,running,healthy,failed"`
 	Error   string `json:"error,omitempty"`
 	Address string `json:"address,omitempty"`
 	// Services is the observation report (spec §4 step 3), one entry per container the stack started.

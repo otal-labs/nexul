@@ -1,7 +1,8 @@
-// Package eventcatalog aggregates every domain's published topics into one enumerable set (AM11).
+// Package eventcatalog aggregates every domain's published topics and serves their published schemas (ADR 0137).
 package eventcatalog
 
 import (
+	"maps"
 	"slices"
 
 	"github.com/otal-labs/nexul/internal/access"
@@ -15,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/pairing"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
@@ -26,10 +28,25 @@ import (
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
+// Schemas returns each published topic's JSON Schema text; make event-schemas generates them from the payload types.
+func Schemas() map[string]string {
+	return maps.Clone(published)
+}
+
 // AllTopics returns every published topic, deduplicated and sorted; some topics are declared by more than one domain.
 func AllTopics() []string {
 	var all []string
-	for _, topics := range [][]string{
+	for _, t := range declared() {
+		all = append(all, t.Name)
+	}
+	slices.Sort(all)
+	return slices.Compact(all)
+}
+
+// declared lists every domain's topic declarations in a fixed order, so a merged schema always comes out the same.
+func declared() []eventbus.Topic {
+	var all []eventbus.Topic
+	for _, topics := range [][]eventbus.Topic{
 		docs.Topics(),
 		auth.Topics(),
 		memories.Topics(),
@@ -53,6 +70,5 @@ func AllTopics() []string {
 	} {
 		all = append(all, topics...)
 	}
-	slices.Sort(all)
-	return slices.Compact(all)
+	return all
 }

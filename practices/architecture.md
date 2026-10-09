@@ -46,8 +46,9 @@ Why this shape:
   call it; nothing else does.
 - `handler.go` and `mcp.go` parse input, call the use-case, and format output.
   A rule in a handler is a rule the other adapter does not have.
-- `events.go` names every topic the domain publishes in one `Topics()`
-  function. That is what makes the event catalog enumerable.
+- `events.go` names every topic the domain publishes, with its payload type,
+  in one `Topics()` function. That is what makes the event catalog
+  enumerable and what its schemas are generated from.
 
 Dependency direction:
 
@@ -113,10 +114,30 @@ The two halves mean different things:
 Topic names are `<domain>.<entity>.<action>`, for example
 `deploy.service.healthy`, `ticket.created`, `runner.build.completed`.
 
-Each domain declares its topics in its own `events.go` `Topics()` function and
+Each domain declares its topics in its own `events.go` `Topics()` function,
+each as an `eventbus.Topic` naming the payload type it carries, and
 `internal/eventcatalog/catalog.go` aggregates them into the catalog of record.
+A topic missing from `Topics()` is invisible downstream.
+
 The catalog is additive only: a topic, once published, is a contract
-(ADR 0044). A topic missing from `Topics()` is invisible downstream.
+(ADR 0044). Its schema is generated from the payload type (ADR 0137), so the
+struct is the schema:
+
+- A field's description is its `jsonschema` tag. A constraint the type cannot
+  say is a tag beside it: `enum:"open,closed"`, `minimum:"1"`,
+  `deprecated:"true"`, or `type:"object"` on a raw JSON field. A field without
+  `omitempty` is required, because it is always sent.
+- A payload type with its own `MarshalJSON` gets a `WireShape` method naming
+  the type it encodes as; generation fails until it has one.
+- A topic published with two payload types is declared once per type; its
+  schema accepts either.
+- `make event-schemas` rewrites `internal/eventcatalog/schemas.json`, the
+  contract the SDK is generated from, and the compact copy the server
+  publishes at boot. The contract test fails on a stale file and refuses a
+  change that would break a consumer: a field removed or renamed, a type
+  changed, an enum value dropped, a field no longer always sent. Add the new
+  field beside the old one instead. A changed schema text becomes the topic's
+  next version on the next boot.
 
 ## 3. Transactional outbox
 

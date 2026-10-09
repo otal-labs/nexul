@@ -672,9 +672,9 @@ Rules:
   call sites cannot drift out of sync with each other.
 - `hooks/TicketCache.tsx` is the only code that reads or writes a ticket view
   in the cache. It owns the four views (all, one, by doc, by project) and
-  three operations, `ticketChanged`, `ticketCreated` and `ticketRemoved`;
-  every mutation, board drop, category move, test report and live ticket
-  frame goes through them. A hook that patches or invalidates one ticket key
+  its operations, `ticketChanged`, `ticketCreated`, `ticketRemoved` and
+  `statusRemoved`; every mutation, board drop, category move, test report and
+  live ticket frame goes through them. A hook that patches or invalidates one ticket key
   by itself leaves the other three views stale.
 - A batch read for the items on a page (the board's run states and thread
   markers) is keyed by the project, never by every item id. Ids in the URL
@@ -846,25 +846,55 @@ API rules:
 Status the server pushes (runner heartbeats, deploy progress, topology
 mutations, ticket, doc and chat changes, dead-letter alerts) arrives on
 **one** WebSocket, separate from Axios. `api/ws.tsx` owns the connection;
-`hooks/useLiveEvents.tsx` mounts it once at the layout root and dispatches each
-typed frame (`{ topic, type, payload }`) through two tables:
+`hooks/useLiveEvents.tsx` mounts it once at the layout root, routes each typed
+frame (`{ topic, type, payload }`) to every domain that follows its topic, and
+keeps the one rule that crosses domains: when the viewer's own permissions
+move, every open read refetches (ADR 0134).
 
-- `hooks/liveFrameHandlers.tsx`, for frames that carry what the cache needs:
-  the handler patches the cached views from the payload (`TicketCache`,
-  `docChanged`, `upsertCachedMessage`, the flow store) and refetches nothing.
-- `hooks/livePushTopics.tsx`, for frames that only name what changed: each
-  topic lists the query keys it invalidates.
+Each domain follows its own events. Its hooks file exports one live follower
+beside its keys and queries (`ticketFollower` in `TicketHooks.tsx`,
+`docFollower` in `DocHooks.tsx`; chat's is `ChatFollower.tsx`, beside
+`ChatHooks.tsx`), and the follower is added to the list in `useLiveEvents`. A
+`LiveFollower` (`lib/live.ts`) maps each topic it follows to a function of the
+frame's payload and a `Live` holding the query client and the router:
+
+```tsx
+export const categoryFollower: LiveFollower = {
+  "category.created": ({ category }: CategoryPayload, { client }) =>
+    client.invalidateQueries({ queryKey: [getProjectCategoriesKey, category.project_id], exact: true }),
+  "category.updated": ({ category }: CategoryPayload, { client }) =>
+    replaceRow(client, [getProjectCategoriesKey, category.project_id], category),
+  "category.deleted": ({ category }: CategoryPayload, { client }) =>
+    dropRow(client, [getProjectCategoriesKey, category.project_id], category.id),
+};
+```
 
 Rules:
 
 - Mount once (layout root). Components subscribe to stores and queries, never
   to the socket.
 - Reconnect with exponential backoff and jitter; pause when the tab is hidden.
-- A frame that carries the entity patches the cache from its payload and never
-  invalidates a list. A ticket body commit arrives every 5 seconds while
-  someone types: patched, it costs no request; invalidated, it refetched six
-  lists. Invalidate only when the frame lacks the data, and then the narrowest
-  key.
+- A follower touches only its own domain's cache. When another domain knows
+  what a frame changed for it, the follower calls that domain's cache
+  operation (`ticketChanged`, `stageMoved`), never its keys. Several domains
+  may follow one topic, each for its own views.
+- Scope by the ids in the payload. A frame that carries the entity patches it
+  into the views holding it and refetches nothing: a ticket body commit
+  arrives every 5 seconds while someone types, and patched it costs no
+  request. A frame that only names the entity invalidates that entity's
+  queries and the cached lists that hold it (`refetchHolding`), never a whole
+  key prefix. A row that would move in its list, or that no list holds yet,
+  refetches the list for the server's order (`replaceRow`).
+- When a frame lacks an id a view is keyed by, the follower falls back to
+  every view of that kind and says so in a comment; the fix is an additive
+  field on the server's event.
+- Payload interfaces live with the follower that reads them, never in a
+  shared live module.
+- Test a follower through its interface: hand it a frame with `followFrame`
+  (`test/followFrame.tsx`) and assert which cached data changed and which went
+  stale. A change that cuts requests also gets a count in
+  `hooks/liveRequests.test.tsx`, which mounts real views beside the socket
+  and lists the GETs one frame sends.
 - The WS client **never** mutates server state; it is read-side only. Writes
   go through the REST gateway, which stays the source of truth on read.
 - Carry a `trace_id` on frames where present; log it via the same structured
@@ -880,9 +910,9 @@ together:
 
 - `TestLiveTopicsFile_MatchesTheRules` (Go) fails when the generated file is
   stale, the way `sqlc diff` does.
-- `hooks/liveTopics.test.tsx` fails when the browser follows a topic the server
-  never pushes, or when a pushed topic is neither followed nor listed in its
-  `ignoredTopics` with the reason.
+- `hooks/liveTopics.test.tsx` fails when the followers follow a topic the
+  server never pushes, or when a pushed topic is followed by no follower and
+  not listed in its `ignoredTopics` with the reason.
 
 Adding a live topic is four steps in one change:
 
@@ -892,9 +922,9 @@ Adding a live topic is four steps in one change:
    the entity's own read uses, so a socket never receives what its person
    could not load.
 3. Run `make live-topics` and commit the regenerated JSON.
-4. Follow it in `liveFrameHandlers.tsx` (patch from the payload) or
-   `livePushTopics.tsx` (invalidate keys), and in the phone query's
-   `refreshes` (`practices/native.md` section 4) if the phone shows the entity.
+4. Follow it in the domain's follower (patch from the payload, or invalidate
+   by its ids), and in the phone query's `refreshes` (`practices/native.md`
+   section 4) if the phone shows the entity.
 
 ---
 

@@ -1,0 +1,6733 @@
+{
+  "access.grant.changed": {
+    "type": "object",
+    "properties": {
+      "resource_type": {
+        "type": "string",
+        "enum": [
+          "doc",
+          "play",
+          "project"
+        ]
+      },
+      "resource_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "resource_type",
+      "resource_id",
+      "user_id"
+    ]
+  },
+  "account.admitted": {
+    "type": "object",
+    "properties": {
+      "account_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "invitation_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema"
+  },
+  "account.disabled": {
+    "type": "object",
+    "properties": {
+      "account_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "account_id"
+    ]
+  },
+  "account.profile_updated": {
+    "type": "object",
+    "properties": {
+      "account_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "account_id"
+    ]
+  },
+  "account.reactivated": {
+    "type": "object",
+    "properties": {
+      "account_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "account_id"
+    ]
+  },
+  "account.removed": {
+    "type": "object",
+    "properties": {
+      "account_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "account_id"
+    ]
+  },
+  "account.restored": {
+    "type": "object",
+    "properties": {
+      "account_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "account_id"
+    ]
+  },
+  "botwebhook.created": {
+    "type": "object",
+    "properties": {
+      "botwebhook_id": {
+        "type": "string"
+      },
+      "conversation_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string",
+        "description": "The bot's name after the change."
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "changes": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "renamed",
+            "avatar",
+            "regenerated"
+          ]
+        },
+        "description": "What changed; regenerated means the old URL stopped working."
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Set on a bot of a DM or private channel, whose events are never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "botwebhook_id",
+      "conversation_id",
+      "workspace_id",
+      "name"
+    ]
+  },
+  "botwebhook.deleted": {
+    "type": "object",
+    "properties": {
+      "botwebhook_id": {
+        "type": "string"
+      },
+      "conversation_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string",
+        "description": "The bot's name after the change."
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "changes": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "renamed",
+            "avatar",
+            "regenerated"
+          ]
+        },
+        "description": "What changed; regenerated means the old URL stopped working."
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Set on a bot of a DM or private channel, whose events are never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "botwebhook_id",
+      "conversation_id",
+      "workspace_id",
+      "name"
+    ]
+  },
+  "botwebhook.restored": {
+    "type": "object",
+    "properties": {
+      "botwebhook_id": {
+        "type": "string"
+      },
+      "conversation_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string",
+        "description": "The bot's name after the change."
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "changes": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "renamed",
+            "avatar",
+            "regenerated"
+          ]
+        },
+        "description": "What changed; regenerated means the old URL stopped working."
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Set on a bot of a DM or private channel, whose events are never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "botwebhook_id",
+      "conversation_id",
+      "workspace_id",
+      "name"
+    ]
+  },
+  "botwebhook.updated": {
+    "type": "object",
+    "properties": {
+      "botwebhook_id": {
+        "type": "string"
+      },
+      "conversation_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string",
+        "description": "The bot's name after the change."
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "changes": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "renamed",
+            "avatar",
+            "regenerated"
+          ]
+        },
+        "description": "What changed; regenerated means the old URL stopped working."
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Set on a bot of a DM or private channel, whose events are never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "botwebhook_id",
+      "conversation_id",
+      "workspace_id",
+      "name"
+    ]
+  },
+  "category.created": {
+    "type": "object",
+    "properties": {
+      "category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "color": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "position",
+          "color",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "category"
+    ]
+  },
+  "category.deleted": {
+    "type": "object",
+    "properties": {
+      "category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "color": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "position",
+          "color",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "category"
+    ]
+  },
+  "category.updated": {
+    "type": "object",
+    "properties": {
+      "category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "color": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "position",
+          "color",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "category"
+    ]
+  },
+  "chat.conversation.created": {
+    "type": "object",
+    "properties": {
+      "conversation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ticket_id": {
+            "type": "string"
+          },
+          "doc_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "parent_message_id": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "general": {
+            "type": "boolean"
+          },
+          "private": {
+            "type": "boolean"
+          },
+          "participant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "kind",
+          "created_by",
+          "created_at",
+          "updated_at",
+          "private"
+        ]
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Set on a DM's or a private channel's creation, which is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "conversation"
+    ]
+  },
+  "chat.conversation.deleted": {
+    "type": "object",
+    "properties": {
+      "conversation_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "channel",
+          "voice_channel"
+        ]
+      },
+      "name": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "private": {
+        "type": "boolean"
+      },
+      "member_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Set on a private channel's event, which is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "conversation_id",
+      "workspace_id",
+      "kind",
+      "name"
+    ]
+  },
+  "chat.conversation.members_changed": {
+    "type": "object",
+    "properties": {
+      "conversation_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "private": {
+        "type": "boolean"
+      },
+      "added_user_ids": {
+        "type": [
+          "null",
+          "array"
+        ],
+        "items": {
+          "type": "string"
+        }
+      },
+      "removed_user_ids": {
+        "type": [
+          "null",
+          "array"
+        ],
+        "items": {
+          "type": "string"
+        }
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Set on a private channel's change, a switch to private included, which is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "conversation_id",
+      "workspace_id",
+      "private",
+      "added_user_ids",
+      "removed_user_ids"
+    ]
+  },
+  "chat.conversation.updated": {
+    "type": "object",
+    "properties": {
+      "conversation_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "channel",
+          "voice_channel"
+        ]
+      },
+      "name": {
+        "type": "string"
+      },
+      "previous_name": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Set on a private channel's event, which is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "conversation_id",
+      "workspace_id",
+      "kind",
+      "name",
+      "previous_name"
+    ]
+  },
+  "chat.message.created": {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "conversation_id": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "author_kind": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "mentions": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "handle": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "handle"
+              ]
+            }
+          },
+          "attachment_id": {
+            "type": "string"
+          },
+          "edited_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reactions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "emoji": {
+                  "type": "string"
+                },
+                "user_ids": {
+                  "type": [
+                    "null",
+                    "array"
+                  ],
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "emoji",
+                "user_ids"
+              ]
+            }
+          },
+          "handoffs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "driver": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "prompt": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "reply": {
+                  "type": "string"
+                },
+                "steps": {
+                  "type": [
+                    "null",
+                    "array"
+                  ],
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string"
+                      },
+                      "call_id": {
+                        "type": "string"
+                      },
+                      "tool": {
+                        "type": "string"
+                      },
+                      "summary": {
+                        "type": "string"
+                      },
+                      "detail": {
+                        "type": "string"
+                      },
+                      "at": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "summary",
+                      "at"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "driver",
+                "model",
+                "title",
+                "prompt",
+                "state",
+                "reply",
+                "steps"
+              ]
+            }
+          },
+          "via": {
+            "type": "string"
+          },
+          "author_name": {
+            "type": "string"
+          },
+          "author_avatar_url": {
+            "type": "string"
+          },
+          "embeds": true
+        },
+        "description": "The message as chat stores it. Its attachment_id is set only on a note: an Agent message on a ticket's thread, posted on the author_id person's behalf, whose markdown file is that attachment of the conversation. Its handoffs are set only on an Agent reply that handed work to other agents: each one's id, driver, model, title, prompt, state (running, done, failed, interrupted or left_running), final reply and steps. A message with author_kind bot has the bot's id as author_id, the name it showed as author_name, the bot's own name as via when the post overrode it, as author_avatar_url the sender's avatar_url or else a path on this instance to the bot's current avatar, and its embeds as the sender posted them less their color.",
+        "required": [
+          "id",
+          "conversation_id",
+          "author_id",
+          "author_kind",
+          "body",
+          "mentions",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "message"
+    ]
+  },
+  "chat.message.deleted": {
+    "type": "object",
+    "properties": {
+      "conversation_id": {
+        "type": "string"
+      },
+      "message_id": {
+        "type": "string"
+      },
+      "deleted_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "conversation_id",
+      "message_id",
+      "deleted_at"
+    ]
+  },
+  "chat.message.reactions_changed": {
+    "type": "object",
+    "properties": {
+      "conversation_id": {
+        "type": "string"
+      },
+      "message_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string",
+        "description": "The person who added or removed the reaction."
+      },
+      "emoji": {
+        "type": "string",
+        "description": "The emoji itself, such as 👍."
+      },
+      "reacted": {
+        "type": "boolean",
+        "description": "True when the reaction was added, false when it was removed."
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "conversation_id",
+      "message_id",
+      "user_id",
+      "emoji",
+      "reacted"
+    ]
+  },
+  "chat.message.updated": {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "conversation_id": {
+            "type": "string"
+          },
+          "author_id": {
+            "type": "string"
+          },
+          "author_kind": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "mentions": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "handle": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "handle"
+              ]
+            }
+          },
+          "attachment_id": {
+            "type": "string"
+          },
+          "edited_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reactions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "emoji": {
+                  "type": "string"
+                },
+                "user_ids": {
+                  "type": [
+                    "null",
+                    "array"
+                  ],
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "emoji",
+                "user_ids"
+              ]
+            }
+          },
+          "handoffs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "driver": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "prompt": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "reply": {
+                  "type": "string"
+                },
+                "steps": {
+                  "type": [
+                    "null",
+                    "array"
+                  ],
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string"
+                      },
+                      "call_id": {
+                        "type": "string"
+                      },
+                      "tool": {
+                        "type": "string"
+                      },
+                      "summary": {
+                        "type": "string"
+                      },
+                      "detail": {
+                        "type": "string"
+                      },
+                      "at": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "summary",
+                      "at"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "driver",
+                "model",
+                "title",
+                "prompt",
+                "state",
+                "reply",
+                "steps"
+              ]
+            }
+          },
+          "via": {
+            "type": "string"
+          },
+          "author_name": {
+            "type": "string"
+          },
+          "author_avatar_url": {
+            "type": "string"
+          },
+          "embeds": true
+        },
+        "description": "The message after the change: an edited body, or a note whose markdown file changed, which moves its updated_at and leaves its body as it was.",
+        "required": [
+          "id",
+          "conversation_id",
+          "author_id",
+          "author_kind",
+          "body",
+          "mentions",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "message"
+    ]
+  },
+  "computer.harness_switched": {
+    "type": "object",
+    "properties": {
+      "computer_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "from_kind": {
+        "type": "string",
+        "description": "The harness kind the computer was stored under, for example t3code."
+      },
+      "to_kind": {
+        "type": "string",
+        "description": "The harness kind it moved forward to, for example t3code-v2; a computer never moves back."
+      },
+      "harness_version": {
+        "type": "string",
+        "description": "The harness version read when the computer moved."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "computer_id",
+      "user_id",
+      "from_kind",
+      "to_kind",
+      "harness_version"
+    ]
+  },
+  "computer.paired": {
+    "type": "object",
+    "properties": {
+      "computer_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "server_url": {
+        "type": "string"
+      },
+      "harness_version": {
+        "type": "string"
+      },
+      "token_expires_at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "computer_id",
+      "user_id",
+      "server_url",
+      "token_expires_at"
+    ]
+  },
+  "computer.setup_confirmed": {
+    "type": "object",
+    "properties": {
+      "computer_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "confirmed_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "skills": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "computer_id",
+      "user_id"
+    ]
+  },
+  "computer.setup_finished": {
+    "type": "object",
+    "properties": {
+      "computer_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "run_id": {
+        "type": "string"
+      },
+      "confirmed": {
+        "type": "boolean"
+      },
+      "providers": {
+        "type": [
+          "null",
+          "array"
+        ],
+        "items": {
+          "type": "object",
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "running",
+                "confirmed",
+                "failed"
+              ]
+            },
+            "status": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "provider",
+            "state",
+            "status"
+          ]
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "computer_id",
+      "user_id",
+      "run_id",
+      "confirmed",
+      "providers"
+    ]
+  },
+  "computer.setup_turn_activity": {
+    "type": "object",
+    "properties": {
+      "computer_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "run_id": {
+        "type": "string"
+      },
+      "turn_id": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string"
+      },
+      "call_id": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "tool_call",
+          "tool_result",
+          "text",
+          "question",
+          "other",
+          "note",
+          "user_message"
+        ]
+      },
+      "tool": {
+        "type": "string"
+      },
+      "text": {
+        "type": "string"
+      },
+      "at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "computer_id",
+      "user_id",
+      "run_id",
+      "turn_id",
+      "provider",
+      "status",
+      "at"
+    ]
+  },
+  "computer.setup_turn_changed": {
+    "type": "object",
+    "properties": {
+      "computer_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "run_id": {
+        "type": "string"
+      },
+      "turn_id": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "provider_name": {
+        "type": "string"
+      },
+      "model": {
+        "type": "string"
+      },
+      "state": {
+        "type": "string",
+        "enum": [
+          "running",
+          "confirmed",
+          "failed"
+        ]
+      },
+      "status": {
+        "type": "string"
+      },
+      "started_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "ended_at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "computer_id",
+      "user_id",
+      "run_id",
+      "turn_id",
+      "provider",
+      "provider_name",
+      "state",
+      "status",
+      "started_at"
+    ]
+  },
+  "computer.setup_unconfirmed": {
+    "type": "object",
+    "properties": {
+      "computer_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "confirmed_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "skills": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "computer_id",
+      "user_id"
+    ]
+  },
+  "computer.tunnel_created": {
+    "type": "object",
+    "properties": {
+      "computer_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "tunnel_id": {
+        "type": "string"
+      },
+      "hostname": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "computer_id",
+      "user_id",
+      "tunnel_id",
+      "hostname"
+    ]
+  },
+  "computer.tunnel_removed": {
+    "type": "object",
+    "properties": {
+      "computer_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "tunnel_id": {
+        "type": "string"
+      },
+      "hostname": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "computer_id",
+      "user_id",
+      "tunnel_id",
+      "hostname"
+    ]
+  },
+  "computer.tunnel_status_changed": {
+    "type": "object",
+    "properties": {
+      "computer_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "tunnel": {
+        "type": "string"
+      },
+      "harness_reachable": {
+        "type": "boolean"
+      },
+      "harness_version": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "computer_id",
+      "user_id",
+      "tunnel",
+      "harness_reachable"
+    ]
+  },
+  "deploy.build_completed": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string"
+      },
+      "artifacts": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "error": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "status"
+    ]
+  },
+  "deploy.build_progress": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "step": {
+        "type": "integer"
+      },
+      "total": {
+        "type": "integer"
+      },
+      "log": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "step",
+      "total"
+    ]
+  },
+  "deploy.build_started": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "total": {
+        "type": "integer"
+      },
+      "log": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "total"
+    ]
+  },
+  "deploy.cancel_requested": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id"
+    ]
+  },
+  "deploy.deploy_progress": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "phase": {
+        "type": "string"
+      },
+      "log": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "phase"
+    ]
+  },
+  "deploy.log": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "phase": {
+        "type": "string",
+        "enum": [
+          "checkout",
+          "build",
+          "deploy"
+        ]
+      },
+      "log": {
+        "type": "string"
+      },
+      "ts": {
+        "type": "integer"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "phase",
+      "log",
+      "ts"
+    ]
+  },
+  "deploy.requested": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "build",
+          "deploy"
+        ]
+      },
+      "service": {
+        "type": "string"
+      },
+      "target": {
+        "type": "string"
+      },
+      "image": {
+        "type": "string"
+      },
+      "env": {
+        "type": "object",
+        "description": "Deploy environment keys; values are always empty strings. The deploy domain redacts them before publish, so every consumer of this event, not just webhook delivery, only ever sees keys.",
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "strategy": {
+        "type": "string"
+      },
+      "repo": {
+        "type": "string"
+      },
+      "ref": {
+        "type": "string"
+      },
+      "compose_path": {
+        "type": "string"
+      },
+      "network": {
+        "type": "string"
+      },
+      "ports": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "mounts": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "command": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "dockerfile": {
+        "type": "string"
+      },
+      "stack_slug": {
+        "type": "string"
+      },
+      "stack_root": {
+        "type": "string"
+      },
+      "gateway_container": {
+        "type": "string"
+      },
+      "join_networks": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "kind"
+    ]
+  },
+  "deploy.status_changed": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "running",
+          "healthy",
+          "failed"
+        ]
+      },
+      "error": {
+        "type": "string"
+      },
+      "address": {
+        "type": "string"
+      },
+      "services": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "container_name": {
+              "type": "string"
+            },
+            "image": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "networks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "address": {
+                    "type": "string"
+                  },
+                  "gateway_container": {
+                    "type": "string"
+                  },
+                  "join_networks": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            },
+            "ports": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "name",
+            "container_name",
+            "status"
+          ]
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "status"
+    ]
+  },
+  "deploy.updated": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "running",
+          "healthy",
+          "failed"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "status"
+    ]
+  },
+  "dns.exposure_changed": {
+    "type": "object",
+    "properties": {
+      "exposure_id": {
+        "type": "string"
+      },
+      "gateway_id": {
+        "type": "string"
+      },
+      "hostname": {
+        "type": "string"
+      },
+      "service": {
+        "type": "string"
+      },
+      "port": {
+        "type": "integer"
+      },
+      "action": {
+        "type": "string",
+        "enum": [
+          "created",
+          "deleted"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "exposure_id",
+      "gateway_id",
+      "action"
+    ]
+  },
+  "dns.gateway_changed": {
+    "type": "object",
+    "properties": {
+      "gateway_id": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string"
+      },
+      "docker_network": {
+        "type": "string"
+      },
+      "action": {
+        "type": "string",
+        "enum": [
+          "created",
+          "deleted"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "gateway_id",
+      "action"
+    ]
+  },
+  "dns.record_changed": {
+    "type": "object",
+    "properties": {
+      "zone_id": {
+        "type": "string"
+      },
+      "zone": {
+        "type": "string"
+      },
+      "record_id": {
+        "type": "string"
+      },
+      "action": {
+        "type": "string",
+        "enum": [
+          "created",
+          "updated",
+          "deleted"
+        ]
+      },
+      "type": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "service": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "zone_id",
+      "action"
+    ]
+  },
+  "dns.tunnel_changed": {
+    "type": "object",
+    "properties": {
+      "tunnel_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "action": {
+        "type": "string",
+        "enum": [
+          "created",
+          "routed",
+          "rotated",
+          "deleted"
+        ]
+      },
+      "hostname": {
+        "type": "string"
+      },
+      "service": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "tunnel_id",
+      "action"
+    ]
+  },
+  "doc.clarification.answer_cleared": {
+    "type": "object",
+    "properties": {
+      "doc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "title"
+        ]
+      },
+      "round": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "question_id": {
+        "type": "string"
+      },
+      "question": {
+        "type": "string"
+      },
+      "author_id": {
+        "type": "string"
+      },
+      "at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "Someone made a question of a doc's clarification unanswered again.",
+    "required": [
+      "doc",
+      "round",
+      "question_id",
+      "question",
+      "author_id",
+      "at"
+    ]
+  },
+  "doc.clarification.answer_saved": {
+    "type": "object",
+    "properties": {
+      "doc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "title"
+        ]
+      },
+      "round": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "question_id": {
+        "type": "string"
+      },
+      "question": {
+        "type": "string"
+      },
+      "author_id": {
+        "type": "string"
+      },
+      "at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "Someone answered or skipped a question of a doc's clarification; the answer itself never travels.",
+    "required": [
+      "doc",
+      "round",
+      "question_id",
+      "question",
+      "author_id",
+      "at"
+    ]
+  },
+  "doc.clarification.anything_else_saved": {
+    "type": "object",
+    "properties": {
+      "doc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "title"
+        ]
+      },
+      "round": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "started_by": {
+        "type": "string",
+        "description": "Who started the round's Clarify via AI run."
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "removed": {
+        "type": "boolean",
+        "description": "true when the round asked nothing and found no gaps, so it is gone."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "Someone saved or cleared a round's Anything else? text; the text itself never travels.",
+    "required": [
+      "doc",
+      "round",
+      "started_by"
+    ]
+  },
+  "doc.clarification.closed": {
+    "type": "object",
+    "properties": {
+      "doc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "title"
+        ]
+      },
+      "round": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "started_by": {
+        "type": "string",
+        "description": "Who started the round's Clarify via AI run."
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "removed": {
+        "type": "boolean",
+        "description": "true when the round asked nothing and found no gaps, so it is gone."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "Someone closed a doc's clarification on its newest round; another round reopens it.",
+    "required": [
+      "doc",
+      "round",
+      "started_by"
+    ]
+  },
+  "doc.clarification.round_answered": {
+    "type": "object",
+    "properties": {
+      "doc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "title"
+        ]
+      },
+      "round": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "started_by": {
+        "type": "string",
+        "description": "Who started the round's Clarify via AI run."
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "removed": {
+        "type": "boolean",
+        "description": "true when the round asked nothing and found no gaps, so it is gone."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "The last pending question of a round was answered or skipped; started_by is whom it is for.",
+    "required": [
+      "doc",
+      "round",
+      "started_by"
+    ]
+  },
+  "doc.clarification.round_ended": {
+    "type": "object",
+    "properties": {
+      "doc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "title"
+        ]
+      },
+      "round": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "started_by": {
+        "type": "string",
+        "description": "Who started the round's Clarify via AI run."
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "removed": {
+        "type": "boolean",
+        "description": "true when the round asked nothing and found no gaps, so it is gone."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A round's run ended, whatever its outcome; a round that asked nothing and found no gaps is removed.",
+    "required": [
+      "doc",
+      "round",
+      "started_by"
+    ]
+  },
+  "doc.clarification.round_posted": {
+    "type": "object",
+    "properties": {
+      "doc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "title"
+        ]
+      },
+      "round": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "started_by": {
+        "type": "string",
+        "description": "Who started the round's Clarify via AI run."
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "removed": {
+        "type": "boolean",
+        "description": "true when the round asked nothing and found no gaps, so it is gone."
+      },
+      "question_count": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "no_gaps": {
+        "type": "boolean",
+        "description": "true when the round found no gaps left and wrote the doc instead of asking."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A running round posted its questions, or found no gaps left and wrote the doc instead.",
+    "required": [
+      "doc",
+      "round",
+      "started_by",
+      "question_count",
+      "no_gaps"
+    ]
+  },
+  "doc.clarification.round_started": {
+    "type": "object",
+    "properties": {
+      "doc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "title"
+        ]
+      },
+      "round": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "started_by": {
+        "type": "string",
+        "description": "Who started the round's Clarify via AI run."
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "removed": {
+        "type": "boolean",
+        "description": "true when the round asked nothing and found no gaps, so it is gone."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A Clarify via AI run opened a doc's next round of questions; it is being written until the round ends.",
+    "required": [
+      "doc",
+      "round",
+      "started_by"
+    ]
+  },
+  "doc.created": {
+    "type": "object",
+    "properties": {
+      "doc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string",
+            "description": "The project folder the doc lives in."
+          },
+          "version": {
+            "type": "integer"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "body",
+          "project_id",
+          "folder_id",
+          "version",
+          "archived",
+          "locked",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "mentioned_user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "People this save newly @-mentions, by user id."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "doc"
+    ]
+  },
+  "doc.deleted": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "title",
+      "project_id"
+    ]
+  },
+  "doc.folder.created": {
+    "type": "object",
+    "properties": {
+      "folder": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "is_default": {
+            "type": "boolean",
+            "description": "The project's default folder, where new docs land; it is never deleted."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "is_default",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "actor_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "folder"
+    ]
+  },
+  "doc.folder.deleted": {
+    "type": "object",
+    "properties": {
+      "folder": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "is_default": {
+            "type": "boolean",
+            "description": "The project's default folder, where new docs land; it is never deleted."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "is_default",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "moved_to_folder_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A doc folder was deleted; its docs moved to the project's default folder, never deleted.",
+    "required": [
+      "folder",
+      "moved_to_folder_id"
+    ]
+  },
+  "doc.folder.updated": {
+    "type": "object",
+    "properties": {
+      "folder": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "is_default": {
+            "type": "boolean",
+            "description": "The project's default folder, where new docs land; it is never deleted."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "is_default",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "previous_name": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A doc folder was renamed.",
+    "required": [
+      "folder",
+      "previous_name"
+    ]
+  },
+  "doc.moved": {
+    "type": "object",
+    "properties": {
+      "doc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string",
+            "description": "The project folder the doc lives in."
+          },
+          "version": {
+            "type": "integer"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "body",
+          "project_id",
+          "folder_id",
+          "version",
+          "archived",
+          "locked",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "from_folder_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A doc moved to another folder of its project; doc carries its new folder_id.",
+    "required": [
+      "doc",
+      "from_folder_id"
+    ]
+  },
+  "doc.updated": {
+    "type": "object",
+    "properties": {
+      "doc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": "string",
+            "description": "The project folder the doc lives in."
+          },
+          "version": {
+            "type": "integer"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "body",
+          "project_id",
+          "folder_id",
+          "version",
+          "archived",
+          "locked",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "mentioned_user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "People this save newly @-mentions, by user id."
+      },
+      "lock_changed": {
+        "type": "boolean",
+        "description": "True when the doc was only locked or unlocked; its title and body are unchanged."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "doc"
+    ]
+  },
+  "doc.watchers.changed": {
+    "type": "object",
+    "properties": {
+      "doc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "title"
+        ]
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "watching": {
+        "type": "boolean",
+        "description": "true when they started watching, false when they stopped."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "Someone started or stopped watching a doc, choosing to; a watcher gets the doc's change notifications. Being added for creating or editing the doc rides doc.created and doc.updated instead.",
+    "required": [
+      "doc",
+      "user_id",
+      "watching"
+    ]
+  },
+  "git.branch_deleted": {
+    "type": "object",
+    "properties": {
+      "owner": {
+        "type": "string"
+      },
+      "repo": {
+        "type": "string"
+      },
+      "branch": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "owner",
+      "repo",
+      "branch"
+    ]
+  },
+  "git.pr_closed": {
+    "type": "object",
+    "properties": {
+      "owner": {
+        "type": "string"
+      },
+      "repo": {
+        "type": "string"
+      },
+      "pr": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "merged": {
+            "type": "boolean"
+          },
+          "head_sha": {
+            "type": "string"
+          },
+          "base_branch": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "linked_ticket_ids": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "number",
+          "title",
+          "body",
+          "state",
+          "merged",
+          "head_sha",
+          "base_branch",
+          "author",
+          "linked_ticket_ids"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "owner",
+      "repo",
+      "pr"
+    ]
+  },
+  "git.pr_comment": {
+    "type": "object",
+    "properties": {
+      "owner": {
+        "type": "string"
+      },
+      "repo": {
+        "type": "string"
+      },
+      "pr": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "number"
+        ]
+      },
+      "comment": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "author"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "owner",
+      "repo",
+      "pr",
+      "comment"
+    ]
+  },
+  "git.pr_merged": {
+    "type": "object",
+    "properties": {
+      "owner": {
+        "type": "string"
+      },
+      "repo": {
+        "type": "string"
+      },
+      "pr": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "merged": {
+            "type": "boolean"
+          },
+          "head_sha": {
+            "type": "string"
+          },
+          "base_branch": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "linked_ticket_ids": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "number",
+          "title",
+          "body",
+          "state",
+          "merged",
+          "head_sha",
+          "base_branch",
+          "author",
+          "linked_ticket_ids"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "owner",
+      "repo",
+      "pr"
+    ]
+  },
+  "git.pr_opened": {
+    "type": "object",
+    "properties": {
+      "owner": {
+        "type": "string"
+      },
+      "repo": {
+        "type": "string"
+      },
+      "pr": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "merged": {
+            "type": "boolean"
+          },
+          "head_sha": {
+            "type": "string"
+          },
+          "base_branch": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "linked_ticket_ids": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "number",
+          "title",
+          "body",
+          "state",
+          "merged",
+          "head_sha",
+          "base_branch",
+          "author",
+          "linked_ticket_ids"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "owner",
+      "repo",
+      "pr"
+    ]
+  },
+  "git.pr_review_submitted": {
+    "type": "object",
+    "properties": {
+      "owner": {
+        "type": "string"
+      },
+      "repo": {
+        "type": "string"
+      },
+      "pr": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          },
+          "reviewer": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "state",
+          "reviewer"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "owner",
+      "repo",
+      "pr"
+    ]
+  },
+  "git.provider_event": {
+    "type": "object",
+    "properties": {
+      "provider": {
+        "type": "string"
+      },
+      "event_type": {
+        "type": "string"
+      },
+      "delivery_id": {
+        "type": "string"
+      },
+      "action": {
+        "type": "string"
+      },
+      "repository": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "full_name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "html_url": {
+            "type": "string"
+          },
+          "default_branch": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "full_name",
+          "owner",
+          "html_url",
+          "default_branch"
+        ]
+      },
+      "payload": {
+        "type": "object"
+      },
+      "received_at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "provider",
+      "event_type",
+      "delivery_id",
+      "payload",
+      "received_at"
+    ]
+  },
+  "git.push": {
+    "type": "object",
+    "properties": {
+      "owner": {
+        "type": "string"
+      },
+      "repo": {
+        "type": "string"
+      },
+      "branch": {
+        "type": "string"
+      },
+      "sha": {
+        "type": "string"
+      },
+      "pusher": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "owner",
+      "repo",
+      "branch",
+      "sha"
+    ]
+  },
+  "identity.linked": {
+    "type": "object",
+    "properties": {
+      "user_id": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "login": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "user_id",
+      "provider",
+      "login"
+    ]
+  },
+  "identity.unlinked": {
+    "type": "object",
+    "properties": {
+      "user_id": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "login": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "user_id",
+      "provider",
+      "login"
+    ]
+  },
+  "instance.upgrade_changed": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "from_version": {
+        "type": "string"
+      },
+      "to_version": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "started",
+          "completed",
+          "failed"
+        ]
+      },
+      "error": {
+        "type": "string"
+      },
+      "requested_by": {
+        "type": "string"
+      },
+      "created_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "updated_at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "from_version",
+      "to_version",
+      "status",
+      "error",
+      "requested_by",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "instance.upgrade_requested": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "version": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "version"
+    ]
+  },
+  "instance_template.updated": {
+    "type": "object",
+    "properties": {
+      "kind": {
+        "type": "string",
+        "enum": [
+          "interview",
+          "mention_chip",
+          "play_instructions",
+          "ticket_body",
+          "agent_prompt"
+        ]
+      },
+      "key": {
+        "type": "string"
+      },
+      "author_id": {
+        "type": "string"
+      },
+      "updated_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "reset": {
+        "type": "boolean"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "kind",
+      "key",
+      "author_id",
+      "updated_at",
+      "reset"
+    ]
+  },
+  "interview_answer.cleared": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "round": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "question": {
+        "type": "string"
+      },
+      "author_id": {
+        "type": "string"
+      },
+      "at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "workspace_id",
+      "project_id",
+      "round",
+      "question",
+      "author_id",
+      "at"
+    ]
+  },
+  "interview_answer.saved": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "round": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "question": {
+        "type": "string"
+      },
+      "author_id": {
+        "type": "string"
+      },
+      "at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "workspace_id",
+      "project_id",
+      "round",
+      "question",
+      "author_id",
+      "at"
+    ]
+  },
+  "interview_draft.dismissed": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "draft_id": {
+        "type": "string"
+      },
+      "question": {
+        "type": "string"
+      },
+      "author_id": {
+        "type": "string"
+      },
+      "at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "workspace_id",
+      "project_id",
+      "draft_id",
+      "question",
+      "author_id",
+      "at"
+    ]
+  },
+  "interview_draft.saved": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "draft_id": {
+        "type": "string"
+      },
+      "question": {
+        "type": "string"
+      },
+      "author_id": {
+        "type": "string"
+      },
+      "at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "workspace_id",
+      "project_id",
+      "draft_id",
+      "question",
+      "author_id",
+      "at"
+    ]
+  },
+  "interview_source.added": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "source_id": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "path",
+          "doc",
+          "memory",
+          "project",
+          "text"
+        ]
+      },
+      "stance": {
+        "type": "string",
+        "enum": [
+          "follow",
+          "question"
+        ]
+      },
+      "author_id": {
+        "type": "string"
+      },
+      "at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "workspace_id",
+      "project_id",
+      "source_id",
+      "kind",
+      "stance",
+      "author_id",
+      "at"
+    ]
+  },
+  "interview_source.changed": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "source_id": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "path",
+          "doc",
+          "memory",
+          "project",
+          "text"
+        ]
+      },
+      "stance": {
+        "type": "string",
+        "enum": [
+          "follow",
+          "question"
+        ]
+      },
+      "author_id": {
+        "type": "string"
+      },
+      "at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "workspace_id",
+      "project_id",
+      "source_id",
+      "kind",
+      "stance",
+      "author_id",
+      "at"
+    ]
+  },
+  "interview_source.removed": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "source_id": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "path",
+          "doc",
+          "memory",
+          "project",
+          "text"
+        ]
+      },
+      "stance": {
+        "type": "string",
+        "enum": [
+          "follow",
+          "question"
+        ]
+      },
+      "author_id": {
+        "type": "string"
+      },
+      "at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "workspace_id",
+      "project_id",
+      "source_id",
+      "kind",
+      "stance",
+      "author_id",
+      "at"
+    ]
+  },
+  "interview_template.updated": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string"
+      },
+      "author_id": {
+        "type": "string"
+      },
+      "updated_at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "workspace_id",
+      "author_id",
+      "updated_at"
+    ]
+  },
+  "invitation.created": {
+    "type": "object",
+    "properties": {
+      "invitation_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "invitation_id"
+    ]
+  },
+  "invitation.deleted": {
+    "type": "object",
+    "properties": {
+      "invitation_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "invitation_id"
+    ]
+  },
+  "invitation.redeemed": {
+    "type": "object",
+    "properties": {
+      "invitation_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "invitation_id"
+    ]
+  },
+  "invitation.revoked": {
+    "type": "object",
+    "properties": {
+      "invitation_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "invitation_id"
+    ]
+  },
+  "memory.created": {
+    "type": "object",
+    "properties": {
+      "memory": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "when_to_use": {
+            "type": "string"
+          },
+          "always_included": {
+            "type": "boolean"
+          },
+          "footer": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "project_id",
+          "title",
+          "when_to_use",
+          "always_included",
+          "footer",
+          "version",
+          "updated_at"
+        ]
+      },
+      "author_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "memory",
+      "author_id"
+    ]
+  },
+  "memory.deleted": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string"
+      },
+      "author_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "workspace_id",
+      "project_id",
+      "title",
+      "author_id"
+    ]
+  },
+  "memory.updated": {
+    "type": "object",
+    "properties": {
+      "memory": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "when_to_use": {
+            "type": "string"
+          },
+          "always_included": {
+            "type": "boolean"
+          },
+          "footer": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "project_id",
+          "title",
+          "when_to_use",
+          "always_included",
+          "footer",
+          "version",
+          "updated_at"
+        ]
+      },
+      "author_id": {
+        "type": "string"
+      },
+      "author_via": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "memory",
+      "author_id"
+    ]
+  },
+  "notification.created": {
+    "type": "object",
+    "$schema": "https://json-schema.org/draft/2020-12/schema"
+  },
+  "notification.push_requested": {
+    "type": "object",
+    "properties": {
+      "notifications": {
+        "type": [
+          "null",
+          "array"
+        ],
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "user_id": {
+              "type": "string"
+            },
+            "workspace_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "user_id"
+          ]
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "notifications"
+    ]
+  },
+  "personal_access_token.minted": {
+    "type": "object",
+    "properties": {
+      "token_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "computer_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "token_id",
+      "user_id",
+      "name"
+    ]
+  },
+  "personal_access_token.revoked": {
+    "type": "object",
+    "properties": {
+      "token_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "computer_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "token_id",
+      "user_id",
+      "name"
+    ]
+  },
+  "play.created": {
+    "type": "object",
+    "properties": {
+      "play": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "instructions": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "show_when_stage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "excluded_project_ids": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "builtin_key": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "label",
+          "type",
+          "description",
+          "instructions",
+          "enabled",
+          "show_when_stage",
+          "excluded_project_ids",
+          "builtin_key",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "play"
+    ]
+  },
+  "play.deleted": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "label": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "label",
+      "workspace_id"
+    ]
+  },
+  "play.run_finished": {
+    "type": "object",
+    "properties": {
+      "trail_id": {
+        "type": "string"
+      },
+      "play_id": {
+        "type": "string"
+      },
+      "play_label": {
+        "type": "string"
+      },
+      "target_type": {
+        "type": "string",
+        "enum": [
+          "ticket",
+          "doc",
+          "interview"
+        ]
+      },
+      "target_id": {
+        "type": "string"
+      },
+      "target_title": {
+        "type": "string"
+      },
+      "starter_id": {
+        "type": "string"
+      },
+      "via": {
+        "type": "string",
+        "enum": [
+          "web",
+          "mcp"
+        ]
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "outcome": {
+        "type": "string",
+        "enum": [
+          "done",
+          "failed",
+          "interrupted"
+        ]
+      },
+      "last_error": {
+        "type": "string"
+      },
+      "reply_message_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "trail_id",
+      "play_id",
+      "play_label",
+      "target_type",
+      "target_id",
+      "target_title",
+      "starter_id",
+      "via",
+      "outcome"
+    ]
+  },
+  "play.run_started": {
+    "type": "object",
+    "properties": {
+      "trail_id": {
+        "type": "string"
+      },
+      "play_id": {
+        "type": "string"
+      },
+      "play_label": {
+        "type": "string"
+      },
+      "target_type": {
+        "type": "string",
+        "enum": [
+          "ticket",
+          "doc",
+          "interview"
+        ]
+      },
+      "target_id": {
+        "type": "string"
+      },
+      "target_title": {
+        "type": "string"
+      },
+      "starter_id": {
+        "type": "string"
+      },
+      "via": {
+        "type": "string",
+        "enum": [
+          "web",
+          "mcp"
+        ]
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "harness_session_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "trail_id",
+      "play_id",
+      "play_label",
+      "target_type",
+      "target_id",
+      "target_title",
+      "starter_id",
+      "via",
+      "harness_session_id"
+    ]
+  },
+  "play.run_waiting": {
+    "type": "object",
+    "properties": {
+      "trail_id": {
+        "type": "string"
+      },
+      "play_id": {
+        "type": "string"
+      },
+      "play_label": {
+        "type": "string"
+      },
+      "target_type": {
+        "type": "string",
+        "enum": [
+          "ticket",
+          "doc",
+          "interview"
+        ]
+      },
+      "target_id": {
+        "type": "string"
+      },
+      "target_title": {
+        "type": "string"
+      },
+      "starter_id": {
+        "type": "string"
+      },
+      "via": {
+        "type": "string",
+        "enum": [
+          "web",
+          "mcp"
+        ]
+      },
+      "workspace_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "trail_id",
+      "play_id",
+      "play_label",
+      "target_type",
+      "target_id",
+      "target_title",
+      "starter_id",
+      "via"
+    ]
+  },
+  "play.updated": {
+    "type": "object",
+    "properties": {
+      "play": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "instructions": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "show_when_stage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "excluded_project_ids": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "builtin_key": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "label",
+          "type",
+          "description",
+          "instructions",
+          "enabled",
+          "show_when_stage",
+          "excluded_project_ids",
+          "builtin_key",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "play"
+    ]
+  },
+  "review.status_changed": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "repo": {
+        "type": "string"
+      },
+      "pr_number": {
+        "type": "integer"
+      },
+      "status": {
+        "type": "string"
+      },
+      "reviewer": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "repo",
+      "pr_number",
+      "status"
+    ]
+  },
+  "role.updated": {
+    "type": "object",
+    "properties": {
+      "role_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "role_id",
+      "workspace_id"
+    ]
+  },
+  "runner.connected": {
+    "type": "object",
+    "properties": {
+      "runner_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "runner_id"
+    ]
+  },
+  "runner.disconnected": {
+    "type": "object",
+    "properties": {
+      "runner_id": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "runner_id"
+    ]
+  },
+  "runner.heartbeat": {
+    "type": "object",
+    "properties": {
+      "runner_id": {
+        "type": "string"
+      },
+      "ts": {
+        "type": "integer"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "runner_id",
+      "ts"
+    ]
+  },
+  "service.created": {
+    "type": "object",
+    "properties": {
+      "stack": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "machine": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          },
+          "compose_path": {
+            "type": "string"
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "docker_network": {
+            "type": "string"
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mounts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "command": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "build_source": {
+            "type": "object",
+            "properties": {
+              "repo_owner": {
+                "type": "string"
+              },
+              "repo_name": {
+                "type": "string"
+              },
+              "branch": {
+                "type": "string"
+              },
+              "dockerfile": {
+                "type": "string"
+              },
+              "compose_path": {
+                "type": "string"
+              }
+            }
+          },
+          "branch_deploy_rules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                },
+                "docker_network": {
+                  "type": "string"
+                },
+                "hostname_template": {
+                  "type": "string"
+                },
+                "name_suffix": {
+                  "type": "string"
+                },
+                "port": {
+                  "type": "integer"
+                },
+                "overrides": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "pattern",
+                "docker_network"
+              ]
+            }
+          },
+          "derived_from": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "managed": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "slug",
+          "machine",
+          "strategy",
+          "managed",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "services": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "stack_id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "declared": {
+              "type": "object",
+              "properties": {
+                "image": {
+                  "type": "string"
+                },
+                "build": {
+                  "type": "string"
+                },
+                "ports": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "env_keys": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "container_name": {
+              "type": "string"
+            },
+            "image": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "networks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "address": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            },
+            "ports": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "observed_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "id",
+            "stack_id",
+            "name",
+            "declared",
+            "status"
+          ]
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "stack"
+    ]
+  },
+  "service.deleted": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "service_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "project_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "name"
+    ]
+  },
+  "service.updated": {
+    "type": "object",
+    "properties": {
+      "stack": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "machine": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          },
+          "compose_path": {
+            "type": "string"
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "docker_network": {
+            "type": "string"
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mounts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "command": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "build_source": {
+            "type": "object",
+            "properties": {
+              "repo_owner": {
+                "type": "string"
+              },
+              "repo_name": {
+                "type": "string"
+              },
+              "branch": {
+                "type": "string"
+              },
+              "dockerfile": {
+                "type": "string"
+              },
+              "compose_path": {
+                "type": "string"
+              }
+            }
+          },
+          "branch_deploy_rules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                },
+                "docker_network": {
+                  "type": "string"
+                },
+                "hostname_template": {
+                  "type": "string"
+                },
+                "name_suffix": {
+                  "type": "string"
+                },
+                "port": {
+                  "type": "integer"
+                },
+                "overrides": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "pattern",
+                "docker_network"
+              ]
+            }
+          },
+          "derived_from": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "managed": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "slug",
+          "machine",
+          "strategy",
+          "managed",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "services": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "stack_id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "declared": {
+              "type": "object",
+              "properties": {
+                "image": {
+                  "type": "string"
+                },
+                "build": {
+                  "type": "string"
+                },
+                "ports": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "env_keys": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "container_name": {
+              "type": "string"
+            },
+            "image": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "networks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "address": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            },
+            "ports": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "observed_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "id",
+            "stack_id",
+            "name",
+            "declared",
+            "status"
+          ]
+        }
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "stack"
+    ]
+  },
+  "session.created": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "client": {
+        "type": "string",
+        "enum": [
+          "browser",
+          "desktop",
+          "phone"
+        ]
+      },
+      "platform": {
+        "type": "string"
+      },
+      "label": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "session_id",
+      "user_id",
+      "client",
+      "platform",
+      "label"
+    ]
+  },
+  "session.revoked": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "client": {
+        "type": "string",
+        "enum": [
+          "browser",
+          "desktop",
+          "phone"
+        ]
+      },
+      "platform": {
+        "type": "string"
+      },
+      "label": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "session_id",
+      "user_id",
+      "client",
+      "platform",
+      "label"
+    ]
+  },
+  "status.created": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "position",
+          "kind",
+          "icon",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "status"
+    ]
+  },
+  "status.deleted": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "position",
+          "kind",
+          "icon",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "status"
+    ]
+  },
+  "status.updated": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "position",
+          "kind",
+          "icon",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "status"
+    ]
+  },
+  "ticket.assignee_changed": {
+    "type": "object",
+    "properties": {
+      "ticket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "type_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "doc_id": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "tester": {
+            "type": "string"
+          },
+          "reporter": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "user:mcp",
+                  "automation"
+                ]
+              },
+              "login": {
+                "type": "string"
+              },
+              "automation_id": {
+                "type": "string"
+              },
+              "automation_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "labels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Deprecated in favour of developer; always carries the same value.",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "category_id",
+          "type_id",
+          "title",
+          "body",
+          "status",
+          "position",
+          "number",
+          "doc_id",
+          "developer",
+          "tester",
+          "reporter",
+          "created_at",
+          "updated_at",
+          "labels",
+          "assignee"
+        ]
+      },
+      "from": {
+        "type": "string"
+      },
+      "to": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "Deprecated in favour of ticket.developer_changed; still published with the same payload whenever the developer changes.",
+    "required": [
+      "ticket",
+      "from",
+      "to"
+    ]
+  },
+  "ticket.category_changed": {
+    "type": "object",
+    "properties": {
+      "ticket_id": {
+        "type": "string"
+      },
+      "category_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "ticket_id",
+      "category_id"
+    ]
+  },
+  "ticket.created": {
+    "type": "object",
+    "properties": {
+      "ticket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "type_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "doc_id": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "tester": {
+            "type": "string"
+          },
+          "reporter": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "user:mcp",
+                  "automation"
+                ]
+              },
+              "login": {
+                "type": "string"
+              },
+              "automation_id": {
+                "type": "string"
+              },
+              "automation_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "labels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Deprecated in favour of developer; always carries the same value.",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "category_id",
+          "type_id",
+          "title",
+          "body",
+          "status",
+          "position",
+          "number",
+          "doc_id",
+          "developer",
+          "tester",
+          "reporter",
+          "created_at",
+          "updated_at",
+          "labels",
+          "assignee"
+        ]
+      },
+      "mentioned_user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "People the body @-mentions, by user id."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "ticket"
+    ]
+  },
+  "ticket.deleted": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "id",
+      "title",
+      "project_id"
+    ]
+  },
+  "ticket.developer_changed": {
+    "type": "object",
+    "properties": {
+      "ticket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "type_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "doc_id": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "tester": {
+            "type": "string"
+          },
+          "reporter": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "user:mcp",
+                  "automation"
+                ]
+              },
+              "login": {
+                "type": "string"
+              },
+              "automation_id": {
+                "type": "string"
+              },
+              "automation_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "labels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Deprecated in favour of developer; always carries the same value.",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "category_id",
+          "type_id",
+          "title",
+          "body",
+          "status",
+          "position",
+          "number",
+          "doc_id",
+          "developer",
+          "tester",
+          "reporter",
+          "created_at",
+          "updated_at",
+          "labels",
+          "assignee"
+        ]
+      },
+      "from": {
+        "type": "string"
+      },
+      "to": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "ticket",
+      "from",
+      "to"
+    ]
+  },
+  "ticket.finished": {
+    "type": "object",
+    "properties": {
+      "ticket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "type_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "doc_id": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "tester": {
+            "type": "string"
+          },
+          "reporter": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "user:mcp",
+                  "automation"
+                ]
+              },
+              "login": {
+                "type": "string"
+              },
+              "automation_id": {
+                "type": "string"
+              },
+              "automation_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "labels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Deprecated in favour of developer; always carries the same value.",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "category_id",
+          "type_id",
+          "title",
+          "body",
+          "status",
+          "position",
+          "number",
+          "doc_id",
+          "developer",
+          "tester",
+          "reporter",
+          "created_at",
+          "updated_at",
+          "labels",
+          "assignee"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "ticket"
+    ]
+  },
+  "ticket.link_created": {
+    "type": "object",
+    "properties": {
+      "link": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "found_in",
+              "blocked_by"
+            ]
+          },
+          "target_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "ticket_id",
+          "kind",
+          "target_id",
+          "created_at"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A found-in or blocked-by link was added; ticket_id is found in or blocked by target_id, and an empty target_id on found_in marks the origin unknown.",
+    "required": [
+      "link"
+    ]
+  },
+  "ticket.link_deleted": {
+    "type": "object",
+    "properties": {
+      "link": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "found_in",
+              "blocked_by"
+            ]
+          },
+          "target_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "ticket_id",
+          "kind",
+          "target_id",
+          "created_at"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A found-in or blocked-by link was removed, or replaced by a new found-in.",
+    "required": [
+      "link"
+    ]
+  },
+  "ticket.status_changed": {
+    "type": "object",
+    "properties": {
+      "ticket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "type_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "doc_id": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "tester": {
+            "type": "string"
+          },
+          "reporter": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "user:mcp",
+                  "automation"
+                ]
+              },
+              "login": {
+                "type": "string"
+              },
+              "automation_id": {
+                "type": "string"
+              },
+              "automation_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "labels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Deprecated in favour of developer; always carries the same value.",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "category_id",
+          "type_id",
+          "title",
+          "body",
+          "status",
+          "position",
+          "number",
+          "doc_id",
+          "developer",
+          "tester",
+          "reporter",
+          "created_at",
+          "updated_at",
+          "labels",
+          "assignee"
+        ]
+      },
+      "from": {
+        "type": "string"
+      },
+      "to": {
+        "type": "string"
+      },
+      "actor": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "user:mcp",
+              "automation",
+              "play",
+              "play:mcp"
+            ]
+          },
+          "automation_id": {
+            "type": "string"
+          },
+          "automation_name": {
+            "type": "string"
+          },
+          "play_label": {
+            "type": "string"
+          },
+          "trail_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "run_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "ticket",
+      "from",
+      "to"
+    ]
+  },
+  "ticket.test_failed": {
+    "type": "object",
+    "properties": {
+      "ticket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "type_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "doc_id": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "tester": {
+            "type": "string"
+          },
+          "reporter": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "user:mcp",
+                  "automation"
+                ]
+              },
+              "login": {
+                "type": "string"
+              },
+              "automation_id": {
+                "type": "string"
+              },
+              "automation_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "labels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Deprecated in favour of developer; always carries the same value.",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "category_id",
+          "type_id",
+          "title",
+          "body",
+          "status",
+          "position",
+          "number",
+          "doc_id",
+          "developer",
+          "tester",
+          "reporter",
+          "created_at",
+          "updated_at",
+          "labels",
+          "assignee"
+        ]
+      },
+      "tester": {
+        "type": "string"
+      },
+      "report": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A ticket failed testing and moved back to a progress-stage column; report is the bug report posted to its thread.",
+    "required": [
+      "ticket",
+      "tester"
+    ]
+  },
+  "ticket.test_passed": {
+    "type": "object",
+    "properties": {
+      "ticket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "type_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "doc_id": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "tester": {
+            "type": "string"
+          },
+          "reporter": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "user:mcp",
+                  "automation"
+                ]
+              },
+              "login": {
+                "type": "string"
+              },
+              "automation_id": {
+                "type": "string"
+              },
+              "automation_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "labels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Deprecated in favour of developer; always carries the same value.",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "category_id",
+          "type_id",
+          "title",
+          "body",
+          "status",
+          "position",
+          "number",
+          "doc_id",
+          "developer",
+          "tester",
+          "reporter",
+          "created_at",
+          "updated_at",
+          "labels",
+          "assignee"
+        ]
+      },
+      "tester": {
+        "type": "string"
+      },
+      "report": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A ticket passed testing and moved to a done-stage column; tester is the login of whoever passed it.",
+    "required": [
+      "ticket",
+      "tester"
+    ]
+  },
+  "ticket.tester_changed": {
+    "type": "object",
+    "properties": {
+      "ticket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "type_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "doc_id": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "tester": {
+            "type": "string"
+          },
+          "reporter": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "user:mcp",
+                  "automation"
+                ]
+              },
+              "login": {
+                "type": "string"
+              },
+              "automation_id": {
+                "type": "string"
+              },
+              "automation_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "labels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Deprecated in favour of developer; always carries the same value.",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "category_id",
+          "type_id",
+          "title",
+          "body",
+          "status",
+          "position",
+          "number",
+          "doc_id",
+          "developer",
+          "tester",
+          "reporter",
+          "created_at",
+          "updated_at",
+          "labels",
+          "assignee"
+        ]
+      },
+      "from": {
+        "type": "string"
+      },
+      "to": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "ticket",
+      "from",
+      "to"
+    ]
+  },
+  "ticket.updated": {
+    "type": "object",
+    "properties": {
+      "ticket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "string"
+          },
+          "type_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "doc_id": {
+            "type": "string"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "tester": {
+            "type": "string"
+          },
+          "reporter": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "user:mcp",
+                  "automation"
+                ]
+              },
+              "login": {
+                "type": "string"
+              },
+              "automation_id": {
+                "type": "string"
+              },
+              "automation_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "labels": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Deprecated in favour of developer; always carries the same value.",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "category_id",
+          "type_id",
+          "title",
+          "body",
+          "status",
+          "position",
+          "number",
+          "doc_id",
+          "developer",
+          "tester",
+          "reporter",
+          "created_at",
+          "updated_at",
+          "labels",
+          "assignee"
+        ]
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "mentioned_user_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "People this edit newly @-mentions, by user id."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "ticket"
+    ]
+  },
+  "ticket_type.created": {
+    "type": "object",
+    "properties": {
+      "ticket_type": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "color": {
+            "type": "string"
+          },
+          "body_template": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "position",
+          "color",
+          "body_template",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "ticket_type"
+    ]
+  },
+  "ticket_type.deleted": {
+    "type": "object",
+    "properties": {
+      "ticket_type": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "color": {
+            "type": "string"
+          },
+          "body_template": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "position",
+          "color",
+          "body_template",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "ticket_type"
+    ]
+  },
+  "ticket_type.updated": {
+    "type": "object",
+    "properties": {
+      "ticket_type": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "color": {
+            "type": "string"
+          },
+          "body_template": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "position",
+          "color",
+          "body_template",
+          "created_at",
+          "updated_at"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "ticket_type"
+    ]
+  },
+  "topology.updated": {
+    "type": "object",
+    "properties": {
+      "environment": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "canvas": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": "integer"
+          },
+          "nodes": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "position": {
+                  "type": "object",
+                  "properties": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y"
+                  ]
+                },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "service_id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "runtime": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "replicas": {
+                      "type": "integer"
+                    },
+                    "volume": {
+                      "type": "string"
+                    },
+                    "address": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "position",
+                "data"
+              ]
+            }
+          },
+          "edges": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "target": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "source",
+                "target",
+                "type",
+                "data"
+              ]
+            }
+          },
+          "viewport": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "zoom": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "x",
+              "y",
+              "zoom"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "nodes",
+          "edges"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "environment",
+      "canvas"
+    ]
+  },
+  "voice.occupancy.changed": {
+    "type": "object",
+    "properties": {
+      "conversation_id": {
+        "type": "string"
+      },
+      "occupants": {
+        "type": [
+          "null",
+          "array"
+        ],
+        "items": {
+          "type": "object",
+          "properties": {
+            "identity": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "identity",
+            "name"
+          ]
+        }
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Set on a private voice channel's call, which is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "conversation_id",
+      "occupants"
+    ]
+  },
+  "workspace.member.added": {
+    "type": "object",
+    "properties": {
+      "invitation_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema"
+  },
+  "workspace.member.removed": {
+    "type": "object",
+    "properties": {
+      "user_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "user_id",
+      "workspace_id"
+    ]
+  },
+  "workspace.member.updated": {
+    "type": "object",
+    "properties": {
+      "user_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "user_id",
+      "workspace_id"
+    ]
+  },
+  "workspace.updated": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "slug": {
+        "type": "string"
+      },
+      "actor_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "workspace_id",
+      "name",
+      "slug"
+    ]
+  }
+}
