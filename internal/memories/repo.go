@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 // Repo is the consumer-side persistence contract for memories; mutations carry events for the outbox write.
@@ -19,6 +20,8 @@ type Repo interface {
 	GetByProjectKind(ctx context.Context, projectID, kind string) (*Memory, error)
 	ListByWorkspace(ctx context.Context, workspaceID string) ([]*Memory, error)
 	ListByProject(ctx context.Context, projectID string) ([]*Memory, error)
+	// PageByProject reads one window of a project's memories, oldest first, and how many it has.
+	PageByProject(ctx context.Context, projectID string, w paging.Window) ([]*Memory, int, error)
 	Update(ctx context.Context, m *Memory, authorVia string, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
 	// ListVersions returns a memory's version history, newest first.

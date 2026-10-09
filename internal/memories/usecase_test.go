@@ -15,6 +15,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -104,6 +105,14 @@ func (f *fakeRepo) ListByProject(_ context.Context, projectID string) ([]*Memory
 		}
 	}
 	return out, nil
+}
+
+func (f *fakeRepo) PageByProject(ctx context.Context, projectID string, w paging.Window) ([]*Memory, int, error) {
+	all, err := f.ListByProject(ctx, projectID)
+	if err != nil {
+		return nil, 0, err
+	}
+	return all[min(w.Offset, len(all)):min(w.Offset+w.Limit, len(all))], len(all), nil
 }
 
 func (f *fakeRepo) Update(_ context.Context, m *Memory, authorVia string, evts ...eventbus.OutboxEvent) error {

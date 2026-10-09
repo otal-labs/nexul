@@ -33,3 +33,7 @@ DROP INDEX IF EXISTS idx_tickets_doc_id;
 CREATE INDEX IF NOT EXISTS idx_docs_created ON docs(created_at, id);
 CREATE INDEX IF NOT EXISTS idx_docs_project_created ON docs(project_id, created_at, id);
 DROP INDEX IF EXISTS idx_docs_project;
+
+-- memory_list, a project's memories oldest first; it replaces the project-only index.
+CREATE INDEX IF NOT EXISTS idx_memories_project_created ON memories(project_id, created_at, id);
+DROP INDEX IF EXISTS idx_memories_project;

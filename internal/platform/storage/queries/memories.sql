@@ -11,6 +11,12 @@ SELECT * FROM memories WHERE workspace_id = ? ORDER BY project_id, created_at;
 -- name: ListMemoriesByProject :many
 SELECT * FROM memories WHERE project_id = ? ORDER BY created_at;
 
+-- name: ListMemoriesPage :many
+SELECT * FROM memories WHERE project_id = ? ORDER BY created_at, id LIMIT ? OFFSET ?;
+
+-- name: CountMemoriesByProject :one
+SELECT COUNT(*) FROM memories WHERE project_id = ?;
+
 -- name: UpdateMemory :execrows
 UPDATE memories SET title = ?, when_to_use = ?, body = ?, always_included = ?, footer = ?, version = ?, updated_by = ?, updated_at = ? WHERE id = ?;
 

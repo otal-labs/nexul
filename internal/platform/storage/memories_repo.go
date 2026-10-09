@@ -10,6 +10,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -111,6 +112,19 @@ func (r *MemoriesRepo) ListByProject(ctx context.Context, projectID string) ([]*
 		return nil, fmt.Errorf("list memories for project %s: %w", projectID, err)
 	}
 	return toMemoriesList(rows), nil
+}
+
+// PageByProject reads one window of a project's memories, oldest first, and how many it has.
+func (r *MemoriesRepo) PageByProject(ctx context.Context, projectID string, w paging.Window) ([]*memories.Memory, int, error) {
+	rows, err := r.q.ListMemoriesPage(ctx, sqlcgen.ListMemoriesPageParams{ProjectID: nullString(projectID), Limit: int64(w.Limit), Offset: int64(w.Offset)})
+	if err != nil {
+		return nil, 0, fmt.Errorf("page memories for project %s: %w", projectID, err)
+	}
+	total, err := r.q.CountMemoriesByProject(ctx, nullString(projectID))
+	if err != nil {
+		return nil, 0, fmt.Errorf("count memories for project %s: %w", projectID, err)
+	}
+	return toMemoriesList(rows), int(total), nil
 }
 
 func (r *MemoriesRepo) Update(ctx context.Context, m *memories.Memory, authorVia string, evts ...eventbus.OutboxEvent) error {

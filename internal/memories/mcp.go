@@ -184,7 +184,7 @@ func memoryListTool(s *Service) mcptool.Tool {
 			"Pick the ones whose when-to-use matches your task and read them with memory_get.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in memoryListIn) (any, error) {
-			ms, err := s.ListForProject(ctx, in.ProjectID)
+			ms, total, err := s.PageForProject(ctx, in.ProjectID, in.Window())
 			if err != nil {
 				return nil, err
 			}
@@ -194,7 +194,7 @@ func memoryListTool(s *Service) mcptool.Tool {
 					ID: m.ID, ProjectID: m.ProjectID, Kind: m.Kind, Title: m.Title, WhenToUse: m.WhenToUse, AlwaysIncluded: m.AlwaysIncluded, Footer: m.Footer,
 				})
 			}
-			return mcptool.Paginate(items, in.PageArgs), nil
+			return mcptool.PageOf(items, total, in.Window()), nil
 		})
 }
 
