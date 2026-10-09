@@ -202,8 +202,9 @@ import SiteLayout from '../layouts/SiteLayout.astro';
 	}
 
 	@media (prefers-reduced-motion: reduce) {
+		/* !important to hold the fade against landing.css, which stops every animation under reduced motion. */
 		.not-found > * {
-			animation: fade 150ms var(--ease-standard) both;
+			animation: fade 150ms var(--ease-standard) both !important;
 		}
 	}
 

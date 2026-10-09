@@ -96,11 +96,15 @@ Full text: [`practices/design-language.md`](https://github.com/otal-labs/nexul/b
 Every page's content floats in a raised, frosted panel over a near-black
 canvas that carries a soft light field; light mode is its own soft grey
 canvas with white panels. One ember accent, the `brand` token, marks the
-primary action, focus, the active nav item, selection, your own chat
-messages, checked controls and progress, and nothing else; status keeps its
-own hues as a dot or icon beside plain text. Technical data (ids, repos,
-timestamps) is set in JetBrains Mono. Extend the token set in
-`web/src/index.css` when a design needs one; never a one-off colour.
+primary action, the active nav item, selection, your own chat messages,
+checked controls and progress, and nothing else; focus is an ink outline, and
+status keeps its own hues as a dot or icon beside plain text. Page titles are
+set in Fraunces, technical data (ids, repos, timestamps) in JetBrains Mono,
+everything else in Inter. The public site uses the same tokens and roles:
+`website/src/styles/tokens.css` maps the app's values onto the docs theme, and
+reading pages keep their text on the canvas. Extend the token set in
+`web/src/index.css` (and the site's `tokens.css`) when a design needs one;
+never a one-off colour.
 
 ## What enforces the rules
 

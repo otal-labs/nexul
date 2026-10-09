@@ -355,3 +355,111 @@ div:has(+ #nd-sidebar-mobile) {
 	}
 }
 
+
+/* Motion. The drawer is the phone menu's sheet on the same clock (site-header.css); Radix waits for these keyframes
+   before it unmounts the drawer. Search opens on the app's dialog clock from a pointer and at once from a key. */
+
+@keyframes sheet-in {
+	from {
+		opacity: 0;
+		transform: translateX(calc(100% + 8px));
+	}
+}
+
+@keyframes sheet-out {
+	to {
+		opacity: 0;
+		transform: translateX(calc(100% + 8px));
+	}
+}
+
+@keyframes overlay-in {
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes overlay-out {
+	to {
+		opacity: 0;
+	}
+}
+
+@keyframes dialog-in {
+	from {
+		opacity: 0;
+		transform: translateY(6px) scale(0.97);
+	}
+}
+
+@keyframes dialog-out {
+	to {
+		opacity: 0;
+		transform: scale(0.98);
+	}
+}
+
+#nd-sidebar-mobile[data-state='open'] {
+	animation: sheet-in 300ms var(--ease-drawer) both;
+}
+
+#nd-sidebar-mobile[data-state='closed'] {
+	animation: sheet-out 220ms var(--ease-out) both;
+}
+
+div:has(+ #nd-sidebar-mobile)[data-state='open'] {
+	animation: overlay-in 300ms var(--ease-drawer) both;
+}
+
+div:has(+ #nd-sidebar-mobile)[data-state='closed'] {
+	animation: overlay-out 220ms var(--ease-out) both;
+}
+
+.site-search-dialog[data-state='open'] {
+	animation: dialog-in 220ms var(--ease-out) both;
+}
+
+.site-search-dialog[data-state='closed'] {
+	animation: dialog-out 150ms var(--ease-out) both;
+}
+
+.site-search-overlay[data-state='open'] {
+	animation: overlay-in 220ms var(--ease-out) both;
+}
+
+.site-search-overlay[data-state='closed'] {
+	animation: overlay-out 150ms var(--ease-out) both;
+}
+
+:root[data-input='key'] :is(#nd-sidebar-mobile, div:has(+ #nd-sidebar-mobile), .site-search-dialog, .site-search-overlay) {
+	animation: none;
+}
+
+/* Reduced motion: everything Fumadocs moves lands at its end state; the overlays above keep a 150ms fade. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0ms;
+		transition-duration: 0ms;
+	}
+
+	#nd-sidebar-mobile[data-state='open'],
+	div:has(+ #nd-sidebar-mobile)[data-state='open'],
+	.site-search-dialog[data-state='open'],
+	.site-search-overlay[data-state='open'] {
+		animation: overlay-in 150ms var(--ease-standard) both;
+	}
+
+	#nd-sidebar-mobile[data-state='closed'],
+	div:has(+ #nd-sidebar-mobile)[data-state='closed'],
+	.site-search-dialog[data-state='closed'],
+	.site-search-overlay[data-state='closed'] {
+		animation: overlay-out 150ms var(--ease-standard) both;
+	}
+
+	:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active],
+	.doc-card {
+		transition: none;
+	}
+}
