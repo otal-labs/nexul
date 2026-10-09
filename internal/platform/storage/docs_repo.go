@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/docs/richtext"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -56,6 +57,22 @@ func (r *DocsRepo) GetByID(ctx context.Context, id string) (*docs.Doc, error) {
 		return nil, notFoundIfNoRows(err)
 	}
 	return toDoc(row), nil
+}
+
+// ScopesOf returns the project and workspace of each known doc in ids, in one read; a doc in no project has neither.
+func (r *DocsRepo) ScopesOf(ctx context.Context, ids []string) (map[string]access.DocScope, error) {
+	out := make(map[string]access.DocScope, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	rows, err := r.q.ListDocScopes(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("scopes of docs: %w", err)
+	}
+	for _, row := range rows {
+		out[row.ID] = access.DocScope{WorkspaceID: row.WorkspaceID, ProjectID: row.ProjectID}
+	}
+	return out, nil
 }
 
 func (r *DocsRepo) List(ctx context.Context) ([]*docs.Doc, error) {

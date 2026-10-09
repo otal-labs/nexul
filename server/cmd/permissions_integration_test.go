@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"io"
 	"log/slog"
@@ -92,7 +93,7 @@ func outcome(err error) string {
 }
 
 func as(userID string) context.Context {
-	return identity.WithActor(context.Background(), identity.Actor{ID: userID})
+	return withTestMemo(identity.WithActor(context.Background(), identity.Actor{ID: userID}))
 }
 
 func contains[T any](items []T, err error, match func(T) bool) error {
@@ -156,19 +157,31 @@ type permFixture struct {
 // newWired wires the real composition root over a fresh database, before anyone has signed in.
 func newWired(t *testing.T) (*coreServices, *storage.Store) {
 	t.Helper()
-	db := mentionsTestDB(t)
+	return wiredOver(t, mentionsTestDB(t))
+}
+
+// wiredOver wires the composition root over db, already migrated and seeded with the general project.
+func wiredOver(t *testing.T, db *sql.DB) (*coreServices, *storage.Store) {
+	t.Helper()
 	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	bus := inprocess.New(inprocess.Options{Logger: logger, DedupeStore: store.ProcessedEvents, DeadLetterStore: store.DeadLetters})
 	t.Cleanup(func() { _ = bus.Close() })
 	cfg := &config.Config{DBPath: filepath.Join(t.TempDir(), "nexul.db"), HTTPAddr: "127.0.0.1:0", AuthSecret: "0123456789abcdef0123456789abcdef"}
-	return wireCoreServices(cfg, store, []byte("0123456789abcdef0123456789abcdef"), bus, logger), store
+	svc := wireCoreServices(cfg, store, []byte("0123456789abcdef0123456789abcdef"), bus, logger)
+	useTestMemoOf(t, svc.accessSvc)
+	return svc, store
 }
 
 func newPermFixture(t *testing.T) permFixture {
 	t.Helper()
-	ctx := context.Background()
 	svc, store := newWired(t)
+	return seedPermFixture(t, svc, store)
+}
+
+func seedPermFixture(t *testing.T, svc *coreServices, store *storage.Store) permFixture {
+	t.Helper()
+	ctx := context.Background()
 
 	for _, id := range people {
 		_, _, err := store.Users.UpsertUser(ctx, &auth.Identity{UserID: id, Provider: auth.ProviderGitHub, ProviderUserID: id, Login: id})

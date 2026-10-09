@@ -156,44 +156,51 @@ func (c *countingRoles) MemberRole(ctx context.Context, workspaceID, userID stri
 	return c.fakeRoles.MemberRole(ctx, workspaceID, userID)
 }
 
-func TestCanDocs_AnswersAsCanDoesPerDoc(t *testing.T) {
+func TestCanDocs_AnswersAsASingleCheckDoes(t *testing.T) {
 	s, repo := restrictedFixture(t)
-	s.SetDocWorkspaces(&fakeDocWorkspace{
+	docWorkspaces := &fakeDocWorkspace{
 		byDoc:     map[string]string{"d-open": "ws", "d-open-2": "ws", "d-hidden": "ws"},
 		projectOf: map[string]string{"d-open": "p-open", "d-open-2": "p-open", "d-hidden": "p-hidden"},
-	})
+	}
+	s.SetDocWorkspaces(docWorkspaces)
 	setOverwrite(repo, "doc", "d-hidden", "client", permissions.SetOf(permissions.DocsRead))
 	require.NoError(t, repo.Set(t.Context(), "doc", "d-open-2", "team", nil, permissions.SetOf(permissions.DocsRead)))
 	setOverwrite(repo, "doc", "d-loose", "stranger", permissions.SetOf(permissions.DocsRead, permissions.DocsWrite))
-	byProject := map[string][]string{"p-open": {"d-open", "d-open-2"}, "p-hidden": {"d-hidden"}, "": {"d-loose"}, "p-gone": {"d-gone"}}
+	docIDs := []string{"d-open", "d-open-2", "d-hidden", "d-loose", "d-gone"}
 
 	for _, user := range []string{"client", "team", "owner", "stranger", ""} {
 		for _, action := range []permissions.Action{permissions.DocsRead, permissions.DocsWrite} {
-			for projectID, docIDs := range byProject {
-				got := s.CanDocs(t.Context(), user, projectID, docIDs, action)
-				for _, id := range docIDs {
-					want, err := s.Can(t.Context(), user, id, action)
-					require.NoError(t, err)
-					assert.Equal(t, want, got[id], "%s %s on %s", user, action, id)
-				}
+			anywhere := s.CanDocs(t.Context(), user, "", docIDs, action)
+			for _, id := range docIDs {
+				want := s.HasPermission(t.Context(), user, docWorkspaces.byDoc[id], action, "doc", id)
+				assert.Equal(t, want, anywhere[id], "%s %s on %s", user, action, id)
+				named := s.CanDocs(t.Context(), user, docWorkspaces.projectOf[id], []string{id}, action)
+				assert.Equal(t, want, named[id], "%s %s on %s in its project", user, action, id)
 			}
 		}
 	}
 }
 
-func TestCanDocs_ReadsMembershipOncePerProject(t *testing.T) {
-	s, _ := restrictedFixture(t)
+func TestCanDocs_ReadsEachLayerOnceForTheLot(t *testing.T) {
+	s, repo := restrictedFixture(t)
 	roles := &countingRoles{fakeRoles: newFakeRoles()}
-	roles.set("ws", "team", RoleInfo{Permissions: permissions.SetOf(permissions.DocsRead)})
+	roles.set("ws", "team", RoleInfo{Permissions: permissions.SetOf(permissions.DocsWrite)})
 	s.SetRoles(roles)
 	docIDs := make([]string, 50)
+	byDoc, projectOf := map[string]string{}, map[string]string{}
 	for i := range docIDs {
 		docIDs[i] = fmt.Sprintf("d-%d", i)
+		byDoc[docIDs[i]], projectOf[docIDs[i]] = "ws", []string{"p-open", "p-hidden"}[i%2]
 	}
+	s.SetDocWorkspaces(&fakeDocWorkspace{byDoc: byDoc, projectOf: projectOf})
+	setOverwrite(repo, "doc", "d-49", "team", permissions.SetOf(permissions.DocsRead))
+	repo.resetReads()
 
-	got := s.CanDocs(t.Context(), "team", "p-open", docIDs, permissions.DocsRead)
+	got := s.CanDocs(t.Context(), "team", "", docIDs, permissions.DocsRead)
 
 	assert.Len(t, got, 50)
 	assert.True(t, got["d-49"])
-	assert.Equal(t, 1, roles.calls)
+	assert.False(t, got["d-48"])
+	assert.Equal(t, 1, roles.calls, "membership once for the lot")
+	assert.Equal(t, readCounts{getMany: 1, get: 1}, repo.readCounts(), "the workspace overwrite, then every doc's in one read")
 }

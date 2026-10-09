@@ -360,14 +360,14 @@ func TestTicketsRepo_Lists_LoadLabelsWithoutBindingEveryTicketID(t *testing.T) {
 		"all":        func() ([]*tickets.Ticket, error) { return s.Tickets.List(ctx) },
 		"by project": func() ([]*tickets.Ticket, error) { return s.Tickets.ListByProject(ctx, "project-general") },
 	} {
-		st.reset()
+		st.Reset()
 		got, err := list()
 		require.NoError(t, err, name)
 
 		require.Len(t, got, 40, name)
 		assert.Equal(t, []string{"bug", "ui"}, got[0].Labels, name)
 		assert.Empty(t, got[1].Labels, name)
-		assert.Equal(t, int64(2), st.n.Load(), "%s: the tickets, then their labels", name)
-		assert.LessOrEqual(t, st.maxArgs.Load(), int64(1), "%s: values bound by one statement", name)
+		assert.Equal(t, int64(2), st.Count(), "%s: the tickets, then their labels", name)
+		assert.LessOrEqual(t, st.MaxArgs(), int64(1), "%s: values bound by one statement", name)
 	}
 }

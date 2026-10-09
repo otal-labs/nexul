@@ -209,6 +209,14 @@ func withIdentity(next http.Handler) http.Handler {
 	})
 }
 
+// withAccessMemo gives each API request its own memo of access reads, so a list reads each permission layer once
+// however many rows it checks (ADR 0135).
+func withAccessMemo(a *access.Service, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r.WithContext(access.WithMemo(r.Context(), a.NewMemo())))
+	})
+}
+
 // livePushTopics are the bus topics the browser socket bridges onto. Append-only: new streams add topics here.
 var livePushTopics = []string{
 	docs.TopicCreated,

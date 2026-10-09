@@ -76,14 +76,8 @@ func (r *Runner) ActiveTrails(ctx context.Context, targetType TargetType, target
 		return nil, fmt.Errorf("list active trails: %w", err)
 	}
 	actor := actorID(ctx)
-	readable := map[string]bool{}
 	for _, t := range list {
-		ok, seen := readable[t.WorkspaceID]
-		if !seen {
-			ok = r.perm.HasPermission(ctx, actor, t.WorkspaceID, permissions.PlaysRead, "", "")
-			readable[t.WorkspaceID] = ok
-		}
-		if ok && r.opensProject(ctx, t) {
+		if r.perm.HasPermission(ctx, actor, t.WorkspaceID, permissions.PlaysRead, "", "") && r.opensProject(ctx, t) {
 			out[t.TargetID] = t
 		}
 	}

@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,6 +24,17 @@ func (f fakeScopes) WorkspaceIDForProject(_ context.Context, projectID string) (
 		return "", apperrs.ErrNotFound
 	}
 	return ws, nil
+}
+
+func (f fakeScopes) ProjectIDs(_ context.Context, workspaceID string) ([]string, error) {
+	var out []string
+	for projectID, ws := range f.projects {
+		if ws == workspaceID {
+			out = append(out, projectID)
+		}
+	}
+	slices.Sort(out)
+	return out, nil
 }
 
 func (f fakeScopes) UnrestrictedWorkspaceIDsForUser(_ context.Context, userID string) ([]string, error) {

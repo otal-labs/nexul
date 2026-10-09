@@ -43,6 +43,8 @@ type server struct {
 	prompts      []prompt
 	instructions string
 	logger       *slog.Logger
+	// memo starts each request's memo of access reads; nil leaves the context as it arrived.
+	memo func(context.Context) context.Context
 	// audit records a call to a tool that changes state (ADR 0138); nil records nothing.
 	audit func(ctx context.Context, tool string)
 }
@@ -62,7 +64,7 @@ func (s server) handler(instanceURL func(context.Context) (string, error)) http.
 		},
 		SetCacheable: setCacheable,
 	})
-	srv.AddReceivingMiddleware(recoverPanics(logger))
+	srv.AddReceivingMiddleware(recoverPanics(logger), memoize(s.memo))
 	limits := &limiters{byActor: map[string]*rate.Limiter{}}
 	for _, t := range s.tools {
 		srv.AddTool(sdkTool(t), toolHandler(t, limits, s.audit, logger))
@@ -105,6 +107,18 @@ func recoverPanics(logger *slog.Logger) sdk.Middleware {
 				}
 				result, err = nil, &jsonrpc.Error{Code: jsonrpc.CodeInternalError, Message: internalMessage(traceID)}
 			}()
+			return next(ctx, method, req)
+		}
+	}
+}
+
+// memoize runs every request, a tool call or a resource read, on a context of its own memo (ADR 0135).
+func memoize(memo func(context.Context) context.Context) sdk.Middleware {
+	return func(next sdk.MethodHandler) sdk.MethodHandler {
+		return func(ctx context.Context, method string, req sdk.Request) (sdk.Result, error) {
+			if memo != nil {
+				ctx = memo(ctx)
+			}
 			return next(ctx, method, req)
 		}
 	}

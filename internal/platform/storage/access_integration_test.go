@@ -58,6 +58,15 @@ func (sc testScopes) WorkspaceIDForProject(ctx context.Context, projectID string
 	return p.WorkspaceID, nil
 }
 
+func (sc testScopes) ProjectIDs(ctx context.Context, workspaceID string) ([]string, error) {
+	ps, err := sc.s.Projects.List(ctx, workspaceID)
+	ids := make([]string, len(ps))
+	for i, p := range ps {
+		ids[i] = p.ID
+	}
+	return ids, err
+}
+
 func (sc testScopes) UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
 	return sc.s.WorkspaceMembers.UnrestrictedWorkspaceIDs(ctx, userID)
 }

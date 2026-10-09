@@ -439,7 +439,9 @@ blank imports except for driver registration (`_ "modernc.org/sqlite"`).
   makes every burst of parallel requests reopen connections. Do not raise
   the pool without a written rationale.
 - A commit notifies the serializer's broadcast, which is what wakes the
-  delivery loops (section 7). A rollback wakes nobody.
+  delivery loops (section 7) and clears every access memo (section 17). A
+  rollback wakes nobody. A write that skips the serializer is also never seen
+  by a memo, which goes on answering from what it read before.
 
 ### Schema, indexes and migrations
 
@@ -559,12 +561,22 @@ No version numbers here; `go.mod` is the manifest of record.
 
 ## 17. Access checks in lists
 
-A use-case that filters or annotates a list by permission checks access once
-per project, never once per item. `access.CanDocs` answers for a project's
-docs from one read of its access layers, and `permissions.Filter` checks
-each distinct scope once and keeps the items in it; a per-item `Can` in a
-loop runs several statements for every row, so the list's cost grows with
-its length instead of with its number of projects. A live frame's audience is
-checked once per person, not once per socket. These batch helpers are the
-rule until access answers are memoised per request; a new list reaches for
-them, or adds one beside them.
+Access answers are memoised (ADR 0135). The HTTP gateway gives each `/api/`
+request a memo, the MCP adapter each JSON-RPC request, and the live hub's
+audience one across frames; every commit clears them all. With a memo on the
+context, a per-item `RequireProject` or `Can` in a loop reads each project's
+layers once, so a list that checks rows by project needs no batching of its
+own. Do not add a per-caller cache of access answers: it duplicates the memo
+and, unlike it, misses the commit that revokes a grant.
+
+What the memo cannot share is a read per resource. A list of docs asks
+`access.CanDocs` once for all of them, which reads their overwrites and where
+they live in one statement each; pass the project when every doc is in it.
+`permissions.Filter` still checks each distinct scope once, which is what
+keeps a scope that needs its own read to resolve (a deploy's stack, a review's
+repository) to one read per scope. A list that could filter in SQL asks
+`access.ProjectsWith` for the projects in which the person holds the action.
+
+Background work (event consumers, play runs) carries no memo and reads every
+time. A guard in `server/cmd/access_memo_test.go` pins each list path's
+statements as the same at any length; a new list path joins it.
