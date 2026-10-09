@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { api, errorMessage } from "@/api/client";
 import type { Role } from "@/models/Role";
 import type { Workspace } from "@/models/Workspace";
+import type { LiveFollower } from "@/lib/live";
 
 export const getWorkspaceRolesKey = "getWorkspaceRoles";
 
@@ -74,4 +75,9 @@ export const useCloneWorkspaceRole = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+export const roleFollower: LiveFollower = {
+  "role.updated": ({ workspace_id }: { workspace_id: string }, { client }) =>
+    client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, workspace_id], exact: true }),
 };

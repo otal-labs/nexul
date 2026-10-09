@@ -5,6 +5,7 @@ import { api, errorMessage } from "@/api/client";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { getChatMessagesKey, upsertCachedMessage } from "@/hooks/ChatHooks";
 import { applyReaction, type Message } from "@/models/Chat";
+import type { LiveFollower } from "@/lib/live";
 
 export interface ReactionChange {
   messageId: string;
@@ -45,4 +46,17 @@ export const useToggleReaction = (message: Message) => {
     const reacted = !(message.reactions ?? []).some((r) => r.emoji === emoji && r.user_ids.includes(userId));
     react.mutate({ messageId: message.id, userId, emoji, reacted });
   };
+};
+
+interface ReactionsChangedPayload {
+  conversation_id: string;
+  message_id: string;
+  user_id: string;
+  emoji: string;
+  reacted: boolean;
+}
+
+export const reactionFollower: LiveFollower = {
+  "chat.message.reactions_changed": (p: ReactionsChangedPayload, { client }) =>
+    applyCachedReaction(client, p.conversation_id, { messageId: p.message_id, userId: p.user_id, emoji: p.emoji, reacted: p.reacted }),
 };

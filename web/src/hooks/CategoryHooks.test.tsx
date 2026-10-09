@@ -4,7 +4,9 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
-import { useClearTicketCategory, useMoveTicketToCategory } from "@/hooks/CategoryHooks";
+import { useClearTicketCategory, useMoveTicketToCategory, categoryFollower } from "@/hooks/CategoryHooks";
+import type { Category } from "@/models/Category";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 vi.mock("@/api/client", () => ({
   api: {
@@ -87,5 +89,34 @@ describe("error paths", () => {
     const { result } = renderHook(() => useClearTicketCategory(), { wrapper });
     await result.current.mutateAsync({ ticketId: "t-1" }).catch(() => {});
     await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+describe("the category follower", () => {
+  const billing: Category = { id: "cat-1", project_id: "p-1", name: "Billing", position: 0, color: "", created_at: "", updated_at: "" };
+  const lists = () =>
+    seeded([
+      [["getCategories"], [billing]],
+      [["getProjectCategories", "p-1"], [billing]],
+      [["getProjectCategories", "p-2"], []],
+    ]);
+
+  it("renames a category in both lists that hold it without a request, and refetches them when it moves", async () => {
+    const client = lists();
+    await followFrame(categoryFollower, "category.updated", { category: { ...billing, name: "Payments" } }, client);
+    expect([client.getQueryData<Category[]>(["getCategories"])?.[0]?.name, client.getQueryData<Category[]>(["getProjectCategories", "p-1"])?.[0]?.name]).toEqual([
+      "Payments",
+      "Payments",
+    ]);
+    expect(isStale(client, ["getCategories"])).toBe(false);
+
+    await followFrame(categoryFollower, "category.updated", { category: { ...billing, position: 3 } }, client);
+    expect([["getCategories"], ["getProjectCategories", "p-1"], ["getProjectCategories", "p-2"]].map((key) => isStale(client, key))).toEqual([true, true, false]);
+  });
+
+  it("drops a deleted category from both lists", async () => {
+    const client = lists();
+    await followFrame(categoryFollower, "category.deleted", { category: billing }, client);
+    expect([client.getQueryData(["getCategories"]), client.getQueryData(["getProjectCategories", "p-1"])]).toEqual([[], []]);
   });
 });

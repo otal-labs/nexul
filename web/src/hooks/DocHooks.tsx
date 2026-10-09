@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { api, errorMessage } from "@/api/client";
 import type { Clarification, ClarificationAnswerInput, ClarificationQuestion, ClarificationRound } from "@/models/Clarification";
 import type { Doc, DocListItem, DocWatchers, SaveDocFormData } from "@/models/Doc";
+import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getDocsKey = "getDocs";
 export const getDocKey = "getDoc";
@@ -227,4 +228,50 @@ export const useCloseClarification = (docId: string) => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+interface DocPayload {
+  doc: Doc;
+  actor_id?: string;
+}
+
+// Watcher and clarification frames name their doc by id (internal/docs/events.go WatchedDoc).
+interface DocRefPayload {
+  doc: { id: string };
+}
+
+const clarificationTopics = [
+  "doc.clarification.round_started",
+  "doc.clarification.round_posted",
+  "doc.clarification.round_ended",
+  "doc.clarification.round_answered",
+  "doc.clarification.answer_saved",
+  "doc.clarification.answer_cleared",
+  "doc.clarification.anything_else_saved",
+  "doc.clarification.closed",
+];
+
+const refetch = (client: QueryClient, queryKey: unknown[]) => client.invalidateQueries({ queryKey, exact: true });
+
+// A deleted folder's docs move to another one; the frame names it, so they move in place.
+const followFolderDeleted = (client: QueryClient, from: string, to: string) => {
+  const move = <T extends { folder_id: string }>(doc: T): T => (doc.folder_id === from ? { ...doc, folder_id: to } : doc);
+  client.setQueriesData<DocListItem[]>({ queryKey: [getDocsKey] }, (list) => (list?.some((d) => d.folder_id === from) ? list.map(move) : list));
+  client.setQueriesData<Doc>({ queryKey: [getDocKey] }, (doc) => doc && move(doc));
+};
+
+export const docFollower: LiveFollower = {
+  "doc.created": ({ doc }: DocPayload, { client }) => Promise.all([refetch(client, [getDocsKey]), refetch(client, [getDocsKey, "byProject", doc.project_id])]),
+  "doc.updated": ({ doc, actor_id: actorID }: DocPayload, { client }) => {
+    docChanged(client, doc);
+    // An edit makes its editor a watcher; one already watching changes nothing there.
+    const watchers = client.getQueryData<DocWatchers>([getDocWatchersKey, doc.id]);
+    if (!actorID || watchers?.watchers.some((w) => w.user_id === actorID)) return;
+    return refetch(client, [getDocWatchersKey, doc.id]);
+  },
+  "doc.moved": ({ doc }: DocPayload, { client }) => docChanged(client, doc),
+  "doc.folder.deleted": ({ folder, moved_to_folder_id: to }: { folder: { id: string }; moved_to_folder_id: string }, { client }) =>
+    followFolderDeleted(client, folder.id, to),
+  "doc.watchers.changed": ({ doc }: DocRefPayload, { client }) => refetch(client, [getDocWatchersKey, doc.id]),
+  ...followEach(clarificationTopics, ({ doc }: DocRefPayload, { client }) => refetch(client, [getDocClarificationKey, doc.id])),
 };

@@ -14,8 +14,10 @@ import {
   useRemoveProjectRepo,
   useRenameProject,
   useSaveTestsAnswer,
+  projectFollower,
 } from "@/hooks/ProjectHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 vi.mock("@/api/client", () => ({
   api: {
@@ -164,5 +166,19 @@ describe("useSaveTestsAnswer", () => {
     const { result } = renderHook(() => useSaveTestsAnswer(), { wrapper });
     await result.current.mutateAsync({ projectId: "p-1", testsLocation: "separate", testsRepo: null, attached: [] });
     expect(api.put).toHaveBeenCalledWith("/api/projects/p-1/tests-location", { tests_location: "separate" });
+  });
+});
+
+describe("the project follower", () => {
+  it("refetches who has access to the project a grant names, and every project's after a membership change", async () => {
+    const client = seeded([
+      [["getProjectAccess", "p-1"], []],
+      [["getProjectAccess", "p-2"], []],
+    ]);
+    await followFrame(projectFollower, "access.grant.changed", { user_id: "u-2", resource_type: "project", resource_id: "p-1" }, client);
+    expect([isStale(client, ["getProjectAccess", "p-1"]), isStale(client, ["getProjectAccess", "p-2"])]).toEqual([true, false]);
+
+    await followFrame(projectFollower, "workspace.member.updated", { user_id: "u-2", workspace_id: "ws-1" }, client);
+    expect(isStale(client, ["getProjectAccess", "p-2"])).toBe(true);
   });
 });

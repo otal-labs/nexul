@@ -2,8 +2,9 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
-import type { VoiceOccupancy } from "@/models/Voice";
+import type { VoiceOccupancy, VoiceOccupant } from "@/models/Voice";
 import { useVoiceOccupancyStore } from "@/stores/voiceOccupancyStore";
+import type { LiveFollower } from "@/lib/live";
 
 export const getVoiceOccupancyKey = "getVoiceOccupancy";
 
@@ -26,3 +27,13 @@ export const useVoiceOccupancy = (enabled = true): VoiceOccupancy => {
   return occupancy;
 };
 
+
+// One voice channel's full occupant list after a change, applied wholesale.
+interface OccupancyChangedPayload {
+  conversation_id: string;
+  occupants: VoiceOccupant[];
+}
+
+export const voiceFollower: LiveFollower = {
+  "voice.occupancy.changed": (p: OccupancyChangedPayload) => useVoiceOccupancyStore.getState().setChannel(p.conversation_id, p.occupants),
+};

@@ -1,18 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { frameHandlers } from "@/hooks/liveFrameHandlers";
-import { pushTopics } from "@/hooks/livePushTopics";
 import pushed from "@/hooks/liveTopics.generated.json";
+import { followedTopics as followed } from "@/hooks/useLiveEvents";
 
 // Topics the server pushes that the browser leaves alone on purpose, each with why.
 const ignoredTopics: Record<string, string> = {
   "ticket.assignee_changed": "a deprecated alias published beside ticket.developer_changed, which the browser follows",
 };
 
-const followed = new Set([...Object.keys(frameHandlers), ...Object.keys(pushTopics)]);
-
 // The server's audience rules generate liveTopics.generated.json (make live-topics); a topic without a rule reaches
-// nobody, so the two tables only work while they agree.
+// nobody, so the followers only work while they and the server agree.
 describe("the live topic contract", () => {
   it("follows no topic the server never pushes", () => {
     expect([...followed].filter((topic) => !pushed.includes(topic))).toEqual([]);

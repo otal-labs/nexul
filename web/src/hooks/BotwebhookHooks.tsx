@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import type { Botwebhook } from "@/models/Botwebhook";
+import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getBotwebhooksKey = "getBotwebhooks";
 
@@ -68,3 +69,9 @@ export const useDeleteBotwebhook = () => {
     onError: (error) => toast.error(errorMessage(error)),
   });
 };
+
+// An open Bots section follows a bot made, changed, deleted, or restored anywhere, its URL included.
+export const botwebhookFollower: LiveFollower = followEach(
+  ["botwebhook.created", "botwebhook.updated", "botwebhook.deleted", "botwebhook.restored"],
+  ({ conversation_id }: { conversation_id: string }, { client }) => client.invalidateQueries({ queryKey: [getBotwebhooksKey, conversation_id] }),
+);

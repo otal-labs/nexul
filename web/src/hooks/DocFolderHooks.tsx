@@ -5,6 +5,7 @@ import { api, errorMessage } from "@/api/client";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import type { Doc } from "@/models/Doc";
 import type { DocFolder } from "@/models/DocFolder";
+import { dropRow, type LiveFollower } from "@/lib/live";
 
 export const getDocFoldersKey = "getDocFolders";
 
@@ -71,4 +72,17 @@ export const useMoveDoc = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+interface FolderPayload {
+  folder: DocFolder;
+}
+
+// Folders list in creation order, so a rename keeps its row's place.
+export const docFolderFollower: LiveFollower = {
+  "doc.folder.created": ({ folder }: FolderPayload, { client }) =>
+    client.invalidateQueries({ queryKey: [getDocFoldersKey, folder.project_id], exact: true }),
+  "doc.folder.updated": ({ folder }: FolderPayload, { client }) =>
+    client.setQueryData<DocFolder[]>([getDocFoldersKey, folder.project_id], (list) => list?.map((f) => (f.id === folder.id ? folder : f))),
+  "doc.folder.deleted": ({ folder }: FolderPayload, { client }) => dropRow(client, [getDocFoldersKey, folder.project_id], folder.id),
 };

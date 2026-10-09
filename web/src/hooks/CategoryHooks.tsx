@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { api, errorMessage } from "@/api/client";
 import { ticketChanged } from "@/hooks/TicketCache";
 import type { Category } from "@/models/Category";
+import { dropRow, replaceRow, type LiveFollower } from "@/lib/live";
 
 export const getCategoriesKey = "getCategories";
 export const getProjectCategoriesKey = "getProjectCategories";
@@ -114,4 +115,19 @@ export const useClearTicketCategory = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+interface CategoryPayload {
+  category: Category;
+}
+
+// The instance-wide list and the category's project list are the two that hold it.
+const holders = (category: Category) => [[getCategoriesKey], [getProjectCategoriesKey, category.project_id]];
+
+export const categoryFollower: LiveFollower = {
+  "category.created": ({ category }: CategoryPayload, { client }) =>
+    Promise.all(holders(category).map((queryKey) => client.invalidateQueries({ queryKey, exact: true }))),
+  "category.updated": ({ category }: CategoryPayload, { client }) =>
+    Promise.all(holders(category).map((queryKey) => replaceRow(client, queryKey, category))),
+  "category.deleted": ({ category }: CategoryPayload, { client }) => holders(category).forEach((queryKey) => dropRow(client, queryKey, category.id)),
 };

@@ -17,7 +17,9 @@ import {
   useFetchMemoryVersions,
   useRevertMemory,
   useUpdateMemory,
+  memoryFollower,
 } from "@/hooks/MemoryHooks";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 vi.mock("@/api/client", () => ({
   api: {
@@ -232,5 +234,43 @@ describe("useFetchCloneDestinations", () => {
     const { result } = renderHook(() => useFetchCloneDestinations(), { wrapper });
     await waitFor(() => expect(result.current.data).toBeDefined());
     expect(result.current.data).toEqual([{ workspace: workspaces[0], projects }]);
+  });
+});
+
+describe("the memory follower", () => {
+  const place = { id: "m-1", workspace_id: "ws-1", project_id: "p-1" };
+  const views = () =>
+    seeded([
+      [["getMemories", "byWorkspace", "ws-1"], []],
+      [["getMemories", "byWorkspace", "ws-2"], []],
+      [["getMemories", "byProject", "p-1"], []],
+      [["getMemories", "byProject", "p-2"], []],
+      [["getMemory", "m-1"], {}],
+      [["getMemory", "m-2"], {}],
+      [["getMemoryVersions", "m-1"], []],
+      [["getInterviewAnswers", "p-1"], []],
+    ]);
+
+  it("refetches the edited memory, its versions and the two lists holding it, and nothing else", async () => {
+    const client = views();
+    await followFrame(memoryFollower, "memory.updated", { memory: place, author_id: "u-2" }, client);
+    const stale = [["getMemories", "byWorkspace", "ws-1"], ["getMemories", "byProject", "p-1"], ["getMemory", "m-1"], ["getMemoryVersions", "m-1"]];
+    const kept = [["getMemories", "byWorkspace", "ws-2"], ["getMemories", "byProject", "p-2"], ["getMemory", "m-2"], ["getInterviewAnswers", "p-1"]];
+    expect(stale.map((key) => isStale(client, key))).toEqual([true, true, true, true]);
+    expect(kept.map((key) => isStale(client, key))).toEqual([false, false, false, false]);
+  });
+
+  it("refetches the project's memories and answers once its interview run has finished", async () => {
+    const client = views();
+    const run = { trail_id: "tr-1", play_id: "pl-1", target_type: "interview", target_id: "p-1", activity: null, ended_at: null, last_error: "" };
+    await followFrame(memoryFollower, "play.run", { ...run, state: "running" }, client);
+    expect(isStale(client, ["getInterviewAnswers", "p-1"])).toBe(false);
+
+    await followFrame(memoryFollower, "play.run", { ...run, state: "done" }, client);
+    expect([["getMemories", "byProject", "p-1"], ["getInterviewAnswers", "p-1"], ["getMemories", "byProject", "p-2"]].map((key) => isStale(client, key))).toEqual([
+      true,
+      true,
+      false,
+    ]);
   });
 });
