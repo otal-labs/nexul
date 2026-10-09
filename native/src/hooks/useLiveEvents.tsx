@@ -21,6 +21,8 @@ import { getRunnersKey } from "@/hooks/RunnerHooks";
 import { getStackDeploysKey } from "@/hooks/StackHooks";
 import { getProjectStatusesKey } from "@/hooks/StatusHooks";
 import { getTicketKey, getTicketsByProjectKey } from "@/hooks/TicketHooks";
+import { getMyRoleKey, getWorkspacesKey } from "@/hooks/WorkspaceHooks";
+import { recordQueries } from "@/lib/queryClient";
 import type { Message } from "@/models/Chat";
 import type { MeResponse } from "@/models/User";
 import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
@@ -34,10 +36,13 @@ const pushTopics: Record<string, string[]> = {
   "chat.conversation.deleted": [getChatConversationsKey, getChatMessagesKey, getChatUnreadKey],
   // A private channel the viewer lost drops from the list, and its open thread refetches into not found.
   "chat.conversation.members_changed": [getChatConversationsKey, getChatMessagesKey, getChatUnreadKey],
-  "account.profile_updated": [getWorkspacePeopleKey],
+  "account.profile_updated": [getWorkspacePeopleKey, getMeKey],
   "account.removed": [getWorkspacePeopleKey],
   "workspace.member.added": [getWorkspacePeopleKey],
   "workspace.member.removed": [getWorkspacePeopleKey],
+  "workspace.updated": [getWorkspacesKey],
+  // A role frame names no holder, so the viewer's own permissions refetch and every gate follows them.
+  "role.updated": [getMyRoleKey],
   // A message frame also patches the open thread in place (patchChatMessages), so its page is never downloaded again.
   "chat.message.created": [getChatUnreadKey],
   "chat.message.deleted": [getChatUnreadKey],
@@ -69,10 +74,10 @@ const subjectId = (payload: unknown): string | undefined => {
   return p?.ticket?.id ?? p?.doc?.id ?? p?.id;
 };
 
-const invalidationKey = (key: string, frame: ServerFrame): string[] => {
+const invalidationFilters = (key: string, frame: ServerFrame) => {
   const id = detailKeys.has(key) ? subjectId(frame.payload) : undefined;
-  if (!id) return [key];
-  return [key, id];
+  if (!id) return { queryKey: [key] };
+  return recordQueries(key, id);
 };
 
 // Topics that can change what the person named as user_id may do, Project access included (ADR 0097).
@@ -110,7 +115,7 @@ export const dispatch = (client: QueryClient) => (frame: ServerFrame) => {
     return;
   }
   patchChatMessages(client, frame);
-  pushTopics[frame.topic]?.forEach((key) => void client.invalidateQueries({ queryKey: invalidationKey(key, frame) }));
+  pushTopics[frame.topic]?.forEach((key) => void client.invalidateQueries(invalidationFilters(key, frame)));
 };
 
 // One socket for the signed-in instance: open while the app is in front, closed in the background.

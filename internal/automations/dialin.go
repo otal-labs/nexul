@@ -34,8 +34,12 @@ type DialinConfig struct {
 	Scope EventScope
 	// Logger for lifecycle and failure logs; defaults to slog.Default().
 	Logger *slog.Logger
-	// PollInterval is how often an idle connection checks for new matching events; defaults to 500ms.
+	// PollInterval is the fallback check for new matching events on an idle connection; a commit wakes it sooner.
+	// Defaults to 5s.
 	PollInterval time.Duration
+	// Wake returns a channel that closes at the next commit, which is when an event lands in the log. Optional; nil
+	// leaves only the fallback poll.
+	Wake func() <-chan struct{}
 	// BatchSize bounds one poll's catch-up read; defaults to 50.
 	BatchSize int
 	// WriteTimeout bounds each frame write; defaults to 10s.
@@ -60,7 +64,10 @@ func NewDialinHandler(svc *Service, cfg DialinConfig) *DialinHandler {
 		cfg.Logger = slog.Default()
 	}
 	if cfg.PollInterval <= 0 {
-		cfg.PollInterval = 500 * time.Millisecond
+		cfg.PollInterval = 5 * time.Second
+	}
+	if cfg.Wake == nil {
+		cfg.Wake = func() <-chan struct{} { return nil }
 	}
 	if cfg.BatchSize <= 0 {
 		cfg.BatchSize = 50
@@ -276,38 +283,46 @@ func (h *DialinHandler) recordRun(ctx context.Context, automationID string, a *a
 	close(a.done)
 }
 
-// deliverLoop delivers matching events one at a time, waiting for each run's report before the next.
+// deliverLoop delivers matching events one at a time, waiting for each run's report before the next. It reads at
+// start, after every commit, and on each fallback tick.
 func (h *DialinHandler) deliverLoop(ctx context.Context, c *automationConn) {
 	ticker := time.NewTicker(h.cfg.PollInterval)
 	defer ticker.Stop()
 	for {
+		committed := h.cfg.Wake()
+		if !h.deliverPending(ctx, c) {
+			return
+		}
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-		}
-		automation, err := h.cfg.Repo.Get(ctx, c.id)
-		if err != nil {
-			h.log.Warn("automation lookup failed during delivery", "automation_id", c.id, "error", err)
-			continue
-		}
-		if !automation.Enabled || len(automation.Subscriptions) == 0 {
-			continue
-		}
-		cursor, _, err := h.cfg.Cursors.Get(ctx, c.id)
-		if err != nil {
-			h.log.Warn("load automation cursor failed", "automation_id", c.id, "error", err)
-			continue
-		}
-		events, err := h.cfg.EventLog.After(ctx, automation.Subscriptions, cursor, h.cfg.BatchSize)
-		if err != nil {
-			h.log.Warn("read event log failed", "automation_id", c.id, "error", err)
-			continue
-		}
-		if !h.deliverBatch(ctx, c, automation.WorkspaceID, events) {
-			return
+		case <-committed:
 		}
 	}
+}
+
+// deliverPending delivers what the log holds past the cursor; false means the connection is closing.
+func (h *DialinHandler) deliverPending(ctx context.Context, c *automationConn) bool {
+	automation, err := h.cfg.Repo.Get(ctx, c.id)
+	if err != nil {
+		h.log.Warn("automation lookup failed during delivery", "automation_id", c.id, "error", err)
+		return true
+	}
+	if !automation.Enabled || len(automation.Subscriptions) == 0 {
+		return true
+	}
+	cursor, _, err := h.cfg.Cursors.Get(ctx, c.id)
+	if err != nil {
+		h.log.Warn("load automation cursor failed", "automation_id", c.id, "error", err)
+		return true
+	}
+	events, err := h.cfg.EventLog.After(ctx, automation.Subscriptions, cursor, h.cfg.BatchSize)
+	if err != nil {
+		h.log.Warn("read event log failed", "automation_id", c.id, "error", err)
+		return true
+	}
+	return h.deliverBatch(ctx, c, automation.WorkspaceID, events)
 }
 
 // deliverBatch delivers events in order, skipping other workspaces' past the cursor; false means the connection is closing.

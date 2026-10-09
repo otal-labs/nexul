@@ -99,7 +99,7 @@ func TestIntegration_RestrictedMember(t *testing.T) {
 			ids = append(ids, p.ID)
 		}
 		assert.Equal(t, []string{pClient}, ids)
-		_, err = s.workspaceSvc.Create(client, uClient, wsDefault, "Mine", "MIN", workspace.ProjectIcon(""))
+		_, err = s.workspaceSvc.Create(client, wsDefault, "Mine", "MIN", workspace.ProjectIcon(""))
 		assert.Equal(t, forbidden, outcome(err))
 		_, err = s.ticketsSvc.Create(client, pClient, "Feedback", "", "", "")
 		assert.NoError(t, err, "Project access answers inside their project")
@@ -226,7 +226,7 @@ func TestIntegration_RestrictedMember_GrantingAndCleanup(t *testing.T) {
 		impact, err := s.workspaceSvc.DeleteImpact(as(uOwner), pClient)
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{uClient, uManager}, []string{impact.RestrictedMembers[0].UserID, impact.RestrictedMembers[1].UserID})
-		require.NoError(t, s.workspaceSvc.Delete(as(uOwner), uOwner, pClient))
+		require.NoError(t, s.workspaceSvc.Delete(as(uOwner), pClient))
 		rows, err := f.store.WorkspaceMembers.ListAllProjectAccess(ctx)
 		require.NoError(t, err)
 		assert.Empty(t, rows)

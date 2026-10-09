@@ -18,7 +18,7 @@ import (
 
 // startBackgroundWorkers must run after event subscriptions, so the outbox relay never outruns consumers.
 func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *storage.Store, bus *inprocess.Bus, svc *coreServices, logger *slog.Logger) (wsHandler *runner.Handler, runnerSvc *runner.Service, runnerHTTP *runner.HTTPHandler, automationsDialin *automations.DialinHandler) {
-	relay := outbox.NewRelay(store.Outbox, bus, outbox.RelayConfig{Wake: store.Commits(), Logger: logger})
+	relay := outbox.NewRelay(store.Outbox, bus, outbox.RelayConfig{Wake: store.Commits().Next, Logger: logger})
 	go func() {
 		if err := relay.Run(ctx); err != nil {
 			logger.Error("outbox relay stopped", "error", err)
@@ -72,6 +72,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		Runs:     store.AutomationRuns,
 		Secrets:  svc.automationSecretsSvc,
 		Scope:    automationScope{lookup: store.EventWorkspaces},
+		Wake:     store.Commits().Next,
 		Logger:   logger,
 	})
 	svc.automationsSvc.SetConnectionRegistry(automationsDialin)

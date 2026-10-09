@@ -47,7 +47,7 @@ func (f templateFixture) newWorkspace(t *testing.T, name, prefix string) (*tenan
 	t.Helper()
 	ws, err := f.svc.tenancySvc.Create(as(uOwner), uOwner, name)
 	require.NoError(t, err)
-	p, err := f.svc.workspaceSvc.Create(as(uOwner), uOwner, ws.ID, name+" app", prefix, "")
+	p, err := f.svc.workspaceSvc.Create(as(uOwner), ws.ID, name+" app", prefix, "")
 	require.NoError(t, err)
 	return ws, p
 }
@@ -219,7 +219,7 @@ func TestIntegration_TemplatesClone(t *testing.T) {
 	})
 
 	t.Run("a body template between projects matches the type name ignoring case, and promotes to the instance", func(t *testing.T) {
-		_, err := f.svc.workspaceSvc.SetTicketTypeTemplate(as(uOwner), uOwner, f.typeID(t, pGeneral, "bug"), "## General's bug")
+		_, err := f.svc.workspaceSvc.SetTicketTypeTemplate(as(uOwner), f.typeID(t, pGeneral, "bug"), "## General's bug")
 		require.NoError(t, err)
 		_, err = f.tpl.Clone(as(uOwner), workspace.TemplateKind, "Bug", atGeneral, atProjectB)
 		require.NoError(t, err)
@@ -231,7 +231,7 @@ func TestIntegration_TemplatesClone(t *testing.T) {
 	})
 
 	t.Run("no match on the other side is not found, and saying so", func(t *testing.T) {
-		_, err := f.svc.workspaceSvc.CreateTicketType(as(uOwner), uOwner, pGeneral, "Chore", "")
+		_, err := f.svc.workspaceSvc.CreateTicketType(as(uOwner), pGeneral, "Chore", "")
 		require.NoError(t, err)
 		_, err = f.tpl.Clone(as(uOwner), workspace.TemplateKind, "chore", atGeneral, atProjectB)
 		assert.Equal(t, notFound, outcome(err))

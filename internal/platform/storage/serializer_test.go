@@ -123,7 +123,7 @@ func TestSerializer_ReadThenWrite_BesideAnUnserializedWriter_NeverLocked(t *test
 	}
 }
 
-func TestStore_Commits_SignalsAfterACommitNotARollback(t *testing.T) {
+func TestStore_Commits_WakeEveryWaiterAfterACommitNotARollback(t *testing.T) {
 	s := newTestStore(t)
 	ctx := t.Context()
 	insert := func(id string, fail error) error {
@@ -134,11 +134,21 @@ func TestStore_Commits_SignalsAfterACommitNotARollback(t *testing.T) {
 			return fail
 		})
 	}
+	woken := func(ch <-chan struct{}) bool {
+		select {
+		case <-ch:
+			return true
+		default:
+			return false
+		}
+	}
 
+	first, second := s.Commits().Next(), s.Commits().Next()
 	require.Error(t, insert("d-rolled-back", fmt.Errorf("boom")))
-	assert.Empty(t, s.Commits(), "a rollback signals nothing")
+	assert.False(t, woken(first), "a rollback wakes nobody")
 
 	require.NoError(t, insert("d-1", nil))
-	require.NoError(t, insert("d-2", nil))
-	assert.Len(t, s.Commits(), 1, "commits coalesce into one pending signal")
+	assert.True(t, woken(first), "a commit wakes the first waiter")
+	assert.True(t, woken(second), "a commit wakes the second waiter too")
+	assert.False(t, woken(s.Commits().Next()), "a waiter that arrives after the commit waits for the next one")
 }

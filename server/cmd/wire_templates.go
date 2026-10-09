@@ -137,7 +137,7 @@ func (l ticketBodyLayer) Write(ctx context.Context, at templates.Location, key, 
 	if err != nil {
 		return err
 	}
-	_, err = l.svc.SetTicketTypeTemplate(ctx, actorID(ctx), t.ID, body)
+	_, err = l.svc.SetTicketTypeTemplate(ctx, t.ID, body)
 	return err
 }
 
