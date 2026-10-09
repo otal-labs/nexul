@@ -15,13 +15,5 @@
     "ui": "@/components/ui",
     "lib": "@/lib",
     "hooks": "@/hooks"
-  },
-  "registries": {
-    "@codedvisuals": {
-      "url": "https://codedvisuals.com/r/{name}.json",
-      "headers": {
-        "Authorization": "Bearer ${CODEDVISUALS_TOKEN}"
-      }
-    }
   }
 }
