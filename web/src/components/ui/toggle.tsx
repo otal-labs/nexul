@@ -11,10 +11,15 @@ const toggleVariants = cva(
         default: "bg-transparent",
         outline:
           "border border-input bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground",
+        // The track's thumb paints the chosen side, so an item keeps no fill of its own.
+        segmented:
+          "rounded-[5px] text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:text-foreground",
       },
       size: {
         default: "h-9 min-w-9 px-2",
         sm: "h-8 min-w-8 px-1.5",
+        // Sits inside a segmented track's 2px inset, so the control as a whole is a small button's height.
+        xs: "h-7 min-w-7 px-2.5 text-xs",
         lg: "h-10 min-w-10 px-2.5",
       },
     },

@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ConnectorCard } from "@/components/settings/ConnectorCard";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { cn } from "@/lib/utils";
 import { useFetchConnectors } from "@/hooks/ConnectorsHooks";
 
 type Tab = "connected" | "not-connected";
@@ -56,23 +56,17 @@ export const ConnectorsSection = ({ bare = false }: ConnectorsSectionProps = {})
       {error && <ErrorDisplay error={error} />}
       {data && (
         <div className="space-y-4">
-          <div role="tablist" aria-label="Connectors" className="flex w-fit gap-1 rounded-md border p-1">
-            {(["connected", "not-connected"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                role="tab"
-                aria-selected={tab === t}
-                onClick={() => setPickedTab(t)}
-                className={cn(
-                  "rounded-md px-3 py-1 text-sm font-medium transition-colors duration-150 ease-standard",
-                  tab === t ? "bg-accent text-primary" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t === "connected" ? "Connected" : "Not connected"}
-              </button>
-            ))}
-          </div>
+          <ToggleGroup
+            type="single"
+            variant="segmented"
+            size="xs"
+            aria-label="Show connectors"
+            value={tab}
+            onValueChange={(next) => next && setPickedTab(next as Tab)}
+          >
+            <ToggleGroupItem value="connected">Connected</ToggleGroupItem>
+            <ToggleGroupItem value="not-connected">Not connected</ToggleGroupItem>
+          </ToggleGroup>
 
           {filtered.length === 0 && <EmptyRow>No connectors here</EmptyRow>}
           {filtered.length > 0 && (

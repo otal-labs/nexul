@@ -12,17 +12,17 @@ interface EnvModeToggleProps {
 export const EnvModeToggle = ({ mode, onMode, fieldsDisabled }: EnvModeToggleProps) => (
   <ToggleGroup
     type="single"
-    variant="outline"
-    size="sm"
+    variant="segmented"
+    size="xs"
     aria-label="Environment input"
     value={mode}
     onValueChange={(next) => next && onMode(next as EnvMode)}
     className="ml-auto"
   >
-    <ToggleGroupItem value="fields" disabled={fieldsDisabled} className="h-7 px-3 text-xs">
+    <ToggleGroupItem value="fields" disabled={fieldsDisabled}>
       Fields
     </ToggleGroupItem>
-    <ToggleGroupItem value="paste" className="h-7 px-3 text-xs">
+    <ToggleGroupItem value="paste">
       Paste .env
     </ToggleGroupItem>
   </ToggleGroup>

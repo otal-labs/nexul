@@ -11,9 +11,6 @@ interface EveryProjectRowProps {
   disabled?: boolean;
 }
 
-const itemClass =
-  "h-7 px-3 text-xs text-muted-foreground transition-colors duration-150 ease-standard data-[state=on]:bg-accent data-[state=on]:text-foreground";
-
 // The list's lead row, like Every domain on a role: it decides whether the project rows below apply at all.
 export const EveryProjectRow = ({ subject, value, onChange, disabled = false }: EveryProjectRowProps) => {
   const restricted = value === EveryProject.None;
@@ -29,18 +26,17 @@ export const EveryProjectRow = ({ subject, value, onChange, disabled = false }: 
       </div>
       <ToggleGroup
         type="single"
-        variant="outline"
-        size="sm"
-        role="radiogroup"
+        variant="segmented"
+        size="xs"
         aria-label={`Every project for ${subject}`}
         disabled={disabled}
         value={value}
         onValueChange={(next) => next && onChange(next === EveryProject.None ? EveryProject.None : EveryProject.Role)}
       >
-        <ToggleGroupItem value={EveryProject.Role} className={itemClass}>
+        <ToggleGroupItem value={EveryProject.Role}>
           From role
         </ToggleGroupItem>
-        <ToggleGroupItem value={EveryProject.None} className={itemClass}>
+        <ToggleGroupItem value={EveryProject.None}>
           Chosen projects
         </ToggleGroupItem>
       </ToggleGroup>
