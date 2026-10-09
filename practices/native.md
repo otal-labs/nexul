@@ -85,8 +85,9 @@ as written. In particular:
   and tappable. A nested folder's stack
   draws its own header, so the parent stack hides its bar over it. No drawer,
   no top tabs. Motion is the platform default for push, tab switch and sheet;
-  everything else that moves is in `practices/design-language.md`'s phone
-  section, with its reduced-motion variant.
+  everything else that moves is in the design language's
+  [Phone motion](design-language.md#phone-motion), with its reduced-motion
+  variant.
 - A gesture always has a second way to do the same thing: the board's
   hold-and-drag is also each card's "Move to" accessibility actions and the
   ticket's status sheet, and the Inbox's swipe is the row's "Mark read"
@@ -106,20 +107,17 @@ as written. In particular:
 - Styling is `className` only; no `StyleSheet.create` except for a value the
   stylesheet cannot express (a safe-area inset). Colors are the `--color-*`
   tokens in `src/global.css`, which share their names with
-  `web/src/index.css` and hold the same values, in both themes: the ember
-  `brand` in the roles `practices/design-language.md` gives it (primary
-  action, the active tab, selection, your own messages, checked controls,
-  progress), focus as ink (`focus`), and status in its own hues. The phone has
-  no theme picker, so it shows the default palette only. The web's frosted
-  panels are not used: their backdrop blur cost seconds of GPU time per frame
-  on the emulator, so the phone keeps the still light field behind its tab
-  roots and solid surfaces on it. React Native takes no `oklch()` at runtime:
+  `web/src/index.css` and hold the same values, in both themes. What they
+  look like on a phone (the ember's roles, ink focus, status hues, the still
+  light field behind tab roots, solid surfaces and no blur) is the design
+  language's shared core plus its [Phone app](design-language.md#phone-app)
+  section. React Native takes no `oklch()` at runtime:
   Uniwind converts the stylesheet's values at build time, `useCSSVariable`
   returns `#rrggbbaa`, and an SVG stop takes that alpha through `svgPaint` in
   `src/lib/color.ts`. A token
-  the design needs and the sheet lacks is added to both stylesheets and to the
-  token table in `practices/design-language.md` in the same change; a one-off
-  hex is drift.
+  the design needs and the sheet lacks is added to every surface's token file
+  that uses it and to the design language's [Tokens](design-language.md#tokens)
+  table in the same change; a one-off hex is drift.
 - Text renders through `Text` from `src/components/ui/text`, which carries the
   `font-sans` family. Weight is `font-medium` or `font-semibold`; technical
   data is `font-mono`; `font-display` (Fraunces) is for screen titles,

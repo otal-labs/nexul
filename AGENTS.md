@@ -17,10 +17,10 @@ The product is implemented. The work now is improving it domain by domain.
 | Anything | `CONTEXT.md` (the vocabulary) | `docs/adr/` for the decisions in your area |
 | Picking up work | `.scratch/`, the issue tracker | `docs/agents/issue-tracker.md` for its conventions |
 | Go backend | `practices/go.md` | `practices/architecture.md` |
-| Frontend (React) | `practices/react-guide.md`, the F1 to F7 commandments are enforced | `practices/design-language.md` |
+| Frontend (React) | `practices/react-guide.md`, the F1 to F7 commandments are enforced | `practices/design-language.md`, the shared core and the web app section |
 | SDK, automations host, desktop | `practices/typescript.md` | `practices/react-guide.md` for the desktop launcher |
-| Phone app (React Native) | `practices/native.md` | `practices/react-guide.md`, the rules it inherits |
-| Design or visual work | `practices/design-language.md`, the design language | `practices/react-guide.md` |
+| Phone app (React Native) | `practices/native.md` | `practices/react-guide.md`, the rules it inherits; `practices/design-language.md`, the shared core and the phone app section |
+| Design or visual work in `web/`, `website/` or `native/` | `practices/design-language.md`, one language for all three: the shared core, then your surface's section | `practices/react-guide.md`, or `practices/native.md` on the phone |
 | Testing | `practices/testing.md` | The language file above |
 | Any code | `practices/borrowed-practices.md`, the cross-cutting rules | `practices/README.md` for the index |
 | Install, CI, release | [CI and releases](https://nexul.io/docs/contributing/ci-and-releases/) | `internal/install/`, `.goreleaser.yaml`, `docker-compose.debug.yml` for development |
@@ -86,12 +86,16 @@ these win.
     over ternary; no gratuitous `useState` or `useEffect`; no prop drilling;
     thin files. Implement against the rule, not against nearby code that
     predates it. Run the self-review checklist before calling web work done.
-11. Extend the design language, never re-theme. Tokens only, no one-off
-    colours: the one accent is `brand`, held to the roles the spec names, and
-    status keeps its own hues. Fraunces is the one serif, for display
-    headlines only; no script fonts. A design that needs a
-    missing token adds it to `web/src/index.css` and to the token table in
-    `practices/design-language.md`, never as a one-off class.
+11. One design language across `web/`, `website/` and `native/`; extend it,
+    never re-theme. `practices/design-language.md` is the spec for all three,
+    and a screen that disagrees with it is the defect. Tokens only, no
+    one-off colours: the one accent is `brand`, held to the roles the spec
+    names, and status keeps its own hues. Fraunces is the one serif, for
+    display headlines only; no script fonts. The three token files
+    (`web/src/index.css`, `website/src/styles/tokens.css`,
+    `native/src/global.css`) carry the same names and values; a design that
+    needs a missing token adds it to each surface that uses it and to the
+    token table in `practices/design-language.md`, never as a one-off class.
 12. Tablet and desktop. Build `web/` at 768px first and verify at 768, 1024,
     and 1440px before calling web work done; phones are served by the
     Android app in `native/` (ADR 0080). `website/` stays mobile first: build

@@ -64,8 +64,10 @@ its checksum and run `nexul install`; everything else lives in the binary
 
 ## Styling
 
-The site speaks the web app's design language
-(`practices/design-language.md`). `src/styles/tokens.css` carries the app's
+The site speaks the one design language the web app and the phone app share:
+[`practices/design-language.md`](https://github.com/otal-labs/nexul/blob/master/practices/design-language.md),
+its shared core and its Public site section, is the spec for every visual
+change here. `src/styles/tokens.css` carries the app's
 token values under their own names (`--background`, `--card`, `--brand`,
 `--focus`, the status hues, the panel and field values, shadows and curves)
 and maps Fumadocs' `--color-fd-*` variables onto them; colours use

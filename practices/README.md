@@ -12,7 +12,7 @@ do. The coding standards page on the docs site is a digest of them.
 | `react-guide.md` | Writing anything in `web/` | The Frontend Commandments, structure, hooks, state, data fetching, forms, the API and WebSocket layers, the canvas, styling, testing |
 | `typescript.md` | Writing anything in `sdk/`, `automations/`, or `desktop/` | Runtimes, strictness, the SDK's public surface, errors, testing, the Electron security rules |
 | `native.md` | Writing anything in `native/` | The phone stack, which web rules carry over and how, navigation, styling, testing, running on an emulator |
-| `design-language.md` | Changing how anything in `web/` looks | The design language (frosted panels, light field, one accent): token spec, type, shape, motion, and the list, filter, detail, empty, and stepper patterns |
+| `design-language.md` | Changing how anything in `web/`, `website/` or `native/` looks | One design language for all three: a shared core (tokens, the accent, focus, status, type, shape, motion, the decision ledger), then a section per surface with its adaptations, patterns and motion locks |
 | `mcp.md` | Touching the MCP adapter, the tool contract, or any domain's `mcp.go` | Transport and security, the tool budget, naming, declaring tools, result and error shape, instructions, resources and prompts, testing |
 | `testing.md` | Writing or reviewing tests in any language | The coverage floor, the pyramid, what to test first, mocking, flaky tests, CI enforcement |
 | `borrowed-practices.md` | Any code | Cross-cutting rules: one-way doors, SQLite discipline, retries, async tests, the git workflow |

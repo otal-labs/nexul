@@ -93,7 +93,9 @@ bug: fix it or delete it, never skip or retry-mask it.
 
 Full text: [`practices/design-language.md`](https://github.com/otal-labs/nexul/blob/master/practices/design-language.md).
 
-Every page's content floats in a raised, frosted panel over a near-black
+One design language covers the web app, the public site and the phone app:
+the file opens with a shared core and has a section per surface. In the web
+app every page's content floats in a raised, frosted panel over a near-black
 canvas that carries a soft light field; light mode is its own soft grey
 canvas with white panels. One ember accent, the `brand` token, marks the
 primary action, the active nav item, selection, your own chat messages,
@@ -102,8 +104,10 @@ status keeps its own hues as a dot or icon beside plain text. Page titles are
 set in Fraunces, technical data (ids, repos, timestamps) in JetBrains Mono,
 everything else in Inter. The public site uses the same tokens and roles:
 `website/src/styles/tokens.css` maps the app's values onto the docs theme, and
-reading pages keep their text on the canvas. Extend the token set in
-`web/src/index.css` (and the site's `tokens.css`) when a design needs one;
+reading pages keep their text on the canvas. The phone app carries the same
+tokens in `native/src/global.css`, on solid surfaces with no blur. When a
+design needs a new token, add it to every surface's token file that uses it
+(`web/src/index.css`, `website/src/styles/tokens.css`, `native/src/global.css`);
 never a one-off colour.
 
 ## What enforces the rules
