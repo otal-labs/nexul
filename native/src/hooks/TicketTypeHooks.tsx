@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
+import { defineQuery } from "@/lib/liveQuery";
 
 export const getProjectTicketTypesKey = "getProjectTicketTypes";
 
@@ -12,9 +13,12 @@ export interface TicketType {
   color: string;
 }
 
+const ticketTypesQuery = defineQuery({
+  key: getProjectTicketTypesKey,
+  fetch: (projectId: string | undefined) =>
+    api.get<TicketType[]>(`/api/ticket-types?project_id=${encodeURIComponent(projectId ?? "")}`),
+  refreshes: {},
+});
+
 export const useFetchProjectTicketTypes = (projectId: string | undefined) =>
-  useQuery({
-    queryKey: [getProjectTicketTypesKey, projectId],
-    queryFn: () => api.get<TicketType[]>(`/api/ticket-types?project_id=${encodeURIComponent(projectId ?? "")}`),
-    enabled: !!projectId,
-  });
+  useQuery({ ...ticketTypesQuery.options(projectId), enabled: !!projectId });

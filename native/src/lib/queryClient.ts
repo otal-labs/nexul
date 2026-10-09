@@ -13,9 +13,6 @@ const shouldRetry = (failureCount: number, error: unknown) => {
   return failureCount < maxRetries;
 };
 
-// Reference data list rows read as they mount: only the socket, a foreground or a reconnect refetches it, never a mount.
-export const referenceDataOptions = { staleTime: Infinity, refetchOnWindowFocus: "always", refetchOnReconnect: "always" } as const;
-
 // A record's detail query is keyed by its id, or by its key when a link opened it; the cached record names it either way.
 export const recordQueries = (key: string, id: string) => ({
   queryKey: [key],

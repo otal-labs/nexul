@@ -1,17 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
+import { defineQuery } from "@/lib/liveQuery";
 import type { Session } from "@/models/User";
 import { clearPushToken } from "@/push/pushToken";
 import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
 
 export const getSessionsKey = "getSessions";
 
-export const useListSessions = () =>
-  useQuery({
-    queryKey: [getSessionsKey],
-    queryFn: () => api.get<{ sessions: Session[] }>("/api/auth/sessions"),
-  });
+const sessionsQuery = defineQuery({
+  key: getSessionsKey,
+  fetch: () => api.get<{ sessions: Session[] }>("/api/auth/sessions"),
+  refreshes: {},
+});
+
+export const useListSessions = () => useQuery(sessionsQuery.options());
 
 export const useSignOutSession = () => {
   const client = useQueryClient();

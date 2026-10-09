@@ -24,7 +24,7 @@ const findNotification = async (notificationId: string): Promise<Notification | 
 
 // The same answer the Inbox's useAreaAccess gives, for the workspace the notification belongs to.
 const canReadTickets = async (workspaceId: string): Promise<boolean> => {
-  const role = await queryClient.ensureQueryData(myRoleQuery(workspaceId));
+  const role = await queryClient.ensureQueryData(myRoleQuery.options(workspaceId));
   return projectPermissions(role, undefined).includes(AREA_PERMISSION.tickets);
 };
 

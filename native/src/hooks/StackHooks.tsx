@@ -3,6 +3,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import { api } from "@/api/client";
 import { ApiError } from "@/api/errors";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
+import { defineQuery } from "@/lib/liveQuery";
 import { latestDeploy, type Container, type Deploy, type Stack } from "@/models/Stack";
 
 export const getStacksKey = "getStacks";
@@ -10,35 +11,44 @@ export const getStackKey = "getStack";
 export const getStackServicesKey = "getStackServices";
 export const getStackDeploysKey = "getStackDeploys";
 
+const stacksQuery = defineQuery({
+  key: getStacksKey,
+  fetch: (workspaceId: string | undefined) =>
+    api.get<Stack[]>(`/api/stacks?workspace_id=${encodeURIComponent(workspaceId ?? "")}`),
+  refreshes: {},
+});
+
 export const useFetchStacks = () => {
   const workspaceId = useCurrentWorkspaceId();
-  return useQuery({
-    queryKey: [getStacksKey, workspaceId],
-    queryFn: () => api.get<Stack[]>(`/api/stacks?workspace_id=${encodeURIComponent(workspaceId ?? "")}`),
-    enabled: !!workspaceId,
-  });
+  return useQuery({ ...stacksQuery.options(workspaceId), enabled: !!workspaceId });
 };
 
-export const useFetchStack = (id: string | undefined) =>
-  useQuery({
-    queryKey: [getStackKey, id],
-    queryFn: () => api.get<Stack>(`/api/stacks/${id}`),
-    enabled: !!id,
-  });
+const stackQuery = defineQuery({
+  key: getStackKey,
+  fetch: (id: string | undefined) => api.get<Stack>(`/api/stacks/${id}`),
+  refreshes: {},
+});
+
+export const useFetchStack = (id: string | undefined) => useQuery({ ...stackQuery.options(id), enabled: !!id });
+
+const stackServicesQuery = defineQuery({
+  key: getStackServicesKey,
+  fetch: (stackId: string | undefined) => api.get<Container[]>(`/api/stacks/${stackId}/services`),
+  refreshes: {},
+});
 
 export const useFetchStackServices = (stackId: string | undefined) =>
-  useQuery({
-    queryKey: [getStackServicesKey, stackId],
-    queryFn: () => api.get<Container[]>(`/api/stacks/${stackId}/services`),
-    enabled: !!stackId,
-  });
+  useQuery({ ...stackServicesQuery.options(stackId), enabled: !!stackId });
+
+// A deploy frame names the deploy, not its stack, so every stack's history refetches.
+const stackDeploysQuery = defineQuery({
+  key: getStackDeploysKey,
+  fetch: (stackId: string | undefined) => api.get<Deploy[]>(`/api/stacks/${stackId}/deploys`),
+  refreshes: { "deploy.updated": "all" },
+});
 
 export const useFetchStackDeploys = (stackId: string | undefined) =>
-  useQuery({
-    queryKey: [getStackDeploysKey, stackId],
-    queryFn: () => api.get<Deploy[]>(`/api/stacks/${stackId}/deploys`),
-    enabled: !!stackId,
-  });
+  useQuery({ ...stackDeploysQuery.options(stackId), enabled: !!stackId });
 
 export interface StackWithLatestDeploy {
   stack: Stack;
@@ -52,11 +62,7 @@ export const useFetchStacksWithLatestDeploy = () => {
   const stacks = useFetchStacks();
   const stackIds = stacks.data?.map((s) => s.id) ?? [];
   const results = useQueries({
-    queries: stackIds.map((id) => ({
-      queryKey: [getStackDeploysKey, id],
-      queryFn: () => api.get<Deploy[]>(`/api/stacks/${id}/deploys`),
-      enabled: !!stacks.data,
-    })),
+    queries: stackIds.map((id) => ({ ...stackDeploysQuery.options(id), enabled: !!stacks.data })),
   });
 
   const isPending = stacks.isPending || results.some((r) => r.isPending);

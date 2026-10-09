@@ -1,20 +1,22 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { api } from "@/api/client";
-import { referenceDataOptions } from "@/lib/queryClient";
+import { defineQuery } from "@/lib/liveQuery";
 import { AREA_PERMISSION, type Area } from "@/models/Access";
 import { projectPermissions, type MyWorkspaceInfo, type Workspace } from "@/models/Workspace";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 export const getWorkspacesKey = "getWorkspaces";
 
-export const useFetchWorkspaces = () =>
-  useQuery({
-    queryKey: [getWorkspacesKey],
-    queryFn: () => api.get<Workspace[]>("/api/workspaces"),
-    ...referenceDataOptions,
-  });
+const workspacesQuery = defineQuery({
+  key: getWorkspacesKey,
+  fetch: () => api.get<Workspace[]>("/api/workspaces"),
+  refreshes: { "workspace.updated": "all" },
+  untilPushed: true,
+});
+
+export const useFetchWorkspaces = () => useQuery(workspacesQuery.options());
 
 // The selected workspace is where every tab's data belongs, since the app only shows one workspace at a time.
 export const useSelectedWorkspace = (): Workspace | undefined => {
@@ -27,17 +29,18 @@ export const useCurrentWorkspaceId = (): string | undefined => useSelectedWorksp
 
 export const getMyRoleKey = "getMyRole";
 
-// Shared with push routing, which checks a tapped ticket's workspace outside any screen.
-export const myRoleQuery = (workspaceId: string | undefined) =>
-  queryOptions({
-    queryKey: [getMyRoleKey, workspaceId],
-    queryFn: () => api.get<MyWorkspaceInfo>(`/api/workspaces/${workspaceId}/me`),
-    ...referenceDataOptions,
-  });
+// Shared with push routing, which checks a tapped ticket's workspace outside any screen. A role frame names no holder,
+// so the viewer's own permissions in that workspace refetch and every gate follows them.
+export const myRoleQuery = defineQuery({
+  key: getMyRoleKey,
+  fetch: (workspaceId: string | undefined) => api.get<MyWorkspaceInfo>(`/api/workspaces/${workspaceId}/me`),
+  refreshes: { "role.updated": { key: (p) => p.workspace_id } },
+  untilPushed: true,
+});
 
 export const useFetchMyRole = () => {
   const workspaceId = useCurrentWorkspaceId();
-  return useQuery({ ...myRoleQuery(workspaceId), enabled: !!workspaceId });
+  return useQuery({ ...myRoleQuery.options(workspaceId), enabled: !!workspaceId });
 };
 
 // Undefined until permissions first arrive; isFetched, since a failed read refetches as pending and must not blink.
