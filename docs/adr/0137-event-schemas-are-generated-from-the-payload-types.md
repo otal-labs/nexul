@@ -19,9 +19,9 @@ that would break a consumer of the file: a topic or field removed or renamed, a 
 field no longer always sent. An addition passes that check and asks for `make event-schemas`, the way `sqlc diff` asks
 for `make sqlc`. A deliberate break has to be made by hand in the contract file, where review sees it.
 
-Schemas follow what `encoding/json` writes. A field without `omitempty` is required. A slice without it may be `null`,
-because the outbox encodes payloads with plain `json.Marshal`, and the schema says so rather than promise an array the
-code does not guarantee.
+Schemas follow what `jsonx` writes, the encoder the outbox and the bus use for every payload. A field without
+`omitempty` is required. A list is always an array, never `null`: `jsonx` writes a nil slice as `[]`. A payload stored
+as `null` before that is delivered as stored; a consumer replaying old rows may still meet one.
 
 The boot reads the generated texts and generates nothing: generating takes about 20ms and parsing the contract file
 about 4ms, against well under 1ms to publish an unchanged catalog. Because every text changed once in the move,
@@ -29,3 +29,6 @@ an instance's first boot on this version publishes each topic's generated schema
 hand-written one; later boots publish nothing until a payload type changes.
 
 Decided 2026-10-09, amending ADR 0044.
+
+Amended 2026-10-09: event payloads are encoded with `jsonx`, so a list is never `null`. The checker treats dropping
+`null` from a field's types as safe, since a consumer receives less than before, never more.

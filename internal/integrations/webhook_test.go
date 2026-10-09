@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 )
 
 func testDiscardLogger() *slog.Logger {
@@ -85,6 +86,28 @@ func TestFanoutHandler(t *testing.T) {
 		assert.Equal(t, "", envMap["API_KEY"])
 		assert.Equal(t, "", envMap["URL"])
 		assert.NotContains(t, string(env.Data), "supersecret")
+	})
+
+	t.Run("an empty list published on the bus is delivered as an array", func(t *testing.T) {
+		svc, _, install := setup(t, []Scope{ScopeEventsRead})
+		require.NoError(t, svc.Subscribe(context.Background(), "user-1", install.ID, "voice.occupancy.changed"))
+		bus := inprocess.New(inprocess.Options{Logger: testDiscardLogger()})
+		t.Cleanup(func() { require.NoError(t, bus.Close()) })
+		require.NoError(t, bus.Subscribe(context.Background(), "voice.occupancy.changed", NewFanoutHandler(svc).HandleEvent))
+
+		require.NoError(t, bus.Publish(context.Background(), "voice.occupancy.changed", struct {
+			ConversationID string   `json:"conversation_id"`
+			Occupants      []string `json:"occupants"`
+		}{ConversationID: "c1"}))
+
+		var deliveries []*Delivery
+		require.Eventually(t, func() bool {
+			deliveries, _ = svc.ListDeliveries(context.Background(), "user-1", install.ID)
+			return len(deliveries) == 1
+		}, 2*time.Second, 5*time.Millisecond)
+		var env deliveryEnvelope
+		require.NoError(t, json.Unmarshal(deliveries[0].Payload, &env))
+		assert.JSONEq(t, `{"conversation_id":"c1","occupants":[]}`, string(env.Data))
 	})
 
 	t.Run("unsubscribed topic produces no delivery", func(t *testing.T) {

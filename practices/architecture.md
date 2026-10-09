@@ -126,7 +126,8 @@ struct is the schema:
 - A field's description is its `jsonschema` tag. A constraint the type cannot
   say is a tag beside it: `enum:"open,closed"`, `minimum:"1"`,
   `deprecated:"true"`, or `type:"object"` on a raw JSON field. A field without
-  `omitempty` is required, because it is always sent.
+  `omitempty` is required, because it is always sent. A list is an array,
+  never `null`: the outbox and the bus encode payloads with `jsonx`.
 - A payload type with its own `MarshalJSON` gets a `WireShape` method naming
   the type it encodes as; generation fails until it has one.
 - A topic published with two payload types is declared once per type; its
@@ -135,7 +136,7 @@ struct is the schema:
   contract the SDK is generated from, and the compact copy the server
   publishes at boot. The contract test fails on a stale file and refuses a
   change that would break a consumer: a field removed or renamed, a type
-  changed, an enum value dropped, a field no longer always sent. Add the new
+  widened, an enum value dropped, a field no longer always sent. Add the new
   field beside the old one instead. A changed schema text becomes the topic's
   next version on the next boot.
 

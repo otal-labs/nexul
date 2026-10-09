@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/codereview"
@@ -319,10 +320,19 @@ func wireIntegrationFanout(ctx context.Context, bus *inprocess.Bus, store *stora
 }
 
 // wireLiveHubAndAgent builds the browser live-events hub and wires the @Agent chat pipeline that publishes to it.
+// memoizedAudience is the hub's audience over one memo shared across frames: an agent stream checks the same people
+// at token rate, and any commit clears the memo, so no frame is checked against an answer a write has changed (ADR 0135).
+func memoizedAudience(svc *coreServices) live.Audience {
+	audience, memo := liveAudience{access: svc.accessSvc, tickets: svc.ticketsSvc, chat: svc.chatSvc, deploy: svc.deploySvc}, svc.accessSvc.NewMemo()
+	return func(ctx context.Context, topic string, payload any) bool {
+		return audience.allows(access.WithMemo(ctx, memo), topic, payload)
+	}
+}
+
 func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage.Store, svc *coreServices, logger *slog.Logger) (*live.Hub, *agent.Handler) {
 	// The hub is generic; future streams add their own topics to livePushTopics.
 	liveHub := live.New(logger)
-	liveHub.SetAudience(liveAudience{access: svc.accessSvc, tickets: svc.ticketsSvc, chat: svc.chatSvc, deploy: svc.deploySvc}.allows)
+	liveHub.SetAudience(memoizedAudience(svc))
 	for _, topic := range livePushTopics {
 		mustSubscribe(ctx, bus, "live.push", topic, " for live push", func(ctx context.Context, ev eventbus.Event) error {
 			return liveHub.Publish(ctx, ev.Topic, ev.Payload)

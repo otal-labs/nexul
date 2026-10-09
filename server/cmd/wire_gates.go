@@ -418,33 +418,6 @@ func (g membershipGate) MemberIDs(ctx context.Context, workspaceID string) ([]st
 	return ids, nil
 }
 
-// chatStanding answers chat's Owner and Restricted member lookups from the person's membership.
-type chatStanding struct {
-	roles accessRoleResolver
-}
-
-func (c chatStanding) IsOwner(ctx context.Context, userID, workspaceID string) (bool, error) {
-	info, err := c.roles.MemberRole(ctx, workspaceID, userID)
-	if errors.Is(err, apperrs.ErrNotFound) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return info.IsOwnerRole, nil
-}
-
-func (c chatStanding) IsRestricted(ctx context.Context, userID, workspaceID string) (bool, error) {
-	info, err := c.roles.MemberRole(ctx, workspaceID, userID)
-	if errors.Is(err, apperrs.ErrNotFound) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return info.Restricted && !info.IsOwnerRole, nil
-}
-
 // chatThreadGate checks a ticket thread through its ticket's project and an interview thread through its project.
 type chatThreadGate struct {
 	projectEntityGate

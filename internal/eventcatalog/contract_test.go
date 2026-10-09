@@ -28,7 +28,7 @@ const contractFile = "schemas.json"
 const publishedFile = "schemas_gen.go"
 
 // TestSchemas_MatchThePublishedContract fails on a payload change that would break a consumer of the published catalog
-// (ADR 0044): a field removed or renamed, a type changed, an enum value dropped, a field no longer always sent. It
+// (ADR 0044): a field removed or renamed, a type widened, an enum value dropped, a field no longer always sent. It
 // also fails when the file lags an additive change, the way sqlc diff does; make event-schemas brings it level.
 func TestSchemas_MatchThePublishedContract(t *testing.T) {
 	generated, err := generateSchemas()
@@ -145,6 +145,13 @@ type orderRetyped struct {
 	At     time.Time `json:"at"`
 }
 
+type orderNullableID struct {
+	ID     *string   `json:"id"`
+	Status string    `json:"status" enum:"open,closed"`
+	Note   string    `json:"note,omitempty"`
+	At     time.Time `json:"at"`
+}
+
 type orderEnumValueDropped struct {
 	ID     string    `json:"id"`
 	Status string    `json:"status" enum:"open"`
@@ -179,6 +186,8 @@ func TestBreaking_OnlyLetsThePublishedContractGrow(t *testing.T) {
 		{"a removed field fails", orderV1{}, orderRemovedField{}, "t.order/at: removed"},
 		{"a renamed field fails", orderV1{}, orderRenamedField{}, "t.order/note: removed"},
 		{"a type change fails", orderV1{}, orderRetyped{}, "t.order/id: type string became integer"},
+		{"dropping null passes", orderNullableID{}, orderV1{}, ""},
+		{"adding null fails", orderV1{}, orderNullableID{}, "t.order/id: type string became null|string"},
 		{"a dropped enum value fails", orderV1{}, orderEnumValueDropped{}, "t.order/status: enum value closed removed"},
 		{"a field no longer always sent fails", orderV1{}, orderNoLongerAlwaysSent{}, "t.order: id no longer required"},
 		{"a change inside a nested object fails", orderNested{}, orderNestedRetyped{}, "t.order/order/id: type string became integer"},
@@ -243,7 +252,7 @@ func breakingAt(path string, oldNode, newNode any) []string {
 	o, _ := oldNode.(map[string]any)
 	n, _ := newNode.(map[string]any)
 	var problems []string
-	if a, b := types(o), types(n); !slices.Equal(a, b) {
+	if a, b := types(o), types(n); !narrows(a, b) {
 		problems = append(problems, fmt.Sprintf("%s: type %s became %s", path, typeName(a), typeName(b)))
 	}
 	if oldEnum, ok := o["enum"].([]any); ok {
@@ -293,6 +302,15 @@ func types(s map[string]any) []string {
 		return out
 	}
 	return nil
+}
+
+// narrows reports whether a field typed next can only carry what one typed was could: dropping null is safe for a
+// consumer, a new type or an untyped field is not.
+func narrows(was, next []string) bool {
+	if len(was) == 0 {
+		return true
+	}
+	return len(next) > 0 && !slices.ContainsFunc(next, func(t string) bool { return !slices.Contains(was, t) })
 }
 
 func typeName(ts []string) string {

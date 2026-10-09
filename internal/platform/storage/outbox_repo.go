@@ -3,12 +3,12 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
+	"github.com/otal-labs/nexul/internal/platform/jsonx"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -49,7 +49,7 @@ func (r *OutboxRepo) MarkPublished(ctx context.Context, id string) error {
 
 // insertOutboxRow is the shared enqueue every repo's write transaction uses: same tx as the row it announces.
 func insertOutboxRow(ctx context.Context, tx *sql.Tx, id, topic string, payload any) error {
-	b, err := json.Marshal(payload)
+	b, err := jsonx.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal outbox payload: %w", err)
 	}

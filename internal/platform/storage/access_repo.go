@@ -33,6 +33,28 @@ func (r *AccessRepo) Get(ctx context.Context, resourceType, resourceID, userID s
 	return toOverwrite(row)
 }
 
+// GetMany returns userID's overwrite on each of resourceIDs that has one, keyed by resource id, in one read.
+func (r *AccessRepo) GetMany(ctx context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*access.Overwrite, error) {
+	out := make(map[string]*access.Overwrite, len(resourceIDs))
+	if len(resourceIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.q.ListOverwritesForUser(ctx, sqlcgen.ListOverwritesForUserParams{
+		ResourceType: resourceType, UserID: userID, ResourceIds: resourceIDs,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get overwrites %s for %s: %w", resourceType, userID, err)
+	}
+	for _, row := range rows {
+		ow, err := toOverwrite(row)
+		if err != nil {
+			return nil, err
+		}
+		out[ow.ResourceID] = ow
+	}
+	return out, nil
+}
+
 func (r *AccessRepo) ListByResource(ctx context.Context, resourceType, resourceID string) ([]*access.Overwrite, error) {
 	rows, err := r.q.ListOverwritesByResource(ctx, sqlcgen.ListOverwritesByResourceParams{
 		ResourceType: resourceType, ResourceID: resourceID,

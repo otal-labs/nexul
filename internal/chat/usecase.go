@@ -114,21 +114,21 @@ func (s *Service) requireRead(ctx context.Context, c *Conversation, callerID str
 		}
 		callerID = actor.ID
 	}
-	return s.reads(ctx, s.viewer(callerID, c.WorkspaceID), c)
-}
-
-// reads is the person's part of reading c: docs:thread on a doc thread, a DM's participants, a channel's standing.
-func (s *Service) reads(ctx context.Context, v *viewer, c *Conversation) error {
-	if c.Kind == KindDocThread && !s.canThread(ctx, v.userID, c.DocID) {
+	if c.Kind == KindDocThread && !s.canThread(ctx, callerID, c.DocID) {
 		return fmt.Errorf("%w: docs:thread required on doc %s", apperrs.ErrForbidden, c.DocID)
 	}
-	if c.Kind == KindDM && !slices.Contains(c.ParticipantIDs, v.userID) {
+	return s.reads(ctx, callerID, c)
+}
+
+// reads is the person's part of reading c beyond its threads: a DM's participants, a channel's standing.
+func (s *Service) reads(ctx context.Context, userID string, c *Conversation) error {
+	if c.Kind == KindDM && !slices.Contains(c.ParticipantIDs, userID) {
 		return fmt.Errorf("%w: conversation %s", apperrs.ErrNotFound, c.ID)
 	}
 	if c.Kind != KindChannel && c.Kind != KindVoiceChannel {
 		return nil
 	}
-	visible, err := v.readsChannel(ctx, c)
+	visible, err := s.readsChannel(ctx, userID, c)
 	if err != nil {
 		return err
 	}
@@ -138,41 +138,26 @@ func (s *Service) reads(ctx context.Context, v *viewer, c *Conversation) error {
 	return nil
 }
 
-// viewer is one person in one workspace; their standing is looked up at most once, and only when a channel needs it.
-type viewer struct {
-	standing            Standing
-	userID, workspaceID string
-	owner, restricted   *bool
-}
-
-func (s *Service) viewer(userID, workspaceID string) *viewer {
-	return &viewer{standing: s.standing, userID: userID, workspaceID: workspaceID}
-}
-
 // readsChannel: a private channel is read by its members and the Owner, a public one by everyone but a Restricted member.
-func (v *viewer) readsChannel(ctx context.Context, c *Conversation) (bool, error) {
+func (s *Service) readsChannel(ctx context.Context, userID string, c *Conversation) (bool, error) {
 	if !c.Private {
-		restricted, err := v.memo(ctx, &v.restricted, Standing.IsRestricted)
+		restricted, err := s.standingOf(ctx, Standing.IsRestricted, userID, c.WorkspaceID)
 		return !restricted, err
 	}
-	if slices.Contains(c.ParticipantIDs, v.userID) {
+	if slices.Contains(c.ParticipantIDs, userID) {
 		return true, nil
 	}
-	return v.memo(ctx, &v.owner, Standing.IsOwner)
+	return s.standingOf(ctx, Standing.IsOwner, userID, c.WorkspaceID)
 }
 
-func (v *viewer) memo(ctx context.Context, cached **bool, ask func(Standing, context.Context, string, string) (bool, error)) (bool, error) {
-	if *cached != nil {
-		return **cached, nil
-	}
-	if v.standing == nil || v.userID == "" {
+func (s *Service) standingOf(ctx context.Context, ask func(Standing, context.Context, string, string) (bool, error), userID, workspaceID string) (bool, error) {
+	if s.standing == nil || userID == "" {
 		return false, nil
 	}
-	answer, err := ask(v.standing, ctx, v.userID, v.workspaceID)
+	answer, err := ask(s.standing, ctx, userID, workspaceID)
 	if err != nil {
-		return false, fmt.Errorf("standing of %s in workspace %s: %w", v.userID, v.workspaceID, err)
+		return false, fmt.Errorf("standing of %s in workspace %s: %w", userID, workspaceID, err)
 	}
-	*cached = &answer
 	return answer, nil
 }
 
@@ -241,8 +226,7 @@ func (s *Service) createChannelKind(ctx context.Context, c *Conversation, member
 
 // refuseRestricted refuses a Restricted member anything that leaves a channel public, which they could not then read.
 func (s *Service) refuseRestricted(ctx context.Context, userID, workspaceID string) error {
-	v := s.viewer(userID, workspaceID)
-	restricted, err := v.memo(ctx, &v.restricted, Standing.IsRestricted)
+	restricted, err := s.standingOf(ctx, Standing.IsRestricted, userID, workspaceID)
 	if err != nil {
 		return err
 	}
@@ -444,7 +428,7 @@ func (s *Service) privateChannel(ctx context.Context, id string) (*Conversation,
 func (s *Service) membersChanged(ctx context.Context, c *Conversation, added, removed []string) eventbus.OutboxEvent {
 	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicConversationMembersChanged, Payload: ConversationMembersChangedEvent{
 		ConversationID: c.ID, WorkspaceID: c.WorkspaceID, Private: c.Private,
-		AddedUserIDs: nonNil(added), RemovedUserIDs: nonNil(removed), ActorID: actorID(ctx), MembersOnly: c.Private,
+		AddedUserIDs: added, RemovedUserIDs: removed, ActorID: actorID(ctx), MembersOnly: c.Private,
 	}}
 }
 
@@ -468,13 +452,6 @@ func cleanIDs(in []string) []string {
 		}
 	}
 	return out
-}
-
-func nonNil(ids []string) []string {
-	if ids == nil {
-		return []string{}
-	}
-	return ids
 }
 
 // manageableChannel checks, in order, that the caller reads the conversation, that it is a channel, and holds action.

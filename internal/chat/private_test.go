@@ -197,8 +197,7 @@ func TestSetChannelPrivate_SwitchesBothWays(t *testing.T) {
 		AddedUserIDs: []string{"u-1", "u-2"}, RemovedUserIDs: []string{"u-3", "u-owner"}, ActorID: "u-1", MembersOnly: true,
 	}, events[0], "a switch to private names everyone who lost it as removed, and only for its members")
 	assert.Equal(t, ConversationMembersChangedEvent{
-		ConversationID: f.eng.ID, WorkspaceID: "w-1", Private: false,
-		AddedUserIDs: []string{}, RemovedUserIDs: []string{}, ActorID: "u-1",
+		ConversationID: f.eng.ID, WorkspaceID: "w-1", Private: false, ActorID: "u-1",
 	}, events[1])
 }
 

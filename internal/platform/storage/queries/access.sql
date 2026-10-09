@@ -19,3 +19,7 @@ DELETE FROM permission_overwrites WHERE resource_type = ? AND resource_id = ?;
 -- name: CountOverwriteAllowAny :one
 SELECT COUNT(*) FROM permission_overwrites
 WHERE resource_type = ? AND user_id = ? AND instr(allow, sqlc.arg(quoted_action)) > 0;
+
+-- name: ListOverwritesForUser :many
+SELECT * FROM permission_overwrites
+WHERE resource_type = sqlc.arg(resource_type) AND user_id = sqlc.arg(user_id) AND resource_id IN (sqlc.slice('resource_ids'));

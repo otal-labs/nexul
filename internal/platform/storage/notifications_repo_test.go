@@ -380,6 +380,6 @@ func TestNotificationsRepo_UnreadCount_ReadsOnlyUnreadRows(t *testing.T) {
 	_, err := s.Notifications.UnreadByProject(ctx, "u1", "workspace-default")
 	require.NoError(t, err)
 
-	query, args := st.lastStatement()
+	query, args := st.Last()
 	assert.Contains(t, queryPlan(t, s.db, query, args...), "USING INDEX idx_notifications_user_unread", "read rows outnumber unread ones by far")
 }

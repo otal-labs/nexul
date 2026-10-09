@@ -22,6 +22,22 @@ type fakeRepo struct {
 	deleteErr  error
 	setErr     error
 	events     []eventbus.OutboxEvent
+	reads      readCounts
+}
+
+// readCounts is how many single and batch overwrite reads reached the fake, so a test can pin what a check costs.
+type readCounts struct{ get, getMany int }
+
+func (f *fakeRepo) readCounts() readCounts {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.reads
+}
+
+func (f *fakeRepo) resetReads() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reads = readCounts{}
 }
 
 func newFakeRepo() *fakeRepo {
@@ -35,6 +51,11 @@ func key(resourceType, resourceID, userID string) string {
 func (f *fakeRepo) Get(_ context.Context, resourceType, resourceID, userID string) (*Overwrite, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.reads.get++
+	return f.get(resourceType, resourceID, userID)
+}
+
+func (f *fakeRepo) get(resourceType, resourceID, userID string) (*Overwrite, error) {
 	if f.getErr != nil {
 		return nil, f.getErr
 	}
@@ -43,6 +64,24 @@ func (f *fakeRepo) Get(_ context.Context, resourceType, resourceID, userID strin
 		return nil, apperrs.ErrNotFound
 	}
 	return ow, nil
+}
+
+func (f *fakeRepo) GetMany(_ context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*Overwrite, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reads.getMany++
+	out := map[string]*Overwrite{}
+	for _, id := range resourceIDs {
+		ow, err := f.get(resourceType, id, userID)
+		if errors.Is(err, apperrs.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		out[id] = ow
+	}
+	return out, nil
 }
 
 func (f *fakeRepo) ListByResource(_ context.Context, resourceType, resourceID string) ([]*Overwrite, error) {
@@ -200,11 +239,15 @@ type fakeDocWorkspace struct {
 	err       error
 }
 
-func (f *fakeDocWorkspace) DocScope(_ context.Context, docID string) (string, string, error) {
+func (f *fakeDocWorkspace) DocScopes(_ context.Context, docIDs []string) (map[string]DocScope, error) {
 	if f.err != nil {
-		return "", "", f.err
+		return nil, f.err
 	}
-	return f.byDoc[docID], f.projectOf[docID], nil
+	out := map[string]DocScope{}
+	for _, id := range docIDs {
+		out[id] = DocScope{WorkspaceID: f.byDoc[id], ProjectID: f.projectOf[id]}
+	}
+	return out, nil
 }
 
 // TestCan_ResolvesWorkspaceViaDocProject covers ticket 10: once a DocWorkspaceResolver is wired, Can resolves the doc's workspace via its project so the role-mask layer applies to docs too, not just the resource-instance overwrite docs had before ticket 10.
