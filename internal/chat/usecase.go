@@ -428,7 +428,7 @@ func (s *Service) privateChannel(ctx context.Context, id string) (*Conversation,
 func (s *Service) membersChanged(ctx context.Context, c *Conversation, added, removed []string) eventbus.OutboxEvent {
 	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicConversationMembersChanged, Payload: ConversationMembersChangedEvent{
 		ConversationID: c.ID, WorkspaceID: c.WorkspaceID, Private: c.Private,
-		AddedUserIDs: nonNil(added), RemovedUserIDs: nonNil(removed), ActorID: actorID(ctx), MembersOnly: c.Private,
+		AddedUserIDs: added, RemovedUserIDs: removed, ActorID: actorID(ctx), MembersOnly: c.Private,
 	}}
 }
 
@@ -452,13 +452,6 @@ func cleanIDs(in []string) []string {
 		}
 	}
 	return out
-}
-
-func nonNil(ids []string) []string {
-	if ids == nil {
-		return []string{}
-	}
-	return ids
 }
 
 // manageableChannel checks, in order, that the caller reads the conversation, that it is a channel, and holds action.

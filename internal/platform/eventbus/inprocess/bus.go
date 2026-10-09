@@ -2,7 +2,6 @@ package inprocess
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/deadletter"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/processed"
+	"github.com/otal-labs/nexul/internal/platform/jsonx"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
@@ -221,7 +221,7 @@ func (b *Bus) allSubscribers() []*subscriber {
 }
 
 func (b *Bus) buildEvent(ctx context.Context, topic string, payload any) (eventbus.Event, error) {
-	data, err := json.Marshal(payload)
+	data, err := jsonx.Marshal(payload)
 	if err != nil {
 		return eventbus.Event{}, fmt.Errorf("marshal payload: %w", err)
 	}
