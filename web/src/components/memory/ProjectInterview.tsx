@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { HarnessReadinessNote } from "@/components/play/HarnessReadinessNote";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import type { Project } from "@/models/Project";
+import { boardPath, type Project } from "@/models/Project";
 
 interface ProjectInterviewProps {
   project: Project;
@@ -18,7 +18,7 @@ export const ProjectInterview = ({ project }: ProjectInterviewProps) => {
   return (
   <div className="space-y-10">
     <PageHeader
-      crumbs={[workspaceCrumb, { label: project.name, to: wsPath(`/board/${project.id}`) }]}
+      crumbs={[workspaceCrumb, { label: project.name, to: wsPath(boardPath(project)) }]}
       title="Interview"
       meta="Answer questions about how this project works. The agent asks about gaps, then writes the rules every agent turn here follows."
     />

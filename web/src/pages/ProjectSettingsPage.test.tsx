@@ -79,7 +79,7 @@ describe("ProjectSettingsPage", () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
-    expect(await screen.findByRole("link", { name: "Backend" })).toHaveAttribute("href", "/acme/board/p-1");
+    expect(await screen.findByRole("link", { name: "Backend" })).toHaveAttribute("href", "/acme/board/BE");
     expect(screen.getByRole("link", { name: "Categories" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Repositories" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Services" })).toBeInTheDocument();

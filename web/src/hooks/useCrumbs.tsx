@@ -1,5 +1,6 @@
 import type { Crumb } from "@/components/PageBreadcrumb";
 import { useFetchProject } from "@/hooks/ProjectHooks";
+import { boardPath } from "@/models/Project";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -17,5 +18,5 @@ export const useProjectCrumb = (projectId: string | undefined): Crumb | undefine
   const { data: project } = useFetchProject(projectId);
   const wsPath = useWorkspacePath();
   if (!project) return undefined;
-  return { label: project.name, to: wsPath(`/board/${project.id}`) };
+  return { label: project.name, to: wsPath(boardPath(project)) };
 };
