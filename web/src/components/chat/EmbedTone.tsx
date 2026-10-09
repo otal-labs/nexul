@@ -1,6 +1,6 @@
 import { CircleAlert, CircleCheck, CircleDot, CircleX, type LucideIcon } from "lucide-react";
 
-import type { EmbedTone } from "@/models/Embed";
+import type { EmbedTone } from "@nexul/client-core/embed";
 
 export const toneText: Record<EmbedTone, string> = {
   success: "text-success",

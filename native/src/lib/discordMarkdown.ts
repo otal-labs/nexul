@@ -1,4 +1,4 @@
-import { httpUrl } from "@/models/Embed";
+import { httpUrl } from "@nexul/client-core/embed";
 
 // A port of web/src/utils/DiscordMarkdownUtility.tsx, so a bot's post reads the same on the phone.
 export type InlinePart =

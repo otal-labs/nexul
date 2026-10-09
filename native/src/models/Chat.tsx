@@ -1,4 +1,5 @@
-import type { Embed } from "@/models/Embed";
+import type { Embed } from "@nexul/client-core/embed";
+
 import { personLabel, type Person } from "@/models/Person";
 
 // Mirrors internal/chat/model.go; "voice_channel" and the interview and channel threads exist but the phone does not list them.

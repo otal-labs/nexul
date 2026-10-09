@@ -4,6 +4,8 @@ module.exports = {
   preset: "jest-expo",
   setupFiles: ["<rootDir>/jest.setup.ts"],
   // The app imports the SDK's event catalog for its types only; tests also read its topic list and fixtures.
+  // A shared module's own imports (Babel's helpers) resolve from this app's node_modules.
+  moduleDirectories: ["node_modules", "<rootDir>/node_modules"],
   moduleNameMapper: {
     "^@nexul/sdk/events$": "<rootDir>/../sdk/src/events.generated.ts",
     "^@nexul/client-core/(.*)$": "<rootDir>/../client-core/$1",

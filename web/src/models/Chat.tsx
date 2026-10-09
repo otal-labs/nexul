@@ -1,7 +1,8 @@
 import { z } from "zod";
 
+import type { Embed } from "@nexul/client-core/embed";
+
 import { attachmentPath, isAttachmentPath, type Attachment } from "@/models/Attachment";
-import type { Embed } from "@/models/Embed";
 import type { Handoff } from "@/models/Handoff";
 import { personLabel, type Person } from "@/models/Person";
 import type { PlayType } from "@/models/Play";

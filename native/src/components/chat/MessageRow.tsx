@@ -1,5 +1,7 @@
 import { View } from "react-native";
 
+import { dropEchoedAuthor } from "@nexul/client-core/embed";
+
 import { DiscordMarkdown } from "@/components/chat/DiscordMarkdown";
 import { EmbedStack } from "@/components/chat/EmbedStack";
 import { HandoffPill } from "@/components/chat/HandoffPill";
@@ -10,7 +12,6 @@ import { NoteFilePill } from "@/components/chat/NoteFilePill";
 import { Text } from "@/components/ui/text";
 import { BotMessageIdContext } from "@/hooks/BotMediaHooks";
 import { cn } from "@/lib/utils";
-import { dropEchoedAuthor } from "@/models/Embed";
 import { isNote, type Message } from "@/models/Chat";
 
 interface MessageRowProps {

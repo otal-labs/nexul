@@ -1,10 +1,11 @@
 import { View } from "react-native";
 
+import { fieldTone, type EmbedField } from "@nexul/client-core/embed";
+
 import { DiscordMarkdown } from "@/components/chat/DiscordMarkdown";
 import { toneBg } from "@/components/chat/EmbedTone";
 import { Microheader } from "@/components/Microheader";
 import { cn } from "@/lib/utils";
-import { fieldTone, type EmbedField } from "@/models/Embed";
 
 // An inline value past this many characters (an image tag, a URL) takes the row instead of wrapping in a half.
 const LONG_VALUE = 24;

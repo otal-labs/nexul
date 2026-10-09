@@ -4,10 +4,11 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { Embed } from "@nexul/client-core/embed";
+
 import { api } from "@/api/client";
 import { MessageRow } from "@/components/chat/MessageRow";
 import type { Message } from "@/models/Chat";
-import type { Embed } from "@/models/Embed";
 import { unknownPerson } from "@/models/Person";
 
 vi.mock("@/api/client", () => ({

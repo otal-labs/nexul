@@ -4,7 +4,7 @@ import CircleDot from "lucide-react-native/icons/circle-dot";
 import CircleX from "lucide-react-native/icons/circle-x";
 import type { LucideIcon } from "lucide-react-native";
 
-import type { EmbedTone } from "@/models/Embed";
+import type { EmbedTone } from "@nexul/client-core/embed";
 
 export const toneBg: Record<EmbedTone, string> = {
   success: "bg-success",

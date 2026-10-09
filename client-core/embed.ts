@@ -47,16 +47,10 @@ export const embedFoldLabel = ({ hiddenFields, longDescription }: EmbedFold): st
 
 export const moreEmbedsLabel = (hidden: number): string => `Show ${plural(hidden, "embed")}`;
 
-// Only http(s) reaches an href or an <img src>, so a javascript: or data: URL from a sender stays inert.
-export const httpUrl = (raw: string | undefined): string | undefined => {
-  if (!raw) return undefined;
-  try {
-    const url = new URL(raw);
-    return url.protocol === "http:" || url.protocol === "https:" ? raw : undefined;
-  } catch {
-    return undefined;
-  }
-};
+// Only http(s) reaches a link or an image; a pattern, not URL, since React Native's URL parser accepts anything.
+const HTTP_URL = /^https?:\/\/[^\s/?#]+[^\s]*$/i;
+
+export const httpUrl = (raw: string | undefined): string | undefined => (raw && HTTP_URL.test(raw) ? raw : undefined);
 
 // A sender's image as the media proxy serves it, so the sender's host never sees who reads the message.
 export const botMediaPath = (messageId: string, raw: string | undefined): string | undefined => {
@@ -67,7 +61,7 @@ export const botMediaPath = (messageId: string, raw: string | undefined): string
 
 const ZONELESS_TIME = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
 
-// Discord reads a timestamp without a zone as UTC; Uptime Kuma sends one, and the browser would read it as local.
+// Discord reads a timestamp without a zone as UTC; Uptime Kuma sends one, and the client would read it as local.
 export const embedTimestamp = (raw: string): string => (ZONELESS_TIME.test(raw) ? `${raw.replace(" ", "T")}Z` : raw);
 
 export type EmbedTone = "success" | "warning" | "destructive" | "info";
