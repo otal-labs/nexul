@@ -1,4 +1,5 @@
-import { ChevronRight, type LucideIcon } from "lucide-react-native";
+import ChevronRight from "lucide-react-native/icons/chevron-right";
+import type { LucideIcon } from "lucide-react-native";
 import { Pressable } from "react-native";
 import { useCSSVariable } from "uniwind";
 

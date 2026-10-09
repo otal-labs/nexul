@@ -1,6 +1,8 @@
 import * as Application from "expo-application";
 import { useRouter } from "expo-router";
-import { FileText, Server, Settings } from "lucide-react-native";
+import FileText from "lucide-react-native/icons/file-text";
+import Server from "lucide-react-native/icons/server";
+import Settings from "lucide-react-native/icons/settings";
 import { ScrollView, View } from "react-native";
 
 import { ScreenHeader } from "@/components/ScreenHeader";

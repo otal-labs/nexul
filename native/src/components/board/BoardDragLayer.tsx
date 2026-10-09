@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 import Animated, { measure, useAnimatedRef, useAnimatedStyle, useDerivedValue, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { runOnUI, scheduleOnRN } from "react-native-worklets";
 
-import { BoardDragContext } from "@/components/board/boardDrag";
+import { BoardDragContext, useLifted } from "@/components/board/boardDrag";
 import { BoardDropBar } from "@/components/board/BoardDropBar";
 import { TicketCardBody, ticketCardClass } from "@/components/board/TicketCard";
 import type { TicketType } from "@/hooks/TicketTypeHooks";
@@ -24,7 +24,7 @@ export const BoardDragLayer = ({ projectPrefix, ticketTypes }: BoardDragLayerPro
   const origin = useSharedValue({ x: 0, y: 0 });
   const lift = useSharedValue(0);
   const settle = useSharedValue(0);
-  const lifted = drag?.lifted;
+  const lifted = useLifted(drag, (held) => held);
   const landing = lifted?.landing;
   // Worklets copy what they close over, so they take the shared values alone, never the whole drag.
   const hovered = drag?.hovered;

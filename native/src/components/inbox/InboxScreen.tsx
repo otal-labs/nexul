@@ -1,5 +1,5 @@
 import { useRouter, type Href } from "expo-router";
-import { Inbox } from "lucide-react-native";
+import Inbox from "lucide-react-native/icons/inbox";
 
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";

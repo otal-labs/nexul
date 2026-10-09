@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 import { useHeaderHeight } from "expo-router/react-navigation";
-import { MessagesSquare } from "lucide-react-native";
+import MessagesSquare from "lucide-react-native/icons/messages-square";
 import { KeyboardAvoidingView, View } from "react-native";
 
 import { isNotFound } from "@/api/errors";

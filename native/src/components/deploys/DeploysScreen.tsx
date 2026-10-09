@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { Rocket } from "lucide-react-native";
+import Rocket from "lucide-react-native/icons/rocket";
 
 import { StackFeed } from "@/components/deploys/StackFeed";
 import { EmptyState } from "@/components/EmptyState";

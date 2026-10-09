@@ -1,4 +1,4 @@
-import { Server } from "lucide-react-native";
+import Server from "lucide-react-native/icons/server";
 import { View } from "react-native";
 
 import { EmptyState } from "@/components/EmptyState";

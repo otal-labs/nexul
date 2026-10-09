@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { FolderLock } from "lucide-react-native";
+import FolderLock from "lucide-react-native/icons/folder-lock";
 import { View } from "react-native";
 import { useCSSVariable } from "uniwind";
 

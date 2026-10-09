@@ -4,7 +4,15 @@ import { AppState, type AppStateStatus } from "react-native";
 
 import { buildLiveURL, LiveEventsClient, type ServerFrame } from "@/api/events";
 import { getMeKey } from "@/hooks/AuthHooks";
-import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@/hooks/ChatHooks";
+import {
+  applyCachedReaction,
+  getChatConversationsKey,
+  getChatMessagesKey,
+  getChatUnreadKey,
+  markCachedMessageDeleted,
+  upsertCachedMessage,
+  type ReactionChange,
+} from "@/hooks/ChatHooks";
 import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
@@ -13,6 +21,7 @@ import { getRunnersKey } from "@/hooks/RunnerHooks";
 import { getStackDeploysKey } from "@/hooks/StackHooks";
 import { getProjectStatusesKey } from "@/hooks/StatusHooks";
 import { getTicketKey, getTicketsByProjectKey } from "@/hooks/TicketHooks";
+import type { Message } from "@/models/Chat";
 import type { MeResponse } from "@/models/User";
 import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
 
@@ -29,10 +38,9 @@ const pushTopics: Record<string, string[]> = {
   "account.removed": [getWorkspacePeopleKey],
   "workspace.member.added": [getWorkspacePeopleKey],
   "workspace.member.removed": [getWorkspacePeopleKey],
-  "chat.message.created": [getChatMessagesKey, getChatUnreadKey],
-  "chat.message.updated": [getChatMessagesKey],
-  "chat.message.deleted": [getChatMessagesKey, getChatUnreadKey],
-  "chat.message.reactions_changed": [getChatMessagesKey],
+  // A message frame also patches the open thread in place (patchChatMessages), so its page is never downloaded again.
+  "chat.message.created": [getChatUnreadKey],
+  "chat.message.deleted": [getChatUnreadKey],
   "ticket.created": [getTicketsByProjectKey],
   "ticket.updated": [getTicketsByProjectKey, getTicketKey],
   "ticket.status_changed": [getTicketsByProjectKey, getTicketKey],
@@ -53,6 +61,20 @@ const pushTopics: Record<string, string[]> = {
   "deploy.updated": [getDeployKey, getDeployLogKey, getStackDeploysKey],
 };
 
+// Cached once per record (each ticket thread's label in Chat holds one), so a frame refetches only the record it names.
+const detailKeys = new Set([getTicketKey, getDocKey, getDeployKey, getDeployLogKey]);
+
+const subjectId = (payload: unknown): string | undefined => {
+  const p = payload as { id?: string; ticket?: { id?: string }; doc?: { id?: string } } | null;
+  return p?.ticket?.id ?? p?.doc?.id ?? p?.id;
+};
+
+const invalidationKey = (key: string, frame: ServerFrame): string[] => {
+  const id = detailKeys.has(key) ? subjectId(frame.payload) : undefined;
+  if (!id) return [key];
+  return [key, id];
+};
+
 // Topics that can change what the person named as user_id may do, Project access included (ADR 0097).
 const permissionTopics = new Set([
   "workspace.member.added",
@@ -68,12 +90,27 @@ const isViewersAccessChange = (client: QueryClient, frame: ServerFrame) => {
   return !!userID && userID === client.getQueryData<MeResponse>([getMeKey])?.user.id;
 };
 
+const patchChatMessages = (client: QueryClient, { topic, payload }: ServerFrame) => {
+  if (topic === "chat.message.created" || topic === "chat.message.updated") {
+    const { message } = payload as { message?: Message };
+    if (message) upsertCachedMessage(client, message);
+    return;
+  }
+  if (topic === "chat.message.deleted") {
+    const p = payload as { conversation_id: string; message_id: string; deleted_at: string };
+    markCachedMessageDeleted(client, p.conversation_id, p.message_id, p.deleted_at);
+    return;
+  }
+  if (topic === "chat.message.reactions_changed") applyCachedReaction(client, payload as ReactionChange);
+};
+
 export const dispatch = (client: QueryClient) => (frame: ServerFrame) => {
   if (isViewersAccessChange(client, frame)) {
     void client.invalidateQueries();
     return;
   }
-  pushTopics[frame.topic]?.forEach((key) => void client.invalidateQueries({ queryKey: [key] }));
+  patchChatMessages(client, frame);
+  pushTopics[frame.topic]?.forEach((key) => void client.invalidateQueries({ queryKey: invalidationKey(key, frame) }));
 };
 
 // One socket for the signed-in instance: open while the app is in front, closed in the background.

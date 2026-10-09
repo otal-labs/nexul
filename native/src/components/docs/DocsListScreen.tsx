@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
-import { ChevronsUpDown, FileText } from "lucide-react-native";
+import ChevronsUpDown from "lucide-react-native/icons/chevrons-up-down";
+import FileText from "lucide-react-native/icons/file-text";
 import { Pressable, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 

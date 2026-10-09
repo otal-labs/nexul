@@ -1,4 +1,5 @@
-import { Inbox, type LucideIcon } from "lucide-react-native";
+import Inbox from "lucide-react-native/icons/inbox";
+import type { LucideIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, { interpolate, useAnimatedStyle } from "react-native-reanimated";

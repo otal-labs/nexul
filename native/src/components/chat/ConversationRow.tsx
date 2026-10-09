@@ -1,5 +1,9 @@
 import { useRouter } from "expo-router";
-import { FileText, Hash, Lock, SquareKanban, Users } from "lucide-react-native";
+import FileText from "lucide-react-native/icons/file-text";
+import Hash from "lucide-react-native/icons/hash";
+import Lock from "lucide-react-native/icons/lock";
+import SquareKanban from "lucide-react-native/icons/square-kanban";
+import Users from "lucide-react-native/icons/users";
 import { Pressable, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 

@@ -1,4 +1,4 @@
-import { MessagesSquare } from "lucide-react-native";
+import MessagesSquare from "lucide-react-native/icons/messages-square";
 
 import { ConversationsFeed } from "@/components/chat/ConversationsFeed";
 import { EmptyState } from "@/components/EmptyState";

@@ -1,4 +1,5 @@
-import { CheckCheck, Circle } from "lucide-react-native";
+import CheckCheck from "lucide-react-native/icons/check-check";
+import Circle from "lucide-react-native/icons/circle";
 import { useRef } from "react";
 import { Pressable, View } from "react-native";
 import Swipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
