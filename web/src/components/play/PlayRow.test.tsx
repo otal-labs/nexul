@@ -68,7 +68,7 @@ describe("PlayRow", () => {
   it("hides Exclude users without plays:write", () => {
     vi.mocked(api.get).mockImplementation(mockGet());
     renderRow({ canWrite: false, canDelete: false });
-    expect(screen.queryByRole("button", { name: /exclude users/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Actions for Fix with AI" })).not.toBeInTheDocument();
   });
 
   it("shows the excluded count from the grants query", async () => {
@@ -84,7 +84,8 @@ describe("PlayRow", () => {
     vi.mocked(api.get).mockImplementation(mockGet());
     renderRow();
 
-    await user.click(await screen.findByRole("button", { name: "Exclude users from Fix with AI" }));
+    await user.click(await screen.findByRole("button", { name: "Actions for Fix with AI" }));
+    await user.click(await screen.findByRole("button", { name: "Exclude users…" }));
     expect(await screen.findByRole("heading", { name: "Exclude users" })).toBeInTheDocument();
     expect(await screen.findByText("Run plays")).toBeInTheDocument();
     await waitFor(() =>

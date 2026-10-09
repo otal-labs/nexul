@@ -1,10 +1,8 @@
-import { Trash2 } from "lucide-react";
-
 import { PermissionsForm, PermissionsFormSchema, type PermissionsFormData } from "@/components/access/PermissionsForm";
 import { PlayTemplateLine } from "@/components/play/PlayTemplateLine";
-import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
-import { NoFillBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
+import { useCloneTemplateDialog } from "@/hooks/useCloneTemplateDialog";
+import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useDeletePlay } from "@/hooks/PlayHooks";
 import { useFetchGrants } from "@/hooks/PermissionHooks";
@@ -23,6 +21,8 @@ interface PlayRowProps {
 export const PlayRow = ({ play, workspaceId, canWrite, canDelete, onEdit }: PlayRowProps) => {
   const deletePlay = useDeletePlay(workspaceId);
   const { open: openExclusions } = useFormDialog();
+  const { open: confirm } = useConfirmationDialog();
+  const openClone = useCloneTemplateDialog();
   const { data: grants } = useFetchGrants("play", play.id, canWrite);
   const excludedCount = (grants ?? []).filter((g) => g.deny.includes("plays:run")).length;
 
@@ -34,43 +34,59 @@ export const PlayRow = ({ play, workspaceId, canWrite, canDelete, onEdit }: Play
       form: <PermissionsForm resourceType="play" resourceIds={[play.id]} />,
     });
 
+  const remove = async () => {
+    const ok = await confirm({
+      title: `Delete ${play.label}?`,
+      message: "Its button goes from every ticket, doc and Interview page. Runs it already made keep their trails.",
+      confirmLabel: "Delete play",
+    });
+    if (ok) deletePlay.mutate(play.id);
+  };
+
+  const at = { scope: "workspace" as const, workspace_id: play.workspace_id };
+  const actions: RowAction[] = [
+    ...(canWrite ? [{ label: "Edit", onSelect: () => onEdit(play) }] : []),
+    ...(canWrite ? [{ label: "Exclude users…", onSelect: () => void openExclusionsDialog() }] : []),
+    ...(play.builtin_key
+      ? [{ label: "Clone to…", onSelect: () => void openClone({ kind: "play_instructions", key: play.builtin_key, name: play.label, from: at }) }]
+      : []),
+    ...(canDelete ? [{ label: "Delete", destructive: true, onSelect: () => void remove() }] : []),
+  ];
+
   return (
-    <li className="flex flex-wrap items-center gap-3 bg-card px-3 py-3">
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="line-clamp-2 min-w-0 text-sm font-medium break-words" title={play.label}>
-            {play.label}
-          </span>
-          <NoFillBadge color="text-muted-foreground">{PLAY_TYPE_LABELS[play.type]}</NoFillBadge>
+    <li className="flex items-start gap-3 bg-card px-4 py-3">
+      <div className="min-w-0 flex-1 space-y-1">
+        <p className="line-clamp-2 text-sm font-medium break-words" title={play.label}>
+          {play.label}
+        </p>
+        <p className="flex flex-wrap items-center gap-x-1.5 font-mono text-xs text-muted-foreground">
+          <span>{PLAY_TYPE_LABELS[play.type]}</span>
           {play.type === "ticket" && play.show_when_stage && (
-            <NoFillBadge color="text-muted-foreground">{PLAY_STAGE_LABELS[play.show_when_stage]}</NoFillBadge>
+            <>
+              <span aria-hidden>·</span>
+              <span>{PLAY_STAGE_LABELS[play.show_when_stage]}</span>
+            </>
           )}
-          {!play.enabled && <NoFillBadge color="text-muted-foreground">Disabled</NoFillBadge>}
-          {excludedCount > 0 && <NoFillBadge color="text-muted-foreground">{excludedCount} excluded</NoFillBadge>}
-        </div>
-        {play.description && <p className="text-xs text-muted-foreground">{play.description}</p>}
+          {excludedCount > 0 && (
+            <>
+              <span aria-hidden>·</span>
+              <span>{excludedCount} excluded</span>
+            </>
+          )}
+          {!play.enabled && (
+            <>
+              <span aria-hidden>·</span>
+              <span className="inline-flex items-center gap-1 text-foreground/80">
+                <span className="size-1.5 rounded-full bg-muted-foreground" aria-hidden />
+                Disabled
+              </span>
+            </>
+          )}
+        </p>
+        {play.description && <p className="line-clamp-2 text-xs text-muted-foreground">{play.description}</p>}
         {play.builtin_key && <PlayTemplateLine play={play} canWrite={canWrite} />}
       </div>
-      <div className="flex shrink-0 items-center gap-1">
-        {canWrite && (
-          <Button variant="ghost" size="sm" aria-label={`Exclude users from ${play.label}`} onClick={() => void openExclusionsDialog()}>
-            Exclude users
-          </Button>
-        )}
-        {canWrite && (
-          <Button variant="ghost" size="sm" aria-label={`Edit play ${play.label}`} onClick={() => onEdit(play)}>
-            Edit
-          </Button>
-        )}
-        {canDelete && (
-          <ConfirmDestroyButton
-            icon={Trash2}
-            idleLabel={`Delete play ${play.label}`}
-            loading={deletePlay.isPending}
-            onConfirm={() => deletePlay.mutate(play.id)}
-          />
-        )}
-      </div>
+      {actions.length > 0 && <RowActionsMenu subject={play.label} actions={actions} />}
     </li>
   );
 };

@@ -23,7 +23,7 @@ interface MentionChipFieldProps {
 }
 
 export const MentionChipField = ({ id, value, onChange }: MentionChipFieldProps) => (
-  <div className="space-y-4">
+  <div className="space-y-5">
     <div>
       <label htmlFor={id} className="mb-2 block text-xs font-medium text-muted-foreground">
         Format
@@ -32,28 +32,34 @@ export const MentionChipField = ({ id, value, onChange }: MentionChipFieldProps)
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 font-mono text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30 focus-visible:border-ring sm:w-96"
+        className="w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 font-mono text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30"
         spellCheck={false}
       />
-      <div className="mt-2 flex flex-wrap gap-1.5">
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-xs text-muted-foreground">Add</span>
         {TEMPLATE_TOKENS.map((token) => (
           <button
             key={token}
             type="button"
+            aria-label={`Add {ticket.${token}}`}
             onClick={() => onChange(`${value}{ticket.${token}}`)}
-            className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-xs text-muted-foreground hover:bg-muted"
+            className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:bg-muted hover:text-foreground"
           >
-            {`{ticket.${token}}`}
+            {token}
           </button>
         ))}
       </div>
     </div>
-    <div>
-      <p className="mb-2 text-xs font-medium text-muted-foreground">Preview</p>
-      <span className="mention-chip inline-flex w-fit items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1 text-sm">
-        <TicketIcon className="h-3.5 w-3.5 shrink-0" />
-        <span className="min-w-0 truncate">{renderPreview(value)}</span>
-      </span>
+    <div className="rounded-md bg-surface-2 px-4 py-5">
+      <p className="mb-3 text-xs font-medium text-muted-foreground">Preview</p>
+      <p className="text-sm text-muted-foreground">
+        Can you take{" "}
+        <span className="mention-chip inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-0.5 align-middle text-sm text-foreground">
+          <TicketIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span className="min-w-0 truncate">{renderPreview(value)}</span>
+        </span>{" "}
+        after standup?
+      </p>
     </div>
   </div>
 );

@@ -29,29 +29,33 @@ export const MentionChipLayoutSection = ({ workspace }: MentionChipLayoutSection
       id="mention-layout"
       title="Mention chip layout"
       description="What a ticket mention shows in this workspace. The icon is fixed; the rest comes from this format."
+      footer={
+        <>
+          <TemplateOriginLine
+            kind="mention_chip"
+            templateKey=""
+            at={at}
+            state={workspace.mention_chip_template_edited ? "edited" : "following"}
+            canReset
+          />
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => void openClone({ kind: "mention_chip", key: "", name: "Mention chip", from: at })}
+            >
+              Clone to…
+            </Button>
+            <Button type="submit" form="mention-chip-form" size="sm" loading={updateTemplate.isPending} disabled={template === workspace.mention_chip_template}>
+              Save
+            </Button>
+          </div>
+        </>
+      }
     >
-      <form onSubmit={onSubmit} className="space-y-4">
-        <TemplateOriginLine
-          kind="mention_chip"
-          templateKey=""
-          at={at}
-          state={workspace.mention_chip_template_edited ? "edited" : "following"}
-          canReset
-        />
+      <form id="mention-chip-form" onSubmit={(event) => void onSubmit(event)}>
         <MentionChipField id="mention-chip-template" value={template} onChange={setTemplate} />
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => void openClone({ kind: "mention_chip", key: "", name: "Mention chip", from: at })}
-          >
-            Clone to…
-          </Button>
-          <Button type="submit" size="sm" loading={updateTemplate.isPending} disabled={template === workspace.mention_chip_template}>
-            Save
-          </Button>
-        </div>
       </form>
     </SettingsCard>
   );

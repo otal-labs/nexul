@@ -11,10 +11,15 @@ interface InterviewTemplateFieldProps {
 }
 
 export const InterviewTemplateField = ({ id, value, onChange, questionCount, error, readOnly = false }: InterviewTemplateFieldProps) => (
-  <div className="space-y-3">
-    <label htmlFor={id} className="block text-xs font-medium text-muted-foreground">
-      Template (markdown)
-    </label>
+  <div className="space-y-2">
+    <div className="flex items-baseline justify-between gap-3">
+      <label htmlFor={id} className="text-xs font-medium text-muted-foreground">
+        Template (markdown)
+      </label>
+      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+        {questionCount} {questionCount === 1 ? "question" : "questions"}
+      </span>
+    </div>
     <Textarea
       id={id}
       value={value}
@@ -22,11 +27,8 @@ export const InterviewTemplateField = ({ id, value, onChange, questionCount, err
       readOnly={readOnly}
       rows={16}
       spellCheck={false}
-      className="font-mono text-xs"
+      className="min-h-80 bg-surface-2 font-mono text-xs leading-relaxed"
     />
-    <p className="font-mono text-xs tabular-nums text-muted-foreground">
-      {questionCount} {questionCount === 1 ? "question" : "questions"}
-    </p>
     {error && (
       <p role="alert" className="font-mono text-xs text-destructive">
         {errorMessage(error)}
