@@ -103,7 +103,10 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c := &client{id: actor.ID, mode: mode, send: make(chan []byte, sendBuffer), done: make(chan struct{})}
+	c := &client{
+		id: actor.ID, mode: mode, send: make(chan []byte, sendBuffer), done: make(chan struct{}),
+		hangUp: func() { _ = conn.CloseNow() }, // the read loop sees the close and ends the connection
+	}
 	s := h.session(docID)
 	s.join(c)
 	h.log.Info("collab joined", "doc", docID, "user", actor.ID, "mode", mode)
