@@ -1,4 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { getMeKey } from "@/hooks/AuthHooks";
 import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
@@ -6,7 +8,9 @@ import { getDocKey } from "@/hooks/DocHooks";
 import { getTicketKey } from "@/hooks/TicketHooks";
 import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@/hooks/ChatHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
+import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
 import { dispatch } from "@/hooks/useLiveEvents";
+import { getMyRoleKey, getWorkspacesKey } from "@/hooks/WorkspaceHooks";
 import type { Message } from "@/models/Chat";
 
 jest.mock("expo-secure-store", () => ({ getItem: () => null, setItem: jest.fn(), deleteItemAsync: jest.fn() }));
@@ -100,5 +104,42 @@ describe("dispatch", () => {
     const keys = invalidate.mock.calls.map(([filters]) => filters?.queryKey);
     want.forEach((key) => expect(keys).toContainEqual(key));
     [getTicketKey, getDocKey, getDeployKey, getDeployLogKey].forEach((key) => expect(keys).not.toContainEqual([key]));
+  });
+
+  // A query cached with an Infinity stale time only refreshes when a pushed topic invalidates it.
+  const referenceKeys: [string, string, unknown][] = [
+    [getMeKey, "account.profile_updated", { account_id: "u2" }],
+    [getWorkspacePeopleKey, "account.profile_updated", { account_id: "u2" }],
+    [getWorkspacesKey, "workspace.updated", { workspace_id: "ws-1", name: "Acme", slug: "acme" }],
+    [getMyRoleKey, "role.updated", { role_id: "r1", workspace_id: "ws-1" }],
+  ];
+
+  test.each(referenceKeys)("%s never goes stale on its own, so %s refreshes it", (key, topic, payload) => {
+    const client = new QueryClient();
+    client.setQueryData([key, "ws-1"], {});
+
+    dispatch(client)({ topic, type: "event", payload });
+
+    expect(client.getQueryState([key, "ws-1"])?.isInvalidated).toBe(true);
+  });
+
+  // Read from the source, so a new query cached forever fails here until it gets a row and a topic above.
+  const infinityQueryKeys = () => {
+    const root = join(__dirname, "..");
+    const sources = readdirSync(root, { recursive: true, encoding: "utf8" })
+      .filter((file) => /\.tsx?$/.test(file) && !file.includes(".test."))
+      .map((file) => readFileSync(join(root, file), "utf8"));
+    const values = new Map(sources.flatMap((source) => [...source.matchAll(/export const (\w+) = "([^"]+)"/g)].map(([, name, value]) => [name, value])));
+    return sources.flatMap((source) =>
+      source
+        .split(/\buseQuery\(|\bqueryOptions\(/)
+        .slice(1)
+        .filter((query) => /referenceDataOptions|staleTime: Infinity/.test(query))
+        .map((query) => values.get(/queryKey: \[(\w+)/.exec(query)?.[1] ?? "")),
+    );
+  };
+
+  test("every query cached forever has a row in the table above", () => {
+    expect(new Set(infinityQueryKeys())).toEqual(new Set(referenceKeys.map(([key]) => key)));
   });
 });

@@ -21,6 +21,7 @@ import { getRunnersKey } from "@/hooks/RunnerHooks";
 import { getStackDeploysKey } from "@/hooks/StackHooks";
 import { getProjectStatusesKey } from "@/hooks/StatusHooks";
 import { getTicketKey, getTicketsByProjectKey } from "@/hooks/TicketHooks";
+import { getMyRoleKey, getWorkspacesKey } from "@/hooks/WorkspaceHooks";
 import type { Message } from "@/models/Chat";
 import type { MeResponse } from "@/models/User";
 import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
@@ -34,10 +35,13 @@ const pushTopics: Record<string, string[]> = {
   "chat.conversation.deleted": [getChatConversationsKey, getChatMessagesKey, getChatUnreadKey],
   // A private channel the viewer lost drops from the list, and its open thread refetches into not found.
   "chat.conversation.members_changed": [getChatConversationsKey, getChatMessagesKey, getChatUnreadKey],
-  "account.profile_updated": [getWorkspacePeopleKey],
+  "account.profile_updated": [getWorkspacePeopleKey, getMeKey],
   "account.removed": [getWorkspacePeopleKey],
   "workspace.member.added": [getWorkspacePeopleKey],
   "workspace.member.removed": [getWorkspacePeopleKey],
+  "workspace.updated": [getWorkspacesKey],
+  // A role frame names no holder, so the viewer's own permissions refetch and every gate follows them.
+  "role.updated": [getMyRoleKey],
   // A message frame also patches the open thread in place (patchChatMessages), so its page is never downloaded again.
   "chat.message.created": [getChatUnreadKey],
   "chat.message.deleted": [getChatUnreadKey],
