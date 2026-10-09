@@ -8,6 +8,7 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
+	"strings"
 )
 
 const countProjectWorkspaces = `-- name: CountProjectWorkspaces :one
@@ -238,6 +239,67 @@ func (q *Queries) ListUnclearedTicketBlockers(ctx context.Context) ([]ListUnclea
 	var items []ListUnclearedTicketBlockersRow
 	for rows.Next() {
 		var i ListUnclearedTicketBlockersRow
+		if err := rows.Scan(
+			&i.BlockedID,
+			&i.ID,
+			&i.ProjectID,
+			&i.Number,
+			&i.Title,
+			&i.Status,
+			&i.Prefix,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUnclearedTicketBlockersOf = `-- name: ListUnclearedTicketBlockersOf :many
+SELECT l.ticket_id AS blocked_id, t.id, t.project_id, t.number, t.title, t.status, p.prefix
+FROM ticket_links l
+JOIN tickets t ON t.id = l.target_id
+LEFT JOIN projects p ON p.id = t.project_id
+LEFT JOIN statuses s ON s.id = t.status
+WHERE l.kind = 'blocked_by' AND COALESCE(s.kind, '') != 'done' AND l.ticket_id IN (/*SLICE:ids*/?)
+ORDER BY l.ticket_id, l.created_at, t.id
+`
+
+type ListUnclearedTicketBlockersOfRow struct {
+	BlockedID string
+	ID        string
+	ProjectID sql.NullString
+	Number    int64
+	Title     string
+	Status    string
+	Prefix    sql.NullString
+}
+
+func (q *Queries) ListUnclearedTicketBlockersOf(ctx context.Context, ids []string) ([]ListUnclearedTicketBlockersOfRow, error) {
+	query := listUnclearedTicketBlockersOf
+	var queryParams []interface{}
+	if len(ids) > 0 {
+		for _, v := range ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUnclearedTicketBlockersOfRow
+	for rows.Next() {
+		var i ListUnclearedTicketBlockersOfRow
 		if err := rows.Scan(
 			&i.BlockedID,
 			&i.ID,

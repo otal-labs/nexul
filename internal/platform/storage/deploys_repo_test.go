@@ -3,6 +3,8 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/otal-labs/nexul/internal/deploy"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 func newTestDeploy(id string) *deploy.Deploy {
@@ -237,4 +240,62 @@ func TestDeploysRepo_ListLogLines_Empty(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, got)
 	assert.Empty(t, got)
+}
+
+// TestDeploysRepo_Page_FiltersAndScopesInSQL: each filter and scope keeps exactly the deploys the per-stack rule keeps,
+// newest first, paged once each, with deploys created in the same second.
+func TestDeploysRepo_Page_FiltersAndScopesInSQL(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	s := newTestStore(t)
+	seedProject(t, s, "p-hidden", "workspace-default", "HID")
+	now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
+	projectOf := map[string]string{"s-gen": "project-general", "s-hid": "p-hidden", "s-infra": "", "s-gone": ""}
+	for _, id := range []string{"s-gen", "s-hid", "s-infra", "s-gone"} {
+		require.NoError(t, s.Stacks.Create(ctx, &deploy.Stack{ID: id, ProjectID: projectOf[id], Name: id, Slug: id, Machine: "m1", Strategy: deploy.StrategyRun, CreatedAt: now, UpdatedAt: now}))
+	}
+	stacks := []string{"s-gen", "s-hid", "s-infra", "s-gone"}
+	var all []*deploy.Deploy
+	for i := range 60 {
+		d := newTestDeploy(fmt.Sprintf("dep-%02d", i))
+		d.StackID = stacks[i%4]
+		d.Status = []deploy.Status{deploy.StatusHealthy, deploy.StatusFailed}[i%2]
+		d.CreatedAt = now.Add(time.Duration(i/4) * time.Second)
+		require.NoError(t, s.Deploys.Create(ctx, d))
+		all = append(all, d)
+	}
+	require.NoError(t, s.Stacks.Delete(ctx, "s-gone"))
+
+	scopes := map[string]deploy.DeployScope{
+		"everything":                   {All: true},
+		"a project and the instance's": {ProjectIDs: []string{"project-general"}, Anywhere: true},
+		"a project only":               {ProjectIDs: []string{"project-general"}},
+		"nothing":                      {ProjectIDs: []string{}},
+	}
+	filters := []deploy.DeployFilter{{}, {Status: deploy.StatusFailed}, {StackID: "s-gen"}, {StackID: "s-gen", Status: deploy.StatusFailed}}
+	for name, scope := range scopes {
+		for _, f := range filters {
+			var want []string
+			for i := len(all) - 1; i >= 0; i-- {
+				d := all[i]
+				project := projectOf[d.StackID]
+				shown := scope.All || slices.Contains(scope.ProjectIDs, project) || (project == "" && scope.Anywhere)
+				if shown && (f.StackID == "" || d.StackID == f.StackID) && (f.Status == "" || d.Status == f.Status) {
+					want = append(want, d.ID)
+				}
+			}
+
+			got := pageAll(t, 7, func(offset, limit int) ([]string, int) {
+				ds, total, err := s.Deploys.Page(ctx, f, scope, paging.Window{Offset: offset, Limit: limit})
+				require.NoError(t, err)
+				ids := make([]string, len(ds))
+				for i, d := range ds {
+					ids[i] = d.ID
+				}
+				return ids, total
+			})
+
+			assert.Equal(t, want, got, "%s %+v", name, f)
+		}
+	}
 }

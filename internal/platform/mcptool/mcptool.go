@@ -11,6 +11,7 @@ import (
 	"github.com/google/jsonschema-go/jsonschema"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 // Hints are the tool annotations clients decide confirmations from; each zero value is the protocol's conservative default.
@@ -84,14 +85,19 @@ func decode[In any](resolved *jsonschema.Resolved, args json.RawMessage) (In, er
 
 // DefaultLimit and MaxLimit bound every list a tool returns.
 const (
-	DefaultLimit = 50
-	MaxLimit     = 100
+	DefaultLimit = paging.DefaultLimit
+	MaxLimit     = paging.MaxLimit
 )
 
 // PageArgs is embedded in a list tool's input so every list takes the same limit and offset.
 type PageArgs struct {
 	Limit  int `json:"limit,omitzero" jsonschema:"How many items to return, 1 to 100. Defaults to 50."`
 	Offset int `json:"offset,omitzero" jsonschema:"How many items to skip, from next_offset of the previous page. Defaults to 0."`
+}
+
+// Window is the stretch of the list the arguments ask for; out-of-range values fall back to the defaults.
+func (p PageArgs) Window() paging.Window {
+	return paging.Window{Offset: p.Offset, Limit: p.Limit}.Clamped()
 }
 
 // Page is a bounded slice of a list plus what the caller needs to fetch the rest.
@@ -102,20 +108,23 @@ type Page[T any] struct {
 	NextOffset int  `json:"next_offset,omitzero"`
 }
 
-// Paginate cuts items to the requested page; out-of-range limits fall back to the defaults instead of failing.
-func Paginate[T any](items []T, p PageArgs) Page[T] {
-	limit := p.Limit
-	if limit < 1 {
-		limit = DefaultLimit
-	}
-	limit = min(limit, MaxLimit)
-	offset := min(max(p.Offset, 0), len(items))
-	end := min(offset+limit, len(items))
-	page := Page[T]{Items: items[offset:end], Total: len(items), HasMore: end < len(items)}
+// PageOf shapes the items a use-case read at w from a list total long, after its filters and access.
+func PageOf[T any](items []T, total int, w paging.Window) Page[T] {
+	end := w.Offset + len(items)
+	page := Page[T]{Items: items, Total: total, HasMore: end < total}
 	if page.HasMore {
 		page.NextOffset = end
 	}
 	return page
+}
+
+// Paginate pages a list that arrives whole, from an external API or a handful of configuration rows; a list read
+// from a table that grows pages in SQL and shapes its result with PageOf instead (ADR 0140).
+func Paginate[T any](items []T, p PageArgs) Page[T] {
+	w := p.Window()
+	start := min(w.Offset, len(items))
+	end := min(start+w.Limit, len(items))
+	return PageOf(items[start:end], len(items), paging.Window{Offset: start, Limit: w.Limit})
 }
 
 // PartialError is an update that applied some steps before one failed; the adapter shows Applied even when it must

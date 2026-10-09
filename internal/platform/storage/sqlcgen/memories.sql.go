@@ -10,6 +10,17 @@ import (
 	"database/sql"
 )
 
+const countMemoriesByProject = `-- name: CountMemoriesByProject :one
+SELECT COUNT(*) FROM memories WHERE project_id = ?
+`
+
+func (q *Queries) CountMemoriesByProject(ctx context.Context, projectID sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countMemoriesByProject, projectID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createMemory = `-- name: CreateMemory :exec
 INSERT INTO memories (id, workspace_id, project_id, kind, title, when_to_use, body, always_included, footer, version, created_by, created_at, updated_by, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -256,6 +267,54 @@ SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, 
 
 func (q *Queries) ListMemoriesByWorkspace(ctx context.Context, workspaceID string) ([]Memory, error) {
 	rows, err := q.db.QueryContext(ctx, listMemoriesByWorkspace, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Memory
+	for rows.Next() {
+		var i Memory
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ProjectID,
+			&i.Title,
+			&i.WhenToUse,
+			&i.Body,
+			&i.AlwaysIncluded,
+			&i.Version,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedBy,
+			&i.UpdatedAt,
+			&i.Kind,
+			&i.Footer,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMemoriesPage = `-- name: ListMemoriesPage :many
+SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind, footer FROM memories WHERE project_id = ? ORDER BY created_at, id LIMIT ? OFFSET ?
+`
+
+type ListMemoriesPageParams struct {
+	ProjectID sql.NullString
+	Limit     int64
+	Offset    int64
+}
+
+func (q *Queries) ListMemoriesPage(ctx context.Context, arg ListMemoriesPageParams) ([]Memory, error) {
+	rows, err := q.db.QueryContext(ctx, listMemoriesPage, arg.ProjectID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

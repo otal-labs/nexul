@@ -19,6 +19,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -138,6 +139,18 @@ func (f *fakeRepo) ListByProject(_ context.Context, projectID string) ([]*Ticket
 		}
 	}
 	return out, nil
+}
+
+func (f *fakeRepo) Page(_ context.Context, filter TicketFilter, _ TicketScope, w paging.Window) ([]*Ticket, int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*Ticket
+	for _, t := range f.tickets {
+		if (filter.ProjectID == "" || t.ProjectID == filter.ProjectID) && (filter.DocID == "" || t.DocID == filter.DocID) {
+			out = append(out, t)
+		}
+	}
+	return out[min(w.Offset, len(out)):min(w.Offset+w.Limit, len(out))], len(out), nil
 }
 
 func (f *fakeRepo) UpdateStatus(_ context.Context, id string, status Status, evts ...eventbus.OutboxEvent) error {
@@ -354,6 +367,10 @@ func newTestService(repo *fakeRepo) *Service {
 type allowGate struct{}
 
 func (allowGate) RequireProject(context.Context, string, permissions.Action) error { return nil }
+
+func (allowGate) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
+	return nil, true, nil
+}
 
 // fakeStatusStore accepts the seeded status columns; a non-existent status is rejected.
 type fakeStatusStore struct {

@@ -8,9 +8,11 @@ import (
 	"sync/atomic"
 )
 
-// Statements counts what reaches the driver, so a guard can pin a query count or how many values a query binds.
+// Statements counts what reaches the driver, so a guard can pin a query count, how many values a query binds, or how
+// many rows the queries handed back.
 type Statements struct {
 	n       atomic.Int64
+	rows    atomic.Int64
 	maxArgs atomic.Int64
 	mu      sync.Mutex
 	last    string
@@ -19,6 +21,9 @@ type Statements struct {
 
 // Count is how many statements ran since the last Reset.
 func (s *Statements) Count() int64 { return s.n.Load() }
+
+// Rows is how many rows the driver handed back since the last Reset, across every statement.
+func (s *Statements) Rows() int64 { return s.rows.Load() }
 
 // MaxArgs is the most values one statement bound since the last Reset.
 func (s *Statements) MaxArgs() int64 { return s.maxArgs.Load() }
@@ -33,6 +38,7 @@ func (s *Statements) Last() (string, []any) {
 // Reset starts the count over.
 func (s *Statements) Reset() {
 	s.n.Store(0)
+	s.rows.Store(0)
 	s.maxArgs.Store(0)
 }
 
@@ -80,7 +86,11 @@ type countingConn struct {
 
 func (c countingConn) QueryContext(ctx context.Context, q string, a []driver.NamedValue) (driver.Rows, error) {
 	c.st.record(q, a)
-	return c.Conn.(driver.QueryerContext).QueryContext(ctx, q, a)
+	rows, err := c.Conn.(driver.QueryerContext).QueryContext(ctx, q, a)
+	if err != nil {
+		return nil, err
+	}
+	return countingRows{rows, c.st}, nil
 }
 
 func (c countingConn) ExecContext(ctx context.Context, q string, a []driver.NamedValue) (driver.Result, error) {
@@ -90,4 +100,17 @@ func (c countingConn) ExecContext(ctx context.Context, q string, a []driver.Name
 
 func (c countingConn) BeginTx(ctx context.Context, o driver.TxOptions) (driver.Tx, error) {
 	return c.Conn.(driver.ConnBeginTx).BeginTx(ctx, o)
+}
+
+type countingRows struct {
+	driver.Rows
+	st *Statements
+}
+
+func (r countingRows) Next(dest []driver.Value) error {
+	err := r.Rows.Next(dest)
+	if err == nil {
+		r.st.rows.Add(1)
+	}
+	return err
 }

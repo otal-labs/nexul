@@ -72,7 +72,7 @@ type RegistryOptions struct {
 	Plays       *plays.Service
 	PlayRuns    *plays.Runner
 	Pairing     *pairing.Service
-	DeadLetter  deadletter.Storer
+	DeadLetter  DeadLetterStore
 	Publisher   deadletter.Publisher
 	// InstanceURL is the configured public URL; a browser request from any other origin is refused.
 	InstanceURL func(context.Context) (string, error)

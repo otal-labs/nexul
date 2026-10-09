@@ -6,6 +6,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 // NotificationHandler is mounted behind RequireAuth by the composition root.
@@ -36,7 +37,9 @@ func (h *NotificationHandler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	ns, err := h.svc.List(r.Context(), userID, r.URL.Query().Get("workspace_id"), limit)
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	f := InboxFilter{WorkspaceID: r.URL.Query().Get("workspace_id"), UnreadOnly: r.URL.Query().Get("unread_only") == "true"}
+	ns, _, err := h.svc.Page(r.Context(), userID, f, paging.Window{Offset: offset, Limit: limit})
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

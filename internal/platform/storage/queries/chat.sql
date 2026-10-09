@@ -68,6 +68,12 @@ SELECT * FROM messages WHERE id = ?;
 -- name: ListMessages :many
 SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC, id DESC LIMIT ?;
 
+-- name: ListLiveMessagesNewestFirst :many
+SELECT * FROM messages WHERE conversation_id = ? AND deleted_at IS NULL ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?;
+
+-- name: CountLiveMessages :one
+SELECT COUNT(*) FROM messages WHERE conversation_id = ? AND deleted_at IS NULL;
+
 -- name: ListMessagesSince :many
 SELECT * FROM messages WHERE conversation_id = ? AND deleted_at IS NULL AND created_at > ? ORDER BY created_at;
 

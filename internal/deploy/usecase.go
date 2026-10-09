@@ -13,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -67,6 +68,8 @@ type Service struct {
 type Gate interface {
 	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
 	RequireAnywhere(ctx context.Context, action permissions.Action) error
+	// CallerProjects lists the projects RequireProject lets the caller act in with action; all is true for any project.
+	CallerProjects(ctx context.Context, action permissions.Action) (projectIDs []string, all bool, err error)
 }
 
 // SetGate wires the permission check; unset, only the server's own calls pass.
@@ -835,6 +838,51 @@ func (s *Service) ListByStatus(ctx context.Context, status Status) ([]*Deploy, e
 		return nil, fmt.Errorf("list deploys with status %s: %w", status, err)
 	}
 	return s.readableDeploys(ctx, ds)
+}
+
+// PageDeploys returns one window of the deploys f keeps that the caller may read, newest first, and how many there are;
+// the read is filtered in SQL, so the total counts only what the pages hold (ADR 0140).
+func (s *Service) PageDeploys(ctx context.Context, f DeployFilter, w paging.Window) ([]*Deploy, int, error) {
+	switch f.Status {
+	case "", StatusPending, StatusRunning, StatusHealthy, StatusFailed:
+	default:
+		return nil, 0, fmt.Errorf("%w: unknown deploy status %q", apperrs.ErrInvalid, f.Status)
+	}
+	scope, err := s.deployScope(ctx, f.StackID)
+	if err != nil {
+		return nil, 0, err
+	}
+	ds, total, err := s.repo.Page(ctx, f, scope, w.Clamped())
+	if err != nil {
+		return nil, 0, fmt.Errorf("list deploys: %w", err)
+	}
+	return ds, total, nil
+}
+
+// deployScope is what a deploy list may show: one readable stack's whole history, or across stacks what the caller
+// reads where each stack lives (ADR 0087).
+func (s *Service) deployScope(ctx context.Context, stackID string) (DeployScope, error) {
+	if stackID != "" {
+		if err := s.requireDeploy(ctx, stackID, permissions.DeploysRead); err != nil {
+			return DeployScope{}, fmt.Errorf("list deploys for stack %s: %w", stackID, err)
+		}
+		return DeployScope{All: true}, nil
+	}
+	if identity.Internal(ctx) {
+		return DeployScope{All: true}, nil
+	}
+	if s.gate == nil {
+		return DeployScope{All: permissions.Ungated(ctx) == nil}, nil
+	}
+	projectIDs, all, err := s.gate.CallerProjects(ctx, permissions.DeploysRead)
+	if err != nil {
+		return DeployScope{}, fmt.Errorf("list deploys: %w", err)
+	}
+	anywhere := s.gate.RequireAnywhere(ctx, permissions.DeploysRead)
+	if anywhere != nil && !permissions.Refused(anywhere) {
+		return DeployScope{}, fmt.Errorf("list deploys: %w", anywhere)
+	}
+	return DeployScope{All: all, ProjectIDs: projectIDs, Anywhere: anywhere == nil}, nil
 }
 
 // applyStackDefaults fills the compose-strategy default compose path so a stack always carries a concrete value.

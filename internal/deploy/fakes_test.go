@@ -13,6 +13,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 // fakeRepo is an in-memory deploy.Repo for use-case tests.
@@ -26,6 +27,8 @@ type fakeRepo struct {
 	appendErr error
 	cancelErr error
 	logs      map[string][]LogLine
+	// pageScope is the scope the last Page call was given.
+	pageScope DeployScope
 }
 
 func newFakeRepo() *fakeRepo {
@@ -134,6 +137,22 @@ func (f *fakeRepo) ListByStatus(_ context.Context, status Status) ([]*Deploy, er
 		}
 	}
 	return out, nil
+}
+
+// Page keeps the deploys of f's stack and status newest first; it records scope rather than applying it, which the
+// storage tests cover against real SQL.
+func (f *fakeRepo) Page(_ context.Context, filter DeployFilter, scope DeployScope, w paging.Window) ([]*Deploy, int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.pageScope = scope
+	var out []*Deploy
+	for _, d := range f.stored {
+		if (filter.StackID == "" || d.StackID == filter.StackID) && (filter.Status == "" || d.Status == filter.Status) {
+			out = append(out, d)
+		}
+	}
+	slices.SortFunc(out, func(a, b *Deploy) int { return b.CreatedAt.Compare(a.CreatedAt) })
+	return out[min(w.Offset, len(out)):min(w.Offset+w.Limit, len(out))], len(out), nil
 }
 
 func (f *fakeRepo) HasActive(_ context.Context, stackID string) (bool, error) {

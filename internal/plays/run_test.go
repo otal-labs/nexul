@@ -691,21 +691,27 @@ func TestListTrails(t *testing.T) {
 	seededTrail(f, "older", TargetTicket, ticketID, fixedNow.Add(-time.Hour))
 	seededTrail(f, "newer", TargetTicket, ticketID, fixedNow)
 
-	list, err := f.runner.ListTrails(ctxAs(starter), TargetTicket, ticketID)
+	list, err := f.runner.ListTrails(ctxAs(starter), TargetTicket, ticketID, "")
 	require.NoError(t, err)
 	require.Len(t, list, 2)
 	assert.Equal(t, "newer", list[0].ID)
+	onePlay, err := f.runner.ListTrails(ctxAs(starter), TargetTicket, ticketID, fixPlayID)
+	require.NoError(t, err)
+	assert.Len(t, onePlay, 2)
+	otherPlay, err := f.runner.ListTrails(ctxAs(starter), TargetTicket, ticketID, "play-other")
+	require.NoError(t, err)
+	assert.Empty(t, otherPlay, "a play filter keeps that play's trails alone")
 
-	empty, err := f.runner.ListTrails(ctxAs("stranger"), TargetTicket, "t-never-run")
+	empty, err := f.runner.ListTrails(ctxAs("stranger"), TargetTicket, "t-never-run", "")
 	require.NoError(t, err)
 	assert.Empty(t, empty)
 
-	_, err = f.runner.ListTrails(ctxAs("stranger"), TargetTicket, ticketID)
+	_, err = f.runner.ListTrails(ctxAs("stranger"), TargetTicket, ticketID, "")
 	assert.ErrorIs(t, err, apperrs.ErrForbidden)
-	_, err = f.runner.ListTrails(ctxAs(starter), "column", ticketID)
+	_, err = f.runner.ListTrails(ctxAs(starter), "column", ticketID, "")
 	assert.ErrorIs(t, err, apperrs.ErrInvalid)
 	f.trails.listErr = errors.New("db down")
-	_, err = f.runner.ListTrails(ctxAs(starter), TargetTicket, ticketID)
+	_, err = f.runner.ListTrails(ctxAs(starter), TargetTicket, ticketID, "")
 	assert.ErrorContains(t, err, "db down")
 }
 

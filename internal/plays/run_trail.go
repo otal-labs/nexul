@@ -36,8 +36,8 @@ func (r *Runner) opensProject(ctx context.Context, t *Trail) bool {
 	return t.ProjectID == "" || r.perm.HasPermission(ctx, actorID(ctx), t.WorkspaceID, permissions.Member, resourceTypeProject, t.ProjectID)
 }
 
-// ListTrails returns a target's trails newest first, under the same gate as GetTrail.
-func (r *Runner) ListTrails(ctx context.Context, targetType TargetType, targetID string) ([]*Trail, error) {
+// ListTrails returns a target's trails newest first, under the same gate as GetTrail; a playID keeps that play's alone.
+func (r *Runner) ListTrails(ctx context.Context, targetType TargetType, targetID, playID string) ([]*Trail, error) {
 	targetID = strings.TrimSpace(targetID)
 	if !targetType.valid() || targetID == "" {
 		return nil, fmt.Errorf("%w: target type (ticket, doc, or interview) and target id are required", apperrs.ErrInvalid)
@@ -53,7 +53,7 @@ func (r *Runner) ListTrails(ctx context.Context, targetType TargetType, targetID
 	if err := r.requireTrailAccess(ctx, list[0].WorkspaceID, targetType, targetID); err != nil {
 		return nil, err
 	}
-	return list, nil
+	return slices.DeleteFunc(list, func(t *Trail) bool { return playID != "" && t.PlayID != playID }), nil
 }
 
 // ActiveTrails maps each target with an active trail to that trail; targets the caller cannot read are left out, not refused.

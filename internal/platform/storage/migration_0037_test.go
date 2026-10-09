@@ -50,6 +50,10 @@ func (sc storeScopes) UnrestrictedWorkspaceIDsForUser(ctx context.Context, userI
 	return sc.s.WorkspaceMembers.UnrestrictedWorkspaceIDs(ctx, userID)
 }
 
+func (sc storeScopes) WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
+	return sc.s.WorkspaceMembers.WorkspaceIDs(ctx, userID)
+}
+
 // formerAdminActions is everything the instance-admin flag used to open (ADR 0088).
 var formerAdminActions = []permissions.Action{
 	permissions.InstanceRead, permissions.InstanceWrite, permissions.AccountsRead, permissions.AccountsWrite,

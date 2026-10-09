@@ -176,6 +176,22 @@ type TicketLink struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// TicketFilter narrows a ticket list; empty fields narrow nothing, and the filters combine.
+type TicketFilter struct {
+	ProjectID string
+	DocID     string
+	// Query full-text searches titles, bodies, and notes, and orders the list by relevance instead of age.
+	Query string
+	// BlockedOnly keeps tickets still waiting on a blocker the caller can read that is not in a done-stage column.
+	BlockedOnly bool
+}
+
+// TicketScope is what access lets a ticket list show: everything with All, otherwise the tickets of ProjectIDs.
+type TicketScope struct {
+	All        bool
+	ProjectIDs []string
+}
+
 // LinkedTicket is the ticket at the other end of a link; Done reads its status stage, never the column name.
 type LinkedTicket struct {
 	ID        string `json:"id"`

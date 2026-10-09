@@ -11,6 +11,17 @@ import (
 	"strings"
 )
 
+const countLiveMessages = `-- name: CountLiveMessages :one
+SELECT COUNT(*) FROM messages WHERE conversation_id = ? AND deleted_at IS NULL
+`
+
+func (q *Queries) CountLiveMessages(ctx context.Context, conversationID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countLiveMessages, conversationID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createConversation = `-- name: CreateConversation :exec
 INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, parent_message_id, created_by, created_at, updated_at, is_general, private) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
@@ -483,6 +494,56 @@ func (q *Queries) ListConversationsForUser(ctx context.Context, arg ListConversa
 			&i.IsGeneral,
 			&i.Private,
 			&i.AgentSeen,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLiveMessagesNewestFirst = `-- name: ListLiveMessagesNewestFirst :many
+SELECT id, conversation_id, author_id, body, mentions, attachment_id, edited_at, deleted_at, created_at, updated_at, author_kind, handoffs, via, author_name, author_avatar_url, embeds FROM messages WHERE conversation_id = ? AND deleted_at IS NULL ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?
+`
+
+type ListLiveMessagesNewestFirstParams struct {
+	ConversationID string
+	Limit          int64
+	Offset         int64
+}
+
+func (q *Queries) ListLiveMessagesNewestFirst(ctx context.Context, arg ListLiveMessagesNewestFirstParams) ([]Message, error) {
+	rows, err := q.db.QueryContext(ctx, listLiveMessagesNewestFirst, arg.ConversationID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Message
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.ConversationID,
+			&i.AuthorID,
+			&i.Body,
+			&i.Mentions,
+			&i.AttachmentID,
+			&i.EditedAt,
+			&i.DeletedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.AuthorKind,
+			&i.Handoffs,
+			&i.Via,
+			&i.AuthorName,
+			&i.AuthorAvatarUrl,
+			&i.Embeds,
 		); err != nil {
 			return nil, err
 		}

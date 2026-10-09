@@ -10,6 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/deploy"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -73,6 +74,32 @@ func (r *DeploysRepo) List(ctx context.Context) ([]*deploy.Deploy, error) {
 		return nil, fmt.Errorf("list deploys: %w", err)
 	}
 	return toDeploys(rows), nil
+}
+
+// Page reads one window of the deploys f and scope keep, newest first, and how many they keep in all.
+func (r *DeploysRepo) Page(ctx context.Context, f deploy.DeployFilter, scope deploy.DeployScope, w paging.Window) ([]*deploy.Deploy, int, error) {
+	q := pageQuery{from: "deploys d LEFT JOIN stacks s ON s.id = d.stack_id", id: "d.id", order: "d.created_at DESC, d.id DESC"}
+	if f.StackID != "" {
+		q.where("d.stack_id = ?", f.StackID)
+	}
+	if f.Status != "" {
+		q.where("d.status = ?", string(f.Status))
+	}
+	if !scope.All {
+		q.where("(s.project_id IN (SELECT value FROM json_each(?)) OR (COALESCE(s.project_id, '') = '' AND ?))", idsJSON(scope.ProjectIDs), scope.Anywhere)
+	}
+	ids, total, err := q.page(ctx, r.db, w)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page deploys: %w", err)
+	}
+	if len(ids) == 0 {
+		return []*deploy.Deploy{}, total, nil
+	}
+	rows, err := r.q.ListDeploysByIDs(ctx, ids)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page deploys: %w", err)
+	}
+	return inOrder(ids, toDeploys(rows), func(d *deploy.Deploy) string { return d.ID }), total, nil
 }
 
 func (r *DeploysRepo) ListByService(ctx context.Context, service string) ([]*deploy.Deploy, error) {

@@ -23,3 +23,6 @@ WHERE resource_type = ? AND user_id = ? AND instr(allow, sqlc.arg(quoted_action)
 -- name: ListOverwritesForUser :many
 SELECT * FROM permission_overwrites
 WHERE resource_type = sqlc.arg(resource_type) AND user_id = sqlc.arg(user_id) AND resource_id IN (sqlc.slice('resource_ids'));
+
+-- name: ListUserOverwritesOfType :many
+SELECT * FROM permission_overwrites WHERE resource_type = ? AND user_id = ?;

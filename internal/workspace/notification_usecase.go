@@ -12,6 +12,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -43,39 +44,40 @@ func (s *NotificationService) WithDocWatchers(w DocWatchers) *NotificationServic
 	return s
 }
 
-// List returns a user's notifications in one workspace (every workspace when workspaceID is empty), newest first.
-func (s *NotificationService) List(ctx context.Context, userID, workspaceID string, limit int) ([]*Notification, error) {
+// Page returns one window of a user's inbox, newest first, and how many notifications it shows in all. It shows only
+// the workspaces they still belong to and, for a notice about a project, the projects they may open; SQL leaves the
+// rest out, so the total counts only what the pages hold (ADR 0140).
+func (s *NotificationService) Page(ctx context.Context, userID string, f InboxFilter, w paging.Window) ([]*Notification, int, error) {
 	if strings.TrimSpace(userID) == "" {
-		return nil, fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
+		return nil, 0, fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
 	}
-	if limit < 1 {
-		limit = 50
-	}
-	workspaceID = strings.TrimSpace(workspaceID)
-	if workspaceID != "" {
-		if err := s.requireMember(ctx, userID, workspaceID); err != nil {
-			return nil, err
+	f.WorkspaceID = strings.TrimSpace(f.WorkspaceID)
+	if f.WorkspaceID != "" {
+		if err := s.requireMember(ctx, userID, f.WorkspaceID); err != nil {
+			return nil, 0, err
 		}
 	}
-	ns, err := s.repo.List(ctx, userID, workspaceID, limit)
+	scope, err := s.inboxScope(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("list notifications: %w", err)
+		return nil, 0, err
 	}
-	ns, err = permissions.Filter(ns, func(n *Notification) string { return n.WorkspaceID }, func(workspaceID string) error {
-		if workspaceID == "" {
-			return nil
-		}
-		return s.requireMember(ctx, userID, workspaceID)
-	})
+	ns, total, err := s.repo.Page(ctx, userID, f, scope, w.Clamped())
 	if err != nil {
-		return nil, err
+		return nil, 0, fmt.Errorf("list notifications: %w", err)
 	}
-	return permissions.Filter(ns, func(n *Notification) string { return n.ProjectID }, func(projectID string) error {
-		if s.opensProject(ctx, userID, projectID) {
-			return nil
-		}
-		return apperrs.ErrNotFound
-	})
+	return ns, total, nil
+}
+
+// inboxScope is what userID's inbox may show; nil, showing everything, only when no access checker is wired.
+func (s *NotificationService) inboxScope(ctx context.Context, userID string) (*InboxScope, error) {
+	if s.access == nil {
+		return nil, nil
+	}
+	workspaceIDs, projectIDs, err := s.access.ProjectsAnywhere(ctx, userID, permissions.Member)
+	if err != nil {
+		return nil, fmt.Errorf("inbox access of %s: %w", userID, err)
+	}
+	return &InboxScope{WorkspaceIDs: workspaceIDs, ProjectIDs: projectIDs}, nil
 }
 
 // opensProject keeps a notice about a project its reader can no longer open out of their inbox; the row stays, so

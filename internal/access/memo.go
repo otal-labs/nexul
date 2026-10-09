@@ -141,6 +141,7 @@ type (
 	projectKey    struct{ projectID string }
 	docKey        struct{ docID string }
 	workspacesKey struct{ userID string }
+	membershipKey struct{ userID string }
 )
 
 func (s *Service) memberRole(ctx context.Context, workspaceID, userID string) (RoleInfo, error) {

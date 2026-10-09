@@ -13,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -26,6 +27,10 @@ type AccessChecker interface {
 	DeleteByDoc(ctx context.Context, docID string) error
 	// RequireProject checks the caller holds action in projectID's workspace; permissions.Member asks for membership.
 	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
+	// CallerProjects lists the projects RequireProject lets the caller act in with action; all is true for any project.
+	CallerProjects(ctx context.Context, action permissions.Action) (projectIDs []string, all bool, err error)
+	// DocsWith is the docs userID may act on with action: a project set, and the docs whose own overwrite turns it.
+	DocsWith(ctx context.Context, userID string, action permissions.Action) (projectIDs, allowed, denied []string, err error)
 }
 
 // AttachmentsCopier duplicates a doc's attachments under a clone's id; docs never imports attachments (ADR 0017).
@@ -231,6 +236,51 @@ func (s *Service) ListByProject(ctx context.Context, projectID string) ([]*DocLi
 	return s.toListItems(ctx, ds)
 }
 
+// PageDocs returns one window of the docs f keeps in the projects the caller may open, and how many there are: oldest
+// first with a doc they cannot open marked can_open false, or for a query only the docs they may read, by relevance.
+// Both are filtered in SQL, a doc's own overwrite included, so the total counts only what the pages hold (ADR 0140).
+func (s *Service) PageDocs(ctx context.Context, f DocFilter, w paging.Window) ([]*DocListItem, int, error) {
+	if f.Query != "" && strings.TrimSpace(f.Query) == "" {
+		return nil, 0, fmt.Errorf("%w: query is required", apperrs.ErrInvalid)
+	}
+	f.Query = strings.TrimSpace(f.Query)
+	scope, err := s.listScope(ctx, f.Query != "")
+	if err != nil {
+		return nil, 0, err
+	}
+	ds, total, err := s.repo.Page(ctx, f, scope, w.Clamped())
+	if err != nil {
+		return nil, 0, fmt.Errorf("list docs: %w", err)
+	}
+	return s.listItems(ctx, ds), total, nil
+}
+
+// listScope is the projects whose docs the caller may see listed and, for a search, the docs they may read; a search
+// with no person to check reads nothing, as a single doc read does.
+func (s *Service) listScope(ctx context.Context, search bool) (DocScope, error) {
+	if s.access == nil && search {
+		return DocScope{Read: &DocReadScope{}}, nil
+	}
+	if s.access == nil {
+		return DocScope{All: permissions.Ungated(ctx) == nil}, nil
+	}
+	projectIDs, all, err := s.access.CallerProjects(ctx, permissions.Member)
+	if err != nil {
+		return DocScope{}, fmt.Errorf("list docs: %w", err)
+	}
+	scope := DocScope{All: all, ProjectIDs: projectIDs}
+	if !search {
+		return scope, nil
+	}
+	actor, _ := identity.ActorFromCtx(ctx)
+	read, allowed, denied, err := s.access.DocsWith(ctx, actor.ID, permissions.DocsRead)
+	if err != nil {
+		return DocScope{}, fmt.Errorf("search docs: %w", err)
+	}
+	scope.Read = &DocReadScope{ProjectIDs: read, Allowed: allowed, Denied: denied}
+	return scope, nil
+}
+
 // toListItems lists the docs of the workspaces the caller belongs to; inside one, a doc they can't open still
 // shows its title with can_open=false.
 func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, error) {
@@ -240,6 +290,11 @@ func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, e
 	if err != nil {
 		return nil, err
 	}
+	return s.listItems(ctx, ds), nil
+}
+
+// listItems shows each doc's title, and its author and snippet only where the caller may open it.
+func (s *Service) listItems(ctx context.Context, ds []*Doc) []*DocListItem {
 	opens := s.canEach(ctx, ds, permissions.DocsRead)
 	out := make([]*DocListItem, 0, len(ds))
 	for _, d := range ds {
@@ -261,7 +316,7 @@ func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, e
 		}
 		out = append(out, item)
 	}
-	return out, nil
+	return out
 }
 
 func (s *Service) requireProject(ctx context.Context, projectID string, action permissions.Action) error {

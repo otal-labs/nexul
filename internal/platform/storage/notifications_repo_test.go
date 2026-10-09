@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -23,6 +25,12 @@ func newTestNotification(id, userID string, read bool) *workspace.Notification {
 		SubjectType: workspace.SubjectDoc, SubjectID: "d-1", SubjectTitle: "Spec",
 		Read: read, CreatedAt: now,
 	}
+}
+
+// inbox is the first limit of userID's notifications in workspaceID, with nothing left out for access.
+func inbox(ctx context.Context, s *Store, userID, workspaceID string, limit int) ([]*workspace.Notification, error) {
+	ns, _, err := s.Notifications.Page(ctx, userID, workspace.InboxFilter{WorkspaceID: workspaceID}, nil, paging.Window{Limit: limit})
+	return ns, err
 }
 
 func mustCreateUser(t *testing.T, s *Store, id, login string) {
@@ -40,7 +48,7 @@ func TestNotificationsRepo_CreateMany_DuplicateID_IsNoOp(t *testing.T) {
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n1", "u1", false)}))
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n1", "u1", false)}))
 
-	ns, err := s.Notifications.List(context.Background(), "u1", "", 50)
+	ns, err := inbox(context.Background(), s, "u1", "", 50)
 	require.NoError(t, err)
 	require.Len(t, ns, 1)
 }
@@ -54,7 +62,7 @@ func TestNotificationsRepo_CreateMany_WritesRowsAndOutboxInSameTx(t *testing.T) 
 	evt := eventbus.OutboxEvent{ID: "evt-1", Topic: workspace.TopicNotificationCreated, Payload: workspace.NotificationCreatedEvent{}}
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), ns, evt))
 
-	got, err := s.Notifications.List(context.Background(), "u1", "", 50)
+	got, err := inbox(context.Background(), s, "u1", "", 50)
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 
@@ -98,7 +106,7 @@ func TestNotificationsRepo_CreateMany_RepeatWhileUnread_LiftsTheRow(t *testing.T
 	repeat.Kind, repeat.SubjectTitle, repeat.CreatedAt = workspace.KindDocQuestionsAsked, "New questions on Spec v2", first.CreatedAt.Add(time.Hour)
 	evt := eventbus.OutboxEvent{ID: "evt-repeat", Topic: workspace.TopicNotificationCreated, Payload: workspace.NotificationCreatedEvent{}}
 	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{repeat}, evt))
-	ns, err := s.Notifications.List(ctx, "u1", "", 50)
+	ns, err := inbox(ctx, s, "u1", "", 50)
 	require.NoError(t, err)
 	require.Len(t, ns, 1, "still one unread row for the subject")
 	assert.Equal(t, "c2", ns[0].ID, "the row carries the newest event's id, the one its push names")
@@ -114,7 +122,7 @@ func TestNotificationsRepo_CreateMany_RepeatWhileUnread_LiftsTheRow(t *testing.T
 	after := newTestNotification("c3", "u1", false)
 	after.Kind = workspace.KindDocQuestionsAsked
 	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{after}))
-	ns, err = s.Notifications.List(ctx, "u1", "", 50)
+	ns, err = inbox(ctx, s, "u1", "", 50)
 	require.NoError(t, err)
 	require.Len(t, ns, 2, "a read row stays as it was and the next one is new")
 }
@@ -134,7 +142,7 @@ func TestNotificationsRepo_CreateMany_EditRepeatWhileUnread_StaysCollapsed(t *te
 	repeat.Kind, repeat.CreatedAt = workspace.KindDocUpdated, first.CreatedAt.Add(time.Minute)
 	evt := eventbus.OutboxEvent{ID: "evt-edit", Topic: workspace.TopicNotificationCreated, Payload: workspace.NotificationCreatedEvent{}}
 	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{repeat}, evt))
-	ns, err := s.Notifications.List(ctx, "u1", "", 50)
+	ns, err := inbox(ctx, s, "u1", "", 50)
 	require.NoError(t, err)
 	require.Len(t, ns, 1)
 	assert.Equal(t, "e1", ns[0].ID)
@@ -154,7 +162,7 @@ func TestNotificationsRepo_CreateMany_UnreadInAnotherWorkspace_DoesNotCollapse(t
 	scoped.WorkspaceID = "ws-1"
 	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{scoped}))
 
-	ns, err := s.Notifications.List(ctx, "u1", "ws-1", 50)
+	ns, err := inbox(ctx, s, "u1", "ws-1", 50)
 	require.NoError(t, err)
 	assert.Len(t, ns, 1, "an unread row the ws-1 inbox never shows must not silence ws-1")
 }
@@ -175,7 +183,7 @@ func TestNotificationsRepo_List_ScopesByUserAndOrdersNewestFirst(t *testing.T) {
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n2", "u2", false)}))
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{n3}))
 
-	ns, err := s.Notifications.List(context.Background(), "u1", "", 50)
+	ns, err := inbox(context.Background(), s, "u1", "", 50)
 	require.NoError(t, err)
 	require.Len(t, ns, 2)
 	assert.Equal(t, "n3", ns[0].ID) // newest first
@@ -191,7 +199,7 @@ func TestNotificationsRepo_List_RespectsLimit(t *testing.T) {
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n1", "u1", false)}))
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n2", "u1", false)}))
 
-	ns, err := s.Notifications.List(context.Background(), "u1", "", 1)
+	ns, err := inbox(context.Background(), s, "u1", "", 1)
 	require.NoError(t, err)
 	require.Len(t, ns, 1)
 }
@@ -221,7 +229,7 @@ func TestNotificationsRepo_MarkRead_NotFoundForOtherUser(t *testing.T) {
 
 	require.NoError(t, s.Notifications.MarkRead(context.Background(), "u1", "n1", readAt))
 	require.NoError(t, s.Notifications.MarkRead(context.Background(), "u1", "n1", readAt.Add(48*time.Hour)))
-	ns, err := s.Notifications.List(context.Background(), "u1", "", 50)
+	ns, err := inbox(context.Background(), s, "u1", "", 50)
 	require.NoError(t, err)
 	assert.True(t, ns[0].Read)
 	require.NotNil(t, ns[0].ReadAt, "reading records when, which retention counts from")
@@ -240,14 +248,14 @@ func TestNotificationsRepo_MarkAllRead_ScopedToUser(t *testing.T) {
 	readAt := time.Date(2026, 8, 3, 9, 0, 0, 0, time.UTC)
 	require.NoError(t, s.Notifications.MarkAllRead(context.Background(), "u1", "", readAt))
 
-	u1, err := s.Notifications.List(context.Background(), "u1", "", 50)
+	u1, err := inbox(context.Background(), s, "u1", "", 50)
 	require.NoError(t, err)
 	for _, n := range u1 {
 		assert.True(t, n.Read)
 		require.NotNil(t, n.ReadAt)
 		assert.Equal(t, readAt, *n.ReadAt)
 	}
-	u2, err := s.Notifications.List(context.Background(), "u2", "", 50)
+	u2, err := inbox(context.Background(), s, "u2", "", 50)
 	require.NoError(t, err)
 	for _, n := range u2 {
 		assert.False(t, n.Read)
@@ -266,11 +274,11 @@ func TestNotificationsRepo_WorkspaceFilter_ScopesListCountAndReadAll(t *testing.
 		require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{row}))
 	}
 
-	ws1, err := s.Notifications.List(ctx, "u1", "ws-1", 50)
+	ws1, err := inbox(ctx, s, "u1", "ws-1", 50)
 	require.NoError(t, err)
 	require.Len(t, ws1, 1)
 	assert.Equal(t, "ws-1", ws1[0].WorkspaceID, "the stored workspace round-trips")
-	all, err := s.Notifications.List(ctx, "u1", "", 50)
+	all, err := inbox(ctx, s, "u1", "", 50)
 	require.NoError(t, err)
 	assert.Len(t, all, 3, "no workspace lists every workspace")
 
@@ -306,7 +314,7 @@ func TestNotificationsRepo_List_CarriesTheDocsCurrentFolder(t *testing.T) {
 	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{docNote, mainNote, ticketNote}))
 
 	byID := func() map[string]*workspace.Notification {
-		ns, err := s.Notifications.List(ctx, "u1", "", 50)
+		ns, err := inbox(ctx, s, "u1", "", 50)
 		require.NoError(t, err)
 		out := map[string]*workspace.Notification{}
 		for _, n := range ns {
@@ -362,7 +370,7 @@ func TestNotificationsRepo_DeleteExpired_DeletesExactlyPastEachCutoff(t *testing
 	assert.Equal(t, int64(1), read)
 	assert.Equal(t, int64(2), old, "an old notification goes whether or not it was read")
 
-	ns, err := s.Notifications.List(ctx, "u1", "", 50)
+	ns, err := inbox(ctx, s, "u1", "", 50)
 	require.NoError(t, err)
 	var kept []string
 	for _, n := range ns {
@@ -382,4 +390,58 @@ func TestNotificationsRepo_UnreadCount_ReadsOnlyUnreadRows(t *testing.T) {
 
 	query, args := st.Last()
 	assert.Contains(t, queryPlan(t, s.db, query, args...), "USING INDEX idx_notifications_user_unread", "read rows outnumber unread ones by far")
+}
+
+// TestNotificationsRepo_Page_FiltersInSQLAndCoversTheInboxOnce: past a thousand notices, with ties on the second, a
+// workspace the reader left and a project they cannot open, the pages hold exactly what the per-row rules keep.
+func TestNotificationsRepo_Page_FiltersInSQLAndCoversTheInboxOnce(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	s := newTestStore(t)
+	mustCreateUser(t, s, "u1", "onik97")
+	mustCreateUser(t, s, "u2", "alice")
+	seedProject(t, s, "p-hidden", "workspace-default", "HID")
+	open, hidden := newTestDoc("d-open"), newTestDoc("d-hidden")
+	hidden.ProjectID = "p-hidden"
+	require.NoError(t, s.Docs.Create(ctx, open))
+	require.NoError(t, s.Docs.Create(ctx, hidden))
+	base := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
+	subjects := []string{"d-open", "d-hidden", "gone"}
+	workspaces := []string{"ws-1", "ws-2", "ws-left", ""}
+	var rows []*workspace.Notification
+	for i := range 1300 {
+		n := newTestNotification(fmt.Sprintf("n-%04d", i), "u1", i%3 == 0)
+		n.SubjectID, n.WorkspaceID = subjects[i%3], workspaces[i%4]
+		// The collapse of a repeated unread notice keys on the subject; a distinct kind per row keeps every row.
+		n.Kind = workspace.Kind(fmt.Sprintf("kind-%d", i))
+		n.CreatedAt = base.Add(time.Duration(i/7) * time.Second)
+		rows = append(rows, n)
+	}
+	rows = append(rows, newTestNotification("someone-else", "u2", false))
+	require.NoError(t, s.Notifications.CreateMany(ctx, rows))
+	scope := &workspace.InboxScope{WorkspaceIDs: []string{"ws-1", "ws-2"}, ProjectIDs: []string{"project-general"}}
+
+	for _, f := range []workspace.InboxFilter{{}, {UnreadOnly: true}, {WorkspaceID: "ws-2"}} {
+		var want []string
+		for i := len(rows) - 2; i >= 0; i-- {
+			n := rows[i]
+			shown := (f.WorkspaceID == "" || n.WorkspaceID == f.WorkspaceID) && (!f.UnreadOnly || !n.Read) &&
+				n.WorkspaceID != "ws-left" && n.SubjectID != "d-hidden"
+			if shown {
+				want = append(want, n.ID)
+			}
+		}
+
+		got := pageAll(t, 100, func(offset, limit int) ([]string, int) {
+			ns, total, err := s.Notifications.Page(ctx, "u1", f, scope, paging.Window{Offset: offset, Limit: limit})
+			require.NoError(t, err)
+			ids := make([]string, len(ns))
+			for i, n := range ns {
+				ids[i] = n.ID
+			}
+			return ids, total
+		})
+
+		assert.Equal(t, want, got, "%+v", f)
+	}
 }

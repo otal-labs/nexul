@@ -62,13 +62,6 @@ func TestTicketList(t *testing.T) {
 	}
 
 	assert.Equal(t, []string{"REF-1", "REF-2", "WEB-1"}, keys(list(`{}`)))
-	assert.Equal(t, []string{"REF-1", "REF-2"}, keys(list(`{"project_id":"p-1"}`)))
-	assert.Equal(t, []string{"WEB-1"}, keys(list(`{"doc_id":"doc-1"}`)))
-	assert.Equal(t, []string{"REF-1", "WEB-1"}, keys(list(`{"query":"LOGIN"}`)))
-	assert.Equal(t, []string{"REF-1"}, keys(list(`{"query":"login","project_id":"p-1"}`)))
-	f.w.gets = 0
-	list(`{"query":"login"}`)
-	assert.Equal(t, 2, f.w.gets, "a search loads each of its two hits once")
 
 	blocked := list(`{"blocked_only":true}`)
 	require.Len(t, blocked.Items, 1)

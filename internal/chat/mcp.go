@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"regexp"
-	"slices"
 	"strings"
 	"time"
 
@@ -15,9 +13,6 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
-
-// ponytail: message_list loads a conversation's whole history to page it newest first; add a newest-first paged query if histories grow huge.
-const messageScan = math.MaxInt32
 
 type conversationListIn struct {
 	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace whose conversations to list."`
@@ -228,7 +223,8 @@ func toConversationResult(c *Conversation) conversationResult {
 
 func messageListTool(s *Service) mcptool.Tool {
 	return mcptool.New("message_list", "List messages",
-		"Lists a conversation's messages newest first, so the first page is the latest; page back with offset for older ones. "+
+		"Lists a conversation's messages newest first, so the first page is the latest; page back with offset for older ones, "+
+			"and a message posted meanwhile moves the older pages back by one. "+
 			"Name the conversation by conversation_id, or by exactly one of doc_id, ticket_id, or project_id for that doc's, ticket's, "+
 			"or project interview's thread; a thread nobody has started yet lists as empty and is not created. "+
 			"Deleted messages are left out, and a note carries its markdown file in file. "+
@@ -242,31 +238,24 @@ func messageListTool(s *Service) mcptool.Tool {
 			}
 			id, err := existingConversation(ctx, s, in.messageTarget, caller)
 			if errors.Is(err, apperrs.ErrNotFound) && in.ConversationID == "" {
-				return mcptool.Paginate([]messageResult{}, in.PageArgs), nil
+				return mcptool.PageOf([]messageResult{}, 0, in.Window()), nil
 			}
 			if err != nil {
 				return nil, err
 			}
-			ms, err := s.ListMessages(ctx, id, caller, messageScan)
+			ms, total, err := s.PageMessages(ctx, id, caller, in.Window())
 			if err != nil {
 				return nil, err
 			}
-			live := make([]*Message, 0, len(ms))
-			for _, m := range slices.Backward(ms) {
-				if m.DeletedAt == nil {
-					live = append(live, m)
-				}
-			}
-			page := mcptool.Paginate(live, in.PageArgs)
-			files, err := s.NoteFiles(ctx, page.Items)
+			files, err := s.NoteFiles(ctx, ms)
 			if err != nil {
 				return nil, err
 			}
-			out := mcptool.Page[messageResult]{Items: make([]messageResult, 0, len(page.Items)), Total: page.Total, HasMore: page.HasMore, NextOffset: page.NextOffset}
-			for _, m := range page.Items {
-				out.Items = append(out.Items, toMessageResult(m, files[m.AttachmentID]))
+			out := make([]messageResult, 0, len(ms))
+			for _, m := range ms {
+				out = append(out, toMessageResult(m, files[m.AttachmentID]))
 			}
-			return out, nil
+			return mcptool.PageOf(out, total, in.Window()), nil
 		})
 }
 

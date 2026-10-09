@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -22,4 +23,14 @@ func OpenDB(path string) (*sql.DB, error) {
 	db.SetMaxIdleConns(8)
 	db.SetConnMaxLifetime(5 * time.Minute)
 	return db, nil
+}
+
+// idsJSON renders ids as a JSON array, the form a query reads a runtime set in through json_each, so one static
+// statement serves any number of ids and may name the set twice.
+func idsJSON(ids []string) string {
+	if ids == nil {
+		ids = []string{}
+	}
+	b, _ := json.Marshal(ids) // a []string always encodes
+	return string(b)
 }

@@ -3,16 +3,12 @@ package workspace
 import (
 	"context"
 	"fmt"
-	"slices"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
-
-// ponytail: pages in memory over the newest 1,000 notifications; add an offset query if inboxes grow past that.
-const notificationScan = 1000
 
 type notificationListIn struct {
 	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"Only notifications about tickets, docs, and memories in this workspace, from workspace_list. Omit for every workspace."`
@@ -60,12 +56,9 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 				if err != nil {
 					return nil, err
 				}
-				ns, err := s.List(ctx, userID, in.WorkspaceID, notificationScan)
+				ns, total, err := s.Page(ctx, userID, InboxFilter{WorkspaceID: in.WorkspaceID, UnreadOnly: in.UnreadOnly}, in.Window())
 				if err != nil {
 					return nil, err
-				}
-				if in.UnreadOnly {
-					ns = slices.DeleteFunc(ns, func(n *Notification) bool { return n.Read })
 				}
 				out := make([]notificationResult, 0, len(ns))
 				for _, n := range ns {
@@ -74,7 +67,7 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 						Read: n.Read, CreatedAt: n.CreatedAt, FolderID: n.FolderID, FolderName: n.FolderName, FolderIsDefault: n.FolderIsDefault,
 					})
 				}
-				return mcptool.Paginate(out, in.PageArgs), nil
+				return mcptool.PageOf(out, total, in.Window()), nil
 			}),
 		mcptool.New("notification_update", "Mark notifications read",
 			"Marks one of your notifications read by id, or every one of them with all true; send exactly one of the two. "+

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -48,8 +49,9 @@ type Repo interface {
 // NotificationRepo is the consumer-side persistence contract for the workspace notifications capability.
 type NotificationRepo interface {
 	CreateMany(ctx context.Context, ns []*Notification, evts ...eventbus.OutboxEvent) error
-	// List, UnreadByProject, and MarkAllRead span every workspace when workspaceID is empty.
-	List(ctx context.Context, userID, workspaceID string, limit int) ([]*Notification, error)
+	// Page reads one window of userID's inbox newest first and how many it holds; a nil scope leaves nothing out for
+	// access. Page, UnreadByProject, and MarkAllRead span every workspace when the workspace id is empty.
+	Page(ctx context.Context, userID string, f InboxFilter, scope *InboxScope, w paging.Window) ([]*Notification, int, error)
 	UnreadByProject(ctx context.Context, userID, workspaceID string) ([]UnreadGroup, error)
 	MarkRead(ctx context.Context, userID, id string, at time.Time) error
 	MarkAllRead(ctx context.Context, userID, workspaceID string, at time.Time) error
@@ -124,6 +126,8 @@ type PermissionChecker interface {
 	CanInProject(ctx context.Context, userID, projectID string, action permissions.Action) bool
 	HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action) bool
 	CanReadDoc(ctx context.Context, userID, docID string) bool
+	// ProjectsAnywhere lists the workspaces userID belongs to and, across them, the projects they hold action in.
+	ProjectsAnywhere(ctx context.Context, userID string, action permissions.Action) (workspaceIDs, projectIDs []string, err error)
 }
 
 // User is the minimal user projection the generation rules resolve against.

@@ -13,6 +13,8 @@ type Repo interface {
 	Get(ctx context.Context, resourceType, resourceID, userID string) (*Overwrite, error)
 	// GetMany returns userID's overwrite on each of resourceIDs that has one, keyed by resource id, in one read.
 	GetMany(ctx context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*Overwrite, error)
+	// ListByUser returns every overwrite userID holds on a resourceType, keyed by resource id, in one read.
+	ListByUser(ctx context.Context, resourceType, userID string) (map[string]*Overwrite, error)
 	// ListByResource returns every overwrite on one resource instance (e.g. every per-user grant on a document).
 	ListByResource(ctx context.Context, resourceType, resourceID string) ([]*Overwrite, error)
 	// Set upserts the allow/deny sets for (resourceType, resourceID, userID); both empty deletes the row.
@@ -54,6 +56,8 @@ type Scopes interface {
 	ProjectIDs(ctx context.Context, workspaceID string) ([]string, error)
 	// UnrestrictedWorkspaceIDsForUser lists the workspaces userID is a member of and not a Restricted member of.
 	UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error)
+	// WorkspaceIDsForUser lists every workspace userID is a member of, a Restricted membership included.
+	WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error)
 }
 
 // PlayWorkspaceResolver resolves a play's own workspace so HasPermission/canManage apply to plays too (ADR 0017).

@@ -348,6 +348,10 @@ func (g notificationPermissionGate) HasPermission(ctx context.Context, userID, w
 	return g.svc.HasPermission(ctx, userID, workspaceID, action, "", "")
 }
 
+func (g notificationPermissionGate) ProjectsAnywhere(ctx context.Context, userID string, action permissions.Action) (workspaceIDs, projectIDs []string, err error) {
+	return g.svc.ProjectsAnywhere(ctx, userID, action)
+}
+
 func (g notificationPermissionGate) CanReadDoc(ctx context.Context, userID, docID string) bool {
 	ok, err := g.svc.Can(ctx, userID, docID, permissions.DocsRead)
 	return err == nil && ok

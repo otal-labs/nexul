@@ -131,6 +131,20 @@ func (f *fakeRepo) UnclearedBlockers(_ context.Context) (map[string][]LinkedTick
 	return out, nil
 }
 
+func (f *fakeRepo) UnclearedBlockersOf(ctx context.Context, ids []string) (map[string][]LinkedTicket, error) {
+	all, err := f.UnclearedBlockers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string][]LinkedTicket{}
+	for _, id := range ids {
+		if bs, ok := all[id]; ok {
+			out[id] = bs
+		}
+	}
+	return out, nil
+}
+
 func seedTickets(t *testing.T, s *Service, titles ...string) []*Ticket {
 	t.Helper()
 	out := make([]*Ticket, 0, len(titles))

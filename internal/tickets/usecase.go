@@ -17,6 +17,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -46,6 +47,8 @@ func (s *Service) SetLiveSessions(live LiveSessions) { s.live = live }
 // Gate is the permission check a ticket passes through before the caller touches it (the access domain, ADR 0042).
 type Gate interface {
 	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
+	// CallerProjects lists the projects RequireProject lets the caller act in with action; all is true for any project.
+	CallerProjects(ctx context.Context, action permissions.Action) (projectIDs []string, all bool, err error)
 }
 
 // NewService wires the tickets use-cases; users resolves the reporter's login and may be nil, recording the user id.
@@ -418,6 +421,39 @@ func (s *Service) List(ctx context.Context) ([]*Ticket, error) {
 		return nil, fmt.Errorf("list tickets: %w", err)
 	}
 	return s.readable(ctx, ts)
+}
+
+// PageTickets returns one window of the tickets f keeps that the caller may read, oldest first or by relevance with a
+// query, and how many there are; the read is filtered in SQL, so the total counts only what the pages hold (ADR 0140).
+// A project filter needs tickets:read there.
+func (s *Service) PageTickets(ctx context.Context, f TicketFilter, w paging.Window) ([]*Ticket, int, error) {
+	f.Query = strings.TrimSpace(f.Query)
+	if f.ProjectID != "" {
+		if err := s.require(ctx, f.ProjectID, permissions.TicketsRead); err != nil {
+			return nil, 0, fmt.Errorf("list tickets for project %s: %w", f.ProjectID, err)
+		}
+	}
+	scope, err := s.readScope(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	ts, total, err := s.repo.Page(ctx, f, scope, w.Clamped())
+	if err != nil {
+		return nil, 0, fmt.Errorf("list tickets: %w", err)
+	}
+	return ts, total, nil
+}
+
+// readScope is the projects whose tickets the caller may read.
+func (s *Service) readScope(ctx context.Context) (TicketScope, error) {
+	if s.gate == nil {
+		return TicketScope{All: permissions.Ungated(ctx) == nil}, nil
+	}
+	projectIDs, all, err := s.gate.CallerProjects(ctx, permissions.TicketsRead)
+	if err != nil {
+		return TicketScope{}, fmt.Errorf("list tickets: %w", err)
+	}
+	return TicketScope{All: all, ProjectIDs: projectIDs}, nil
 }
 
 // ListByDoc returns the tickets derived from a given doc.

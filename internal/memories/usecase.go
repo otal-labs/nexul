@@ -11,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -180,6 +181,23 @@ func (s *Service) ListForProject(ctx context.Context, projectID string) ([]*Memo
 		return nil, fmt.Errorf("list memories for project %s: %w", projectID, err)
 	}
 	return ms, nil
+}
+
+// PageForProject returns one window of a project's memories, oldest first, and how many it has; it needs memories:read
+// in the project, as ListForProject does.
+func (s *Service) PageForProject(ctx context.Context, projectID string, w paging.Window) ([]*Memory, int, error) {
+	projectID = strings.TrimSpace(projectID)
+	if projectID == "" {
+		return nil, 0, fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
+	}
+	if err := s.requireProject(ctx, projectID, permissions.MemoriesRead); err != nil {
+		return nil, 0, err
+	}
+	ms, total, err := s.repo.PageByProject(ctx, projectID, w.Clamped())
+	if err != nil {
+		return nil, 0, fmt.Errorf("list memories for project %s: %w", projectID, err)
+	}
+	return ms, total, nil
 }
 
 // ListMemoryItems returns the project's memories for an agent turn to name, none for a turn with no project

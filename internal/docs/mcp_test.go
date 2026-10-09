@@ -201,50 +201,32 @@ func TestDocList(t *testing.T) {
 	s := newTestService(repo)
 	spine := mustDoc(t, s, "project-1", "Storage spine", "SQLite migrations")
 	mustDoc(t, s, "project-2", "SQLite tuning", "pragmas")
-	old := mustDoc(t, s, "project-1", "Old plan", "retired")
-	_, err := s.Archive(testCtx(), old.ID)
-	require.NoError(t, err)
-
-	page := func(t *testing.T, args string) mcptool.Page[*DocListItem] {
+	page := func(t *testing.T, s *Service, args string) mcptool.Page[*DocListItem] {
 		t.Helper()
 		out, err := callTool(testCtx(), t, s, "doc_list", args)
 		require.NoError(t, err)
 		return out.(mcptool.Page[*DocListItem])
 	}
-	ids := func(p mcptool.Page[*DocListItem]) []string {
-		var out []string
-		for _, d := range p.Items {
-			out = append(out, d.ID)
-		}
-		return out
-	}
 
-	t.Run("browsing hides archived docs", func(t *testing.T) {
-		assert.Equal(t, 2, page(t, `{}`).Total)
-	})
-	t.Run("include_archived lists them too", func(t *testing.T) {
-		assert.Equal(t, 3, page(t, `{"include_archived":true}`).Total)
-	})
-	t.Run("project_id narrows the list", func(t *testing.T) {
-		assert.Equal(t, []string{spine.ID}, ids(page(t, `{"project_id":"project-1"}`)))
-	})
-	t.Run("a query searches across projects", func(t *testing.T) {
-		assert.Equal(t, 2, page(t, `{"query":"sqlite"}`).Total)
-	})
-	t.Run("a query within a project", func(t *testing.T) {
-		assert.Equal(t, []string{spine.ID}, ids(page(t, `{"query":"sqlite","project_id":"project-1"}`)))
-	})
 	t.Run("limit pages the result", func(t *testing.T) {
-		p := page(t, `{"limit":1}`)
+		p := page(t, s, `{"limit":1}`)
 		assert.Len(t, p.Items, 1)
+		assert.Equal(t, 2, p.Total)
 		assert.True(t, p.HasMore)
 	})
 	t.Run("a doc the caller cannot open is listed without access", func(t *testing.T) {
-		out, err := callTool(testCtx(), t, newDenyService(repo), "doc_list", `{"project_id":"project-1"}`)
-		require.NoError(t, err)
-		p := out.(mcptool.Page[*DocListItem])
+		p := page(t, newDenyService(repo), `{"project_id":"project-1"}`)
 		require.Len(t, p.Items, 1)
 		assert.False(t, p.Items[0].CanOpen)
+		assert.Empty(t, p.Items[0].Snippet)
+	})
+	t.Run("a search leaves out what the caller cannot read, and counts only the rest", func(t *testing.T) {
+		readsSpine := NewService(repo, fakeAccess{readable: []string{spine.ID}}, nil)
+		p := page(t, readsSpine, `{"query":"sqlite"}`)
+		require.Len(t, p.Items, 1)
+		assert.Equal(t, spine.ID, p.Items[0].ID)
+		assert.True(t, p.Items[0].CanOpen)
+		assert.Equal(t, 1, p.Total)
 	})
 }
 

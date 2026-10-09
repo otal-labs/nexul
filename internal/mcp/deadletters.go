@@ -25,8 +25,11 @@ type deadLetterResult struct {
 	CreatedAt time.Time       `json:"created_at"`
 }
 
-// ponytail: pages in memory over the newest 1,000; add a count query if dead letters ever pile up past that.
-const deadLetterScan = 1000
+// DeadLetterStore is the dead-letter store with the count dead_letter_list pages against.
+type DeadLetterStore interface {
+	deadletter.Storer
+	Count(ctx context.Context) (int, error)
+}
 
 type deadLetterListIn struct {
 	mcptool.PageArgs
@@ -37,7 +40,7 @@ type deadLetterReplayIn struct {
 }
 
 // deadLetterTools read and replay every domain's failed events, so they take instance:read and instance:write.
-func deadLetterTools(store deadletter.Storer, pub deadletter.Publisher, gate anywhereGate) []mcptool.Tool {
+func deadLetterTools(store DeadLetterStore, pub deadletter.Publisher, gate anywhereGate) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("dead_letter_list", "List dead letters",
 			"Lists events that exhausted their retries or failed permanently, newest first, with the error each one "+
@@ -49,11 +52,16 @@ func deadLetterTools(store deadletter.Storer, pub deadletter.Publisher, gate any
 				if err := gate.RequireAnywhere(ctx, permissions.InstanceRead); err != nil {
 					return nil, err
 				}
-				letters, err := store.List(ctx, deadLetterScan, 0)
+				w := in.Window()
+				letters, err := store.List(ctx, w.Limit, w.Offset)
 				if err != nil {
 					return nil, err
 				}
-				return mcptool.Paginate(shapeDeadLetters(letters), in.PageArgs), nil
+				total, err := store.Count(ctx)
+				if err != nil {
+					return nil, err
+				}
+				return mcptool.PageOf(shapeDeadLetters(letters), total, w), nil
 			}),
 		mcptool.New("dead_letter_replay", "Replay dead letter",
 			"Republishes a dead letter to its original topic and removes it from the store, so every consumer of "+

@@ -6,6 +6,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/platform/colors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 // SearchResult is one ranked hit; Search fills Ticket with the ticket it loaded to check the caller may read it.
@@ -52,6 +53,8 @@ type LinkRepo interface {
 	DeleteLink(ctx context.Context, link TicketLink, evts ...eventbus.OutboxEvent) (bool, error)
 	// UnclearedBlockers maps each blocked ticket id to its blockers not yet in a done-stage status.
 	UnclearedBlockers(ctx context.Context) (map[string][]LinkedTicket, error)
+	// UnclearedBlockersOf is UnclearedBlockers for the tickets ids names only.
+	UnclearedBlockersOf(ctx context.Context, ids []string) (map[string][]LinkedTicket, error)
 }
 
 // Repo is the consumer-side persistence contract for tickets; mutations carry outbox events.
@@ -64,6 +67,9 @@ type Repo interface {
 	List(ctx context.Context) ([]*Ticket, error)
 	ListByDoc(ctx context.Context, docID string) ([]*Ticket, error)
 	ListByProject(ctx context.Context, projectID string) ([]*Ticket, error)
+	// Page reads one window of the tickets f and scope keep, oldest first or by relevance with a query, and how many
+	// they keep in all.
+	Page(ctx context.Context, f TicketFilter, scope TicketScope, w paging.Window) ([]*Ticket, int, error)
 	// UpdateStatus appends the ticket to the end of the new status's manual order, not its old position.
 	UpdateStatus(ctx context.Context, id string, status Status, evts ...eventbus.OutboxEvent) error
 	// UpdateType changes a ticket's type id in place; the ticket keeps its identity.

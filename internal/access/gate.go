@@ -76,6 +76,52 @@ func (s *Service) RequireAnywhere(ctx context.Context, action permissions.Action
 	return nil
 }
 
+// ProjectsAnywhere lists the workspaces userID belongs to and, across them, the projects in which they hold action
+// (permissions.Member: may open them), so a list spanning workspaces filters by both in SQL (ADR 0140).
+func (s *Service) ProjectsAnywhere(ctx context.Context, userID string, action permissions.Action) (workspaceIDs, projectIDs []string, err error) {
+	if userID == "" || s.scopes == nil {
+		return []string{}, []string{}, nil
+	}
+	ctx = s.memoized(ctx)
+	workspaceIDs, err = remember(ctx, membershipKey{userID}, func() ([]string, error) {
+		return s.scopes.WorkspaceIDsForUser(ctx, userID)
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("list workspaces of %s: %w", userID, err)
+	}
+	projectIDs = []string{}
+	for _, workspaceID := range workspaceIDs {
+		ids, err := s.ProjectsWith(ctx, userID, workspaceID, action)
+		if err != nil {
+			return nil, nil, err
+		}
+		projectIDs = append(projectIDs, ids...)
+	}
+	return workspaceIDs, projectIDs, nil
+}
+
+// CallerProjects lists the projects in which RequireProject lets the caller on ctx act with action, so a list filters
+// by them in SQL instead of row by row. all is true for a caller every project check passes, the server's own calls.
+func (s *Service) CallerProjects(ctx context.Context, action permissions.Action) (projectIDs []string, all bool, err error) {
+	userID, checked := caller(ctx)
+	if checked {
+		_, projectIDs, err = s.ProjectsAnywhere(ctx, userID, action)
+		return projectIDs, false, err
+	}
+	home := defaultAutomationWorkspace(ctx)
+	if home == "" {
+		return nil, true, nil
+	}
+	if s.scopes == nil {
+		return []string{}, false, nil
+	}
+	projectIDs, err = s.scopes.ProjectIDs(ctx, home)
+	if err != nil {
+		return nil, false, fmt.Errorf("list projects of workspace %s: %w", home, err)
+	}
+	return projectIDs, false, nil
+}
+
 // HoldsAnywhere reports whether userID holds action in at least one workspace they belong to unrestricted; an Owner
 // of any workspace holds every action, which is all instance-level power there is (ADR 0088, ADR 0097).
 func (s *Service) HoldsAnywhere(ctx context.Context, userID string, action permissions.Action) (bool, error) {

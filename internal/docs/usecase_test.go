@@ -16,6 +16,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -96,6 +97,55 @@ func (f *fakeRepo) ListByProject(_ context.Context, projectID string) ([]*Doc, e
 	out := make([]*Doc, 0, len(f.docs))
 	for _, d := range f.docs {
 		if d.ProjectID == projectID {
+			out = append(out, d)
+		}
+	}
+	return out, nil
+}
+
+// Page keeps f's project, folder, archived state, and a substring query, ordered by id, and a search's Read scope;
+// the project scope is the storage tests' to cover.
+func (f *fakeRepo) Page(ctx context.Context, filter DocFilter, scope DocScope, w paging.Window) ([]*Doc, int, error) {
+	if filter.Query != "" && f.searchErr != nil {
+		return nil, 0, f.searchErr
+	}
+	ids, err := f.matching(filter, filter.Query == "" && filter.IncludeArchived)
+	if err != nil {
+		return nil, 0, err
+	}
+	if read := scope.Read; read != nil {
+		ids = slices.DeleteFunc(ids, func(id string) bool {
+			return !slices.Contains(read.Allowed, id) && (slices.Contains(read.Denied, id) || !slices.Contains(read.ProjectIDs, f.docs[id].ProjectID))
+		})
+	}
+	ds, err := f.ListByIDs(ctx, ids[min(w.Offset, len(ids)):min(w.Offset+w.Limit, len(ids))])
+	return ds, len(ids), err
+}
+
+func (f *fakeRepo) matching(filter DocFilter, archived bool) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	var ids []string
+	for _, d := range f.docs {
+		text := strings.ToLower(d.Title + " " + d.Body)
+		if (filter.ProjectID == "" || d.ProjectID == filter.ProjectID) && (filter.FolderID == "" || d.FolderID == filter.FolderID) &&
+			(archived || !d.Archived) && strings.Contains(text, strings.ToLower(filter.Query)) {
+			ids = append(ids, d.ID)
+		}
+	}
+	slices.Sort(ids)
+	return ids, nil
+}
+
+func (f *fakeRepo) ListByIDs(_ context.Context, ids []string) ([]*Doc, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]*Doc, 0, len(ids))
+	for _, id := range ids {
+		if d, ok := f.docs[id]; ok {
 			out = append(out, d)
 		}
 	}
@@ -295,9 +345,14 @@ type fakeAccess struct {
 	projectErr error
 	// projectAllow, when set, makes RequireProject pass only for membership and these actions.
 	projectAllow []permissions.Action
+	// readable, when set, are the only docs Can allows, whatever else is set.
+	readable []string
 }
 
-func (f fakeAccess) Can(_ context.Context, _, _ string, action permissions.Action) (bool, error) {
+func (f fakeAccess) Can(_ context.Context, _, docID string, action permissions.Action) (bool, error) {
+	if f.readable != nil {
+		return slices.Contains(f.readable, docID), nil
+	}
 	if f.allow != nil {
 		return slices.Contains(f.allow, action), f.canErr
 	}
@@ -319,6 +374,23 @@ func (f fakeAccess) GrantCreator(_ context.Context, _, _ string) error {
 
 func (f fakeAccess) DeleteByDoc(_ context.Context, _ string) error {
 	return f.deleteErr
+}
+
+// fakeProjects are the projects the docs tests file docs in.
+var fakeProjects = []string{"project-1", "project-2"}
+
+func (f fakeAccess) DocsWith(ctx context.Context, userID string, action permissions.Action) ([]string, []string, []string, error) {
+	if f.readable != nil {
+		return []string{}, f.readable, []string{}, nil
+	}
+	if ok, err := f.Can(ctx, userID, "", action); ok && err == nil {
+		return fakeProjects, []string{}, []string{}, nil
+	}
+	return []string{}, []string{}, []string{}, nil
+}
+
+func (f fakeAccess) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
+	return nil, f.projectErr == nil, nil
 }
 
 func (f fakeAccess) RequireProject(_ context.Context, _ string, action permissions.Action) error {

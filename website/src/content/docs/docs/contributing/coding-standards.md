@@ -33,15 +33,16 @@ and [`practices/architecture.md`](https://github.com/otal-labs/nexul/blob/master
   ADR [0009](https://github.com/otal-labs/nexul/blob/master/docs/adr/0009-sqlc-generates-the-storage-queries.md).
 - SQLite has one writer: every write goes through the storage serializer,
   transactions begin `IMMEDIATE`, pooled connections stay warm, and lists
-  paginate by keyset with indexes that carry their tiebreaker.
+  paginate in SQL, by keyset or behind the MCP offset contract, with indexes
+  that carry their tiebreaker.
 - Loops that deliver committed rows wake on the serializer's commit
   broadcast instead of polling, and a slow client gets its own bounded send
   queue so it never stalls the others. Packages that start goroutines guard
   them with `goleak`.
 - Every adapter (HTTP, MCP, live frames) encodes through one JSON encoder,
   `jsonx`, so an empty list is always `[]`; long lists encode through plain
-  wire structs, and permission checks on a list run once per project, not
-  once per row.
+  wire structs, and a list filters by permission in its SQL, so a page reads
+  one page of rows and its total counts exactly what the pages hold.
 - The architecture guide opens with three principles: a one-way door is a
   bug, build the smallest model that makes behavior unsurprising, and keep
   complexity in the adapters.

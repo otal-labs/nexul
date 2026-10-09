@@ -11,6 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 func notifServe(t *testing.T, h http.Handler, method, path, body string) *httptest.ResponseRecorder {
@@ -54,6 +56,22 @@ func TestNotificationHandler_List(t *testing.T) {
 		require.Len(t, ns, 1)
 		assert.Equal(t, "n1", ns[0].ID)
 	})
+	t.Run("unread_only and offset reach the same filter and window as the tool", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		for _, id := range []string{"n1", "n2", "n3"} {
+			n := mkNotif(id, "u1")
+			n.SubjectID = id
+			repo.create(t, n)
+		}
+		require.NoError(t, repo.MarkRead(context.Background(), "u1", "n2", notifFixedNow))
+		s := newTestNotifService(repo, newFakeNotifUsers())
+		rec := notifServe(t, notifAuthedHandler(s), http.MethodGet, "/api/notifications?unread_only=true&offset=1", "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		var ns []*Notification
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &ns))
+		require.Len(t, ns, 1, "two unread, the first skipped")
+		assert.False(t, ns[0].Read)
+	})
 	t.Run("invalid limit is treated as default", func(t *testing.T) {
 		repo := newFakeNotifRepo()
 		repo.create(t, mkNotif("n1", "u1"))
@@ -88,7 +106,7 @@ func TestNotificationHandler_MarkRead(t *testing.T) {
 		s := newTestNotifService(repo, newFakeNotifUsers())
 		rec := notifServe(t, notifAuthedHandler(s), http.MethodPost, "/api/notifications/n1/read", "")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
-		ns, err := s.List(context.Background(), "u1", "", 0)
+		ns, _, err := s.Page(context.Background(), "u1", InboxFilter{}, paging.Window{})
 		require.NoError(t, err)
 		assert.True(t, ns[0].Read)
 	})
@@ -116,12 +134,12 @@ func TestNotificationHandler_MarkAllRead(t *testing.T) {
 		s := newTestNotifService(repo, newFakeNotifUsers())
 		rec := notifServe(t, notifAuthedHandler(s), http.MethodPost, "/api/notifications/read-all", "")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
-		ns, err := s.List(context.Background(), "u1", "", 0)
+		ns, _, err := s.Page(context.Background(), "u1", InboxFilter{}, paging.Window{})
 		require.NoError(t, err)
 		for _, n := range ns {
 			assert.True(t, n.Read)
 		}
-		other, err := s.List(context.Background(), "u2", "", 0)
+		other, _, err := s.Page(context.Background(), "u2", InboxFilter{}, paging.Window{})
 		require.NoError(t, err)
 		for _, n := range other {
 			assert.False(t, n.Read)

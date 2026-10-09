@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,12 +28,17 @@ func (f *fakeDeadLetters) Put(_ context.Context, dl deadletter.DeadLetter) error
 	return nil
 }
 
-func (f *fakeDeadLetters) List(context.Context, int, int) ([]deadletter.DeadLetter, error) {
+func (f *fakeDeadLetters) List(_ context.Context, limit, offset int) ([]deadletter.DeadLetter, error) {
 	out := make([]deadletter.DeadLetter, 0, len(f.letters))
 	for _, dl := range f.letters {
 		out = append(out, dl)
 	}
-	return out, nil
+	slices.SortFunc(out, func(a, b deadletter.DeadLetter) int { return strings.Compare(a.ID, b.ID) })
+	return out[min(offset, len(out)):min(offset+limit, len(out))], nil
+}
+
+func (f *fakeDeadLetters) Count(context.Context) (int, error) {
+	return len(f.letters), nil
 }
 
 func (f *fakeDeadLetters) Get(_ context.Context, id string) (*deadletter.DeadLetter, error) {
@@ -115,6 +122,23 @@ func TestDeadLetterList_ShapesPayloadsAsJSON(t *testing.T) {
 			assert.JSONEq(t, `"not json"`, string(dl.Payload), "a non-JSON payload reads as a string")
 		}
 	}
+}
+
+func TestDeadLetterList_CountsPastAThousand(t *testing.T) {
+	tools, store, _ := deadLetterFixture()
+	for i := range 1500 {
+		id := fmt.Sprintf("dl-%04d", i)
+		store.letters[id] = deadletter.DeadLetter{ID: id, Topic: "doc.created", Payload: []byte(`{}`)}
+	}
+
+	out, err := tools["dead_letter_list"].Call(as("admin-1"), json.RawMessage(`{"offset":1000,"limit":100}`))
+
+	require.NoError(t, err)
+	page := out.(mcptool.Page[deadLetterResult])
+	assert.Len(t, page.Items, 100)
+	assert.Equal(t, 1502, page.Total)
+	assert.True(t, page.HasMore)
+	assert.Equal(t, 1100, page.NextOffset)
 }
 
 func TestDeadLetterReplay(t *testing.T) {

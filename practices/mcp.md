@@ -265,8 +265,19 @@ decide whether an agent picks the right tool.
   markdown, never the stored rich-text tree.
 - **Every list is bounded.** A list or search takes `limit` (default 50,
   maximum 100) and `offset` through `mcptool.PageArgs`, and returns
-  `{items, total, has_more, next_offset}` through `mcptool.Paginate`. An
-  unbounded list grows until it breaks every client at once.
+  `{items, total, has_more, next_offset}`. An unbounded list grows until it
+  breaks every client at once.
+- **A list pages in SQL (ADR 0140).** The tool passes `in.Window()` to a
+  use-case that takes the list's filters and returns the window's items and
+  the filtered total, and shapes them with `mcptool.PageOf`. A filter the
+  tool offers is a use-case filter, so the HTTP gateway gets it too; a tool
+  that drops rows after the call holds a rule the gateway does not have.
+  `mcptool.Paginate` is only for a list that arrives whole, from GitHub,
+  Cloudflare, or a handful of configuration rows.
+- **`total` is honest.** It counts exactly what the pages hold, after
+  filters and access, so `has_more` is true while anything remains. A scan
+  cap that stops reading at a thousand rows makes both lie, and an agent
+  stops paging at the wrong place.
 - **Large text returns a slice.** Logs and similar growing text return a tail
   by default, with a parameter for more. Keep typical results under 10,000
   tokens; a client may cut or divert a result past 25,000 tokens.

@@ -196,6 +196,15 @@ func (r *WorkspaceMembersRepo) Member(ctx context.Context, workspaceID, userID s
 	return toMember(row), nil
 }
 
+// WorkspaceIDs lists every workspace userID belongs to, a Restricted membership included.
+func (r *WorkspaceMembersRepo) WorkspaceIDs(ctx context.Context, userID string) ([]string, error) {
+	ids, err := r.q.ListWorkspaceIDsForUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list workspaces of %s: %w", userID, err)
+	}
+	return ids, nil
+}
+
 // UnrestrictedWorkspaceIDs lists the workspaces userID belongs to with Every project From role, what instance-level
 // checks count (ADR 0097).
 func (r *WorkspaceMembersRepo) UnrestrictedWorkspaceIDs(ctx context.Context, userID string) ([]string, error) {

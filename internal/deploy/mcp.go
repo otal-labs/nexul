@@ -56,34 +56,15 @@ func deployListTool(s *Service) mcptool.Tool {
 			"Returns at most 100 per page.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in deployListIn) (any, error) {
-			ds, err := listDeploys(ctx, s, in)
+			ds, total, err := s.PageDeploys(ctx, DeployFilter{StackID: in.StackID, Status: Status(in.Status)}, in.Window())
+			if errors.Is(err, apperrs.ErrInvalid) {
+				return nil, fmt.Errorf("%w; status is one of pending, running, healthy, failed", err)
+			}
 			if err != nil {
 				return nil, err
 			}
-			return mcptool.Paginate(toDeployResults(ds), in.PageArgs), nil
+			return mcptool.PageOf(toDeployResults(ds), total, in.Window()), nil
 		})
-}
-
-func listDeploys(ctx context.Context, s *Service, in deployListIn) ([]*Deploy, error) {
-	if in.Status != "" {
-		ds, err := s.ListByStatus(ctx, Status(in.Status))
-		if errors.Is(err, apperrs.ErrInvalid) {
-			return nil, fmt.Errorf("%w; status is one of pending, running, healthy, failed", err)
-		}
-		if err != nil {
-			return nil, err
-		}
-		return slices.DeleteFunc(ds, func(d *Deploy) bool { return in.StackID != "" && d.StackID != in.StackID }), nil
-	}
-	if in.StackID != "" {
-		return s.ListByStackID(ctx, in.StackID)
-	}
-	ds, err := s.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	slices.Reverse(ds)
-	return ds, nil
 }
 
 type deployGetIn struct {

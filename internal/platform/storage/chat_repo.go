@@ -12,6 +12,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -468,6 +469,28 @@ func (r *ChatRepo) ListMessages(ctx context.Context, conversationID string, limi
 		return nil, err
 	}
 	return ms, nil
+}
+
+// PageLiveMessages reads one window of a conversation's live messages, newest first, and how many it holds.
+func (r *ChatRepo) PageLiveMessages(ctx context.Context, conversationID string, w paging.Window) ([]*chat.Message, int, error) {
+	rows, err := r.q.ListLiveMessagesNewestFirst(ctx, sqlcgen.ListLiveMessagesNewestFirstParams{
+		ConversationID: conversationID, Limit: int64(w.Limit), Offset: int64(w.Offset),
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("page messages for conversation %s: %w", conversationID, err)
+	}
+	total, err := r.q.CountLiveMessages(ctx, conversationID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count messages for conversation %s: %w", conversationID, err)
+	}
+	ms, err := toMessages(rows)
+	if err != nil {
+		return nil, 0, err
+	}
+	if err := r.attachReactions(ctx, ms); err != nil {
+		return nil, 0, err
+	}
+	return ms, int(total), nil
 }
 
 // attachReactions batch-fills Reactions on every live message, one query for the page; a deleted message keeps none.

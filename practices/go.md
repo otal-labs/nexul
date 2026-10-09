@@ -449,8 +449,12 @@ blank imports except for driver registration (`_ "modernc.org/sqlite"`).
   in the migration, where the next person changing the index will read it.
 - An ordering index includes its tiebreaker column, for example
   `(ticket_id, created_at, id)`, so a pagination cursor stays index-only.
-- List queries paginate by keyset, never by `OFFSET`. Offset pagination
+- List queries a client scrolls paginate by keyset. Offset pagination
   rescans every skipped row and drifts when rows are inserted mid-scroll.
+  The one exception is a list whose public contract is an offset, every MCP
+  list (ADR 0140): it reads `LIMIT` and `OFFSET` over an index that ends in
+  the tiebreaker, so the skipped rows are index entries, and says in the
+  tool's description when a new row shifts later pages.
 - A list index on a soft-deleted table leads with the archive or delete
   column, so live queries scan only live rows.
 - Migrations are idempotent: `CREATE ... IF NOT EXISTS` everywhere, and a
@@ -499,7 +503,14 @@ from them against the migrations in `internal/platform/storage/migrations/`.
 - Queries sqlc cannot express (table or column names chosen at runtime,
   optional `WHERE` clauses assembled in Go) stay hand-written next to the
   wrapper with a one-line `// hand-written: sqlc cannot express ...`
-  comment. Do not contort the SQL to fit.
+  comment. Do not contort the SQL to fit. A paged list with optional
+  filters builds on `pageQuery` (`page_query.go`): it counts the matches,
+  reads the window's ids, and the rows come back by id through sqlc, so the
+  column mapping stays generated.
+- A set an access check produced (projects, docs) binds as one JSON array
+  read through `json_each`, rendered by `idsJSON`: one static statement
+  serves any size of set, may name it twice, and an empty set matches
+  nothing, where `sqlc.slice` rewrites the statement per length.
 - Generated types use primitives (`string`, `int64`). Do not add sqlc type
   overrides pointing at domain packages; the wrapper is where the
   conversion belongs.
@@ -574,8 +585,19 @@ What the memo cannot share is a read per resource. A list of docs asks
 they live in one statement each; pass the project when every doc is in it.
 `permissions.Filter` still checks each distinct scope once, which is what
 keeps a scope that needs its own read to resolve (a deploy's stack, a review's
-repository) to one read per scope. A list that could filter in SQL asks
-`access.ProjectsWith` for the projects in which the person holds the action.
+repository) to one read per scope.
+
+A list that pages filters by access in SQL (ADR 0140), never in Go after
+reading every row. `access.CallerProjects` is the set of projects
+`RequireProject` lets the caller through for an action, `ProjectsAnywhere`
+the same for a named person with the workspaces they belong to, and
+`DocsWith` adds the docs whose own overwrite turns their project's answer.
+Only what no project set can express (a private channel's or a DM's members)
+stays a per-row check, and it runs over every candidate before paging, so
+`total` counts exactly what the pages hold. A list never stops at a scan
+cap. `server/cmd/list_paging_test.go` holds each paged list tool to what the
+row-by-row check showed every kind of viewer, and to about one page of rows
+handed back; a new paged list joins both.
 
 Background work (event consumers, play runs) carries no memo and reads every
 time. A guard in `server/cmd/access_memo_test.go` pins each list path's

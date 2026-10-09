@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/memories"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 func newTestMemory(id, projectID string) *memories.Memory {
@@ -269,4 +271,31 @@ func TestMemoriesRepo_InterviewTemplate_SaveUpsertsAndReadsBack(t *testing.T) {
 	assert.Equal(t, at, got.UpdatedAt)
 
 	require.Error(t, s.Memories.SaveInterviewTemplate(ctx, &memories.InterviewTemplate{WorkspaceID: "no-such-workspace", Body: "x", UpdatedAt: at}))
+}
+
+func TestMemoriesRepo_PageByProject_CoversTheProjectOnceOldestFirst(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	s := newTestStore(t)
+	seedProject(t, s, "p-other", "workspace-default", "OTH")
+	want := []string{"memory-project-general-working"}
+	for i := range 9 {
+		m := newTestMemory(fmt.Sprintf("m-%d", i), "project-general")
+		m.CreatedAt = m.CreatedAt.Add(time.Duration(i/3) * time.Second)
+		require.NoError(t, s.Memories.Create(ctx, m, ""))
+		want = append(want, m.ID)
+	}
+	require.NoError(t, s.Memories.Create(ctx, newTestMemory("elsewhere", "p-other"), ""))
+
+	got := pageAll(t, 4, func(offset, limit int) ([]string, int) {
+		ms, total, err := s.Memories.PageByProject(ctx, "project-general", paging.Window{Offset: offset, Limit: limit})
+		require.NoError(t, err)
+		ids := make([]string, len(ms))
+		for i, m := range ms {
+			ids[i] = m.ID
+		}
+		return ids, total
+	})
+
+	assert.Equal(t, want, got)
 }

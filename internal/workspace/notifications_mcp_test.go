@@ -11,6 +11,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 func callNotificationTool(ctx context.Context, t *testing.T, s *NotificationService, name, args string) (any, error) {
@@ -43,7 +44,7 @@ func seededInbox(t *testing.T) *NotificationService {
 
 func readState(t *testing.T, s *NotificationService, userID string) map[string]bool {
 	t.Helper()
-	ns, err := s.List(context.Background(), userID, "", 0)
+	ns, _, err := s.Page(context.Background(), userID, InboxFilter{}, paging.Window{})
 	require.NoError(t, err)
 	out := map[string]bool{}
 	for _, n := range ns {
@@ -133,4 +134,21 @@ func TestNotificationList(t *testing.T) {
 	inWS2 := page(`{"workspace_id":"ws-2"}`)
 	require.Len(t, inWS2.Items, 1, "only the named workspace's notifications")
 	assert.Equal(t, "ws-2", inWS2.Items[0].WorkspaceID)
+}
+
+func TestNotificationList_CountsPastAThousand(t *testing.T) {
+	repo := newFakeNotifRepo()
+	for i := range 1200 {
+		repo.create(t, &Notification{ID: notifID(i), UserID: "u1", Read: i%2 == 0})
+	}
+	s := newTestNotifService(repo, newFakeNotifUsers())
+
+	out, err := callNotificationTool(notifAs("u1"), t, s, "notification_list", `{"unread_only":true,"offset":500,"limit":50}`)
+
+	require.NoError(t, err)
+	page := out.(mcptool.Page[notificationResult])
+	assert.Len(t, page.Items, 50)
+	assert.Equal(t, 600, page.Total)
+	assert.True(t, page.HasMore)
+	assert.Equal(t, 550, page.NextOffset)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs/richtext"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -231,6 +232,45 @@ func (r *DocsRepo) GetVersion(ctx context.Context, docID string, version int) (*
 		DocID: row.DocID, Version: int(row.Version), Title: row.Title, Body: row.Body,
 		Name: row.Name, AuthorID: row.AuthorID, CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
 	}, nil
+}
+
+// Page reads one window of the docs f and scope keep, and how many they keep in all: oldest first, or by relevance when
+// f.Query searches them, which an archived doc never matches.
+func (r *DocsRepo) Page(ctx context.Context, f docs.DocFilter, scope docs.DocScope, w paging.Window) ([]*docs.Doc, int, error) {
+	q := pageQuery{from: "docs d", id: "d.id", order: "d.created_at, d.id"}
+	if f.Query != "" {
+		// hand-written: sqlc cannot express an FTS5 table as the operand of MATCH or bm25
+		q = pageQuery{from: "docs_fts JOIN docs d ON d.rowid = docs_fts.rowid", id: "d.id", order: "bm25(docs_fts), d.id"}
+		q.where("docs_fts MATCH ?", ftsQuery(f.Query))
+	}
+	if f.ProjectID != "" {
+		q.where("d.project_id = ?", f.ProjectID)
+	}
+	if f.FolderID != "" {
+		q.where("d.folder_id = ?", f.FolderID)
+	}
+	if f.Query != "" || !f.IncludeArchived {
+		q.where("d.archived = 0")
+	}
+	if !scope.All {
+		q.where("d.project_id IN (SELECT value FROM json_each(?))", idsJSON(scope.ProjectIDs))
+	}
+	if read := scope.Read; read != nil {
+		q.where(`((d.project_id IN (SELECT value FROM json_each(?)) AND d.id NOT IN (SELECT value FROM json_each(?)))
+			OR d.id IN (SELECT value FROM json_each(?)))`, idsJSON(read.ProjectIDs), idsJSON(read.Denied), idsJSON(read.Allowed))
+	}
+	ids, total, err := q.page(ctx, r.db, w)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page docs: %w", err)
+	}
+	if len(ids) == 0 {
+		return []*docs.Doc{}, total, nil
+	}
+	rows, err := r.q.ListDocsByIDs(ctx, ids)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page docs: %w", err)
+	}
+	return inOrder(ids, toDocs(rows), func(d *docs.Doc) string { return d.ID }), total, nil
 }
 
 func toDoc(row sqlcgen.Doc) *docs.Doc {

@@ -22,6 +22,10 @@ type allowTickets struct{}
 
 func (allowTickets) RequireProject(context.Context, string, permissions.Action) error { return nil }
 
+func (allowTickets) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
+	return nil, true, nil
+}
+
 func (allowTickets) Require(context.Context, string, permissions.Action) error { return nil }
 
 // TestIntegration_PlaysLinkReader_OneHop names a bug's origin by its key, never the origin's own origin, and its blockers.

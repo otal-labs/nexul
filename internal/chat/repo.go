@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -60,6 +61,9 @@ type Repo interface {
 	GetMessage(ctx context.Context, id string) (*Message, error)
 	// ListMessages returns a conversation's messages oldest-first, capped at limit.
 	ListMessages(ctx context.Context, conversationID string, limit int) ([]*Message, error)
+	// PageLiveMessages returns one window of a conversation's messages that are not deleted, newest first, and how many
+	// there are.
+	PageLiveMessages(ctx context.Context, conversationID string, w paging.Window) ([]*Message, int, error)
 	// ListMessagesSince returns only messages newer than since, for agent turn context of what's new.
 	ListMessagesSince(ctx context.Context, conversationID string, since time.Time) ([]*Message, error)
 	// UpdateMessage enqueues the given outbox events in the same transaction; the message must exist.
