@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"maps"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,6 +19,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -110,22 +112,28 @@ func inWorkspace(n *Notification, workspaceID string) bool {
 	return workspaceID == "" || n.WorkspaceID == workspaceID
 }
 
-func (f *fakeNotifRepo) List(_ context.Context, userID, workspaceID string, limit int) ([]*Notification, error) {
+func (f *fakeNotifRepo) Page(_ context.Context, userID string, filter InboxFilter, scope *InboxScope, w paging.Window) ([]*Notification, int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.listErr != nil {
-		return nil, f.listErr
+		return nil, 0, f.listErr
 	}
 	var all []*Notification
 	for _, n := range f.byUser[userID] {
-		if inWorkspace(n, workspaceID) {
+		if inWorkspace(n, filter.WorkspaceID) && (!filter.UnreadOnly || !n.Read) && scope.shows(n) {
 			all = append(all, n)
 		}
 	}
-	if limit > 0 && len(all) > limit {
-		all = all[:limit]
+	return all[min(w.Offset, len(all)):min(w.Offset+w.Limit, len(all))], len(all), nil
+}
+
+// shows mirrors the storage scope: a nil scope shows everything, an empty workspace or project passes its part.
+func (scope *InboxScope) shows(n *Notification) bool {
+	if scope == nil {
+		return true
 	}
-	return all, nil
+	return (n.WorkspaceID == "" || slices.Contains(scope.WorkspaceIDs, n.WorkspaceID)) &&
+		(n.ProjectID == "" || slices.Contains(scope.ProjectIDs, n.ProjectID))
 }
 
 func (f *fakeNotifRepo) UnreadByProject(_ context.Context, userID, workspaceID string) ([]UnreadGroup, error) {
@@ -297,6 +305,25 @@ func (f *fakeAccessChecker) CanReadDoc(_ context.Context, userID, _ string) bool
 	return !f.denyUserIDs[userID]
 }
 
+// notifWorkspaces and notifProjects are every workspace and project the notification tests name.
+var (
+	notifWorkspaces = []string{"ws-1", "ws-2", "ws-3"}
+	notifProjects   = []string{"p-1", "p-2", "p-open", "p-closed", "p-gone"}
+)
+
+func (f *fakeAccessChecker) ProjectsAnywhere(_ context.Context, userID string, _ permissions.Action) ([]string, []string, error) {
+	if f.denyUserIDs[userID] {
+		return []string{}, []string{}, nil
+	}
+	var projects []string
+	for _, projectID := range notifProjects {
+		if !f.denyInProject[userID+":"+projectID] {
+			projects = append(projects, projectID)
+		}
+	}
+	return notifWorkspaces, projects, nil
+}
+
 func newTestNotifService(repo *fakeNotifRepo, users *fakeNotifUsers) *NotificationService {
 	return newTestNotifServiceWith(repo, users, nil, &fakeAccessChecker{})
 }
@@ -322,7 +349,7 @@ func mkNotif(id, userID string) *Notification {
 func TestNotifList(t *testing.T) {
 	t.Run("empty user id is invalid", func(t *testing.T) {
 		s := newTestNotifService(newFakeNotifRepo(), newFakeNotifUsers())
-		_, err := s.List(context.Background(), "  ", "", 10)
+		_, _, err := s.Page(context.Background(), "  ", InboxFilter{}, paging.Window{Limit: 10})
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
@@ -330,7 +357,7 @@ func TestNotifList(t *testing.T) {
 		repo := newFakeNotifRepo()
 		repo.listErr = errors.New("db down")
 		s := newTestNotifService(repo, newFakeNotifUsers())
-		_, err := s.List(context.Background(), "u1", "", 10)
+		_, _, err := s.Page(context.Background(), "u1", InboxFilter{}, paging.Window{Limit: 10})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, repo.listErr)
 	})
@@ -340,7 +367,7 @@ func TestNotifList(t *testing.T) {
 			repo.create(t, &Notification{ID: notifID(i), UserID: "u1"})
 		}
 		s := newTestNotifService(repo, newFakeNotifUsers())
-		ns, err := s.List(context.Background(), "u1", "", 0)
+		ns, _, err := s.Page(context.Background(), "u1", InboxFilter{}, paging.Window{Limit: 0})
 		require.NoError(t, err)
 		require.Len(t, ns, 50)
 	})
@@ -350,13 +377,13 @@ func TestNotifList(t *testing.T) {
 			repo.create(t, &Notification{ID: notifID(i), UserID: "u1"})
 		}
 		s := newTestNotifService(repo, newFakeNotifUsers())
-		ns, err := s.List(context.Background(), "u1", "", 2)
+		ns, _, err := s.Page(context.Background(), "u1", InboxFilter{}, paging.Window{Limit: 2})
 		require.NoError(t, err)
 		require.Len(t, ns, 2)
 	})
 }
 
-func TestNotifList_ChecksEachProjectOnce(t *testing.T) {
+func TestNotifPage_LeavesOutAProjectTheReaderCannotOpen(t *testing.T) {
 	repo := newFakeNotifRepo()
 	for i := range 20 {
 		repo.create(t, &Notification{ID: notifID(i), UserID: "u1", ProjectID: []string{"p-open", "p-closed"}[i%2]})
@@ -364,11 +391,25 @@ func TestNotifList_ChecksEachProjectOnce(t *testing.T) {
 	access := &fakeAccessChecker{denyInProject: map[string]bool{"u1:p-closed": true}}
 	s := newTestNotifServiceWith(repo, newFakeNotifUsers(), nil, access)
 
-	ns, err := s.List(t.Context(), "u1", "", 50)
+	ns, total, err := s.Page(t.Context(), "u1", InboxFilter{}, paging.Window{Limit: 4})
 
 	require.NoError(t, err)
-	assert.Len(t, ns, 10)
-	assert.Equal(t, 2, access.inProjectCalls)
+	assert.Len(t, ns, 4)
+	assert.Equal(t, 10, total, "the total counts only what the reader may open")
+}
+
+type failingAccess struct{ fakeAccessChecker }
+
+func (failingAccess) ProjectsAnywhere(context.Context, string, permissions.Action) ([]string, []string, error) {
+	return nil, nil, errors.New("database is locked")
+}
+
+func TestNotifPage_FailsWhenAccessCannotBeRead(t *testing.T) {
+	s := newTestNotifServiceWith(newFakeNotifRepo(), newFakeNotifUsers(), nil, &failingAccess{})
+
+	_, _, err := s.Page(t.Context(), "u1", InboxFilter{}, paging.Window{})
+
+	require.Error(t, err)
 }
 
 func TestNotifUnreadCount(t *testing.T) {
@@ -447,7 +488,7 @@ func TestNotifMarkRead(t *testing.T) {
 		repo.create(t, &Notification{ID: "n1", UserID: "u1"})
 		s := newTestNotifService(repo, newFakeNotifUsers())
 		require.NoError(t, s.MarkRead(context.Background(), "u1", "n1"))
-		got, err := s.List(context.Background(), "u1", "", 0)
+		got, _, err := s.Page(context.Background(), "u1", InboxFilter{}, paging.Window{Limit: 0})
 		require.NoError(t, err)
 		require.Len(t, got, 1)
 		assert.True(t, got[0].Read)

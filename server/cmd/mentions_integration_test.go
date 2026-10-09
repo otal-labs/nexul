@@ -20,6 +20,7 @@ import (
 	"github.com/otal-labs/nexul/internal/mentions"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
@@ -256,7 +257,7 @@ func deliverNotifications(t *testing.T, svc *coreServices, store *storage.Store)
 // inbox lists a person's notifications of one kind as their titles.
 func inbox(t *testing.T, svc *coreServices, userID string, kind workspace.Kind) []string {
 	t.Helper()
-	ns, err := svc.notifSvc.List(context.Background(), userID, "", 100)
+	ns, _, err := svc.notifSvc.Page(context.Background(), userID, workspace.InboxFilter{}, paging.Window{Limit: 100})
 	require.NoError(t, err)
 	var titles []string
 	for _, n := range ns {

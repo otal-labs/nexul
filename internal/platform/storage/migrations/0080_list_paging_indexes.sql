@@ -6,3 +6,8 @@ CREATE INDEX IF NOT EXISTS idx_dead_letters_created ON dead_letters(created_at, 
 
 -- message_list, a conversation's live messages newest first, and their count, both from the index alone.
 CREATE INDEX IF NOT EXISTS idx_messages_live ON messages(conversation_id, created_at, id) WHERE deleted_at IS NULL;
+
+-- notification_list, one person's inbox newest first. It replaces the (user_id, created_at) index, which left the
+-- id tiebreak to a sort of the whole inbox.
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at, id);
+DROP INDEX IF EXISTS idx_notifications_user;

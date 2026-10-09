@@ -9,6 +9,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -61,12 +62,28 @@ func (r *NotificationsRepo) CreateMany(ctx context.Context, ns []*workspace.Noti
 	})
 }
 
-func (r *NotificationsRepo) List(ctx context.Context, userID, workspaceID string, limit int) ([]*workspace.Notification, error) {
-	rows, err := r.q.ListNotifications(ctx, sqlcgen.ListNotificationsParams{UserID: userID, WorkspaceID: workspaceID, Limit: int64(limit)})
-	if err != nil {
-		return nil, fmt.Errorf("list notifications for %s: %w", userID, err)
+// Page reads one window of userID's inbox, newest first, and how many notifications it holds under the same filters.
+func (r *NotificationsRepo) Page(ctx context.Context, userID string, f workspace.InboxFilter, scope *workspace.InboxScope, w paging.Window) ([]*workspace.Notification, int, error) {
+	workspaceIDs, projectIDs := "[]", "[]"
+	if scope != nil {
+		workspaceIDs, projectIDs = idsJSON(scope.WorkspaceIDs), idsJSON(scope.ProjectIDs)
 	}
-	return toNotifications(rows), nil
+	rows, err := r.q.ListNotificationsPage(ctx, sqlcgen.ListNotificationsPageParams{
+		UserID: userID, WorkspaceID: f.WorkspaceID, UnreadOnly: f.UnreadOnly,
+		Scoped: scope != nil, WorkspaceIds: workspaceIDs, ProjectIds: projectIDs,
+		PageLimit: int64(w.Limit), PageOffset: int64(w.Offset),
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("page notifications for %s: %w", userID, err)
+	}
+	total, err := r.q.CountNotificationsPage(ctx, sqlcgen.CountNotificationsPageParams{
+		UserID: userID, WorkspaceID: f.WorkspaceID, UnreadOnly: f.UnreadOnly,
+		Scoped: scope != nil, WorkspaceIds: workspaceIDs, ProjectIds: projectIDs,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("count notifications for %s: %w", userID, err)
+	}
+	return toNotifications(rows), int(total), nil
 }
 
 func (r *NotificationsRepo) UnreadByProject(ctx context.Context, userID, workspaceID string) ([]workspace.UnreadGroup, error) {
@@ -133,7 +150,7 @@ func toNotification(row sqlcgen.Notification) *workspace.Notification {
 	}
 }
 
-func toNotifications(rows []sqlcgen.ListNotificationsRow) []*workspace.Notification {
+func toNotifications(rows []sqlcgen.ListNotificationsPageRow) []*workspace.Notification {
 	var out []*workspace.Notification
 	for _, row := range rows {
 		n := toNotification(row.Notification)

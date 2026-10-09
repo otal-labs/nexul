@@ -22,7 +22,7 @@ INSERT INTO notifications (id, user_id, workspace_id, kind, subject_type, subjec
 	s := New(db, testEncKey)
 	ctx := t.Context()
 
-	ns, err := s.Notifications.List(ctx, "u1", "", 50)
+	ns, err := inbox(ctx, s, "u1", "", 50)
 	require.NoError(t, err)
 	byID := map[string]*time.Time{}
 	for _, n := range ns {

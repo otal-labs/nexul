@@ -11,6 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 func notifServe(t *testing.T, h http.Handler, method, path, body string) *httptest.ResponseRecorder {
@@ -88,7 +90,7 @@ func TestNotificationHandler_MarkRead(t *testing.T) {
 		s := newTestNotifService(repo, newFakeNotifUsers())
 		rec := notifServe(t, notifAuthedHandler(s), http.MethodPost, "/api/notifications/n1/read", "")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
-		ns, err := s.List(context.Background(), "u1", "", 0)
+		ns, _, err := s.Page(context.Background(), "u1", InboxFilter{}, paging.Window{})
 		require.NoError(t, err)
 		assert.True(t, ns[0].Read)
 	})
@@ -116,12 +118,12 @@ func TestNotificationHandler_MarkAllRead(t *testing.T) {
 		s := newTestNotifService(repo, newFakeNotifUsers())
 		rec := notifServe(t, notifAuthedHandler(s), http.MethodPost, "/api/notifications/read-all", "")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
-		ns, err := s.List(context.Background(), "u1", "", 0)
+		ns, _, err := s.Page(context.Background(), "u1", InboxFilter{}, paging.Window{})
 		require.NoError(t, err)
 		for _, n := range ns {
 			assert.True(t, n.Read)
 		}
-		other, err := s.List(context.Background(), "u2", "", 0)
+		other, _, err := s.Page(context.Background(), "u2", InboxFilter{}, paging.Window{})
 		require.NoError(t, err)
 		for _, n := range other {
 			assert.False(t, n.Read)

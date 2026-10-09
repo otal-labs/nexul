@@ -25,6 +25,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/release"
 	"github.com/otal-labs/nexul/internal/platform/storage"
@@ -360,7 +361,7 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		}, map[string]string{uOwner: ok, uReader: ok, uOverwrite: ok, uPlain: forbidden, uOutsider: notFound}},
 		{"notifications: list a workspace's inbox", func(ctx context.Context) error {
 			actor, _ := identity.ActorFromCtx(ctx)
-			_, err := s.notifSvc.List(ctx, actor.ID, "workspace-default", 10)
+			_, _, err := s.notifSvc.Page(ctx, actor.ID, workspace.InboxFilter{WorkspaceID: "workspace-default"}, paging.Window{Limit: 10})
 			return err
 		}, map[string]string{uPlain: ok, uOutsider: notFound}},
 		{"dns: list gateways", func(ctx context.Context) error {

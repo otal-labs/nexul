@@ -13,6 +13,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/attachments"
 	"github.com/otal-labs/nexul/internal/auth"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
@@ -155,7 +156,7 @@ func TestIntegration_RestrictedMember_NoticesAndTrailsFollowAccess(t *testing.T)
 	runner := plays.NewRunner(plays.RunnerConfig{Plays: f.store.Plays, Trails: f.store.PlayTrails, Perm: s.accessSvc})
 
 	visible := func() (notices, unread, trails int, trailErr string) {
-		ns, err := s.notifSvc.List(ctx, uClient, wsDefault, 50)
+		ns, _, err := s.notifSvc.Page(ctx, uClient, workspace.InboxFilter{WorkspaceID: wsDefault}, paging.Window{Limit: 50})
 		require.NoError(t, err)
 		n, err := s.notifSvc.UnreadCount(ctx, uClient, "")
 		require.NoError(t, err)

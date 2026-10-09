@@ -267,6 +267,20 @@ type Notification struct {
 	ProjectID string `json:"-"`
 }
 
+// InboxFilter picks what an inbox page shows: one workspace's notifications (every workspace when WorkspaceID is
+// empty), and only the unread ones with UnreadOnly.
+type InboxFilter struct {
+	WorkspaceID string
+	UnreadOnly  bool
+}
+
+// InboxScope is what access lets an inbox show: notices from the workspaces its owner still belongs to, and of those
+// about a project, only the projects they may open. A notice with no workspace or no project passes that part.
+type InboxScope struct {
+	WorkspaceIDs []string
+	ProjectIDs   []string
+}
+
 // UnreadGroup is how many unread notices one inbox holds about one project ("" for a subject with none).
 type UnreadGroup struct {
 	WorkspaceID string

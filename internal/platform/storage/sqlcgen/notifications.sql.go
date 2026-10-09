@@ -49,6 +49,43 @@ func (q *Queries) BumpUnreadNotification(ctx context.Context, arg BumpUnreadNoti
 	return result.RowsAffected()
 }
 
+const countNotificationsPage = `-- name: CountNotificationsPage :one
+SELECT COUNT(*)
+FROM notifications n
+LEFT JOIN docs d ON n.subject_type = 'doc' AND d.id = n.subject_id
+LEFT JOIN tickets t ON n.subject_type = 'ticket' AND t.id = n.subject_id
+LEFT JOIN memories m ON n.subject_type = 'memory' AND m.id = n.subject_id
+WHERE n.user_id = ?1 AND (?2 = '' OR n.workspace_id = ?2)
+  AND (NOT ?3 OR n.read = 0)
+  AND (NOT ?4 OR n.workspace_id = '' OR n.workspace_id IN (SELECT value FROM json_each(?5)))
+  AND (NOT ?4 OR COALESCE(t.project_id, d.project_id, m.project_id, '') = ''
+       OR COALESCE(t.project_id, d.project_id, m.project_id) IN (SELECT value FROM json_each(?6)))
+`
+
+type CountNotificationsPageParams struct {
+	UserID       string
+	WorkspaceID  interface{}
+	UnreadOnly   interface{}
+	Scoped       interface{}
+	WorkspaceIds interface{}
+	ProjectIds   interface{}
+}
+
+// How many notifications ListNotificationsPage pages over, under the same filters.
+func (q *Queries) CountNotificationsPage(ctx context.Context, arg CountNotificationsPageParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countNotificationsPage,
+		arg.UserID,
+		arg.WorkspaceID,
+		arg.UnreadOnly,
+		arg.Scoped,
+		arg.WorkspaceIds,
+		arg.ProjectIds,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countUnreadNotificationsByProject = `-- name: CountUnreadNotificationsByProject :many
 SELECT n.workspace_id, CAST(COALESCE(t.project_id, d.project_id, m.project_id, '') AS TEXT) AS project_id, COUNT(*) AS unread
 FROM notifications n INDEXED BY idx_notifications_user_unread
@@ -160,7 +197,7 @@ func (q *Queries) DeleteNotificationsReadBefore(ctx context.Context, readAt sql.
 	return result.RowsAffected()
 }
 
-const listNotifications = `-- name: ListNotifications :many
+const listNotificationsPage = `-- name: ListNotificationsPage :many
 SELECT n.id, n.user_id, n.kind, n.subject_type, n.subject_id, n.subject_title, n.read, n.created_at, n.workspace_id, n.read_at, COALESCE(f.id, '') AS folder_id, COALESCE(f.name, '') AS folder_name, COALESCE(f.is_default, 0) AS folder_is_default,
        CAST(COALESCE(t.project_id, d.project_id, m.project_id, '') AS TEXT) AS project_id
 FROM notifications n
@@ -169,16 +206,26 @@ LEFT JOIN doc_folders f ON f.id = d.folder_id
 LEFT JOIN tickets t ON n.subject_type = 'ticket' AND t.id = n.subject_id
 LEFT JOIN memories m ON n.subject_type = 'memory' AND m.id = n.subject_id
 WHERE n.user_id = ?1 AND (?2 = '' OR n.workspace_id = ?2)
-ORDER BY n.created_at DESC LIMIT ?3
+  AND (NOT ?3 OR n.read = 0)
+  AND (NOT ?4 OR n.workspace_id = '' OR n.workspace_id IN (SELECT value FROM json_each(?5)))
+  AND (NOT ?4 OR COALESCE(t.project_id, d.project_id, m.project_id, '') = ''
+       OR COALESCE(t.project_id, d.project_id, m.project_id) IN (SELECT value FROM json_each(?6)))
+ORDER BY n.created_at DESC, n.id DESC
+LIMIT ?8 OFFSET ?7
 `
 
-type ListNotificationsParams struct {
-	UserID      string
-	WorkspaceID interface{}
-	Limit       int64
+type ListNotificationsPageParams struct {
+	UserID       string
+	WorkspaceID  interface{}
+	UnreadOnly   interface{}
+	Scoped       interface{}
+	WorkspaceIds interface{}
+	ProjectIds   interface{}
+	PageOffset   int64
+	PageLimit    int64
 }
 
-type ListNotificationsRow struct {
+type ListNotificationsPageRow struct {
 	Notification    Notification
 	FolderID        string
 	FolderName      string
@@ -186,18 +233,27 @@ type ListNotificationsRow struct {
 	ProjectID       string
 }
 
-// An empty workspace_id lists every workspace, the unscoped inbox older clients still ask for.
-// A doc's folder is joined in at read time, never stored on the row, because the doc can move after it was sent.
-// The subject's project is joined in too, so a notice about a project its reader can no longer open is left out at read time.
-func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listNotifications, arg.UserID, arg.WorkspaceID, arg.Limit)
+// An empty workspace_id lists every workspace. A doc's folder is joined in at read time, never stored on the row,
+// because the doc can move after it was sent. The subject's project is joined in too: scoped leaves out a notice from
+// a workspace the reader left or about a project they can no longer open (ADR 0140).
+func (q *Queries) ListNotificationsPage(ctx context.Context, arg ListNotificationsPageParams) ([]ListNotificationsPageRow, error) {
+	rows, err := q.db.QueryContext(ctx, listNotificationsPage,
+		arg.UserID,
+		arg.WorkspaceID,
+		arg.UnreadOnly,
+		arg.Scoped,
+		arg.WorkspaceIds,
+		arg.ProjectIds,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListNotificationsRow
+	var items []ListNotificationsPageRow
 	for rows.Next() {
-		var i ListNotificationsRow
+		var i ListNotificationsPageRow
 		if err := rows.Scan(
 			&i.Notification.ID,
 			&i.Notification.UserID,
