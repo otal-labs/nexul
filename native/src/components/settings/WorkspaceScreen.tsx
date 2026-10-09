@@ -4,7 +4,7 @@ import { View } from "react-native";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { PlaceholderScreen } from "@/components/PlaceholderScreen";
+import { EmptyRow } from "@/components/EmptyRow";
 import { SheetTitle } from "@/components/SheetTitle";
 import { WorkspaceRow } from "@/components/settings/WorkspaceRow";
 import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
@@ -28,11 +28,11 @@ export const WorkspaceScreen = () => {
   };
 
   return (
-    <View className="bg-popover pb-6">
+    <View role="radiogroup" className="bg-popover pb-6">
       <SheetTitle title="Switch workspace" />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {data && data.length === 0 && <PlaceholderScreen message="No workspaces yet." />}
+      {data && data.length === 0 && <View className="px-5"><EmptyRow message="No workspaces yet." /></View>}
       {data &&
         data.length > 0 &&
         data.map((workspace) => (

@@ -32,7 +32,7 @@ describe("DevicesFeed", () => {
 
     const rows = await screen.findAllByText(/Android · Pixel 9|Chrome · Desktop/);
     expect(rows.map((node) => node.props.children)).toEqual(["Android · Pixel 9", "Chrome · Desktop"]);
-    expect(screen.getByText("This device")).toBeTruthy();
+    expect(screen.getByText("This phone")).toBeTruthy();
   });
 
   test("shows the empty state when there is nothing else signed in", async () => {
@@ -44,7 +44,7 @@ describe("DevicesFeed", () => {
   test("signing out one device opens the confirm sheet naming that device", async () => {
     await renderFeed([current, other]);
 
-    await userEvent.setup().press(screen.getByLabelText("Sign out"));
+    await userEvent.setup().press(screen.getByLabelText(/^Sign out /));
 
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/more/settings/sign-out",

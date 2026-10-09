@@ -96,6 +96,6 @@ describe("DocsListScreen", () => {
     mockGet({ [projectA.id]: [] });
     await renderScreen();
 
-    expect(await screen.findByText("No docs yet.")).toBeTruthy();
+    expect(await screen.findByText("No docs yet")).toBeTruthy();
   });
 });
