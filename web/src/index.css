@@ -896,6 +896,18 @@ a.mention-chip:hover {
    --ease-standard, anything that slides between places --ease-spring; only transform and opacity move. Page and list
    entrances run from lib/motion.ts. */
 
+/* Nav rows (sidebar, section nav): the hover lift lands at once and lets go over 150ms, so it never trails the pointer. */
+.nav-row {
+  transition:
+    background-color 150ms var(--ease-standard),
+    color 150ms var(--ease-standard);
+}
+@media (hover: hover) {
+  .nav-row:hover {
+    transition-duration: 0ms;
+  }
+}
+
 /* News arriving (someone else's chat message, the Agent's reply starting) rises 8px as it fades in. */
 @keyframes arrive {
   from {

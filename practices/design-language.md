@@ -234,6 +234,8 @@ second ambient animation or anything animating layout behind the panels.
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
 | Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
+| Segmented control: a well with a raised thumb | Against joined outline buttons with an accent fill (read as a toolbar of buttons, the same box as Copy and Download beside it in the logs) and a ghost row with an accent thumb (the same grey block as the section nav's top row, so a filter looked like navigation); the well and card step is the panel's own depth vocabulary, and it reads as one control |
+| Section nav in the sidebar's grammar | Against the grey block alone (the sidebar marks where you are with the ember edge, the section nav with nothing, so the two navs on one screen read as unrelated) and a hairline rail with a sliding ember segment (a table of contents, not navigation, and the rows lost their click target) |
 | Person dialog: a tab per workspace, changes held until Confirm | Several workspaces stacked in one scroll mixed their controls, and applying each change on the spot made the dialog change under the owner; tabs separate the workspaces and Confirm makes the edit one deliberate act |
 
 ## Pattern spec
@@ -635,11 +637,39 @@ brand's own fills (a light and dark pair where the brand has one), an exception
 to color being status signal. `ModelChoice` in `web/src/components/model/`
 is the reference; a settings row puts it right of the label and description.
 
+Navigation. Three controls move between things, each one component with one
+look, and the job picks the control, never the page:
+
+- Section nav (`SettingsSectionNav`): a page of five or more sections, each
+  its own job and its own path segment (Your settings, Configuration, Project
+  settings, Stack). The sidebar's row grammar at settings scale: muted rows,
+  the `bg-accent/60` hover lift, and the sidebar's sliding block (`bg-accent`
+  with the 2px `brand` edge on its left) on the current one. A side column
+  from 1024px, a scrolling top row below it, where the block drops its edge.
+  Danger zone is a plain row set apart at the end by a hairline (a gap in the
+  top row): the red lives on its card, and a red label at rest pulled the eye
+  to the rarest action on every visit.
+- Line tabs (`PageTabs`): two to four separate jobs inside one view or
+  section, addressed by the path (below). A neutral row on a hairline with a
+  `foreground` underline that slides to the active tab.
+- Segmented control (`ToggleGroup variant="segmented"`, size `xs`): two to
+  five views, filters or modes of the same content, held in the page and
+  never in the path: Connected / Not connected, All / Errors, Doc |
+  Questions, Fields / Paste .env, Follow | Question, a sort. A `surface-2`
+  well with a hairline ring and a 2px inset, holding a raised thumb (`card`,
+  the hairline ring, `shadow-card`) that slides to the chosen side; the
+  items are muted text, the chosen one `foreground`. It is radios to a
+  screen reader. The permission level strip is not one: its rungs fill up to
+  the level (Permission rows).
+
+Never two of one kind stacked: a section holds tabs, tabs hold a segmented
+control, and nothing nests deeper.
+
 Tabs. A view whose cards or sections are separate jobs (two or more of them)
 splits them into tabs instead of stacking them; a single-card view gets none,
 and a left section nav stays as it is, the tabs live inside the section. Tabs
-are `PageTabs` in `web/src/components/PageTabs.tsx`: a neutral line tab row
-on a hairline that scrolls sideways at narrow widths, the active tab the last
+are `PageTabs` in `web/src/components/PageTabs.tsx`: the line tab row above,
+scrolling sideways at narrow widths, the active tab the last
 path segment (`/settings/connectors/github-app`) with the query left alone,
 the first visible tab when the segment is missing or unknown. The first tab
 has no segment of its own. A tab the viewer lacks permission for is hidden,
@@ -647,12 +677,12 @@ not disabled, and a view left with one tab drops the row. Anything that
 deep-links into a tabbed view builds its path with `useTabPath`, never by
 hand: `tabPath("versions")` names a tab and `tabPath()` the first one. A tab never opens blank: a section that renders
 nothing when empty says so in an `EmptyRow` instead. A filter that narrows one
-list (`ConnectorsSection`'s Connected and Not connected) is not a tab.
+list (`ConnectorsSection`'s Connected and Not connected) is not a tab; it is a
+segmented control.
 
 Doc questions. A doc with a clarification heads its page with a "Doc |
-Questions N" segmented switch (an outline `ToggleGroup`, not `PageTabs`: the
-two are views of one record, and the choice stays in the page, never the
-path), N being the questions waiting in mono. Questions takes the article's
+Questions N" segmented control (not `PageTabs`: the two are views of one
+record, and the choice stays in the page, never the path), N being the questions waiting in mono. Questions takes the article's
 place in the same card: a "Questions" heading over one state line (the trail
 icon, a medium label, a muted detail), the next action trailing right for
 people who may close it, then one `QuestionSection` per round of numbered
