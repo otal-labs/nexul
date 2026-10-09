@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -232,4 +234,42 @@ func TestRelay_CrashRedelivery_DedupeEndToEnd(t *testing.T) {
 	var n int
 	require.NoError(t, db.QueryRow(`SELECT COUNT(1) FROM outbox WHERE id = 'row-1' AND published = 1`).Scan(&n))
 	assert.Equal(t, 1, n, "row must be marked published after the successful re-publish")
+}
+
+type memStore struct {
+	mu   sync.Mutex
+	rows []outbox.Entry
+}
+
+func (m *memStore) Unpublished(context.Context, int) ([]outbox.Entry, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return slices.Clone(m.rows), nil
+}
+
+func (m *memStore) MarkPublished(_ context.Context, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.rows = slices.DeleteFunc(m.rows, func(e outbox.Entry) bool { return e.ID == id })
+	return nil
+}
+
+func TestRelay_Run_ACommitWakesItBeforeTheNextPoll(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := &memStore{}
+		pub := &fakePublisher{}
+		wake := make(chan struct{}, 1)
+		relay := outbox.NewRelay(store, pub, outbox.RelayConfig{Interval: time.Hour, Wake: wake, Logger: testutil.DiscardLogger()})
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		go func() { _ = relay.Run(ctx) }()
+
+		store.mu.Lock()
+		store.rows = append(store.rows, outbox.Entry{ID: "e1", Topic: "chat.message.created", Payload: []byte(`{}`)})
+		store.mu.Unlock()
+		wake <- struct{}{}
+		synctest.Wait()
+
+		assert.Equal(t, []string{"chat.message.created"}, pub.topics(), "published with no time passing")
+	})
 }

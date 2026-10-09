@@ -9,7 +9,8 @@ import (
 )
 
 type Serializer struct {
-	mu sync.Mutex
+	mu        sync.Mutex
+	committed chan struct{}
 }
 
 func (s *Serializer) WithTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) (err error) {
@@ -32,6 +33,10 @@ func (s *Serializer) WithTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) er
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit tx: %w", err)
+	}
+	select {
+	case s.committed <- struct{}{}:
+	default:
 	}
 	return nil
 }

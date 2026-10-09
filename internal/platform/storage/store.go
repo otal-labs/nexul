@@ -76,7 +76,7 @@ type Store struct {
 
 // New builds a Store over db; encKey is the AES-256 key repos use to encrypt secrets, derived once at startup.
 func New(db *sql.DB, encKey []byte) *Store {
-	w := &Serializer{}
+	w := &Serializer{committed: make(chan struct{}, 1)}
 	q := sqlcgen.New(db)
 	return &Store{
 		db:                    db,
@@ -140,6 +140,11 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Pairing:               &PairingRepo{db: db, w: w, q: q},
 		InstanceTemplates:     &InstanceTemplatesRepo{db: db, w: w, q: q},
 	}
+}
+
+// Commits signals after a write transaction commits, coalescing a burst into one; the outbox relay is its one reader.
+func (s *Store) Commits() <-chan struct{} {
+	return s.w.committed
 }
 
 func (s *Store) Close() error {

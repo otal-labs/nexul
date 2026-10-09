@@ -122,3 +122,23 @@ func TestSerializer_ReadThenWrite_BesideAnUnserializedWriter_NeverLocked(t *test
 		require.NoError(t, err)
 	}
 }
+
+func TestStore_Commits_SignalsAfterACommitNotARollback(t *testing.T) {
+	s := newTestStore(t)
+	ctx := t.Context()
+	insert := func(id string, fail error) error {
+		return s.w.WithTx(ctx, s.db, func(tx *sql.Tx) error {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO docs (id, title, body, version, created_at, updated_at) VALUES (?, 't', 'b', 1, 1, 1)`, id); err != nil {
+				return err
+			}
+			return fail
+		})
+	}
+
+	require.Error(t, insert("d-rolled-back", fmt.Errorf("boom")))
+	assert.Empty(t, s.Commits(), "a rollback signals nothing")
+
+	require.NoError(t, insert("d-1", nil))
+	require.NoError(t, insert("d-2", nil))
+	assert.Len(t, s.Commits(), 1, "commits coalesce into one pending signal")
+}
