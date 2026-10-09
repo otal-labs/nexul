@@ -1,5 +1,6 @@
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { GripVerticalIcon, PlusIcon } from "lucide-react";
+import { memo, useMemo } from "react";
 
 import { StatusMark } from "@/components/board/StatusIcon";
 import { TicketCard } from "@/components/board/TicketCard";
@@ -19,7 +20,7 @@ interface KanbanColumnProps {
   onAddTicket: (statusId: string) => void;
 }
 
-export const KanbanColumn = ({
+const KanbanColumnImpl = ({
   droppableId,
   laneLabel,
   categoryId,
@@ -28,6 +29,9 @@ export const KanbanColumn = ({
   onAddTicket,
 }: KanbanColumnProps) => {
   const data: DropTargetData = { type: "column", statusId: column.id, categoryId, kind: column.kind };
+  // Keyed on the ids, not the array: a new items array re-renders every card in the column.
+  const idsKey = tickets.map((t) => t.id).join(" ");
+  const ticketIds = useMemo(() => (idsKey === "" ? [] : idsKey.split(" ")), [idsKey]);
   // Both a drop target for cards and a sortable in its lane's column row; only the grip activates the sort.
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: droppableId,
@@ -78,7 +82,7 @@ export const KanbanColumn = ({
       </h4>
       {/* Capped at five two-line cards plus gaps (31.5rem) so scrolling depends on the ticket count, not the window height. */}
       <EnterList as="div" className="flex max-h-[31.5rem] min-h-16 flex-col gap-1.5 overflow-y-auto">
-        <SortableContext items={tickets.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
           {tickets.map((ticket) => (
             <TicketCard key={ticket.id} ticket={ticket} />
           ))}
@@ -91,3 +95,15 @@ export const KanbanColumn = ({
     </section>
   );
 };
+
+// The lane rebuilds every column's tickets on each refetch; equal tickets in the same order mean nothing here changed.
+const sameColumn = (prev: KanbanColumnProps, next: KanbanColumnProps) =>
+  prev.droppableId === next.droppableId &&
+  prev.laneLabel === next.laneLabel &&
+  prev.categoryId === next.categoryId &&
+  prev.column === next.column &&
+  prev.onAddTicket === next.onAddTicket &&
+  prev.tickets.length === next.tickets.length &&
+  prev.tickets.every((ticket, i) => ticket === next.tickets[i]);
+
+export const KanbanColumn = memo(KanbanColumnImpl, sameColumn);

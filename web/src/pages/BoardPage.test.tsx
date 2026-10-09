@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ContextAwareConfirmation } from "react-confirm";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
+import { getTicketsKey } from "@/hooks/TicketHooks";
 import { BoardPage } from "@/pages/BoardPage";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { pickOption } from "@/test/pickOption";
@@ -16,6 +17,19 @@ vi.mock("@/api/client", () => ({
 }));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+// Every card and column is a sortable, so counting useSortable calls counts their renders.
+const sortable = vi.hoisted(() => ({ calls: 0 }));
+vi.mock("@dnd-kit/sortable", async () => {
+  const actual = await vi.importActual<typeof import("@dnd-kit/sortable")>("@dnd-kit/sortable");
+  return {
+    ...actual,
+    useSortable: (...args: Parameters<typeof actual.useSortable>) => {
+      sortable.calls += 1;
+      return actual.useSortable(...args);
+    },
+  };
+});
 
 const projects = [
   { id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" },
@@ -72,7 +86,7 @@ const openCreateMenuItem = async (user: ReturnType<typeof userEvent.setup>, labe
 // Every render of the board needs a resolved projectId (ticket 08), so most behavioral tests render the scoped route directly; the unscoped "/acme/board" route is exercised in "BoardPage routing" below.
 const renderPage = (initialPath = "/acme/board/p-1") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const view = render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
       <MemoryRouter initialEntries={[initialPath]}>
@@ -84,6 +98,7 @@ const renderPage = (initialPath = "/acme/board/p-1") => {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return { ...view, client };
 };
 
 const mockGet = (tickets: unknown[], projectList: typeof projects = projects, categoryList: typeof categories = categories) => {
@@ -436,5 +451,28 @@ describe("BoardPage label filter", () => {
     await user.click(screen.getByRole("button", { name: "bug" }));
     expect(screen.getByText("Fix login")).toBeInTheDocument();
     expect(screen.queryByText("Wire FTS")).not.toBeInTheDocument();
+  });
+});
+
+describe("BoardPage live updates", () => {
+  it("re-renders only the changed ticket's card and column when a refetch brings one changed ticket", async () => {
+    const tickets = [
+      ticket("t-1", "p-1", "Fix login", "open", "c-1"),
+      ticket("t-2", "p-1", "Wire FTS", "open", "c-1"),
+      ticket("t-3", "p-1", "Ship search", "done", "c-1"),
+      ticket("t-4", "p-1", "Tidy logs", "open"),
+      ticket("t-5", "p-1", "Rotate keys", "done"),
+    ];
+    // A refetch hands back fresh objects for every ticket, as the network does.
+    mockGet(structuredClone(tickets));
+    const { client } = renderPage();
+    expect(await screen.findByText("Rotate keys")).toBeInTheDocument();
+
+    mockGet(structuredClone(tickets).map((t) => (t.id === "t-1" ? { ...t, title: "Fix login flow" } : t)));
+    sortable.calls = 0;
+    await act(() => client.invalidateQueries({ queryKey: [getTicketsKey] }));
+
+    expect(await screen.findByText("Fix login flow")).toBeInTheDocument();
+    expect(sortable.calls).toBe(2);
   });
 });

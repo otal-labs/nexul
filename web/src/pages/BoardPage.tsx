@@ -12,6 +12,7 @@ import { useBoardProjectScope } from "@/hooks/useBoardProjectScope";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchTickets } from "@/hooks/TicketHooks";
+import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { useSwimlanes } from "@/hooks/useSwimlanes";
 
 export const BoardPage = () => {
@@ -56,6 +57,8 @@ export const BoardPage = () => {
     dropTicket,
     reorderColumns,
   } = useBoardActions({ projects, selectedProjectIds: filters.projectIds, projectId: scopedProjectId });
+  // Reaches every memoized column, so it keeps one identity across the board's refetches.
+  const onAddTicket = useLatestCallback((categoryId: string | null, statusId: string) => void addTicketToColumn(categoryId, statusId));
 
   return (
     // Full-bleed: the board is the one page where width is columns, so it gets the whole panel.
@@ -94,7 +97,7 @@ export const BoardPage = () => {
           onNewCategory={() => void openCreateCategoryDialog()}
           onDrop={dropTicket}
           onReorderColumns={reorderColumns}
-          onAddTicket={(categoryId, statusId) => void addTicketToColumn(categoryId, statusId)}
+          onAddTicket={onAddTicket}
         />
       )}
     </Container>
