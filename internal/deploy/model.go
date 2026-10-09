@@ -40,6 +40,20 @@ const defaultComposePath = "docker-compose.yml"
 // defaultStackRoot is the checkout root deploy.requested carries; the runner handler swaps in the machine's own at dispatch.
 const defaultStackRoot = "/data/nexul"
 
+// DeployFilter narrows a deploy list to one stack, one status, or both; an empty field narrows nothing.
+type DeployFilter struct {
+	StackID string
+	Status  Status
+}
+
+// DeployScope is what access lets a deploy list show: everything with All, otherwise the deploys of stacks in
+// ProjectIDs and, with Anywhere, those of a stack outside every project or one since deleted (ADR 0079).
+type DeployScope struct {
+	All        bool
+	ProjectIDs []string
+	Anywhere   bool
+}
+
 type Deploy struct {
 	ID   string `json:"id"`
 	Kind Kind   `json:"kind"`

@@ -11,3 +11,11 @@ CREATE INDEX IF NOT EXISTS idx_messages_live ON messages(conversation_id, create
 -- id tiebreak to a sort of the whole inbox.
 CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at, id);
 DROP INDEX IF EXISTS idx_notifications_user;
+
+-- deploy_list, newest first: across every stack, one stack's history, and one status. The two with a leading column
+-- replace the single-column indexes on it, whose lookups they still serve.
+CREATE INDEX IF NOT EXISTS idx_deploys_created ON deploys(created_at, id);
+CREATE INDEX IF NOT EXISTS idx_deploys_stack_created ON deploys(stack_id, created_at, id);
+CREATE INDEX IF NOT EXISTS idx_deploys_status_created ON deploys(status, created_at, id);
+DROP INDEX IF EXISTS idx_deploys_stack_id;
+DROP INDEX IF EXISTS idx_deploys_status;

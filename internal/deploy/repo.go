@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 type Repo interface {
@@ -14,6 +15,8 @@ type Repo interface {
 	ListByService(ctx context.Context, service string) ([]*Deploy, error)
 	ListByStackID(ctx context.Context, stackID string) ([]*Deploy, error)
 	ListByStatus(ctx context.Context, status Status) ([]*Deploy, error)
+	// Page reads one window of the deploys f and scope keep, newest first, and how many they keep in all.
+	Page(ctx context.Context, f DeployFilter, scope DeployScope, w paging.Window) ([]*Deploy, int, error)
 	HasActive(ctx context.Context, stackID string) (bool, error)
 	LastHealthy(ctx context.Context, stackID string) (*Deploy, error)
 	// UpdateStatus sets the status and writes evts in the same transaction.

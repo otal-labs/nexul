@@ -63,6 +63,10 @@ func (allowGate) RequireProject(context.Context, string, permissions.Action) err
 
 func (allowGate) RequireAnywhere(context.Context, permissions.Action) error { return nil }
 
+func (allowGate) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
+	return nil, true, nil
+}
+
 func requireStack(t *testing.T, stacks *fakeStackRepo, stack Stack) {
 	t.Helper()
 	if stack.ID == "" {

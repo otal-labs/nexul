@@ -3,6 +3,8 @@ package deploy
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -12,6 +14,8 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/paging"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 func call(t *testing.T, s *Service, name, args string) (any, error) {
@@ -115,40 +119,68 @@ func TestMCPTools_Errors(t *testing.T) {
 	}
 }
 
-func TestDeployList(t *testing.T) {
+func TestDeployList_PagesWithAnHonestTotal(t *testing.T) {
 	repo := newFakeRepo()
-	seedDeploy(t, repo, &Deploy{ID: "d1", StackID: "s1", Status: StatusHealthy, CreatedAt: at(1)})
-	seedDeploy(t, repo, &Deploy{ID: "d2", StackID: "s2", Status: StatusFailed, CreatedAt: at(2)})
-	seedDeploy(t, repo, &Deploy{ID: "d3", StackID: "s1", Status: StatusFailed, CreatedAt: at(3)})
-	s := newTestService(repo, newFakeBus())
-	ids := func(page mcptool.Page[deployResult]) []string {
-		var out []string
-		for _, d := range page.Items {
-			out = append(out, d.ID)
-		}
-		return out
+	for i := range 5 {
+		seedDeploy(t, repo, &Deploy{ID: fmt.Sprintf("d%d", i), StackID: "s1", Status: StatusHealthy, CreatedAt: at(i)})
 	}
+	s := newTestService(repo, newFakeBus())
+
+	got, err := call(t, s, "deploy_list", `{"limit":2,"offset":2}`)
+
+	require.NoError(t, err)
+	page := got.(mcptool.Page[deployResult])
+	require.Len(t, page.Items, 2)
+	assert.Equal(t, "d2", page.Items[0].ID)
+	assert.Equal(t, 5, page.Total)
+	assert.Equal(t, 4, page.NextOffset)
+}
+
+// scopeGate answers CallerProjects and RequireAnywhere as configured, for what deploy_list asks storage to show.
+type scopeGate struct {
+	allowGate
+	projects    []string
+	anywhereErr error
+	projectsErr error
+}
+
+func (g scopeGate) RequireAnywhere(context.Context, permissions.Action) error { return g.anywhereErr }
+
+func (g scopeGate) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
+	return g.projects, false, g.projectsErr
+}
+
+func TestPageDeploys_AsksForWhatTheCallerReads(t *testing.T) {
+	refused := fmt.Errorf("%w: deploys:read required", apperrs.ErrForbidden)
 	tests := []struct {
-		name string
-		args string
-		want []string
+		name   string
+		gate   Gate
+		filter DeployFilter
+		want   DeployScope
+		fails  bool
 	}{
-		{"everything, newest first", `{}`, []string{"d3", "d2", "d1"}},
-		{"one stack", `{"stack_id":"s1"}`, []string{"d1", "d3"}},
-		{"one status", `{"status":"healthy"}`, []string{"d1"}},
-		{"a stack and a status", `{"stack_id":"s1","status":"failed"}`, []string{"d3"}},
-		{"a page", `{"limit":1,"offset":1}`, []string{"d2"}},
+		{"their projects and the instance's stacks", scopeGate{projects: []string{"p-1"}}, DeployFilter{}, DeployScope{ProjectIDs: []string{"p-1"}, Anywhere: true}, false},
+		{"their projects only, without the action anywhere", scopeGate{projects: []string{"p-1"}, anywhereErr: refused}, DeployFilter{}, DeployScope{ProjectIDs: []string{"p-1"}}, false},
+		{"a stack they read shows its whole history", scopeGate{}, DeployFilter{StackID: "svc-1"}, DeployScope{All: true}, false},
+		{"a failed read of the projects fails the list", scopeGate{projectsErr: errors.New("database is locked")}, DeployFilter{}, DeployScope{}, true},
+		{"a failed anywhere check fails the list", scopeGate{anywhereErr: errors.New("database is locked")}, DeployFilter{}, DeployScope{}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := call(t, s, "deploy_list", tt.args)
+			repo := newFakeRepo()
+			s := newTestService(repo, newFakeBus())
+			s.SetGate(tt.gate)
+
+			_, _, err := s.PageDeploys(identity.WithActor(t.Context(), identity.Actor{ID: "u-1"}), tt.filter, paging.Window{})
+
+			if tt.fails {
+				require.Error(t, err)
+				return
+			}
 			require.NoError(t, err)
-			assert.ElementsMatch(t, tt.want, ids(got.(mcptool.Page[deployResult])))
+			assert.Equal(t, tt.want, repo.pageScope)
 		})
 	}
-	got, err := call(t, s, "deploy_list", `{}`)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"d3", "d2", "d1"}, ids(got.(mcptool.Page[deployResult])), "newest first")
 }
 
 func TestDeployGet_ReturnsTheLogTail(t *testing.T) {

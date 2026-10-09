@@ -9,6 +9,9 @@ SELECT * FROM deploys WHERE id = ?;
 -- name: ListDeploys :many
 SELECT * FROM deploys ORDER BY created_at;
 
+-- name: ListDeploysByIDs :many
+SELECT * FROM deploys WHERE id IN (sqlc.slice('ids'));
+
 -- name: ListDeploysByService :many
 SELECT * FROM deploys WHERE service = ? ORDER BY created_at DESC;
 
