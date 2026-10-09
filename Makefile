@@ -8,7 +8,7 @@ GO_LDFLAGS := -ldflags="-s -w -X github.com/otal-labs/nexul/internal/platform/ve
 # Version is pinned in go.mod's tool directive; local and CI both resolve it from there.
 SQLC ?= go tool sqlc
 
-.PHONY: build build-cli build-server build-runner build-web build-single test vet lint vuln coverage sqlc sqlc-check clean
+.PHONY: build build-cli build-server build-runner build-web build-single test vet lint vuln coverage sqlc sqlc-check live-topics clean
 
 build: build-cli build-server build-runner build-web
 
@@ -61,6 +61,10 @@ sqlc:
 sqlc-check:
 	$(SQLC) vet
 	$(SQLC) diff
+
+# Rewrites the browser's copy of the topics the live socket pushes, from the server's audience rules.
+live-topics:
+	go test ./server/cmd -run TestLiveTopicsFile_MatchesTheRules -update-live-topics
 
 clean:
 	rm -rf $(BIN_DIR) server/webui/dist
