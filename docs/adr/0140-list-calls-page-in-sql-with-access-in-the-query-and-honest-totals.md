@@ -47,4 +47,4 @@ private channels, DMs, and threads are each checked per kind in one batch before
 list anyway.
 
 Amends ADR 0135, whose `ProjectsWith` the list calls reach through `CallerProjects`, `ProjectsAnywhere`, and
-`DocsWith`. Decided 2026-10-09.
+`DocsWith`, and ADR 0097, whose restricted member's lists now filter by Project access in SQL. Decided 2026-10-09.

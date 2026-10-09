@@ -265,7 +265,7 @@ Not adopted, on purpose, until a ticket asks for one:
   - `chat.message.created` carries the whole message; its catalog description gains `handoffs`.
   - `computer.harness_switched`:
     - a topic in `internal/pairing/events.go`;
-    - a schema in `internal/integrations/catalog.go`, with the SDK regenerated;
+    - its schema and SDK types from `make event-schemas`;
     - instance scope in `server/cmd/automation_scope.go`;
     - an `ownFrame` live rule;
     - web invalidation of the computers and readiness queries.

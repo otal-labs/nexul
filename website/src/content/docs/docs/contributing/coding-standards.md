@@ -39,10 +39,17 @@ and [`practices/architecture.md`](https://github.com/otal-labs/nexul/blob/master
   broadcast instead of polling, and a slow client gets its own bounded send
   queue so it never stalls the others. Packages that start goroutines guard
   them with `goleak`.
-- Every adapter (HTTP, MCP, live frames) encodes through one JSON encoder,
-  `jsonx`, so an empty list is always `[]`; long lists encode through plain
-  wire structs, and a list filters by permission in its SQL, so a page reads
-  one page of rows and its total counts exactly what the pages hold.
+- Everything a client reads (HTTP, MCP, live frames, and the event payloads
+  webhooks and automations receive) encodes through one JSON encoder, `jsonx`,
+  so an empty list is always `[]`; long lists encode through plain wire
+  structs.
+- Event schemas are generated from each topic's payload type with
+  `make event-schemas`, and a contract test fails on any change that would
+  break a consumer, so the published catalog only grows.
+- Access answers are memoised per request and dropped at every commit, so a
+  list never needs its own permission cache. A list that pages filters by
+  access in its SQL, reads one page of rows, and reports a total that counts
+  exactly what the pages hold.
 - The architecture guide opens with three principles: a one-way door is a
   bug, build the smallest model that makes behavior unsurprising, and keep
   complexity in the adapters.
@@ -53,12 +60,13 @@ Full text: [`practices/mcp.md`](https://github.com/otal-labs/nexul/blob/master/p
 
 The MCP server runs on the official Go SDK behind one stateless endpoint,
 `POST /mcp`, and domains declare tools through a typed contract instead of
-importing the SDK. Tools are shaped per task and kept under 100: one-field
-setters fold into patch-style updates, list variants into filtered lists.
-Names are `<object>_<verb>` in the glossary's words, every parameter is
-described, every tool carries read-only and destructive hints, lists are
-paginated, and a tool's failure comes back as an `isError` result that says
-how to recover.
+importing the SDK. Tools are shaped per task and kept under a budget a test
+enforces: one-field setters fold into patch-style updates, list variants into
+filtered lists. Names are `<object>_<verb>` in the glossary's words, every
+parameter is described, every tool carries read-only and destructive hints,
+lists page in SQL with an honest total, a call to a tool that changes
+something writes an audit row, and a tool's failure comes back as an
+`isError` result that says how to recover.
 
 ## React (the Frontend Commandments)
 
@@ -85,26 +93,29 @@ done, regardless of what nearby code does:
 - **F7 — Files own one concern.** Pages stay thin; sub-components live in
   `components/<domain>/`.
 
-Live data follows a few rules of its own. The server's audience rules and
-the browser's topic tables are pinned together: `make live-topics`
-regenerates the topic list and tests on both sides fail when they drift, so
-a new live topic ships with its rule, the regenerated list and a handler. A
-frame that carries the entity patches the cache from its payload instead of
-refetching lists, every ticket view goes through one cache module, and a
-page's batch reads are keyed by project rather than by every id. Every page
-is its own chunk that the shell never imports, and rows of a live list are
-memoised components with stable props.
+Live data follows a few rules of its own. Each domain's hooks file exports a
+live follower that decides what a pushed frame changes in that domain's
+cache. The server's audience rules and the topics the followers follow are
+pinned together: `make live-topics` regenerates the topic list and tests on
+both sides fail when they drift, so a new live topic ships with its rule,
+the regenerated list and a follower. A frame that carries the entity patches
+the cache from its payload; otherwise only the queries its ids name refetch.
+Every ticket view goes through one cache module, and a page's batch reads are
+keyed by project rather than by every id. Every page is its own chunk that
+the shell never imports, and rows of a live list are memoised components
+with stable props.
 
 ## The phone app
 
 Full text: [`practices/native.md`](https://github.com/otal-labs/nexul/blob/master/practices/native.md).
 
 The Expo app inherits the web guide, F1–F7 included, with a Screen in place
-of a Page. Reference data is cached forever and refreshed by a pushed topic,
-and a test fails for any such query without one; chat frames patch the
-cached thread; record queries are matched by id or key through one helper;
-the session token is read once at launch; and icons import by path, which a
-lint rule enforces.
+of a Page. Every query is one declaration naming the topics that refresh it,
+typed against the event catalog, and the live dispatcher and stale times are
+derived from those declarations; a query cached until pushed with no topic
+fails typecheck. Chat frames patch the cached thread; record queries are
+matched by id or key through one helper; the session token is read once at
+launch; and icons import by path, which a lint rule enforces.
 
 ## TypeScript outside the browser
 
@@ -114,6 +125,12 @@ The SDK and the automations host run on Bun and test with `bun test`; the
 desktop shell is Electron with the same strictness flags as the web app and
 the Electron security checklist (context isolation on, node integration off,
 a preload bridge with an explicit allow-list) stated as absolutes.
+
+The same file covers `client-core/`, the code the web and phone apps both
+run (the permission table, chat and embed rules, people, the live socket,
+the query retry rule). It is a folder, not a package, imported by full path
+as `@nexul/client-core/<module>`; it holds no React and no platform API, and
+its tests run once, in the web's job.
 
 ## Testing
 
@@ -157,9 +174,14 @@ and `make vuln`; the coverage gate is `make coverage`; `sqlc vet` and
 `sqlc diff` keep generated code honest. Every TypeScript package runs its
 `typecheck` and `test` scripts in CI, and Dependabot opens grouped weekly
 update pull requests per directory. Tests guard the rest: the live topic
-contract, the JSON encoder's parity with the old output, goroutine leaks,
-the web shell's import graph, and the phone's forever-cached queries; a lint
-rule keeps phone icons imported by path.
+contract, the event-schema contract, the JSON encoder's parity with the old
+output, memoised access answering what an unmemoised check does, list tools
+showing each viewer what the row-by-row check showed and reading one page of
+rows, every changing route writing an audit row, goroutine leaks, the web
+shell's import graph, and the requests a live frame or a phone session
+sends. On the phone, a query cached until pushed with no topic fails
+typecheck, and a lint rule keeps icons imported by path and the SDK's event
+types imported as types only.
 
 ## Hard rules from AGENTS.md
 

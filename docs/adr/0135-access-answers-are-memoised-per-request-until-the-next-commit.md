@@ -36,3 +36,6 @@ the MCP tools and the live hub would not inherit (ADR 0019).
 
 Amends ADR 0087, whose live frames no longer cost a full check per socket, and ADR 0097, whose restricted member's
 lists are no longer checked row by row. Decided 2026-10-09.
+
+Amended by ADR 0140: lists that page reach `ProjectsWith` through `CallerProjects`, `ProjectsAnywhere` and
+`DocsWith`, and filter by access in SQL rather than by a memoised check per row.

@@ -313,7 +313,7 @@ web/src/
   enums/                # String-union / as-const "enums" (.tsx)
   pages/                # Route-level page components
   stores/               # Zustand stores (incl. the React Flow store)
-  api/                  # Axios instance + WS client + error types
+  api/                  # Axios instance, error types, the container log stream
   utils/                # Pure functions (TimeUtility.tsx and friends)
   Layout.tsx            # Root layout: header, <Outlet/>, footer
   main.tsx              # App entry
@@ -683,10 +683,11 @@ Rules:
   call sites cannot drift out of sync with each other.
 - `hooks/TicketCache.tsx` is the only code that reads or writes a ticket view
   in the cache. It owns the four views (all, one, by doc, by project) and
-  its operations, `ticketChanged`, `ticketCreated`, `ticketRemoved` and
-  `statusRemoved`; every mutation, board drop, category move, test report and
-  live ticket frame goes through them. A hook that patches or invalidates one ticket key
-  by itself leaves the other three views stale.
+  its operations, `ticketChanged`, `ticketCreated`, `ticketRemoved`,
+  `ticketCategoryMoved` and `statusRemoved`; every mutation, board drop,
+  category move, test report and live ticket frame goes through them. A hook
+  that patches or invalidates one ticket key by itself leaves the other three
+  views stale.
 - A batch read for the items on a page (the board's run states and thread
   markers) is keyed by the project, never by every item id. Ids in the URL
   cross nginx's 8KB header buffer at around 220 tickets, and the key changes
@@ -917,11 +918,13 @@ Rules:
 
 ### The live topic contract
 
-The server's audience rules (`liveRules` in `server/cmd/live_audience.go`)
-decide which topics reach a browser at all; a topic without a rule reaches
-nobody. `make live-topics` writes their names to
-`web/src/hooks/liveTopics.generated.json`, and two tests hold the tables
-together:
+The server bridges the bus topics in `livePushTopics` (`server/cmd/main.go`)
+onto the socket, and its audience rules (`liveRules` in
+`server/cmd/live_audience.go`) decide who receives each; a topic without a
+rule reaches nobody, and `TestLiveRules_MatchWhatIsPushed` fails when the two
+lists disagree. `make live-topics` writes the rules' topics to
+`web/src/hooks/liveTopics.generated.json`, and two more tests hold the
+server and the browser together:
 
 - `TestLiveTopicsFile_MatchesTheRules` (Go) fails when the generated file is
   stale, the way `sqlc diff` does.
@@ -933,9 +936,9 @@ Adding a live topic is four steps in one change:
 
 1. Publish it from the domain (`events.go`, `practices/architecture.md`
    section 2).
-2. Add its audience rule to `liveRules`, checked through the permission table
-   the entity's own read uses, so a socket never receives what its person
-   could not load.
+2. Bridge it in `livePushTopics` and add its audience rule to `liveRules`,
+   checked through the permission table the entity's own read uses, so a
+   socket never receives what its person could not load.
 3. Run `make live-topics` and commit the regenerated JSON.
 4. Follow it in the domain's follower (patch from the payload, or invalidate
    by its ids), and in the phone query's `refreshes` (`practices/native.md`

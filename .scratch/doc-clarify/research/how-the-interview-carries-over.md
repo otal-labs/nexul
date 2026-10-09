@@ -21,8 +21,8 @@ for the grilling tickets on storage and the run lifecycle to adopt or reject.
     skipped (`:71-97`).
   - `RecordRound` is the server writing a whole round at once, with no permission check (`:101-139`).
 - Events are `interview_answer.saved` and `interview_answer.cleared`. Their payload carries the question text and the
-  author, never the answer (`internal/memories/events.go:13-19`, `:66-74`). Both have catalog rows
-  (`internal/integrations/catalog.go:914-938`), a workspace scope for automations
+  author, never the answer (`internal/memories/events.go:13-19`, `:66-74`). Both are in the event catalog
+  (`internal/eventcatalog/schemas.json`), a workspace scope for automations
   (`server/cmd/automation_scope.go:55`), and a live frame for anyone with `memories:read` on the project
   (`server/cmd/live_audience.go:113-114`, `:297-302`).
 - MCP has no tool of its own. `memory_create` kind `interview` and `memory_get` return the questions and the stored

@@ -13,3 +13,7 @@ instead of hand-written. The cost is that a payload mistake is permanent for
 the life of a version.
 
 Decided: 2026-07-25.
+
+Amended by ADR 0137: the schemas are generated from the payload types, and a contract
+file with a test holds them to additive-only, so a list field is an array and
+never `null`.

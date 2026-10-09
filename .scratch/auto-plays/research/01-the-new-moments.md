@@ -233,11 +233,11 @@ project.
 
 ## What each new topic must touch
 
-Each topic needs a schema in `internal/integrations/catalog.go` (ADR 0044,
-additive). It needs a scope rule in `server/cmd/automation_scope.go`:
+Each topic is declared in its domain's `Topics()` with its payload type, and
+`make event-schemas` regenerates the published schema and the SDK types
+(ADR 0044, ADR 0137). It needs a scope rule in `server/cmd/automation_scope.go`:
 `projectScope` for `ticket.unblocked`, and `nestedProjectScope("doc")` for
-`doc.settled`. The SDK types in `sdk/src/events.generated.ts` must be
-regenerated. CONTEXT.md needs a line under "Blocked by" and "Auto play". A
+`doc.settled`. CONTEXT.md needs a line under "Blocked by" and "Auto play". A
 browser live push is optional: `ticket.status_changed` already refreshes the
 blocked icon on path 1, and nothing on screen shows the settle.
 

@@ -43,7 +43,7 @@ The **Decisions check** is listed with them. It's a [play](/docs/guide/plays/#th
    export default automation;
    ```
 
-   Return `true` for success. A thrown error, a timeout (30 seconds by default), or any other value counts as a failed run. `ctx` gives you `ctx.api`, a typed client acting with the automation's token, plus `ctx.config`, `ctx.secrets`, and `ctx.log`.
+   Return `true` for success. A thrown error, a timeout (30 seconds by default), or any other value counts as a failed run. `payload` is typed from the event catalog, and a list in it is always an array, `[]` when empty. `ctx` gives you `ctx.api`, a typed client acting with the automation's token, plus `ctx.config`, `ctx.secrets`, and `ctx.log`.
 4. Run `nexul dev`, pick a topic, and it fires a sample event at your handler. You see the outcome, the logs, and every API call it would have made. Nothing reaches your instance.
 5. Run `nexul push <automation-id> "message"` to upload the code as a pending version.
 6. On the automation's **Versions** tab, read the diff against the active code and press **Merge**. The automation restarts on the new code.

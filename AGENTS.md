@@ -26,6 +26,7 @@ The product is implemented. The work now is improving it domain by domain.
 | Any code | `practices/architecture.md`, Principles | `practices/README.md` for the index |
 | Install, CI, release | [CI and releases](https://nexul.io/docs/contributing/ci-and-releases/) | `internal/install/`, `.goreleaser.yaml`, `docker-compose.debug.yml` for development |
 | MCP server or a domain's `mcp.go` | `practices/mcp.md` | `practices/architecture.md`, section 8 |
+| A list call: an MCP list tool or a paged endpoint | `practices/go.md`, section 17 | `practices/mcp.md`, section 7; ADR 0140 |
 | Event bus or resilience | `practices/architecture.md`, sections 2 to 6 | `docs/adr/` |
 | Why is it built this way? | `docs/adr/` | The effort's spec in `.scratch/` |
 | Unfamiliar with a term | `CONTEXT.md` | (the ubiquitous language) |
@@ -117,12 +118,21 @@ skipped and lint errors do not.
 | Native lint, types, tests | `bun run lint`, `typecheck`, `test` in `native/`, in CI |
 | SDK and automations host types and tests | `bun run typecheck` and `bun run test` in each package, in CI |
 | Desktop types, tests, build | the desktop CI job |
-| Live topics the server pushes match the ones the browser follows | `make live-topics`, `TestLiveTopicsFile_MatchesTheRules` and `web/src/hooks/liveTopics.test.tsx` |
-| HTTP, MCP and live frames encode through `jsonx` without changing output | `server/cmd/json_parity_test.go` |
+| Every pushed topic has an audience rule, and the topics the server pushes match the ones the web followers follow | `make live-topics`, `TestLiveRules_MatchWhatIsPushed`, `TestLiveTopicsFile_MatchesTheRules` and `web/src/hooks/liveTopics.test.tsx` |
+| Event schemas match the payload types and the published contract only grows | `make event-schemas`, `TestSchemas_MatchThePublishedContract` in `internal/eventcatalog/contract_test.go` |
+| HTTP bodies through `jsonx` match the encoder it replaced | `server/cmd/json_parity_test.go` |
+| An event payload's empty list is `[]`, never `null` | the contract test above, and `TestInsertOutboxRow_WritesAnEmptyListAsAnArray` |
+| A memoised access check answers what an unmemoised one does, and a commit clears it | `TestIntegration_PermissionSuitesAnswerTheSameWithAMemo` and `TestIntegration_LiveAudienceMemo_FollowsEveryChange` in `server/cmd/access_memo_test.go` |
+| A list path's access reads stay the same at any length | the `TestStatements_*` guards in `server/cmd/access_memo_test.go` |
+| A paged list tool shows each viewer what the row-by-row check showed, and reads about one page of rows | `TestListTools_ShowWhatTheRowByRowCheckShowed` and the `TestRows_*` guards in `server/cmd/list_paging_test.go` |
+| Every non-GET route writes an audit row unless it is listed as read-only | `TestAudited_EveryRouteOfTheRouter_IsClassifiedByMethod` in `server/cmd/audit_integration_test.go` |
 | No goroutine outlives a package's tests | `goleak.VerifyTestMain` in each goroutine-owning package's `main_test.go` |
 | The web shell loads no page, editor, canvas, voice or shader | `web/src/pageChunks.test.tsx` |
-| Every phone query cached forever has a topic that refreshes it | the reference table in `native/src/hooks/useLiveEvents.test.tsx` |
-| Phone icons import by path | `no-restricted-imports` in `native/eslint.config.js` |
+| Requests one live frame or one phone session sends | `web/src/hooks/liveRequests.test.tsx`, `native/src/hooks/requestCounts.test.tsx` |
+| `client-core/` lint, tests and coverage | the web job: `bun run lint` covers the folder, and vitest runs its tests and counts its code toward the 80% gate; each app's typecheck compiles what it imports |
+| A phone query cached until pushed names a topic, and its topics and payload fields exist in the catalog | `bun run typecheck` in `native/`, through the `@ts-expect-error` cases in `native/src/lib/liveQuery.test.ts` |
+| A catalog topic reaches exactly the phone queries that declare it | the per-topic table test in `native/src/hooks/useLiveEvents.test.tsx` |
+| Phone icons import by path; the SDK's event types import as types only | `no-restricted-imports` in `native/eslint.config.js` |
 | Dependency freshness | Dependabot, weekly, grouped per directory |
 
 A rule that could be a lint rule and is not yet is a candidate for one; add
@@ -137,12 +147,23 @@ this list and say which entries applied:
 - UI page or component. The browser flow works at 768, 1024, and 1440px.
 - HTTP gateway route. The browser and integrations reach it (ADR 0019).
 - MCP tool. Agents are peers of the browser; a capability without a tool is
-  half shipped.
+  half shipped. A list tool pages in SQL through its use-case, filters by
+  access in the query, and joins the parity and row guards in
+  `server/cmd/list_paging_test.go` (`practices/go.md`, section 17).
 - Events. A `Topics()` entry naming the payload type, `make event-schemas`,
-  and an outbox write, designed for publication (ADR 0044, ADR 0137).
+  and an outbox write, designed for publication (ADR 0044, ADR 0137). A new
+  field goes beside the existing ones, never in place of one, and is
+  followed by `make event-schemas`. A client that refreshes too much because
+  a frame lacks an id is fixed by adding that id this way.
 - Live WebSocket push, if the UI should update without a refresh. A new
-  topic gets an audience rule, `make live-topics`, and a follower in the web
-  client (`practices/react-guide.md`, The live topic contract).
+  topic is bridged in `livePushTopics`, gets an audience rule,
+  `make live-topics`, a follower in the web
+  domain's hooks file (`practices/react-guide.md`, The live topic contract),
+  and a line in the `refreshes` of each phone query that shows the entity
+  (`practices/native.md`, section 4).
+- Both apps. Code the web and the phone app both need lives once in
+  `client-core/`, with its tests beside it (`practices/typescript.md`,
+  section 11); each app keeps only its adapter.
 - Search, if the entity is indexed.
 - Permissions. Enforced through the permission table, not assumed.
 - Reverse states. If you added a way in, add the way out and the way to see
@@ -212,8 +233,10 @@ calls what, `search_graph` to disambiguate an overloaded name. Reindex
    (`practices/architecture.md`, section 2).
 4. Expose the use-cases to agents per `practices/mcp.md`: extend an existing
    tool first, add one only inside the tool budget, named `<object>_<verb>`.
+   A list use-case takes its filters and a `paging.Window` (ADR 0140).
 5. Add the HTTP routes in `server/cmd/` or a router package.
-6. Add the frontend: model, hooks, components, page, route.
+6. Add the frontend: model, hooks with the domain's live follower,
+   components, page, route; on the phone, its `defineQuery` declarations.
 7. Add tests: unit (table-driven) and integration (real SQLite).
 8. Add the domain's terms to `CONTEXT.md`, and record any decision that was
    hard to reverse, surprising, or a real trade-off as an ADR in `docs/adr/`.

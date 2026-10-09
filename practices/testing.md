@@ -147,9 +147,11 @@ own steps in the same Go CI job, alongside `go vet` and a `go build` without
 `web/vitest.config.ts` is the source of record for the coverage thresholds
 (the same 80% gate, measured by Vitest's v8 provider) and the exempt-path
 list. The web job runs typecheck, lint, and
-test with coverage, then build. The sdk and automations jobs each run
-their own typecheck step, then `bun test`. `web/coverage/lcov.info` uploads
-as the `web-coverage` CI artifact.
+test with coverage, then build; `client-core/` is linted, tested and counted
+toward the gate there. The native job runs typecheck, lint and Jest. The sdk
+and automations jobs each run their own typecheck step, then their test
+script (Vitest in `sdk`, `bun test` in `automations`).
+`web/coverage/lcov.info` uploads as the `web-coverage` CI artifact.
 
 ---
 
@@ -204,8 +206,9 @@ func withTitle(title string) func(*Ticket) {
   counts something deterministic (components rendered, requests sent,
   statements run, allocations, modules in an import graph, goroutines left
   running), never wall-clock time, which flakes on a shared CI runner.
-  `pageChunks.test.tsx`, the phone's reference-query test and goleak are
-  guards of this kind.
+  `pageChunks.test.tsx`, the request counts in `liveRequests.test.tsx` and
+  the phone's `requestCounts.test.tsx`, the statement guards in
+  `server/cmd/access_memo_test.go` and goleak are guards of this kind.
 - Numbers come from a production or release build on realistic data, never
   from a dev build: the web app from `vite build` under CPU throttling, the
   phone from a release build, the server on a copy of the database scaled to

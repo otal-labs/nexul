@@ -30,18 +30,15 @@ risks.
   nested project access, integration installs, automation scopes).
 - Access in the web: `web/src/models/Access.tsx:2-24` is the area map; bots, which also live inside another
   entity's settings rather than a route of their own, are three entries (`bots`, `editBots`, `deleteBots`,
-  lines 17-19). `native/src/models/Access.tsx` mirrors it. Plays are gated in `ConfigurationPage.tsx:14-16`
+  lines 17-19). The phone reads the shared table in `client-core/permissions.ts`. Plays are gated in `ConfigurationPage.tsx:14-16`
   and `AccessHooks.tsx:47`.
-- Live push: a topic reaches a browser only if it is in `livePushTopics` (`server/cmd/main.go:212`) and has a
-  rule in `liveRules` (`server/cmd/live_audience.go:49`). `play.created`, `play.updated` and `play.deleted`
-  are in neither, yet the web listens for them (`web/src/hooks/useLiveEvents.tsx:158-160`). So today an edit
-  to a play made over MCP or in another tab never reaches an open settings page. Only the ephemeral `play.run`
-  frame is pushed (`live_audience.go:140`).
-- Every catalogued topic also needs a JSON schema in `internal/integrations/catalog.go` (enforced by
-  `integrations/catalog_test.go:59`) and an automation scope rule in `server/cmd/automation_scope.go`
-  (enforced by `automation_scope_test.go:16`); play topics use `nestedWorkspaceScope("play")` and
-  `workspaceScope` (`automation_scope.go:54,61`). The SDK regenerates event types from the catalog
-  (`sdk/test/generate-events.test.ts:47`).
+- Live push: a topic reaches a browser only if it is bridged in `livePushTopics` (`server/cmd/main.go`) and
+  has a rule in `liveRules` (`server/cmd/live_audience.go`); `make live-topics` copies the rule names to the web, and a domain's live follower decides what a frame
+  refreshes. `play.created`, `play.updated` and `play.deleted` are pushed under `plays:read`.
+- Every catalogued topic is declared in its domain's `Topics()` with its payload type, and `make event-schemas`
+  generates its schema and the SDK types (enforced by `internal/eventcatalog/contract_test.go`). It also needs
+  an automation scope rule in `server/cmd/automation_scope.go` (enforced by `automation_scope_test.go`); play
+  topics use `nestedWorkspaceScope("play")` and `workspaceScope`.
 - What the conditions point at:
   - Ticket types, categories and status columns all belong to one project (`0001_schema.sql:128,342,359`),
     while a play belongs to the workspace. Templates already match ticket types across projects by name
@@ -257,14 +254,13 @@ child-collection case in `practices/mcp.md` §4 and has a working precedent in `
 - Topics in `events.go`: `auto_play.created` and `auto_play.updated` with payload `{"auto_play": AutoPlay}`,
   and `auto_play.deleted` with `{"id", "play_id", "workspace_id"}`. Copy `CreatedEvent`, `UpdatedEvent` and
   `DeletedEvent` (`events.go:31-46`); write them through the outbox in the same transaction, as plays do.
-- Each also needs its catalog schema, its automation scope (`nestedWorkspaceScope("auto_play")` for created
-  and updated, `workspaceScope` for deleted), and regenerated SDK events.
-- Live: add the three topics to `livePushTopics`, with one rule that reads `workspace_id` from the top level
-  or under `auto_play` and requires `autoplays:read` in that workspace. In the web, `pushTopics` maps them to
-  the auto plays query key, and `play.deleted` invalidates it too.
-- Fix the existing gap in the same change: push `play.created`, `play.updated` and `play.deleted` under a
-  `plays:read` rule of the same form. The web already listens for them, and the auto plays section lives on
-  that very page.
+- Each is declared in `Topics()` with its payload type, then `make event-schemas` (ADR 0137), and gets its
+  automation scope (`nestedWorkspaceScope("auto_play")` for created and updated, `workspaceScope` for deleted).
+- Live: bridge the three in `livePushTopics`, with one rule in `liveRules` that reads `workspace_id` from the top level or under `auto_play` and
+  requires `autoplays:read` in that workspace, then `make live-topics`. In the web, the plays domain's live
+  follower refreshes the auto plays query for them, and `play.deleted` does too
+  (`practices/react-guide.md`, The live topic contract). The play topics themselves are already pushed under
+  `plays:read`.
 
 ### Where the two caps live
 

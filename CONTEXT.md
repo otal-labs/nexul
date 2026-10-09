@@ -833,6 +833,12 @@ The credential an integration (`int_`) or an automation (`dat_`) acts with,
 minted with a chosen subset of permissions and revocable on its own. A scoped
 token granted `X:write` also receives `X:read` at mint.
 
+**Audit log**:
+The instance's record of changes: one row per change made over the HTTP
+gateway or by an MCP tool that is not read-only, naming the user who made
+it, kept 45 days. Reads are not recorded. Read with `audit:read`.
+_Avoid_: Audit (that is the doc a play writes), activity log, access log
+
 **Setup code**:
 The code (`nxs_`) that proves someone at the instance's own server is the one
 setting it up. The server writes a fresh one on every start until the first
@@ -952,6 +958,18 @@ Events written in the same transaction as the domain change, then relayed to
 the bus — so an event can never be lost or published for a change that rolled
 back.
 
+**Access memo**:
+The answers access checks have already read, kept for one request (or, in
+the live hub, across frames) and dropped at the next commit, so a revoked
+grant takes effect on the very next check.
+_Avoid_: Permission cache, access cache
+
+**List window**:
+The page a list call reads: an offset and a limit (50 by default, 100 at
+most), read in SQL after access filters, beside an honest total, the count
+of exactly what all the pages hold.
+_Avoid_: Cursor, page token, scan cap
+
 **Composition root**:
 A `cmd/main.go`. The only place concrete implementations are wired to
 interfaces.
@@ -976,8 +994,27 @@ The required component hierarchy. A Page composes Feeds; a Feed lists entities;
 a Section is a titled group; a Card/Row/Item is one entity.
 
 **Defensive ordering**:
-Negative checks first — loading, error, empty — each with an early return,
+Negative checks first — loading, error, empty — each in its own `&&` block,
 before the happy path.
+
+**Live follower**:
+A web domain's answer to the live frames it follows, beside its queries: per
+topic, it patches the views holding the entity a frame carries or refetches
+only what the frame's ids name. Always "live follower", never a bare
+"follower": a person who gets a doc's notifications is a Watcher.
+_Avoid_: Frame handler, topic map, live table
+
+**Query declaration**:
+A phone query defined once with the topics that refresh it and how a frame
+finds its entry; the phone's live dispatch and stale times are derived from
+the declarations.
+_Avoid_: Topic table, live table
+
+**Client core**:
+The modules the web and phone apps both run, kept once in `client-core/`:
+rules over the wire shapes, never a component, a hook, or a platform API.
+_Avoid_: Shared package, common, SDK (that is what automations are written
+against)
 
 **The Frontend Commandments**:
 F1–F7 in the [coding standards](https://nexul.io/docs/contributing/coding-standards/#react-the-frontend-commandments). Hard rules for anything in `web/`, not
