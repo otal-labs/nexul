@@ -57,7 +57,7 @@ const config: ExpoConfig = {
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-foreground.png",
       monochromeImage: "./assets/adaptive-monochrome.png",
-      backgroundColor: "#050505",
+      backgroundColor: "#060709",
     },
     versionCode: buildNumber,
     ...(googleServicesFile && existsSync(googleServicesFile) && { googleServicesFile }),
@@ -80,14 +80,14 @@ const config: ExpoConfig = {
     "./plugins/withReleaseSigning",
     "expo-secure-store",
     // Android tints the white silhouette with this color; the muted foreground token reads on both the light and dark shade.
-    ["expo-notifications", { icon: "./assets/notification-icon.png", color: "#9a9a9a" }],
+    ["expo-notifications", { icon: "./assets/notification-icon.png", color: "#9ea1a8" }],
     [
       "expo-splash-screen",
       {
         image: "./assets/splash-icon.png",
-        backgroundColor: "#ececec",
+        backgroundColor: "#edeef1",
         imageWidth: 200,
-        dark: { image: "./assets/splash-icon-dark.png", backgroundColor: "#050505" },
+        dark: { image: "./assets/splash-icon-dark.png", backgroundColor: "#060709" },
       },
     ],
     [
