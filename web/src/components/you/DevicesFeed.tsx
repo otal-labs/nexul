@@ -26,10 +26,10 @@ export const DevicesFeed = () => {
   const current = data?.sessions.filter((session) => session.current) ?? [];
   const others = data?.sessions.filter((session) => !session.current) ?? [];
 
-  const glide = useRowGlide();
+  const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
 
   const signOutOne = (id: string) => {
-    glide.prepare();
+    prepareGlide();
     setLeaving((ids) => [...ids, id]);
     signOut.mutate(id, { onError: () => setLeaving((ids) => ids.filter((left) => left !== id)) });
   };
@@ -75,7 +75,7 @@ export const DevicesFeed = () => {
               <EmptyRow className="animate-in fade-in-0 duration-200 ease-out">No other devices signed in.</EmptyRow>
             )}
             {others.length > 0 && (
-              <ul ref={glide.ref} className="divide-y divide-border overflow-hidden rounded-md border border-border">
+              <ul ref={glideRef} className="divide-y divide-border overflow-hidden rounded-md border border-border">
                 {others.map((session) => (
                   <DeviceRow
                     key={session.id}
