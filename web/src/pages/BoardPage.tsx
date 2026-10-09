@@ -90,7 +90,7 @@ export const BoardPage = () => {
           onToggleWaitingForMeToTest={toggleWaitingForMeToTest}
           onSearch={setSearch}
           onClear={clearAll}
-          onNewTicket={() => void openCreateTicketDialog()}
+          onNewTicket={() => void openCreateTicketDialog?.()}
           onNewCategory={() => void openCreateCategoryDialog()}
           onDrop={dropTicket}
           onReorderColumns={reorderColumns}
