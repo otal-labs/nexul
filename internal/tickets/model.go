@@ -47,13 +47,28 @@ type Ticket struct {
 	Labels     []string   `json:"labels"`
 }
 
-// MarshalJSON adds the deprecated assignee field, always equal to developer, so the published payload stays additive (ADR 0044).
+// ticketJSON is a ticket's wire shape: its fields plus the deprecated assignee, always equal to developer, so the published payload stays additive (ADR 0044).
+type ticketJSON struct {
+	ticketFields
+	Assignee string `json:"assignee"`
+}
+
+type ticketFields Ticket
+
 func (t Ticket) MarshalJSON() ([]byte, error) {
-	type plain Ticket
-	return json.Marshal(struct {
-		plain
-		Assignee string `json:"assignee"`
-	}{plain(t), t.Developer})
+	return json.Marshal(ticketJSON{ticketFields(t), t.Developer})
+}
+
+// jsonList encodes a list without a MarshalJSON per ticket, whose output encoding/json re-scans byte by byte.
+func jsonList(ts []*Ticket) []ticketJSON {
+	out := make([]ticketJSON, len(ts))
+	for i, t := range ts {
+		out[i] = ticketJSON{ticketFields(*t), t.Developer}
+		if out[i].Labels == nil {
+			out[i].Labels = []string{}
+		}
+	}
+	return out
 }
 
 // CanTransition allows any status pair; a same-status move is a no-op, not an error.
