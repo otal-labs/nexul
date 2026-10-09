@@ -260,17 +260,14 @@ describe("the memory follower", () => {
     expect(kept.map((key) => isStale(client, key))).toEqual([false, false, false, false]);
   });
 
-  it("refetches the project's memories and answers once its interview run has finished", async () => {
+  it("refetches the project's memories and answers, and its workspace's list, once its interview run has finished", async () => {
     const client = views();
-    const run = { trail_id: "tr-1", play_id: "pl-1", target_type: "interview", target_id: "p-1", activity: null, ended_at: null, last_error: "" };
+    const run = { trail_id: "tr-1", play_id: "pl-1", target_type: "interview", target_id: "p-1", activity: null, ended_at: null, last_error: "", project_id: "p-1", workspace_id: "ws-1" };
     await followFrame(memoryFollower, "play.run", { ...run, state: "running" }, client);
     expect(isStale(client, ["getInterviewAnswers", "p-1"])).toBe(false);
 
     await followFrame(memoryFollower, "play.run", { ...run, state: "done" }, client);
-    expect([["getMemories", "byProject", "p-1"], ["getInterviewAnswers", "p-1"], ["getMemories", "byProject", "p-2"]].map((key) => isStale(client, key))).toEqual([
-      true,
-      true,
-      false,
-    ]);
+    const keys = [["getMemories", "byProject", "p-1"], ["getInterviewAnswers", "p-1"], ["getMemories", "byWorkspace", "ws-1"], ["getMemories", "byProject", "p-2"], ["getMemories", "byWorkspace", "ws-2"]];
+    expect(keys.map((key) => isStale(client, key))).toEqual([true, true, true, false, false]);
   });
 });

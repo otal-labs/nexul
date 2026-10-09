@@ -170,15 +170,17 @@ describe("useSaveTestsAnswer", () => {
 });
 
 describe("the project follower", () => {
-  it("refetches who has access to the project a grant names, and every project's after a membership change", async () => {
+  it("refetches who has access to the project a grant names, and to the projects a membership change names", async () => {
     const client = seeded([
       [["getProjectAccess", "p-1"], []],
       [["getProjectAccess", "p-2"], []],
+      [["getProjectAccess", "p-3"], []],
     ]);
+    const stale = () => ["p-1", "p-2", "p-3"].map((id) => isStale(client, ["getProjectAccess", id]));
     await followFrame(projectFollower, "access.grant.changed", { user_id: "u-2", resource_type: "project", resource_id: "p-1" }, client);
-    expect([isStale(client, ["getProjectAccess", "p-1"]), isStale(client, ["getProjectAccess", "p-2"])]).toEqual([true, false]);
+    expect(stale()).toEqual([true, false, false]);
 
-    await followFrame(projectFollower, "workspace.member.updated", { user_id: "u-2", workspace_id: "ws-1" }, client);
-    expect(isStale(client, ["getProjectAccess", "p-2"])).toBe(true);
+    await followFrame(projectFollower, "workspace.member.updated", { user_id: "u-2", workspace_id: "ws-1", project_ids: ["p-2"] }, client);
+    expect(stale()).toEqual([true, true, false]);
   });
 });

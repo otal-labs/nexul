@@ -1118,6 +1118,7 @@ func TestPostMessage(t *testing.T) {
 		assert.Len(t, m.Mentions, 2)
 		evts := repo.eventsFor(TopicMessageCreated)
 		require.Len(t, evts, 1)
+		assert.Equal(t, "w-1", evts[0].Payload.(MessageCreatedEvent).WorkspaceID, "the frame names its workspace for the unread counts")
 	})
 }
 
@@ -1281,6 +1282,7 @@ func TestDeleteMessage(t *testing.T) {
 		e, ok := evts[0].Payload.(MessageDeletedEvent)
 		require.True(t, ok)
 		assert.Equal(t, m.ID, e.MessageID)
+		assert.Equal(t, "w-1", e.WorkspaceID)
 	})
 }
 

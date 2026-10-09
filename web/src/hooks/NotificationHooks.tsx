@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 
@@ -98,11 +98,18 @@ interface FolderPayload {
   folder: DocFolder;
 }
 
+// notification.created reaches only its recipients and names the workspace whose inbox holds the new notices.
+interface NotificationCreatedPayload {
+  workspace_id: string;
+}
+
+// The inbox and badge of that workspace, and the views across every workspace, which hold it too.
+const showsWorkspace = (workspaceId: string) => ({ queryKey }: { queryKey: QueryKey }) => !queryKey[1] || queryKey[1] === workspaceId;
+
 // The inbox groups doc rows by the folder each doc is in now, so a move, rename, or delete regroups them.
 export const notificationFollower: LiveFollower = {
-  // The frame names nobody and no workspace, so every open inbox and badge refetches.
-  "notification.created": (_payload: unknown, { client }) =>
-    Promise.all([client.invalidateQueries({ queryKey: [getNotificationsKey] }), client.invalidateQueries({ queryKey: [getUnreadCountKey] })]),
+  "notification.created": ({ workspace_id }: NotificationCreatedPayload, { client }) =>
+    Promise.all([getNotificationsKey, getUnreadCountKey].map((key) => client.invalidateQueries({ queryKey: [key], predicate: showsWorkspace(workspace_id) }))),
   "doc.moved": ({ doc }: { doc: { id: string } }, { client }) => refetchInboxes(client, (n) => n.subject_type === SubjectType.Doc && n.subject_id === doc.id),
   "doc.folder.updated": ({ folder }: FolderPayload, { client }) =>
     client.setQueriesData<Notification[]>({ queryKey: [getNotificationsKey] }, (rows) =>

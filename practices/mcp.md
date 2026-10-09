@@ -129,6 +129,10 @@ for a newer revision.
 - **Log the call, not the payload.** A tool call logs its name, the actor, the
   outcome, and the duration, under the request's `trace_id`. Arguments and
   results are never logged; they carry document bodies and secrets.
+- **A change leaves an audit row.** A call to a tool without `ReadOnly`
+  writes one audit row, `mcp <tool_name>`, attributed as the HTTP gateway
+  attributes a request (ADR 0138). The hint is the switch, so a tool that
+  writes is never marked read-only to keep it out of the log.
 
 ---
 

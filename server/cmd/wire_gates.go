@@ -226,6 +226,18 @@ func (g tenancyProjectGate) ProjectPermissions(ctx context.Context, userID, proj
 	return g.access.ProjectPermissions(ctx, userID, projectID)
 }
 
+func (g tenancyProjectGate) WorkspaceProjects(ctx context.Context, workspaceID string) ([]string, error) {
+	projects, err := g.projects.List(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(projects))
+	for _, p := range projects {
+		ids = append(ids, p.ID)
+	}
+	return ids, nil
+}
+
 // memoriesProjectLookup reads a project's workspace from storage for memories' ProjectLookup seam (ADR 0017), so a
 // new memory can denormalize it.
 type memoriesProjectLookup struct {

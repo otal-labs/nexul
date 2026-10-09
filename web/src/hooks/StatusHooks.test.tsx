@@ -29,7 +29,7 @@ const board = () =>
 describe("the status follower", () => {
   it("renames a column in place, and leaves the link views alone while its stage holds", async () => {
     const client = board();
-    await followFrame(statusFollower, "status.updated", { status: { ...doing, project_id: "p-1", name: "Building" } }, client);
+    await followFrame(statusFollower, "status.updated", { status: { ...doing, project_id: "p-1", name: "Building" }, previous_kind: "progress" }, client);
     expect(client.getQueryData<BoardStatus[]>(["getProjectStatuses", "p-1"])?.map((s) => s.name)).toEqual(["Building", "Done"]);
     expect([["getProjectStatuses", "p-1"], ["getProjectStatuses", "p-2"], ["getTicketLinkSet", "t-1"], ["getBlockers"]].map((key) => isStale(client, key))).toEqual([
       false,
@@ -41,9 +41,18 @@ describe("the status follower", () => {
 
   it("refetches the column order and the link views naming its tickets when a column changes stage", async () => {
     const client = board();
-    await followFrame(statusFollower, "status.updated", { status: { ...doing, project_id: "p-1", kind: "done" } }, client);
+    await followFrame(statusFollower, "status.updated", { status: { ...doing, project_id: "p-1", kind: "done" }, previous_kind: "progress" }, client);
     expect([["getProjectStatuses", "p-1"], ["getTicketLinkSet", "t-1"], ["getBlockers"]].map((key) => isStale(client, key))).toEqual([true, true, true]);
     expect(isStale(client, ["getProjectStatuses", "p-2"])).toBe(false);
+  });
+
+  it("leaves the link views alone for a renamed column whose board is not open, since the frame names its stage before", async () => {
+    const client = seeded([
+      [["getTicketLinkSet", "t-1"], naming("st-1")],
+      [["getBlockers"], {}],
+    ]);
+    await followFrame(statusFollower, "status.updated", { status: { ...doing, project_id: "p-1", name: "Building" }, previous_kind: "progress" }, client);
+    expect([isStale(client, ["getTicketLinkSet", "t-1"]), isStale(client, ["getBlockers"])]).toEqual([false, false]);
   });
 
   it("drops a deleted column from its project's board", async () => {

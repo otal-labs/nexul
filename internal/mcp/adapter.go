@@ -45,6 +45,8 @@ type server struct {
 	logger       *slog.Logger
 	// memo starts each request's memo of access reads; nil leaves the context as it arrived.
 	memo func(context.Context) context.Context
+	// audit records a call to a tool that changes state (ADR 0138); nil records nothing.
+	audit func(ctx context.Context, tool string)
 }
 
 // handler builds the SDK server and wraps its stateless handler in the origin check.
@@ -65,7 +67,7 @@ func (s server) handler(instanceURL func(context.Context) (string, error)) http.
 	srv.AddReceivingMiddleware(recoverPanics(logger), memoize(s.memo))
 	limits := &limiters{byActor: map[string]*rate.Limiter{}}
 	for _, t := range s.tools {
-		srv.AddTool(sdkTool(t), toolHandler(t, limits, logger))
+		srv.AddTool(sdkTool(t), toolHandler(t, limits, s.audit, logger))
 	}
 	for _, r := range s.resources {
 		r.register(srv, logger)
@@ -144,7 +146,7 @@ func sdkTool(t mcptool.Tool) *sdk.Tool {
 }
 
 // toolHandler runs a tool as the caller and turns every failure into an isError result the model can read.
-func toolHandler(t mcptool.Tool, limits *limiters, logger *slog.Logger) sdk.ToolHandler {
+func toolHandler(t mcptool.Tool, limits *limiters, audit func(context.Context, string), logger *slog.Logger) sdk.ToolHandler {
 	return func(ctx context.Context, req *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 		traceID := logging.TraceIDFromCtx(ctx)
 		if traceID == "" {
@@ -159,6 +161,9 @@ func toolHandler(t mcptool.Tool, limits *limiters, logger *slog.Logger) sdk.Tool
 		}
 		start := time.Now()
 		out, err := t.Call(logging.CtxWithLogger(ctx, log), req.Params.Arguments)
+		if audit != nil && !t.Hints.ReadOnly {
+			audit(ctx, t.Name)
+		}
 		if err != nil {
 			message, internal := toolErrorMessage(err, traceID)
 			if internal {

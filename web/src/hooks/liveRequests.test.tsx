@@ -8,18 +8,20 @@ import { useFetchComputerSetup } from "@/hooks/ComputerSetupHooks";
 import { useFetchDeploy, useFetchDeployLog } from "@/hooks/DeployHooks";
 import { useFetchDoc, useFetchDocClarification, useFetchDocs, useFetchDocsByProject } from "@/hooks/DocHooks";
 import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
+import { useFetchProjectAccess } from "@/hooks/ProjectHooks";
 import { useFetchInterviewSources } from "@/hooks/InterviewSourceHooks";
 import { useFetchMemories, useFetchMemoriesByProject, useFetchMemory, useFetchMemoryVersions } from "@/hooks/MemoryHooks";
-import { useFetchInbox } from "@/hooks/NotificationHooks";
-import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
+import { useFetchInbox, useFetchUnreadByWorkspace, useFetchUnreadCount } from "@/hooks/NotificationHooks";
+import { useFetchProjectPeople, useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import { useFetchApplicablePlays, useFetchWorkspacePlays } from "@/hooks/PlayHooks";
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
 import { useRunnerQueue, useRunners } from "@/hooks/RunnerHooks";
 import { useFetchStackDeploys } from "@/hooks/StackHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
-import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
+import { useFetchTicket, useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { useFetchBlockers, useFetchTicketLinkSet } from "@/hooks/TicketLinkHooks";
+import { useFetchActiveTrails } from "@/hooks/TrailHooks";
 import { useFetchMyRole, useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { mountLive } from "@/test/liveHarness";
@@ -41,7 +43,20 @@ const server: Record<string, unknown> = {
   "/api/memories/m-1": { id: "m-1", project_id: "p-1", title: "Deploys" },
   "/api/memories": [{ id: "m-1", project_id: "p-1", title: "Deploys" }],
   "/api/statuses": [{ id: "st-1", name: "Doing", position: 0, kind: "progress", icon: "", created_at: "", updated_at: "" }],
-  "/api/tickets/t-1/ticket-links": { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false },
+  "/api/tickets/t-1/ticket-links": {
+    found_in: null,
+    origin_unknown: false,
+    bugs_found: [],
+    blocked_by: [{ id: "t-2", project_id: "p-1", prefix: "ACME", number: 2, title: "Login", status: "st-1", done: false }],
+    blocks: [],
+    blocked: true,
+  },
+  "/api/tickets": [{ id: "t-1", project_id: "p-1", doc_id: "", category_id: "cat-1", status: "st-1", position: 0, title: "Login", updated_at: "" }],
+  "/api/tickets/t-1": { id: "t-1", project_id: "p-1", doc_id: "", category_id: "cat-1", status: "st-1", position: 0, title: "Login", updated_at: "" },
+  "/api/projects/p-1/access": { access: [] },
+  "/api/projects/p-2/access": { access: [] },
+  "/api/projects/p-1/people": { people: [] },
+  "/api/projects/p-2/people": { people: [] },
   "/api/tickets/blockers": {},
   "/api/workspaces/ws-1/people": { people: [{ user_id: "u-2", login: "lena", display_name: "Lena", avatar_url: "" }] },
   "/api/workspaces/ws-1/me": { role_name: "Editor", permissions: [] },
@@ -74,7 +89,36 @@ describe("requests a live frame sends", () => {
       respond,
     );
     const message = { id: "m-9", conversation_id: "c-1", author_id: "u-2", author_kind: "user", body: "hi", mentions: null, created_at: "", updated_at: "" };
-    expect(await requestsAfter("chat.message.created", { message })).toEqual(["/api/chat/unread?workspace_id=ws-1"]);
+    expect(await requestsAfter("chat.message.created", { message, workspace_id: "ws-1" })).toEqual(["/api/chat/unread?workspace_id=ws-1"]);
+  });
+
+  it("refetches only the message's workspace's list and unread counts for a conversation no list holds yet", async () => {
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useFetchConversations("ws-1");
+        useFetchChatUnread("ws-1");
+        useFetchConversations("ws-2");
+        useFetchChatUnread("ws-2");
+      }),
+      respond,
+    );
+    const message = { id: "m-9", conversation_id: "dm-new", author_id: "u-2", author_kind: "user", body: "hi", mentions: null, created_at: "", updated_at: "" };
+    expect((await requestsAfter("chat.message.created", { message, workspace_id: "ws-2" })).sort()).toEqual([
+      "/api/chat/conversations?workspace_id=ws-2",
+      "/api/chat/unread?workspace_id=ws-2",
+    ]);
+  });
+
+  it("refetches only the unread counts of a deleted message's workspace", async () => {
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useFetchChatUnread("ws-1");
+        useFetchChatUnread("ws-2");
+      }),
+      respond,
+    );
+    const deleted = { conversation_id: "c-1", message_id: "m-1", deleted_at: "", workspace_id: "ws-1" };
+    expect(await requestsAfter("chat.message.deleted", deleted)).toEqual(["/api/chat/unread?workspace_id=ws-1"]);
   });
 
   it("drops a deleted conversation from the list without refetching it", async () => {
@@ -89,7 +133,20 @@ describe("requests a live frame sends", () => {
     expect(await requestsAfter("chat.conversation.deleted", deleted)).toEqual(["/api/chat/unread?workspace_id=ws-1"]);
   });
 
-  it("leaves an open deploy and its log alone when another deploy moves", async () => {
+  it("refetches only the history of the stack a new deploy names, and leaves an open deploy and its log alone", async () => {
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useFetchDeploy("d-1");
+        useFetchDeployLog("d-1");
+        useFetchStackDeploys("s-1");
+        useFetchStackDeploys("s-2");
+      }),
+      respond,
+    );
+    expect(await requestsAfter("deploy.updated", { id: "d-9", status: "pending", stack_id: "s-2" })).toEqual(["/api/stacks/s-2/deploys"]);
+  });
+
+  it("refetches an open deploy and its log, not its stack's history, for a log batch", async () => {
     const { requestsAfter } = await mountLive(
       view(() => {
         useFetchDeploy("d-1");
@@ -98,7 +155,7 @@ describe("requests a live frame sends", () => {
       }),
       respond,
     );
-    expect(await requestsAfter("deploy.updated", { id: "d-9", status: "building" })).toEqual(["/api/stacks/s-1/deploys"]);
+    expect((await requestsAfter("deploy.updated", { id: "d-1", status: "healthy", stack_id: "s-1" })).sort()).toEqual(["/api/deploys/d-1", "/api/deploys/d-1/log"]);
   });
 
   it.each(["deploy.build_progress", "deploy.deploy_progress"])("sends nothing on %s for a job the runners list already shows", async (topic) => {
@@ -170,7 +227,91 @@ describe("requests a live frame sends", () => {
       respond,
     );
     const status = { id: "st-1", project_id: "p-1", name: "Building", position: 0, kind: "progress", icon: "", created_at: "", updated_at: "" };
-    expect(await requestsAfter("status.updated", { status })).toEqual([]);
+    expect(await requestsAfter("status.updated", { status, previous_kind: "progress" })).toEqual([]);
+  });
+
+  it("leaves the link views alone when a column whose board is not open is renamed", async () => {
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useFetchTicketLinkSet("t-1");
+        useFetchBlockers();
+      }),
+      respond,
+    );
+    const status = { id: "st-1", project_id: "p-1", name: "Building", position: 0, kind: "progress", icon: "", created_at: "", updated_at: "" };
+    expect(await requestsAfter("status.updated", { status, previous_kind: "progress" })).toEqual([]);
+    expect((await requestsAfter("status.updated", { status: { ...status, kind: "done" }, previous_kind: "progress" })).sort()).toEqual([
+      "/api/tickets/blockers",
+      "/api/tickets/t-1/ticket-links",
+    ]);
+  });
+
+  it("moves a ticket to another category without a request", async () => {
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useFetchTicketsByProject("p-1");
+        useFetchTicket("t-1");
+      }),
+      respond,
+    );
+    expect(await requestsAfter("ticket.category_changed", { ticket_id: "t-1", category_id: "cat-2", project_id: "p-1" })).toEqual([]);
+  });
+
+  it("refetches the inbox and badge of a new notice's workspace and the count across workspaces, nothing for another workspace's", async () => {
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useFetchInbox();
+        useFetchUnreadCount();
+        useFetchUnreadByWorkspace();
+      }),
+      respond,
+    );
+    expect((await requestsAfter("notification.created", { user_ids: ["u-me"], workspace_id: "ws-1", project_id: "p-1" })).sort()).toEqual([
+      "/api/notifications/unread-count",
+      "/api/notifications/unread-count?workspace_id=ws-1",
+      "/api/notifications?workspace_id=ws-1",
+    ]);
+    expect(await requestsAfter("notification.created", { user_ids: ["u-me"], workspace_id: "ws-2" })).toEqual(["/api/notifications/unread-count"]);
+  });
+
+  it("refetches only the active runs of the project a run's state moved in", async () => {
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useFetchActiveTrails("p-1");
+        useFetchActiveTrails("p-2");
+      }),
+      respond,
+    );
+    const run = { trail_id: "tr-1", play_id: "pl-1", target_type: "ticket", target_id: "t-9", state: "running", activity: null, ended_at: null, last_error: "", project_id: "p-2", workspace_id: "ws-1" };
+    expect(await requestsAfter("play.run", run)).toEqual(["/api/plays/runs/active?target_type=ticket&project_id=p-2"]);
+  });
+
+  it("refetches only its workspace's memory list once an interview run finishes", async () => {
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useFetchMemories("ws-1");
+        useFetchMemories("ws-2");
+      }),
+      respond,
+    );
+    const run = { trail_id: "tr-1", play_id: "pl-1", target_type: "interview", target_id: "p-1", state: "done", activity: null, ended_at: null, last_error: "", project_id: "p-1", workspace_id: "ws-1" };
+    expect(await requestsAfter("play.run", run)).toEqual(["/api/memories?workspace_id=ws-1"]);
+  });
+
+  it("refetches who may open only the projects a membership change names", async () => {
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useFetchProjectAccess("p-1");
+        useFetchProjectAccess("p-2");
+        useFetchProjectPeople("p-1");
+        useFetchProjectPeople("p-2");
+      }),
+      respond,
+    );
+    expect((await requestsAfter("workspace.member.updated", { user_id: "u-2", workspace_id: "ws-1", project_ids: ["p-1"] })).sort()).toEqual([
+      "/api/projects/p-1/access",
+      "/api/projects/p-1/people",
+    ]);
   });
 
   it("renames a category without a request", async () => {

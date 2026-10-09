@@ -696,13 +696,13 @@ func TestHandleStatusChanged(t *testing.T) {
 	t.Run("healthy lands the record and enqueues deploy.updated with the status", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo, newFakeBus())
-		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusPending}))
+		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", StackID: "s1", Status: StatusPending}))
 		require.NoError(t, s.HandleStatusChanged(context.Background(), eventbus.Event{Payload: mustMarshal(t, DeployStatusChangedEvent{ID: "d1", Status: string(StatusHealthy)})}))
 
 		got, err := repo.GetByID(context.Background(), "d1")
 		require.NoError(t, err)
 		assert.Equal(t, StatusHealthy, got.Status)
-		assert.Equal(t, []DeployUpdatedEvent{{ID: "d1", Status: "healthy"}}, repo.updatedEvents())
+		assert.Equal(t, []DeployUpdatedEvent{{ID: "d1", Status: "healthy", StackID: "s1"}}, repo.updatedEvents())
 	})
 	t.Run("failed appends the error as a phase-less log line", func(t *testing.T) {
 		repo := newFakeRepo()
@@ -904,7 +904,7 @@ func TestHandleLog(t *testing.T) {
 	t.Run("splits the batch into one row per line and drops the trailing newline", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo, newFakeBus())
-		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusRunning}))
+		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", StackID: "s1", Status: StatusRunning}))
 		ev := DeployLogEvent{ID: "d1", Phase: "checkout", Log: "clone org/app@main\nCloning into '/data/repo'...\n", TS: 1695379028112}
 		require.NoError(t, s.HandleLog(context.Background(), eventbus.Event{Payload: mustMarshal(t, ev)}))
 
@@ -914,7 +914,7 @@ func TestHandleLog(t *testing.T) {
 			{Seq: 1, TS: 1695379028112, Phase: "checkout", Text: "clone org/app@main"},
 			{Seq: 2, TS: 1695379028112, Phase: "checkout", Text: "Cloning into '/data/repo'..."},
 		}, lines)
-		assert.Equal(t, []DeployUpdatedEvent{{ID: "d1", Status: "running"}}, repo.updatedEvents(), "the batch commits with its own deploy.updated row")
+		assert.Equal(t, []DeployUpdatedEvent{{ID: "d1", Status: "running", StackID: "s1"}}, repo.updatedEvents(), "the batch commits with its own deploy.updated row")
 	})
 	t.Run("a blank line inside the batch is kept, only the trailing one is dropped", func(t *testing.T) {
 		repo := newFakeRepo()

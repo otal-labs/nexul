@@ -53,9 +53,10 @@ type InvitationEvent struct {
 
 // MemberEvent is the payload of a membership change made outside an invitation; updated covers a role or overrides change.
 type MemberEvent struct {
-	UserID      string `json:"user_id"`
-	WorkspaceID string `json:"workspace_id"`
-	ActorID     string `json:"actor_id,omitempty"`
+	UserID      string   `json:"user_id"`
+	WorkspaceID string   `json:"workspace_id"`
+	ActorID     string   `json:"actor_id,omitempty"`
+	ProjectIDs  []string `json:"project_ids,omitempty" jsonschema:"On workspace.member.updated, the workspace's projects, whose access the change can move."`
 }
 
 // WorkspaceEvent is the payload of a rename or slug change; it carries the new name and slug so a client open on the workspace can move its URL.

@@ -1,27 +1,48 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
+import { defineQuery } from "@/lib/liveQuery";
 import { recordQueries } from "@/lib/queryClient";
 import type { Ticket, TicketRole } from "@/models/Ticket";
 
 export const getTicketsByProjectKey = "getTicketsByProject";
 export const getTicketKey = "getTicket";
 
+// ticket.assignee_changed is left out: it is published beside ticket.developer_changed, so following both refetched twice.
+const ticketsByProjectQuery = defineQuery({
+  key: getTicketsByProjectKey,
+  fetch: (projectId: string | undefined) => api.get<Ticket[]>(`/api/tickets?project_id=${encodeURIComponent(projectId ?? "")}`),
+  refreshes: {
+    "ticket.created": { key: (p) => p.ticket.project_id },
+    "ticket.updated": { key: (p) => p.ticket.project_id },
+    "ticket.status_changed": { key: (p) => p.ticket.project_id },
+    "ticket.developer_changed": { key: (p) => p.ticket.project_id },
+    "ticket.tester_changed": { key: (p) => p.ticket.project_id },
+    "ticket.finished": { key: (p) => p.ticket.project_id },
+    "ticket.deleted": { key: (p) => p.project_id },
+  },
+});
+
 export const useFetchTicketsByProject = (projectId: string | undefined) =>
-  useQuery({
-    queryKey: [getTicketsByProjectKey, projectId],
-    queryFn: () => api.get<Ticket[]>(`/api/tickets?project_id=${encodeURIComponent(projectId ?? "")}`),
-    enabled: !!projectId,
-  });
+  useQuery({ ...ticketsByProjectQuery.options(projectId), enabled: !!projectId });
 
 // id may be a key such as WEB-1, which is unique only within a workspace, so a key comes with the workspace's slug.
+const ticketQuery = defineQuery({
+  key: getTicketKey,
+  fetch: (id: string | undefined, workspace: string) =>
+    api.get<Ticket>(`/api/tickets/${encodeURIComponent(id ?? "")}${workspace ? `?workspace=${encodeURIComponent(workspace)}` : ""}`),
+  refreshes: {
+    "ticket.updated": { record: (p) => p.ticket.id },
+    "ticket.status_changed": { record: (p) => p.ticket.id },
+    "ticket.developer_changed": { record: (p) => p.ticket.id },
+    "ticket.tester_changed": { record: (p) => p.ticket.id },
+    "ticket.finished": { record: (p) => p.ticket.id },
+    "ticket.deleted": { record: (p) => p.id },
+  },
+});
+
 export const useFetchTicket = (id: string | undefined, workspace = "") =>
-  useQuery({
-    queryKey: [getTicketKey, id, workspace],
-    queryFn: () =>
-      api.get<Ticket>(`/api/tickets/${encodeURIComponent(id ?? "")}${workspace ? `?workspace=${encodeURIComponent(workspace)}` : ""}`),
-    enabled: !!id,
-  });
+  useQuery({ ...ticketQuery.options(id, workspace), enabled: !!id });
 
 export const useUpdateTicketStatus = () => {
   const client = useQueryClient();

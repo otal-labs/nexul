@@ -450,7 +450,7 @@ func (s *Service) MoveTicket(ctx context.Context, ticketID, projectID string) er
 	if err := s.requireOn(ctx, projectID, permissions.TicketsWrite); err != nil {
 		return fmt.Errorf("move ticket to project %s: %w", projectID, err)
 	}
-	if err := s.requireOnTicket(ctx, ticketID); err != nil {
+	if _, err := s.requireOnTicket(ctx, ticketID); err != nil {
 		return fmt.Errorf("move ticket %s: %w", ticketID, err)
 	}
 	if err := s.repo.MoveTicket(ctx, ticketID, projectID); err != nil {
@@ -459,16 +459,16 @@ func (s *Service) MoveTicket(ctx context.Context, ticketID, projectID string) er
 	return nil
 }
 
-// requireOnTicket checks tickets:write in the project a ticket sits in now.
-func (s *Service) requireOnTicket(ctx context.Context, ticketID string) error {
+// requireOnTicket checks tickets:write in the project a ticket sits in now, and returns that project.
+func (s *Service) requireOnTicket(ctx context.Context, ticketID string) (string, error) {
 	if s.tickets == nil {
-		return permissions.Ungated(ctx)
+		return "", permissions.Ungated(ctx)
 	}
 	projectID, err := s.tickets.ProjectOfTicket(ctx, ticketID)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return s.requireOn(ctx, projectID, permissions.TicketsWrite)
+	return projectID, s.requireOn(ctx, projectID, permissions.TicketsWrite)
 }
 
 // nextPosition is the display position after workspaceID's last project, refusing a prefix already in use there.

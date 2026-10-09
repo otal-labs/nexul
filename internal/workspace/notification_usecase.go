@@ -554,10 +554,12 @@ func (s *NotificationService) create(ctx context.Context, n notice, toCreate []*
 		return nil
 	}
 	items := make([]NotificationPushItem, 0, len(toCreate))
+	userIDs := make([]string, 0, len(toCreate))
 	for _, row := range toCreate {
 		items = append(items, NotificationPushItem{ID: row.ID, UserID: row.UserID, WorkspaceID: row.WorkspaceID})
+		userIDs = append(userIDs, row.UserID)
 	}
-	created := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicNotificationCreated, Payload: NotificationCreatedEvent{}}
+	created := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicNotificationCreated, Payload: NotificationCreatedEvent{UserIDs: userIDs, WorkspaceID: n.workspaceID, ProjectID: n.projectID}}
 	push := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicNotificationPushRequested, Payload: NotificationPushRequestedEvent{Notifications: items}}
 	if err := s.repo.CreateMany(ctx, toCreate, created, push); err != nil {
 		return fmt.Errorf("create notifications: %w", err)

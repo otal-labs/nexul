@@ -16,9 +16,8 @@ connects, routes each frame to every follower of its topic, and keeps the rule f
 - Scoping: a frame that carries the entity patches it into the views holding it; otherwise a follower invalidates
   only the queries named by the ids in the payload and the cached lists that hold that entity, read from their data.
   A list a row would move in, or a row no list holds yet, refetches for the server's order.
-- When a frame names no id a view is keyed by (a deploy names no stack, a message no workspace, a new notice
-  nothing), the follower falls back to every view of that kind. That gap is the server's to close, additively
-  (ADR 0044).
+- When a frame names no id a view is keyed by, the follower falls back to every view of that kind. That gap is the
+  server's to close, additively (ADR 0044).
 - The set of followed topics is the union of the followers' topics, which `hooks/liveTopics.test.tsx` checks against
   the topics the server pushes.
 

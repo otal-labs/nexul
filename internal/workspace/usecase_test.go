@@ -296,6 +296,7 @@ type fakeCategoryRepo struct {
 	updateErr error
 	deleteErr error
 	moveErr   error
+	moved     []eventbus.OutboxEvent
 }
 
 func newFakeCategoryRepo() *fakeCategoryRepo {
@@ -395,7 +396,7 @@ func (f *fakeCategoryRepo) CountTickets(_ context.Context, _ string) (int, error
 	return 0, nil
 }
 
-func (f *fakeCategoryRepo) SetTicketCategory(_ context.Context, ticketID, _ string, _ ...eventbus.OutboxEvent) error {
+func (f *fakeCategoryRepo) SetTicketCategory(_ context.Context, ticketID, _ string, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.moveErr != nil {
@@ -404,7 +405,19 @@ func (f *fakeCategoryRepo) SetTicketCategory(_ context.Context, ticketID, _ stri
 	if ticketID == "missing" {
 		return apperrs.ErrNotFound
 	}
+	f.moved = append(f.moved, evts...)
 	return nil
+}
+
+// fakeTicketProjects maps ticket ids to the project each sits in.
+type fakeTicketProjects map[string]string
+
+func (f fakeTicketProjects) ProjectOfTicket(_ context.Context, ticketID string) (string, error) {
+	projectID, ok := f[ticketID]
+	if !ok {
+		return "", apperrs.ErrNotFound
+	}
+	return projectID, nil
 }
 
 // fakeTicketTypeRepo is an in-memory TicketTypeRepo for use-case tests.
@@ -519,6 +532,7 @@ type fakeStatusRepo struct {
 	listErr   error
 	updateErr error
 	deleteErr error
+	updated   []eventbus.OutboxEvent
 }
 
 func newFakeStatusRepo() *fakeStatusRepo {
@@ -563,12 +577,13 @@ func (f *fakeStatusRepo) ListByProject(_ context.Context, projectID string) ([]*
 	return out, nil
 }
 
-func (f *fakeStatusRepo) Update(_ context.Context, s *Status, _ ...eventbus.OutboxEvent) error {
+func (f *fakeStatusRepo) Update(_ context.Context, s *Status, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.updateErr != nil {
 		return f.updateErr
 	}
+	f.updated = append(f.updated, evts...)
 	cur, ok := f.statuses[s.ID]
 	if !ok {
 		return apperrs.ErrNotFound

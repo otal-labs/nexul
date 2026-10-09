@@ -110,7 +110,7 @@ func (s *Service) RenameStatus(ctx context.Context, id, name string, kind Status
 	updated.Kind = kind
 	updated.Icon = icon
 	updated.UpdatedAt = s.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicStatusUpdated, Payload: StatusEvent{Status: updated}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicStatusUpdated, Payload: StatusEvent{Status: updated, PreviousKind: current.Kind}}
 	if err := s.statuses.Update(ctx, &updated, evt); err != nil {
 		return nil, fmt.Errorf("rename status %s: %w", id, err)
 	}

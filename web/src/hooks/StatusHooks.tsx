@@ -107,6 +107,8 @@ export const useDeleteStatus = () => {
 
 interface StatusPayload {
   status: BoardStatus & { project_id: string };
+  // Set on status.updated: the column's stage before the change.
+  previous_kind?: BoardStatus["kind"];
 }
 
 // Columns sort by stage, then position, so a row keeps its place only while both hold.
@@ -115,12 +117,10 @@ const sameOrder = (a: BoardStatus, b: BoardStatus) => a.kind === b.kind && a.pos
 export const statusFollower: LiveFollower = {
   "status.created": ({ status }: StatusPayload, { client }) =>
     client.invalidateQueries({ queryKey: [getProjectStatusesKey, status.project_id], exact: true }),
-  // Only this follower sees a column's stage before the frame, so it tells the link views when done-ness may have moved.
-  "status.updated": ({ status }: StatusPayload, { client }) => {
-    const key = [getProjectStatusesKey, status.project_id];
-    const before = client.getQueryData<BoardStatus[]>(key)?.find((s) => s.id === status.id);
-    void replaceRow(client, key, status, sameOrder);
-    if (before?.kind === status.kind) return;
+  // The frame names the column's stage before the change, so the link views refetch only when done-ness may have moved.
+  "status.updated": ({ status, previous_kind }: StatusPayload, { client }) => {
+    void replaceRow(client, [getProjectStatusesKey, status.project_id], status, sameOrder);
+    if (previous_kind === status.kind) return;
     return stageMoved(client, status.id);
   },
   "status.deleted": ({ status }: StatusPayload, { client }) => {

@@ -829,11 +829,16 @@
       "members_only": {
         "type": "boolean",
         "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."
+      },
+      "workspace_id": {
+        "type": "string",
+        "description": "The workspace of the message's conversation."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "required": [
-      "message"
+      "message",
+      "workspace_id"
     ]
   },
   "chat.message.deleted": {
@@ -852,13 +857,18 @@
       "members_only": {
         "type": "boolean",
         "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."
+      },
+      "workspace_id": {
+        "type": "string",
+        "description": "The workspace of the message's conversation."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "required": [
       "conversation_id",
       "message_id",
-      "deleted_at"
+      "deleted_at",
+      "workspace_id"
     ]
   },
   "chat.message.reactions_changed": {
@@ -1763,12 +1773,17 @@
           "healthy",
           "failed"
         ]
+      },
+      "stack_id": {
+        "type": "string",
+        "description": "The deploying stack's id."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "required": [
       "id",
-      "status"
+      "status",
+      "stack_id"
     ]
   },
   "dns.exposure_changed": {
@@ -3788,7 +3803,31 @@
   },
   "notification.created": {
     "type": "object",
-    "$schema": "https://json-schema.org/draft/2020-12/schema"
+    "properties": {
+      "user_ids": {
+        "type": [
+          "null",
+          "array"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "description": "The people whose inbox gained or lifted a notice."
+      },
+      "workspace_id": {
+        "type": "string",
+        "description": "The workspace whose inbox holds the notices; empty for a subject that belongs to no workspace."
+      },
+      "project_id": {
+        "type": "string",
+        "description": "The subject's project, when it has one."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "user_ids",
+      "workspace_id"
+    ]
   },
   "notification.push_requested": {
     "type": "object",
@@ -4900,6 +4939,10 @@
           "created_at",
           "updated_at"
         ]
+      },
+      "previous_kind": {
+        "type": "string",
+        "description": "On status.updated, the column's stage before the change."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4950,6 +4993,10 @@
           "created_at",
           "updated_at"
         ]
+      },
+      "previous_kind": {
+        "type": "string",
+        "description": "On status.updated, the column's stage before the change."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5000,6 +5047,10 @@
           "created_at",
           "updated_at"
         ]
+      },
+      "previous_kind": {
+        "type": "string",
+        "description": "On status.updated, the column's stage before the change."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5144,6 +5195,10 @@
       },
       "category_id": {
         "type": "string"
+      },
+      "project_id": {
+        "type": "string",
+        "description": "The ticket's project."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -6665,6 +6720,13 @@
       },
       "reason": {
         "type": "string"
+      },
+      "project_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "On workspace.member.updated, the workspace's projects, whose access the change can move."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema"
@@ -6680,6 +6742,13 @@
       },
       "actor_id": {
         "type": "string"
+      },
+      "project_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "On workspace.member.updated, the workspace's projects, whose access the change can move."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -6699,6 +6768,13 @@
       },
       "actor_id": {
         "type": "string"
+      },
+      "project_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "On workspace.member.updated, the workspace's projects, whose access the change can move."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",

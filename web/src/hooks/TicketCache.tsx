@@ -68,6 +68,18 @@ export const ticketChanged = (client: QueryClient, ticket: Ticket | string): Pro
   return settle(work);
 };
 
+// A category move appends the ticket to its column in the new category, as the server does; a ticket whose project
+// list is not cached refetches the views holding it instead.
+export const ticketCategoryMoved = (client: QueryClient, id: string, categoryId: string): Promise<void> => {
+  const ticket = cachedTicket(client, id);
+  const siblings = ticket && client.getQueryData<Ticket[]>([getTicketsByProjectKey, ticket.project_id]);
+  if (!ticket || !siblings) return ticketChanged(client, id);
+  if (ticket.category_id === categoryId) return settle([]);
+  const cell = siblings.filter((t) => t.id !== id && t.status === ticket.status && t.category_id === categoryId);
+  const position = cell.length > 0 ? Math.max(...cell.map((t) => t.position)) + 1 : 0;
+  return ticketChanged(client, { ...ticket, category_id: categoryId, position });
+};
+
 // A new ticket: the lists that hold it refetch for the server's order, and its own view starts from the server's copy.
 export const ticketCreated = (client: QueryClient, ticket: Ticket): Promise<void> => {
   client.setQueryData<Ticket>([getTicketKey, ticket.id], ticket);

@@ -89,6 +89,7 @@ type ConversationMembersChangedEvent struct {
 type MessageCreatedEvent struct {
 	Message     Message `json:"message" jsonschema:"The message as chat stores it. Its attachment_id is set only on a note: an Agent message on a ticket's thread, posted on the author_id person's behalf, whose markdown file is that attachment of the conversation. Its handoffs are set only on an Agent reply that handed work to other agents: each one's id, driver, model, title, prompt, state (running, done, failed, interrupted or left_running), final reply and steps. A message with author_kind bot has the bot's id as author_id, the name it showed as author_name, the bot's own name as via when the post overrode it, as author_avatar_url the sender's avatar_url or else a path on this instance to the bot's current avatar, and its embeds as the sender posted them less their color."`
 	MembersOnly bool    `json:"members_only,omitempty" jsonschema:"Set on a DM or private channel's message, which is never delivered to integrations or automations."`
+	WorkspaceID string  `json:"workspace_id" jsonschema:"The workspace of the message's conversation."`
 }
 
 // MessageUpdatedEvent is the payload for chat.message.updated: Message reflects the post-edit state.
@@ -103,4 +104,5 @@ type MessageDeletedEvent struct {
 	MessageID      string    `json:"message_id"`
 	DeletedAt      time.Time `json:"deleted_at"`
 	MembersOnly    bool      `json:"members_only,omitempty" jsonschema:"Set on a DM or private channel's message, which is never delivered to integrations or automations."`
+	WorkspaceID    string    `json:"workspace_id" jsonschema:"The workspace of the message's conversation."`
 }

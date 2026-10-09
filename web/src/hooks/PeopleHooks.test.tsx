@@ -28,4 +28,10 @@ describe("the people follower", () => {
     await followFrame(peopleFollower, "access.grant.changed", { user_id: "u-9", resource_type: "project", resource_id: "p-1" }, client);
     expect(keys.map((key) => isStale(client, key))).toEqual([false, true, true, false]);
   });
+
+  it("refetches the project pickers of only the workspace whose member changed role", async () => {
+    const client = directories();
+    await followFrame(peopleFollower, "workspace.member.updated", { user_id: "u-3", workspace_id: "ws-2", project_ids: ["p-2"] }, client);
+    expect(keys.map((key) => isStale(client, key))).toEqual([false, false, false, true]);
+  });
 });
