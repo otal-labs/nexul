@@ -36,8 +36,9 @@ func Topics() []eventbus.Topic {
 
 // DeployUpdatedEvent is the deploy.updated payload: the record's status or its log changed.
 type DeployUpdatedEvent struct {
-	ID     string `json:"id"`
-	Status string `json:"status" enum:"pending,running,healthy,failed"`
+	ID      string `json:"id"`
+	Status  string `json:"status" enum:"pending,running,healthy,failed"`
+	StackID string `json:"stack_id" jsonschema:"The deploying stack's id."`
 }
 
 // DeployCancelRequestedEvent asks the runner to stop a queued or running job.

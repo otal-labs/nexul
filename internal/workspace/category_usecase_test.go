@@ -260,11 +260,14 @@ func TestMoveTicketToCategory(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 	})
-	t.Run("moves ticket into category", func(t *testing.T) {
+	t.Run("moves ticket into category, naming the category and the ticket's project", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
+		s.SetTicketProjects(fakeTicketProjects{"t-1": "p-1"})
 		repo.projects["p-1"] = &Project{ID: "p-1"}
 		catRepo(s).cats["c-1"] = &Category{ID: "c-1", ProjectID: "p-1"}
 		require.NoError(t, s.MoveTicketToCategory(context.Background(), "t-1", "c-1"))
+		require.Len(t, catRepo(s).moved, 1)
+		assert.Equal(t, TicketCategoryChangedEvent{TicketID: "t-1", CategoryID: "c-1", ProjectID: "p-1"}, catRepo(s).moved[0].Payload)
 	})
 	t.Run("missing ticket is not found", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
@@ -594,6 +597,8 @@ func TestRenameStatus(t *testing.T) {
 		assert.Equal(t, StatusKindDone, st.Kind)
 		assert.Equal(t, StatusIconInReview, st.Icon)
 		assert.Equal(t, "s-1", st.ID)
+		require.Len(t, statusRepo(s).updated, 1)
+		assert.Equal(t, StatusKindProgress, statusRepo(s).updated[0].Payload.(StatusEvent).PreviousKind, "the frame says the stage moved from progress")
 	})
 	t.Run("missing status is not found", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)

@@ -482,7 +482,11 @@ func (s *Service) ChangeMemberRole(ctx context.Context, actorID, workspaceID, us
 	if err := s.requireHoldsRole(ctx, actorID, workspaceID, roleID); err != nil {
 		return err
 	}
-	if err := s.members.SetRole(ctx, workspaceID, userID, roleID, memberEvent(TopicWorkspaceMemberUpdated, actorID, workspaceID, userID)); err != nil {
+	evt, err := s.memberUpdated(ctx, actorID, workspaceID, userID)
+	if err != nil {
+		return err
+	}
+	if err := s.members.SetRole(ctx, workspaceID, userID, roleID, evt); err != nil {
 		return fmt.Errorf("set role for %s in workspace %s: %w", userID, workspaceID, err)
 	}
 	return nil
@@ -668,7 +672,11 @@ func (s *Service) SetMemberOverrides(ctx context.Context, actorID, workspaceID, 
 	if err := s.requireHolds(ctx, actorID, workspaceID, added); err != nil {
 		return err
 	}
-	if err := s.members.SetOverrides(ctx, workspaceID, userID, nextAllow, nextDeny, memberEvent(TopicWorkspaceMemberUpdated, actorID, workspaceID, userID)); err != nil {
+	evt, err := s.memberUpdated(ctx, actorID, workspaceID, userID)
+	if err != nil {
+		return err
+	}
+	if err := s.members.SetOverrides(ctx, workspaceID, userID, nextAllow, nextDeny, evt); err != nil {
 		return fmt.Errorf("set overrides for %s in workspace %s: %w", userID, workspaceID, err)
 	}
 	return nil
@@ -690,6 +698,19 @@ func validateOverrides(allow, deny permissions.Set) error {
 
 func memberEvent(topic, actorID, workspaceID, userID string) eventbus.OutboxEvent {
 	return eventbus.OutboxEvent{ID: ids.New(), Topic: topic, Payload: MemberEvent{UserID: userID, WorkspaceID: workspaceID, ActorID: actorID}}
+}
+
+// memberUpdated names the workspace's projects, since a role, override, or Every project change can open or close any of them.
+func (s *Service) memberUpdated(ctx context.Context, actorID, workspaceID, userID string) (eventbus.OutboxEvent, error) {
+	e := MemberEvent{UserID: userID, WorkspaceID: workspaceID, ActorID: actorID}
+	if s.projects != nil {
+		projectIDs, err := s.projects.WorkspaceProjects(ctx, workspaceID)
+		if err != nil {
+			return eventbus.OutboxEvent{}, fmt.Errorf("list projects of workspace %s: %w", workspaceID, err)
+		}
+		e.ProjectIDs = projectIDs
+	}
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicWorkspaceMemberUpdated, Payload: e}, nil
 }
 
 // ResolvePendingInvites binds pending invites to userID so the caller's next request sees the membership.

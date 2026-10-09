@@ -126,6 +126,8 @@ type ProjectGate interface {
 	ProjectWorkspace(ctx context.Context, projectID string) (string, error)
 	// ProjectPermissions is every action userID holds inside projectID; opens is false when it is hidden from them.
 	ProjectPermissions(ctx context.Context, userID, projectID string) (actions []string, opens bool)
+	// WorkspaceProjects lists the ids of workspaceID's projects.
+	WorkspaceProjects(ctx context.Context, workspaceID string) ([]string, error)
 }
 
 // ChannelGate creates a new workspace's #general channel without tenancy importing chat (ADR 0017).

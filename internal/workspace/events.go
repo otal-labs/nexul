@@ -72,12 +72,15 @@ type TicketTypeEvent struct {
 // StatusEvent is the payload for status.created/updated/deleted.
 type StatusEvent struct {
 	Status Status `json:"status"`
+	// PreviousKind is set on status.updated, so a reader can tell whether the column's stage moved.
+	PreviousKind StatusKind `json:"previous_kind,omitempty" jsonschema:"On status.updated, the column's stage before the change."`
 }
 
 // TicketCategoryChangedEvent is the payload for ticket.category_changed.
 type TicketCategoryChangedEvent struct {
 	TicketID   string `json:"ticket_id"`
 	CategoryID string `json:"category_id"`
+	ProjectID  string `json:"project_id,omitempty" jsonschema:"The ticket's project."`
 }
 
 // NotificationCreatedEvent is empty because the topic broadcasts to every browser: a recipient or subject field would leak one user's inbox, so consumers refetch their own.

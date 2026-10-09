@@ -40,7 +40,11 @@ func (s *Service) SetEveryProject(ctx context.Context, actorID, workspaceID, use
 			return err
 		}
 	}
-	if err := s.members.SetRestricted(ctx, workspaceID, userID, restricted, memberEvent(TopicWorkspaceMemberUpdated, actorID, workspaceID, userID)); err != nil {
+	evt, err := s.memberUpdated(ctx, actorID, workspaceID, userID)
+	if err != nil {
+		return err
+	}
+	if err := s.members.SetRestricted(ctx, workspaceID, userID, restricted, evt); err != nil {
 		return fmt.Errorf("set every project for %s in workspace %s: %w", userID, workspaceID, err)
 	}
 	return nil
