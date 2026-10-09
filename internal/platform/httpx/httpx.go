@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"reflect"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/jsonx"
 )
 
 // Envelope is the error body every adapter returns.
@@ -27,10 +27,9 @@ type DetailedError interface {
 	ErrorDetails() any
 }
 
-// WriteJSON marshals a nil slice as [] instead of null, since the frontend expects arrays.
+// WriteJSON encodes v through jsonx, so a nil slice reaches the browser as [] rather than null.
 func WriteJSON(w http.ResponseWriter, status int, v any) {
-	v = normalizeNilSlice(v)
-	b, err := json.Marshal(v)
+	b, err := jsonx.Marshal(v)
 	if err != nil {
 		http.Error(w, "encode response", http.StatusInternalServerError)
 		return
@@ -38,90 +37,6 @@ func WriteJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_, _ = w.Write(b)
-}
-
-func normalizeNilSlice(v any) any {
-	rv := reflect.ValueOf(v)
-	if !rv.IsValid() {
-		return v
-	}
-	return normalizeNilSlicesValue(rv).Interface()
-}
-
-// normalizeNilSlicesValue returns a copy of a value with every nil slice, nested ones included, replaced by an
-// empty one. It never writes into the value it was given: handlers pass pointers other goroutines still hold.
-func normalizeNilSlicesValue(rv reflect.Value) reflect.Value {
-	switch rv.Kind() {
-	case reflect.Slice:
-		return normalizeNilSliceKind(rv)
-	case reflect.Struct:
-		return normalizeNilSliceStruct(rv)
-	case reflect.Map:
-		return normalizeNilSliceMap(rv)
-	case reflect.Pointer:
-		return normalizeNilSlicePointer(rv)
-	case reflect.Interface:
-		return normalizeNilSliceInterface(rv)
-	default:
-		return rv
-	}
-}
-
-func normalizeNilSliceKind(rv reflect.Value) reflect.Value {
-	// An empty json.RawMessage fails to marshal and an empty []byte reads as "", so byte slices keep their null.
-	if rv.Type().Elem().Kind() == reflect.Uint8 {
-		return rv
-	}
-	if rv.IsNil() {
-		return reflect.MakeSlice(rv.Type(), 0, 0)
-	}
-	out := reflect.MakeSlice(rv.Type(), rv.Len(), rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		out.Index(i).Set(normalizeNilSlicesValue(rv.Index(i)))
-	}
-	return out
-}
-
-func normalizeNilSliceStruct(rv reflect.Value) reflect.Value {
-	out := reflect.New(rv.Type()).Elem()
-	out.Set(rv)
-	for i := 0; i < out.NumField(); i++ {
-		f := out.Field(i)
-		if !f.CanSet() {
-			continue
-		}
-		f.Set(normalizeNilSlicesValue(f))
-	}
-	return out
-}
-
-func normalizeNilSlicePointer(rv reflect.Value) reflect.Value {
-	if rv.IsNil() {
-		return rv
-	}
-	out := reflect.New(rv.Elem().Type())
-	out.Elem().Set(normalizeNilSlicesValue(rv.Elem()))
-	return out
-}
-
-func normalizeNilSliceInterface(rv reflect.Value) reflect.Value {
-	if rv.IsNil() {
-		return rv
-	}
-	out := reflect.New(rv.Type()).Elem()
-	out.Set(normalizeNilSlicesValue(rv.Elem()))
-	return out
-}
-
-func normalizeNilSliceMap(rv reflect.Value) reflect.Value {
-	if rv.IsNil() {
-		return rv
-	}
-	out := reflect.MakeMapWithSize(rv.Type(), rv.Len())
-	for iter := rv.MapRange(); iter.Next(); {
-		out.SetMapIndex(iter.Key(), normalizeNilSlicesValue(iter.Value()))
-	}
-	return out
 }
 
 // WriteError maps a domain error to its status + envelope and writes it.

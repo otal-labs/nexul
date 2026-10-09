@@ -4,7 +4,6 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -22,6 +21,7 @@ import (
 	"github.com/otal-labs/nexul/internal/attachments"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/jsonx"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/platform/version"
@@ -230,7 +230,7 @@ func resultText(out any) (string, error) {
 	if s, ok := out.(string); ok {
 		return s, nil
 	}
-	b, err := json.Marshal(out)
+	b, err := jsonx.Marshal(out)
 	if err != nil {
 		return "", err
 	}

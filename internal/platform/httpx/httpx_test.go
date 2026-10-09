@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -112,76 +113,8 @@ func TestWriteJSON_SetsContentTypeAndBody(t *testing.T) {
 
 func TestWriteJSON_NilSliceMarshalsAsEmptyArray(t *testing.T) {
 	rec := httptest.NewRecorder()
-	var nilSlice []string
-	WriteJSON(rec, http.StatusOK, nilSlice)
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `[]`, rec.Body.String())
-
-	rec = httptest.NewRecorder()
-	WriteJSON(rec, http.StatusOK, []string{"x"})
-	assert.JSONEq(t, `["x"]`, rec.Body.String())
-}
-
-func TestWriteJSON_NilSlicesInsideStructsMarshalAsEmptyArrays(t *testing.T) {
-	type links struct {
-		PRs      []string `json:"prs"`
-		Branches []string `json:"branches"`
-		Names    []string `json:"names"`
-		EmptyPtr []string `json:"ptr"`
-	}
-
-	rec := httptest.NewRecorder()
-	WriteJSON(rec, http.StatusOK, links{Names: []string{"a"}})
-	assert.JSONEq(t, `{"prs":[],"branches":[],"names":["a"],"ptr":[]}`, rec.Body.String())
-
-	// nested inside a wrapper and inside slice elements
-	rec = httptest.NewRecorder()
-	WriteJSON(rec, http.StatusOK, struct {
-		Items []links `json:"items"`
-	}{Items: []links{{}}})
-	assert.JSONEq(t, `{"items":[{"prs":[],"branches":[],"names":[],"ptr":[]}]}`, rec.Body.String())
-}
-
-func TestWriteJSON_NilSlicesBehindPointersAndInterfacesMarshalAsEmptyArrays(t *testing.T) {
-	type entity struct {
-		Topics []string        `json:"topics"`
-		Raw    json.RawMessage `json:"raw"`
-	}
-	tests := []struct {
-		name string
-		v    any
-		want string
-	}{
-		{"pointer to a struct", &entity{}, `{"topics":[],"raw":null}`},
-		{"slice of pointers", []*entity{{}}, `[{"topics":[],"raw":null}]`},
-		{"map of interface values", map[string]any{"items": []string(nil), "one": &entity{}}, `{"items":[],"one":{"topics":[],"raw":null}}`},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			rec := httptest.NewRecorder()
-			WriteJSON(rec, http.StatusOK, tt.v)
-			assert.JSONEq(t, tt.want, rec.Body.String())
-		})
-	}
-}
-
-func TestWriteJSON_LeavesTheCallersValueUntouched(t *testing.T) {
-	type child struct {
-		Topics []string `json:"topics"`
-	}
-	type entity struct {
-		Topics   []string         `json:"topics"`
-		Children []child          `json:"children"`
-		ByName   map[string]child `json:"by_name"`
-	}
-	e := &entity{Children: []child{{}}, ByName: map[string]child{"a": {}}}
-	rec := httptest.NewRecorder()
-	WriteJSON(rec, http.StatusOK, e)
-
-	assert.JSONEq(t, `{"topics":[],"children":[{"topics":[]}],"by_name":{"a":{"topics":[]}}}`, rec.Body.String())
-	assert.Nil(t, e.Topics)
-	assert.Nil(t, e.Children[0].Topics)
-	assert.Nil(t, e.ByName["a"].Topics)
+	WriteJSON(rec, http.StatusOK, map[string]any{"items": []string(nil)})
+	assert.Equal(t, `{"items":[]}`, rec.Body.String())
 }
 
 func TestDecodeJSON_ValidBody(t *testing.T) {
@@ -219,4 +152,56 @@ func TestClientAddr(t *testing.T) {
 	assert.Equal(t, "2001:db8::1", ClientAddr(req))
 	req.RemoteAddr = "pipe"
 	assert.Equal(t, "pipe", ClientAddr(req))
+}
+
+type benchPerson struct {
+	Kind  string `json:"kind"`
+	Login string `json:"login,omitempty"`
+}
+
+type benchRow struct {
+	ID         string      `json:"id"`
+	ProjectID  string      `json:"project_id"`
+	Title      string      `json:"title"`
+	Body       string      `json:"body"`
+	Status     string      `json:"status"`
+	Number     int         `json:"number"`
+	Reporter   benchPerson `json:"reporter"`
+	CreatedAt  time.Time   `json:"created_at"`
+	FinishedAt *time.Time  `json:"finished_at,omitempty"`
+	Labels     []string    `json:"labels"`
+	Watchers   []string    `json:"watchers"`
+}
+
+// largeList is a list response the size of a busy board: 1,000 rows, two in three without labels.
+func largeList() map[string]any {
+	now := time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)
+	rows := make([]*benchRow, 1000)
+	for i := range rows {
+		rows[i] = &benchRow{
+			ID: fmt.Sprintf("t-%d", i), ProjectID: "p-1", Title: fmt.Sprintf("Fix the thing %d", i), Body: "a body",
+			Status: "open", Number: i + 1, Reporter: benchPerson{Kind: "user", Login: "sam"}, CreatedAt: now,
+			Watchers: []string{"lena"},
+		}
+		if i%3 == 0 {
+			rows[i].Labels = []string{"bug", "ui"}
+			rows[i].FinishedAt = &now
+		}
+	}
+	return map[string]any{"tickets": rows, "total": len(rows)}
+}
+
+type discardWriter struct{ h http.Header }
+
+func (d discardWriter) Header() http.Header       { return d.h }
+func (discardWriter) Write(b []byte) (int, error) { return len(b), nil }
+func (discardWriter) WriteHeader(int)             {}
+
+func BenchmarkWriteJSON_LargeList(b *testing.B) {
+	v := largeList()
+	w := discardWriter{h: http.Header{}}
+	b.ReportAllocs()
+	for b.Loop() {
+		WriteJSON(w, http.StatusOK, v)
+	}
 }
