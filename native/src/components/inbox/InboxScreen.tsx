@@ -14,8 +14,9 @@ import { SubjectType, type Notification } from "@/models/Notification";
 
 // A memory has no phone screen yet (ticket 11's scope); its notifications mark read with nothing to open.
 // Exported so a tapped push notification can land on the same screen, without duplicating the mapping.
-export const subjectRoute = (notification: Notification): Href | null => {
-  if (notification.subject_type === SubjectType.Ticket) return `/board/ticket/${notification.subject_id}`;
+// A ticket opens on the Board tab, which a viewer without tickets:read doesn't have.
+export const subjectRoute = (notification: Notification, canReadTickets: boolean): Href | null => {
+  if (notification.subject_type === SubjectType.Ticket) return canReadTickets ? `/board/ticket/${notification.subject_id}` : null;
   if (notification.subject_type === SubjectType.Doc) return `/more/docs/${notification.subject_id}`;
   return null;
 };
@@ -29,9 +30,7 @@ export const InboxScreen = () => {
 
   const onSelect = (notification: Notification) => {
     if (!notification.read) markRead.mutate(notification.id);
-    const target = subjectRoute(notification);
-    // A ticket opens on the Board tab, which a viewer without tickets:read doesn't have.
-    if (notification.subject_type === SubjectType.Ticket && !canReadTickets) return;
+    const target = subjectRoute(notification, canReadTickets);
     if (target) router.push(target, { withAnchor: true });
   };
 
