@@ -90,20 +90,35 @@ describe("dispatch", () => {
 
   // Each record opened or listed caches its own detail query, so a frame refetches only the one it names.
   test.each([
-    ["ticket.status_changed", { ticket: { id: "t-1" }, from: "a", to: "b" }, [[getTicketKey, "t-1"]]],
-    ["ticket.updated", { ticket: { id: "t-1" } }, [[getTicketKey, "t-1"]]],
-    ["ticket.deleted", { id: "t-1", title: "Gone" }, [[getTicketKey, "t-1"]]],
-    ["doc.updated", { doc: { id: "d-1", title: "Spec", version: 2 } }, [[getDocKey, "d-1"]]],
-    ["deploy.updated", { id: "dep-1", status: "running" }, [[getDeployKey, "dep-1"], [getDeployLogKey, "dep-1"]]],
-  ])("%s refetches only the record it names", (topic, payload, want) => {
+    ["ticket.status_changed", { ticket: { id: "rec-1" }, from: "a", to: "b" }, [getTicketKey]],
+    ["ticket.updated", { ticket: { id: "rec-1" } }, [getTicketKey]],
+    ["ticket.deleted", { id: "rec-1", title: "Gone" }, [getTicketKey]],
+    ["doc.updated", { doc: { id: "rec-1", title: "Spec", version: 2 } }, [getDocKey]],
+    ["deploy.updated", { id: "rec-1", status: "running" }, [getDeployKey, getDeployLogKey]],
+  ])("%s refetches only the record it names", (topic, payload, keys) => {
     const client = new QueryClient();
-    const invalidate = jest.spyOn(client, "invalidateQueries").mockResolvedValue();
+    keys.forEach((key) => {
+      client.setQueryData([key, "rec-1"], { id: "rec-1" });
+      client.setQueryData([key, "rec-2"], { id: "rec-2" });
+    });
 
     dispatch(client)({ topic, type: "event", payload });
 
-    const keys = invalidate.mock.calls.map(([filters]) => filters?.queryKey);
-    want.forEach((key) => expect(keys).toContainEqual(key));
-    [getTicketKey, getDocKey, getDeployKey, getDeployLogKey].forEach((key) => expect(keys).not.toContainEqual([key]));
+    keys.forEach((key) => {
+      expect(client.getQueryState([key, "rec-1"])?.isInvalidated).toBe(true);
+      expect(client.getQueryState([key, "rec-2"])?.isInvalidated).toBe(false);
+    });
+  });
+
+  test("a ticket frame reaches a ticket a chat link opened by its key", () => {
+    const client = new QueryClient();
+    client.setQueryData([getTicketKey, "WEB-12", "acme"], { id: "t-1" });
+    client.setQueryData([getTicketKey, "WEB-13", "acme"], { id: "t-2" });
+
+    dispatch(client)({ topic: "ticket.updated", type: "event", payload: { ticket: { id: "t-1" } } });
+
+    expect(client.getQueryState([getTicketKey, "WEB-12", "acme"])?.isInvalidated).toBe(true);
+    expect(client.getQueryState([getTicketKey, "WEB-13", "acme"])?.isInvalidated).toBe(false);
   });
 
   // A query cached with an Infinity stale time only refreshes when a pushed topic invalidates it.
