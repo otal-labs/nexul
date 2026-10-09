@@ -13,7 +13,7 @@ export const AutomationSecretRow = ({ secret }: AutomationSecretRowProps) => {
   const deleteSecret = useDeleteAutomationSecret();
 
   return (
-    <li className="flex items-center justify-between gap-3 bg-card px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40">
+    <li className="flex items-center justify-between gap-3 px-4 py-2.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
       <div className="min-w-0">
         <p className="truncate font-mono text-sm font-medium">{secret.name}</p>
         <p className="font-mono text-xs text-muted-foreground">
