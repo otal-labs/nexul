@@ -1,11 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
-import { Button } from "@/components/ui/button";
 import { FormSelect } from "@/components/ticket/FormSelect";
+import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
 import { HarnessProjectField } from "@/components/settings/HarnessProjectField";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
 import { useUpdatePairingDefaults } from "@/hooks/PairingHooks";
+import { useFlash } from "@/hooks/useFlash";
 import {
   PairingDefaultsFormSchema,
   START_IN_OPTIONS,
@@ -14,6 +16,10 @@ import {
   type PairingDefaults,
   type PairingDefaultsFormData,
 } from "@/models/Pairing";
+
+const FORM_ID = "pairing-defaults-form";
+
+export const DEFAULTS_DESCRIPTION = "What @Agent uses outside a project, and in any project you haven't linked on the Projects tab.";
 
 interface PairingDefaultsFormProps {
   defaults: PairingDefaults;
@@ -36,24 +42,42 @@ export const PairingDefaultsForm = ({ defaults, computers }: PairingDefaultsForm
     resolver: zodResolver(PairingDefaultsFormSchema),
   });
 
+  const [saved, flash] = useFlash();
+
   const onSubmit = async (data: PairingDefaultsFormData) => {
     try {
-      const saved = await update.mutateAsync(data);
+      const stored = await update.mutateAsync(data);
       form.reset({
-        default_computer_id: saved.default_computer_id ?? "",
-        fallback_project_id: saved.fallback_project_id ?? "",
-        provider: saved.provider ?? "",
-        model: saved.model ?? "",
-        model_options: saved.model_options ?? [],
-        start_in: saved.start_in ?? StartIn.Folder,
+        default_computer_id: stored.default_computer_id ?? "",
+        fallback_project_id: stored.fallback_project_id ?? "",
+        provider: stored.provider ?? "",
+        model: stored.model ?? "",
+        model_options: stored.model_options ?? [],
+        start_in: stored.start_in ?? StartIn.Folder,
       });
+      flash();
     } catch {
       // Error is surfaced by the hook's toast; the form stays open to retry.
     }
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <SettingsCard
+      id="pairing-defaults"
+      title="Defaults"
+      description={DEFAULTS_DESCRIPTION}
+      footer={
+        <SettingsSaveBar
+          form={FORM_ID}
+          dirty={form.formState.isDirty}
+          saving={form.formState.isSubmitting}
+          saved={saved}
+          onDiscard={() => form.reset()}
+          saveLabel="Save defaults"
+        />
+      }
+    >
+    <form id={FORM_ID} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
       <FormSelect
         control={form.control}
         name="default_computer_id"
@@ -81,9 +105,7 @@ export const PairingDefaultsForm = ({ defaults, computers }: PairingDefaultsForm
         }}
       />
       <FormSelect control={form.control} name="start_in" label="New threads start in" options={START_IN_OPTIONS} />
-      <Button type="submit" loading={form.formState.isSubmitting}>
-        Save defaults
-      </Button>
     </form>
+    </SettingsCard>
   );
 };

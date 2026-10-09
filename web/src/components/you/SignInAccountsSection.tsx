@@ -48,7 +48,7 @@ export const SignInAccountsSection = () => {
     <SettingsCard
       id="sign-in-accounts"
       title="Sign-in accounts"
-      description="Any linked account signs you in to this same profile."
+      description="Each linked account signs you in to this profile."
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}

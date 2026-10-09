@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 
 import { FormInput } from "@/components/FormInput";
 import { Button } from "@/components/ui/button";
+import { DialogFooter } from "@/components/ui/dialog";
 import { RunnerEnrollmentFormSchema, type RunnerEnrollmentFormData } from "@/models/Runner";
 import { cn } from "@/lib/utils";
 
@@ -45,9 +46,11 @@ export const AddRunnerForm = ({ machineName, pending, onSubmit }: AddRunnerFormP
           Optional, for cloning private repositories. It goes into the command, never to this instance.
         </p>
       </div>
-      <Button type="submit" loading={pending}>
-        Create install command
-      </Button>
+      <DialogFooter>
+        <Button type="submit" loading={pending}>
+          Create install command
+        </Button>
+      </DialogFooter>
     </form>
   );
 };

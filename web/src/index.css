@@ -38,6 +38,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-fill: var(--destructive-fill);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -65,6 +66,8 @@
   /* A bounce-free spring as a CSS curve (paired with 200ms) and the one small-bounce spring (paired with 350ms). */
   --ease-spring: linear(0, 0.079, 0.236, 0.403, 0.551, 0.671, 0.764, 0.833, 0.883, 0.919, 0.944, 0.962, 0.974, 0.983, 0.988, 0.992, 0.995, 0.997, 1);
   --ease-spring-pop: linear(0, 0.1, 0.303, 0.515, 0.693, 0.826, 0.915, 0.969, 0.998, 1.011, 1.015, 1.014, 1.011, 1.008, 1.005, 1.003, 1.002, 1.001, 1);
+  /* A sheet's slide: an extremely steep start and a long settle, so 300ms still feels instant. */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 :root {
@@ -107,11 +110,15 @@
   --info: #0369a1;
   --merged: #8250df;
   --destructive: #dc2626;
+  /* the fill behind a destructive button's white label: deeper than the text hue so it never reads as the ember */
+  --destructive-fill: #c81e1e;
 
   /* hairlines are ink at low alpha so they read the same on canvas, panel, card and popover */
   --border: oklch(0.2 0.01 265 / 0.1);
   --input: oklch(0.2 0.01 265 / 0.16);
   --ring: var(--brand);
+  /* Focus is ink, not the ember: an ember ring on a field read as the destructive border of a field in error. */
+  --focus: color-mix(in oklab, var(--foreground) 80%, transparent);
 
   --shadow-card: 0 1px 2px oklch(0.2 0.02 265 / 0.06);
   --shadow-elevated: 0 2px 4px oklch(0.2 0.02 265 / 0.08), 0 12px 28px oklch(0.2 0.02 265 / 0.12);
@@ -162,6 +169,7 @@
   --info: #5cc8f5;
   --merged: #a371f7;
   --destructive: #f97066;
+  --destructive-fill: oklch(0.55 0.2 25);
 
   --border: oklch(1 0 0 / 0.08);
   --input: oklch(1 0 0 / 0.12);
@@ -245,8 +253,18 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
+  /* One indicator: a component's own focus ring utility would draw a second ring around the outline. */
+  --tw-ring-color: transparent;
+}
+
+/* A field's outline hugs its border; menu rows and options show focus as their highlight. */
+:is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"]):focus-visible {
+  outline-offset: 1px;
+}
+:is([role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="option"]):focus-visible {
+  outline: none;
 }
 
 /* Borderless editor-style fields (New ticket title/body): the caret is the
@@ -256,10 +274,10 @@ body {
   outline: none;
 }
 
-/* Overlay scrim (dialog/sheet): opacity/blur both driven by the Appearance
-   settings slider via --glass-opacity/--glass-blur. */
+/* Overlay scrim (dialog/sheet): the canvas colour, not black, so a light page dims to a soft wash instead of grey;
+   opacity and blur come from the Appearance settings slider via --glass-opacity/--glass-blur. */
 .glass-overlay {
-  background: color-mix(in oklab, black var(--glass-opacity), transparent);
+  background: color-mix(in oklab, var(--background) var(--glass-opacity), transparent);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }
@@ -300,7 +318,7 @@ body {
     var(--shadow-card);
 }
 
-/* An overlay that floats over the dimmed page (the command palette): the panel's recipe on the popover colour. */
+/* An overlay that floats over the dimmed page (dialogs, the command palette): the panel's recipe on the popover colour. */
 @utility glass-popover {
   border: 1px solid transparent;
   background-color: color-mix(in oklab, var(--popover) 88%, transparent);
@@ -310,6 +328,30 @@ body {
     inset 0 1px 0 0 var(--panel-highlight),
     0 0 0 1px var(--panel-ring),
     var(--shadow-overlay);
+}
+
+/* A menu, select or popover over the live page: the same glass, lifted only as far as the elevated shadow. */
+@utility glass-menu {
+  border: 1px solid transparent;
+  background-color: color-mix(in oklab, var(--popover) 88%, transparent);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow:
+    inset 0 1px 0 0 var(--panel-highlight),
+    0 0 0 1px var(--panel-ring),
+    var(--shadow-elevated);
+}
+
+/* A dialog's footer, its last row or its form's last row (the close button follows it), is a tray that stays in view. */
+[data-slot="dialog-content"] > [data-slot="dialog-footer"]:nth-last-child(2),
+[data-slot="dialog-content"] > form > [data-slot="dialog-footer"]:last-child {
+  position: sticky;
+  bottom: -1.5rem;
+  z-index: 1;
+  margin: 0.25rem -1.5rem -1.5rem;
+  padding: 0.875rem 1.5rem;
+  border-top: 1px solid var(--border);
+  background-color: color-mix(in oklab, var(--surface-2) 60%, var(--popover));
 }
 
 /* The layout's frame is the page's one scrolling panel, unless the page splits into its own panes (data-pane-layout). */
@@ -989,14 +1031,165 @@ a.mention-chip:hover {
     translate 0s linear 120ms;
 }
 
-/* Toasts keep the library's choreography on the dialog family's clock: in over 250ms on the strong ease-out instead of
-   400ms, and a stacked toast leaves in 200ms. */
+/* Toasts: the menus' glass, the status hue on the icon only. :root and the theme attribute outrank the library's own
+   per-theme variables. */
+:root [data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: color-mix(in oklab, var(--popover) 88%, transparent);
+  --normal-border: transparent;
+  --normal-text: var(--popover-foreground);
+  --border-radius: var(--radius-lg);
+}
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow:
+    inset 0 1px 0 0 var(--panel-highlight),
+    0 0 0 1px var(--panel-ring),
+    var(--shadow-elevated);
+}
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: var(--success);
+}
+[data-sonner-toast][data-type="error"] [data-icon] {
+  color: var(--destructive);
+}
+[data-sonner-toast][data-type="warning"] [data-icon] {
+  color: var(--warning);
+}
+[data-sonner-toast][data-type="info"] [data-icon] {
+  color: var(--info);
+}
 [data-sonner-toaster] [data-sonner-toast] {
   transition-duration: 250ms, 250ms, 250ms, 200ms;
   transition-timing-function: var(--ease-out);
 }
 [data-sonner-toaster] [data-sonner-toast][data-removed="true"][data-front="false"][data-swipe-out="false"][data-expanded="false"] {
   transition-duration: 200ms, 150ms;
+}
+
+/* Overlays enter and leave on transitions, so a reopen mid-close turns back from where it is (design-language.md,
+   Overlays). Radix unmounts a closing overlay when its animation ends, so the closed state holds an empty one as long
+   as the exit; it never takes a click (important: Radix writes pointer-events inline), and a key shows or hides it at once. */
+@keyframes overlay-hold {
+  to {
+    visibility: visible;
+  }
+}
+.overlay-scrim {
+  transition: opacity 220ms var(--ease-out);
+  @starting-style {
+    opacity: 0;
+  }
+}
+.overlay-scrim[data-state="closed"] {
+  opacity: 0;
+  pointer-events: none !important;
+  transition-duration: 150ms;
+  animation: overlay-hold 150ms;
+}
+.dialog-surface {
+  transition-property: opacity, scale, transform;
+  transition-duration: 220ms;
+  transition-timing-function: var(--ease-out);
+  @starting-style {
+    opacity: 0;
+    scale: 0.97;
+    transform: translateY(6px);
+  }
+}
+.dialog-surface[data-state="closed"] {
+  opacity: 0;
+  scale: 0.98;
+  pointer-events: none !important;
+  transition-duration: 150ms;
+  animation: overlay-hold 150ms;
+}
+.sheet-surface {
+  --sheet-from: calc(100% + 0.5rem) 0;
+  transition: translate 300ms var(--ease-drawer);
+  @starting-style {
+    translate: var(--sheet-from);
+  }
+}
+.sheet-surface[data-side="left"] {
+  --sheet-from: calc(-100% - 0.5rem) 0;
+}
+.sheet-surface[data-side="top"] {
+  --sheet-from: 0 calc(-100% - 0.5rem);
+}
+.sheet-surface[data-side="bottom"] {
+  --sheet-from: 0 calc(100% + 0.5rem);
+}
+.sheet-surface[data-state="closed"] {
+  translate: var(--sheet-from);
+  pointer-events: none !important;
+  transition-duration: 220ms;
+  animation: overlay-hold 220ms;
+}
+.sheet-scrim {
+  transition-duration: 300ms;
+  transition-timing-function: var(--ease-drawer);
+}
+.sheet-scrim[data-state="closed"] {
+  transition-duration: 220ms;
+  animation-duration: 220ms;
+}
+/* Under a finger the sheet is the finger: no easing until it lets go. */
+.sheet-surface[data-dragging],
+.sheet-scrim:has(+ .sheet-surface[data-dragging]) {
+  transition: none;
+}
+.float-surface {
+  --float-from: 0 0;
+  transition-property: opacity, scale, translate;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+  @starting-style {
+    opacity: 0;
+    scale: 0.97;
+    translate: var(--float-from);
+  }
+}
+.float-surface[data-side="bottom"] {
+  --float-from: 0 -4px;
+}
+.float-surface[data-side="top"] {
+  --float-from: 0 4px;
+}
+.float-surface[data-side="left"] {
+  --float-from: 4px 0;
+}
+.float-surface[data-side="right"] {
+  --float-from: -4px 0;
+}
+.float-surface[data-state="closed"] {
+  opacity: 0;
+  scale: 0.97;
+  translate: var(--float-from);
+  pointer-events: none !important;
+  transition-duration: 120ms;
+  animation: overlay-hold 120ms;
+}
+/* A tooltip that waited fades in from its trigger; one shown at once beside another that was open does not animate. */
+.tooltip-surface[data-state="delayed-open"] {
+  transition:
+    opacity 125ms var(--ease-out),
+    scale 125ms var(--ease-out);
+  @starting-style {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+.tooltip-surface[data-state="closed"] {
+  opacity: 0;
+  pointer-events: none !important;
+  transition: opacity 100ms var(--ease-out);
+  animation: overlay-hold 100ms;
+}
+:root[data-input="key"] :is(.overlay-scrim, .dialog-surface, .sheet-surface, .float-surface, .tooltip-surface),
+:is(.overlay-scrim, .dialog-surface)[data-instant] {
+  transition: none;
+  animation: none;
 }
 
 /* An empty state's own entrance, the orbit turning into place (design-language.md, Motion baseline). */
@@ -1100,6 +1293,58 @@ a.mention-chip:hover {
   }
 }
 
+/* Settings motion (design-language.md, Settings). A swap stacks two states in one grid cell, so the control never
+   changes size: the old state leaves up 6px with a 2px blur as the new one rises in, 150ms. An icon swap shrinks the old
+   icon instead, and the check that replaces it pops on the checkbox spring. */
+.swap {
+  display: inline-grid;
+  > * {
+    grid-area: 1 / 1;
+    transition:
+      opacity 150ms var(--ease-out),
+      translate 150ms var(--ease-out),
+      scale 150ms var(--ease-out),
+      filter 150ms var(--ease-out);
+  }
+  > [data-off] {
+    opacity: 0;
+    translate: 0 6px;
+    filter: blur(2px);
+    pointer-events: none;
+  }
+  > [data-off]:first-child {
+    translate: 0 -6px;
+  }
+}
+.swap[data-icon] {
+  place-items: center;
+  > [data-off] {
+    translate: none;
+    scale: 0.6;
+  }
+  > :last-child:not([data-off]) {
+    transition-duration: 350ms, 150ms, 350ms, 150ms;
+    transition-timing-function: var(--ease-spring-pop);
+  }
+}
+.pop-in {
+  animation: pop-in 350ms var(--ease-spring-pop) both;
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+/* A theme switch lands in one frame: withoutTransitions (lib/motion.ts) holds every colour transition while the
+   palette changes. */
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
 /* Reduced motion flattens every transition and keyframe; what still needs to say "this arrived" does it with a fade
    (the page and list entrances in lib/motion.ts check the preference themselves). */
 @media (prefers-reduced-motion: reduce) {
@@ -1118,6 +1363,40 @@ a.mention-chip:hover {
   .arrive,
   .empty-state {
     animation: fade-in 150ms var(--ease-out) both !important;
+  }
+  .swap > * {
+    translate: none !important;
+    scale: none !important;
+    filter: none !important;
+    transition: opacity 150ms var(--ease-out) !important;
+  }
+  /* Overlays fade in and out in place: nothing scales, rises or slides. */
+  :is(.overlay-scrim, .dialog-surface, .sheet-surface, .float-surface, .tooltip-surface) {
+    transition-property: opacity !important;
+    transition-duration: 150ms !important;
+  }
+  :is(.overlay-scrim, .dialog-surface, .sheet-surface, .float-surface, .tooltip-surface)[data-state="closed"] {
+    animation-duration: 150ms !important;
+  }
+  .sheet-surface {
+    @starting-style {
+      opacity: 0;
+    }
+  }
+  .sheet-surface[data-state="closed"] {
+    opacity: 0;
+    translate: none;
+  }
+  :is(.dialog-surface, .float-surface)[data-state="closed"] {
+    scale: none;
+  }
+  .float-surface[data-state="closed"] {
+    translate: none;
+  }
+  :root[data-input="key"] :is(.overlay-scrim, .dialog-surface, .sheet-surface, .float-surface, .tooltip-surface),
+  :is(.overlay-scrim, .dialog-surface)[data-instant] {
+    transition: none !important;
+    animation: none !important;
   }
 }
 

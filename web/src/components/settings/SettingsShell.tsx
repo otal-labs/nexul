@@ -20,7 +20,7 @@ export const SettingsShell = ({ nav, section, children, className }: SettingsShe
     () => [...(root.current?.querySelectorAll("nav a") ?? [])].findIndex((link) => link.getAttribute("aria-current") === "page"),
     () => content.current,
     // The nav is a column from 1024px and a row below it, so the content follows the axis the pointer travelled.
-    () => (window.matchMedia("(min-width: 1024px)").matches ? "y" : "x"),
+    () => (window.matchMedia?.("(min-width: 1024px)").matches ? "y" : "x"),
   );
   return (
     <div ref={root} className={cn("flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8", className)}>

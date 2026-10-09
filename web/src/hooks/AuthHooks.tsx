@@ -67,8 +67,8 @@ export const useUpdateProfile = () => {
     mutationFn: async (payload: { display_name: string; avatar_override_url: string }) =>
       (await api.put<User>("/api/auth/profile", payload)).data,
     onSuccess: async () => {
+      // No toast: Settings answers in its Save button and the wizard moves on.
       await client.invalidateQueries({ queryKey: [getMeKey], refetchType: "all" });
-      toast.success("Profile updated");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -86,8 +86,8 @@ export const useUpdateSettings = () => {
     mutationFn: async (instance_url: string) =>
       (await api.put<InstanceSettings>("/api/auth/settings", { instance_url })).data,
     onSuccess: async () => {
+      // No toast: the card's Save answers, and its row already says new connection tokens use the address.
       await client.invalidateQueries({ queryKey: [getSettingsKey] });
-      toast.success("Instance URL updated. New connection tokens use it.");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

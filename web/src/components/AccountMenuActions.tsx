@@ -1,7 +1,7 @@
 import { LifeBuoyIcon, LogOutIcon } from "lucide-react";
 
 import { PopoverContent } from "@/components/ui/popover";
-import { menuItemClass, menuItemDestructiveClass } from "@/components/MenuItem";
+import { MenuSeparator, menuItemClass, menuItemDestructiveClass } from "@/components/MenuItem";
 import { useLogout } from "@/hooks/AuthHooks";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,7 @@ export const AccountMenuActions = ({ onClose }: AccountMenuActionsProps) => {
           <LifeBuoyIcon aria-hidden />
           <span>Support</span>
         </a>
+        <MenuSeparator />
         <button
           type="button"
           onClick={onLogout}

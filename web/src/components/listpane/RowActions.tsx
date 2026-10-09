@@ -27,6 +27,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface RowActionsProps {
   itemLabel: string;
@@ -48,11 +49,17 @@ interface RowActionsProps {
 
 export const RowActions = ({ itemLabel, pin, lock, sidebar, moveTo, onSettings, onBots, onRename, onClone, onDelete }: RowActionsProps) => (
   <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button variant="ghost" size="icon" className="size-7" aria-label={`More actions for ${itemLabel}`}>
-        <MoreHorizontalIcon className="size-3.5" aria-hidden />
-      </Button>
-    </DropdownMenuTrigger>
+    {/* The menu trigger wraps the tooltip's, so the button's data-state is the menu's. */}
+    <Tooltip>
+      <DropdownMenuTrigger asChild>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon" className="size-7" aria-label={`More actions for ${itemLabel}`}>
+            <MoreHorizontalIcon className="size-3.5" aria-hidden />
+          </Button>
+        </TooltipTrigger>
+      </DropdownMenuTrigger>
+      <TooltipContent>More actions</TooltipContent>
+    </Tooltip>
     <DropdownMenuContent align="end" className="min-w-36">
       {onSettings && (
         <DropdownMenuItem onSelect={onSettings}>

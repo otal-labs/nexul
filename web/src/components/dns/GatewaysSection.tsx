@@ -18,7 +18,7 @@ export const GatewaysSection = () => {
     <SettingsCard
       id="gateways"
       title="Gateways"
-      description="A gateway makes one Docker network reachable from the internet. To put a hostname on a service, use Set up DNS."
+      description="Each gateway makes one Docker network reachable from the internet. Set up DNS puts a hostname on a service."
       footer={
         <>
           <Button asChild variant="outline" size="sm">

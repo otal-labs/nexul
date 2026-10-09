@@ -23,3 +23,5 @@ Keep [Upgrade](/docs/guide/upgrade/) for later. The rest of the guide covers pro
 ## Getting around
 
 Press ⌘K on a Mac, or Ctrl+K anywhere else, to open the command palette; the Search row at the top of the sidebar opens it too. Type to jump to any page or board, find a ticket, doc or memory by name, start a new ticket, doc, channel or direct message, switch workspace, or change the theme. Empty, it lists what changed lately in your current project. Arrow keys move, Enter opens, Escape closes.
+
+**Settings → Appearance** shows each mode and theme as a small picture of the app in its colours; picking one applies it at once, in this browser.
