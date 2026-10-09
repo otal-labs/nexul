@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,20 +46,29 @@ func TestDeadLettersRepo_Put_Get_RoundTrip(t *testing.T) {
 	assert.False(t, got.CreatedAt.IsZero())
 }
 
-func TestDeadLettersRepo_List_Paginates(t *testing.T) {
+func TestDeadLettersRepo_List_PagesCoverEveryLetterOnce(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	for _, id := range []string{"dl-1", "dl-2", "dl-3"} {
+	var want []string
+	for i := range 7 {
+		id := fmt.Sprintf("dl-%d", i)
+		want = append(want, id)
 		require.NoError(t, s.DeadLetters.Put(context.Background(), newTestDeadLetter(id)))
 	}
 
-	page, err := s.DeadLetters.List(context.Background(), 2, 0)
-	require.NoError(t, err)
-	require.Len(t, page, 2)
+	got := pageAll(t, 3, func(offset, limit int) ([]string, int) {
+		page, err := s.DeadLetters.List(context.Background(), limit, offset)
+		require.NoError(t, err)
+		total, err := s.DeadLetters.Count(context.Background())
+		require.NoError(t, err)
+		ids := make([]string, len(page))
+		for i, dl := range page {
+			ids[i] = dl.ID
+		}
+		return ids, total
+	})
 
-	rest, err := s.DeadLetters.List(context.Background(), 2, 2)
-	require.NoError(t, err)
-	require.Len(t, rest, 1)
+	assert.ElementsMatch(t, want, got, "letters stored in the same second still page in a stable order")
 }
 
 func TestDeadLettersRepo_Delete_NotFound(t *testing.T) {

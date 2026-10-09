@@ -9,6 +9,17 @@ import (
 	"context"
 )
 
+const countDeadLetters = `-- name: CountDeadLetters :one
+SELECT COUNT(*) FROM dead_letters
+`
+
+func (q *Queries) CountDeadLetters(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countDeadLetters)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteDeadLetter = `-- name: DeleteDeadLetter :execrows
 DELETE FROM dead_letters WHERE id = ?
 `
@@ -40,7 +51,7 @@ func (q *Queries) GetDeadLetter(ctx context.Context, id string) (DeadLetter, err
 }
 
 const listDeadLetters = `-- name: ListDeadLetters :many
-SELECT id, topic, payload, error, attempts, created_at FROM dead_letters ORDER BY created_at DESC LIMIT ? OFFSET ?
+SELECT id, topic, payload, error, attempts, created_at FROM dead_letters ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?
 `
 
 type ListDeadLettersParams struct {

@@ -57,6 +57,15 @@ func (r *DeadLettersRepo) List(ctx context.Context, limit, offset int) ([]deadle
 	return out, nil
 }
 
+// Count is how many dead letters List pages over.
+func (r *DeadLettersRepo) Count(ctx context.Context) (int, error) {
+	n, err := r.q.CountDeadLetters(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count dead letters: %w", err)
+	}
+	return int(n), nil
+}
+
 func (r *DeadLettersRepo) Delete(ctx context.Context, id string) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).DeleteDeadLetter(ctx, id)
