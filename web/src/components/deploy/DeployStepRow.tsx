@@ -1,4 +1,7 @@
+import { useLayoutEffect, useRef } from "react";
 import { CheckIcon, Loader2, XIcon } from "lucide-react";
+
+import { playStep } from "@/components/deploy/stepMotion";
 
 import { cn } from "@/lib/utils";
 import { formatStepDuration, type DeployStep } from "@/utils/DeployLogUtility";
@@ -18,16 +21,23 @@ const node: Record<DeployStep["state"], string> = {
 // One rung of the timeline: a node on a rail that runs down to the next step, solid once this step is done.
 export const DeployStepRow = ({ step }: DeployStepRowProps) => {
   const muted = step.state === "pending" || step.state === "skipped";
+  const row = useRef<HTMLLIElement>(null);
+  const shown = useRef(step.state);
+  useLayoutEffect(() => {
+    playStep(row.current, shown.current, step.state);
+    shown.current = step.state;
+  }, [step.state]);
   return (
-    <li className="group/step relative flex items-start gap-3 pb-5 last:pb-0">
+    <li ref={row} className="group/step relative flex items-start gap-3 pb-5 last:pb-0">
       <span
         aria-hidden
+        data-step-rail
         className={cn(
-          "absolute top-6 bottom-1 left-[9px] w-px group-last/step:hidden",
+          "absolute top-6 bottom-1 left-[9px] w-px origin-top group-last/step:hidden",
           step.state === "done" ? "bg-success/50" : "bg-border",
         )}
       />
-      <span className={cn("relative mt-0.5 flex size-[19px] shrink-0 items-center justify-center rounded-full", node[step.state])} aria-hidden>
+      <span data-step-node className={cn("relative mt-0.5 flex size-[19px] shrink-0 items-center justify-center rounded-full", node[step.state])} aria-hidden>
         {step.state === "done" && <CheckIcon className="size-3" strokeWidth={3} />}
         {step.state === "active" && <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />}
         {step.state === "failed" && <XIcon className="size-3" strokeWidth={3} />}

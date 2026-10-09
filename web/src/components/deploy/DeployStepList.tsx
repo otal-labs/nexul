@@ -1,3 +1,4 @@
+import { EnterList } from "@/components/EnterList";
 import { DeployStepRow } from "@/components/deploy/DeployStepRow";
 import type { DeployStep } from "@/utils/DeployLogUtility";
 
@@ -15,11 +16,11 @@ export const DeployStepList = ({ title, steps }: DeployStepListProps) => {
         {title}
         {active && `: ${active.label}`}
       </p>
-      <ol aria-label="Steps">
+      <EnterList as="ol" aria-label="Steps">
         {steps.map((step) => (
           <DeployStepRow key={step.key} step={step} />
         ))}
-      </ol>
+      </EnterList>
     </div>
   );
 };

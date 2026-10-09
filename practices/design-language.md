@@ -546,8 +546,8 @@ scrolls; narrower, they sit above it. Each step is a node on a rail: a filled
 ringed in `info` while active, a filled `destructive` cross on failure, a
 hollow ring while pending and a dashed one when skipped, the label, and the
 mono duration trailing. The log names each phase above its first line
-(11px uppercase mono, muted), so it reads against the steps.
-`DeployProgressSection` is the reference; the instance upgrade uses the
+(11px uppercase mono, muted), so it reads against the steps. The steps move
+rail-led (Motion baseline). `DeployProgressSection` is the reference; the instance upgrade uses the
 same step list.
 
 Logs view. The stack page's Logs section is a line tab row of the stack's
@@ -721,6 +721,12 @@ writing its own.
   same way as data that landed inside the entrance's 400ms; never a panel,
   and never outside the page frame. The loader itself stays a linear 1.2s
   turn.
+- Deploy steps (`DeployStepList`, `stepMotion.ts`): the steps cascade in as
+  an `EnterList`. A step that finishes pops its mark from 0.6 on the
+  checkbox's `--ease-spring-pop` (350ms) while its rail draws down to the next
+  rung (`scaleY` from the top, 260ms `--ease-out`); the next node lights from
+  0.85 over 200ms once the rail reaches it (180ms in), the same rail-led order
+  as the DNS stepper. Reduced motion: the changed node fades in 150ms.
 - Paired elements (overlay and dialog, drawer and backdrop, filter bar and
   result list) share identical duration and easing, or the pair reads as two
   events.
@@ -812,3 +818,9 @@ Empty state and loader.
 - Hand-off: the rise. Rejected: a snap (content popped where the loader
   was) and an opacity-only fade (a second arrival vocabulary beside the page
   entrance's rise).
+
+Deploy steps.
+- Rail-led (above). Rejected: everything at once (the check, the rail colour
+  and the next spinner changed in the same frame and the timeline lost its
+  sense of order). A deploy changes step a few times a day, so the 440ms
+  hand-down is affordable.
