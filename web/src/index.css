@@ -1083,6 +1083,58 @@ a.mention-chip:hover {
   }
 }
 
+/* Settings motion (design-language.md, Settings). A swap stacks two states in one grid cell, so the control never
+   changes size: the old state leaves up 6px with a 2px blur as the new one rises in, 150ms. An icon swap shrinks the old
+   icon instead, and the check that replaces it pops on the checkbox spring. */
+.swap {
+  display: inline-grid;
+  > * {
+    grid-area: 1 / 1;
+    transition:
+      opacity 150ms var(--ease-out),
+      translate 150ms var(--ease-out),
+      scale 150ms var(--ease-out),
+      filter 150ms var(--ease-out);
+  }
+  > [data-off] {
+    opacity: 0;
+    translate: 0 6px;
+    filter: blur(2px);
+    pointer-events: none;
+  }
+  > [data-off]:first-child {
+    translate: 0 -6px;
+  }
+}
+.swap[data-icon] {
+  place-items: center;
+  > [data-off] {
+    translate: none;
+    scale: 0.6;
+  }
+  > :last-child:not([data-off]) {
+    transition-duration: 350ms, 150ms, 350ms, 150ms;
+    transition-timing-function: var(--ease-spring-pop);
+  }
+}
+.pop-in {
+  animation: pop-in 350ms var(--ease-spring-pop) both;
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+/* A theme switch lands in one frame: withoutTransitions (lib/motion.ts) holds every colour transition while the
+   palette changes. */
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
 /* Reduced motion flattens every transition and keyframe; what still needs to say "this arrived" does it with a fade
    (the page and list entrances in lib/motion.ts check the preference themselves). */
 @media (prefers-reduced-motion: reduce) {
@@ -1102,6 +1154,12 @@ a.mention-chip:hover {
   .settle-in,
   .empty-state {
     animation: fade-in 150ms var(--ease-out) both !important;
+  }
+  .swap > * {
+    translate: none !important;
+    scale: none !important;
+    filter: none !important;
+    transition: opacity 150ms var(--ease-out) !important;
   }
 }
 

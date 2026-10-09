@@ -3,6 +3,7 @@ import { Settings, Unlink } from "lucide-react";
 import { Link } from "react-router";
 
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
+import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { Button } from "@/components/ui/button";
 import { DiscordMark, GithubMark, GoogleMark } from "@/components/ProviderMarks";
 import { useCanOpenSection } from "@/hooks/AccessHooks";
@@ -26,13 +27,18 @@ export const IdentityRow = ({ provider, identity, onlyOne }: IdentityRowProps) =
   const account = identity && (provider === "github" ? `@${identity.login}` : identity.login);
 
   return (
-    <li className="flex items-center gap-3 bg-card px-3 py-3">
+    <li className="flex items-center gap-3 bg-card px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60 [&_svg]:size-4">
         <Mark />
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{label}</p>
-        <p className="truncate font-mono text-xs text-muted-foreground">{account ?? "Not linked"}</p>
+        {account && (
+          <SettingsStatus tone="success" detail={<span className="font-mono">{account}</span>}>
+            Linked
+          </SettingsStatus>
+        )}
+        {!account && <SettingsStatus tone="muted">Not linked</SettingsStatus>}
       </div>
       {identity && provider === "github" && canOpenConnectors && (
         <Button asChild variant="ghost" size="sm" aria-label="GitHub App settings" title="GitHub App settings">

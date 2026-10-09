@@ -36,7 +36,7 @@ export const TeamAccountActions = ({ person }: { person: TeamPerson }) => {
   return (
     <div className="flex flex-wrap items-center gap-1">
       {canChange && person.status === "active" && (
-        <Button type="button" variant="ghost" size="sm" loading={update.isPending} disabled={busy} onClick={() => void setStatus("disabled", "Disable", "lose sign-in but keep their workspace access")}>
+        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" loading={update.isPending} disabled={busy} onClick={() => void setStatus("disabled", "Disable", "lose sign-in but keep their workspace access")}>
           <UserRoundX className="size-4" />Disable
         </Button>
       )}
@@ -51,7 +51,7 @@ export const TeamAccountActions = ({ person }: { person: TeamPerson }) => {
         </Button>
       )}
       {canRemove && person.status !== "removed" && (
-        <Button type="button" variant="ghost" size="sm" className="hover:text-destructive" loading={remove.isPending} disabled={busy} onClick={() => void removeAccount()}>
+        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" loading={remove.isPending} disabled={busy} onClick={() => void removeAccount()}>
           <UserMinus className="size-4" />Remove account
         </Button>
       )}

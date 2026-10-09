@@ -276,7 +276,6 @@ export const useUpdatePairingDefaults = () => {
       (await api.put<PairingDefaults>("/api/pairing/defaults", input)).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getPairingDefaultsKey] });
-      toast.success("Defaults updated");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

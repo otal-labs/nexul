@@ -134,7 +134,7 @@ describe("YourSettingsPage", () => {
     renderPage("/settings/security");
 
     await user.click(await screen.findByRole("button", { name: "Copy connection token" }));
-    expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
+    expect(await screen.findByText("Copied")).toBeInTheDocument();
     expect(mocks.post).toHaveBeenCalledWith("/api/auth/connection-token");
     expect(await navigator.clipboard.readText()).toBe("header.payload.sig");
   });
@@ -172,11 +172,10 @@ describe("YourSettingsPage", () => {
 
     expect(await screen.findByText("ci agent")).toBeInTheDocument();
     expect(screen.getByText("old token")).toBeInTheDocument();
-    expect(screen.getByText(/revoked/)).toBeInTheDocument();
+    expect(screen.getByText(/^Revoked/)).toBeInTheDocument();
 
     const revokeButtons = screen.getAllByRole("button", { name: /^revoke$/i });
-    expect(revokeButtons).toHaveLength(2);
-    expect(revokeButtons.filter((b) => (b as HTMLButtonElement).disabled)).toHaveLength(1);
+    expect(revokeButtons).toHaveLength(1);
 
     await user.click(revokeButtons[0]!);
     await user.click(screen.getByRole("button", { name: /^confirm$/i }));

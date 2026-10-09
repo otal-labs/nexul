@@ -1,13 +1,16 @@
-import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, Copy } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { FormInput } from "@/components/FormInput";
+import { CopyButton } from "@/components/settings/CopyButton";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { Button } from "@/components/ui/button";
+import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
+import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
 import { useUpdateSettings } from "@/hooks/AuthHooks";
+import { useFlash } from "@/hooks/useFlash";
 import { InstanceURLFormSchema, type InstanceURLFormData, type InstanceSettings } from "@/models/User";
+
+const FORM_ID = "instance-url-form";
 
 interface InstanceUrlSectionProps {
   settings: InstanceSettings;
@@ -15,7 +18,7 @@ interface InstanceUrlSectionProps {
 
 export const InstanceUrlSection = ({ settings }: InstanceUrlSectionProps) => {
   const updateSettings = useUpdateSettings();
-  const [copied, setCopied] = useState(false);
+  const [saved, flash] = useFlash();
 
   const form = useForm<InstanceURLFormData>({
     defaultValues: { instance_url: settings.instance_url },
@@ -26,70 +29,53 @@ export const InstanceUrlSection = ({ settings }: InstanceUrlSectionProps) => {
     try {
       await updateSettings.mutateAsync(data.instance_url);
       form.reset(data);
+      flash();
     } catch {
       // Error is surfaced by the hook's toast; the form stays open to retry.
-    }
-  };
-
-  const copyCallback = async () => {
-    try {
-      await navigator.clipboard.writeText(settings.oauth_callback);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard may be unavailable; the chip stays visible for manual copy.
     }
   };
 
   return (
     <SettingsCard
       id="instance"
-      title="Instance"
-      description={
-        <>
-          Where people reach this instance. Changing it issues new connection tokens. Register the callback below
-          as the GitHub OAuth callback.
-        </>
+      title="Address"
+      footer={
+        <SettingsSaveBar
+          form={FORM_ID}
+          dirty={form.formState.isDirty}
+          saving={form.formState.isSubmitting}
+          saved={saved}
+          onDiscard={() => form.reset()}
+        />
       }
     >
-      <form
-        key={settings.settings_version}
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-4"
-      >
-        <div className="flex flex-wrap items-end gap-2">
-          <FormInput
-            control={form.control}
-            name="instance_url"
-            id="instance_url"
+      <form id={FORM_ID} key={settings.settings_version} onSubmit={form.handleSubmit(onSubmit)}>
+        <SettingsRows>
+          <SettingsRow
             label="Instance URL"
-            placeholder="https://deploy.example.com"
-            className="w-full sm:w-96"
-          />
-          <Button type="submit" loading={form.formState.isSubmitting}>
-            Save
-          </Button>
-        </div>
-
-        {/* Mono chip with copy affordance instead of a bare <code> block. */}
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="shrink-0 text-xs text-muted-foreground">OAuth callback</span>
-          <span className="flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-muted px-2 py-1">
-            <code className="min-w-0 flex-1 font-mono text-xs break-all text-foreground">
-              {settings.oauth_callback}
-            </code>
-            <button
-              type="button"
-              aria-label="Copy OAuth callback"
-              title="Copy"
-              onClick={copyCallback}
-              className="shrink-0 rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
-            >
-              {copied && <Check className="size-3.5 text-success" />}
-              {!copied && <Copy className="size-3.5" />}
-            </button>
-          </span>
-        </div>
+            description="Where people reach this instance. Changing it issues new connection tokens."
+            htmlFor="instance_url"
+          >
+            <div className="w-full">
+              <FormInput
+                control={form.control}
+                name="instance_url"
+                id="instance_url"
+                label="Instance URL"
+                hideLabel
+                placeholder="https://deploy.example.com"
+              />
+            </div>
+          </SettingsRow>
+          <SettingsRow label="OAuth callback" description="Register it as the callback of the GitHub OAuth app.">
+            <span className="flex w-full min-w-0 items-center gap-1 rounded-md bg-surface-2 py-0.5 pr-0.5 pl-2.5 ring-1 ring-border">
+              <code className="min-w-0 flex-1 truncate font-mono text-xs" title={settings.oauth_callback}>
+                {settings.oauth_callback}
+              </code>
+              <CopyButton value={settings.oauth_callback} label="Copy OAuth callback" iconOnly variant="ghost" />
+            </span>
+          </SettingsRow>
+        </SettingsRows>
       </form>
     </SettingsCard>
   );

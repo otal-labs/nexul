@@ -38,12 +38,12 @@ export const OAuthProviderActions = ({ provider, clientId }: OAuthProviderAction
 
   return (
     <>
-      <Button variant="outline" size="sm" loading={update.isPending} onClick={() => void disable()}>
+      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" loading={update.isPending} onClick={() => void disable()}>
         Disable
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button size="sm">Edit</Button>
+          <Button size="sm" variant="outline">Edit</Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>

@@ -234,6 +234,10 @@ second ambient animation or anything animating layout behind the panels.
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
 | Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
+| Settings cards: a quiet header, settings as rows | Against the old header band (an 18px title over a full-width rule, so every section read as the same generic form) and the title outside the card (heading on the glass, content in the card: two surfaces for one unit, and a paired card's heading wrapped out of line with its neighbour's); a 15px title flowing into its rows keeps the unit whole and saves the rule |
+| Settings save from a strip that is always there | Against a strip that opens when something changes (it pushed every card below it 52px on the first keystroke), a bar floating over the page (detached from the card it saves and covering the next one) and a Save beside the field (fits one field, not a card of them) |
+| Save answers in its button, not a toast | Against the toast (it lands a panel away from the click) and a Saved line at the strip's left (opposite the pointer); the button the pointer is on turns into Saved |
+| Theme and mode tiles are the app in miniature | Against swatch dots, which named a palette without showing what it changes; the miniature shows the canvas, the panel, text and the accent in that palette and mode |
 | Person dialog: a tab per workspace, changes held until Confirm | Several workspaces stacked in one scroll mixed their controls, and applying each change on the spot made the dialog change under the owner; tabs separate the workspaces and Confirm makes the edit one deliberate act |
 
 ## Pattern spec
@@ -547,6 +551,39 @@ change a list sees it disabled. `PermissionLevels`, `PermissionLevelControl`,
 and `ProjectAccessBlock` in `web/src/components/access/` are the reference;
 deny overrides keep the checkbox grid (`PermissionGrid`).
 
+Settings card. `SettingsCard` opens with its title in 15px semibold and an
+optional muted description, no rule under them, then the body and the
+optional footer strip (`bg-muted/30` behind a hairline). The card's state, or
+one quiet action, sits top right beside the title (`aside`: Up to date,
+Enabled, Registered). Inside, settings are rows (`SettingsRow` in
+`SettingsRows`): the label in 14px medium over a muted one-line description
+on the left, the control on the right once the card is 34rem wide and under
+the text below that; a rule above the first row and between rows. A list
+inside a card keeps the bordered box of hairline rows. State is a
+`SettingsStatus`, a 6px status dot beside plain text with an optional muted
+detail (Connected · by Alice 20d ago, Active · last used 9d ago, Revoked 8 Oct),
+never a chip; an active account says nothing, only one that can't sign in
+(Disabled, Removed). Destructive actions that are not the card's job are ghost
+buttons that turn `destructive` on hover, kept apart from the primary action,
+and ask before they act. A card that edits values saves from its footer with
+`SettingsSaveBar`: the strip is always there; Save is an outline button until
+something changes, then Discard and "Unsaved changes" wake and Save turns
+`brand`; once a save lands Save reads Saved with a check for 1.4s. Settings
+that apply the moment they are picked (Appearance) have no Save. Copying uses
+`CopyButton`; a value to copy sits in a mono `surface-2` well with an icon
+button. The page header's meta line carries the open section's facts
+(`SettingsHeaderMeta`: Nexul theme · Dark, 2 gateways · 3 hostnames) and marks
+instance sections Instance-wide.
+
+Appearance. Mode and Theme are radio groups of tiles, each a miniature of the
+app (`ThemeMiniature`: canvas, sidebar with its brand marker, a panel with a
+title, two text lines, a brand button and an outline one) drawn from the
+palette's own roles in the mode being shown (`themePreviewColors`); System is
+light with the dark miniature clipped across its right side. The picked tile
+gets a 2px `brand` ring and a check badge top right; arrow keys move the pick.
+"Dim behind dialogs" is a row with a miniature of a dialog over the scrim at
+the slider's strength.
+
 Person dialog. The Team's person dialog holds one browser-style tab per
 workspace the person is in: a row of tabs on a hairline that scrolls
 sideways, the selected tab bordered on three sides and joined to the panel
@@ -804,6 +841,26 @@ writing its own.
   `bg-accent` glow behind it fades out over 5600ms after an 800ms hold.
   Nothing else adopts these numbers.
 
+- Settings save strip (`SettingsSaveBar`): when a value changes, "Unsaved
+  changes" and Discard fade in as they settle 4px from the left over 150ms
+  `--ease-out` and Save's fill turns `brand` (150ms colour); undoing the change
+  plays it back, since it is all transitions. On a save, Save swaps to Saved in
+  the same cell (`.swap`): the old label leaves up 6px with a 2px blur as the
+  new one rises 6px, 150ms `--ease-out`, the check popping from 0.6 on
+  `--ease-spring-pop` (350ms); it holds 1.4s and swaps back. Reduced motion:
+  the swap is a 150ms fade, nothing travels.
+- Copy (`CopyButton`): the copy icon shrinks to 0.6 and fades with a 2px blur
+  over 150ms as the check takes its place on `--ease-spring-pop` (350ms); held
+  1.4s, announced as Copied in a status; the label never changes.
+- A row leaving a list on request (a signed-out device, `rowGlide`): it fades
+  and shrinks to 0.98 over 150ms `--ease-standard`; once it is gone the rows
+  under it glide up from where they were, `translate` over 200ms `--ease-out`,
+  while the list holds its height and then shuts in one step. Only rows on
+  screen glide. Reduced motion: the fade, and the gap closes at once.
+- A theme or mode change lands in one frame with every colour transition held
+  (`withoutTransitions`); the picked tile's ring changes over 150ms and its
+  check pops on `--ease-spring-pop`.
+
 ### Hero locks
 
 Each was built as three live variants on the real surface, recorded at 1x
@@ -910,6 +967,36 @@ Sidebar.
 - Workspace fold: the disclosure's 4px settle on open. Rejected: a snap (the
   pages popped in under the header) and a 25ms cascade per page (a list
   entrance in the nav, a second vocabulary for opening a section).
+
+Settings save. Decided 2026-10-09 from four variants on the real card.
+- Always there: the strip never moves; a change wakes Discard, the note and
+  Save. Rejected: a strip that opens as a disclosure (the box snapped 52px open
+  on the first keystroke and pushed every card below it), a bar floating at the
+  foot of the page (rose 12px over the next card and no longer said which card
+  it saved), and a Save that pops in beside the field (works for one field, not
+  for Profile's two).
+- Success: Save turns into Saved in place. Rejected: the toast (lands at the
+  screen's corner, a panel away from the click) and a Saved line where
+  "Unsaved changes" was (the far side of the strip from the pointer).
+
+Removing a row. Glide. Rejected: a fade then a snap (the rows under it jumped
+a row's height in one frame) and a collapse that shut the row's box after its
+fade (the same jump, a frame later). The first glide shrank the list's box at
+once, so the last row slid up from outside it and was clipped; the box now
+holds its height until the glide ends.
+
+Copy. Icon swap. Rejected: the label turning into Copied (the button kept the
+long label's width, so "Copied" floated in a half-empty button) and a Copied
+bubble over the icon (covered the text above a 14px icon at the top of a card).
+
+Theme switch. One frame. Rejected: the new palette spreading as a circle from
+the picked tile through a view transition (built and tuned at 320, 400 and
+480ms; it read well, but capturing the page froze 180ms and the reveal dropped
+about fifteen frames in a headless measurement with no throttle, 300ms and
+twelve 67ms frames under 4x) and a crossfade through the same view transition
+(the same capture cost). Holding the colour transitions while the palette
+changes took the instant swap from about ten frames over budget to one under
+a 4x throttle.
 
 Toasts, dialogs, sheets, popovers, menus: already on the baseline's clocks;
 nothing changed but the sheet, whose open and close are animations and no

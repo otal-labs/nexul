@@ -59,4 +59,4 @@ Adding or raising a permission on the App does not reach existing installations.
 ## Which token does what
 
 - Sign-in uses your own GitHub token, only to read your profile.
-- The connector token, stored when you click **Connect**, is what the server uses for repositories, pull requests and webhooks, and what it hands a runner for a build. If it ever leaks, click **Disconnect** and then **Connect** for a fresh one.
+- The connector token, stored when you click **Connect**, is what the server uses for repositories, pull requests and webhooks, and what it hands a runner for a build. If it ever leaks, click **Disconnect**, confirm, and then **Connect** for a fresh one.
