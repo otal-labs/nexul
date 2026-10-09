@@ -22,7 +22,7 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { parseInvitationFragment, type InvitationAcceptance, type InvitationProvider } from "@/models/Invitation";
 import { cn } from "@/lib/utils";
 
-const INVALID_MESSAGE = "This invitation is invalid or has expired.";
+const INVALID_MESSAGE = "This invitation has expired or isn't valid";
 
 export const InvitePreviewPage = () => {
   const location = useLocation();
@@ -100,12 +100,12 @@ export const InvitePreviewPage = () => {
       <div className="flex min-h-full items-center justify-center px-6 py-12">
         <div className="panel w-full max-w-xl space-y-6 p-8 [--panel-opacity:72%]">
           <header className="space-y-3">
-            <p className={microheaderClass}>Nexul invitation</p>
+            <p className={microheaderClass}>Invitation</p>
             <h1 className={cn(displayTitleClass, "text-[2rem]")}>Join {instanceName}</h1>
-            <p className="text-sm text-muted-foreground">This one-use link expires {details ? new Date(details.expires_at).toLocaleString() : "soon"}.</p>
+            <p className="text-sm text-muted-foreground">This link works once and expires {details ? new Date(details.expires_at).toLocaleString() : "soon"}.</p>
           </header>
           {checking && <LoadingDisplay label="Checking invitation…" />}
-          {invalid && <div className="space-y-3"><ErrorDisplay title={INVALID_MESSAGE} />{fragment.token && <Button type="button" variant="outline" onClick={retry}>Try again</Button>}</div>}
+          {invalid && <div className="space-y-3"><ErrorDisplay title={INVALID_MESSAGE} message="Ask whoever sent it for a new link." />{fragment.token && <Button type="button" variant="outline" onClick={retry}>Try again</Button>}</div>}
           {!invalid && details && <InvitationGrantSummary invitation={details} detailed={acceptance != null} />}
           {!invalid && acceptance && <InvitationAcceptancePanel pending={redeem.isPending} onAccept={accept} onDecline={() => navigate("/", { replace: true })} />}
           {!invalid && !acceptance && publicPreview && <InvitationProviderList providers={providers} disabled={oauth.isPending} onSelect={startOAuth} />}

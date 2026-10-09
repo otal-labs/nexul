@@ -31,15 +31,14 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
               <>
                 $ app --resume
                 <br />
-                <span className="text-destructive">crash</span> — a new version may have shipped; reload to pick it
-                up.
+                <span className="text-destructive">crash</span> If a new version shipped, reloading picks it up.
               </>
             )}
             {!isCrash && (
               <>
                 $ curl /route/that/does/not/exist
                 <br />
-                <span className="text-destructive">404</span> — nothing listens here.
+                <span className="text-destructive">404</span> No page at this address.
               </>
             )}
           </p>
@@ -51,12 +50,12 @@ export const ErrorScreen = ({ error }: ErrorScreenProps) => {
           <div className="flex w-full flex-col gap-2 sm:w-fit sm:flex-row">
             {isCrash && (
               <Button variant="outline" onClick={() => window.location.reload()}>
-                Reload
+                Reload page
               </Button>
             )}
             {!isCrash && (
               <Button asChild>
-                <Link to="/">Back home</Link>
+                <Link to="/">Go home</Link>
               </Button>
             )}
             {!isCrash && (
