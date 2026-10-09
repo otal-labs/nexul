@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 
+import { SaveButton } from "@/components/SaveButton";
 import { InterviewTemplateField } from "@/components/settings/InterviewTemplateField";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { TemplateOriginLine } from "@/components/templates/TemplateOriginLine";
@@ -53,9 +54,16 @@ export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateF
               Clone to…
             </Button>
             {canWrite && (
-              <Button type="submit" form="interview-template-form" size="sm" loading={saveTemplate.isPending} disabled={body === template.body}>
+              <SaveButton
+                type="submit"
+                form="interview-template-form"
+                size="sm"
+                loading={saveTemplate.isPending}
+                disabled={body === template.body}
+                savedAt={saveTemplate.isSuccess ? saveTemplate.submittedAt : undefined}
+              >
                 Save
-              </Button>
+              </SaveButton>
             )}
           </div>
         </>

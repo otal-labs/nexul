@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 
+import { SaveButton } from "@/components/SaveButton";
 import { MentionChipField } from "@/components/settings/MentionChipField";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { TemplateOriginLine } from "@/components/templates/TemplateOriginLine";
@@ -47,9 +48,16 @@ export const MentionChipLayoutSection = ({ workspace }: MentionChipLayoutSection
             >
               Clone to…
             </Button>
-            <Button type="submit" form="mention-chip-form" size="sm" loading={updateTemplate.isPending} disabled={template === workspace.mention_chip_template}>
+            <SaveButton
+              type="submit"
+              form="mention-chip-form"
+              size="sm"
+              loading={updateTemplate.isPending}
+              disabled={template === workspace.mention_chip_template}
+              savedAt={updateTemplate.isSuccess ? updateTemplate.submittedAt : undefined}
+            >
               Save
-            </Button>
+            </SaveButton>
           </div>
         </>
       }

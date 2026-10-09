@@ -5,9 +5,9 @@ import { toast } from "sonner";
 
 import { errorMessage } from "@/api/client";
 import { FormInput } from "@/components/FormInput";
+import { SaveButton } from "@/components/SaveButton";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { WorkspaceUrlField } from "@/components/settings/WorkspaceUrlField";
-import { Button } from "@/components/ui/button";
 import { useUpdateWorkspace } from "@/hooks/WorkspaceHooks";
 import { WorkspaceGeneralFormSchema, type Workspace, type WorkspaceGeneralFormData } from "@/models/Workspace";
 
@@ -53,9 +53,15 @@ export const WorkspaceGeneralSection = ({ workspace }: WorkspaceGeneralSectionPr
       title="Workspace"
       description="Its name in the sidebar and the switcher, and its address in every link."
       footer={
-        <Button type="submit" form="workspace-general" disabled={!isDirty || !isValid} loading={isSubmitting}>
+        <SaveButton
+          type="submit"
+          form="workspace-general"
+          disabled={!isDirty || !isValid}
+          loading={isSubmitting}
+          savedAt={updateWorkspace.isSuccess ? updateWorkspace.submittedAt : undefined}
+        >
           Save
-        </Button>
+        </SaveButton>
       }
     >
       <FormProvider {...form}>
