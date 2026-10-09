@@ -22,6 +22,8 @@ export default defineConfig({
     exclude: ["e2e/**", "node_modules/**"],
     coverage: {
       provider: "v8",
+      // Counts the shared modules too, whose tests run here.
+      allowExternal: true,
       reporter: ["text", "lcov"],
       reportsDirectory: "./coverage",
       thresholds: {
@@ -40,6 +42,8 @@ export default defineConfig({
         "**/*.config.*",
         "**/*.d.ts",
         "src/main.tsx",
+        "**/client-core/**/*.test.ts",
+        "**/client-core/eslint.config.js",
       ],
     },
   },
