@@ -14,7 +14,7 @@ import (
 )
 
 // CreateTicketType adds a project ticket type with the next display position (projects:write).
-func (s *Service) CreateTicketType(ctx context.Context, userID, projectID, name string, color colors.Color) (*TicketType, error) {
+func (s *Service) CreateTicketType(ctx context.Context, projectID, name string, color colors.Color) (*TicketType, error) {
 	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (s *Service) ListTicketTypesByProject(ctx context.Context, projectID string
 }
 
 // RenameTicketType updates a ticket type's name and/or color (projects:write); its identity never changes.
-func (s *Service) RenameTicketType(ctx context.Context, userID, id, name string, color colors.Color) (*TicketType, error) {
+func (s *Service) RenameTicketType(ctx context.Context, id, name string, color colors.Color) (*TicketType, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, fmt.Errorf("%w: ticket type name is required", apperrs.ErrInvalid)
@@ -138,7 +138,7 @@ func (s *Service) TicketTypeNamed(ctx context.Context, projectID, name string) (
 }
 
 // SetTicketTypeTemplate replaces a type's body template (projects:write); existing tickets keep the body they were born with.
-func (s *Service) SetTicketTypeTemplate(ctx context.Context, userID, id, template string) (*TicketType, error) {
+func (s *Service) SetTicketTypeTemplate(ctx context.Context, id, template string) (*TicketType, error) {
 	current, err := s.types.Get(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("set ticket type template %s: %w", id, err)
@@ -157,7 +157,7 @@ func (s *Service) SetTicketTypeTemplate(ctx context.Context, userID, id, templat
 }
 
 // ReorderTicketTypes sets a project's ticket type display order (projects:write); every type appears exactly once.
-func (s *Service) ReorderTicketTypes(ctx context.Context, userID, projectID string, ids []string) error {
+func (s *Service) ReorderTicketTypes(ctx context.Context, projectID string, ids []string) error {
 	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func (s *Service) ReorderTicketTypes(ctx context.Context, userID, projectID stri
 }
 
 // DeleteTicketType removes a ticket type (projects:delete); refused while tickets still use it, so none is left orphaned.
-func (s *Service) DeleteTicketType(ctx context.Context, userID, id string) error {
+func (s *Service) DeleteTicketType(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: ticket type id is required", apperrs.ErrInvalid)
 	}

@@ -62,7 +62,7 @@ func (s *Service) requireOn(ctx context.Context, projectID string, action permis
 }
 
 // Create adds a project to a workspace with the next display position (projects:write).
-func (s *Service) Create(ctx context.Context, userID, workspaceID, name, prefix string, icon ProjectIcon) (*Project, error) {
+func (s *Service) Create(ctx context.Context, workspaceID, name, prefix string, icon ProjectIcon) (*Project, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required — create a workspace before creating a project", apperrs.ErrInvalid)
@@ -157,7 +157,7 @@ func (s *Service) ProjectAccess(ctx context.Context, projectID string) ([]Projec
 }
 
 // Rename updates a project's name and/or icon (projects:write); icon nil keeps current, "" clears it.
-func (s *Service) Rename(ctx context.Context, userID, id, name string, icon *ProjectIcon) (*Project, error) {
+func (s *Service) Rename(ctx context.Context, id, name string, icon *ProjectIcon) (*Project, error) {
 	if err := s.requireOn(ctx, id, permissions.ProjectsWrite); err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func (s *Service) Rename(ctx context.Context, userID, id, name string, icon *Pro
 }
 
 // SetPrefix needs projects:write and is refused if the project already has one.
-func (s *Service) SetPrefix(ctx context.Context, userID, id, prefix string) (*Project, error) {
+func (s *Service) SetPrefix(ctx context.Context, id, prefix string) (*Project, error) {
 	if err := s.requireOn(ctx, id, permissions.ProjectsWrite); err != nil {
 		return nil, err
 	}
@@ -251,7 +251,7 @@ func validateReorderIDs(ids []string, existingIDs []string, noun string) error {
 }
 
 // Reorder sets a workspace's project display order (projects:write); every project must appear exactly once.
-func (s *Service) Reorder(ctx context.Context, userID, workspaceID string, ids []string) error {
+func (s *Service) Reorder(ctx context.Context, workspaceID string, ids []string) error {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
 		return fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
@@ -309,7 +309,7 @@ func (s *Service) deleteImpact(ctx context.Context, id string) (DeleteImpact, er
 }
 
 // Delete removes a project (projects:delete); refused while it has tickets, repos, or services, to avoid orphans.
-func (s *Service) Delete(ctx context.Context, userID, id string) error {
+func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.requireOn(ctx, id, permissions.ProjectsDelete); err != nil {
 		return err
 	}
@@ -331,7 +331,7 @@ func (s *Service) Delete(ctx context.Context, userID, id string) error {
 const defaultConnectorID = "github"
 
 // AddRepo associates a repository with a project (projects:write); a tests repository also records tests as separate.
-func (s *Service) AddRepo(ctx context.Context, userID, projectID, owner, name, connectorID string, role RepoRole) error {
+func (s *Service) AddRepo(ctx context.Context, projectID, owner, name, connectorID string, role RepoRole) error {
 	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return err
 	}
@@ -365,7 +365,7 @@ func (s *Service) AddRepo(ctx context.Context, userID, projectID, owner, name, c
 }
 
 // SetTestsLocation records where a project's tests live (projects:write); "" withdraws the answer.
-func (s *Service) SetTestsLocation(ctx context.Context, userID, projectID string, location TestsLocation) (*Project, error) {
+func (s *Service) SetTestsLocation(ctx context.Context, projectID string, location TestsLocation) (*Project, error) {
 	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return nil, err
 	}
@@ -391,7 +391,7 @@ func (s *Service) saveTestsLocation(ctx context.Context, project *Project, locat
 }
 
 // RemoveRepo dissociates a repository from its project (projects:write).
-func (s *Service) RemoveRepo(ctx context.Context, userID, owner, name string) error {
+func (s *Service) RemoveRepo(ctx context.Context, owner, name string) error {
 	owner = strings.TrimSpace(owner)
 	name = strings.TrimSpace(name)
 	if owner == "" || name == "" {

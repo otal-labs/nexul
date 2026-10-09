@@ -50,11 +50,10 @@ func projectCreateTool(s *Service) mcptool.Tool {
 			"attach repositories, or change its columns, categories, and ticket types. Returns the new project.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in projectCreateIn) (any, error) {
-			actorID, err := ownerActor(ctx)
-			if err != nil {
+			if err := requireOwnerActor(ctx); err != nil {
 				return nil, err
 			}
-			return s.Create(ctx, actorID, in.WorkspaceID, in.Name, in.Prefix, ProjectIcon(in.Icon))
+			return s.Create(ctx, in.WorkspaceID, in.Name, in.Prefix, ProjectIcon(in.Icon))
 		})
 }
 
@@ -69,11 +68,10 @@ func projectDeleteTool(s *Service) mcptool.Tool {
 			"(project_id) and project_update (remove_repos) move them out. Returns the deleted project's id.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in projectDeleteIn) (any, error) {
-			actorID, err := ownerActor(ctx)
-			if err != nil {
+			if err := requireOwnerActor(ctx); err != nil {
 				return nil, err
 			}
-			err = s.Delete(ctx, actorID, in.ID)
+			err := s.Delete(ctx, in.ID)
 			if errors.Is(err, apperrs.ErrNotFound) {
 				return nil, fmt.Errorf("%w; project_list lists a workspace's projects", err)
 			}
@@ -84,11 +82,11 @@ func projectDeleteTool(s *Service) mcptool.Tool {
 		})
 }
 
-// ownerActor is the caller the owner gate checks; an empty id would read as a trusted adapter and skip the gate.
-func ownerActor(ctx context.Context) (string, error) {
+// requireOwnerActor refuses a call with no signed-in caller; an empty id would read as a trusted adapter and skip the gate.
+func requireOwnerActor(ctx context.Context) error {
 	a, ok := identity.ActorFromCtx(ctx)
 	if !ok || a.ID == "" {
-		return "", fmt.Errorf("%w: changing projects needs a signed-in owner", apperrs.ErrUnauthorized)
+		return fmt.Errorf("%w: changing projects needs a signed-in owner", apperrs.ErrUnauthorized)
 	}
-	return a.ID, nil
+	return nil
 }

@@ -12,7 +12,7 @@ import (
 )
 
 // CreateStatus adds a project status column with the next display position (projects:write).
-func (s *Service) CreateStatus(ctx context.Context, userID, projectID, name string, kind StatusKind, icon StatusIcon) (*Status, error) {
+func (s *Service) CreateStatus(ctx context.Context, projectID, name string, kind StatusKind, icon StatusIcon) (*Status, error) {
 	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (s *Service) ListStatusesByProject(ctx context.Context, projectID string) (
 }
 
 // RenameStatus updates a status column's name, kind, and icon (projects:write); existing tickets stay on it.
-func (s *Service) RenameStatus(ctx context.Context, userID, id, name string, kind StatusKind, icon StatusIcon) (*Status, error) {
+func (s *Service) RenameStatus(ctx context.Context, id, name string, kind StatusKind, icon StatusIcon) (*Status, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, fmt.Errorf("%w: status name is required", apperrs.ErrInvalid)
@@ -118,7 +118,7 @@ func (s *Service) RenameStatus(ctx context.Context, userID, id, name string, kin
 }
 
 // ReorderStatuses sets a project's status column order (projects:write); every status must appear exactly once.
-func (s *Service) ReorderStatuses(ctx context.Context, userID, projectID string, ids []string) error {
+func (s *Service) ReorderStatuses(ctx context.Context, projectID string, ids []string) error {
 	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return err
 	}
@@ -141,7 +141,7 @@ func (s *Service) ReorderStatuses(ctx context.Context, userID, projectID string,
 }
 
 // DeleteStatus removes a status column (projects:delete); refused while tickets still use it, so none is left orphaned.
-func (s *Service) DeleteStatus(ctx context.Context, userID, id string) error {
+func (s *Service) DeleteStatus(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: status id is required", apperrs.ErrInvalid)
 	}

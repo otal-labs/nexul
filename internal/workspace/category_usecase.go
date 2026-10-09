@@ -13,7 +13,7 @@ import (
 )
 
 // CreateCategory adds a category to a project with the next display position (projects:write).
-func (s *Service) CreateCategory(ctx context.Context, userID, projectID, name string, color colors.Color) (*Category, error) {
+func (s *Service) CreateCategory(ctx context.Context, projectID, name string, color colors.Color) (*Category, error) {
 	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (s *Service) ListCategoriesByProject(ctx context.Context, projectID string)
 }
 
 // RenameCategory updates a category's name and/or color (projects:write); its identity never changes.
-func (s *Service) RenameCategory(ctx context.Context, userID, id, name string, color colors.Color) (*Category, error) {
+func (s *Service) RenameCategory(ctx context.Context, id, name string, color colors.Color) (*Category, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, fmt.Errorf("%w: category name is required", apperrs.ErrInvalid)
@@ -118,7 +118,7 @@ func (s *Service) RenameCategory(ctx context.Context, userID, id, name string, c
 }
 
 // ReorderCategories sets a project's category display order (projects:write); every category appears exactly once.
-func (s *Service) ReorderCategories(ctx context.Context, userID, projectID string, ids []string) error {
+func (s *Service) ReorderCategories(ctx context.Context, projectID string, ids []string) error {
 	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func (s *Service) ReorderCategories(ctx context.Context, userID, projectID strin
 }
 
 // DeleteCategory removes a category (projects:delete); its tickets become uncategorized rather than being deleted.
-func (s *Service) DeleteCategory(ctx context.Context, userID, id string) error {
+func (s *Service) DeleteCategory(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: category id is required", apperrs.ErrInvalid)
 	}
