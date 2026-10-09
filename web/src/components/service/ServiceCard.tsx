@@ -6,52 +6,39 @@ import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { DeployStatus as DeployStatusType, ServiceDef } from "@/models/Service";
 
-// Stagger the first screenful of rows in; the rest mounts together instantly (never stagger a long list).
-const STAGGER_LIMIT = 8;
-const STAGGER_STEP_MS = 25;
-
 interface ServiceCardProps {
   service: ServiceDef;
   status?: DeployStatusType;
-  index?: number;
 }
 
-// Build repo for repo-driven services, target server otherwise; the list endpoint carries no deploy image.
-const imageLine = (service: ServiceDef): string => {
+// Build repo for repo-driven services, else the machine it runs on; the list endpoint carries no deploy image.
+const sourceLine = (service: ServiceDef): string => {
   const repo = service.build_source;
   if (repo?.repo_owner && repo?.repo_name) return `${repo.repo_owner}/${repo.repo_name}`;
-  return service.target;
+  return service.machine || service.target;
 };
 
 // `status` degrades gracefully to no dot/badge until a per-service health query is wired up.
-export const ServiceCard = ({ service, status, index }: ServiceCardProps) => {
+export const ServiceCard = ({ service, status }: ServiceCardProps) => {
   const canOpen = useAreaAccess()?.("stacks") ?? false;
   const wsPath = useWorkspacePath();
-  const rowClass = "flex items-center gap-3 px-4 py-3";
+  const rowClass = "flex items-center gap-3 px-4 py-2.5";
+  const source = sourceLine(service);
   const row = (
     <>
       {status && <HealthDot status={status} className="shrink-0" />}
-      <span className="min-w-0 flex-1 truncate font-medium">{service.name}</span>
-      <span className="hidden w-48 shrink-0 truncate font-mono text-xs text-muted-foreground sm:inline">
-        {imageLine(service)}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{service.name}</span>
+        {source && <span className="block truncate font-mono text-xs text-muted-foreground">{source}</span>}
       </span>
       <span className="flex shrink-0 items-center gap-3">
         {status && <DeployStatusBadge status={status} />}
-        <span className="hidden w-20 shrink-0 text-right font-mono text-xs text-muted-foreground sm:inline">
-          {service.strategy}
-        </span>
+        <span className="font-mono text-xs text-muted-foreground">{service.strategy}</span>
       </span>
     </>
   );
   return (
-    <li
-      className={
-        index !== undefined && index < STAGGER_LIMIT
-          ? "animate-in fade-in-0 slide-in-from-bottom-1 fill-mode-backwards duration-150 ease-out"
-          : undefined
-      }
-      style={index !== undefined && index < STAGGER_LIMIT ? { animationDelay: `${index * STAGGER_STEP_MS}ms` } : undefined}
-    >
+    <li>
       {canOpen && (
         <Link
           to={wsPath(`/stacks/${service.id}`)}

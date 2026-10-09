@@ -1,9 +1,11 @@
 import { useForm } from "react-hook-form";
 
 import { AutomationConfigFieldControl } from "@/components/automation/AutomationConfigFieldControl";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
-import { Button } from "@/components/ui/button";
+import { EmptyRow } from "@/components/EmptyRow";
+import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
 import { useUpdateAutomationConfig } from "@/hooks/AutomationHooks";
+import { useFlash } from "@/hooks/useFlash";
 import { parseConfigSchema, parseConfigValues } from "@/models/Automation";
 import type { Automation } from "@/models/Automation";
 
@@ -22,22 +24,41 @@ export const AutomationConfigForm = ({ automation }: AutomationConfigFormProps) 
     defaultValues: Object.fromEntries(fields.map((f) => [f.key, values[f.key] ?? f.default ?? ""])),
   });
 
-  const onSubmit = (data: Record<string, string>) => updateConfig.mutate(data);
+  const [saved, flash] = useFlash();
+  const onSubmit = (data: Record<string, string>) =>
+    updateConfig.mutate(data, {
+      onSuccess: () => {
+        form.reset(data);
+        flash();
+      },
+    });
 
   return (
-    <section className="space-y-4 rounded-lg border border-border bg-card p-4">
-      <h2 className="text-sm font-semibold">Configuration</h2>
-      {fields.length === 0 && <NoDataDisplay message="This automation has no config knobs" size="compact" />}
+    <SettingsCard
+      id="configuration"
+      title="Configuration"
+      description="Declared by the automation's code. The next run uses the saved values."
+      footer={
+        fields.length > 0 && (
+          <SettingsSaveBar
+            form="automation-config"
+            dirty={form.formState.isDirty}
+            saving={updateConfig.isPending}
+            saved={saved}
+            onDiscard={() => form.reset()}
+            saveLabel="Save configuration"
+          />
+        )
+      }
+    >
+      {fields.length === 0 && <EmptyRow>This automation has no settings.</EmptyRow>}
       {fields.length > 0 && (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form id="automation-config" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           {fields.map((field) => (
             <AutomationConfigFieldControl key={field.key} control={form.control} field={field} />
           ))}
-          <Button type="submit" size="sm" loading={updateConfig.isPending}>
-            Save configuration
-          </Button>
         </form>
       )}
-    </section>
+    </SettingsCard>
   );
 };

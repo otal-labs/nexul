@@ -82,7 +82,7 @@ export const useVoiceCallStore = create<VoiceCallStore>((set, get) => ({
           return;
         }
         aloneTimer ??= setTimeout(() => {
-          const reason = `You left ${channelName} because you were alone in the call for ${ALONE_LEAVE_MINUTES} minutes.`;
+          const reason = `You left ${channelName} after ${ALONE_LEAVE_MINUTES} minutes alone in the call.`;
           get().leave();
           set({ leftAlone: { conversationId, reason } });
           toast(reason);

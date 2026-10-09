@@ -961,10 +961,12 @@ Model Context Protocol — the standard LLM agents use to call tools. The
 
 ### How we talk about the frontend
 
-**The Mono Console**:
-The web app's visual spec of record — strictly monochrome, dark-first, no
-accent color; color is reserved for badge/status signal only. Tokens in
-`web/src/index.css`, spec in the [coding standards](https://nexul.io/docs/contributing/coding-standards/#design-language--the-mono-console).
+**Design language**:
+The web app's visual spec of record: frosted panels floating on a light field,
+dark first, one ember accent (`brand`) for action, focus and selection, status
+in its own hues. Tokens in `web/src/index.css`, spec in
+`practices/design-language.md` (ADR 0133).
+_Avoid_: the Mono Console (the monochrome direction it replaced).
 
 **Page → Feed → Section → Card**:
 The required component hierarchy. A Page composes Feeds; a Feed lists entities;

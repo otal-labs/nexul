@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
@@ -47,12 +48,12 @@ export const SignInAccountsSection = () => {
     <SettingsCard
       id="sign-in-accounts"
       title="Sign-in accounts"
-      description="Any linked account signs you in to this same profile."
+      description="Each linked account signs you in to this profile."
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {identities.data && status.data && (
-        <ul className="divide-y divide-border overflow-hidden rounded-md border border-border">
+        <EnterList className="divide-y divide-border overflow-hidden rounded-md border border-border">
           {enabledProviders(status.data).map((provider) => (
             <IdentityRow
               key={provider}
@@ -61,7 +62,7 @@ export const SignInAccountsSection = () => {
               onlyOne={identities.data.length === 1}
             />
           ))}
-        </ul>
+        </EnterList>
       )}
     </SettingsCard>
   );

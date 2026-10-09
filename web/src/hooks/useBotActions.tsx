@@ -18,8 +18,8 @@ export const useBotActions = () => {
     regenerate: async (bot: Botwebhook) => {
       const ok = await confirm({
         title: `Regenerate ${bot.name}'s URL?`,
-        message: "Anything still posting to the old URL gets a 404 from now on, until you paste the new URL into it.",
-        confirmLabel: "Regenerate",
+        message: "Anything still posting to the old URL gets a 404 until it uses the new one.",
+        confirmLabel: "Regenerate URL",
       });
       return ok && settled(update.mutateAsync({ bot, change: { regenerate: true } }));
     },
@@ -27,7 +27,7 @@ export const useBotActions = () => {
       const ok = await confirm({
         title: `Delete ${bot.name}?`,
         message: "Anything posting to its URL gets a 404. Its messages stay where they were posted, and you can restore it later with a new URL.",
-        confirmLabel: "Delete",
+        confirmLabel: "Delete bot",
       });
       return ok && settled(remove.mutateAsync(bot));
     },

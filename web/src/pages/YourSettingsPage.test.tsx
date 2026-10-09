@@ -73,6 +73,17 @@ describe("YourSettingsPage", () => {
     expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "/settings/security");
   });
 
+  it("shows the gradient initials without a picture, and they follow the name as it is typed", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const name = await screen.findByLabelText("Display name");
+    expect(screen.getByText("ON")).toBeInTheDocument();
+
+    await user.clear(name);
+    await user.type(name, "Lena Kowalski");
+    expect(screen.getByText("LK")).toBeInTheDocument();
+  });
+
   it("marks T3 Code Setup and its Computers tab while one of your computers has out-of-date skills", async () => {
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/pairing/computers")
@@ -94,7 +105,7 @@ describe("YourSettingsPage", () => {
     renderPage("/settings/security");
     expect(await screen.findByRole("tab", { name: "Devices", selected: true })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy connection token" })).toBeInTheDocument();
-    expect(await screen.findByText(/no other devices are signed in/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no other devices signed in/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/token name/i)).not.toBeInTheDocument();
   });
 
@@ -123,7 +134,7 @@ describe("YourSettingsPage", () => {
     renderPage("/settings/security");
 
     await user.click(await screen.findByRole("button", { name: "Copy connection token" }));
-    expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
+    expect(await screen.findByText("Copied")).toBeInTheDocument();
     expect(mocks.post).toHaveBeenCalledWith("/api/auth/connection-token");
     expect(await navigator.clipboard.readText()).toBe("header.payload.sig");
   });
@@ -161,11 +172,10 @@ describe("YourSettingsPage", () => {
 
     expect(await screen.findByText("ci agent")).toBeInTheDocument();
     expect(screen.getByText("old token")).toBeInTheDocument();
-    expect(screen.getByText(/revoked/)).toBeInTheDocument();
+    expect(screen.getByText(/^Revoked/)).toBeInTheDocument();
 
     const revokeButtons = screen.getAllByRole("button", { name: /^revoke$/i });
-    expect(revokeButtons).toHaveLength(2);
-    expect(revokeButtons.filter((b) => (b as HTMLButtonElement).disabled)).toHaveLength(1);
+    expect(revokeButtons).toHaveLength(1);
 
     await user.click(revokeButtons[0]!);
     await user.click(screen.getByRole("button", { name: /^confirm$/i }));

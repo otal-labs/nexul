@@ -6,6 +6,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { Fact } from "@/components/Fact";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { useFetchConnectorAppConfig } from "@/hooks/ConnectorsHooks";
 import { githubAppURL } from "@/models/Connectors";
 
@@ -18,8 +19,8 @@ export const ConnectorAppConfigSection = () => {
     <SettingsCard
       id="connector-app-config"
       title="GitHub App"
-      description="The GitHub App this instance uses to let people connect their own GitHub account. Register
-          your own App and paste its credentials here — Nexul never holds or manages the App itself."
+      description="People connect their GitHub accounts through this App. Register your own App and paste its credentials here. It stays yours to manage."
+      aside={app && <SettingsStatus tone={registered ? "success" : "muted"}>{registered ? "Registered" : "Not set up"}</SettingsStatus>}
       footer={app && registered && <ConnectorAppEditDialog connectorId="github" current={app} />}
     >
       {isPending && <LoadingDisplay />}

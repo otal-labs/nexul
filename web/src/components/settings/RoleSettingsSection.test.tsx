@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RoleSettingsSection } from "@/components/settings/RoleSettingsSection";
@@ -48,8 +49,23 @@ const role = (overrides: Record<string, unknown> = {}) => ({
 
 const ownerRole = role({ id: "role-owner", name: "Owner", is_owner_role: true });
 
-const mockRoles = (roles: unknown[], myPermissions: string[] = []) => {
+const openMenu = async (user: ReturnType<typeof userEvent.setup>, name: string, item: string) => {
+  await user.click(await screen.findByRole("button", { name: `Actions for ${name}` }));
+  await user.click(await screen.findByRole("button", { name: item }));
+};
+
+const holder = (roleId: string) => ({
+  id: "u-bob",
+  login: "bob",
+  name: "Bob",
+  avatar_url: "",
+  status: "active",
+  workspaces: [{ workspace_id: "ws-1", role_id: roleId }],
+});
+
+const mockRoles = (roles: unknown[], myPermissions: string[] = [], people: unknown[] = []) => {
   mocks.get.mockImplementation((url: string) => {
+    if (url === "/api/team") return Promise.resolve({ data: { people, workspaces: [], can_manage_accounts: false } });
     if (url === "/api/workspaces/ws-1/roles") return Promise.resolve({ data: roles });
     if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Admin", permissions: myPermissions } });
     if (url === "/api/workspaces") return Promise.resolve({ data: [] });
@@ -62,6 +78,7 @@ const renderSection = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
+      <ContextAwareConfirmation.ConfirmationRoot />
       <RoleSettingsSection />
     </QueryClientProvider>,
   );
@@ -88,30 +105,24 @@ describe("RoleSettingsSection", () => {
     expect(await screen.findByText("Roles failed")).toBeInTheDocument();
   });
 
-  it("shows the Owner role with a badge and no edit/delete controls", async () => {
+  it("shows the Owner role with no actions", async () => {
     mockRoles([ownerRole]);
     renderSection();
 
     expect(await screen.findByText("Owner")).toBeInTheDocument();
-    expect(screen.getByText("Protected role")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /rename role owner/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /delete role owner/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Actions for Owner" })).not.toBeInTheDocument();
   });
 
-  it("summarises a custom role as one chip per domain at its level", async () => {
+  it("counts a role's areas per level and names the ones it can't open", async () => {
     mockRoles([ownerRole, role({ permissions: ["members:read", "members:write", "roles:read"] })]);
     renderSection();
 
     const row = (await screen.findByText("Editor")).closest("li")!;
-    expect(within(row).getByText("Members · Write")).toBeInTheDocument();
-    expect(within(row).getByText("Roles · Read")).toBeInTheDocument();
-  });
-
-  it("shows 'No permissions' for a role with no permissions", async () => {
-    mockRoles([ownerRole, role()]);
-    renderSection();
-
-    expect(await screen.findByText("No permissions")).toBeInTheDocument();
+    const levels = within(row).getByRole("list", { name: "Areas per level" });
+    expect(levels).toHaveTextContent("Write1");
+    expect(levels).toHaveTextContent("Read1");
+    expect(levels).toHaveTextContent("None1");
+    expect(within(row).getByText(/Projects/, { selector: "p" })).toHaveTextContent("No access · Projects");
   });
 
   it("creates a role with the chosen levels", async () => {
@@ -182,7 +193,7 @@ describe("RoleSettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: "Rename role Editor" }));
+    await openMenu(user, "Editor", "Edit");
     const input = screen.getByLabelText("Role name");
     const row = input.closest("li")!;
     await user.clear(input);
@@ -196,36 +207,53 @@ describe("RoleSettingsSection", () => {
     });
   });
 
-  it("deletes a role after confirming", async () => {
+  it("deletes a role nobody holds after confirming", async () => {
     mockRoles([ownerRole, role()]);
     mocks.delete.mockResolvedValue({});
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: "Delete role Editor" }));
-    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+    await screen.findAllByText("nobody");
+    await openMenu(user, "Editor", "Delete");
+    await user.click(await screen.findByRole("button", { name: "Delete role" }));
 
     expect(mocks.delete).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor");
   });
 
-  it("hides Clone without roles:clone", async () => {
-    mockRoles([ownerRole, role()], ["roles:write"]);
-    renderSection();
-
-    expect(await screen.findByText("Editor")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^clone /i })).not.toBeInTheDocument();
-  });
-
-  it("offers Clone on custom roles, never on the Owner role, and opens the dialog", async () => {
-    mockRoles([ownerRole, role()], ["roles:write", "roles:clone"]);
+  it("won't delete a role someone holds and says who to move first", async () => {
+    mockRoles([ownerRole, role()], [], [holder("role-editor")]);
     const user = userEvent.setup();
     renderSection();
 
-    const clone = await screen.findByRole("button", { name: "Clone Editor to another workspace" });
-    expect(clone).toHaveAttribute("title", "Clone Editor to another workspace");
-    expect(screen.queryByRole("button", { name: "Clone Owner to another workspace" })).not.toBeInTheDocument();
+    await screen.findByText("1 person");
+    await openMenu(user, "Editor", "Delete");
+    expect(await screen.findByText("Editor is in use")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Got it" }));
+    expect(mocks.delete).not.toHaveBeenCalled();
+  });
 
-    await user.click(clone);
+  it("duplicates a role under a free copy name", async () => {
+    mockRoles([ownerRole, role({ permissions: ["roles:read"] }), role({ id: "role-copy", name: "Editor (copy)" })]);
+    mocks.post.mockResolvedValue({ data: role() });
+    const user = userEvent.setup();
+    renderSection();
+
+    await openMenu(user, "Editor", "Duplicate");
+
+    expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", { name: "Editor (copy 2)", actions: ["roles:read"] });
+  });
+
+  it("offers Clone to workspace only with roles:clone, and opens the dialog", async () => {
+    mockRoles([ownerRole, role()], ["roles:write"]);
+    const user = userEvent.setup();
+    const { unmount } = renderSection();
+    await user.click(await screen.findByRole("button", { name: "Actions for Editor" }));
+    expect(screen.queryByRole("button", { name: "Clone to workspace…" })).not.toBeInTheDocument();
+    unmount();
+
+    mockRoles([ownerRole, role()], ["roles:write", "roles:clone"]);
+    renderSection();
+    await openMenu(user, "Editor", "Clone to workspace…");
     expect(await screen.findByRole("dialog", { name: "Clone Editor to another workspace" })).toBeInTheDocument();
   });
 
@@ -235,7 +263,7 @@ describe("RoleSettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: "Rename role Editor" }));
+    await openMenu(user, "Editor", "Edit");
     await user.click(screen.getByRole("button", { name: "Clone roles to another workspace" }));
     await user.click(screen.getByRole("button", { name: "Save role" }));
 

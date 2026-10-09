@@ -59,7 +59,7 @@ export const BranchRuleRow = ({ control, index, networks, productionNetwork, onR
       {sharesProduction(row, productionNetwork) && (
         <p className="flex gap-2 text-sm">
           <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
-          Uses production&apos;s services, including its database — testers are never sent here.
+          Uses production&apos;s services, including its database. Testers are never sent here.
         </p>
       )}
       <AdvancedFields>

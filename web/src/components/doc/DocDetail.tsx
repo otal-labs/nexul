@@ -3,7 +3,6 @@ import { useState } from "react";
 import { DocThreadButton } from "@/components/chat/DocThreadButton";
 import { DocActionsMenu } from "@/components/doc/DocActionsMenu";
 import { DocBodySection } from "@/components/doc/DocBodySection";
-import { DocBreadcrumb } from "@/components/doc/DocBreadcrumb";
 import { DocLockedSignal } from "@/components/doc/DocLockedSignal";
 import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
 import { DocTitleField } from "@/components/doc/DocTitleField";
@@ -16,9 +15,12 @@ import { useArticlePointer } from "@/components/doc/collab/useArticlePointer";
 import { useCollabCommit } from "@/components/doc/collab/useCollabCommit";
 import { useCollabSession } from "@/components/doc/collab/useCollabSession";
 import { extractDocHeadings, type DocHeading } from "@/components/doc/docHeadings";
+import { PageHeader } from "@/components/PageHeader";
 import { PlaysMenu } from "@/components/play/PlaysMenu";
 import { TrailSection } from "@/components/play/TrailSection";
 import { useFetchMe } from "@/hooks/AuthHooks";
+import { useDocCrumbs } from "@/hooks/useDocCrumbs";
+import { useEmbeddedCrumbs } from "@/hooks/useEmbeddedCrumbs";
 import { useDocView } from "@/hooks/useDocView";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { effectiveAvatar } from "@/models/User";
@@ -35,7 +37,8 @@ const collabIdentity = (me: MeResponse | undefined) => ({
 interface DocDetailProps {
   doc: Doc;
   workspaceId: string;
-  onCreateTicket: () => void;
+  /** Omitted when the viewer may not create tickets, which hides the action. */
+  onCreateTicket?: (() => void) | undefined;
   onPermissions: () => void;
   onArchive: () => void;
   onRestore: () => void;
@@ -59,14 +62,44 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
   const participants = session?.participants ?? [];
   const { articleRef, onPointerMove, onPointerLeave } = useArticlePointer(session);
   const { switchable, waiting, view, setView } = useDocView(doc);
+  const crumbs = useEmbeddedCrumbs(useDocCrumbs(doc));
 
   const { title, titleInputRef, onTitleChange, confirmTitle, onBodyChange } = useCollabCommit(session, doc.title, doc.body);
 
   return (
-    <div className="@container animate-in fade-in-0 slide-in-from-bottom-1 mx-auto w-full max-w-6xl duration-200 ease-out">
-      <div className="@4xl:flex @4xl:gap-8">
-        {/* Hidden below @4xl; the has() rule keeps the column from reserving 14rem when neither section renders. */}
-        <div className="hidden w-56 shrink-0 pt-16 @4xl:has-[section]:block">
+    <div className="@container animate-in fade-in-0 slide-in-from-bottom-1 mx-auto w-full max-w-5xl duration-200 ease-out">
+      <PageHeader
+        crumbs={crumbs}
+        title={
+          <DocTitleField
+            editable={!!session}
+            title={title}
+            staticTitle={doc.title}
+            onChange={onTitleChange}
+            onBlur={confirmTitle}
+            inputRef={titleInputRef}
+          />
+        }
+        meta={<DocPresenceBar participants={participants} connected={session?.connected} updatedAt={doc.updated_at} />}
+        actions={
+          <>
+            {doc.locked && <DocLockedSignal docId={doc.id} />}
+            <PlaysMenu workspaceId={workspaceId} projectId={doc.project_id} docId={doc.id} />
+            <DocWatchButton docId={doc.id} />
+            <DocThreadButton workspaceId={workspaceId} docId={doc.id} />
+            <DocActionsMenu
+              doc={doc}
+              onCreateTicket={onCreateTicket}
+              onPermissions={onPermissions}
+              onArchive={onArchive}
+              onRestore={onRestore}
+            />
+          </>
+        }
+      />
+      <div className="mt-6 @3xl:flex @3xl:gap-8">
+        {/* Hidden below @3xl; the has() rule keeps the column from reserving 14rem when neither section renders. */}
+        <div className="hidden w-48 shrink-0 @3xl:has-[section]:block">
           <div className="sticky top-6 -mx-2 flex max-h-[calc(100vh-3rem)] flex-col gap-8 overflow-y-auto px-2">
             <DocToc headings={view === "doc" ? headings : []} />
             {canThread && (
@@ -81,47 +114,19 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
           </div>
         </div>
 
-        <div className="min-w-0 flex-1">
-          <DocBreadcrumb doc={doc} />
-          <div className="mt-2 flex min-h-8 flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-3">
-              {switchable && <DocViewSwitch view={view} waiting={waiting} onChange={setView} />}
-            </div>
-            <div className="ml-auto flex items-center gap-1">
-              {doc.locked && <DocLockedSignal docId={doc.id} />}
-              <PlaysMenu workspaceId={workspaceId} projectId={doc.project_id} docId={doc.id} />
-              <DocWatchButton docId={doc.id} />
-              <DocThreadButton workspaceId={workspaceId} docId={doc.id} />
-              <DocActionsMenu
-                doc={doc}
-                onCreateTicket={onCreateTicket}
-                onPermissions={onPermissions}
-                onArchive={onArchive}
-                onRestore={onRestore}
-              />
-            </div>
-          </div>
-
+        <div className="min-w-0 flex-1 space-y-4">
+          {switchable && <DocViewSwitch view={view} waiting={waiting} onChange={setView} />}
           {view === "questions" && <DocQuestionsPanel docId={doc.id} />}
           {/* Hidden, not unmounted, behind Questions so the editor keeps its session. */}
           <article
             ref={articleRef}
             hidden={view === "questions"}
-            className="relative mt-4 rounded-2xl border border-border bg-card p-6 shadow-card sm:p-10 lg:p-14"
+            // A sheet of its own inside the panel, with page margins, so the doc reads as the thing being written.
+            className="relative rounded-lg bg-card px-6 py-8 shadow-card ring-1 ring-border @3xl:px-12 @3xl:py-11"
             onPointerMove={onPointerMove}
             onPointerLeave={onPointerLeave}
           >
             {session && <PointerOverlay awareness={session.provider.awareness} selfID={session.doc.clientID} />}
-            <DocPresenceBar participants={participants} connected={session?.connected} updatedAt={doc.updated_at} />
-            <DocTitleField
-              editable={!!session}
-              title={title}
-              staticTitle={doc.title}
-              onChange={onTitleChange}
-              onBlur={confirmTitle}
-              inputRef={titleInputRef}
-            />
-
             <DocBodySection
               doc={doc}
               session={session}
@@ -130,9 +135,9 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
             />
           </article>
 
-          {/* The rail holds the trail from @4xl; both read the same query, so there is one request. */}
+          {/* The rail holds the trail from @3xl; both read the same query, so there is one request. */}
           {canThread && (
-            <div className="@4xl:hidden">
+            <div className="@3xl:hidden">
               <TrailSection workspaceId={workspaceId} targetType="doc" targetId={doc.id} />
             </div>
           )}

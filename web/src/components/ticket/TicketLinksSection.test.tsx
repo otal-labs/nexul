@@ -107,7 +107,7 @@ describe("TicketLinksSection", () => {
   it("shows an empty row with no links", async () => {
     mockApi(emptySet);
     renderSection();
-    expect(await screen.findByText("No source doc, blockers, or found-in links.")).toBeInTheDocument();
+    expect(await screen.findByText("No links yet.")).toBeInTheDocument();
   });
 
   it("shows both directions and marks which blockers are done", async () => {
@@ -233,7 +233,7 @@ describe("TicketLinksSection", () => {
     const user = userEvent.setup();
     renderSection({ doc_id: "doc-1" });
     expect(await screen.findByRole("link", { name: "Books spec" })).toHaveAttribute("href", "/acme/docs/BKS/doc-1");
-    expect(screen.queryByText("No source doc, blockers, or found-in links.")).not.toBeInTheDocument();
+    expect(screen.queryByText("No links yet.")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Remove source doc" }));
     expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/source", { doc_id: "" });
     await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Source removed"));

@@ -1,9 +1,7 @@
-import { TriangleAlert } from "lucide-react";
 import { useNavigate } from "react-router";
 
+import { DangerAction, DangerButton, DangerZone } from "@/components/settings/DangerZone";
 import { RestrictedMembersLoseAccess } from "@/components/settings/RestrictedMembersLoseAccess";
-import { SettingsCard } from "@/components/settings/SettingsCard";
-import { Button } from "@/components/ui/button";
 import { useDeleteProject, useFetchProjectDeleteImpact } from "@/hooks/ProjectHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import type { DeleteImpact, Project } from "@/models/Project";
@@ -12,17 +10,20 @@ interface ProjectDangerZoneSectionProps {
   project: Project;
 }
 
+const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
+
+const isBlocked = (impact: DeleteImpact) => impact.tickets > 0 || impact.repos > 0 || impact.services > 0;
+
 const buildImpactMessage = (impact: DeleteImpact): string =>
   [
-    "This project still has affected work:",
+    "This project still has work in it:",
     `- ${impact.tickets} ticket${impact.tickets === 1 ? "" : "s"}`,
     `- ${impact.repos} repo${impact.repos === 1 ? "" : "s"}`,
     `- ${impact.services} service${impact.services === 1 ? "" : "s"}`,
     "",
-    "Move or delete them first — every ticket, repo, and service must belong to a project.",
+    "Move or delete them first. Every ticket, repo, and service needs a project.",
   ].join("\n");
 
-// SettingsCard's `danger` prop supplies the red-outlined border and icon-badge tone here.
 export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionProps) => {
   const navigate = useNavigate();
   const deleteProject = useDeleteProject();
@@ -31,8 +32,7 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
 
   const onDelete = async () => {
     if (!impact) return;
-    const blocked = impact.tickets > 0 || impact.repos > 0 || impact.services > 0;
-    if (blocked) {
+    if (isBlocked(impact)) {
       await confirmDelete({
         message: buildImpactMessage(impact),
         title: `Remove ${project.name}?`,
@@ -43,9 +43,9 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
     }
     const losing = impact.restricted_members ?? [];
     const ok = await confirmDelete({
-      message: "This project is empty and can be removed. This cannot be undone.",
+      message: "The project is empty. Removing it can't be undone.",
       title: `Remove ${project.name}?`,
-      confirmLabel: "Remove",
+      confirmLabel: "Remove project",
       details: losing.length > 0 && <RestrictedMembersLoseAccess members={losing} />,
     });
     if (!ok) return;
@@ -54,15 +54,24 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
   };
 
   return (
-    <SettingsCard id="danger-zone" title="Danger zone" danger icon={TriangleAlert}>
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <p className="text-sm text-muted-foreground">
-          Remove this project and all associated data. This cannot be undone.
-        </p>
-        <Button variant="destructive" className="shrink-0" loading={deleteProject.isPending} onClick={() => void onDelete()}>
-          Remove project
-        </Button>
-      </div>
-    </SettingsCard>
+    <DangerZone>
+      <DangerAction
+        title="Remove project"
+        consequence="Removes this project for good. Only an empty project can be removed."
+        details={
+          impact &&
+          isBlocked(impact) && (
+            <p className="pt-1 font-mono text-xs text-muted-foreground">
+              Still holds {plural(impact.tickets, "ticket")} · {plural(impact.repos, "repo")} · {plural(impact.services, "service")}
+            </p>
+          )
+        }
+        action={
+          <DangerButton loading={deleteProject.isPending} onClick={() => void onDelete()}>
+            Remove project
+          </DangerButton>
+        }
+      />
+    </DangerZone>
   );
 };

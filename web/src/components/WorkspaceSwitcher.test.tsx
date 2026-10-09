@@ -148,16 +148,16 @@ describe("WorkspaceSwitcher", () => {
     expect(useWorkspaceStore.getState().selectedWorkspaceId).toBe("ws-2");
   });
 
-  it("hides the New Workspace row without workspaces:create", async () => {
+  it("hides the New workspace row without workspaces:create", async () => {
     mockApi(workspaces);
     const user = userEvent.setup();
     renderSwitcher();
 
     await user.click(await screen.findByText("Globex"));
-    expect(screen.queryByText("New Workspace")).not.toBeInTheDocument();
+    expect(screen.queryByText("New workspace")).not.toBeInTheDocument();
   });
 
-  it("shows the New Workspace row with workspaces:create, and creates + switches on submit", async () => {
+  it("shows the New workspace row with workspaces:create, and creates + switches on submit", async () => {
     mockApi(workspaces, { ...baseMe, instance_permissions: ["workspaces:create"] });
     vi.mocked(api.post).mockResolvedValue({
       data: { id: "ws-3", name: "New Co", slug: "new-co", created_at: "", updated_at: "" },
@@ -166,7 +166,7 @@ describe("WorkspaceSwitcher", () => {
     renderSwitcher();
 
     await user.click(await screen.findByText("Globex"));
-    await user.click(screen.getByText("New Workspace"));
+    await user.click(screen.getByText("New workspace"));
 
     await user.type(screen.getByLabelText("Workspace name"), "New Co");
     await user.click(screen.getByRole("button", { name: "Create workspace" }));
@@ -179,7 +179,7 @@ describe("WorkspaceSwitcher", () => {
     mockApi(workspaces);
     renderSwitcher(true);
 
-    await screen.findByTitle("Globex");
+    await screen.findByRole("button", { name: "Globex" });
     expect(screen.queryByText("Globex")).not.toBeInTheDocument();
   });
 });

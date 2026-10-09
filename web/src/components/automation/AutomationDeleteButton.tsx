@@ -1,6 +1,4 @@
-import { Trash2 } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
+import { DangerAction, DangerButton, DangerZone } from "@/components/settings/DangerZone";
 import { useDeleteAutomation } from "@/hooks/AutomationHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 
@@ -16,7 +14,8 @@ export const AutomationDeleteButton = ({ automationId, onDeleted }: AutomationDe
   const onClick = async () => {
     const ok = await confirm({
       title: "Delete this automation?",
-      message: "This permanently removes its config, token, run history, and version history.",
+      message: "Its config, token, runs, and versions go with it. This can't be undone.",
+      confirmLabel: "Delete automation",
       destructive: true,
     });
     if (!ok) return;
@@ -25,11 +24,16 @@ export const AutomationDeleteButton = ({ automationId, onDeleted }: AutomationDe
   };
 
   return (
-    <div className="rounded-lg border border-destructive/30 p-4">
-      <Button type="button" variant="destructive" size="sm" onClick={onClick} loading={deleteAutomation.isPending}>
-        <Trash2 className="size-4" />
-        Delete automation
-      </Button>
-    </div>
+    <DangerZone>
+      <DangerAction
+        title="Delete automation"
+        consequence="Removes its config, token, runs, and versions for good. Its token stops working at once."
+        action={
+          <DangerButton onClick={() => void onClick()} loading={deleteAutomation.isPending}>
+            Delete automation
+          </DangerButton>
+        }
+      />
+    </DangerZone>
   );
 };

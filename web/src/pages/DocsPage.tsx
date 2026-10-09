@@ -1,9 +1,11 @@
+import { FileTextIcon } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Navigate, useParams } from "react-router";
 
 import { DocsListPane } from "@/components/doc/DocsListPane";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ListDetailLayout } from "@/components/listpane/ListDetailLayout";
+import { ListDetailPlaceholder } from "@/components/listpane/ListDetailPlaceholder";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoProjectsState } from "@/components/project/NoProjectsState";
 import { useFetchDoc, useFetchDocsByProject } from "@/hooks/DocHooks";
@@ -23,7 +25,7 @@ export const DocsPage = () => {
   const { data: bareDoc } = useFetchDoc(projectToken ? undefined : docId);
 
   return (
-    <div>
+    <div className="h-full">
       {bareDoc && projects && <Navigate replace to={wsPath(docPath(projectTokenById(projects, bareDoc.project_id), bareDoc.id))} />}
       {projects && projects.length === 0 && (
         <div className="p-6">
@@ -31,12 +33,19 @@ export const DocsPage = () => {
         </div>
       )}
       {current && isPending && <LoadingDisplay label="Loading docs…" />}
-      {error && <ErrorDisplay error={error} title="Failed to load docs." />}
+      {error && <ErrorDisplay error={error} title="Couldn't load docs." />}
       {current && docs && (
         <ListDetailLayout
           hasSelection={!!docId}
           list={<DocsListPane docs={docs} project={current} selectedId={docId} />}
-          placeholder="Select a doc"
+          placeholder={
+            <ListDetailPlaceholder
+              icon={FileTextIcon}
+              title={docs.length === 0 ? "Nothing to open yet" : "Select a doc"}
+              summary={docs.length === 0 ? `${current.name} has no docs.` : `${docs.length} ${docs.length === 1 ? "doc" : "docs"} in ${current.name}`}
+              searchable={docs.length > 0}
+            />
+          }
           detail={
             <Suspense fallback={<LoadingDisplay />}>
               <DocPage key={docId} />

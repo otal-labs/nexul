@@ -42,6 +42,33 @@ describe("EditableStackRoot", () => {
     expect(mocks.patch).toHaveBeenCalledWith("/api/machines/m-1", { stack_root: "/srv/data" });
   });
 
+  it("saves once when the check button is clicked", async () => {
+    const user = userEvent.setup();
+    renderField();
+
+    await user.click(screen.getByText("/data/nexul"));
+    const input = screen.getByLabelText("Stack root");
+    await user.clear(input);
+    await user.type(input, "/srv/data");
+    await user.click(screen.getByRole("button", { name: "Save stack root" }));
+
+    expect(mocks.patch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps editing when the save fails", async () => {
+    mocks.patch.mockRejectedValue(new Error("Request failed with status code 400"));
+    const user = userEvent.setup();
+    renderField();
+
+    await user.click(screen.getByText("/data/nexul"));
+    const input = screen.getByLabelText("Stack root");
+    await user.clear(input);
+    await user.type(input, "/srv/data{Enter}");
+
+    expect(await screen.findByLabelText("Stack root")).toHaveValue("/srv/data");
+    expect(mocks.toast.error).toHaveBeenCalledWith("boom");
+  });
+
   it("cancels without saving", async () => {
     const user = userEvent.setup();
     renderField();

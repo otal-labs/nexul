@@ -9,10 +9,10 @@ interface ColorPickerProps {
   allowNone?: boolean;
 }
 
-// Selection uses a ring, not an underline — a border-bottom read as a rendering glitch.
+// Selection uses a ring, not an underline (a border-bottom read as a rendering glitch); the hues not picked sit back so a long list of rows shows its choices.
 const optionClass = (active: boolean) =>
   cn(
-    "inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-150 ease-standard focus-visible:border-ring focus-visible:outline-none",
+    "group/swatch inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-150 ease-standard focus-visible:border-ring focus-visible:outline-none",
     active ? "border-foreground/60" : "border-transparent hover:border-border",
   );
 
@@ -41,7 +41,14 @@ export const ColorPicker = ({ label, value, onChange, allowNone = true }: ColorP
         className={optionClass(value === hue)}
         onClick={() => onChange(hue)}
       >
-        <span className={cn("size-4 rounded-full", HUE_DOT_CLASS[hue])} aria-hidden />
+        <span
+          className={cn(
+            "size-4 rounded-full transition-opacity duration-150 ease-standard",
+            HUE_DOT_CLASS[hue],
+            value !== hue && "opacity-35 group-hover/swatch:opacity-100 group-focus-visible/swatch:opacity-100",
+          )}
+          aria-hidden
+        />
       </button>
     ))}
   </div>

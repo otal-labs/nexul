@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { microheaderClass } from "@/components/Microheader";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { TrailDetail } from "@/components/play/TrailDetail";
 import { TrailRow } from "@/components/play/TrailRow";
@@ -18,9 +19,6 @@ interface TrailSectionProps {
   className?: string;
 }
 
-const microheaderClass =
-  "px-2 pb-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase";
-
 // Renders nothing with zero trails unless given emptyMessage, so a doc nobody has run a play on shows no empty section.
 export const TrailSection = ({ workspaceId, targetType, targetId, emptyMessage, rowLayout = "inline", className }: TrailSectionProps) => {
   const { data: trails, error } = useFetchTrails(targetType, targetId);
@@ -32,8 +30,8 @@ export const TrailSection = ({ workspaceId, targetType, targetId, emptyMessage, 
 
   return (
     <section className={cn("space-y-0.5 border-t border-border pt-6", className)}>
-      <h2 className={microheaderClass}>Trail</h2>
-      {error && <ErrorDisplay error={error} title="Failed to load the trail" />}
+      <h2 className={cn(microheaderClass, "px-2 pb-1")}>Trail</h2>
+      {error && <ErrorDisplay error={error} title="Couldn't load the trail." />}
       {loadedEmpty && <p className="px-2 text-xs text-muted-foreground">{emptyMessage}</p>}
       {trails && trails.length > 0 && (
         <ul className="flex flex-col">

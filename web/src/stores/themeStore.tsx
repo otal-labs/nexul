@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import { AppearanceMode, ThemeId, ThemeName, type AppearanceMode as AppearanceModeType, type ThemeId as ThemeIdType, type ThemeName as ThemeNameType } from "@/enums/Theme";
+import { withoutTransitions } from "@/lib/motion";
 import { applyThemePalette } from "@/lib/themePalettes";
 
 export const MIN_GLASS_OPACITY = 40;
@@ -49,24 +50,30 @@ export const useThemeStore = create<ThemeStore>()(
       glassOpacity: DEFAULT_GLASS_OPACITY,
       setTheme: (theme) => {
         set({ theme, appearanceMode: theme });
-        applyTheme(theme);
-        applyThemePalette(get().themeId, theme);
+        withoutTransitions(() => {
+          applyTheme(theme);
+          applyThemePalette(get().themeId, theme);
+        });
       },
       toggleTheme: () => {
         const next = get().theme === ThemeName.Dark ? ThemeName.Light : ThemeName.Dark;
         set({ theme: next, appearanceMode: next });
-        applyTheme(next);
-        applyThemePalette(get().themeId, next);
+        withoutTransitions(() => {
+          applyTheme(next);
+          applyThemePalette(get().themeId, next);
+        });
       },
       setAppearanceMode: (mode) => {
         const resolved = resolveAppearance(mode);
         set({ appearanceMode: mode, theme: resolved });
-        applyTheme(resolved);
-        applyThemePalette(get().themeId, resolved);
+        withoutTransitions(() => {
+          applyTheme(resolved);
+          applyThemePalette(get().themeId, resolved);
+        });
       },
       setThemeId: (id) => {
         set({ themeId: id });
-        applyThemePalette(id, get().theme);
+        withoutTransitions(() => applyThemePalette(id, get().theme));
       },
       setGlassOpacity: (value) => {
         const clamped = Math.min(MAX_GLASS_OPACITY, Math.max(MIN_GLASS_OPACITY, value));

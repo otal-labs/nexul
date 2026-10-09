@@ -21,21 +21,11 @@ export const BoardSettingsSection = ({ projectId }: BoardSettingsSectionProps) =
 
   return (
     <div>
-      <div className="border-b border-border pb-4">
-        <h2 className="text-lg font-semibold tracking-tight">Board columns & types</h2>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Columns sit under five fixed stages (Backlog, Progress, Review, Testing, Done) and are
-          project-level: every swimlane on this project&apos;s board shows the same columns. Leave a stage
-          empty to skip it on this project. A column still holding tickets cannot be removed.
-        </p>
-      </div>
-
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {statuses && (
         <PageTabs
           label="Board settings"
-          className="mt-6"
           tabs={[
             { value: "columns", label: "Status columns" },
             { value: "types", label: "Ticket types" },

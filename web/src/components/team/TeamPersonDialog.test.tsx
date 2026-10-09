@@ -105,7 +105,7 @@ describe("Team dialog", () => {
     await pickRole(user, "Nexul", "Editor");
     await user.click(dialog.getByRole("button", { name: "Cancel" }));
     const prompt = within(await screen.findByRole("dialog", { name: "Discard changes?" }));
-    await user.click(prompt.getByRole("button", { name: "Discard" }));
+    await user.click(prompt.getByRole("button", { name: "Discard changes" }));
 
     await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Bob" })).not.toBeInTheDocument());
     expect(mocks.patch).not.toHaveBeenCalled();

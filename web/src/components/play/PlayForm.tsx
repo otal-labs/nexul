@@ -59,7 +59,7 @@ export const PlayForm = ({ workspaceId, editing }: PlayFormProps) => {
       {editing && (
         <p className="text-sm text-muted-foreground">
           Type: <span className="font-medium text-foreground">{PLAY_TYPE_LABELS[editing.type]}</span>
-          {" — can't change after create"}
+          {". It can't change once created."}
         </p>
       )}
 

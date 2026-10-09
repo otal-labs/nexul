@@ -34,7 +34,7 @@ export const CloneDocForm = ({ docId }: CloneDocFormProps) => {
     <div className="space-y-2">
       {error && <ErrorDisplay error={error} />}
       <FormSelect control={control} name="project_id" label="Destination" options={options} />
-      <p className="text-xs text-muted-foreground">Its own project makes a copy beside it.</p>
+      <p className="text-xs text-muted-foreground">Pick its own project to copy it in place.</p>
     </div>
   );
 };

@@ -19,7 +19,8 @@ export const MemoryVersionRevertButton = ({ memoryId, version, compact = false }
   const onRevert = async () => {
     const ok = await confirm({
       title: `Revert to version ${version.version}?`,
-      message: "This appends a new version with this version's content; nothing in the history is deleted.",
+      message: "This version's content is saved as a new version. Nothing in the history is deleted.",
+      confirmLabel: "Revert",
     });
     if (ok) revert.mutate({ id: memoryId, version: version.version });
   };

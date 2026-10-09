@@ -4,6 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 import { useDocFolderActions } from "@/hooks/useDocFolderActions";
 import type { DocFolder } from "@/models/DocFolder";
 
+vi.mock("react-router", () => ({ useNavigate: () => vi.fn() }));
+vi.mock("@/hooks/useWorkspacePath", () => ({ useWorkspacePath: () => (path: string) => path }));
+vi.mock("@/hooks/ProjectHooks", () => ({ useFetchProjects: () => ({ data: [] }) }));
 vi.mock("@/hooks/useCreateDocDialog", () => ({ useCreateDocDialog: () => () => undefined }));
 vi.mock("@/hooks/WorkspaceHooks", () => ({ useHasPermission: () => true }));
 vi.mock("@/hooks/useFormDialog", () => ({ useFormDialog: () => ({ open: vi.fn() }) }));

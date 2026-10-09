@@ -61,7 +61,7 @@ describe("ProjectServices", () => {
   it("shows an empty state when there are no services", async () => {
     renderServices([]);
     expect(
-      await screen.findByText("No services in this project yet — create one to define its first deploy."),
+      await screen.findByText("No services yet. Create one to set up its first deploy."),
     ).toBeInTheDocument();
   });
 

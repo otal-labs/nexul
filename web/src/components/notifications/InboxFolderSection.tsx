@@ -20,7 +20,7 @@ export const InboxFolderSection = ({ folder }: InboxFolderSectionProps) => {
           open={open}
           onToggle={() => toggle(folder.key)}
           meta={folder.summary}
-          metaClassName="normal-case tracking-normal"
+          metaClassName="min-w-0 shrink grow basis-0 truncate text-right normal-case tracking-normal"
           className={cn(folder.unread && "text-foreground")}
         />
       </div>

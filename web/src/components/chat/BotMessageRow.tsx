@@ -4,34 +4,36 @@ import { EmbedStack } from "@/components/chat/EmbedStack";
 import { MessageActions } from "@/components/chat/MessageActions";
 import { MessageReactions } from "@/components/chat/MessageReactions";
 import { MessageContinuationTime } from "@/components/chat/MessageRowHeader";
+import { microheaderClass } from "@/components/Microheader";
 import { Badge } from "@/components/ui/badge";
 import { Message, MessageAvatar, MessageContent, MessageHeader } from "@/components/ui/message";
 import { BotMessageIdContext } from "@/hooks/BotMediaHooks";
 import { cn } from "@/lib/utils";
 import type { Message as ChatMessage } from "@/models/Chat";
-import { formatFullTime, formatRelativeTime } from "@/utils/TimeUtility";
+import { dropEchoedAuthor } from "@/models/Embed";
+import { formatClockTime, formatFullTime } from "@/utils/TimeUtility";
 
 const BotMessageHeader = ({ message }: { message: ChatMessage }) => (
   <MessageHeader className="gap-2 px-1">
     <span className="min-w-0 truncate text-xs font-semibold text-foreground">{message.author_name || "Bot"}</span>
-    <Badge variant="outline" className="h-4 shrink-0 px-1 text-[9px] tracking-wide uppercase">
+    <Badge variant="outline" className={cn(microheaderClass, "h-4 shrink-0 px-1")}>
       Bot
     </Badge>
-    {message.via && <span className="shrink-0 text-[11px]">via {message.via}</span>}
-    <span className="shrink-0 font-mono text-[11px]" title={formatFullTime(message.created_at)}>
-      {formatRelativeTime(message.created_at)}
+    {message.via && <span className="shrink-0">via {message.via}</span>}
+    <span className="shrink-0 font-mono" title={formatFullTime(message.created_at)}>
+      {formatClockTime(message.created_at)}
     </span>
   </MessageHeader>
 );
 
 // Text and every embed share one bubble, widened when it carries an embed. Readers only react: bots are managed in settings.
 const BotMessageBubble = ({ message }: { message: ChatMessage }) => {
-  const embeds = message.embeds ?? [];
+  const embeds = (message.embeds ?? []).map((embed) => dropEchoedAuthor(embed, message.author_name ?? ""));
   return (
     <div
       data-slot="bubble"
       className={cn(
-        "relative w-fit max-w-[75%] space-y-1.5 rounded-2xl rounded-bl-md bg-accent px-3 py-2 text-sm break-words text-accent-foreground",
+        "relative w-fit max-w-[72ch] space-y-1.5 text-sm break-words",
         embeds.length > 0 && "w-full max-w-[38rem]",
       )}
     >
@@ -49,7 +51,7 @@ export const BotMessageRow = ({ message, continuation }: { message: ChatMessage;
   <BotMessageIdContext value={message.id}>
     <Message align="start" className="group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
       {!continuation && (
-        <MessageAvatar className="size-6 self-start bg-transparent">
+        <MessageAvatar className="size-8 self-start bg-transparent">
           <BotAvatar src={message.author_avatar_url} />
         </MessageAvatar>
       )}

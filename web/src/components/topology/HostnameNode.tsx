@@ -5,7 +5,7 @@ import type { HostnameNode as HostnameNodeType } from "@/models/Topology";
 
 // A public entry point, derived from an exposure. Sized to its text: nothing on the canvas truncates.
 export const HostnameNode = ({ data }: NodeProps<HostnameNodeType>) => (
-  <div className="flex h-10 w-max items-center gap-2 rounded-full border border-border bg-card px-3 shadow-card">
+  <div className="canvas-card flex h-10 w-max items-center gap-2 rounded-full px-3">
     <GlobeIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
     <a
       href={`https://${data.hostname}`}

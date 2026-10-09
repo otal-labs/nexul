@@ -63,7 +63,7 @@ export const CreateDocForm = ({ defaultProjectId = "" }: CreateDocFormProps) => 
         }
       }}
     >
-      {noProjects && <NoDataDisplay message="Create a project first — every doc belongs to exactly one project." />}
+      {noProjects && <NoDataDisplay message="Create a project first. Every doc belongs to one." />}
       {!noProjects && (
         <div className="space-y-3">
           <div>

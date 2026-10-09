@@ -28,7 +28,7 @@ describe("buildSections", () => {
 
   it("adds one section per follow-up round, numbered in order", () => {
     const sections = buildSections([question("Stack?")], [answer(2, "B"), answer(1, "A")]);
-    expect(sections.map((s) => s.label)).toEqual(["Initial questions", "Follow-ups from the agent 1", "Follow-ups from the agent 2"]);
+    expect(sections.map((s) => s.label)).toEqual(["Initial questions", "Follow-ups, round 1", "Follow-ups, round 2"]);
     expect(sections[1]?.rows[0]?.item.text).toBe("A");
   });
 });

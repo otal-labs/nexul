@@ -5,9 +5,11 @@ import { toast } from "sonner";
 
 import { errorMessage } from "@/api/client";
 import { FormInput } from "@/components/FormInput";
+
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
 import { WorkspaceUrlField } from "@/components/settings/WorkspaceUrlField";
-import { Button } from "@/components/ui/button";
+import { useFlash } from "@/hooks/useFlash";
 import { useUpdateWorkspace } from "@/hooks/WorkspaceHooks";
 import { WorkspaceGeneralFormSchema, type Workspace, type WorkspaceGeneralFormData } from "@/models/Workspace";
 
@@ -24,6 +26,7 @@ const refusedSlug = (error: unknown) => {
 // Gated on workspaces:write by the parent, like every workspace section.
 export const WorkspaceGeneralSection = ({ workspace }: WorkspaceGeneralSectionProps) => {
   const updateWorkspace = useUpdateWorkspace();
+  const [saved, flash] = useFlash();
   const form = useForm<WorkspaceGeneralFormData>({
     mode: "onChange",
     defaultValues: { name: workspace.name, slug: workspace.slug },
@@ -40,7 +43,7 @@ export const WorkspaceGeneralSection = ({ workspace }: WorkspaceGeneralSectionPr
     try {
       const saved = await updateWorkspace.mutateAsync({ id: workspace.id, ...changes });
       form.reset({ name: saved.name, slug: saved.slug });
-      toast.success("Workspace updated");
+      flash();
     } catch (error) {
       if (refusedSlug(error)) return form.setError("slug", { message: errorMessage(error) });
       toast.error(errorMessage(error));
@@ -53,9 +56,13 @@ export const WorkspaceGeneralSection = ({ workspace }: WorkspaceGeneralSectionPr
       title="Workspace"
       description="Its name in the sidebar and the switcher, and its address in every link."
       footer={
-        <Button type="submit" form="workspace-general" disabled={!isDirty || !isValid} loading={isSubmitting}>
-          Save
-        </Button>
+        <SettingsSaveBar
+          form="workspace-general"
+          dirty={isDirty && isValid}
+          saving={isSubmitting}
+          saved={saved}
+          onDiscard={() => form.reset()}
+        />
       }
     >
       <FormProvider {...form}>

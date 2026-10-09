@@ -4,14 +4,19 @@ import { Container } from "@/components/Container";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import type { Crumb } from "@/components/PageBreadcrumb";
+import { PageHeader } from "@/components/PageHeader";
+import { ProjectMark } from "@/components/project/ProjectMark";
 import {
   DEFAULT_PROJECT_SETTINGS_SECTION,
   isProjectSettingsSection,
 } from "@/components/settings/ProjectSettingsNav";
 import { ProjectSettingsContent } from "@/components/settings/ProjectSettingsContent";
+import { ProjectSettingsMeta } from "@/components/settings/ProjectSettingsMeta";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchProject, useFetchProjects } from "@/hooks/ProjectHooks";
+import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { resolveProject } from "@/models/Project";
 
@@ -26,9 +31,19 @@ export const ProjectSettingsPage = () => {
   const notFound = !isPending && !error && !resolved;
   const { data: project } = useFetchProject(projectId);
   const section = isProjectSettingsSection(rawSection) ? rawSection : DEFAULT_PROJECT_SETTINGS_SECTION;
+  const workspaceCrumb = useWorkspaceCrumb();
+  const projectCrumb = useProjectCrumb(resolved?.id);
+  const crumbs: Crumb[] = projectCrumb ? [workspaceCrumb, projectCrumb] : [workspaceCrumb];
 
   return (
-    <Container className="mx-auto max-w-5xl py-8">
+    <Container size="page" className="py-8">
+      <PageHeader
+        className="mb-8"
+        crumbs={crumbs}
+        title="Settings"
+        leading={project && <ProjectMark project={project} />}
+        meta={project && <ProjectSettingsMeta project={project} />}
+      />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {notFound && (

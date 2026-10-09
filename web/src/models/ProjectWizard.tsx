@@ -12,9 +12,9 @@ const labels: Record<WizardStepId, string> = {
 };
 
 const descriptions: Partial<Record<WizardStepId, string>> = {
-  repository: "Pick the repository to deploy; Nexul reads its Dockerfile or compose file.",
-  reach: "Optional — give this service a hostname now, or do it later from the stack page.",
-  branches: "Optional — deploy other branches as their own copies, each at its own URL.",
+  repository: "Pick the repository to deploy. Nexul reads its Dockerfile or compose file.",
+  reach: "Optional. Give this service a hostname now, or later from the stack page.",
+  branches: "Optional. Deploy other branches as their own copies, each at its own URL.",
 };
 
 // Attach mode adopts an existing stack, so its service rung is named for what it does.

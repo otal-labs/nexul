@@ -1,5 +1,10 @@
+import { EmptyRow } from "@/components/EmptyRow";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ServicesFeed } from "@/components/service/ServicesFeed";
+import { SettingsCard } from "@/components/settings/SettingsCard";
 import { AddServiceLink } from "@/components/wizard/AddServiceLink";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchServices } from "@/hooks/ServiceHooks";
 
 interface ProjectServicesProps {
@@ -7,22 +12,28 @@ interface ProjectServicesProps {
 }
 
 export const ProjectServices = ({ projectId }: ProjectServicesProps) => {
-  const { data: services } = useFetchServices(projectId);
+  const { data: services, isPending, error } = useFetchServices(projectId);
+  const canAdd = useAreaAccess()?.("newProject") ?? false;
 
   return (
-    <div className="mt-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium">Services</span>
-        <AddServiceLink projectId={projectId} variant="ghost" size="sm">
-          New service
-        </AddServiceLink>
-      </div>
+    <SettingsCard
+      id="services"
+      title="Services"
+      description="What this project deploys, each with its own deploys, logs, and hostnames."
+      footer={
+        canAdd && (
+          <AddServiceLink projectId={projectId} variant="outline" size="sm">
+            New service
+          </AddServiceLink>
+        )
+      }
+    >
+      {isPending && <LoadingDisplay />}
+      {error && <ErrorDisplay error={error} />}
       {services && services.length === 0 && (
-        <p className="mt-2 text-sm text-muted-foreground">
-          No services in this project yet — create one to define its first deploy.
-        </p>
+        <EmptyRow>No services yet. Create one to set up its first deploy.</EmptyRow>
       )}
       {services && services.length > 0 && <ServicesFeed services={services} />}
-    </div>
+    </SettingsCard>
   );
 };

@@ -1,8 +1,6 @@
-import { TriangleAlert } from "lucide-react";
 import { useNavigate } from "react-router";
 
-import { SettingsCard } from "@/components/settings/SettingsCard";
-import { Button } from "@/components/ui/button";
+import { DangerAction, DangerButton, DangerZone } from "@/components/settings/DangerZone";
 import { useDeleteStack } from "@/hooks/StackHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import type { Stack } from "@/models/Stack";
@@ -21,12 +19,12 @@ export const StackDangerZoneSection = ({ stack, projectPath, hostnames }: StackD
   const onDelete = async () => {
     const releaseClause =
       hostnames.length > 0
-        ? `releases ${hostnames.join(", ")} from the reverse proxy or Cloudflare tunnel`
-        : "releases its hostnames from the reverse proxy or Cloudflare tunnel";
+        ? `${hostnames.join(", ")} stop routing to it`
+        : "its hostnames stop routing to it";
     const ok = await confirmDelete({
-      message: `This removes the stack definition and its containers, and ${releaseClause}. Deploy history is kept for audit.`,
+      message: `The stack and its containers are removed, and ${releaseClause}. Deploy history is kept.`,
       title: `Delete ${stack.name}?`,
-      confirmLabel: "Delete",
+      confirmLabel: "Delete stack",
     });
     if (!ok) return;
     await deleteStack.mutateAsync(stack.id);
@@ -34,32 +32,27 @@ export const StackDangerZoneSection = ({ stack, projectPath, hostnames }: StackD
   };
 
   return (
-    <SettingsCard id="danger-zone" title="Danger zone" danger icon={TriangleAlert}>
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Remove this stack definition and its containers, and release its hostnames from the reverse proxy
-            or Cloudflare tunnel. Deploy history is kept for audit.
-          </p>
-          {hostnames.length > 0 && (
-            <ul className="space-y-0.5">
+    <DangerZone>
+      <DangerAction
+        title="Delete stack"
+        consequence="Removes the stack and its containers. Its hostnames stop routing to it. Deploy history is kept."
+        details={
+          hostnames.length > 0 && (
+            <ul className="space-y-0.5 pt-1">
               {hostnames.map((hostname) => (
-                <li key={hostname} className="text-xs text-muted-foreground font-mono">
+                <li key={hostname} className="font-mono text-xs wrap-anywhere text-muted-foreground">
                   {hostname}
                 </li>
               ))}
             </ul>
-          )}
-        </div>
-        <Button
-          variant="destructive"
-          className="shrink-0"
-          loading={deleteStack.isPending}
-          onClick={() => void onDelete()}
-        >
-          Delete stack
-        </Button>
-      </div>
-    </SettingsCard>
+          )
+        }
+        action={
+          <DangerButton loading={deleteStack.isPending} onClick={() => void onDelete()}>
+            Delete stack
+          </DangerButton>
+        }
+      />
+    </DangerZone>
   );
 };

@@ -11,8 +11,8 @@ interface DocViewSwitchProps {
 export const DocViewSwitch = ({ view, waiting, onChange }: DocViewSwitchProps) => (
   <ToggleGroup
     type="single"
-    variant="outline"
-    size="sm"
+    variant="segmented"
+    size="xs"
     value={view}
     // Radix reports "" when the active item is clicked again; keep the current view.
     onValueChange={(value) => value && onChange(value as DocView)}

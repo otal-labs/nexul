@@ -44,7 +44,7 @@ export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) =
 
   const close = async () => {
     if (steps.length > 0) {
-      const discard = await ask({ title: "Discard changes?", message: "What you changed here hasn't been confirmed and will be lost.", confirmLabel: "Discard" });
+      const discard = await ask({ title: "Discard changes?", message: "Your unconfirmed changes here will be lost.", confirmLabel: "Discard changes" });
       if (!discard) return;
     }
     finish();
@@ -77,11 +77,11 @@ export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) =
           <DialogHeader className="flex-row items-center gap-3 px-6 pt-6 pb-4 pr-12 text-left">
             <PersonAvatar login={person.login} src={person.avatar_url} className="size-10" />
             <div className="min-w-0 flex-1 space-y-1">
-              <DialogTitle className="truncate">{personName(person)}</DialogTitle>
+              <DialogTitle dir="auto" className="line-clamp-2 break-words">{personName(person)}</DialogTitle>
               <DialogDescription className="truncate font-mono text-xs">@{person.login}</DialogDescription>
               <p className="flex items-center gap-3 text-sm text-muted-foreground">
                 {presenceText(person)}
-                <AccountStatusLabel status={person.status} online={person.online} />
+                <AccountStatusLabel status={person.status} />
               </p>
             </div>
           </DialogHeader>

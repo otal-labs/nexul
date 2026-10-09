@@ -164,7 +164,7 @@ describe("BoardPage", () => {
   it("shows an error state", async () => {
     vi.mocked(api.get).mockRejectedValue(new Error("boom"));
     renderPage();
-    expect(await screen.findByText("Failed to load the board.")).toBeInTheDocument();
+    expect(await screen.findByText("Couldn't load the board.")).toBeInTheDocument();
   });
 
   it("creates a ticket through the relocated dialog", async () => {
@@ -177,7 +177,7 @@ describe("BoardPage", () => {
 
     await openCreateMenuItem(user, "New ticket");
     await user.type(await screen.findByLabelText("Title"), "Ship board create");
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create ticket" }));
 
     expect(api.post).toHaveBeenCalledWith("/api/tickets", {
       title: "Ship board create",
@@ -272,7 +272,7 @@ describe("BoardPage", () => {
   it("shows the create-first-ticket empty state on a pristine board — the URL scope is not a filter", async () => {
     mockGet([], projects, []);
     renderPage();
-    expect(await screen.findByText("No tickets yet — create the first one.")).toBeInTheDocument();
+    expect(await screen.findByText("No tickets yet. Create one to start the board.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Filter" })).toBeInTheDocument();
   });
 
@@ -298,7 +298,7 @@ describe("BoardPage", () => {
     });
     renderPage();
     expect(
-      screen.queryByText("No tickets match the active filters."),
+      screen.queryByText("No tickets match these filters."),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Filter" })).not.toBeInTheDocument();
   });
@@ -369,7 +369,7 @@ describe("BoardPage routing", () => {
   it("shows an error state when the project list itself fails to load", async () => {
     vi.mocked(api.get).mockRejectedValue(new Error("boom"));
     renderPage("/acme/board");
-    expect(await screen.findByText("Failed to load the board.")).toBeInTheDocument();
+    expect(await screen.findByText("Couldn't load the board.")).toBeInTheDocument();
   });
 });
 

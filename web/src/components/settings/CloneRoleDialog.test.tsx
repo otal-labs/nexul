@@ -60,7 +60,7 @@ describe("CloneRoleDialog", () => {
   it("offers nothing to submit when the user has no other workspace", async () => {
     const { onClose } = renderDialog([workspace("ws-1", "Engineering")]);
 
-    expect(await screen.findByText("You aren't in any other workspace to clone this role into.")).toBeInTheDocument();
+    expect(await screen.findByText("You're not in any other workspace.")).toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Clone" })).not.toBeInTheDocument();
     await userEvent.setup().click(screen.getByRole("button", { name: "Cancel" }));

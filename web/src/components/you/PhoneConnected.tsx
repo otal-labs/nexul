@@ -13,7 +13,7 @@ export const PhoneConnected = ({ label }: PhoneConnectedProps) => (
       </span>
       <div className="min-w-0 space-y-3 text-sm">
         <p className="font-medium">{label} is connected</p>
-        <p className="text-muted-foreground">It's in your device list below. The code it used no longer works.</p>
+        <p className="text-muted-foreground">It's in your devices below. Its code no longer works.</p>
       </div>
     </div>
   </div>

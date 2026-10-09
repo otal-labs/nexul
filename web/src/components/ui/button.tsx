@@ -5,29 +5,30 @@ import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] duration-150 ease-standard outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-busy:[&>svg:not([data-slot=spinner])]:hidden [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,scale] duration-150 ease-out outline-none disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-busy:[&>svg:not([data-slot=spinner])]:hidden [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        // Ember orange fill, parchment text: the one CTA color in the whole system (CTA and active states only).
         default:
-          "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]",
+          "bg-brand text-brand-foreground hover:bg-brand/90",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 active:scale-[0.98]",
+          "bg-destructive-fill text-white hover:bg-destructive-fill/90",
         outline:
-          "border bg-background shadow-card hover:bg-accent hover:text-accent-foreground active:scale-[0.98]",
+          "border bg-card shadow-card hover:bg-accent hover:text-accent-foreground",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 active:scale-[0.98]",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+        link: "text-brand underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        sm: "h-8 gap-1.5 px-3 has-[>svg]:px-2.5",
-        lg: "h-10 px-6 has-[>svg]:px-4",
-        icon: "size-9",
+        // A labelled button presses in; an icon button answers with its background alone, in 120ms.
+        default: "h-9 px-4 py-2 has-[>svg]:px-3 motion-safe:active:scale-[0.97]",
+        sm: "h-8 gap-1.5 px-3 has-[>svg]:px-2.5 motion-safe:active:scale-[0.97]",
+        lg: "h-10 px-6 has-[>svg]:px-4 motion-safe:active:scale-[0.97]",
+        icon: "size-9 duration-[120ms]",
       },
     },
+    compoundVariants: [{ variant: "link", class: "motion-safe:active:scale-100" }],
     defaultVariants: {
       variant: "default",
       size: "default",

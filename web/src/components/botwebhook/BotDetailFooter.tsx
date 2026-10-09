@@ -20,7 +20,7 @@ export const BotDetailFooter = ({ bot, submitLabel, showSubmit, submitting, onNa
   const actions = useBotActions();
 
   const regenerate = async (target: Botwebhook) => {
-    if (await actions.regenerate(target)) onNavigate({ id: target.id, note: "New URL; the old one stopped working." });
+    if (await actions.regenerate(target)) onNavigate({ id: target.id, note: "New URL. The old one no longer works." });
   };
   const remove = async (target: Botwebhook) => {
     if (await actions.remove(target)) onNavigate(null);

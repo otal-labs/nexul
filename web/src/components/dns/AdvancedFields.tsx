@@ -17,7 +17,8 @@ export const AdvancedFields = ({ children }: AdvancedFieldsProps) => (
       />
       Advanced options
     </CollapsibleTrigger>
-    <CollapsibleContent className="overflow-hidden ease-out data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+    {/* The box snaps open or shut; only the fields fade and settle, so no frame lays out. */}
+    <CollapsibleContent className="ease-out data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-top-1 data-[state=open]:duration-200">
       <div className="space-y-4 pt-4">{children}</div>
     </CollapsibleContent>
   </Collapsible>

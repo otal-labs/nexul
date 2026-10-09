@@ -92,7 +92,7 @@ export const BoardFilterBar = ({
   });
 
   return (
-    <div className="@container animate-in fade-in-0 rounded-md border border-border bg-card px-3 py-2 shadow-card duration-150 ease-out motion-reduce:animate-none">
+    <div className="@container">
       {/* Equal side tracks centre search and Create on the board; a narrow board stacks them under the filters instead. */}
       <div className="grid grid-cols-1 items-center gap-2 @2xl:grid-cols-[minmax(max-content,1fr)_minmax(16rem,36rem)_1fr]">
         <div className="flex items-center gap-2 *:shrink-0">
@@ -117,7 +117,7 @@ export const BoardFilterBar = ({
               className="h-9 px-3 text-xs"
             >
               <FlaskConicalIcon className="size-3.5" />
-              Waiting for me to test
+              Mine to test
             </Button>
           )}
           {summaryLabel && <span className="whitespace-nowrap text-xs text-muted-foreground">{summaryLabel}</span>}

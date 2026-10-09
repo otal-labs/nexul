@@ -53,8 +53,8 @@ export const useSetFoundIn = () =>
   useLinkMutation(
     ({ id, originId }: { id: string; originId: string }) =>
       api.put(`/api/tickets/${id}/found-in`, { origin_id: originId }),
-    "Found-in set",
+    "Found in linked",
   );
 
 export const useRemoveFoundIn = () =>
-  useLinkMutation(({ id }: { id: string }) => api.delete(`/api/tickets/${id}/found-in`), "Found-in removed");
+  useLinkMutation(({ id }: { id: string }) => api.delete(`/api/tickets/${id}/found-in`), "Found in unlinked");

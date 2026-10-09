@@ -23,6 +23,6 @@ export const useImportMachine = () =>
   useMutation({
     mutationFn: async ({ machineId, input }: { machineId: string; input: ImportRequest }) =>
       (await api.post<ImportResult>(`/api/machines/${machineId}/import`, input)).data,
-    onSuccess: () => toast.success("Imported"),
+    onSuccess: () => toast.success("Stacks imported"),
     onError: (error) => toast.error(errorMessage(error)),
   });

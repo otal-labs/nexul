@@ -11,7 +11,9 @@ interface ChatSidebarRowProps {
   conversationId: string;
   label: string;
   icon: LucideIcon;
-  // A private channel trails a muted lock.
+  // Stands in for the icon: a direct message shows the person's avatar.
+  leading?: ReactNode;
+  // A private channel's lock takes the place of its glyph.
   isPrivate?: boolean | undefined;
   unreadCount: number;
   onClick?: (() => void) | undefined;
@@ -20,7 +22,7 @@ interface ChatSidebarRowProps {
 }
 
 // The sidebar is chat's only conversation list (ADR 0093), so the open conversation is the active row.
-export const ChatSidebarRow = ({ conversationId, label, icon: Icon, isPrivate, unreadCount, onClick, actions }: ChatSidebarRowProps) => {
+export const ChatSidebarRow = ({ conversationId, label, icon: Icon, leading, isPrivate, unreadCount, onClick, actions }: ChatSidebarRowProps) => {
   const wsPath = useWorkspacePath();
   const revealed = "group-hover/row:hidden group-has-[:focus-visible]/row:hidden group-has-[[data-state=open]]/row:hidden";
   return (
@@ -37,10 +39,11 @@ export const ChatSidebarRow = ({ conversationId, label, icon: Icon, isPrivate, u
         }
       >
         <span className="flex w-8 shrink-0 justify-center">
-          <Icon className="size-4" aria-hidden />
+          {leading}
+          {!leading && isPrivate && <LockIcon role="img" className="size-4" aria-label="Private" />}
+          {!leading && !isPrivate && <Icon className="size-4" aria-hidden />}
         </span>
-        <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-        {isPrivate && <LockIcon role="img" className="size-3 shrink-0 text-muted-foreground/70" aria-label="Private" />}
+        <span className={cn("min-w-0 flex-1 truncate text-left", unreadCount > 0 && "font-medium text-foreground")}>{label}</span>
         <UnreadBadge count={unreadCount} className={actions ? revealed : undefined} />
       </NavLink>
       {!!actions && (

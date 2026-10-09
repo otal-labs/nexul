@@ -29,7 +29,7 @@ export const OAuthProviderActions = ({ provider, clientId }: OAuthProviderAction
   const disable = async () => {
     const ok = await confirm({
       title: `Disable ${copy.label} sign-in?`,
-      message: `People who sign in with ${copy.label} can't until it is enabled again. Nobody is signed out.`,
+      message: `Nobody can sign in with ${copy.label} until you enable it again. Anyone already signed in stays signed in.`,
       confirmLabel: "Disable",
       destructive: true,
     });
@@ -38,12 +38,12 @@ export const OAuthProviderActions = ({ provider, clientId }: OAuthProviderAction
 
   return (
     <>
-      <Button variant="outline" size="sm" loading={update.isPending} onClick={() => void disable()}>
+      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" loading={update.isPending} onClick={() => void disable()}>
         Disable
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button size="sm">Edit</Button>
+          <Button size="sm" variant="outline">Edit</Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>

@@ -3,9 +3,11 @@ import { Navigate, useLocation, useParams } from "react-router";
 import { Container } from "@/components/Container";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PageHeader } from "@/components/PageHeader";
+import { SettingsHeaderMeta } from "@/components/settings/SettingsHeaderMeta";
 import { InstanceSettingsContent } from "@/components/settings/InstanceSettingsContent";
 import { isSettingsSection } from "@/components/settings/SettingsNav";
 import { YourSettingsContent } from "@/components/you/YourSettingsContent";
+import { SettingsShell } from "@/components/settings/SettingsShell";
 import {
   DEFAULT_YOUR_SETTINGS_SECTION,
   isYourSettingsSection,
@@ -35,21 +37,17 @@ export const YourSettingsPage = () => {
     <>
       {moved && <Navigate to={moved} replace />}
       {!moved && (
-        <Container className="mx-auto max-w-5xl py-10">
+        <Container size="page" className="py-8">
           <PageHeader
             className="mb-8"
-            eyebrow="You"
             title="Settings"
-            subtitle="Your profile, how Nexul looks, and where you're signed in."
+            meta={!resolving && <SettingsHeaderMeta section={instanceSection ?? section} />}
           />
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-            <YourSettingsNav active={instanceSection ?? section} />
-            <div className="min-w-0 flex-1 space-y-6">
-              {resolving && <LoadingDisplay />}
-              {!resolving && instanceSection && <InstanceSettingsContent section={instanceSection} />}
-              {!resolving && !instanceSection && <YourSettingsContent section={section} />}
-            </div>
-          </div>
+          <SettingsShell section={instanceSection ?? section} nav={<YourSettingsNav active={instanceSection ?? section} />}>
+            {resolving && <LoadingDisplay />}
+            {!resolving && instanceSection && <InstanceSettingsContent section={instanceSection} />}
+            {!resolving && !instanceSection && <YourSettingsContent section={section} />}
+          </SettingsShell>
         </Container>
       )}
     </>

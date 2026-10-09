@@ -38,11 +38,11 @@ export const MemoryVersionRow = ({ memoryId, version, isCurrent, canRevert, layo
           {stacked && <span className="font-mono text-muted-foreground">v{version.version} </span>}
           {version.title}
         </p>
-        <p className={cn("truncate text-xs text-muted-foreground", stacked && "font-mono text-[11px]")}>
+        <p className={cn("truncate text-xs text-muted-foreground", stacked && "font-mono")}>
           {authorLabel(version, version.author_id ? personLabel(author) : "Unknown")} · {formatRelativeTime(version.created_at)}
         </p>
       </div>
-      {stacked && isCurrent && <span className="shrink-0 font-mono text-[11px] text-muted-foreground">current</span>}
+      {stacked && isCurrent && <span className="shrink-0 font-mono text-xs text-muted-foreground">current</span>}
       {canRevertHere && <MemoryVersionRevertButton memoryId={memoryId} version={version} compact={stacked} />}
     </li>
   );

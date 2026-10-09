@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -49,7 +49,7 @@ describe("AutomationDeleteButton", () => {
     renderButton(onDeleted);
 
     await user.click(screen.getByRole("button", { name: "Delete automation" }));
-    await user.click(screen.getByRole("button", { name: "Confirm" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete automation" }));
 
     expect(mocks.del).toHaveBeenCalledWith("/api/automations/a1");
     expect(onDeleted).toHaveBeenCalledTimes(1);

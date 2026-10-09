@@ -4,6 +4,7 @@ import type { ConfirmDialogProps as ReactConfirmDialogProps } from "react-confir
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -38,11 +39,11 @@ export const ConfirmationDialog = ({
     }}
   >
     <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{title ?? message}</DialogTitle>
-          {title !== undefined && <DialogDescription>{message}</DialogDescription>}
-        </DialogHeader>
-      {details}
+      <DialogHeader>
+        <DialogTitle>{title ?? message}</DialogTitle>
+        {title !== undefined && <DialogDescription>{message}</DialogDescription>}
+      </DialogHeader>
+      {details && <DialogBody>{details}</DialogBody>}
       <DialogFooter>
         <Button variant="outline" onClick={() => proceed(false)}>
           {cancelLabel}

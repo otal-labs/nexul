@@ -5,6 +5,7 @@ import { Fact } from "@/components/Fact";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { InstanceUpgradeProgress } from "@/components/settings/InstanceUpgradeProgress";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsStatus, type SettingsStatusTone } from "@/components/settings/SettingsStatus";
 import { Button } from "@/components/ui/button";
 import {
   useInstanceUpgrade,
@@ -12,13 +13,12 @@ import {
   useRequestInstanceUpgrade,
 } from "@/hooks/InstanceUpgradeHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
-import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 import { isUpgradeInProgress, UpgradeRecordStatus, type InstanceUpgrade } from "@/models/InstanceUpgrade";
 
 // "dev build" gets a friendlier line than the raw reason string; every other reason already reads as one.
 const reasonCopy = (reason: string): string =>
-  reason === "dev build" ? "This build cannot upgrade itself." : `Can't upgrade yet: ${reason}.`;
+  reason === "dev build" ? "This build can't upgrade itself." : `Can't upgrade yet: ${reason}.`;
 
 const NEWEST_RELEASE_REASON = "already on the newest release";
 
@@ -26,29 +26,28 @@ const NEWEST_RELEASE_REASON = "already on the newest release";
 const isUnresolvedFailure = (data: InstanceUpgrade): boolean =>
   data.upgrade?.status === UpgradeRecordStatus.Failed && data.upgrade.to_version !== data.version;
 
-const statusOf = (data: InstanceUpgrade): { headline: string; dot: string } => {
+const statusOf = (data: InstanceUpgrade): { headline: string; tone: SettingsStatusTone } => {
   if (data.upgrade && isUpgradeInProgress(data.upgrade)) {
-    return { headline: `Upgrading to ${data.upgrade.to_version}`, dot: "bg-warning" };
+    return { headline: `Upgrading to ${data.upgrade.to_version}`, tone: "warning" };
   }
   if (data.upgrade && isUnresolvedFailure(data)) {
-    return { headline: `Upgrade to ${data.upgrade.to_version} failed`, dot: "bg-destructive" };
+    return { headline: `Upgrade to ${data.upgrade.to_version} failed`, tone: "destructive" };
   }
-  if (!data.latest) return { headline: "No release to compare against", dot: "bg-muted-foreground" };
-  if (data.update_available) return { headline: `${data.latest.version} is available`, dot: "bg-foreground" };
-  return { headline: "Up to date", dot: "bg-success" };
+  if (!data.latest) return { headline: "No release to compare against", tone: "muted" };
+  if (data.update_available) return { headline: `${data.latest.version} is available`, tone: "info" };
+  return { headline: "Up to date", tone: "success" };
+};
+
+const InstanceVersionStatus = () => {
+  const { data } = useInstanceUpgrade();
+  if (!data) return null;
+  const { headline, tone } = statusOf(data);
+  return <SettingsStatus tone={tone}>{headline}</SettingsStatus>;
 };
 
 const InstanceVersionFacts = ({ data }: { data: InstanceUpgrade }) => {
-  const { headline, dot } = statusOf(data);
-
   return (
-    <dl className="grid grid-cols-3 gap-x-6 gap-y-4 @xl:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
-      <div className="col-span-3 @xl:col-span-1">
-        <Fact label="Status">
-          <span aria-hidden className={cn("size-2 shrink-0 rounded-full", dot)} />
-          <span className="font-medium">{headline}</span>
-        </Fact>
-      </div>
+    <dl className="grid grid-cols-3 gap-x-6 gap-y-4">
       <Fact label="Running">
         <span className="font-mono break-all">{data.version}</span>
       </Fact>
@@ -117,7 +116,7 @@ const UpgradeButton = ({ latest, retry }: { latest: InstanceUpgrade["latest"]; r
   const onUpgradeClick = async () => {
     const ok = await confirm({
       title: latest ? `Upgrade to ${latest.version}?` : "Upgrade this instance?",
-      message: "This downloads the release, restarts Nexul's services, and the app reconnects once it's back.",
+      message: "Nexul downloads the release and restarts its services. The app reconnects when it's back.",
       confirmLabel: "Upgrade",
       destructive: false,
     });
@@ -145,7 +144,7 @@ export const InstanceVersionSection = () => {
     <SettingsCard
       id="instance-version"
       title="Instance version"
-      description="What this instance is running, and the newest release on its channel."
+      aside={<InstanceVersionStatus />}
       footer={data && !isUpgradeInProgress(data.upgrade) && <InstanceVersionFooter data={data} />}
     >
       {isPending && <LoadingDisplay />}

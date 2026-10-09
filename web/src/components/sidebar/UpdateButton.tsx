@@ -8,13 +8,12 @@ import { useServerVersion } from "@/hooks/VersionHooks";
 import { cn } from "@/lib/utils";
 
 interface UpdateButtonProps {
-  enabled: boolean;
   className?: string;
 }
 
 // Hover (or focus) previews what changed; a click or tap goes to the instance version settings to upgrade.
-export const UpdateButton = ({ enabled, className }: UpdateButtonProps) => {
-  const { data } = useServerVersion(enabled);
+export const UpdateButton = ({ className }: UpdateButtonProps) => {
+  const { data } = useServerVersion();
 
   if (!data?.update_available || !data.latest) return null;
 
@@ -25,7 +24,7 @@ export const UpdateButton = ({ enabled, className }: UpdateButtonProps) => {
           to={INSTANCE_VERSION_SECTION_URL}
           aria-label={`Update available: ${data.latest.version}`}
           className={cn(
-            "relative flex size-7 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors duration-150 ease-standard hover:bg-accent/60 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40",
+            "relative flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent/60 hover:text-foreground",
             className,
           )}
         >

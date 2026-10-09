@@ -1,15 +1,20 @@
 import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { EmptyRow } from "@/components/EmptyRow";
 import { CreateRoleForm } from "@/components/settings/CreateRoleForm";
+import { OwnerRoleRow } from "@/components/settings/OwnerRoleRow";
 import { RoleRow } from "@/components/settings/RoleRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
+import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
 import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
+import { useFetchTeam } from "@/hooks/TeamHooks";
+import { roleHolders } from "@/models/Team";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 // Gated on roles:write, same gate-in-parent pattern as account management.
@@ -21,14 +26,18 @@ export const RoleSettingsSection = () => {
   const isPending = rolesPending || catalogPending;
   const error = rolesError ?? catalogError;
 
+  // Who holds each role; a viewer the server shows no team to just sees no avatars.
+  const { data: team } = useFetchTeam();
+  const holdersOf = (roleId: string) => (team ? roleHolders(team, workspaceId, roleId) : undefined);
+
   const [creating, setCreating] = useState(false);
+  const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
 
   return (
     <SettingsCard
       id="roles"
       title="Roles & permissions"
-      description="Custom roles this workspace can assign when inviting someone. The Owner role is a
-        protected singleton and can't be renamed, edited, or deleted here."
+      description="What each role can open and change in this workspace. Open a role to see every area."
       footer={
         roles &&
         catalog &&
@@ -44,13 +53,18 @@ export const RoleSettingsSection = () => {
       {error && <ErrorDisplay error={error} />}
       {roles && catalog && (
         <div className="space-y-4">
-          {roles.length === 0 && <NoDataDisplay message="No roles yet" />}
+          {roles.length === 0 && <EmptyRow>No roles yet</EmptyRow>}
           {roles.length > 0 && (
-            <ul className="divide-y divide-border overflow-hidden rounded-md border">
-              {roles.map((role) => (
-                <RoleRow key={role.id} role={role} workspaceId={workspaceId} catalog={catalog} />
-              ))}
-            </ul>
+            <div ref={glideRef}>
+              <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
+                {roles.filter((role) => role.is_owner_role).map((role) => (
+                  <OwnerRoleRow key={role.id} role={role} holders={holdersOf(role.id)} />
+                ))}
+                {roles.filter((role) => !role.is_owner_role).map((role) => (
+                  <RoleRow key={role.id} onLeave={prepareGlide} role={role} workspaceId={workspaceId} catalog={catalog} holders={holdersOf(role.id)} />
+                ))}
+              </EnterList>
+            </div>
           )}
 
           {creating && (

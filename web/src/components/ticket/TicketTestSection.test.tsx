@@ -80,7 +80,7 @@ describe("TicketTestSection", () => {
   it("explains when pass and fail open, without offering them, outside a testing-stage column", async () => {
     mockApi({ url: "" });
     renderSection({ status: "st-build" as Ticket["status"] });
-    expect(await screen.findByText("Pass and fail open in a Testing column.")).toBeInTheDocument();
+    expect(await screen.findByText("Pass and Fail show in a testing column.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Pass" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Fail" })).not.toBeInTheDocument();
   });
@@ -106,7 +106,7 @@ describe("TicketTestSection", () => {
     renderSection({ body: "" });
     expect(await screen.findByText(/No test environment yet/)).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: "web" })).toHaveAttribute("href", "/acme/stacks/s-1/branches");
-    expect(screen.getByText(/no Acceptance criteria section/)).toBeInTheDocument();
+    expect(screen.getByText(/No Acceptance criteria section/)).toBeInTheDocument();
   });
 
   it("passes the ticket", async () => {
@@ -167,7 +167,7 @@ describe("TicketTestSection", () => {
     mockApi({ url: "" });
     renderSection({ body: "" });
     expect(await screen.findByText(/No test environment yet/)).toBeInTheDocument();
-    expect(await screen.findByText(/no Acceptance criteria section/)).toBeInTheDocument();
+    expect(await screen.findByText(/No Acceptance criteria section/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "web" })).not.toBeInTheDocument();
   });
 });

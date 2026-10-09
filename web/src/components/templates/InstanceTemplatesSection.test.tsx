@@ -93,7 +93,8 @@ describe("InstanceTemplatesSection", () => {
     renderSection();
 
     const interview = within(await screen.findByRole("region", { name: "Interview" }));
-    expect(await interview.findByText(/^Edited · by Sam · /)).toBeInTheDocument();
+    expect(await interview.findByText("Edited")).toBeInTheDocument();
+    expect(interview.getByText(/by Sam /)).toBeInTheDocument();
     const plays = within(screen.getByRole("region", { name: "Play instructions" }));
     expect(plays.getByText("Fix with AI")).toBeInTheDocument();
     expect(plays.getByText("Default")).toBeInTheDocument();

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { microheaderClass } from "@/components/Microheader";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { personLabel } from "@/models/Person";
@@ -16,7 +17,7 @@ interface FactProps {
 
 const Fact = ({ label, children }: FactProps) => (
   <div className="space-y-0.5">
-    <dt className="font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase">{label}</dt>
+    <dt className={microheaderClass}>{label}</dt>
     <dd className="text-sm">{children}</dd>
   </div>
 );

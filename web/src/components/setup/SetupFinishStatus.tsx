@@ -32,7 +32,7 @@ export const SetupFinishStatus = ({ finish }: SetupFinishStatusProps) => {
       {finish.isError && (
         <div className="space-y-3">
           <p role="alert" className="text-sm text-destructive">
-            {url} did not answer as this Nexul: {errorMessage(finish.error)}
+            {url} didn&apos;t answer as this Nexul: {errorMessage(finish.error)}
           </p>
           <Button variant="outline" onClick={() => finish.variables && finish.mutate(finish.variables)}>
             Try again

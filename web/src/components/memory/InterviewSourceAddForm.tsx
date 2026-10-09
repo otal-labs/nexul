@@ -26,10 +26,8 @@ interface InterviewSourceAddFormProps {
 
 const STANCE_HINT: Record<SourceStance, string> = {
   follow: "The agent drafts answers from it.",
-  question: "Never drafted from; the follow-ups ask about it.",
+  question: "Never drafted from. The follow-ups ask about it.",
 };
-
-const kindClass = "h-7 px-2.5 text-xs text-muted-foreground data-[state=on]:bg-accent data-[state=on]:text-foreground";
 
 // Adding a source inline: the kind, its field, and the stance preselected by kind until the person picks one.
 export const InterviewSourceAddForm = ({ projectId, onClose }: InterviewSourceAddFormProps) => {
@@ -57,16 +55,16 @@ export const InterviewSourceAddForm = ({ projectId, onClose }: InterviewSourceAd
         aria-label="Add a source"
         className="animate-in fade-in-0 slide-in-from-top-1 space-y-4 rounded-lg border border-border p-4 duration-200 ease-out"
       >
-        <ToggleGroup type="single" variant="outline" size="sm" aria-label="Kind of source" value={kind} onValueChange={pickKind} className="flex-wrap">
+        <ToggleGroup type="single" variant="segmented" size="xs" aria-label="Kind of source" value={kind} onValueChange={pickKind}>
           {SOURCE_KINDS.map((k) => (
-            <ToggleGroupItem key={k} value={k} className={kindClass}>
+            <ToggleGroupItem key={k} value={k}>
               {SOURCE_KIND_LABEL[k]}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
         {kind === "path" && (
           <div className="space-y-2">
-            <FormInput control={form.control} name="path" label="Path" placeholder="practices/ or docs/standards.md" className="font-mono text-[13px]" />
+            <FormInput control={form.control} name="path" label="Path" placeholder="practices/ or docs/standards.md" className="font-mono" />
             <p className="text-xs text-muted-foreground">A file or folder, relative to the project's checkout.</p>
           </div>
         )}

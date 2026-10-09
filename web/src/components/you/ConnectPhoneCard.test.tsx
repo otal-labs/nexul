@@ -40,7 +40,7 @@ describe("ConnectPhoneCard", () => {
 
     expect(mocks.post).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Generate code" })).toBeInTheDocument();
-    expect(screen.getByText("Generates a code that works once, for two minutes.")).toBeInTheDocument();
+    expect(screen.getByText("The code works once, for two minutes.")).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: "Sign-in code for the Nexul app" })).not.toBeInTheDocument();
     expect(screen.queryByText(/expires in/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Code/)).not.toBeInTheDocument();

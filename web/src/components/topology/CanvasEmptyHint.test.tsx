@@ -21,7 +21,7 @@ const renderHint = (onAddNode: () => void) =>
 describe("CanvasEmptyHint", () => {
   it("renders the empty-canvas invitation copy", () => {
     renderHint(() => {});
-    expect(screen.getByText("Your infra, drawn like you'd explain it.")).toBeInTheDocument();
+    expect(screen.getByText("Nothing on the canvas yet")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add a node/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /add a service/i })).toHaveAttribute("href", "/acme/wizard/project/repository");
   });

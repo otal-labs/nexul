@@ -50,14 +50,14 @@ beforeEach(() => {
 });
 
 describe("TicketThreadSection", () => {
-  it("shows a lazy Start chat button when the ticket has no thread yet", async () => {
+  it("shows a lazy Start thread button when the ticket has no thread yet", async () => {
     mockGetByUrl({ "/api/chat/tickets/thread-status": { t1: false } });
     renderSection();
-    expect(await screen.findByRole("button", { name: /start chat/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /start thread/i })).toBeInTheDocument();
     expect(api.post).not.toHaveBeenCalled();
   });
 
-  it("creates the thread on Start chat and renders the conversation", async () => {
+  it("creates the thread on Start thread and renders the conversation", async () => {
     const user = userEvent.setup();
     mockGetByUrl({
       "/api/chat/tickets/thread-status": { t1: false },
@@ -71,7 +71,7 @@ describe("TicketThreadSection", () => {
     });
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: /start chat/i }));
+    await user.click(await screen.findByRole("button", { name: /start thread/i }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/chat/tickets/t1/thread", { workspace_id: "ws-1" }));
     expect(await screen.findByLabelText("Message")).toBeInTheDocument();
@@ -90,7 +90,7 @@ describe("TicketThreadSection", () => {
     });
     renderSection();
 
-    expect(screen.queryByRole("button", { name: /start chat/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /start thread/i })).not.toBeInTheDocument();
     expect(await screen.findByLabelText("Message")).toBeInTheDocument();
   });
 });

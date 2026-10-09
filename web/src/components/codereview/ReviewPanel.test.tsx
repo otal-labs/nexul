@@ -67,6 +67,6 @@ describe("ReviewPanel", () => {
     vi.mocked(api.get).mockRejectedValue(new Error("boom"));
     renderPanel();
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(screen.getByText("Failed to load reviews")).toBeInTheDocument();
+    expect(screen.getByText("Couldn't load reviews.")).toBeInTheDocument();
   });
 });

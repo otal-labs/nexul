@@ -80,7 +80,7 @@ export const BotForm = ({ conversationId, bot, note, onNavigate }: BotFormProps)
       )}
       <BotDetailFooter
         bot={bot}
-        submitLabel={bot ? "Save name" : "Create"}
+        submitLabel={bot ? "Save name" : "Create bot"}
         showSubmit={!bot || renamed}
         submitting={form.formState.isSubmitting}
         onNavigate={onNavigate}

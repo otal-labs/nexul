@@ -26,7 +26,7 @@ function PopoverContent({
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
         className={cn(
-          "z-50 w-72 rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-elevated outline-hidden data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+          "z-50 origin-(--radix-popover-content-transform-origin) w-72 float-surface glass-menu rounded-lg p-3 text-popover-foreground outline-hidden",
           className,
         )}
         {...props}

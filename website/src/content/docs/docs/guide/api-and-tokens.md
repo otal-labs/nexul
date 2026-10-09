@@ -17,7 +17,7 @@ The web app runs on the same HTTP/JSON API under `/api` that you can call yourse
    curl -H "Authorization: Bearer dep_…" https://nexul.example.com/api/permissions/catalog
    ```
 
-A personal access token carries exactly your permissions and lasts until you revoke it. Revoking cuts access at once. Use one for scripts, personal integrations and an agent's MCP connection.
+The list shows each token as **Active** with when it was last used, or **Revoked**. A personal access token carries exactly your permissions and lasts until you revoke it. Revoking cuts access at once. Use one for scripts, personal integrations and an agent's MCP connection.
 
 Each paired computer also gets a token of its own, "Nexul MCP on <computer>", listed here and marked as the computer's. Un-confirming the computer's setup or removing the computer revokes it.
 
@@ -40,7 +40,7 @@ Each domain in the catalog has an area: `project`, `workspace` or `instance`.
 
 `GET /api/workspaces/{workspaceID}/me` tells a client whether the caller is on chosen projects and, if so, which projects with which actions.
 
-To copy a custom role into another workspace, click its clone button in **Configuration → Roles**. That takes `roles:clone` in this workspace and `roles:write` in the other. A clashing name gets a suffix, so `Editors` arrives as `Editors (copy)`. Over the API it is `POST /api/workspaces/{workspaceID}/roles/{roleID}/clone` with `{"workspace_id": "<target>"}`; over MCP, `role_update` with `clone_from_id`.
+To copy a custom role into another workspace, choose **Clone to workspace…** in its **…** menu in **Configuration → Roles**. That takes `roles:clone` in this workspace and `roles:write` in the other. A clashing name gets a suffix, so `Editors` arrives as `Editors (copy)`. Over the API it is `POST /api/workspaces/{workspaceID}/roles/{roleID}/clone` with `{"workspace_id": "<target>"}`; over MCP, `role_update` with `clone_from_id`.
 
 ## Integrations and outgoing webhooks
 

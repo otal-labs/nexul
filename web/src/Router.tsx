@@ -56,7 +56,7 @@ const staticTabs = (path: string, tabs: string[], area: RouteArea, element: Reac
 // Every page reached from a workspace's sidebar lives under its slug; personal and instance pages stay unprefixed.
 const workspaceRoutes: RouteObject[] = [
   { index: true, element: <HomePage /> },
-  { path: "inbox/:tab?", element: <InboxPage /> },
+  { path: "inbox/:rowKey?/:tab?", element: <InboxPage /> },
   { path: "chat", element: <ChatPage /> },
   { path: "chat/:conversationId", element: <ChatPage /> },
   { path: "wizard/project/import", handle: gate("newProject"), element: <ProjectWizardImportPage /> },
@@ -102,7 +102,12 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
   {
     element: <Layout />,
     // Catches a lazy route's dynamic import throw (deploy while a tab is open) instead of the default error screen.
-    errorElement: <ErrorPage />,
+    // It replaces the Layout, so signed in it supplies the frame the screen expects to fill.
+    errorElement: (
+      <main className={loggedIn ? "h-dvh p-2" : undefined}>
+        <ErrorPage />
+      </main>
+    ),
     children: [
       { path: "/login", element: <LoginPage /> },
       { path: "/invite", element: <InvitePreviewPage /> },

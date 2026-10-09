@@ -8,7 +8,7 @@ export const useTestFailDialog = () => {
   return (ticketId: string) =>
     open<TestFailFormData>({
       title: "What went wrong?",
-      description: "This goes to the ticket's thread and moves the ticket back to progress.",
+      description: "Posts to the ticket's thread and moves the ticket back to progress.",
       schema: TestFailFormSchema,
       okLabel: "Send back",
       form: <TestFailForm ticketId={ticketId} />,

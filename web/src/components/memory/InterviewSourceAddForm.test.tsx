@@ -66,7 +66,7 @@ describe("InterviewSourceAddForm", () => {
     renderForm();
     await user.click(screen.getByRole("radio", { name: "Paste text" }));
     await user.upload(screen.getByLabelText("or drop a text or markdown file"), new File(["%PDF"], "spec.pdf", { type: "application/pdf" }));
-    expect(await screen.findByText("spec.pdf isn't a text or markdown file; paste its text instead.")).toBeInTheDocument();
+    expect(await screen.findByText("spec.pdf isn't text or markdown. Paste its text instead.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(mocks.post).not.toHaveBeenCalled();
   });

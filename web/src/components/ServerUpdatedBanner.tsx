@@ -17,7 +17,7 @@ export const ServerUpdatedBanner = () => {
     >
       <RefreshCw className="size-4 shrink-0 text-info" aria-hidden />
       <p className="min-w-0 flex-1 basis-40 text-sm">
-        Nexul was updated to <span className="font-mono tabular-nums">{version}</span>. Reload to use the new version.
+        Nexul updated to <span className="font-mono tabular-nums">{version}</span>. Reload to use it.
       </p>
       <div className="flex items-center gap-1">
         <Button size="sm" onClick={() => window.location.reload()}>

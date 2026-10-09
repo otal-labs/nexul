@@ -30,11 +30,11 @@ export const AutomationPage = () => {
   const runs = useFetchAutomationRuns(id);
 
   return (
-    <Container className="space-y-6 py-6">
+    <Container size="page" className="py-8">
       {isPending && <LoadingDisplay />}
       {error && <DetailErrorDisplay error={error} />}
       {automation && (
-        <div className="space-y-6">
+        <div className="space-y-8">
           <AutomationDetailHeader automation={automation} />
           <PageTabs
             label="Automation sections"

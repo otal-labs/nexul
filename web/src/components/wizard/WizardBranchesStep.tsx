@@ -33,7 +33,7 @@ export const WizardBranchesStep = ({ onDone, onSkip }: WizardBranchesStepProps) 
       {isPending && <LoadingDisplay />}
       {error && (
         <div className="space-y-4">
-          <ErrorDisplay error={error} title="Could not load what this machine runs" />
+          <ErrorDisplay error={error} title="Couldn't load what this machine runs." />
           <WizardSkipLink onClick={onSkip} />
         </div>
       )}

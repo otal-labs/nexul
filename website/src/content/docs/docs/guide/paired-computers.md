@@ -26,7 +26,7 @@ For a machine the server can already reach, such as a VPS or a computer on the s
 
 ## Keep it paired
 
-Each row shows the T3 Code version and **Connected**, **Connecting…**, or **Not connected**.
+Each row shows the T3 Code version and a dot: green when connected, gray when not. Hover the dot to see whether Nexul is still trying to connect.
 
 A pairing lasts 30 days, because T3 Code's session can't be refreshed. Press **Re-pair** before then, or when the row says it has expired and acts as unpaired. The tunnel keeps its hostname.
 
@@ -53,12 +53,12 @@ A play's run dialog can override the computer, provider, and model for one run. 
 
 ## When a turn can't start
 
-The play button or the chat says why:
+The page says why once, above or beside its play buttons, and each button repeats it as its tooltip. In chat, the message says why:
 
 | Message | Fix |
 |---|---|
-| Pair a harness in Settings to run plays | Pair a computer, or finish one in progress. |
-| Your harness pairing has expired | Press **Re-pair** on the computer. |
-| Link this project in Settings → T3 Code Setup → Projects, or set a fallback under Defaults | Link the project, or set a **Fallback T3 project**. |
-| Several harnesses are paired, pick a default in Settings | Set a **Default computer**. |
-| Your harness is offline | Start T3 Code, and check the tunnel is up. |
+| Pair a computer in Settings to run plays. | Pair a computer, or finish one in progress. |
+| Your computer's pairing has expired. Re-pair it in Settings. | Press **Re-pair** on the computer. |
+| Link this project in Settings → T3 Code Setup → Projects, or set a fallback under Defaults. | Link the project, or set a **Fallback T3 project**. |
+| Several computers are paired. Pick a default in Settings. | Set a **Default computer**. |
+| T3 Code on your computer is offline. | Start T3 Code, and check the tunnel is up. |

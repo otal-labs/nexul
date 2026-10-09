@@ -1,10 +1,11 @@
-import { Clock3, RefreshCwIcon, Trash2 } from "lucide-react";
+import { RefreshCwIcon, Trash2 } from "lucide-react";
 
 import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
 import { ComputerMCPToken } from "@/components/settings/ComputerMCPToken";
 import { ComputerSetupSummary } from "@/components/settings/ComputerSetupSummary";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { PairComputerForm } from "@/components/settings/PairComputerForm";
+import { SettingsStatus, type SettingsStatusTone } from "@/components/settings/SettingsStatus";
 import { Button } from "@/components/ui/button";
 import { useDeleteComputer } from "@/hooks/PairingHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
@@ -24,6 +25,13 @@ interface ComputerRowProps {
   presence?: string | undefined;
 }
 
+// The keeper reports "connecting" while it retries an unreachable computer too, so only connected earns a color.
+const connectionOf = (presence: string | undefined): { tone: SettingsStatusTone; text: string } => {
+  if (presence === "connected") return { tone: "success", text: "Connected" };
+  if (presence === "connecting") return { tone: "muted", text: "Trying to connect" };
+  return { tone: "muted", text: "Not connected" };
+};
+
 // Expiry warning threshold (EXPIRY_WARNING_DAYS) matches the settings copy's "warning in the final days" wording.
 export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
   const remove = useDeleteComputer();
@@ -36,7 +44,7 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
   const repair = async () => {
     await openRepair<PairComputerFormData>({
       title: `Re-pair ${computer.name}`,
-      description: "Run `t3 pair` on the machine, then paste the one-time token it prints.",
+      description: "Run `t3 pair` on the computer and paste the one-time token it prints.",
       schema: PairComputerFormSchema,
       okLabel: "Re-pair",
       form: <PairComputerForm computer={computer} />,
@@ -46,38 +54,22 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
     });
   };
 
-  const dot =
-    presence === "connected"
-      ? { className: "bg-success", label: "Connected" }
-      : presence === "connecting"
-        ? { className: "bg-warning animate-pulse", label: "Connecting\u2026" }
-        : { className: "bg-muted-foreground/40", label: "Not connected" };
+  const connection = connectionOf(presence);
 
   return (
     <li className="space-y-2 bg-card px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="flex items-center gap-1.5 truncate text-sm font-medium">
-            <span title={dot.label} aria-label={dot.label} className={`inline-block size-2 shrink-0 rounded-full ${dot.className}`} />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <p className="line-clamp-2 text-sm font-medium break-words" title={computer.name}>
             {computer.name}
-            {expired && (
-              <span className="ml-2 rounded bg-destructive/15 px-1.5 py-0.5 text-xs text-destructive">
-                expired — acts as unpaired
-              </span>
-            )}
-            {expiringSoon && (
-              <span className="ml-2 rounded bg-warning/15 px-1.5 py-0.5 text-xs text-warning">
-                expires in {days}d
-              </span>
-            )}
           </p>
-          {pairing && (
-            <p className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock3 className="size-3.5 shrink-0 text-warning" aria-hidden />
-              pairing in progress
-            </p>
-          )}
-          <p className="truncate font-mono text-xs text-muted-foreground tabular-nums">
+          <p className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5">
+            {!pairing && <SettingsStatus tone={connection.tone}>{connection.text}</SettingsStatus>}
+            {pairing && <SettingsStatus tone="warning">Pairing in progress</SettingsStatus>}
+            {expired && <SettingsStatus tone="destructive">Pairing expired, acts as unpaired</SettingsStatus>}
+            {expiringSoon && <SettingsStatus tone="warning">Pairing expires in {days}d</SettingsStatus>}
+          </p>
+          <p className="truncate font-mono text-xs text-muted-foreground tabular-nums" title={computer.server_url}>
             {computer.server_url} · {harnessLabel(computer.kind)} {computer.harness_version}
           </p>
         </div>

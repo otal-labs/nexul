@@ -1,22 +1,16 @@
 import { AddCategoryForm } from "@/components/project/AddCategoryForm";
-import { CreateTicketFooter } from "@/components/ticket/CreateTicketFooter";
-import { CreateTicketForm, emptyTicketForm } from "@/components/ticket/CreateTicketForm";
-import { ProjectDialogHeader } from "@/components/project/ProjectDialogHeader";
 import { useQueryClient } from "@tanstack/react-query";
 
 import type { DragMoveAction } from "@/components/board/dragMove";
 import { useClearTicketCategory, useMoveTicketToCategory } from "@/hooks/CategoryHooks";
 import { getProjectStatusesKey, useReorderStatuses } from "@/hooks/StatusHooks";
 import { getTicketsKey, useUpdateTicketPosition, useUpdateTicketStatus } from "@/hooks/TicketHooks";
+import { useCreateTicketDialog } from "@/hooks/useCreateTicketDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { SaveCategoryFormSchema, type SaveCategoryFormData } from "@/models/Category";
 import type { Project } from "@/models/Project";
 import type { BoardStatus } from "@/models/Status";
-import {
-  SaveTicketFormSchema,
-  TicketStatus,
-  type SaveTicketFormData,
-} from "@/models/Ticket";
+import { TicketStatus } from "@/models/Ticket";
 
 // Drops run strictly in sequence: a status change re-appends the ticket server-side, so its position must follow it.
 let dropQueue: Promise<unknown> = Promise.resolve();
@@ -34,23 +28,13 @@ interface UseBoardActionsArgs {
 // Dialog openers and drag-and-drop mutations, grouped so BoardPage stays fetch + render + compose.
 export const useBoardActions = ({ projects, selectedProjectIds, projectId }: UseBoardActionsArgs) => {
   const { open } = useFormDialog();
+  const openCreateTicketDialog = useCreateTicketDialog(projectId ?? "");
   const client = useQueryClient();
   const updateStatus = useUpdateTicketStatus();
   const moveToCategory = useMoveTicketToCategory();
   const clearCategory = useClearTicketCategory();
   const updatePosition = useUpdateTicketPosition();
   const reorderStatuses = useReorderStatuses();
-
-  const openCreateTicketDialog = () =>
-    open<SaveTicketFormData>({
-      title: "New ticket",
-      schema: SaveTicketFormSchema,
-      okLabel: "Create",
-      header: <ProjectDialogHeader title="New ticket" />,
-      footerStart: <CreateTicketFooter />,
-      form: <CreateTicketForm />,
-      formOptions: { defaultValues: emptyTicketForm() },
-    });
 
   const openCreateCategoryDialog = () =>
     open<SaveCategoryFormData>({
@@ -69,17 +53,8 @@ export const useBoardActions = ({ projects, selectedProjectIds, projectId }: Use
 
   // Create lands in the project's first column, so another column follows up with the same status-move mutation.
   const addTicketToColumn = async (categoryId: string | null, statusId: string) => {
-    const result = await open<SaveTicketFormData>({
-      title: "New ticket",
-      schema: SaveTicketFormSchema,
-      okLabel: "Create",
-      header: <ProjectDialogHeader title="New ticket" />,
-      footerStart: <CreateTicketFooter />,
-      form: <CreateTicketForm defaultCategoryId={categoryId ?? ""} />,
-      formOptions: { defaultValues: emptyTicketForm() },
-    });
-    const createdId = (result.data as (SaveTicketFormData & { id?: string }) | null)?.id;
-    if (result.success && createdId && statusId !== TicketStatus.Open) {
+    const createdId = await openCreateTicketDialog?.({ categoryId: categoryId ?? "" });
+    if (createdId && statusId !== TicketStatus.Open) {
       await moveTicket(createdId, statusId);
     }
   };

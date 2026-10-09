@@ -85,8 +85,12 @@ as written. In particular:
   no hover, no shadow, no scale.
 - Styling is `className` only; no `StyleSheet.create` except for a value the
   stylesheet cannot express (a safe-area inset). Colors are the `--color-*`
-  tokens in `src/global.css`, which carry the same names and values as
-  `web/src/index.css` for dark and light. Color is for status only. A token
+  tokens in `src/global.css`, which share their names with
+  `web/src/index.css`. The web moved to frosted panels and one ember `brand`
+  accent (ADR 0133) and the phone has not been re-themed yet, so its values
+  still hold the earlier monochrome set and color stays status-only here until
+  that re-theme, which takes its values and the accent's roles from
+  `practices/design-language.md`. A token
   the design needs and the sheet lacks is added to both stylesheets and to the
   token table in `practices/design-language.md` in the same change; a one-off
   hex is drift.

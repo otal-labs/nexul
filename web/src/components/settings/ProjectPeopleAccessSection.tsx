@@ -1,3 +1,4 @@
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { EmptyRow } from "@/components/EmptyRow";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -25,11 +26,11 @@ export const ProjectPeopleAccessSection = ({ project }: ProjectPeopleAccessSecti
       {error && <ErrorDisplay error={error} />}
       {access && access.length === 0 && <EmptyRow>No restricted member can open {project.name}.</EmptyRow>}
       {access && access.length > 0 && (
-        <ul className="-my-2 divide-y divide-border">
+        <EnterList className="-my-2 divide-y divide-border">
           {access.map((entry) => (
             <ProjectPeopleAccessRow key={entry.user_id} entry={entry} />
           ))}
-        </ul>
+        </EnterList>
       )}
     </SettingsCard>
   );

@@ -24,8 +24,8 @@ export const InstanceHostNotice = ({ zone, target }: InstanceHostNoticeProps) =>
     <>
       {zone && instanceUrl && name === null && (
         <p role="alert" className="text-sm text-destructive">
-          Your instance URL is <span className="font-mono text-xs">{instanceUrl}</span>, which is not under{" "}
-          <span className="font-mono text-xs">{zone}</span>. Set it to a hostname in that zone under{" "}
+          Your instance URL, <span className="font-mono text-xs">{instanceUrl}</span>, isn&apos;t under{" "}
+          <span className="font-mono text-xs">{zone}</span>. Change it to a hostname in that zone in{" "}
           <Link to="/settings/instance" className="underline underline-offset-4">
             Settings → Instance
           </Link>{" "}

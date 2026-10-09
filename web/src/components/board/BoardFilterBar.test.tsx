@@ -215,7 +215,7 @@ describe("BoardFilterBar", () => {
     const onToggleWaitingForMeToTest = vi.fn();
     const { unmount } = renderFilterBar();
     await screen.findByRole("button", { name: /^Filter/ });
-    expect(screen.queryByRole("button", { name: /Waiting for me to test/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Mine to test/ })).not.toBeInTheDocument();
     unmount();
 
     renderFilterBar({
@@ -223,7 +223,7 @@ describe("BoardFilterBar", () => {
       filters: filters({ waitingForMeToTest: true }),
       onToggleWaitingForMeToTest,
     });
-    const toggle = await screen.findByRole("button", { name: /Waiting for me to test/ });
+    const toggle = await screen.findByRole("button", { name: /Mine to test/ });
     expect(toggle).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Filter (1)" })).toBeInTheDocument();
     await user.click(toggle);

@@ -36,7 +36,7 @@ export const CreateRoleForm = ({ workspaceId, roles, catalog, onDone }: CreateRo
   return (
     <form
       onSubmit={onSubmit}
-      className="animate-in fade-in-0 slide-in-from-top-1 space-y-3 duration-200 ease-out"
+      className="settle-in space-y-3"
     >
       <div className="flex flex-wrap gap-2">
         <Input

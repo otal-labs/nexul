@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AutomationTokenSection } from "@/components/automation/AutomationTokenSection";
@@ -38,6 +39,7 @@ const renderSection = (a: Automation) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
+      <ContextAwareConfirmation.ConfirmationRoot />
       <AutomationTokenSection automation={a} />
     </QueryClientProvider>,
   );
@@ -64,18 +66,19 @@ describe("AutomationTokenSection", () => {
     renderSection(automation());
 
     await user.click(screen.getByRole("button", { name: "Rotate" }));
+    await user.click(await screen.findByRole("button", { name: "Rotate token" }));
 
     expect(await screen.findByText("dep_new_token")).toBeInTheDocument();
     expect(mocks.post).toHaveBeenCalledWith("/api/automations/a1/token");
   });
 
-  it("revokes the token via arm-then-confirm", async () => {
+  it("revokes the token once confirmed", async () => {
     mocks.del.mockResolvedValue({ data: automation({ token_revoked_at: "2026-08-03T00:00:00Z" }) });
     const user = userEvent.setup();
     renderSection(automation());
 
     await user.click(screen.getByRole("button", { name: "Revoke" }));
-    await user.click(screen.getByRole("button", { name: "Confirm" }));
+    await user.click(await screen.findByRole("button", { name: "Revoke token" }));
 
     expect(mocks.del).toHaveBeenCalledWith("/api/automations/a1/token");
   });

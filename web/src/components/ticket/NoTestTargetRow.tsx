@@ -16,7 +16,7 @@ export const NoTestTargetRow = ({ projectId }: NoTestTargetRowProps) => {
   const stack = stacks?.find((s) => !s.derived_from);
   return (
     <p role="status" className="rounded-lg border border-border px-4 py-3 text-sm text-muted-foreground">
-      No test environment yet. Production is never used for testing, so add a deploy branch on its own network
+      No test environment yet. Testing never uses production, so add a branch deploy rule with its own network
       {stack && canOpenStack && (
         <>
           {" in "}

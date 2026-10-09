@@ -108,12 +108,11 @@ describe("Layout", () => {
     vi.unstubAllEnvs();
   });
 
-  it("renders the sidebar shell and outlet content for guests without nav links", () => {
+  it("gives guests the page alone, with no sidebar", () => {
     renderLayout();
-    expect(screen.getByRole("link", { name: "Nexul" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /^Topology/ })).not.toBeInTheDocument();
     expect(screen.getByText("page-content")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /collapse sidebar|expand sidebar/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Nexul" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /collapse sidebar|expand sidebar/i })).not.toBeInTheDocument();
   });
 
   it("shows the signed-in nav and account menu trigger", async () => {
@@ -153,11 +152,6 @@ describe("Layout", () => {
     expect(inboxLink.compareDocumentPosition(await screen.findByRole("button", { name: "New project" }))).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
-  });
-
-  it("hides the Inbox link for guests", () => {
-    renderLayout();
-    expect(screen.queryByRole("link", { name: "Inbox" })).not.toBeInTheDocument();
   });
 
   it("shows the unread count badge on the Inbox link", () => {
@@ -207,10 +201,10 @@ describe("Layout", () => {
     expect(await screen.findByRole("link", { name: /^Runners/ })).toBeInTheDocument();
   });
 
-  const linkTargets = (nav: string) => {
-    const region = screen.queryByRole("navigation", { name: nav });
-    return region ? within(region).queryAllByRole("link").map((link) => link.getAttribute("href")) : [];
-  };
+  const hrefs = (region: HTMLElement | null) =>
+    region ? within(region).queryAllByRole("link").map((link) => link.getAttribute("href")) : [];
+  const workspaceTargets = () => hrefs(screen.queryByRole("group", { name: "Workspace" }));
+  const mainTargets = () => hrefs(screen.queryByRole("navigation", { name: "Main" })).filter((href) => !workspaceTargets().includes(href));
   const createButtons = () =>
     ["New channel", "New voice channel", "New direct message"].filter((name) => screen.queryByRole("button", { name }));
   const member = ownerUser;
@@ -272,8 +266,8 @@ describe("Layout", () => {
     renderLayout();
 
     await waitFor(() => {
-      expect(linkTargets("Main")).toEqual(main);
-      expect(linkTargets("Workspace")).toEqual(workspace);
+      expect(mainTargets()).toEqual(main);
+      expect(workspaceTargets()).toEqual(workspace);
       expect(createButtons()).toEqual(create);
     });
     expect(screen.queryByRole("button", { name: "Workspace" }) !== null).toBe(workspace.length > 0);

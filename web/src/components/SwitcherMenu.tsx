@@ -2,10 +2,8 @@ import { CheckIcon, PlusIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { PopoverContent } from "@/components/ui/popover";
+import { MenuSeparator, menuItemClass } from "@/components/MenuItem";
 import { UnreadBadge } from "@/components/UnreadBadge";
-
-const menuItemClass =
-  "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13.5px] text-muted-foreground outline-none transition-colors duration-150 ease-standard hover:bg-accent/60 hover:text-foreground focus-visible:bg-accent/60 focus-visible:text-foreground";
 
 interface SwitcherMenuProps {
   children: ReactNode;
@@ -15,13 +13,13 @@ interface SwitcherMenuProps {
 }
 
 export const SwitcherMenu = ({ children, createLabel, onCreate }: SwitcherMenuProps) => (
-  <PopoverContent side="bottom" align="start" sideOffset={6} className="w-56 p-1.5">
-    <div className="flex max-h-80 flex-col gap-0.5 overflow-y-auto">{children}</div>
+  <PopoverContent side="bottom" align="start" sideOffset={6} className="w-72 p-1">
+    <div className="flex max-h-80 flex-col overflow-y-auto">{children}</div>
     {onCreate && (
-      <div className="mt-0.5 flex flex-col gap-0.5">
-        <div className="my-1 border-t border-border" />
+      <div className="flex flex-col">
+        <MenuSeparator />
         <button type="button" onClick={onCreate} className={menuItemClass}>
-          <PlusIcon className="size-4 shrink-0" aria-hidden />
+          <PlusIcon aria-hidden />
           <span>{createLabel}</span>
         </button>
       </div>
@@ -31,19 +29,24 @@ export const SwitcherMenu = ({ children, createLabel, onCreate }: SwitcherMenuPr
 
 interface SwitcherMenuItemProps {
   tile: string;
+  // Stands in for the initial tile: a project shows its mark.
+  mark?: ReactNode;
   name: string;
   selected: boolean;
   onSelect: () => void;
   unreadCount?: number;
 }
 
-export const SwitcherMenuItem = ({ tile, name, selected, onSelect, unreadCount = 0 }: SwitcherMenuItemProps) => (
-  <button type="button" onClick={onSelect} aria-current={selected || undefined} className={menuItemClass}>
-    <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded bg-accent px-1 text-[10px] font-semibold text-primary">
-      {tile}
-    </span>
-    <span className="flex-1 truncate">{name}</span>
+export const SwitcherMenuItem = ({ tile, mark, name, selected, onSelect, unreadCount = 0 }: SwitcherMenuItemProps) => (
+  <button type="button" onClick={onSelect} aria-current={selected || undefined} title={name} className={menuItemClass}>
+    {mark}
+    {!mark && (
+      <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md bg-accent px-1 text-xs font-semibold text-primary">
+        {tile}
+      </span>
+    )}
+    <span className="min-w-0 flex-1 truncate">{name}</span>
     <UnreadBadge count={unreadCount} />
-    {selected && <CheckIcon className="size-3.5 shrink-0 text-primary" aria-hidden />}
+    {selected && <CheckIcon className="text-primary" aria-hidden />}
   </button>
 );

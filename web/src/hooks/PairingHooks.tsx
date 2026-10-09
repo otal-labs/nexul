@@ -185,7 +185,7 @@ export const useMintMCPToken = (computerId: string) => {
       (await api.post<MintedMCPToken>(`/api/pairing/computers/${computerId}/mcp-token`)).data,
     onSuccess: async () => {
       await invalidateMCPToken(client, computerId);
-      toast.success("MCP token created — copy it now, it won't be shown again");
+      toast.success("MCP token created. Copy it now. It won't be shown again.");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -276,7 +276,6 @@ export const useUpdatePairingDefaults = () => {
       (await api.put<PairingDefaults>("/api/pairing/defaults", input)).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getPairingDefaultsKey] });
-      toast.success("Defaults updated");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

@@ -5,6 +5,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { CommandBlock } from "@/components/pairing/CommandBlock";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
+import { formatRelativeTime, formatShortDate } from "@/utils/TimeUtility";
 import { useFetchMCPToken, useMintMCPToken, useRevokeMCPToken } from "@/hooks/PairingHooks";
 
 interface ComputerMCPTokenProps {
@@ -21,10 +22,10 @@ export const ComputerMCPToken = ({ computerId }: ComputerMCPTokenProps) => {
   return (
     <div className="space-y-2">
       {isPending && <LoadingDisplay label="Loading MCP token" className="justify-start p-0" />}
-      {error && <ErrorDisplay error={error} title="MCP token unavailable" className="p-3" />}
+      {error && <ErrorDisplay error={error} title="Couldn't load the MCP token." className="p-3" />}
       {token === null && (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-muted-foreground">No MCP token — its providers can't reach Nexul's MCP server.</p>
+          <p className="text-xs text-muted-foreground">No MCP token, so agents here can't reach Nexul's MCP server.</p>
           <Button type="button" variant="ghost" size="sm" loading={mint.isPending} disabled={busy} onClick={() => mint.mutate()}>
             <KeyRound className="size-4" />
             Mint MCP token
@@ -34,8 +35,8 @@ export const ComputerMCPToken = ({ computerId }: ComputerMCPTokenProps) => {
       {token && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="min-w-0 truncate font-mono text-xs text-muted-foreground tabular-nums">
-            {token.name} · dep_…{token.prefix} · created {new Date(token.created_at).toLocaleDateString()}
-            {token.last_used_at && ` · last used ${new Date(token.last_used_at).toLocaleDateString()}`}
+            {token.name} · dep_…{token.prefix} · created {formatShortDate(token.created_at)}
+            {token.last_used_at && ` · last used ${formatRelativeTime(token.last_used_at)}`}
           </p>
           <span className="flex shrink-0 items-center gap-1">
             <Button type="button" variant="ghost" size="sm" loading={mint.isPending} disabled={busy} onClick={() => mint.mutate()}>

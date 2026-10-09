@@ -117,7 +117,7 @@ describe("ProjectCategories", () => {
   it("shows an empty state when there are no categories", async () => {
     renderCategories([]);
     expect(
-      await screen.findByText("No categories yet — the board groups tickets into swimlanes per category."),
+      await screen.findByText("No categories yet. Add one to give the board a swimlane."),
     ).toBeInTheDocument();
   });
 
@@ -125,7 +125,7 @@ describe("ProjectCategories", () => {
     vi.mocked(api.get).mockReturnValue(new Promise(() => {}));
     renderCategories([]);
     expect(
-      screen.queryByText("No categories yet — the board groups tickets into swimlanes per category."),
+      screen.queryByText("No categories yet. Add one to give the board a swimlane."),
     ).not.toBeInTheDocument();
   });
 
@@ -166,13 +166,16 @@ describe("ProjectCategories", () => {
     expect(screen.getByRole("button", { name: "Move down" })).toBeDisabled();
   });
 
-  it("removes a category from the kebab menu", async () => {
+  it("deletes a category from the kebab menu once confirmed, saying its tickets stay", async () => {
     const user = userEvent.setup();
     vi.mocked(api.delete).mockResolvedValue({ data: undefined });
     renderCategories();
 
     await user.click(await screen.findByRole("button", { name: "Actions for Sprint 1" }));
     await user.click(await screen.findByRole("button", { name: "Delete" }));
+    expect(await screen.findByText("Its swimlane goes. Its 1 ticket stays on the board without a category.")).toBeInTheDocument();
+    expect(api.delete).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Delete category" }));
     expect(api.delete).toHaveBeenCalledWith("/api/categories/c-1");
   });
 });

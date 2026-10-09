@@ -17,7 +17,7 @@ const TunnelConnection = ({ computer }: TunnelConnectionProps) => {
   return (
     <div className="space-y-3 @2xl:order-2">
       {isPending && <LoadingDisplay label="Reading the tunnel" />}
-      {error && <ErrorDisplay error={error} title="Couldn't read the tunnel" />}
+      {error && <ErrorDisplay error={error} title="Couldn't read the tunnel." />}
       {status && <ConnectionPanel connected={tunnelConnected(status)} hostname={computer.tunnel?.hostname ?? ""} />}
       {status && <TunnelChecks status={status} />}
     </div>

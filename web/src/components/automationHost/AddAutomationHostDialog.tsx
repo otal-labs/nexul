@@ -35,7 +35,7 @@ export const AddAutomationHostDialog = () => {
         <DialogHeader>
           <DialogTitle>Add an automations host</DialogTitle>
           <DialogDescription>
-            Name the host, then run its install command on the machine that should run automations.
+            Name the host, then run its install command on the machine.
           </DialogDescription>
         </DialogHeader>
 

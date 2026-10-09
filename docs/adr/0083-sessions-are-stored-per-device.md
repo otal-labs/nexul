@@ -24,7 +24,7 @@ sign-in; there is no background job.
 
 The HTTP gateway lists a user's own sessions with the current one flagged,
 signs one out, signs out everywhere else, and signs out the current session,
-which the web app's Logout calls before clearing its local state. No
+which the web app's Sign out calls before clearing its local state. No
 permission bit: a session is the user's own. `session.created` and
 `session.revoked` are catalog events written through the outbox and pushed
 live, never carrying the token, so a Devices page updates the moment a phone

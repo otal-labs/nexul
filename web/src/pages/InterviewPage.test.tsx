@@ -20,7 +20,10 @@ vi.mock("@/api/client", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 const perms = vi.hoisted(() => ({ denied: [] as string[] }));
-vi.mock("@/hooks/WorkspaceHooks", () => ({ useHasPermission: (value: string) => !perms.denied.includes(value) }));
+vi.mock("@/hooks/WorkspaceHooks", () => ({
+  useHasPermission: (value: string) => !perms.denied.includes(value),
+  useSelectedWorkspace: () => undefined,
+}));
 const access = vi.hoisted(() => ({ areas: ["tickets"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 vi.mock("@/components/doc/DocBodyView", () => ({ DocBodyView: ({ body }: { body: string }) => <div>{body}</div> }));
@@ -233,7 +236,7 @@ describe("InterviewPage", () => {
     renderPage();
 
     expect(await section(/Initial questions/)).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("button", { name: /Follow-ups from the agent 1/ })).toHaveTextContent("0 of 1 answered");
+    expect(screen.getByRole("button", { name: /Follow-ups, round 1/ })).toHaveTextContent("0 of 1 answered");
     expect(screen.getByText("The checkout has two folders.")).toBeInTheDocument();
   });
 
@@ -264,7 +267,7 @@ describe("InterviewPage", () => {
     mockApi({ memories: [interview], plays: [interviewPlay] });
     renderPage();
 
-    expect(await screen.findByText("This memory came from an earlier interview. Answering these questions lets the agent update it.")).toBeInTheDocument();
+    expect(await screen.findByText("An earlier interview wrote this memory. Answer these and the agent updates it.")).toBeInTheDocument();
     expect(screen.getByText("## Stack")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Initial questions/ })).toHaveTextContent("0 of 2 answered");
     expect(await screen.findByRole("button", { name: /Regenerate/ })).toBeInTheDocument();
@@ -413,7 +416,7 @@ describe("InterviewPage", () => {
     renderPage();
 
     expect(await section(/Which test runner\?/)).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("button", { name: /Follow-ups from the agent 1/ })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /Follow-ups, round 1/ })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("button", { name: /Initial questions/ })).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByText("Follow-up 1 of 2")).toBeInTheDocument();
     expect(screen.getByText("ci.yml runs both bun test and vitest.")).toBeInTheDocument();
@@ -454,7 +457,7 @@ describe("InterviewPage", () => {
       answers: { runner: { selected: ["vitest"] }, floor: { text: "85" } },
     });
     expect(await screen.findByText("85")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Follow-ups from the agent 1/ })).toHaveTextContent("2 of 2 answered");
+    expect(screen.getByRole("button", { name: /Follow-ups, round 1/ })).toHaveTextContent("2 of 2 answered");
     expect(screen.queryByRole("radio", { name: "Vitest (Recommended)" })).not.toBeInTheDocument();
   });
 

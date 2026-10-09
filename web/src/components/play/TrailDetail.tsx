@@ -21,7 +21,7 @@ export const TrailDetail = ({ trailId, onClose }: TrailDetailProps) => {
           <DialogDescription>The choices made and every step the Agent took.</DialogDescription>
         </DialogHeader>
         {trailId !== null && isPending && <LoadingDisplay label="Loading trail…" />}
-        {error && <ErrorDisplay error={error} title="Failed to load the trail" />}
+        {error && <ErrorDisplay error={error} title="Couldn't load the trail." />}
         {trail && <TrailDetailBody trail={trail} />}
       </DialogContent>
     </Dialog>

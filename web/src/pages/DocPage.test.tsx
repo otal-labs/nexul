@@ -79,6 +79,7 @@ describe("DocPage", () => {
       if (url.startsWith("/api/projects")) return Promise.resolve({ data: [projectData] });
       if (url.startsWith("/api/ticket-types"))
         return Promise.resolve({ data: [{ id: "ticket-type-task", name: "task", position: 0, created_at: "", updated_at: "" }] });
+      if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Member", permissions: ["tickets:write"] } });
       if (url === "/api/pairing/presence") return Promise.resolve({ data: { computers: {} } });
       if (url === "/api/docs/doc-1/watchers") return Promise.resolve({ data: { watchers: [], watching: false } });
       if (url === "/api/docs/doc-1/clarification") return Promise.resolve({ data: noClarification });
@@ -100,6 +101,7 @@ describe("DocPage", () => {
       if (url.startsWith("/api/projects")) return Promise.resolve({ data: [projectData] });
       if (url.startsWith("/api/ticket-types"))
         return Promise.resolve({ data: [{ id: "ticket-type-task", name: "task", position: 0, created_at: "", updated_at: "" }] });
+      if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Member", permissions: ["tickets:write"] } });
       if (url === "/api/pairing/presence") return Promise.resolve({ data: { computers: {} } });
       if (url === "/api/docs/doc-1/watchers") return Promise.resolve({ data: { watchers: [], watching: false } });
       if (url === "/api/docs/doc-1/clarification") return Promise.resolve({ data: noClarification });
@@ -111,7 +113,7 @@ describe("DocPage", () => {
     await user.click(await screen.findByRole("button", { name: "Doc actions" }));
     await user.click(await screen.findByRole("button", { name: "Create ticket from this doc" }));
     await user.type(screen.getByLabelText("Title"), "New task");
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await user.click(screen.getByRole("button", { name: "Create ticket" }));
 
     expect(api.post).toHaveBeenCalledWith("/api/tickets", {
       title: "New task",

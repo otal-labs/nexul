@@ -51,7 +51,7 @@ describe("ConnectDesktopCard", () => {
 
     await user.click(screen.getByRole("button", { name: "Copy connection token" }));
 
-    expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
+    expect(await screen.findByRole("status")).toHaveTextContent("Copied");
     expect(mocks.post).toHaveBeenCalledWith("/api/auth/connection-token");
     expect(writeText).toHaveBeenCalledWith("header.payload.sig");
   });
@@ -79,6 +79,6 @@ describe("ConnectDesktopCard", () => {
     await user.click(screen.getByRole("button", { name: "Copy connection token" }));
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Clipboard unavailable"));
-    expect(screen.queryByRole("button", { name: "Copied" })).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).not.toHaveTextContent("Copied");
   });
 });

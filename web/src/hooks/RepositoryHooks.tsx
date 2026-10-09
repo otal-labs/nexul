@@ -2,25 +2,12 @@ import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
 import { REPOSITORY_SEARCH_MIN_LENGTH, type Installation, type Repo, type ScanResult } from "@/models/Repository";
+import { pause } from "@/lib/pause";
 
 const getRepositoriesKey = "repositories";
 const getInstallationsKey = "repository-installations";
 
 const searchDebounceMs = 250;
-
-// Rejects when a newer keystroke cancels the query, so only the last pause in typing fetches.
-const pause = (ms: number, signal: AbortSignal) =>
-  new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timer);
-        reject(signal.reason);
-      },
-      { once: true },
-    );
-  });
 
 // A refetch of a loaded search (e.g. focus after installing the App) skips the pause and bypasses the server cache.
 export const useSearchRepositories = (text: string) => {

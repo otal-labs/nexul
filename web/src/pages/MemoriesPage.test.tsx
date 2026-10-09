@@ -72,7 +72,7 @@ const renderPage = (path: string, permissions: string[], overrides: Record<strin
   );
 };
 
-const rowSwitch = (title: string) => screen.findByRole("switch", { name: `Require ${title}` });
+const rowSwitch = (title: string) => screen.findByRole("switch", { name: `Always include ${title}` });
 
 beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
@@ -87,7 +87,7 @@ describe("MemoriesPage", () => {
     const main = await screen.findByRole("region", { name: "Main" });
     const [first, second] = within(main).getAllByRole("link");
     expect(first).toHaveAccessibleName(/Deploy quirks/);
-    expect(within(main).getByText("required")).toBeInTheDocument();
+    expect(await rowSwitch("Deploy quirks")).toBeChecked();
     expect(second).toHaveAttribute("aria-current", "page");
     const footer = screen.getByRole("region", { name: "Footer" });
     expect(within(footer).getByRole("link", { name: /Where tickets go/ })).toBeInTheDocument();
@@ -164,6 +164,6 @@ describe("MemoriesPage", () => {
   it("shows the shared error display when the list fails", async () => {
     renderPage("/memories", ["memories:read"], { "/api/memories": new Error("boom") });
 
-    expect(await screen.findByText("Failed to load memories.")).toBeInTheDocument();
+    expect(await screen.findByText("Couldn't load memories.")).toBeInTheDocument();
   });
 });

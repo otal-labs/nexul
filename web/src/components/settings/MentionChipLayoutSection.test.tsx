@@ -60,7 +60,7 @@ describe("MentionChipLayoutSection", () => {
     const user = userEvent.setup();
     renderSection({ mention_chip_template: "" });
 
-    await user.click(screen.getByRole("button", { name: "{ticket.Developer}" }));
+    await user.click(screen.getByRole("button", { name: "Add {ticket.Developer}" }));
     expect(screen.getByLabelText("Format")).toHaveValue("{ticket.Developer}");
   });
 

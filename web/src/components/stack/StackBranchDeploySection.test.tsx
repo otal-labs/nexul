@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StackBranchDeploySection } from "@/components/stack/StackBranchDeploySection";
@@ -32,6 +33,7 @@ const stack: StackWithBranches = {
 const renderSection = (s: StackWithBranches = stack) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <ContextAwareConfirmation.ConfirmationRoot />
       <StackBranchDeploySection stack={s} />
     </QueryClientProvider>,
   );
@@ -72,6 +74,17 @@ describe("StackBranchDeploySection overrides", () => {
     ]);
   });
 
+  it("a rejected save keeps the overrides open without an unhandled rejection", async () => {
+    mocks.patch.mockRejectedValue(new Error("Request failed with status code 400"));
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(screen.getByRole("button", { name: "Overrides" }));
+    await user.click(screen.getByRole("button", { name: "Save overrides" }));
+
+    expect(mocks.patch).toHaveBeenCalled();
+    expect(screen.getByRole("textbox", { name: "Overrides" })).toBeInTheDocument();
+  });
+
   it("clearing every override drops the overrides from the rule", async () => {
     const user = userEvent.setup();
     renderSection();
@@ -98,5 +111,34 @@ describe("StackBranchDeploySection overrides", () => {
     expect(patchedRules()).toEqual([
       { pattern: "feature/*", docker_network: "qa-net", overrides: { DATABASE_URL: "postgres://qa" } },
     ]);
+  });
+});
+
+describe("StackBranchDeploySection removals", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.patch.mockImplementation((_url: string, body: unknown) => Promise.resolve({ data: body }));
+    mocks._delete.mockResolvedValue({ data: undefined });
+  });
+
+  it("tears a live branch deployment down only once confirmed", async () => {
+    const user = userEvent.setup();
+    const deployment = { ...stack, id: "stack-feat", name: "api-feature-x", branch: "feature/x", branch_deploy_rules: [] };
+    renderSection({ ...stack, branch_deployments: [deployment] });
+
+    await user.click(screen.getByRole("button", { name: "Tear down" }));
+    expect(mocks._delete).not.toHaveBeenCalled();
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Tear down" }));
+    expect(mocks._delete).toHaveBeenCalledWith("/api/stacks/stack-feat");
+  });
+
+  it("removes a rule only once confirmed", async () => {
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(screen.getAllByRole("button", { name: "Remove" })[0]!);
+    expect(mocks.patch).not.toHaveBeenCalled();
+    await user.click(await screen.findByRole("button", { name: "Remove rule" }));
+    expect(patchedRules()).toEqual([stack.branch_deploy_rules![1]]);
   });
 });

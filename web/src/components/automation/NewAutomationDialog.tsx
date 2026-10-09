@@ -6,8 +6,10 @@ import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -55,47 +57,55 @@ export const NewAutomationDialog = () => {
           New automation
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>New automation</DialogTitle>
           <DialogDescription>Name it and pick what its token may touch.</DialogDescription>
         </DialogHeader>
         {!minted && (
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormInput control={form.control} name="name" label="Name" placeholder="e.g. Slack notifier" />
-            <Controller
-              control={form.control}
-              name="scopes"
-              render={({ field, fieldState }) => (
-                <fieldset className="space-y-2">
-                  <legend className="text-sm font-medium">Scopes</legend>
-                  <PermissionLevels entries={scopeCatalog} value={field.value} onChange={field.onChange} />
-                  {fieldState.error && (
-                    <p role="alert" className="text-sm text-destructive">
-                      {fieldState.error.message}
-                    </p>
-                  )}
-                </fieldset>
-              )}
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button type="submit" loading={form.formState.isSubmitting}>
-                Create automation
-              </Button>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-            </div>
-          </form>
+          <DialogBody>
+            <form id="new-automation" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormInput control={form.control} name="name" label="Name" placeholder="e.g. Slack notifier" />
+              <Controller
+                control={form.control}
+                name="scopes"
+                render={({ field, fieldState }) => (
+                  <fieldset className="space-y-2">
+                    <legend className="text-sm font-medium">Scopes</legend>
+                    <PermissionLevels entries={scopeCatalog} value={field.value} onChange={field.onChange} />
+                    {fieldState.error && (
+                      <p role="alert" className="text-sm text-destructive">
+                        {fieldState.error.message}
+                      </p>
+                    )}
+                  </fieldset>
+                )}
+              />
+            </form>
+          </DialogBody>
+        )}
+        {!minted && (
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" form="new-automation" loading={form.formState.isSubmitting}>
+              Create automation
+            </Button>
+          </DialogFooter>
         )}
         {minted && (
-          <div className="space-y-4">
+          <DialogBody className="space-y-4">
             <p className="text-sm font-medium">{minted.automation.name} created</p>
             <AutomationTokenReveal token={minted.token} />
-            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+          </DialogBody>
+        )}
+        {minted && (
+          <DialogFooter>
+            <Button type="button" onClick={() => onOpenChange(false)}>
               Done
             </Button>
-          </div>
+          </DialogFooter>
         )}
       </DialogContent>
     </Dialog>

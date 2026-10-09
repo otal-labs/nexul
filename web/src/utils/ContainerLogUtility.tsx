@@ -24,13 +24,31 @@ export const appendLogLines = (kept: ContainerLogLine[], incoming: ContainerLogW
   return [...kept, ...added].slice(-MAX_LOG_LINES);
 };
 
+export interface EmptyLogMessage {
+  text: string;
+  /** The server's own words, kept for a reader who wants them when the text replaced them. */
+  detail?: string;
+}
+
+const OFFLINE_MACHINE = /no runner is connected on machine "?([^"]+?)"?$/;
+const SERVER_PLUMBING = /^(?:logs of [^:]+: )?(?:retryable: )?/;
+
+const offlineMessage = (reason: string | undefined): EmptyLogMessage => {
+  if (!reason) return { text: "The runner is offline, so live logs can't be read right now." };
+  const machine = OFFLINE_MACHINE.exec(reason)?.[1];
+  if (machine) return { text: `The runner on ${machine} is offline, so live logs can't be read right now.`, detail: reason };
+  if (reason.includes("did not send the logs")) return { text: "The runner didn't send the logs in time, trying again.", detail: reason };
+  const cleaned = reason.replace(SERVER_PLUMBING, "");
+  return { text: `Live logs can't be read right now: ${cleaned}`, ...(cleaned !== reason && { detail: reason }) };
+};
+
 // What the block says in place of lines: the connection's state while nothing has arrived, else why the filter shows none.
-export const emptyLogMessage = ({ lines, status, reason }: ContainerLogs, filter: LogFilter): string => {
-  if (status === "forbidden") return "You can't read logs for this stack.";
-  if (lines.length > 0 && filter === "errors") return "No error output";
-  if (status === "connecting") return "Connecting…";
-  if (status === "offline") return reason ? `Runner offline: ${reason}` : "Runner offline";
-  return "No output yet";
+export const emptyLogMessage = ({ lines, status, reason }: ContainerLogs, filter: LogFilter): EmptyLogMessage => {
+  if (status === "forbidden") return { text: "You can't read logs for this stack." };
+  if (lines.length > 0 && filter === "errors") return { text: "No error output" };
+  if (status === "connecting") return { text: "Connecting…" };
+  if (status === "offline") return offlineMessage(reason);
+  return { text: "No output yet" };
 };
 
 // The daemon's own messages (a container that does not exist) arrive without a timestamp.

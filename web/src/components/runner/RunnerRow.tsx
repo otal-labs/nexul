@@ -1,6 +1,5 @@
-import { entranceDelayMs } from "@/components/runner/motion";
 import { RemoveRunnerButton } from "@/components/runner/RemoveRunnerButton";
-import { RunnerStatusBadge } from "@/components/runner/RunnerStatusBadge";
+import { RunnerStatusDot } from "@/components/runner/RunnerStatusDot";
 import { RunnerVersionChip } from "@/components/runner/RunnerVersionChip";
 import type { Runner } from "@/models/Runner";
 import { cn } from "@/lib/utils";
@@ -8,42 +7,37 @@ import { formatRelativeTime } from "@/utils/TimeUtility";
 
 interface RunnerRowProps {
   runner: Runner;
-  index?: number;
+  /** Under a machine of the same name the row names the runner by its short id instead of repeating the header. */
+  machineName?: string;
 }
 
-// <li> owns hover, the inner <div> owns the entrance, so a refetch reusing key={runner.id} won't replay it.
-export const RunnerRow = ({ runner, index = 0 }: RunnerRowProps) => {
+// Fixed columns, the dot under the machine's mark, so names, times and state line up across every machine.
+export const RunnerRow = ({ runner, machineName }: RunnerRowProps) => {
   const job = runner.running_job;
+  const named = runner.name && runner.name !== machineName;
   return (
-    <li
-      className={cn(
-        "transition-colors duration-150 ease-standard hover:bg-accent/40",
-        !runner.connected && "opacity-60",
-      )}
-    >
-      <div
-        className="animate-in fade-in-0 slide-in-from-bottom-1 flex items-center gap-3 px-4 py-3 duration-150 ease-out"
-        style={{ animationDelay: `${entranceDelayMs(index)}ms` }}
-      >
-        <RunnerStatusBadge connected={runner.connected} />
-        <div className="min-w-0 flex-1">
-          <span className="block truncate font-mono font-medium">{runner.name || runner.id}</span>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <p className="truncate font-mono text-xs text-muted-foreground">
-              {runner.id} · last seen {formatRelativeTime(runner.last_seen)}
-            </p>
-            {runner.version && <RunnerVersionChip version={runner.version} />}
-          </div>
-        </div>
-        {job && (
-          <div className="max-w-[45%] truncate text-right text-sm">
-            <span className="text-muted-foreground">running </span>
-            <span className="font-mono text-success">{job.service || job.kind}</span>
-          </div>
-        )}
-        {!job && <span className="shrink-0 text-sm text-muted-foreground">idle</span>}
-        <RemoveRunnerButton runner={runner} />
+    <li className="grid grid-cols-[2.25rem_minmax(0,1fr)_5.5rem_minmax(0,9rem)_2rem] items-center gap-x-3 px-4 py-2.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
+      <RunnerStatusDot connected={runner.connected} />
+      <div className="min-w-0">
+        <span className={cn("block truncate font-mono text-sm", !runner.connected && "text-muted-foreground")} title={runner.id}>
+          {named ? runner.name : `runner ${runner.id.slice(0, 8)}`}
+        </span>
+        {runner.version && <RunnerVersionChip version={runner.version} />}
       </div>
+      <span className="text-right font-mono text-xs text-muted-foreground tabular-nums" title="Last seen">
+        {formatRelativeTime(runner.last_seen)}
+      </span>
+      <span className="min-w-0 truncate text-sm">
+        {job && (
+          <span className="inline-flex max-w-full items-center gap-1.5" title={`Running ${job.service || job.kind}`}>
+            <span aria-hidden className="size-1.5 shrink-0 animate-[status-pulse_2.4s_ease-standard_infinite] rounded-full bg-info" />
+            <span className="truncate font-mono text-xs">{job.service || job.kind}</span>
+          </span>
+        )}
+        {!job && runner.connected && <span className="text-muted-foreground">idle</span>}
+        {!runner.connected && <span className="text-muted-foreground">offline</span>}
+      </span>
+      <RemoveRunnerButton runner={runner} />
     </li>
   );
 };

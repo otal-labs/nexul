@@ -55,7 +55,7 @@ describe("TeamSection", () => {
     mocks.put.mockReset();
   });
 
-  it("shows when each person was last online, with a presence dot and their account status kept as a word", async () => {
+  it("shows when each person was last online with a presence dot, and names an account status only when it blocks sign-in", async () => {
     const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString();
     const person = (id: string, name: string, extra: Partial<TeamPerson>): TeamPerson => ({
       id, login: id, name, avatar_url: "", status: "active", created_at: "", online: false, last_seen_at: null, workspaces: [], ...extra,
@@ -70,10 +70,10 @@ describe("TeamSection", () => {
       ],
     });
 
-    const dotOf = (row: HTMLElement) => row.querySelector("span[aria-hidden].rounded-full");
+    const dotOf = (row: HTMLElement) => row.querySelector("[data-presence]");
     const ann = await screen.findByRole("button", { name: "Open Ann" });
     expect(ann).toHaveTextContent("Online");
-    expect(ann).toHaveTextContent("active");
+    expect(ann).not.toHaveTextContent(/active/i);
     expect(dotOf(ann)).toHaveClass("bg-success");
 
     const cy = screen.getByRole("button", { name: "Open Cy" });
@@ -83,7 +83,7 @@ describe("TeamSection", () => {
 
     const eve = screen.getByRole("button", { name: "Open Eve" });
     expect(eve).toHaveTextContent("Last seen 3d ago");
-    expect(eve).toHaveTextContent("disabled");
+    expect(eve).toHaveTextContent("Disabled");
     expect(dotOf(eve)).toHaveClass("bg-muted-foreground");
   });
 

@@ -2,20 +2,32 @@ import { GatewaysSection } from "@/components/dns/GatewaysSection";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ConnectorsSettingsPanel } from "@/components/settings/ConnectorsSettingsPanel";
-import { InstanceSettingsPanel } from "@/components/settings/InstanceSettingsPanel";
+import { InstanceUrlSection } from "@/components/settings/InstanceUrlSection";
+import { InstanceVersionSection } from "@/components/settings/InstanceVersionSection";
+import { SettingsCard } from "@/components/settings/SettingsCard";
 import type { SettingsSection } from "@/components/settings/SettingsNav";
 import { SignInProvidersPanel } from "@/components/settings/SignInProvidersPanel";
 import { InstanceTemplatesSection } from "@/components/templates/InstanceTemplatesSection";
 import { TeamSection } from "@/components/team/TeamSection";
 import { useFetchSettings } from "@/hooks/AuthHooks";
 
+// The version reads its own endpoint, so it shows whether or not the instance settings load.
 const InstancePanel = () => {
   const { data: settings, isPending, error } = useFetchSettings();
   return (
     <>
-      {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
-      {settings && <InstanceSettingsPanel settings={settings} />}
+      <InstanceVersionSection />
+      {isPending && (
+        <SettingsCard id="instance" title="Address">
+          <LoadingDisplay />
+        </SettingsCard>
+      )}
+      {error && (
+        <SettingsCard id="instance" title="Address">
+          <ErrorDisplay error={error} />
+        </SettingsCard>
+      )}
+      {settings && <InstanceUrlSection settings={settings} />}
     </>
   );
 };
@@ -25,7 +37,11 @@ const SignInPanel = () => {
   return (
     <>
       {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
+      {error && (
+        <SettingsCard id="sign-in" title="Sign-in providers">
+          <ErrorDisplay error={error} />
+        </SettingsCard>
+      )}
       {settings && <SignInProvidersPanel settings={settings} />}
     </>
   );

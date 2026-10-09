@@ -3,15 +3,13 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { menuItemClass } from "@/components/MenuItem";
 import { useReportBugDialog } from "@/hooks/useReportBugDialog";
 
 interface BoardCreateMenuProps {
   onNewTicket: () => void;
   onNewCategory: () => void;
 }
-
-const menuItemClass =
-  "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13.5px] text-foreground outline-none transition-colors duration-150 ease-standard hover:bg-accent/60 focus-visible:bg-accent/60";
 
 // One "+" entry point: separate buttons read as unrelated when both just add something to the board.
 export const BoardCreateMenu = ({ onNewTicket, onNewCategory }: BoardCreateMenuProps) => {
@@ -26,8 +24,8 @@ export const BoardCreateMenu = ({ onNewTicket, onNewCategory }: BoardCreateMenuP
           Create
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-48 p-1.5">
-        <div className="flex flex-col gap-0.5">
+      <PopoverContent align="end" className="w-48 p-1">
+        <div className="flex flex-col">
           <button
             type="button"
             className={menuItemClass}
@@ -36,7 +34,7 @@ export const BoardCreateMenu = ({ onNewTicket, onNewCategory }: BoardCreateMenuP
               onNewTicket();
             }}
           >
-            <TicketIcon className="size-4 shrink-0" aria-hidden />
+            <TicketIcon aria-hidden />
             New ticket
           </button>
           <button
@@ -47,7 +45,7 @@ export const BoardCreateMenu = ({ onNewTicket, onNewCategory }: BoardCreateMenuP
               void reportBug();
             }}
           >
-            <Bug className="size-4 shrink-0" aria-hidden />
+            <Bug aria-hidden />
             Report a bug
           </button>
           <button
@@ -58,7 +56,7 @@ export const BoardCreateMenu = ({ onNewTicket, onNewCategory }: BoardCreateMenuP
               onNewCategory();
             }}
           >
-            <TagIcon className="size-4 shrink-0" aria-hidden />
+            <TagIcon aria-hidden />
             New category
           </button>
         </div>

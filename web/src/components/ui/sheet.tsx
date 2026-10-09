@@ -1,4 +1,5 @@
 import { XIcon } from "lucide-react";
+import { useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { Dialog as SheetPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
@@ -33,12 +34,59 @@ function SheetOverlay({
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
       className={cn(
-        "glass-overlay fixed inset-0 z-50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        "glass-overlay overlay-scrim sheet-scrim fixed inset-0 z-50",
         className,
       )}
       {...props}
     />
   );
+}
+
+// A sheet past this share of its width, or flicked faster than this, closes when the pointer lets go.
+const DISMISS_SHARE = 0.35;
+const DISMISS_SPEED = 0.5;
+
+// Dragging a sheet's header toward its edge moves it with the pointer, 1:1, and lets go into a close or a snap back.
+function useSheetDrag(side: "top" | "right" | "bottom" | "left") {
+  const drag = useRef<{ x: number; t: number; dx: number; v: number } | null>(null);
+  const direction = side === "left" ? -1 : 1;
+  const horizontal = side === "left" || side === "right";
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (!horizontal || event.button !== 0 || !target.closest("[data-slot=sheet-header]") || target.closest("button, a, input, textarea, select")) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    drag.current = { x: event.clientX, t: event.timeStamp, dx: 0, v: 0 };
+  };
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    const raw = (event.clientX - d.x) * direction;
+    // Past its open place the sheet resists instead of stopping dead.
+    const dx = raw >= 0 ? raw : -8 * (1 - Math.exp(raw / 40));
+    d.v = (dx - d.dx) / Math.max(1, event.timeStamp - d.t);
+    d.dx = dx;
+    d.t = event.timeStamp;
+    const el = event.currentTarget;
+    el.dataset.dragging = "";
+    el.style.translate = `${dx * direction}px 0`;
+    // The scrim fades with the drag, so it is always exactly as gone as the sheet.
+    const scrim = el.previousElementSibling as HTMLElement | null;
+    if (scrim) scrim.style.opacity = String(1 - Math.max(0, dx) / el.offsetWidth);
+  };
+  const onPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    drag.current = null;
+    const el = event.currentTarget;
+    if (!d || !("dragging" in el.dataset)) return;
+    if (d.dx > el.offsetWidth * DISMISS_SHARE || d.v > DISMISS_SPEED) el.querySelector<HTMLElement>("[data-slot=sheet-close]")?.click();
+    // The transition takes over from wherever the pointer left the sheet.
+    delete el.dataset.dragging;
+    el.style.translate = "";
+    const scrim = el.previousElementSibling as HTMLElement | null;
+    if (scrim) scrim.style.opacity = "";
+  };
+  return { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp };
 }
 
 function SheetContent({
@@ -51,27 +99,30 @@ function SheetContent({
   side?: "top" | "right" | "bottom" | "left";
   showCloseButton?: boolean;
 }) {
+  const drag = useSheetDrag(side);
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        data-side={side}
+        {...drag}
         className={cn(
-          "fixed z-50 flex flex-col gap-4 bg-card shadow-elevated transition ease-standard data-[state=closed]:animate-out data-[state=closed]:duration-200 data-[state=open]:animate-in data-[state=open]:duration-250",          side === "right" &&
-            "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
-          side === "left" &&
-            "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
-          side === "top" &&
-            "inset-x-0 top-0 h-auto border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
-          side === "bottom" &&
-            "inset-x-0 bottom-0 h-auto border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+          "sheet-surface glass-popover fixed z-50 flex flex-col gap-4 outline-none",
+          side === "right" && "inset-y-2 right-2 w-3/4 rounded-xl sm:max-w-sm",
+          side === "left" && "inset-y-2 left-2 w-3/4 rounded-xl sm:max-w-sm",
+          side === "top" && "inset-x-2 top-2 h-auto rounded-xl",
+          side === "bottom" && "inset-x-2 bottom-2 h-auto rounded-xl",
           className,
         )}
         {...props}
       >
         {children}
         {showCloseButton && (
-          <SheetPrimitive.Close className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">
+          <SheetPrimitive.Close
+            data-slot="sheet-close"
+            className="absolute top-3.5 right-3.5 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-[120ms] ease-standard hover:bg-accent hover:text-foreground"
+          >
             <XIcon className="size-4" />
             <span className="sr-only">Close</span>
           </SheetPrimitive.Close>
@@ -81,11 +132,14 @@ function SheetContent({
   );
 }
 
+// The header is the sheet's grip on a side sheet.
+const horizontalDragHint = "in-data-[side=left]:cursor-grab in-data-[side=right]:cursor-grab in-data-dragging:cursor-grabbing";
+
 function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-header"
-      className={cn("flex flex-col gap-1.5 p-4", className)}
+      className={cn("flex flex-col gap-1.5 p-4 pr-12 select-none", horizontalDragHint, className)}
       {...props}
     />
   );

@@ -82,6 +82,7 @@ describe("DeploySidebarNav", () => {
     await renderNav(true);
 
     expect(screen.queryByRole("button", { name: "Workspace" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Runners" })).toHaveAttribute("title", "Runners");
+    expect(screen.getByRole("link", { name: "Runners" })).toBeInTheDocument();
+    expect(screen.queryByText("Runners")).not.toBeInTheDocument();
   });
 });

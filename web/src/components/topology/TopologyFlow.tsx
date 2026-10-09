@@ -4,7 +4,6 @@ import {
   Background,
   BackgroundVariant,
   Controls,
-  MiniMap,
   ReactFlow,
   ViewportPortal,
   type NodeMouseHandler,
@@ -109,12 +108,10 @@ export const TopologyFlow = () => {
         onNodeClick={handleNodeClick}
         onNodeDragStop={handleNodeDragStop}
         onMoveEnd={handleMoveEnd}
-        className="bg-background"
+        proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} />
         <Controls />
-        {/* Minimap is overview-only chrome, dropped below `md`; pan/zoom/drag/connect stay live at every width. */}
-        <MiniMap pannable zoomable className="hidden md:block" />
         <ViewportPortal>
           {networkRects.map((rect) => (
             <NetworkBox key={rect.name} rect={rect} />

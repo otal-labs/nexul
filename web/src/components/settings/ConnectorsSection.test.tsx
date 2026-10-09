@@ -1,3 +1,4 @@
+import { ContextAwareConfirmation } from "react-confirm";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -76,6 +77,7 @@ const renderSection = (initialEntries = ["/settings"]) => {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={initialEntries}>
         <ConnectorsSection />
+        <ContextAwareConfirmation.ConfirmationRoot />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -99,16 +101,17 @@ describe("ConnectorsSection", () => {
 
     expect(await screen.findByText("GitHub")).toBeInTheDocument();
     expect(screen.getByText("Cloudflare")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /not connected/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("radio", { name: /not connected/i })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("button", { name: /^connect$/i })).toBeInTheDocument();
   });
 
-  it("shows a disabled Coming soon button in place of Connect for a not-yet-available connector", async () => {
+  it("marks a not-yet-available connector Coming soon and offers no Connect", async () => {
     mocks.get.mockResolvedValue({ data: registryConnectors() });
     renderSection();
 
-    expect(await screen.findByRole("button", { name: /coming soon/i })).toBeDisabled();
-    expect(screen.getByText("Cloudflare").closest("li")).toHaveTextContent("Coming soon");
+    const row = (await screen.findByText("Cloudflare")).closest("li") as HTMLElement;
+    expect(row).toHaveTextContent("Coming soon");
+    expect(within(row).queryByRole("button", { name: /connect/i })).not.toBeInTheDocument();
   });
 
   it("lands on Connected and shows the pill and Disconnect button for a configured connector", async () => {
@@ -118,12 +121,12 @@ describe("ConnectorsSection", () => {
     renderSection();
 
     expect(await screen.findByText("Connected", { selector: "span" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /^connected$/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("radio", { name: /^connected$/i })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("button", { name: /^disconnect$/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^connect$/i })).not.toBeInTheDocument();
   });
 
-  it("filters the list with the Connected / Not connected tabs", async () => {
+  it("filters the list with the Connected / Not connected switch", async () => {
     mocks.get.mockResolvedValue({
       data: [
         connectorEntry({ status: { configured: true } }),
@@ -136,7 +139,7 @@ describe("ConnectorsSection", () => {
     await screen.findByText("GitHub");
     expect(screen.queryByText("Cloudflare")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: /not connected/i }));
+    await user.click(screen.getByRole("radio", { name: /not connected/i }));
     expect(await screen.findByText("Cloudflare")).toBeInTheDocument();
     expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
   });
@@ -482,7 +485,7 @@ describe("ConnectorsSection", () => {
     expect(within(dialog).queryByRole("button", { name: /^confirm$/i })).not.toBeInTheDocument();
   });
 
-  it("calls the disconnect mutation on Disconnect", async () => {
+  it("disconnects only once the confirm is accepted", async () => {
     mocks.get.mockResolvedValue({
       data: [connectorEntry({ status: { configured: true } })],
     });
@@ -491,6 +494,9 @@ describe("ConnectorsSection", () => {
     renderSection();
 
     await user.click(await screen.findByRole("button", { name: /^disconnect$/i }));
+    const prompt = within(await screen.findByRole("dialog", { name: /disconnect github/i }));
+    expect(mocks.post).not.toHaveBeenCalled();
+    await user.click(prompt.getByRole("button", { name: /^disconnect$/i }));
 
     await vi.waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/connectors/github/disconnect"));
   });

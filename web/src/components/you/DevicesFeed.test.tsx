@@ -93,7 +93,7 @@ describe("DevicesFeed", () => {
   it("shows an empty row and disables sign out everywhere when only this device is signed in", async () => {
     mocks.get.mockResolvedValue({ data: { sessions: [current] } });
     renderFeed();
-    expect(await screen.findByText(/no other devices are signed in/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no other devices signed in/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign out everywhere else" })).toBeDisabled();
   });
 
@@ -109,7 +109,7 @@ describe("DevicesFeed", () => {
 
     expect(mocks.del).toHaveBeenCalledWith("/api/auth/sessions/s-phone");
     await waitFor(() => expect(screen.queryByText("Android · Pixel 8")).not.toBeInTheDocument());
-    expect(screen.getByText(/no other devices are signed in/i)).toBeInTheDocument();
+    expect(screen.getByText(/no other devices signed in/i)).toBeInTheDocument();
   });
 
   it("keeps the row and shows an error when signing out fails", async () => {
@@ -137,7 +137,7 @@ describe("DevicesFeed", () => {
     await user.click(await screen.findByRole("button", { name: "Sign out everywhere else" }));
 
     expect(mocks.del).toHaveBeenCalledWith("/api/auth/sessions/others");
-    expect(await screen.findByText(/no other devices are signed in/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no other devices signed in/i)).toBeInTheDocument();
     expect(screen.queryByText("macOS · Nexul desktop")).not.toBeInTheDocument();
     expect(screen.getByText("Linux · Firefox")).toBeInTheDocument();
   });

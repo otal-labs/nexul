@@ -11,14 +11,12 @@ interface InterviewSourceStanceProps {
   size?: "xs" | "sm";
 }
 
-const itemClass = { xs: "h-6 px-2 text-[11px]", sm: "h-7 px-3 text-xs" };
-
 // Follow | Question as a segmented pair.
 export const InterviewSourceStance = ({ label, value, onChange, disabled = false, size = "xs" }: InterviewSourceStanceProps) => (
   <ToggleGroup
     type="single"
-    variant="outline"
-    size="sm"
+    variant="segmented"
+    size="xs"
     aria-label={`Stance for ${label}`}
     disabled={disabled}
     value={value}
@@ -27,14 +25,7 @@ export const InterviewSourceStance = ({ label, value, onChange, disabled = false
     className="shrink-0"
   >
     {SOURCE_STANCES.map((stance) => (
-      <ToggleGroupItem
-        key={stance}
-        value={stance}
-        className={cn(
-          itemClass[size],
-          "min-w-0 text-muted-foreground transition-colors duration-150 ease-standard data-[state=on]:bg-accent data-[state=on]:text-foreground",
-        )}
-      >
+      <ToggleGroupItem key={stance} value={stance} className={cn(size === "xs" && "h-6 px-2")}>
         {SOURCE_STANCE_LABEL[stance]}
       </ToggleGroupItem>
     ))}
