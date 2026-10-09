@@ -15,6 +15,19 @@ import type { ActivityEntry, Trail } from "@/models/Trail";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { usePlayRunStore } from "@/stores/playRunStore";
 
+// Every message and the stream bubble sit in a scroller item, so counting item renders counts what one update repaints.
+const items = vi.hoisted(() => ({ renders: 0 }));
+vi.mock("@/components/ui/message-scroller", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/ui/message-scroller")>();
+  return {
+    ...actual,
+    MessageScrollerItem: (props: Parameters<typeof actual.MessageScrollerItem>[0]) => {
+      items.renders += 1;
+      return actual.MessageScrollerItem(props);
+    },
+  };
+});
+
 const conversation: Conversation = {
   id: "c1",
   workspace_id: "ws-1",
@@ -82,6 +95,21 @@ describe("MessageList agent stream bubble lifecycle", () => {
     act(() => useAgentStreamStore.getState().setStream("c1", { messageId: "stream-1", text: "Looking into it now", streaming: true }));
     expect(screen.queryByText("Looking")).not.toBeInTheDocument();
     expect(screen.getByText("Looking into it now")).toBeInTheDocument();
+  });
+
+  it("renders only the stream bubble for each streamed token, never the messages above it", () => {
+    const history = Array.from({ length: 5 }, (_, i) =>
+      message({ id: `m${i}`, author_id: i % 2 === 0 ? "u1" : "u2", body: `Message ${i}`, created_at: `2026-08-26T00:0${i}:00Z` }),
+    );
+    renderList(history);
+    items.renders = 0;
+
+    for (const text of ["Looking", "Looking into", "Looking into it"]) {
+      act(() => useAgentStreamStore.getState().setStream("c1", { messageId: "stream-1", text, streaming: true }));
+    }
+
+    expect(screen.getByText("Looking into it")).toBeInTheDocument();
+    expect(items.renders).toBe(3);
   });
 
   it("calls onInterruptAgent when the stop button is clicked", async () => {

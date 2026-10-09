@@ -12,10 +12,8 @@ import {
 } from "@/components/ui/message-scroller";
 
 import { AgentStreamBubble } from "@/components/chat/AgentStreamBubble";
-import { ChatDayDivider } from "@/components/chat/ChatDayDivider";
 import { ChatPaneState } from "@/components/chat/ChatPaneState";
-import { MessageRow } from "@/components/chat/MessageRow";
-import { playSend } from "@/components/chat/sendMotion";
+import { MessageListItem, type Entrance } from "@/components/chat/MessageListItem";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { useThreadTrailBlocks } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
@@ -68,8 +66,6 @@ const answeredAfter = (messages: Message[], index: number): boolean =>
 
 const rowKey = (message: Message) => message.client_key ?? message.id;
 
-type Entrance = "send" | "arrive";
-
 // After the conversation opens: yours plays the send, others' rise in, the Agent's arrives as its stream bubble instead.
 const entranceOf = (message: Message, seen: Set<string>, own: boolean): Entrance | undefined => {
   if (seen.has(rowKey(message))) return undefined;
@@ -109,40 +105,26 @@ export const MessageList = ({
             <MessageScrollerViewport>
               <MessageScrollerContent className="mx-auto w-full max-w-3xl gap-0 py-2" aria-busy={stream?.streaming ?? false}>
                 {messages.map((message, i) => {
-                  const continuation = isContinuation(messages[i - 1], message);
                   const own = message.author_id === currentUserId;
-                  const entrance = entranceOf(message, seen, own);
-                  const newDay = startsDay(messages[i - 1], message);
+                  const newest = i === messages.length - 1;
                   return (
-                    // Only the newest message, when it is an @Agent turn, anchors: the scroller jumps to any older anchor on a same-count swap (pending row confirmed, stream bubble replaced).
-                    <MessageScrollerItem
+                    <MessageListItem
                       key={rowKey(message)}
-                      ref={entrance === "send" ? playSend : undefined}
-                      messageId={message.id}
-                      // The item's content-visibility clips paint to its box; the margin lets the Edit/Delete pill rise into the gap above.
-                      // The newest row renders eagerly: its 10rem placeholder would park a just-sent message above the bottom edge.
-                      className={cn(
-                        continuation ? "pt-1.5 [overflow-clip-margin:1rem]" : "pt-4",
-                        i === messages.length - 1 && "[content-visibility:visible]",
-                        entrance === "arrive" && "arrive",
-                      )}
-                      scrollAnchor={
-                        i === messages.length - 1 && message.author_kind === "user" && (message.mentions ?? []).some((m) => m.kind === "agent")
-                      }
-                    >
-                      {newDay && <ChatDayDivider createdAt={message.created_at} />}
-                      <MessageRow
-                        message={message}
-                        author={resolveAuthor(message.author_id)}
-                        isOwn={own}
-                        continuation={continuation}
-                        questionAnswered={message.author_kind === "agent" && answeredAfter(messages, i)}
-                        trailBlock={trailBlockFor(message, blocks)}
-                        ticketId={conversation.ticket_id}
-                        onEdit={onEdit}
-                        onDelete={onDelete}
-                      />
-                    </MessageScrollerItem>
+                      message={message}
+                      author={resolveAuthor(message.author_id)}
+                      isOwn={own}
+                      continuation={isContinuation(messages[i - 1], message)}
+                      newDay={startsDay(messages[i - 1], message)}
+                      newest={newest}
+                      entrance={entranceOf(message, seen, own)}
+                      // Only the newest message, when it is an @Agent turn, anchors: the scroller jumps to any older anchor on a same-count swap (pending row confirmed, stream bubble replaced).
+                      scrollAnchor={newest && message.author_kind === "user" && (message.mentions ?? []).some((m) => m.kind === "agent")}
+                      questionAnswered={message.author_kind === "agent" && answeredAfter(messages, i)}
+                      trailBlock={trailBlockFor(message, blocks)}
+                      ticketId={conversation.ticket_id}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                    />
                   );
                 })}
                 {stream && (
