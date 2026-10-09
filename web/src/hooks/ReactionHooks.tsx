@@ -1,10 +1,12 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { applyReaction } from "@nexul/client-core/chat";
+
 import { api, errorMessage } from "@/api/client";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { getChatMessagesKey, upsertCachedMessage } from "@/hooks/ChatHooks";
-import { applyReaction, type Message } from "@/models/Chat";
+import type { Message } from "@/models/Chat";
 import type { LiveFollower } from "@/lib/live";
 
 export interface ReactionChange {

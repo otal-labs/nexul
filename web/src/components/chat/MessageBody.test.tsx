@@ -4,9 +4,10 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { MessageBody } from "@/components/chat/MessageBody";
 import { getChatConversationsKey } from "@/hooks/ChatHooks";
-import type { Conversation } from "@/models/Chat";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const channel: Conversation = {

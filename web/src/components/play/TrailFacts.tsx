@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 
+import { personLabel } from "@nexul/client-core/person";
+
 import { microheaderClass } from "@/components/Microheader";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
-import { personLabel } from "@/models/Person";
 import type { Trail } from "@/models/Trail";
 
 interface TrailFactsProps {

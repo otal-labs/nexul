@@ -328,6 +328,11 @@ Rules:
 - `.tsx` everywhere is deliberate house style, even for pure-TS model, enum
   and utility files. Use `import type` for type-only imports so these files
   stay clean under `verbatimModuleSyntax`.
+- A module the phone app runs too lives in `client-core/` at the repository
+  root and is imported as `@nexul/client-core/<module>` (ADR 0139): the
+  permission table, chat and embed rules, people, the live socket, the query
+  retry rule. It holds no React and no browser API. Its imports form their own
+  group, after the third-party ones.
 
 ---
 
@@ -374,12 +379,13 @@ Rules:
 Order, top to bottom, blank line between groups:
 
 1. Third-party libraries (`@tanstack/react-query`, `zod`, `lucide-react`, …)
-2. shadcn/ui primitives (`@/components/ui/...`)
-3. Local components (`@/components/...`)
-4. Local hooks (`@/hooks/...`)
-5. Local stores (`@/stores/...`)
-6. Local models / enums (`@/models/...`, `@/enums/...`)
-7. Local utilities (`@/lib/utils`, `@/utils/...`)
+2. The client core shared with the phone (`@nexul/client-core/...`)
+3. shadcn/ui primitives (`@/components/ui/...`)
+4. Local components (`@/components/...`)
+5. Local hooks (`@/hooks/...`)
+6. Local stores (`@/stores/...`)
+7. Local models / enums (`@/models/...`, `@/enums/...`)
+8. Local utilities (`@/lib/utils`, `@/utils/...`)
 
 All local imports use the `@/` alias (`./src`). Use `import type` for
 type-only imports (required by `verbatimModuleSyntax`):
@@ -589,6 +595,11 @@ export const DeployStrategyFragment = () => {
 
 All hooks for an entity live in one file (`hooks/TicketHooks.tsx`), and pages
 and components call those hooks, never `api` directly.
+
+The app's query client is `lib/queryClient.ts`: a 30-second stale time, since
+the socket pushes every change, and no retry for a 4xx, the rule the phone
+shares (`@nexul/client-core/queryRetry`), so a missing or forbidden page shows
+its not-found screen at once.
 
 | Operation | Hook | Method |
 |---|---|---|
@@ -845,7 +856,8 @@ API rules:
 
 Status the server pushes (runner heartbeats, deploy progress, topology
 mutations, ticket, doc and chat changes, dead-letter alerts) arrives on
-**one** WebSocket, separate from Axios. `api/ws.tsx` owns the connection;
+**one** WebSocket, separate from Axios. `LiveEventsClient` in
+`@nexul/client-core/liveSocket` (shared with the phone, ADR 0139) owns the connection;
 `hooks/useLiveEvents.tsx` mounts it once at the layout root, routes each typed
 frame (`{ topic, type, payload }`) to every domain that follows its topic, and
 keeps the one rule that crosses domains: when the viewer's own permissions
@@ -873,7 +885,10 @@ Rules:
 
 - Mount once (layout root). Components subscribe to stores and queries, never
   to the socket.
-- Reconnect with exponential backoff and jitter; pause when the tab is hidden.
+- Reconnect with exponential backoff and jitter, and after a reconnect refetch
+  every open read, since the frames sent while the socket was down are lost.
+  The socket stays open while the tab is hidden; the phone closes its own in
+  the background.
 - A follower touches only its own domain's cache. When another domain knows
   what a frame changed for it, the follower calls that domain's cache
   operation (`ticketChanged`, `stageMoved`), never its keys. Several domains
@@ -1178,7 +1193,9 @@ export const AppRouter = () => {
   so a tab switch keeps the page mounted. `?tab=` is not read.
 - Catch-all `*` renders `ErrorPage`, last.
 - Auth-gated routes added conditionally.
-- Permission-gated areas are listed once in `models/Access.tsx`. A sidebar
+- Permission-gated areas are listed once in `@nexul/client-core/permissions`,
+  which the phone reads too; `models/Access.tsx` adds the web's route areas and
+  Settings sections. A sidebar
   entry renders only when the viewer holds its read permission (an Owner's
   `/me` is the whole grid), a route declares its area as `handle` and
   `AreaGate` renders the not-found screen when it can't be opened, and a

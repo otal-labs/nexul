@@ -1,15 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { LiveEventsClient, parseFrame, type LiveSocket } from "@/api/ws";
+import { LiveEventsClient, parseFrame, type LiveSocket } from "@nexul/client-core/liveSocket";
 
 class FakeSocket implements LiveSocket {
   onopen: ((ev: unknown) => void) | null = null;
   onmessage: ((ev: { data: string }) => void) | null = null;
   onclose: ((ev: unknown) => void) | null = null;
   onerror: ((ev: unknown) => void) | null = null;
+  readyState = 0;
   close = vi.fn();
 
   open() {
+    this.readyState = 1;
     this.onopen?.(null);
   }
 
@@ -88,7 +90,7 @@ describe("LiveEventsClient", () => {
     });
   });
 
-  it("drops malformed frames without dispatching", () => {
+  it("drops a malformed frame and keeps delivering good ones", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const handler = vi.fn();
     client.subscribe(handler);
@@ -96,6 +98,17 @@ describe("LiveEventsClient", () => {
     sockets[0]?.message("garbage");
     expect(handler).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalled();
+    sockets[0]?.message('{"topic":"x","type":"y","payload":{}}');
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  // The socket's URL carries the session token, and the web relays warnings to the server's log store.
+  it("logs a connection error without the URL", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    new LiveEventsClient("ws://test/ws/events?token=ses_secret", { wsFactory: factory }).connect();
+    sockets[0]?.onerror?.(null);
+    expect(warn).toHaveBeenCalled();
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("ses_secret");
   });
 
   it("unsubscribes a handler", () => {
@@ -128,8 +141,25 @@ describe("LiveEventsClient", () => {
 
   it("does not reconnect after close()", () => {
     client.connect();
+    sockets[0]?.open();
     client.close();
+    expect(sockets[0]?.close).toHaveBeenCalled();
     sockets[0]?.closeFromServer();
+    vi.advanceTimersByTime(60_000);
+    expect(sockets).toHaveLength(1);
+  });
+
+  it("closed mid-handshake, lets the socket finish opening, then closes it without delivering a frame", () => {
+    const handler = vi.fn();
+    client.subscribe(handler);
+    client.connect();
+    client.close();
+    expect(sockets[0]?.close).not.toHaveBeenCalled();
+
+    sockets[0]?.message('{"topic":"x","type":"y","payload":{}}');
+    sockets[0]?.open();
+    expect(sockets[0]?.close).toHaveBeenCalledTimes(1);
+    expect(handler).not.toHaveBeenCalled();
     vi.advanceTimersByTime(60_000);
     expect(sockets).toHaveLength(1);
   });

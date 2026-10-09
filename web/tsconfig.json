@@ -16,8 +16,11 @@
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@nexul/client-core/*": ["../client-core/*"],
+      // The shared modules' tests run under this app's vitest and resolve it from here.
+      "vitest": ["./node_modules/vitest"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "../client-core"]
 }

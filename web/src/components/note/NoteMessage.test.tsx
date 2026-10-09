@@ -3,12 +3,13 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { unknownPerson } from "@nexul/client-core/person";
+
 import { api } from "@/api/client";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { Message } from "@/models/Chat";
-import { unknownPerson } from "@/models/Person";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), delete: vi.fn() },

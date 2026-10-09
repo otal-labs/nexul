@@ -23,8 +23,6 @@ export const attachmentPath = (id: string): string => `/api/attachments/${id}`;
 // A pasted screenshot arrives with no file name.
 export const uploadName = (file: File): string => file.name || "Pasted image.png";
 
-export const isAttachmentPath = (src: string): boolean => src.startsWith("/api/attachments/");
-
 // Mirrors the server's Inline(): raster images render in place, SVG and everything else download.
 export const isInlineImage = (contentType: string): boolean =>
   contentType.startsWith("image/") && !contentType.includes("svg");

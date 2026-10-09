@@ -1,12 +1,14 @@
 import { ScrollView } from "react-native";
 
+import type { Conversation, DMLabelContext, UnreadCounts } from "@nexul/client-core/chat";
+
 import { ConversationSection } from "@/components/chat/ConversationSection";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchChatUnread } from "@/hooks/ChatHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
-import { groupConversations, type Conversation, type ConversationGroup, type DMLabelContext, type UnreadCounts } from "@/models/Chat";
+import { groupConversations, type ConversationGroup } from "@/models/Chat";
 
 // Counts only the rows listed here, so a voice channel's unread never shows as a number with no row behind it.
 const unreadLine = (groups: ConversationGroup[], unread: UnreadCounts | undefined) => {

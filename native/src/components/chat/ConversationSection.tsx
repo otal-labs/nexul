@@ -1,8 +1,10 @@
 import { View } from "react-native";
 
+import type { DMLabelContext, UnreadCounts } from "@nexul/client-core/chat";
+
 import { ConversationRow } from "@/components/chat/ConversationRow";
 import { Microheader } from "@/components/Microheader";
-import type { ConversationGroup, DMLabelContext, UnreadCounts } from "@/models/Chat";
+import type { ConversationGroup } from "@/models/Chat";
 
 interface ConversationSectionProps {
   group: ConversationGroup;

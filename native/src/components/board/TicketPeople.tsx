@@ -1,8 +1,9 @@
+import { personLabel } from "@nexul/client-core/person";
+
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { Text } from "@/components/ui/text";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
-import { personLabel } from "@/models/Person";
 
 // A ticket role's holder as their avatar and name, or a muted "No one".
 export const TicketPerson = ({ login }: { login: string }) => {

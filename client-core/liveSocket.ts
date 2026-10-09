@@ -1,3 +1,4 @@
+// The reconnecting live-events socket both apps hold; each app decides when it is open and how it catches up.
 export interface ServerFrame {
   topic: string;
   type: string;
@@ -18,7 +19,7 @@ export type LiveEventsHandler = (frame: ServerFrame) => void;
 
 export interface LiveEventsClientOptions {
   wsFactory?: (url: string) => LiveSocket;
-  // Fired on every successful open after the first — i.e. every reconnect, not the initial connect.
+  // Fired on every open after the first, never the initial connect: frames sent while it was down are lost, so catch up.
   onReconnect?: () => void;
 }
 
@@ -34,8 +35,11 @@ export const parseFrame = (raw: string): ServerFrame => {
   return { topic, type, payload };
 };
 
+// WebSocket.CONNECTING, spelled out so the rule reads no global.
+const CONNECTING = 0;
+
 export const closeSocket = (socket: LiveSocket) => {
-  if (socket.readyState === WebSocket.CONNECTING) {
+  if (socket.readyState === CONNECTING) {
     // Closing mid-handshake logs a Chrome warning, so let it finish opening, then close.
     socket.onopen = () => socket.close();
     return;
@@ -72,7 +76,8 @@ export class LiveEventsClient {
       this.everOpened = true;
     };
     socket.onmessage = (ev) => this.handleMessage(ev.data);
-    socket.onerror = () => console.error("ws connection error", { url: this.url });
+    // The URL carries the session token, so it stays out of the log; a drop is retried, so it warns.
+    socket.onerror = () => console.warn("ws connection error");
     socket.onclose = () => this.scheduleReconnect();
   }
 
@@ -102,14 +107,13 @@ export class LiveEventsClient {
       const frame = parseFrame(raw);
       this.handlers.forEach((handler) => handler(frame));
     } catch {
-      console.warn("ws dropped malformed frame", { url: this.url });
+      console.warn("ws dropped malformed frame");
     }
   }
 
   private scheduleReconnect() {
     if (this.closed) return;
-    const delay =
-      Math.min(MAX_BACKOFF_MS, BASE_BACKOFF_MS * 2 ** this.attempt) + Math.random() * JITTER_MS;
+    const delay = Math.min(MAX_BACKOFF_MS, BASE_BACKOFF_MS * 2 ** this.attempt) + Math.random() * JITTER_MS;
     this.attempt += 1;
     this.timer = setTimeout(() => {
       this.timer = null;

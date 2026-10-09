@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 
-import type { LiveSocket } from "@/api/ws";
+import type { LiveSocket } from "@nexul/client-core/liveSocket";
+
 import { useLiveEvents } from "@/hooks/useLiveEvents";
 import { isStale } from "@/test/followFrame";
 
@@ -19,6 +20,9 @@ const Live = ({ wsFactory }: { wsFactory: () => LiveSocket }) => {
   useLiveEvents("ws://live/ws/events", { wsFactory });
   return null;
 };
+
+// A reconnect also checks the server's version, which needs a server.
+vi.mock("@/hooks/VersionHooks", async (importOriginal) => ({ ...(await importOriginal<object>()), notifyIfServerUpdated: vi.fn() }));
 
 // Mounts the socket over a client holding the given reads, and returns a way to push frames into it.
 const connect = async (client: QueryClient) => {
@@ -56,6 +60,35 @@ describe("the live socket", () => {
     const push = await connect(client);
     push("ticket.assignee_changed", { ticket: { id: "t-1" } });
     expect(isStale(client, ["getTickets"])).toBe(false);
+  });
+
+  it("refetches every open read once a dropped socket reconnects, since the frames sent meanwhile are lost", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout"] });
+    const client = new QueryClient();
+    client.setQueryData(["getTickets"], []);
+    const sockets: FakeSocket[] = [];
+    const wsFactory = () => {
+      const s = new FakeSocket();
+      sockets.push(s);
+      return s;
+    };
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <Live wsFactory={wsFactory} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    act(() => sockets[0]!.onopen?.(null));
+    expect(isStale(client, ["getTickets"])).toBe(false);
+
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    act(() => sockets[0]!.onclose?.(null));
+    act(() => void vi.advanceTimersByTime(1_000));
+    act(() => sockets[1]!.onopen?.(null));
+    vi.useRealTimers();
+
+    expect(isStale(client, ["getTickets"])).toBe(true);
   });
 
   describe("a permission change", () => {

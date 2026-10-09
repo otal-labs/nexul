@@ -1,4 +1,5 @@
-import { httpUrl } from "@/models/Embed";
+import { httpUrl } from "@nexul/client-core/embed";
+
 import { tokenizeMessageText } from "@/utils/MessageTextUtility";
 
 export type InlinePart =

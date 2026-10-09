@@ -20,6 +20,7 @@ The product is implemented. The work now is improving it domain by domain.
 | Frontend (React) | `practices/react-guide.md`, the F1 to F7 commandments are enforced | `practices/design-language.md`, the shared core and the web app section |
 | SDK, automations host, desktop | `practices/typescript.md` | `practices/react-guide.md` for the desktop launcher |
 | Phone app (React Native) | `practices/native.md` | `practices/react-guide.md`, the rules it inherits; `practices/design-language.md`, the shared core and the phone app section |
+| Code both the web and phone apps run (`client-core/`) | `practices/typescript.md`, section 11 | ADR 0139 |
 | Design or visual work in `web/`, `website/` or `native/` | `practices/design-language.md`, one language for all three: the shared core, then your surface's section | `practices/react-guide.md`, or `practices/native.md` on the phone |
 | Testing, or making something faster | `practices/testing.md` | The language file above |
 | Any code | `practices/architecture.md`, Principles | `practices/README.md` for the index |

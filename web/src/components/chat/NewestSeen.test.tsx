@@ -9,8 +9,9 @@ vi.mock("@/components/ui/message-scroller", async (importOriginal) => {
 });
 
 import { MessageList } from "@/components/chat/MessageList";
-import type { Conversation, Message } from "@/models/Chat";
-import { unknownPerson } from "@/models/Person";
+import type { Message } from "@/models/Chat";
+import type { Conversation } from "@nexul/client-core/chat";
+import { unknownPerson } from "@nexul/client-core/person";
 
 const conversation = { id: "c1", kind: "channel" } as Conversation;
 const withClient = (ui: ReactNode) => render(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>);

@@ -2,9 +2,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { api, errorMessage } from "@/api/client";
 import { getChatConversationsKey, getChatUnreadKey, leaveConversationPage } from "@/hooks/ChatHooks";
-import { channelMention, type Conversation } from "@/models/Chat";
+import { channelMention } from "@/models/Chat";
 
 const membersPath = (id: string) => `/api/chat/conversations/${id}/members`;
 

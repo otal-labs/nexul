@@ -1,11 +1,13 @@
 import { Controller } from "react-hook-form";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { ChannelPeoplePicker } from "@/components/chat/ChannelPeoplePicker";
 import { PrivateChannelRow } from "@/components/chat/PrivateChannelRow";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { FormInput } from "@/components/FormInput";
 import { useCreateChannel } from "@/hooks/ChatHooks";
-import type { Conversation, CreateChannelFormData } from "@/models/Chat";
+import type { CreateChannelFormData } from "@/models/Chat";
 
 interface CreateChannelFormProps {
   workspaceId: string;

@@ -1,9 +1,10 @@
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 
+import { isAttachmentPath } from "@nexul/client-core/chat";
+
 import { ImageDialog } from "@/components/attachment/ImageDialog";
 
 import { useAttachmentBlob } from "@/hooks/AttachmentHooks";
-import { isAttachmentPath } from "@/models/Attachment";
 import { cn } from "@/lib/utils";
 
 const attachmentSrcOf = (rawSrc: string) => (isAttachmentPath(rawSrc) ? rawSrc : null);

@@ -1,12 +1,13 @@
 import { View } from "react-native";
 
+import { personLabel } from "@nexul/client-core/person";
+
 import { BotAvatar } from "@/components/chat/BotAvatar";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { Text } from "@/components/ui/text";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
 import { formatMessageTime } from "@/lib/time";
-import { personLabel } from "@/models/Person";
 import type { Message } from "@/models/Chat";
 
 // The 32pt face beside a run of someone's messages: a person's avatar, a bot's picture, the Nexul glyph for the Agent.

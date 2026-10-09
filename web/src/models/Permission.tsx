@@ -22,34 +22,6 @@ export interface PermissionInfo {
   area: PermissionArea;
 }
 
-// The one place client-side permission logic lives: a thin wrapper the server resolves, the client just reads.
-export const hasPermission = (permissions: readonly string[] | undefined, value: string): boolean =>
-  (permissions ?? []).includes(value);
-
-// Mirrors internal/tenancy/handler.go's meResponse; a Restricted member's permissions carry no project area, so
-// projects lists what they hold in each project they may open.
-export interface MyWorkspaceInfo {
-  role_name: string;
-  permissions: string[];
-  restricted?: boolean;
-  projects?: { project_id: string; actions: string[] }[];
-}
-
-// What the viewer holds somewhere in the workspace, for the areas the sidebar and route gates open.
-export const workspaceWidePermissions = (info: MyWorkspaceInfo | undefined): string[] => {
-  if (!info?.restricted) return info?.permissions ?? [];
-  return [...info.permissions, ...(info.projects ?? []).flatMap((project) => project.actions)];
-};
-
-// What the viewer holds inside one project: the workspace areas plus, for a Restricted member, that project's access.
-// A project they hold nothing on (none in view yet, or one just taken away) answers as any project would.
-export const projectPermissions = (info: MyWorkspaceInfo | undefined, projectId: string): string[] => {
-  if (!info?.restricted) return info?.permissions ?? [];
-  const project = info.projects?.find((candidate) => candidate.project_id === projectId);
-  if (!project) return workspaceWidePermissions(info);
-  return [...info.permissions, ...project.actions];
-};
-
 export interface PermissionGrant {
   resource_type: string;
   resource_id: string;

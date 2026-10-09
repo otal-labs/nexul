@@ -1,7 +1,8 @@
 import { Awareness, applyAwarenessUpdate, encodeAwarenessUpdate } from "y-protocols/awareness";
 import * as Y from "yjs";
 
-import type { LiveSocket } from "@/api/ws";
+import type { LiveSocket } from "@nexul/client-core/liveSocket";
+
 import { fromBase64, toBase64 } from "@/lib/collab/binary";
 import { parseServerFrame, type InitFrame } from "@/lib/collab/protocol";
 

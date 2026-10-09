@@ -1,9 +1,11 @@
+import type { Reaction } from "@nexul/client-core/chat";
+import { personLabel } from "@nexul/client-core/person";
+
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useToggleReaction } from "@/hooks/ReactionHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import type { Message, Reaction } from "@/models/Chat";
-import { personLabel } from "@/models/Person";
+import type { Message } from "@/models/Chat";
 import { cn } from "@/lib/utils";
 
 interface ReactionChipProps {

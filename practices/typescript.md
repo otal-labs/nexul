@@ -2,8 +2,9 @@
 
 This file covers `sdk/` (the Bun CLI and library automations are written
 against), `automations/` (the Bun service that runs automations in
-worker threads), and `desktop/` (the Electron shell: main process, preload,
-and the Vite plus React launcher renderer). It does not repeat anything
+worker threads), `desktop/` (the Electron shell: main process, preload,
+and the Vite plus React launcher renderer), and `client-core/` (the modules
+the web and phone apps share, section 11). It does not repeat anything
 `practices/react-guide.md` already says about React, imports, TypeScript
 strictness, or testing; the desktop launcher is a React app and follows
 that file for anything React-specific. This file states what is specific to
@@ -236,3 +237,35 @@ package on every change, including `sdk` and `automations`.
    as an explicit `exports` map, never a folder default import.
 6. Wire the package into CI: typecheck, test, and build all gated on that
    package's path filter, the same way `desktop` and `web` already are.
+
+## 11. The shared client core
+
+`client-core/` holds the code the web app and the phone app both run, once
+(ADR 0139). It is not a package: no `package.json`, no dependencies, no build.
+Both apps import its files by full path as `@nexul/client-core/<module>`, the
+same no-barrel rule as everywhere else.
+
+- **What goes in.** Pure TypeScript with no React, navigation, network or
+  platform API: the wire shapes both apps read and the rules over them
+  (`permissions.ts`, `chat.ts`, `embed.ts`, `person.ts`, `liveSocket.ts`,
+  `queryRetry.ts`). Hooks, components, query declarations and the web's
+  followers stay in their app, as does anything only one app uses. A module
+  moves here when the second app needs it.
+- **Platform differences.** A module takes plain values where the platforms
+  differ (a status, a URL, a socket factory) and each app adapts its own types
+  to them. A seam with an adapter per app is added only when both apps supply a
+  real one. A platform API that behaves differently is replaced by a portable
+  rule: `httpUrl` is a pattern because React Native's `URL` accepts anything.
+- **Runtimes.** Each app's typecheck compiles the modules it imports under its
+  own strict settings, the browser's DOM types on one side and React Native's on
+  the other, so only what both runtimes provide type-checks in both.
+- **Wiring.** The web: a Vite alias, a tsconfig path, `server.fs.allow` for the
+  dev server, the folder in vitest's `include`, and `bun run lint` covering it
+  through `client-core/eslint.config.js`, which re-exports the web's config.
+  The phone: the same tsconfig path (Expo's Metro reads it), the folder in
+  `watchFolders`, and jest's `moduleNameMapper` with `moduleDirectories`, so a
+  shared file's Babel helpers resolve from the app.
+- **Tests.** A module's tests sit beside it, import `vitest`, and run once
+  under the web's runner; each app keeps a test at its own boundary for what it
+  adapts (the phone's socket lifecycle, each query client's error mapping). The
+  CI paths filter runs both apps' jobs when the folder changes.

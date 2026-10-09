@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { View } from "react-native";
 
+import type { Area } from "@nexul/client-core/permissions";
+
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useAreaAccess } from "@/hooks/WorkspaceHooks";
-import type { Area } from "@/models/Access";
 
 interface AreaGateProps {
   area: Area;

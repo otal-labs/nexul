@@ -14,13 +14,14 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router";
 
+import { hasPermission, projectPermissions } from "@nexul/client-core/permissions";
+
 import { useAreaAccess, useCanOpen } from "@/hooks/AccessHooks";
 import { useSidebarProject } from "@/hooks/useSidebarProject";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { CommandGroup, CommandItem } from "@/models/Command";
-import { hasPermission, projectPermissions } from "@/models/Permission";
 import { boardPath, interviewPath, projectSettingsPath, projectToken } from "@/models/Project";
 
 // Every page the sidebar reaches, under the same permissions, and every project's board.

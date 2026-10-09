@@ -4,7 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { LiveSocket } from "@/api/ws";
+import type { LiveSocket } from "@nexul/client-core/liveSocket";
+
 import { TicketDetail } from "@/components/ticket/TicketDetail";
 import { getMeKey } from "@/hooks/AuthHooks";
 import { getMyRoleKey } from "@/hooks/WorkspaceHooks";

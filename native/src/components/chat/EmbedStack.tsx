@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { View } from "react-native";
 
+import { EMBED_STACK_LIMIT, moreEmbedsLabel, type Embed } from "@nexul/client-core/embed";
+
 import { EmbedCard } from "@/components/chat/EmbedCard";
 import { FoldBar } from "@/components/chat/FoldBar";
-import { EMBED_STACK_LIMIT, moreEmbedsLabel, type Embed } from "@/models/Embed";
 
 // Past two embeds a post folds the rest behind one bar.
 export const EmbedStack = ({ embeds }: { embeds: Embed[] }) => {

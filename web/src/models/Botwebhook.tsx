@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import type { ConversationKind } from "@/models/Chat";
+import type { ConversationKind } from "@nexul/client-core/chat";
+
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
 // A conversation's poster, driven from outside through its webhook URL (internal/botwebhook/model.go).

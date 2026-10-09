@@ -5,9 +5,10 @@ import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { api } from "@/api/client";
 import { ChatSidebarSection } from "@/components/sidebar/ChatSidebarSection";
-import type { Conversation } from "@/models/Chat";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));

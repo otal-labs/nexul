@@ -1,12 +1,13 @@
 import { queryOptions, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { hasPermission } from "@nexul/client-core/permissions";
+
 import { api, errorMessage } from "@/api/client";
 import { getInterviewTemplateKey } from "@/hooks/MemoryHooks";
 import { getApplicablePlaysKey, getWorkspacePlaysKey } from "@/hooks/PlayHooks";
 import { getProjectTicketTypesKey, getTicketTypesKey } from "@/hooks/TicketTypeHooks";
 import { getWorkspacesKey, myRoleQuery, useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
-import { hasPermission } from "@/models/Permission";
 import type { Template, TemplateKind, TemplateLocation } from "@/models/Template";
 import type { Workspace } from "@/models/Workspace";
 import type { LiveFollower } from "@/lib/live";

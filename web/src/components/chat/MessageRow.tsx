@@ -1,5 +1,8 @@
 import { memo, useState, type ReactNode } from "react";
 
+import type { Person } from "@nexul/client-core/person";
+import { isNote } from "@nexul/client-core/chat";
+
 import { BotMessageRow } from "@/components/chat/BotMessageRow";
 import { ChatQuestionCard } from "@/components/chat/ChatQuestionCard";
 import { MessageActions } from "@/components/chat/MessageActions";
@@ -15,8 +18,7 @@ import { TrailReplyProse } from "@/components/play/TrailReplyProse";
 import { Message, MessageAvatar, MessageContent } from "@/components/ui/message";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { cn } from "@/lib/utils";
-import { isNote, type Message as ChatMessage } from "@/models/Chat";
-import type { Person } from "@/models/Person";
+import type { Message as ChatMessage } from "@/models/Chat";
 import { parseQuestionMessage } from "@/models/Question";
 import type { TrailBlock } from "@/utils/ThreadTrailUtility";
 

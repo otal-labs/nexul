@@ -1,12 +1,14 @@
 import { useState } from "react";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { ChannelSettingsDialog } from "@/components/chat/ChannelSettingsDialog";
 import { RenameChannelForm } from "@/components/chat/RenameChannelForm";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useDeleteChannel } from "@/hooks/ChatHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
-import { channelHasSettingsCard, channelMention, SaveChannelFormSchema, type Conversation, type SaveChannelFormData } from "@/models/Chat";
+import { channelHasSettingsCard, channelMention, SaveChannelFormSchema, type SaveChannelFormData } from "@/models/Chat";
 
 // A channel row's Settings, Rename, and Delete, each undefined when the viewer has nothing there; #general is never
 // deleted or made private. Settings opens settingsDialog, which the row renders.

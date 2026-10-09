@@ -1,5 +1,8 @@
 import { MoreHorizontalIcon } from "lucide-react";
 
+import type { Conversation } from "@nexul/client-core/chat";
+import { personLabel } from "@nexul/client-core/person";
+
 import { Button } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -8,8 +11,6 @@ import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useRemoveChannelMember } from "@/hooks/ChannelHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { useOpenDirectMessage } from "@/hooks/useOpenDirectMessage";
-import type { Conversation } from "@/models/Chat";
-import { personLabel } from "@/models/Person";
 
 interface ChannelMemberRowProps {
   channel: Conversation;

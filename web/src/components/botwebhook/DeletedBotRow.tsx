@@ -1,8 +1,9 @@
+import { personLabel } from "@nexul/client-core/person";
+
 import { BotAvatar } from "@/components/botwebhook/BotAvatar";
 import { Button } from "@/components/ui/button";
 import { usePerson } from "@/hooks/PeopleHooks";
 import type { Botwebhook } from "@/models/Botwebhook";
-import { personLabel } from "@/models/Person";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
 interface DeletedBotRowProps {

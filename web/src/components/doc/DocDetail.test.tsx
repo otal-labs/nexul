@@ -4,13 +4,14 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { LiveSocket } from "@nexul/client-core/liveSocket";
+
 import { api } from "@/api/client";
 import { DocDetail } from "@/components/doc/DocDetail";
 import { getMeKey } from "@/hooks/AuthHooks";
 import { getMyRoleKey } from "@/hooks/WorkspaceHooks";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import type { LiveSocket } from "@/api/ws";
 import type { Doc } from "@/models/Doc";
 
 vi.mock("@/api/client", () => ({

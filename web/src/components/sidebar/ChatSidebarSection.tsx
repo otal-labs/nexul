@@ -1,5 +1,7 @@
 import { useMatch, useNavigate } from "react-router";
 
+import { conversationLabel, type DMLabelContext } from "@nexul/client-core/chat";
+
 import { ChannelSidebarRow } from "@/components/sidebar/ChannelSidebarRow";
 import { DMSidebarRow } from "@/components/sidebar/DMSidebarRow";
 import { DocThreadSidebarRow } from "@/components/sidebar/DocThreadSidebarRow";
@@ -14,7 +16,7 @@ import { useNewConversationDialogs } from "@/hooks/useNewConversationDialogs";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useVoiceOccupancy } from "@/hooks/VoiceHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { conversationLabel, groupConversations, type DMLabelContext } from "@/models/Chat";
+import { groupConversations } from "@/models/Chat";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 interface ChatSidebarSectionProps {

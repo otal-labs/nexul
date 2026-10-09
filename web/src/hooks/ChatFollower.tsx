@@ -1,5 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 
+import { isNote, type Conversation } from "@nexul/client-core/chat";
+
 import {
   followConversationDeleted,
   getChatConversationsKey,
@@ -10,7 +12,7 @@ import {
   upsertCachedMessage,
 } from "@/hooks/ChatHooks";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
-import { isNote, type Conversation, type ConversationDeleted, type Message } from "@/models/Chat";
+import type { ConversationDeleted, Message } from "@/models/Chat";
 import type { Handoff } from "@/models/Handoff";
 import { parseQuestionMessage } from "@/models/Question";
 import type { ActivityKind, RunFrame } from "@/models/Trail";

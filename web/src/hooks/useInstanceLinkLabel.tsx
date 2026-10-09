@@ -1,12 +1,14 @@
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 
+import { conversationLabel, type Conversation } from "@nexul/client-core/chat";
+import { unknownPerson, type Person } from "@nexul/client-core/person";
+
 import { getMeKey } from "@/hooks/AuthHooks";
 import { getChatConversationsKey } from "@/hooks/ChatHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
 import { getTicketKey, getTicketsKey } from "@/hooks/TicketCache";
-import { channelMention, conversationLabel, type Conversation } from "@/models/Chat";
-import { unknownPerson, type Person } from "@/models/Person";
+import { channelMention } from "@/models/Chat";
 import { parseTicketKey } from "@/models/Ticket";
 import type { MeResponse } from "@/models/User";
 import { useWorkspaceStore } from "@/stores/workspaceStore";

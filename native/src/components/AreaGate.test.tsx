@@ -2,12 +2,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Slot, Stack } from "expo-router";
 import { renderRouter, screen } from "expo-router/testing-library";
 
+import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
+
 import { api } from "@/api/client";
 import BoardLayout from "@/app/(tabs)/board/_layout";
 import TabsLayout from "@/app/(tabs)/_layout";
 import { MoreScreen } from "@/components/settings/MoreScreen";
 import { Text } from "@/components/ui/text";
-import type { MyWorkspaceInfo } from "@/models/Workspace";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 jest.mock("@/api/client", () => ({ api: { get: jest.fn() } }));

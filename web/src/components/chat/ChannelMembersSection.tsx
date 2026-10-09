@@ -1,12 +1,13 @@
 import { LogOutIcon, UserPlusIcon } from "lucide-react";
 
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { Button } from "@/components/ui/button";
 import { EnterList } from "@/components/EnterList";
 import { ChannelMemberRow } from "@/components/chat/ChannelMemberRow";
 import { microheaderClass } from "@/components/Microheader";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useChannelSettingsActions } from "@/hooks/useChannelSettingsActions";
-import type { Conversation } from "@/models/Chat";
 
 interface ChannelMembersSectionProps {
   channel: Conversation;

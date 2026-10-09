@@ -1,7 +1,8 @@
+import { personLabel } from "@nexul/client-core/person";
+
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { personLabel } from "@/models/Person";
 import { cn } from "@/lib/utils";
 
 interface PersonMentionChipProps {

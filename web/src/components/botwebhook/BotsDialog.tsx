@@ -1,7 +1,8 @@
+import type { Conversation } from "@nexul/client-core/chat";
+
 import { BotsSection } from "@/components/botwebhook/BotsSection";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import type { Conversation } from "@/models/Chat";
 
 interface BotsDialogProps {
   conversation: Conversation;

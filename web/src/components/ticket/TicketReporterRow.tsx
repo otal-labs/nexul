@@ -1,9 +1,10 @@
 import { Bot } from "lucide-react";
 
+import { personLabel } from "@nexul/client-core/person";
+
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { rowClass, rowIconClass, rowLabelClass, rowValueClass } from "@/components/ticket/ticketPropertyRowStyle";
 import { usePerson } from "@/hooks/PeopleHooks";
-import { personLabel } from "@/models/Person";
 import { ReporterKind, reporterName, reporterOnBehalfOf, type Ticket } from "@/models/Ticket";
 
 interface TicketReporterRowProps {

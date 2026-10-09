@@ -1,8 +1,9 @@
+import { fieldTone, type EmbedField } from "@nexul/client-core/embed";
+
 import { DiscordMarkdown } from "@/components/chat/DiscordMarkdown";
 import { toneBg } from "@/components/chat/EmbedTone";
 import { microheaderClass } from "@/components/Microheader";
 import { cn } from "@/lib/utils";
-import { fieldTone, type EmbedField } from "@/models/Embed";
 
 // An inline value past this many characters (an image tag, a URL) takes two columns instead of wrapping in one.
 const LONG_VALUE = 24;

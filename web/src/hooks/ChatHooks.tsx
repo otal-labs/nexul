@@ -2,17 +2,12 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { useLocation, useNavigate, type Location, type NavigateFunction } from "react-router";
 import { toast } from "sonner";
 
+import { upsertMessage, type Conversation, type UnreadCounts } from "@nexul/client-core/chat";
+
 import { api, errorMessage } from "@/api/client";
 import { getMeKey } from "@/hooks/AuthHooks";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
-import {
-  channelMention,
-  type Conversation,
-  type ConversationDeleted,
-  type CreateChannelFormData,
-  type Message,
-  type UnreadCounts,
-} from "@/models/Chat";
+import { channelMention, type ConversationDeleted, type CreateChannelFormData, type Message } from "@/models/Chat";
 import type { QuestionAnswers } from "@/models/Question";
 import type { MeResponse } from "@/models/User";
 
@@ -178,16 +173,8 @@ export const useGetOrCreateDocThread = (workspaceId: string) => {
 };
 
 // Mutation results and push frames land straight in the cache; refetching the list after every message lagged and flickered.
-// A server copy also retires the optimistic row it confirms, whichever of the POST reply or the push lands first.
 export const upsertCachedMessage = (client: QueryClient, message: Message) =>
-  client.setQueriesData<Message[]>({ queryKey: [getChatMessagesKey, message.conversation_id] }, (old) => {
-    if (!old) return old;
-    const confirms = (m: Message) => m.pending && m.author_id === message.author_id && m.body === message.body;
-    const retired = old.find(confirms);
-    const kept = old.filter((m) => !confirms(m));
-    if (kept.some((m) => m.id === message.id)) return kept.map((m) => (m.id === message.id ? { ...message, client_key: m.client_key } : m));
-    return [...kept, { ...message, client_key: retired?.id }];
-  });
+  client.setQueriesData<Message[]>({ queryKey: [getChatMessagesKey, message.conversation_id] }, (old) => old && upsertMessage(old, message));
 
 export const removeCachedMessage = (client: QueryClient, conversationId: string, messageId: string) =>
   client.setQueriesData<Message[]>({ queryKey: [getChatMessagesKey, conversationId] }, (old) =>

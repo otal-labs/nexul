@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Image } from "react-native";
 
+import { personLabel, type Person } from "@nexul/client-core/person";
+
 import { GradientTile } from "@/components/GradientTile";
 import { Text } from "@/components/ui/text";
 import { useApiImageSource } from "@/hooks/BotMediaHooks";
 import { cn } from "@/lib/utils";
-import { personLabel, type Person } from "@/models/Person";
 
 const initials = (name: string) =>
   name

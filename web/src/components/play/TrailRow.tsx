@@ -1,10 +1,11 @@
+import { personLabel } from "@nexul/client-core/person";
+
 import { formatUpdatedAgo } from "@/components/doc/docTime";
 import { SetupRefusalLink } from "@/components/pairing/SetupRefusalLink";
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useLiveTrailActivity, useLiveTrailState } from "@/hooks/TrailHooks";
 import { SETUP_REQUIRED_REASON } from "@/models/Pairing";
-import { personLabel } from "@/models/Person";
 import { trailSummary, type Trail } from "@/models/Trail";
 import { cn } from "@/lib/utils";
 

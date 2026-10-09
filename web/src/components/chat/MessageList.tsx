@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
+import type { Person } from "@nexul/client-core/person";
+import { isContinuation, isNote, type Conversation } from "@nexul/client-core/chat";
+
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -17,8 +20,7 @@ import { MessageListItem, type Entrance } from "@/components/chat/MessageListIte
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { useThreadTrailBlocks } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
-import { isContinuation, isNote, type Conversation, type Message } from "@/models/Chat";
-import type { Person } from "@/models/Person";
+import type { Message } from "@/models/Chat";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { startsDay } from "@/utils/ChatDayUtility";
 import { trailBlockFor } from "@/utils/ThreadTrailUtility";

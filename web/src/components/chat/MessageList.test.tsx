@@ -5,12 +5,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+import type { Conversation } from "@nexul/client-core/chat";
+import { unknownPerson } from "@nexul/client-core/person";
+
 import { api } from "@/api/client";
 import { MessageList } from "@/components/chat/MessageList";
 import { getTrailsKey } from "@/hooks/TrailHooks";
-import type { Conversation, Message } from "@/models/Chat";
+import type { Message } from "@/models/Chat";
 import type { Handoff } from "@/models/Handoff";
-import { unknownPerson } from "@/models/Person";
 import type { ActivityEntry, Trail } from "@/models/Trail";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { usePlayRunStore } from "@/stores/playRunStore";

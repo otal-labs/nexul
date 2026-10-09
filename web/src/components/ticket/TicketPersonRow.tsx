@@ -1,6 +1,8 @@
 import { UserIcon } from "lucide-react";
 import { useState } from "react";
 
+import { personLabel } from "@nexul/client-core/person";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { PersonPickerList } from "@/components/ticket/PersonPickerList";
@@ -8,7 +10,6 @@ import { editableRowClass, rowIconClass, rowLabelClass, rowValueClass } from "@/
 import { usePerson } from "@/hooks/PeopleHooks";
 import { useSetTicketPerson } from "@/hooks/TicketHooks";
 import { cn } from "@/lib/utils";
-import { personLabel } from "@/models/Person";
 import { TicketRole, type Ticket } from "@/models/Ticket";
 
 interface TicketPersonRowProps {

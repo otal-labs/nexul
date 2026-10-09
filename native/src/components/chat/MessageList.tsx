@@ -1,12 +1,14 @@
 import { LegendList } from "@legendapp/list/react-native";
 import { useMemo, useState } from "react";
 
+import { isContinuation } from "@nexul/client-core/chat";
+
 import { ChatDayDivider } from "@/components/chat/ChatDayDivider";
 import { MessageArrival, type Arrival } from "@/components/chat/MessageArrival";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { formatDayLabel } from "@/lib/time";
-import { isContinuation, type Message } from "@/models/Chat";
+import type { Message } from "@/models/Chat";
 
 interface MessageListProps {
   messages: Message[];
@@ -25,26 +27,22 @@ export const MessageList = ({ messages }: MessageListProps) => {
   // What was on screen when the thread opened never animates.
   const [seen] = useState(() => new Set(messages.map((m) => m.id)));
 
-  const rows = useMemo(() => {
-    // A message sent from here is keyed by its text and send count, so the server's copy keeps the pending row mid-rise.
-    const sent = new Map<string, number>();
-    const keyOf = (message: Message, own: boolean) => {
-      if (!own || seen.has(message.id)) return message.id;
-      const n = sent.get(message.body) ?? 0;
-      sent.set(message.body, n + 1);
-      return `sent-${n}-${message.body}`;
-    };
-    // Continuation is judged against the full thread, so a deleted message still breaks the run it sat in.
-    return messages.flatMap((message, i): StreamRow[] => {
-      if (message.deleted_at) return [];
-      const prev = messages[i - 1];
-      const newDay = !prev || dayOf(prev.created_at) !== dayOf(message.created_at);
-      const own = message.author_kind === "user" && message.author_id === meId;
-      const row: StreamRow = { kind: "message", key: keyOf(message, own), message, continuation: !newDay && isContinuation(prev, message), own };
-      if (!newDay) return [row];
-      return [{ kind: "day", key: `day-${message.created_at}`, label: formatDayLabel(message.created_at) }, row];
-    });
-  }, [messages, meId, seen]);
+  // Continuation is judged against the full thread, so a deleted message still breaks the run it sat in.
+  const rows = useMemo(
+    () =>
+      messages.flatMap((message, i): StreamRow[] => {
+        if (message.deleted_at) return [];
+        const prev = messages[i - 1];
+        const newDay = !prev || dayOf(prev.created_at) !== dayOf(message.created_at);
+        const own = message.author_kind === "user" && message.author_id === meId;
+        // The server's copy of a message sent from here keeps the pending row's key, so the row stays mid-rise.
+        const key = message.client_key ?? message.id;
+        const row: StreamRow = { kind: "message", key, message, continuation: !newDay && isContinuation(prev, message), own };
+        if (!newDay) return [row];
+        return [{ kind: "day", key: `day-${message.created_at}`, label: formatDayLabel(message.created_at) }, row];
+      }),
+    [messages, meId],
+  );
 
   // Your confirmed copy replaces the pending row, so only the pending one rises; anyone else's new message arrives.
   const arrivalOf = (message: Message, own: boolean): Arrival | undefined => {

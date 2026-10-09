@@ -1,6 +1,8 @@
 import { FileText, Hash, Ticket, Users, Volume2, type LucideIcon } from "lucide-react";
 import { Suspense, useCallback, useRef } from "react";
 
+import { conversationLabel, type Conversation } from "@nexul/client-core/chat";
+
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatPaneState } from "@/components/chat/ChatPaneState";
 import { LazyVoiceCallSection } from "@/components/chat/LazyVoiceCallSection";
@@ -19,7 +21,6 @@ import {
 } from "@/hooks/ChatHooks";
 import { useFetchDoc } from "@/hooks/DocHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
-import { conversationLabel, type Conversation } from "@/models/Chat";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 
 interface ConversationThreadProps {
