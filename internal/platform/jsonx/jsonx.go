@@ -1,4 +1,4 @@
-// Package jsonx is the JSON encoder every adapter shares (HTTP, MCP, live frames), so clients always get arrays.
+// Package jsonx is the JSON encoder every adapter and event payload shares, so clients always get arrays.
 package jsonx
 
 import (

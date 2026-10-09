@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -60,4 +61,20 @@ func TestOutboxRepo_MarkPublished_NotFound(t *testing.T) {
 	s := newTestStore(t)
 	err := s.Outbox.MarkPublished(context.Background(), "missing")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+func TestInsertOutboxRow_WritesAnEmptyListAsAnArray(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	payload := struct {
+		UserIDs []string `json:"user_ids"`
+	}{}
+	require.NoError(t, s.w.WithTx(context.Background(), s.db, func(tx *sql.Tx) error {
+		return insertOutboxRow(context.Background(), tx, "evt-1", "notification.created", payload)
+	}))
+
+	got, err := s.Outbox.Unpublished(context.Background(), 10)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.JSONEq(t, `{"user_ids":[]}`, string(got[0].Payload))
 }
