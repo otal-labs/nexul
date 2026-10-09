@@ -343,3 +343,31 @@ func TestTicketsRepo_ListByKey_MovedTicketKeepsItsNumber(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, got, 2, "a moved ticket keeps its number, so ERF-1 names two tickets")
 }
+
+func TestTicketsRepo_Lists_LoadLabelsWithoutBindingEveryTicketID(t *testing.T) {
+	s, st := newCountedStore(t)
+	ctx := t.Context()
+	for i := range 40 {
+		tk := newTestTicket(fmt.Sprintf("t-%02d", i), "")
+		tk.CreatedAt = tk.CreatedAt.Add(time.Duration(i) * time.Minute)
+		if i%2 == 0 {
+			tk.Labels = []string{"ui", "bug"}
+		}
+		require.NoError(t, s.Tickets.Create(ctx, tk))
+	}
+
+	for name, list := range map[string]func() ([]*tickets.Ticket, error){
+		"all":        func() ([]*tickets.Ticket, error) { return s.Tickets.List(ctx) },
+		"by project": func() ([]*tickets.Ticket, error) { return s.Tickets.ListByProject(ctx, "project-general") },
+	} {
+		st.reset()
+		got, err := list()
+		require.NoError(t, err, name)
+
+		require.Len(t, got, 40, name)
+		assert.Equal(t, []string{"bug", "ui"}, got[0].Labels, name)
+		assert.Empty(t, got[1].Labels, name)
+		assert.Equal(t, int64(2), st.n.Load(), "%s: the tickets, then their labels", name)
+		assert.LessOrEqual(t, st.maxArgs.Load(), int64(1), "%s: values bound by one statement", name)
+	}
+}

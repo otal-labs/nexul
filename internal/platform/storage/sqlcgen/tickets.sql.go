@@ -191,6 +191,33 @@ func (q *Queries) LinkTicketPR(ctx context.Context, arg LinkTicketPRParams) erro
 	return err
 }
 
+const listAllTicketLabels = `-- name: ListAllTicketLabels :many
+SELECT ticket_id, label FROM ticket_labels ORDER BY label
+`
+
+func (q *Queries) ListAllTicketLabels(ctx context.Context) ([]TicketLabel, error) {
+	rows, err := q.db.QueryContext(ctx, listAllTicketLabels)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TicketLabel
+	for rows.Next() {
+		var i TicketLabel
+		if err := rows.Scan(&i.TicketID, &i.Label); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLabelColors = `-- name: ListLabelColors :many
 SELECT label, color FROM label_colors WHERE project_id = ? AND label IN (/*SLICE:labels*/?)
 `
@@ -322,6 +349,33 @@ func (q *Queries) ListTicketLabels(ctx context.Context, ticketID string) ([]stri
 			return nil, err
 		}
 		items = append(items, label)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTicketLabelsByProject = `-- name: ListTicketLabelsByProject :many
+SELECT ticket_id, label FROM ticket_labels WHERE ticket_id IN (SELECT id FROM tickets WHERE project_id = ?) ORDER BY label
+`
+
+func (q *Queries) ListTicketLabelsByProject(ctx context.Context, projectID sql.NullString) ([]TicketLabel, error) {
+	rows, err := q.db.QueryContext(ctx, listTicketLabelsByProject, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TicketLabel
+	for rows.Next() {
+		var i TicketLabel
+		if err := rows.Scan(&i.TicketID, &i.Label); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
