@@ -517,7 +517,7 @@ func (s *Service) requireAnywhere(ctx context.Context, userID string, action per
 
 func (s *Service) permissionsAnywhere(ctx context.Context, userID string) ([]string, error) {
 	if s.cfg.Permissions == nil {
-		return []string{}, nil
+		return nil, nil
 	}
 	held, err := s.cfg.Permissions.PermissionsAnywhere(ctx, userID)
 	if err != nil {
