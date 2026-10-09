@@ -92,7 +92,7 @@ export interface EventPayloads {
   "memory.created": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use": string; "always_included": boolean; "footer": boolean; "version": number; "updated_at": string; }; "author_id": string; };
   "memory.deleted": { "id": string; "workspace_id": string; "project_id": string; "title": string; "author_id": string; };
   "memory.updated": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use": string; "always_included": boolean; "footer": boolean; "version": number; "updated_at": string; }; "author_id": string; "author_via"?: string; };
-  "notification.created": Record<string, unknown>;
+  "notification.created": { "user_ids": null | string[]; "workspace_id": string; "project_id"?: string; };
   "notification.push_requested": { "notifications": null | { "id": string; "user_id": string; "workspace_id"?: string; }[]; };
   "personal_access_token.minted": { "token_id": string; "user_id": string; "name": string; "computer_id"?: string; };
   "personal_access_token.revoked": { "token_id": string; "user_id": string; "name": string; "computer_id"?: string; };
@@ -368,7 +368,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "memory.created": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"footer":false,"version":1,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
   "memory.deleted": {"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","title":"fixture-title","author_id":"fixture-author_id"},
   "memory.updated": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"footer":false,"version":1,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id","author_via":"fixture-author_via"},
-  "notification.created": {},
+  "notification.created": {"user_ids":["fixture-user_ids"],"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id"},
   "notification.push_requested": {"notifications":[{"id":"fixture-id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id"}]},
   "personal_access_token.minted": {"token_id":"fixture-token_id","user_id":"fixture-user_id","name":"fixture-name","computer_id":"fixture-computer_id"},
   "personal_access_token.revoked": {"token_id":"fixture-token_id","user_id":"fixture-user_id","name":"fixture-name","computer_id":"fixture-computer_id"},

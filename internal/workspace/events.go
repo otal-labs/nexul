@@ -83,8 +83,12 @@ type TicketCategoryChangedEvent struct {
 	ProjectID  string `json:"project_id,omitempty" jsonschema:"The ticket's project."`
 }
 
-// NotificationCreatedEvent is empty because the topic broadcasts to every browser: a recipient or subject field would leak one user's inbox, so consumers refetch their own.
-type NotificationCreatedEvent struct{}
+// NotificationCreatedEvent names the new notices' recipients and place; the live socket delivers it to the recipients alone.
+type NotificationCreatedEvent struct {
+	UserIDs     []string `json:"user_ids" jsonschema:"The people whose inbox gained or lifted a notice."`
+	WorkspaceID string   `json:"workspace_id" jsonschema:"The workspace whose inbox holds the notices; empty for a subject that belongs to no workspace."`
+	ProjectID   string   `json:"project_id,omitempty" jsonschema:"The subject's project, when it has one."`
+}
 
 // NotificationPushRequestedEvent is the payload for notification.push_requested: ids only, the phone fetches the content.
 type NotificationPushRequestedEvent struct {

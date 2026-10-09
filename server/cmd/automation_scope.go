@@ -45,7 +45,7 @@ var scopeRules = map[string]scopeRule{
 	"computer.setup_turn_activity": instanceScope, "computer.harness_switched": instanceScope,
 	"runner.connected": instanceScope, "runner.disconnected": instanceScope, "runner.heartbeat": instanceScope,
 	"instance.upgrade_requested": instanceScope, "instance.upgrade_changed": instanceScope,
-	"topology.updated": workspaceScope, "notification.created": instanceScope,
+	"topology.updated": workspaceScope, "notification.created": notificationScope,
 	"dns.record_changed": instanceScope, "dns.tunnel_changed": instanceScope, "dns.gateway_changed": instanceScope,
 	"dns.exposure_changed": instanceScope, "instance_template.updated": instanceScope,
 
@@ -334,6 +334,20 @@ func pushScope(_ context.Context, _ *storage.EventWorkspacesRepo, raw json.RawMe
 		ids = append(ids, n.WorkspaceID)
 	}
 	return ids, false, nil
+}
+
+// notificationScope reaches the notices' workspace; a notice with none is the person's own, instance-wide.
+func notificationScope(_ context.Context, _ *storage.EventWorkspacesRepo, raw json.RawMessage) ([]string, bool, error) {
+	var p struct {
+		WorkspaceID string `json:"workspace_id"`
+	}
+	if err := decodeScope(raw, &p); err != nil {
+		return nil, false, err
+	}
+	if p.WorkspaceID == "" {
+		return nil, true, nil
+	}
+	return []string{p.WorkspaceID}, false, nil
 }
 
 // grantScope reads where the changed grant applies: a workspace, or the doc, play, or project it was set on.

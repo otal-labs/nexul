@@ -3803,7 +3803,31 @@
   },
   "notification.created": {
     "type": "object",
-    "$schema": "https://json-schema.org/draft/2020-12/schema"
+    "properties": {
+      "user_ids": {
+        "type": [
+          "null",
+          "array"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "description": "The people whose inbox gained or lifted a notice."
+      },
+      "workspace_id": {
+        "type": "string",
+        "description": "The workspace whose inbox holds the notices; empty for a subject that belongs to no workspace."
+      },
+      "project_id": {
+        "type": "string",
+        "description": "The subject's project, when it has one."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "user_ids",
+      "workspace_id"
+    ]
   },
   "notification.push_requested": {
     "type": "object",

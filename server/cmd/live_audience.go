@@ -48,7 +48,7 @@ const topicTopologyCanvas = "topology"
 // liveRules names the read each pushed topic takes; a topic without a rule reaches nobody.
 var liveRules = map[string]liveRule{
 	topicPresenceChanged:               everyone,
-	workspace.TopicNotificationCreated: everyone,
+	workspace.TopicNotificationCreated: recipientFrame,
 	auth.TopicAccountAdmitted:          everyone,
 	auth.TopicAccountDisabled:          everyone,
 	auth.TopicAccountReactivated:       everyone,
@@ -199,6 +199,14 @@ func ownFrame(ctx context.Context, _ liveAudience, raw json.RawMessage) bool {
 		UserID string `json:"user_id"`
 	}
 	return decode(raw, &p) && p.UserID != "" && p.UserID == actorID(ctx)
+}
+
+// recipientFrame reaches only the people whose inbox the frame names.
+func recipientFrame(ctx context.Context, _ liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		UserIDs []string `json:"user_ids"`
+	}
+	return decode(raw, &p) && slices.Contains(p.UserIDs, actorID(ctx))
 }
 
 // grantFrame reaches the person whose grant changed and, for Project access, whoever manages the project's workspace.
