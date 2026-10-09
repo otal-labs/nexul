@@ -696,7 +696,9 @@ writing its own.
   motion, and only for a pointer open and for results landing late.
 - Chat: someone else's message, and the Agent's reply as its stream starts,
   rise 8px and fade in over 200ms (`arrive`); what was on screen when the
-  conversation opened never animates. A confirmed message keeps its pending
+  conversation opened never animates. A day divider that arrives with the
+  day's first message draws its hairlines outward from the label (`scaleX`,
+  320ms `--ease-out`, 40ms in). A confirmed message keeps its pending
   row's identity (`client_key`), so nothing replays when the server answers.
 - Board: a ticket that lands in a done-stage column from a working one gets
   a success wash, the `success` hue at 15% fading out over 800ms (400ms under
@@ -834,3 +836,7 @@ Inbox.
   highlight, which slid a full-width box across the hairline rows on an
   action repeated through a whole triage, and which the Docs list pane the
   Inbox mirrors does not use.
+
+Chat day divider.
+- Hairlines draw outward from the label. Rejected: riding in with the
+  message (nothing marked that a new day had begun). It happens once a day.

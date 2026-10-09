@@ -905,6 +905,18 @@ a.mention-chip:hover {
   animation: arrive 200ms var(--ease-out) both;
 }
 
+/* A day divider that arrives with the day's first message draws its hairlines outward from the label. */
+.arrive [role="separator"]::before,
+.arrive [role="separator"]::after {
+  animation: grow-x 320ms var(--ease-out) 40ms both;
+}
+.arrive [role="separator"]::before {
+  transform-origin: right;
+}
+.arrive [role="separator"]::after {
+  transform-origin: left;
+}
+
 /* A progress fill grows from the left the first time it shows; a change after that is the fill's own transition. */
 @keyframes grow-x {
   from {
@@ -1169,6 +1181,3 @@ a.mention-chip:hover {
   --lk-font-family: var(--font-sans);
   --lk-border-radius: var(--radius-md);
 }
-
-
-
