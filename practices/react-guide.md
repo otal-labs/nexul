@@ -1218,10 +1218,12 @@ export const Button = ({ className, variant, size, ref, ...props }: ButtonProps)
 - Icons from `lucide-react`: `<Plus className="h-4 w-4" />`.
 - Named-export custom components; shadcn primitives follow whatever the CLI
   emits (it now generates React-19-compatible code).
-- Enter/exit motion on primitives uses `tw-animate-css` utilities
-  (`animate-in`/`animate-out` + `fade-in-0`, `zoom-in-97`, `slide-in-from-*`)
-  with `ease-out` and 150-250ms durations. Page, list and highlight motion
-  goes through the shared primitives (`EnterList`, `ActiveIndicator`,
+- Enter/exit motion on overlay primitives (dialog, sheet, popover, menu,
+  select, hover card, tooltip) is the surface's class (`dialog-surface`,
+  `sheet-surface`, `float-surface`, `tooltip-surface`, `overlay-scrim`) and
+  its transitions in `index.css`; a new overlay takes one of them, never
+  `animate-in`/`animate-out` keyframes, which restart on a reopen. Page, list
+  and highlight motion goes through the shared primitives (`EnterList`, `ActiveIndicator`,
   `usePageEntrance`, `lib/motion.ts`); the numbers are the Motion baseline in
   `practices/design-language.md`. The global `prefers-reduced-motion` block in
   `index.css` flattens CSS motion; the primitives keep a short fade.
