@@ -87,6 +87,12 @@ export interface RunFrame {
   last_error: string;
 }
 
+// Where a run frame's run sits, for the followers whose views are keyed by project or workspace.
+export interface RunPlace {
+  project_id: string;
+  workspace_id: string;
+}
+
 // What the caller last picked for one play in one project, read from their latest trail. An empty
 // computer_id means never run; the pre-selection falls back to the resolved target instead.
 export interface LatestChoices {

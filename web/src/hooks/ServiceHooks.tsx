@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import { refetchDeployHistories } from "@/hooks/DeployHooks";
+import { refetchDeployHistory, type DeployFrame } from "@/hooks/DeployHooks";
 import { latestDeploy, type Deploy, type ServiceDef } from "@/models/Service";
 import { followEach, type LiveFollower } from "@/lib/live";
 
@@ -110,5 +110,5 @@ const refetchLists = (client: QueryClient, projectId: string) =>
 export const serviceFollower: LiveFollower = {
   ...followEach(["service.created", "service.updated"], ({ stack }: { stack: { project_id: string } }, { client }) => refetchLists(client, stack.project_id)),
   "service.deleted": ({ project_id }: { project_id?: string }, { client }) => refetchLists(client, project_id ?? ""),
-  "deploy.updated": ({ id }: { id: string }, { client }) => refetchDeployHistories(client, [getServiceDeploysKey], id),
+  "deploy.updated": (frame: DeployFrame, { client }) => refetchDeployHistory(client, getServiceDeploysKey, frame),
 };

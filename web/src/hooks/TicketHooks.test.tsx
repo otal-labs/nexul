@@ -15,7 +15,7 @@ import {
   useUpdateTicketStatus,
   ticketFollower,
 } from "@/hooks/TicketHooks";
-import { TicketStatus } from "@/models/Ticket";
+import { TicketStatus, type Ticket } from "@/models/Ticket";
 import { followFrame, isStale, seeded } from "@/test/followFrame";
 vi.mock("@/api/client", () => ({
   api: {
@@ -198,6 +198,25 @@ describe("the ticket follower", () => {
     await followFrame(ticketFollower, "status.deleted", { status: { id: "st-gone", project_id: "p-1" } }, client);
     expect([["getTicketsByProject", "p-1"], ["getTicket", "t-1"]].map((key) => isStale(client, key))).toEqual([true, true]);
     expect([["getTicketsByProject", "p-2"], ["getTicket", "t-2"]].map((key) => isStale(client, key))).toEqual([false, false]);
+  });
+
+  it("moves a ticket to the end of its column in the new category without a request", async () => {
+    const card = (id: string, category_id: string, position: number) => ({ ...inColumn(id, "st-1"), category_id, position });
+    const client = seeded([
+      [["getTicketsByProject", "p-1"], [card("t-1", "cat-a", 0), card("t-2", "cat-b", 0), card("t-3", "cat-b", 4), { ...card("t-4", "cat-b", 9), status: "st-2" }]],
+      [["getTicket", "t-1"], card("t-1", "cat-a", 0)],
+    ]);
+    await followFrame(ticketFollower, "ticket.category_changed", { ticket_id: "t-1", category_id: "cat-b", project_id: "p-1" }, client);
+    const moved = client.getQueryData<Ticket[]>(["getTicketsByProject", "p-1"])?.find((t) => t.id === "t-1");
+    expect([moved?.category_id, moved?.position]).toEqual(["cat-b", 5]);
+    expect(client.getQueryData<Ticket>(["getTicket", "t-1"])?.category_id).toBe("cat-b");
+    expect([["getTicketsByProject", "p-1"], ["getTicket", "t-1"]].map((key) => isStale(client, key))).toEqual([false, false]);
+  });
+
+  it("refetches the lists holding a moved ticket when its project's list is not loaded", async () => {
+    const client = seeded([[["getTickets"], [inColumn("t-1", "st-1")]]]);
+    await followFrame(ticketFollower, "ticket.category_changed", { ticket_id: "t-1", category_id: "cat-b", project_id: "p-1" }, client);
+    expect(isStale(client, ["getTickets"])).toBe(true);
   });
 
   it("refetches a ticket and its branches once its run ends, and nothing for a run still going or on a doc", async () => {
