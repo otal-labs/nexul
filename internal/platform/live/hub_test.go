@@ -125,3 +125,19 @@ func TestHub_AudienceKeepsAFrameFromSocketsItRefuses(t *testing.T) {
 	assert.Equal(t, "public", readFrame(t, alice).Topic)
 	assert.Equal(t, "public", readFrame(t, bob).Topic, "bob's first frame is the one he may read")
 }
+
+func TestHub_Publish_ChecksTheAudienceOncePerPersonNotPerSocket(t *testing.T) {
+	hub := New(testLogger())
+	var checks int
+	hub.SetAudience(func(context.Context, string, any) bool {
+		checks++
+		return false
+	})
+	for _, user := range []string{"alice", "alice", "alice", "bob"} {
+		hub.add(&client{userID: user})
+	}
+
+	require.NoError(t, hub.Publish(context.Background(), "chat.agent.stream", map[string]string{"conversation_id": "c-1"}))
+
+	assert.Equal(t, 2, checks)
+}

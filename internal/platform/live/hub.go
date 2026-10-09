@@ -92,9 +92,15 @@ func (h *Hub) Publish(ctx context.Context, topic string, payload any) error {
 		clients = append(clients, c)
 	}
 	h.mu.Unlock()
+	// A person's tabs and phone share one read check per frame; agent streams publish at token rate.
+	allowed := make(map[string]bool, len(clients))
 	for _, c := range clients {
-		// ponytail: one read check per socket per frame; group sockets by user if a busy instance feels it.
-		if h.audience != nil && !h.audience(identity.WithActor(ctx, identity.Actor{ID: c.userID}), topic, payload) {
+		ok, seen := allowed[c.userID]
+		if !seen {
+			ok = h.audience == nil || h.audience(identity.WithActor(ctx, identity.Actor{ID: c.userID}), topic, payload)
+			allowed[c.userID] = ok
+		}
+		if !ok {
 			continue
 		}
 		if err := c.write(data); err != nil {
