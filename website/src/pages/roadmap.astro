@@ -1,10 +1,11 @@
 ---
+import '@fontsource-variable/fraunces/full.css';
+import '../styles/pages.css';
 import SiteLayout from '../layouts/SiteLayout.astro';
 
-type Status = 'planned' | 'in-progress' | 'shipped';
+type Status = 'in-progress' | 'planned' | 'shipped';
 
-const label: Record<Status, string> = { planned: 'Planned', 'in-progress': 'In progress', shipped: 'Shipped' };
-
+// Newest first within a status; ROADMAP.md holds the same items and statuses.
 const items: { name: string; status: Status; summary: string }[] = [
 	{ name: 'A new look', status: 'shipped', summary: 'Frosted panels over a soft light field, one ember accent, breadcrumbs and one header on every page, and motion that makes the app feel quick.' },
 	{ name: 'Phone app', status: 'in-progress', summary: 'Your inbox, chat, board, docs, deploys and logs on Android or iPhone, signed in by scanning a QR code.' },
@@ -52,23 +53,38 @@ const items: { name: string; status: Status; summary: string }[] = [
 	{ name: 'Docs and tickets', status: 'shipped', summary: 'Versioned docs in folders per project, with watchers, pinned docs and a resizable list, a board per project, and tickets linked to branches and pull requests.' },
 	{ name: 'Desktop app', status: 'shipped', summary: 'A desktop shell that keeps a list of your instances and opens the one you pick.' },
 ];
+
+const groups = (['in-progress', 'planned', 'shipped'] as const).map((status) => ({
+	status,
+	label: { 'in-progress': 'In progress', planned: 'Planned', shipped: 'Shipped' }[status],
+	items: items.filter((item) => item.status === status),
+}));
 ---
 
-<SiteLayout title="Roadmap · Nexul" description="What has shipped in Nexul, what is being built now, and what comes next.">
-	<section class="page-hero wrap" aria-labelledby="roadmap-title">
+<SiteLayout title="Roadmap · Nexul" description="What is being built in Nexul now, what comes next, and what has shipped.">
+	<section class="page-hero roadmap-hero wrap" aria-labelledby="roadmap-title">
 		<p class="eyebrow">Roadmap</p>
-		<h1 id="roadmap-title">What's shipped.<br />What's next<span class="muted">.</span></h1>
+		<h1 id="roadmap-title">What's next, and what's shipped</h1>
 		<p class="page-lede">Directional, not dated. For what changed in each release, see the <a href="/changelog/">changelog</a>.</p>
-	</section>
-	<section class="rail-section wrap" aria-label="Roadmap items">
-		<ol class="rail">
-			{items.map((item) => (
-				<li class="rail-item">
-					<span class="rail-dot" data-status={item.status} aria-hidden="true"></span>
-					<h2 class="rail-title" data-status={item.status}>{item.name}<span class="rail-status">{label[item.status]}</span></h2>
-					<p>{item.summary}</p>
-				</li>
+		<nav class="roadmap-jump" aria-label="Roadmap sections">
+			{groups.map((group) => (
+				<a href={`#${group.status}`}><span class="status-dot" data-status={group.status} aria-hidden="true"></span>{group.label}<span class="count">{group.items.length}</span></a>
 			))}
-		</ol>
+		</nav>
 	</section>
+	<div class="roadmap wrap">
+		{groups.map((group) => (
+			<section class="roadmap-group" id={group.status} aria-labelledby={`${group.status}-title`}>
+				<h2 id={`${group.status}-title`}><span class="status-dot" data-status={group.status} aria-hidden="true"></span>{group.label}<span class="count">{group.items.length}</span></h2>
+				<ul class="roadmap-items">
+					{group.items.map((item) => (
+						<li class="roadmap-item">
+							<h3>{item.name}</h3>
+							<p>{item.summary}</p>
+						</li>
+					))}
+				</ul>
+			</section>
+		))}
+	</div>
 </SiteLayout>

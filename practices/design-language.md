@@ -1275,3 +1275,131 @@ Settings save) apply to roles, plays, categories, repositories, exposures,
 secrets and the workspace, template and automation configuration cards. A
 Motion `layout` glide on a bounce-free spring was built first and lost to the
 shared glide only for being a second vocabulary for the same act.
+
+## Site: roadmap and changelog
+
+Decided 2026-10-09 without the owner in the loop, each built as live variants
+on the real pages with real release data, shot at 320 to 1440px in both
+schemes, and the motion recorded at 1x and 0.25x with frame strips.
+`website/src/styles/pages.css` holds the rules; the 404 page shares its hero.
+
+Page hero. A microheader eyebrow, the headline in Fraunces (the app's display
+settings, 36px rising to 56px from 1100px), a muted lede whose links take the
+prose-link role (`--color-fd-primary`). The hero matches the width of the
+content under it, so both start on one edge.
+
+Roadmap.
+- Grouped by status, In progress, then Planned, then Shipped, each newest
+  first, under an Inter heading with its status dot and a mono count; a row of
+  the same three as jump links sits under the lede. Rejected: the one
+  interleaved list it replaces (nothing said what was next).
+- Items are hairline rows: the name in 16px Inter medium (a feature name is
+  not technical data, so not mono), the summary muted under it at 62ch.
+  Shipped runs in two columns from 1024px, about 1700px shorter at 1440.
+  Rejected: one column at every width (5900px tall at 1440) and cards for In
+  progress and Planned (a box per item where rows already separate, and two
+  vocabularies on one page).
+- Status: `warning` dot for in progress, `success` for shipped, a hollow muted
+  ring for planned, the deploy steps' pending mark. No accent anywhere on it.
+
+Changelog.
+- One row per release: a leading chevron, the version in 15px mono, the date
+  and the change count in 12px mono, the newest marked Latest and open; the
+  rest are closed `<details>`. From 768px the version holds a 9.5rem gutter
+  and the changes align under the date. Below it, the date and count drop to a
+  second line. Rejected: each release as a card (a box per row, against the
+  row rule) and the full open list it replaces (one long wall).
+- Changes keep the pull request titles; Dependabot's bumps sit last under a
+  "Dependency updates" microheader, muted. Grouping by verb was rejected: only
+  5 of 469 titles start with Fix, so a Fixes group would have been mostly
+  wrong.
+- Each release is a permalink (`/changelog/#v0.3.31-beta`), from its Link in
+  the meta row; landing on one opens it.
+
+Motion.
+- A release opening: the disclosure (the box snaps open, the content fades in
+  as it settles 4px over 200ms `--ease-out`; closing, it fades out in 120ms and
+  the box shuts after), built on `::details-content` with `content-visibility`
+  as a discrete transition; a browser without it snaps. Chevron turns 90° in
+  150ms `--ease-standard`. Rejected: a snap (only the chevron said anything
+  opened) and a height animation with `interpolate-size` (the rows below glide,
+  but every frame re-lays the page: 89 layouts across six toggles of the
+  33-change release under a 4x CPU throttle against 7 for the disclosure, 2.5
+  times the layout time, growing with the page; the app's rule is that a box
+  changing size snaps). A grid-rows height animation was not built: it costs
+  the same layout per frame.
+- A jump to a roadmap group or a release lands at once and its heading row
+  takes a wash, `foreground` at 9% fading out over 900ms `--ease-out`.
+  Rejected: native smooth scrolling (about 800ms to travel 1850px at 375px,
+  its curve out of our hands, and it delays reading on every keyboard jump)
+  and smooth scrolling plus the wash (slower still).
+- Status markers stay still. Rejected: the `status-pulse` loop on the in
+  progress dots (it says live, and a roadmap is not live; ambient motion on a
+  reading page) and a one-time ring on load (decoration with nothing behind
+  it).
+- Reduced motion: the release content fades in 150ms with no travel, and the
+  wash shortens to 400ms.
+
+## The public site: home page
+
+Decided 2026-10-09 without the owner in the loop, each built as live variants
+on the built page and judged from screenshots at 320 to 1440px in both
+schemes, frame strips and 1x and 0.25x recordings. The home page
+(`website/src/pages/index.astro`, `website/src/styles/home.css`) reads the
+site's tokens and adds none.
+
+Showing the product.
+- Real 2x screenshots of the seeded example workspace (Northwind, Atlas
+  Platform), one per scheme, served by `ProductShot.astro` through Astro's
+  image pipeline as AVIF and WebP with width and height set; the page's
+  `.light` or `.dark` class picks the scheme, so the header toggle swaps them.
+  The hero is the board; the four steps are the doc, the ticket, the deploy
+  and a channel's bot cards, each cropped to 640x480 so they show close to
+  1:1 on a desktop. People without a photo show their gradient avatar: the
+  capture blocks avatar photos, so no real face or name ships.
+- The hero shot sits on a field panel (`surface-2` with the light field's
+  three glows, the panel ring) and bleeds off its right and bottom edges, the
+  screenshot's top-left corner rounded at 9px. Below 768px it switches to a
+  480x600 crop of the board's top-left so cards stay legible.
+- Weight: the hero is about 18KB on a phone and 32KB on a 1x desktop; the four
+  lazy step shots add about 60KB on a 1x desktop and 100KB on a 2x phone.
+- Rejected: a muted loop of the app (board, palette, ticket; 85KB at 1x and
+  soft on a retina screen, about three times that at 2x, unreadable at 375px,
+  motion beside the headline, and the reduced-motion still is the same
+  screenshot anyway) and the old three-pane illustration re-skinned in the
+  tokens (no bytes and crisp, but it drew a layout the app does not have, and
+  at 375px it stacked into a 1300px column). Frames rejected: the shot
+  bare on the page (in dark mode its canvas met the page's and the frame
+  vanished) and inset on all four sides (smallest text, and read as a panel
+  inside a panel).
+
+Type and accent. The headline is Fraunces through `.type-display`: 40px at
+320, 44 from 414, 56 from 768, 68 from 1024 and 76 from 1280; section titles
+are Fraunces at 30, 36 and 40px. The ember is the copy button, the one
+primary action on the page; the platform switcher is the segmented control
+(well and raised thumb), links stay ink, and status keeps its hues (the
+connection and beta dots).
+
+Install command. One line always, the copy button inline. The command is mono
+12px under 414px, 12.5px to 768 and 13px above; when it is wider than its box
+it scrolls sideways with no scrollbar and its cut edge fades over 32px until
+the end is reached. Rejected: shrinking it to fit (about 8px at 320, below
+reading size) and wrapping it (breaks the one line people select and paste).
+
+Motion.
+- Hero arrival: the text never moves; the board shot waits until it has
+  decoded, then rises 12px and fades in over 400ms `--ease-out`, once per
+  session (a 150ms fade under reduced motion). Rejected: the page entrance
+  on the text (headline blank for the first 30 to 90ms, so reading waited),
+  no motion (the image popped in whenever it finished decoding, sometimes
+  after the text had been read) and a clip-path wipe (a curtain with no
+  origin, finished within 100ms on the ease-out so it read as a flash). It
+  cost about 0.1s of lab LCP on a throttled phone.
+- Platform switch: the app's sliding highlight for the thumb (200ms
+  `--ease-spring`) and its tab swap for the command (6px from the picked
+  tab's side, 160ms `--ease-out`); a key switch moves at once.
+- Copy: the app's icon swap (the copy icon shrinks to 0.6 and blurs out over
+  150ms as the check pops on `--ease-spring-pop`), held 1.4s, announced as
+  Copied; instant from a key, a 150ms fade under reduced motion.
+- No scroll-triggered reveals, no parallax: the step shots are lazy images
+  that simply appear.

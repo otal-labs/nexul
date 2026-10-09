@@ -72,16 +72,35 @@ holds search, the theme toggle and, below 768px, the menu. The docs add
 `src/styles/docs.css` (Tailwind, the Fumadocs preset and the overrides) and
 their components in `src/components/docs/`; code blocks use the monochrome
 theme pair in `src/lib/shiki-mono.ts`. The homepage, roadmap and changelog
-use `src/styles/landing.css`, with the example workflow in
-`src/components/WorkflowPreview.astro`. Fonts are bundled locally (see
-[Coding standards](/docs/contributing/coding-standards/)).
+use `src/styles/landing.css`; the homepage adds `src/styles/home.css`, and the
+roadmap, changelog and 404 page add `src/styles/pages.css`. Fonts are bundled
+locally (see [Coding standards](/docs/contributing/coding-standards/)).
 
-The workflow is an illustration with example data, not a live instance.
-Keep its documents, ticket states, and deployment details consistent with
-the product when editing it. Verify the homepage at 320, 375, 414, and 768px
-in both color schemes, including keyboard navigation and installation-command
-copy feedback. The same install block appears in the hero and the closing
-install section. Keep the command on one line and the copy control inline.
+The homepage shows the product as screenshots of the app running the seeded
+example workspace (Northwind), never a real instance. The sources are
+`src/assets/home/<name>-<dark|light>.webp`, captured at 1440x900 and 2x in each
+mode with avatar photos blocked so people show their gradient avatars, then
+cropped; `src/components/ProductShot.astro` turns each pair into AVIF and WebP
+at several widths and lets the page's theme pick one. Recapture them when the
+screens they show change, keeping the same crops: the full board for the
+hero, its top-left 480x600 for phones, and 640x480 of the doc, ticket, deploy
+and channel pages for the steps.
+
+Verify the homepage at 320, 375, 414, 768, 1024 and 1440px in both color
+schemes and with the header's theme toggle, including keyboard navigation and
+the install command's copy feedback. The same install block appears in the
+hero and the closing install section. Keep the command on one line and the
+copy control inline; a command wider than its box scrolls with a fading edge.
+
+## Roadmap and changelog
+
+The roadmap's items live in `src/pages/roadmap.astro`, grouped on the page by
+status, newest first within each; `ROADMAP.md` at the repository root carries
+the same items, so change both together. The changelog is built from the
+repository's GitHub releases at build time (`src/lib/releases.ts`, every page
+of the API, tags starting with `v`), one row per release with the pull
+requests its notes list. Each new release rebuilds the site (Hosting, below). Set `GITHUB_TOKEN` when building locally
+to stay clear of the API's rate limit.
 
 ## Hosting
 
@@ -96,4 +115,5 @@ repository:
 | Production branch | `master` |
 
 A push to `master` that changes anything under `website/` redeploys the
-site; nothing else in the repository triggers a Pages build.
+site, and so does every release, through the deploy hook in the
+`CLOUDFLARE_PAGES_DEPLOY_HOOK` secret; nothing else triggers a Pages build.
