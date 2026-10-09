@@ -1399,7 +1399,7 @@ export const AppRouter = () => {
   behind a project switcher, its pages listed once, then the foldable
   workspace section (Runners, Topology, Automations, Configuration), then the
   conversations (channels, voice channels, direct messages, threads); the
-  account menu (Support, Logout) and the Your settings gear at the bottom.
+  account menu (Support, Sign out) and the Your settings gear at the bottom.
   The icon rail keeps every page and adds one Chat link for the conversations. The
   signed-out pages and the wizards render without it. Pages render inside `<main>` under
   `Container` (`mx-auto w-full max-w-7xl`).

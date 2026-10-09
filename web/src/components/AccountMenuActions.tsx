@@ -36,7 +36,7 @@ export const AccountMenuActions = ({ onClose }: AccountMenuActionsProps) => {
           className={cn(menuItemClass, menuItemDestructiveClass)}
         >
           <LogOutIcon aria-hidden />
-          <span>Logout</span>
+          <span>Sign out</span>
         </button>
       </div>
     </PopoverContent>

@@ -27,7 +27,7 @@ describe("ServerUpdatedBanner", () => {
     const user = userEvent.setup();
     useServerUpdateStore.setState({ pendingVersion: "v0.2.0-beta-331" });
     render(<ServerUpdatedBanner />);
-    expect(screen.getByRole("status")).toHaveTextContent("Nexul was updated to v0.2.0-beta-331. Reload to use the new version.");
+    expect(screen.getByRole("status")).toHaveTextContent("Nexul updated to v0.2.0-beta-331. Reload to use it.");
 
     await user.click(screen.getByRole("button", { name: "Reload" }));
     expect(reload).toHaveBeenCalledOnce();

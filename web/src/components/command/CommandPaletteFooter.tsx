@@ -10,15 +10,15 @@ export const CommandPaletteFooter = () => (
     <span className="flex items-center gap-1.5">
       <Key>↑</Key>
       <Key>↓</Key>
-      to move
+      move
     </span>
     <span className="flex items-center gap-1.5">
       <Key>↵</Key>
-      to open
+      open
     </span>
     <span className="ml-auto flex items-center gap-1.5">
       <Key>esc</Key>
-      to close
+      close
     </span>
   </div>
 );

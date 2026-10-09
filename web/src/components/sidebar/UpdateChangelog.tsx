@@ -54,14 +54,14 @@ export const UpdateChangelog = ({ current, latest, changes }: UpdateChangelogPro
         rel="noreferrer"
         className="px-3 py-2.5 text-sm text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
       >
-        Read the release notes
+        Release notes
       </a>
     )}
     <Link
       to={INSTANCE_VERSION_SECTION_URL}
       className="border-t border-border px-3 py-2 text-sm font-medium transition-colors duration-150 ease-standard hover:bg-accent/40"
     >
-      Upgrade from Settings
+      Upgrade in Settings
     </Link>
   </div>
 );
