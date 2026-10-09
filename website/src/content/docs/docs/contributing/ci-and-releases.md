@@ -22,12 +22,14 @@ against seven filters, and each job is gated on its own tag:
 | `native` | `native/**`, `client-core/**`, `sdk/src/events.generated.ts` | `native-test` |
 
 - **`go-test`** — checks the committed `sqlcgen` output is current
-  (`sqlc vet` + `sqlc diff`), builds, vets, lints, validates
+  (`sqlc vet` + `sqlc diff`), builds, vets, lints, checks dependencies for
+  known vulnerabilities (`govulncheck`), validates
   `.goreleaser.yaml` with `goreleaser check`, then runs the coverage gate
   (`make coverage`). Uploads `coverage.filtered.out` and
   `coverage.html` as the `go-coverage` artifact.
 - **`web-test`** — installs with a frozen lockfile, type-checks, lints,
-  runs the test suite with coverage, then builds. Uploads
+  runs the test suite with coverage, then builds. `client-core/` is linted,
+  tested and counted toward the coverage gate here. Uploads
   `web/coverage/lcov.info` as `web-coverage`.
 - **`desktop-test`** — same shape as `web-test`, with
   `ELECTRON_SKIP_BINARY_DOWNLOAD=1` so CI never downloads the Electron

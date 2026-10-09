@@ -25,9 +25,13 @@ make build-web      # bun run --cwd web build
 make build-single   # ./dist/nexul-server as released, web UI embedded via go:embed
 make test           # go test ./...
 make vet            # go vet ./...
+make lint           # golangci-lint
+make vuln           # govulncheck
 make coverage       # go test -race with the 80% gate
 make sqlc           # regenerate sqlcgen from internal/platform/storage/queries/*.sql
 make sqlc-check     # sqlc vet + sqlc diff — fails if generated code is stale
+make live-topics    # rewrite the web's copy of the topics the live socket pushes
+make event-schemas  # regenerate the event contract and the SDK's event types
 ```
 
 The automations host binaries come from Bun, not the Makefile:
@@ -100,7 +104,8 @@ volumes. `exec ... bun install` is the fix; `down -v` is not.
 
 ```sh
 go test ./...                       # Go, all packages
-bun run --cwd web test              # web, Vitest
+bun run --cwd web test              # web and client-core, Vitest
+bun run --cwd native test           # phone app, Jest
 bun run --cwd desktop test          # desktop, Vitest
 bun run --cwd sdk test              # sdk, Vitest
 bun run --cwd automations test # automations, bun test
@@ -114,9 +119,13 @@ bun run --cwd automations test # automations, bun test
 make coverage
 ```
 
-It runs `go test -race -coverprofile=coverage.out -covermode=atomic ./...`.
-The Makefile filters `cmd/*`, `testutil/`, `sqlcgen/`, and `t3rpctest/` from the profile,
-computes the percentage over the remaining statements, and fails below 80%.
+It runs `go test -race` with a coverage profile over every package but
+`internal/platform/storage`, whose tests run without `-race` because the
+detector makes the pure-Go SQLite engine about 25 times slower; the
+`server/cmd` integration tests still drive storage under `-race`. The
+Makefile filters `cmd/*`, `testutil/`, `sqlcgen/`, and `t3rpctest/` from the
+profile, computes the percentage over the remaining statements, and fails
+below 80%.
 It writes `coverage.filtered.out` and `coverage.html`, the same artifacts CI
 uploads. See
 [Coding standards](/docs/contributing/coding-standards/) for what the gate

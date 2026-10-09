@@ -64,6 +64,13 @@ for a change that rolled back.
 talks to the server over the HTTP/JSON gateway for requests and a WebSocket
 for live events — never over MCP; the browser never speaks JSON-RPC.
 
+## The phone app
+
+`native/` is an Expo app for Android and iPhone that talks to the same
+gateway and WebSocket. The rules both apps run, such as the permission table,
+chat and embed rules, and the reconnecting live socket, live once in
+`client-core/` and are imported by both, so the two apps cannot drift.
+
 ## Desktop
 
 `desktop/` is a thin Electron shell over the same served web app. It exists
