@@ -799,8 +799,8 @@ one Chat link with a dot for unread messages in for the conversation lists.
 Its logo is the way back out: under the pointer or focus it turns into the
 expand glyph on an accent tile (120ms crossfade), where a separate button
 crowded the logo and hung over the panel's edge. Every rail item names
-itself in a tooltip to its right (`RailTooltip`: 400ms the first time, then
-at once while the pointer moves along the rail), and a count or dot sits on
+itself in a tooltip to its right (`RailTooltip`, on the app's tooltip clock,
+so the next item along the rail names itself at once), and a count or dot sits on
 its icon's top-right corner, cut out by a canvas ring (`railBadgeClass`).
 The switchers work the same on the rail: the tile opens the same menu.
 
@@ -893,9 +893,6 @@ writing its own.
   arrives and leaves a short trail. Rejected: 150ms both ways (the incoming
   row lagged the pointer as it ran down the list) and no transition (the
   sweep flickered row by row).
-- Tooltips: the first of a run fades in from 0.97 and 4px toward its
-  trigger over 120ms after a 400ms delay, the next ones open at once, and
-  they close in 100ms.
 - Hover and press: a draggable card lifts 1px with a soft elevated shadow
   (an opacity fade on a pseudo layer), 150ms, on hover-capable pointers only;
   a strip below the card keeps the vacated pixel inside it so the hover never
@@ -1170,3 +1167,43 @@ an error) and an ink border with a soft halo (a focused field in error was
 barely different from one unfocused). Destructive button: white on a deeper
 red. Rejected: a tinted outline (too quiet for the act it confirms) and the
 coral with dark ink (the ember's twin beside the primary).
+
+### Round-four locks: navigation
+
+Decided 2026-10-09 without the owner in the loop, each built as live
+variants on the seeded app, recorded at 1x and 0.25x with frame strips at
+0.1x, and judged against the baseline.
+
+Sliding highlight (underline, segmented thumb, section nav block).
+- Unchanged: transform only, 200ms `--ease-spring`, interruptible from where
+  it is; a key moves it at once. Rejected: a crossfade (the old mark vanished
+  and the new one faded in, so nothing said where the selection went) and a
+  stretch that reaches the new item before letting go of the old (it
+  underlined every tab in between for 260ms, ran past the label's own
+  change, and on a two-sided control read as both sides chosen).
+
+Tab and section swap.
+- Directional: 6px from the picked item's side and a fade, 160ms
+  `--ease-out`, enter only. Rejected: none (the card's content popped with
+  nothing tying it to the row above), an opacity fade alone (every switch
+  blinked to an empty card for a frame or two), a 4px rise (the page
+  entrance's vocabulary on an act that is not a page change), and a 2px blur
+  crossfade (a filter on a whole card for no gain). Tuned against 8px over
+  200ms and 12px over 220ms, which read as travel on an act repeated through
+  a whole settings session.
+
+Sidebar collapse.
+- A 68px rail that keeps every icon in place, layout swapped in one step,
+  labels wiped in by a clip-path on open (220ms `--ease-out`), close snaps.
+  Rejected: animating the width (every frame relaid the board and re-truncated
+  the switcher names; 4x CPU throttle p95 16ms against 2.5ms for the wipe)
+  and gliding the page beside it (moved the frosted panels, which never move,
+  and its backdrop re-blur peaked at 130ms frames). Measured on the board at
+  1440 under a 4x throttle: the toggle's own render and layout costs 165 to
+  640ms whichever variant runs, and is the thing to make cheaper next.
+
+Nav row hover: lands at once, lets go over 150ms (Motion baseline).
+
+Switchers: the overlay clock (Round-four locks: overlays), from the
+trigger's corner, with the trigger holding its pressed fill while the menu
+is open so the menu reads as coming from it.
