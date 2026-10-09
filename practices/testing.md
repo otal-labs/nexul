@@ -218,3 +218,23 @@ func withTitle(title string) func(*Ticket) {
 - CI runs with `-race` on every PR, over every package but storage (section 8).
 - A test that needs a timeout or a sleep to pass is wrong. Wait on the real
   signal instead: a channel, a receipt, or a WaitGroup.
+
+---
+
+## 11. Performance changes
+
+- A performance fix ships with a guard test that fails when the fix is
+  reverted: revert it locally, watch the test go red, restore it. Without the
+  guard the next refactor undoes the win and nobody notices. The guard
+  counts something deterministic (components rendered, requests sent,
+  statements run, allocations, modules in an import graph, goroutines left
+  running), never wall-clock time, which flakes on a shared CI runner.
+  `pageChunks.test.tsx`, the phone's reference-query test and goleak are
+  guards of this kind.
+- Numbers come from a production or release build on realistic data, never
+  from a dev build: the web app from `vite build` under CPU throttling, the
+  phone from a release build, the server on a copy of the database scaled to
+  a heavy user. Dev builds add double renders, dev-only checks and
+  unminified bundles that hide a cost or invent one. Alternate base and head
+  runs and report medians, each timing beside the deterministic count that
+  explains it.

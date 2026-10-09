@@ -17,7 +17,7 @@ documentation disagree on an API, the documentation wins.
 | Icons | lucide-react-native | Same icon set as the web app |
 | Server state | TanStack Query | Online manager on `expo-network`, focus manager on `AppState`, wired once in `src/lib/queryClient.ts` and the root layout |
 | Client state | Zustand | Persisted through `expo-sqlite/kv-store` via `src/lib/storage.ts`; synchronous, so stores hydrate before first render |
-| Secrets | expo-secure-store | The session token and the instance it belongs to, nothing else; never in a Zustand store. The token is read once at launch into a module variable in `src/stores/sessionStore.tsx` (a read decrypts on the JS thread) and cleared on sign-out |
+| Secrets | expo-secure-store | The session token and the instance it belongs to, nothing else; never in a Zustand store. Read once at launch (section 4) |
 | Fonts | expo-font config plugin | Inter and JetBrains Mono embedded at build time, one family each with its weights; the display face is `assets/fonts/Fraunces-Display.ttf`, a static cut of Fraunces at the web's axes (opsz 28, wght 560, SOFT 50, WONK 1) made with fontTools' instancer from the Google Fonts variable file, because Android does not apply variable axes reliably |
 | Motion | react-native-reanimated with react-native-worklets | Every animation runs on the UI thread from shared values; the curves and the reduced-motion hook are in `src/lib/motion.ts` |
 | Gestures | react-native-gesture-handler | The board's hold-and-drag and the Inbox's swipe to mark read; `GestureHandlerRootView` wraps the app in the root layout |
@@ -146,7 +146,41 @@ as written. In particular:
   `NEXUL_GOOGLE_SERVICES_JSON` and includes it only when the file exists at
   build time, so a build without the owner's push setup still succeeds.
 
-## 4. Testing
+## 4. Server state and the socket
+
+- A reference query (the viewer, their workspaces and role, a workspace's
+  people) spreads `referenceDataOptions` from `src/lib/queryClient.ts`:
+  `staleTime: Infinity`, refetched on foreground and on reconnect. With the
+  default `staleTime` of 0, every row that mounts during a chat scroll
+  refetches them, dozens of requests per scroll.
+- A query cached forever refreshes only when a pushed topic invalidates it,
+  so each one has a topic in `useLiveEvents` (`account.profile_updated`,
+  `workspace.updated`, `role.updated`) and a row in the reference table in
+  `useLiveEvents.test.tsx`. That test also scans `src/` for every query with
+  `referenceDataOptions` or `staleTime: Infinity` and fails while one has no
+  row; a new reference query ships with its topic.
+- Chat message frames patch the cached thread in place
+  (`upsertCachedMessage`, `markCachedMessageDeleted`, `applyCachedReaction`),
+  the same as the web client; a frame that carries the message never
+  downloads the thread page again.
+- A record's detail query is keyed by its id, or by its key and workspace
+  slug when a link opened it. Socket frames and mutations reach it through
+  `recordQueries(key, id)` from `src/lib/queryClient.ts`, which matches the
+  id segment or the cached record's own id; a filter on `[key, id]` alone
+  misses the key-addressed entry and leaves that screen stale. A frame
+  invalidates the detail of the id it carries, never every detail.
+- Interaction state that many rows read (the board's lifted card in
+  `boardDrag.tsx`) lives in a small store each row selects from, so a drag
+  re-renders the cards it touches, not the whole board.
+- The session token is read from the secure store once at launch into a
+  module variable in `src/stores/sessionStore.tsx` and cleared on sign-out.
+  Every secure-store read decrypts on the JS thread, so reading it per
+  request stalls each foreground.
+- Icons import by path, `lucide-react-native/icons/<name>`. The package root
+  pulls every icon into the bundle, nearly doubling the module count and the
+  cold start; `no-restricted-imports` in `eslint.config.js` rejects it.
+
+## 5. Testing
 
 - `render` from React Native Testing Library is asynchronous: `await` it, and
   wrap state changes in `await act(async () => ...)`. Query by role or text
@@ -159,7 +193,7 @@ as written. In particular:
 - Error paths first, then state transitions, then the happy path
   (`practices/testing.md`). `src/components/ui/` is exempt from coverage.
 
-## 5. Running and shipping
+## 6. Running and shipping
 
 - `bun install`, then `bun run start` for Metro on its own port and `bun run
   android` for a development build on the emulator. `bun run prebuild`
@@ -183,7 +217,7 @@ as written. In particular:
   react-native-reusables registry. Registry files execute in this project's
   tokens; a customised primitive is diffed, never overwritten wholesale.
 
-## 6. Releasing the app and publishing updates
+## 7. Releasing the app and publishing updates
 
 Releases and updates happen by hand only (`workflow_dispatch`), never on push
 or on a schedule.

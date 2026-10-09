@@ -241,20 +241,20 @@ func CtxWithLogger(ctx context.Context, l *slog.Logger) context.Context {
 - `encoding/json/v2` stays out of this codebase while it is gated behind
   `GOEXPERIMENT=jsonv2`; its API is not final until it ships without the
   flag.
-- SQLite writes are serialized through a single write channel or a mutex in
-  the storage layer. Do not fire concurrent write transactions from multiple
-  goroutines without the serializer.
-- `storage.OpenDB` keeps a pool of 8 with `SetConnMaxLifetime(5min)` over
-  WAL and `busy_timeout(5000)` pragmas. A single connection turns one stuck
-  statement into an outage, and the lifetime cap recycles stale WAL
-  snapshots. All 8 stay idle between requests (`SetMaxIdleConns(8)`):
-  opening a connection re-parses the whole schema, so the default idle cap
-  of 2 made every burst of parallel requests reopen the rest. Writes stay
-  serialized in the storage layer; do not raise the pool without a written
-  rationale. Transactions begin `IMMEDIATE` (`_txlock=immediate`): a
-  deferred transaction that reads before it writes fails at once with
-  `database is locked` when another connection holds the write lock, and
-  `busy_timeout` never gets the chance to wait.
+- A loop that delivers what a commit wrote (the outbox relay, the webhook
+  relay, each automations dial-in connection) waits on the storage
+  serializer's commit broadcast (`internal/platform/wake`), with a ticker of
+  a few seconds as the fallback for a failed attempt. A fast ticker per loop
+  costs a read on every tick while nothing happens, and still adds its
+  interval to every delivery. Take `Next()` before reading, so a commit that
+  lands during the read wakes the next wait instead of being lost.
+- A fan-out to many clients (the live hub, collab rooms) gives each client
+  its own bounded send queue and writer goroutine. A full queue drops that
+  client, which reconnects; it never blocks the publisher, because one
+  client that stops reading would otherwise stall every other client for
+  the write timeout. Dropping a client runs the full leave path and closes
+  its socket, so a dropped peer can never keep acting on stale state. The
+  writer stops when its connection ends.
 
 ---
 
@@ -372,6 +372,16 @@ func TestParseDeployStatus(t *testing.T) {
 - Use `t.Cleanup` to tear down.
 - Use `t.Parallel()` where safe; in-memory SQLite per test is safe.
 
+### Goroutine leaks
+
+A package that starts goroutines (a hub, a relay, a protocol client, a
+session) has a `main_test.go` with
+`func TestMain(m *testing.M) { goleak.VerifyTestMain(m) }`
+(`go.uber.org/goleak`), so a goroutine still running after the package's
+tests fail the run. `internal/platform/live`, `collab`, `runner`, `t3client`,
+`t3clientv2`, `t3rpc`, `plays` and `agent` carry it. A leak found any other
+way shows up in production as a goroutine count that only grows.
+
 ---
 
 ## 11. Imports
@@ -421,7 +431,31 @@ blank imports except for driver registration (`_ "modernc.org/sqlite"`).
 
 ---
 
-## 14. SQL queries (sqlc)
+## 14. SQLite and SQL queries (sqlc)
+
+### Connections and writes
+
+- Every write goes through the storage serializer (`storage.Serializer`,
+  `r.w.WithTx`), however small: a cursor or a read marker included. A write
+  outside it races the serialized writers for SQLite's one write lock and
+  waits out `busy_timeout` under contention, so the cheapest write becomes
+  the slowest one. Never fire concurrent write transactions from several
+  goroutines without it.
+- Transactions begin `IMMEDIATE` (`_txlock=immediate`): a deferred
+  transaction that reads before it writes fails at once with
+  `database is locked` when another connection holds the write lock, and
+  `busy_timeout` never gets the chance to wait.
+- `storage.OpenDB` keeps a pool of 8 with `SetConnMaxLifetime(5min)` over
+  WAL and `busy_timeout(5000)` pragmas. A single connection turns one stuck
+  statement into an outage, and the lifetime cap recycles stale WAL
+  snapshots. All 8 stay idle between requests (`SetMaxIdleConns(8)`):
+  opening a connection re-parses the whole schema, so a lower idle cap
+  makes every burst of parallel requests reopen connections. Do not raise
+  the pool without a written rationale.
+- A commit notifies the serializer's broadcast, which is what wakes the
+  delivery loops (section 7). A rollback wakes nobody.
+
+### Queries (sqlc)
 
 Repos in `internal/platform/storage/` do not hand-write column lists,
 placeholder rows, and argument lists that have to be kept in sync by eye.
@@ -493,3 +527,41 @@ These choices are settled. Reopen one only with a written reason.
   (section 3, ADR 0008), never as a second logging API.
 
 No version numbers here; `go.mod` is the manifest of record.
+
+---
+
+## 16. JSON on the wire
+
+- `internal/platform/jsonx` is the one encoder for everything a client
+  reads: `httpx.WriteJSON`, MCP tool results and resources, and live
+  frames. It is `json.Marshal` with every nil slice written as `[]`, so a
+  client never has to tell `null` from an empty list. A byte slice keeps
+  `null`, and a nil slice under an `omitzero` field stays omitted.
+- A domain returns its nil slices as they are. A hand-written
+  "nil to `[]`" patch in a use-case or handler duplicates `jsonx` and drifts
+  from it; the one place it stays is a payload `jsonx` never sees, such as
+  an outbox event, which the outbox encodes with plain `json.Marshal`.
+- `jsonx` never writes into the value it encodes, because handlers pass
+  values other goroutines still hold; it copies only the path down to a nil
+  slice and caches a plan per type. Keep both properties when changing it.
+  `server/cmd/json_parity_test.go` encodes every domain's wire types with
+  random values and fails when HTTP output changes.
+- A type encoded in long lists has no `MarshalJSON` of its own.
+  `encoding/json` re-scans a custom marshaler's output byte by byte, which
+  more than doubles the time to encode a board's tickets. A wire shape that differs from the
+  domain type is a plain wire struct the handler converts to, as
+  `tickets.jsonList` does with `ticketJSON`.
+
+---
+
+## 17. Access checks in lists
+
+A use-case that filters or annotates a list by permission checks access once
+per project, never once per item. `access.CanDocs` answers for a project's
+docs from one read of its access layers, and `permissions.Filter` checks
+each distinct scope once and keeps the items in it; a per-item `Can` in a
+loop runs several statements for every row, so the list's cost grows with
+its length instead of with its number of projects. A live frame's audience is
+checked once per person, not once per socket. These batch helpers are the
+rule until access answers are memoised per request; a new list reaches for
+them, or adds one beside them.

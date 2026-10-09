@@ -116,6 +116,12 @@ skipped and lint errors do not.
 | Native lint, types, tests | `bun run lint`, `typecheck`, `test` in `native/`, in CI |
 | SDK and automations host types and tests | `bun run typecheck` and `bun run test` in each package, in CI |
 | Desktop types, tests, build | the desktop CI job |
+| Live topics the server pushes match the ones the browser follows | `make live-topics`, `TestLiveTopicsFile_MatchesTheRules` and `web/src/hooks/liveTopics.test.tsx` |
+| HTTP, MCP and live frames encode through `jsonx` without changing output | `server/cmd/json_parity_test.go` |
+| No goroutine outlives a package's tests | `goleak.VerifyTestMain` in each goroutine-owning package's `main_test.go` |
+| The web shell loads no page, editor, canvas, voice or shader | `web/src/pageChunks.test.tsx` |
+| Every phone query cached forever has a topic that refreshes it | the reference table in `native/src/hooks/useLiveEvents.test.tsx` |
+| Phone icons import by path | `no-restricted-imports` in `native/eslint.config.js` |
 | Dependency freshness | Dependabot, weekly, grouped per directory |
 
 A rule that could be a lint rule and is not yet is a candidate for one; add
@@ -133,7 +139,9 @@ this list and say which entries applied:
   half shipped.
 - Events. A catalog row and an outbox write, designed for publication
   (ADR 0044).
-- Live WebSocket push, if the UI should update without a refresh.
+- Live WebSocket push, if the UI should update without a refresh. A new
+  topic gets an audience rule, `make live-topics`, and a handler in the web
+  client (`practices/react-guide.md`, The live topic contract).
 - Search, if the entity is indexed.
 - Permissions. Enforced through the permission table, not assumed.
 - Reverse states. If you added a way in, add the way out and the way to see

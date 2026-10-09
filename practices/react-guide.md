@@ -829,6 +829,17 @@ Data-fetching rules:
   hooks reading the same resource) is defined once with `queryOptions()` and
   shared between them. One key and one fetcher in one place means the two
   call sites cannot drift out of sync with each other.
+- `hooks/TicketCache.tsx` is the only code that reads or writes a ticket view
+  in the cache. It owns the four views (all, one, by doc, by project) and
+  three operations, `ticketChanged`, `ticketCreated` and `ticketRemoved`;
+  every mutation, board drop, category move, test report and live ticket
+  frame goes through them. A hook that patches or invalidates one ticket key
+  by itself leaves the other three views stale.
+- A batch read for the items on a page (the board's run states and thread
+  markers) is keyed by the project, never by every item id. Ids in the URL
+  cross nginx's 8KB header buffer at around 220 tickets, and the key changes
+  with every new ticket. The endpoint takes `project_id` and still checks
+  each target it returns.
 
 ---
 
@@ -963,73 +974,58 @@ API rules:
 
 ## Live events (WebSocket client)
 
-Status that the server pushes (runner heartbeats, deploy progress, topology
-mutations, dead-letter alerts) arrives on **one** WebSocket. This is separate
-from Axios and is the consumer side of the runner WebSocket protocol (ADR 0031).
+Status the server pushes (runner heartbeats, deploy progress, topology
+mutations, ticket, doc and chat changes, dead-letter alerts) arrives on
+**one** WebSocket, separate from Axios. `api/ws.tsx` owns the connection;
+`hooks/useLiveEvents.tsx` mounts it once at the layout root and dispatches each
+typed frame (`{ topic, type, payload }`) through two tables:
 
-Design:
-
-- One connection, owned by a provider mounted once at the layout root.
-- Exponential-backoff reconnect with jitter; pause when the tab is hidden.
-- Incoming frames are typed (`{ topic, type, payload }`) and dispatched:
-  - topology/status frames patch the React Flow store / status store;
-  - domain-change frames call `queryClient.invalidateQueries(...)` for the
-    affected key, so TanStack refetches the canonical state;
-  - a frame carrying the whole entity (chat messages) patches the cached
-    list with `setQueriesData` instead, so a busy thread never refetches.
-- The WS client **never** mutates server state, it is read-side only. Writes
-  go through the REST gateway.
-
-Sketch (kept dependency-free):
-
-```tsx
-import { useEffect, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useFlowStore } from "@/stores/flowStore";
-
-export const useLiveEvents = (url: string) => {
-  const client = useQueryClient();
-  const attempt = useRef(0);
-
-  useEffect(() => {
-    let ws: WebSocket;
-    let timer: ReturnType<typeof setTimeout>;
-
-    const connect = () => {
-      ws = new WebSocket(url);
-      ws.onopen = () => (attempt.current = 0);
-      ws.onmessage = (ev) => {
-        const frame = JSON.parse(ev.data) as ServerFrame;
-        dispatch(frame);
-      };
-      ws.onclose = () => {
-        const delay = Math.min(30_000, 500 * 2 ** attempt.current++) + Math.random() * 250;
-        timer = setTimeout(connect, delay);
-      };
-    };
-
-    const dispatch = (frame: ServerFrame) => {
-      if (frame.topic === "topology") useFlowStore.getState().applyServerPatch(frame.payload);
-      else client.invalidateQueries({ queryKey: [frame.topic] });
-    };
-
-    connect();
-    return () => {
-      clearTimeout(timer);
-      ws?.close();
-    };
-  }, [url, client]);
-};
-```
+- `hooks/liveFrameHandlers.tsx`, for frames that carry what the cache needs:
+  the handler patches the cached views from the payload (`TicketCache`,
+  `docChanged`, `upsertCachedMessage`, the flow store) and refetches nothing.
+- `hooks/livePushTopics.tsx`, for frames that only name what changed: each
+  topic lists the query keys it invalidates.
 
 Rules:
 
-- Mount once (layout root). Components subscribe to *stores*, not to the
-  socket.
-- Treat WS data as a hint to refresh / patch; the REST gateway remains the
-  source of truth on read.
+- Mount once (layout root). Components subscribe to stores and queries, never
+  to the socket.
+- Reconnect with exponential backoff and jitter; pause when the tab is hidden.
+- A frame that carries the entity patches the cache from its payload and never
+  invalidates a list. A ticket body commit arrives every 5 seconds while
+  someone types: patched, it costs no request; invalidated, it refetched six
+  lists. Invalidate only when the frame lacks the data, and then the narrowest
+  key.
+- The WS client **never** mutates server state; it is read-side only. Writes
+  go through the REST gateway, which stays the source of truth on read.
 - Carry a `trace_id` on frames where present; log it via the same structured
   logger convention as the backend.
+
+### The live topic contract
+
+The server's audience rules (`liveRules` in `server/cmd/live_audience.go`)
+decide which topics reach a browser at all; a topic without a rule reaches
+nobody. `make live-topics` writes their names to
+`web/src/hooks/liveTopics.generated.json`, and two tests hold the tables
+together:
+
+- `TestLiveTopicsFile_MatchesTheRules` (Go) fails when the generated file is
+  stale, the way `sqlc diff` does.
+- `hooks/liveTopics.test.tsx` fails when the browser follows a topic the server
+  never pushes, or when a pushed topic is neither followed nor listed in its
+  `ignoredTopics` with the reason.
+
+Adding a live topic is four steps in one change:
+
+1. Publish it from the domain (`events.go`, `practices/architecture.md`
+   section 2).
+2. Add its audience rule to `liveRules`, checked through the permission table
+   the entity's own read uses, so a socket never receives what its person
+   could not load.
+3. Run `make live-topics` and commit the regenerated JSON.
+4. Follow it in `liveFrameHandlers.tsx` (patch from the payload) or
+   `livePushTopics.tsx` (invalidate keys), and in the phone's `useLiveEvents`
+   if the phone shows the entity.
 
 ---
 
@@ -1596,15 +1592,20 @@ file directly; a copy printed here would drift from the real config.
 
 - Memoize expensive computations with `useMemo`. Don't memoize everything;
   React is fast enough for most renders.
-- Every route page is a lazy chunk declared in `pageChunks.tsx`. The shell
-  (`Layout`, the sidebar, the command palette) never statically imports a
-  page or the rich-text editor; a dialog that carries the editor loads its
-  form when it opens (`loadTicketForm`, `LazyCreateDocForm`).
-  `pageChunks.test.tsx` fails when the cold start graph picks one up again.
-- Rows of a list that updates live (board cards and columns, chat messages)
-  are `memo` components fed stable props: callbacks from `useCallback` or
-  `useLatestCallback`, never inline arrows, so one changed row renders one
-  row.
+- Every route page is a lazy chunk declared in `pageChunks.tsx`; the page the
+  URL opens loads beside the bootstrap request and the rest preload once the
+  first screen settles. The shell (`Layout`, the sidebar, the command
+  palette) never statically imports a page, the rich-text editor, the
+  topology canvas, voice or the shader; a dialog that carries the editor
+  loads its form when it opens (`loadTicketForm`, `LazyCreateDocForm`).
+  `pageChunks.test.tsx` fails when the shell's import graph picks one up
+  again.
+- Rows of a list that refetches or updates live (board cards and columns,
+  chat messages and scroller items) are `memo` components fed stable props:
+  callbacks from `useCallback` or `useLatestCallback`, never inline arrows,
+  and derived arrays memoised by content, so one changed row renders one
+  row. A refetch that returns new objects for unchanged rows re-renders the
+  whole list otherwise.
 - Inputs to a library's context are stable: dnd-kit sensor options are module
   constants and `SortableContext` `items` are memoised by content. A fresh
   array or options object rebuilds the context and re-renders every sortable
