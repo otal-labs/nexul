@@ -1,7 +1,8 @@
 import { Inbox } from "lucide-react";
 import { NavLink } from "react-router";
 
-import { navLinkClass } from "@/components/SidebarNav";
+import { navLinkClass, railBadgeClass } from "@/components/SidebarNav";
+import { RailTooltip } from "@/components/sidebar/RailTooltip";
 import { UnreadBadge } from "@/components/UnreadBadge";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
@@ -14,16 +15,14 @@ interface SidebarInboxLinkProps {
 export const SidebarInboxLink = ({ collapsed, unreadCount }: SidebarInboxLinkProps) => {
   const wsPath = useWorkspacePath();
   return (
-    <NavLink
-      to={wsPath("/inbox")}
-      className={({ isActive }) => cn(navLinkClass({ isActive }), "relative", collapsed && "justify-center px-0")}
-      {...(collapsed ? { title: "Inbox" } : {})}
-    >
-      <span className="flex w-8 shrink-0 justify-center">
-        <Inbox className="size-4" aria-hidden />
-      </span>
-      {!collapsed && <span className="flex-1 text-left">Inbox</span>}
-      <UnreadBadge count={unreadCount} className={collapsed ? "absolute top-0 right-0" : undefined} />
-    </NavLink>
+    <RailTooltip label="Inbox" collapsed={collapsed}>
+      <NavLink to={wsPath("/inbox")} aria-label={collapsed ? "Inbox" : undefined} className={navLinkClass}>
+        <span className="flex w-8 shrink-0 justify-center">
+          <Inbox className="size-4" aria-hidden />
+        </span>
+        {!collapsed && <span className={cn("flex-1 text-left", unreadCount > 0 && "font-medium text-foreground")}>Inbox</span>}
+        <UnreadBadge count={unreadCount} className={cn(collapsed && railBadgeClass)} />
+      </NavLink>
+    </RailTooltip>
   );
 };

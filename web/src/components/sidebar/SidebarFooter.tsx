@@ -12,7 +12,7 @@ export const SidebarFooter = ({ collapsed }: SidebarFooterProps) => (
       <div className={cn("min-w-0", !collapsed && "flex-1")}>
         <AccountMenu collapsed={collapsed} />
       </div>
-      <SettingsGearLink />
+      <SettingsGearLink collapsed={collapsed} />
     </div>
   </div>
 );

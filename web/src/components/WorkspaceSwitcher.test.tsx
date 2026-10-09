@@ -179,7 +179,7 @@ describe("WorkspaceSwitcher", () => {
     mockApi(workspaces);
     renderSwitcher(true);
 
-    await screen.findByTitle("Globex");
+    await screen.findByRole("button", { name: "Globex" });
     expect(screen.queryByText("Globex")).not.toBeInTheDocument();
   });
 });

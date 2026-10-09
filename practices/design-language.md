@@ -700,11 +700,27 @@ Channels, Voice channels, Direct messages and Threads. Places come before
 conversations because their length is fixed, so a long channel list never
 pushes Board or Runners below the fold. Section labels are microheaders with
 their create `+` trailing; a direct message with one other person leads with
-their avatar, a group with the people icon. Counts are `UnreadBadge`s. The
-account row sits under the scroll on a hairline. The icon rail (below 1024px
-or collapsed) keeps every page in the same order, with hairlines between the
-groups, and stands one Chat link with a dot for unread messages in for the
-conversation lists.
+their avatar, a group with the people icon, and a private channel's lock
+takes the place of its `#` or speaker. A row with unread messages sets its
+name in medium `foreground` and trails the count as an `UnreadBadge`, the
+solid ink pill (a muted pill vanished on the light canvas and a bare number
+read as a count of items). Rows are `nav-row`s: muted at rest, the
+`bg-accent/60` lift on hover, `bg-accent` while pressed, never a scale (a
+full-width row scaling from its centre shifts its text). The scroll fades
+out over its last 24px under the account row (`scroll-edge`) instead of
+cutting a heading in half, and its bottom padding clears the fade at the
+end. The account row sits under the scroll on a hairline, the gear beside it
+named by a tooltip. The icon rail (below 1024px or collapsed) is 68px, so
+every icon, tile and avatar keeps the x it has in the open sidebar; it keeps
+every page in the same order, with hairlines between the groups, and stands
+one Chat link with a dot for unread messages in for the conversation lists.
+Its logo is the way back out: under the pointer or focus it turns into the
+expand glyph on an accent tile (120ms crossfade), where a separate button
+crowded the logo and hung over the panel's edge. Every rail item names
+itself in a tooltip to its right (`RailTooltip`: 400ms the first time, then
+at once while the pointer moves along the rail), and a count or dot sits on
+its icon's top-right corner, cut out by a canvas ring (`railBadgeClass`).
+The switchers work the same on the rail: the tile opens the same menu.
 
 Command palette. ⌘K (Ctrl+K elsewhere), or the sidebar's Search row, opens
 one palette from any signed-in page: a frosted overlay (`glass-popover`) 40rem
@@ -780,6 +796,15 @@ writing its own.
   Chevrons turn in 150ms `--ease-standard`. The sidebar's Workspace section (`settleIn`)
   settles its pages in the same way when a click opens it, and shuts at once;
   a key opens it without motion, and it never plays as the sidebar mounts.
+- Nav rows (`nav-row`: the sidebar, the section nav, the switchers and the
+  account row): the hover lift lands at once and lets go over 150ms
+  `--ease-standard`, so the highlight is under the pointer the moment it
+  arrives and leaves a short trail. Rejected: 150ms both ways (the incoming
+  row lagged the pointer as it ran down the list) and no transition (the
+  sweep flickered row by row).
+- Tooltips: the first of a run fades in from 0.97 and 4px toward its
+  trigger over 120ms after a 400ms delay, the next ones open at once, and
+  they close in 100ms.
 - Hover and press: a draggable card lifts 1px with a soft elevated shadow
   (an opacity fade on a pseudo layer), 150ms, on hover-capable pointers only;
   a strip below the card keeps the vacated pixel inside it so the hover never

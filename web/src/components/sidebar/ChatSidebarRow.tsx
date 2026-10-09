@@ -13,7 +13,7 @@ interface ChatSidebarRowProps {
   icon: LucideIcon;
   // Stands in for the icon: a direct message shows the person's avatar.
   leading?: ReactNode;
-  // A private channel trails a muted lock.
+  // A private channel's lock takes the place of its glyph.
   isPrivate?: boolean | undefined;
   unreadCount: number;
   onClick?: (() => void) | undefined;
@@ -39,10 +39,11 @@ export const ChatSidebarRow = ({ conversationId, label, icon: Icon, leading, isP
         }
       >
         <span className="flex w-8 shrink-0 justify-center">
-          {leading ?? <Icon className="size-4" aria-hidden />}
+          {leading}
+          {!leading && isPrivate && <LockIcon role="img" className="size-4" aria-label="Private" />}
+          {!leading && !isPrivate && <Icon className="size-4" aria-hidden />}
         </span>
-        <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-        {isPrivate && <LockIcon role="img" className="size-3 shrink-0 text-muted-foreground/70" aria-label="Private" />}
+        <span className={cn("min-w-0 flex-1 truncate text-left", unreadCount > 0 && "font-medium text-foreground")}>{label}</span>
         <UnreadBadge count={unreadCount} className={actions ? revealed : undefined} />
       </NavLink>
       {!!actions && (

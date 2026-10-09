@@ -1,26 +1,39 @@
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
+import { Logo } from "@/components/Logo";
+import { RailTooltip } from "@/components/sidebar/RailTooltip";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 interface CollapseToggleButtonProps {
   collapsed: boolean;
   onToggle: () => void;
 }
 
-// Collapsed, the 56px rail has no room beside the logo, so the toggle straddles its right border on the logo's line.
+// Collapsed, the rail has room for one tile at the top, so the logo is the way back out: it turns into the expand glyph under the pointer or focus.
 export const CollapseToggleButton = ({ collapsed, onToggle }: CollapseToggleButtonProps) => (
-  <Button
-    variant={collapsed ? "outline" : "ghost"}
-    size="icon"
-    className={cn(
-      "size-7 text-muted-foreground hover:text-foreground",
-      collapsed && "absolute top-1/2 -right-3 size-6 -translate-y-1/2 rounded-full bg-popover shadow-sm",
+  <>
+    {collapsed && (
+      <RailTooltip label="Expand sidebar" collapsed>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label="Expand sidebar"
+          className="group/expand relative grid size-8 place-items-center rounded-lg outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
+        >
+          <Logo className="nav-swap group-hover/expand:opacity-0 group-focus-visible/expand:opacity-0" />
+          <span
+            aria-hidden
+            className="nav-swap absolute inset-0 grid place-items-center rounded-lg bg-accent text-foreground opacity-0 group-hover/expand:opacity-100 group-focus-visible/expand:opacity-100"
+          >
+            <PanelLeftOpen className="size-4" />
+          </span>
+        </button>
+      </RailTooltip>
     )}
-    onClick={onToggle}
-    aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-  >
-    {collapsed && <PanelLeftOpen className="size-3.5" aria-hidden />}
-    {!collapsed && <PanelLeftClose className="size-4" aria-hidden />}
-  </Button>
+    {!collapsed && (
+      <Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-foreground" onClick={onToggle} aria-label="Collapse sidebar" title="Collapse sidebar">
+        <PanelLeftClose className="size-4" aria-hidden />
+      </Button>
+    )}
+  </>
 );
