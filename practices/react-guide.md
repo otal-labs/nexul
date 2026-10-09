@@ -313,7 +313,7 @@ web/src/
   enums/                # String-union / as-const "enums" (.tsx)
   pages/                # Route-level page components
   stores/               # Zustand stores (incl. the React Flow store)
-  api/                  # Axios instance + WS client + error types
+  api/                  # Axios instance, error types, the container log stream
   utils/                # Pure functions (TimeUtility.tsx and friends)
   Layout.tsx            # Root layout: header, <Outlet/>, footer
   main.tsx              # App entry
@@ -683,10 +683,11 @@ Rules:
   call sites cannot drift out of sync with each other.
 - `hooks/TicketCache.tsx` is the only code that reads or writes a ticket view
   in the cache. It owns the four views (all, one, by doc, by project) and
-  its operations, `ticketChanged`, `ticketCreated`, `ticketRemoved` and
-  `statusRemoved`; every mutation, board drop, category move, test report and
-  live ticket frame goes through them. A hook that patches or invalidates one ticket key
-  by itself leaves the other three views stale.
+  its operations, `ticketChanged`, `ticketCreated`, `ticketRemoved`,
+  `ticketCategoryMoved` and `statusRemoved`; every mutation, board drop,
+  category move, test report and live ticket frame goes through them. A hook
+  that patches or invalidates one ticket key by itself leaves the other three
+  views stale.
 - A batch read for the items on a page (the board's run states and thread
   markers) is keyed by the project, never by every item id. Ids in the URL
   cross nginx's 8KB header buffer at around 220 tickets, and the key changes

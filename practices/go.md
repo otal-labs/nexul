@@ -45,11 +45,18 @@ internal/
     storage/             # SQLite engine, migrations, repo interfaces
     logging/             # slog setup, ctx-logger, trace_id propagation
     config/              # env-based config loading
+    jsonx/               # the one JSON encoder for what clients read (section 16)
+    live/                # the live socket hub and its per-socket send queues
+    paging/              # the offset and limit window a list call takes
+    permissions/         # the permission table every actor is checked against
+    wake/                # the storage serializer's commit broadcast
   plays/                 # plays domain: user-fired Agent turn definitions and their runs
   presence/              # keeps a harness WebSocket open per paired computer
+  push/                  # Expo push messages for each notification, per phone session
   repository/            # repo scanning for the project wizard
   roles/                 # role entity, permission catalog, protected Owner role
   runner/                # runner protocol domain (WS server side)
+  templates/             # instance, workspace and project templates
   t3client/              # T3 Code harness client, orchestration protocol 1
   t3clientv2/            # T3 Code harness client, orchestration protocol 2
   t3rpc/                 # T3 Effect RPC transport over one WebSocket, shared by both protocols
@@ -59,8 +66,10 @@ internal/
   voice/                 # voice channel domain
   workspace/             # projects, repositories, ticket moves, notifications inbox
 web/                     # React frontend (see practices/react-guide.md)
+native/                  # phone app (see practices/native.md)
+client-core/             # modules the web and phone apps share (see practices/typescript.md)
 sdk/                     # automation SDK (see practices/typescript.md)
-automations/        # automation runtime host (see practices/typescript.md)
+automations/             # automation runtime host (see practices/typescript.md)
 desktop/                 # Electron desktop shell (see practices/typescript.md)
 ```
 

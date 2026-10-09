@@ -73,8 +73,8 @@ service's unexported state, and never splits by layer.
 Which domains this covers, as the tree stands:
 
 - Full five-file shape: `access`, `botwebhook`, `chat`, `codereview`, `deploy`, `dns`,
-  `docs`, `memories`, `pairing`, `plays`, `roles`, `runner`, `tenancy`,
-  `tickets`, `topology`, `workspace`.
+  `docs`, `memories`, `pairing`, `plays`, `roles`, `runner`, `templates`,
+  `tenancy`, `tickets`, `topology`, `workspace`.
 - No `events.go` yet: `attachments`, `automations`, `connectors`,
   `integrations`. The file is added with the
   domain's first published event, never before, because an empty catalog entry
@@ -84,8 +84,8 @@ Which domains this covers, as the tree stands:
   `gitprovider` and `voice` have no `repo.go` but do publish events. Each
   follows the layers it has and grows into the full shape when it needs one.
 - Protocol and infrastructure packages: `agent`, `collab`, `eventcatalog`,
-  `harness`, `livekit`, `mcp`, `presence`, `t3client`, `t3clientv2`, `t3rpc`,
-  `platform`. Shaped by their protocol, not by this template. They still obey the dependency
+  `harness`, `livekit`, `mcp`, `presence`, `push`, `t3client`, `t3clientv2`,
+  `t3rpc`, `platform`. Shaped by their protocol, not by this template. They still obey the dependency
   direction. `harness` declares the one `harness.Client` interface the server
   talks to every agent harness through, with one implementation per kind
   (`t3client` is the first).
