@@ -102,3 +102,17 @@ func toAuditEntry(row sqlcgen.AuditLog) integrations.AuditEntry {
 	}
 	return entry
 }
+
+// DeleteBefore deletes at most limit rows created before before, in one serialized write.
+func (r *AuditRepo) DeleteBefore(ctx context.Context, before time.Time, limit int) (int64, error) {
+	var n int64
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		var err error
+		n, err = r.q.WithTx(tx).DeleteAuditBefore(ctx, sqlcgen.DeleteAuditBeforeParams{Before: before.Unix(), MaxRows: int64(limit)})
+		if err != nil {
+			return fmt.Errorf("delete audit rows before %s: %w", before, err)
+		}
+		return nil
+	})
+	return n, err
+}

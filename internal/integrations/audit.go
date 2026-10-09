@@ -2,11 +2,22 @@ package integrations
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 )
+
+// AuditRetention is how long an audit row is kept (ADR 0138); a constant because the install takes no settings.
+const AuditRetention = 45 * 24 * time.Hour
+
+// auditPurgeBatch bounds one retention delete, so the purge never holds the single writer for long.
+const auditPurgeBatch = 500
+
+const auditRetentionInterval = 24 * time.Hour
 
 // ActorResolver returns the audit identity: actorType, actorID, tokenID (ADR 0017).
 type ActorResolver func(ctx context.Context) (actorType, actorID, tokenID string)
@@ -78,5 +89,40 @@ func (s *Service) record(ctx context.Context, resolve ActorResolver, action stri
 	}
 	if err := s.cfg.Audit.Append(ctx, entry); err != nil {
 		logging.FromCtx(ctx).Error("audit append failed", "action", entry.Action, "err", err)
+	}
+}
+
+// PurgeAudit deletes the rows older than AuditRetention, one bounded batch per write; unchecked, since it runs from
+// a background loop, not a request.
+func (s *Service) PurgeAudit(ctx context.Context) (int64, error) {
+	before := s.cfg.Now().Add(-AuditRetention)
+	var total int64
+	for {
+		n, err := s.cfg.Audit.DeleteBefore(ctx, before, auditPurgeBatch)
+		total += n
+		if err != nil {
+			return total, fmt.Errorf("purge audit rows before %s: %w", before, err)
+		}
+		if n < auditPurgeBatch {
+			return total, nil
+		}
+	}
+}
+
+// RunAuditRetention purges at start and daily after that, until ctx is cancelled.
+func (s *Service) RunAuditRetention(ctx context.Context, log *slog.Logger) {
+	for {
+		n, err := s.PurgeAudit(ctx)
+		if err != nil {
+			log.Warn("audit retention purge failed", "deleted", n, "error", err)
+		}
+		if err == nil && n > 0 {
+			log.Info("audit retention purge", "deleted", n)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(auditRetentionInterval):
+		}
 	}
 }
