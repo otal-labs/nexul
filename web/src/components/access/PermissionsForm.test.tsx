@@ -7,7 +7,8 @@ import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
-import { PermissionsForm, PermissionsFormSchema, type PermissionsFormData } from "@/components/access/PermissionsForm";
+import { PermissionsForm } from "@/components/access/PermissionsForm";
+import { PermissionsFormSchema, type PermissionsFormData } from "@/models/Permission";
 import { useFormDialog } from "@/hooks/useFormDialog";
 
 vi.mock("@/api/client", () => ({

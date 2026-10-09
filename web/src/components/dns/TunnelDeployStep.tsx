@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { AdvancedFields } from "@/components/dns/AdvancedFields";
@@ -48,6 +48,7 @@ const TunnelDeployFields = ({ machines, accounts, onConnected }: TunnelDeployFie
     },
     resolver: zodResolver(tunnelDeploySchema(accounts.length > 1)),
   });
+  const [tunnelName, target] = useWatch({ control: form.control, name: ["tunnel_name", "target"] });
   const busy = createTunnel.isPending || provisionAgent.isPending;
 
   const onSubmit = async (data: TunnelDeployFormData) => {
@@ -91,7 +92,7 @@ const TunnelDeployFields = ({ machines, accounts, onConnected }: TunnelDeployFie
             </div>
           )}
           <p className="font-mono text-xs text-muted-foreground">
-            cloudflared-{form.watch("tunnel_name") || "instance"} on {form.watch("target") || "machine"}
+            cloudflared-{tunnelName || "instance"} on {target || "machine"}
           </p>
           <AdvancedFields>
             <MachinePicker control={form.control} name="target" />

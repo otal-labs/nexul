@@ -120,3 +120,20 @@ export const ServiceFormSchema = z
   });
 
 export type ServiceFormData = z.infer<typeof ServiceFormSchema>;
+
+export const emptyServiceForm = (): ServiceFormData => ({
+  name: "",
+  target: "",
+  strategy: "compose",
+  compose_dir: "",
+  docker_network: "",
+  health_url: "",
+  env: "",
+  image: "",
+  ref: "",
+  build_repo_owner: "",
+  build_repo_name: "",
+  build_branch: "",
+  build_dockerfile: "",
+  build_compose_path: "",
+});

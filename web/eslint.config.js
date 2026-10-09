@@ -23,4 +23,9 @@ export default tseslint.config(
       ],
     },
   },
+  // shadcn primitives are CLI-generated and export their variants beside the component.
+  {
+    files: ["src/components/ui/**"],
+    rules: { "react-refresh/only-export-components": "off" },
+  },
 );

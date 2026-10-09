@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -17,6 +17,7 @@ interface Values {
 
 const Harness = ({ computerId }: { computerId: string }) => {
   const form = useForm<Values>({ defaultValues: { provider: "", model: "", model_options: [] } });
+  const pick = useWatch({ control: form.control, name: ["provider", "model", "model_options"] });
   return (
     <div>
       <HarnessProviderModelFields
@@ -32,7 +33,7 @@ const Harness = ({ computerId }: { computerId: string }) => {
           form.setValue("model_options", options);
         }}
       />
-      <output data-testid="pick">{`${form.watch("provider")}/${form.watch("model")} ${JSON.stringify(form.watch("model_options"))}`}</output>
+      <output data-testid="pick">{`${pick[0]}/${pick[1]} ${JSON.stringify(pick[2])}`}</output>
     </div>
   );
 };

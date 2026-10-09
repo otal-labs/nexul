@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
@@ -35,8 +35,8 @@ const InstanceRecordFields = ({ zones, onDone }: InstanceRecordFieldsProps) => {
   });
 
   const zoneName = (id: string) => zones.find((z) => z.id === id)?.name ?? "";
-  const zone = form.watch("zone");
-  const target = form.watch("target");
+  const zone = useWatch({ control: form.control, name: "zone" });
+  const target = useWatch({ control: form.control, name: "target" });
   // A saved instance URL outside the zone can never produce a record; block submit instead of a confusing toast.
   const blocked = !!zone && !!settings?.instance_url && instanceRecordName(settings.instance_url, zone) === null;
 

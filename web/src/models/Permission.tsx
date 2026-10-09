@@ -85,3 +85,8 @@ export const SetPermissionsSchema = z.union([
 ]);
 
 export type SetPermissionsInput = z.infer<typeof SetPermissionsSchema>;
+
+// The sharing dialog's fields live outside the form (its own pickers), so the schema validates nothing.
+export const PermissionsFormSchema = z.object({});
+
+export type PermissionsFormData = z.infer<typeof PermissionsFormSchema>;

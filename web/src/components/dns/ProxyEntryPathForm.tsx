@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { AdvancedFields } from "@/components/dns/AdvancedFields";
@@ -53,8 +53,8 @@ const ProxyEntryPathFields = ({ zones, machines, onDone }: ProxyEntryPathFieldsP
   });
 
   const zoneName = (id: string) => zones.find((z) => z.id === id)?.name ?? "";
-  const zone = form.watch("zone");
-  const serverAddress = form.watch("server_address");
+  const zone = useWatch({ control: form.control, name: "zone" });
+  const serverAddress = useWatch({ control: form.control, name: "server_address" });
   const busy = provision.isPending || createInstanceRecord.isPending;
   // Same rule as the bare path: the instance record's name comes from the saved instance URL.
   const blocked = !!zone && !!settings?.instance_url && instanceRecordName(settings.instance_url, zone) === null;

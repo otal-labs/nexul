@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { AdvancedFields } from "@/components/dns/AdvancedFields";
@@ -58,8 +58,8 @@ const TunnelHostnameFields = ({ deployment, zones, onDone }: TunnelHostnameField
   });
 
   const zoneName = (id: string) => zones.find((z) => z.id === id)?.name ?? "";
-  const hostname = fullHostname(form.watch("subdomain"), form.watch("zone"));
-  const service = form.watch("service");
+  const [subdomain, zone, service] = useWatch({ control: form.control, name: ["subdomain", "zone", "service"] });
+  const hostname = fullHostname(subdomain, zone);
 
   const onSubmit = async (data: TunnelHostnameFormData) => {
     const host = fullHostname(data.subdomain, data.zone);

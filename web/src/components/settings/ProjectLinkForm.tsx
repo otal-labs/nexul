@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { FormSelect } from "@/components/ticket/FormSelect";
@@ -38,6 +38,7 @@ export const ProjectLinkForm = ({ projectId, projectName, link, computers }: Pro
     },
     resolver: zodResolver(ProjectLinkFormSchema),
   });
+  const computerId = useWatch({ control: form.control, name: "computer_id" });
 
   const onSubmit = async (data: ProjectLinkFormData) => {
     try {
@@ -77,14 +78,14 @@ export const ProjectLinkForm = ({ projectId, projectName, link, computers }: Pro
         control={form.control}
         name="harness_project_id"
         label="T3 project"
-        computerId={form.watch("computer_id")}
+        computerId={computerId}
       />
       <HarnessProviderModelFields
         control={form.control}
         providerName="provider"
         modelName="model"
         optionsName="model_options"
-        computerId={form.watch("computer_id")}
+        computerId={computerId}
         description="Model for your agent turns in this project"
         onPick={(provider, model, options) => {
           form.setValue("provider", provider, { shouldDirty: true });

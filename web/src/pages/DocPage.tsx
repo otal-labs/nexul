@@ -1,6 +1,7 @@
 import { useParams } from "react-router";
 
-import { PermissionsForm, PermissionsFormSchema, type PermissionsFormData } from "@/components/access/PermissionsForm";
+import { PermissionsForm } from "@/components/access/PermissionsForm";
+import { PermissionsFormSchema, type PermissionsFormData } from "@/models/Permission";
 import { Container } from "@/components/Container";
 import { DocDetail } from "@/components/doc/DocDetail";
 import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
