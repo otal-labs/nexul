@@ -155,7 +155,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, err)
 			return
 		}
-		httpx.WriteJSON(w, http.StatusOK, ts)
+		httpx.WriteJSON(w, http.StatusOK, jsonList(ts))
 		return
 	}
 	if projectID := r.URL.Query().Get("project_id"); projectID != "" {
@@ -164,7 +164,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, err)
 			return
 		}
-		httpx.WriteJSON(w, http.StatusOK, ts)
+		httpx.WriteJSON(w, http.StatusOK, jsonList(ts))
 		return
 	}
 	ts, err := h.svc.List(r.Context())
@@ -172,7 +172,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, ts)
+	httpx.WriteJSON(w, http.StatusOK, jsonList(ts))
 }
 
 func (h *Handler) search(w http.ResponseWriter, r *http.Request) {

@@ -21,6 +21,7 @@ type Relay struct {
 	publisher Publisher
 	interval  time.Duration
 	batchSize int
+	wake      <-chan struct{}
 	log       *slog.Logger
 }
 
@@ -31,6 +32,8 @@ type RelayConfig struct {
 	Interval time.Duration
 	// BatchSize is the max entries relayed per poll. Default 100.
 	BatchSize int
+	// Wake flushes at once when it fires, so a committed row need not wait for the next poll. Optional.
+	Wake <-chan struct{}
 	// Logger for failed flushes. Default slog.Default().
 	Logger *slog.Logger
 }
@@ -51,12 +54,13 @@ func NewRelay(store Storer, p Publisher, cfg RelayConfig) *Relay {
 		publisher: p,
 		interval:  cfg.Interval,
 		batchSize: cfg.BatchSize,
+		wake:      cfg.Wake,
 		log:       cfg.Logger,
 	}
 }
 
-// Run polls until ctx is cancelled. A failed poll is logged and retried on the
-// next tick so a transient publish error never loses a row.
+// Run polls until ctx is cancelled, and flushes early whenever Wake fires. A failed poll is logged and retried on
+// the next tick so a transient publish error never loses a row.
 func (r *Relay) Run(ctx context.Context) error {
 	ticker := time.NewTicker(r.interval)
 	defer ticker.Stop()
@@ -65,9 +69,10 @@ func (r *Relay) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			if err := r.flush(ctx); err != nil {
-				r.log.Error("outbox relay flush", "err", err)
-			}
+		case <-r.wake:
+		}
+		if err := r.flush(ctx); err != nil {
+			r.log.Error("outbox relay flush", "err", err)
 		}
 	}
 }

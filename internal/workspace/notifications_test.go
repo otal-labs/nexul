@@ -266,11 +266,13 @@ func (f *fakeProjects) Get(_ context.Context, id string) (*Project, error) {
 
 // fakeAccessChecker is a PermissionChecker stub gating memory.updated fan-out by a fixed allow/deny set.
 type fakeAccessChecker struct {
-	denyUserIDs   map[string]bool
-	denyInProject map[string]bool // "user:project"
+	denyUserIDs    map[string]bool
+	denyInProject  map[string]bool // "user:project"
+	inProjectCalls int
 }
 
 func (f *fakeAccessChecker) CanInProject(_ context.Context, userID, projectID string, _ permissions.Action) bool {
+	f.inProjectCalls++
 	return !f.denyUserIDs[userID] && !f.denyInProject[userID+":"+projectID]
 }
 
@@ -339,6 +341,21 @@ func TestNotifList(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, ns, 2)
 	})
+}
+
+func TestNotifList_ChecksEachProjectOnce(t *testing.T) {
+	repo := newFakeNotifRepo()
+	for i := range 20 {
+		repo.create(t, &Notification{ID: notifID(i), UserID: "u1", ProjectID: []string{"p-open", "p-closed"}[i%2]})
+	}
+	access := &fakeAccessChecker{denyInProject: map[string]bool{"u1:p-closed": true}}
+	s := newTestNotifServiceWith(repo, newFakeNotifUsers(), nil, access)
+
+	ns, err := s.List(t.Context(), "u1", "", 50)
+
+	require.NoError(t, err)
+	assert.Len(t, ns, 10)
+	assert.Equal(t, 2, access.inProjectCalls)
 }
 
 func TestNotifUnreadCount(t *testing.T) {

@@ -25,6 +25,9 @@ type Frame struct {
 // WriteTimeout bounds each frame write to a browser. Slow consumers drop.
 const WriteTimeout = 10 * time.Second
 
+// sendBuffer is how many frames a socket may fall behind before it is dropped; it reconnects and refetches.
+const sendBuffer = 64
+
 // Audience decides whether a frame may reach the person behind one socket; ctx carries them as the actor.
 type Audience func(ctx context.Context, topic string, payload any) bool
 
@@ -37,9 +40,9 @@ type Hub struct {
 }
 
 type client struct {
-	writeMu sync.Mutex
-	ws      *websocket.Conn
-	userID  string
+	ws     *websocket.Conn
+	userID string
+	send   chan []byte
 }
 
 // New wires a hub. A nil logger defaults to slog.Default().
@@ -64,7 +67,10 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	actor, _ := identity.ActorFromCtx(r.Context())
-	c := &client{ws: conn, userID: actor.ID}
+	c := &client{ws: conn, userID: actor.ID, send: make(chan []byte, sendBuffer)}
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+	go h.writeLoop(ctx, c)
 	h.add(c)
 	h.log.Info("browser ws connected", "remote", r.RemoteAddr)
 
@@ -79,8 +85,8 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_ = conn.Close(websocket.StatusNormalClosure, "")
 }
 
-// Publish pushes a frame to every browser its audience allows; a write failure just drops that client, who
-// reconnects with backoff.
+// Publish queues a frame for every browser its audience allows; a client too far behind is dropped and reconnects
+// with backoff, so one stalled socket never holds up the others.
 func (h *Hub) Publish(ctx context.Context, topic string, payload any) error {
 	data, err := json.Marshal(Frame{Topic: topic, Type: "event", Payload: payload})
 	if err != nil {
@@ -92,14 +98,23 @@ func (h *Hub) Publish(ctx context.Context, topic string, payload any) error {
 		clients = append(clients, c)
 	}
 	h.mu.Unlock()
+	// A person's tabs and phone share one read check per frame; agent streams publish at token rate.
+	allowed := make(map[string]bool, len(clients))
 	for _, c := range clients {
-		// ponytail: one read check per socket per frame; group sockets by user if a busy instance feels it.
-		if h.audience != nil && !h.audience(identity.WithActor(ctx, identity.Actor{ID: c.userID}), topic, payload) {
+		ok, seen := allowed[c.userID]
+		if !seen {
+			ok = h.audience == nil || h.audience(identity.WithActor(ctx, identity.Actor{ID: c.userID}), topic, payload)
+			allowed[c.userID] = ok
+		}
+		if !ok {
 			continue
 		}
-		if err := c.write(data); err != nil {
-			h.log.Warn("browser ws write failed; dropping client", "error", err)
+		select {
+		case c.send <- data:
+		default:
+			h.log.Warn("browser ws too far behind; dropping client", "user_id", c.userID)
 			h.remove(c)
+			_ = c.ws.CloseNow() // the read loop sees the close and ends the connection
 		}
 	}
 	return nil
@@ -117,10 +132,22 @@ func (h *Hub) remove(c *client) {
 	delete(h.clients, c)
 }
 
-func (c *client) write(data []byte) error {
-	ctx, cancel := context.WithTimeout(context.Background(), WriteTimeout)
-	defer cancel()
-	c.writeMu.Lock()
-	defer c.writeMu.Unlock()
-	return c.ws.Write(ctx, websocket.MessageText, data)
+// writeLoop sends a client's queued frames in order until its connection ends; a failed write drops the client.
+func (h *Hub) writeLoop(ctx context.Context, c *client) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case data := <-c.send:
+			wctx, cancel := context.WithTimeout(ctx, WriteTimeout)
+			err := c.ws.Write(wctx, websocket.MessageText, data)
+			cancel()
+			if err != nil {
+				h.log.Warn("browser ws write failed; dropping client", "error", err)
+				h.remove(c)
+				_ = c.ws.CloseNow() // the read loop sees the close and ends the connection
+				return
+			}
+		}
+	}
 }

@@ -98,8 +98,17 @@ DELETE FROM ticket_labels WHERE ticket_id = ? AND label = ?;
 -- name: ListTicketLabels :many
 SELECT label FROM ticket_labels WHERE ticket_id = ? ORDER BY label;
 
+-- name: ListTicketProjects :many
+SELECT id, project_id FROM tickets WHERE id IN (sqlc.slice('ids'));
+
 -- name: ListTicketLabelsForTickets :many
 SELECT ticket_id, label FROM ticket_labels WHERE ticket_id IN (sqlc.slice('ids')) ORDER BY label;
+
+-- name: ListAllTicketLabels :many
+SELECT ticket_id, label FROM ticket_labels ORDER BY label;
+
+-- name: ListTicketLabelsByProject :many
+SELECT ticket_id, label FROM ticket_labels WHERE ticket_id IN (SELECT id FROM tickets WHERE project_id = ?) ORDER BY label;
 
 -- name: SetLabelColor :exec
 INSERT INTO label_colors (project_id, label, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)

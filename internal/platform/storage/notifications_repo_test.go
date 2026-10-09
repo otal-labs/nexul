@@ -370,3 +370,16 @@ func TestNotificationsRepo_DeleteExpired_DeletesExactlyPastEachCutoff(t *testing
 	}
 	assert.ElementsMatch(t, []string{"read-at-cutoff", "unread-recent", "unread-at-cutoff"}, kept)
 }
+
+func TestNotificationsRepo_UnreadCount_ReadsOnlyUnreadRows(t *testing.T) {
+	s, st := newCountedStore(t)
+	ctx := t.Context()
+	mustCreateUser(t, s, "u1", "onik97")
+	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{newTestNotification("n1", "u1", false), newTestNotification("n2", "u1", true)}))
+
+	_, err := s.Notifications.UnreadByProject(ctx, "u1", "workspace-default")
+	require.NoError(t, err)
+
+	query, args := st.lastStatement()
+	assert.Contains(t, queryPlan(t, s.db, query, args...), "USING INDEX idx_notifications_user_unread", "read rows outnumber unread ones by far")
+}

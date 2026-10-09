@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -18,6 +19,8 @@ import (
 // AccessChecker is the slice of access docs consumes, defined consumer-side so docs never imports it (ADR 0017).
 type AccessChecker interface {
 	Can(ctx context.Context, userID, docID string, action permissions.Action) (bool, error)
+	// CanDocs answers Can for each of docIDs, all in projectID, at the cost of one check.
+	CanDocs(ctx context.Context, userID, projectID string, docIDs []string, action permissions.Action) map[string]bool
 	GrantCreator(ctx context.Context, docID, creatorID string) error
 	// DeleteByDoc removes every permission overwrite on docID; called explicitly, permission_overwrites has no FK to docs.
 	DeleteByDoc(ctx context.Context, docID string) error
@@ -237,6 +240,7 @@ func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, e
 	if err != nil {
 		return nil, err
 	}
+	opens := s.canEach(ctx, ds, permissions.DocsRead)
 	out := make([]*DocListItem, 0, len(ds))
 	for _, d := range ds {
 		item := &DocListItem{
@@ -250,7 +254,7 @@ func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, e
 			CreatedAt: d.CreatedAt,
 			UpdatedAt: d.UpdatedAt,
 		}
-		item.CanOpen = s.can(ctx, d.ID, permissions.DocsRead)
+		item.CanOpen = opens[d.ID]
 		if item.CanOpen {
 			item.CreatedBy = d.CreatedBy
 			item.Snippet = richtext.Snippet(d.Body, snippetRunes)
@@ -582,6 +586,23 @@ func (s *Service) require(ctx context.Context, docID string, action permissions.
 		}
 	}
 	return fmt.Errorf("%w: no %s permission on doc %s", apperrs.ErrForbidden, action, docID)
+}
+
+// canEach is can for every doc in ds, one check per project rather than one per doc.
+func (s *Service) canEach(ctx context.Context, ds []*Doc, action permissions.Action) map[string]bool {
+	actor, ok := identity.ActorFromCtx(ctx)
+	if s.access == nil || !ok || actor.ID == "" {
+		return map[string]bool{}
+	}
+	byProject := map[string][]string{}
+	for _, d := range ds {
+		byProject[d.ProjectID] = append(byProject[d.ProjectID], d.ID)
+	}
+	out := make(map[string]bool, len(ds))
+	for projectID, docIDs := range byProject {
+		maps.Copy(out, s.access.CanDocs(ctx, actor.ID, projectID, docIDs, action))
+	}
+	return out
 }
 
 func (s *Service) can(ctx context.Context, docID string, action permissions.Action) bool {

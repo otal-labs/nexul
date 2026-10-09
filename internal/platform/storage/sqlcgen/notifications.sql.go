@@ -51,7 +51,7 @@ func (q *Queries) BumpUnreadNotification(ctx context.Context, arg BumpUnreadNoti
 
 const countUnreadNotificationsByProject = `-- name: CountUnreadNotificationsByProject :many
 SELECT n.workspace_id, CAST(COALESCE(t.project_id, d.project_id, m.project_id, '') AS TEXT) AS project_id, COUNT(*) AS unread
-FROM notifications n
+FROM notifications n INDEXED BY idx_notifications_user_unread
 LEFT JOIN docs d ON n.subject_type = 'doc' AND d.id = n.subject_id
 LEFT JOIN tickets t ON n.subject_type = 'ticket' AND t.id = n.subject_id
 LEFT JOIN memories m ON n.subject_type = 'memory' AND m.id = n.subject_id
@@ -70,6 +70,7 @@ type CountUnreadNotificationsByProjectRow struct {
 	Unread      int64
 }
 
+// Without table statistics SQLite reads every notification the user has, read ones included, through the inbox index.
 func (q *Queries) CountUnreadNotificationsByProject(ctx context.Context, arg CountUnreadNotificationsByProjectParams) ([]CountUnreadNotificationsByProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, countUnreadNotificationsByProject, arg.UserID, arg.WorkspaceID)
 	if err != nil {

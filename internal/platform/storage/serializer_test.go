@@ -85,3 +85,60 @@ func TestSerializer_ConcurrentWrites(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, got, workers)
 }
+
+// A deferred transaction that reads first fails at once when it upgrades past another writer; busy_timeout never applies.
+func TestSerializer_ReadThenWrite_BesideAnUnserializedWriter_NeverLocked(t *testing.T) {
+	db := newTestDB(t)
+	ctx := t.Context()
+	_, err := db.ExecContext(ctx, `INSERT INTO docs (id, title, body, version, created_at, updated_at) VALUES ('d0', 't', 'b', 1, 1, 1)`)
+	require.NoError(t, err)
+
+	w := &Serializer{}
+	var wg sync.WaitGroup
+	errs := make(chan error, 1200)
+	for g := range 4 {
+		wg.Go(func() {
+			for i := range 150 {
+				errs <- w.WithTx(ctx, db, func(tx *sql.Tx) error {
+					var n int
+					if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM docs`).Scan(&n); err != nil {
+						return err
+					}
+					_, err := tx.ExecContext(ctx, `INSERT INTO docs (id, title, body, version, created_at, updated_at) VALUES (?, 't', 'b', 1, 1, 1)`, fmt.Sprintf("d-%d-%d", g, i))
+					return err
+				})
+			}
+		})
+		wg.Go(func() {
+			for i := range 150 {
+				_, err := db.ExecContext(ctx, `UPDATE docs SET title = ? WHERE id = 'd0'`, fmt.Sprintf("t-%d-%d", g, i))
+				errs <- err
+			}
+		})
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
+}
+
+func TestStore_Commits_SignalsAfterACommitNotARollback(t *testing.T) {
+	s := newTestStore(t)
+	ctx := t.Context()
+	insert := func(id string, fail error) error {
+		return s.w.WithTx(ctx, s.db, func(tx *sql.Tx) error {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO docs (id, title, body, version, created_at, updated_at) VALUES (?, 't', 'b', 1, 1, 1)`, id); err != nil {
+				return err
+			}
+			return fail
+		})
+	}
+
+	require.Error(t, insert("d-rolled-back", fmt.Errorf("boom")))
+	assert.Empty(t, s.Commits(), "a rollback signals nothing")
+
+	require.NoError(t, insert("d-1", nil))
+	require.NoError(t, insert("d-2", nil))
+	assert.Len(t, s.Commits(), 1, "commits coalesce into one pending signal")
+}

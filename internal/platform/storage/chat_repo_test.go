@@ -2,7 +2,13 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -596,4 +602,47 @@ func TestChatRepo_SetReaction_GroupsByFirstUseAndWritesOnlyRealChanges(t *testin
 	deleted, err := s.Chat.GetMessage(t.Context(), "msg-1")
 	require.NoError(t, err)
 	assert.Empty(t, deleted.Reactions)
+}
+
+// With deferred transactions any writer outside the serializer breaks a read-then-write transaction, which exposes one.
+func TestChatRepo_AgentCursorWrites_QueueBehindTheSerializer(t *testing.T) {
+	data, err := os.ReadFile(migratedTemplate(t))
+	require.NoError(t, err)
+	path := filepath.Join(t.TempDir(), "test.db")
+	require.NoError(t, os.WriteFile(path, data, 0o600))
+	db, err := sql.Open("sqlite", path+"?"+strings.Replace(pragmas, "&_txlock=immediate", "", 1))
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+	s := New(db, testEncKey)
+	ctx := t.Context()
+	seedChatUser(t, s, "u-1")
+	require.NoError(t, s.Chat.CreateConversation(ctx, newTestConversation("conv-1", chat.KindChannel, "general", "", "u-1"), []string{"u-1"}))
+
+	var wg sync.WaitGroup
+	errs := make(chan error, 1800)
+	for g := range 3 {
+		wg.Go(func() {
+			for i := range 200 {
+				errs <- s.w.WithTx(ctx, db, func(tx *sql.Tx) error {
+					var n int
+					if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM docs`).Scan(&n); err != nil {
+						return err
+					}
+					_, err := tx.ExecContext(ctx, `INSERT INTO docs (id, title, body, version, created_at, updated_at) VALUES (?, 't', 'b', 1, 1, 1)`, fmt.Sprintf("d-%d-%d", g, i))
+					return err
+				})
+			}
+		})
+		wg.Go(func() {
+			for i := range 200 {
+				errs <- s.Chat.SetAgentSeen(ctx, "conv-1", fmt.Sprintf("run-%d-%d", g, i))
+				errs <- s.Chat.SetAgentSyncedAt(ctx, "conv-1", chatFixedNow)
+			}
+		})
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
 }

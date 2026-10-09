@@ -1059,7 +1059,12 @@ func (s *NotificationService) List(ctx context.Context, userID, workspaceID stri
 	if err != nil {
 		return nil, err
 	}
-	return slices.DeleteFunc(ns, func(n *Notification) bool { return !s.opensProject(ctx, userID, n.ProjectID) }), nil
+	return permissions.Filter(ns, func(n *Notification) string { return n.ProjectID }, func(projectID string) error {
+		if s.opensProject(ctx, userID, projectID) {
+			return nil
+		}
+		return apperrs.ErrNotFound
+	})
 }
 
 // opensProject keeps a notice about a project its reader can no longer open out of their inbox; the row stays, so

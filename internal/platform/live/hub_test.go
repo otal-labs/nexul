@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -124,4 +125,66 @@ func TestHub_AudienceKeepsAFrameFromSocketsItRefuses(t *testing.T) {
 	assert.Equal(t, "private", readFrame(t, alice).Topic)
 	assert.Equal(t, "public", readFrame(t, alice).Topic)
 	assert.Equal(t, "public", readFrame(t, bob).Topic, "bob's first frame is the one he may read")
+}
+
+func TestHub_Publish_ChecksTheAudienceOncePerPersonNotPerSocket(t *testing.T) {
+	hub := New(testLogger())
+	var checks int
+	hub.SetAudience(func(context.Context, string, any) bool {
+		checks++
+		return false
+	})
+	for _, user := range []string{"alice", "alice", "alice", "bob"} {
+		hub.add(&client{userID: user})
+	}
+
+	require.NoError(t, hub.Publish(context.Background(), "chat.agent.stream", map[string]string{"conversation_id": "c-1"}))
+
+	assert.Equal(t, 2, checks)
+}
+
+// TestHub_Publish_ASocketThatStopsReadingHoldsUpNobody fills a socket that never reads: publishing carries on for
+// the reader beside it, and the stalled socket is dropped so it reconnects.
+func TestHub_Publish_ASocketThatStopsReadingHoldsUpNobody(t *testing.T) {
+	hub := New(testLogger())
+	srv := serveHub(t, hub)
+	ctx := t.Context()
+	stalled, _, err := websocket.Dial(ctx, "ws"+srv.URL[len("http"):], nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = stalled.CloseNow() })
+	reader, _, err := websocket.Dial(ctx, "ws"+srv.URL[len("http"):], nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = reader.CloseNow() })
+	reader.SetReadLimit(1 << 20)
+	require.Eventually(t, func() bool {
+		hub.mu.Lock()
+		defer hub.mu.Unlock()
+		return len(hub.clients) == 2
+	}, 3*time.Second, 5*time.Millisecond)
+
+	const frames = 400
+	received := make(chan struct{})
+	go func() {
+		defer close(received)
+		for range frames {
+			if _, _, err := reader.Read(ctx); err != nil {
+				return
+			}
+		}
+	}()
+	payload := map[string]string{"text": strings.Repeat("x", 64<<10)}
+	go func() {
+		for range frames {
+			_ = hub.Publish(ctx, "chat.agent.stream", payload)
+		}
+	}()
+
+	select {
+	case <-received:
+	case <-time.After(WriteTimeout / 2):
+		t.Fatal("the reader waited on the stalled socket")
+	}
+	hub.mu.Lock()
+	defer hub.mu.Unlock()
+	assert.Len(t, hub.clients, 1, "the stalled socket was dropped")
 }

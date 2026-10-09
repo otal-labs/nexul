@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -142,4 +143,57 @@ func TestRestrictedMember_HiddenNotFoundNamesNoProject(t *testing.T) {
 
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 	assert.NotContains(t, err.Error(), "p-hidden")
+}
+
+// countingRoles counts membership lookups, the per-check cost CanDocs reads once for a whole project.
+type countingRoles struct {
+	*fakeRoles
+	calls int
+}
+
+func (c *countingRoles) MemberRole(ctx context.Context, workspaceID, userID string) (RoleInfo, error) {
+	c.calls++
+	return c.fakeRoles.MemberRole(ctx, workspaceID, userID)
+}
+
+func TestCanDocs_AnswersAsCanDoesPerDoc(t *testing.T) {
+	s, repo := restrictedFixture(t)
+	s.SetDocWorkspaces(&fakeDocWorkspace{
+		byDoc:     map[string]string{"d-open": "ws", "d-open-2": "ws", "d-hidden": "ws"},
+		projectOf: map[string]string{"d-open": "p-open", "d-open-2": "p-open", "d-hidden": "p-hidden"},
+	})
+	setOverwrite(repo, "doc", "d-hidden", "client", permissions.SetOf(permissions.DocsRead))
+	require.NoError(t, repo.Set(t.Context(), "doc", "d-open-2", "team", nil, permissions.SetOf(permissions.DocsRead)))
+	setOverwrite(repo, "doc", "d-loose", "stranger", permissions.SetOf(permissions.DocsRead, permissions.DocsWrite))
+	byProject := map[string][]string{"p-open": {"d-open", "d-open-2"}, "p-hidden": {"d-hidden"}, "": {"d-loose"}, "p-gone": {"d-gone"}}
+
+	for _, user := range []string{"client", "team", "owner", "stranger", ""} {
+		for _, action := range []permissions.Action{permissions.DocsRead, permissions.DocsWrite} {
+			for projectID, docIDs := range byProject {
+				got := s.CanDocs(t.Context(), user, projectID, docIDs, action)
+				for _, id := range docIDs {
+					want, err := s.Can(t.Context(), user, id, action)
+					require.NoError(t, err)
+					assert.Equal(t, want, got[id], "%s %s on %s", user, action, id)
+				}
+			}
+		}
+	}
+}
+
+func TestCanDocs_ReadsMembershipOncePerProject(t *testing.T) {
+	s, _ := restrictedFixture(t)
+	roles := &countingRoles{fakeRoles: newFakeRoles()}
+	roles.set("ws", "team", RoleInfo{Permissions: permissions.SetOf(permissions.DocsRead)})
+	s.SetRoles(roles)
+	docIDs := make([]string, 50)
+	for i := range docIDs {
+		docIDs[i] = fmt.Sprintf("d-%d", i)
+	}
+
+	got := s.CanDocs(t.Context(), "team", "p-open", docIDs, permissions.DocsRead)
+
+	assert.Len(t, got, 50)
+	assert.True(t, got["d-49"])
+	assert.Equal(t, 1, roles.calls)
 }

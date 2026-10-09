@@ -247,8 +247,14 @@ func CtxWithLogger(ctx context.Context, l *slog.Logger) context.Context {
 - `storage.OpenDB` keeps a pool of 8 with `SetConnMaxLifetime(5min)` over
   WAL and `busy_timeout(5000)` pragmas. A single connection turns one stuck
   statement into an outage, and the lifetime cap recycles stale WAL
-  snapshots. Writes stay serialized in the storage layer; do not raise the
-  pool without a written rationale.
+  snapshots. All 8 stay idle between requests (`SetMaxIdleConns(8)`):
+  opening a connection re-parses the whole schema, so the default idle cap
+  of 2 made every burst of parallel requests reopen the rest. Writes stay
+  serialized in the storage layer; do not raise the pool without a written
+  rationale. Transactions begin `IMMEDIATE` (`_txlock=immediate`): a
+  deferred transaction that reads before it writes fails at once with
+  `database is locked` when another connection holds the write lock, and
+  `busy_timeout` never gets the chance to wait.
 
 ---
 

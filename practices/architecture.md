@@ -104,9 +104,10 @@ the outbox so a crash between commit and publish cannot lose them:
    transaction. Domains hand their repo `eventbus.OutboxEvent` values and
    import `internal/platform/eventbus`, never the `outbox` adapter package,
    because `outbox` imports `storage` and a domain importing it closes a cycle.
-2. A background relay polls the outbox and publishes each row under the row's
-   own ID as the bus event ID (ADR 0018). That is what makes a redelivered row
-   dedupeable.
+2. A background relay publishes each row under the row's own ID as the bus
+   event ID (ADR 0018). That is what makes a redelivered row dedupeable. The
+   storage serializer wakes it after every commit, so a row goes out at once;
+   its poll is the retry path for a publish that failed.
 3. After a crash between commit and publish, the relay re-emits on restart.
 4. Consumers are idempotent: they check the processed-events store before
    acting.

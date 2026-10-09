@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 
@@ -58,6 +59,16 @@ func (f fakeThreads) RequireTicket(ctx context.Context, ticketID string, _ permi
 		return apperrs.ErrNotFound
 	}
 	return nil
+}
+
+func (f fakeThreads) RequireTickets(ctx context.Context, ticketIDs []string, action permissions.Action) (map[string]bool, error) {
+	out := map[string]bool{}
+	for _, id := range ticketIDs {
+		if f.RequireTicket(ctx, id, action) == nil {
+			out[id] = true
+		}
+	}
+	return out, nil
 }
 
 func (f fakeThreads) RequireProject(ctx context.Context, projectID string, _ permissions.Action) error {
@@ -461,4 +472,40 @@ func TestConversationEvents_MarkDMAndPrivateChannelsMembersOnly(t *testing.T) {
 	assert.Equal(t, map[string]int{
 		TopicConversationCreated: 3, TopicConversationUpdated: 2, TopicConversationMembersChanged: 1, TopicConversationDeleted: 2,
 	}, seen)
+}
+
+// countingThreads is fakeThreads counting each ticket check, single or batched.
+type countingThreads struct {
+	fakeThreads
+	checks *int
+}
+
+func (c countingThreads) RequireTicket(ctx context.Context, ticketID string, action permissions.Action) error {
+	*c.checks++
+	return c.fakeThreads.RequireTicket(ctx, ticketID, action)
+}
+
+func (c countingThreads) RequireTickets(ctx context.Context, ticketIDs []string, action permissions.Action) (map[string]bool, error) {
+	*c.checks++
+	return c.fakeThreads.RequireTickets(ctx, ticketIDs, action)
+}
+
+func TestHasTicketThreads_ChecksTheBoardsTicketsInOneCall(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	ids := make([]string, 30)
+	for i := range ids {
+		ids[i] = fmt.Sprintf("t-%d", i)
+		_, err := s.GetOrCreateTicketThread(context.Background(), "w-1", ids[i], "u-1")
+		require.NoError(t, err)
+	}
+	var checks int
+	s.SetThreadGate(countingThreads{fakeThreads{hiddenTickets: []string{"t-3"}}, &checks})
+
+	marks, err := s.HasTicketThreads(as("u-1"), append(ids, "t-no-thread"))
+
+	require.NoError(t, err)
+	assert.Len(t, marks, 29)
+	assert.False(t, marks["t-3"])
+	assert.Equal(t, 1, checks)
 }

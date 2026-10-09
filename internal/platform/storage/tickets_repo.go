@@ -122,11 +122,11 @@ func (r *TicketsRepo) List(ctx context.Context) ([]*tickets.Ticket, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list tickets: %w", err)
 	}
-	out := toTickets(rows)
-	if err := r.attachLabels(ctx, out); err != nil {
-		return nil, err
+	labels, err := r.q.ListAllTicketLabels(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("load labels: %w", err)
 	}
-	return out, nil
+	return withLabels(toTickets(rows), labels), nil
 }
 
 func (r *TicketsRepo) ListByDoc(ctx context.Context, docID string) ([]*tickets.Ticket, error) {
@@ -135,10 +135,14 @@ func (r *TicketsRepo) ListByDoc(ctx context.Context, docID string) ([]*tickets.T
 		return nil, fmt.Errorf("list tickets for doc %s: %w", docID, err)
 	}
 	out := toTickets(rows)
-	if err := r.attachLabels(ctx, out); err != nil {
-		return nil, err
+	if len(out) == 0 {
+		return out, nil
 	}
-	return out, nil
+	labels, err := r.q.ListTicketLabelsForTickets(ctx, ticketIDs(out))
+	if err != nil {
+		return nil, fmt.Errorf("load labels: %w", err)
+	}
+	return withLabels(out, labels), nil
 }
 
 func (r *TicketsRepo) ListByProject(ctx context.Context, projectID string) ([]*tickets.Ticket, error) {
@@ -146,11 +150,11 @@ func (r *TicketsRepo) ListByProject(ctx context.Context, projectID string) ([]*t
 	if err != nil {
 		return nil, fmt.Errorf("list tickets for project %s: %w", projectID, err)
 	}
-	out := toTickets(rows)
-	if err := r.attachLabels(ctx, out); err != nil {
-		return nil, err
+	labels, err := r.q.ListTicketLabelsByProject(ctx, nullString(projectID))
+	if err != nil {
+		return nil, fmt.Errorf("load labels: %w", err)
 	}
-	return out, nil
+	return withLabels(toTickets(rows), labels), nil
 }
 
 // UpdateStatus moves a ticket to a new status, appending it rather than carrying the old position over.
@@ -527,26 +531,42 @@ func (r *TicketsRepo) LabelColors(ctx context.Context, projectID string, labels 
 }
 
 // attachLabels loads labels for every ticket in one query, so responses carry the filter bar's label dimension.
-func (r *TicketsRepo) attachLabels(ctx context.Context, ts []*tickets.Ticket) error {
-	if len(ts) == 0 {
-		return nil
+// ProjectsOf maps each of ids naming a ticket to its project id; an unknown id is left out.
+func (r *TicketsRepo) ProjectsOf(ctx context.Context, ids []string) (map[string]string, error) {
+	out := make(map[string]string, len(ids))
+	if len(ids) == 0 {
+		return out, nil
 	}
+	rows, err := r.q.ListTicketProjects(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("projects of tickets: %w", err)
+	}
+	for _, row := range rows {
+		out[row.ID] = row.ProjectID.String
+	}
+	return out, nil
+}
+
+func ticketIDs(ts []*tickets.Ticket) []string {
+	ids := make([]string, len(ts))
+	for i, t := range ts {
+		ids[i] = t.ID
+	}
+	return ids
+}
+
+// withLabels attaches label rows to the tickets they name; a row for a ticket outside ts is ignored.
+func withLabels(ts []*tickets.Ticket, rows []sqlcgen.TicketLabel) []*tickets.Ticket {
 	byID := make(map[string]*tickets.Ticket, len(ts))
-	ids := make([]string, 0, len(ts))
 	for _, t := range ts {
 		byID[t.ID] = t
-		ids = append(ids, t.ID)
-	}
-	rows, err := r.q.ListTicketLabelsForTickets(ctx, ids)
-	if err != nil {
-		return fmt.Errorf("load labels: %w", err)
 	}
 	for _, row := range rows {
 		if t, ok := byID[row.TicketID]; ok {
 			t.Labels = append(t.Labels, row.Label)
 		}
 	}
-	return nil
+	return ts
 }
 
 func insertTicketLabels(ctx context.Context, tx *sql.Tx, ticketID string, labels []string) error {

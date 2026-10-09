@@ -383,7 +383,11 @@ func (r *ChatRepo) IsNoteFile(ctx context.Context, conversationID, attachmentID 
 
 // SetAgentThread persists a conversation's durable T3 thread id (ticket 13).
 func (r *ChatRepo) SetAgentThread(ctx context.Context, conversationID, threadID string) error {
-	n, err := r.q.SetAgentThread(ctx, sqlcgen.SetAgentThreadParams{AgentThreadID: threadID, ID: conversationID})
+	var n int64
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) (err error) {
+		n, err = r.q.WithTx(tx).SetAgentThread(ctx, sqlcgen.SetAgentThreadParams{AgentThreadID: threadID, ID: conversationID})
+		return err
+	})
 	if err != nil {
 		return fmt.Errorf("set agent thread for conversation %s: %w", conversationID, classifyWriteErr(err))
 	}
@@ -395,7 +399,11 @@ func (r *ChatRepo) SetAgentThread(ctx context.Context, conversationID, threadID 
 
 // SetAgentSyncedAt advances a conversation's agent-context sync cursor (ticket 13).
 func (r *ChatRepo) SetAgentSyncedAt(ctx context.Context, conversationID string, at time.Time) error {
-	n, err := r.q.SetAgentSyncedAt(ctx, sqlcgen.SetAgentSyncedAtParams{AgentSyncedAt: at.Unix(), ID: conversationID})
+	var n int64
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) (err error) {
+		n, err = r.q.WithTx(tx).SetAgentSyncedAt(ctx, sqlcgen.SetAgentSyncedAtParams{AgentSyncedAt: at.Unix(), ID: conversationID})
+		return err
+	})
 	if err != nil {
 		return fmt.Errorf("set agent synced at for conversation %s: %w", conversationID, classifyWriteErr(err))
 	}
@@ -407,7 +415,11 @@ func (r *ChatRepo) SetAgentSyncedAt(ctx context.Context, conversationID string, 
 
 // SetAgentSeen records the newest harness turn Nexul saw end on a conversation's agent thread (ADR 0127).
 func (r *ChatRepo) SetAgentSeen(ctx context.Context, conversationID, marker string) error {
-	n, err := r.q.SetAgentSeen(ctx, sqlcgen.SetAgentSeenParams{AgentSeen: marker, ID: conversationID})
+	var n int64
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) (err error) {
+		n, err = r.q.WithTx(tx).SetAgentSeen(ctx, sqlcgen.SetAgentSeenParams{AgentSeen: marker, ID: conversationID})
+		return err
+	})
 	if err != nil {
 		return fmt.Errorf("set agent seen for conversation %s: %w", conversationID, classifyWriteErr(err))
 	}
