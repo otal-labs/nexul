@@ -1,4 +1,5 @@
 import { createContext, useContext, useMemo, useState } from "react";
+import { createStore, useStore, type StoreApi } from "zustand";
 import { Gesture, type PanGesture } from "react-native-gesture-handler";
 import { measure, useAnimatedRef, useSharedValue, type AnimatedRef, type SharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
@@ -22,8 +23,13 @@ export interface Lifted {
   landing?: number;
 }
 
-export interface BoardDrag {
+interface LiftedState {
   lifted: Lifted | null;
+}
+
+export interface BoardDrag {
+  // Held outside React state, so a lift re-renders the cards that read it and leaves the rest of the board alone.
+  liftedStore: StoreApi<LiftedState>;
   lift: (ticket: Ticket, from: Rect) => void;
   release: (target: number) => void;
   clear: () => void;
@@ -41,8 +47,14 @@ export interface BoardDrag {
 
 export const BoardDragContext = createContext<BoardDrag | null>(null);
 
+const idle = createStore<LiftedState>(() => ({ lifted: null }));
+
+// The held card, or what a selector reads off it; outside a board nothing is ever held.
+export const useLifted = <T,>(drag: BoardDrag | null, select: (lifted: Lifted | null) => T): T =>
+  useStore(drag?.liftedStore ?? idle, (s) => select(s.lifted));
+
 export const useBoardDragState = (statuses: BoardStatus[], move: BoardDrag["move"]): BoardDrag => {
-  const [lifted, setLifted] = useState<Lifted | null>(null);
+  const [liftedStore] = useState(() => createStore<LiftedState>(() => ({ lifted: null })));
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
   const hovered = useSharedValue(-1);
@@ -50,21 +62,14 @@ export const useBoardDragState = (statuses: BoardStatus[], move: BoardDrag["move
   const targets = useSharedValue<Rect[]>([]);
   // Stable, so a card's gesture is not rebuilt mid-drag when the board re-renders around the lifted card.
   const [actions] = useState(() => ({
-    lift: (ticket: Ticket, from: Rect) => setLifted({ ticket, from }),
-    release: (target: number) => setLifted((current) => current && { ...current, landing: target }),
-    clear: () => setLifted(null),
+    lift: (ticket: Ticket, from: Rect) => liftedStore.setState({ lifted: { ticket, from } }),
+    release: (target: number) => liftedStore.setState(({ lifted }) => ({ lifted: lifted && { ...lifted, landing: target } })),
+    clear: () => liftedStore.setState({ lifted: null }),
   }));
-  return {
-    lifted,
-    ...actions,
-    tx,
-    ty,
-    hovered,
-    grab,
-    targets,
-    statuses,
-    move,
-  };
+  return useMemo(
+    () => ({ liftedStore, ...actions, tx, ty, hovered, grab, targets, statuses, move }),
+    [liftedStore, actions, tx, ty, hovered, grab, targets, statuses, move],
+  );
 };
 
 const hitTest = (rects: Rect[], x: number, y: number) => {

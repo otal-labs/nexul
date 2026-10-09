@@ -3,7 +3,7 @@ import { View, type LayoutChangeEvent } from "react-native";
 import Animated, { FadeIn, useAnimatedStyle } from "react-native-reanimated";
 import { useCSSVariable } from "uniwind";
 
-import { BoardDragContext, type Rect } from "@/components/board/boardDrag";
+import { BoardDragContext, useLifted, type Rect } from "@/components/board/boardDrag";
 import { Microheader } from "@/components/Microheader";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
@@ -32,8 +32,9 @@ const DropTarget = ({ status, index, current }: { status: BoardStatus; index: nu
 export const BoardDropBar = () => {
   const drag = useContext(BoardDragContext);
   const rects = useRef<Rect[]>([]);
+  const heldStatus = useLifted(drag, (held) => held?.ticket.status);
   if (!drag) return null;
-  const { statuses, targets, lifted } = drag;
+  const { statuses, targets } = drag;
 
   const onChip = (i: number) => (e: LayoutChangeEvent) => {
     e.target.measureInWindow((x, y, width, height) => {
@@ -51,7 +52,7 @@ export const BoardDropBar = () => {
       <View className="flex-row flex-wrap gap-2">
         {statuses.map((status, i) => (
           <View key={status.id} onLayout={onChip(i)}>
-            <DropTarget status={status} index={i} current={status.id === lifted?.ticket.status} />
+            <DropTarget status={status} index={i} current={status.id === heldStatus} />
           </View>
         ))}
       </View>

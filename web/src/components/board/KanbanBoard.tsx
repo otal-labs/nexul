@@ -39,6 +39,12 @@ export interface Swimlane {
   tickets: Ticket[];
 }
 
+// Module constants: an options object new each render rebuilds dnd-kit's context and re-renders every card on the board.
+// 2px, not 0: a still click must reach the card's onClick, but any real movement should lift the card at once.
+const MOUSE_SENSOR = { activationConstraint: { distance: 2 } };
+const TOUCH_SENSOR = { activationConstraint: { delay: 200, tolerance: 8 } };
+const KEYBOARD_SENSOR = { coordinateGetter: boardKeyboardCoordinates };
+
 export const KanbanBoard = ({
   columns,
   swimlanes,
@@ -49,10 +55,9 @@ export const KanbanBoard = ({
   // Mouse + Touch (not Pointer) because PointerSensor's pointerdown always wins the race
   // against TouchSensor's touchstart, killing the touch delay and blocking native scroll on small swipes.
   const sensors = useSensors(
-    // 2px, not 0: a still click must reach the card's onClick, but any real movement should lift the card at once.
-    useSensor(MouseSensor, { activationConstraint: { distance: 2 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: boardKeyboardCoordinates }),
+    useSensor(MouseSensor, MOUSE_SENSOR),
+    useSensor(TouchSensor, TOUCH_SENSOR),
+    useSensor(KeyboardSensor, KEYBOARD_SENSOR),
   );
 
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);

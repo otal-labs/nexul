@@ -3,7 +3,7 @@ import { Pressable, View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import Animated from "react-native-reanimated";
 
-import { BoardDragContext, useCardDrag } from "@/components/board/boardDrag";
+import { BoardDragContext, useCardDrag, useLifted } from "@/components/board/boardDrag";
 import { labelPill, ticketTypePill } from "@/components/board/ticketTypeColor";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { Text } from "@/components/ui/text";
@@ -63,7 +63,7 @@ interface TicketCardProps extends TicketCardBodyProps {
 export const TicketCard = ({ onPress, ...body }: TicketCardProps) => {
   const drag = useContext(BoardDragContext);
   const { ref, gesture } = useCardDrag(body.ticket);
-  const lifted = drag?.lifted?.ticket.id === body.ticket.id;
+  const lifted = useLifted(drag, (held) => held?.ticket.id === body.ticket.id);
   const moves = (drag?.statuses ?? []).filter((s) => s.id !== body.ticket.status);
   const card = (
     <Animated.View ref={ref} collapsable={false} style={{ opacity: lifted ? 0.35 : 1 }}>

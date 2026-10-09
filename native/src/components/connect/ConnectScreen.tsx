@@ -1,5 +1,5 @@
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { QrCode } from "lucide-react-native";
+import QrCode from "lucide-react-native/icons/qr-code";
 import { View } from "react-native";
 import { useCSSVariable } from "uniwind";
 

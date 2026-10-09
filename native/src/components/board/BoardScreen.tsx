@@ -1,10 +1,10 @@
 import { useRouter } from "expo-router";
-import { SquareKanban } from "lucide-react-native";
+import SquareKanban from "lucide-react-native/icons/square-kanban";
 import { useState } from "react";
 import { View } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 
-import { BoardDragContext, useBoardDragState } from "@/components/board/boardDrag";
+import { BoardDragContext, useBoardDragState, useLifted } from "@/components/board/boardDrag";
 import { BoardDragLayer } from "@/components/board/BoardDragLayer";
 import { BoardHeader } from "@/components/board/BoardHeader";
 import { BoardStageSummary } from "@/components/board/BoardStageSummary";
@@ -46,17 +46,19 @@ export const BoardScreen = () => {
   const filteredTickets =
     mineOnly && me ? tickets?.filter((t) => t.developer === me.user.login || t.tester === me.user.login) : tickets;
   const board = project && boardId && statuses && filteredTickets;
-  const updateStatus = useUpdateTicketStatus();
-  const drag = useBoardDragState(statuses ?? [], (id, status) => updateStatus.mutate({ id, status }));
+  // mutate is stable, unlike the mutation's result object, so the drag context keeps its identity across renders.
+  const { mutate: updateStatus, error: updateError } = useUpdateTicketStatus();
+  const drag = useBoardDragState(statuses ?? [], (id, status) => updateStatus({ id, status }));
+  const holding = useLifted(drag, (held) => !!held);
 
   return (
     <FieldScreen>
       <BoardDragContext value={drag}>
-        <ScrollView className="flex-1" contentContainerClassName="pb-6" scrollEnabled={!drag.lifted}>
+        <ScrollView className="flex-1" contentContainerClassName="pb-6" scrollEnabled={!holding}>
           <BoardHeader project={revoked ? undefined : project} ticketCount={tickets?.length} />
           {isPending && <LoadingDisplay message="Loading the board" />}
           {error && <ErrorDisplay error={error} />}
-          {updateStatus.error && <ErrorDisplay error={updateStatus.error} />}
+          {updateError && <ErrorDisplay error={updateError} />}
           {revoked && <ProjectRevokedState />}
           {project && canReadTickets === false && <EmptyState title="This page doesn't exist" message="You can't see this project's board." />}
           {!revoked && projects && projects.length === 0 && (

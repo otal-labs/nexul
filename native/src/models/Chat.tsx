@@ -110,6 +110,19 @@ export interface Reaction {
   user_ids: string[];
 }
 
+// Adds or removes one person's emoji; applying the same change twice is a no-op, so a push may echo the viewer's own.
+export const applyReaction = (reactions: Reaction[] | undefined, emoji: string, userId: string, reacted: boolean): Reaction[] => {
+  const list = reactions ?? [];
+  const existing = list.find((r) => r.emoji === emoji);
+  if (reacted && !existing) return [...list, { emoji, user_ids: [userId] }];
+  return list
+    .map((r) => {
+      if (r.emoji !== emoji || r.user_ids.includes(userId) === reacted) return r;
+      return { ...r, user_ids: reacted ? [...r.user_ids, userId] : r.user_ids.filter((id) => id !== userId) };
+    })
+    .filter((r) => r.user_ids.length > 0);
+};
+
 const CONTINUATION_WINDOW_MS = 5 * 60_000;
 
 // The same bot under another name or avatar is a new author on screen, so it starts its own group.

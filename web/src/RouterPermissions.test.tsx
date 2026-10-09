@@ -1,9 +1,19 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
+import {
+  AutomationPage,
+  AutomationsPage,
+  ConfigurationPage,
+  InboxPage,
+  MemoriesPage,
+  RunnersPage,
+  WorkspaceEntryPage,
+  YourSettingsPage,
+} from "@/pageChunks";
 import { AppRouter } from "@/Router";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -56,6 +66,16 @@ const renderAt = (path: string) => {
     </QueryClientProvider>,
   );
 };
+
+// The pages are lazy chunks; loading them once here keeps each case waiting on its render, not on transforming a page's
+// module graph under full-suite load.
+beforeAll(async () => {
+  await Promise.all(
+    [AutomationPage, AutomationsPage, ConfigurationPage, InboxPage, MemoriesPage, RunnersPage, WorkspaceEntryPage, YourSettingsPage].map((page) =>
+      page.preload(),
+    ),
+  );
+}, 60_000);
 
 beforeEach(() => {
   localStorage.clear();

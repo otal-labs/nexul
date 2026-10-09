@@ -213,6 +213,13 @@ body {
   inherits: false;
 }
 
+/* The scroll lock under every modal overlay sets this on body; not inherited, opening one restyles body instead of the whole page. */
+@property --removed-body-scroll-bar-size {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 /* Tight tracking on headings; balanced display text. Layered, so a heading's own tracking utility still applies. */
 @layer base {
   h1,

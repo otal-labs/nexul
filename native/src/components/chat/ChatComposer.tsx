@@ -1,4 +1,4 @@
-import { ArrowUp } from "lucide-react-native";
+import ArrowUp from "lucide-react-native/icons/arrow-up";
 import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { useCSSVariable } from "uniwind";

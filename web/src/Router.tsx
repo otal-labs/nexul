@@ -1,4 +1,5 @@
-import { lazy, Suspense, useMemo, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Outlet, createBrowserRouter, RouterProvider, type RouteObject } from "react-router";
 
 import { Layout } from "@/Layout";
@@ -9,39 +10,39 @@ import { WorkspaceScope } from "@/components/workspace/WorkspaceScope";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useBootstrapStatus } from "@/hooks/AuthHooks";
 import { TabSegmentContext } from "@/hooks/useTabPath";
-import { AutomationPage } from "@/pages/AutomationPage";
-import { AutomationsPage } from "@/pages/AutomationsPage";
-import { BoardPage } from "@/pages/BoardPage";
-import { ChatPage } from "@/pages/ChatPage";
-import { ConfigurationPage } from "@/pages/ConfigurationPage";
-import { DeployPage } from "@/pages/DeployPage";
-import { DocsPage } from "@/pages/DocsPage";
-import { DnsOnboardingPage } from "@/pages/DnsOnboardingPage";
 import { ErrorPage } from "@/pages/ErrorPage";
-import { FirstLoginWizardPage } from "@/pages/FirstLoginWizardPage";
-import { HomePage } from "@/pages/HomePage";
-import { InboxPage } from "@/pages/InboxPage";
-import { InvitePreviewPage } from "@/pages/InvitePreviewPage";
-import { LoginPage } from "@/pages/LoginPage";
-import { MemoriesPage } from "@/pages/MemoriesPage";
-import { OwnerWizardPage } from "@/pages/OwnerWizardPage";
-import { ProjectSettingsPage } from "@/pages/ProjectSettingsPage";
-import { ProjectWizardImportPage } from "@/pages/ProjectWizardImportPage";
-import { ProjectWizardPage } from "@/pages/ProjectWizardPage";
-import { RunnersPage } from "@/pages/RunnersPage";
-import { SetupPage } from "@/pages/SetupPage";
-import { StackPage } from "@/pages/StackPage";
-import { TicketPage } from "@/pages/TicketPage";
-import { WorkspaceEntryPage } from "@/pages/WorkspaceEntryPage";
-import { YourSettingsPage } from "@/pages/YourSettingsPage";
+import {
+  AutomationPage,
+  AutomationsPage,
+  BoardPage,
+  ChatPage,
+  ConfigurationPage,
+  DeployPage,
+  DnsOnboardingPage,
+  DocsPage,
+  FirstLoginWizardPage,
+  HomePage,
+  InboxPage,
+  InterviewPage,
+  InvitePreviewPage,
+  LoginPage,
+  MemoriesPage,
+  OwnerWizardPage,
+  ProjectSettingsPage,
+  ProjectWizardImportPage,
+  ProjectWizardPage,
+  RunnersPage,
+  SetupPage,
+  StackPage,
+  TicketPage,
+  TopologyPage,
+  WorkspaceEntryPage,
+  YourSettingsPage,
+  preloadMatchedPages,
+  warmPagesWhenIdle,
+} from "@/pageChunks";
 import { useSessionStore } from "@/stores/sessionStore";
 import type { RouteAccess, RouteArea } from "@/models/Access";
-
-// Lazy-loaded: their deps would bloat the main bundle, and most sessions never visit these routes.
-const InterviewPage = lazy(() => import("@/pages/InterviewPage").then((m) => ({ default: m.InterviewPage })));
-const TopologyPage = lazy(() =>
-  import("@/pages/TopologyPage").then((m) => ({ default: m.TopologyPage })),
-);
 
 const gate = (area: RouteArea): RouteAccess => ({ area });
 
@@ -154,18 +155,33 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
 
 export const AppRouter = () => {
   const loggedIn = useSessionStore((s) => s.isLoggedIn);
-  const router = useMemo(() => createBrowserRouter(buildRoutes(loggedIn)), [loggedIn]);
+  const client = useQueryClient();
+  const routes = useMemo(() => buildRoutes(loggedIn), [loggedIn]);
+  const router = useMemo(() => createBrowserRouter(routes), [routes]);
+  // The page the URL opens on loads alongside the bootstrap request, and the router waits for it, so the page renders in
+  // the same pass as the shell instead of behind a fallback React holds for 300ms.
+  const [pageLoaded, setPageLoaded] = useState(false);
+  useEffect(() => {
+    void preloadMatchedPages(routes).then(() => setPageLoaded(true));
+  }, [routes]);
+  // Signed out, the next page load is the sign-in redirect, so only a session warms the other pages.
+  useEffect(() => (loggedIn ? warmPagesWhenIdle(client) : undefined), [client, loggedIn]);
 
   // Rendered here, not as a route: once bootstrap-status reports configured, no URL can reach this page again.
   const { data: bootstrapStatus, isPending } = useBootstrapStatus();
   const needsBootstrap = bootstrapStatus !== undefined && !bootstrapStatus.configured;
 
   // key: remount RouterProvider on the auth flip, or the old router's stale subscription desyncs UI state.
+  const routerReady = !isPending && pageLoaded;
   return (
     <>
-      {isPending && <LoadingDisplay />}
-      {needsBootstrap && <SetupPage />}
-      {!isPending && !needsBootstrap && <RouterProvider key={loggedIn ? "in" : "out"} router={router} />}
+      {!routerReady && !needsBootstrap && <LoadingDisplay />}
+      {needsBootstrap && (
+        <Suspense fallback={<LoadingDisplay />}>
+          <SetupPage />
+        </Suspense>
+      )}
+      {routerReady && !needsBootstrap && <RouterProvider key={loggedIn ? "in" : "out"} router={router} />}
     </>
   );
 };

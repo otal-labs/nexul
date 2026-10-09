@@ -1,5 +1,9 @@
 import { Tabs } from "expo-router";
-import { Ellipsis, Inbox, MessageSquare, Rocket, SquareKanban } from "lucide-react-native";
+import Ellipsis from "lucide-react-native/icons/ellipsis";
+import Inbox from "lucide-react-native/icons/inbox";
+import MessageSquare from "lucide-react-native/icons/message-square";
+import Rocket from "lucide-react-native/icons/rocket";
+import SquareKanban from "lucide-react-native/icons/square-kanban";
 import { useCSSVariable } from "uniwind";
 
 import { OFFLINE_BANNER_HEIGHT, useIsOffline } from "@/components/OfflineBanner";

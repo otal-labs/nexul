@@ -13,18 +13,22 @@ export type SessionStore = {
   signOut: () => void;
 };
 
-// The token stays in the secure store and is read on demand; the store only knows that one exists.
-export const readSessionToken = (): string | null => SecureStore.getItem(TOKEN_KEY);
+// Read from the secure store once at launch: a read decrypts on the JS thread, and every request needs the token.
+let sessionToken = SecureStore.getItem(TOKEN_KEY);
+
+export const readSessionToken = (): string | null => sessionToken;
 
 export const useSessionStore = create<SessionStore>((set) => ({
   host: SecureStore.getItem(HOST_KEY),
-  signedIn: SecureStore.getItem(TOKEN_KEY) !== null,
+  signedIn: sessionToken !== null,
   signIn: (host, token) => {
     SecureStore.setItem(HOST_KEY, host);
     SecureStore.setItem(TOKEN_KEY, token);
+    sessionToken = token;
     set({ host, signedIn: true });
   },
   signOut: () => {
+    sessionToken = null;
     set({ host: null, signedIn: false });
     queryClient.clear();
     void SecureStore.deleteItemAsync(HOST_KEY);

@@ -1596,7 +1596,23 @@ file directly; a copy printed here would drift from the real config.
 
 - Memoize expensive computations with `useMemo`. Don't memoize everything;
   React is fast enough for most renders.
-- Use `React.lazy` + `Suspense` for route-level code splitting.
+- Every route page is a lazy chunk declared in `pageChunks.tsx`. The shell
+  (`Layout`, the sidebar, the command palette) never statically imports a
+  page or the rich-text editor; a dialog that carries the editor loads its
+  form when it opens (`loadTicketForm`, `LazyCreateDocForm`).
+  `pageChunks.test.tsx` fails when the cold start graph picks one up again.
+- Rows of a list that updates live (board cards and columns, chat messages)
+  are `memo` components fed stable props: callbacks from `useCallback` or
+  `useLatestCallback`, never inline arrows, so one changed row renders one
+  row.
+- Inputs to a library's context are stable: dnd-kit sensor options are module
+  constants and `SortableContext` `items` are memoised by content. A fresh
+  array or options object rebuilds the context and re-renders every sortable
+  under it.
+- A custom property a library sets on `html` or `body` (the modal scroll
+  lock's `--removed-body-scroll-bar-size`) is registered in `index.css` with
+  `@property` and `inherits: false`; inherited, each set restyles every
+  element on the page.
 - Virtualize long lists (TanStack Virtual or react-window) when > 100 items.
 - The React Flow canvas uses an external Zustand store + `useShallow` so only
   changed nodes re-render.

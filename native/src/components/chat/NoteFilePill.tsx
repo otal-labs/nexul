@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { FileText } from "lucide-react-native";
+import FileText from "lucide-react-native/icons/file-text";
 import { Pressable, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 

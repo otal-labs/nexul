@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
+import { referenceDataOptions } from "@/lib/queryClient";
 import type { MentionName } from "@/models/Doc";
 import { personLabel, unknownPerson, type PeopleList, type Person } from "@/models/Person";
 
@@ -12,6 +13,7 @@ const useWorkspacePeople = (workspaceId: string | undefined) =>
     queryKey: [getWorkspacePeopleKey, workspaceId],
     queryFn: () => api.get<PeopleList>(`/api/workspaces/${workspaceId}/people`),
     enabled: !!workspaceId,
+    ...referenceDataOptions,
   });
 
 // A person mention's live name: their display name, "unknown" once People lacks them, the saved login until it loads.

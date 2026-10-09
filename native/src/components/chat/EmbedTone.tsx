@@ -1,4 +1,8 @@
-import { CircleAlert, CircleCheck, CircleDot, CircleX, type LucideIcon } from "lucide-react-native";
+import CircleAlert from "lucide-react-native/icons/circle-alert";
+import CircleCheck from "lucide-react-native/icons/circle-check";
+import CircleDot from "lucide-react-native/icons/circle-dot";
+import CircleX from "lucide-react-native/icons/circle-x";
+import type { LucideIcon } from "lucide-react-native";
 
 import type { EmbedTone } from "@/models/Embed";
 

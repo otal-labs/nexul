@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { CircleHelp } from "lucide-react-native";
+import CircleHelp from "lucide-react-native/icons/circle-question-mark";
 
 import { EmptyState } from "@/components/EmptyState";
 import { FieldScreen } from "@/components/FieldScreen";

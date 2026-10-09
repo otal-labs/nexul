@@ -1,6 +1,7 @@
 import { useDroppable } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { ChevronDownIcon, CircleCheckBig, CircleHelp, LoaderCircle } from "lucide-react";
+import { useCallback, useMemo } from "react";
 import { useParams } from "react-router";
 
 import { KanbanColumn } from "@/components/board/KanbanColumn";
@@ -29,6 +30,9 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
   const doneStatusIds = new Set(columns.filter((c) => c.kind === "done").map((c) => c.id));
   const doneCount = lane.tickets.filter((t) => doneStatusIds.has(t.status)).length;
   const allDone = lane.tickets.length > 0 && doneCount === lane.tickets.length;
+  // dnd-kit rebuilds its context, and re-renders every sortable under it, whenever items is a new array.
+  const columnIds = useMemo(() => columns.map((column) => `column-${lane.key}-${column.id}`), [columns, lane.key]);
+  const addInLane = useCallback((statusId: string) => onAddTicket(lane.categoryId, statusId), [onAddTicket, lane.categoryId]);
   const { setNodeRef, isOver } = useDroppable(
     lane.categoryId === null
       ? { id: `lane-${lane.key}`, disabled: true }
@@ -92,10 +96,7 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
         className={cn("disclosure", collapsed && "contain-inline-size")}
       >
         <div className="min-h-0 overflow-hidden">
-          <SortableContext
-            items={columns.map((column) => `column-${lane.key}-${column.id}`)}
-            strategy={horizontalListSortingStrategy}
-          >
+          <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
             <div className="flex gap-3">
               {columns.map((column) => (
                 <KanbanColumn
@@ -105,7 +106,7 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
                   categoryId={lane.categoryId ?? ""}
                   column={column}
                   tickets={lane.tickets.filter((t) => t.status === column.id).sort((a, b) => a.position - b.position)}
-                  onAddTicket={() => onAddTicket(lane.categoryId, column.id)}
+                  onAddTicket={addInLane}
                 />
               ))}
             </div>

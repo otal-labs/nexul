@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-react-native";
+import ChevronDown from "lucide-react-native/icons/chevron-down";
 import { Pressable } from "react-native";
 import { useCSSVariable } from "uniwind";
 
