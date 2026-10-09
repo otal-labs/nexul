@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
+import { recordQueries } from "@/lib/queryClient";
 import type { Ticket, TicketRole } from "@/models/Ticket";
 
 export const getTicketsByProjectKey = "getTicketsByProject";
@@ -37,7 +38,7 @@ export const useUpdateTicketStatus = () => {
     onError: () => client.invalidateQueries({ queryKey: [getTicketsByProjectKey] }),
     onSuccess: async (_, vars) => {
       await client.invalidateQueries({ queryKey: [getTicketsByProjectKey] });
-      await client.invalidateQueries({ queryKey: [getTicketKey, vars.id] });
+      await client.invalidateQueries(recordQueries(getTicketKey, vars.id));
     },
   });
 };
@@ -49,7 +50,7 @@ export const useSetTicketPerson = () => {
       api.patch<Ticket>(`/api/tickets/${id}/${role}`, { login }),
     onSuccess: async (_, vars) => {
       await client.invalidateQueries({ queryKey: [getTicketsByProjectKey] });
-      await client.invalidateQueries({ queryKey: [getTicketKey, vars.id] });
+      await client.invalidateQueries(recordQueries(getTicketKey, vars.id));
     },
   });
 };
