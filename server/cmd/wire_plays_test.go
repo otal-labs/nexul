@@ -9,6 +9,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/memories"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/plays"
@@ -75,4 +76,23 @@ func TestPlaysInterviewAnswers_RoundsLandInOrderAsStoredAnswers(t *testing.T) {
 	assert.True(t, got[1].Skipped, "an empty answer is stored as skipped")
 	assert.Equal(t, "Raise it to 85", got[2].Text)
 	assert.Equal(t, "u-1", got[2].AnsweredBy)
+}
+
+// TestProjectTargets_ListsWhatTheCallerReads: the board's batch reads by project list the project's tickets or docs
+// through their own use-cases, so a caller who cannot read them is refused rather than handed the ids.
+func TestProjectTargets_ListsWhatTheCallerReads(t *testing.T) {
+	f := newPermFixture(t)
+	p := projectTargets{tickets: f.svc.ticketsSvc, docs: f.svc.docsSvc}
+
+	ticketIDs, err := p.TargetIDs(as(uReader), plays.TargetTicket, "project-general")
+	require.NoError(t, err)
+	assert.Contains(t, ticketIDs, f.ticket.ID)
+	docIDs, err := p.TargetIDs(as(uReader), plays.TargetDoc, "project-general")
+	require.NoError(t, err)
+	assert.Contains(t, docIDs, f.doc)
+
+	_, err = p.TicketIDs(as(uPlain), "project-general")
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	_, err = p.TargetIDs(as(uReader), plays.TargetInterview, "project-general")
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
 }

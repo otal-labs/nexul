@@ -59,7 +59,7 @@ describe("DocListRow run indicator", () => {
     mockApi({ "d-1": "tr-1" });
     renderRow(running);
     expect(await screen.findByRole("img", { name: "Play running" })).toBeInTheDocument();
-    expect(api.get).toHaveBeenCalledWith("/api/plays/runs/active", { params: { target_type: "doc", target_ids: "d-1,d-2" } });
+    expect(api.get).toHaveBeenCalledWith("/api/plays/runs/active", { params: { target_type: "doc", project_id: "p-1" } });
   });
 
   it("leaves a doc without an active play on its file icon", async () => {

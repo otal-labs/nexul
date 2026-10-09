@@ -38,16 +38,17 @@ describe("useMoveTicketToCategory", () => {
     expect(api.post).toHaveBeenCalledWith("/api/categories/c-2/tickets/t-1");
   });
 
-  it("invalidates the category and board keys", async () => {
+  it("refetches the categories and the board holding the ticket", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: undefined });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["getTickets"], [{ id: "t-1" }]);
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
     const { result } = renderHook(() => useMoveTicketToCategory(), {
       wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
     });
     await result.current.mutateAsync({ ticketId: "t-1", categoryId: "c-2" });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getCategories"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTickets"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTickets"], exact: true });
   });
 });
 
@@ -59,16 +60,17 @@ describe("useClearTicketCategory", () => {
     expect(api.delete).toHaveBeenCalledWith("/api/categories/tickets/t-1");
   });
 
-  it("invalidates the category and board keys", async () => {
+  it("refetches the categories and the board holding the ticket", async () => {
     vi.mocked(api.delete).mockResolvedValue({ data: undefined });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["getTickets"], [{ id: "t-1" }]);
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
     const { result } = renderHook(() => useClearTicketCategory(), {
       wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
     });
     await result.current.mutateAsync({ ticketId: "t-1" });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getCategories"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTickets"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["getTickets"], exact: true });
   });
 });
 

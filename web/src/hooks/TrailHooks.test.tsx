@@ -180,11 +180,13 @@ describe("useFetchActiveTrails / useTicketRunState", () => {
       return { data: [] };
     });
 
-  it("asks once per project for every ticket id on the board", async () => {
+  // Naming every ticket put ~37 bytes per card in the URL, past nginx's header buffer on a big board.
+  it("asks once per project, naming the project rather than every ticket on the board", async () => {
     mockBoard({ "t-1": "tr-1" });
     const { result } = renderHook(() => useFetchActiveTrails("p-1"), { wrapper });
     await waitFor(() => expect(result.current.data).toEqual({ active: { "t-1": "tr-1" }, waiting: {}, started: {} }));
-    expect(api.get).toHaveBeenCalledWith("/api/plays/runs/active", { params: { target_type: "ticket", target_ids: "t-1,t-2" } });
+    expect(api.get).toHaveBeenCalledWith("/api/plays/runs/active", { params: { target_type: "ticket", project_id: "p-1" } });
+    expect(api.get).not.toHaveBeenCalledWith("/api/tickets", expect.anything());
   });
 
   it("reads the on-load answer, then follows live frames without a refetch", async () => {

@@ -1,6 +1,6 @@
 import { ProjectDialogHeader } from "@/components/project/ProjectDialogHeader";
 import { useFormDialog } from "@/hooks/useFormDialog";
-import { ReportBugFormSchema, type SaveTicketFormData } from "@/models/Ticket";
+import { emptyTicketForm, ReportBugFormSchema, type SaveTicketFormData } from "@/models/Ticket";
 import { loadTicketForm } from "@/utils/loadTicketForm";
 
 interface ReportBugOptions {
@@ -12,7 +12,7 @@ interface ReportBugOptions {
 export const useReportBugDialog = () => {
   const { open } = useFormDialog();
   return async (options: ReportBugOptions = {}) => {
-    const { CreateTicketForm, CreateTicketFooter, emptyTicketForm } = await loadTicketForm();
+    const { CreateTicketForm, CreateTicketFooter } = await loadTicketForm();
     return open<SaveTicketFormData>({
       title: "Report a bug",
       schema: ReportBugFormSchema,

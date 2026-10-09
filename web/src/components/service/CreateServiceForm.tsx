@@ -12,23 +12,6 @@ interface CreateServiceFormProps {
   projectId: string;
 }
 
-export const emptyServiceForm = (): ServiceFormData => ({
-  name: "",
-  target: "",
-  strategy: "compose",
-  compose_dir: "",
-  docker_network: "",
-  health_url: "",
-  env: "",
-  image: "",
-  ref: "",
-  build_repo_owner: "",
-  build_repo_name: "",
-  build_branch: "",
-  build_dockerfile: "",
-  build_compose_path: "",
-});
-
 const buildCreatePayload = (projectId: string, formData: ServiceFormData): Partial<ServiceDef> => {
   const env = parseEnv(formData.env);
   const payload: Record<string, unknown> = {

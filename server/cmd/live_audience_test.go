@@ -2,6 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
+	"maps"
+	"os"
+	"slices"
 	"testing"
 	"time"
 
@@ -17,17 +21,34 @@ import (
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
+	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 )
 
-// TestLiveRules_EveryPushedTopicNamesItsRead fails when a topic is bridged to the browser without saying who may
-// receive it, since a topic with no rule silently reaches nobody.
-func TestLiveRules_EveryPushedTopicNamesItsRead(t *testing.T) {
+var updateLiveTopics = flag.Bool("update-live-topics", false, "rewrite the browser's copy of the pushed topic list")
+
+// liveTopicsFile is what the browser's contract test reads to check its topic map against the rules.
+const liveTopicsFile = "../../web/src/hooks/liveTopics.generated.json"
+
+// TestLiveRules_MatchWhatIsPushed fails when a topic is bridged to the browser without saying who may receive it,
+// since a topic with no rule silently reaches nobody, and when a rule names a topic nothing pushes.
+func TestLiveRules_MatchWhatIsPushed(t *testing.T) {
 	direct := []string{topicPresenceChanged, topicTopologyCanvas, agent.TopicAgentStream, plays.TopicPlayRun}
-	for _, topic := range append(livePushTopics, direct...) {
-		assert.Contains(t, liveRules, topic)
+	assert.ElementsMatch(t, append(slices.Clone(livePushTopics), direct...), slices.Collect(maps.Keys(liveRules)))
+}
+
+// TestLiveTopicsFile_MatchesTheRules fails when the generated topic list is stale, the way sqlc diff does.
+func TestLiveTopicsFile_MatchesTheRules(t *testing.T) {
+	want, err := json.MarshalIndent(slices.Sorted(maps.Keys(liveRules)), "", "  ")
+	require.NoError(t, err)
+	want = append(want, '\n')
+	if *updateLiveTopics {
+		require.NoError(t, os.WriteFile(liveTopicsFile, want, 0o644))
 	}
+	got, err := os.ReadFile(liveTopicsFile)
+	require.NoError(t, err)
+	assert.Equal(t, string(want), string(got), "stale; regenerate with make live-topics")
 }
 
 // TestLiveAudience_FramesFollowTheEntitysRead pushes real payloads through the wired audience: a frame reaches the
@@ -86,4 +107,59 @@ func TestLiveAudience_MemoryDeletedStaysInItsProject(t *testing.T) {
 	raw, err = json.Marshal(deleted)
 	require.NoError(t, err)
 	assert.False(t, a.allows(as(uOwner), memories.TopicDeleted, json.RawMessage(raw)))
+}
+
+// TestLiveAudience_PlayFramesReachWhoSeesThePlay: a play reaches whoever lists the workspace's plays and whoever is
+// offered it as a button through plays:run on that play, never a member who sees neither.
+func TestLiveAudience_PlayFramesReachWhoSeesThePlay(t *testing.T) {
+	f := newPermFixture(t)
+	ctx := t.Context()
+	now := time.Now()
+	const uPlayReader = "u-play-reader"
+	_, _, err := f.store.Users.UpsertUser(ctx, &auth.Identity{UserID: uPlayReader, Provider: auth.ProviderGitHub, ProviderUserID: uPlayReader, Login: uPlayReader})
+	require.NoError(t, err)
+	require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-play-reader", WorkspaceID: "workspace-default", Name: "Play reader", Permissions: grant("plays:read"), CreatedAt: now, UpdatedAt: now}))
+	require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: uPlayReader, WorkspaceID: "workspace-default", RoleID: "role-play-reader", CreatedAt: now}))
+	require.NoError(t, f.store.Access.Set(ctx, "play", "play-1", uPlain, grant("plays:run"), nil))
+	a := liveAudience{access: f.svc.accessSvc}
+	cases := []struct {
+		topic   string
+		payload any
+		want    map[string]bool
+	}{
+		{plays.TopicCreated, plays.CreatedEvent{Play: plays.Play{ID: "play-1", WorkspaceID: "workspace-default"}}, map[string]bool{uOwner: true, uPlayReader: true, uPlain: true, uReader: false, uOutsider: false}},
+		{plays.TopicUpdated, plays.UpdatedEvent{Play: plays.Play{ID: "play-2", WorkspaceID: "workspace-default"}}, map[string]bool{uPlayReader: true, uPlain: false, uReader: false}},
+		{plays.TopicDeleted, plays.DeletedEvent{ID: "play-1", Label: "Ship it", WorkspaceID: "workspace-default"}, map[string]bool{uPlayReader: true, uPlain: true, uReader: false, uOutsider: false}},
+		{plays.TopicDeleted, plays.DeletedEvent{ID: "play-1", Label: "Ship it"}, map[string]bool{uOwner: false}},
+	}
+	for _, tc := range cases {
+		raw, err := json.Marshal(tc.payload)
+		require.NoError(t, err)
+		for user, want := range tc.want {
+			assert.Equal(t, want, a.allows(as(user), tc.topic, json.RawMessage(raw)), "%s as %s", tc.topic, user)
+		}
+	}
+}
+
+// TestLiveAudience_InstanceAndDeletedTicketFrames: the upgrade card follows instance:read, held in any workspace, and
+// a deleted ticket's title reaches only readers of its project's tickets.
+func TestLiveAudience_InstanceAndDeletedTicketFrames(t *testing.T) {
+	f := newPermFixture(t)
+	a := liveAudience{access: f.svc.accessSvc}
+	cases := []struct {
+		topic   string
+		payload any
+		want    map[string]bool
+	}{
+		{runner.TopicInstanceUpgradeChanged, runner.Upgrade{ID: "upgrade-1", ToVersion: "v0.3.0", Status: runner.UpgradeStatusPending}, map[string]bool{uOwner: true, uSteward: true, uReader: false, uPlain: false, uOutsider: false}},
+		{tickets.TopicDeleted, tickets.DeletedEvent{ID: "t-1", Title: "Login times out", ProjectID: "project-general"}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
+		{tickets.TopicDeleted, tickets.DeletedEvent{ID: "t-1", Title: "Login times out"}, map[string]bool{uOwner: false}},
+	}
+	for _, tc := range cases {
+		raw, err := json.Marshal(tc.payload)
+		require.NoError(t, err)
+		for user, want := range tc.want {
+			assert.Equal(t, want, a.allows(as(user), tc.topic, json.RawMessage(raw)), "%s as %s", tc.topic, user)
+		}
+	}
 }

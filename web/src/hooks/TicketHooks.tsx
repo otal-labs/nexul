@@ -2,6 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import {
+  getTicketKey,
+  getTicketsByDocKey,
+  getTicketsByProjectKey,
+  getTicketsKey,
+  ticketChanged,
+  ticketCreated,
+} from "@/hooks/TicketCache";
 import { getTicketLinkSetKey } from "@/hooks/TicketLinkHooks";
 import {
   TicketRole,
@@ -12,11 +20,8 @@ import {
   type TicketLinks,
 } from "@/models/Ticket";
 
-export const getTicketsKey = "getTickets";
-export const getTicketKey = "getTicket";
-const getTicketsByDocKey = "getTicketsByDoc";
-const getTicketsByProjectKey = "getTicketsByProject";
 export const getTicketLinksKey = "getTicketLinks";
+export const getAllLabelsKey = "getAllLabels";
 const getLabelColorsKey = "getLabelColors";
 
 export const useFetchTickets = () =>
@@ -50,10 +55,8 @@ export const useCreateTicket = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: SaveTicketFormData) => (await api.post<Ticket>("/api/tickets", input)).data,
-    onSuccess: async (_, vars) => {
-      await client.invalidateQueries({ queryKey: [getTicketsKey] });
-      if (vars.doc_id) await client.invalidateQueries({ queryKey: [getTicketsByDocKey, vars.doc_id] });
-      if (vars.project_id) await client.invalidateQueries({ queryKey: [getTicketsByProjectKey, vars.project_id] });
+    onSuccess: async (created, vars) => {
+      await ticketCreated(client, created);
       if (vars.origin_id) await client.invalidateQueries({ queryKey: [getTicketLinkSetKey, vars.origin_id] });
       toast.success("Ticket created");
     },
@@ -67,11 +70,8 @@ export const useUpdateTicket = () => {
     // silent: the second half of a create (attaching its pasted files), which already said "Ticket created".
     mutationFn: async ({ id, title, body }: { id: string; title: string; body: string; silent?: boolean }) =>
       (await api.patch<Ticket>(`/api/tickets/${id}`, { title, body })).data,
-    onSuccess: async (_, vars) => {
-      await client.invalidateQueries({ queryKey: [getTicketsKey] });
-      await client.invalidateQueries({ queryKey: [getTicketKey, vars.id] });
-      await client.invalidateQueries({ queryKey: [getTicketsByDocKey] });
-      await client.invalidateQueries({ queryKey: [getTicketsByProjectKey] });
+    onSuccess: async (updated, vars) => {
+      await ticketChanged(client, updated);
       if (!vars.silent) toast.success("Ticket updated");
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -84,12 +84,9 @@ export const useUpdateTicketStatus = () => {
     // silent: part of a board drop, which refetches once at the end (useBoardActions) instead of per step.
     mutationFn: async ({ id, status }: { id: string; status: string; silent?: boolean }) =>
       (await api.patch<Ticket>(`/api/tickets/${id}/status`, { status })).data,
-    onSuccess: async (_, vars) => {
+    onSuccess: async (moved, vars) => {
       if (vars.silent) return;
-      await client.invalidateQueries({ queryKey: [getTicketsKey] });
-      await client.invalidateQueries({ queryKey: [getTicketKey, vars.id] });
-      await client.invalidateQueries({ queryKey: [getTicketsByDocKey] });
-      await client.invalidateQueries({ queryKey: [getTicketsByProjectKey] });
+      await ticketChanged(client, moved);
       toast.success("Status updated");
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -101,9 +98,8 @@ export const useSetTicketPerson = () => {
   return useMutation({
     mutationFn: async ({ id, role, login }: { id: string; role: TicketRole; login: string }) =>
       (await api.patch<Ticket>(`/api/tickets/${id}/${role}`, { login })).data,
-    onSuccess: async (_, vars) => {
-      await client.invalidateQueries({ queryKey: [getTicketsKey] });
-      await client.invalidateQueries({ queryKey: [getTicketKey, vars.id] });
+    onSuccess: async (ticket, vars) => {
+      await ticketChanged(client, ticket);
       toast.success(vars.role === TicketRole.Tester ? "Tester updated" : "Developer updated");
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -115,10 +111,8 @@ export const useSetTicketSource = () => {
   return useMutation({
     mutationFn: async ({ id, docId }: { id: string; docId: string }) =>
       (await api.patch<Ticket>(`/api/tickets/${id}/source`, { doc_id: docId })).data,
-    onSuccess: async (_, vars) => {
-      await client.invalidateQueries({ queryKey: [getTicketsKey] });
-      await client.invalidateQueries({ queryKey: [getTicketKey, vars.id] });
-      await client.invalidateQueries({ queryKey: [getTicketsByDocKey] });
+    onSuccess: async (ticket, vars) => {
+      await ticketChanged(client, ticket);
       toast.success(vars.docId ? "Source updated" : "Source removed");
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -130,9 +124,8 @@ export const useSetTicketType = () => {
   return useMutation({
     mutationFn: async ({ id, typeId }: { id: string; typeId: string }) =>
       (await api.patch<Ticket>(`/api/tickets/${id}/type`, { type_id: typeId })).data,
-    onSuccess: async (_, vars) => {
-      await client.invalidateQueries({ queryKey: [getTicketsKey] });
-      await client.invalidateQueries({ queryKey: [getTicketKey, vars.id] });
+    onSuccess: async (ticket) => {
+      await ticketChanged(client, ticket);
       toast.success("Type updated");
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -144,10 +137,9 @@ export const useAddLabel = () => {
   return useMutation({
     mutationFn: async ({ id, label }: { id: string; label: string }) =>
       (await api.post<Ticket>(`/api/tickets/${id}/labels`, { label })).data,
-    onSuccess: async (_, vars) => {
-      await client.invalidateQueries({ queryKey: [getTicketsKey] });
-      await client.invalidateQueries({ queryKey: [getTicketKey, vars.id] });
-      await client.invalidateQueries({ queryKey: ["getAllLabels"] });
+    onSuccess: async (ticket) => {
+      await ticketChanged(client, ticket);
+      await client.invalidateQueries({ queryKey: [getAllLabelsKey] });
       toast.success("Label added");
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -159,9 +151,8 @@ export const useRemoveLabel = () => {
   return useMutation({
     mutationFn: async ({ id, label }: { id: string; label: string }) =>
       (await api.delete<Ticket>(`/api/tickets/${id}/labels/${encodeURIComponent(label)}`)).data,
-    onSuccess: async (_, vars) => {
-      await client.invalidateQueries({ queryKey: [getTicketsKey] });
-      await client.invalidateQueries({ queryKey: [getTicketKey, vars.id] });
+    onSuccess: async (ticket) => {
+      await ticketChanged(client, ticket);
       toast.success("Label removed");
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -174,10 +165,9 @@ export const useUpdateTicketPosition = () => {
   return useMutation({
     mutationFn: async ({ id, position }: { id: string; position: number; silent?: boolean }) =>
       (await api.patch<Ticket>(`/api/tickets/${id}/position`, { position })).data,
-    onSuccess: async (_, vars) => {
+    onSuccess: async (ticket, vars) => {
       if (vars.silent) return;
-      await client.invalidateQueries({ queryKey: [getTicketsKey] });
-      await client.invalidateQueries({ queryKey: [getTicketKey, vars.id] });
+      await ticketChanged(client, ticket);
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -218,7 +208,7 @@ export const useLinkPR = () => {
 
 export const useFetchAllLabels = () =>
   useQuery({
-    queryKey: ["getAllLabels"],
+    queryKey: [getAllLabelsKey],
     queryFn: async () => (await api.get<string[]>("/api/tickets/labels")).data,
   });
 

@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { api, errorMessage } from "@/api/client";
@@ -48,7 +48,7 @@ export const ManualConnectorDialog = ({ connector }: ManualConnectorDialogProps)
 
   const { fresh, verified, verifying, verify, reset, outcomeFor } = useTicker(
     checks,
-    form.watch(),
+    useWatch({ control: form.control }),
     (key, data) =>
       key === ""
         ? verifyAll.mutateAsync({ id: connector.id, fields: data })

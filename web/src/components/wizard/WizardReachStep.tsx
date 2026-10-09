@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, Loader2 } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { useShallow } from "zustand/react/shallow";
 
@@ -117,7 +117,8 @@ const ReachForm = ({
     resolver: zodResolver(ReachFormSchema),
   });
   const zoneName = (id: string) => zones.find((z) => z.id === id)?.name ?? "";
-  const hostname = fullHostname(form.watch("subdomain"), form.watch("zone"));
+  const [subdomain, zone] = useWatch({ control: form.control, name: ["subdomain", "zone"] });
+  const hostname = fullHostname(subdomain, zone);
 
   const exposed = createExposure.data;
   const via = exposed && gatewayName(exposed.gateway_id);

@@ -6,7 +6,6 @@ import {
   E2E_WORKSPACE_ID,
   MCP_URL,
   mcpHeaders,
-  authedHeaders,
   makeApiClient,
   mintToken,
 } from "../helpers";

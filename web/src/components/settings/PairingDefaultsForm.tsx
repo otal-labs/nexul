@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { SettingsCard } from "@/components/settings/SettingsCard";
@@ -41,6 +41,7 @@ export const PairingDefaultsForm = ({ defaults, computers }: PairingDefaultsForm
     },
     resolver: zodResolver(PairingDefaultsFormSchema),
   });
+  const defaultComputerId = useWatch({ control: form.control, name: "default_computer_id" });
 
   const [saved, flash] = useFlash();
 
@@ -89,14 +90,14 @@ export const PairingDefaultsForm = ({ defaults, computers }: PairingDefaultsForm
         control={form.control}
         name="fallback_project_id"
         label="Fallback T3 project"
-        computerId={form.watch("default_computer_id")}
+        computerId={defaultComputerId}
       />
       <HarnessProviderModelFields
         control={form.control}
         providerName="provider"
         modelName="model"
         optionsName="model_options"
-        computerId={form.watch("default_computer_id")}
+        computerId={defaultComputerId}
         description="Default model for chats and runs with no project link"
         onPick={(provider, model, options) => {
           form.setValue("provider", provider, { shouldDirty: true });

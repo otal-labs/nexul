@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/pairing"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -52,6 +54,42 @@ func (a playsTargetReader) GetStatus(ctx context.Context, id string) (plays.Stat
 		return plays.StatusTarget{}, err
 	}
 	return plays.StatusTarget{Name: st.Name, Stage: plays.Stage(st.Kind)}, nil
+}
+
+// projectTargets lists a project's tickets or docs through their own use-cases, which check the read.
+type projectTargets struct {
+	tickets *tickets.Service
+	docs    *docs.Service
+}
+
+func (p projectTargets) TicketIDs(ctx context.Context, projectID string) ([]string, error) {
+	ts, err := p.tickets.ListByProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(ts))
+	for i, t := range ts {
+		ids[i] = t.ID
+	}
+	return ids, nil
+}
+
+func (p projectTargets) TargetIDs(ctx context.Context, targetType plays.TargetType, projectID string) ([]string, error) {
+	if targetType == plays.TargetTicket {
+		return p.TicketIDs(ctx, projectID)
+	}
+	if targetType != plays.TargetDoc {
+		return nil, fmt.Errorf("%w: project_id takes target_type ticket or doc", apperrs.ErrInvalid)
+	}
+	ds, err := p.docs.ListByProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(ds))
+	for i, d := range ds {
+		ids[i] = d.ID
+	}
+	return ids, nil
 }
 
 // playsProjectLookup adds the project read an interview run needs to the workspace lookup plays shares with memories.

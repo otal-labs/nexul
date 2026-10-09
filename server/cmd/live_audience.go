@@ -86,6 +86,7 @@ var liveRules = map[string]liveRule{
 	tickets.TopicDeveloperChanged:        ticketFrame,
 	tickets.TopicTesterChanged:           ticketFrame,
 	tickets.TopicFinished:                ticketFrame,
+	tickets.TopicDeleted:                 ticketDeletedFrame,
 	tickets.TopicLinkCreated:             ticketLinkFrame,
 	tickets.TopicLinkDeleted:             ticketLinkFrame,
 	workspace.TopicTicketCategoryChanged: ticketIDFrame,
@@ -138,27 +139,31 @@ var liveRules = map[string]liveRule{
 	voice.TopicOccupancyChanged:          conversationFrame,
 	agent.TopicAgentStream:               conversationFrame,
 	plays.TopicPlayRun:                   playRunFrame,
+	plays.TopicCreated:                   playFrame,
+	plays.TopicUpdated:                   playFrame,
+	plays.TopicDeleted:                   playFrame,
 	botwebhook.TopicCreated:              botwebhookFrame,
 	botwebhook.TopicUpdated:              botwebhookFrame,
 	botwebhook.TopicDeleted:              botwebhookFrame,
 	botwebhook.TopicRestored:             botwebhookFrame,
 
-	deploy.TopicStackCreated:         stackFrame,
-	deploy.TopicStackUpdated:         stackFrame,
-	deploy.TopicStackDeleted:         anywhere(permissions.StacksRead),
-	deploy.TopicDeployUpdated:        deployFrame,
-	runner.TopicDeployBuildStarted:   deployFrame,
-	runner.TopicDeployBuildProgress:  deployFrame,
-	runner.TopicDeployBuildCompleted: deployFrame,
-	runner.TopicDeployDeployProgress: deployFrame,
-	runner.TopicDeployStatusChanged:  deployFrame,
-	runner.TopicRunnerConnected:      anywhere(permissions.RunnersRead),
-	runner.TopicRunnerDisconnected:   anywhere(permissions.RunnersRead),
-	topicTopologyCanvas:              topologyCanvasFrame,
-	dns.TopicRecordChanged:           anywhere(permissions.DNSRead),
-	dns.TopicTunnelChanged:           anywhere(permissions.DNSRead),
-	dns.TopicGatewayChanged:          anywhere(permissions.DNSRead),
-	dns.TopicExposureChanged:         anywhere(permissions.DNSRead),
+	deploy.TopicStackCreated:           stackFrame,
+	deploy.TopicStackUpdated:           stackFrame,
+	deploy.TopicStackDeleted:           anywhere(permissions.StacksRead),
+	deploy.TopicDeployUpdated:          deployFrame,
+	runner.TopicDeployBuildStarted:     deployFrame,
+	runner.TopicDeployBuildProgress:    deployFrame,
+	runner.TopicDeployBuildCompleted:   deployFrame,
+	runner.TopicDeployDeployProgress:   deployFrame,
+	runner.TopicDeployStatusChanged:    deployFrame,
+	runner.TopicRunnerConnected:        anywhere(permissions.RunnersRead),
+	runner.TopicRunnerDisconnected:     anywhere(permissions.RunnersRead),
+	runner.TopicInstanceUpgradeChanged: anywhere(permissions.InstanceRead),
+	topicTopologyCanvas:                topologyCanvasFrame,
+	dns.TopicRecordChanged:             anywhere(permissions.DNSRead),
+	dns.TopicTunnelChanged:             anywhere(permissions.DNSRead),
+	dns.TopicGatewayChanged:            anywhere(permissions.DNSRead),
+	dns.TopicExposureChanged:           anywhere(permissions.DNSRead),
 }
 
 // allows is the hub's Audience.
@@ -263,6 +268,14 @@ func ticketIDFrame(ctx context.Context, a liveAudience, raw json.RawMessage) boo
 		TicketID string `json:"ticket_id"`
 	}
 	return decode(raw, &p) && readsTicket(ctx, a, p.TicketID)
+}
+
+// ticketDeletedFrame carries the gone ticket's title, which a reader of its project's tickets saw on the board.
+func ticketDeletedFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		ProjectID string `json:"project_id"`
+	}
+	return decode(raw, &p) && p.ProjectID != "" && a.access.RequireProject(ctx, p.ProjectID, permissions.TicketsRead) == nil
 }
 
 func readsTicket(ctx context.Context, a liveAudience, id string) bool {
@@ -383,6 +396,29 @@ func playRunFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool
 		return a.access.RequireProject(ctx, p.TargetID, permissions.MemoriesRead) == nil
 	}
 	return readsTicket(ctx, a, p.TargetID)
+}
+
+// playFrame reaches whoever lists the workspace's plays (plays:read) or sees the play as a button (plays:run on it).
+func playFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		ID          string `json:"id"`
+		WorkspaceID string `json:"workspace_id"`
+		Play        struct {
+			ID          string `json:"id"`
+			WorkspaceID string `json:"workspace_id"`
+		} `json:"play"`
+	}
+	if !decode(raw, &p) {
+		return false
+	}
+	id, workspaceID := p.ID+p.Play.ID, p.WorkspaceID+p.Play.WorkspaceID
+	if workspaceID == "" {
+		return false
+	}
+	if a.access.Require(ctx, workspaceID, permissions.PlaysRead) == nil {
+		return true
+	}
+	return a.access.HasPermission(ctx, actorID(ctx), workspaceID, permissions.PlaysRun, "play", id)
 }
 
 func stackFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {

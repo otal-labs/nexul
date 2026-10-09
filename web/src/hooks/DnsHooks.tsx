@@ -15,7 +15,7 @@ import type {
 import { getServicesKey } from "@/hooks/ServiceHooks";
 import { resolvesHere, type PublicAddress } from "@/models/Setup";
 
-const getDnsZonesKey = "dnsZones";
+export const getDnsZonesKey = "dnsZones";
 
 export const useFetchDnsZones = (enabled = true) =>
   useQuery({
@@ -36,7 +36,7 @@ export const useCreateInstanceRecord = () =>
     onError: (error) => toast.error(errorMessage(error)),
   });
 
-const getDnsTunnelsKey = "dnsTunnels";
+export const getDnsTunnelsKey = "dnsTunnels";
 
 export const useFetchTunnels = (enabled = true) =>
   useQuery({

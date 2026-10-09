@@ -155,6 +155,17 @@ export const SaveTicketFormSchema = z.object({
 
 export type SaveTicketFormData = z.infer<typeof SaveTicketFormSchema>;
 
+export const emptyTicketForm = (): SaveTicketFormData => ({
+  title: "",
+  body: "",
+  project_id: "",
+  doc_id: "",
+  developer: "",
+  tester: "",
+  category_id: "",
+  type_id: "",
+});
+
 export const ReportBugFormSchema = SaveTicketFormSchema.refine((d) => !!d.origin_id || d.origin_unknown === true, {
   message: "Pick the ticket this bug was found in, or tick Origin unknown",
   path: ["origin_id"],

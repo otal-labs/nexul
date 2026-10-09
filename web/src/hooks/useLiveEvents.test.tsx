@@ -219,17 +219,6 @@ describe("useLiveEvents dispatch", () => {
     expect(spy).not.toHaveBeenCalledWith({ queryKey: ["getDeployLog"] });
   });
 
-  it("invalidates the tickets queries on ticket lifecycle topics", async () => {
-    setup();
-    const socket = await connectedSocket();
-    const spy = invalidate();
-    for (const topic of ["ticket.created", "ticket.finished"]) {
-      act(() => socket.message(JSON.stringify({ topic, type: "event", payload: {} })));
-    }
-    expect(spy).toHaveBeenCalledTimes(2);
-    expect(spy).toHaveBeenCalledWith({ queryKey: ["getTickets"] });
-  });
-
   it("refetches a doc's clarification on every doc.clarification topic, the panel and the run dialog alike", async () => {
     setup();
     const socket = await connectedSocket();
@@ -242,46 +231,16 @@ describe("useLiveEvents dispatch", () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ["getDocClarification"] });
   });
 
-  it("invalidates the ticket, its links, and the trails query on ticket.updated and ticket.status_changed", async () => {
+  it("refreshes link sets and the board's blockers on link changes", async () => {
     setup();
     const socket = await connectedSocket();
     const spy = invalidate();
-    act(() =>
-      socket.message(JSON.stringify({ topic: "ticket.updated", type: "event", payload: { ticket: { id: "t-1" } } })),
-    );
-    expect(spy).toHaveBeenCalledWith({ queryKey: ["getTickets"] });
-    expect(spy).toHaveBeenCalledWith({ queryKey: ["getTicket"] });
-    expect(spy).toHaveBeenCalledWith({ queryKey: ["getTicketLinks"] });
-    expect(spy).toHaveBeenCalledWith({ queryKey: ["getTrails"] });
-
-    spy.mockClear();
-    act(() =>
-      socket.message(JSON.stringify({ topic: "ticket.status_changed", type: "event", payload: { ticket: { id: "t-1" } } })),
-    );
-    expect(spy).toHaveBeenCalledWith({ queryKey: ["getTickets"] });
-    expect(spy).toHaveBeenCalledWith({ queryKey: ["getTicket"] });
-    expect(spy).toHaveBeenCalledWith({ queryKey: ["getTicketLinks"] });
-    expect(spy).toHaveBeenCalledWith({ queryKey: ["getTrails"] });
-  });
-
-  it("refreshes link sets and the board's blockers on link changes and blocker moves", async () => {
-    setup();
-    const socket = await connectedSocket();
-    const spy = invalidate();
-    for (const topic of ["ticket.link_created", "ticket.link_deleted", "ticket.status_changed"]) {
+    for (const topic of ["ticket.link_created", "ticket.link_deleted"]) {
       spy.mockClear();
       act(() => socket.message(JSON.stringify({ topic, type: "event", payload: {} })));
       expect(spy).toHaveBeenCalledWith({ queryKey: ["getTicketLinkSet"] });
       expect(spy).toHaveBeenCalledWith({ queryKey: ["getBlockers"] });
     }
-  });
-
-  it("invalidates by topic for topics without a mapping", async () => {
-    setup();
-    const socket = await connectedSocket();
-    const spy = invalidate();
-    act(() => socket.message(JSON.stringify({ topic: "ticket.mentioned", type: "event", payload: {} })));
-    expect(spy).toHaveBeenCalledWith({ queryKey: ["ticket.mentioned"] });
   });
 
   it("invalidates notification queries on notification.created", async () => {
@@ -382,6 +341,19 @@ describe("useLiveEvents dispatch", () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ["getTrails", "ticket", "t-1"] });
   });
 
+  it("marks a ticket as having a thread, on its card and its page, once someone starts one", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    const created = (conversation: Record<string, string>) =>
+      act(() => socket.message(JSON.stringify({ topic: "chat.conversation.created", type: "event", payload: { conversation } })));
+    created({ id: "c-1", kind: "channel", name: "eng" });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ["getChatThreadIndicators"] });
+    created({ id: "c-2", kind: "ticket_thread", ticket_id: "t-1" });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getChatThreadIndicators"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getChatTicketThreadStatus", "t-1"] });
+  });
+
   it("invalidates the ticket thread-exists query when a ticket run starts", async () => {
     setup();
     const socket = await connectedSocket();
@@ -396,10 +368,11 @@ describe("useLiveEvents dispatch", () => {
     const socket = await connectedSocket();
     const base = { trail_id: "tr-3", play_id: "play-1", target_type: "ticket", target_id: "t-9", ended_at: null, last_error: "" };
     act(() => socket.message(JSON.stringify({ topic: "play.run", type: "event", payload: { ...base, state: "starting", activity: "" } })));
+    client.setQueryData(["getTickets"], [{ id: "t-9" }]);
     const spy = invalidate();
     act(() => socket.message(JSON.stringify({ topic: "play.run", type: "event", payload: { ...base, state: "done", activity: "" } })));
-    expect(spy).toHaveBeenCalledWith({ queryKey: ["getTickets"] });
-    expect(spy).toHaveBeenCalledWith({ queryKey: ["getTicket", "t-9"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getTickets"], exact: true });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getTicket", "t-9"], exact: true });
     expect(spy).toHaveBeenCalledWith({ queryKey: ["getTicketLinks", "t-9"] });
   });
 
@@ -411,7 +384,7 @@ describe("useLiveEvents dispatch", () => {
     act(() => socket.message(JSON.stringify({ topic: "play.run", type: "event", payload: { ...base, state: "starting", activity: "" } })));
     act(() => socket.message(JSON.stringify({ topic: "play.run", type: "event", payload: { ...base, state: "done", activity: "" } })));
     expect(spy).not.toHaveBeenCalledWith({ queryKey: ["getChatTicketThreadStatus", "d-1"] });
-    expect(spy).not.toHaveBeenCalledWith({ queryKey: ["getTicket", "d-1"] });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ["getTicket", "d-1"], exact: true });
     expect(spy).not.toHaveBeenCalledWith({ queryKey: ["getTicketLinks", "d-1"] });
   });
 
