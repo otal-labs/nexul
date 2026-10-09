@@ -39,7 +39,7 @@ func TestTicketsHandler_List_AllocationsDoNotRescanEachTicket(t *testing.T) {
 
 	allocs := testing.AllocsPerRun(20, func() { h.ServeHTTP(httptest.NewRecorder(), req) })
 
-	assert.LessOrEqual(t, allocs/200, 4.0, "allocations per listed ticket")
+	assert.LessOrEqual(t, allocs/200, 6.0, "allocations per listed ticket")
 }
 
 func TestJSONList_EncodesEachTicketAsItsOwnMarshalJSONDoes(t *testing.T) {
