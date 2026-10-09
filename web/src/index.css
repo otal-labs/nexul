@@ -66,6 +66,8 @@
   /* A bounce-free spring as a CSS curve (paired with 200ms) and the one small-bounce spring (paired with 350ms). */
   --ease-spring: linear(0, 0.079, 0.236, 0.403, 0.551, 0.671, 0.764, 0.833, 0.883, 0.919, 0.944, 0.962, 0.974, 0.983, 0.988, 0.992, 0.995, 0.997, 1);
   --ease-spring-pop: linear(0, 0.1, 0.303, 0.515, 0.693, 0.826, 0.915, 0.969, 0.998, 1.011, 1.015, 1.014, 1.011, 1.008, 1.005, 1.003, 1.002, 1.001, 1);
+  /* A sheet's slide: an extremely steep start and a long settle, so 300ms still feels instant. */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 :root {
@@ -1043,6 +1045,131 @@ a.mention-chip:hover {
   transition-duration: 200ms, 150ms;
 }
 
+/* Overlays enter and leave on transitions, so a reopen mid-close turns back from where it is (design-language.md,
+   Overlays). Radix unmounts a closing overlay when its animation ends, so the closed state holds an empty one as long
+   as the exit; it never takes a click (important: Radix writes pointer-events inline), and a key shows or hides it at once. */
+@keyframes overlay-hold {
+  to {
+    visibility: visible;
+  }
+}
+.overlay-scrim {
+  transition: opacity 220ms var(--ease-out);
+  @starting-style {
+    opacity: 0;
+  }
+}
+.overlay-scrim[data-state="closed"] {
+  opacity: 0;
+  pointer-events: none !important;
+  transition-duration: 150ms;
+  animation: overlay-hold 150ms;
+}
+.dialog-surface {
+  transition-property: opacity, scale, transform;
+  transition-duration: 220ms;
+  transition-timing-function: var(--ease-out);
+  @starting-style {
+    opacity: 0;
+    scale: 0.97;
+    transform: translateY(6px);
+  }
+}
+.dialog-surface[data-state="closed"] {
+  opacity: 0;
+  scale: 0.98;
+  pointer-events: none !important;
+  transition-duration: 150ms;
+  animation: overlay-hold 150ms;
+}
+.sheet-surface {
+  --sheet-from: calc(100% + 0.5rem) 0;
+  transition: translate 300ms var(--ease-drawer);
+  @starting-style {
+    translate: var(--sheet-from);
+  }
+}
+.sheet-surface[data-side="left"] {
+  --sheet-from: calc(-100% - 0.5rem) 0;
+}
+.sheet-surface[data-side="top"] {
+  --sheet-from: 0 calc(-100% - 0.5rem);
+}
+.sheet-surface[data-side="bottom"] {
+  --sheet-from: 0 calc(100% + 0.5rem);
+}
+.sheet-surface[data-state="closed"] {
+  translate: var(--sheet-from);
+  pointer-events: none !important;
+  transition-duration: 220ms;
+  animation: overlay-hold 220ms;
+}
+.sheet-scrim {
+  transition-duration: 300ms;
+  transition-timing-function: var(--ease-drawer);
+}
+.sheet-scrim[data-state="closed"] {
+  transition-duration: 220ms;
+  animation-duration: 220ms;
+}
+/* Under a finger the sheet is the finger: no easing until it lets go. */
+.sheet-surface[data-dragging],
+.sheet-scrim:has(+ .sheet-surface[data-dragging]) {
+  transition: none;
+}
+.float-surface {
+  --float-from: 0 0;
+  transition-property: opacity, scale, translate;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+  @starting-style {
+    opacity: 0;
+    scale: 0.97;
+    translate: var(--float-from);
+  }
+}
+.float-surface[data-side="bottom"] {
+  --float-from: 0 -4px;
+}
+.float-surface[data-side="top"] {
+  --float-from: 0 4px;
+}
+.float-surface[data-side="left"] {
+  --float-from: 4px 0;
+}
+.float-surface[data-side="right"] {
+  --float-from: -4px 0;
+}
+.float-surface[data-state="closed"] {
+  opacity: 0;
+  scale: 0.97;
+  translate: var(--float-from);
+  pointer-events: none !important;
+  transition-duration: 120ms;
+  animation: overlay-hold 120ms;
+}
+/* A tooltip that waited fades in from its trigger; one shown at once beside another that was open does not animate. */
+.tooltip-surface[data-state="delayed-open"] {
+  transition:
+    opacity 125ms var(--ease-out),
+    scale 125ms var(--ease-out);
+  @starting-style {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+.tooltip-surface[data-state="closed"] {
+  opacity: 0;
+  pointer-events: none !important;
+  transition: opacity 100ms var(--ease-out);
+  animation: overlay-hold 100ms;
+}
+:root[data-input="key"] :is(.overlay-scrim, .dialog-surface, .sheet-surface, .float-surface, .tooltip-surface),
+:is(.overlay-scrim, .dialog-surface)[data-instant] {
+  transition: none;
+  animation: none;
+}
+
 /* An empty state's own entrance, the orbit turning into place (design-language.md, Motion baseline). */
 .empty-state {
   animation: empty-rise 200ms var(--ease-out) both;
@@ -1162,6 +1289,34 @@ a.mention-chip:hover {
   .arrive,
   .empty-state {
     animation: fade-in 150ms var(--ease-out) both !important;
+  }
+  /* Overlays fade in and out in place: nothing scales, rises or slides. */
+  :is(.overlay-scrim, .dialog-surface, .sheet-surface, .float-surface, .tooltip-surface) {
+    transition-property: opacity !important;
+    transition-duration: 150ms !important;
+  }
+  :is(.overlay-scrim, .dialog-surface, .sheet-surface, .float-surface, .tooltip-surface)[data-state="closed"] {
+    animation-duration: 150ms !important;
+  }
+  .sheet-surface {
+    @starting-style {
+      opacity: 0;
+    }
+  }
+  .sheet-surface[data-state="closed"] {
+    opacity: 0;
+    translate: none;
+  }
+  :is(.dialog-surface, .float-surface)[data-state="closed"] {
+    scale: none;
+  }
+  .float-surface[data-state="closed"] {
+    translate: none;
+  }
+  :root[data-input="key"] :is(.overlay-scrim, .dialog-surface, .sheet-surface, .float-surface, .tooltip-surface),
+  :is(.overlay-scrim, .dialog-surface)[data-instant] {
+    transition: none !important;
+    animation: none !important;
   }
 }
 

@@ -17,8 +17,29 @@ export const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-
 // Whether the last thing that could have moved the page or a selection was a key rather than a pointer.
 const MOVE_KEYS = new Set(["Enter", " ", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"]);
 let keyboardLast = false;
-window.addEventListener("keydown", (event) => (keyboardLast = MOVE_KEYS.has(event.key)), true);
-window.addEventListener("pointerdown", () => (keyboardLast = false), true);
+const MODIFIERS = new Set(["Shift", "Control", "Alt", "Meta"]);
+// Overlays opened or closed from the keyboard show and go in the same frame (index.css, Overlays); only a change is written.
+const markInput = (input: "key" | "pointer") => {
+  if (document.documentElement.dataset.input !== input) document.documentElement.dataset.input = input;
+};
+window.addEventListener(
+  "keydown",
+  (event) => {
+    keyboardLast = MOVE_KEYS.has(event.key);
+    if (!MODIFIERS.has(event.key)) markInput("key");
+  },
+  true,
+);
+window.addEventListener(
+  "pointerdown",
+  () => {
+    keyboardLast = false;
+    markInput("pointer");
+  },
+  true,
+);
+// A hover that opens a tooltip or a submenu after typing is a pointer act too.
+window.addEventListener("pointermove", () => markInput("pointer"), { capture: true, passive: true });
 export const lastInputWasKeyboard = () => keyboardLast;
 
 // Rows past the eighth arrive with it, so the tail never shows before the cascade reaches it.
