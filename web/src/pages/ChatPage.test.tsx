@@ -1,15 +1,30 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
+import { upsertCachedMessage } from "@/hooks/ChatHooks";
+import type { Message } from "@/models/Chat";
 import { ChatPage } from "@/pages/ChatPage";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn() },
 }));
+
+// Every message row asks for the delete confirmation hook once per render, so counting its calls counts row renders.
+const rows = vi.hoisted(() => ({ renders: 0 }));
+vi.mock("@/hooks/useConfirmationDialog", async () => {
+  const actual = await vi.importActual<typeof import("@/hooks/useConfirmationDialog")>("@/hooks/useConfirmationDialog");
+  return {
+    ...actual,
+    useConfirmationDialog: () => {
+      rows.renders += 1;
+      return actual.useConfirmationDialog();
+    },
+  };
+});
 
 const meResponse = {
   user: { id: "u1", provider: "github", provider_user_id: "1", login: "onik97", name: "Onik", avatar_url: "", first_login_done: true, created_at: "" },
@@ -24,7 +39,7 @@ const conversations = [
 
 const renderPage = (path = "/acme/chat") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const view = render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
@@ -34,6 +49,7 @@ const renderPage = (path = "/acme/chat") => {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return { ...view, client };
 };
 
 beforeEach(() => {
@@ -119,5 +135,45 @@ describe("ChatPage for a member without members:write", () => {
     // The thread header and the message author.
     expect(await screen.findAllByText("LewisWelch94")).toHaveLength(2);
     expect(screen.queryByText("u-lewis")).not.toBeInTheDocument();
+  });
+});
+
+describe("ChatPage live messages", () => {
+  const history: Message[] = Array.from({ length: 6 }, (_, i) => ({
+    id: `m${i}`,
+    conversation_id: "c1",
+    author_id: i % 2 === 0 ? "u1" : "u2",
+    author_kind: "user",
+    body: `Message ${i}`,
+    mentions: null,
+    created_at: `2026-09-29T00:0${i}:00Z`,
+    updated_at: `2026-09-29T00:0${i}:00Z`,
+  }));
+  // A bot is no one the people directory knows, so its author is looked up as an unknown person on every render.
+  history.push({ ...history[0]!, id: "m-bot", author_id: "bot-1", author_kind: "bot", author_name: "Deploys", body: "Deployed api 1.4.0" });
+
+  it("renders only the arriving message's row when a message lands in an open conversation", async () => {
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/chat/conversations") return { data: conversations };
+      if (url === "/api/chat/unread") return { data: {} };
+      if (url === "/api/auth/me") return { data: meResponse };
+      if (url.startsWith("/api/chat/conversations/c1/messages")) return { data: history };
+      if (url === "/api/workspaces/ws-1/people") {
+        return { data: { people: [{ user_id: "u1", login: "onik97", display_name: "Onik", avatar_url: "" }, { user_id: "u2", login: "lena", display_name: "Lena", avatar_url: "" }] } };
+      }
+      return { data: {} };
+    });
+    vi.mocked(api.post).mockResolvedValue({ data: {} });
+    const { client } = renderPage("/acme/chat/c1");
+    expect(await screen.findByText("Message 5")).toBeInTheDocument();
+    expect(await screen.findAllByText("Lena")).not.toHaveLength(0);
+
+    rows.renders = 0;
+    await act(async () => {
+      upsertCachedMessage(client, { ...history[1]!, id: "m6", body: "Message 6", created_at: "2026-09-29T00:06:00Z", updated_at: "2026-09-29T00:06:00Z" });
+    });
+
+    expect(await screen.findByText("Message 6")).toBeInTheDocument();
+    expect(rows.renders).toBe(1);
   });
 });

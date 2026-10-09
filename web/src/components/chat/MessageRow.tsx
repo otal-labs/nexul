@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { memo, useState, type ReactNode } from "react";
 
 import { BotMessageRow } from "@/components/chat/BotMessageRow";
 import { ChatQuestionCard } from "@/components/chat/ChatQuestionCard";
@@ -95,7 +95,7 @@ const AgentMessageBody = ({ message, trailBlock, questionAnswered }: AgentMessag
 };
 
 // Your own messages sit right-aligned with no header; everyone else gets an avatar + name/time header.
-export const MessageRow = ({ message, author, isOwn, continuation = false, questionAnswered = false, trailBlock, ticketId, onEdit, onDelete }: MessageRowProps) => {
+const MessageRowImpl = ({ message, author, isOwn, continuation = false, questionAnswered = false, trailBlock, ticketId, onEdit, onDelete }: MessageRowProps) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.body);
   const { open: confirmDelete } = useConfirmationDialog();
@@ -178,3 +178,6 @@ export const MessageRow = ({ message, author, isOwn, continuation = false, quest
     </>
   );
 };
+
+// Memoized so one arriving message renders one row, not the whole thread's markdown again.
+export const MessageRow = memo(MessageRowImpl);

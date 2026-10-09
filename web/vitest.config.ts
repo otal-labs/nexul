@@ -12,6 +12,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    // Only the stylesheet guard reads index.css, as raw text; every other import still gets an empty module.
+    css: { include: [/src\/index\.css/] },
     // e2e specs run under vitest.e2e.config.ts inside the e2e docker network.
     exclude: ["e2e/**", "node_modules/**"],
     coverage: {

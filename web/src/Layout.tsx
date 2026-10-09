@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router";
 
 import { CommandPalette } from "@/components/command/CommandPalette";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PhoneBanner } from "@/components/PhoneBanner";
 import { ServerUpdatedBanner } from "@/components/ServerUpdatedBanner";
 import { Sidebar } from "@/components/sidebar/Sidebar";
@@ -31,7 +32,9 @@ export const Layout = () => {
     <>
       {!isLoggedIn && (
         <main className="min-h-screen">
-          <Outlet />
+          <Suspense fallback={<LoadingDisplay />}>
+            <Outlet />
+          </Suspense>
         </main>
       )}
       {isLoggedIn && (
@@ -46,7 +49,9 @@ export const Layout = () => {
             <PhoneBanner />
             <main className="min-h-0 flex-1 p-2">
               <div ref={frame} className="app-frame">
-                <Outlet />
+                <Suspense fallback={<LoadingDisplay />}>
+                  <Outlet />
+                </Suspense>
               </div>
             </main>
           </div>

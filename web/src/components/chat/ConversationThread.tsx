@@ -64,6 +64,16 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
     [conversation.id],
   );
 
+  // Every message row is memoized on these, so they keep one identity per conversation.
+  const { mutateAsync: edit } = editMessage;
+  const { mutateAsync: remove } = deleteMessage;
+  const onEdit = useCallback(async (messageId: string, body: string) => {
+    await edit({ messageId, body });
+  }, [edit]);
+  const onDelete = useCallback(async (messageId: string) => {
+    await remove(messageId);
+  }, [remove]);
+
   const Icon = CONVERSATION_ICONS[conversation.kind] ?? Hash;
 
   return (
@@ -100,12 +110,8 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
           onNewestSeen={onNewestSeen}
           currentUserId={me?.user.id}
           resolveAuthor={resolvePerson}
-          onEdit={async (messageId, body) => {
-            await editMessage.mutateAsync({ messageId, body });
-          }}
-          onDelete={async (messageId) => {
-            await deleteMessage.mutateAsync(messageId);
-          }}
+          onEdit={onEdit}
+          onDelete={onDelete}
           onInterruptAgent={() => void interruptAgent.mutateAsync()}
         />
       )}
