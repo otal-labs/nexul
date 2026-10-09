@@ -10,7 +10,7 @@ export interface PageHeadingProps {
 export function PageHeading({ eyebrow, title, description, markdownUrl }: PageHeadingProps) {
 	return (
 		<header className="flex flex-col gap-3">
-			{eyebrow && <p className="text-xs font-medium text-fd-muted-foreground">{eyebrow}</p>}
+			{eyebrow && <p className="docs-eyebrow">{eyebrow}</p>}
 			<div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
 				<h1 className="docs-title type-display min-w-0">{title}</h1>
 				{markdownUrl && (

@@ -1,11 +1,254 @@
 ---
+import { Compass } from 'lucide-react';
 import SiteLayout from '../layouts/SiteLayout.astro';
 ---
 
 <SiteLayout title="Page not found · Nexul" description="This page does not exist.">
-	<section class="page-hero wrap" aria-labelledby="not-found-title">
-		<p class="eyebrow">404</p>
-		<h1 id="not-found-title">Page not found<span class="muted">.</span></h1>
-		<p class="page-lede">Check the address, or start again from the <a href="/docs/">documentation</a> or the <a href="/">home page</a>.</p>
+	<section class="not-found" aria-labelledby="not-found-title">
+		<span class="orbit" aria-hidden="true">
+			<svg viewBox="0 0 112 112" fill="none">
+				<defs>
+					<linearGradient id="orbit-stroke" x1="0" y1="1" x2="1" y2="0">
+						<stop offset="0" stop-color="oklch(from var(--field-cool) l c h)"></stop>
+						<stop offset="0.55" stop-color="oklch(from var(--field-pink) l c h)"></stop>
+						<stop offset="1" stop-color="var(--brand)"></stop>
+					</linearGradient>
+				</defs>
+				<circle data-orbit-outer cx="56" cy="56" r="54" stroke="url(#orbit-stroke)" stroke-opacity="0.45"></circle>
+				<circle data-orbit-inner cx="56" cy="56" r="40" stroke="url(#orbit-stroke)" stroke-opacity="0.85" stroke-dasharray="2 5" stroke-linecap="round"></circle>
+				<circle data-orbit-ember cx="94.2" cy="39.8" r="3" fill="var(--brand)"></circle>
+				<circle data-orbit-cool cx="21.8" cy="78" r="2.5" fill="oklch(from var(--field-cool) l c h)"></circle>
+			</svg>
+			<span class="orbit-disc"><Compass /></span>
+		</span>
+		<h1 id="not-found-title" class="type-display">Page not found</h1>
+		<p>The address may be mistyped, or the page moved.</p>
+		<div class="not-found-actions">
+			<a class="not-found-primary" href="/docs/">Open the docs</a>
+			<a class="not-found-secondary" href="/">Home</a>
+		</div>
 	</section>
 </SiteLayout>
+
+<style>
+	/* The app's error page and empty state: the still light field at half strength, the orbit mark, a Fraunces headline. */
+	.not-found {
+		position: relative;
+		isolation: isolate;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		padding: 72px 20px 112px;
+		text-align: center;
+		font-family: var(--font-sans-stack);
+		color: var(--foreground);
+	}
+
+	.not-found::before {
+		content: '';
+		position: absolute;
+		inset: -56px 0 0;
+		z-index: -1;
+		pointer-events: none;
+		opacity: 0.5;
+		mask-image: linear-gradient(to bottom, black 60%, transparent);
+		background:
+			radial-gradient(38% 42% at 86% 10%, var(--field-warm), transparent 72%),
+			radial-gradient(30% 34% at 60% 38%, var(--field-pink), transparent 70%),
+			radial-gradient(44% 48% at 10% 92%, var(--field-cool), transparent 72%);
+	}
+
+	.orbit {
+		position: relative;
+		display: grid;
+		place-items: center;
+		width: 112px;
+		height: 112px;
+	}
+
+	.orbit > svg {
+		position: absolute;
+		inset: 0;
+	}
+
+	.orbit-disc {
+		position: relative;
+		display: grid;
+		place-items: center;
+		width: 48px;
+		height: 48px;
+		border-radius: 50%;
+		background: var(--card);
+		box-shadow: 0 0 0 1px var(--border), var(--shadow-card);
+		color: var(--muted-foreground);
+	}
+
+	.orbit-disc :global(svg) {
+		width: 20px;
+		height: 20px;
+	}
+
+	h1 {
+		margin: 24px 0 0;
+		font-size: 32px;
+	}
+
+	p {
+		max-width: 32ch;
+		margin: 8px 0 0;
+		color: var(--muted-foreground);
+		font-size: 15px;
+		line-height: 1.6;
+		text-wrap: pretty;
+	}
+
+	.not-found-actions {
+		display: flex;
+		gap: 8px;
+		margin-top: 24px;
+	}
+
+	.not-found-actions a {
+		display: inline-flex;
+		align-items: center;
+		height: 40px;
+		padding-inline: 16px;
+		border-radius: var(--shape-md);
+		font-size: 14px;
+		font-weight: 500;
+		text-decoration: none;
+		transition:
+			background-color 150ms var(--ease-standard),
+			transform 150ms var(--ease-out);
+	}
+
+	.not-found-actions a:active {
+		transform: scale(0.97);
+	}
+
+	.not-found-actions a:focus-visible {
+		outline: 2px solid var(--focus);
+		outline-offset: 2px;
+	}
+
+	.not-found-primary {
+		background: var(--brand);
+		color: var(--brand-foreground);
+	}
+
+	.not-found-secondary {
+		box-shadow: inset 0 0 0 1px var(--input);
+		color: var(--foreground);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.not-found-primary:hover {
+			background: color-mix(in oklab, var(--brand) 88%, var(--foreground));
+		}
+
+		.not-found-secondary:hover {
+			background: var(--accent);
+		}
+	}
+
+	@media (min-width: 768px) {
+		.not-found {
+			padding-block: 120px 160px;
+		}
+
+		h1 {
+			font-size: 40px;
+		}
+	}
+
+	/* The orbit turns into place, the app's empty-state entrance: a rare page can afford it. */
+	@media (prefers-reduced-motion: no-preference) {
+		.orbit :is([data-orbit-outer], [data-orbit-inner], [data-orbit-ember], [data-orbit-cool]) {
+			transform-box: view-box;
+			transform-origin: 56px 56px;
+		}
+
+		[data-orbit-outer] {
+			animation: orbit-ring 520ms var(--ease-out) both;
+		}
+
+		[data-orbit-inner] {
+			animation: orbit-inner 620ms var(--ease-out) 40ms both;
+		}
+
+		[data-orbit-ember] {
+			animation: orbit-swing 700ms var(--ease-out) 60ms both;
+		}
+
+		[data-orbit-cool] {
+			animation: orbit-swing 700ms var(--ease-out) 100ms both;
+		}
+
+		.orbit-disc {
+			animation: orbit-disc 320ms var(--ease-out) both;
+		}
+
+		h1 {
+			animation: rise-6 260ms var(--ease-out) 90ms both;
+		}
+
+		p {
+			animation: rise-6 260ms var(--ease-out) 140ms both;
+		}
+
+		.not-found-actions {
+			animation: rise-6 260ms var(--ease-out) 190ms both;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.not-found > * {
+			animation: fade 150ms var(--ease-standard) both;
+		}
+	}
+
+	@keyframes orbit-ring {
+		from {
+			opacity: 0;
+			scale: 0.92;
+		}
+	}
+
+	@keyframes orbit-inner {
+		from {
+			opacity: 0;
+			rotate: -40deg;
+			scale: 0.9;
+		}
+	}
+
+	@keyframes orbit-swing {
+		from {
+			opacity: 0;
+			rotate: -75deg;
+		}
+		30% {
+			opacity: 1;
+		}
+	}
+
+	@keyframes orbit-disc {
+		from {
+			opacity: 0;
+			scale: 0.94;
+		}
+	}
+
+	@keyframes rise-6 {
+		from {
+			opacity: 0;
+			translate: 0 6px;
+		}
+	}
+
+	@keyframes fade {
+		from {
+			opacity: 0;
+		}
+	}
+</style>

@@ -336,3 +336,9 @@
 		width: 256px;
 	}
 }
+
+.theme-switching *:not(.theme-icon),
+.theme-switching *::before,
+.theme-switching *::after {
+	transition: none !important;
+}

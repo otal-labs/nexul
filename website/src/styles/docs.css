@@ -106,7 +106,6 @@ body {
 	width: 2px;
 	border-radius: 2px;
 	background: var(--brand);
-	view-transition-name: docs-active;
 }
 
 /* The phone drawer is the shared sheet (site-header.css); its scrim is the app's dialog scrim. */
@@ -140,9 +139,42 @@ div:has(+ #nd-sidebar-mobile) {
 
 /* Page heading: the title in the display face, as the app's page titles. */
 
+.docs-eyebrow {
+	font-family: var(--font-mono-stack);
+	font-size: 12px;
+	color: var(--muted-foreground);
+}
+
 .docs-title {
-	font-size: 2rem;
+	font-size: 28px;
 	text-wrap: balance;
+}
+
+@media (min-width: 768px) {
+	.docs-title {
+		font-size: 32px;
+	}
+}
+
+/* The app's still light field, at half strength and only beside the reading column (the sidebar and the
+   on-this-page rail), so no glow ever sits behind body text. */
+@media (min-width: 1280px) {
+	body::before {
+		content: '';
+		position: fixed;
+		inset: -12%;
+		z-index: -1;
+		pointer-events: none;
+		opacity: 0.5;
+		background:
+			radial-gradient(38% 42% at 86% 10%, var(--field-warm), transparent 72%),
+			radial-gradient(44% 48% at 10% 92%, var(--field-cool), transparent 72%);
+	}
+
+	#nd-sidebar,
+	#nd-sidebar > div {
+		background: transparent;
+	}
 }
 
 /* Article: the app's rich-text body at reading size. */
@@ -168,19 +200,19 @@ div:has(+ #nd-sidebar-mobile) {
 	text-wrap: pretty;
 }
 
-.prose a:not([data-card]) {
-	color: var(--brand);
+/* Links in ink over an ember underline: the ember as text measures 4.3:1 on the light canvas, under the 4.5:1 body text needs. */
+.prose a:not([data-card], .not-prose *) {
+	color: var(--foreground);
 	font-weight: inherit;
 	text-decoration: underline;
-	text-decoration-color: color-mix(in oklab, var(--brand) 45%, transparent);
+	text-decoration-color: var(--brand);
 	text-decoration-thickness: 1px;
 	text-underline-offset: 3px;
-	transition: text-decoration-color 150ms var(--ease-standard);
 }
 
 @media (hover: hover) and (pointer: fine) {
-	.prose a:not([data-card]):hover {
-		text-decoration-color: var(--brand);
+	.prose a:not([data-card], .not-prose *):hover {
+		text-decoration-thickness: 2px;
 	}
 }
 
@@ -273,3 +305,53 @@ div:has(+ #nd-sidebar-mobile) {
 	position: fixed;
 	inset-inline: 0;
 }
+
+/* The docs home: one card per page, the app's card on the canvas. */
+
+.docs-group-label {
+	font-family: var(--font-mono-stack);
+	font-size: 11px;
+	font-weight: 500;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--muted-foreground);
+}
+
+.doc-card {
+	box-shadow:
+		inset 0 1px 0 0 var(--panel-highlight),
+		0 0 0 1px var(--panel-ring),
+		var(--shadow-card);
+	transition: background-color 150ms var(--ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.doc-card:hover {
+		background: color-mix(in oklab, var(--card) 92%, var(--foreground));
+	}
+}
+
+/* Search: the app's command palette surface, hung at 14% of the viewport so a changing result count only moves its foot. */
+
+.site-search-dialog {
+	border: 1px solid transparent !important;
+	border-radius: var(--shape-xl) !important;
+	background: color-mix(in oklab, var(--popover) 88%, transparent) !important;
+	-webkit-backdrop-filter: blur(24px) saturate(1.4);
+	backdrop-filter: blur(24px) saturate(1.4);
+	box-shadow:
+		inset 0 1px 0 0 var(--panel-highlight),
+		0 0 0 1px var(--panel-ring),
+		var(--shadow-overlay) !important;
+}
+
+.site-search-dialog > * {
+	border-color: var(--border) !important;
+}
+
+@media (min-width: 768px) {
+	.site-search-dialog {
+		top: 14vh !important;
+	}
+}
+
