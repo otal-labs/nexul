@@ -88,3 +88,11 @@ export const formatDiscordTimestamp = (date: Date, style: string | undefined): s
   if (style === "R") return formatRelativeDistance(date);
   return date.toLocaleString(undefined, DISCORD_STYLES[style ?? "f"]);
 };
+
+// A day for a list's meta line: "8 Oct", with the year only when it isn't this one.
+export const formatShortDate = (ts: string): string => {
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return ts;
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return date.toLocaleDateString(undefined, { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
+};
