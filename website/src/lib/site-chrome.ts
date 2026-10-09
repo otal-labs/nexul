@@ -11,10 +11,15 @@ const syncToggles = () => {
 	}
 };
 
+// The new palette lands in one frame: every colour transition is held while the class flips, or each surface would
+// fade on its own clock. The toggle's own icons are exempt (site-header.css).
 const applyTheme = (dark: boolean) => {
+	root.classList.add('theme-switching');
 	root.classList.toggle('dark', dark);
 	root.classList.toggle('light', !dark);
 	syncToggles();
+	getComputedStyle(document.body).color;
+	setTimeout(() => root.classList.remove('theme-switching'), 1);
 };
 
 media.addEventListener('change', (event) => {

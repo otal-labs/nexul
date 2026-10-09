@@ -336,3 +336,89 @@
 		width: 256px;
 	}
 }
+
+.theme-switching *:not(.theme-icon),
+.theme-switching *::before,
+.theme-switching *::after {
+	transition: none !important;
+}
+
+/* The phone menu slides in from its edge on the app's sheet clock: 300ms on the drawer curve, out in 220ms, the scrim
+   fading on the same clock. Transitions with @starting-style, so a menu reopened mid-close turns back from where it
+   is; the docs drawer runs the same numbers as keyframes (docs.css). */
+.site-sheet,
+.site-sheet::backdrop {
+	opacity: 0;
+	transition:
+		opacity 220ms var(--ease-out),
+		transform 220ms var(--ease-out),
+		display 220ms allow-discrete,
+		overlay 220ms allow-discrete;
+}
+
+.site-sheet {
+	transform: translateX(calc(100% + 8px));
+}
+
+.site-sheet[open],
+.site-sheet[open]::backdrop {
+	opacity: 1;
+	transform: none;
+	transition-duration: 300ms;
+	transition-timing-function: var(--ease-drawer);
+}
+
+@starting-style {
+	.site-sheet[open],
+	.site-sheet[open]::backdrop {
+		opacity: 0;
+	}
+
+	.site-sheet[open] {
+		transform: translateX(calc(100% + 8px));
+	}
+}
+
+/* Opened or closed from a key, an overlay shows and goes in the same frame; reduced motion fades it in place. */
+:root[data-input='key'] :is(.site-sheet, .site-sheet::backdrop) {
+	transition-duration: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	/* !important to hold the fade against landing.css, which stops every transition under reduced motion. */
+	.site-sheet,
+	.site-sheet::backdrop {
+		transform: none;
+		transition:
+			opacity 150ms var(--ease-standard),
+			display 150ms allow-discrete,
+			overlay 150ms allow-discrete !important;
+	}
+
+	@starting-style {
+		.site-sheet[open] {
+			transform: none;
+		}
+	}
+
+	.site-icon-button,
+	.site-button,
+	.site-nav a,
+	.site-menu-links a {
+		transition: none;
+	}
+
+	.site-button:active {
+		transform: none;
+	}
+
+	:root.light .theme-icon-dark,
+	:root:not(.light) .theme-icon-light {
+		transform: none;
+		filter: none;
+	}
+
+	.theme-icon {
+		transition: opacity 150ms var(--ease-standard) !important;
+	}
+}
