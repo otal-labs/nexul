@@ -17,7 +17,7 @@ The web app runs on the same HTTP/JSON API under `/api` that you can call yourse
    curl -H "Authorization: Bearer dep_…" https://nexul.example.com/api/permissions/catalog
    ```
 
-A personal access token carries exactly your permissions and lasts until you revoke it. Revoking cuts access at once. Use one for scripts, personal integrations and an agent's MCP connection.
+The list shows each token as **Active** with when it was last used, or **Revoked**. A personal access token carries exactly your permissions and lasts until you revoke it. Revoking cuts access at once. Use one for scripts, personal integrations and an agent's MCP connection.
 
 Each paired computer also gets a token of its own, "Nexul MCP on <computer>", listed here and marked as the computer's. Un-confirming the computer's setup or removing the computer revokes it.
 
