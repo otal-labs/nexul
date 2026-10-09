@@ -132,3 +132,17 @@ export const swapIn = (el: Element | null | undefined, step: number, axis: SwapA
   const from = axis === "x" ? `${offset}px 0` : `0 ${offset}px`;
   el.animate([{ opacity: 0, translate: from }, { opacity: 1, translate: "0 0" }], { duration: SWAP_MS, easing: EASE_OUT });
 };
+
+const RAIL_PX = 68;
+const REVEAL_MS = 220;
+
+// The open sidebar uncovers itself left to right from the rail's edge; clip-path is composited, so the panel beside it
+// takes its new width in one layout step and nothing reflows while it plays. Closing snaps.
+export const revealSidebar = (el: HTMLElement | null, open: boolean) => {
+  if (!el || typeof el.animate !== "function") return;
+  // Closed mid-reveal, the rail must not stay clipped to nothing.
+  el.getAnimations().forEach((running) => running.cancel());
+  if (!open || prefersReducedMotion() || lastInputWasKeyboard()) return;
+  const hidden = Math.max(0, el.offsetWidth - RAIL_PX);
+  el.animate([{ clipPath: `inset(0 ${hidden}px 0 0)` }, { clipPath: "inset(0 0 0 0)" }], { duration: REVEAL_MS, easing: EASE_OUT });
+};

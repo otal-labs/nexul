@@ -137,8 +137,11 @@ in one layout step and its content does the moving.
 - `transition-property` defaults to `none` (base layer), so a bare
   `duration-*` class never turns into `transition: all`; a transition names
   its properties.
-- Sidebar collapse is instant: a width swap, no layout animation. The
-  sidebar starts as the icon rail below 1024px.
+- Sidebar collapse: the width swaps in one layout step, never a width
+  animation, and since the rail keeps every icon where it was, only the
+  labels change. Opening wipes them in from the rail's edge (`revealSidebar`,
+  a clip-path over 220ms `--ease-out`); closing snaps. The sidebar starts as
+  the icon rail below 1024px.
 - The light field is still: gradients only, no filter, no animation. Behind
   backdrop blur any motion re-blurs every panel each frame, which held 50ms
   idle frames under a 4x CPU throttle while the field drifted; nothing may
