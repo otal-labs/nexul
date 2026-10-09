@@ -139,3 +139,38 @@ func TestAuditLog_ThroughTheRouter_AGetWritesNothingAndAPatchWritesOneRow(t *tes
 	assert.Equal(t, userID, rows[0].ActorID)
 	assert.Equal(t, "PATCH /api/workspaces/workspace-default", rows[0].Action)
 }
+
+// callTool sends one stateless tools/call to /mcp, as a 2026-07-28 client would.
+func callTool(t *testing.T, h http.Handler, token, tool, args string) string {
+	t.Helper()
+	body := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"` + tool + `","arguments":` + args + `,"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28",` +
+		`"io.modelcontextprotocol/clientInfo":{"name":"test","version":"1"},"io.modelcontextprotocol/clientCapabilities":{}}}}`
+	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("MCP-Protocol-Version", "2026-07-28")
+	req.Header.Set("Mcp-Method", "tools/call")
+	req.Header.Set("Mcp-Name", tool)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	require.NotContains(t, rec.Body.String(), `"isError":true`)
+	return rec.Body.String()
+}
+
+func TestMCP_ThroughTheRouter_AChangingToolCallIsAuditedAndAReadIsNot(t *testing.T) {
+	h, store, svc := newRouter(t)
+	userID, token := signedInOwner(t, store, svc)
+
+	callTool(t, h, token, "project_list", `{"workspace_id":"workspace-default"}`)
+	assert.Empty(t, auditRows(t, store), "a read-only tool writes no audit row")
+
+	callTool(t, h, token, "ticket_create", `{"project_id":"project-general","title":"Login times out"}`)
+	rows := auditRows(t, store)
+	require.Len(t, rows, 1)
+	assert.Equal(t, "user", rows[0].ActorType)
+	assert.Equal(t, userID, rows[0].ActorID)
+	assert.Empty(t, rows[0].TokenID, "a personal access token acts as its user, as on the HTTP gateway")
+	assert.Equal(t, "mcp ticket_create", rows[0].Action)
+}

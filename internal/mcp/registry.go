@@ -76,7 +76,9 @@ type RegistryOptions struct {
 	Publisher   deadletter.Publisher
 	// InstanceURL is the configured public URL; a browser request from any other origin is refused.
 	InstanceURL func(context.Context) (string, error)
-	Logger      *slog.Logger
+	// Audit records a call to a tool that changes state.
+	Audit  func(ctx context.Context, tool string)
+	Logger *slog.Logger
 }
 
 // New assembles the MCP endpoint: every domain's tools, the resources and prompts, behind the SDK's stateless handler.
@@ -88,6 +90,7 @@ func New(opts RegistryOptions) http.Handler {
 		prompts:      workflowPrompts(),
 		instructions: instructions,
 		logger:       opts.Logger,
+		audit:        opts.Audit,
 	}.handler(opts.InstanceURL)
 }
 

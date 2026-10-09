@@ -185,6 +185,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Publisher:   bus,
 		Logger:      logger,
 		InstanceURL: dnsSettingsAdapter{store.Settings}.GetInstanceURL,
+		Audit:       svc.integrationsSvc.AuditTool(resolveAuditActor),
 	})
 
 	httpMux := httpx.NewServeMux()

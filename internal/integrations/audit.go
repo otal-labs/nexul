@@ -56,6 +56,13 @@ func (s *Service) AuditLog(resolve ActorResolver, next http.Handler) http.Handle
 	})
 }
 
+// AuditTool is the MCP adapter's hook: one row per call to a tool that changes state, attributed as AuditLog does.
+func (s *Service) AuditTool(resolve ActorResolver) func(ctx context.Context, tool string) {
+	return func(ctx context.Context, tool string) {
+		s.record(ctx, resolve, "mcp "+tool)
+	}
+}
+
 func (s *Service) record(ctx context.Context, resolve ActorResolver, action string) {
 	actorType, actorID, tokenID := resolve(ctx)
 	if actorID == "" {
