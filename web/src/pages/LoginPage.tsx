@@ -56,7 +56,7 @@ export const LoginPage = () => {
   };
 
   return (
-    <ShowcaseSurface>
+    <ShowcaseSurface live>
       <div className="flex min-h-full items-center justify-center px-6 py-16">
         {exchange.isPending && <LoadingDisplay label="Completing sign in…" />}
         {!exchange.isPending && (

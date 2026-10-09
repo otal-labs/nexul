@@ -12,7 +12,7 @@ vi.mock("shaders/react", () => {
   };
 });
 
-const renderField = async ({ reduced, gpu }: { reduced: boolean; gpu: boolean }) => {
+const renderField = async ({ reduced, gpu, live = true }: { reduced: boolean; gpu: boolean; live?: boolean }) => {
   vi.resetModules();
   vi.stubGlobal("matchMedia", (query: string) => ({
     matches: reduced && query.includes("reduce"),
@@ -26,7 +26,7 @@ const renderField = async ({ reduced, gpu }: { reduced: boolean; gpu: boolean })
   // Loads the lazy live layer up front so act() settles it; a missing guard then shows on the first assertion.
   await import("@/components/showcase/LiveLightField");
   await act(async () => {
-    render(<ShowcaseField />);
+    render(<ShowcaseField live={live} />);
   });
 };
 
@@ -36,6 +36,11 @@ describe("ShowcaseField", () => {
   it("mounts the live field when WebGPU is there and motion is allowed", async () => {
     await renderField({ reduced: false, gpu: true });
     expect(screen.getByTestId("live-field")).toBeInTheDocument();
+  });
+
+  it("keeps to the still unless the caller asks for the live field", async () => {
+    await renderField({ reduced: false, gpu: true, live: false });
+    expect(screen.queryByTestId("live-field")).not.toBeInTheDocument();
   });
 
   it("keeps to the still under reduced motion", async () => {

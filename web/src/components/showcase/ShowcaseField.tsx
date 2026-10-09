@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 const LiveLightField = lazy(() => import("@/components/showcase/LiveLightField").then((m) => ({ default: m.LiveLightField })));
 
 interface ShowcaseFieldProps {
+  live?: boolean;
   quiet?: boolean;
   className?: string;
 }
@@ -22,10 +23,10 @@ const still = (strength: number): CSSProperties => ({
   ].join(","),
 });
 
-// A living light field for showcase screens only. The still behind it is the fallback and the reduced-motion variant.
-export const ShowcaseField = ({ quiet = false, className }: ShowcaseFieldProps) => (
+// The live layer repaints every frame, so callers opt in; the still is its fallback and reduced-motion variant.
+export const ShowcaseField = ({ live = false, quiet = false, className }: ShowcaseFieldProps) => (
   <div aria-hidden style={still(quiet ? 0.22 : 0.46)} className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)}>
-    {hasWebGPU && !prefersReducedMotion() && (
+    {live && hasWebGPU && !prefersReducedMotion() && (
       <Suspense>
         <LiveLightField quiet={quiet} />
       </Suspense>
