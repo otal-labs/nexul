@@ -596,6 +596,15 @@ func (f *fakeDocAccess) Can(_ context.Context, userID, docID string, _ permissio
 	return f.allowed[userID+":"+docID], nil
 }
 
+func (f *fakeDocAccess) CanDocs(ctx context.Context, userID, _ string, docIDs []string, action permissions.Action) map[string]bool {
+	out := map[string]bool{}
+	for _, id := range docIDs {
+		ok, err := f.Can(ctx, userID, id, action)
+		out[id] = ok && err == nil
+	}
+	return out
+}
+
 func newTestServiceWithDocAccess(repo *fakeRepo, access DocAccess) *Service {
 	s := newTestService(repo)
 	s.SetDocAccess(access)
