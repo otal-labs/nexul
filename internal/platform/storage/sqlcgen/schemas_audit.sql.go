@@ -35,8 +35,25 @@ func (q *Queries) AppendAudit(ctx context.Context, arg AppendAuditParams) error 
 	return err
 }
 
+const deleteAuditBefore = `-- name: DeleteAuditBefore :execrows
+DELETE FROM audit_log WHERE id IN (SELECT a.id FROM audit_log AS a WHERE a.created_at < ?1 LIMIT ?2)
+`
+
+type DeleteAuditBeforeParams struct {
+	Before  int64
+	MaxRows int64
+}
+
+func (q *Queries) DeleteAuditBefore(ctx context.Context, arg DeleteAuditBeforeParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteAuditBefore, arg.Before, arg.MaxRows)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const listAudit = `-- name: ListAudit :many
-SELECT id, actor_type, actor_id, token_id, "action", created_at FROM audit_log ORDER BY created_at DESC LIMIT ?
+SELECT id, actor_type, actor_id, token_id, "action", created_at FROM audit_log ORDER BY created_at DESC, id DESC LIMIT ?
 `
 
 func (q *Queries) ListAudit(ctx context.Context, limit int64) ([]AuditLog, error) {

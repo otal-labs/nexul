@@ -1,6 +1,9 @@
 package integrations
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // InstallStore persists installs; Revoke sets revoked_at, so every token of the install stops authenticating.
 type InstallStore interface {
@@ -47,4 +50,6 @@ type SchemaStore interface {
 type AuditStore interface {
 	Append(ctx context.Context, entry AuditEntry) error
 	List(ctx context.Context, limit int) ([]AuditEntry, error)
+	// DeleteBefore deletes at most limit rows created before before, returning how many it deleted.
+	DeleteBefore(ctx context.Context, before time.Time, limit int) (int64, error)
 }
