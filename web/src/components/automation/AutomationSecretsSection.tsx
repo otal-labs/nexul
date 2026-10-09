@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PlusIcon } from "lucide-react";
+import { AnimatePresence } from "motion/react";
 
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -38,10 +39,12 @@ export const AutomationSecretsSection = () => {
         {error && <ErrorDisplay error={error} />}
         {data && data.length === 0 && !editing && <EmptyRow>No secrets yet. Add one for automations to read.</EmptyRow>}
         {data && data.length > 0 && (
-          <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
-            {data.map((secret) => (
-              <AutomationSecretRow key={secret.name} secret={secret} onReplace={() => setEditing({ name: secret.name })} />
-            ))}
+          <EnterList className="relative divide-y divide-border overflow-hidden rounded-md border">
+            <AnimatePresence initial={false} mode="popLayout">
+              {data.map((secret, index) => (
+                <AutomationSecretRow key={secret.name} index={index} secret={secret} onReplace={() => setEditing({ name: secret.name })} />
+              ))}
+            </AnimatePresence>
           </EnterList>
         )}
       </div>

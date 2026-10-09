@@ -1,6 +1,10 @@
 // The JavaScript half of the Motion baseline in practices/design-language.md; the CSS half is in index.css.
 export const EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
+export const EASE_OUT_CURVE = [0.16, 1, 0.3, 1] as const;
 export const EASE_STANDARD = "cubic-bezier(0.25, 0.1, 0.25, 1)";
+export const SPRING = "linear(0, 0.079, 0.236, 0.403, 0.551, 0.671, 0.764, 0.833, 0.883, 0.919, 0.944, 0.962, 0.974, 0.983, 0.988, 0.992, 0.995, 0.997, 1)";
+// A row that moves within its list (a reorder, or closing the gap a removed row left): the --ease-spring character, 250ms, no bounce.
+export const ROW_GLIDE = { type: "spring", duration: 0.25, bounce: 0 } as const;
 export const SPRING_POP = "linear(0, 0.1, 0.303, 0.515, 0.693, 0.826, 0.915, 0.969, 0.998, 1.011, 1.015, 1.014, 1.011, 1.008, 1.005, 1.003, 1.002, 1.001, 1)";
 
 const STAGGER_STEP_MS = 25;

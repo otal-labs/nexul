@@ -1,4 +1,5 @@
-import { Fragment, useState } from "react";
+import { useState } from "react";
+import { AnimatePresence } from "motion/react";
 import { PlusIcon } from "lucide-react";
 
 import { EnterList } from "@/components/EnterList";
@@ -53,13 +54,15 @@ export const RoleSettingsSection = () => {
         <div className="space-y-4">
           {roles.length === 0 && <EmptyRow>No roles yet</EmptyRow>}
           {roles.length > 0 && (
-            <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
-              {roles.map((role) => (
-                <Fragment key={role.id}>
-                  {role.is_owner_role && <OwnerRoleRow role={role} holders={holdersOf(role.id)} />}
-                  {!role.is_owner_role && <RoleRow role={role} workspaceId={workspaceId} catalog={catalog} holders={holdersOf(role.id)} />}
-                </Fragment>
+            <EnterList className="relative divide-y divide-border overflow-hidden rounded-md border">
+              {roles.filter((role) => role.is_owner_role).map((role) => (
+                <OwnerRoleRow key={role.id} role={role} holders={holdersOf(role.id)} />
               ))}
+              <AnimatePresence initial={false} mode="popLayout">
+                {roles.filter((role) => !role.is_owner_role).map((role, index) => (
+                  <RoleRow key={role.id} index={index} role={role} workspaceId={workspaceId} catalog={catalog} holders={holdersOf(role.id)} />
+                ))}
+              </AnimatePresence>
             </EnterList>
           )}
 

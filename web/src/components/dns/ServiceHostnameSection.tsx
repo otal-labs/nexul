@@ -1,3 +1,5 @@
+import { AnimatePresence } from "motion/react";
+
 import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -54,15 +56,18 @@ export const ServiceHostnameSection = ({ containers }: ServiceHostnameSectionPro
       {ready && containers.length === 0 && <EmptyRow flush>No containers in this stack yet, so nothing to expose.</EmptyRow>}
       {canExpose && stackExposures.length === 0 && <EmptyRow flush>Not exposed yet.</EmptyRow>}
       {ready && stackExposures.length > 0 && (
-        <EnterList className="divide-y divide-border rounded-md border border-border">
-          {stackExposures.map((exposure) => (
-            <ExposureRow
-              key={exposure.id}
-              exposure={exposure}
-              gateway={gatewayById.get(exposure.gateway_id)}
-              container={exposure.service_id ? containerById.get(exposure.service_id) : undefined}
-            />
-          ))}
+        <EnterList className="relative divide-y divide-border rounded-md border border-border">
+          <AnimatePresence initial={false} mode="popLayout">
+            {stackExposures.map((exposure, index) => (
+              <ExposureRow
+                key={exposure.id}
+                index={index}
+                exposure={exposure}
+                gateway={gatewayById.get(exposure.gateway_id)}
+                container={exposure.service_id ? containerById.get(exposure.service_id) : undefined}
+              />
+            ))}
+          </AnimatePresence>
         </EnterList>
       )}
     </SettingsCard>

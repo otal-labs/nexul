@@ -1,12 +1,14 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { GripVerticalIcon } from "lucide-react";
 import { useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 
 import { CONFIGURABLE_COLOR_NAMES, HUE_DOT_CLASS, type ConfigurableColorName } from "@/components/board/ticketTypeColor";
 import { CategoryEditForm } from "@/components/project/CategoryEditForm";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { useDeleteCategory } from "@/hooks/CategoryHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
+import { lastInputWasKeyboard, ROW_GLIDE, SPRING } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/models/Category";
 
@@ -15,6 +17,9 @@ const isConfigurableColor = (color: string): color is ConfigurableColorName =>
 
 interface CategoryRowProps {
   category: Category;
+  index: number;
+  // The row a menu move was made on rides over the one it trades places with.
+  lifted: boolean;
   count: number;
   first: boolean;
   last: boolean;
@@ -23,13 +28,17 @@ interface CategoryRowProps {
 }
 
 // Edit, reorder and delete sit in one menu so the row reads as grip, dot, name, count and one affordance.
-export const CategoryRow = ({ category, count, first, last, onMoveUp, onMoveDown }: CategoryRowProps) => {
+export const CategoryRow = ({ category, index, lifted, count, first, last, onMoveUp, onMoveDown }: CategoryRowProps) => {
+  const reduced = useReducedMotion() ?? false;
+  // A move made with the keyboard lands at once; a pointer's glides, so the eye follows the row to its new place.
+  const glide = !reduced && !lastInputWasKeyboard();
   const deleteCategory = useDeleteCategory();
   const { open: confirm } = useConfirmationDialog();
   const [editing, setEditing] = useState(false);
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: category.id,
     disabled: editing,
+    transition: { duration: 200, easing: SPRING },
   });
 
   const remove = async () => {
@@ -52,7 +61,15 @@ export const CategoryRow = ({ category, count, first, last, onMoveUp, onMoveDown
     >
       {editing && <CategoryEditForm category={category} onDone={() => setEditing(false)} />}
       {!editing && (
-        <div className="flex items-center gap-2 px-3 py-2 text-sm transition-colors duration-150 ease-standard hover:bg-accent/40">
+        <motion.div
+          layout={glide ? "position" : false}
+          layoutDependency={index}
+          transition={{ layout: ROW_GLIDE }}
+          className={cn(
+            "relative flex items-center gap-2 bg-card px-3 py-2 text-sm transition-colors duration-150 ease-standard hover:bg-accent/40",
+            lifted && "z-10",
+          )}
+        >
           <button
             ref={setActivatorNodeRef}
             type="button"
@@ -83,7 +100,7 @@ export const CategoryRow = ({ category, count, first, last, onMoveUp, onMoveDown
               { label: "Delete", destructive: true, onSelect: () => void remove() },
             ]}
           />
-        </div>
+        </motion.div>
       )}
     </li>
   );

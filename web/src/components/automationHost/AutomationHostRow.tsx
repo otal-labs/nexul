@@ -1,3 +1,6 @@
+import type { Ref } from "react";
+
+import { MotionRow } from "@/components/MotionRow";
 import { RemoveAutomationHostButton } from "@/components/automationHost/RemoveAutomationHostButton";
 import { RunnerStatusDot } from "@/components/runner/RunnerStatusDot";
 import type { AutomationHost } from "@/models/AutomationHost";
@@ -5,12 +8,15 @@ import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
 interface AutomationHostRowProps {
+  ref?: Ref<HTMLLIElement>;
+  // Its place in the list, so the rows after a removed one glide up.
+  index: number;
   host: AutomationHost;
 }
 
 // The runner row's columns: the connection dot, the name over its facts, and the state in words.
-export const AutomationHostRow = ({ host }: AutomationHostRowProps) => (
-  <li className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto_2rem] items-center gap-x-3 px-4 py-2.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
+export const AutomationHostRow = ({ ref, index, host }: AutomationHostRowProps) => (
+  <MotionRow ref={ref} index={index} className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto_2rem] items-center gap-x-3 px-4 py-2.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
     <RunnerStatusDot connected={host.connected} />
     <div className="min-w-0">
       <span className={cn("block truncate font-mono text-sm", !host.connected && "text-muted-foreground")}>{host.name}</span>
@@ -22,5 +28,5 @@ export const AutomationHostRow = ({ host }: AutomationHostRowProps) => (
       {host.connected ? "online" : "offline"}
     </span>
     <RemoveAutomationHostButton host={host} />
-  </li>
+  </MotionRow>
 );

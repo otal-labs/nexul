@@ -1,3 +1,6 @@
+import type { Ref } from "react";
+
+import { MotionRow } from "@/components/MotionRow";
 import { PermissionsForm, PermissionsFormSchema, type PermissionsFormData } from "@/components/access/PermissionsForm";
 import { PlayTemplateLine } from "@/components/play/PlayTemplateLine";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
@@ -9,6 +12,9 @@ import { useFetchGrants } from "@/hooks/PermissionHooks";
 import { PLAY_STAGE_LABELS, PLAY_TYPE_LABELS, type Play } from "@/models/Play";
 
 interface PlayRowProps {
+  ref?: Ref<HTMLLIElement>;
+  // Its place in the list, so the rows after a removed one glide up.
+  index: number;
   play: Play;
   workspaceId: string;
   canWrite: boolean;
@@ -18,7 +24,7 @@ interface PlayRowProps {
 
 // canWrite gates "Exclude users" too: managing a play's plays:run exclusions takes the same plays:write
 // bit as editing the play itself (ticket 21), so no separate permission wire is needed.
-export const PlayRow = ({ play, workspaceId, canWrite, canDelete, onEdit }: PlayRowProps) => {
+export const PlayRow = ({ ref, index, play, workspaceId, canWrite, canDelete, onEdit }: PlayRowProps) => {
   const deletePlay = useDeletePlay(workspaceId);
   const { open: openExclusions } = useFormDialog();
   const { open: confirm } = useConfirmationDialog();
@@ -54,7 +60,7 @@ export const PlayRow = ({ play, workspaceId, canWrite, canDelete, onEdit }: Play
   ];
 
   return (
-    <li className="flex items-start gap-3 bg-card px-4 py-3">
+    <MotionRow ref={ref} index={index} className="flex items-start gap-3 bg-card px-4 py-3">
       <div className="min-w-0 flex-1 space-y-1">
         <p className="line-clamp-2 text-sm font-medium break-words" title={play.label}>
           {play.label}
@@ -87,6 +93,6 @@ export const PlayRow = ({ play, workspaceId, canWrite, canDelete, onEdit }: Play
         {play.builtin_key && <PlayTemplateLine play={play} canWrite={canWrite} />}
       </div>
       {actions.length > 0 && <RowActionsMenu subject={play.label} actions={actions} />}
-    </li>
+    </MotionRow>
   );
 };

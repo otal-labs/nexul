@@ -49,6 +49,7 @@ const renderRow = (props: Partial<{ canWrite: boolean; canDelete: boolean }> = {
       <ContextAwareConfirmation.ConfirmationRoot />
       <ul>
         <PlayRow
+          index={0}
           play={play}
           workspaceId="ws-1"
           canWrite={props.canWrite ?? true}

@@ -9,6 +9,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
 import { EnterList } from "@/components/EnterList";
@@ -43,9 +44,12 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  const [movedId, setMovedId] = useState<string | undefined>(undefined);
+
   const reorder = (from: number, to: number) => {
     const ids = (categories ?? []).map((c) => c.id);
     if (from === to || to < 0 || to >= ids.length) return;
+    setMovedId(ids[from]);
     reorderCategories.mutate({ project_id: projectId, ids: arrayMove(ids, from, to) });
   };
 
@@ -90,6 +94,8 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
                 <CategoryRow
                   key={category.id}
                   category={category}
+                  index={index}
+                  lifted={category.id === movedId}
                   count={countFor(category.id)}
                   first={index === 0}
                   last={index === categories.length - 1}

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, type Ref } from "react";
 import { ChevronRightIcon } from "lucide-react";
 
+import { MotionRow } from "@/components/MotionRow";
 import { CloneRoleDialog } from "@/components/settings/CloneRoleDialog";
 import { RoleAccessDetail } from "@/components/settings/RoleAccessDetail";
 import { RoleAccessSummary } from "@/components/settings/RoleAccessSummary";
@@ -16,13 +17,15 @@ import { copyName, type Role } from "@/models/Role";
 import type { TeamPerson } from "@/models/Team";
 
 interface RoleRowProps {
+  ref?: Ref<HTMLLIElement>;
+  index: number;
   role: Role;
   workspaceId: string;
   catalog: PermissionInfo[];
   holders: TeamPerson[] | undefined;
 }
 
-export const RoleRow = ({ role, workspaceId, catalog, holders }: RoleRowProps) => {
+export const RoleRow = ({ ref, index, role, workspaceId, catalog, holders }: RoleRowProps) => {
   const { data: roles = [] } = useFetchWorkspaceRoles(workspaceId);
   const createRole = useCreateWorkspaceRole(workspaceId);
   const deleteRole = useDeleteWorkspaceRole(workspaceId);
@@ -63,7 +66,7 @@ export const RoleRow = ({ role, workspaceId, catalog, holders }: RoleRowProps) =
   ];
 
   return (
-    <li className="bg-card px-4 py-3.5">
+    <MotionRow ref={ref} index={index} className="bg-card px-4 py-3.5">
       {editing && (
         <div className="settle-in">
           <RoleEditForm role={role} workspaceId={workspaceId} catalog={catalog} onDone={() => setEditing(false)} />
@@ -103,6 +106,6 @@ export const RoleRow = ({ role, workspaceId, catalog, holders }: RoleRowProps) =
         </div>
       )}
       {canClone && <CloneRoleDialog role={role} open={cloning} onClose={() => setCloning(false)} />}
-    </li>
+    </MotionRow>
   );
 };
