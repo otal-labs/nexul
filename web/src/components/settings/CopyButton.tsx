@@ -30,24 +30,26 @@ export const CopyButton = ({ value, label, iconOnly = false, variant = "outline"
   };
 
   return (
-    <Button
-      type="button"
-      variant={variant}
-      size={iconOnly ? "icon" : "sm"}
-      loading={loading}
-      aria-label={iconOnly ? label : undefined}
-      title={iconOnly ? label : undefined}
-      className={cn(iconOnly && "size-7 text-muted-foreground hover:text-foreground", className)}
-      onClick={() => void copy()}
-    >
-      <span className="swap" data-icon="">
-        <Copy className="size-3.5" aria-hidden {...(copied ? { "data-off": "" } : {})} />
-        <Check className="size-3.5 text-success" aria-hidden {...(copied ? {} : { "data-off": "" })} />
-      </span>
-      {!iconOnly && label}
+    <>
+      <Button
+        type="button"
+        variant={variant}
+        size={iconOnly ? "icon" : "sm"}
+        loading={loading}
+        aria-label={iconOnly ? label : undefined}
+        title={iconOnly ? label : undefined}
+        className={cn(iconOnly && "size-7 text-muted-foreground hover:text-foreground", className)}
+        onClick={() => void copy()}
+      >
+        <span className="swap" data-icon="">
+          <Copy className="size-3.5" aria-hidden {...(copied ? { "data-off": "" } : {})} />
+          <Check className="size-3.5 text-success" aria-hidden {...(copied ? {} : { "data-off": "" })} />
+        </span>
+        {!iconOnly && label}
+      </Button>
       <span role="status" className="sr-only">
         {copied ? "Copied" : ""}
       </span>
-    </Button>
+    </>
   );
 };
