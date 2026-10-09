@@ -3,16 +3,12 @@ package docs
 import (
 	"context"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/docs/richtext"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
-
-// ponytail: search ranks at most 1,000 hits and pages them in memory; add FTS offsets if a query ever matches more.
-const docSearchScan = 1000
 
 // docResult is a doc as the model reads it: the body as markdown, never the stored rich-text tree.
 type docResult struct {
@@ -112,49 +108,13 @@ func docListTool(s *Service) mcptool.Tool {
 			"Archived docs are hidden unless include_archived is set.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in docListIn) (any, error) {
-			items, err := listDocs(ctx, s, in.ProjectID)
+			f := DocFilter{ProjectID: in.ProjectID, FolderID: in.FolderID, Query: in.Query, IncludeArchived: in.IncludeArchived}
+			items, total, err := s.PageDocs(ctx, f, in.Window())
 			if err != nil {
 				return nil, err
 			}
-			if in.Query != "" {
-				if items, err = rankBySearch(ctx, s, in.Query, items); err != nil {
-					return nil, err
-				}
-			}
-			if !in.IncludeArchived {
-				items = slices.DeleteFunc(items, func(d *DocListItem) bool { return d.Archived })
-			}
-			if in.FolderID != "" {
-				items = slices.DeleteFunc(items, func(d *DocListItem) bool { return d.FolderID != in.FolderID })
-			}
-			return mcptool.Paginate(items, in.PageArgs), nil
+			return mcptool.PageOf(items, total, in.Window()), nil
 		})
-}
-
-func listDocs(ctx context.Context, s *Service, projectID string) ([]*DocListItem, error) {
-	if projectID != "" {
-		return s.ListByProject(ctx, projectID)
-	}
-	return s.List(ctx)
-}
-
-// rankBySearch keeps the listed docs the search matched, in the search's rank order.
-func rankBySearch(ctx context.Context, s *Service, query string, items []*DocListItem) ([]*DocListItem, error) {
-	hits, err := s.Search(ctx, query, docSearchScan)
-	if err != nil {
-		return nil, err
-	}
-	byID := make(map[string]*DocListItem, len(items))
-	for _, d := range items {
-		byID[d.ID] = d
-	}
-	ranked := make([]*DocListItem, 0, len(hits))
-	for _, h := range hits {
-		if d, ok := byID[h.ID]; ok {
-			ranked = append(ranked, d)
-		}
-	}
-	return ranked, nil
 }
 
 func docGetTool(s *Service) mcptool.Tool {

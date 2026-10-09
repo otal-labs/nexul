@@ -341,6 +341,56 @@ func (q *Queries) ListDocs(ctx context.Context) ([]Doc, error) {
 	return items, nil
 }
 
+const listDocsByIDs = `-- name: ListDocsByIDs :many
+SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked, folder_id FROM docs WHERE id IN (/*SLICE:ids*/?)
+`
+
+func (q *Queries) ListDocsByIDs(ctx context.Context, ids []string) ([]Doc, error) {
+	query := listDocsByIDs
+	var queryParams []interface{}
+	if len(ids) > 0 {
+		for _, v := range ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Doc
+	for rows.Next() {
+		var i Doc
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Body,
+			&i.Version,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Archived,
+			&i.BodyMd,
+			&i.ProjectID,
+			&i.CreatedBy,
+			&i.Locked,
+			&i.FolderID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDocsByProject = `-- name: ListDocsByProject :many
 SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked, folder_id FROM docs WHERE project_id = ? ORDER BY created_at
 `

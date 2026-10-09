@@ -2,6 +2,9 @@ package storage
 
 import (
 	"context"
+	"fmt"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +13,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/docs"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -292,4 +296,75 @@ func TestDocsRepo_CreateNamedVersion_RejectsDuplicateKey(t *testing.T) {
 	// silently overwritten (the use-case always bumps to a fresh key).
 	v := &docs.DocVersion{DocID: "doc-1", Version: 1, Title: "x", Body: "y", Name: "dup", CreatedAt: time.Now().UTC()}
 	require.Error(t, s.Docs.CreateNamedVersion(ctx, v))
+}
+
+// TestDocsRepo_PageAndSearchIDs_FilterInSQL: browsing pages oldest first and a search ranks as Search does, each
+// keeping only the docs its project, folder, archived state, and scope allow.
+func TestDocsRepo_PageAndSearchIDs_FilterInSQL(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	s := newTestStore(t)
+	seedProject(t, s, "p-hidden", "workspace-default", "HID")
+	require.NoError(t, s.Docs.CreateFolder(ctx, &docs.Folder{ID: "f-ops", ProjectID: "project-general", Name: "Ops"}))
+	var all []*docs.Doc
+	for i := range 40 {
+		d := newTestDoc(fmt.Sprintf("doc-%02d", i))
+		d.Title = strings.Repeat("rollback ", 1+i%3) + "plan"
+		d.CreatedAt = d.CreatedAt.Add(time.Duration(i/4) * time.Second)
+		d.FolderID = "folder-general-main"
+		if i%5 == 0 {
+			d.FolderID = "f-ops"
+		}
+		if i%4 == 0 {
+			d.ProjectID, d.FolderID = "p-hidden", ""
+		}
+		require.NoError(t, s.Docs.Create(ctx, d))
+		if i%6 == 0 {
+			require.NoError(t, s.Docs.SetArchived(ctx, d.ID, true))
+			d.Archived = true
+		}
+		all = append(all, d)
+	}
+	keeps := func(d *docs.Doc, f docs.DocFilter, scope docs.DocScope) bool {
+		return (scope.All || slices.Contains(scope.ProjectIDs, d.ProjectID)) && (f.ProjectID == "" || d.ProjectID == f.ProjectID) &&
+			(f.FolderID == "" || d.FolderID == f.FolderID) && (f.IncludeArchived || !d.Archived)
+	}
+	hits, err := s.Docs.Search(ctx, "rollback", 1000)
+	require.NoError(t, err)
+	byID := map[string]*docs.Doc{}
+	for _, d := range all {
+		byID[d.ID] = d
+	}
+	filters := []docs.DocFilter{{}, {IncludeArchived: true}, {ProjectID: "project-general"}, {FolderID: "f-ops"}, {ProjectID: "p-hidden", IncludeArchived: true}}
+	for _, scope := range []docs.DocScope{{All: true}, {ProjectIDs: []string{"project-general"}}, {ProjectIDs: []string{}}} {
+		for _, f := range filters {
+			var want []string
+			for _, d := range all {
+				if keeps(d, f, scope) {
+					want = append(want, d.ID)
+				}
+			}
+			got := pageAll(t, 6, func(offset, limit int) ([]string, int) {
+				ds, total, err := s.Docs.Page(ctx, f, scope, paging.Window{Offset: offset, Limit: limit})
+				require.NoError(t, err)
+				ids := make([]string, len(ds))
+				for i, d := range ds {
+					ids[i] = d.ID
+				}
+				return ids, total
+			})
+			assert.Equal(t, want, got, "browse %+v %+v", f, scope)
+
+			f.Query = "rollback"
+			ranked := []string{}
+			for _, h := range hits {
+				if keeps(byID[h.ID], f, scope) {
+					ranked = append(ranked, h.ID)
+				}
+			}
+			searched, err := s.Docs.SearchIDs(ctx, f, scope)
+			require.NoError(t, err)
+			assert.Equal(t, ranked, searched, "search %+v %+v", f, scope)
+		}
+	}
 }

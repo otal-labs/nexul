@@ -7,6 +7,9 @@ SELECT * FROM docs WHERE id = ?;
 -- name: ListDocs :many
 SELECT * FROM docs ORDER BY created_at;
 
+-- name: ListDocsByIDs :many
+SELECT * FROM docs WHERE id IN (sqlc.slice('ids'));
+
 -- name: ListDocsByProject :many
 SELECT * FROM docs WHERE project_id = ? ORDER BY created_at;
 

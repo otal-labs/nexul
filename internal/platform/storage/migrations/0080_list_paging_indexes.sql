@@ -28,3 +28,8 @@ CREATE INDEX IF NOT EXISTS idx_tickets_doc_created ON tickets(doc_id, created_at
 DROP INDEX IF EXISTS idx_tickets_created;
 DROP INDEX IF EXISTS idx_tickets_project_created;
 DROP INDEX IF EXISTS idx_tickets_doc_id;
+
+-- doc_list, oldest first across projects and within one; the second replaces the project-only index.
+CREATE INDEX IF NOT EXISTS idx_docs_created ON docs(created_at, id);
+CREATE INDEX IF NOT EXISTS idx_docs_project_created ON docs(project_id, created_at, id);
+DROP INDEX IF EXISTS idx_docs_project;

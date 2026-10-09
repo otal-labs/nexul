@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -26,6 +28,8 @@ type AccessChecker interface {
 	DeleteByDoc(ctx context.Context, docID string) error
 	// RequireProject checks the caller holds action in projectID's workspace; permissions.Member asks for membership.
 	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
+	// CallerProjects lists the projects RequireProject lets the caller act in with action; all is true for any project.
+	CallerProjects(ctx context.Context, action permissions.Action) (projectIDs []string, all bool, err error)
 }
 
 // AttachmentsCopier duplicates a doc's attachments under a clone's id; docs never imports attachments (ADR 0017).
@@ -231,6 +235,62 @@ func (s *Service) ListByProject(ctx context.Context, projectID string) ([]*DocLi
 	return s.toListItems(ctx, ds)
 }
 
+// PageDocs returns one window of the docs f keeps in the projects the caller may open, and how many there are: oldest
+// first with a doc they cannot open marked can_open false, or for a query the docs they may read by relevance. The
+// projects are filtered in SQL; a search's matches are each checked for docs:read in one batch before paging, because a
+// doc's own overwrite is no project set, so the total counts only what the pages hold (ADR 0140).
+func (s *Service) PageDocs(ctx context.Context, f DocFilter, w paging.Window) ([]*DocListItem, int, error) {
+	w = w.Clamped()
+	if f.Query != "" && strings.TrimSpace(f.Query) == "" {
+		return nil, 0, fmt.Errorf("%w: query is required", apperrs.ErrInvalid)
+	}
+	f.Query = strings.TrimSpace(f.Query)
+	scope, err := s.memberScope(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	if f.Query == "" {
+		ds, total, err := s.repo.Page(ctx, f, scope, w)
+		if err != nil {
+			return nil, 0, fmt.Errorf("list docs: %w", err)
+		}
+		return s.listItems(ctx, ds), total, nil
+	}
+	ids, err := s.repo.SearchIDs(ctx, f, scope)
+	if err != nil {
+		return nil, 0, fmt.Errorf("search docs: %w", err)
+	}
+	readable := s.readableIDs(ctx, ids)
+	page := readable[min(w.Offset, len(readable)):min(w.Offset+w.Limit, len(readable))]
+	ds, err := s.repo.ListByIDs(ctx, page)
+	if err != nil {
+		return nil, 0, fmt.Errorf("search docs: %w", err)
+	}
+	return s.listItems(ctx, ds), len(readable), nil
+}
+
+// memberScope is the projects whose docs the caller may see listed.
+func (s *Service) memberScope(ctx context.Context) (DocScope, error) {
+	if s.access == nil {
+		return DocScope{All: permissions.Ungated(ctx) == nil}, nil
+	}
+	projectIDs, all, err := s.access.CallerProjects(ctx, permissions.Member)
+	if err != nil {
+		return DocScope{}, fmt.Errorf("list docs: %w", err)
+	}
+	return DocScope{All: all, ProjectIDs: projectIDs}, nil
+}
+
+// readableIDs keeps the ids of docs the caller may read, in order, from one batch of checks.
+func (s *Service) readableIDs(ctx context.Context, ids []string) []string {
+	actor, ok := identity.ActorFromCtx(ctx)
+	if s.access == nil || !ok || actor.ID == "" || len(ids) == 0 {
+		return []string{}
+	}
+	can := s.access.CanDocs(ctx, actor.ID, "", ids, permissions.DocsRead)
+	return slices.DeleteFunc(ids, func(id string) bool { return !can[id] })
+}
+
 // toListItems lists the docs of the workspaces the caller belongs to; inside one, a doc they can't open still
 // shows its title with can_open=false.
 func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, error) {
@@ -240,6 +300,11 @@ func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, e
 	if err != nil {
 		return nil, err
 	}
+	return s.listItems(ctx, ds), nil
+}
+
+// listItems shows each doc's title, and its author and snippet only where the caller may open it.
+func (s *Service) listItems(ctx context.Context, ds []*Doc) []*DocListItem {
 	opens := s.canEach(ctx, ds, permissions.DocsRead)
 	out := make([]*DocListItem, 0, len(ds))
 	for _, d := range ds {
@@ -261,7 +326,7 @@ func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, e
 		}
 		out = append(out, item)
 	}
-	return out, nil
+	return out
 }
 
 func (s *Service) requireProject(ctx context.Context, projectID string, action permissions.Action) error {

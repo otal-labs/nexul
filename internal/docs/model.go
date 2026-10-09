@@ -29,6 +29,21 @@ type DocVersion struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// DocFilter narrows a doc list; empty fields narrow nothing, and the filters combine.
+type DocFilter struct {
+	ProjectID string
+	FolderID  string
+	// Query full-text searches titles and bodies and orders the list by relevance; archived docs never match it.
+	Query           string
+	IncludeArchived bool
+}
+
+// DocScope is what access lets a doc list show: everything with All, otherwise the docs of ProjectIDs.
+type DocScope struct {
+	All        bool
+	ProjectIDs []string
+}
+
 // DocListItem is the disclosure-aware list view: unopenable docs show title/status with can_open=false, no body.
 type DocListItem struct {
 	ID string `json:"id"`

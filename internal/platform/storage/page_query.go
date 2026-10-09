@@ -65,6 +65,27 @@ func (q *pageQuery) page(ctx context.Context, db *sql.DB, w paging.Window) (ids 
 	return ids, total, rows.Err()
 }
 
+// ids reads every matching id in order, for a list whose rows a per-row check filters before it can be paged.
+func (q *pageQuery) ids(ctx context.Context, db *sql.DB) (ids []string, err error) {
+	stmt := "SELECT " + q.id + " FROM " + q.from + q.clause() + " ORDER BY " + q.order
+	rows, err := db.QueryContext(ctx, stmt, append(slices.Clip(q.fromArgs), q.args...)...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
+	ids = []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 // inOrder returns items in the order of ids, the order a page query read them in; a fetch by id comes back unordered.
 func inOrder[T any](ids []string, items []T, id func(T) string) []T {
 	byID := make(map[string]T, len(items))

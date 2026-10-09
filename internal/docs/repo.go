@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 )
 
 type SearchResult struct {
@@ -65,6 +66,13 @@ type Repo interface {
 	SetLocked(ctx context.Context, id string, locked bool, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
 	Search(ctx context.Context, query string, limit int) ([]SearchResult, error)
+	// Page reads one window of the docs f and scope keep, oldest first, and how many they keep in all; f.Query is not
+	// read here.
+	Page(ctx context.Context, f DocFilter, scope DocScope, w paging.Window) ([]*Doc, int, error)
+	// SearchIDs ranks every doc f.Query matches that f and scope keep, best first; an archived doc never matches.
+	SearchIDs(ctx context.Context, f DocFilter, scope DocScope) ([]string, error)
+	// ListByIDs reads the docs ids names, in the order of ids.
+	ListByIDs(ctx context.Context, ids []string) ([]*Doc, error)
 	ListVersions(ctx context.Context, docID string) ([]*DocVersion, error)
 	GetVersion(ctx context.Context, docID string, version int) (*DocVersion, error)
 	// CommitBody writes a converged collaboration state to the canonical doc without appending a version row.
