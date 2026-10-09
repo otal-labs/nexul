@@ -1,29 +1,4 @@
-// The permission each gated area needs; the sidebar and the route guard read it, native/src/models/Access.tsx mirrors it.
-export const AREA_PERMISSION = {
-  runners: "runners:read",
-  topology: "topology:read",
-  automations: "automations:read",
-  projects: "projects:read",
-  tickets: "tickets:read",
-  memories: "memories:read",
-  docs: "docs:read",
-  stacks: "stacks:read",
-  stackLogs: "stacks:logs",
-  deploys: "deploys:read",
-  dns: "dns:read",
-  newConversation: "chat:write",
-  editChannels: "channels:write",
-  deleteChannels: "channels:delete",
-  bots: "botwebhook:read",
-  editBots: "botwebhook:write",
-  deleteBots: "botwebhook:delete",
-  newProject: "projects:write",
-  newDoc: "docs:write",
-  editNotes: "tickets:write",
-  editTickets: "tickets:write",
-} as const;
-
-export type Area = keyof typeof AREA_PERMISSION;
+import type { Area } from "@nexul/client-core/permissions";
 
 // The Settings page's instance sections and the permission each opens with, held in any workspace (/me's
 // instance_permissions). Team is not here: it opens on accounts:read or members:write.

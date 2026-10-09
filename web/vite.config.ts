@@ -10,6 +10,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@nexul/client-core": path.resolve(__dirname, "../client-core"),
     },
   },
   // The gateway serves the SPA same-origin in production (embedded webui), so
@@ -25,6 +26,8 @@ export default defineConfig({
     host: true,
     // The debug stack is reached through a Cloudflare tunnel or proxy under a real hostname; Vite 403s unknown hosts by default.
     allowedHosts: true,
+    // The modules shared with the phone app live beside web/, outside the project root Vite serves by default.
+    fs: { allow: [".", "../client-core"] },
     proxy: {
       "/api": `http://${DEV_PROXY_HOST}:8080`,
       "/auth": `http://${DEV_PROXY_HOST}:8080`,

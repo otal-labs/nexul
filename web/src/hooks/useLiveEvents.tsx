@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router";
 
+import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
+
 import { LiveEventsClient, type LiveEventsClientOptions, type ServerFrame } from "@/api/ws";
 import { authFollower, getMeKey } from "@/hooks/AuthHooks";
 import { botwebhookFollower } from "@/hooks/BotwebhookHooks";
@@ -37,7 +39,6 @@ import { trailFollower } from "@/hooks/TrailHooks";
 import { notifyIfServerUpdated } from "@/hooks/VersionHooks";
 import { voiceFollower } from "@/hooks/VoiceHooks";
 import { getMyRoleKey, workspaceFollower } from "@/hooks/WorkspaceHooks";
-import type { MyWorkspaceInfo } from "@/models/Permission";
 import type { MeResponse } from "@/models/User";
 import { followEach, type Live, type LiveFollower } from "@/lib/live";
 

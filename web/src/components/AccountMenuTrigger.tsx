@@ -1,8 +1,9 @@
 import { ChevronsUpDownIcon } from "lucide-react";
 
+import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
+
 import { PopoverTrigger } from "@/components/ui/popover";
 import { RailTooltip } from "@/components/sidebar/RailTooltip";
-import type { MyWorkspaceInfo } from "@/models/Permission";
 import { avatarGradient } from "@/lib/avatarGradient";
 import { effectiveAvatar, userLabel } from "@/models/User";
 import type { User } from "@/models/User";

@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "test:e2e": "bash e2e/run-e2e.sh",
     "typecheck": "node_modules/@typescript/native/bin/tsc --noEmit",
-    "lint": "eslint src/"
+    "lint": "eslint src/ ../client-core"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

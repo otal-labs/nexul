@@ -39,6 +39,7 @@ jobs:
               - '.goreleaser.yaml'
             web:
               - 'web/**'
+              - 'client-core/**'
             desktop:
               - 'desktop/**'
             website:
@@ -50,6 +51,7 @@ jobs:
               - 'automations/**'
             native:
               - 'native/**'
+              - 'client-core/**'
               - 'sdk/src/events.generated.ts'
 
   go-test:

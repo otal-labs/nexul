@@ -6,11 +6,12 @@ import Rocket from "lucide-react-native/icons/rocket";
 import SquareKanban from "lucide-react-native/icons/square-kanban";
 import { useCSSVariable } from "uniwind";
 
+import type { Area } from "@nexul/client-core/permissions";
+
 import { OFFLINE_BANNER_HEIGHT, useIsOffline } from "@/components/OfflineBanner";
 import { TabBar } from "@/components/TabBar";
 import { unreadBadge, useFetchUnreadCount } from "@/hooks/NotificationHooks";
 import { useAreaAccess, useEnsureWorkspaceSelected } from "@/hooks/WorkspaceHooks";
-import type { Area } from "@/models/Access";
 
 export default function TabsLayout() {
   const [brand, mutedForeground, panel, border, foreground, background] = useCSSVariable([
