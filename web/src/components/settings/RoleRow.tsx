@@ -1,119 +1,115 @@
-import { useState, type FormEvent, type KeyboardEvent } from "react";
-import { CopyIcon, PencilIcon, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ChevronRightIcon } from "lucide-react";
 
-import { RoleLevelSections } from "@/components/access/RoleLevelSections";
 import { CloneRoleDialog } from "@/components/settings/CloneRoleDialog";
-import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
-import { NoFillBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useDeleteWorkspaceRole, useUpdateWorkspaceRole } from "@/hooks/RoleHooks";
+import { RoleAccessDetail } from "@/components/settings/RoleAccessDetail";
+import { RoleAccessSummary } from "@/components/settings/RoleAccessSummary";
+import { RoleEditForm } from "@/components/settings/RoleEditForm";
+import { RoleHolders } from "@/components/settings/RoleHolders";
+import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
+import { useCreateWorkspaceRole, useDeleteWorkspaceRole, useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
+import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
+import { leavingRowClass } from "@/hooks/useRowGlide";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { cn } from "@/lib/utils";
 import type { PermissionInfo } from "@/models/Permission";
-import { domainsOf, summarize } from "@/models/PermissionLevel";
-import type { Role } from "@/models/Role";
+import { copyName, type Role } from "@/models/Role";
+import type { TeamPerson } from "@/models/Team";
 
 interface RoleRowProps {
+  // Called as the row starts to leave, so the list can glide the rows under it up once it is gone.
+  onLeave?: () => void;
   role: Role;
   workspaceId: string;
   catalog: PermissionInfo[];
+  holders: TeamPerson[] | undefined;
 }
 
-export const RoleRow = ({ role, workspaceId, catalog }: RoleRowProps) => {
-  const updateRole = useUpdateWorkspaceRole(workspaceId);
+export const RoleRow = ({ onLeave, role, workspaceId, catalog, holders }: RoleRowProps) => {
+  const { data: roles = [] } = useFetchWorkspaceRoles(workspaceId);
+  const createRole = useCreateWorkspaceRole(workspaceId);
   const deleteRole = useDeleteWorkspaceRole(workspaceId);
-  const [editing, setEditing] = useState(false);
-  const [nameDraft, setNameDraft] = useState(role.name);
-  const [actionsDraft, setActionsDraft] = useState<string[]>(role.permissions);
-  const [cloning, setCloning] = useState(false);
+  const { open: confirm } = useConfirmationDialog();
   const canClone = useHasPermission("roles:clone");
+  const [editing, setEditing] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [cloning, setCloning] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
-  const summary = summarize(domainsOf(catalog), role.permissions);
+  const duplicate = () =>
+    createRole.mutate({ name: copyName(role.name, roles.map((r) => r.name)), actions: role.permissions });
 
-  const startEditing = () => {
-    setNameDraft(role.name);
-    setActionsDraft(role.permissions);
-    setEditing(true);
-  };
-
-  // Full-replacement update so an untouched field isn't silently cleared; one atomic commit path.
-  const commit = (event: FormEvent) => {
-    event.preventDefault();
-    const name = nameDraft.trim();
-    if (name) {
-      void updateRole.mutateAsync({ roleId: role.id, name, actions: actionsDraft });
+  // A role someone holds can't go: the confirm says who to move first instead of offering a delete that fails.
+  const remove = async () => {
+    const held = holders?.length ?? 0;
+    if (held > 0) {
+      await confirm({
+        title: `${role.name} is in use`,
+        message: `${held === 1 ? "1 person holds" : `${held} people hold`} this role. Give them another role in Team, then delete it.`,
+        confirmLabel: "Got it",
+        destructive: false,
+      });
+      return;
     }
-    setEditing(false);
+    const ok = await confirm({
+      title: `Delete ${role.name}?`,
+      message: "Nobody holds this role. Deleting it can't be undone.",
+      confirmLabel: "Delete role",
+    });
+    if (!ok) return;
+    setLeaving(true);
+    onLeave?.();
+    deleteRole.mutate(role.id, { onError: () => setLeaving(false) });
   };
 
-  const handleNameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Escape") setEditing(false);
-  };
+  const actions: RowAction[] = [
+    { label: "Edit", onSelect: () => setEditing(true) },
+    { label: "Duplicate", onSelect: duplicate },
+    ...(canClone ? [{ label: "Clone to workspace…", onSelect: () => setCloning(true) }] : []),
+    { label: "Delete", destructive: true, onSelect: () => void remove() },
+  ];
 
   return (
-    <li className={cn("flex items-center gap-2 bg-card px-3 py-3 transition-colors duration-150 ease-standard", !editing && "hover:bg-accent/40")}>
+    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "bg-card px-4 py-3.5")}>
       {editing && (
-        <form onSubmit={commit} className="flex min-w-0 flex-1 flex-col gap-3">
-          <Input
-            aria-label="Role name"
-            value={nameDraft}
-            autoFocus
-            onChange={(event) => setNameDraft(event.target.value)}
-            onKeyDown={handleNameKeyDown}
-            className="h-9"
-          />
-          <RoleLevelSections catalog={catalog} value={actionsDraft} onChange={setActionsDraft} />
-          <div className="flex gap-2">
-            <Button type="submit" size="sm">
-              Save role
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      )}
-      {!editing && (
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <span className="truncate text-sm font-medium" title={role.name}>
-            {role.name}
-          </span>
-          <div className="flex flex-wrap gap-x-3 gap-y-1">
-            {summary.length === 0 && <span className="text-xs text-muted-foreground">No permissions</span>}
-            {summary.map((line) => (
-              <NoFillBadge key={line} color="text-muted-foreground">
-                {line}
-              </NoFillBadge>
-            ))}
-          </div>
+        <div className="settle-in">
+          <RoleEditForm role={role} workspaceId={workspaceId} catalog={catalog} onDone={() => setEditing(false)} />
         </div>
       )}
       {!editing && (
-        <Button variant="ghost" size="sm" aria-label={`Rename role ${role.name}`} onClick={startEditing}>
-          <PencilIcon className="size-4" />
-        </Button>
-      )}
-      {!editing && canClone && (
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={`Clone ${role.name} to another workspace`}
-          title={`Clone ${role.name} to another workspace`}
-          onClick={() => setCloning(true)}
-        >
-          <CopyIcon className="size-4" />
-        </Button>
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              aria-expanded={open}
+              onClick={() => setOpen(!open)}
+              className="group -ml-1 flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1 py-0.5 text-left focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            >
+              <ChevronRightIcon
+                aria-hidden
+                className={cn(
+                  "size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-standard group-hover:text-foreground",
+                  open && "rotate-90",
+                )}
+              />
+              <span className="truncate text-sm font-medium" title={role.name}>
+                {role.name}
+              </span>
+            </button>
+            {holders && <RoleHolders people={holders} />}
+            <RowActionsMenu subject={role.name} actions={actions} />
+          </div>
+          <div className="pl-6">
+            <RoleAccessSummary catalog={catalog} permissions={role.permissions} />
+          </div>
+          <div inert={!open} aria-hidden={!open} data-closed={!open || undefined} className="disclosure">
+            <div className="pl-6">
+              <RoleAccessDetail catalog={catalog} permissions={role.permissions} />
+            </div>
+          </div>
+        </div>
       )}
       {canClone && <CloneRoleDialog role={role} open={cloning} onClose={() => setCloning(false)} />}
-      {!editing && (
-        <ConfirmDestroyButton
-          icon={Trash2}
-          idleLabel={`Delete role ${role.name}`}
-          loading={deleteRole.isPending}
-          onConfirm={() => deleteRole.mutate(role.id)}
-        />
-      )}
     </li>
   );
 };

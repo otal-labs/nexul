@@ -6,11 +6,13 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import type { Crumb } from "@/components/PageBreadcrumb";
 import { PageHeader } from "@/components/PageHeader";
+import { ProjectMark } from "@/components/project/ProjectMark";
 import {
   DEFAULT_PROJECT_SETTINGS_SECTION,
   isProjectSettingsSection,
 } from "@/components/settings/ProjectSettingsNav";
 import { ProjectSettingsContent } from "@/components/settings/ProjectSettingsContent";
+import { ProjectSettingsMeta } from "@/components/settings/ProjectSettingsMeta";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchProject, useFetchProjects } from "@/hooks/ProjectHooks";
@@ -39,7 +41,8 @@ export const ProjectSettingsPage = () => {
         className="mb-8"
         crumbs={crumbs}
         title="Settings"
-        meta={project && <span className="font-mono">{project.prefix}</span>}
+        leading={project && <ProjectMark project={project} />}
+        meta={project && <ProjectSettingsMeta project={project} />}
       />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}

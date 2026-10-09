@@ -18,7 +18,7 @@ export const BoardLabelColorsSection = ({ projectId, allLabels, labelColors }: B
   >
     {allLabels && allLabels.length === 0 && <EmptyRow>No labels yet. Add one to a ticket and it shows up here.</EmptyRow>}
     {allLabels && allLabels.length > 0 && (
-      <EnterList className="divide-y divide-border">
+      <EnterList className="divide-y divide-border rounded-md border border-border">
         {allLabels.map((label) => (
           <LabelColorRow
             key={label}

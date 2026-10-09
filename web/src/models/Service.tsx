@@ -52,6 +52,8 @@ export interface ServiceDef {
   project_id: string;
   name: string;
   target: string;
+  // The machine it runs on; target is the older address field and is empty on stacks made since.
+  machine?: string;
   strategy: DeployStrategy;
   compose_dir?: string;
   health_check: HealthCheck;

@@ -48,6 +48,7 @@ describe("AutomationSecretsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
+    await user.click(await screen.findByRole("button", { name: "Add secret" }));
     await user.type(screen.getByLabelText("Name"), "API_KEY");
     await user.type(screen.getByLabelText("Value"), "shh");
     await user.click(screen.getByRole("button", { name: "Save secret" }));
@@ -55,11 +56,26 @@ describe("AutomationSecretsSection", () => {
     expect(mocks.put).toHaveBeenCalledWith("/api/automation-secrets/API_KEY", { value: "shh" }, { params: { workspace_id: "ws-1" } });
   });
 
+  it("replaces a saved secret's value under its own name", async () => {
+    mocks.get.mockResolvedValue({ data: [{ name: "API_KEY", created_at: "", updated_at: "" }] });
+    mocks.put.mockResolvedValue({ data: {} });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Replace API_KEY" }));
+    expect(screen.getByLabelText("Name")).toHaveValue("API_KEY");
+    await user.type(screen.getByLabelText("New value"), "rotated");
+    await user.click(screen.getByRole("button", { name: "Replace value" }));
+
+    expect(mocks.put).toHaveBeenCalledWith("/api/automation-secrets/API_KEY", { value: "rotated" }, { params: { workspace_id: "ws-1" } });
+  });
+
   it("rejects a name that doesn't match the allowed pattern", async () => {
     mocks.get.mockResolvedValue({ data: [] });
     const user = userEvent.setup();
     renderSection();
 
+    await user.click(await screen.findByRole("button", { name: "Add secret" }));
     await user.type(screen.getByLabelText("Name"), "1bad-name");
     await user.type(screen.getByLabelText("Value"), "shh");
     await user.click(screen.getByRole("button", { name: "Save secret" }));
@@ -77,8 +93,8 @@ describe("AutomationSecretsSection", () => {
     renderSection();
 
     await screen.findByText("API_KEY");
+    await user.click(screen.getByRole("button", { name: "Delete API_KEY" }));
     await user.click(screen.getByRole("button", { name: "Delete" }));
-    await user.click(screen.getByRole("button", { name: "Confirm" }));
 
     expect(mocks.del).toHaveBeenCalledWith("/api/automation-secrets/API_KEY", { params: { workspace_id: "ws-1" } });
   });

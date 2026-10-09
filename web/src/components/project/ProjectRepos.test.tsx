@@ -83,14 +83,17 @@ describe("ProjectRepos", () => {
     expect(await screen.findByText("Owner is required")).toBeInTheDocument();
     expect(screen.getByText("Repo name is required")).toBeInTheDocument();
     expect(api.post).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
   });
 
-  it("removes a repo", async () => {
+  it("removes a repo once confirmed", async () => {
     const user = userEvent.setup();
     vi.mocked(api.delete).mockResolvedValue({ data: undefined });
     renderRepos();
 
     await user.click(await screen.findByRole("button", { name: "Remove onik97/nexul" }));
+    expect(api.delete).not.toHaveBeenCalled();
+    await user.click(await screen.findByRole("button", { name: "Remove repo" }));
     expect(api.delete).toHaveBeenCalledWith("/api/projects/repos/onik97/nexul");
   });
 });

@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ContextAwareConfirmation } from "react-confirm";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -92,7 +92,7 @@ describe("ProjectSettingsPage", () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "General" })).toBeInTheDocument();
-    expect(screen.getByText("Starts every ticket key")).toBeInTheDocument();
+    expect(screen.getByText(/It can't change/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "General" })).toHaveAttribute("aria-current", "page");
   });
 
@@ -104,7 +104,7 @@ describe("ProjectSettingsPage", () => {
     await user.click(screen.getByRole("link", { name: "Categories" }));
 
     expect(await screen.findByText("Sprint 1")).toBeInTheDocument();
-    expect(screen.queryByText("Starts every ticket key")).not.toBeInTheDocument();
+    expect(screen.queryByText(/It can't change/)).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Categories" })).toHaveAttribute("aria-current", "page");
   });
 
@@ -113,21 +113,6 @@ describe("ProjectSettingsPage", () => {
 
     expect(await screen.findByText("Sprint 1")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "General" })).not.toBeInTheDocument();
-  });
-
-  it("General renders the project name, prefix, and an icon control, and saves an icon choice", async () => {
-    const user = userEvent.setup();
-    vi.mocked(api.patch).mockResolvedValue({ data: { ...project, icon: "Rocket" } });
-    renderPage();
-
-    await screen.findByRole("heading", { name: "General" });
-    expect(screen.getAllByText("Backend").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("BE").length).toBeGreaterThan(0);
-
-    await user.click(screen.getByRole("button", { name: "Change project icon" }));
-    await user.click(await screen.findByRole("button", { name: "Rocket" }));
-
-    expect(api.patch).toHaveBeenCalledWith("/api/projects/p-1", { name: "Backend", icon: "Rocket" });
   });
 
   it("General renames the project inline", async () => {
@@ -140,7 +125,7 @@ describe("ProjectSettingsPage", () => {
     await user.clear(input);
     await user.type(input, "Platform");
     await user.keyboard("{Enter}");
-    expect(api.patch).toHaveBeenCalledWith("/api/projects/p-1", { name: "Platform", icon: "" });
+    expect(api.patch).toHaveBeenCalledWith("/api/projects/p-1", { name: "Platform" });
   });
 
   it("blocks removal of a project with affected work from the danger zone", async () => {
@@ -154,8 +139,9 @@ describe("ProjectSettingsPage", () => {
     renderPage("/acme/projects/p-1/settings/danger");
 
     await user.click(await screen.findByRole("button", { name: "Remove project" }));
-    expect(await screen.findByText(/still has work in it/i)).toBeInTheDocument();
-    expect(screen.getByText(/3 tickets/)).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/still has work in it/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/3 tickets/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Got it" }));
 
     expect(api.delete).not.toHaveBeenCalled();
@@ -167,8 +153,9 @@ describe("ProjectSettingsPage", () => {
     renderPage("/acme/projects/p-1/settings/danger");
 
     await user.click(await screen.findByRole("button", { name: "Remove project" }));
-    expect(await screen.findByText(/can be removed/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Remove" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/can't be undone/i)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Remove project" }));
     expect(api.delete).toHaveBeenCalledWith("/api/projects/p-1");
   });
 });

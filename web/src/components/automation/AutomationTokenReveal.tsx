@@ -1,7 +1,4 @@
-import { useState } from "react";
-import { Check, Copy } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/settings/CopyButton";
 import { useFetchSettings } from "@/hooks/AuthHooks";
 
 interface AutomationTokenRevealProps {
@@ -11,18 +8,8 @@ interface AutomationTokenRevealProps {
 // The raw token shows exactly once, plus SDK commands pre-filled with the token and instance URL.
 export const AutomationTokenReveal = ({ token }: AutomationTokenRevealProps) => {
   const { data: settings } = useFetchSettings();
-  const [copied, setCopied] = useState(false);
   const instanceUrl = settings?.instance_url || "https://your-instance.example.com";
   const initCommand = `npx @nexul/sdk init --url ${instanceUrl} --token ${token}`;
-
-  const copyToken = async () => {
-    try {
-      await navigator.clipboard.writeText(token);
-      setCopied(true);
-    } catch {
-      // Clipboard may be unavailable; the box stays visible for manual copy.
-    }
-  };
 
   return (
     <div className="animate-in fade-in-0 slide-in-from-top-1 space-y-3 rounded-md bg-muted p-4 duration-200 ease-out">
@@ -30,11 +17,7 @@ export const AutomationTokenReveal = ({ token }: AutomationTokenRevealProps) => 
         <p className="text-sm font-medium">Copy this token now. It won&apos;t be shown again.</p>
         <div className="flex items-center gap-2">
           <p className="min-w-0 flex-1 truncate rounded-md bg-card p-2 font-mono text-xs">{token}</p>
-          <Button type="button" variant="outline" size="sm" onClick={copyToken}>
-            {copied && <Check className="size-4" />}
-            {!copied && <Copy className="size-4" />}
-            {copied ? "Copied" : "Copy"}
-          </Button>
+          <CopyButton value={token} label="Copy" />
         </div>
       </div>
       <div className="terminal-window">

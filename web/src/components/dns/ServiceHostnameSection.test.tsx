@@ -90,6 +90,19 @@ describe("ServiceHostnameSection", () => {
     expect(screen.getByRole("button", { name: /^expose$/i })).toBeInTheDocument();
   });
 
+  it("shows a failed exposures load as an error, without claiming nothing is exposed", async () => {
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/connectors") return { data: cloudflareConnector(true) };
+      if (url === "/api/dns/gateways") return { data: [gateway] };
+      if (url === "/api/dns/exposures") throw new Error("boom");
+      return { data: [] };
+    });
+    renderSection();
+    expect(await screen.findByText("Couldn't load DNS.")).toBeInTheDocument();
+    expect(screen.queryByText(/not exposed yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^expose$/i })).not.toBeInTheDocument();
+  });
+
   it("lists existing exposures for this stack's containers, by container id, with their gateway kind", async () => {
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/connectors") return { data: cloudflareConnector(true) };
@@ -134,7 +147,7 @@ describe("ServiceHostnameSection", () => {
     expect(await screen.findByText("api.example.com")).toBeInTheDocument();
     expect(screen.queryByText("other.example.com")).not.toBeInTheDocument();
     expect(screen.getByText("tunnel")).toBeInTheDocument();
-    expect(screen.getByText("api:8080")).toBeInTheDocument();
+    expect(screen.getByText("→ api:8080")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /unexpose api.example.com/i }));
     await user.click(screen.getByRole("button", { name: /unexpose/i }));

@@ -1,73 +1,51 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-
+import { useState } from "react";
+import { PlusIcon } from "lucide-react";
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
-import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { EmptyRow } from "@/components/EmptyRow";
+import { AutomationSecretForm } from "@/components/automation/AutomationSecretForm";
 import { AutomationSecretRow } from "@/components/automation/AutomationSecretRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
-import { useFetchAutomationSecrets, useSetAutomationSecret } from "@/hooks/AutomationSecretHooks";
-import {
-  SaveAutomationSecretFormSchema,
-  type SaveAutomationSecretFormData,
-} from "@/models/AutomationSecret";
+import { useRowGlide } from "@/hooks/useRowGlide";
+import { useFetchAutomationSecrets } from "@/hooks/AutomationSecretHooks";
 
-// Shared workspace pool (ADR 0047); saving an existing name replaces its value, the backend has no partial update.
+// Shared workspace pool (ADR 0047). One form at a time: a new secret, or a new value for one already saved.
 export const AutomationSecretsSection = () => {
   const { data, isPending, error } = useFetchAutomationSecrets();
-  const setSecret = useSetAutomationSecret();
-
-  const form = useForm<SaveAutomationSecretFormData>({
-    defaultValues: { name: "", value: "" },
-    resolver: zodResolver(SaveAutomationSecretFormSchema),
-  });
-
-  const onSubmit = async (data: SaveAutomationSecretFormData) => {
-    await setSecret.mutateAsync(data);
-    form.reset();
-  };
+  const [editing, setEditing] = useState<{ name?: string } | null>(null);
+  const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
 
   return (
     <SettingsCard
       id="automation-secrets"
       title="Automation secrets"
       description="Every automation reads these as ctx.secrets.NAME. A saved value can't be read back, only replaced or deleted."
-    >
-      <div className="space-y-6">
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-wrap items-end gap-2">
-          <FormInput
-            control={form.control}
-            name="name"
-            id="secret-name"
-            label="Name"
-            placeholder="e.g. SLACK_WEBHOOK_URL"
-            className="w-full font-mono sm:w-64"
-          />
-          <FormInput
-            control={form.control}
-            name="value"
-            id="secret-value"
-            label="Value"
-            type="password"
-            className="w-full sm:w-64"
-          />
-          <Button type="submit" loading={form.formState.isSubmitting}>
-            Save secret
+      footer={
+        !editing && (
+          <Button variant="outline" size="sm" onClick={() => setEditing({})}>
+            <PlusIcon className="size-4" />
+            Add secret
           </Button>
-        </form>
-
+        )
+      }
+    >
+      <div className="space-y-4">
+        {editing && (
+          <AutomationSecretForm key={editing.name ?? "new"} {...(editing.name ? { name: editing.name } : {})} onDone={() => setEditing(null)} />
+        )}
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} />}
-        {data && data.length === 0 && <EmptyRow>No secrets yet</EmptyRow>}
+        {data && data.length === 0 && !editing && <EmptyRow>No secrets yet. Add one for automations to read.</EmptyRow>}
         {data && data.length > 0 && (
-          <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
-            {data.map((secret) => (
-              <AutomationSecretRow key={secret.name} secret={secret} />
-            ))}
-          </EnterList>
+          <div ref={glideRef}>
+            <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
+              {data.map((secret) => (
+                <AutomationSecretRow key={secret.name} secret={secret} onReplace={() => setEditing({ name: secret.name })} onLeave={prepareGlide} />
+              ))}
+            </EnterList>
+          </div>
         )}
       </div>
     </SettingsCard>

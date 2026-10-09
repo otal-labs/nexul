@@ -81,3 +81,11 @@ export interface Team {
   // Whether the viewer holds accounts:write in any workspace; the web reads the finer bits from /me instead.
   can_manage_accounts: boolean;
 }
+
+// The people holding a role in a workspace; removed accounts hold nothing.
+export const roleHolders = (team: Team | undefined, workspaceId: string, roleId: string): TeamPerson[] =>
+  (team?.people ?? []).filter(
+    (person) =>
+      person.status !== AccountStatus.Removed &&
+      person.workspaces.some((membership) => membership.workspace_id === workspaceId && membership.role_id === roleId),
+  );

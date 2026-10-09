@@ -245,6 +245,9 @@ second ambient animation or anything animating layout behind the panels.
 | Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
 | Segmented control: a well with a raised thumb | Against joined outline buttons with an accent fill (read as a toolbar of buttons, the same box as Copy and Download beside it in the logs) and a ghost row with an accent thumb (the same grey block as the section nav's top row, so a filter looked like navigation); the well and card step is the panel's own depth vocabulary, and it reads as one control |
 | Section nav in the sidebar's grammar | Against the grey block alone (the sidebar marks where you are with the ember edge, the section nav with nothing, so the two navs on one screen read as unrelated) and a hairline rail with a sliding ember segment (a table of contents, not navigation, and the rows lost their click target) |
+| A role row is a tally of levels, every area one click away | Against a fingerprint of one three-rung bar per domain (aligned across roles, but noise at 6px and unreadable without hovering each bar) and one stacked bar of the levels (showed the proportions, lost which level was which and needed a legend anyway); "Delete 18 · Write 8 · Read 2 · None 5" with the level strip in miniature reads without a key, and the first areas with no access say what the role leaves out |
+| Danger zones are rows of action, consequence and an outline button | Against the solid red button in the card (the loudest thing on the page for the rarest action, and the confirm dialog repeated it); the red fill is the dialog's, where deleting is the one thing left to do |
+| Project settings lead with the project mark | The sidebar and the board already show the gradient mark; a plain initial on a square in General made the settings look like another project |
 | Settings cards: a quiet header, settings as rows | Against the old header band (an 18px title over a full-width rule, so every section read as the same generic form) and the title outside the card (heading on the glass, content in the card: two surfaces for one unit, and a paired card's heading wrapped out of line with its neighbour's); a 15px title flowing into its rows keeps the unit whole and saves the rule |
 | Settings save from a strip that is always there | Against a strip that opens when something changes (it pushed every card below it 52px on the first keystroke), a bar floating over the page (detached from the card it saves and covering the next one) and a Save beside the field (fits one field, not a card of them) |
 | Save answers in its button, not a toast | Against the toast (it lands a panel away from the click) and a Saved line at the strip's left (opposite the pointer); the button the pointer is on turns into Saved |
@@ -622,6 +625,28 @@ button. The page header's meta line carries the open section's facts
 (`SettingsHeaderMeta`: Nexul theme · Dark, 2 gateways · 3 hostnames) and marks
 instance sections Instance-wide.
 
+Role rows. Configuration's Roles card lists one row per role: a chevron and
+the name, the people who hold it as overlapping 24px avatars with a mono
+count, and one `…` menu (Edit, Duplicate, Clone to workspace, Delete). Under
+the name, the levels as a tally, highest first, each a `LevelGlyph` (the
+level strip in miniature, a shorter ladder keeping the three-rung width so a
+column of them lines up), the level and a mono count, then a muted "No access
+· Events, Audit log, Accounts +2". The chevron opens every area read-only
+below it (`RoleAccessDetail`, the editor's Workspace and Every project
+groups, two columns from a 36rem card) as a disclosure. The Owner row has no
+menu and says what it is in one line. A role someone holds can't be deleted:
+its Delete says who to move first instead. `RoleRow` and `RoleAccessSummary`
+in `web/src/components/settings/` are the reference.
+
+Danger zone. Every danger zone (Configuration, project, stack, automation)
+is one `DangerZone` card (`danger`, the warning icon) holding `DangerAction`
+rows: the action's name in 14px medium, what it does and what is lost in one
+muted sentence, what goes with it or blocks it under that (released
+hostnames, "Still holds 55 tickets · 3 repos · 6 services"), and an outline
+button in the destructive hue on the right from a 24rem card. The solid red
+button is the confirm dialog's, whose confirm names the object ("Delete
+stack"). A danger zone with nothing in it says so in one `EmptyRow`.
+
 Appearance. Mode and Theme are radio groups of tiles, each a miniature of the
 app (`ThemeMiniature`: canvas, sidebar with its brand marker, a panel with a
 title, two text lines, a brand button and an outline one) drawn from the
@@ -888,6 +913,15 @@ writing its own.
   Chevrons turn in 150ms `--ease-standard`. The sidebar's Workspace section (`settleIn`)
   settles its pages in the same way when a click opens it, and shuts at once;
   a key opens it without motion, and it never plays as the sidebar mounts.
+- Inline editors (`settle-in`: a role, a category, a branch rule's overrides,
+  the new-role, new-type and secret forms): the form that takes a row's place
+  or opens under a footer button fades in as it settles 4px over 200ms
+  `--ease-out`, the disclosure's own numbers; it closes at once. Reduced
+  motion: a 150ms fade.
+- A row moved within its list from a menu (a category's Move up or down)
+  glides to its new place over the row-removal glide's 200ms `--ease-out`,
+  riding over the row it trades with; a drag settles on the same numbers, and a
+  move made with a key lands at once.
 - Nav rows (`nav-row`: the sidebar, the section nav, the switchers and the
   account row): the hover lift lands at once and lets go over 150ms
   `--ease-standard`, so the highlight is under the pointer the moment it
@@ -1208,3 +1242,36 @@ Nav row hover: lands at once, lets go over 150ms (Motion baseline).
 Switchers: the overlay clock (Round-four locks: overlays), from the
 trigger's corner, with the trigger holding its pressed fill while the menu
 is open so the menu reads as coming from it.
+
+### Round-four locks: settings sections
+
+Decided 2026-10-09 without the owner in the loop, each built as live
+variants in Configuration's Roles card and the Categories card with seeded
+roles and categories, recorded at 1x and 0.25x with frame strips at 0.1x.
+
+Opening a role's areas.
+- The disclosure (box snaps, content fades in settling 4px over 200ms, out in
+  120ms). Rejected: a clip-path wipe from the top (a curtain on a short
+  reveal, and the lower rows popped in at its end), a 12ms cascade of the
+  domain rows (37 rows trickled in over 340ms, a list entrance inside a
+  disclosure) and a snap (only the chevron said anything opened). Tuned
+  against 2px over 160ms and 8px over 240ms, which were indistinguishable at
+  1x and 8px read as a drop at 0.25x.
+
+Opening an inline editor.
+- Settle in (above). Rejected: a pop from 0.98 out of the row's top (a
+  full-width form scaling shifted its text at the edges), a 4px blur fade (a
+  blurred field read as loading) and a snap (a form 600px taller than its
+  row appeared in one frame with nothing tying it to the row).
+
+Moving a category from its menu.
+- Glide (above). Rejected: a snap (the two names traded places in one frame
+  and the eye had to re-read the list to find the row it moved) and a fade of
+  the two rows that traded (said which rows changed, not where the row went,
+  and the row under the menu vanished from under the pointer).
+
+Removing a row, and saving a card: the round's shared locks (Removing a row,
+Settings save) apply to roles, plays, categories, repositories, exposures,
+secrets and the workspace, template and automation configuration cards. A
+Motion `layout` glide on a bounce-free spring was built first and lost to the
+shared glide only for being a second vocabulary for the same act.

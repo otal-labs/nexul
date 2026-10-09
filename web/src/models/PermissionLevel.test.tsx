@@ -8,7 +8,7 @@ import {
   domainsOf,
   projectLevelLabel,
   levelOf,
-  summarize,
+  levelTally,
   uniformLevelOf,
   withExtra,
   withLevel,
@@ -61,24 +61,9 @@ describe("PermissionLevel", () => {
     expect(withExtra(["docs:read", "docs:thread"], thread, false)).toEqual(["docs:read"]);
   });
 
-  it("summarises one line per touched domain when no level is shared by most", () => {
-    const tickets = domainsOf([
-      { value: "tickets:read", label: "Read tickets", domain: "tickets", action: "read", area: "workspace" },
-      { value: "tickets:write", label: "Create and update tickets", domain: "tickets", action: "write", area: "workspace" },
-    ])[0]!;
-    expect(summarize([docs, audit, tickets], ["docs:read", "docs:write", "docs:delete", "docs:thread", "tickets:read"])).toEqual([
-      "Docs · Delete + Thread",
-      "Tickets · Read",
-    ]);
-    expect(summarize([docs, audit], [])).toEqual([]);
-  });
-
-  it("folds the level most domains share into one line and lists the exceptions", () => {
-    expect(summarize([docs, audit], ["docs:read", "docs:thread", "audit:read"])).toEqual([
-      "Docs · Read + Thread",
-      "Everything else · Read",
-    ]);
-    expect(summarize([docs, audit], ["docs:read", "audit:read"])).toEqual(["Every domain · Read"]);
+  it("tallies domains per level, a read-only domain at Read under Read, and names the ones with nothing", () => {
+    expect(levelTally([docs, audit], ["docs:read", "docs:write", "docs:thread"])).toEqual({ counts: [1, 0, 1, 0], missing: ["Audit log"], extras: 1 });
+    expect(levelTally([docs, audit], ["docs:delete", "audit:read"]).counts).toEqual([0, 1, 0, 1]);
   });
 
   describe("project areas", () => {

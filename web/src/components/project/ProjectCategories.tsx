@@ -9,16 +9,20 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
 import { EnterList } from "@/components/EnterList";
 import { AddCategoryForm } from "@/components/project/AddCategoryForm";
 import { CategoryRow } from "@/components/project/CategoryRow";
 import { EmptyRow } from "@/components/EmptyRow";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useFetchProjectCategories, useReorderCategories } from "@/hooks/CategoryHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
+import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { SaveCategoryFormSchema, type SaveCategoryFormData } from "@/models/Category";
 
@@ -27,7 +31,7 @@ interface ProjectCategoriesProps {
 }
 
 export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
-  const { data: categories } = useFetchProjectCategories(projectId);
+  const { data: categories, isPending, error } = useFetchProjectCategories(projectId);
   const { data: tickets } = useFetchTicketsByProject(projectId);
   const reorderCategories = useReorderCategories();
   const { open: openAdd } = useFormDialog();
@@ -41,9 +45,13 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
+  const [movedId, setMovedId] = useState<string | undefined>(undefined);
+
   const reorder = (from: number, to: number) => {
     const ids = (categories ?? []).map((c) => c.id);
     if (from === to || to < 0 || to >= ids.length) return;
+    setMovedId(ids[from]);
     reorderCategories.mutate({ project_id: projectId, ids: arrayMove(ids, from, to) });
   };
 
@@ -75,27 +83,34 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
         </Button>
       }
     >
+      {isPending && <LoadingDisplay />}
+      {error && <ErrorDisplay error={error} />}
       {categories && categories.length === 0 && (
         <EmptyRow>No categories yet. Add one to give the board a swimlane.</EmptyRow>
       )}
       {categories && categories.length > 0 && (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={categories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-            <EnterList className="divide-y divide-border">
-              {categories.map((category, index) => (
-                <CategoryRow
-                  key={category.id}
-                  category={category}
-                  count={countFor(category.id)}
-                  first={index === 0}
-                  last={index === categories.length - 1}
-                  onMoveUp={() => reorder(index, index - 1)}
-                  onMoveDown={() => reorder(index, index + 1)}
-                />
-              ))}
-            </EnterList>
-          </SortableContext>
-        </DndContext>
+        <div ref={glideRef}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={categories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+              <EnterList className="divide-y divide-border rounded-md border border-border">
+                {categories.map((category, index) => (
+                  <CategoryRow
+                    key={category.id}
+                    category={category}
+                    index={index}
+                    lifted={category.id === movedId}
+                    onLeave={prepareGlide}
+                    count={countFor(category.id)}
+                    first={index === 0}
+                    last={index === categories.length - 1}
+                    onMoveUp={() => reorder(index, index - 1)}
+                    onMoveDown={() => reorder(index, index + 1)}
+                  />
+                ))}
+              </EnterList>
+            </SortableContext>
+          </DndContext>
+        </div>
       )}
     </SettingsCard>
   );

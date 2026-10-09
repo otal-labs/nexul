@@ -2,6 +2,7 @@ import { Navigate, useLocation, useParams } from "react-router";
 
 import { Container } from "@/components/Container";
 import { PageHeader } from "@/components/PageHeader";
+import { ConfigurationHeaderMeta } from "@/components/settings/ConfigurationHeaderMeta";
 import { isSettingsSection, SettingsNav } from "@/components/settings/SettingsNav";
 import { SettingsPageContent } from "@/components/settings/SettingsPageContent";
 import { SettingsShell } from "@/components/settings/SettingsShell";
@@ -36,7 +37,7 @@ export const ConfigurationPage = () => {
         className="mb-8"
         crumbs={[workspaceCrumb]}
         title="Configuration"
-        meta="This workspace's settings, roles, and plays."
+        meta={<ConfigurationHeaderMeta section={section} />}
       />
       <SettingsShell section={section} nav={<SettingsNav active={section} sections={sections} />}>
         <SettingsPageContent

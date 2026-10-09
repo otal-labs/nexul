@@ -38,6 +38,8 @@ A role sets one level per area: **None**, **Read**, **Write**, or **Delete**, ea
 - **Workspace**: areas such as chat, channels, plays, members, and roles.
 - **Every project**: a project's areas, such as tickets, docs, memories, and stacks, applied on every project.
 
+Each role's row counts its areas per level, names the first ones it has no access to, and shows who holds it; its chevron opens every area. Its **…** menu edits, duplicates (the copy is named `Admin (copy)`), clones to another workspace, or deletes it. A role someone still holds can't be deleted: give them another role on **Team** first.
+
 Nobody can hand out a permission they don't hold: not in a role, an override, or an invitation. Every permission is written `<area>:<action>`, such as `docs:write`, and the same names gate a person, a personal access token, an automation, and an agent.
 
 ### Instance permissions

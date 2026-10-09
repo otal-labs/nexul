@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
 import { EnterList } from "@/components/EnterList";
@@ -10,8 +10,11 @@ import { OwnerRoleRow } from "@/components/settings/OwnerRoleRow";
 import { RoleRow } from "@/components/settings/RoleRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
+import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
 import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
+import { useFetchTeam } from "@/hooks/TeamHooks";
+import { roleHolders } from "@/models/Team";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 // Gated on roles:write, same gate-in-parent pattern as account management.
@@ -23,13 +26,18 @@ export const RoleSettingsSection = () => {
   const isPending = rolesPending || catalogPending;
   const error = rolesError ?? catalogError;
 
+  // Who holds each role; a viewer the server shows no team to just sees no avatars.
+  const { data: team } = useFetchTeam();
+  const holdersOf = (roleId: string) => (team ? roleHolders(team, workspaceId, roleId) : undefined);
+
   const [creating, setCreating] = useState(false);
+  const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
 
   return (
     <SettingsCard
       id="roles"
       title="Roles & permissions"
-      description="Roles you can give people in this workspace. The Owner role can't be renamed, edited, or deleted."
+      description="What each role can open and change in this workspace. Open a role to see every area."
       footer={
         roles &&
         catalog &&
@@ -47,14 +55,16 @@ export const RoleSettingsSection = () => {
         <div className="space-y-4">
           {roles.length === 0 && <EmptyRow>No roles yet</EmptyRow>}
           {roles.length > 0 && (
-            <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
-              {roles.map((role) => (
-                <Fragment key={role.id}>
-                  {role.is_owner_role && <OwnerRoleRow role={role} />}
-                  {!role.is_owner_role && <RoleRow role={role} workspaceId={workspaceId} catalog={catalog} />}
-                </Fragment>
-              ))}
-            </EnterList>
+            <div ref={glideRef}>
+              <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
+                {roles.filter((role) => role.is_owner_role).map((role) => (
+                  <OwnerRoleRow key={role.id} role={role} holders={holdersOf(role.id)} />
+                ))}
+                {roles.filter((role) => !role.is_owner_role).map((role) => (
+                  <RoleRow key={role.id} onLeave={prepareGlide} role={role} workspaceId={workspaceId} catalog={catalog} holders={holdersOf(role.id)} />
+                ))}
+              </EnterList>
+            </div>
           )}
 
           {creating && (

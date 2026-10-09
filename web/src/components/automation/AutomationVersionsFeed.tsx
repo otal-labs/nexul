@@ -12,7 +12,7 @@ interface AutomationVersionsFeedProps {
   canUpdate: boolean;
 }
 
-// The pending-vs-active diff sits above the full history: it's where a developer catches what they missed.
+// The pending-vs-active diff sits above the full history while a push waits: it's where a developer catches what they missed.
 export const AutomationVersionsFeed = ({ automationId, canUpdate }: AutomationVersionsFeedProps) => {
   const diff = useFetchAutomationVersionDiff(automationId);
   const versions = useFetchAutomationVersions(automationId);
@@ -21,7 +21,7 @@ export const AutomationVersionsFeed = ({ automationId, canUpdate }: AutomationVe
     <div className="space-y-6">
       {(diff.isPending || versions.isPending) && <LoadingDisplay />}
       {(diff.error || versions.error) && <ErrorDisplay error={diff.error ?? versions.error} />}
-      {diff.data && (
+      {diff.data?.pending && (
         <AutomationVersionDiff automationId={automationId} diff={diff.data} canUpdate={canUpdate} />
       )}
       {versions.data && (

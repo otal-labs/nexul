@@ -42,7 +42,10 @@ describe("ServiceCard", () => {
     expect(screen.queryByText("10.0.0.1:22")).not.toBeInTheDocument();
   });
 
-  it("falls back to the target server for image-only services", () => {
+  it("falls back to the machine, then the older target, for image-only services", () => {
+    const { unmount } = renderCard(baseService({ target: "", machine: "prod-eu-west-01" }));
+    expect(screen.getByText("prod-eu-west-01")).toBeInTheDocument();
+    unmount();
     renderCard(baseService());
     expect(screen.getByText("10.0.0.1:22")).toBeInTheDocument();
   });

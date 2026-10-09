@@ -1,17 +1,11 @@
-import { TriangleAlert } from "lucide-react";
+import { DangerZone } from "@/components/settings/DangerZone";
+import { EmptyRow } from "@/components/EmptyRow";
 
-import { SettingsCard } from "@/components/settings/SettingsCard";
-
-// Understated destructive tint over a heavy warning box, via SettingsCard's danger/icon props.
-// No workspace-wide destructive action exists yet; add one via PATRow's ConfirmDestroyButton pattern.
+// No workspace-wide action is destructive yet; a project is removed from its own settings.
 export const DangerZoneSection = () => (
-  <SettingsCard
-    id="danger-zone"
-    title="Danger zone"
-    danger
-    icon={TriangleAlert}
-    description="Workspace actions that can't be undone."
-  >
-    <p className="text-sm text-muted-foreground">None yet. Each one added here will ask you to confirm first.</p>
-  </SettingsCard>
+  <DangerZone>
+    <li className="py-3">
+      <EmptyRow flush>Nothing here can't be undone yet. To remove a project, open its settings.</EmptyRow>
+    </li>
+  </DangerZone>
 );

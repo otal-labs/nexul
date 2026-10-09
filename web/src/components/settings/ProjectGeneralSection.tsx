@@ -1,5 +1,4 @@
-import { Microheader } from "@/components/Microheader";
-import { ProjectIconPicker } from "@/components/project/ProjectIconPicker";
+import { ProjectMark } from "@/components/project/ProjectMark";
 import { ProjectName } from "@/components/project/ProjectName";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { useRenameProject } from "@/hooks/ProjectHooks";
@@ -9,34 +8,24 @@ interface ProjectGeneralSectionProps {
   project: Project;
 }
 
-// Prefix is read-only — immutable once set (ADR 0004), so there's nothing to edit.
+// The project's face as the sidebar and board show it; the prefix is fixed once set (ADR 0004), so only the name edits.
 export const ProjectGeneralSection = ({ project }: ProjectGeneralSectionProps) => {
   const renameProject = useRenameProject();
+  const created = new Date(project.created_at).toLocaleDateString(undefined, { dateStyle: "medium" });
 
   return (
     <SettingsCard id="general" title="General">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:divide-x sm:divide-border">
-        <div className="sm:pr-6">
-          <Microheader>Icon & name</Microheader>
-          <div className="mt-2 flex items-center gap-2">
-            <ProjectIconPicker
-              icon={project.icon ?? ""}
-              prefix={project.prefix}
-              onChange={(icon) => void renameProject.mutateAsync({ id: project.id, name: project.name, icon })}
-            />
-            <ProjectName
-              project={project}
-              className="opacity-100"
-              onRename={(name) =>
-                renameProject.mutateAsync({ id: project.id, name, icon: project.icon ?? "" })
-              }
-            />
+      <div className="flex items-center gap-4">
+        <ProjectMark project={project} className="size-14 rounded-xl text-base" />
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex min-w-0 items-center gap-2 text-base">
+            <ProjectName project={project} onRename={(name) => renameProject.mutateAsync({ id: project.id, name })} />
           </div>
-        </div>
-        <div className="sm:pl-6">
-          <Microheader>Prefix</Microheader>
-          <p className="mt-2 font-mono text-sm">{project.prefix}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Starts every ticket key</p>
+          <p className="text-xs text-muted-foreground">
+            Prefix <span className="font-mono text-foreground/90">{project.prefix}</span>, so tickets read{" "}
+            <span className="font-mono">{project.prefix}-1</span>. It can't change.
+          </p>
+          <p className="font-mono text-xs text-muted-foreground">created {created}</p>
         </div>
       </div>
     </SettingsCard>

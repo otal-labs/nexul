@@ -6,18 +6,11 @@ interface ServicesFeedProps {
   services: ServiceDef[];
 }
 
-// A column-header row over hairline body rows, not a card; cards are reserved for draggable units like TicketCard.
+// Hairline rows in one bordered box, no column heads: each row names itself and says where it comes from.
 export const ServicesFeed = ({ services }: ServicesFeedProps) => (
-  <div className="mt-2">
-    <div className="flex items-center gap-3 border-b border-border px-4 pb-1.5 text-xs text-muted-foreground">
-      <span className="flex-1">Name</span>
-      <span className="hidden w-48 shrink-0 sm:inline">Source</span>
-      <span className="w-20 shrink-0 text-right sm:inline">Strategy</span>
-    </div>
-    <EnterList className="divide-y divide-border">
-      {services.map((svc) => (
-        <ServiceCard key={svc.id} service={svc} />
-      ))}
-    </EnterList>
-  </div>
+  <EnterList className="divide-y divide-border overflow-hidden rounded-md border border-border">
+    {services.map((svc) => (
+      <ServiceCard key={svc.id} service={svc} />
+    ))}
+  </EnterList>
 );
