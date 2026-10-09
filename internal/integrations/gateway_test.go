@@ -164,6 +164,32 @@ func TestAuditLog(t *testing.T) {
 	})
 }
 
+// TestAuditLog_WrappedHandler_CanFlushAndHijack guards streaming and WebSocket upgrades behind the audited /api mux.
+func TestAuditLog_WrappedHandler_CanFlushAndHijack(t *testing.T) {
+	svc := newTestServiceWithOwner(newFakeData(), true)
+	var flushErr, hijackErr error
+	srv := httptest.NewServer(svc.AuditLog(func(context.Context) (string, string, string) { return "user", "owner-1", "" },
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			rc := http.NewResponseController(w)
+			flushErr = rc.Flush()
+			conn, buf, err := rc.Hijack()
+			hijackErr = err
+			if err != nil {
+				return
+			}
+			_, _ = buf.WriteString("HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n")
+			_ = buf.Flush()
+			_ = conn.Close()
+		})))
+	t.Cleanup(srv.Close)
+
+	res, err := http.Get(srv.URL + "/api/stream")
+	require.NoError(t, err)
+	require.NoError(t, res.Body.Close())
+	require.NoError(t, flushErr)
+	require.NoError(t, hijackErr)
+}
+
 func (f *fakeData) tokensList(installID string) ([]*IntegrationToken, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
