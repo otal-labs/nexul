@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ContextAwareConfirmation } from "react-confirm";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -154,8 +154,9 @@ describe("ProjectSettingsPage", () => {
     renderPage("/acme/projects/p-1/settings/danger");
 
     await user.click(await screen.findByRole("button", { name: "Remove project" }));
-    expect(await screen.findByText(/still has work in it/i)).toBeInTheDocument();
-    expect(screen.getByText(/3 tickets/)).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/still has work in it/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/3 tickets/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Got it" }));
 
     expect(api.delete).not.toHaveBeenCalled();
@@ -167,8 +168,9 @@ describe("ProjectSettingsPage", () => {
     renderPage("/acme/projects/p-1/settings/danger");
 
     await user.click(await screen.findByRole("button", { name: "Remove project" }));
-    expect(await screen.findByText(/can be removed/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Remove" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/can't be undone/i)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Remove project" }));
     expect(api.delete).toHaveBeenCalledWith("/api/projects/p-1");
   });
 });

@@ -287,8 +287,8 @@ describe("StackPage", () => {
     renderPage("/acme/stacks/stack-1/danger");
 
     await user.click(await screen.findByRole("button", { name: "Delete stack" }));
-    expect(await screen.findByRole("heading", { name: "Delete api?" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Delete" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete api?" });
+    await user.click(within(dialog).getByRole("button", { name: "Delete stack" }));
 
     await vi.waitFor(() => expect(mocks._delete).toHaveBeenCalledWith("/api/stacks/stack-1"));
   });
