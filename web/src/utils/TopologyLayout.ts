@@ -24,6 +24,10 @@ const PILL_GAP = 72;
 
 export const footprintOf = (n: TopologyNode): { w: number; h: number } => {
   if (n.measured?.width && n.measured.height) return { w: n.measured.width, h: n.measured.height };
+  return designedFootprint(n);
+};
+
+const designedFootprint = (n: TopologyNode): { w: number; h: number } => {
   if (n.type === "hostname") return { w: Math.round(n.data.hostname.length * PILL_GLYPH + PILL_CHROME), h: PILL_H };
   if (n.type === "gateway") {
     const longest = Math.max(0, ...n.data.routes.map((r) => `${r.service}:${r.port} (${r.address ?? ""}:${r.port})`.length));
@@ -52,7 +56,7 @@ export type Positions = Map<string, { x: number; y: number }>;
 
 // A gateway exposes one west and one east port per route row, in row order, so ELK keeps the wires from crossing.
 const leaf = (n: TopologyNode): ElkNode => {
-  const { w, h } = footprintOf(n);
+  const { w, h } = boundsOf(n);
   const base: ElkNode = { id: n.id, width: w, height: h };
   if (n.type !== "gateway") return base;
   return {
@@ -65,10 +69,11 @@ const leaf = (n: TopologyNode): ElkNode => {
   };
 };
 
-// A service on no network (compose reads its own) has no story to tell here; it sits past everything else.
-const loose = (n: TopologyNode): ElkNode => ({
+// A service on no network (compose reads its own) has no story to tell here; it sits past everything else, unless
+// a wire leaves it, which ELK cannot route out of the last layer.
+const loose = (n: TopologyNode, sources: Set<string>): ElkNode => ({
   ...leaf(n),
-  ...(n.type === "service" ? { layoutOptions: { "elk.layered.layering.layerConstraint": "LAST" } } : {}),
+  ...(n.type === "service" && !sources.has(n.id) ? { layoutOptions: { "elk.layered.layering.layerConstraint": "LAST" } } : {}),
 });
 
 // Child coordinates come back relative to their parent, so the walk flattens them to canvas space.
@@ -84,21 +89,101 @@ const collect = (parent: ElkNode, ox: number, oy: number, into: Positions) => {
   }
 };
 
-// Each pill moves level with its gateway row and right-aligns to a common x, so the wires in read as one table.
-export const alignPillsToRows = (nodes: TopologyNode[], positions: Positions): Positions => {
+// Clear space between a hostname pill and the box or card it points into.
+const PILL_LEAD = 48;
+const PILL_STEP = PILL_H + 8;
+
+const membersByNode = (networks: NetworkGroup[]) => {
+  const byNode = new Map<string, string[]>();
+  for (const g of networks) for (const id of g.memberIds) byNode.set(id, [...(byNode.get(id) ?? []), ...g.memberIds]);
+  return byNode;
+};
+
+// Each pill moves level with its gateway row and right-aligns to a common x, so the wires in read as one table. A
+// pill wired straight to a service (no gateway on the canvas) sits left of that service's network box, centred on it.
+export const alignPillsToRows = (
+  nodes: TopologyNode[],
+  positions: Positions,
+  edges: RelationEdge[] = [],
+  networks: NetworkGroup[] = [],
+): Positions => {
   const out = new Map(positions);
+  const byId = new Map(nodes.map((n) => [n.id, n]));
   for (const n of nodes) {
     if (n.type !== "gateway") continue;
     const at = positions.get(n.id);
     if (!at) continue;
     n.data.routes.forEach((r, i) => {
-      const pill = nodes.find((p) => p.id === `host-${r.id}`);
+      const pill = byId.get(`host-${r.id}`);
       if (!pill) return;
       const { w } = footprintOf(pill);
       out.set(pill.id, { x: at.x - PILL_GAP - w, y: at.y + GATEWAY_HEADER_H + i * GATEWAY_ROW_H + GATEWAY_ROW_H / 2 - PILL_H / 2 });
     });
   }
+  const direct = new Map<string, TopologyNode[]>();
+  for (const e of edges) {
+    const pill = byId.get(e.source);
+    if (pill?.type !== "hostname" || e.type === "route") continue;
+    direct.set(e.target, [...(direct.get(e.target) ?? []), pill]);
+  }
+  const boxMates = membersByNode(networks);
+  for (const [targetId, pills] of direct) {
+    const target = byId.get(targetId);
+    const at = positions.get(targetId);
+    if (!target || !at) continue;
+    const left = Math.min(at.x, ...(boxMates.get(targetId) ?? []).map((id) => positions.get(id)?.x ?? at.x)) - PADDING;
+    const middle = at.y + footprintOf(target).h / 2;
+    pills.forEach((pill, i) => {
+      const { w } = footprintOf(pill);
+      out.set(pill.id, { x: left - PILL_LEAD - w, y: middle - PILL_H / 2 + (i - (pills.length - 1) / 2) * PILL_STEP });
+    });
+  }
   return out;
+};
+
+// A card's measurement lags its data (a service's machine row arrives with the stacks), so the check takes the larger of
+// the measured and the designed size.
+const boundsOf = (n: TopologyNode) => {
+  const designed = designedFootprint(n);
+  return { w: Math.max(designed.w, n.measured?.width ?? 0), h: Math.max(designed.h, n.measured?.height ?? 0) };
+};
+
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+// Closer than this reads as touching: two cards edge to edge look like one, two boxes like one double line.
+const CLEARANCE = 12;
+
+const hit = (a: Rect, b: Rect) =>
+  a.x < b.x + b.w + CLEARANCE && b.x < a.x + a.w + CLEARANCE && a.y < b.y + b.h + CLEARANCE && b.y < a.y + a.h + CLEARANCE;
+
+// Whether the stored arrangement draws anything on top of, or touching, anything else: two cards, a card and a network box it is not
+// in, or two boxes with no member in common. Pills are placed afterwards, so they are not counted.
+// ponytail: pairwise O(n²), fine for a canvas of tens of nodes; a sweep line if canvases reach the hundreds.
+export const overlaps = (nodes: TopologyNode[], positions: Positions, networks: NetworkGroup[] = []): boolean => {
+  const cards = nodes
+    .filter((n) => n.type !== "hostname" && positions.has(n.id))
+    .map((n) => ({ id: n.id, ...positions.get(n.id)!, ...boundsOf(n) }));
+  for (let i = 0; i < cards.length; i++) for (let j = i + 1; j < cards.length; j++) if (hit(cards[i]!, cards[j]!)) return true;
+  const placed = nodes.map((n) => ({ ...n, position: positions.get(n.id) ?? n.position }));
+  const boxes = buildNetworkRects(networks, placed).map((r) => ({
+    rect: { x: r.x, y: r.y, w: r.width, h: r.height },
+    members: new Set(networks.find((g) => g.name === r.name)?.memberIds ?? []),
+  }));
+  for (let i = 0; i < boxes.length; i++) {
+    const a = boxes[i]!;
+    if (cards.some((c) => !a.members.has(c.id) && hit(a.rect, c))) return true;
+    for (let j = i + 1; j < boxes.length; j++) {
+      const b = boxes[j]!;
+      if ([...a.members].some((id) => b.members.has(id))) continue;
+      if (hit(a.rect, b.rect)) return true;
+    }
+  }
+  return false;
 };
 
 export const layoutGraph = async (
@@ -106,16 +191,19 @@ export const layoutGraph = async (
   edges: RelationEdge[],
   networks: NetworkGroup[] = [],
 ): Promise<Positions> => {
-  const grouped = new Set(networks.flatMap((g) => g.memberIds));
+  const sources = new Set(edges.map((e) => e.source));
+  // ELK nests a node in one box only, so a node on two networks lays out in the first.
+  const home = new Map<string, string>();
+  for (const g of networks) for (const id of g.memberIds) if (!home.has(id)) home.set(id, g.name);
   const graph: ElkNode = {
     id: "root",
     children: [
       ...networks.map((g) => ({
         id: `net-${g.name}`,
         layoutOptions: { "elk.padding": GROUP_PADDING },
-        children: nodes.filter((n) => g.memberIds.includes(n.id)).map(leaf),
+        children: nodes.filter((n) => home.get(n.id) === g.name).map(leaf),
       })),
-      ...nodes.filter((n) => !grouped.has(n.id)).map(loose),
+      ...nodes.filter((n) => !home.has(n.id)).map((n) => loose(n, sources)),
     ],
     edges: edges.map((e) => ({
       id: e.id,
@@ -125,7 +213,7 @@ export const layoutGraph = async (
   };
   const positions: Positions = new Map();
   collect(await elk.layout(graph), 0, 0, positions);
-  return alignPillsToRows(nodes, positions);
+  return alignPillsToRows(nodes, positions, edges, networks);
 };
 
 export interface NetworkRect {
