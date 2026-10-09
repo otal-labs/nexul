@@ -56,6 +56,22 @@ func TestNotificationHandler_List(t *testing.T) {
 		require.Len(t, ns, 1)
 		assert.Equal(t, "n1", ns[0].ID)
 	})
+	t.Run("unread_only and offset reach the same filter and window as the tool", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		for _, id := range []string{"n1", "n2", "n3"} {
+			n := mkNotif(id, "u1")
+			n.SubjectID = id
+			repo.create(t, n)
+		}
+		require.NoError(t, repo.MarkRead(context.Background(), "u1", "n2", notifFixedNow))
+		s := newTestNotifService(repo, newFakeNotifUsers())
+		rec := notifServe(t, notifAuthedHandler(s), http.MethodGet, "/api/notifications?unread_only=true&offset=1", "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		var ns []*Notification
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &ns))
+		require.Len(t, ns, 1, "two unread, the first skipped")
+		assert.False(t, ns[0].Read)
+	})
 	t.Run("invalid limit is treated as default", func(t *testing.T) {
 		repo := newFakeNotifRepo()
 		repo.create(t, mkNotif("n1", "u1"))
