@@ -187,54 +187,6 @@ h2 { margin: 0; font-size: 32px; font-weight: 500; line-height: 1.12; letter-spa
 	.product-section, .hosting-section { padding-block: 128px; }
 	.developer-section, .install-section { padding-block: 96px; }
 }
-.page-hero { max-width: 784px; padding-top: 48px; padding-bottom: 24px; }
-.page-hero h1 { font-size: 36px; }
-.page-lede { font-size: 15px; line-height: 1.7; color: var(--page-muted); max-width: 46ch; margin: 20px 0 0; }
-.page-lede a { color: var(--page-fg); text-decoration: underline; text-underline-offset: 3px; }
-.rail-section { max-width: 784px; padding-bottom: 96px; }
-.rail { --rail-x: 0px; list-style: none; margin: 0; padding: 0; }
-.rail-item { position: relative; padding: 20px 0 20px calc(var(--rail-x) + 32px); }
-.rail-item:not(:first-child)::before, .rail-item:not(:last-child)::after { content: ''; position: absolute; left: calc(var(--rail-x) + 5px); width: 1px; background: var(--page-border); }
-.rail-item:not(:first-child)::before { top: 0; height: 30px; }
-.rail-item:not(:last-child)::after { top: 30px; bottom: 0; }
-.rail-dot { position: absolute; z-index: 1; left: var(--rail-x); top: 25px; width: 11px; height: 11px; border-radius: 50%; border: 1px solid var(--page-border); background: var(--page-bg); }
-.rail-dot[data-status="planned"] { background: var(--page-border); }
-.rail-dot[data-status="in-progress"] { background: var(--page-warning); border-color: var(--page-warning); box-shadow: 0 0 0 4px color-mix(in srgb, var(--page-warning) 20%, transparent); }
-.rail-dot[data-status="shipped"], .rail-dot[data-status="latest"] { background: var(--page-success); border-color: var(--page-success); }
-.rail-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 0; font: 500 15px/1.4 var(--page-mono); letter-spacing: -.01em; }
-.rail-title[data-status="planned"] { color: var(--page-dim); }
-.rail-status { font: 10px/1.4 var(--page-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--page-muted); }
-.rail-item p { margin: 8px 0 0; font-size: 14px; line-height: 1.6; color: var(--page-muted); max-width: 60ch; }
-.release-gutter { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 22px; }
-.version-pill { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border: 1px solid var(--page-border); border-radius: 999px; font: 12px var(--page-mono); }
-.release-gutter time { font: 11px var(--page-mono); color: var(--page-muted); }
-.release-meta { display: flex; flex-wrap: wrap; column-gap: 20px; margin-top: 4px; font: 11px var(--page-mono); color: var(--page-muted); }
-.release-meta a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
-.release-changes { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 12px; }
-.release-changes li { font-size: 14px; line-height: 1.55; max-width: 64ch; }
-.release-changes a { font: 11px var(--page-mono); color: var(--page-muted); margin-left: 8px; white-space: nowrap; }
-.release-empty { font-size: 14px; color: var(--page-muted); margin: 0; }
-@media (hover: hover) and (pointer: fine) {
-	.release-meta a:hover, .release-changes a:hover, .version-pill:hover { color: var(--page-fg); border-color: var(--page-muted); }
-}
-@media (min-width: 414px) {
-	.page-hero h1 { font-size: 40px; }
-}
-@media (min-width: 768px) {
-	.page-hero { padding-top: 72px; padding-bottom: 40px; }
-	.page-hero h1 { font-size: 52px; }
-	.rail-item { padding-left: calc(var(--rail-x) + 36px); }
-	.rail-title { font-size: 16px; }
-	.rail-item p { font-size: 15px; }
-	.release-rail { --rail-x: 152px; }
-	.release-section, .release-hero { max-width: 944px; }
-	.release-gutter { position: absolute; left: 0; top: 20px; width: 128px; flex-direction: column; align-items: flex-start; gap: 8px; }
-	.release-meta { margin-top: -10px; }
-}
-@media (min-width: 1100px) {
-	.page-hero { padding-top: 88px; }
-	.page-hero h1 { font-size: 56px; }
-}
 @media (prefers-reduced-motion: reduce) {
 	*, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
