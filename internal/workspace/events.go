@@ -42,13 +42,20 @@ const (
 const TopicTicketCategoryChanged = "ticket.category_changed"
 
 // Topics returns every topic the workspace domain publishes.
-func Topics() []string {
-	return []string{
-		TopicNotificationCreated, TopicNotificationPushRequested,
-		TopicCategoryCreated, TopicCategoryUpdated, TopicCategoryDeleted,
-		TopicTicketTypeCreated, TopicTicketTypeUpdated, TopicTicketTypeDeleted,
-		TopicStatusCreated, TopicStatusUpdated, TopicStatusDeleted,
-		TopicTicketCategoryChanged,
+func Topics() []eventbus.Topic {
+	return []eventbus.Topic{
+		{Name: TopicNotificationCreated, Payload: NotificationCreatedEvent{}},
+		{Name: TopicNotificationPushRequested, Payload: NotificationPushRequestedEvent{}},
+		{Name: TopicCategoryCreated, Payload: CategoryEvent{}},
+		{Name: TopicCategoryUpdated, Payload: CategoryEvent{}},
+		{Name: TopicCategoryDeleted, Payload: CategoryEvent{}},
+		{Name: TopicTicketTypeCreated, Payload: TicketTypeEvent{}},
+		{Name: TopicTicketTypeUpdated, Payload: TicketTypeEvent{}},
+		{Name: TopicTicketTypeDeleted, Payload: TicketTypeEvent{}},
+		{Name: TopicStatusCreated, Payload: StatusEvent{}},
+		{Name: TopicStatusUpdated, Payload: StatusEvent{}},
+		{Name: TopicStatusDeleted, Payload: StatusEvent{}},
+		{Name: TopicTicketCategoryChanged, Payload: TicketCategoryChangedEvent{}},
 	}
 }
 

@@ -9,7 +9,7 @@ type Doc struct {
 	// ProjectID is the project this doc belongs to; mandatory, mirrors Ticket.ProjectID (ADR 0025).
 	ProjectID string `json:"project_id"`
 	// FolderID is the project folder the doc lives in; every doc is in exactly one (ADR 0096).
-	FolderID  string    `json:"folder_id"`
+	FolderID  string    `json:"folder_id" jsonschema:"The project folder the doc lives in."`
 	Version   int       `json:"version"`
 	Archived  bool      `json:"archived"`
 	Locked    bool      `json:"locked"`
@@ -52,7 +52,7 @@ type Folder struct {
 	ID        string    `json:"id"`
 	ProjectID string    `json:"project_id"`
 	Name      string    `json:"name"`
-	IsDefault bool      `json:"is_default"`
+	IsDefault bool      `json:"is_default" jsonschema:"The project's default folder, where new docs land; it is never deleted."`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

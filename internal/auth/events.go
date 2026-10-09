@@ -1,5 +1,7 @@
 package auth
 
+import "github.com/otal-labs/nexul/internal/platform/eventbus"
+
 const (
 	TopicAccountAdmitted    = "account.admitted"
 	TopicAccountDisabled    = "account.disabled"
@@ -40,17 +42,25 @@ type TokenChangedEvent struct {
 type SessionChangedEvent struct {
 	SessionID string        `json:"session_id"`
 	UserID    string        `json:"user_id"`
-	Client    SessionClient `json:"client"`
+	Client    SessionClient `json:"client" enum:"browser,desktop,phone"`
 	Platform  string        `json:"platform"`
 	Label     string        `json:"label"`
 }
 
 // Topics lists account, personal access token, session and identity lifecycle events for the event catalog.
-func Topics() []string {
-	return []string{
-		TopicAccountAdmitted, TopicAccountDisabled, TopicAccountReactivated, TopicAccountRemoved, TopicAccountRestored,
-		TopicProfileUpdated,
-		TopicTokenMinted, TopicTokenRevoked, TopicSessionCreated, TopicSessionRevoked,
-		TopicIdentityLinked, TopicIdentityUnlinked,
+func Topics() []eventbus.Topic {
+	return []eventbus.Topic{
+		{Name: TopicAccountAdmitted, Payload: AccountLifecycleEvent{}},
+		{Name: TopicAccountDisabled, Payload: AccountLifecycleEvent{}},
+		{Name: TopicAccountReactivated, Payload: AccountLifecycleEvent{}},
+		{Name: TopicAccountRemoved, Payload: AccountLifecycleEvent{}},
+		{Name: TopicAccountRestored, Payload: AccountLifecycleEvent{}},
+		{Name: TopicProfileUpdated, Payload: AccountLifecycleEvent{}},
+		{Name: TopicTokenMinted, Payload: TokenChangedEvent{}},
+		{Name: TopicTokenRevoked, Payload: TokenChangedEvent{}},
+		{Name: TopicSessionCreated, Payload: SessionChangedEvent{}},
+		{Name: TopicSessionRevoked, Payload: SessionChangedEvent{}},
+		{Name: TopicIdentityLinked, Payload: IdentityChangedEvent{}},
+		{Name: TopicIdentityUnlinked, Payload: IdentityChangedEvent{}},
 	}
 }

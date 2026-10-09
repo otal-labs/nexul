@@ -13,8 +13,8 @@ import (
 const TopicStatusChanged = "review.status_changed"
 
 // Topics returns every topic the codereview domain publishes.
-func Topics() []string {
-	return []string{TopicStatusChanged}
+func Topics() []eventbus.Topic {
+	return []eventbus.Topic{{Name: TopicStatusChanged, Payload: StatusChangedEvent{}}}
 }
 
 // StatusChangedEvent is the review.status_changed payload.
