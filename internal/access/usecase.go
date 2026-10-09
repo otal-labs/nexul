@@ -11,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/wake"
 )
 
 // resourceTypeDoc is the resource_type value documents use in permission_overwrites.
@@ -34,6 +35,7 @@ type Service struct {
 	docWorkspace  DocWorkspaceResolver
 	playWorkspace PlayWorkspaceResolver
 	scopes        Scopes
+	commits       *wake.Broadcast
 	now           func() time.Time
 }
 
@@ -74,11 +76,21 @@ func (s *Service) HasPermission(ctx context.Context, userID, workspaceID string,
 }
 
 func (s *Service) check(ctx context.Context, userID, workspaceID, projectID string, action permissions.Action, resourceType, resourceID string) bool {
-	return s.decide(ctx, s.layers(ctx, userID, workspaceID, projectID), userID, action, resourceType, resourceID)
+	return decide(s.layers(ctx, userID, workspaceID, projectID), action, func() *Overwrite {
+		if resourceType == "" || resourceType == resourceTypeProject || resourceID == "" {
+			return nil
+		}
+		ow, err := s.overwrite(ctx, resourceType, resourceID, userID)
+		if err != nil {
+			return nil
+		}
+		return ow
+	})
 }
 
-// decide answers check from layers already read, adding only the resource's own overwrite.
-func (s *Service) decide(ctx context.Context, ws workspaceLayers, userID string, action permissions.Action, resourceType, resourceID string) bool {
+// decide answers a check from layers already read; resource, the resource's own overwrite, is read only when the
+// layers leave the answer open.
+func decide(ws workspaceLayers, action permissions.Action, resource func() *Overwrite) bool {
 	if ws.owner {
 		return true
 	}
@@ -89,10 +101,7 @@ func (s *Service) decide(ctx context.Context, ws workspaceLayers, userID string,
 		return ws.member
 	}
 	allowed := ws.has(action)
-	if resourceType == "" || resourceType == resourceTypeProject || resourceID == "" {
-		return allowed
-	}
-	if ow, err := s.repo.Get(ctx, resourceType, resourceID, userID); err == nil {
+	if ow := resource(); ow != nil {
 		allowed = applyOverwrite(allowed, ow, action)
 	}
 	return allowed
@@ -116,14 +125,14 @@ func (s *Service) workspaceLayers(ctx context.Context, userID, workspaceID strin
 		return ws
 	}
 	if s.roles != nil {
-		if info, err := s.roles.MemberRole(ctx, workspaceID, userID); err == nil {
+		if info, err := s.memberRole(ctx, workspaceID, userID); err == nil {
 			ws.member = true
 			ws.owner = info.IsOwnerRole
 			ws.restricted = info.Restricted && !info.IsOwnerRole
 			ws.role = info.Permissions
 		}
 	}
-	if ow, err := s.repo.Get(ctx, resourceTypeWorkspace, workspaceID, userID); err == nil {
+	if ow, err := s.overwrite(ctx, resourceTypeWorkspace, workspaceID, userID); err == nil {
 		ws.overwrite = ow
 	}
 	return ws
@@ -137,7 +146,7 @@ func (s *Service) layers(ctx context.Context, userID, workspaceID, projectID str
 		return ws
 	}
 	ws.inProject = true
-	if ow, err := s.repo.Get(ctx, resourceTypeProject, projectID, userID); err == nil {
+	if ow, err := s.overwrite(ctx, resourceTypeProject, projectID, userID); err == nil {
 		ws.project = ow.Allow
 	}
 	return ws
@@ -227,45 +236,78 @@ func applyOverwrite(allowed bool, ow *Overwrite, action permissions.Action) bool
 // Can reports whether userID may perform action on docID; in a project hidden from a Restricted member the doc's
 // own overwrite allows nothing.
 func (s *Service) Can(ctx context.Context, userID, docID string, action permissions.Action) (bool, error) {
-	if userID == "" {
-		return false, nil
-	}
-	workspaceID, projectID := s.resolveDoc(ctx, docID)
-	return s.check(ctx, userID, workspaceID, projectID, action, resourceTypeDoc, docID), nil
+	return s.CanDocs(ctx, userID, "", []string{docID}, action)[docID], nil
 }
 
-// CanDocs answers Can for each of docIDs, all in projectID, reading the workspace and project layers once for the
-// lot instead of once per doc; a list of a project's docs would otherwise pay for them per row.
+// CanDocs answers Can for each of docIDs from one read of userID's overwrites on them, with each project's layers
+// read once; a list of docs would otherwise pay for them per row. projectID, when every doc is in it, saves reading
+// where each doc lives; empty, that is read for all of them at once.
 func (s *Service) CanDocs(ctx context.Context, userID, projectID string, docIDs []string, action permissions.Action) map[string]bool {
 	out := make(map[string]bool, len(docIDs))
-	if userID == "" {
+	if userID == "" || len(docIDs) == 0 {
 		return out
 	}
-	workspaceID := ""
-	if projectID != "" {
-		ws, err := s.projectWorkspace(ctx, projectID)
-		if err != nil {
-			projectID = ""
-		}
-		workspaceID = ws
-	}
-	ws := s.layers(ctx, userID, workspaceID, projectID)
+	ctx = s.memoized(ctx)
+	scopes := s.docScopesIn(ctx, projectID, docIDs)
+	var own map[string]*Overwrite
 	for _, id := range docIDs {
-		out[id] = s.decide(ctx, ws, userID, action, resourceTypeDoc, id)
+		scope := scopes[id]
+		out[id] = decide(s.layers(ctx, userID, scope.WorkspaceID, scope.ProjectID), action, func() *Overwrite {
+			if own == nil {
+				own = s.docOverwrites(ctx, docIDs, userID)
+			}
+			return own[id]
+		})
 	}
 	return out
 }
 
+// docOverwrites is userID's overwrite on each of docIDs that has one; a failed read counts as none, as a single
+// check's does.
+func (s *Service) docOverwrites(ctx context.Context, docIDs []string, userID string) map[string]*Overwrite {
+	own, err := s.overwrites(ctx, resourceTypeDoc, docIDs, userID)
+	if err != nil {
+		return map[string]*Overwrite{}
+	}
+	return own
+}
+
 // resolveDoc resolves docID's workspace and project for the workspace- and project-scoped layers.
 func (s *Service) resolveDoc(ctx context.Context, docID string) (workspaceID, projectID string) {
-	if s.docWorkspace == nil {
-		return "", ""
+	scope := s.docScopes(ctx, []string{docID})[docID]
+	return scope.WorkspaceID, scope.ProjectID
+}
+
+// docScopesIn is where each of docIDs lives: all in projectID when one is named, an unknown project counting as none.
+func (s *Service) docScopesIn(ctx context.Context, projectID string, docIDs []string) map[string]DocScope {
+	if projectID == "" {
+		return s.docScopes(ctx, docIDs)
 	}
-	workspaceID, projectID, err := s.docWorkspace.DocScope(ctx, docID)
+	scope := DocScope{ProjectID: projectID}
+	workspaceID, err := s.projectWorkspace(ctx, projectID)
 	if err != nil {
-		return "", ""
+		scope = DocScope{}
 	}
-	return workspaceID, projectID
+	scope.WorkspaceID = workspaceID
+	scopes := make(map[string]DocScope, len(docIDs))
+	for _, id := range docIDs {
+		scopes[id] = scope
+	}
+	return scopes
+}
+
+// docScopes is where each of docIDs lives; a doc it cannot resolve has an empty scope.
+func (s *Service) docScopes(ctx context.Context, docIDs []string) map[string]DocScope {
+	if s.docWorkspace == nil {
+		return map[string]DocScope{}
+	}
+	scopes, err := rememberEach(ctx, docIDs, func(id string) any { return docKey{id} }, func(missing []string) (map[string]DocScope, error) {
+		return s.docWorkspace.DocScopes(ctx, missing)
+	})
+	if err != nil {
+		return map[string]DocScope{}
+	}
+	return scopes
 }
 
 // resolvePlayWorkspace resolves playID's own workspace (a play carries it directly, unlike a doc).

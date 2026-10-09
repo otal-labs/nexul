@@ -88,7 +88,18 @@ func New(opts RegistryOptions) http.Handler {
 		prompts:      workflowPrompts(),
 		instructions: instructions,
 		logger:       opts.Logger,
+		memo:         accessMemo(opts.Access),
 	}.handler(opts.InstanceURL)
+}
+
+// accessMemo starts a fresh access memo per request; with no access service wired there is nothing to remember.
+func accessMemo(a *access.Service) func(context.Context) context.Context {
+	if a == nil {
+		return nil
+	}
+	return func(ctx context.Context) context.Context {
+		return access.WithMemo(ctx, a.NewMemo())
+	}
 }
 
 // registryTools lists the tools in a fixed order, so tools/list is byte-stable across processes.

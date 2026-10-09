@@ -37,6 +37,15 @@ func (sc storeScopes) WorkspaceIDForProject(ctx context.Context, projectID strin
 	return p.WorkspaceID, nil
 }
 
+func (sc storeScopes) ProjectIDs(ctx context.Context, workspaceID string) ([]string, error) {
+	ps, err := sc.s.Projects.List(ctx, workspaceID)
+	ids := make([]string, len(ps))
+	for i, p := range ps {
+		ids[i] = p.ID
+	}
+	return ids, err
+}
+
 func (sc storeScopes) UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
 	return sc.s.WorkspaceMembers.UnrestrictedWorkspaceIDs(ctx, userID)
 }

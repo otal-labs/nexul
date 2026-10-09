@@ -213,10 +213,10 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("POST /api/invitations/acceptance", svc.authHandler.Routes())
 	httpMux.Handle("POST /api/invitations/redeem", svc.authHandler.Routes())
 	// Automation tokens, then integration tokens, then session/PAT/setup pass — one audit-logged handler underneath all.
-	httpMux.Handle("/api/", svc.automationsSvc.RequireAutomation(
+	httpMux.Handle("/api/", withAccessMemo(svc.accessSvc, svc.automationsSvc.RequireAutomation(
 		func(h http.Handler) http.Handler { return svc.integrationsSvc.RequireIntegration(userAuth, h) },
 		svc.integrationsSvc.AuditLog(resolveAuditActor, apiMux),
-	))
+	)))
 	httpMux.Handle("/ws/events", svc.authSvc.RequireWS(withIdentity(liveEventsHandler(svc.presenceKeeper, liveHub))))
 	httpMux.Handle("GET /ws/collab/{id}", svc.authSvc.RequireWS(withIdentity(svc.collabHub)))
 	httpMux.Handle("GET /ws/collab/notes/{id}", svc.authSvc.RequireWS(withIdentity(svc.notesHub)))

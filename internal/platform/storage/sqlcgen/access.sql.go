@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"strings"
 )
 
 const countOverwriteAllowAny = `-- name: CountOverwriteAllowAny :one
@@ -95,6 +96,60 @@ type ListOverwritesByResourceParams struct {
 
 func (q *Queries) ListOverwritesByResource(ctx context.Context, arg ListOverwritesByResourceParams) ([]PermissionOverwrite, error) {
 	rows, err := q.db.QueryContext(ctx, listOverwritesByResource, arg.ResourceType, arg.ResourceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PermissionOverwrite
+	for rows.Next() {
+		var i PermissionOverwrite
+		if err := rows.Scan(
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.UserID,
+			&i.Allow,
+			&i.Deny,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOverwritesForUser = `-- name: ListOverwritesForUser :many
+SELECT resource_type, resource_id, user_id, allow, deny, created_at, updated_at FROM permission_overwrites
+WHERE resource_type = ?1 AND user_id = ?2 AND resource_id IN (/*SLICE:resource_ids*/?)
+`
+
+type ListOverwritesForUserParams struct {
+	ResourceType string
+	UserID       string
+	ResourceIds  []string
+}
+
+func (q *Queries) ListOverwritesForUser(ctx context.Context, arg ListOverwritesForUserParams) ([]PermissionOverwrite, error) {
+	query := listOverwritesForUser
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.ResourceType)
+	queryParams = append(queryParams, arg.UserID)
+	if len(arg.ResourceIds) > 0 {
+		for _, v := range arg.ResourceIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:resource_ids*/?", strings.Repeat(",?", len(arg.ResourceIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:resource_ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, err
 	}

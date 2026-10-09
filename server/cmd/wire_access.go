@@ -48,23 +48,11 @@ func (a accessRoleResolver) MemberRole(ctx context.Context, workspaceID, userID 
 
 // accessDocWorkspaceResolver reads from the repo directly to avoid recursing into a permission check.
 type accessDocWorkspaceResolver struct {
-	docs     *storage.DocsRepo
-	projects *storage.ProjectsRepo
+	docs *storage.DocsRepo
 }
 
-func (a accessDocWorkspaceResolver) DocScope(ctx context.Context, docID string) (string, string, error) {
-	d, err := a.docs.GetByID(ctx, docID)
-	if err != nil {
-		return "", "", err
-	}
-	if d.ProjectID == "" {
-		return "", "", nil
-	}
-	p, err := a.projects.Get(ctx, d.ProjectID)
-	if err != nil {
-		return "", "", err
-	}
-	return p.WorkspaceID, d.ProjectID, nil
+func (a accessDocWorkspaceResolver) DocScopes(ctx context.Context, docIDs []string) (map[string]access.DocScope, error) {
+	return a.docs.ScopesOf(ctx, docIDs)
 }
 
 // accessUsers adapts UsersRepo to access's Users interface, mapping auth.User to access.User (ADR 0017).
@@ -101,6 +89,18 @@ func (a accessScopes) WorkspaceIDForProject(ctx context.Context, projectID strin
 		return "", err
 	}
 	return p.WorkspaceID, nil
+}
+
+func (a accessScopes) ProjectIDs(ctx context.Context, workspaceID string) ([]string, error) {
+	ps, err := a.projects.List(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(ps))
+	for i, p := range ps {
+		ids[i] = p.ID
+	}
+	return ids, nil
 }
 
 func (a accessScopes) UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {

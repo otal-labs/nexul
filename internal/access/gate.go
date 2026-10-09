@@ -117,7 +117,9 @@ func (s *Service) workspacesOf(ctx context.Context, userID string) ([]string, er
 	if userID == "" || s.scopes == nil {
 		return nil, nil
 	}
-	workspaceIDs, err := s.scopes.UnrestrictedWorkspaceIDsForUser(ctx, userID)
+	workspaceIDs, err := remember(ctx, workspacesKey{userID}, func() ([]string, error) {
+		return s.scopes.UnrestrictedWorkspaceIDsForUser(ctx, userID)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list workspaces of %s: %w", userID, err)
 	}
@@ -159,7 +161,9 @@ func (s *Service) projectWorkspace(ctx context.Context, projectID string) (strin
 	if s.scopes == nil {
 		return "", fmt.Errorf("%w: no project lookup wired", apperrs.ErrForbidden)
 	}
-	workspaceID, err := s.scopes.WorkspaceIDForProject(ctx, projectID)
+	workspaceID, err := remember(ctx, projectKey{projectID}, func() (string, error) {
+		return s.scopes.WorkspaceIDForProject(ctx, projectID)
+	})
 	if errors.Is(err, apperrs.ErrNotFound) {
 		return "", fmt.Errorf("%w: project %s", apperrs.ErrNotFound, projectID)
 	}
@@ -167,4 +171,55 @@ func (s *Service) projectWorkspace(ctx context.Context, projectID string) (strin
 		return "", fmt.Errorf("resolve workspace of project %s: %w", projectID, err)
 	}
 	return workspaceID, nil
+}
+
+// IsOwner reports whether userID holds workspaceID's Owner role; someone outside the workspace does not.
+func (s *Service) IsOwner(ctx context.Context, userID, workspaceID string) (bool, error) {
+	info, err := s.standing(ctx, userID, workspaceID)
+	return info.IsOwnerRole, err
+}
+
+// IsRestricted reports whether userID is a Restricted member of workspaceID (ADR 0097); the Owner never is.
+func (s *Service) IsRestricted(ctx context.Context, userID, workspaceID string) (bool, error) {
+	info, err := s.standing(ctx, userID, workspaceID)
+	return info.Restricted && !info.IsOwnerRole, err
+}
+
+func (s *Service) standing(ctx context.Context, userID, workspaceID string) (RoleInfo, error) {
+	if s.roles == nil {
+		return RoleInfo{}, nil
+	}
+	info, err := s.memberRole(ctx, workspaceID, userID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return RoleInfo{}, nil
+	}
+	if err != nil {
+		return RoleInfo{}, fmt.Errorf("membership of %s in workspace %s: %w", userID, workspaceID, err)
+	}
+	return info, nil
+}
+
+// ProjectsWith lists the projects of workspaceID in which userID holds action (permissions.Member: may open them), from
+// the layers and one read of the workspace's projects, so a list can filter by them in SQL instead of row by row.
+func (s *Service) ProjectsWith(ctx context.Context, userID, workspaceID string, action permissions.Action) ([]string, error) {
+	if userID == "" || s.scopes == nil {
+		return []string{}, nil
+	}
+	projectIDs, err := s.scopes.ProjectIDs(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("list projects of workspace %s: %w", workspaceID, err)
+	}
+	ctx = s.memoized(ctx)
+	if s.workspaceLayers(ctx, userID, workspaceID).restricted {
+		if _, err := s.overwrites(ctx, resourceTypeProject, projectIDs, userID); err != nil {
+			return nil, fmt.Errorf("project access of %s: %w", userID, err)
+		}
+	}
+	out := make([]string, 0, len(projectIDs))
+	for _, projectID := range projectIDs {
+		if s.check(ctx, userID, workspaceID, projectID, action, "", "") {
+			out = append(out, projectID)
+		}
+	}
+	return out, nil
 }
