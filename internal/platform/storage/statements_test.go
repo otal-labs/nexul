@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -17,16 +18,32 @@ import (
 type statements struct {
 	n       atomic.Int64
 	maxArgs atomic.Int64
+	mu      sync.Mutex
+	last    string
+	args    []any
 }
 
-func (s *statements) record(args int) {
+func (s *statements) record(query string, args []driver.NamedValue) {
 	s.n.Add(1)
+	s.mu.Lock()
+	s.last, s.args = query, make([]any, len(args))
+	for i, a := range args {
+		s.args[i] = a.Value
+	}
+	s.mu.Unlock()
 	for {
 		cur := s.maxArgs.Load()
-		if int64(args) <= cur || s.maxArgs.CompareAndSwap(cur, int64(args)) {
+		if int64(len(args)) <= cur || s.maxArgs.CompareAndSwap(cur, int64(len(args))) {
 			return
 		}
 	}
+}
+
+// lastStatement is the newest statement's text and arguments, ready to run again, such as under EXPLAIN QUERY PLAN.
+func (s *statements) lastStatement() (string, []any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.last, s.args
 }
 
 func (s *statements) reset() {
@@ -70,12 +87,12 @@ type countingConn struct {
 }
 
 func (c countingConn) QueryContext(ctx context.Context, q string, a []driver.NamedValue) (driver.Rows, error) {
-	c.st.record(len(a))
+	c.st.record(q, a)
 	return c.Conn.(driver.QueryerContext).QueryContext(ctx, q, a)
 }
 
 func (c countingConn) ExecContext(ctx context.Context, q string, a []driver.NamedValue) (driver.Result, error) {
-	c.st.record(len(a))
+	c.st.record(q, a)
 	return c.Conn.(driver.ExecerContext).ExecContext(ctx, q, a)
 }
 

@@ -32,8 +32,9 @@ WHERE n.user_id = sqlc.arg(user_id) AND (sqlc.arg(workspace_id) = '' OR n.worksp
 ORDER BY n.created_at DESC LIMIT sqlc.arg(limit);
 
 -- name: CountUnreadNotificationsByProject :many
+-- Without table statistics SQLite reads every notification the user has, read ones included, through the inbox index.
 SELECT n.workspace_id, CAST(COALESCE(t.project_id, d.project_id, m.project_id, '') AS TEXT) AS project_id, COUNT(*) AS unread
-FROM notifications n
+FROM notifications n INDEXED BY idx_notifications_user_unread
 LEFT JOIN docs d ON n.subject_type = 'doc' AND d.id = n.subject_id
 LEFT JOIN tickets t ON n.subject_type = 'ticket' AND t.id = n.subject_id
 LEFT JOIN memories m ON n.subject_type = 'memory' AND m.id = n.subject_id
