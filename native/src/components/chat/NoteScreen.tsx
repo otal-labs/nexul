@@ -12,11 +12,13 @@ export const NoteScreen = () => {
   return (
     <View className="flex-1 bg-background">
       <Stack.Screen options={{ title: name ?? "Note" }} />
-      {isPending && <LoadingDisplay />}
+      {isPending && <LoadingDisplay message="Loading the note" />}
       {error && <ErrorDisplay error={error} notFound="This note doesn't exist or was deleted." />}
       {markdown !== undefined && (
-        <ScrollView contentContainerClassName="gap-3 p-4">
-          <MessageBody body={markdown} />
+        <ScrollView contentContainerClassName="p-3 pb-8">
+          <View className="gap-3 rounded-xl border border-border bg-card px-4 py-5">
+            <MessageBody body={markdown} />
+          </View>
         </ScrollView>
       )}
     </View>

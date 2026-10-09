@@ -1,30 +1,71 @@
 import { LegendList } from "@legendapp/list/react-native";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
+import { ChatDayDivider } from "@/components/chat/ChatDayDivider";
+import { MessageArrival, type Arrival } from "@/components/chat/MessageArrival";
 import { MessageRow } from "@/components/chat/MessageRow";
-import { usePersonLookup } from "@/hooks/PeopleHooks";
-import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
+import { useFetchMe } from "@/hooks/AuthHooks";
+import { formatDayLabel } from "@/lib/time";
 import { isContinuation, type Message } from "@/models/Chat";
-import { personLabel } from "@/models/Person";
 
 interface MessageListProps {
   messages: Message[];
 }
 
+type StreamRow =
+  | { kind: "day"; key: string; label: string }
+  | { kind: "message"; key: string; message: Message; continuation: boolean; own: boolean };
+
+const dayOf = (iso: string) => new Date(iso).toDateString();
+
 // Oldest first and anchored to the end: opens on the newest message and follows new ones while the reader is at the bottom.
 export const MessageList = ({ messages }: MessageListProps) => {
-  const resolvePerson = usePersonLookup(useCurrentWorkspaceId());
-  // Continuation is judged against the full thread, so a deleted message still breaks the run it sat in.
-  const rows = useMemo(
-    () => messages.flatMap((message, i) => (message.deleted_at ? [] : [{ message, continuation: isContinuation(messages[i - 1], message) }])),
-    [messages],
-  );
+  const { data: me } = useFetchMe(true);
+  const meId = me?.user.id;
+  // What was on screen when the thread opened never animates.
+  const [seen] = useState(() => new Set(messages.map((m) => m.id)));
+
+  const rows = useMemo(() => {
+    // A message sent from here is keyed by its text and send count, so the server's copy keeps the pending row mid-rise.
+    const sent = new Map<string, number>();
+    const keyOf = (message: Message, own: boolean) => {
+      if (!own || seen.has(message.id)) return message.id;
+      const n = sent.get(message.body) ?? 0;
+      sent.set(message.body, n + 1);
+      return `sent-${n}-${message.body}`;
+    };
+    // Continuation is judged against the full thread, so a deleted message still breaks the run it sat in.
+    return messages.flatMap((message, i): StreamRow[] => {
+      if (message.deleted_at) return [];
+      const prev = messages[i - 1];
+      const newDay = !prev || dayOf(prev.created_at) !== dayOf(message.created_at);
+      const own = message.author_kind === "user" && message.author_id === meId;
+      const row: StreamRow = { kind: "message", key: keyOf(message, own), message, continuation: !newDay && isContinuation(prev, message), own };
+      if (!newDay) return [row];
+      return [{ kind: "day", key: `day-${message.created_at}`, label: formatDayLabel(message.created_at) }, row];
+    });
+  }, [messages, meId, seen]);
+
+  // Your confirmed copy replaces the pending row, so only the pending one rises; anyone else's new message arrives.
+  const arrivalOf = (message: Message, own: boolean): Arrival | undefined => {
+    if (seen.has(message.id)) return undefined;
+    if (message.pending) return "rise";
+    return own ? undefined : "arrive";
+  };
+
   return (
     <LegendList
       data={rows}
-      keyExtractor={(row) => row.message.id}
+      keyExtractor={(row) => row.key}
       renderItem={({ item }) => (
-        <MessageRow message={item.message} authorName={personLabel(resolvePerson(item.message.author_id))} continuation={item.continuation} />
+        <>
+          {item.kind === "day" && <ChatDayDivider label={item.label} />}
+          {item.kind === "message" && (
+            <MessageArrival arrival={arrivalOf(item.message, item.own)}>
+              <MessageRow message={item.message} own={item.own} continuation={item.continuation} />
+            </MessageArrival>
+          )}
+        </>
       )}
       estimatedItemSize={72}
       recycleItems={false}
@@ -33,6 +74,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
       maintainScrollAtEnd
       maintainVisibleContentPosition
       keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ paddingBottom: 12 }}
     />
   );
 };

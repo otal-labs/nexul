@@ -1,18 +1,14 @@
 import { useRouter } from "expo-router";
-import { FileText, Hash, Lock, SquareKanban, User } from "lucide-react-native";
-import { Pressable } from "react-native";
+import { FileText, Hash, Lock, SquareKanban, Users } from "lucide-react-native";
+import { Pressable, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { Text } from "@/components/ui/text";
-import { cn } from "@/lib/utils";
+import { UnreadBadge } from "@/components/UnreadBadge";
 import { useConversationLabel } from "@/hooks/ChatHooks";
-import type { Conversation, ConversationKind, DMLabelContext } from "@/models/Chat";
-
-const kindIcons: Partial<Record<ConversationKind, typeof Hash>> = {
-  dm: User,
-  ticket_thread: SquareKanban,
-  doc_thread: FileText,
-};
+import { cn } from "@/lib/utils";
+import type { Conversation, DMLabelContext } from "@/models/Chat";
 
 interface ConversationRowProps {
   conversation: Conversation;
@@ -20,28 +16,45 @@ interface ConversationRowProps {
   dmCtx: DMLabelContext;
 }
 
+// A direct message with one other person leads with their avatar; everything else with a muted glyph on a tile.
+const ConversationMark = ({ conversation, dmCtx }: Pick<ConversationRowProps, "conversation" | "dmCtx">) => {
+  const [muted] = useCSSVariable(["--color-muted-foreground"]);
+  const others = (conversation.participant_ids ?? []).filter((id) => id !== dmCtx.currentUserId);
+  const other = conversation.kind === "dm" && others.length === 1 && others[0];
+  const Icon =
+    (conversation.private && Lock) ||
+    (conversation.kind === "dm" && Users) ||
+    (conversation.kind === "ticket_thread" && SquareKanban) ||
+    (conversation.kind === "doc_thread" && FileText) ||
+    Hash;
+  return (
+    <>
+      {other && <PersonAvatar person={dmCtx.resolvePerson(other)} size={30} />}
+      {!other && (
+        <View className="size-[30px] items-center justify-center rounded-md border border-border bg-card">
+          <Icon color={String(muted)} size={15} />
+        </View>
+      )}
+    </>
+  );
+};
+
 export const ConversationRow = ({ conversation, unreadCount, dmCtx }: ConversationRowProps) => {
   const router = useRouter();
-  const [mutedForeground] = useCSSVariable(["--color-muted-foreground"]);
   const label = useConversationLabel(conversation, dmCtx);
-  const Icon = kindIcons[conversation.kind] ?? Hash;
+  const unread = unreadCount > 0;
   return (
     <Pressable
       role="button"
       aria-label={conversation.private ? `${label}, private` : label}
       onPress={() => router.push({ pathname: "/chat/[id]", params: { id: conversation.id } })}
-      className="min-h-12 flex-row items-center gap-3 border-b border-border px-4 py-3 active:bg-accent"
+      className="min-h-[52px] flex-row items-center gap-3.5 px-5 py-2.5 active:bg-accent"
     >
-      <Icon color={String(mutedForeground)} size={16} />
-      <Text numberOfLines={1} className={cn("flex-1", unreadCount > 0 && "font-semibold")}>
+      <ConversationMark conversation={conversation} dmCtx={dmCtx} />
+      <Text numberOfLines={1} className={cn("min-w-0 flex-1 text-[15px]", unread ? "font-medium" : "text-muted-foreground")}>
         {label}
       </Text>
-      {conversation.private && <Lock color={String(mutedForeground)} size={12} />}
-      {unreadCount > 0 && (
-        <Text aria-label={`${unreadCount} unread`} className="font-mono text-xs text-muted-foreground">
-          {unreadCount}
-        </Text>
-      )}
+      {unread && <UnreadBadge count={unreadCount} />}
     </Pressable>
   );
 };

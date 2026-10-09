@@ -10,15 +10,20 @@ import { useSessionStore } from "@/stores/sessionStore";
 const sans = "Inter";
 const mono = "JetBrains Mono";
 
-// The native renderer cannot read the stylesheet, so it takes the same tokens as values.
-const useMarkdownStyle = (): MarkdownStyle => {
-  const [fg, muted, line, fill] = useCSSVariable([
+// The native renderer cannot read the stylesheet, so it takes the same tokens as values; on your own bubble the ink is the
+// brand's foreground and code sits on a darker tint of the bubble.
+const useMarkdownStyle = (own: boolean): MarkdownStyle => {
+  const [fg, muted, line, fill, brandFg] = useCSSVariable([
     "--color-foreground",
     "--color-muted-foreground",
     "--color-border",
     "--color-surface-2",
+    "--color-brand-foreground",
   ]);
-  const [foreground, mutedForeground, border, surface] = [String(fg), String(muted), String(line), String(fill)];
+  const ink = own ? String(brandFg) : String(fg);
+  const [foreground, mutedForeground, border, surface] = own
+    ? [ink, ink, "#00000033", "#0000001f"]
+    : [ink, String(muted), String(line), String(fill)];
   return useMemo(() => {
     const body = { fontFamily: sans, fontSize: 15, lineHeight: 21, color: foreground };
     const heading = { fontFamily: sans, fontWeight: "600", color: foreground };
@@ -73,15 +78,16 @@ export const openLink = (url: string, canReadTickets: boolean) => {
 
 interface MessageMarkdownProps {
   markdown: string;
+  own?: boolean;
 }
 
-export const MessageMarkdown = ({ markdown }: MessageMarkdownProps) => {
+export const MessageMarkdown = ({ markdown, own = false }: MessageMarkdownProps) => {
   const canReadTickets = useAreaAccess()?.("tickets") ?? false;
   return (
     <EnrichedMarkdownText
       markdown={markdown}
       flavor="github"
-      markdownStyle={useMarkdownStyle()}
+      markdownStyle={useMarkdownStyle(own)}
       onLinkPress={({ url }) => openLink(url, canReadTickets)}
     />
   );

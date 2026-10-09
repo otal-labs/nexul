@@ -1,36 +1,35 @@
-import { useState } from "react";
 import { View } from "react-native";
 
 import { DiscordMarkdown } from "@/components/chat/DiscordMarkdown";
-import { Text } from "@/components/ui/text";
+import { toneBg } from "@/components/chat/EmbedTone";
+import { Microheader } from "@/components/Microheader";
 import { cn } from "@/lib/utils";
-import type { EmbedField } from "@/models/Embed";
+import { fieldTone, type EmbedField } from "@/models/Embed";
 
-// Below this width a 40% label column wraps every word, so each label sits over its value instead.
-const STACK_BELOW = 280;
+// An inline value past this many characters (an image tag, a URL) takes the row instead of wrapping in a half.
+const LONG_VALUE = 24;
 
-const EmbedFieldRow = ({ field, first, stacked }: { field: EmbedField; first: boolean; stacked: boolean }) => (
-  <View className={cn("border-cell-line", !stacked && "flex-row", !first && "border-t")}>
-    <View className={cn("border-cell-line bg-cell-label px-2.5 py-1.5", !stacked && "w-2/5 border-r")}>
-      <Text className="text-xs text-muted-foreground">{field.name}</Text>
-    </View>
-    <View className="min-w-0 flex-1 px-2.5 py-1.5">
-      <DiscordMarkdown text={field.value} textClassName="text-xs leading-4 text-foreground/90" />
-    </View>
-  </View>
-);
-
-// Every field is a label and value row, inline or not, framed with a hairline on every cell edge.
-export const EmbedFieldGrid = ({ fields }: { fields: EmbedField[] }) => {
-  const [stacked, setStacked] = useState(false);
+const EmbedFieldItem = ({ field }: { field: EmbedField }) => {
+  const tone = fieldTone(field.value);
+  const wide = !field.inline || field.value.length > LONG_VALUE;
   return (
-    <View
-      onLayout={({ nativeEvent }) => setStacked(nativeEvent.layout.width < STACK_BELOW)}
-      className="overflow-hidden rounded-md border border-cell-line"
-    >
-      {fields.map((field, i) => (
-        <EmbedFieldRow key={i} field={field} first={i === 0} stacked={stacked} />
-      ))}
+    <View className={cn("gap-0.5", wide ? "w-full" : "w-[47%]")}>
+      <Microheader>{field.name}</Microheader>
+      <View className="flex-row items-center gap-1.5">
+        {tone && <View className={cn("size-1.5 rounded-full", toneBg[tone])} />}
+        <View className="min-w-0 flex-1">
+          <DiscordMarkdown text={field.value} textClassName="text-[13px] leading-[18px] text-foreground" />
+        </View>
+      </View>
     </View>
   );
 };
+
+// Facts, not a table: a mono label over each value, the sender's inline fields two across and the rest the full width.
+export const EmbedFieldGrid = ({ fields }: { fields: EmbedField[] }) => (
+  <View className="flex-row flex-wrap gap-x-[6%] gap-y-3">
+    {fields.map((field, i) => (
+      <EmbedFieldItem key={i} field={field} />
+    ))}
+  </View>
+);
