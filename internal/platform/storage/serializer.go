@@ -6,11 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/otal-labs/nexul/internal/platform/wake"
 )
 
 type Serializer struct {
 	mu        sync.Mutex
-	committed chan struct{}
+	committed wake.Broadcast
 }
 
 func (s *Serializer) WithTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) (err error) {
@@ -34,9 +36,6 @@ func (s *Serializer) WithTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) er
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit tx: %w", err)
 	}
-	select {
-	case s.committed <- struct{}{}:
-	default:
-	}
+	s.committed.Notify()
 	return nil
 }
