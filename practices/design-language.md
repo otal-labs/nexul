@@ -242,7 +242,9 @@ a whole (the kanban `TicketCard`). Row hover is a
 reserved for draggable cards. The primary field sits left in normal weight;
 secondary and meta fields trail right in `muted-foreground`, and in mono with
 `tabular-nums` whenever the value is a count, amount, id, or timestamp. Status
-renders per the badge rule above. A page that needs bulk actions uses a left
+renders per the badge rule above, in a fixed-width column when it leads the
+row, so the field after it never shifts between Success and Failure. A page
+that needs bulk actions uses a left
 checkbox column; no page invents its own selection affordance.
 
 List pane. A page that edits one record beside its siblings (Docs, Memories)
