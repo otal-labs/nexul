@@ -18,6 +18,7 @@ import (
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/mcp/composite"
+	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/platform/paging"
@@ -79,6 +80,52 @@ func TestRows_MessageListReadsOnlyItsPage(t *testing.T) {
 	plan := explain(t, db, `SELECT * FROM messages WHERE conversation_id = ? AND deleted_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 50 OFFSET 100`, f.channel.ID)
 	assert.Contains(t, plan, "idx_messages_live")
 	assert.NotContains(t, plan, "TEMP B-TREE")
+}
+
+// TestRows_ListToolsReadOnlyTheirPage: over 3,000 tickets, docs, deploys, notifications, and memories, a page of 50
+// hands back about its own rows and a count, where paging in memory read every row or the first thousand.
+func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
+	f, st, db := newCountedFixtureDB(t)
+	for _, stmt := range []string{
+		`INSERT INTO tickets (id, title, body, status, project_id, created_at, updated_at, number, position)
+			SELECT printf('t-%05d', i), 'Login times out ' || i, '', 'open', 'project-general', 1700000000 + i, 1700000000 + i, 100 + i, i FROM n`,
+		`INSERT INTO docs (id, title, body, body_md, version, created_at, updated_at, project_id, folder_id)
+			SELECT printf('d-%05d', i), 'Runbook ' || i, '{"type":"doc","content":[]}', 'rollback step ' || i, 1, 1700000000 + i, 1700000000 + i, 'project-general', 'folder-general-main' FROM n`,
+		`INSERT INTO deploys (id, service, target, image, status, strategy, created_at, updated_at, stack_id)
+			SELECT printf('dep-%05d', i), 'web', 'm1', 'web:' || i, 'healthy', 'run', 1700000000 + i, 1700000000 + i, 'stack-1' FROM n`,
+		`INSERT INTO notifications (id, user_id, workspace_id, kind, subject_type, subject_id, subject_title, read, created_at)
+			SELECT printf('n-%05d', i), 'u-owner', 'workspace-default', 'ticket_assigned', 'ticket', printf('t-%05d', i), 'Ticket', 0, 1700000000 + i FROM n`,
+		`INSERT INTO memories (id, workspace_id, project_id, title, when_to_use, body, created_at, updated_at)
+			SELECT printf('mem-%05d', i), 'workspace-default', 'project-general', 'Note ' || i, 'when ' || i, 'body', 1700000000 + i, 1700000000 + i FROM n`,
+	} {
+		_, err := db.Exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 3000) ` + stmt)
+		require.NoError(t, err)
+	}
+	s := f.svc
+	var tools []mcptool.Tool
+	tools = append(tools, composite.TicketTools(s.ticketsSvc, s.workspaceSvc, s.reviewSvc)...)
+	tools = append(tools, docs.MCPTools(s.docsSvc)...)
+	tools = append(tools, deploy.MCPTools(s.deploySvc)...)
+	tools = append(tools, workspace.NotificationMCPTools(s.notifSvc)...)
+	tools = append(tools, memories.MCPTools(s.memoriesSvc)...)
+	for _, tc := range []struct{ tool, args string }{
+		{"ticket_list", `{}`},
+		{"ticket_list", `{"query":"login"}`},
+		{"doc_list", `{}`},
+		{"doc_list", `{"query":"rollback"}`},
+		{"deploy_list", `{}`},
+		{"notification_list", `{"offset":1500}`},
+		{"memory_list", `{"project_id":"project-general"}`},
+	} {
+		t.Run(tc.tool+" "+tc.args, func(t *testing.T) {
+			st.Reset()
+			ids, page := callPage(t, s.accessSvc, tool(t, tools, tc.tool), uOwner, tc.args)
+
+			assert.Len(t, ids, 50)
+			assert.GreaterOrEqual(t, page.Total, 3000)
+			assert.Less(t, st.Rows(), int64(250), "rows handed back for one page")
+		})
+	}
 }
 
 // explain is SQLite's query plan for query, its detail lines joined.
