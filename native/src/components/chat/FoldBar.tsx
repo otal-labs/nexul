@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp } from "lucide-react-native";
+import { ChevronDown } from "lucide-react-native";
 import { Pressable } from "react-native";
 import { useCSSVariable } from "uniwind";
 
@@ -10,7 +10,7 @@ interface FoldBarProps {
   onToggle: () => void;
 }
 
-// One hairline row that opens what a long bot post hides, then closes it again.
+// Opens what a long bot post hides, then closes it again; a ghost control whose chevron turns.
 export const FoldBar = ({ label, open, onToggle }: FoldBarProps) => {
   const [muted] = useCSSVariable(["--color-muted-foreground"]);
   return (
@@ -18,11 +18,11 @@ export const FoldBar = ({ label, open, onToggle }: FoldBarProps) => {
       role="button"
       aria-expanded={open}
       onPress={onToggle}
-      className="min-h-11 flex-row items-center justify-between gap-2 rounded-md border border-border bg-card px-2.5 active:bg-accent"
+      hitSlop={8}
+      className="min-h-9 flex-row items-center gap-1 self-start rounded-md px-1.5 active:bg-accent"
     >
-      <Text className="text-xs text-muted-foreground">{label}</Text>
-      {open && <ChevronUp color={String(muted)} size={14} />}
-      {!open && <ChevronDown color={String(muted)} size={14} />}
+      <Text className="text-xs font-medium text-muted-foreground">{label}</Text>
+      <ChevronDown color={String(muted)} size={14} style={{ transform: [{ rotate: open ? "180deg" : "0deg" }] }} />
     </Pressable>
   );
 };

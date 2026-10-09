@@ -18,7 +18,9 @@ documentation disagree on an API, the documentation wins.
 | Server state | TanStack Query | Online manager on `expo-network`, focus manager on `AppState`, wired once in `src/lib/queryClient.ts` and the root layout |
 | Client state | Zustand | Persisted through `expo-sqlite/kv-store` via `src/lib/storage.ts`; synchronous, so stores hydrate before first render |
 | Secrets | expo-secure-store | The session token and the instance it belongs to, nothing else; never in a Zustand store |
-| Fonts | expo-font config plugin | Inter and JetBrains Mono embedded at build time, one family each with its weights |
+| Fonts | expo-font config plugin | Inter and JetBrains Mono embedded at build time, one family each with its weights; the display face is `assets/fonts/Fraunces-Display.ttf`, a static cut of Fraunces at the web's axes (opsz 28, wght 560, SOFT 50, WONK 1) made with fontTools' instancer from the Google Fonts variable file, because Android does not apply variable axes reliably |
+| Motion | react-native-reanimated with react-native-worklets | Every animation runs on the UI thread from shared values; the curves and the reduced-motion hook are in `src/lib/motion.ts` |
+| Gestures | react-native-gesture-handler | The board's hold-and-drag and the Inbox's swipe to mark read; `GestureHandlerRootView` wraps the app in the root layout |
 | App icon, splash, notification icon | PNGs in `native/assets/`, generated | The master is `native/assets/mark.svg`; after changing it run `bun scripts/generateIcons.ts` in `web/` (headless Chromium through playwright) and commit the PNGs, including the web favicons and touch icons in `web/public/` |
 | Updates | expo-updates | Runtime version policy `appVersion`; `updates.url` comes from the environment at build time |
 | Push | expo-notifications | Registers on sign-in, clears on sign-out; `src/push/` |
@@ -60,7 +62,12 @@ as written. In particular:
   named component from `src/components/<domain>/`. Tests never live under
   `src/app/`, because every file there is a route.
 - Navigation is a bottom tab bar (Inbox, Chat, Board, Deploys, More) with a
-  stack per tab. Board, Deploys and More's Runners follow the viewer's read
+  stack per tab. A tab's root has no app bar: it draws `FieldScreen` (the
+  canvas with the still light field) and opens with `ScreenHeader` (the
+  workspace as a mono eyebrow, the title in the display face, one meta line),
+  which scrolls with the list. A pushed screen keeps the native bar with the
+  back arrow and a short Inter title, and puts the record's own title in a
+  `ScreenHeader` in its content, on the plain canvas. Board, Deploys and More's Runners follow the viewer's read
   permission through `src/models/Access.tsx`, the mirror of the web table; a
   deep link into one the viewer can't read renders the plain not-found state.
   For a Restricted member (ADR 0097) a tab opens on what they hold in any
@@ -77,26 +84,49 @@ as written. In particular:
   stack: a sheet on a tab's stack opens under the tab bar, which stays bright
   and tappable. A nested folder's stack
   draws its own header, so the parent stack hides its bar over it. No drawer,
-  no top tabs. Motion is the platform default for push and sheet;
-  nothing else animates unless `practices/design-language.md` says so.
-- A row is a `Pressable` at least 44 points tall with a hairline `border-b
-  border-border`, the primary field left, meta right in `font-mono
-  text-muted-foreground`. Press feedback is the `active:bg-accent` tint only:
-  no hover, no shadow, no scale.
+  no top tabs. Motion is the platform default for push, tab switch and sheet;
+  everything else that moves is in `practices/design-language.md`'s phone
+  section, with its reduced-motion variant.
+- A gesture always has a second way to do the same thing: the board's
+  hold-and-drag is also each card's "Move to" accessibility actions and the
+  ticket's status sheet, and the Inbox's swipe is the row's "Mark read"
+  action and the tap that opens it. Gestures run in gesture-handler worklets;
+  a worklet closes over shared values, never over a view ref or a context
+  object, which it would try to copy to the UI thread.
+- A list row on a tab's root is a `Pressable` at least 44 points tall, rows
+  separated by space rather than hairlines: a 36pt tile (`StatusTile`, or an
+  avatar) with its state as a dot on the corner, the primary field, and mono
+  meta trailing. Rows inside a card (`SettingsCard`, a stack's services) keep
+  hairlines between them. Press feedback is the `active:bg-accent` tint on
+  rows and cards, landing on the finger's touch; a labelled `Button` also
+  presses to 0.97 over 100ms and lets go over 150ms; an icon button answers
+  with its background alone. The Android ripple was tried and left out: it
+  reads the same at rest, has no iOS counterpart, and doubled the tint where
+  both ran.
 - Styling is `className` only; no `StyleSheet.create` except for a value the
   stylesheet cannot express (a safe-area inset). Colors are the `--color-*`
   tokens in `src/global.css`, which share their names with
-  `web/src/index.css`. The web moved to frosted panels and one ember `brand`
-  accent (ADR 0133) and the phone has not been re-themed yet, so its values
-  still hold the earlier monochrome set and color stays status-only here until
-  that re-theme, which takes its values and the accent's roles from
-  `practices/design-language.md`. A token
+  `web/src/index.css` and hold the same values, in both themes: the ember
+  `brand` in the roles `practices/design-language.md` gives it (primary
+  action, the active tab, selection, your own messages, checked controls,
+  progress), focus as ink (`focus`), and status in its own hues. The phone has
+  no theme picker, so it shows the default palette only. The web's frosted
+  panels are not used: their backdrop blur cost seconds of GPU time per frame
+  on the emulator, so the phone keeps the still light field behind its tab
+  roots and solid surfaces on it. React Native takes no `oklch()` at runtime:
+  Uniwind converts the stylesheet's values at build time, `useCSSVariable`
+  returns `#rrggbbaa`, and an SVG stop takes that alpha through `svgPaint` in
+  `src/lib/color.ts`. A token
   the design needs and the sheet lacks is added to both stylesheets and to the
   token table in `practices/design-language.md` in the same change; a one-off
   hex is drift.
 - Text renders through `Text` from `src/components/ui/text`, which carries the
   `font-sans` family. Weight is `font-medium` or `font-semibold`; technical
-  data is `font-mono`. Native headers and the tab bar read the same tokens
+  data is `font-mono`; `font-display` (Fraunces) is for screen titles,
+  record titles and empty-state headlines only, never under 20pt. Empty,
+  loading and error states are `EmptyState` (the orbit mark), `LoadingDisplay`
+  (the orbit at spinner size, held back 300ms) and `ErrorDisplay`; an empty
+  list inside a section is one `EmptyRow`. Native headers and the tab bar read the same tokens
   through `useNavigationTheme`, never a second color table.
 - The theme follows the system by default; the Appearance setting calls
   `Uniwind.setTheme`. Both themes define every token.
@@ -141,7 +171,12 @@ as written. In particular:
   `android/` and installs with `adb install`.
 - Before calling native work done: `bun run lint`, `bun run typecheck`,
   `bun run test` are green, and the screen has been opened on an emulator in
-  dark and light.
+  dark and light, at the default and the largest font size, and with Remove
+  animations on.
+- Tests run with Reanimated's and the worklets' own mocks (`jest.setup.ts`),
+  which run every animation to its end state; a looping animation is a
+  keyframe style (`animationName`), which the mock leaves alone, not a
+  `withRepeat`, which it runs forever.
 - A change to a native dependency or to `app.config.ts` bumps `version` in
   `app.config.ts` and ships a new phone release, because the runtime version follows the
   app version. A JavaScript-only change ships over the air within the same

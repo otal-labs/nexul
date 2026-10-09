@@ -1,24 +1,35 @@
 import { useRouter } from "expo-router";
-import { View } from "react-native";
+import { Rocket } from "lucide-react-native";
 
-import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { StackFeed } from "@/components/deploys/StackFeed";
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { HandOff, useLoaderShown } from "@/components/HandOff";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { PlaceholderScreen } from "@/components/PlaceholderScreen";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { FieldScreen } from "@/components/FieldScreen";
 import { useFetchStacksWithLatestDeploy } from "@/hooks/StackHooks";
+import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 
 export const DeploysScreen = () => {
   const router = useRouter();
+  const workspace = useSelectedWorkspace();
   const { data, error, isPending } = useFetchStacksWithLatestDeploy();
+  const waited = useLoaderShown(isPending);
 
   return (
-    <View className="flex-1 bg-background">
-      {isPending && <LoadingDisplay message="Loading stacks…" />}
+    <FieldScreen>
+      {!(data && data.length > 0) && <ScreenHeader eyebrow={workspace?.name} title="Deploys" />}
+      {isPending && <LoadingDisplay message="Loading stacks" />}
       {error && <ErrorDisplay error={error} />}
-      {data && data.length === 0 && <PlaceholderScreen message="No stacks yet." />}
-      {data && data.length > 0 && (
-        <StackFeed rows={data} onSelect={(id) => router.push(`/deploys/stack/${id}`)} />
+      {data && data.length === 0 && (
+        <EmptyState icon={Rocket} title="Nothing deployed yet" message="Stacks set up on the web show their deploys here." />
       )}
-    </View>
+      {data && data.length > 0 && (
+        <HandOff after={waited}>
+          <StackFeed rows={data} onSelect={(id) => router.push(`/deploys/stack/${id}`)} />
+        </HandOff>
+      )}
+    </FieldScreen>
   );
 };

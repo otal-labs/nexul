@@ -27,9 +27,14 @@ const fonts = [
       { path: `./${mono}/500Medium/JetBrainsMono_500Medium.ttf`, weight: 500 },
     ],
   },
+  {
+    // A static cut of the web's display face (opsz 28, wght 560, SOFT 50, WONK 1): Android does not apply variable axes reliably.
+    fontFamily: "Fraunces Display",
+    fontDefinitions: [{ path: "./assets/fonts/Fraunces-Display.ttf", weight: 600 }],
+  },
 ];
 
-const version = "0.1.5";
+const version = "0.1.6";
 // Android only installs an update with a higher build number, so derive it from the version and every release climbs.
 const [major = 0, minor = 0, patch = 0] = version.split(".").map(Number);
 const buildNumber = major * 10000 + minor * 100 + patch;
@@ -52,7 +57,7 @@ const config: ExpoConfig = {
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-foreground.png",
       monochromeImage: "./assets/adaptive-monochrome.png",
-      backgroundColor: "#050505",
+      backgroundColor: "#060709",
     },
     versionCode: buildNumber,
     ...(googleServicesFile && existsSync(googleServicesFile) && { googleServicesFile }),
@@ -75,14 +80,14 @@ const config: ExpoConfig = {
     "./plugins/withReleaseSigning",
     "expo-secure-store",
     // Android tints the white silhouette with this color; the muted foreground token reads on both the light and dark shade.
-    ["expo-notifications", { icon: "./assets/notification-icon.png", color: "#9a9a9a" }],
+    ["expo-notifications", { icon: "./assets/notification-icon.png", color: "#9ea1a8" }],
     [
       "expo-splash-screen",
       {
         image: "./assets/splash-icon.png",
-        backgroundColor: "#ececec",
+        backgroundColor: "#edeef1",
         imageWidth: 200,
-        dark: { image: "./assets/splash-icon-dark.png", backgroundColor: "#050505" },
+        dark: { image: "./assets/splash-icon-dark.png", backgroundColor: "#060709" },
       },
     ],
     [

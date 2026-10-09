@@ -1,26 +1,25 @@
-import { FlatList, RefreshControl } from "react-native";
-import { useCSSVariable } from "uniwind";
+import type { ReactElement } from "react";
+import { FlatList } from "react-native";
 
 import { DocRow } from "@/components/docs/DocRow";
+import { RefreshList } from "@/components/RefreshList";
 import type { DocListItem } from "@/models/Doc";
 
 interface DocsFeedProps {
   docs: DocListItem[];
+  header: ReactElement;
   refreshing: boolean;
   onRefresh: () => void;
   onSelect: (doc: DocListItem) => void;
 }
 
-export const DocsFeed = ({ docs, refreshing, onRefresh, onSelect }: DocsFeedProps) => {
-  const [mutedForeground] = useCSSVariable(["--color-muted-foreground"]);
-  return (
-    <FlatList
-      data={docs}
-      keyExtractor={(doc) => doc.id}
-      renderItem={({ item }) => <DocRow doc={item} onPress={onSelect} />}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={String(mutedForeground)} />
-      }
-    />
-  );
-};
+export const DocsFeed = ({ docs, header, refreshing, onRefresh, onSelect }: DocsFeedProps) => (
+  <FlatList
+    data={docs}
+    keyExtractor={(doc) => doc.id}
+    ListHeaderComponent={header}
+    contentContainerClassName="pb-6"
+    renderItem={({ item }) => <DocRow doc={item} onPress={onSelect} />}
+    refreshControl={<RefreshList refreshing={refreshing} onRefresh={onRefresh} />}
+  />
+);

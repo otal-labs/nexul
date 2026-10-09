@@ -1,7 +1,7 @@
 import { View } from "react-native";
 
 import { ConversationRow } from "@/components/chat/ConversationRow";
-import { Text } from "@/components/ui/text";
+import { Microheader } from "@/components/Microheader";
 import type { ConversationGroup, DMLabelContext, UnreadCounts } from "@/models/Chat";
 
 interface ConversationSectionProps {
@@ -11,10 +11,8 @@ interface ConversationSectionProps {
 }
 
 export const ConversationSection = ({ group, unread, dmCtx }: ConversationSectionProps) => (
-  <View>
-    <Text className="px-4 pb-1 pt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-      {group.title}
-    </Text>
+  <View className="pb-2">
+    <Microheader className="px-5 pb-1.5 pt-4">{group.title}</Microheader>
     {group.conversations.map((conversation) => (
       <ConversationRow
         key={conversation.id}

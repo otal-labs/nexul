@@ -1,4 +1,4 @@
-import { formatCalendarTime, formatRelativeTime } from "@/lib/time";
+import { formatCalendarTime, formatDayLabel, formatRelativeTime } from "@/lib/time";
 
 const now = Date.parse("2026-09-28T12:00:00Z");
 
@@ -22,5 +22,18 @@ describe("formatCalendarTime", () => {
 
   test("ten minutes earlier across midnight is yesterday", () => {
     expect(formatCalendarTime("2026-10-06T23:50:00", justAfterMidnight)).toBe("Yesterday at 23:50");
+  });
+});
+
+describe("formatDayLabel", () => {
+  const morning = Date.parse("2026-10-07T09:00:00");
+
+  test.each([
+    ["2026-10-07T08:00:00", "Today"],
+    ["2026-10-06T23:59:00", "Yesterday"],
+    ["2026-09-21T12:00:00", "Mon 21 Sept"],
+    ["2025-12-31T12:00:00", "Wed 31 Dec 2025"],
+  ])("%s reads as %s", (iso, label) => {
+    expect(formatDayLabel(iso, morning)).toBe(label);
   });
 });

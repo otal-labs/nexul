@@ -38,6 +38,6 @@ describe("RunnersScreen", () => {
     jest.mocked(api.get).mockResolvedValue([]);
     await renderScreen();
 
-    expect(await screen.findByText("No runners yet.")).toBeTruthy();
+    expect(await screen.findByText("No runners yet")).toBeTruthy();
   });
 });

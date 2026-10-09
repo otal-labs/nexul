@@ -30,13 +30,6 @@ jest.mock("expo-router", () => ({
   Stack: { Screen: () => null },
 }));
 jest.mock("expo-router/react-navigation", () => ({ useHeaderHeight: () => 0 }));
-jest.mock("lucide-react-native", () => ({
-  SendHorizontal: () => null,
-  FileText: () => null,
-  Bot: () => null,
-  ChevronDown: () => null,
-  ChevronUp: () => null,
-}));
 jest.mock("react-native-enriched-markdown", () => jest.requireActual("react-native-enriched-markdown/jest"));
 
 // Jest has no layout pass, so this stand-in renders every row in data order and keeps the props for the anchoring checks.

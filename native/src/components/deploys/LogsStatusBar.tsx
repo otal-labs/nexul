@@ -22,9 +22,7 @@ export const LogsStatusBar = ({ status, following }: LogsStatusBarProps) => {
   return (
     <View className="flex-row items-center gap-2 border-b border-border px-4 py-2">
       <View className={cn("size-2 rounded-full", dot)} />
-      <Text variant="small" className="text-muted-foreground">
-        {label}
-      </Text>
+      <Text className="font-mono text-xs text-muted-foreground">{label}</Text>
     </View>
   );
 };

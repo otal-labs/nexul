@@ -1,4 +1,4 @@
-import { embedFold, embedFoldLabel, embedTimestamp, httpUrl, moreEmbedsLabel, type Embed } from "@/models/Embed";
+import { dropEchoedAuthor, embedCardTone, embedFold, embedFoldLabel, embedTimestamp, fieldTone, httpUrl, moreEmbedsLabel, type Embed, type EmbedTone } from "@/models/Embed";
 
 const fields = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `f${i}`, value: "v" }));
 
@@ -43,5 +43,40 @@ describe("embedTimestamp", () => {
   test("a timestamp with a zone is left alone", () => {
     expect(embedTimestamp("2026-10-06T21:11:00+02:00")).toBe("2026-10-06T21:11:00+02:00");
     expect(embedTimestamp("2026-10-06T21:11:00.000Z")).toBe("2026-10-06T21:11:00.000Z");
+  });
+});
+
+describe("embedCardTone", () => {
+  test.each<[string, Embed, EmbedTone | null]>([
+    ["a failure in the title", { title: "atlas-api 0.4.11 failed its health check" }, "destructive"],
+    ["the worst word wins", { title: "Deploy failed, rolled back to the healthy image" }, "destructive"],
+    ["a healthy title", { title: "atlas-api 0.4.12 is healthy" }, "success"],
+    ["an Uptime Kuma state", { title: "[Down] atlas-web" }, "destructive"],
+    ["a title naming no state stays neutral even when the description does", { title: "Nightly deploy summary", description: "two redeployed" }, null],
+    ["the description speaks when there is no title", { description: "Build passed in 3m" }, "success"],
+    ["a word inside another word is not a state", { title: "Uploaded the backup" }, null],
+  ])("%s", (_name, embed, tone) => {
+    expect(embedCardTone(embed)).toBe(tone);
+  });
+});
+
+describe("fieldTone", () => {
+  test.each<[string, EmbedTone | null]>([
+    ["healthy", "success"],
+    ["timed out", "warning"],
+    ["health check failed after 60s: connection refused on :8080", null],
+  ])("%s", (value, tone) => {
+    expect(fieldTone(value)).toBe(tone);
+  });
+});
+
+describe("dropEchoedAuthor", () => {
+  test("an author that only repeats the bot's name is dropped", () => {
+    expect(dropEchoedAuthor({ title: "t", author: { name: "Deployer" } }, "Deployer").author).toBeUndefined();
+  });
+
+  test("an author with a link or icon stays", () => {
+    const embed: Embed = { title: "t", author: { name: "Deployer", url: "https://example.com" } };
+    expect(dropEchoedAuthor(embed, "Deployer")).toBe(embed);
   });
 });

@@ -1,7 +1,8 @@
-import { FlatList, RefreshControl } from "react-native";
-import { useCSSVariable } from "uniwind";
+import { FlatList } from "react-native";
 
+import { InboxHeader } from "@/components/inbox/InboxHeader";
 import { NotificationRow } from "@/components/inbox/NotificationRow";
+import { RefreshList } from "@/components/RefreshList";
 import type { Notification } from "@/models/Notification";
 
 interface NotificationFeedProps {
@@ -9,19 +10,17 @@ interface NotificationFeedProps {
   refreshing: boolean;
   onRefresh: () => void;
   onSelect: (notification: Notification) => void;
+  onMarkRead: (notification: Notification) => void;
 }
 
 // Order is the server's (newest first, ORDER BY created_at DESC); the feed renders it as given.
-export const NotificationFeed = ({ notifications, refreshing, onRefresh, onSelect }: NotificationFeedProps) => {
-  const [mutedForeground] = useCSSVariable(["--color-muted-foreground"]);
-  return (
-    <FlatList
-      data={notifications}
-      keyExtractor={(notification) => notification.id}
-      renderItem={({ item }) => <NotificationRow notification={item} onPress={onSelect} />}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={String(mutedForeground)} />
-      }
-    />
-  );
-};
+export const NotificationFeed = ({ notifications, refreshing, onRefresh, onSelect, onMarkRead }: NotificationFeedProps) => (
+  <FlatList
+    data={notifications}
+    keyExtractor={(notification) => notification.id}
+    ListHeaderComponent={<InboxHeader notifications={notifications} />}
+    contentContainerClassName="pb-6"
+    renderItem={({ item }) => <NotificationRow notification={item} onPress={onSelect} onMarkRead={onMarkRead} />}
+    refreshControl={<RefreshList refreshing={refreshing} onRefresh={onRefresh} />}
+  />
+);

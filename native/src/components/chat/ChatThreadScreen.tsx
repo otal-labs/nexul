@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 import { useHeaderHeight } from "expo-router/react-navigation";
+import { MessagesSquare } from "lucide-react-native";
 import { KeyboardAvoidingView, View } from "react-native";
 
 import { isNotFound } from "@/api/errors";
@@ -7,13 +8,15 @@ import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatThreadTitle } from "@/components/chat/ChatThreadTitle";
 import { MessageList } from "@/components/chat/MessageList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { HandOff, useLoaderShown } from "@/components/HandOff";
+import { EmptyState } from "@/components/EmptyState";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { PlaceholderScreen } from "@/components/PlaceholderScreen";
 import { useFetchMessages, useMarkThreadRead } from "@/hooks/ChatHooks";
 
 export const ChatThreadScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, error, isPending } = useFetchMessages(id);
+  const waited = useLoaderShown(isPending);
   // A refetch keeps the last messages; a thread that is gone (deleted, or a private channel the viewer left) drops them.
   const gone = isNotFound(error);
   const messages = gone ? undefined : data;
@@ -23,14 +26,22 @@ export const ChatThreadScreen = () => {
   return (
     <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={headerHeight} className="flex-1 bg-background">
       <ChatThreadTitle conversationId={id} />
-      {isPending && <LoadingDisplay />}
+      {isPending && <LoadingDisplay message="Loading messages" />}
       {error && (
         <View className="flex-1 px-4">
           <ErrorDisplay error={error} className="px-0" notFound="This conversation doesn't exist or was deleted." />
         </View>
       )}
-      {messages && messages.length === 0 && <PlaceholderScreen message="No messages yet." />}
-      {messages && messages.length > 0 && <MessageList messages={messages} />}
+      {messages && messages.length === 0 && (
+        <View className="flex-1 justify-center">
+          <EmptyState size="compact" icon={MessagesSquare} title="No messages yet" message="Say the first thing; everyone in here sees it." />
+        </View>
+      )}
+      {messages && messages.length > 0 && (
+        <HandOff after={waited}>
+          <MessageList messages={messages} />
+        </HandOff>
+      )}
       {!gone && <ChatComposer conversationId={id} />}
     </KeyboardAvoidingView>
   );

@@ -1,6 +1,9 @@
 import { useRouter } from "expo-router";
+import { Building2, MonitorSmartphone, SunMoon } from "lucide-react-native";
 import { ScrollView, View } from "react-native";
 
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { SettingsCard } from "@/components/SettingsCard";
 import { ProfileSection } from "@/components/settings/ProfileSection";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SignOutButton } from "@/components/settings/SignOutButton";
@@ -13,14 +16,15 @@ export const SettingsScreen = () => {
   const workspace = useSelectedWorkspace();
 
   return (
-    <ScrollView className="flex-1 bg-background">
-      <ProfileSection />
-      <View className="mt-2">
-        <SettingsRow label="Appearance" meta={appearanceLabel[appearance]} onPress={() => router.push("/more/settings/appearance")} />
-        <SettingsRow label="Devices" onPress={() => router.push("/more/settings/devices")} />
-        <SettingsRow label="Workspace" meta={workspace?.name ?? ""} onPress={() => router.push("/more/settings/workspace")} />
-      </View>
-      <View className="px-4 py-6">
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="pb-8">
+      <ScreenHeader title="Your settings" className="pt-2" />
+      <View className="gap-6 px-4">
+        <ProfileSection />
+        <SettingsCard title="This phone">
+          <SettingsRow first icon={SunMoon} label="Appearance" meta={appearanceLabel[appearance]} onPress={() => router.push("/more/settings/appearance")} />
+          <SettingsRow icon={MonitorSmartphone} label="Devices" onPress={() => router.push("/more/settings/devices")} />
+          <SettingsRow icon={Building2} label="Workspace" meta={workspace?.name ?? ""} onPress={() => router.push("/more/settings/workspace")} />
+        </SettingsCard>
         <SignOutButton />
       </View>
     </ScrollView>

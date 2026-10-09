@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
+import { View } from "react-native";
 
+import { EmptyState } from "@/components/EmptyState";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { PlaceholderScreen } from "@/components/PlaceholderScreen";
 import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import type { Area } from "@/models/Access";
 
@@ -16,7 +17,11 @@ export const AreaGate = ({ area, children }: AreaGateProps) => {
   return (
     <>
       {allowed === undefined && <LoadingDisplay />}
-      {allowed === false && <PlaceholderScreen message="This page doesn't exist." />}
+      {allowed === false && (
+        <View className="flex-1 bg-background">
+          <EmptyState title="This page doesn't exist" message="It may have moved, or your role doesn't include it." />
+        </View>
+      )}
       {allowed === true && children}
     </>
   );

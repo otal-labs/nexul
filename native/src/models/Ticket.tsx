@@ -1,3 +1,5 @@
+import { StatusKind } from "@/models/Status";
+
 export const TicketRole = {
   Developer: "developer",
   Tester: "tester",
@@ -28,3 +30,9 @@ export interface Ticket {
 // Links use the human-readable PREFIX-NUMBER key, falling back to the raw id when the prefix isn't at hand.
 export const ticketKey = (ticket: Ticket, prefix: string | undefined): string =>
   prefix ? `${prefix}-${ticket.number}` : ticket.id;
+
+// A board card shows who acts next: the tester while the ticket sits in a testing-stage column, else the developer.
+export const cardPerson = (ticket: Ticket, stage: StatusKind | undefined): { role: TicketRole; login: string } =>
+  stage === StatusKind.Testing
+    ? { role: TicketRole.Tester, login: ticket.tester }
+    : { role: TicketRole.Developer, login: ticket.developer };

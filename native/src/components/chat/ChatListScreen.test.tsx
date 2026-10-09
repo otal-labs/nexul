@@ -7,9 +7,6 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 jest.mock("expo-secure-store", () => ({ getItem: () => null, setItem: jest.fn(), deleteItemAsync: jest.fn() }));
 
-// The icon package ships untransformed ESM; the rows are asserted by text, not by icon.
-jest.mock("lucide-react-native", () => ({ FileText: () => null, Hash: () => null, Lock: () => null, SquareKanban: () => null, User: () => null }));
-
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 
@@ -70,7 +67,7 @@ describe("ChatListScreen", () => {
     await renderScreen();
 
     expect(await screen.findByText("conversations failed")).toBeTruthy();
-    expect(screen.queryByText("No conversations yet.")).toBeNull();
+    expect(screen.queryByText("No conversations yet")).toBeNull();
   });
 
   test("thread rows are named after their ticket and doc, not the generic kind", async () => {
@@ -98,7 +95,7 @@ describe("ChatListScreen", () => {
     );
     await renderScreen();
 
-    expect(await screen.findByText("No conversations yet.")).toBeTruthy();
+    expect(await screen.findByText("No conversations yet")).toBeTruthy();
   });
 
   test("rows show channels and DMs by name with the unread count, and voice channels are left out", async () => {

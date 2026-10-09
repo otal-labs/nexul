@@ -6,8 +6,6 @@ import { StackScreen } from "@/components/deploys/StackScreen";
 
 jest.mock("@/api/client", () => ({ api: { get: jest.fn() } }));
 
-jest.mock("lucide-react-native", () => ({ ChevronRight: () => null }));
-
 const mockPush = jest.fn();
 const mockAccess: { current: boolean } = { current: true };
 jest.mock("@/hooks/WorkspaceHooks", () => ({

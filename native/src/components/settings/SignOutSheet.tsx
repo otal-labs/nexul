@@ -36,9 +36,9 @@ export const SignOutSheet = () => {
   };
 
   return (
-    <View className="gap-4 bg-popover px-4 pb-6">
+    <View className="gap-4 bg-popover px-5 pb-6">
       <SheetTitle title={title} className="px-0 pb-0" />
-      <Text variant="muted">{body}</Text>
+      <Text className="text-[15px] leading-[22px] text-muted-foreground">{body}</Text>
       {action.error && <ErrorDisplay error={action.error} />}
       <Button variant="destructive" disabled={action.isPending} onPress={run}>
         <Text>{action.isPending ? "Signing out…" : "Sign out"}</Text>

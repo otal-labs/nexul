@@ -1,6 +1,6 @@
 import { LegendList, type LegendListRef, type NativeScrollEvent, type NativeSyntheticEvent } from "@legendapp/list/react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { ArrowDown } from "lucide-react-native";
+import { ArrowDown, ScrollText, WifiOff } from "lucide-react-native";
 import { useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useCSSVariable } from "uniwind";
@@ -8,7 +8,7 @@ import { useCSSVariable } from "uniwind";
 import { ContainerLogLineRow } from "@/components/deploys/ContainerLogLineRow";
 import { LogsStatusBar } from "@/components/deploys/LogsStatusBar";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { PlaceholderScreen } from "@/components/PlaceholderScreen";
+import { EmptyState } from "@/components/EmptyState";
 import { Text } from "@/components/ui/text";
 import { useContainerLogs } from "@/hooks/ContainerLogHooks";
 import { useAreaAccess } from "@/hooks/WorkspaceHooks";
@@ -40,14 +40,14 @@ export const ContainerLogsScreen = () => {
     <View className="flex-1 bg-background">
       <Stack.Screen options={{ title: service }} />
       {allowed === undefined && <LoadingDisplay />}
-      {(allowed === false || status === "forbidden") && <PlaceholderScreen message="You can't read logs for this stack." />}
+      {(allowed === false || status === "forbidden") && <EmptyState size="compact" icon={ScrollText} title="No access to these logs" message="Reading a stack's logs needs the stack logs permission." />}
       {allowed === true && status !== "forbidden" && noOutput && status === "connecting" && (
-        <LoadingDisplay message="Connecting…" />
+        <LoadingDisplay message="Connecting" />
       )}
       {allowed === true && noOutput && status === "offline" && (
-        <PlaceholderScreen message={reason ? `Runner offline: ${reason}` : "Runner offline"} />
+        <EmptyState size="compact" icon={WifiOff} title="Runner offline" message={reason || "The logs resume once its runner reconnects."} />
       )}
-      {allowed === true && noOutput && (status === "live" || status === "ended") && <PlaceholderScreen message="No output yet" />}
+      {allowed === true && noOutput && (status === "live" || status === "ended") && <EmptyState size="compact" icon={ScrollText} title="No output yet" message="Lines the service prints show up here as they arrive." />}
       {allowed === true && !noOutput && status !== "forbidden" && (
         <>
           <LogsStatusBar status={status} following={following} />
@@ -69,10 +69,10 @@ export const ContainerLogsScreen = () => {
               <Pressable
                 role="button"
                 onPress={jumpToLive}
-                className="absolute bottom-4 min-h-11 flex-row items-center gap-1.5 self-center rounded-full border border-border bg-card px-4 active:bg-accent"
+                className="absolute bottom-4 min-h-11 flex-row items-center gap-1.5 self-center rounded-md border border-border bg-popover px-4 active:bg-accent"
               >
                 <ArrowDown size={14} color={String(mutedForeground)} />
-                <Text variant="small">Jump to live</Text>
+                <Text className="text-sm font-medium">Jump to live</Text>
               </Pressable>
             )}
           </View>

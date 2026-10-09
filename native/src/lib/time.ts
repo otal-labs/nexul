@@ -65,3 +65,19 @@ export const formatDiscordTimestamp = (date: Date, style: string | undefined, no
   if (style === "R") return formatRelativeDistance(date, now);
   return date.toLocaleString(undefined, DISCORD_STYLES[style ?? "f"]);
 };
+
+// The clock time beside a chat author's name.
+export const formatMessageTime = (iso: string): string => formatClockTime(new Date(iso));
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
+
+// A chat day divider, as the web writes it: "Today", "Yesterday", "Mon 21 Sept", the year only when it is not this one.
+export const formatDayLabel = (iso: string, now: number = Date.now()): string => {
+  const date = new Date(iso);
+  const days = Math.round((calendarDay(new Date(now)) - calendarDay(date)) / DAY_MS);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  const label = `${WEEKDAYS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}`;
+  return date.getFullYear() === new Date(now).getFullYear() ? label : `${label} ${date.getFullYear()}`;
+};

@@ -1,7 +1,5 @@
-import { Check } from "lucide-react-native";
-import { Pressable } from "react-native";
-import { useCSSVariable } from "uniwind";
-
+import { GradientTile } from "@/components/GradientTile";
+import { PickerRow } from "@/components/PickerRow";
 import { Text } from "@/components/ui/text";
 import type { Workspace } from "@/models/Workspace";
 
@@ -11,18 +9,15 @@ interface WorkspaceRowProps {
   onPress: () => void;
 }
 
-export const WorkspaceRow = ({ workspace, selected, onPress }: WorkspaceRowProps) => {
-  const [foreground] = useCSSVariable(["--color-foreground"]);
-  return (
-    <Pressable
-      role="button"
-      onPress={onPress}
-      className="min-h-11 flex-row items-center justify-between gap-2 border-b border-border bg-card px-4 py-3 active:bg-accent"
-    >
-      <Text numberOfLines={1} className="flex-1 font-medium">
-        {workspace.name}
-      </Text>
-      {selected && <Check size={16} color={String(foreground)} />}
-    </Pressable>
-  );
-};
+export const WorkspaceRow = ({ workspace, selected, onPress }: WorkspaceRowProps) => (
+  <PickerRow
+    label={workspace.name}
+    selected={selected}
+    onPress={onPress}
+    leading={
+      <GradientTile seed={workspace.id} className="size-7 rounded-md">
+        <Text className="text-xs font-semibold text-white">{workspace.name.charAt(0).toUpperCase()}</Text>
+      </GradientTile>
+    }
+  />
+);
