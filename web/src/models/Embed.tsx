@@ -74,9 +74,9 @@ export type EmbedTone = "success" | "warning" | "destructive" | "info";
 
 // First match wins, worst first: "failed, rolled back to the healthy image" reads as a failure.
 const TONE_WORDS: [EmbedTone, RegExp][] = [
-  ["destructive", /\b(fail(s|ed|ing|ure)?|errors?|errored|down|crash(ed|ing)?|outage|broken|critical|rejected)\b/i],
+  ["destructive", /\b(fail(s|ed|ing|ure)?|errors?|errored|crash(ed|ing)?|outage|broken|critical|rejected)\b|\[down\]|\b(is|went) down\b/i],
   ["warning", /\b(warn(s|ing)?|degraded|pending|stopped|paused|retrying|timed out|unstable|skipped)\b/i],
-  ["success", /\b(healthy|succeeded|success(ful)?|passed|resolved|recovered|up|ok|completed?|finished|deployed)\b/i],
+  ["success", /\b(healthy|succeeded|success(ful)?|passed|resolved|recovered|ok|completed?|finished|deployed)\b|\[up\]|\b(is|back) up\b/i],
   ["info", /\b(started|running|in progress|queued|redeployed|redeploying|deploying|building)\b/i],
 ];
 

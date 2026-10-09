@@ -33,6 +33,7 @@ describe("embedCardTone", () => {
     ["a title naming no state stays neutral even when the description does", { title: "Nightly deploy summary", description: "two redeployed" }, null],
     ["the description speaks when there is no title", { description: "Build passed in 3m" }, "success"],
     ["a word inside another word is not a state", { title: "Uploaded the backup" }, null],
+    ["a bare up or down is not a state", { title: "Scaled down the workers after set up" }, null],
   ])("%s", (_name, embed, tone) => {
     expect(embedCardTone(embed)).toBe(tone);
   });
