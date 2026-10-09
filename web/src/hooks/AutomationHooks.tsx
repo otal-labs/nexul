@@ -100,11 +100,17 @@ export const useDeleteAutomation = () => {
   });
 };
 
-export const useMintAutomationToken = (id: string) =>
-  useMutation({
+// The new prefix and a cleared revocation show at once; the raw token is the caller's to reveal.
+export const useMintAutomationToken = (id: string) => {
+  const client = useQueryClient();
+  return useMutation({
     mutationFn: async () => (await api.post<AutomationTokenMint>(`/api/automations/${id}/token`)).data,
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["getAutomation", id] });
+    },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
 
 export const useRevokeAutomationToken = (id: string) => {
   const client = useQueryClient();
