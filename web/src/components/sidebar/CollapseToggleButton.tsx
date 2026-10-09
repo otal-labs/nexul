@@ -18,7 +18,7 @@ export const CollapseToggleButton = ({ collapsed, onToggle }: CollapseToggleButt
           type="button"
           onClick={onToggle}
           aria-label="Expand sidebar"
-          className="group/expand relative grid size-8 place-items-center rounded-lg outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
+          className="group/expand relative grid size-8 place-items-center rounded-lg"
         >
           <Logo className="nav-swap group-hover/expand:opacity-0 group-focus-visible/expand:opacity-0" />
           <span

@@ -28,7 +28,7 @@ export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTrigger
         type="button"
         aria-label={collapsed ? `Account menu for ${userLabel(user)}` : undefined}
         title={collapsed ? undefined : `@${user.login}`}
-        className="nav-row flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left outline-none hover:bg-accent/60 focus-visible:ring-[3px] focus-visible:ring-ring/40 active:bg-accent data-[state=open]:bg-accent"
+        className="nav-row flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left hover:bg-accent/60 active:bg-accent data-[state=open]:bg-accent"
       >
         {effectiveAvatar(user) !== "" && (
           <img

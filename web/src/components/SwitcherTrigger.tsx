@@ -19,7 +19,7 @@ export const SwitcherTrigger = ({ tile, name, collapsed, mark }: SwitcherTrigger
         type="button"
         title={collapsed ? undefined : name}
         aria-label={collapsed ? name : undefined}
-        className="nav-row flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left outline-none hover:bg-accent/60 focus-visible:ring-[3px] focus-visible:ring-ring/40 active:bg-accent data-[state=open]:bg-accent"
+        className="nav-row flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left hover:bg-accent/60 active:bg-accent data-[state=open]:bg-accent"
       >
         {mark}
         {!mark && (
