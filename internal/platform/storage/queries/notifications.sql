@@ -18,21 +18,27 @@ WHERE id = (
 );
 
 -- name: ListNotificationsPage :many
--- An empty workspace_id lists every workspace. A doc's folder is joined in at read time, never stored on the row,
--- because the doc can move after it was sent. The subject's project is joined in too: scoped leaves out a notice from
--- a workspace the reader left or about a project they can no longer open (ADR 0140).
-SELECT sqlc.embed(n), COALESCE(f.id, '') AS folder_id, COALESCE(f.name, '') AS folder_name, COALESCE(f.is_default, 0) AS folder_is_default,
-       CAST(COALESCE(t.project_id, d.project_id, m.project_id, '') AS TEXT) AS project_id
+-- An empty workspace_id lists every workspace. A doc's folder and the subject's project are read at read time, never
+-- stored on the row, because a doc or ticket can move after the notice was sent. scoped leaves out a notice from a
+-- workspace the reader left or about a project they cannot open (ADR 0140); when they open every project the subject is
+-- never looked up, and otherwise each row looks up its own subject's table only. The folder is read for the page's rows
+-- alone.
+SELECT sqlc.embed(n),
+       CAST(COALESCE((SELECT f.id FROM docs d JOIN doc_folders f ON f.id = d.folder_id WHERE n.subject_type = 'doc' AND d.id = n.subject_id), '') AS TEXT) AS folder_id,
+       CAST(COALESCE((SELECT f.name FROM docs d JOIN doc_folders f ON f.id = d.folder_id WHERE n.subject_type = 'doc' AND d.id = n.subject_id), '') AS TEXT) AS folder_name,
+       CAST(COALESCE((SELECT f.is_default FROM docs d JOIN doc_folders f ON f.id = d.folder_id WHERE n.subject_type = 'doc' AND d.id = n.subject_id), 0) AS INTEGER) AS folder_is_default,
+       CAST(COALESCE(CASE n.subject_type WHEN 'ticket' THEN (SELECT t.project_id FROM tickets t WHERE t.id = n.subject_id)
+         WHEN 'doc' THEN (SELECT d.project_id FROM docs d WHERE d.id = n.subject_id)
+         WHEN 'memory' THEN (SELECT m.project_id FROM memories m WHERE m.id = n.subject_id) END, '') AS TEXT) AS project_id
 FROM notifications n
-LEFT JOIN docs d ON n.subject_type = 'doc' AND d.id = n.subject_id
-LEFT JOIN doc_folders f ON f.id = d.folder_id
-LEFT JOIN tickets t ON n.subject_type = 'ticket' AND t.id = n.subject_id
-LEFT JOIN memories m ON n.subject_type = 'memory' AND m.id = n.subject_id
 WHERE n.user_id = sqlc.arg(user_id) AND (sqlc.arg(workspace_id) = '' OR n.workspace_id = sqlc.arg(workspace_id))
   AND (NOT sqlc.arg(unread_only) OR n.read = 0)
   AND (NOT sqlc.arg(scoped) OR n.workspace_id = '' OR n.workspace_id IN (SELECT value FROM json_each(sqlc.arg(workspace_ids))))
-  AND (NOT sqlc.arg(scoped) OR COALESCE(t.project_id, d.project_id, m.project_id, '') = ''
-       OR COALESCE(t.project_id, d.project_id, m.project_id) IN (SELECT value FROM json_each(sqlc.arg(project_ids))))
+  AND (NOT sqlc.arg(scoped)
+       OR NOT EXISTS (SELECT 1 FROM projects p WHERE p.id NOT IN (SELECT value FROM json_each(sqlc.arg(project_ids))))
+       OR COALESCE(CASE n.subject_type WHEN 'ticket' THEN (SELECT t.project_id FROM tickets t WHERE t.id = n.subject_id)
+         WHEN 'doc' THEN (SELECT d.project_id FROM docs d WHERE d.id = n.subject_id)
+         WHEN 'memory' THEN (SELECT m.project_id FROM memories m WHERE m.id = n.subject_id) END, '') IN (SELECT '' UNION ALL SELECT value FROM json_each(sqlc.arg(project_ids))))
 ORDER BY n.created_at DESC, n.id DESC
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
@@ -40,14 +46,14 @@ LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 -- How many notifications ListNotificationsPage pages over, under the same filters.
 SELECT COUNT(*)
 FROM notifications n
-LEFT JOIN docs d ON n.subject_type = 'doc' AND d.id = n.subject_id
-LEFT JOIN tickets t ON n.subject_type = 'ticket' AND t.id = n.subject_id
-LEFT JOIN memories m ON n.subject_type = 'memory' AND m.id = n.subject_id
 WHERE n.user_id = sqlc.arg(user_id) AND (sqlc.arg(workspace_id) = '' OR n.workspace_id = sqlc.arg(workspace_id))
   AND (NOT sqlc.arg(unread_only) OR n.read = 0)
   AND (NOT sqlc.arg(scoped) OR n.workspace_id = '' OR n.workspace_id IN (SELECT value FROM json_each(sqlc.arg(workspace_ids))))
-  AND (NOT sqlc.arg(scoped) OR COALESCE(t.project_id, d.project_id, m.project_id, '') = ''
-       OR COALESCE(t.project_id, d.project_id, m.project_id) IN (SELECT value FROM json_each(sqlc.arg(project_ids))));
+  AND (NOT sqlc.arg(scoped)
+       OR NOT EXISTS (SELECT 1 FROM projects p WHERE p.id NOT IN (SELECT value FROM json_each(sqlc.arg(project_ids))))
+       OR COALESCE(CASE n.subject_type WHEN 'ticket' THEN (SELECT t.project_id FROM tickets t WHERE t.id = n.subject_id)
+         WHEN 'doc' THEN (SELECT d.project_id FROM docs d WHERE d.id = n.subject_id)
+         WHEN 'memory' THEN (SELECT m.project_id FROM memories m WHERE m.id = n.subject_id) END, '') IN (SELECT '' UNION ALL SELECT value FROM json_each(sqlc.arg(project_ids))));
 
 -- name: CountUnreadNotificationsByProject :many
 -- Without table statistics SQLite reads every notification the user has, read ones included, through the inbox index.
