@@ -711,7 +711,9 @@ Hook rules:
 - Query keys are exported constants (`getXxxKey`).
 - Parameterized keys include the param: `["getTicket", id]`.
 - Invalidate the relevant list key in `onSuccess`.
-- `toast.success` on success, `toast.error(errorMessage(error))` on error.
+- `toast.success` on success, `toast.error(errorMessage(error))` on error. A
+  form saved from a settings card's strip (`SettingsSaveBar`) answers in its
+  Save button instead, so its hook sends no success toast.
 - Parse field errors via the shared `errorMessage()` (§17).
 
 ---

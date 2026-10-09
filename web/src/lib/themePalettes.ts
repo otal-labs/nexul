@@ -588,3 +588,49 @@ export const applyThemePalette = (id: ThemeIdType, mode: "light" | "dark"): void
     root.style.setProperty(cssVar, value);
   }
 };
+
+export interface ThemePreviewColors {
+  background: string;
+  card: string;
+  foreground: string;
+  muted: string;
+  brand: string;
+  border: string;
+  radius: string;
+}
+
+// The default palette's roles as index.css paints them, for previews drawn while another palette owns the root.
+const DEFAULT_PREVIEW: Record<"light" | "dark", Omit<ThemePreviewColors, "radius">> = {
+  light: {
+    background: "oklch(0.95 0.004 265)",
+    card: "oklch(1 0 0)",
+    foreground: "oklch(0.2 0.01 265)",
+    muted: "oklch(0.48 0.01 265)",
+    brand: "oklch(0.565 0.19 35)",
+    border: "oklch(0.2 0.01 265 / 0.1)",
+  },
+  dark: {
+    background: "oklch(0.13 0.005 265)",
+    card: "oklch(0.21 0.005 265)",
+    foreground: "oklch(0.97 0.003 265)",
+    muted: "oklch(0.71 0.01 265)",
+    brand: "oklch(0.68 0.2 35)",
+    border: "oklch(1 0 0 / 0.08)",
+  },
+};
+
+/** The handful of colours a theme card draws its miniature with, in one mode. */
+export const themePreviewColors = (id: ThemeIdType, mode: "light" | "dark"): ThemePreviewColors => {
+  const definition = getThemeDefinition(id);
+  const roles = withBrand(definition.colors?.[mode]);
+  const base = DEFAULT_PREVIEW[mode];
+  return {
+    background: roles.background ?? base.background,
+    card: roles.card ?? base.card,
+    foreground: roles.foreground ?? base.foreground,
+    muted: roles["muted-foreground"] ?? base.muted,
+    brand: roles.brand ?? base.brand,
+    border: roles.border ?? base.border,
+    radius: definition.radius?.md ?? "3px",
+  };
+};

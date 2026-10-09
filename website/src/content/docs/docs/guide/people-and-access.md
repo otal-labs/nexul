@@ -21,7 +21,7 @@ A link works once. The Owner role is never offered; ownership doesn't move throu
 
 ## Manage people
 
-**Settings → Team** lists everyone on the instance with their status and where they have access. Open a person to see one tab per workspace they're in. Each tab holds their **Role**, **Edit overrides**, their projects, and **Remove from workspace**; the **+** after the last tab adds them to another workspace.
+**Settings → Team** lists everyone on the instance: a dot on each picture for who is online, when the others were last seen, their role or how many workspaces they are in, and **Disabled** or **Removed** for an account that can't sign in. Open a person to see one tab per workspace they're in. Each tab holds their **Role**, **Edit overrides**, their projects, and **Remove from workspace**; the **+** after the last tab adds them to another workspace.
 
 Nothing applies as you edit. A tab with changes shows a dot, **Confirm** applies them all, and **Cancel** asks before throwing them away. If one change is refused, the dialog says which and keeps the rest waiting for the next **Confirm**.
 

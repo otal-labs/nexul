@@ -2,7 +2,8 @@ import { XIcon } from "lucide-react";
 
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { DeviceIcon } from "@/components/you/DeviceIcon";
-import { microheaderClass } from "@/components/Microheader";
+import { SettingsStatus } from "@/components/settings/SettingsStatus";
+import { leavingRowClass } from "@/hooks/useRowGlide";
 import type { Session } from "@/models/User";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/utils/TimeUtility";
@@ -18,10 +19,11 @@ interface DeviceRowProps {
 export const DeviceRow = ({ session, arrived = false, leaving = false, onSignOut }: DeviceRowProps) => (
   <li
     className={cn(
-      "relative isolate flex items-center gap-3 bg-card px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40",
+      "relative isolate flex items-center gap-3 bg-card px-3 py-3 hover:bg-accent/40",
+      leavingRowClass,
       arrived && "animate-in fade-in-0 slide-in-from-top-1 duration-800 ease-out",
-      leaving && "animate-out fade-out-0 slide-out-to-top-1 duration-150 ease-standard fill-mode-forwards",
     )}
+    data-leaving={leaving || undefined}
   >
     {arrived && (
       <span
@@ -31,16 +33,11 @@ export const DeviceRow = ({ session, arrived = false, leaving = false, onSignOut
     )}
     <DeviceIcon session={session} />
     <div className="min-w-0 flex-1">
-      <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
-        <span className="truncate">{[session.platform, session.label].filter(Boolean).join(" · ")}</span>
-        {session.current && (
-          <span className={cn(microheaderClass, "shrink-0")}>
-            This device
-          </span>
-        )}
-      </p>
-      <p className="truncate font-mono text-xs text-muted-foreground tabular-nums">
-        {session.ip} · {session.current ? "active now" : formatRelativeTime(session.last_active_at)}
+      <p className="truncate text-sm font-medium">{[session.platform, session.label].filter(Boolean).join(" · ")}</p>
+      <p className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+        {session.current && <SettingsStatus tone="success">This device</SettingsStatus>}
+        {!session.current && <span>Active {formatRelativeTime(session.last_active_at)}</span>}
+        <span className="truncate font-mono tabular-nums">{session.ip}</span>
       </p>
     </div>
     {!session.current && onSignOut && (

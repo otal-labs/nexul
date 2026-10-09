@@ -3,6 +3,7 @@ import { Navigate, useLocation, useParams } from "react-router";
 import { Container } from "@/components/Container";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PageHeader } from "@/components/PageHeader";
+import { SettingsHeaderMeta } from "@/components/settings/SettingsHeaderMeta";
 import { InstanceSettingsContent } from "@/components/settings/InstanceSettingsContent";
 import { isSettingsSection } from "@/components/settings/SettingsNav";
 import { YourSettingsContent } from "@/components/you/YourSettingsContent";
@@ -39,7 +40,7 @@ export const YourSettingsPage = () => {
           <PageHeader
             className="mb-8"
             title="Settings"
-            meta="Your profile, appearance, devices, and T3 Code Setup."
+            meta={!resolving && <SettingsHeaderMeta section={instanceSection ?? section} />}
           />
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
             <YourSettingsNav active={instanceSection ?? section} />

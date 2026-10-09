@@ -29,7 +29,7 @@ export const InstanceTemplateEditor = ({ template }: InstanceTemplateEditorProps
   };
 
   return (
-    <div className="space-y-3 pt-3">
+    <div className="animate-in space-y-3 pt-3 fade-in-0 slide-in-from-top-1 duration-200 ease-out">
       <TemplateBodyField
         kind={kind}
         id={`instance-template-${kind}-${key}`}

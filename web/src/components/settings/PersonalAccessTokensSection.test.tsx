@@ -119,11 +119,10 @@ describe("PersonalAccessTokensSection", () => {
 
     expect(await screen.findByText("ci agent")).toBeInTheDocument();
     expect(screen.getByText("old token")).toBeInTheDocument();
-    expect(screen.getByText(/revoked/)).toBeInTheDocument();
+    expect(screen.getByText(/^Revoked/)).toBeInTheDocument();
 
-    const revokeButtons = screen.getAllByRole("button", { name: /^revoke$/i });
-    expect(revokeButtons).toHaveLength(2);
-    expect(revokeButtons.filter((b) => (b as HTMLButtonElement).disabled)).toHaveLength(1);
+    // Only the live token offers Revoke; the revoked one shows its state instead.
+    expect(screen.getAllByRole("button", { name: /^revoke$/i })).toHaveLength(1);
   });
 
   it("revokes a personal access token after arming the confirm step", async () => {

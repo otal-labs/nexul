@@ -4,10 +4,12 @@ import { LogOut } from "lucide-react";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { Microheader } from "@/components/Microheader";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { DeviceRow } from "@/components/you/DeviceRow";
 import { useListSessions, useSignOutOtherSessions, useSignOutSession } from "@/hooks/AuthHooks";
+import { useRowGlide } from "@/hooks/useRowGlide";
 import { useDeviceArrivalStore } from "@/stores/deviceArrivalStore";
 
 export const DevicesFeed = () => {
@@ -24,7 +26,10 @@ export const DevicesFeed = () => {
   const current = data?.sessions.filter((session) => session.current) ?? [];
   const others = data?.sessions.filter((session) => !session.current) ?? [];
 
+  const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
+
   const signOutOne = (id: string) => {
+    prepareGlide();
     setLeaving((ids) => [...ids, id]);
     signOut.mutate(id, { onError: () => setLeaving((ids) => ids.filter((left) => left !== id)) });
   };
@@ -65,12 +70,12 @@ export const DevicesFeed = () => {
             ))}
           </ul>
           <div className="space-y-2">
-            <h3 className="text-xs font-medium text-muted-foreground">Other devices</h3>
+            <Microheader>Other devices</Microheader>
             {others.length === 0 && (
               <EmptyRow className="animate-in fade-in-0 duration-200 ease-out">No other devices signed in.</EmptyRow>
             )}
             {others.length > 0 && (
-              <ul className="divide-y divide-border overflow-hidden rounded-md border border-border">
+              <ul ref={glideRef} className="divide-y divide-border overflow-hidden rounded-md border border-border">
                 {others.map((session) => (
                   <DeviceRow
                     key={session.id}

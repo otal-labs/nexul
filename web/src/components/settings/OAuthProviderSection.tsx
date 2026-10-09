@@ -1,9 +1,9 @@
-import { CheckCircle2 } from "lucide-react";
-
-import { Fact } from "@/components/Fact";
+import { CopyButton } from "@/components/settings/CopyButton";
 import { OAuthProviderActions } from "@/components/settings/OAuthProviderActions";
 import { OAuthProviderForm } from "@/components/settings/OAuthProviderForm";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
+import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { oauthProviderCopy, type InstanceSettings, type OptionalProvider } from "@/models/User";
 
 interface OAuthProviderSectionProps {
@@ -22,29 +22,30 @@ export const OAuthProviderSection = ({ provider, settings }: OAuthProviderSectio
     <SettingsCard
       id={`${provider}-sign-in`}
       title={`${copy.label} sign-in`}
-      description={
-        <>
-          Lets invited people without GitHub, such as clients, sign in with {copy.label}. {copy.console} and register{" "}
-          <code className="font-mono text-xs">{callback}</code> as its redirect URI.
-        </>
-      }
+      description={`Lets invited people without GitHub, such as clients, sign in with ${copy.label}.`}
+      aside={<SettingsStatus tone={enabled ? "success" : "muted"}>{enabled ? "Enabled" : "Off"}</SettingsStatus>}
       footer={enabled && <OAuthProviderActions provider={provider} clientId={clientId} />}
     >
-      {!enabled && <OAuthProviderForm provider={provider} />}
-      {enabled && (
-        <div className="space-y-4">
-          <p className="flex items-center gap-2 text-sm">
-            <CheckCircle2 className="size-4 text-success" aria-hidden />
-            Enabled
-          </p>
-          <dl className="grid gap-4 sm:grid-cols-2">
-            <Fact label="Client ID">
-              <span className="truncate font-mono text-xs">{clientId}</span>
-            </Fact>
-            <Fact label="Redirect URI">
-              <span className="truncate font-mono text-xs">{callback}</span>
-            </Fact>
-          </dl>
+      <SettingsRows>
+        <SettingsRow label="Redirect URI" description={`${copy.console}, and register this as its redirect URI.`}>
+          <span className="flex w-full min-w-0 items-center gap-1 rounded-md bg-surface-2 py-0.5 pr-0.5 pl-2.5 ring-1 ring-border">
+            <code className="min-w-0 flex-1 truncate font-mono text-xs" title={callback}>
+              {callback}
+            </code>
+            <CopyButton value={callback} label="Copy redirect URI" iconOnly variant="ghost" />
+          </span>
+        </SettingsRow>
+        {enabled && (
+          <SettingsRow label="Client ID">
+            <code className="truncate font-mono text-xs" title={clientId}>
+              {clientId}
+            </code>
+          </SettingsRow>
+        )}
+      </SettingsRows>
+      {!enabled && (
+        <div className="mt-5">
+          <OAuthProviderForm provider={provider} />
         </div>
       )}
     </SettingsCard>
