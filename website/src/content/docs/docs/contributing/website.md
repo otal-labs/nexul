@@ -73,7 +73,8 @@ holds search, the theme toggle and, below 768px, the menu. The docs add
 their components in `src/components/docs/`; code blocks use the monochrome
 theme pair in `src/lib/shiki-mono.ts`. The homepage, roadmap and changelog
 use `src/styles/landing.css`, with the example workflow in
-`src/components/WorkflowPreview.astro`. Fonts are bundled locally (see
+`src/components/WorkflowPreview.astro`; the roadmap, changelog and 404 page
+add `src/styles/pages.css`. Fonts are bundled locally (see
 [Coding standards](/docs/contributing/coding-standards/)).
 
 The workflow is an illustration with example data, not a live instance.
@@ -82,6 +83,16 @@ the product when editing it. Verify the homepage at 320, 375, 414, and 768px
 in both color schemes, including keyboard navigation and installation-command
 copy feedback. The same install block appears in the hero and the closing
 install section. Keep the command on one line and the copy control inline.
+
+## Roadmap and changelog
+
+The roadmap's items live in `src/pages/roadmap.astro`, grouped on the page by
+status, newest first within each; `ROADMAP.md` at the repository root carries
+the same items, so change both together. The changelog is built from the
+repository's GitHub releases at build time (`src/lib/releases.ts`, every page
+of the API, tags starting with `v`), one row per release with the pull
+requests its notes list. Each new release rebuilds the site (Hosting, below). Set `GITHUB_TOKEN` when building locally
+to stay clear of the API's rate limit.
 
 ## Hosting
 
@@ -96,4 +107,5 @@ repository:
 | Production branch | `master` |
 
 A push to `master` that changes anything under `website/` redeploys the
-site; nothing else in the repository triggers a Pages build.
+site, and so does every release, through the deploy hook in the
+`CLOUDFLARE_PAGES_DEPLOY_HOOK` secret; nothing else triggers a Pages build.
