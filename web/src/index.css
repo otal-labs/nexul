@@ -272,10 +272,10 @@ body {
   outline: none;
 }
 
-/* Overlay scrim (dialog/sheet): opacity/blur both driven by the Appearance
-   settings slider via --glass-opacity/--glass-blur. */
+/* Overlay scrim (dialog/sheet): the canvas colour, not black, so a light page dims to a soft wash instead of grey;
+   opacity and blur come from the Appearance settings slider via --glass-opacity/--glass-blur. */
 .glass-overlay {
-  background: color-mix(in oklab, black var(--glass-opacity), transparent);
+  background: color-mix(in oklab, var(--background) var(--glass-opacity), transparent);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }
@@ -316,7 +316,7 @@ body {
     var(--shadow-card);
 }
 
-/* An overlay that floats over the dimmed page (the command palette): the panel's recipe on the popover colour. */
+/* An overlay that floats over the dimmed page (dialogs, the command palette): the panel's recipe on the popover colour. */
 @utility glass-popover {
   border: 1px solid transparent;
   background-color: color-mix(in oklab, var(--popover) 88%, transparent);
@@ -326,6 +326,30 @@ body {
     inset 0 1px 0 0 var(--panel-highlight),
     0 0 0 1px var(--panel-ring),
     var(--shadow-overlay);
+}
+
+/* A menu, select or popover over the live page: the same glass, lifted only as far as the elevated shadow. */
+@utility glass-menu {
+  border: 1px solid transparent;
+  background-color: color-mix(in oklab, var(--popover) 88%, transparent);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow:
+    inset 0 1px 0 0 var(--panel-highlight),
+    0 0 0 1px var(--panel-ring),
+    var(--shadow-elevated);
+}
+
+/* A dialog's footer, its last row or its form's last row (the close button follows it), is a tray that stays in view. */
+[data-slot="dialog-content"] > [data-slot="dialog-footer"]:nth-last-child(2),
+[data-slot="dialog-content"] > form > [data-slot="dialog-footer"]:last-child {
+  position: sticky;
+  bottom: -1.5rem;
+  z-index: 1;
+  margin: 0.25rem -1.5rem -1.5rem;
+  padding: 0.875rem 1.5rem;
+  border-top: 1px solid var(--border);
+  background-color: color-mix(in oklab, var(--surface-2) 60%, var(--popover));
 }
 
 /* The layout's frame is the page's one scrolling panel, unless the page splits into its own panes (data-pane-layout). */
@@ -983,8 +1007,34 @@ a.mention-chip:hover {
     translate 0s linear 120ms;
 }
 
-/* Toasts keep the library's choreography on the dialog family's clock: in over 250ms on the strong ease-out instead of
-   400ms, and a stacked toast leaves in 200ms. */
+/* Toasts: the menus' glass, the status hue on the icon only. :root and the theme attribute outrank the library's own
+   per-theme variables. */
+:root [data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: color-mix(in oklab, var(--popover) 88%, transparent);
+  --normal-border: transparent;
+  --normal-text: var(--popover-foreground);
+  --border-radius: var(--radius-lg);
+}
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow:
+    inset 0 1px 0 0 var(--panel-highlight),
+    0 0 0 1px var(--panel-ring),
+    var(--shadow-elevated);
+}
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: var(--success);
+}
+[data-sonner-toast][data-type="error"] [data-icon] {
+  color: var(--destructive);
+}
+[data-sonner-toast][data-type="warning"] [data-icon] {
+  color: var(--warning);
+}
+[data-sonner-toast][data-type="info"] [data-icon] {
+  color: var(--info);
+}
 [data-sonner-toaster] [data-sonner-toast] {
   transition-duration: 250ms, 250ms, 250ms, 200ms;
   transition-timing-function: var(--ease-out);

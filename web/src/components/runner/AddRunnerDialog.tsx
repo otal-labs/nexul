@@ -44,7 +44,7 @@ export const AddRunnerDialog = ({ machineName, triggerSize = "default", triggerV
           <span className={cn(machineName && "hidden @lg:inline")}>Add runner</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Add a runner</DialogTitle>
           <DialogDescription>

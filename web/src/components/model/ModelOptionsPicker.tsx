@@ -41,7 +41,7 @@ interface ModelOptionSectionProps {
 const ModelOptionSection = ({ option, separated, value, onSelect }: ModelOptionSectionProps) => (
   <DropdownMenuGroup>
     {separated && <DropdownMenuSeparator />}
-    <DropdownMenuLabel className="font-mono text-[11px] font-normal text-muted-foreground uppercase">{option.label}</DropdownMenuLabel>
+    <DropdownMenuLabel>{option.label}</DropdownMenuLabel>
     <DropdownMenuRadioGroup
       value={sectionValue(option, value)}
       onValueChange={(id) => onSelect(option.type === "boolean" ? id === "on" : id)}
