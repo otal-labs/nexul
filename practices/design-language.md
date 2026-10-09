@@ -14,16 +14,18 @@ lives in a raised, frosted panel that floats 8px from the canvas edges and from
 its neighbours; the sidebar sits straight on the canvas with no surface of its
 own. Cards inside a panel are a step lighter with the same hairline ring. One
 ember accent marks what you act on and where you are: the primary action,
-focus, the active nav item, selection, your own messages, checked controls and
-progress. Status keeps its own hues as a dot or icon beside plain text.
+the active nav item, selection, your own messages, checked controls and
+progress. Focus is ink, not the ember. Status keeps its own hues as a dot or icon beside plain text.
 Technical data (ids, repositories, targets, counts, timestamps) is set in a
 monospace face, and page titles in a soft serif. Dense where the work is
 dense, calm everywhere else.
 
 Why one accent and only those roles: an accent everywhere stops meaning
-"here", and it competes with status colour; held to action, focus and
-selection it reads as the app's voice while a red, amber or green dot still
-reads as state (ADR 0133).
+"here", and it competes with status colour; held to action and selection it
+reads as the app's voice while a red, amber or green dot still reads as state
+(ADR 0133). Focus left the accent in round four: the ember sits a few degrees
+from the destructive coral, and an ember ring on a field read as a field in
+error.
 
 ## Token quick reference
 
@@ -43,15 +45,17 @@ never a hard-coded palette class.
 | `muted-foreground` | `oklch(0.71 0.01 265)` | `oklch(0.48 0.01 265)` | secondary text, meta lines; 6:1 or better on every surface |
 | `accent` | white at 7% | ink at 6% | hover and selected-row lift, reads on any surface |
 | `primary` | `foreground` | `foreground` | strong ink for emphasis (`text-primary`); not the action colour |
-| `brand` | `oklch(0.68 0.2 35)` | `oklch(0.565 0.19 35)` | the ember accent: primary button, focus ring, active nav marker, selection, own messages, checked controls, progress, prose links |
+| `brand` | `oklch(0.68 0.2 35)` | `oklch(0.565 0.19 35)` | the ember accent: primary button, active nav marker, selection, own messages, checked controls, progress, prose links |
 | `brand-foreground` | `oklch(0.16 0.03 35)` | white | ink on `brand`, 6.2:1 dark and 5:1 light |
 | `success` | `#4ade80` | `#15803d` | health, success, and open pull requests |
 | `warning` | `#fbbf24` | `#b45309` | in-flight states |
 | `info` | `#5cc8f5` | `#0369a1` | open and informational states |
 | `merged` | `#a371f7` | `#8250df` | merged pull requests only |
 | `destructive` | `#f97066` | `#dc2626` | errors, danger zone, closed pull requests |
+| `destructive-fill` | `oklch(0.55 0.2 25)` | `#c81e1e` | the fill behind a destructive button's white label, deeper than the text hue so it never reads as the ember |
 | `border` / `input` | white at 8% / 12% | ink at 10% / 16% | hairlines, the same on every surface |
-| `ring` | `brand` | `brand` | focus and canvas selection |
+| `ring` | `brand` | `brand` | canvas selection and the console glow |
+| `focus` | `foreground` at 80% | `foreground` at 80% | the one focus indicator: a 2px outline, 2px out (1px on a field) |
 | `panel-ring` / `panel-highlight` | white at 7% / 5% | ink at 8% / white at 90% | a panel's hairline and its inner top edge |
 | `field-warm` / `field-pink` / `field-cool` | `brand` at 34%, pink, blue | `brand` at 30%, pastel pink, pastel blue | the light field's three glows; the warm one follows the palette's accent |
 | `font-display` | Fraunces Variable | same | page titles, empty-state and showcase headlines, through `type-display` |
@@ -63,7 +67,7 @@ to this table in the same change. A one-off class is drift.
 
 Palettes (Appearance settings, `web/src/lib/themePalettes.ts`) override the
 surface and text roles; a palette's `primary` becomes its `brand` (and so its
-focus ring and the field's warm glow) unless it names a brand of its own, and
+the field's warm glow) unless it names a brand of its own, and
 its panels follow its `card`. The default palette is labelled Nexul (id
 `console`). Brutalism's zero radius applies to panels too.
 
@@ -185,7 +189,7 @@ blocks) and no library attribution.
 ## Do and don't
 
 Do: float content in panels and keep the sidebar on the canvas; keep the
-accent to action, focus, active nav, selection, own messages, checked
+accent to action, active nav, selection, own messages, checked
 controls and progress; status as a coloured dot or icon next to plain text;
 mono for technical data; hairline rings that read on any surface; dense but
 controlled spacing; check both modes, which are each designed, not inverted.
@@ -204,7 +208,7 @@ second ambient animation or anything animating layout behind the panels.
 | Decision | Why |
 |---|---|
 | Glass over a light field, dark first (ADR 0133) | The monochrome console read flat after every page was cleaned up; floating panels over a soft light field give depth and a recognisable look without decorating the content |
-| One ember accent, held to action, focus, active nav, selection, own messages, checked controls and progress | Used everywhere an accent stops meaning "here" and fights status colour; held to these roles it is the app's voice |
+| One ember accent, held to action, active nav, selection, own messages, checked controls and progress | Used everywhere an accent stops meaning "here" and fights status colour; held to these roles it is the app's voice |
 | Panels at 85% with a 20px blur, not the mock's lower opacity | The field glows through the edges while body and muted text keep at least 6:1 on the panel |
 | Light mode as its own identity | A soft grey canvas, pastel field and white panels read intentional; an inversion of the dark look did not |
 | Ink on the dark accent, white on the light accent | White on the bright dark-mode ember is 3:1; dark ink holds 6:1 there, and the deeper light-mode ember holds 5:1 with white |
@@ -231,6 +235,8 @@ second ambient animation or anything animating layout behind the panels.
 | A doc's first heading that repeats its title stays | The title and the body are separate fields; hiding a matching heading in a collaborative editor would put the caret in invisible text and show readers and writers different docs, so the author's content is shown as written |
 | Runners: one card per machine, actions in its header, dashed when offline | Against a facts grid band per machine (a second header's worth of height, truncated the host and stack root, and hid the actions in a menu) and one table with machine group rows (aligned, but machines stopped reading as units and an offline machine looked like any other); greying a whole row to 60% made offline runners hard to read, a dashed unlit card says offline at full contrast |
 | Topology cards: an icon tile, the name and status on one line, facts under a rule | Against a dot-and-mono-lines card (compact, but the status hue sat on a 6px dot and the word was a muted mono line) and a title strip with a coloured leading edge (a third band of height and colour on every card); the tile and trailing status echo the runner cards, and network boxes became faint filled regions instead of dashed outlines, which read as unfinished next to the lit cards |
+| Focus as one ink outline, not the ember | The ember is a few degrees from the destructive coral: an autofocused field in the project wizard read as a validation error before anything was typed. Ink at 80% reads as focus on every palette and keeps 3:1 on every surface |
+| Overlays on transitions, instant from a key | Keyframes restart when an overlay reopens mid-close; a transition turns back from where it is. Opened tens of times an hour, a menu or dialog driven from the keyboard must not wait on motion |
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
 | Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
@@ -374,10 +380,46 @@ Microheader. The one small uppercase label is `microheaderClass`
 text-muted-foreground`): facts, group labels, rail sections, column heads.
 No other size, weight, or tracking for an uppercase label.
 
-Menu row. Every popover menu row, custom or a dropdown item, is `text-sm`
-with `px-2 py-1.5 gap-2` and a muted 16px icon (`menuItemClass` in
-`web/src/components/MenuItem.tsx`), in a `p-1` panel; the sidebar's nav rows
-keep their own height at the same `text-sm`.
+Menu. Every menu, custom on a popover or a dropdown, is one anatomy: a
+`glass-menu` panel (the frosted recipe on `popover` at 88%, the elevated
+shadow) at 9px with 4px padding; rows of at least 32px in `text-sm` with
+`px-2 gap-2.5` on a 5px corner, concentric in the panel's 9px, a muted 16px
+icon column, the label, then a trailing mono hint (`DropdownMenuShortcut`)
+or a check (`menuItemClass` in `web/src/components/MenuItem.tsx`); groups
+split by an edge-to-edge hairline (`MenuSeparator`) and headed by a
+microheader (`DropdownMenuLabel`). The highlighted row is `bg-accent`, never
+an outline. A destructive row is `destructive` text and icon over a
+`destructive` 10% hover, after a rule, last. Selects, popovers and hover
+cards take the same panel. The sidebar's nav rows keep their own height at
+the same `text-sm`.
+
+Dialog. A `glass-popover` panel (the palette's surface) at 12px over a
+scrim in the canvas colour, not black, at the Appearance slider's opacity
+with a 4px blur, so a light page dims to a soft wash instead of grey. Up to
+`100dvh - 4rem` tall and 32rem wide by default; it is a header (the 16px
+semibold title, a muted line, a 28px ghost close top right), a body that
+scrolls on its own (`DialogBody`), and a footer: Cancel then the primary
+action on the right, on a tray (`surface-2` 60% into `popover`, a hairline
+above) that stays in view. A dialog that stacks its fields without a body
+scrolls as one with the footer pinned. A form dialog wider than its fields
+(New automation's scope rows) takes 36rem rather than truncating them.
+
+Sheet. The same frosted panel floating 8px from its edge at 12px, like the
+page panels; its header is the grip, and dragging it toward the edge moves
+the sheet 1:1 with the scrim fading in step (Motion baseline).
+
+Tooltip. A small `glass-menu` label (`text-xs`, `px-2 py-1`, 7px) for an
+icon-only control; the first waits 500ms, the next shows at once
+(`TooltipProvider` in `App.tsx`).
+
+Toast. The menus' glass at 9px, the status hue on the icon only, the action
+in `brand`; bottom right, stacked by the library.
+
+Focus. One indicator everywhere: a 2px `focus` outline (ink at 80%), 2px
+out, 1px on a field, which keeps its border; a component's own ring utility
+is cleared on focus. Errors keep `destructive` on the border and message,
+so a focused field in error is an ink ring around a red border. A
+destructive button is white on `destructive-fill`.
 
 Detail page header. The page header above, with the record's mono id chip
 and status in the meta line. Only a page with a genuine single-record view gets this header. In-context
@@ -717,8 +759,8 @@ Command palette. ⌘K (Ctrl+K elsewhere), or the sidebar's Search row, opens
 one palette from any signed-in page: a frosted overlay (`glass-popover`) 40rem
 wide, hung at 14% of the viewport so a changing result count only moves its
 bottom edge, over the dialog family's scrim. Opened from the Search row it
-runs the dialog clock (200ms in, from 0.97) and an overlay click closes it in
-150ms; opened or closed with a key, or closed by a pick, it shows and goes in
+runs the dialog clock (220ms in, rising 6px from 0.97) and an overlay click
+closes it in 150ms; opened or closed with a key, or closed by a pick, it shows and goes in
 the same frame, since it is driven a dozen times an hour and a fading scrim
 would swallow the next click. A row or group that joins the list after it
 opened (a search landing, a letter that matches more) fades in over 120ms,
@@ -765,11 +807,20 @@ writing its own.
   `--ease-spring`. It sizes to the item and plays back from wherever it was,
   so a click mid-slide carries on. Moving between the sidebar's two navs it
   fades out of one and into the other.
-- Popovers, menus, hover cards and selects open in 150ms and close in 120ms
-  from 0.97 and 4px toward their trigger; a dialog and its overlay open in
-  200ms and close in 150ms; a sheet and its overlay in 250 and 200ms. Toasts
-  keep the library's choreography at 250ms `--ease-out` (a stacked toast leaves
-  in 200ms). A spinner waits 300ms before it shows.
+- Overlays (`index.css`, Overlays) move on transitions from `@starting-style`,
+  never keyframes, so one reopened mid-close turns back from where it is; a
+  closing overlay never takes a click; and one opened or closed from a key
+  shows and goes in the same frame (the root's `data-input`, written by
+  `lib/motion.ts`). Popovers, menus, hover cards and selects open in 150ms
+  and close in 120ms from 0.97 and 4px toward their trigger, from the
+  trigger's corner. A dialog rises 6px from 0.97 over 220ms and leaves in
+  150ms to 0.98; its scrim fades on the same clock. A sheet slides in 300ms
+  on `--ease-drawer` and out in 220ms, its scrim with it. A tooltip that
+  waited fades in from 0.97 over 125ms; one shown at once beside another
+  does not animate; it fades out in 100ms. Toasts keep the library's
+  choreography at 250ms `--ease-out` (a stacked toast leaves in 200ms). A
+  spinner waits 300ms before it shows. Reduced motion: every overlay fades
+  over 150ms in place.
 - Disclosure (`.disclosure` with `data-closed`: swimlanes, question rounds;
   `AdvancedFields` does the same with the collapsible's enter and exit):
   opening, the box snaps open and the content fades in as it settles 4px over
@@ -1001,3 +1052,53 @@ a 4x throttle.
 Toasts, dialogs, sheets, popovers, menus: already on the baseline's clocks;
 nothing changed but the sheet, whose open and close are animations and no
 longer carry an unnamed transition list.
+
+### Round-four locks: overlays
+
+Decided 2026-10-09 without the owner in the loop, each built as three or four
+live variants on the real surface, judged from frame strips seeked to fixed
+times (0 to 300ms), interrupted open-close-open strips and 1x and 0.25x
+recordings.
+
+Mechanism: transitions with an empty hold animation. Rejected: the
+keyframes (`animate-in`/`animate-out`) every overlay used, which restart from
+their first frame when an overlay reopens mid-close, and whose closing scrim
+caught clicks for 150ms because Radix writes `pointer-events: auto` inline.
+
+Dialog: centred, rising 6px from 0.97 (220ms in, 150ms out). Rejected: from
+the trigger (0.9 from the click point: a 32rem panel travelling diagonally
+from a corner button, and no trigger left to point at when a menu item
+opened it), a bounce-free spring rise (320ms; still nine tenths transparent
+at 50ms, so the form read late) and materialize (a 6px blur clearing: mush
+for the first 50ms and a filter on the largest surface over a 24px backdrop
+blur). Tuning: the plain 0.97 scale against the 6px rise; the rise matches
+the page entrance's vocabulary for arriving. The confirmation dialog runs the
+same clock: it is the same family.
+
+Menus: 0.97 and 4px toward the trigger, kept. Rejected: 0.9 from the trigger
+(read as a zoom on something opened tens of times a day), a clip reveal (a
+curtain with no origin point, and the clip cut the shadow) and a spring
+(half transparent at 50ms).
+
+Sheet: `--ease-drawer` (`cubic-bezier(0.32, 0.72, 0, 1)`) at 300ms in, 220ms
+out. Rejected: `--ease-out` at 260ms (arrived before it read as a slide) and
+the bounce-free spring at 320ms (slow first 50ms). Tuning: 400, 340 and 300ms
+on the drawer curve; 300 front-loads as much and settles sooner.
+
+Toasts: unchanged at 250ms `--ease-out`. Rejected: the library's 400ms
+`ease` (a stack shuffle that lingered) and the drawer curve at 350ms (slower
+than the dialog family beside it).
+
+Look. Dialog surface: the palette's glass with a footer tray over a
+canvas-coloured scrim. Rejected: hairlines under the header and over the
+footer (an empty band on a dialog with no body; and the glass over a black
+scrim turned grey in light mode) and an opaque card (lost the frosted
+language the panels speak). Menus: the glass at 9px with 32px rows on a 5px
+corner. Rejected: a solid panel with 36px rows and inset rules (a three-item
+menu a quarter taller; the inset rule read as a gap) and the palette's
+brand edge on the highlighted row (the accent on a pointer hover). Focus: the
+ink outline. Rejected: the ember drawn as a 2px inset border (still read as
+an error) and an ink border with a soft halo (a focused field in error was
+barely different from one unfocused). Destructive button: white on a deeper
+red. Rejected: a tinted outline (too quiet for the act it confirms) and the
+coral with dark ink (the ember's twin beside the primary).

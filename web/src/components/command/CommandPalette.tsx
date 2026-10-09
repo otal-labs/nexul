@@ -27,7 +27,7 @@ export const CommandPalette = () => {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay data-instant={instant || undefined} className="data-instant:animate-none! glass-overlay fixed inset-0 z-50 ease-out data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-200" />
+        <DialogPrimitive.Overlay data-instant={instant || undefined} className="glass-overlay overlay-scrim fixed inset-0 z-50" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
           data-instant={instant || undefined}
@@ -43,7 +43,7 @@ export const CommandPalette = () => {
             event.preventDefault();
             if (!useCommandPaletteStore.getState().picked) returnTo.current?.focus();
           }}
-          className="glass-popover fixed top-[14dvh] left-1/2 z-50 flex w-[min(40rem,calc(100%-2rem))] -translate-x-1/2 origin-top flex-col overflow-hidden rounded-xl ease-out data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-97 data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-97 data-[state=open]:duration-200 data-instant:animate-none!"
+          className="dialog-surface glass-popover fixed top-[14dvh] left-1/2 z-50 flex w-[min(40rem,calc(100%-2rem))] -translate-x-1/2 origin-top flex-col overflow-hidden rounded-xl"
         >
           <DialogPrimitive.Title className="sr-only">Command palette</DialogPrimitive.Title>
           <CommandPaletteBody />
