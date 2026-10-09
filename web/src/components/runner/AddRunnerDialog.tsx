@@ -13,9 +13,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useCreateRunnerEnrollment } from "@/hooks/RunnerHooks";
+import { cn } from "@/lib/utils";
 
 interface AddRunnerDialogProps {
-  // Set from the Runners page's per-machine action: the new runner joins that machine's pool.
+  // Set from a machine's header: the runner joins that machine's pool; the label hides in a narrow @container.
   machineName?: string;
   triggerSize?: "default" | "sm";
   triggerVariant?: "default" | "outline" | "ghost";
@@ -33,9 +34,14 @@ export const AddRunnerDialog = ({ machineName, triggerSize = "default", triggerV
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button type="button" size={triggerSize} variant={triggerVariant}>
+        <Button
+          type="button"
+          size={triggerSize}
+          variant={triggerVariant}
+          {...(machineName && { "aria-label": "Add a runner to this machine", title: "Add a runner to this machine" })}
+        >
           <Plus className="size-4" aria-hidden />
-          {machineName ? "Add a runner to this machine" : "Add runner"}
+          <span className={cn(machineName && "hidden @lg:inline")}>Add runner</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">

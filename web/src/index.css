@@ -289,6 +289,17 @@ body {
     var(--panel-shadow);
 }
 
+/* A card on the topology canvas: the panel's ring and lit top edge on the card colour, no blur (nodes move on pan). */
+@utility canvas-card {
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background-color: var(--card);
+  box-shadow:
+    inset 0 1px 0 0 var(--panel-highlight),
+    0 0 0 1px var(--panel-ring),
+    var(--shadow-card);
+}
+
 /* An overlay that floats over the dimmed page (the command palette): the panel's recipe on the popover colour. */
 @utility glass-popover {
   border: 1px solid transparent;
@@ -426,10 +437,6 @@ body {
   --xy-controls-button-background-color-hover: var(--accent);
   --xy-controls-button-color: var(--foreground);
   --xy-controls-button-border-color: var(--border);
-  --xy-attribution-background-color: transparent;
-  --xy-minimap-background-color: var(--surface-2);
-  --xy-minimap-mask-background-color: color-mix(in oklab, var(--background) 70%, transparent);
-  --xy-minimap-node-background-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
   background-color: var(--surface-2);
 }
 
@@ -442,24 +449,21 @@ body {
 }
 
 .react-flow__controls {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: var(--shadow-card);
+  background: var(--card);
+  box-shadow: inset 0 1px 0 0 var(--panel-highlight), 0 0 0 1px var(--panel-ring), var(--shadow-card);
 }
 
-.react-flow__minimap {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.react-flow__attribution {
-  background: transparent;
-}
-
-.react-flow__attribution a {
+.react-flow__controls-button {
+  width: 28px;
+  height: 28px;
+  border-bottom-color: var(--border);
   color: var(--muted-foreground);
+}
+
+.react-flow__controls-button:hover {
+  color: var(--foreground);
 }
 
 /* ============ Rich text (Tiptap editor + read-only body) ============ */

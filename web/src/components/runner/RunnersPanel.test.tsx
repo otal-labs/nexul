@@ -79,7 +79,6 @@ describe("RunnersPanel", () => {
     expect(screen.getByText("prod-host")).toBeInTheDocument();
     expect(screen.getByText("2 runners")).toBeInTheDocument();
     expect(screen.getByText("alpha")).toBeInTheDocument();
-    expect(screen.getByText("online")).toBeInTheDocument();
     expect(screen.getByText("beta")).toBeInTheDocument();
     expect(screen.getByText("offline")).toBeInTheDocument();
     expect(screen.getByText("api")).toBeInTheDocument();

@@ -15,7 +15,7 @@ export const TopologyPage = () => {
         title="Topology"
         meta="Every service, the network it runs on, and how traffic reaches it."
       />
-      <div className="mt-6 min-h-96 flex-1 overflow-hidden rounded-lg border border-border bg-card shadow-card">
+      <div className="mt-6 min-h-96 flex-1 overflow-hidden rounded-lg bg-surface-2 ring-1 ring-border">
         <TopologyCanvas key={workspaceId} />
       </div>
     </Container>

@@ -154,21 +154,33 @@ in one layout step and its content does the moving.
 
 ## Canvas (topology)
 
-React Flow reads the same tokens: a `surface-2` field, a faint
-`muted-foreground` dot pattern, hairline edges, and `ring` for selection and
-connection lines. Service nodes are `bg-card` cards with a status-colored
-leading edge.
+React Flow reads the same tokens: a `surface-2` well with a hairline ring for
+the field, a faint `muted-foreground` dot pattern, hairline edges, and `ring`
+for selection and connection lines. Every card on it is a `canvas-card`: the
+card colour with the panel's hairline ring and lit top edge, no blur (nodes
+move on every pan), lifting 2px on hover and outlined in `ring` when
+selected. A service card is a 28px `surface-2` tile holding its runtime icon,
+the name, and the status (icon and word) trailing on the same line, over a
+rule and one mono line per fact (machine and strategy, replicas, volume); a
+gateway card has the same header with its kind and name. Status colours only
+the status; the cards carry no coloured edge.
 
 Traffic reads left to right as a sentence: hostname pill, gateway row,
-service, inside one dashed hairline box per docker network with a mono
-microheader (`network · <name>`). The gateway card is titled in plain words
-("Cloudflare tunnel", "Reverse proxy") and lists one mono row per route,
+service, inside one box per docker network: `foreground` at 2.5% over the
+field with a hairline ring and the large radius, a mono microheader
+(`network · <name>`) inside its top edge. The gateway card is titled in plain
+words ("Cloudflare tunnel", "Reverse proxy") and lists one mono row per route,
 `→ service:port (address:port)`, each row with its own handle on both sides.
+A hostname whose gateway is not on the canvas sits left of its service's
+network box, level with the service, and its wire carries the port.
 Route wires are bare 1.5px bezier curves in `muted-foreground`; only
 hand-drawn relation edges keep the dashed smoothstep and the label pill. The
 hostname pill is the one `rounded-full` chip on the canvas. Nothing truncates:
-pills and cards are `w-max` and grow to their text. No fills and no per-kind
-accent color; only the status dot carries color.
+pills and cards are `w-max` and grow to their text. Nothing overlaps: a stored
+arrangement whose cards or boxes come within 12px of each other is laid out
+again. The controls sit bottom left as one `canvas-card` strip; there is no
+minimap (at the canvas's size it covered a fifth of the map and showed grey
+blocks) and no library attribution.
 
 ## Do and don't
 
@@ -217,6 +229,8 @@ second ambient animation or anything animating layout behind the panels.
 | Bot embeds as status-edged cards with facts | Against a header strip over hairline key and value rows (scanned well for long values but read as the old table again, nine summary rows tall) and a 2px status bar across the top (the same card, but the bar read as the accent's decoration rather than state); the leading edge is the topology node's status signal reused |
 | List pane placeholder: icon, count and the palette shortcut, compact | Against the icon alone (said nothing about the list) and the full empty-state size with a Fraunces headline (read as an empty page beside a full list) |
 | A doc's first heading that repeats its title stays | The title and the body are separate fields; hiding a matching heading in a collaborative editor would put the caret in invisible text and show readers and writers different docs, so the author's content is shown as written |
+| Runners: one card per machine, actions in its header, dashed when offline | Against a facts grid band per machine (a second header's worth of height, truncated the host and stack root, and hid the actions in a menu) and one table with machine group rows (aligned, but machines stopped reading as units and an offline machine looked like any other); greying a whole row to 60% made offline runners hard to read, a dashed unlit card says offline at full contrast |
+| Topology cards: an icon tile, the name and status on one line, facts under a rule | Against a dot-and-mono-lines card (compact, but the status hue sat on a 6px dot and the word was a muted mono line) and a title strip with a coloured leading edge (a third band of height and colour on every card); the tile and trailing status echo the runner cards, and network boxes became faint filled regions instead of dashed outlines, which read as unfinished next to the lit cards |
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
 | Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
@@ -235,7 +249,9 @@ a whole (the kanban `TicketCard`). Row hover is a
 reserved for draggable cards. The primary field sits left in normal weight;
 secondary and meta fields trail right in `muted-foreground`, and in mono with
 `tabular-nums` whenever the value is a count, amount, id, or timestamp. Status
-renders per the badge rule above. A page that needs bulk actions uses a left
+renders per the badge rule above, in a fixed-width column when it leads the
+row, so the field after it never shifts between Success and Failure. A page
+that needs bulk actions uses a left
 checkbox column; no page invents its own selection affordance.
 
 List pane. A page that edits one record beside its siblings (Docs, Memories)
@@ -434,6 +450,23 @@ microheader label above a 20px mono value, color-coded only when the metric is
 inherently positive or negative (health counts). Only a page with a fleet or
 health rollup worth reading at a glance gets one; a page with nothing to
 summarise does not invent one.
+
+Runners. Under the fleet well (Online "2 of 3", Busy, Offline, Queued), one
+card per machine: a 36px server mark on `surface-2` with a status dot on its
+corner (`success` when every runner is connected, `warning` when some are,
+muted when none), the name with its state in words beside it ("online",
+"2 of 3 online", "offline"), and its actions on the same line as ghost buttons
+(Import, Add runner) that drop to icons with a tooltip in a narrow card. Under
+them a mono facts line (host, runner count, last seen, the editable stack root),
+each fact carrying its own leading dot under a clip so no line starts with one.
+Runner rows share fixed columns across every card, the connection dot under
+the machine's mark: the name (or `runner <short id>` when it only repeats the
+machine's), the version under it, the mono last-seen time, then what it is
+doing (`idle`, a pulsing `info` dot and the job, or `offline`), then remove. A
+machine with nothing connected keeps full-contrast text but loses the card
+fill and shadow and draws a dashed edge, so it reads as unplugged rather than
+faded. `MachineGroup` and `RunnerRow` in `web/src/components/runner/` are the
+reference.
 
 Setup stepper. A multi-step setup inside the wizard shell is a vertical rail
 of `DnsStep` rungs (hollow dot upcoming, filled dot active, check done), with

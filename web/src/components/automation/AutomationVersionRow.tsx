@@ -34,10 +34,10 @@ export const AutomationVersionRow = ({ automationId, version, canUpdate }: Autom
   };
 
   return (
-    <li className="flex flex-wrap items-center gap-3 px-4 py-3">
-      <span className="font-mono text-sm">#{version.sequence}</span>
+    <li className="grid grid-cols-[2.5rem_4.5rem_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
+      <span className="font-mono text-sm tabular-nums">#{version.sequence}</span>
       <AutomationVersionStatusBadge status={version.status} />
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0">
         <p className="truncate text-sm">{version.message || "No message"}</p>
         <p className="truncate text-xs text-muted-foreground">
           {pusher} · {formatRelativeTime(version.created_at)}
