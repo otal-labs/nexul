@@ -103,22 +103,23 @@ func (f *fakeRepo) ListByProject(_ context.Context, projectID string) ([]*Doc, e
 	return out, nil
 }
 
-// Page and SearchIDs keep f's project, folder, archived state, and a substring query, ordered by id; access is the
-// storage tests' to cover.
-func (f *fakeRepo) Page(ctx context.Context, filter DocFilter, _ DocScope, w paging.Window) ([]*Doc, int, error) {
-	ids, err := f.matching(filter, filter.IncludeArchived)
+// Page keeps f's project, folder, archived state, and a substring query, ordered by id, and a search's Read scope;
+// the project scope is the storage tests' to cover.
+func (f *fakeRepo) Page(ctx context.Context, filter DocFilter, scope DocScope, w paging.Window) ([]*Doc, int, error) {
+	if filter.Query != "" && f.searchErr != nil {
+		return nil, 0, f.searchErr
+	}
+	ids, err := f.matching(filter, filter.Query == "" && filter.IncludeArchived)
 	if err != nil {
 		return nil, 0, err
 	}
+	if read := scope.Read; read != nil {
+		ids = slices.DeleteFunc(ids, func(id string) bool {
+			return !slices.Contains(read.Allowed, id) && (slices.Contains(read.Denied, id) || !slices.Contains(read.ProjectIDs, f.docs[id].ProjectID))
+		})
+	}
 	ds, err := f.ListByIDs(ctx, ids[min(w.Offset, len(ids)):min(w.Offset+w.Limit, len(ids))])
 	return ds, len(ids), err
-}
-
-func (f *fakeRepo) SearchIDs(_ context.Context, filter DocFilter, _ DocScope) ([]string, error) {
-	if f.searchErr != nil {
-		return nil, f.searchErr
-	}
-	return f.matching(filter, false)
 }
 
 func (f *fakeRepo) matching(filter DocFilter, archived bool) ([]string, error) {
@@ -373,6 +374,19 @@ func (f fakeAccess) GrantCreator(_ context.Context, _, _ string) error {
 
 func (f fakeAccess) DeleteByDoc(_ context.Context, _ string) error {
 	return f.deleteErr
+}
+
+// fakeProjects are the projects the docs tests file docs in.
+var fakeProjects = []string{"project-1", "project-2"}
+
+func (f fakeAccess) DocsWith(ctx context.Context, userID string, action permissions.Action) ([]string, []string, []string, error) {
+	if f.readable != nil {
+		return []string{}, f.readable, []string{}, nil
+	}
+	if ok, err := f.Can(ctx, userID, "", action); ok && err == nil {
+		return fakeProjects, []string{}, []string{}, nil
+	}
+	return []string{}, []string{}, []string{}, nil
 }
 
 func (f fakeAccess) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {

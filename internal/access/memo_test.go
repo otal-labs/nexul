@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -106,6 +107,40 @@ func TestCallerProjects_AnswersAsRequireProject(t *testing.T) {
 				continue
 			}
 			assert.ElementsMatch(t, want, got, "%s %q", name, action)
+		}
+	}
+}
+
+// TestDocsWith_AnswersAsCanDocs: the project set and its exceptions a doc list filters by in SQL pass exactly the docs
+// CanDocs passes, through a doc's own allow in a project outside the set and its own deny inside it.
+func TestDocsWith_AnswersAsCanDocs(t *testing.T) {
+	s, repo := restrictedFixture(t)
+	s.SetScopes(fakeScopes{
+		projects:   map[string]string{"p-open": "ws", "p-hidden": "ws"},
+		workspaces: map[string][]string{"team": {"ws"}},
+		restricted: map[string][]string{"client": {"ws"}, "owner": {"ws"}},
+	})
+	s.SetDocWorkspaces(&fakeDocWorkspace{
+		byDoc:     map[string]string{"d-open": "ws", "d-hidden": "ws", "d-denied": "ws", "d-shared": "ws"},
+		projectOf: map[string]string{"d-open": "p-open", "d-hidden": "p-hidden", "d-denied": "p-open", "d-shared": "p-hidden"},
+	})
+	require.NoError(t, repo.Set(t.Context(), "doc", "d-denied", "team", nil, permissions.SetOf(permissions.DocsRead)))
+	require.NoError(t, repo.Set(t.Context(), "doc", "d-denied", "client", nil, permissions.SetOf(permissions.DocsRead)))
+	require.NoError(t, repo.Set(t.Context(), "doc", "d-denied", "owner", nil, permissions.SetOf(permissions.DocsRead)))
+	require.NoError(t, repo.Set(t.Context(), "doc", "d-shared", "client", permissions.SetOf(permissions.DocsRead), nil))
+	require.NoError(t, repo.Set(t.Context(), "doc", "d-shared", "stranger", permissions.SetOf(permissions.DocsRead), nil))
+	docs := []string{"d-open", "d-hidden", "d-denied", "d-shared"}
+	projectOf := map[string]string{"d-open": "p-open", "d-hidden": "p-hidden", "d-denied": "p-open", "d-shared": "p-hidden"}
+
+	for _, user := range []string{"client", "team", "owner", "stranger"} {
+		for _, action := range []permissions.Action{permissions.DocsRead, permissions.DocsWrite} {
+			projects, allowed, denied, err := s.DocsWith(t.Context(), user, action)
+			require.NoError(t, err)
+			want := s.CanDocs(t.Context(), user, "", docs, action)
+			for _, doc := range docs {
+				got := (slices.Contains(projects, projectOf[doc]) && !slices.Contains(denied, doc)) || slices.Contains(allowed, doc)
+				assert.Equal(t, want[doc], got, "%s %s %s", user, action, doc)
+			}
 		}
 	}
 }

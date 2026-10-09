@@ -66,6 +66,21 @@ func (f *fakeRepo) get(resourceType, resourceID, userID string) (*Overwrite, err
 	return ow, nil
 }
 
+func (f *fakeRepo) ListByUser(_ context.Context, resourceType, userID string) (map[string]*Overwrite, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	out := map[string]*Overwrite{}
+	for _, ow := range f.overwrites {
+		if ow.ResourceType == resourceType && ow.UserID == userID {
+			out[ow.ResourceID] = ow
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeRepo) GetMany(_ context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*Overwrite, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

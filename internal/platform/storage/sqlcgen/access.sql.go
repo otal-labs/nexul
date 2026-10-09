@@ -179,6 +179,46 @@ func (q *Queries) ListOverwritesForUser(ctx context.Context, arg ListOverwritesF
 	return items, nil
 }
 
+const listUserOverwritesOfType = `-- name: ListUserOverwritesOfType :many
+SELECT resource_type, resource_id, user_id, allow, deny, created_at, updated_at FROM permission_overwrites WHERE resource_type = ? AND user_id = ?
+`
+
+type ListUserOverwritesOfTypeParams struct {
+	ResourceType string
+	UserID       string
+}
+
+func (q *Queries) ListUserOverwritesOfType(ctx context.Context, arg ListUserOverwritesOfTypeParams) ([]PermissionOverwrite, error) {
+	rows, err := q.db.QueryContext(ctx, listUserOverwritesOfType, arg.ResourceType, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PermissionOverwrite
+	for rows.Next() {
+		var i PermissionOverwrite
+		if err := rows.Scan(
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.UserID,
+			&i.Allow,
+			&i.Deny,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertOverwrite = `-- name: UpsertOverwrite :execrows
 INSERT INTO permission_overwrites (resource_type, resource_id, user_id, allow, deny, created_at, updated_at)
 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)

@@ -298,9 +298,9 @@ func TestDocsRepo_CreateNamedVersion_RejectsDuplicateKey(t *testing.T) {
 	require.Error(t, s.Docs.CreateNamedVersion(ctx, v))
 }
 
-// TestDocsRepo_PageAndSearchIDs_FilterInSQL: browsing pages oldest first and a search ranks as Search does, each
+// TestDocsRepo_Page_FiltersAndSearchesInSQL: browsing pages oldest first and a search ranks as Search does, each
 // keeping only the docs its project, folder, archived state, and scope allow.
-func TestDocsRepo_PageAndSearchIDs_FilterInSQL(t *testing.T) {
+func TestDocsRepo_Page_FiltersAndSearchesInSQL(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 	s := newTestStore(t)
@@ -356,15 +356,29 @@ func TestDocsRepo_PageAndSearchIDs_FilterInSQL(t *testing.T) {
 			assert.Equal(t, want, got, "browse %+v %+v", f, scope)
 
 			f.Query = "rollback"
-			ranked := []string{}
-			for _, h := range hits {
-				if keeps(byID[h.ID], f, scope) {
-					ranked = append(ranked, h.ID)
+			read := &docs.DocReadScope{ProjectIDs: []string{"project-general"}, Allowed: []string{"doc-04"}, Denied: []string{"doc-01", "doc-02"}}
+			for _, read := range []*docs.DocReadScope{nil, read} {
+				var ranked []string
+				for _, h := range hits {
+					d := byID[h.ID]
+					readable := read == nil || slices.Contains(read.Allowed, d.ID) || (slices.Contains(read.ProjectIDs, d.ProjectID) && !slices.Contains(read.Denied, d.ID))
+					if keeps(d, f, scope) && readable {
+						ranked = append(ranked, h.ID)
+					}
 				}
+				scope.Read = read
+				searched := pageAll(t, 6, func(offset, limit int) ([]string, int) {
+					ds, total, err := s.Docs.Page(ctx, f, scope, paging.Window{Offset: offset, Limit: limit})
+					require.NoError(t, err)
+					ids := make([]string, len(ds))
+					for i, d := range ds {
+						ids[i] = d.ID
+					}
+					return ids, total
+				})
+				assert.Equal(t, ranked, searched, "search %+v %+v %+v", f, scope, read)
 			}
-			searched, err := s.Docs.SearchIDs(ctx, f, scope)
-			require.NoError(t, err)
-			assert.Equal(t, ranked, searched, "search %+v %+v", f, scope)
+			scope.Read = nil
 		}
 	}
 }

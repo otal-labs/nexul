@@ -38,10 +38,19 @@ type DocFilter struct {
 	IncludeArchived bool
 }
 
-// DocScope is what access lets a doc list show: everything with All, otherwise the docs of ProjectIDs.
+// DocScope is what access lets a doc list show: everything with All, otherwise the docs of ProjectIDs. With Read set it
+// also keeps only the docs the caller may read: those of Read's projects but its Denied, and its Allowed.
 type DocScope struct {
 	All        bool
 	ProjectIDs []string
+	Read       *DocReadScope
+}
+
+// DocReadScope is the docs a caller may read, as a project set and the docs whose own overwrite turns its answer.
+type DocReadScope struct {
+	ProjectIDs []string
+	Allowed    []string
+	Denied     []string
 }
 
 // DocListItem is the disclosure-aware list view: unopenable docs show title/status with can_open=false, no body.

@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -260,6 +262,36 @@ func (s *Service) CanDocs(ctx context.Context, userID, projectID string, docIDs 
 		})
 	}
 	return out
+}
+
+// DocsWith is what a doc list filters by in SQL for action: the projects in which userID holds it on every doc without
+// an overwrite of its own, and the docs whose own overwrite turns that answer, allowed in a project outside the set or
+// denied in one inside it. A doc passes exactly when CanDocs would pass it (ADR 0140).
+func (s *Service) DocsWith(ctx context.Context, userID string, action permissions.Action) (projectIDs, allowed, denied []string, err error) {
+	allowed, denied = []string{}, []string{}
+	ctx = s.memoized(ctx)
+	_, projectIDs, err = s.ProjectsAnywhere(ctx, userID, action)
+	if err != nil || userID == "" {
+		return projectIDs, allowed, denied, err
+	}
+	own, err := s.repo.ListByUser(ctx, resourceTypeDoc, userID)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("doc overwrites of %s: %w", userID, err)
+	}
+	docIDs := slices.Sorted(maps.Keys(own))
+	scopes := s.docScopes(ctx, docIDs)
+	for _, id := range docIDs {
+		scope := scopes[id]
+		inSet := scope.ProjectID != "" && slices.Contains(projectIDs, scope.ProjectID)
+		can := decide(s.layers(ctx, userID, scope.WorkspaceID, scope.ProjectID), action, func() *Overwrite { return own[id] })
+		if can && !inSet {
+			allowed = append(allowed, id)
+		}
+		if !can && inSet {
+			denied = append(denied, id)
+		}
+	}
+	return projectIDs, allowed, denied, nil
 }
 
 // docOverwrites is userID's overwrite on each of docIDs that has one; a failed read counts as none, as a single
