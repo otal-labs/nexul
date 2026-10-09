@@ -1176,7 +1176,8 @@ stored data, not part of the serialized JSON itself. First paint uses
 ### Theming the canvas
 
 Override React Flow's CSS with the same variables as shadcn so nodes, edges,
-and the minimap follow light/dark for free; selected node = shadcn `ring`.
+and the controls follow light/dark for free; selected node = shadcn `ring`. The canvas
+has no minimap and hides the library's attribution (`proOptions`).
 Node detail (logs, env, deploy history, SSH/docker config) opens in a shadcn
 `Sheet` on click. Canvas is overview, sheet is depth.
 

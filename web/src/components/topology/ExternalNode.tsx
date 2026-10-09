@@ -2,6 +2,7 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { GlobeIcon, NetworkIcon, ServerIcon, ShieldIcon, DatabaseIcon, BoxIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { nodeShell } from "@/components/topology/ServiceNode";
 import { cn } from "@/lib/utils";
 import { ExternalLabel, type ExternalNode as ExternalNodeType } from "@/models/Topology";
 
@@ -20,8 +21,8 @@ export const ExternalNode = ({ data, selected }: NodeProps<ExternalNodeType>) =>
   return (
     <div
       className={cn(
-        "group w-max min-w-48 rounded-lg border border-border bg-card p-3 shadow-card ring-0 transition-[transform,box-shadow,border-color] duration-150 ease-standard hover:-translate-y-0.5 hover:border-ring/40 hover:shadow-elevated",
-        selected && "ring-2 ring-ring",
+        nodeShell,
+        "min-w-48 p-3",
       )}
       data-selected={selected}
     >

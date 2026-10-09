@@ -4,8 +4,7 @@ import { GATEWAY_FOOTER_H, GATEWAY_HEADER_H, GATEWAY_ROW_H } from "@/components/
 import type { NetworkGroup, RelationEdge, TopologyNode } from "@/models/Topology";
 
 // Fixed footprints: layout and network boxes run before React Flow measures nodes; must track the card classes.
-const FOOTPRINTS: Record<Exclude<TopologyNode["type"], "gateway" | "hostname">, { w: number; h: number }> = {
-  service: { w: 256, h: 112 },
+const FOOTPRINTS: Record<Exclude<TopologyNode["type"], "gateway" | "hostname" | "service">, { w: number; h: number }> = {
   network: { w: 192, h: 60 },
   external: { w: 192, h: 84 },
 };
@@ -14,6 +13,11 @@ const FOOTPRINTS: Record<Exclude<TopologyNode["type"], "gateway" | "hostname">, 
 const PILL_GLYPH = 7.2;
 const PILL_CHROME = 76;
 const PILL_H = 40;
+// A service card: the 48px header (56 with a url line) and an 18px mono line per fact under a 16px-padded rule; the
+// width grows from the name past the icon tile and the status.
+const SERVICE_MIN_W = 240;
+const NAME_GLYPH = 7.5;
+const SERVICE_CHROME = 150;
 // Card padding, glyph, arrow, and gaps around a "→ service:port (address:port)" row.
 const ROW_GLYPH = 7.2;
 const ROW_CHROME = 56;
@@ -29,6 +33,13 @@ export const footprintOf = (n: TopologyNode): { w: number; h: number } => {
 
 const designedFootprint = (n: TopologyNode): { w: number; h: number } => {
   if (n.type === "hostname") return { w: Math.round(n.data.hostname.length * PILL_GLYPH + PILL_CHROME), h: PILL_H };
+  if (n.type === "service") {
+    const facts = [n.data.target, n.data.replicas != null, n.data.volume].filter(Boolean).length;
+    return {
+      w: Math.max(SERVICE_MIN_W, Math.round(n.data.name.length * NAME_GLYPH + SERVICE_CHROME)),
+      h: (n.data.url ? 56 : 48) + (facts > 0 ? 17 + facts * 18 : 0),
+    };
+  }
   if (n.type === "gateway") {
     const longest = Math.max(0, ...n.data.routes.map((r) => `${r.service}:${r.port} (${r.address ?? ""}:${r.port})`.length));
     return {

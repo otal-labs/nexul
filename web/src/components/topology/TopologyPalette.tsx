@@ -9,7 +9,7 @@ interface TopologyPaletteProps {
 export const TopologyPalette = ({ onAddExternal }: TopologyPaletteProps) => (
   <button
     type="button"
-    className="animate-in fade-in-0 slide-in-from-top-1 absolute right-2 top-2 z-10 flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm text-foreground shadow-card transition-colors duration-150 ease-standard hover:bg-accent hover:text-accent-foreground sm:right-4 sm:top-4"
+    className="animate-in fade-in-0 slide-in-from-top-1 canvas-card absolute right-2 top-2 z-10 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-accent-foreground sm:right-4 sm:top-4"
     aria-label="Add external node"
     onClick={onAddExternal}
   >

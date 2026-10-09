@@ -152,21 +152,33 @@ in one layout step and its content does the moving.
 
 ## Canvas (topology)
 
-React Flow reads the same tokens: a `surface-2` field, a faint
-`muted-foreground` dot pattern, hairline edges, and `ring` for selection and
-connection lines. Service nodes are `bg-card` cards with a status-colored
-leading edge.
+React Flow reads the same tokens: a `surface-2` well with a hairline ring for
+the field, a faint `muted-foreground` dot pattern, hairline edges, and `ring`
+for selection and connection lines. Every card on it is a `canvas-card`: the
+card colour with the panel's hairline ring and lit top edge, no blur (nodes
+move on every pan), lifting 2px on hover and outlined in `ring` when
+selected. A service card is a 28px `surface-2` tile holding its runtime icon,
+the name, and the status (icon and word) trailing on the same line, over a
+rule and one mono line per fact (machine and strategy, replicas, volume); a
+gateway card has the same header with its kind and name. Status colours only
+the status; the cards carry no coloured edge.
 
 Traffic reads left to right as a sentence: hostname pill, gateway row,
-service, inside one dashed hairline box per docker network with a mono
-microheader (`network · <name>`). The gateway card is titled in plain words
-("Cloudflare tunnel", "Reverse proxy") and lists one mono row per route,
+service, inside one box per docker network: `foreground` at 2.5% over the
+field with a hairline ring and the large radius, a mono microheader
+(`network · <name>`) inside its top edge. The gateway card is titled in plain
+words ("Cloudflare tunnel", "Reverse proxy") and lists one mono row per route,
 `→ service:port (address:port)`, each row with its own handle on both sides.
+A hostname whose gateway is not on the canvas sits left of its service's
+network box, level with the service, and its wire carries the port.
 Route wires are bare 1.5px bezier curves in `muted-foreground`; only
 hand-drawn relation edges keep the dashed smoothstep and the label pill. The
 hostname pill is the one `rounded-full` chip on the canvas. Nothing truncates:
-pills and cards are `w-max` and grow to their text. No fills and no per-kind
-accent color; only the status dot carries color.
+pills and cards are `w-max` and grow to their text. Nothing overlaps: a stored
+arrangement whose cards or boxes come within 12px of each other is laid out
+again. The controls sit bottom left as one `canvas-card` strip; there is no
+minimap (at the canvas's size it covered a fifth of the map and showed grey
+blocks) and no library attribution.
 
 ## Do and don't
 
@@ -211,6 +223,7 @@ second ambient animation or anything animating layout behind the panels.
 | Empty states: the orbit mark | Picked over a placeholder card grid (generic, implied an add action the callers do not have, and looped) and a tile of the live field (a GPU canvas inside an everyday panel, grainy at 96px, impossible at compact size); the static orbit carries the field's colours at any size and costs nothing |
 | Loading: the orbit at spinner size | Over the plain spinner and a gradient arc; it ties loading to the empty mark, keeps the ember to progress, and stays one small SVG |
 | Runners: one card per machine, actions in its header, dashed when offline | Against a facts grid band per machine (a second header's worth of height, truncated the host and stack root, and hid the actions in a menu) and one table with machine group rows (aligned, but machines stopped reading as units and an offline machine looked like any other); greying a whole row to 60% made offline runners hard to read, a dashed unlit card says offline at full contrast |
+| Topology cards: an icon tile, the name and status on one line, facts under a rule | Against a dot-and-mono-lines card (compact, but the status hue sat on a 6px dot and the word was a muted mono line) and a title strip with a coloured leading edge (a third band of height and colour on every card); the tile and trailing status echo the runner cards, and network boxes became faint filled regions instead of dashed outlines, which read as unfinished next to the lit cards |
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
 | Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |

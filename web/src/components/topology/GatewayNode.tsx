@@ -1,9 +1,10 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { ArrowRightIcon, ShieldIcon } from "lucide-react";
 
+import { nodeShell } from "@/components/topology/ServiceNode";
 import { StatusBadge } from "@/components/topology/StatusBadge";
 import { cn } from "@/lib/utils";
-import { ServiceStatus, type GatewayNode as GatewayNodeType } from "@/models/Topology";
+import type { GatewayNode as GatewayNodeType } from "@/models/Topology";
 
 // Row geometry is fixed so the layout can place each hostname pill level with its row before anything is measured.
 export const GATEWAY_HEADER_H = 56;
@@ -12,32 +13,21 @@ export const GATEWAY_FOOTER_H = 37;
 
 const kindLabels = { tunnel: "Cloudflare tunnel", proxy: "Reverse proxy" } as const;
 
-const accentStyles: Record<ServiceStatus, string> = {
-  [ServiceStatus.Healthy]: "border-l-success/70",
-  [ServiceStatus.Running]: "border-l-info/70",
-  [ServiceStatus.Stopped]: "border-l-muted-foreground/40",
-  [ServiceStatus.Failed]: "border-l-destructive/70",
-};
-
 const handleClasses = "!bg-muted-foreground";
 
 // The hub every route passes through: one row per exposure, a wire in from its hostname pill on the left and a wire
 // out to its service on the right. The row names where traffic lands, so neither wire needs a label.
 export const GatewayNode = ({ data, selected }: NodeProps<GatewayNodeType>) => (
-  <div
-    className={cn(
-      "group w-max min-w-60 rounded-lg border border-border border-l-[3px] bg-card shadow-card ring-0 transition-[transform,box-shadow] duration-150 ease-standard hover:-translate-y-0.5 hover:shadow-elevated",
-      accentStyles[data.status],
-      selected && "ring-2 ring-ring",
-    )}
-    data-selected={selected}
-  >
-    <div className="px-3 py-2.5" style={{ height: GATEWAY_HEADER_H }}>
-      <div className="flex items-center gap-2">
-        <ShieldIcon className="size-4 shrink-0" aria-hidden />
-        <span className="whitespace-nowrap text-sm font-medium">{kindLabels[data.kind]}</span>
+  <div className={cn(nodeShell, "min-w-60")} data-selected={selected}>
+    <div className="flex items-center gap-2.5 px-3" style={{ height: GATEWAY_HEADER_H }}>
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-2 text-muted-foreground">
+        <ShieldIcon className="size-3.5" aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        <span className="block whitespace-nowrap text-sm font-medium">{kindLabels[data.kind]}</span>
+        <span className="block whitespace-nowrap font-mono text-xs text-muted-foreground">{data.name}</span>
       </div>
-      <span className="block whitespace-nowrap font-mono text-xs text-muted-foreground">{data.name}</span>
+      <StatusBadge status={data.status} className="ml-3" />
     </div>
     <ul className="divide-y divide-border border-t border-border">
       {data.routes.map((r) => (
@@ -61,11 +51,8 @@ export const GatewayNode = ({ data, selected }: NodeProps<GatewayNodeType>) => (
         </li>
       ))}
     </ul>
-    <div className="flex items-center justify-between gap-4 border-t border-border px-3 py-2">
-      <StatusBadge status={data.status} />
-      <span className="whitespace-nowrap font-mono text-xs text-muted-foreground">
-        {[data.target, ...data.networks].filter(Boolean).join(" · ")}
-      </span>
+    <div className="whitespace-nowrap border-t border-border px-3 py-2 font-mono text-[11px] leading-5 text-muted-foreground">
+      {[data.target, ...data.networks].filter(Boolean).join(" · ")}
     </div>
   </div>
 );

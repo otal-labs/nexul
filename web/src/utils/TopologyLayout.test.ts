@@ -92,13 +92,16 @@ describe("alignPillsToRows without a gateway on the canvas", () => {
 describe("overlaps", () => {
   it("flags cards stored edge to edge, as positions saved before a card grew are", () => {
     const nodes = [service("site"), service("search")];
-    expect(overlaps(nodes, new Map([["site", { x: 36, y: 162 }], ["search", { x: 36, y: 269 }]]))).toBe(true);
-    expect(overlaps(nodes, new Map([["site", { x: 36, y: 162 }], ["search", { x: 36, y: 162 + 160 }]]))).toBe(false);
+    const { h } = footprintOf(nodes[0]!);
+    expect(overlaps(nodes, new Map([["site", { x: 36, y: 162 }], ["search", { x: 36, y: 162 + h }]]))).toBe(true);
+    expect(overlaps(nodes, new Map([["site", { x: 36, y: 162 }], ["search", { x: 36, y: 162 + h + 40 }]]))).toBe(false);
   });
 
   it("flags two network boxes that touch, but not boxes sharing a member", () => {
     const nodes = [service("a"), service("b"), service("c")];
-    const positions = new Map([["a", { x: 0, y: 0 }], ["b", { x: 0, y: 190 }], ["c", { x: 400, y: 0 }]]);
+    // Box one ends 24px under a; box two starts 48px over b (its label room): 80px between the cards leaves 8px.
+    const { h } = footprintOf(nodes[0]!);
+    const positions = new Map([["a", { x: 0, y: 0 }], ["b", { x: 0, y: h + 80 }], ["c", { x: 400, y: 0 }]]);
     expect(overlaps(nodes, positions, [{ name: "one", memberIds: ["a"] }, { name: "two", memberIds: ["b"] }])).toBe(true);
     expect(overlaps(nodes, positions, [{ name: "one", memberIds: ["a", "b"] }, { name: "two", memberIds: ["b"] }])).toBe(false);
   });
