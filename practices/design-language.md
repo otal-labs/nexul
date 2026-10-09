@@ -75,7 +75,10 @@ its panels follow its `card`. The default palette is labelled Nexul (id
   and the showcase screens (signed out, onboarding, the error page), nothing
   else. The `type-display` utility sets it: weight 560, `"SOFT" 50, "WONK" 1`
   (soft terminals, the irregular alternates), optical sizing on, `-0.025em`
-  tracking, `1.12` leading. A page title is 28px (`pageTitleClass`); a
+  tracking, `1.12` leading. A page title is 28px, 24px past 50 characters
+  and 20px past 100 (`pageTitleClassFor`), and holds three lines
+  (`ClampedTitle`): past them its last line fades out at the end and a
+  muted "Show full title" opens the rest; editing the title opens it too. A
   headline takes `displayTitleClass` and its own size, never under 20px,
   where the soft serif turns muddy.
 - Inter Variable for everything else: UI, body, card and section headings,
@@ -210,6 +213,8 @@ second ambient animation or anything animating layout behind the panels.
 | The live light field on showcase surfaces only | Picked over a fluted-glass refraction (busy vertical bands fought the text and the frosted vocabulary, and no CSS still could stand in for it) and an aurora (a band across the top only, nearly invisible in light mode); the field is the app's own light field moving, so its fallback still is exact and every palette retints it |
 | Empty states: the orbit mark | Picked over a placeholder card grid (generic, implied an add action the callers do not have, and looped) and a tile of the live field (a GPU canvas inside an everyday panel, grainy at 96px, impossible at compact size); the static orbit carries the field's colours at any size and costs nothing |
 | Loading: the orbit at spinner size | Over the plain spinner and a gradient arc; it ties loading to the empty mark, keeps the ember to progress, and stays one small SVG |
+| Long page titles step down to 24 and 20px and clamp at three lines | Against stepping alone (a sentence-long ticket title still ran six lines at 20px and pushed the body below the fold, and nothing bounds a title's length) and clamping at 28px alone (three lines held about half as many words); the step keeps short titles at full voice and the clamp bounds the rest |
+| A doc's first heading that repeats its title stays | The title and the body are separate fields; hiding a matching heading in a collaborative editor would put the caret in invisible text and show readers and writers different docs, so the author's content is shown as written |
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
 | Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
@@ -304,8 +309,9 @@ below its trigger.
 Page header. Every page opens with `PageHeader`: a breadcrumb of the
 ancestors (`PageBreadcrumb`, mono `text-xs`, muted, each crumb a link; the
 middle crumbs shrink and truncate first so the last stays readable), then the title left-aligned in the display face at 28px
-(`pageTitleClass`; never centered, never another size, an
-editable title takes the same class), its actions top-aligned on the right,
+(`pageTitleClassFor`, which steps a long title down to 24 or 20px; never
+centered, an editable title takes the same class, and `ClampedTitle` holds
+either to three lines), its actions top-aligned on the right,
 one muted meta line 8px under the title (status as a dot plus text, counts,
 who and when), and a `border-b border-border` hairline closing the header.
 A mark that names the record (the board's project mark) goes in the

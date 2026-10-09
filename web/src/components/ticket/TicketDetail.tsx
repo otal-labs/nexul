@@ -5,7 +5,7 @@ import { CollabRichTextEditor } from "@/components/doc/collab/CollabRichTextEdit
 import { useCollabCommit } from "@/components/doc/collab/useCollabCommit";
 import { useCollabSession } from "@/components/doc/collab/useCollabSession";
 import { formatUpdatedAgo } from "@/components/doc/docTime";
-import { PageHeader, pageTitleClass } from "@/components/PageHeader";
+import { ClampedTitle, PageHeader, pageTitleClassFor } from "@/components/PageHeader";
 import { TicketStatusBadge } from "@/components/ticket/TicketStatusBadge";
 import type { TicketPageLayout } from "@/components/ticket/ticketPageLayout";
 import { TitleTextarea } from "@/components/TitleTextarea";
@@ -58,7 +58,7 @@ export const TicketDetail = ({ ticket, project, layout, wsFactory }: TicketDetai
         className={layout?.header ?? ""}
         crumbs={crumbs}
         title={
-          <>
+          <ClampedTitle title={title}>
             {session && (
               <h1>
                 <TitleTextarea
@@ -68,12 +68,16 @@ export const TicketDetail = ({ ticket, project, layout, wsFactory }: TicketDetai
                   onBlur={confirmTitle}
                   blurOnEnter
                   aria-label="Ticket title"
-                  className={pageTitleClass}
+                  className={pageTitleClassFor(title)}
                 />
               </h1>
             )}
-            {!session && <h1 className={pageTitleClass}>{ticket.title}</h1>}
-          </>
+            {!session && (
+              <h1 dir="auto" className={pageTitleClassFor(ticket.title)}>
+                {ticket.title}
+              </h1>
+            )}
+          </ClampedTitle>
         }
         meta={
           <>

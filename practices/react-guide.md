@@ -368,7 +368,7 @@ Rules:
 
 | Pattern | Name | Purpose |
 |---|---|---|
-| Page header | `PageHeader` | Display-face title (`pageTitleClass`) + one-line subtitle (page-level marquee) |
+| Page header | `PageHeader` | Display-face title (`pageTitleClassFor`, held to three lines by `ClampedTitle`) + one-line subtitle (page-level marquee) |
 | List view | `XxxFeed` | Hairline-row list with search, filter, actions |
 | Create dialog | `CreateXxxDialog` | New-entity dialog |
 | Delete dialog | `DeleteXxxDialog` | Confirmation dialog |

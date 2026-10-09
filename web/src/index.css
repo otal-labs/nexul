@@ -273,6 +273,18 @@ body {
   -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
+/* The last visible line of a clamped title fades out at its end, like an ellipsis that keeps the words. */
+@utility title-clamp-fade {
+  mask-image:
+    linear-gradient(black, black),
+    linear-gradient(to right, black 55%, transparent 92%);
+  mask-size:
+    100% calc(100% - 1lh),
+    100% 1lh;
+  mask-position: top, bottom;
+  mask-repeat: no-repeat;
+}
+
 /* A raised frosted panel: content floats in one on the canvas. The transparent border keeps its edge in forced-colors mode. */
 @utility panel {
   border: 1px solid transparent;
