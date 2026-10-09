@@ -18,6 +18,8 @@ func OpenDB(path string) (*sql.DB, error) {
 	}
 	// A single connection turns one stuck statement into an outage; the lifetime cap recycles stale WAL snapshots.
 	db.SetMaxOpenConns(8)
+	// Opening a connection re-parses the whole schema, so a burst must never close the ones it opened.
+	db.SetMaxIdleConns(8)
 	db.SetConnMaxLifetime(5 * time.Minute)
 	return db, nil
 }
