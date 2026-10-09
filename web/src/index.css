@@ -38,6 +38,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-fill: var(--destructive-fill);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -107,11 +108,15 @@
   --info: #0369a1;
   --merged: #8250df;
   --destructive: #dc2626;
+  /* the fill behind a destructive button's white label: deeper than the text hue so it never reads as the ember */
+  --destructive-fill: #c81e1e;
 
   /* hairlines are ink at low alpha so they read the same on canvas, panel, card and popover */
   --border: oklch(0.2 0.01 265 / 0.1);
   --input: oklch(0.2 0.01 265 / 0.16);
   --ring: var(--brand);
+  /* Focus is ink, not the ember: an ember ring on a field read as the destructive border of a field in error. */
+  --focus: color-mix(in oklab, var(--foreground) 80%, transparent);
 
   --shadow-card: 0 1px 2px oklch(0.2 0.02 265 / 0.06);
   --shadow-elevated: 0 2px 4px oklch(0.2 0.02 265 / 0.08), 0 12px 28px oklch(0.2 0.02 265 / 0.12);
@@ -162,6 +167,7 @@
   --info: #5cc8f5;
   --merged: #a371f7;
   --destructive: #f97066;
+  --destructive-fill: oklch(0.55 0.2 25);
 
   --border: oklch(1 0 0 / 0.08);
   --input: oklch(1 0 0 / 0.12);
@@ -245,8 +251,18 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
+  /* One indicator: a component's own focus ring utility would draw a second ring around the outline. */
+  --tw-ring-color: transparent;
+}
+
+/* A field's outline hugs its border; menu rows and options show focus as their highlight. */
+:is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"]):focus-visible {
+  outline-offset: 1px;
+}
+:is([role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="option"]):focus-visible {
+  outline: none;
 }
 
 /* Borderless editor-style fields (New ticket title/body): the caret is the
