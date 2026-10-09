@@ -137,8 +137,8 @@ this list and say which entries applied:
 - HTTP gateway route. The browser and integrations reach it (ADR 0019).
 - MCP tool. Agents are peers of the browser; a capability without a tool is
   half shipped.
-- Events. A catalog row and an outbox write, designed for publication
-  (ADR 0044).
+- Events. A `Topics()` entry naming the payload type, `make event-schemas`,
+  and an outbox write, designed for publication (ADR 0044, ADR 0137).
 - Live WebSocket push, if the UI should update without a refresh. A new
   topic gets an audience rule, `make live-topics`, and a handler in the web
   client (`practices/react-guide.md`, The live topic contract).
@@ -206,8 +206,9 @@ calls what, `search_graph` to disambiguate an overloaded name. Reindex
    `handler.go`, `events.go`, and `mcp.go` if it exposes tools.
 2. Add the repo implementation in `internal/platform/storage/`, with the
    queries in `internal/platform/storage/queries/<table>.sql` and `make sqlc`.
-3. Register the domain's topics in its `Topics()` function; the catalog
-   aggregates them (`practices/architecture.md`, section 2).
+3. Register the domain's topics with their payload types in its `Topics()`
+   function and run `make event-schemas`; the catalog aggregates them
+   (`practices/architecture.md`, section 2).
 4. Expose the use-cases to agents per `practices/mcp.md`: extend an existing
    tool first, add one only inside the tool budget, named `<object>_<verb>`.
 5. Add the HTTP routes in `server/cmd/` or a router package.

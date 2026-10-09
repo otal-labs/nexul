@@ -943,8 +943,9 @@ A boundary designed for future splitting. The EventBus is *the* seam — the one
 place a domain could later become its own process.
 
 **Event catalog**:
-The list of every event topic with its producers and consumers, assembled
-from each domain's own `Topics()` by `internal/eventcatalog`. Additive-only.
+The list of every event topic with the payload it carries, assembled from each
+domain's own `Topics()` by `internal/eventcatalog`, which generates each
+topic's published schema from its payload type. Additive-only.
 
 **Outbox**:
 Events written in the same transaction as the domain change, then relayed to
