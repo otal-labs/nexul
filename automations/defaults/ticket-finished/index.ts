@@ -1,9 +1,6 @@
 import { defineAutomation } from "@nexul/sdk/automation";
 
-// ticket.finished's payload types its ticket as a loose object (the event
-// schema declares it "type: object" with no nested shape, see
-// internal/integrations/catalog.go) — narrow just the field this automation
-// needs instead of trusting the whole shape.
+// Narrows the one field this automation reads instead of trusting the whole payload.
 function ticketID(ticket: unknown): string | undefined {
   const id = (ticket as { id?: unknown } | null)?.id;
   return typeof id === "string" ? id : undefined;

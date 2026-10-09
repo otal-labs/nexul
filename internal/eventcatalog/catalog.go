@@ -1,7 +1,8 @@
-// Package eventcatalog aggregates every domain's published topics into one enumerable set (AM11).
+// Package eventcatalog aggregates every domain's published topics and serves their published schemas (ADR 0137).
 package eventcatalog
 
 import (
+	"maps"
 	"slices"
 
 	"github.com/otal-labs/nexul/internal/access"
@@ -26,6 +27,11 @@ import (
 	"github.com/otal-labs/nexul/internal/voice"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
+
+// Schemas returns each published topic's JSON Schema text; make event-schemas generates them from the payload types.
+func Schemas() map[string]string {
+	return maps.Clone(published)
+}
 
 // AllTopics returns every published topic, deduplicated and sorted; some topics are declared by more than one domain.
 func AllTopics() []string {

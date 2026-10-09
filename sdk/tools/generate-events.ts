@@ -1,15 +1,13 @@
-// Extracts the published event catalog straight out of the Go source
-// (internal/integrations/catalog.go is the one source of truth for topic ->
-// JSON Schema, AM11) and emits typed payloads + fixtures for the SDK. A
-// TS-side JSON Schema subset parser, not a Go one: the catalog only uses
-// object/string/number/integer/boolean/array/enum/additionalProperties, so a
-// small recursive mapper covers it without a dependency.
+// Reads the published event contract (internal/eventcatalog/schemas.json, generated from the server's payload types)
+// and emits typed payloads + fixtures for the SDK. The schemas only use
+// object/string/number/integer/boolean/array/null/enum/additionalProperties, so a small recursive mapper covers
+// them without a dependency.
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-export const CATALOG_GO_PATH = path.resolve(here, "../../internal/integrations/catalog.go");
+export const CATALOG_PATH = path.resolve(here, "../../internal/eventcatalog/schemas.json");
 export const GENERATED_TS_PATH = path.resolve(here, "../src/events.generated.ts");
 
 export interface JsonSchema {
@@ -22,19 +20,9 @@ export interface JsonSchema {
   [key: string]: unknown;
 }
 
-// extractCatalog pulls every `"topic": `<json>`,` entry out of the Go map
-// literal in source order. Go raw strings (backtick-delimited) can't contain
-// backticks themselves, and none of these schemas do, so a non-greedy match
-// up to the next backtick is exact.
-export function extractCatalog(goSource: string): Map<string, JsonSchema> {
-  const catalog = new Map<string, JsonSchema>();
-  const entryPattern = /"([a-zA-Z0-9_.]+)":\s*`([^`]*)`,/g;
-  for (const match of goSource.matchAll(entryPattern)) {
-    const [, topic, rawSchema] = match;
-    if (!topic || !rawSchema) continue;
-    catalog.set(topic, JSON.parse(rawSchema) as JsonSchema);
-  }
-  return catalog;
+// readCatalog parses the contract file: one JSON object mapping each topic to its schema.
+export function readCatalog(json: string): Map<string, JsonSchema> {
+  return new Map(Object.entries(JSON.parse(json) as Record<string, JsonSchema>));
 }
 
 function schemaType(schema: JsonSchema): string[] {
@@ -54,7 +42,11 @@ function toTsType(schema: JsonSchema): string {
     if (schema.additionalProperties) return `Record<string, ${toTsType(schema.additionalProperties)}>`;
     return "Record<string, unknown>";
   }
-  if (type === "array") return schema.items ? `${toTsType(schema.items)}[]` : "unknown[]";
+  if (type === "array") {
+    if (!schema.items) return "unknown[]";
+    const item = toTsType(schema.items);
+    return item.includes(" | ") ? `(${item})[]` : `${item}[]`;
+  }
   if (type === "string") return schema.enum ? schema.enum.map((v) => JSON.stringify(v)).join(" | ") : "string";
   if (type === "integer" || type === "number") return "number";
   if (type === "boolean") return "boolean";
@@ -79,7 +71,7 @@ function toTsObject(schema: JsonSchema): string {
 // fields would under-exercise handler code that reads the optional ones.
 function toFixture(schema: JsonSchema, fieldName = "value"): unknown {
   const types = schemaType(schema);
-  const type = types[0];
+  const type = types.find((t) => t !== "null") ?? types[0];
   if (type === "object" || (!type && schema.properties)) {
     if (schema.properties) {
       const out: Record<string, unknown> = {};
@@ -102,7 +94,7 @@ function toFixture(schema: JsonSchema, fieldName = "value"): unknown {
 }
 
 const GENERATED_HEADER = `// GENERATED FILE — do not edit by hand.
-// Source of truth: internal/integrations/catalog.go (AM11).
+// Source of truth: internal/eventcatalog/schemas.json (make event-schemas).
 // Regenerate: bun run generate:events (from sdk/).
 `;
 
@@ -126,9 +118,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = ${fixtureFields
 }
 
 function main() {
-  const goSource = readFileSync(CATALOG_GO_PATH, "utf8");
-  const catalog = extractCatalog(goSource);
-  if (catalog.size === 0) throw new Error(`no event schemas found in ${CATALOG_GO_PATH}`);
+  const catalog = readCatalog(readFileSync(CATALOG_PATH, "utf8"));
+  if (catalog.size === 0) throw new Error(`no event schemas found in ${CATALOG_PATH}`);
   writeFileSync(GENERATED_TS_PATH, generateSource(catalog));
   console.log(`wrote ${catalog.size} event types to ${GENERATED_TS_PATH}`);
 }
