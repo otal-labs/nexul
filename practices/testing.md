@@ -1,9 +1,10 @@
 # Testing practices (Nexul)
 
-This document defines the testing philosophy for Nexul. It applies
-to all languages and stacks. Language-specific mechanics live in
-`practices/go.md` for Go and in the Testing (frontend) section of
-`practices/react-guide.md` for TypeScript and React.
+The testing standard for every language in the repository. Language-specific
+mechanics live beside the code they test: `practices/go.md` section 10 for Go,
+the Testing (frontend) section of `practices/react-guide.md` for the web app,
+and the testing sections of `practices/native.md`, `practices/typescript.md`
+and `practices/mcp.md`.
 
 ---
 
@@ -30,7 +31,8 @@ codebase with 95% coverage and no error-path tests is worse than one with
   the coverage profile at all, since `go test` only emits statements for
   executable code.
 - Frontend: `components/ui/` (shadcn primitives, tested by their own
-  suite).
+  suite), `lib/utils.ts`, test setup and config files, and `main.tsx`, as
+  listed in `web/vitest.config.ts`.
 
 ### Why not 100%
 
@@ -50,20 +52,17 @@ the error paths that actually matter.
      /________________\
 ```
 
-- E2E: manual, plus a few critical-path automated tests.
-- Integration: a real SQLite database (in-memory or temp file), real
-  WebSocket, real HTTP.
-- Unit tests: fast, isolated, table-driven.
-
-- Unit tests (70% of effort): test one function or method in isolation.
-  Mock the repo interface, assert the use-case logic. Fast, under 1ms each.
-- Integration tests (25% of effort): test a domain end-to-end with a real
-  SQLite database, in-memory or temp file. No mocks for the database.
-  Verify that the outbox relay publishes, that the dedupe middleware skips
-  duplicates, and that the dead-letter table gets written.
-- E2E tests (5% of effort): a few critical paths (create a ticket, deploy
-  it, verify the topology update) run against a real server and runner in
-  Docker. These are slow and brittle; keep them few and high-value.
+- Unit tests (70% of effort): one function or method in isolation, fast
+  (under 1ms each) and table-driven. Mock the repo interface, assert the
+  use-case logic.
+- Integration tests (25% of effort): a domain end to end with a real SQLite
+  database (in-memory or temp file), real WebSocket, real HTTP; no mocks for
+  the database. Verify that the outbox relay publishes, that the dedupe
+  middleware skips duplicates, and that the dead-letter table gets written.
+- E2E tests (5% of effort): manual, plus a few automated critical paths
+  (create a ticket, deploy it, verify the topology update) against a real
+  server and runner in Docker. These are slow and brittle; keep them few and
+  high-value.
 
 ---
 
@@ -127,38 +126,7 @@ For table-driven tests, the `name` field in the test case is the scenario.
 
 ---
 
-## 7. Frontend testing
-
-### Unit tests (Vitest and React Testing Library)
-
-- Test hooks in isolation (render with a wrapper, assert return values).
-- Test components by behavior, not implementation:
-  - Query by role, label, or text; never by class name or test ID unless
-    there is no accessible alternative.
-  - Use `userEvent` over `fireEvent`; it simulates real browser behavior.
-  - Use `screen` for queries.
-  - Use `findBy*` for async assertions.
-- Test Zustand stores by calling actions and asserting state; no rendering
-  needed.
-
-### Integration tests
-
-Mock the API module with `vi.mock`, not the network. Every hook test under
-`web/src/hooks/*.test.tsx` and page test under `web/src/pages/*.test.tsx`
-calls `vi.mock("@/api/client", () => ({ api: { get: vi.fn(), post: vi.fn(),
-... } }))` and drives the mocked methods with
-`vi.mocked(api.get).mockResolvedValue(...)`. Render a page or hook against
-that mock and assert the full flow: load, display, interact, mutate, toast.
-
-### Coverage
-
-- Same 80% gate, measured by Vitest's v8 provider.
-- Exemptions: `components/ui/` (shadcn), `lib/utils.ts` (trivial), test
-  files, config files.
-
----
-
-## 8. CI enforcement
+## 7. CI enforcement
 
 ### Go
 
@@ -167,24 +135,25 @@ threshold logic. It runs `go test` with `-race` and a coverage profile over
 `./...` except `internal/platform/storage`, whose tests run without `-race`:
 there the detector instruments the pure-Go SQLite engine and turns 24 seconds
 into ten minutes, while the `server/cmd` integration tests still drive the
-storage code concurrently under `-race`. It excludes paths containing `/cmd/`, `/testutil/`, `/sqlcgen/`, or
-`/t3rpctest/` from the profile, then fails the build below 80%. `golangci-lint` (config in
-`.golangci.yml`) and `govulncheck` run as their own steps in the same Go CI
-job, alongside `go vet` and `go build`. `coverage.filtered.out` and
+storage code concurrently under `-race`. It drops the exempt paths
+(section 1) from the profile, then fails the build below 80%.
+`golangci-lint` (config in `.golangci.yml`) and `govulncheck` run as their
+own steps in the same Go CI job, alongside `go vet` and a `go build` without
+`-race`. `coverage.filtered.out` and
 `coverage.html` upload as the `go-coverage` CI artifact.
 
 ### Frontend
 
 `web/vitest.config.ts` is the source of record for the coverage thresholds
-and the exempt-path list (`components/ui/`, `lib/utils.ts`, the test setup
-files, config files, `main.tsx`). The web job runs typecheck, lint, and
+(the same 80% gate, measured by Vitest's v8 provider) and the exempt-path
+list. The web job runs typecheck, lint, and
 test with coverage, then build. The sdk and automations jobs each run
 their own typecheck step, then `bun test`. `web/coverage/lcov.info` uploads
 as the `web-coverage` CI artifact.
 
 ---
 
-## 9. Test data
+## 8. Test data
 
 - Use builder functions, not raw struct literals:
 
@@ -203,25 +172,31 @@ func withTitle(title string) func(*Ticket) {
 ```
 
 - Never share mutable state between tests. Each test creates its own data.
+- Never write to a live or shared database from a test. Tests use a
+  temporary SQLite file; data is copied in, never symlinked, and never
+  written back out.
 - Use `t.Cleanup` for teardown, not `defer` (cleanup runs even after
   `t.Fatal`).
 
 ---
 
-## 10. Flaky tests
+## 9. Flaky tests
 
 - A flaky test is a bug. Fix it or delete it. Do not `t.Skip` it or add
   retries to mask it.
 - Common causes: time-dependent logic (use `testing/synctest` for goroutine
   code, or inject a clock), port conflicts (use `:0` for a random port),
   race conditions (run with `-race`).
-- CI runs with `-race` on every PR, over every package but storage (section 8).
-- A test that needs a timeout or a sleep to pass is wrong. Wait on the real
-  signal instead: a channel, a receipt, or a WaitGroup.
+- CI runs with `-race` on every PR, over every package but storage
+  (section 7).
+- Async code is tested by draining, never by sleeping. Wait on the real
+  signal: a channel, a receipt, a WaitGroup, or `testing/synctest`'s virtual
+  clock in Go. A test that needs a timeout or a sleep to pass is wrong,
+  because the timeout is the bug wearing a disguise.
 
 ---
 
-## 11. Performance changes
+## 10. Performance changes
 
 - A performance fix ships with a guard test that fails when the fix is
   reverted: revert it locally, watch the test go red, restore it. Without the

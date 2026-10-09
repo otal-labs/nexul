@@ -163,15 +163,32 @@ this list and say which entries applied:
 - Nothing shipped names the tool that wrote it. Commit messages, PR bodies,
   comments, and docs describe the change from the code's point of view.
 
-## Worktree workflow
+## Branches and pull requests
 
 Parallel work happens in worktrees (`git worktree add ../nexul-<slug> -b
-<slug>`). Two things the commands do not tell you:
+<slug>`). Things the commands do not tell you:
 
 - Remove the worktree when the branch is done; each one is about 65MB.
 - Parallel runs share this host. Give each its own dev-server port and say so
   up front, or they collide on the default port and the screenshots come back
   belonging to somebody else's container.
+- Kill only a PID you captured at spawn, never by pattern (`pkill -f`,
+  `pgrep | kill`): your own session matches the pattern.
+
+A pull request:
+
+- Carries one topic. A description that says "also" is two pull requests.
+- Is rebased onto the latest `master` before it opens, so the diff is only
+  the change.
+- Is squash-merged. Its title is one sentence describing the change from the
+  code's point of view, because that sentence becomes the commit on `master`
+  and the line in the release notes.
+- States the problem in a sentence or two, then how the change fixes it. A UI
+  change carries before and after screenshots at 768, 1024, and 1440px (320,
+  375, 414, and 768px for `website/`); a change that depends on motion
+  carries a short video.
+- Never commits a secret. A dev-only shared value is tracked as an open item
+  in `.scratch/pre-release/` until it is rotated.
 
 CI runs per service through `dorny/paths-filter`, so only the affected
 service's jobs run.

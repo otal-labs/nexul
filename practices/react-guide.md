@@ -1,47 +1,41 @@
 # React practices
 
-How the web client in `web/` is written and reviewed: domain folders, the
-Feed, Dialog, and FormFragment taxonomy, grouped data hooks, co-located Zod
-schemas, persisted Zustand. Where this file and a library's official
+How the web client in `web/` is written and reviewed. The phone app inherits
+most of it (`practices/native.md` says which parts), and the desktop launcher
+follows it for anything React. Where this file and a library's official
 documentation disagree on an API, the documentation wins; this file is house
 style on top of current APIs.
-
-> Scope: the browser app only. The Go backend, the MCP server, and the runner
-> are not covered here. See `README.md` for the product and `docs/adr/` for the
-> decisions behind the backend.
 
 ---
 
 ## Table of contents
 
 1. [Technology stack](#technology-stack)
-2. [Nexul-specific rules (read first)](#nexul-specific-rules-read-first)
-3. [Project structure](#project-structure)
-4. [Naming conventions](#naming-conventions)
-5. [Imports](#imports)
-6. [Components](#components)
-7. [Pages](#pages)
-8. [Hooks](#hooks)
+2. [Product rules (read first)](#product-rules-read-first)
+3. [Frontend commandments (ENFORCED)](#frontend-commandments-enforced)
+4. [Project structure](#project-structure)
+5. [Naming conventions](#naming-conventions)
+6. [Imports](#imports)
+7. [Components](#components)
+8. [Data fetching (TanStack Query)](#data-fetching-tanstack-query)
 9. [State management (Zustand)](#state-management-zustand)
-10. [Data fetching (TanStack Query)](#data-fetching-tanstack-query)
-11. [Forms (React Hook Form + Zod)](#forms-react-hook-form--zod)
-12. [API layer (REST over the HTTP gateway)](#api-layer-rest-over-the-http-gateway)
-13. [Live events (WebSocket client)](#live-events-websocket-client)
-14. [Topology canvas (React Flow)](#topology-canvas-react-flow)
-15. [UI components (shadcn)](#ui-components-shadcn)
-16. [Styling and theming (Tailwind)](#styling-and-theming-tailwind)
-17. [Error handling](#error-handling)
-18. [Routing (react-router)](#routing-react-router)
-19. [Utilities](#utilities)
-20. [Models & types](#models--types)
-21. [TypeScript strictness](#typescript-strictness)
-22. [Testing (frontend)](#testing-frontend)
-23. [Accessibility](#accessibility)
-24. [Performance](#performance)
-25. [Anti-patterns to reject on review](#anti-patterns-to-reject-on-review)
-26. [Quick reference: new entity](#quick-reference-creating-a-new-entity)
-27. [Quick reference: new UI component](#quick-reference-adding-a-new-ui-component)
-28. [Lint & typecheck](#lint--typecheck)
+10. [Forms (React Hook Form + Zod)](#forms-react-hook-form--zod)
+11. [API layer (REST over the HTTP gateway)](#api-layer-rest-over-the-http-gateway)
+12. [Live events (WebSocket client)](#live-events-websocket-client)
+13. [Topology canvas (React Flow)](#topology-canvas-react-flow)
+14. [UI components (shadcn)](#ui-components-shadcn)
+15. [Styling and theming (Tailwind)](#styling-and-theming-tailwind)
+16. [Error handling](#error-handling)
+17. [Routing (react-router)](#routing-react-router)
+18. [Utilities](#utilities)
+19. [Models and types](#models-and-types)
+20. [TypeScript strictness](#typescript-strictness)
+21. [Testing (frontend)](#testing-frontend)
+22. [Accessibility](#accessibility)
+23. [Performance](#performance)
+24. [Quick reference: creating a new entity](#quick-reference-creating-a-new-entity)
+25. [Quick reference: adding a new UI component](#quick-reference-adding-a-new-ui-component)
+26. [Lint & typecheck](#lint--typecheck)
 
 ---
 
@@ -64,7 +58,7 @@ style on top of current APIs.
 | Voice | LiveKit | ADR 0030 |
 | Drag and drop | dnd-kit | Board drag and drop, ADR 0001 |
 | HTTP (REST) | Axios | Typed generics + auth interceptor |
-| Live events | native `WebSocket` client | Separate from Axios, see §13 |
+| Live events | native `WebSocket` client | Separate from Axios, see [Live events](#live-events-websocket-client) |
 | Notifications | Sonner | |
 | Icons | lucide-react | |
 | Async dialogs | react-confirm | Promise-returning dialogs via `useConfirmationDialog` / `useFormDialog` |
@@ -73,7 +67,7 @@ Versions are pinned in `web/package.json`; this table names the choice, not the 
 
 ---
 
-## Nexul-specific rules (read first)
+## Product rules (read first)
 
 These are the rules that are unique to this product and that override generic
 React advice. They exist so the frontend stays a thin, correct peer of the
@@ -82,33 +76,14 @@ MCP-first backend.
 1. **The browser talks to the HTTP/JSON gateway, never to MCP.** The backend
    exposes one domain/use-case layer through two adapters: an MCP server (for
    LLMs) and an HTTP/JSON gateway (for this app). The browser uses the gateway
-   via Axios (§12). Do **not** speak JSON-RPC from the browser. This is
-   ADR 0019.
-2. **Live updates come over one WebSocket, not polling.** Runner status, deploy
-   progress, and topology mutations arrive on a single WS connection (§13) and
-   are fanned into Zustand / TanStack Query. Do not poll for status that the
+   via Axios ([API layer](#api-layer-rest-over-the-http-gateway)). Do **not**
+   speak JSON-RPC from the browser. This is ADR 0019.
+2. **Live updates come over one WebSocket, not polling.** Runner status,
+   deploy progress, topology mutations and entity changes arrive on a single
+   WS connection ([Live events](#live-events-websocket-client)) and are
+   fanned into Zustand and TanStack Query. Do not poll for status that the
    server already pushes.
-3. **The topology canvas JSON is the infra model, for what it stores.** The
-   stored JSON holds nodes, edges, and positions; that is what the backend
-   stores and what the MCP server mutates (§14, ADR 0033). The dashed network
-   boxes, gateway rows, and hostname pills rendered on screen are derived at
-   render time from that JSON, not part of it. Do not maintain a parallel
-   hand-written topology type; derive/validate the stored fields against the
-   shared schema.
-4. **Theming is shared between shadcn and React Flow.** Both read the same CSS
-   variables (§16). A selected node uses the shadcn `ring`; the canvas
-   background and edges respect light/dark automatically.
-5. **Mirror the backend's string enums.** The Go backend serializes enums as
-   strings. Frontend "enums" are string unions / `as const` objects (§20),
-   never numeric TS enums.
-6. **Domain folders, no barrels.** Group components by domain entity; import by
-   explicit path; no `index.ts` re-export barrels (they defeat tree-shaking and
-   hide dependency direction).
-7. **`.tsx` everywhere is deliberate house style.** Even pure-TS model/enum
-   files use `.tsx` in this repo. It is intentional, not a mistake. To stay
-   clean under `verbatimModuleSyntax`, use `import type` for type-only imports
-   so these files never emit unused-value-import errors.
-8. **Third-party credentials go through the ticker, never a bare Save.** Any
+3. **Third-party credentials go through the ticker, never a bare Save.** Any
    form that hands a token, secret, or app registration to an outside service
    (Cloudflare token, GitHub App, LiveKit keys) is a ticker: a list of named
    checks with a why under each, a Verify button that runs one request per
@@ -128,9 +103,8 @@ MCP-first backend.
 
 > These are **hard rules**, not suggestions. A PR that breaks them is not
 > done, regardless of what the rest of the codebase currently looks like.
-> **Do not copy a nearby file's pattern if it violates this section.** Much
-> of the existing code predates these rules and has since been cleaned up.
-> Copy the rule, not the drift.
+> **Do not copy a nearby file's pattern if it violates this section.** Copy
+> the rule, not the drift; copying code that breaks a rule is not a defense.
 
 ### F1: component hierarchy, Page to Feed to Section to Card
 
@@ -165,7 +139,8 @@ Render conditional states with `&&` blocks, ordered negative-first
 `if (x) return <Component/>` early-returns for rendering, and **DO NOT** use
 ternaries to pick between components (see F4). Keep the conditions mutually
 exclusive: with TanStack Query they already are (`isPending`, `error`, and
-`data` never overlap).
+`data` never overlap). Pages keep this explicit pattern rather than React
+19's `use` plus `Suspense`, for clarity and one uniform error UI.
 
 ```tsx
 // required
@@ -249,7 +224,8 @@ for queries.
 
 ### F3: use the shared display components
 
-`LoadingDisplay`, `ErrorDisplay`, `NoDataDisplay`, `Container`. **DO NOT**
+`LoadingDisplay`, `ErrorDisplay`, `NoDataDisplay`, `Container`, all in
+`components/`. **DO NOT**
 hand-roll `<p>Loading…</p>`, `<p>Failed to load.</p>`, or inline empty-state
 `<p>` blocks. If a state has no shared component, build one in
 `components/`; don't inline it.
@@ -283,8 +259,11 @@ const label = isPending ? "Saving…" : "Save";
 - `useEffect` is for **side effects only** (subscriptions, one-shot DOM/redirect,
   logging). `useState` is for genuine local UI state (open/closed, drag target).
 - Server state lives in TanStack Query; cross-surface client state in Zustand;
-  form state in React Hook Form. Never duplicate server state into
-  `useState`/Zustand.
+  form state in React Hook Form; ephemeral UI state stays local to the
+  component. Never duplicate server state into `useState`/Zustand.
+- Loading and connection state derive from real state (`isPending`, the
+  socket's status), never from whether an object or cache entry happens to
+  exist.
 
 ### F6: no prop drilling
 
@@ -311,6 +290,8 @@ Run this checklist; every item is a gate:
 - [ ] No fetch/derived/sync work in `useEffect`/`useState` (F5)
 - [ ] No prop passed more than 2 levels (F6)
 - [ ] No file over the size limits; no helper components inside page files (F7)
+- [ ] Every API call goes through a typed hook in `hooks/XxxHooks.tsx`, never `api` in a page or component
+- [ ] No hard-coded palette classes (`bg-yellow-100`, `text-blue-800`) on themed surfaces; semantic tokens only
 - [ ] `bun run --cwd web typecheck`, `lint`, `build`, and tests all green
 
 ---
@@ -342,8 +323,11 @@ web/src/
 Rules:
 
 - One folder per domain entity under `components/`.
-- No barrel/`index.ts` files, import by full path.
-- All files use `.tsx` (house style; see rule 7 above).
+- No barrel/`index.ts` files; import by full path. Barrels defeat
+  tree-shaking and hide which way dependencies run.
+- `.tsx` everywhere is deliberate house style, even for pure-TS model, enum
+  and utility files. Use `import type` for type-only imports so these files
+  stay clean under `verbatimModuleSyntax`.
 
 ---
 
@@ -380,8 +364,8 @@ Rules:
 | Titled group | `XxxSection` | A named group inside a page/feed (F1) |
 | Repeated entity | `XxxCard` / `XxxRow` / `XxxItem` | One row/card of a list (F1) |
 | Empty state | `NoDataDisplay` | Shared "nothing here" display (F3) |
-| Ticker | `useTicker` + `TickerRow` | Named third-party checks that verify before Continue (rule 8) |
-| Topology node | `XxxNode` | React Flow custom node (§14) |
+| Ticker | `useTicker` + `TickerRow` | Named third-party checks that verify before Continue ([Product rules](#product-rules-read-first)) |
+| Topology node | `XxxNode` | React Flow custom node ([Topology canvas](#topology-canvas-react-flow)) |
 
 ---
 
@@ -601,60 +585,18 @@ export const DeployStrategyFragment = () => {
 
 ---
 
-## Pages
+## Data fetching (TanStack Query)
 
-Every page follows the explicit `isPending / error / empty / data` pattern, in
-that defensive order, rendered with `&&` blocks inside the page's `Container`,
-never `if (x) return <Component/>` early returns (see commandment F2). (React
-19's `use` + `Suspense` is available, but we keep the explicit pattern for
-clarity and uniform error UIs.)
+All hooks for an entity live in one file (`hooks/TicketHooks.tsx`), and pages
+and components call those hooks, never `api` directly.
 
-```tsx
-import { useFetchTickets } from "@/hooks/TicketHooks";
-import { TicketsFeed } from "@/components/ticket/TicketsFeed";
-import { Container } from "@/components/Container";
-import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { ErrorDisplay } from "@/components/ErrorDisplay";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
-
-export const TicketsPage = () => {
-  const { data, error, isPending } = useFetchTickets();
-  return (
-    <Container>
-      {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
-      {data && data.length === 0 && <NoDataDisplay message="No tickets yet" />}
-      {data && data.length > 0 && <TicketsFeed tickets={data} />}
-    </Container>
-  );
-};
-```
-
-Detail page:
-
-```tsx
-import { useParams } from "react-router";
-import { useFetchTicket } from "@/hooks/TicketHooks";
-
-export const TicketPage = () => {
-  const { ticketId } = useParams<{ ticketId: string }>();
-  const { data: ticket, error, isPending } = useFetchTicket(ticketId!);
-  return (
-    <Container>
-      {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
-      {ticket && <TicketDetail ticket={ticket} />}
-    </Container>
-  );
-};
-```
-
----
-
-## Hooks
-
-Group all hooks for an entity in one file (`TicketHooks.tsx`). Export query
-keys as constants. Always invalidate on success; always toast on success/error.
+| Operation | Hook | Method |
+|---|---|---|
+| List | `useFetchXxx` | GET list |
+| One | `useFetchXxx(id)` | GET one, `enabled: !!id` |
+| Create | `useCreateXxx` | POST |
+| Update | `useUpdateXxx(id)` | PUT/PATCH |
+| Delete | `useDeleteXxx` | DELETE |
 
 ### Query hook
 
@@ -707,15 +649,38 @@ export const useCreateTicket = () => {
 };
 ```
 
-Hook rules:
+Rules:
 
-- Query keys are exported constants (`getXxxKey`).
-- Parameterized keys include the param: `["getTicket", id]`.
-- Invalidate the relevant list key in `onSuccess`.
-- `toast.success` on success, `toast.error(errorMessage(error))` on error. A
-  form saved from a settings card's strip (`SettingsSaveBar`) answers in its
-  Save button instead, so its hook sends no success toast.
-- Parse field errors via the shared `errorMessage()` (§17).
+- Query keys are exported constants (`getXxxKey`); a parameterized key
+  includes the param: `["getTicket", id]`.
+- Detail queries set `enabled: !!id` so they never fetch with an undefined id.
+- Every mutation invalidates the relevant list key in `onSuccess`, and may
+  refetch the single resource, unless the response is the full entity and
+  the list is high-churn (chat messages): then `setQueriesData` patches it in
+  place, with an optimistic row from `onMutate` where the user expects
+  instant feedback.
+- `toast.success` on success, `toast.error(errorMessage(error))` on error
+  ([Error handling](#error-handling)). A form saved from a settings card's
+  strip (`SettingsSaveBar`) answers in its Save button instead, so its hook
+  sends no success toast.
+- The server pushes changes over the socket ([Live events](#live-events-websocket-client)); never poll.
+- Do **not** default list data to `= []` when you render a length-based
+  empty state (see the "React Query: don't over-guard" callout in F2).
+- A query used in more than one place (a component plus a prefetch, or two
+  hooks reading the same resource) is defined once with `queryOptions()` and
+  shared between them. One key and one fetcher in one place means the two
+  call sites cannot drift out of sync with each other.
+- `hooks/TicketCache.tsx` is the only code that reads or writes a ticket view
+  in the cache. It owns the four views (all, one, by doc, by project) and
+  three operations, `ticketChanged`, `ticketCreated` and `ticketRemoved`;
+  every mutation, board drop, category move, test report and live ticket
+  frame goes through them. A hook that patches or invalidates one ticket key
+  by itself leaves the other three views stale.
+- A batch read for the items on a page (the board's run states and thread
+  markers) is keyed by the project, never by every item id. Ids in the URL
+  cross nginx's 8KB header buffer at around 220 tickets, and the key changes
+  with every new ticket. The endpoint takes `project_id` and still checks
+  each target it returns.
 
 ---
 
@@ -729,8 +694,7 @@ Hook rules:
 | Client UI state | Zustand | Theme, sidebar open/closed, canvas viewport |
 | Form state | React Hook Form | In-progress form values |
 
-Do not duplicate server state into Zustand. Do not put form state in Zustand.
-Do not fetch in `useEffect` + `useState`; use TanStack Query (see F5).
+Server state and form state never go in Zustand (F5).
 
 ### Basic store
 
@@ -798,77 +762,15 @@ Store rules:
 
 ---
 
-## Data fetching (TanStack Query)
-
-| Operation | Hook | Method |
-|---|---|---|
-| List | `useFetchXxx` | GET list |
-| One | `useFetchXxx(id)` | GET one, `enabled: !!id` |
-| Create | `useCreateXxx` | POST |
-| Update | `useUpdateXxx(id)` | PUT/PATCH |
-| Delete | `useDeleteXxx` | DELETE |
-
-Invalidation strategy: after a mutation, invalidate the list key; optionally
-refetch the single resource. The WS client (§13) may also invalidate keys when
-the server pushes a change, so the UI stays live without polling.
-
-Data-fetching rules:
-
-- One file per domain: `hooks/TicketHooks.tsx`, `hooks/DocHooks.tsx`.
-- Export query keys as constants (`getXxxKey`).
-- Every mutation invalidates the relevant list key in `onSuccess`, unless
-  the response is the full entity and the list is high-churn (chat
-  messages): then `setQueriesData` patches it in place, with an optimistic
-  row from `onMutate` where the user expects instant feedback.
-- The WS client invalidates keys on push, **do not poll**.
-- Use `enabled: !!id` for detail queries so they don't fetch with an
-  undefined id.
-- Do **not** default list data to `= []` when you render a length-based
-  empty state (see the "React Query: don't over-guard" callout in F2).
-- A query used in more than one place (a component plus a prefetch, or two
-  hooks reading the same resource) is defined once with `queryOptions()` and
-  shared between them. One key and one fetcher in one place means the two
-  call sites cannot drift out of sync with each other.
-- `hooks/TicketCache.tsx` is the only code that reads or writes a ticket view
-  in the cache. It owns the four views (all, one, by doc, by project) and
-  three operations, `ticketChanged`, `ticketCreated` and `ticketRemoved`;
-  every mutation, board drop, category move, test report and live ticket
-  frame goes through them. A hook that patches or invalidates one ticket key
-  by itself leaves the other three views stale.
-- A batch read for the items on a page (the board's run states and thread
-  markers) is keyed by the project, never by every item id. Ids in the URL
-  cross nginx's 8KB header buffer at around 220 tickets, and the key changes
-  with every new ticket. The endpoint takes `project_id` and still checks
-  each target it returns.
-
----
-
 ## Forms (React Hook Form + Zod)
 
-Schemas live next to the model they validate; form types are always
-`z.infer<typeof Schema>`, never duplicated by hand. Forms go through React
-Hook Form and Zod rather than React 19's form Actions and `useActionState`
-so validation stays typed end to end and field errors map onto the shared
-error envelope (§12) instead of a plain action-state string. Zod is the
-schema library; which major version of it the repo runs is a decision for
-the whole codebase, never a per-file choice.
-
-```tsx
-import { z } from "zod";
-
-export interface Ticket {
-  id: string;
-  title: string;
-  body: string;
-}
-
-export const SaveTicketFormSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  body: z.string().min(5, "Body must be at least 5 characters"),
-});
-
-export type SaveTicketFormData = z.infer<typeof SaveTicketFormSchema>;
-```
+Form schemas live in the model file ([Models and types](#models-and-types)).
+Forms go through React Hook Form and Zod rather than React 19's form Actions
+and `useActionState`, so validation stays typed end to end and field errors
+map onto the shared error envelope
+([API layer](#api-layer-rest-over-the-http-gateway)) instead of a plain
+action-state string. Zod is the schema library; which major version of it the
+repo runs is a decision for the whole codebase, never a per-file choice.
 
 Setup + submit:
 
@@ -892,7 +794,6 @@ const form = useForm<SaveTicketFormData>({
 
 Form rules:
 
-- Co-locate the Zod schema with the model interface.
 - Use `FormInput` / `FormSwitch` for standard fields; raw `FormField` for the
   rest.
 - Compose big forms with `useFormContext` fragments.
@@ -903,72 +804,40 @@ Form rules:
 
 ## API layer (REST over the HTTP gateway)
 
-The browser uses **one** Axios instance that points at the Go HTTP/JSON
-gateway. The gateway and the MCP server are two adapters over the same
-use-cases (ADR 0019); the browser never touches MCP. Axios is the choice
-here, not a thin `fetch` wrapper, because `client.tsx` leans on its
-request/response interceptors for the two things this app actually needs:
-bearer-token injection on every request and a single place to catch a global
-401. A thinner client would need the same hooks wired up by hand for no
-gain at this app's scale.
+The browser uses **one** Axios instance, `api` in `api/client.tsx`, pointed at
+the Go HTTP/JSON gateway ([Product rules](#product-rules-read-first)). Axios is
+the choice here, not a thin `fetch` wrapper, because the client leans on its
+request and response interceptors for the two things this app needs: bearer
+token injection on every request and one place to catch a global 401. A
+thinner client would need the same hooks wired up by hand for no gain at this
+app's scale.
 
-```tsx
-import axios from "axios";
-import { useSessionStore } from "@/stores/sessionStore";
+`ApiErrorBody` **matches the backend error envelope**
+(`internal/platform/httpx`): a `message`, a stable machine `code`, optional
+per-field `errors`, and optional `details`. The parser in
+[Error handling](#error-handling) reads exactly this.
 
-export interface ApiErrorBody {
-  message: string;
-  code: string;
-  errors?: Record<string, string[]>;
-}
-
-export const api = axios.create({ baseURL: import.meta.env.VITE_API_URL });
-
-api.interceptors.request.use((config) => {
-  const token = useSessionStore.getState().token;
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-api.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError<ApiErrorBody>) => {
-    if (error.response?.status === 401) {
-      useSessionStore.getState().logout();
-      redirectToLogin();
-    }
-    return Promise.reject(error);
-  },
-);
-```
-
-`api` is a plain Axios instance; it does not unwrap `.data` for you. Every
-call site reads `.data` off the response itself.
-
-The `ApiErrorBody` shape **matches the backend error envelope** (`internal/platform/httpx`): a
-`message`, a stable machine `code`, and optional per-field `errors`. The
-frontend parser in §17 reads exactly this.
-
-> Dev mode: the gateway serves the SPA same-origin in production (embedded
-> webui) and sends no CORS headers, so `vite.config.ts` proxies `/api`,
-> `/auth`, and `/ws` to `http://localhost:8080`. Run the dev server with
-> `VITE_API_URL=/`.
-
-Typed usage: type the response with generics, then read `.data` off the
-promise with `.then((r) => r.data)`:
+`api` does not unwrap `.data`: type the response with a generic and read
+`.data` off the promise.
 
 ```tsx
 const tickets = await api.get<Ticket[]>("/api/tickets").then((r) => r.data);
 const id = await api.post<string>("/api/tickets", input).then((r) => r.data);
 ```
 
+> Dev mode: the gateway serves the SPA same-origin in production (embedded
+> webui) and sends no CORS headers, so `vite.config.ts` proxies `/api`,
+> `/auth`, and `/ws` to `http://localhost:8080`. Run the dev server with
+> `VITE_API_URL=/`.
+
 API rules:
 
 - Always use `api`, never raw `axios` (except one-off OAuth redirects).
 - Always type responses with generics.
-- Bearer token is injected by the interceptor; read it with `getState()`.
-- Handle errors at the hook/component layer, not in the interceptor. The
-  interceptor only handles a 401: logout, then redirect.
+- The request interceptor injects the bearer token, read with `getState()`
+  (the setup pass stands in before the first user exists).
+- Handle errors at the hook or component layer, not in the interceptor. The
+  interceptor only handles a 401: logout, then redirect to `/login`.
 
 ---
 
@@ -1034,152 +903,39 @@ Adding a live topic is four steps in one change:
 The deploy topology is rendered with `@xyflow/react`. Visual tokens (canvas
 field, node cards, edges, selection ring) live in the shared theme; see
 [Canvas (topology)](design-language.md#canvas-topology) (the spec of record)
-and `web/src/index.css`
-(the token source of record); this section covers mechanics only. The nodes
-are ours and carry Nexul-specific signals (MCP index health, owning
-ticket, live deploy status).
+and `web/src/index.css` (the token source of record); this section covers
+mechanics only. The nodes are ours and carry Nexul-specific signals (MCP
+index health, owning ticket, live deploy status).
 
-### The canvas store (external Zustand + `useShallow`)
-
-React Flow performs best when node/edge state lives in an external store and
-components select slices with `useShallow`. This store also owns the
-server-pushed patches from §13.
-
-```tsx
-import { create } from "zustand";
-import {
-  addEdge,
-  applyEdgeChanges,
-  applyNodeChanges,
-  type Connection,
-  type Edge,
-  type EdgeChange,
-  type Node,
-  type NodeChange,
-} from "@xyflow/react";
-import type { ServiceNodeData } from "@/components/topology/ServiceNode";
-
-export type ServiceNode = Node<ServiceNodeData, "service">;
-
-export type FlowStore = {
-  nodes: ServiceNode[];
-  edges: Edge[];
-  onNodesChange: (changes: NodeChange[]) => void;
-  onEdgesChange: (changes: EdgeChange[]) => void;
-  onConnect: (c: Connection) => void;
-  applyServerPatch: (patch: TopologyPatch) => void;
-};
-
-export const useFlowStore = create<FlowStore>((set) => ({
-  nodes: [],
-  edges: [],
-  onNodesChange: (changes) => set((s) => ({ nodes: applyNodeChanges(changes, s.nodes) })),
-  onEdgesChange: (changes) => set((s) => ({ edges: applyEdgeChanges(changes, s.edges) })),
-  onConnect: (c) => set((s) => ({ edges: addEdge(c, s.edges) })),
-  applyServerPatch: (patch) => set((s) => mergePatch(s, patch)),
-}));
-```
-
-The app wires it with a shallow selector so only changed slices re-render:
-
-```tsx
-import { useShallow } from "zustand/react/shallow";
-import { ReactFlow, ReactFlowProvider, Background, BackgroundVariant } from "@xyflow/react";
-
-const nodeTypes = { service: ServiceNode };
-const edgeTypes = { relation: RelationEdge };
-
-const Flow = () => {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect } = useFlowStore(
-    useShallow((s) => ({
-      nodes: s.nodes,
-      edges: s.edges,
-      onNodesChange: s.onNodesChange,
-      onEdgesChange: s.onEdgesChange,
-      onConnect: s.onConnect,
-    })),
-  );
-  return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      nodeTypes={nodeTypes}
-      edgeTypes={edgeTypes}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onConnect={onConnect}
-      fitView
-    >
-      <Background variant={BackgroundVariant.Dots} />
-    </ReactFlow>
-  );
-};
-
-export const TopologyCanvas = () => (
-  <ReactFlowProvider>
-    <Flow />
-  </ReactFlowProvider>
-);
-```
-
-### Custom node: one flexible `ServiceNode`
-
-A single component covers every card; the icon and footer slots are driven by
-`data`, not by per-type components.
-
-```tsx
-import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { StatusBadge } from "@/components/topology/StatusBadge";
-import type { ServiceNodeData } from "./ServiceNode";
-
-export const ServiceNode = ({ data }: NodeProps<ServiceNodeData>) => (
-  <div className="w-64 rounded-lg border bg-card p-3 shadow ring-0 data-[selected=true]:ring-2">
-    <Handle type="target" position={Position.Left} className="!bg-muted-foreground" />
-    <div className="flex items-center gap-2">
-      <RuntimeIcon runtime={data.runtime} />
-      <span className="font-semibold">{data.name}</span>
-    </div>
-    {data.url && <a className="text-xs text-muted-foreground" href={data.url}>{data.url}</a>}
-    <StatusBadge status={data.status} />
-    {data.replicas != null && <Footer label={`${data.replicas} replicas`} />}
-    {data.volume && <Footer label={data.volume} />}
-    <Handle type="source" position={Position.Right} className="!bg-muted-foreground" />
-  </div>
-);
-```
-
-### Typed edges carry meaning
-
-Edges are typed (`depends_on`, `connects_to`, `mounts`) because that topology
-is exactly what the MCP server answers with ("what breaks if I redeploy
-postgres?"). Render them dashed with `smoothstep`:
-
-```tsx
-import { BaseEdge, getSmoothStepPath, type EdgeProps } from "@xyflow/react";
-
-export const RelationEdge = (props: EdgeProps) => {
-  const [path] = getSmoothStepPath(props);
-  return <BaseEdge path={path} style={{ strokeDasharray: "4 4" }} />;
-};
-```
-
-### Canvas JSON is the infra model, for what it stores (ADR 0033)
-
-`getNodes()` / `getEdges()` serialized holds nodes, edges, and positions;
-that is the topology the backend stores and the MCP server mutates. Validate
-it against the shared schema on load and save; do not keep a second
-hand-written topology type. The dashed network boxes, gateway rows, and
-hostname pills rendered on the canvas are derived at render time from that
-stored data, not part of the serialized JSON itself. First paint uses
-`elkjs` for dependency-aware auto-layout; manual drags persist as positions.
-
-### Theming the canvas
-
-Override React Flow's CSS with the same variables as shadcn so nodes, edges,
-and the controls follow light/dark for free; selected node = shadcn `ring`. The canvas
-has no minimap and hides the library's attribution (`proOptions`).
-Node detail (logs, env, deploy history, SSH/docker config) opens in a shadcn
-`Sheet` on click. Canvas is overview, sheet is depth.
+- **The canvas store.** Node and edge state lives in an external Zustand
+  store, `stores/flowStore.tsx`, which holds `nodes`, `edges`, the React Flow
+  change handlers (`applyNodeChanges`, `applyEdgeChanges`, `addEdge`) and
+  `applyServerPatch` for the patches [Live events](#live-events-websocket-client)
+  push. React Flow performs best this way; components select slices
+  (`useShallow` for several fields) so only changed nodes re-render. The
+  canvas mounts inside a `ReactFlowProvider` (`TopologyCanvas.tsx`,
+  `TopologyFlow.tsx`).
+- **One flexible node per kind.** A single `ServiceNode` covers every service
+  card; its icon and footer slots are driven by `data`, not by a component
+  per service type.
+- **Typed edges carry meaning.** Edges are typed (`depends_on`,
+  `connects_to`, `mounts`) because that topology is exactly what the MCP
+  server answers with ("what breaks if I redeploy postgres?"). They render
+  dashed on a `smoothstep` path (`RelationEdge.tsx`).
+- **The canvas JSON is the infra model, for what it stores (ADR 0033).**
+  `getNodes()` / `getEdges()` serialized holds nodes, edges, and positions;
+  that is the topology the backend stores and the MCP server mutates.
+  Validate it against the shared schema on load and save; never keep a
+  second hand-written topology type. The dashed network boxes, gateway rows,
+  and hostname pills on the canvas are derived at render time from that
+  stored data, never serialized. First paint uses `elkjs` for
+  dependency-aware auto-layout; manual drags persist as positions.
+- **Theming.** React Flow's CSS is overridden with the same variables as
+  shadcn, so nodes, edges, and the controls follow light and dark for free;
+  a selected node takes the shadcn `ring`. The canvas has no minimap and
+  hides the library's attribution (`proOptions`). Node detail (logs, env,
+  deploy history, SSH and docker config) opens in a shadcn `Sheet` on click:
+  canvas is overview, sheet is depth.
 
 ---
 
@@ -1242,32 +998,15 @@ from the CLI: shadcn's headless-primitives line, already used for
 
 ## Styling and theming (Tailwind)
 
-Tailwind v4 is configured in CSS, not a JS config. shadcn's v4 setup uses
-`@theme inline` to expose CSS variables to utilities, plus a class-based dark
-variant. **Tokens are not specified here, see the design language's
-[Shared core](design-language.md#shared-core) (the visual spec of record) for
-the direction and `web/src/index.css` (the token source of record) for the
-values.**
-Structurally the theme adds, beyond the default shadcn set: a `surface-2`
-token (wells inside a panel: board columns, canvas, logs), the `panel` token
-and `panel` utility (the frosted surface every page floats in), the `brand`
-accent (`bg-brand`, `text-brand-foreground`), the status tokens (`--success`,
-`--warning`, `--info`), an elevation scale
-(`shadow-card`/`-elevated`/`-overlay`), the motion tokens (`ease-standard` =
-`cubic-bezier(0.25, 0.1, 0.25, 1)`, `ease-out` =
-`cubic-bezier(0.16, 1, 0.3, 1)`, and the springs `ease-spring` and
-`ease-spring-pop` as `linear()` curves), and the locally bundled type stack: Inter
-Variable (UI), JetBrains Mono (technical data), and Fraunces (`font-display`,
-the `type-display` utility) for page titles, empty-state and showcase
-headlines only, via `@fontsource-variable`, no CDN. No script type.
-
-Radius system: **7px controls** (`rounded-md`), 9px cards (`rounded-lg`), 12px
-panels (`rounded-xl`), pills (`rounded-full`) only for chips/badges/avatars/status,
-never buttons or inputs.
-
-Pages never draw their own outer surface: the layout's frame is the page's
-panel. A page built from panes puts `data-pane-layout` on its root and a
-`panel` on each pane (`ListDetailLayout` is the reference).
+Tailwind v4 is configured in CSS, not a JS config: `@theme inline` exposes
+the CSS variables to utilities, plus a class-based dark variant. This section
+covers the mechanics only. The tokens themselves (surfaces and the `panel`
+utility, the `brand` accent, status hues, elevation, motion curves, the type
+stack, the radius scale) are specified in the design language's
+[Shared core](design-language.md#shared-core) and valued in
+`web/src/index.css`; how pages sit in panels is in
+[What the web app adapts](design-language.md#what-the-web-app-adapts). Fonts
+are bundled locally through `@fontsource-variable`, never a CDN.
 
 Use container queries (`@container`, `@min-*`/`@max-*`) for component-level
 responsiveness, not viewport breakpoints, whenever a component's layout
@@ -1309,11 +1048,9 @@ mounted in today.
   `themeStore` initialises from the resulting class so it never disagrees
   with the DOM.
 - All colors are semantic tokens; never hard-code palette classes for themed
-  surfaces. The one accent is `brand`, held to the roles in
-  [The accent](design-language.md#the-accent). Status hues come from `success` / `warning` /
-  `info` / `destructive` tokens, rendered as a colored icon or dot next to
-  plain text, never a filled or tinted-background chip; type and label may be
-  tinted pills (see [Status](design-language.md#status)).
+  surfaces. Which roles the `brand` accent and the status hues may take is
+  in [The accent](design-language.md#the-accent) and
+  [Status](design-language.md#status).
 - Conditional classes via `cn()`:
 
 ```tsx
@@ -1321,30 +1058,18 @@ mounted in today.
 ```
 
 - Wrap page content in `Container` (`mx-auto w-full max-w-7xl`).
-- The React Flow canvas reads these same variables (§14): one theme, two
-  surfaces.
+- The React Flow canvas reads these same variables
+  ([Topology canvas](#topology-canvas-react-flow)): one theme, two surfaces.
 
 ---
 
 ## Error handling
 
-Three levels, plus a shared parser that matches the backend envelope (§12).
+Three levels, plus one shared parser, `errorMessage(error)` in
+`api/client.tsx`, which returns the first field error, else the envelope's
+`message`, else the transport message:
 
-Shared parser:
-
-```ts
-import type { ApiErrorBody } from "@/api/client";
-import type { AxiosError } from "axios";
-
-export const errorMessage = (error: unknown): string => {
-  const e = error as AxiosError<ApiErrorBody>;
-  const body = e?.response?.data;
-  const firstField = body?.errors ? Object.values(body.errors)[0]?.[0] : undefined;
-  return firstField || body?.message || e?.message || "Something went wrong";
-};
-```
-
-1. **API**: the gateway returns `{ message, code, errors? }`; the parser above
+1. **API**: the gateway returns `{ message, code, errors? }`; the parser
    reads it.
 2. **Hook**: every mutation toasts `errorMessage(error)` on error.
 3. **Component**: pages render `<ErrorDisplay error={error} />`.
@@ -1446,13 +1171,14 @@ export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs));
 Pure helpers go in `utils/` as named files (`TimeUtility.tsx` and friends),
 exporting pure functions only, no hooks, no JSX. Dates are formatted by
 `TimeUtility.tsx`; there is no separate date library. House style keeps
-these `.tsx` (rule 7); use `import type` so they stay clean.
+these `.tsx` ([Project structure](#project-structure)); use `import type` so they stay clean.
 
 ---
 
-## Models & types
+## Models and types
 
-Model files pair an interface with its Zod schema and the inferred form type:
+Model files pair an interface with its Zod schema and the inferred form type;
+form types are always `z.infer<typeof Schema>`, never duplicated by hand:
 
 ```tsx
 import { z } from "zod";
@@ -1531,6 +1257,8 @@ Query elements the way users find them:
 7. `getByTitle` (last resort)
 8. `getByTestId` (only when nothing else works)
 
+Query through `screen`, never through the container or a class name.
+
 ### userEvent over fireEvent
 
 `userEvent` simulates real browser behavior (focus, blur, key events);
@@ -1560,19 +1288,22 @@ one wait.
   mocking the API layer directly rather than a network-mocking library:
   `vi.mock("@/api/client", () => ({ api: { get: mocks.get } }))` with the
   mock functions built via `vi.hoisted(() => ({ get: vi.fn() }))` so they
-  exist before the mock factory runs. See `TopologyHooks.test.tsx` for the
+  exist before the mock factory runs, then driven per test with
+  `vi.mocked(api.get).mockResolvedValue(...)`. Assert the whole flow: load,
+  display, interact, mutate, toast. See `TopologyHooks.test.tsx` for the
   full pattern.
 
 ### What NOT to test
 
 - shadcn primitives (they have their own tests upstream).
 - That `cn()` merges classes correctly (it's `twMerge(clsx(...))`).
-- Snapshot tests for layout (break on every CSS change, teach nothing).
+- Anything on the cross-language list in `practices/testing.md` section 4.
 
 ### Coverage config
 
-Thresholds and the exclude list live in `web/vitest.config.ts`; read that
-file directly; a copy printed here would drift from the real config.
+The 80% gate is measured by Vitest's v8 provider. Thresholds and the exclude
+list live in `web/vitest.config.ts`; read that file directly, since a copy
+printed here would drift from the real config.
 
 ---
 
@@ -1589,6 +1320,11 @@ file directly; a copy printed here would drift from the real config.
 ---
 
 ## Performance
+
+A performance audit checks three things first: too much data over the wire,
+animations that repaint continuously, and lists that are hard to render. The
+cross-language rules (a guard test per fix, numbers from a production build)
+are in `practices/testing.md` section 10.
 
 - Memoize expensive computations with `useMemo`. Don't memoize everything;
   React is fast enough for most renders.
@@ -1627,37 +1363,6 @@ file directly; a copy printed here would drift from the real config.
 
 ---
 
-## Anti-patterns to reject on review
-
-The short reject-list; the Frontend Commandments (F1-F7) are the authority.
-
-1. **Inline `.map()` rendering a `<section>`/large JSX block**: extract a
-   named component (F1).
-2. **`if (x) return <Component/>` for rendering**: use `&&` blocks (F2).
-3. **Loading/error/empty checks buried at the bottom**: order them
-   negative-first (F2).
-4. **Hand-rolled `<p>Loading…</p>` / inline empty states**: use the shared
-   displays (F3).
-5. **Ternaries choosing between components**: split into `&&` blocks (F4).
-6. **Redundant `!isPending && !error &&` guards / `= []` defaults feeding an
-   empty state / bare `<>` fragments**: React Query overkill (F2).
-7. **Fetching or derived values in `useEffect`/`useState`**: TanStack Query
-   + `useMemo` (F5).
-8. **Prop drilling beyond 2 levels**: fetch in the consumer or use a store
-   (F6).
-9. **Helper components defined inside a page file**: promote to
-   `components/<domain>/` (F7).
-10. **Raw API calls in pages/components**: all calls go through typed hooks
-    in `hooks/XxxHooks.tsx`.
-11. **Hard-coded palette classes** (`bg-yellow-100`, `text-blue-800`) on
-    themed surfaces: use semantic tokens.
-
-**Copying existing code that does any of the above is not a defense.** Much of
-the codebase predates a given rule and was fixed in a later cleanup pass.
-Implement against the rule, not the drift.
-
----
-
 ## Quick reference: creating a new entity
 
 Checklist for, e.g., a `Runner`:
@@ -1670,8 +1375,8 @@ Checklist for, e.g., a `Runner`:
 5. Dialogs: `CreateRunnerDialog.tsx`, `DeleteRunnerDialog.tsx`.
 6. Pages: `pages/RunnersPage.tsx` + `pages/RunnerPage.tsx`.
 7. Routes: add to `buildRoutes()` in `Router.tsx`.
-8. WS: if the entity has live status, ensure its topic invalidates the right
-   query key in the live-events dispatcher (§13).
+8. Live: if the entity changes while someone looks at it, follow its topic
+   ([The live topic contract](#the-live-topic-contract)).
 
 ## Quick reference: adding a new UI component
 

@@ -236,8 +236,8 @@ func CtxWithLogger(ctx context.Context, l *slog.Logger) context.Context {
 - Tests of time-dependent goroutine code use `testing/synctest` instead of
   sleeping and polling for a result. `synctest` gives the test a virtual
   clock, so time advances deterministically instead of racing the real
-  clock. This is the Go-native form of `practices/borrowed-practices.md`'s
-  rule to test async code by draining, not sleeping.
+  clock. This is the Go-native form of the rule to test async code by
+  draining, not sleeping (`practices/testing.md`, section 9).
 - `encoding/json/v2` stays out of this codebase while it is gated behind
   `GOEXPERIMENT=jsonv2`; its API is not final until it ships without the
   flag.
@@ -340,19 +340,10 @@ func TestParseDeployStatus(t *testing.T) {
 
 ### Coverage
 
-- CI enforces 80% line coverage as a hard gate; see `practices/testing.md`
-  for the philosophy.
-- Run locally: `go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out`
-- `make coverage` filters the coverage profile before computing the
-  percentage, dropping paths containing `/cmd/`, `/testutil/`, `/sqlcgen/`,
-  or `/t3rpctest/`.
-- Packages with no executable statements, such as wire-type-only packages,
-  never appear in the coverage profile at all, so they never count against
-  the denominator.
-- The coverage script runs `go test` with `-race` over every package but
-  `internal/platform/storage` (`make coverage`; `practices/testing.md`
-  section 8 says why); the separate `go build ./...` step in CI does not
-  use `-race`.
+The 80% gate, its exemptions and the `-race` exception for storage are in
+`practices/testing.md`, sections 1 and 7; `make coverage` is the command of
+record. For a quick local look:
+`go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out`.
 
 ### Static analysis
 
@@ -402,13 +393,8 @@ blank imports except for driver registration (`_ "modernc.org/sqlite"`).
 
 - Exported symbols get a doc comment starting with the symbol name. One
   line.
-- No inline comments that restate the code. Comments state why, not what,
-  and stay to one line. A why that needs more than one line becomes an ADR
-  in `docs/adr/` if it is a decision, and otherwise belongs in the feature's
-  spec under `.scratch/`.
-- No change-history comments ("previously did X", "switched from Y") and no
-  commented-out code; git history holds both.
-- No TODO comment without a tracking issue reference: `// TODO(#42): ...`
+- Everything else follows `AGENTS.md` hard rule 9. A TODO names its
+  tracking issue: `// TODO(#42): ...`.
 
 ---
 
@@ -454,6 +440,22 @@ blank imports except for driver registration (`_ "modernc.org/sqlite"`).
   the pool without a written rationale.
 - A commit notifies the serializer's broadcast, which is what wakes the
   delivery loops (section 7). A rollback wakes nobody.
+
+### Schema, indexes and migrations
+
+- Every index carries a comment naming the query it serves. The reason lives
+  in the migration, where the next person changing the index will read it.
+- An ordering index includes its tiebreaker column, for example
+  `(ticket_id, created_at, id)`, so a pagination cursor stays index-only.
+- List queries paginate by keyset, never by `OFFSET`. Offset pagination
+  rescans every skipped row and drifts when rows are inserted mid-scroll.
+- A list index on a soft-deleted table leads with the archive or delete
+  column, so live queries scan only live rows.
+- Migrations are idempotent: `CREATE ... IF NOT EXISTS` everywhere, and a
+  column add checks `PRAGMA table_info` first, because SQLite has no
+  `ADD COLUMN IF NOT EXISTS`.
+- An expensive computation that is stored is stored under a `UNIQUE` key, so
+  recomputing it is an upsert and not a duplicate.
 
 ### Queries (sqlc)
 

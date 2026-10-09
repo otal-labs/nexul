@@ -7,17 +7,19 @@ do. The coding standards page on the docs site is a digest of them.
 
 | File | Read it when | What it holds |
 |---|---|---|
-| `architecture.md` | Touching any Go domain, the event bus, the MCP server, or a service boundary | The per-domain layer shape, the EventBus seam, outbox and idempotency, shutdown, the adapters |
-| `go.md` | Writing Go | Layout, errors, logging, config, injection, concurrency, naming, tests, sqlc, dependency hygiene |
-| `react-guide.md` | Writing anything in `web/` | The Frontend Commandments, structure, hooks, state, data fetching, forms, the API and WebSocket layers, the canvas, styling, testing |
-| `typescript.md` | Writing anything in `sdk/`, `automations/`, or `desktop/` | Runtimes, strictness, the SDK's public surface, errors, testing, the Electron security rules |
-| `native.md` | Writing anything in `native/` | The phone stack, which web rules carry over and how, navigation, styling, testing, running on an emulator |
-| `design-language.md` | Changing how anything in `web/`, `website/` or `native/` looks | One design language for all three: a shared core (tokens, the accent, focus, status, type, shape, motion, the decision ledger), then a section per surface with its adaptations, patterns and motion locks |
+| `architecture.md` | Touching any Go domain, the event bus, the MCP server, or a service boundary | The principles (one-way doors, the smallest model, complexity at the adapters), the per-domain layer shape, the EventBus seam, outbox, retries and idempotency, shutdown, the adapters |
+| `go.md` | Writing Go | Layout, errors, logging, config, injection, concurrency and delivery loops, tests and goleak, SQLite and sqlc, JSON on the wire, access checks in lists |
 | `mcp.md` | Touching the MCP adapter, the tool contract, or any domain's `mcp.go` | Transport and security, the tool budget, naming, declaring tools, result and error shape, instructions, resources and prompts, testing |
-| `testing.md` | Writing or reviewing tests in any language | The coverage floor, the pyramid, what to test first, mocking, flaky tests, CI enforcement |
-| `borrowed-practices.md` | Any code | Cross-cutting rules: one-way doors, SQLite discipline, retries, async tests, the git workflow |
+| `react-guide.md` | Writing anything in `web/` | The Frontend Commandments, structure, data fetching and the ticket cache, state, forms, the API and live-event layers with the live topic contract, the canvas, styling mechanics, testing, performance |
+| `native.md` | Writing anything in `native/` | The phone stack, which web rules carry over and how, navigation, styling, server state and the socket, testing, running and releasing |
+| `typescript.md` | Writing anything in `sdk/`, `automations/`, or `desktop/` | Runtimes, strictness, the SDK's public surface, errors, logging, the Electron security rules, testing, packaging |
+| `design-language.md` | Changing how anything in `web/`, `website/` or `native/` looks | One design language for all three: a shared core (tokens, the accent, focus, status, type, shape, motion, the decision ledger), then a section per surface with its adaptations, patterns and motion locks |
+| `testing.md` | Writing or reviewing tests in any language, or making something faster | The coverage floor, the pyramid, what to test first, mocking, CI enforcement, test data, flaky tests, guard tests and measurement for performance changes |
 
 A rule states what to do and why. When a rule and the code disagree, the
 rule wins and the code is the defect; when a rule and this repository's
-`AGENTS.md` hard rules disagree, `AGENTS.md` wins. A rule that turns out to
-be wrong is changed in a pull request with the reason, never worked around.
+`AGENTS.md` hard rules disagree, `AGENTS.md` wins. If a rule fights the task
+in front of you, say so and get the owner's sign-off before breaking it: a
+silently broken rule is indistinguishable from one nobody knew about. A rule
+that turns out to be wrong is changed in a pull request with the reason,
+never worked around.

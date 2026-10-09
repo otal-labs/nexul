@@ -112,24 +112,6 @@ A new SDK failure path throws `ApiError` or a subclass of it, never a bare
 string, a plain object, or an unthrown rejection value a caller has to
 inspect by hand.
 
-Early return, no `else`, matching the Go rule:
-
-```ts
-async function handleFrame(frame: Frame): Promise<void> {
-  if (frame.type === "hello") {
-    applyHello(frame);
-    return;
-  }
-  if (frame.type === "event") {
-    await runHandler(frame);
-    return;
-  }
-}
-```
-
-Each branch that fully handles a case returns immediately; there is never
-an `else` or `else if` chain to unwind.
-
 ## 5. Logging
 
 `automations` has one logging function, `src/log.ts`'s `log(level,

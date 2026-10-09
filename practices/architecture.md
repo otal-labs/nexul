@@ -4,6 +4,20 @@ The cross-cutting patterns every service and domain follows. Language-agnostic
 where possible; the Go mechanics live in `practices/go.md` and the web client
 in `practices/react-guide.md`.
 
+## Principles
+
+- A one-way door is a bug. Every way in needs a way out and a way to see it:
+  archive needs restore, close needs reopen, and a soft delete names the rows
+  it affects in its warning. Users do not read the code to learn what a
+  button undid. `AGENTS.md`, Hit every surface, checks this per feature.
+- Build the smallest model that makes correct behavior unsurprising.
+  Complexity is never preserved because it already exists, and machinery is
+  never added because it looks impressive. Understand the real constraint
+  first, then build the least that satisfies it.
+- Complexity belongs at the adapter boundary. Domains stay pure, the UI stays
+  dumb, and adapters (HTTP, MCP, the git provider, the runner protocol) do
+  every translation. This is ADR 0017 and ADR 0019 stated as a habit.
+
 ## 1. Layered architecture per domain
 
 A domain that owns entities, state transitions, and events lives in
@@ -187,13 +201,22 @@ record the event ID and every other subscriber of the topic skip it silently.
 `SubscribeWithConsumer` supplies the stable consumer identity the dedupe scope
 is keyed on.
 
+One component owns the retry policy for a path: this middleware for events,
+the runner client for its connection. Everything below it tries once;
+everything above it renders state. Scattered retry loops multiply each other
+and hide which layer is failing. A transport failure and a domain failure are
+handled differently: transport down means reconnect or replace the session,
+while a domain error keeps the healthy connection and surfaces the error.
+
 There is no throttle and no per-message timeout middleware. Handlers bound
 their own work with the context deadline they derive (see `practices/go.md`,
 concurrency), and back-pressure comes from the single SQLite writer.
 
 ## 6. Idempotency
 
-Two layers, and both are required:
+Idempotency is a stored receipt, not a hope: the processed-events store is
+the receipt that makes at-least-once delivery safe everywhere. Two layers, and
+both are required:
 
 1. The dedupe middleware skips an event ID the subscriber has already
    processed. The key is `<consumer>:<event_id>`, so a fanned-out event is
