@@ -13,7 +13,7 @@ export const LabelColorRow = ({ label, color, projectId }: LabelColorRowProps) =
   const setLabelColor = useSetLabelColor();
 
   return (
-    <li className="-mx-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-[120ms] ease-standard hover:bg-accent/40">
+    <li className="flex items-center gap-2 px-3 py-1 text-sm">
       <span className="min-w-0 flex-1 truncate text-sm font-medium" title={label}>{label}</span>
       <ColorPicker
         label={`Color for label ${label}`}

@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -50,6 +51,7 @@ const renderSection = (tab = "columns") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
+      <ContextAwareConfirmation.ConfirmationRoot />
       <MemoryRouter initialEntries={[`/projects/proj-1/settings/board/${tab}`]}>
         <Routes>
           <Route path="/projects/:projectId/settings/board/:tab?" element={<BoardSettingsSection projectId={PROJECT_ID} />} />
@@ -348,6 +350,7 @@ describe("BoardSettingsSection", () => {
     const user = userEvent.setup();
     renderSection("types");
 
+    await user.click(await screen.findByRole("button", { name: "New ticket type" }));
     await user.type(await screen.findByLabelText("New ticket type"), "bug");
     await user.click(screen.getByRole("button", { name: "Add type" }));
 
@@ -365,6 +368,7 @@ describe("BoardSettingsSection", () => {
 
     await user.click(await screen.findByRole("button", { name: "Actions for task" }));
     await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(await screen.findByRole("button", { name: "Delete type" }));
 
     expect(mocks.del).toHaveBeenCalledWith("/api/ticket-types/task");
   });

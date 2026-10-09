@@ -6,6 +6,7 @@ import { TicketTypeTemplateForm } from "@/components/settings/TicketTypeTemplate
 import { TicketTypeTemplateLine } from "@/components/settings/TicketTypeTemplateLine";
 import { useDeleteTicketType, useRenameTicketType } from "@/hooks/TicketTypeHooks";
 import { useCloneTemplateDialog } from "@/hooks/useCloneTemplateDialog";
+import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import {
   SaveTicketTypeTemplateFormSchema,
@@ -24,6 +25,7 @@ export const TicketTypeRow = ({ type, projectId }: TicketTypeRowProps) => {
   const [editing, setEditing] = useState(false);
   const { open: openTemplate } = useFormDialog();
   const openClone = useCloneTemplateDialog();
+  const { open: confirm } = useConfirmationDialog();
 
   const editTemplate = () =>
     openTemplate<SaveTicketTypeTemplateFormData>({
@@ -35,6 +37,16 @@ export const TicketTypeRow = ({ type, projectId }: TicketTypeRowProps) => {
       formOptions: { defaultValues: { body_template: type.body_template } },
     });
 
+  // The server keeps a type any ticket still uses, so the confirm only has to name the template.
+  const remove = async () => {
+    const ok = await confirm({
+      title: `Delete ${type.name}?`,
+      message: "Its body template goes with it. A type tickets still use can't be deleted.",
+      confirmLabel: "Delete type",
+    });
+    if (ok) deleteTicketType.mutate(type.id);
+  };
+
   // Full-replacement PATCH — resend the untouched field so it isn't silently cleared.
   const commitRename = (event: FocusEvent<HTMLInputElement>) => {
     const name = event.target.value.trim();
@@ -45,7 +57,7 @@ export const TicketTypeRow = ({ type, projectId }: TicketTypeRowProps) => {
   };
 
   return (
-    <li className="-mx-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-[120ms] ease-standard hover:bg-accent/40">
+    <li className="flex items-center gap-2 px-3 py-2 text-sm transition-colors duration-150 ease-standard hover:bg-accent/40">
       {editing && (
         <input
           className="flex-1 rounded-md border border-input px-2 py-1 text-sm"
@@ -80,7 +92,7 @@ export const TicketTypeRow = ({ type, projectId }: TicketTypeRowProps) => {
             onSelect: () =>
               void openClone({ kind: "ticket_body", key: type.name, name: type.name, from: { scope: "project", project_id: projectId } }),
           },
-          { label: "Delete", destructive: true, onSelect: () => deleteTicketType.mutate(type.id) },
+          { label: "Delete", destructive: true, onSelect: () => void remove() },
         ]}
       />
     </li>
