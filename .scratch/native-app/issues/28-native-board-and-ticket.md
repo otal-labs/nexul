@@ -26,7 +26,7 @@ hooks. Live updates over the events client.
 
 ## Read first
 
-`AGENTS.md`, `practices/native.md` (written by ticket 24), `practices/react-guide.md` (F1–F7 and the self-review checklist, applied to React Native), `practices/testing.md`, `practices/borrowed-practices.md`, ticket 11.
+`AGENTS.md`, `practices/native.md` (written by ticket 24), `practices/react-guide.md` (F1–F7 and the self-review checklist, applied to React Native), `practices/testing.md`, ticket 11.
 
 ## Verification
 

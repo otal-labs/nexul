@@ -11,7 +11,7 @@ Once the web app targets 768px and up, what does someone opening it on a phone s
 ## Answer
 
 Agreed with the owner 2026-09-28, and landed with this map update as
-ADR 0080 plus the rule changes in `AGENTS.md`, `practices/borrowed-practices.md`,
+ADR 0080 plus the rule changes in `AGENTS.md`,
 `practices/react-guide.md` and the contributing coding standards.
 
 - Below 768px the web app shows a dismissible banner, never a block: on

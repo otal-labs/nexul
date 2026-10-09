@@ -21,8 +21,8 @@ The product is implemented. The work now is improving it domain by domain.
 | SDK, automations host, desktop | `practices/typescript.md` | `practices/react-guide.md` for the desktop launcher |
 | Phone app (React Native) | `practices/native.md` | `practices/react-guide.md`, the rules it inherits; `practices/design-language.md`, the shared core and the phone app section |
 | Design or visual work in `web/`, `website/` or `native/` | `practices/design-language.md`, one language for all three: the shared core, then your surface's section | `practices/react-guide.md`, or `practices/native.md` on the phone |
-| Testing | `practices/testing.md` | The language file above |
-| Any code | `practices/borrowed-practices.md`, the cross-cutting rules | `practices/README.md` for the index |
+| Testing, or making something faster | `practices/testing.md` | The language file above |
+| Any code | `practices/architecture.md`, Principles | `practices/README.md` for the index |
 | Install, CI, release | [CI and releases](https://nexul.io/docs/contributing/ci-and-releases/) | `internal/install/`, `.goreleaser.yaml`, `docker-compose.debug.yml` for development |
 | MCP server or a domain's `mcp.go` | `practices/mcp.md` | `practices/architecture.md`, section 8 |
 | Event bus or resilience | `practices/architecture.md`, sections 2 to 6 | `docs/adr/` |
@@ -116,6 +116,12 @@ skipped and lint errors do not.
 | Native lint, types, tests | `bun run lint`, `typecheck`, `test` in `native/`, in CI |
 | SDK and automations host types and tests | `bun run typecheck` and `bun run test` in each package, in CI |
 | Desktop types, tests, build | the desktop CI job |
+| Live topics the server pushes match the ones the browser follows | `make live-topics`, `TestLiveTopicsFile_MatchesTheRules` and `web/src/hooks/liveTopics.test.tsx` |
+| HTTP, MCP and live frames encode through `jsonx` without changing output | `server/cmd/json_parity_test.go` |
+| No goroutine outlives a package's tests | `goleak.VerifyTestMain` in each goroutine-owning package's `main_test.go` |
+| The web shell loads no page, editor, canvas, voice or shader | `web/src/pageChunks.test.tsx` |
+| Every phone query cached forever has a topic that refreshes it | the reference table in `native/src/hooks/useLiveEvents.test.tsx` |
+| Phone icons import by path | `no-restricted-imports` in `native/eslint.config.js` |
 | Dependency freshness | Dependabot, weekly, grouped per directory |
 
 A rule that could be a lint rule and is not yet is a candidate for one; add
@@ -133,7 +139,9 @@ this list and say which entries applied:
   half shipped.
 - Events. A catalog row and an outbox write, designed for publication
   (ADR 0044).
-- Live WebSocket push, if the UI should update without a refresh.
+- Live WebSocket push, if the UI should update without a refresh. A new
+  topic gets an audience rule, `make live-topics`, and a handler in the web
+  client (`practices/react-guide.md`, The live topic contract).
 - Search, if the entity is indexed.
 - Permissions. Enforced through the permission table, not assumed.
 - Reverse states. If you added a way in, add the way out and the way to see
@@ -155,15 +163,32 @@ this list and say which entries applied:
 - Nothing shipped names the tool that wrote it. Commit messages, PR bodies,
   comments, and docs describe the change from the code's point of view.
 
-## Worktree workflow
+## Branches and pull requests
 
 Parallel work happens in worktrees (`git worktree add ../nexul-<slug> -b
-<slug>`). Two things the commands do not tell you:
+<slug>`). Things the commands do not tell you:
 
 - Remove the worktree when the branch is done; each one is about 65MB.
 - Parallel runs share this host. Give each its own dev-server port and say so
   up front, or they collide on the default port and the screenshots come back
   belonging to somebody else's container.
+- Kill only a PID you captured at spawn, never by pattern (`pkill -f`,
+  `pgrep | kill`): your own session matches the pattern.
+
+A pull request:
+
+- Carries one topic. A description that says "also" is two pull requests.
+- Is rebased onto the latest `master` before it opens, so the diff is only
+  the change.
+- Is squash-merged. Its title is one sentence describing the change from the
+  code's point of view, because that sentence becomes the commit on `master`
+  and the line in the release notes.
+- States the problem in a sentence or two, then how the change fixes it. A UI
+  change carries before and after screenshots at 768, 1024, and 1440px (320,
+  375, 414, and 768px for `website/`); a change that depends on motion
+  carries a short video.
+- Never commits a secret. A dev-only shared value is tracked as an open item
+  in `.scratch/pre-release/` until it is rotated.
 
 CI runs per service through `dorny/paths-filter`, so only the affected
 service's jobs run.
