@@ -1,6 +1,7 @@
 package plays
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,11 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/harness"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
 func TestRunHandler_Run_Accepted(t *testing.T) {
 	f := newRunnerFixture()
-	h := NewRunHandler(f.runner).Routes()
+	h := NewRunHandler(f.runner, nil).Routes()
 	rec := do(t, h, http.MethodPost, "/api/plays/"+fixPlayID+"/run",
 		`{"target_type":"ticket","target_id":"t-1","memory_ids":["m-pick"],"custom_instructions":"go"}`, starter)
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
@@ -31,7 +33,7 @@ func TestRunHandler_Run_Accepted(t *testing.T) {
 func TestRunHandler_Run_HarnessChoicePassesThrough(t *testing.T) {
 	f := newRunnerFixture()
 	f.harness.resolved = HarnessChoice{ComputerID: "c-resolved", Provider: "claude", Model: "sonnet-5"}
-	h := NewRunHandler(f.runner).Routes()
+	h := NewRunHandler(f.runner, nil).Routes()
 	rec := do(t, h, http.MethodPost, "/api/plays/"+fixPlayID+"/run",
 		`{"target_type":"ticket","target_id":"t-1","computer_id":"c-picked","provider":"claude","model":"sonnet-5"}`, starter)
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
@@ -61,7 +63,7 @@ func TestRunHandler_Run_Errors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newRunnerFixture()
-			rec := do(t, NewRunHandler(f.runner).Routes(), http.MethodPost, "/api/plays/"+fixPlayID+"/run", tt.body, tt.user)
+			rec := do(t, NewRunHandler(f.runner, nil).Routes(), http.MethodPost, "/api/plays/"+fixPlayID+"/run", tt.body, tt.user)
 			assert.Equal(t, tt.want, rec.Code, rec.Body.String())
 		})
 	}
@@ -69,7 +71,7 @@ func TestRunHandler_Run_Errors(t *testing.T) {
 
 func TestRunHandler_Stop(t *testing.T) {
 	f := newRunnerFixture()
-	h := NewRunHandler(f.runner).Routes()
+	h := NewRunHandler(f.runner, nil).Routes()
 	rec := do(t, h, http.MethodPost, "/api/plays/"+fixPlayID+"/run", `{"target_type":"ticket","target_id":"t-1"}`, starter)
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
 	<-f.turns.done
@@ -90,7 +92,7 @@ func TestRunHandler_Stop(t *testing.T) {
 
 func TestRunHandler_Run_SecondRun_Conflicts(t *testing.T) {
 	f := newRunnerFixture()
-	h := NewRunHandler(f.runner).Routes()
+	h := NewRunHandler(f.runner, nil).Routes()
 	body := `{"target_type":"ticket","target_id":"t-1"}`
 	require.Equal(t, http.StatusAccepted, do(t, h, http.MethodPost, "/api/plays/"+fixPlayID+"/run", body, starter).Code)
 	<-f.turns.done
@@ -102,7 +104,7 @@ func TestRunHandler_Run_SecondRun_Conflicts(t *testing.T) {
 func TestRunHandler_GetAndList(t *testing.T) {
 	f := newRunnerFixture()
 	seededTrail(f, "tr-1", TargetTicket, ticketID, fixedNow)
-	h := NewRunHandler(f.runner).Routes()
+	h := NewRunHandler(f.runner, nil).Routes()
 
 	rec := do(t, h, http.MethodGet, "/api/plays/runs/tr-1", "", starter)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -125,7 +127,7 @@ func TestRunHandler_GetAndList(t *testing.T) {
 func TestRunHandler_LatestChoices(t *testing.T) {
 	f := newRunnerFixture()
 	seededTrail(f, "tr-1", TargetTicket, ticketID, fixedNow)
-	h := NewRunHandler(f.runner).Routes()
+	h := NewRunHandler(f.runner, nil).Routes()
 
 	rec := do(t, h, http.MethodGet, "/api/plays/latest-choices?play_id="+fixPlayID+"&project_id="+projectID, "", starter)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
@@ -139,7 +141,7 @@ func TestRunHandler_LatestChoices(t *testing.T) {
 
 func TestRunHandler_Active(t *testing.T) {
 	f := newRunnerFixture()
-	h := NewRunHandler(f.runner).Routes()
+	h := NewRunHandler(f.runner, nil).Routes()
 	rec := do(t, h, http.MethodPost, "/api/plays/"+fixPlayID+"/run", `{"target_type":"ticket","target_id":"t-1"}`, starter)
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
 	<-f.turns.done
@@ -189,7 +191,7 @@ func TestRunHandler_Active(t *testing.T) {
 
 func TestRunHandler_Answer(t *testing.T) {
 	f := heldFixture(t)
-	h := NewRunHandler(f.runner).Routes()
+	h := NewRunHandler(f.runner, nil).Routes()
 	rec := do(t, h, http.MethodPost, "/api/plays/"+fixPlayID+"/run", `{"target_type":"ticket","target_id":"t-1"}`, starter)
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
 	<-f.turns.done
@@ -216,7 +218,7 @@ func TestRunHandler_Answer(t *testing.T) {
 
 func TestRunHandler_Continue(t *testing.T) {
 	f := newRunnerFixture()
-	h := NewRunHandler(f.runner).Routes()
+	h := NewRunHandler(f.runner, nil).Routes()
 	trail := endedRun(t, f)
 	path := "/api/plays/runs/" + trail.ID + "/continue"
 
@@ -234,4 +236,41 @@ func TestRunHandler_Continue(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	assert.Equal(t, trail.ID, got.ID)
 	assert.Equal(t, TrailRunning, got.State)
+}
+
+// fakeProjectTargets lists one project's targets; any other project is refused the way a project the caller cannot read is.
+type fakeProjectTargets struct {
+	projectID string
+	ids       []string
+}
+
+func (f fakeProjectTargets) TargetIDs(_ context.Context, _ TargetType, projectID string) ([]string, error) {
+	if projectID != f.projectID {
+		return nil, apperrs.ErrForbidden
+	}
+	return f.ids, nil
+}
+
+func TestRunHandler_Active_ByProject(t *testing.T) {
+	f := newRunnerFixture()
+	h := NewRunHandler(f.runner, fakeProjectTargets{projectID: projectID, ids: []string{"t-1", "t-2"}}).Routes()
+	rec := do(t, h, http.MethodPost, "/api/plays/"+fixPlayID+"/run", `{"target_type":"ticket","target_id":"t-1"}`, starter)
+	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
+	<-f.turns.done
+	var tr Trail
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &tr))
+
+	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&project_id="+projectID, "", starter)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	var body struct {
+		Active map[string]string `json:"active"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	assert.Equal(t, map[string]string{"t-1": tr.ID}, body.Active)
+
+	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&project_id="+projectID, "", "stranger")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"active":{},"waiting":{},"started":{}}`, rec.Body.String(), "each run is still checked against plays:read")
+
+	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&project_id=proj-other", "", starter).Code)
 }

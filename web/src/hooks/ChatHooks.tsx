@@ -4,7 +4,6 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { getMeKey } from "@/hooks/AuthHooks";
-import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 import {
   channelMention,
@@ -52,20 +51,13 @@ export const useFetchChatUnread = (workspaceId: string | undefined, enabled = tr
   });
 
 // Batched per project: every TicketCard shares the queryKey, so a 40-card board fires one request, not 40.
-export const useFetchChatThreadIndicators = (projectId: string | undefined) => {
-  const { data: tickets } = useFetchTicketsByProject(projectId);
-  const ids = tickets?.map((t) => t.id) ?? [];
-  return useQuery({
-    queryKey: [getChatThreadIndicatorsKey, projectId, ids],
+export const useFetchChatThreadIndicators = (projectId: string | undefined) =>
+  useQuery({
+    queryKey: [getChatThreadIndicatorsKey, projectId],
     queryFn: async () =>
-      (
-        await api.get<Record<string, boolean>>("/api/chat/tickets/thread-status", {
-          params: { ticket_ids: ids.join(",") },
-        })
-      ).data,
-    enabled: !!projectId && ids.length > 0,
+      (await api.get<Record<string, boolean>>("/api/chat/tickets/thread-status", { params: { project_id: projectId } })).data,
+    enabled: !!projectId,
   });
-};
 
 // Read-only "does a thread exist" check, so an existing thread shows without ever calling get-or-create.
 export const useFetchTicketThreadStatus = (ticketId: string | undefined) =>

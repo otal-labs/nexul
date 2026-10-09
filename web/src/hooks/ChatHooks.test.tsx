@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
-import { useFetchChatUnread, useFetchConversations, useFetchMessages, usePostMessage } from "@/hooks/ChatHooks";
+import { useFetchChatThreadIndicators, useFetchChatUnread, useFetchConversations, useFetchMessages, usePostMessage } from "@/hooks/ChatHooks";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn() },
@@ -33,6 +33,17 @@ describe("useFetchConversations", () => {
     const { result: idle } = renderHook(() => useFetchConversations(undefined), { wrapper });
     expect(idle.current.fetchStatus).toBe("idle");
     expect(api.get).not.toHaveBeenCalled();
+  });
+});
+
+describe("useFetchChatThreadIndicators", () => {
+  // Naming every ticket put ~37 bytes per card in the URL, past nginx's header buffer on a big board.
+  it("asks once per project, naming the project rather than every ticket on the board", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { "t-1": true } });
+    const { result } = renderHook(() => useFetchChatThreadIndicators("p-1"), { wrapper });
+    await waitFor(() => expect(result.current.data).toEqual({ "t-1": true }));
+    expect(api.get).toHaveBeenCalledTimes(1);
+    expect(api.get).toHaveBeenCalledWith("/api/chat/tickets/thread-status", { params: { project_id: "p-1" } });
   });
 });
 
