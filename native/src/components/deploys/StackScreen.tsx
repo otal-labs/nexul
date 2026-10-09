@@ -3,8 +3,12 @@ import { ScrollView, View } from "react-native";
 
 import { ContainerRow } from "@/components/deploys/ContainerRow";
 import { DeployRow } from "@/components/deploys/DeployRow";
+import { StackLiveWell } from "@/components/deploys/StackLiveWell";
+import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { Microheader } from "@/components/Microheader";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useFetchStack, useFetchStackDeploys, useFetchStackServices } from "@/hooks/StackHooks";
@@ -31,62 +35,54 @@ export const StackScreen = () => {
   const deploying = latest?.status === DeployStatus.Pending || latest?.status === DeployStatus.Running;
 
   return (
-    <ScrollView className="flex-1 bg-background">
-      {isPending && <LoadingDisplay />}
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="pb-8">
+      <Stack.Screen options={{ title: "Stack" }} />
+      {isPending && <LoadingDisplay message="Loading the stack" />}
       {error && <ErrorDisplay error={error} notFound="This stack doesn't exist or was deleted." />}
+      {stack && <ScreenHeader eyebrow={stack.machine} title={stack.name} meta={`${stack.strategy} stack`} className="pt-2" />}
       {stack && (
-        <View className="gap-5 px-4 py-4">
-          <Stack.Screen options={{ title: stack.name }} />
-          <View>
-            <Text variant="h3">{stack.name}</Text>
-            <Text variant="muted" className="font-mono text-xs">
-              {stack.machine}
-            </Text>
-          </View>
+        <View className="gap-6 px-4">
+          <StackLiveWell latest={latest} containers={containers} />
 
           {canRedeploy && latest && (
             <Button
               disabled={deploying}
-              onPress={() =>
-                router.push({ pathname: "/deploys/redeploy", params: { stackId: stack.id, image: latest.image } })
-              }
+              onPress={() => router.push({ pathname: "/deploys/redeploy", params: { stackId: stack.id, image: latest.image } })}
             >
               <Text>{deploying ? "Deploy in progress" : "Redeploy"}</Text>
             </Button>
           )}
           {stack.strategy === DeployStrategy.Compose && (
-            <Text variant="muted" className="text-xs">
-              Redeploy from the web: this stack builds from its compose file.
-            </Text>
+            <Text className="text-[13px] text-muted-foreground">Redeploy from the web: this stack builds from its compose file.</Text>
           )}
-          {isRun && !canRedeploy && (
-            <Text variant="muted" className="text-xs">
-              Nothing to redeploy yet: this stack has no deployed image.
-            </Text>
-          )}
+          {isRun && !canRedeploy && <Text className="text-[13px] text-muted-foreground">Nothing to redeploy yet: this stack has no deployed image.</Text>}
 
-          <View className="gap-2 border-t border-border pt-3">
-            <Text variant="small" className="text-muted-foreground">
-              Services
-            </Text>
-            {containersPending && <LoadingDisplay />}
+          <View className="gap-2">
+            <Microheader className="px-1">Services</Microheader>
+            {containersPending && <LoadingDisplay message="Loading services" />}
             {containersError && <ErrorDisplay error={containersError} className="px-0" />}
-            {containers && containers.length === 0 && <Text variant="muted">No services parsed yet.</Text>}
-            {containers &&
-              containers.length > 0 &&
-              containers.map((c) => <ContainerRow key={c.id} container={c} onOpenLogs={logsOpener(stack.id, c.name)} />)}
+            {containers && containers.length === 0 && <EmptyRow message="No services parsed yet." />}
+            {containers && containers.length > 0 && (
+              <View className="overflow-hidden rounded-xl border border-border bg-card">
+                {containers.map((c, i) => (
+                  <ContainerRow key={c.id} container={c} first={i === 0} onOpenLogs={logsOpener(stack.id, c.name)} />
+                ))}
+              </View>
+            )}
           </View>
 
-          <View className="gap-2 border-t border-border pt-3">
-            <Text variant="small" className="text-muted-foreground">
-              Deploy history
-            </Text>
-            {deploysPending && <LoadingDisplay />}
+          <View className="gap-2">
+            <Microheader className="px-1">Deploy history</Microheader>
+            {deploysPending && <LoadingDisplay message="Loading deploys" />}
             {deploysError && <ErrorDisplay error={deploysError} className="px-0" />}
-            {deploys && deploys.length === 0 && <Text variant="muted">No deploys yet.</Text>}
-            {deploys &&
-              deploys.length > 0 &&
-              deploys.map((d) => <DeployRow key={d.id} deploy={d} onPress={() => router.push(`/deploys/deploy/${d.id}`)} />)}
+            {deploys && deploys.length === 0 && <EmptyRow message="No deploys yet." />}
+            {deploys && deploys.length > 0 && (
+              <View className="overflow-hidden rounded-xl border border-border bg-card">
+                {deploys.map((d, i) => (
+                  <DeployRow key={d.id} deploy={d} first={i === 0} onPress={() => router.push(`/deploys/deploy/${d.id}`)} />
+                ))}
+              </View>
+            )}
           </View>
         </View>
       )}

@@ -9,15 +9,17 @@ export const StatusKind = {
 
 export type StatusKind = (typeof StatusKind)[keyof typeof StatusKind];
 
-const STAGE_DOT: Record<StatusKind, string> = {
-  [StatusKind.Backlog]: "bg-muted-foreground",
-  [StatusKind.Progress]: "bg-info",
-  [StatusKind.Review]: "bg-warning",
-  [StatusKind.Testing]: "bg-foreground",
-  [StatusKind.Done]: "bg-success",
-};
+// The board's stages in order with their hues, the same table as the web's.
+export const STATUS_STAGES: { kind: StatusKind; label: string; dot: string }[] = [
+  { kind: StatusKind.Backlog, label: "Backlog", dot: "bg-muted-foreground" },
+  { kind: StatusKind.Progress, label: "Progress", dot: "bg-info" },
+  { kind: StatusKind.Review, label: "Review", dot: "bg-warning" },
+  { kind: StatusKind.Testing, label: "Testing", dot: "bg-foreground" },
+  { kind: StatusKind.Done, label: "Done", dot: "bg-success" },
+];
 
-export const statusStageDot = (kind: StatusKind): string => STAGE_DOT[kind] ?? STAGE_DOT[StatusKind.Backlog];
+export const statusStageDot = (kind: StatusKind): string =>
+  (STATUS_STAGES.find((stage) => stage.kind === kind) ?? STATUS_STAGES[0]!).dot;
 
 // A project's status column; the server already returns these ordered by kind then position (the board's column order).
 export interface BoardStatus {

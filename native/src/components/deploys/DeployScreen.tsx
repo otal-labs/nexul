@@ -5,10 +5,30 @@ import { View } from "react-native";
 import { DeployLogLineRow } from "@/components/deploys/DeployLogLineRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { RelativeTime } from "@/components/RelativeTime";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { Text } from "@/components/ui/text";
 import { useFetchDeploy, useFetchDeployLog } from "@/hooks/DeployHooks";
 import { cn } from "@/lib/utils";
-import { deployStatusDot, deployTitle } from "@/models/Stack";
+import { DeployStatus, deployStatusDot, deployTitle, type Deploy } from "@/models/Stack";
+
+// The header names the outcome, the way the web's deploy page does.
+const OUTCOME: Record<DeployStatus, string> = {
+  [DeployStatus.Pending]: "Waiting for a runner",
+  [DeployStatus.Running]: "Deploying",
+  [DeployStatus.Healthy]: "Deployed",
+  [DeployStatus.Failed]: "Deploy failed",
+};
+
+const DeployMeta = ({ deploy }: { deploy: Deploy }) => (
+  <>
+    <View className={cn("size-2 rounded-full", deployStatusDot(deploy.status))} />
+    <Text className="font-mono text-xs text-muted-foreground">{deployTitle(deploy)}</Text>
+    <Text className="font-mono text-xs text-muted-foreground">
+      <RelativeTime iso={deploy.created_at} />
+    </Text>
+  </>
+);
 
 export const DeployScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -17,32 +37,19 @@ export const DeployScreen = () => {
 
   return (
     <View className="flex-1 bg-background">
-      {deployPending && <LoadingDisplay />}
+      <Stack.Screen options={{ title: "Deploy" }} />
+      {deployPending && <LoadingDisplay message="Loading the deploy" />}
       {deployError && <ErrorDisplay error={deployError} notFound="This deploy doesn't exist or was deleted." />}
-      {deploy && <Stack.Screen options={{ title: deployTitle(deploy) }} />}
-      {deploy && (
-        <View className="flex-row items-center gap-2 border-b border-border px-4 py-3">
-          <View className={cn("size-2 rounded-full", deployStatusDot(deploy.status))} />
-          <Text className="min-w-0 flex-1 font-mono text-xs" numberOfLines={1}>
-            {deploy.image || "repo build"}
-          </Text>
-          <Text variant="small" className="text-muted-foreground">
-            {deploy.status}
-          </Text>
-        </View>
-      )}
-
-      {logPending && <LoadingDisplay message="Loading the log…" />}
+      {deploy && <ScreenHeader title={OUTCOME[deploy.status] ?? deploy.status} meta={<DeployMeta deploy={deploy} />} className="pt-2" />}
+      {logPending && <LoadingDisplay message="Loading the log" />}
       {logError && <ErrorDisplay error={logError} />}
       {lines && lines.length === 0 && (
-        <View className="flex-1 items-center justify-center px-6">
-          <Text variant="muted" className="text-center">
-            Waiting for the runner to pick this up…
-          </Text>
+        <View className="mx-4 mb-4 flex-1 items-center justify-center rounded-xl border border-border bg-surface-2 px-6">
+          <Text className="text-center text-[13px] text-muted-foreground">Waiting for the runner to pick this up</Text>
         </View>
       )}
       {lines && lines.length > 0 && (
-        <View className="flex-1 bg-surface-2">
+        <View className="mx-3 mb-3 flex-1 overflow-hidden rounded-xl border border-border bg-surface-2">
           <LegendList
             data={lines}
             keyExtractor={(line) => String(line.seq)}
@@ -52,6 +59,7 @@ export const DeployScreen = () => {
             initialScrollAtEnd
             alignItemsAtEnd
             maintainScrollAtEnd
+            contentContainerStyle={{ paddingVertical: 8 }}
           />
         </View>
       )}

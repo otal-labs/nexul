@@ -1276,6 +1276,93 @@ secrets and the workspace, template and automation configuration cards. A
 Motion `layout` glide on a bounce-free spring was built first and lost to the
 shared glide only for being a second vocabulary for the same act.
 
+## Phone app (draft, folded in at unification)
+
+The phone app in `native/` speaks this language on a phone. It is recorded
+here as a draft and folded into the sections above when the language is next
+rewritten as one. Every decision below was built as live variants on the
+Android emulator with the seeded workspace, judged from screenshots, 1x and
+0.25x recordings and frame strips, and measured with `gfxinfo`; the emulator
+judges whether motion runs and degrades, not its final feel.
+
+Tokens. `native/src/global.css` holds the web's values under the same names,
+dark and light. `focus` and the light field's three glows are colour tokens
+there (`--color-focus`, `--color-field-warm`, `-pink`, `-cool`), because the
+phone reads every colour through `useCSSVariable`. The phone has no theme
+picker yet, so it shows the default palette.
+
+Type. Fraunces is a static cut at the web's axes (opsz 28, wght 560, SOFT
+50, WONK 1), `Fraunces Display`, for screen titles, record titles and
+empty-state headlines. A screen title is 30pt, 25pt past 44 characters and
+22pt past 90, three lines at most. Rejected: the static Fraunces SemiBold
+Google Fonts serves, which sits at opsz 9 with SOFT 0 and read wide and sharp
+next to the web's soft titles.
+
+Surfaces. A tab's root sits on the canvas with the still light field behind
+it and its rows straight on the field; pushed screens are the plain canvas;
+cards, wells and sheets are solid. Picked over a raised panel inset 8pt (the
+field only showed in an 8pt frame and the panel cost 16pt of a 412pt width)
+and the plain canvas everywhere (correct and anonymous). The field is one
+static SVG: Board scrolling measured p50 16ms and p90 16ms with it, the same
+as without it. Backdrop blur was tried on the board's drop bar, over a board
+that holds still while a card is held, and lost: frames went to a 95th
+percentile GPU time of 4.95s, so the phone has no blur.
+
+Lists. Rows on a tab root are separated by space, not hairlines: a 36pt
+tile or avatar with its state as a dot on the corner, the title, mono meta
+trailing; read titles turn muted. Rows grouped in a card keep hairlines.
+Board columns are `surface-2` wells of cards (the mono key as an eyebrow,
+the title, type and label pills, whoever acts next), under a header with the
+project mark, the stage bar and an "Only mine" switch that takes the ember
+when on. The tab bar's active tab is the ember; its unread count is the ink
+pill.
+
+Chat. Your messages are the ember bubble on the right (12pt corners, the
+bottom-right one 2pt); everyone else's text runs plain under a 32pt avatar
+with the name and mono clock time; day dividers are the microheader between
+hairlines. Bot embeds are the web's status-edged cards with facts. The
+composer is one framed field with the send button inside it, ember once
+there is text.
+
+Motion. The numbers are the web's motion baseline unless named.
+- Screen push, tab switch and sheets: the platform's. Rejected for push:
+  slide from the right (a 300ms slide on an act repeated all session) and
+  fade from the bottom (the board and the ticket showed through each other,
+  the reason the web dropped its title morph). Sheets take a 12pt corner.
+- Sending a message: Rise, 12px over 240ms from 0.96 out of the bubble's
+  bottom-right corner; the server's copy keeps the pending row's key, so the
+  rise is never cut. Rejected: rising from the composer (64px; on a phone it
+  doubled the list's own scroll to the end and read as two moves), a pop from
+  0.9 (the bubble's text shifted as it scaled) and none (the bubble appeared
+  with the list's jump and nothing said it was yours).
+- Moving a card: hold 280ms to pick it up; it lifts to 1.03 with the
+  elevated shadow in 150ms (a shadow layer drawn once and faded, never an
+  animated shadow), follows the finger 1:1, and the columns rise in as drop
+  targets along the bottom; over one the card shrinks to 0.55 around the
+  finger so the target stays in view and the target takes the ember edge.
+  Dropped, it glides onto the target in 220ms and shrinks into it while the
+  board moves the card at once; let go anywhere else, it springs back
+  (300ms, no bounce). Under reduced motion nothing scales and the glide
+  stays. Drag frames measured p50 16ms, p90 27ms on the emulator, whose input
+  injection paces the frames. Each card also offers "Move to" accessibility
+  actions.
+- Inbox: an unread row swipes left to mark it read (its "Mark read" action
+  is the alternative); the unread dot shrinks to 0.6 as it fades over 150ms.
+- Pull to refresh: the platform's spinner in the ember, since it is progress.
+  Rejected: the muted spinner the phone had, which read as disabled.
+- Press: the `accent` tint on rows and cards, on touch; a labelled button
+  also presses to 0.97. Rejected: the Android ripple (no iOS counterpart and
+  the same at rest).
+- Empty state: the orbit turns into place as on the web; a compact one fades
+  and rises 4px. Loader: the orbit at 16pt, a linear 1.2s keyframe turn,
+  held back 300ms. Hand-off: content that replaces a loader rises 6px over
+  200ms where it stood.
+- Reduced motion (Android's Remove animations): every moment is a 150ms
+  fade or nothing; the loader holds still; a drag still tracks the finger.
+
+Rejected and not built: a theme picker (the phone has none today) and blur
+anywhere (see Surfaces).
+
 ## Site: roadmap and changelog
 
 Decided 2026-10-09 without the owner in the loop, each built as live variants

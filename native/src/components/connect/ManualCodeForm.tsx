@@ -18,11 +18,9 @@ interface ManualCodeFormProps {
 export const ManualCodeForm = ({ host, code, pending, error, onHostChange, onCodeChange, onSubmit }: ManualCodeFormProps) => {
   const canSubmit = host.trim() !== "" && code.trim() !== "" && !pending;
   return (
-    <View className="gap-5 px-6 pt-6">
+    <View className="gap-5 px-5 pt-4">
       <View className="gap-2">
-        <Text variant="small" className="text-muted-foreground">
-          Instance address
-        </Text>
+        <Text className="text-sm font-medium">Instance address</Text>
         <Input
           value={host}
           onChangeText={onHostChange}
@@ -37,9 +35,7 @@ export const ManualCodeForm = ({ host, code, pending, error, onHostChange, onCod
         />
       </View>
       <View className="gap-2">
-        <Text variant="small" className="text-muted-foreground">
-          Connect code
-        </Text>
+        <Text className="text-sm font-medium">Connect code</Text>
         <Input
           value={code}
           onChangeText={onCodeChange}

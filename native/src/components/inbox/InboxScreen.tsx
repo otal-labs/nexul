@@ -1,14 +1,14 @@
-import { useNavigation, useRouter, type Href } from "expo-router";
-import { useEffect } from "react";
-import { View } from "react-native";
+import { useRouter, type Href } from "expo-router";
+import { Inbox } from "lucide-react-native";
 
+import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { HandOff, useLoaderShown } from "@/components/HandOff";
+import { InboxHeader } from "@/components/inbox/InboxHeader";
 import { NotificationFeed } from "@/components/inbox/NotificationFeed";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { PlaceholderScreen } from "@/components/PlaceholderScreen";
-import { Button } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
-import { useFetchNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from "@/hooks/NotificationHooks";
+import { FieldScreen } from "@/components/FieldScreen";
+import { useFetchNotifications, useMarkNotificationRead } from "@/hooks/NotificationHooks";
 import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import { SubjectType, type Notification } from "@/models/Notification";
 
@@ -21,23 +21,11 @@ export const subjectRoute = (notification: Notification): Href | null => {
 };
 
 export const InboxScreen = () => {
-  const navigation = useNavigation();
   const router = useRouter();
   const { data, error, isPending, isRefetching, refetch } = useFetchNotifications();
   const markRead = useMarkNotificationRead();
-  const markAllRead = useMarkAllNotificationsRead();
   const canReadTickets = useAreaAccess()?.("tickets") ?? false;
-
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () =>
-        data && data.length > 0 ? (
-          <Button variant="ghost" size="sm" disabled={markAllRead.isPending} onPress={() => markAllRead.mutate()}>
-            <Text>Mark all read</Text>
-          </Button>
-        ) : undefined,
-    });
-  }, [navigation, data, markAllRead]);
+  const waited = useLoaderShown(isPending);
 
   const onSelect = (notification: Notification) => {
     if (!notification.read) markRead.mutate(notification.id);
@@ -48,18 +36,24 @@ export const InboxScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-background">
-      {isPending && <LoadingDisplay />}
+    <FieldScreen>
+      {!(data && data.length > 0) && <InboxHeader notifications={data} />}
+      {isPending && <LoadingDisplay message="Loading the inbox" />}
       {error && <ErrorDisplay error={error} />}
-      {data && data.length === 0 && <PlaceholderScreen message="No notifications yet." />}
-      {data && data.length > 0 && (
-        <NotificationFeed
-          notifications={data}
-          refreshing={isRefetching}
-          onRefresh={() => void refetch()}
-          onSelect={onSelect}
-        />
+      {data && data.length === 0 && (
+        <EmptyState icon={Inbox} title="Nothing needs you" message="Assignments, mentions and play runs waiting on you land here." />
       )}
-    </View>
+      {data && data.length > 0 && (
+        <HandOff after={waited}>
+          <NotificationFeed
+            notifications={data}
+            refreshing={isRefetching}
+            onRefresh={() => void refetch()}
+            onSelect={onSelect}
+            onMarkRead={(notification) => markRead.mutate(notification.id)}
+          />
+        </HandOff>
+      )}
+    </FieldScreen>
   );
 };

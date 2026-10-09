@@ -5,7 +5,7 @@ import { isNotFound } from "@/api/errors";
 import { HandoffConversation } from "@/components/chat/HandoffConversation";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { PlaceholderScreen } from "@/components/PlaceholderScreen";
+import { EmptyState } from "@/components/EmptyState";
 import { useFetchMessages } from "@/hooks/ChatHooks";
 
 type HandoffParams = { id: string; conversationId: string; messageId: string };
@@ -21,7 +21,7 @@ export const HandoffScreen = () => {
       <Stack.Screen options={{ title: handoff?.title ?? "Hand-off" }} />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} notFound="This conversation doesn't exist or was deleted." />}
-      {messages && !handoff && <PlaceholderScreen message="This hand-off is no longer on its reply." />}
+      {messages && !handoff && <EmptyState size="compact" title="This hand-off is gone" message="It is no longer on the reply that started it." />}
       {handoff && <HandoffConversation handoff={handoff} />}
     </View>
   );

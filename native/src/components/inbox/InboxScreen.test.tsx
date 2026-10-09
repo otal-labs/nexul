@@ -1,6 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, userEvent, waitFor } from "@testing-library/react-native";
-import type { ReactElement } from "react";
+import { act, fireEvent, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 
 import { api } from "@/api/client";
 import { InboxScreen } from "@/components/inbox/InboxScreen";
@@ -11,10 +10,8 @@ jest.mock("@/api/client", () => ({
 }));
 
 const mockPush = jest.fn();
-const mockSetOptions = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush }),
-  useNavigation: () => ({ setOptions: mockSetOptions }),
 }));
 
 const ticketNotification = {
@@ -59,20 +56,10 @@ const renderScreen = () => {
   );
 };
 
-// The header's "Mark all read" button is handed to the navigator via setOptions, never rendered in this
-// tree, so a test grabs the latest headerRight the screen registered and calls its onPress directly.
-type HeaderButton = ReactElement<{ onPress: () => void }>;
-
-const lastHeaderButton = (): HeaderButton | undefined => {
-  const call = mockSetOptions.mock.calls.at(-1) as [{ headerRight?: () => HeaderButton | undefined }];
-  return call[0].headerRight?.();
-};
-
 beforeEach(() => {
   jest.mocked(api.get).mockReset();
   jest.mocked(api.post).mockReset();
   mockPush.mockReset();
-  mockSetOptions.mockReset();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
@@ -90,6 +77,18 @@ describe("InboxScreen", () => {
 
     expect(api.post).toHaveBeenCalledWith("/api/notifications/n1/read");
     expect(mockPush).toHaveBeenCalledWith("/board/ticket/t-1", { withAnchor: true });
+  });
+
+  test("an unread row's Mark read action, the swipe's alternative, marks it read without opening it", async () => {
+    mockInbox([ticketNotification, docNotification]);
+    jest.mocked(api.post).mockResolvedValue(undefined);
+    await renderScreen();
+    const row = await screen.findByRole("button", { name: /Write migrations/ });
+
+    await act(() => fireEvent(row, "accessibilityAction", { nativeEvent: { actionName: "markRead" } }));
+
+    expect(api.post).toHaveBeenCalledWith("/api/notifications/n1/read");
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   test("tapping an already-read row opens its subject without marking read again", async () => {
@@ -120,7 +119,7 @@ describe("InboxScreen", () => {
     mockInbox([]);
     await renderScreen();
 
-    expect(await screen.findByText("No notifications yet.")).toBeTruthy();
+    expect(await screen.findByText("Nothing needs you")).toBeTruthy();
   });
 
   test("mark all read marks only the selected workspace read", async () => {
@@ -129,8 +128,7 @@ describe("InboxScreen", () => {
     await renderScreen();
     await screen.findByText("Write migrations");
 
-    const headerButton = lastHeaderButton();
-    headerButton?.props.onPress();
+    await userEvent.setup().press(screen.getByRole("button", { name: "Mark all read" }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/notifications/read-all?workspace_id=ws-1"));
   });

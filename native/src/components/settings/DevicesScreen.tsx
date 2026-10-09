@@ -10,7 +10,7 @@ export const DevicesScreen = () => {
 
   return (
     <View className="flex-1 bg-background">
-      {isPending && <LoadingDisplay />}
+      {isPending && <LoadingDisplay message="Loading devices" />}
       {error && <ErrorDisplay error={error} />}
       {data && <DevicesFeed sessions={data.sessions} />}
     </View>

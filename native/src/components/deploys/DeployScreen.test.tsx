@@ -68,7 +68,7 @@ describe("DeployScreen", () => {
 
     expect(await screen.findByText("starting")).toBeTruthy();
     expect(screen.getByText("pulling image")).toBeTruthy();
-    expect(screen.getByText("running")).toBeTruthy();
+    expect(screen.getByText("Deploying")).toBeTruthy();
     expect(mockListProps.current).toMatchObject({ initialScrollAtEnd: true, alignItemsAtEnd: true, maintainScrollAtEnd: true });
   });
 
@@ -91,6 +91,6 @@ describe("DeployScreen", () => {
     lines = [];
     await renderScreen();
 
-    expect(await screen.findByText("Waiting for the runner to pick this up…")).toBeTruthy();
+    expect(await screen.findByText("Waiting for the runner to pick this up")).toBeTruthy();
   });
 });

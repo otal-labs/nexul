@@ -2,6 +2,9 @@ import { TextClassContext } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Platform, Pressable } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+
+import { ease, useReducedMotion } from '@/lib/motion';
 
 const buttonVariants = cva(
   cn(
@@ -14,36 +17,36 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: cn(
-          'bg-primary active:bg-primary/90 shadow-sm shadow-black/5',
-          Platform.select({ web: 'hover:bg-primary/90' })
+          'bg-brand active:bg-brand/85',
+          Platform.select({ web: 'hover:bg-brand/90' })
         ),
         destructive: cn(
-          'bg-destructive active:bg-destructive/90 shadow-sm shadow-black/5',
+          'bg-destructive-fill active:bg-destructive-fill/85',
           Platform.select({
             web: 'hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40',
           })
         ),
         outline: cn(
-          'border-border bg-background active:bg-accent dark:bg-input/30 dark:border-input dark:active:bg-input/50 border shadow-sm shadow-black/5',
+          'border-input bg-card/60 active:bg-accent border',
           Platform.select({
             web: 'hover:bg-accent dark:hover:bg-input/50',
           })
         ),
         secondary: cn(
-          'bg-secondary active:bg-secondary/80 shadow-sm shadow-black/5',
+          'bg-secondary active:bg-secondary/80',
           Platform.select({ web: 'hover:bg-secondary/80' })
         ),
         ghost: cn(
-          'active:bg-accent dark:active:bg-accent/50',
+          'active:bg-accent',
           Platform.select({ web: 'hover:bg-accent dark:hover:bg-accent/50' })
         ),
         link: '',
       },
       size: {
-        default: cn('h-10 px-4 py-2 sm:h-9', Platform.select({ web: 'has-[>svg]:px-3' })),
+        default: cn('h-12 px-5', Platform.select({ web: 'has-[>svg]:px-3' })),
         sm: cn('h-11 gap-1.5 rounded-md px-3', Platform.select({ web: 'has-[>svg]:px-2.5' })),
-        lg: cn('h-11 rounded-md px-6 sm:h-10', Platform.select({ web: 'has-[>svg]:px-4' })),
-        icon: 'h-10 w-10 sm:h-9 sm:w-9',
+        lg: cn('h-12 rounded-md px-6', Platform.select({ web: 'has-[>svg]:px-4' })),
+        icon: 'h-11 w-11',
       },
     },
     defaultVariants: {
@@ -55,14 +58,14 @@ const buttonVariants = cva(
 
 const buttonTextVariants = cva(
   cn(
-    'text-foreground text-sm font-medium',
+    'text-foreground text-[15px] font-medium',
     Platform.select({ web: 'pointer-events-none transition-colors' })
   ),
   {
     variants: {
       variant: {
-        default: 'text-primary-foreground',
-        destructive: 'text-white dark:text-primary-foreground',
+        default: 'text-brand-foreground font-semibold',
+        destructive: 'text-white font-semibold',
         outline: cn(
           'group-active:text-accent-foreground',
           Platform.select({ web: 'group-hover:text-accent-foreground' })
@@ -88,16 +91,29 @@ const buttonTextVariants = cva(
   }
 );
 
-type ButtonProps = React.ComponentProps<typeof Pressable> &
-  React.RefAttributes<typeof Pressable> &
-  VariantProps<typeof buttonVariants>;
+type ButtonProps = Omit<React.ComponentProps<typeof Pressable>, 'ref'> & VariantProps<typeof buttonVariants>;
 
-function Button({ className, variant, size, ...props }: ButtonProps) {
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+// A labelled button presses to 0.97 on the finger's touch and lets go over 150ms, as on the web; never under reduced motion.
+function Button({ className, variant, size, onPressIn, onPressOut, ...props }: ButtonProps) {
+  const reduced = useReducedMotion();
+  const pressed = useSharedValue(1);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: pressed.get() }] }));
   return (
     <TextClassContext.Provider value={buttonTextVariants({ variant, size })}>
-      <Pressable
+      <AnimatedPressable
         className={cn(props.disabled && 'opacity-50', buttonVariants({ variant, size }), className)}
         role="button"
+        style={style}
+        onPressIn={(e) => {
+          if (!reduced) pressed.set(withTiming(0.97, { duration: 100, easing: ease.out }));
+          onPressIn?.(e);
+        }}
+        onPressOut={(e) => {
+          pressed.set(withTiming(1, { duration: 150, easing: ease.out }));
+          onPressOut?.(e);
+        }}
         {...props}
       />
     </TextClassContext.Provider>

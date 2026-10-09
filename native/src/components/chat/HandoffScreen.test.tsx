@@ -60,7 +60,7 @@ test("a reply without the hand-off says it is no longer there", async () => {
   get.mockResolvedValue([reply()]);
   await renderHandoff();
 
-  expect(await screen.findByText("This hand-off is no longer on its reply.")).toBeTruthy();
+  expect(await screen.findByText("This hand-off is gone")).toBeTruthy();
 });
 
 test("the hand-off shows the helper's prompt, each step and its reply", async () => {
@@ -90,6 +90,6 @@ test("a running hand-off with no steps yet shows it is working", async () => {
   get.mockResolvedValue([reply([{ ...handoff, state: "running", reply: "", steps: [] }])]);
   await renderHandoff();
 
-  expect(await screen.findByText("Working…")).toBeTruthy();
+  expect(await screen.findByText("Working")).toBeTruthy();
   expect(screen.queryByText("No reply came back.")).toBeNull();
 });
