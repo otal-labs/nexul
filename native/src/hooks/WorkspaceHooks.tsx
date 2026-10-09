@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { api } from "@/api/client";
+import { referenceDataOptions } from "@/lib/queryClient";
 import { AREA_PERMISSION, type Area } from "@/models/Access";
 import { projectPermissions, type MyWorkspaceInfo, type Workspace } from "@/models/Workspace";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -12,6 +13,7 @@ export const useFetchWorkspaces = () =>
   useQuery({
     queryKey: [getWorkspacesKey],
     queryFn: () => api.get<Workspace[]>("/api/workspaces"),
+    ...referenceDataOptions,
   });
 
 // The selected workspace is where every tab's data belongs, since the app only shows one workspace at a time.
@@ -31,6 +33,7 @@ export const useFetchMyRole = () => {
     queryKey: [getMyRoleKey, workspaceId],
     queryFn: () => api.get<MyWorkspaceInfo>(`/api/workspaces/${workspaceId}/me`),
     enabled: !!workspaceId,
+    ...referenceDataOptions,
   });
 };
 

@@ -13,4 +13,7 @@ const shouldRetry = (failureCount: number, error: unknown) => {
   return failureCount < maxRetries;
 };
 
+// Reference data list rows read as they mount: only the socket, a foreground or a reconnect refetches it, never a mount.
+export const referenceDataOptions = { staleTime: Infinity, refetchOnWindowFocus: "always", refetchOnReconnect: "always" } as const;
+
 export const queryClient = new QueryClient({ defaultOptions: { queries: { retry: shouldRetry } } });

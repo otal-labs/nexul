@@ -1,9 +1,10 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react-native";
+import { QueryClient, QueryClientProvider, focusManager } from "@tanstack/react-query";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
 import { api } from "@/api/client";
-import { useEnsureWorkspaceSelected } from "@/hooks/WorkspaceHooks";
+import { usePersonLookup } from "@/hooks/PeopleHooks";
+import { useAreaAccess, useCurrentWorkspaceId, useEnsureWorkspaceSelected } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 jest.mock("@/api/client", () => ({
@@ -48,5 +49,54 @@ describe("useEnsureWorkspaceSelected", () => {
 
     await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces"));
     expect(useWorkspaceStore.getState().selectedWorkspaceId).toBe("ws-2");
+  });
+});
+
+// Chat rows, board cards and embeds read these as they mount, and a list mounts rows on every scroll.
+describe.each([
+  ["useAreaAccess", (): unknown => useAreaAccess(), "/api/workspaces/ws-1/me"],
+  ["usePersonLookup", (): unknown => usePersonLookup(useCurrentWorkspaceId()), "/api/workspaces/ws-1/people"],
+])("%s, as a list row reads it", (_name, useRowRead, leafPath) => {
+  // One client across mounts, as in the app, so rows share its cache.
+  const rows = () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    return async () => {
+      const row = await renderHook(useRowRead, { wrapper });
+      await waitFor(() => expect(api.get).toHaveBeenCalledWith(leafPath));
+      await waitFor(() => expect(client.isFetching()).toBe(0));
+      return row;
+    };
+  };
+
+  beforeEach(() => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    jest.mocked(api.get).mockImplementation((path: string) =>
+      Promise.resolve(path === "/api/workspaces" ? workspaces : { people: [], permissions: [] }),
+    );
+  });
+
+  test("a row mounting again reads the cache without a request", async () => {
+    const mountRow = rows();
+    await (await mountRow()).unmount();
+    const first = jest.mocked(api.get).mock.calls.length;
+
+    for (let i = 0; i < 5; i++) await (await mountRow()).unmount();
+
+    expect(jest.mocked(api.get).mock.calls.length).toBe(first);
+  });
+
+  test("returning to the foreground still refreshes it", async () => {
+    const row = await rows()();
+    const first = jest.mocked(api.get).mock.calls.length;
+
+    await act(async () => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+
+    await waitFor(() => expect(jest.mocked(api.get).mock.calls.length).toBeGreaterThan(first));
+    await row.unmount();
+    focusManager.setFocused(undefined);
   });
 });
