@@ -40,7 +40,7 @@ Each domain in the catalog has an area: `project`, `workspace` or `instance`.
 
 `GET /api/workspaces/{workspaceID}/me` tells a client whether the caller is on chosen projects and, if so, which projects with which actions.
 
-To copy a custom role into another workspace, click its clone button in **Configuration → Roles**. That takes `roles:clone` in this workspace and `roles:write` in the other. A clashing name gets a suffix, so `Editors` arrives as `Editors (copy)`. Over the API it is `POST /api/workspaces/{workspaceID}/roles/{roleID}/clone` with `{"workspace_id": "<target>"}`; over MCP, `role_update` with `clone_from_id`.
+To copy a custom role into another workspace, choose **Clone to workspace…** in its **…** menu in **Configuration → Roles**. That takes `roles:clone` in this workspace and `roles:write` in the other. A clashing name gets a suffix, so `Editors` arrives as `Editors (copy)`. Over the API it is `POST /api/workspaces/{workspaceID}/roles/{roleID}/clone` with `{"workspace_id": "<target>"}`; over MCP, `role_update` with `clone_from_id`.
 
 ## Integrations and outgoing webhooks
 
