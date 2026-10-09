@@ -1,0 +1,51 @@
+---
+import { getImage } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+const shots = import.meta.glob<{ default: ImageMetadata }>('../assets/home/*.webp', { eager: true });
+
+interface Crop {
+	name: string;
+	widths: number[];
+	sizes: string;
+}
+
+interface Props extends Crop {
+	alt: string;
+	// A tighter crop served below 768px, where the whole screen would shrink past reading.
+	narrow?: Crop;
+	priority?: boolean;
+}
+
+const { name, widths, sizes, alt, narrow, priority = false } = Astro.props;
+const shot = (file: string) => shots[`../assets/home/${file}.webp`].default;
+const quality = { avif: 55, webp: 72 } as const;
+
+const crops = [...(narrow ? [{ ...narrow, media: '(max-width: 767px)' }] : []), { name, widths, sizes, media: '' }];
+const sources = [];
+for (const crop of crops) {
+	for (const scheme of ['dark', 'light']) {
+		for (const format of ['avif', 'webp'] as const) {
+			const image = await getImage({ src: shot(`${crop.name}-${scheme}`), widths: crop.widths, format, quality: quality[format] });
+			const media = [crop.media, `(prefers-color-scheme: ${scheme})`].filter(Boolean).join(' and ');
+			sources.push({ srcset: image.srcSet.attribute, sizes: crop.sizes, type: `image/${format}`, media, base: crop.media || 'all', scheme });
+		}
+	}
+}
+const fallback = await getImage({ src: shot(`${name}-dark`), width: widths[1] ?? widths[0], format: 'webp', quality: quality.webp });
+const { width, height } = shot(`${name}-dark`);
+---
+
+<picture data-themed>
+	{sources.map((s) => <source srcset={s.srcset} sizes={s.sizes} type={s.type} media={s.media} data-base={s.base} data-scheme={s.scheme} />)}
+	<img
+		src={fallback.src}
+		width={width}
+		height={height}
+		alt={alt}
+		loading={priority ? 'eager' : 'lazy'}
+		decoding={priority ? 'sync' : 'async'}
+		fetchpriority={priority ? 'high' : 'auto'}
+		draggable="false"
+	/>
+</picture>

@@ -1275,3 +1275,275 @@ Settings save) apply to roles, plays, categories, repositories, exposures,
 secrets and the workspace, template and automation configuration cards. A
 Motion `layout` glide on a bounce-free spring was built first and lost to the
 shared glide only for being a second vocabulary for the same act.
+
+## Site: roadmap and changelog
+
+Decided 2026-10-09 without the owner in the loop, each built as live variants
+on the real pages with real release data, shot at 320 to 1440px in both
+schemes, and the motion recorded at 1x and 0.25x with frame strips.
+`website/src/styles/pages.css` holds the rules.
+
+Page hero. A microheader eyebrow, the headline in Fraunces (the app's display
+settings, 36px rising to 56px from 1100px), a muted lede whose links take the
+prose-link role (`--color-fd-primary`). The hero matches the width of the
+content under it, so both start on one edge.
+
+Roadmap.
+- Grouped by status, In progress, then Planned, then Shipped, each newest
+  first, under an Inter heading with its status dot and a mono count; a row of
+  the same three as jump links sits under the lede. Rejected: the one
+  interleaved list it replaces (nothing said what was next).
+- Items are hairline rows: the name in 16px Inter medium (a feature name is
+  not technical data, so not mono), the summary muted under it at 62ch.
+  Shipped runs in two columns from 1024px, about 1700px shorter at 1440.
+  Rejected: one column at every width (5900px tall at 1440) and cards for In
+  progress and Planned (a box per item where rows already separate, and two
+  vocabularies on one page).
+- Status: `warning` dot for in progress, `success` for shipped, a hollow muted
+  ring for planned, the deploy steps' pending mark. No accent anywhere on it.
+
+Changelog.
+- One row per release: a leading chevron, the version in 15px mono, the date
+  and the change count in 12px mono, the newest marked Latest and open; the
+  rest are closed `<details>`. From 768px the version holds a 9.5rem gutter
+  and the changes align under the date. Below it, the date and count drop to a
+  second line. Rejected: each release as a card (a box per row, against the
+  row rule) and the full open list it replaces (one long wall).
+- Changes keep the pull request titles; Dependabot's bumps sit last under a
+  "Dependency updates" microheader, muted. Grouping by verb was rejected: only
+  5 of 469 titles start with Fix, so a Fixes group would have been mostly
+  wrong.
+- Each release is a permalink (`/changelog/#v0.3.31-beta`), from its Link in
+  the meta row; landing on one opens it.
+
+Motion.
+- A release opening: the disclosure (the box snaps open, the content fades in
+  as it settles 4px over 200ms `--ease-out`; closing, it fades out in 120ms and
+  the box shuts after), built on `::details-content` with `content-visibility`
+  as a discrete transition; a browser without it snaps. Chevron turns 90° in
+  150ms `--ease-standard`. Rejected: a snap (only the chevron said anything
+  opened) and a height animation with `interpolate-size` (the rows below glide,
+  but every frame re-lays the page: 89 layouts across six toggles of the
+  33-change release under a 4x CPU throttle against 7 for the disclosure, 2.5
+  times the layout time, growing with the page; the app's rule is that a box
+  changing size snaps). A grid-rows height animation was not built: it costs
+  the same layout per frame.
+- A jump to a roadmap group or a release lands at once and its heading row
+  takes a wash, `foreground` at 9% fading out over 900ms `--ease-out`.
+  Rejected: native smooth scrolling (about 800ms to travel 1850px at 375px,
+  its curve out of our hands, and it delays reading on every keyboard jump)
+  and smooth scrolling plus the wash (slower still).
+- Status markers stay still. Rejected: the `status-pulse` loop on the in
+  progress dots (it says live, and a roadmap is not live; ambient motion on a
+  reading page) and a one-time ring on load (decoration with nothing behind
+  it).
+- Reduced motion: the release content fades in 150ms with no travel, and the
+  wash shortens to 400ms.
+
+## The public site: home page
+
+Decided 2026-10-09 without the owner in the loop, each built as live variants
+on the built page and judged from screenshots at 320 to 1440px in both
+schemes, frame strips and 1x and 0.25x recordings. The home page
+(`website/src/pages/index.astro`, `website/src/styles/home.css`) reads the
+site's tokens and adds none.
+
+Showing the product.
+- Real 2x screenshots of the seeded example workspace (Northwind, Atlas
+  Platform), one per scheme, served by `ProductShot.astro` through Astro's
+  image pipeline as AVIF and WebP with width and height set; the page's
+  `.light` or `.dark` class picks the scheme, so the header toggle swaps them.
+  The hero is the board; the four steps are the doc, the ticket, the deploy
+  and a channel's bot cards, each cropped to 640x480 so they show close to
+  1:1 on a desktop. People without a photo show their gradient avatar: the
+  capture blocks avatar photos, so no real face or name ships.
+- The hero shot sits on a field panel (`surface-2` with the light field's
+  three glows, the panel ring) and bleeds off its right and bottom edges, the
+  screenshot's top-left corner rounded at 9px. Below 768px it switches to a
+  480x600 crop of the board's top-left so cards stay legible.
+- Weight: the hero is about 18KB on a phone and 32KB on a 1x desktop; the four
+  lazy step shots add about 60KB on a 1x desktop and 100KB on a 2x phone.
+- Rejected: a muted loop of the app (board, palette, ticket; 85KB at 1x and
+  soft on a retina screen, about three times that at 2x, unreadable at 375px,
+  motion beside the headline, and the reduced-motion still is the same
+  screenshot anyway) and the old three-pane illustration re-skinned in the
+  tokens (no bytes and crisp, but it drew a layout the app does not have, and
+  at 375px it stacked into a 1300px column). Frames rejected: the shot
+  bare on the page (in dark mode its canvas met the page's and the frame
+  vanished) and inset on all four sides (smallest text, and read as a panel
+  inside a panel).
+
+Type and accent. The headline is Fraunces through `.type-display`: 40px at
+320, 44 from 414, 56 from 768, 68 from 1024 and 76 from 1280; section titles
+are Fraunces at 30, 36 and 40px. The ember is the copy button, the one
+primary action on the page; the platform switcher is the segmented control
+(well and raised thumb), links stay ink, and status keeps its hues (the
+connection and beta dots).
+
+Install command. One line always, the copy button inline. The command is mono
+12px under 414px, 12.5px to 768 and 13px above; when it is wider than its box
+it scrolls sideways with no scrollbar and its cut edge fades over 32px until
+the end is reached. Rejected: shrinking it to fit (about 8px at 320, below
+reading size) and wrapping it (breaks the one line people select and paste).
+
+Motion.
+- Hero arrival: the text never moves; the board shot waits until it has
+  decoded, then rises 12px and fades in over 400ms `--ease-out`, once per
+  session (a 150ms fade under reduced motion). Rejected: the page entrance
+  on the text (headline blank for the first 30 to 90ms, so reading waited),
+  no motion (the image popped in whenever it finished decoding, sometimes
+  after the text had been read) and a clip-path wipe (a curtain with no
+  origin, finished within 100ms on the ease-out so it read as a flash). It
+  cost about 0.1s of lab LCP on a throttled phone.
+- Platform switch: the app's sliding highlight for the thumb (200ms
+  `--ease-spring`) and its tab swap for the command (6px from the picked
+  tab's side, 160ms `--ease-out`); a key switch moves at once.
+- Copy: the app's icon swap (the copy icon shrinks to 0.6 and blurs out over
+  150ms as the check pops on `--ease-spring-pop`), held 1.4s, announced as
+  Copied; instant from a key, a 150ms fade under reduced motion.
+- No scroll-triggered reveals, no parallax: the step shots are lazy images
+  that simply appear.
+
+## Public site (draft, folded in at unification)
+
+The site's shared layer: tokens, fonts, the header and phone menu, the docs
+pages, the 404 and their motion. Decided 2026-10-09 without the owner in the
+loop, each built as live variants on the real pages, shot at 320 to 1440px in
+both schemes, and the motion judged from frame strips at 0.1x and recordings
+at 1x and 0.25x.
+
+Tokens. `website/src/styles/tokens.css` holds the app's values under the app's
+names (`--background`, `--surface-2`, `--card`, `--popover`, `--foreground`,
+`--muted-foreground`, `--accent`, `--brand`, `--brand-foreground`, `--border`,
+`--input`, `--focus`, the status hues, the panel and field values, the
+shadows, `--shape-*` and the curves) and maps Fumadocs' `--color-fd-*` onto
+them: `fd-primary` is the ink, as the app's `primary`; `fd-ring` is `focus`;
+`fd-overlay` is the dialog scrim (the canvas at 60%). Colours are written once
+with `light-dark()`; shadows, which change geometry between modes, are
+restated for light. The scheme follows the system until the header's toggle
+sets `.light` or `.dark` on `<html>`, which a head script restores before
+first paint. Selection is `brand` at 32%, as in the app. The ember holds the
+app's roles here too: the primary action (Get started), the active nav marker
+(header and docs sidebar), selection, and the link underline.
+
+Fraunces. Docs titles, the 404 and the landing headlines use `.type-display`
+(the app's settings). A docs title is 28px on a phone and 32px from 768px.
+Rejected: 28px everywhere (small against the 18px lede under it) and 40px (a
+showcase size on a page people read in sequence). The face ships as one file,
+`fraunces-display-latin.woff2`: the Latin build with weight 560, SOFT 50 and
+WONK 1 pinned and optical sizing kept, 34KB against the package's 121KB, so it
+renders exactly as the app's settings do. Mobile Lighthouse on the built home
+page, three serial runs each, median: the full file preloaded scored 94 with
+LCP 3.08s; the full file not preloaded 94, LCP 2.93s, FCP 1.95s and CLS
+0.035 from the swap; the full file with `font-display: optional` 93, LCP
+3.08s; no Fraunces at all 98, LCP 2.25s; the pinned file not preloaded 97,
+LCP 2.40s, CLS 0.035; the pinned file preloaded with `swap` 98, LCP 2.40s,
+FCP 1.20s, CLS 0. The pinned file, preloaded, is the pick: the same score as
+no display face, and no layout shift. Its cost: any weight but 560 renders at
+560, which the type rule already forbids.
+
+Reading surface. Docs text sits on the canvas with no panel and no sheet. The
+light field shows only from 1280px, at half strength and with its warm and
+cool glows only, where they fall beside the reading column (behind the
+sidebar and the on-this-page rail). Rejected: the field at every width (at
+375px its blue and pink glows sat behind body text), the app's doc sheet
+behind the article (narrowed the phone measure by 16px a side, and put the
+console code blocks in a box inside a box) and a frosted panel for the whole
+page (the panel stopped at the rail and doubled the edges on a page that is
+all reading).
+
+Links. Prose links are ink with a 1px `brand` underline 3px below, 2px on
+hover. Rejected: `brand` text, as the app's prose links (4.3:1 on the light
+canvas, under the 4.5:1 body text needs; it passes only on the app's white
+sheet) and a 2px underline at rest (heavy in a paragraph with several links).
+
+Header. One header on every page: the wordmark, then from 768px Docs,
+Roadmap, Changelog and GitHub, docs search (an icon below 1024px, the field
+from there), the theme toggle and Get started in `brand`. The current page
+is ink with a 2px `brand` edge along the header's foot. Rejected: the
+section nav's `bg-accent` block (read as a button beside Get started) and ink
+text alone (the current page barely differed from the rest). The header is
+the canvas colour with a hairline foot, not frosted: text scrolls under it all
+the time, and nothing may move behind a blur.
+
+Phone menu. Below 768px every page shows the wordmark, search on docs pages,
+the theme toggle and a menu button. The menu is one sheet everywhere: the
+app's sheet, frosted, 8px from the right edge at 12px, up to 320px wide, over
+the dialog scrim. On the landing pages it is a `<dialog>` holding Docs,
+Roadmap, Changelog, GitHub and Get started, as tall as its links; on docs
+pages it is the sidebar drawer, the page tree first and the same links at its
+foot. Rows are 44px, the current one `bg-accent` with the `brand` edge; its
+close mark is an X on both.
+
+Theme toggle. A 44px ghost icon button showing the mode you are in (moon in
+dark, sun in light). The palette lands in one frame with every colour
+transition held, as in the app.
+
+Docs sidebar. The app sidebar's grammar on the canvas: mono microheader
+groups, 14px muted rows with the `bg-accent/60` hover that lands at once and
+lets go over 150ms, the open page `bg-accent` with a 2px `brand` edge 8px in
+from its top and bottom.
+
+Code. The app's console in both modes: `#0b0b0b`, a `#232323` hairline, 9px,
+13px mono at 1.65, emphasis from a grey ramp (keywords `#f5f5f5`, strings
+`#a3a3a3`, comments and punctuation `#737373`, comments italic). Rejected:
+ember keywords (the accent on something that is not an action; YAML keys read
+as links) and the app's editor hues (green strings read as success and indigo
+as a second accent on a reading page). Astro's own highlighter is off so the
+docs highlighter sees each block's language; before, every block rendered as
+plain text.
+
+Tables, inline code, cards. Tables are the app's ruled data: a hairline under
+each row, a muted 13px header over a stronger rule, tabular figures. Inline
+code is mono at 0.85em on `muted` with a hairline. The docs home cards are
+the app's card (`card`, the panel ring and lit top edge, 9px) under mono
+microheader groups. The docs content has no callouts or blockquotes today; a
+blockquote takes the app's 2px rule in `foreground` at 25%.
+
+Copy page. A quiet outline control (`border` hairline, muted text, 7px) beside
+the title.
+
+Search. The app's command palette surface (the popover glass at 12px over the
+dialog scrim), 40rem wide, hung at 14% of the viewport from 768px.
+
+404. The app's error page: the light field at half strength fading out
+toward the footer, the orbit mark around a compass, "Page not found" in
+Fraunces at 32px (40px from 768px), one muted line, then Open the docs in
+`brand` and Home as an outline button.
+
+Motion.
+- Phone menu: the app's sheet clock, sliding in from its edge 300ms on
+  `--ease-drawer` and out in 220ms `--ease-out`, the scrim fading on the same
+  clock; instant when opened or closed from a key. The dialog runs it as
+  transitions with `@starting-style`, so a menu reopened mid-close turns back;
+  the docs drawer runs the same numbers as keyframes, which its library waits
+  for before it unmounts. Rejected: the menus' pop (0.97 and 4px from the top
+  right, 150ms; it read as a dropdown, and a 0.97 scale on the full-height
+  docs drawer read as a zoom) and a fade alone (nothing said where the sheet
+  came from).
+- Theme toggle: the page in one frame; the icon swaps as the app's copy
+  button does (the old icon shrinks to 0.6 and blurs 2px out over 150ms as
+  the new one pops in on `--ease-spring-pop`, 350ms). Rejected: an instant
+  icon (nothing confirmed the click on a page that changed all at once) and
+  the library's view-transition crossfade (the whole page passed through a
+  grey wash for 250ms, and the app measured its capture freezing 180ms).
+- Docs sidebar active row: still. Each docs page is a full page load, so the
+  app's sliding highlight has no element to carry. Rejected: a cross-document
+  view transition sliding the ember edge (200ms `--ease-spring`; the edge
+  travelled while its row's block landed at once, so the two split, and a
+  snapshot covered the page while it ran) and the edge growing in on arrival
+  (replayed on every page load, decoration on the most frequent act in the
+  docs).
+- Search: from a pointer, the app's dialog clock (rising 6px from 0.97 over
+  220ms `--ease-out`, out in 150ms to 0.98, the scrim on the same clock);
+  from a key (Ctrl K, /) it shows and goes in the same frame. Rejected: the
+  library's default (from 1.06 over 300ms: the box bloomed toward the reader,
+  half transparent over a page not yet dimmed) and no motion from a pointer
+  (the palette popped over an undimmed page).
+- Reduced motion: the menu, drawer and search fade over 150ms in place;
+  everything else the docs move lands at its end state; the theme icon swap
+  keeps its fade without the scale and blur; the 404's orbit becomes one
+  150ms fade.
+- Under a 4x CPU throttle at 375px the landing menu held 16.7ms frames; the
+  docs drawer and search hit a 33ms p95 from mounting their React trees in the
+  first frame, not from the slide.

@@ -4,6 +4,7 @@ import { fetchReleases, parseNotes, toRelease } from '../src/lib/releases';
 const body = `## What's Changed
 * Cut a beta once a day when master has moved by @Onik97 in https://github.com/otal-labs/nexul/pull/65
 * Explain what "by @someone in" means by @Onik97 in https://github.com/otal-labs/nexul/pull/66
+* Bump vitest from 5.0.2 to 5.0.3 in /sdk by @dependabot[bot] in https://github.com/otal-labs/nexul/pull/67
 
 ## New Contributors
 * @someone made their first contribution in https://github.com/otal-labs/nexul/pull/64
@@ -11,11 +12,12 @@ const body = `## What's Changed
 **Full Changelog**: https://github.com/otal-labs/nexul/compare/v0.2.0-beta.2...v0.2.0-beta.3
 `;
 
-test('parses pull request lines and the compare link', () => {
+test('parses pull request lines, marks dependency bumps, and finds the compare link', () => {
 	expect(parseNotes(body)).toEqual({
 		changes: [
-			{ title: 'Cut a beta once a day when master has moved', number: 65, url: 'https://github.com/otal-labs/nexul/pull/65' },
-			{ title: 'Explain what "by @someone in" means', number: 66, url: 'https://github.com/otal-labs/nexul/pull/66' },
+			{ title: 'Cut a beta once a day when master has moved', number: 65, url: 'https://github.com/otal-labs/nexul/pull/65', dependency: false },
+			{ title: 'Explain what "by @someone in" means', number: 66, url: 'https://github.com/otal-labs/nexul/pull/66', dependency: false },
+			{ title: 'Bump vitest from 5.0.2 to 5.0.3 in /sdk', number: 67, url: 'https://github.com/otal-labs/nexul/pull/67', dependency: true },
 		],
 		compare: { url: 'https://github.com/otal-labs/nexul/compare/v0.2.0-beta.2...v0.2.0-beta.3', previousTag: 'v0.2.0-beta.2' },
 	});
@@ -27,7 +29,7 @@ test('an empty or hand-written body yields no changes and no compare link', () =
 });
 
 test('a CRLF body parses the same as LF', () => {
-	expect(parseNotes(body.replaceAll('\n', '\r\n')).changes).toHaveLength(2);
+	expect(parseNotes(body.replaceAll('\n', '\r\n')).changes).toHaveLength(3);
 });
 
 test('maps the API shape and keeps only a commit sha as the sha', () => {
@@ -54,6 +56,21 @@ test('lists releases newest first by publish time, not in GitHub\'s tag-text ord
 		])) as unknown as typeof fetch;
 	try {
 		expect((await fetchReleases('otal-labs/nexul')).map((r) => r.tag)).toEqual(['v0.2.0-beta.11', 'v0.2.0-beta.10', 'v0.2.0-beta.9']);
+	} finally {
+		globalThis.fetch = original;
+	}
+});
+
+test('follows the Link header past the first page of releases', async () => {
+	const release = (tag: string) => ({ tag_name: tag, html_url: '', published_at: '2026-09-28T10:00:00Z', draft: false, target_commitish: 'master', body: '' });
+	const second = 'https://api.github.com/repositories/1/releases?per_page=100&page=2';
+	const original = globalThis.fetch;
+	globalThis.fetch = (async (url: string) =>
+		url === second
+			? Response.json([release('v0.1.0')])
+			: Response.json([release('v0.2.0')], { headers: { link: `<${second}>; rel="next", <${second}>; rel="last"` } })) as unknown as typeof fetch;
+	try {
+		expect((await fetchReleases('otal-labs/nexul')).map((r) => r.tag).sort()).toEqual(['v0.1.0', 'v0.2.0']);
 	} finally {
 		globalThis.fetch = original;
 	}

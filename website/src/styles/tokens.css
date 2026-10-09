@@ -1,85 +1,130 @@
-/* Mono Console tokens (practices/design-language.md) as Fumadocs' color variables, shared by every page so the header reads the same everywhere. */
+/* The web app's tokens (web/src/index.css, practices/design-language.md) for every page of the site: the app's names
+   first, then Fumadocs' color variables mapped onto them. light-dark() picks the value from color-scheme, which the
+   system preference sets and the header's theme toggle overrides with .light or .dark on <html>. */
 
 :root {
 	color-scheme: dark;
-	--color-fd-background: #050505;
-	--color-fd-foreground: #f5f5f5;
-	--color-fd-surface: #0a0a0a;
-	--color-fd-card: #111111;
-	--color-fd-card-foreground: #f5f5f5;
-	--color-fd-popover: #161616;
-	--color-fd-popover-foreground: #f5f5f5;
-	--color-fd-muted: #161616;
-	--color-fd-muted-foreground: #9a9a9a;
-	--color-fd-secondary: #1a1a1a;
-	--color-fd-secondary-foreground: #d4d4d4;
-	--color-fd-accent: #202020;
-	--color-fd-accent-foreground: #f5f5f5;
-	--color-fd-primary: #f5f5f5;
-	--color-fd-primary-foreground: #0a0a0a;
-	--color-fd-border: #262626;
-	--color-fd-ring: #f5f5f5;
-	--color-fd-overlay: rgb(0 0 0 / 0.6);
-	--color-fd-success: #4ade80;
-	--color-fd-warning: #fbbf24;
-	--color-fd-idea: #fbbf24;
-	--color-fd-info: #5cc8f5;
-	--color-fd-error: #f97066;
 }
 
 @media (prefers-color-scheme: light) {
 	:root:not(.dark) {
 		color-scheme: light;
-		--color-fd-background: #ececec;
-		--color-fd-foreground: #0a0a0a;
-		--color-fd-surface: #f1f1f1;
-		--color-fd-card: #f6f6f6;
-		--color-fd-card-foreground: #0a0a0a;
-		--color-fd-popover: #fcfcfc;
-		--color-fd-popover-foreground: #0a0a0a;
-		--color-fd-muted: #e9e9e9;
-		--color-fd-muted-foreground: #656565;
-		--color-fd-secondary: #e5e5e5;
-		--color-fd-secondary-foreground: #2b2b2b;
-		--color-fd-accent: #dfdfdf;
-		--color-fd-accent-foreground: #0a0a0a;
-		--color-fd-primary: #0a0a0a;
-		--color-fd-primary-foreground: #f5f5f5;
-		--color-fd-border: #d9d9d9;
-		--color-fd-ring: #0a0a0a;
-		--color-fd-overlay: rgb(0 0 0 / 0.2);
-		--color-fd-success: #15803d;
-		--color-fd-warning: #b45309;
-		--color-fd-idea: #b45309;
-		--color-fd-info: #0369a1;
-		--color-fd-error: #dc2626;
 	}
 }
 
-/* The docs theme toggle sets .light on <html>; same values as the media query above. */
 :root.light {
 	color-scheme: light;
-	--color-fd-background: #ececec;
-	--color-fd-foreground: #0a0a0a;
-	--color-fd-surface: #f1f1f1;
-	--color-fd-card: #f6f6f6;
-	--color-fd-card-foreground: #0a0a0a;
-	--color-fd-popover: #fcfcfc;
-	--color-fd-popover-foreground: #0a0a0a;
-	--color-fd-muted: #e9e9e9;
-	--color-fd-muted-foreground: #656565;
-	--color-fd-secondary: #e5e5e5;
-	--color-fd-secondary-foreground: #2b2b2b;
-	--color-fd-accent: #dfdfdf;
-	--color-fd-accent-foreground: #0a0a0a;
-	--color-fd-primary: #0a0a0a;
-	--color-fd-primary-foreground: #f5f5f5;
-	--color-fd-border: #d9d9d9;
-	--color-fd-ring: #0a0a0a;
-	--color-fd-overlay: rgb(0 0 0 / 0.2);
-	--color-fd-success: #15803d;
-	--color-fd-warning: #b45309;
-	--color-fd-idea: #b45309;
-	--color-fd-info: #0369a1;
-	--color-fd-error: #dc2626;
+}
+
+:root {
+	--font-sans-stack: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+	--font-mono-stack: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+	--font-display-stack: 'Fraunces Variable', ui-serif, Georgia, serif;
+
+	--shape-sm: 0.25rem;
+	--shape-md: 0.4375rem;
+	--shape-lg: 0.5625rem;
+	--shape-xl: 0.75rem;
+
+	--ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-spring: linear(0, 0.079, 0.236, 0.403, 0.551, 0.671, 0.764, 0.833, 0.883, 0.919, 0.944, 0.962, 0.974, 0.983, 0.988, 0.992, 0.995, 0.997, 1);
+	--ease-spring-pop: linear(0, 0.1, 0.303, 0.515, 0.693, 0.826, 0.915, 0.969, 0.998, 1.011, 1.015, 1.014, 1.011, 1.008, 1.005, 1.003, 1.002, 1.001, 1);
+	--ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+	/* canvas < surface-2 < panel < card < popover */
+	--background: light-dark(oklch(0.95 0.004 265), oklch(0.13 0.005 265));
+	--surface-2: light-dark(oklch(0.965 0.004 265), oklch(0.155 0.005 265));
+	--card: light-dark(oklch(1 0 0), oklch(0.21 0.005 265));
+	--popover: light-dark(oklch(1 0 0), oklch(0.225 0.006 265));
+	--foreground: light-dark(oklch(0.2 0.01 265), oklch(0.97 0.003 265));
+	--secondary: light-dark(oklch(0.93 0.004 265), oklch(0.25 0.005 265));
+	--secondary-foreground: light-dark(oklch(0.3 0.01 265), oklch(0.88 0.005 265));
+	--muted: light-dark(oklch(0.945 0.004 265), oklch(0.24 0.005 265));
+	--muted-foreground: light-dark(oklch(0.48 0.01 265), oklch(0.71 0.01 265));
+	--accent: light-dark(oklch(0.2 0.01 265 / 0.06), oklch(1 0 0 / 0.07));
+	--primary: var(--foreground);
+	--primary-foreground: light-dark(oklch(0.99 0 0), oklch(0.17 0.005 265));
+	--brand: light-dark(oklch(0.565 0.19 35), oklch(0.68 0.2 35));
+	--brand-foreground: light-dark(oklch(1 0 0), oklch(0.16 0.03 35));
+
+	--success: light-dark(#15803d, #4ade80);
+	--warning: light-dark(#b45309, #fbbf24);
+	--info: light-dark(#0369a1, #5cc8f5);
+	--merged: light-dark(#8250df, #a371f7);
+	--destructive: light-dark(#dc2626, #f97066);
+
+	--border: light-dark(oklch(0.2 0.01 265 / 0.1), oklch(1 0 0 / 0.08));
+	--input: light-dark(oklch(0.2 0.01 265 / 0.16), oklch(1 0 0 / 0.12));
+	--focus: color-mix(in oklab, var(--foreground) 80%, transparent);
+
+	--panel: light-dark(oklch(1 0 0), color-mix(in oklab, oklch(0.21 0.005 265) 60%, oklch(0.13 0.005 265)));
+	--panel-opacity: 85%;
+	--panel-ring: light-dark(oklch(0.2 0.01 265 / 0.08), oklch(1 0 0 / 0.07));
+	--panel-highlight: light-dark(oklch(1 0 0 / 0.9), oklch(1 0 0 / 0.05));
+
+	--field-warm: light-dark(color-mix(in oklab, oklch(0.565 0.19 35) 30%, transparent), color-mix(in oklab, oklch(0.68 0.2 35) 34%, transparent));
+	--field-pink: light-dark(oklch(0.75 0.14 350 / 0.2), oklch(0.6 0.17 350 / 0.12));
+	--field-cool: light-dark(oklch(0.72 0.12 250 / 0.3), oklch(0.55 0.16 255 / 0.3));
+
+	--shadow-card: 0 1px 2px oklch(0 0 0 / 0.3);
+	--shadow-elevated: 0 4px 8px oklch(0 0 0 / 0.4), 0 16px 36px oklch(0 0 0 / 0.45);
+	--shadow-overlay: 0 24px 64px oklch(0 0 0 / 0.6);
+	--panel-shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 16px 40px -12px oklch(0 0 0 / 0.6);
+
+	/* Fumadocs reads these. primary is the strong ink, as in the app; the ember is brand and only where a rule names it. */
+	--color-fd-background: var(--background);
+	--color-fd-foreground: var(--foreground);
+	--color-fd-surface: var(--surface-2);
+	--color-fd-card: var(--card);
+	--color-fd-card-foreground: var(--foreground);
+	--color-fd-popover: var(--popover);
+	--color-fd-popover-foreground: var(--foreground);
+	--color-fd-muted: var(--muted);
+	--color-fd-muted-foreground: var(--muted-foreground);
+	--color-fd-secondary: var(--secondary);
+	--color-fd-secondary-foreground: var(--secondary-foreground);
+	--color-fd-accent: var(--accent);
+	--color-fd-accent-foreground: var(--foreground);
+	--color-fd-primary: var(--primary);
+	--color-fd-primary-foreground: var(--primary-foreground);
+	--color-fd-border: var(--border);
+	--color-fd-ring: var(--focus);
+	--color-fd-overlay: color-mix(in oklab, var(--background) 60%, transparent);
+	--color-fd-success: var(--success);
+	--color-fd-warning: var(--warning);
+	--color-fd-idea: var(--warning);
+	--color-fd-info: var(--info);
+	--color-fd-error: var(--destructive);
+}
+
+/* Shadows differ in geometry as well as colour, so light mode restates them. */
+@media (prefers-color-scheme: light) {
+	:root:not(.dark) {
+		--shadow-card: 0 1px 2px oklch(0.2 0.02 265 / 0.06);
+		--shadow-elevated: 0 2px 4px oklch(0.2 0.02 265 / 0.08), 0 12px 28px oklch(0.2 0.02 265 / 0.12);
+		--shadow-overlay: 0 20px 56px oklch(0.2 0.02 265 / 0.22);
+		--panel-shadow: 0 1px 2px oklch(0.2 0.02 265 / 0.05), 0 12px 32px -12px oklch(0.2 0.02 265 / 0.18);
+	}
+}
+
+:root.light {
+	--shadow-card: 0 1px 2px oklch(0.2 0.02 265 / 0.06);
+	--shadow-elevated: 0 2px 4px oklch(0.2 0.02 265 / 0.08), 0 12px 28px oklch(0.2 0.02 265 / 0.12);
+	--shadow-overlay: 0 20px 56px oklch(0.2 0.02 265 / 0.22);
+	--panel-shadow: 0 1px 2px oklch(0.2 0.02 265 / 0.05), 0 12px 32px -12px oklch(0.2 0.02 265 / 0.18);
+}
+
+::selection {
+	background: color-mix(in oklab, var(--brand) 32%, transparent);
+}
+
+/* The display face, as the app's type-display: soft terminals and the irregular alternates, custom axes with no property. */
+.type-display {
+	font-family: var(--font-display-stack);
+	font-weight: 560;
+	font-optical-sizing: auto;
+	font-variation-settings: 'SOFT' 50, 'WONK' 1;
+	letter-spacing: -0.025em;
+	line-height: 1.12;
 }

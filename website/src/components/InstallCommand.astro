@@ -25,47 +25,58 @@ const { command, platform } = Astro.props;
 		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 4px;
 		min-width: 0;
-		min-height: 54px;
-		padding: 4px 6px 4px 16px;
-		border: 1px solid var(--page-border);
-		border-radius: 6px;
-		background: var(--page-card);
+		padding: 4px 4px 4px 14px;
+		border-radius: var(--shape-lg);
+		background: var(--card);
+		box-shadow: inset 0 1px 0 0 var(--panel-highlight), 0 0 0 1px var(--panel-ring), var(--shadow-card);
 	}
+	/* One line always; a command wider than its box scrolls, with its cut edge faded until the end is reached. */
 	pre {
 		flex: 1;
 		min-width: 0;
 		margin: 0;
-		padding-block: 8px;
+		padding-block: 10px;
 		overflow-x: auto;
-		scrollbar-width: thin;
-		font: 13px/24px var(--page-mono);
+		scrollbar-width: none;
+		font: 12px/24px var(--font-mono-stack);
 		white-space: pre;
 	}
-	pre:focus-visible { outline: 2px solid var(--page-fg); outline-offset: 2px; }
+	pre::-webkit-scrollbar { display: none; }
+	pre[data-overflow]:not([data-at-end]) { mask-image: linear-gradient(to left, transparent, #000 32px); }
+	pre:focus-visible { outline: none; }
+	.cmd:has(pre:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
 	button {
+		position: relative;
 		display: grid;
 		place-items: center;
-		flex: 0 0 44px;
-		width: 44px;
-		height: 44px;
+		flex: 0 0 40px;
+		width: 40px;
+		height: 40px;
 		padding: 0;
 		border: 0;
-		border-radius: 4px;
-		background: transparent;
-		color: var(--page-muted);
+		border-radius: var(--shape-md);
+		background: var(--brand);
+		color: var(--brand-foreground);
 		cursor: pointer;
 		touch-action: manipulation;
+		transition: background-color 120ms var(--ease-standard);
 	}
+	button::after { content: ''; position: absolute; inset: -2px; }
 	button:disabled { opacity: .4; cursor: default; }
-	button[data-copied] { color: var(--page-fg); }
 	@media (hover: hover) and (pointer: fine) {
-		button:not(:disabled):hover { color: var(--page-fg); background: var(--page-popover); }
+		button:not(:disabled):hover { background: color-mix(in oklab, var(--brand) 88%, var(--foreground)); }
 	}
-	button:focus-visible { outline: 2px solid var(--page-fg); outline-offset: 1px; }
-	.icon-done, button[data-copied] .icon-copy { display: none; }
-	button[data-copied] .icon-done { display: block; }
+	button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+	button svg { grid-area: 1 / 1; transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out), filter 150ms var(--ease-out); }
+	.icon-done { opacity: 0; transform: scale(0.6); filter: blur(2px); }
+	button[data-copied] .icon-copy { opacity: 0; transform: scale(0.6); filter: blur(2px); }
+	button[data-copied] .icon-done { opacity: 1; transform: none; filter: none; transition: opacity 150ms var(--ease-out), transform 350ms var(--ease-spring-pop), filter 150ms var(--ease-out); }
+	:root[data-input='key'] button svg { transition: none; }
+	@media (prefers-reduced-motion: reduce) {
+		button svg, button[data-copied] svg { transform: none; filter: none; transition: opacity 150ms var(--ease-standard) !important; }
+	}
 	.copy-status {
 		position: absolute;
 		width: 1px;
@@ -75,20 +86,26 @@ const { command, platform } = Astro.props;
 		white-space: nowrap;
 	}
 	button[data-copy-failed] + .copy-status {
-		top: calc(100% + 4px);
+		top: calc(100% + 6px);
 		right: 0;
 		z-index: 2;
 		width: auto;
 		height: auto;
 		max-width: 100%;
 		padding: 8px 12px;
-		border: 1px solid var(--page-border);
-		border-radius: 6px;
-		background: var(--page-popover);
-		color: var(--page-fg);
+		border-radius: var(--shape-lg);
+		background: var(--popover);
+		box-shadow: 0 0 0 1px var(--panel-ring), var(--shadow-elevated);
+		color: var(--foreground);
 		font-size: 12px;
 		clip-path: none;
 		white-space: normal;
+	}
+	@media (min-width: 414px) {
+		pre { font-size: 12.5px; }
+	}
+	@media (min-width: 768px) {
+		pre { font-size: 13px; }
 	}
 </style>
 
@@ -96,6 +113,17 @@ const { command, platform } = Astro.props;
 	const copyButtons = document.querySelectorAll<HTMLButtonElement>('[data-copy-command]');
 	const resetTimers = new WeakMap<HTMLButtonElement, number>();
 	const copyAttempts = new WeakMap<HTMLButtonElement, number>();
+
+	const commands = document.querySelectorAll<HTMLElement>('.cmd pre');
+	const measure = (pre: HTMLElement) => {
+		pre.toggleAttribute('data-overflow', pre.scrollWidth > pre.clientWidth + 1);
+		pre.toggleAttribute('data-at-end', pre.scrollLeft + pre.clientWidth >= pre.scrollWidth - 1);
+	};
+	const resized = new ResizeObserver((entries) => entries.forEach((entry) => measure(entry.target as HTMLElement)));
+	for (const pre of commands) {
+		resized.observe(pre);
+		pre.addEventListener('scroll', () => measure(pre), { passive: true });
+	}
 
 	for (const button of copyButtons) {
 		button.disabled = false;
@@ -121,7 +149,7 @@ const { command, platform } = Astro.props;
 			button.dataset.copied = '';
 			delete button.dataset.copyFailed;
 			button.title = 'Copied';
-			status.textContent = 'Copied to clipboard';
+			status.textContent = 'Copied';
 		} catch {
 			if (copyAttempts.get(button) !== attempt) return;
 			delete button.dataset.copied;
@@ -135,6 +163,6 @@ const { command, platform } = Astro.props;
 			delete button.dataset.copyFailed;
 			button.title = 'Copy command';
 			status.textContent = '';
-		}, 2000));
+		}, 1400));
 	}
 </script>
