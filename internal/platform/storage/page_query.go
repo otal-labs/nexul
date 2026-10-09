@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/otal-labs/nexul/internal/platform/paging"
@@ -14,11 +15,13 @@ import (
 // every match, and the caller fetches those rows by id through sqlc, so the column mapping stays generated.
 // hand-written: sqlc cannot express a WHERE clause whose conditions are optional.
 type pageQuery struct {
-	from  string
-	id    string
-	order string
-	conds []string
-	args  []any
+	from string
+	// fromArgs bind the placeholders in from, which come before every condition's.
+	fromArgs []any
+	id       string
+	order    string
+	conds    []string
+	args     []any
 }
 
 // where adds a condition the rows must meet, with the values its placeholders bind in order.
@@ -36,14 +39,15 @@ func (q *pageQuery) clause() string {
 
 // page reads the ids of window w in order, and how many rows match in all.
 func (q *pageQuery) page(ctx context.Context, db *sql.DB, w paging.Window) (ids []string, total int, err error) {
-	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+q.from+q.clause(), q.args...).Scan(&total); err != nil {
+	args := append(slices.Clip(q.fromArgs), q.args...)
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+q.from+q.clause(), args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 	if total <= w.Offset {
 		return []string{}, total, nil
 	}
 	stmt := "SELECT " + q.id + " FROM " + q.from + q.clause() + " ORDER BY " + q.order + " LIMIT ? OFFSET ?"
-	rows, err := db.QueryContext(ctx, stmt, append(q.args, w.Limit, w.Offset)...)
+	rows, err := db.QueryContext(ctx, stmt, append(args, w.Limit, w.Offset)...)
 	if err != nil {
 		return nil, 0, err
 	}

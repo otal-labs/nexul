@@ -552,6 +552,10 @@ func (allowAll) Require(context.Context, string, permissions.Action) error { ret
 
 func (allowAll) RequireProject(context.Context, string, permissions.Action) error { return nil }
 
+func (allowAll) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
+	return nil, true, nil
+}
+
 func outboxPayload(t *testing.T, s *Store, topic string) []map[string]any {
 	t.Helper()
 	rows, err := s.db.QueryContext(t.Context(), `SELECT payload FROM outbox WHERE topic = ? ORDER BY created_at`, topic)

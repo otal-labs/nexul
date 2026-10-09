@@ -64,6 +64,15 @@ func (r *TicketsRepo) Search(ctx context.Context, query string, limit int) ([]ti
 	return out, nil
 }
 
+// ticketHits ranks the tickets a query matches, title and body matches first by relevance and then those found only
+// through a note's text, as a table of (id, tier, rank) a page query reads from; its one placeholder pair is the query.
+// hand-written: sqlc cannot express an FTS5 table as the operand of MATCH or bm25
+const ticketHits = `(WITH body AS MATERIALIZED (SELECT j.id, bm25(tickets_fts) AS rank FROM tickets_fts JOIN tickets j ON j.rowid = tickets_fts.rowid WHERE tickets_fts MATCH ?),
+	note AS MATERIALIZED (SELECT ticket_id, bm25(ticket_notes_fts) AS rank FROM ticket_notes_fts WHERE ticket_notes_fts MATCH ?)
+	SELECT id, 0 AS tier, rank FROM body
+	UNION ALL SELECT ticket_id, 1, MIN(rank) FROM note WHERE ticket_id NOT IN (SELECT id FROM body) GROUP BY ticket_id) h
+	JOIN tickets t ON t.id = h.id`
+
 // excludeArchived adds `AND j.archived = 0` so archived docs never appear in search; tickets have no archived flag.
 func queryFTS(ctx context.Context, db *sql.DB, ftsTable, joinTable, idCol, query string, limit int, excludeArchived bool) ([]ftsHit, error) {
 	archived := ""

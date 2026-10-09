@@ -11,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/colors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/tickets"
 )
@@ -127,6 +128,48 @@ func (r *TicketsRepo) List(ctx context.Context) ([]*tickets.Ticket, error) {
 		return nil, fmt.Errorf("load labels: %w", err)
 	}
 	return withLabels(toTickets(rows), labels), nil
+}
+
+// Page reads one window of the tickets f and scope keep, and how many they keep in all: oldest first, or by relevance
+// with a query.
+func (r *TicketsRepo) Page(ctx context.Context, f tickets.TicketFilter, scope tickets.TicketScope, w paging.Window) ([]*tickets.Ticket, int, error) {
+	q := pageQuery{from: "tickets t", id: "t.id", order: "t.created_at, t.id"}
+	if f.Query != "" {
+		match := ftsQuery(f.Query)
+		q.from, q.fromArgs, q.order = ticketHits, []any{match, match}, "h.tier, h.rank, t.id"
+	}
+	if f.ProjectID != "" {
+		q.where("t.project_id = ?", f.ProjectID)
+	}
+	if f.DocID != "" {
+		q.where("t.doc_id = ?", f.DocID)
+	}
+	readable := idsJSON(scope.ProjectIDs)
+	if !scope.All {
+		q.where("t.project_id IN (SELECT value FROM json_each(?))", readable)
+	}
+	if f.BlockedOnly {
+		q.where(`EXISTS (SELECT 1 FROM ticket_links l JOIN tickets b ON b.id = l.target_id LEFT JOIN statuses st ON st.id = b.status
+			WHERE l.ticket_id = t.id AND l.kind = 'blocked_by' AND COALESCE(st.kind, '') != 'done'
+			AND (? OR b.project_id IN (SELECT value FROM json_each(?))))`, scope.All, readable)
+	}
+	ids, total, err := q.page(ctx, r.db, w)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page tickets: %w", err)
+	}
+	if len(ids) == 0 {
+		return []*tickets.Ticket{}, total, nil
+	}
+	rows, err := r.q.ListTicketsByIDs(ctx, ids)
+	if err != nil {
+		return nil, 0, fmt.Errorf("page tickets: %w", err)
+	}
+	labels, err := r.q.ListTicketLabelsForTickets(ctx, ids)
+	if err != nil {
+		return nil, 0, fmt.Errorf("load labels: %w", err)
+	}
+	ts := withLabels(toTickets(rows), labels)
+	return inOrder(ids, ts, func(t *tickets.Ticket) string { return t.ID }), total, nil
 }
 
 func (r *TicketsRepo) ListByDoc(ctx context.Context, docID string) ([]*tickets.Ticket, error) {

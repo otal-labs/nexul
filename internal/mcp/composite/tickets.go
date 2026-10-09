@@ -22,9 +22,6 @@ func TicketTools(t *tickets.Service, w *workspace.Service, r *codereview.Service
 	return []mcptool.Tool{ticketListTool(t, w), ticketGetTool(t, w, r), ticketCreateTool(t, w), ticketUpdateTool(t, w)}
 }
 
-// ponytail: a query reads the top 200 matches and pages over them in memory; raise it if agents need deeper search.
-const searchScan = 200
-
 const (
 	idHint     = "project_get lists the project's status, ticket type, and category ids"
 	ticketHint = "ticket_list finds tickets by text or project"
@@ -153,7 +150,7 @@ func ticketListTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 			"category, people, labels, and, when it is blocked, the keys of the blockers it still waits on (waiting_on). "+
 			"Filter by project, by source doc, by a full-text query, or to blocked tickets only; filters combine. "+
 			"Use ticket_get for one ticket's body, links, pull requests, and reviews. Without a query tickets come "+
-			"oldest first; a query returns at most its 200 best matches. Returns at most 100 tickets per page.",
+			"oldest first; with one they come by relevance, and every match can be paged to. Returns at most 100 tickets per page.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in ticketListIn) (any, error) {
 			if in.ProjectID != "" {
@@ -162,57 +159,17 @@ func ticketListTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 					return nil, err
 				}
 			}
-			found, err := findTickets(ctx, t, in)
+			f := tickets.TicketFilter{ProjectID: in.ProjectID, DocID: in.DocID, Query: in.Query, BlockedOnly: in.BlockedOnly}
+			found, total, err := t.PageTickets(ctx, f, in.Window())
 			if err != nil {
 				return nil, err
 			}
-			blockers, err := t.UnclearedBlockers(ctx)
+			blockers, err := t.UnclearedBlockersOf(ctx, found)
 			if err != nil {
 				return nil, err
 			}
-			kept := make([]*tickets.Ticket, 0, len(found))
-			for _, tk := range found {
-				if in.keeps(tk, blockers) {
-					kept = append(kept, tk)
-				}
-			}
-			return shapePage(ctx, newNames(w), mcptool.Paginate(kept, in.PageArgs), blockers)
+			return shapePage(ctx, newNames(w), mcptool.PageOf(found, total, in.Window()), blockers)
 		})
-}
-
-func findTickets(ctx context.Context, t *tickets.Service, in ticketListIn) ([]*tickets.Ticket, error) {
-	if strings.TrimSpace(in.Query) != "" {
-		return searchTickets(ctx, t, in.Query)
-	}
-	if in.DocID != "" {
-		return t.ListByDoc(ctx, in.DocID)
-	}
-	if in.ProjectID != "" {
-		return t.ListByProject(ctx, in.ProjectID)
-	}
-	return t.List(ctx)
-}
-
-func searchTickets(ctx context.Context, t *tickets.Service, query string) ([]*tickets.Ticket, error) {
-	hits, err := t.Search(ctx, query, searchScan)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]*tickets.Ticket, 0, len(hits))
-	for _, h := range hits {
-		out = append(out, h.Ticket)
-	}
-	return out, nil
-}
-
-func (in ticketListIn) keeps(t *tickets.Ticket, blockers map[string][]tickets.LinkedTicket) bool {
-	if in.ProjectID != "" && t.ProjectID != in.ProjectID {
-		return false
-	}
-	if in.DocID != "" && t.DocID != in.DocID {
-		return false
-	}
-	return !in.BlockedOnly || len(blockers[t.ID]) > 0
 }
 
 func shapePage(ctx context.Context, n *names, page mcptool.Page[*tickets.Ticket], blockers map[string][]tickets.LinkedTicket) (mcptool.Page[ticketResult], error) {

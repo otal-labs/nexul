@@ -15,6 +15,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -436,6 +437,37 @@ func (r ticketRepo) DeleteLink(_ context.Context, link tickets.TicketLink, _ ...
 	return len(r.w.links) < n, nil
 }
 
+// Page keeps the world's tickets f names, in the order they were added; access is the storage tests' to cover.
+func (r ticketRepo) Page(ctx context.Context, f tickets.TicketFilter, _ tickets.TicketScope, w paging.Window) ([]*tickets.Ticket, int, error) {
+	if err := r.w.check(map[bool]string{false: "List", true: "Search"}[f.Query != ""]); err != nil {
+		return nil, 0, err
+	}
+	blockers, err := r.UnclearedBlockers(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	all := r.filter(func(t *tickets.Ticket) bool {
+		return (f.ProjectID == "" || t.ProjectID == f.ProjectID) && (f.DocID == "" || t.DocID == f.DocID) &&
+			strings.Contains(strings.ToLower(t.Title+" "+t.Body), strings.ToLower(f.Query)) &&
+			(!f.BlockedOnly || len(blockers[t.ID]) > 0)
+	})
+	return all[min(w.Offset, len(all)):min(w.Offset+w.Limit, len(all))], len(all), nil
+}
+
+func (r ticketRepo) UnclearedBlockersOf(ctx context.Context, ids []string) (map[string][]tickets.LinkedTicket, error) {
+	all, err := r.UnclearedBlockers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string][]tickets.LinkedTicket{}
+	for _, id := range ids {
+		if bs, ok := all[id]; ok {
+			out[id] = bs
+		}
+	}
+	return out, nil
+}
+
 func (r ticketRepo) UnclearedBlockers(context.Context) (map[string][]tickets.LinkedTicket, error) {
 	if err := r.w.check("UnclearedBlockers"); err != nil {
 		return nil, err
@@ -716,6 +748,10 @@ func (p ticketProjects) ProjectOfTicket(_ context.Context, ticketID string) (str
 type allowGate struct{}
 
 func (allowGate) RequireProject(context.Context, string, permissions.Action) error { return nil }
+
+func (allowGate) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
+	return nil, true, nil
+}
 
 func (allowGate) RequireRepo(context.Context, string, string, permissions.Action) error { return nil }
 

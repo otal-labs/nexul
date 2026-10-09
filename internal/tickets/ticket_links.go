@@ -272,15 +272,43 @@ func (s *Service) UnclearedBlockers(ctx context.Context) (map[string][]LinkedTic
 		if err != nil {
 			return nil, fmt.Errorf("list uncleared blockers: %w", err)
 		}
-		visible, err := permissions.Filter(blockers, func(b LinkedTicket) string { return b.ProjectID }, func(projectID string) error {
-			return s.require(ctx, projectID, permissions.TicketsRead)
-		})
-		if err != nil {
-			return nil, fmt.Errorf("list uncleared blockers: %w", err)
+		if out[id], err = s.readableBlockers(ctx, blockers); err != nil {
+			return nil, err
 		}
-		out[id] = visible
 	}
 	return out, nil
+}
+
+// UnclearedBlockersOf maps each of ts, tickets the caller has already read, to its uncleared blockers the caller may
+// read as well, without reading the rest of the instance's links.
+func (s *Service) UnclearedBlockersOf(ctx context.Context, ts []*Ticket) (map[string][]LinkedTicket, error) {
+	ids := make([]string, len(ts))
+	for i, t := range ts {
+		ids[i] = t.ID
+	}
+	out, err := s.repo.UnclearedBlockersOf(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("list uncleared blockers: %w", err)
+	}
+	if identity.Internal(ctx) {
+		return out, nil
+	}
+	for id, blockers := range out {
+		if out[id], err = s.readableBlockers(ctx, blockers); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+func (s *Service) readableBlockers(ctx context.Context, blockers []LinkedTicket) ([]LinkedTicket, error) {
+	visible, err := permissions.Filter(blockers, func(b LinkedTicket) string { return b.ProjectID }, func(projectID string) error {
+		return s.require(ctx, projectID, permissions.TicketsRead)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list uncleared blockers: %w", err)
+	}
+	return visible, nil
 }
 
 // mustRead fetches a non-empty id the caller may read, so a missing ticket surfaces as ErrNotFound.

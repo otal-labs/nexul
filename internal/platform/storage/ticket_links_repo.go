@@ -124,6 +124,25 @@ func (r *TicketsRepo) UnclearedBlockers(ctx context.Context) (map[string][]ticke
 	return out, nil
 }
 
+// UnclearedBlockersOf is UnclearedBlockers for the given tickets only.
+func (r *TicketsRepo) UnclearedBlockersOf(ctx context.Context, ids []string) (map[string][]tickets.LinkedTicket, error) {
+	out := make(map[string][]tickets.LinkedTicket)
+	if len(ids) == 0 {
+		return out, nil
+	}
+	rows, err := r.q.ListUnclearedTicketBlockersOf(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("list uncleared blockers: %w", err)
+	}
+	for _, row := range rows {
+		out[row.BlockedID] = append(out[row.BlockedID], tickets.LinkedTicket{
+			ID: row.ID, ProjectID: row.ProjectID.String, Prefix: row.Prefix.String,
+			Number: int(row.Number), Title: row.Title, Status: tickets.Status(row.Status),
+		})
+	}
+	return out, nil
+}
+
 func isDoneStage(stage sql.NullString) bool {
 	return stage.String == string(workspace.StatusKindDone)
 }

@@ -17,6 +17,9 @@ ORDER BY workspaces.slug, tickets.created_at;
 -- name: ListTickets :many
 SELECT * FROM tickets ORDER BY created_at;
 
+-- name: ListTicketsByIDs :many
+SELECT * FROM tickets WHERE id IN (sqlc.slice('ids'));
+
 -- name: ListTicketsByDoc :many
 SELECT * FROM tickets WHERE doc_id = ? ORDER BY created_at;
 

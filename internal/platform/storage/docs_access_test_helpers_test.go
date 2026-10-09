@@ -39,3 +39,7 @@ func actorCtx() context.Context {
 func (allowAll) RequireProject(context.Context, string, permissions.Action) error {
 	return nil
 }
+
+func (allowAll) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
+	return nil, true, nil
+}

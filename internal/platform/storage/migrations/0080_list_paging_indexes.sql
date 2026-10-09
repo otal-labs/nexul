@@ -19,3 +19,12 @@ CREATE INDEX IF NOT EXISTS idx_deploys_stack_created ON deploys(stack_id, create
 CREATE INDEX IF NOT EXISTS idx_deploys_status_created ON deploys(status, created_at, id);
 DROP INDEX IF EXISTS idx_deploys_stack_id;
 DROP INDEX IF EXISTS idx_deploys_status;
+
+-- ticket_list, oldest first: across every project, one project, and one doc's tickets. Each replaces an index without
+-- the id tiebreak, whose lookups it still serves.
+CREATE INDEX IF NOT EXISTS idx_tickets_created_id ON tickets(created_at, id);
+CREATE INDEX IF NOT EXISTS idx_tickets_project_created_id ON tickets(project_id, created_at, id);
+CREATE INDEX IF NOT EXISTS idx_tickets_doc_created ON tickets(doc_id, created_at, id);
+DROP INDEX IF EXISTS idx_tickets_created;
+DROP INDEX IF EXISTS idx_tickets_project_created;
+DROP INDEX IF EXISTS idx_tickets_doc_id;

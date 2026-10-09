@@ -2,6 +2,9 @@ package storage
 
 import (
 	"context"
+	"fmt"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +13,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/platform/paging"
 	"github.com/otal-labs/nexul/internal/tickets"
 )
 
@@ -236,4 +240,116 @@ func TestSearchTickets_ReplacedNoteFile_MatchesItsNewTextOnly(t *testing.T) {
 
 	assert.Empty(t, searchIDs(t, s, "reconnect"), "the replaced text no longer matches")
 	assert.Equal(t, []string{"t-1"}, searchIDs(t, s, "virtualized"))
+}
+
+func pageTicketIDs(t *testing.T, s *Store, f tickets.TicketFilter, scope tickets.TicketScope) []string {
+	t.Helper()
+	return pageAll(t, 30, func(offset, limit int) ([]string, int) {
+		ts, total, err := s.Tickets.Page(t.Context(), f, scope, paging.Window{Offset: offset, Limit: limit})
+		require.NoError(t, err)
+		ids := make([]string, len(ts))
+		for i, tk := range ts {
+			ids[i] = tk.ID
+		}
+		return ids, total
+	})
+}
+
+// TestTicketsRepo_Page_RanksAsSearchAndFiltersInSQL: past the 200 matches search used to stop at, the pages hold every
+// match in Search's own order, note-only matches last, and each filter and scope keeps what the per-row rule keeps.
+func TestTicketsRepo_Page_RanksAsSearchAndFiltersInSQL(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	s := newTestStore(t)
+	seedChatUser(t, s, "u-1")
+	seedProject(t, s, "p-hidden", "workspace-default", "HID")
+	require.NoError(t, s.Docs.Create(ctx, newTestDoc("doc-1")))
+	var created []*tickets.Ticket
+	for i := range 230 {
+		tk := newTestTicket(fmt.Sprintf("t-%03d", i), "")
+		tk.Title = strings.Repeat("login ", 1+i%4) + "times out"
+		tk.CreatedAt = tk.CreatedAt.Add(time.Duration(i/5) * time.Second)
+		if i%3 == 0 {
+			tk.ProjectID = "p-hidden"
+		}
+		if i%7 == 0 {
+			tk.DocID = "doc-1"
+		}
+		require.NoError(t, s.Tickets.Create(ctx, tk))
+		created = append(created, tk)
+	}
+	seedNoteThread(t, s, "t-note", "Slow board", "columns lag")("n-1", "login fails behind the proxy")
+	noteTicket, err := s.Tickets.GetByID(ctx, "t-note")
+	require.NoError(t, err)
+	byAge := append(slices.Clone(created), noteTicket)
+	slices.SortStableFunc(byAge, func(a, b *tickets.Ticket) int {
+		if c := a.CreatedAt.Compare(b.CreatedAt); c != 0 {
+			return c
+		}
+		return strings.Compare(a.ID, b.ID)
+	})
+
+	hits, err := s.Tickets.Search(ctx, "login", 1000)
+	require.NoError(t, err)
+	var ranked []string
+	for _, h := range hits {
+		ranked = append(ranked, h.ID)
+	}
+	require.Len(t, ranked, 231)
+	assert.Equal(t, ranked, pageTicketIDs(t, s, tickets.TicketFilter{Query: "login"}, tickets.TicketScope{All: true}))
+
+	general := tickets.TicketScope{ProjectIDs: []string{"project-general"}}
+	keep := func(f tickets.TicketFilter, scope tickets.TicketScope, order []string) []string {
+		byID := map[string]*tickets.Ticket{noteTicket.ID: noteTicket}
+		for _, tk := range created {
+			byID[tk.ID] = tk
+		}
+		var out []string
+		for _, id := range order {
+			tk := byID[id]
+			require.NotNil(t, tk, id)
+			if (scope.All || slices.Contains(scope.ProjectIDs, tk.ProjectID)) &&
+				(f.ProjectID == "" || tk.ProjectID == f.ProjectID) && (f.DocID == "" || tk.DocID == f.DocID) {
+				out = append(out, id)
+			}
+		}
+		return out
+	}
+	var ageOrder []string
+	for _, tk := range byAge {
+		ageOrder = append(ageOrder, tk.ID)
+	}
+	for _, f := range []tickets.TicketFilter{{}, {ProjectID: "project-general"}, {DocID: "doc-1"}, {Query: "login"}, {Query: "login", DocID: "doc-1"}} {
+		for _, scope := range []tickets.TicketScope{{All: true}, general, {ProjectIDs: []string{}}} {
+			order := ageOrder
+			if f.Query != "" {
+				order = ranked
+			}
+			assert.Equal(t, keep(f, scope, order), pageTicketIDs(t, s, f, scope), "%+v %+v", f, scope)
+		}
+	}
+}
+
+// TestTicketsRepo_Page_BlockedOnlyCountsTheBlockersTheReaderSees: a ticket is blocked while a blocker in a project the
+// scope reads is not in a done-stage column; a done blocker or one the reader cannot see holds nothing.
+func TestTicketsRepo_Page_BlockedOnlyCountsTheBlockersTheReaderSees(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	s := newTestStore(t)
+	seedProject(t, s, "p-hidden", "workspace-default", "HID")
+	for _, tk := range []struct{ id, project string }{{"waits-on-open", "project-general"}, {"waits-on-hidden", "project-general"}, {"waits-on-done", "project-general"}, {"open", "project-general"}, {"hidden", "p-hidden"}, {"done", "project-general"}} {
+		ticket := newTestTicket(tk.id, "")
+		ticket.ProjectID = tk.project
+		if tk.id == "done" {
+			ticket.Status = tickets.StatusDone
+		}
+		require.NoError(t, s.Tickets.Create(ctx, ticket))
+	}
+	for blocked, blocker := range map[string]string{"waits-on-open": "open", "waits-on-hidden": "hidden", "waits-on-done": "done"} {
+		require.NoError(t, s.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: blocked, Kind: tickets.LinkBlockedBy, TargetID: blocker, CreatedAt: time.Now()}))
+	}
+	blocked := tickets.TicketFilter{BlockedOnly: true}
+
+	assert.ElementsMatch(t, []string{"waits-on-open", "waits-on-hidden"}, pageTicketIDs(t, s, blocked, tickets.TicketScope{All: true}))
+	assert.ElementsMatch(t, []string{"waits-on-open"}, pageTicketIDs(t, s, blocked, tickets.TicketScope{ProjectIDs: []string{"project-general"}}))
 }
