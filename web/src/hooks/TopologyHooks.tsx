@@ -3,9 +3,10 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import type { Canvas, TopologyNode } from "@/models/Topology";
+import { CanvasFrameSchema, type Canvas, type TopologyNode } from "@/models/Topology";
 import { useFlowStore } from "@/stores/flowStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import type { LiveFollower } from "@/lib/live";
 
 const getTopologyKey = "getTopology";
 
@@ -80,4 +81,13 @@ export const useSaveTopology = () => {
     onSuccess: ({ canvas, workspaceId }) => void apply(canvas, workspaceId),
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+// The canvas consumer pushes one workspace's whole canvas; only the canvas on screen takes it.
+export const topologyFollower: LiveFollower = {
+  topology: (payload: unknown) => {
+    const flow = useFlowStore.getState();
+    const parsed = CanvasFrameSchema.safeParse(payload);
+    if (parsed.success && parsed.data.workspace_id === flow.workspaceId) flow.applyServerPatch(parsed.data);
+  },
 };

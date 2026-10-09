@@ -7,6 +7,7 @@ import { api, errorMessage } from "@/api/client";
 import { hasPermission, projectPermissions, type MyWorkspaceInfo } from "@/models/Permission";
 import { replaceWorkspaceSlug, type Workspace, type WorkspaceUpdate } from "@/models/Workspace";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import type { LiveFollower } from "@/lib/live";
 
 export const getWorkspacesKey = "getWorkspaces";
 
@@ -133,4 +134,8 @@ export const useCreateWorkspace = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+export const workspaceFollower: LiveFollower = {
+  "workspace.updated": (update: WorkspaceUpdate, { client, navigate, location }) => followWorkspaceUpdate(client, navigate, location, update),
 };

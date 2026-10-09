@@ -90,9 +90,9 @@ func TestIntegration_BotLiveFrames(t *testing.T) {
 		return raw
 	}
 	for _, topic := range botwebhook.Topics() {
-		assert.True(t, audience.allows(as(uOwner), topic, frame(f.channel)), topic)
-		assert.False(t, audience.allows(as(uPlain), topic, frame(f.channel)), "%s without botwebhook:read", topic)
-		assert.False(t, audience.allows(as(uOutsider), topic, frame(f.channel)), topic)
+		assert.True(t, audience.allows(as(uOwner), topic.Name, frame(f.channel)), topic.Name)
+		assert.False(t, audience.allows(as(uPlain), topic.Name, frame(f.channel)), "%s without botwebhook:read", topic.Name)
+		assert.False(t, audience.allows(as(uOutsider), topic.Name, frame(f.channel)), topic.Name)
 	}
 	assert.False(t, audience.allows(as(uReader), botwebhook.TopicCreated, frame(f.dm)), "a DM's bots stay with its participants")
 }

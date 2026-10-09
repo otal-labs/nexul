@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
@@ -7,6 +7,7 @@ import type { Play, PlayStage, PlayType, SavePlayFormData } from "@/models/Play"
 import { toSavePlayRequest } from "@/models/Play";
 import type { Ticket } from "@/models/Ticket";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getWorkspacePlaysKey = "getWorkspacePlays";
 export const getApplicablePlaysKey = "getApplicablePlays";
@@ -111,4 +112,16 @@ export const useSetDecisionsCheckEnabled = () => {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+// A play's lists are its workspace's: the plays page and the run menus.
+const refetchWorkspacePlays = (client: QueryClient, workspaceId: string) =>
+  Promise.all([
+    client.invalidateQueries({ queryKey: [getWorkspacePlaysKey, workspaceId], exact: true }),
+    client.invalidateQueries({ queryKey: [getApplicablePlaysKey, workspaceId] }),
+  ]);
+
+export const playFollower: LiveFollower = {
+  ...followEach(["play.created", "play.updated"], ({ play }: { play: Play }, { client }) => refetchWorkspacePlays(client, play.workspace_id)),
+  "play.deleted": ({ workspace_id }: { workspace_id: string }, { client }) => refetchWorkspacePlays(client, workspace_id),
 };

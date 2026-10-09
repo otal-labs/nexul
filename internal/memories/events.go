@@ -1,6 +1,10 @@
 package memories
 
-import "time"
+import (
+	"time"
+
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
+)
 
 // Topics published by the memories domain.
 const (
@@ -22,10 +26,19 @@ const (
 )
 
 // Topics returns every topic the memories domain publishes.
-func Topics() []string {
-	return []string{
-		TopicCreated, TopicUpdated, TopicDeleted, TopicInterviewTemplateUpdated, TopicAnswerSaved, TopicAnswerCleared,
-		TopicSourceAdded, TopicSourceChanged, TopicSourceRemoved, TopicDraftSaved, TopicDraftDismissed,
+func Topics() []eventbus.Topic {
+	return []eventbus.Topic{
+		{Name: TopicCreated, Payload: CreatedEvent{}},
+		{Name: TopicUpdated, Payload: UpdatedEvent{}},
+		{Name: TopicDeleted, Payload: DeletedEvent{}},
+		{Name: TopicInterviewTemplateUpdated, Payload: InterviewTemplateUpdatedEvent{}},
+		{Name: TopicAnswerSaved, Payload: AnswerEvent{}},
+		{Name: TopicAnswerCleared, Payload: AnswerEvent{}},
+		{Name: TopicSourceAdded, Payload: SourceEvent{}},
+		{Name: TopicSourceChanged, Payload: SourceEvent{}},
+		{Name: TopicSourceRemoved, Payload: SourceEvent{}},
+		{Name: TopicDraftSaved, Payload: DraftEvent{}},
+		{Name: TopicDraftDismissed, Payload: DraftEvent{}},
 	}
 }
 
@@ -77,7 +90,7 @@ type InterviewTemplateUpdatedEvent struct {
 type AnswerEvent struct {
 	WorkspaceID string    `json:"workspace_id"`
 	ProjectID   string    `json:"project_id"`
-	Round       int       `json:"round"`
+	Round       int       `json:"round" minimum:"0"`
 	Question    string    `json:"question"`
 	AuthorID    string    `json:"author_id"`
 	At          time.Time `json:"at"`
@@ -88,8 +101,8 @@ type SourceEvent struct {
 	WorkspaceID string    `json:"workspace_id"`
 	ProjectID   string    `json:"project_id"`
 	SourceID    string    `json:"source_id"`
-	Kind        string    `json:"kind"`
-	Stance      string    `json:"stance"`
+	Kind        string    `json:"kind" enum:"path,doc,memory,project,text"`
+	Stance      string    `json:"stance" enum:"follow,question"`
 	AuthorID    string    `json:"author_id"`
 	At          time.Time `json:"at"`
 }

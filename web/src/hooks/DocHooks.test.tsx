@@ -11,7 +11,10 @@ import {
   useFetchDocs,
   useFetchDocsByProject,
   useRestoreDoc,
+  docFollower,
 } from "@/hooks/DocHooks";
+import type { DocListItem } from "@/models/Doc";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 vi.mock("@/api/client", () => ({
   api: {
@@ -133,3 +136,38 @@ describe("useRestoreDoc", () => {
   });
 });
 
+describe("the doc follower", () => {
+  const item = (id: string, folder: string, project = "p-1") => ({ ...doc, id, folder_id: folder, project_id: project, can_open: true });
+  const views = () =>
+    seeded([
+      [["getDocs"], [item("d-1", "f-1"), item("d-2", "f-1")]],
+      [["getDocs", "byProject", "p-1"], [item("d-1", "f-1"), item("d-2", "f-1")]],
+      [["getDocs", "byProject", "p-2"], [item("d-3", "f-9", "p-2")]],
+      [["getDoc", "d-1"], item("d-1", "f-1")],
+      [["getDocClarification", "d-1"], { rounds: [] }],
+      [["getDocClarification", "d-2"], { rounds: [] }],
+    ]);
+  const folders = (client: ReturnType<typeof views>, key: unknown[]) => client.getQueryData<DocListItem[]>(key)?.map((d) => d.folder_id);
+
+  it("moves a doc to its new folder in every view from the frame alone", async () => {
+    const client = views();
+    await followFrame(docFollower, "doc.moved", { doc: { ...doc, id: "d-1", project_id: "p-1", folder_id: "f-2" }, from_folder_id: "f-1" }, client);
+    expect(folders(client, ["getDocs", "byProject", "p-1"])).toEqual(["f-2", "f-1"]);
+    expect(client.getQueryData<DocListItem>(["getDoc", "d-1"])?.folder_id).toBe("f-2");
+  });
+
+  it("moves a deleted folder's docs into the folder the frame names", async () => {
+    const client = views();
+    await followFrame(docFollower, "doc.folder.deleted", { folder: { id: "f-1", project_id: "p-1" }, moved_to_folder_id: "f-0" }, client);
+    expect([folders(client, ["getDocs"]), folders(client, ["getDocs", "byProject", "p-2"])]).toEqual([["f-0", "f-0"], ["f-9"]]);
+    expect(client.getQueryData<DocListItem>(["getDoc", "d-1"])?.folder_id).toBe("f-0");
+  });
+
+  it("refetches the lists a new doc belongs to and one doc's clarification, and leaves the rest", async () => {
+    const client = views();
+    await followFrame(docFollower, "doc.created", { doc: { ...doc, id: "d-4", project_id: "p-1" } }, client);
+    await followFrame(docFollower, "doc.clarification.round_posted", { doc: { id: "d-2" }, round: 1 }, client);
+    const keys = [["getDocs"], ["getDocs", "byProject", "p-1"], ["getDocs", "byProject", "p-2"], ["getDocClarification", "d-1"], ["getDocClarification", "d-2"]];
+    expect(keys.map((key) => isStale(client, key))).toEqual([true, true, false, false, true]);
+  });
+});
