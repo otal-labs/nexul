@@ -8,7 +8,7 @@ export const HomePage = () => {
   return (
     <div className="h-full">
       {!isLoggedIn && (
-        <ShowcaseSurface>
+        <ShowcaseSurface live>
           <SignedOutHome />
         </ShowcaseSurface>
       )}

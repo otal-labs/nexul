@@ -33,9 +33,7 @@ beforeEach(() => {
 describe("HomePage", () => {
   it("renders the product pitch and a call to action", () => {
     renderHome();
-    expect(
-      screen.getByRole("heading", { name: "One button. The trail shows every step the agent took." }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Docs, tickets, chat, and deploys in one place." })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Self-host your own" })).toHaveAttribute(
       "href",
@@ -46,8 +44,8 @@ describe("HomePage", () => {
   });
 
   it.each([
-    { permissions: ["tickets:read"], shown: "Open the board", hidden: "View topology" },
-    { permissions: ["topology:read"], shown: "View topology", hidden: "Open the board" },
+    { permissions: ["tickets:read"], shown: "Open board", hidden: "Open topology" },
+    { permissions: ["topology:read"], shown: "Open topology", hidden: "Open board" },
   ])("offers only the areas the member can read ($permissions)", async ({ permissions, shown, hidden }) => {
     signInWith(permissions);
     renderHome();
@@ -60,7 +58,7 @@ describe("HomePage", () => {
     signInWith(["tickets:read", "docs:read"]);
     renderHome();
 
-    expect(await screen.findByRole("link", { name: "Open the board" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Open board" })).toBeInTheDocument();
     expect(screen.queryByText(/agent/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/trail/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/play/i)).not.toBeInTheDocument();
@@ -70,7 +68,7 @@ describe("HomePage", () => {
     signInWith(["tickets:read", permission]);
     renderHome();
 
-    expect(await screen.findByRole("heading", { name: "One button. The trail shows every step the agent took." })).toBeInTheDocument();
+    expect(await screen.findByText(/each play run leaves a trail of every step/)).toBeInTheDocument();
     expect(screen.getByText("nexul · agent trail")).toBeInTheDocument();
   });
 });

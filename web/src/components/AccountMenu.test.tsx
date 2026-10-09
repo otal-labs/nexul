@@ -65,7 +65,7 @@ describe("AccountMenu", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("opens the popover with Support and Logout only", async () => {
+  it("opens the popover with Support and Sign out only", async () => {
     const user = userEvent.setup();
     renderMenu();
     await user.click(await screen.findByText("Onik"));
@@ -75,10 +75,10 @@ describe("AccountMenu", () => {
     const support = screen.getByRole("link", { name: "Support" });
     expect(support).toHaveAttribute("href", "https://github.com/otal-labs/nexul/issues");
     expect(support).toHaveAttribute("target", "_blank");
-    expect(screen.getByRole("button", { name: "Logout" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
   });
 
-  it("signs the session out server-side, clears local state, and redirects home when Logout is clicked", async () => {
+  it("signs the session out server-side, clears local state, and redirects home when Sign out is clicked", async () => {
     const logout = vi.fn();
     useSessionStore.setState({ logout });
     vi.mocked(api.delete).mockResolvedValue({ data: undefined });
@@ -94,7 +94,7 @@ describe("AccountMenu", () => {
       </QueryClientProvider>,
     );
     await user.click(await screen.findByText("Onik"));
-    await user.click(screen.getByRole("button", { name: "Logout" }));
+    await user.click(screen.getByRole("button", { name: "Sign out" }));
 
     expect(await screen.findByText("Home page")).toBeInTheDocument();
     expect(api.delete).toHaveBeenCalledWith("/api/auth/sessions/current");
@@ -117,7 +117,7 @@ describe("AccountMenu", () => {
       </QueryClientProvider>,
     );
     await user.click(await screen.findByText("Onik"));
-    await user.click(screen.getByRole("button", { name: "Logout" }));
+    await user.click(screen.getByRole("button", { name: "Sign out" }));
 
     expect(await screen.findByText("Home page")).toBeInTheDocument();
     expect(logout).toHaveBeenCalledOnce();

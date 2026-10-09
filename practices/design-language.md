@@ -141,9 +141,9 @@ in one layout step and its content does the moving.
   backdrop blur any motion re-blurs every panel each frame, which held 50ms
   idle frames under a 4x CPU throttle while the field drifted; nothing may
   animate behind the panels, and the app has no ambient motion.
-  The one exception is a showcase surface (Pattern spec), which replaces the
-  frame instead of sitting behind it and appears only on the signed-out
-  pages, the wizards and the error page.
+  The one exception is the live field of a showcase surface (Pattern spec),
+  which replaces the frame instead of sitting behind it and runs only on the
+  signed-out home and sign-in.
 - Reduced motion is gentler, not none. The global block in `index.css`
   flattens every CSS transition and keyframe to its end state; what tells the
   reader something arrived keeps a 150ms fade instead (page and list
@@ -208,6 +208,7 @@ second ambient animation or anything animating layout behind the panels.
 | 7px controls, 9px cards, 12px panels | Soft but precise; pills stay badge-only so controls and tags never look alike |
 | Terminal-window motif, neutral glow | Code, log, and hero surfaces read as consoles |
 | The live light field on showcase surfaces only | Picked over a fluted-glass refraction (busy vertical bands fought the text and the frosted vocabulary, and no CSS still could stand in for it) and an aurora (a band across the top only, nearly invisible in light mode); the field is the app's own light field moving, so its fallback still is exact and every palette retints it |
+| The live field on the signed-out home and sign-in only | It repaints every frame while the page is open and the library's frame cap is out of reach from React; a wizard or an invitation stays open for minutes of form work, so there the still does the job at under 1% CPU |
 | Empty states: the orbit mark | Picked over a placeholder card grid (generic, implied an add action the callers do not have, and looped) and a tile of the live field (a GPU canvas inside an everyday panel, grainy at 96px, impossible at compact size); the static orbit carries the field's colours at any size and costs nothing |
 | Loading: the orbit at spinner size | Over the plain spinner and a gradient arc; it ties loading to the empty mark, keeps the ember to progress, and stays one small SVG |
 | Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
@@ -393,20 +394,26 @@ a card is a single `EmptyRow` sentence where the rows would be, `flush` when it
 sits in a card body and lines up with the text around it.
 
 Showcase surfaces. The signed-out pages (home, sign in, invitation), the
-wizard frames and the error page sit on `ShowcaseSurface`: the light field
-made live, the same ember top right, pink between and blue bottom left,
+wizard frames and the error page sit on `ShowcaseSurface`: the light field,
+live where a page opts in, the same ember top right, pink between and blue bottom left,
 drifting slowly through a flow field with a little grain (`ShowcaseField`,
 built on the shaders library and coloured from the tokens at runtime, so a
 palette retints it). Signed out it fills the screen; signed in it takes the
 frame's place as one opaque rounded surface (`data-pane-layout`), so nothing
-moves behind a backdrop blur. The home, sign-in and invitation pages run it at
-full strength; the wizards and the error page run it `quiet`, at about half,
-so form text sits on near-plain canvas. Its still, the light field's own three
-radial gradients, is the container background: it shows while the shader
-compiles, without WebGPU, and as the whole reduced-motion variant (the shader
-is never mounted then); the live layer fades in over 700ms once ready. The
-sign-in and invitation cards are a `panel` at 72% over it, the one place a
-blur sits over motion, for a single small card. Headlines on these surfaces
+moves behind a backdrop blur. The live layer repaints every frame for as long
+as the page is open (about half a CPU core in a headless measurement, against
+under 1% for the still), so it runs only where people land, the signed-out
+home and sign-in, opted into with `live`; the invitation, the wizards and the
+error page show the still, which every caller gets by default. Home, sign-in
+and invitation are at full strength; the wizards and the error page are
+`quiet`, at about half, so form text sits on near-plain canvas. The still,
+the light field's own three radial gradients, is the container background: it
+shows while the shader compiles, without WebGPU, and as the whole
+reduced-motion variant (the shader is never mounted then); the live layer
+fades in over 700ms once ready, and pauses with the browser's animation
+frames in a hidden tab and offscreen. The sign-in and invitation cards are a
+`panel` at 72%; over sign-in's live field that is the one place a blur sits
+over motion, for a single small card. Headlines on these surfaces
 are Fraunces. Never on an everyday screen, never behind a panel.
 
 Stat and summary row. Three or four values in a single row above a list, in

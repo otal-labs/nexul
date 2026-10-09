@@ -38,7 +38,7 @@ describe("InvitePreviewPage", () => {
   it("shows the same generic invalid state for a rejected preview", async () => {
     mocks.post.mockRejectedValue(new Error("secret backend reason"));
     renderPage();
-    expect(await screen.findByText("This invitation is invalid or has expired.")).toBeInTheDocument();
+    expect(await screen.findByText("This invitation has expired or isn't valid")).toBeInTheDocument();
     expect(screen.queryByText("secret backend reason")).not.toBeInTheDocument();
   });
 
@@ -85,14 +85,14 @@ describe("InvitePreviewPage", () => {
   it("says a link with no token is invalid, with no check still spinning", async () => {
     window.history.replaceState(null, "", "/invite");
     renderPage();
-    expect(await screen.findByText("This invitation is invalid or has expired.")).toBeInTheDocument();
+    expect(await screen.findByText("This invitation has expired or isn't valid")).toBeInTheDocument();
     expect(screen.queryByText("Checking invitation…")).not.toBeInTheDocument();
   });
 
   it("renders the generic invalid state for malformed percent encoding", async () => {
     window.history.replaceState(null, "", "/invite#%E0%A4%A");
     renderPage();
-    expect(await screen.findByText("This invitation is invalid or has expired.")).toBeInTheDocument();
+    expect(await screen.findByText("This invitation has expired or isn't valid")).toBeInTheDocument();
     expect(mocks.post).not.toHaveBeenCalled();
   });
 

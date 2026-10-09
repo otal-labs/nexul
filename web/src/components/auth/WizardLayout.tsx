@@ -17,7 +17,7 @@ interface WizardLayoutProps {
   children: ReactNode;
 }
 
-// Shared onboarding wizard shell over the quiet live field: centered step with a mono indicator, the title, and a step back.
+// Shared onboarding wizard shell over the quiet still field: centered step with a mono indicator, the title, and a step back.
 export const WizardLayout = ({ step, progress, title, subtitle, onBack, children }: WizardLayoutProps) => (
   <ShowcaseSurface quiet>
     <Container className="flex min-h-full flex-col items-center justify-center py-10 sm:py-16">

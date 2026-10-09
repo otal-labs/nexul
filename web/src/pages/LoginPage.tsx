@@ -56,17 +56,17 @@ export const LoginPage = () => {
   };
 
   return (
-    <ShowcaseSurface>
+    <ShowcaseSurface live>
       <div className="flex min-h-full items-center justify-center px-6 py-16">
-        {exchange.isPending && <LoadingDisplay label="Completing sign in…" />}
+        {exchange.isPending && <LoadingDisplay label="Signing you in…" />}
         {!exchange.isPending && (
           <div className="panel w-full max-w-[25rem] p-8 [--panel-opacity:72%]">
             <Logo className="size-10 rounded-lg" />
-            <h1 className={cn(displayTitleClass, "mt-6 text-[2rem]")}>Sign in to your workspace</h1>
+            <h1 className={cn(displayTitleClass, "mt-6 text-[2rem]")}>Sign in to Nexul</h1>
             <p className="mt-3 text-sm text-pretty text-muted-foreground">
               {clientsEnabled
-                ? "GitHub for the team, Google or Discord for clients — no passwords to remember."
-                : "One GitHub account, no passwords to remember."}
+                ? "GitHub for the team. Clients use the other options."
+                : "Sign in with your GitHub account."}
             </p>
             {failure != null && (
               <div className="mt-6">

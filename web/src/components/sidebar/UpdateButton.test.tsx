@@ -66,7 +66,7 @@ describe("UpdateButton", () => {
     expect(await screen.findByText("v0.2.0-beta.7 → v0.2.0-beta.8")).toBeInTheDocument();
     expect(screen.getByText("Resume the pairing wizard")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "v0.2.0-beta.8" })).toHaveAttribute("href", "https://x/8");
-    expect(screen.getByRole("link", { name: "Upgrade from Settings" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Upgrade in Settings" })).toHaveAttribute(
       "href",
       "/settings/instance#instance-version",
     );
@@ -79,7 +79,7 @@ describe("UpdateButton", () => {
 
     await user.hover(await screen.findByRole("link", { name: /Update available/ }));
 
-    expect(await screen.findByRole("link", { name: "Read the release notes" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: "Release notes" })).toHaveAttribute(
       "href",
       "https://github.com/otal-labs/nexul/releases/tag/v0.2.0-beta.8",
     );
