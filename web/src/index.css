@@ -46,8 +46,6 @@
   --color-info: var(--info);
   --color-merged: var(--merged);
   --color-surface-2: var(--surface-2);
-  --color-cell-line: var(--cell-line);
-  --color-cell-label: var(--cell-label);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-panel: var(--panel);
@@ -115,10 +113,6 @@
   --input: oklch(0.2 0.01 265 / 0.16);
   --ring: var(--brand);
 
-  /* a field grid's cell edges and its shaded label cell, mixed from the ink so they read on any surface and palette */
-  --cell-line: color-mix(in oklab, var(--foreground) 12%, transparent);
-  --cell-label: color-mix(in oklab, var(--foreground) 4%, transparent);
-
   --shadow-card: 0 1px 2px oklch(0.2 0.02 265 / 0.06);
   --shadow-elevated: 0 2px 4px oklch(0.2 0.02 265 / 0.08), 0 12px 28px oklch(0.2 0.02 265 / 0.12);
   --shadow-overlay: 0 20px 56px oklch(0.2 0.02 265 / 0.22);
@@ -171,9 +165,6 @@
 
   --border: oklch(1 0 0 / 0.08);
   --input: oklch(1 0 0 / 0.12);
-
-  --cell-line: color-mix(in oklab, var(--foreground) 10%, transparent);
-  --cell-label: color-mix(in oklab, var(--foreground) 4%, transparent);
 
   --shadow-card: 0 1px 2px oklch(0 0 0 / 0.3);
   --shadow-elevated: 0 4px 8px oklch(0 0 0 / 0.4), 0 16px 36px oklch(0 0 0 / 0.45);
@@ -271,6 +262,18 @@ body {
   background: color-mix(in oklab, black var(--glass-opacity), transparent);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+/* The last visible line of a clamped title fades out at its end, like an ellipsis that keeps the words. */
+@utility title-clamp-fade {
+  mask-image:
+    linear-gradient(black, black),
+    linear-gradient(to right, black 55%, transparent 92%);
+  mask-size:
+    100% calc(100% - 1lh),
+    100% 1lh;
+  mask-position: top, bottom;
+  mask-repeat: no-repeat;
 }
 
 /* A raised frosted panel: content floats in one on the canvas. The transparent border keeps its edge in forced-colors mode. */

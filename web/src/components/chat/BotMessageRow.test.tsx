@@ -131,11 +131,11 @@ describe("MessageRow for a bot", () => {
     const name = "Nightly backup verifier for acme-production-eu-west-2-replica-database-cluster";
     renderBot(botMessage({ author_name: name, embeds: worstEmbeds() }));
     expect(screen.getByText(name)).toBeInTheDocument();
-    expect(screen.getAllByRole("rowheader")).toHaveLength(6);
+    expect(screen.getAllByRole("term")).toHaveLength(6);
     expect(screen.queryByText("Report part 3")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Show 19 more fields" }));
-    expect(screen.getAllByRole("rowheader")).toHaveLength(25);
+    expect(screen.getAllByRole("term")).toHaveLength(25);
     expect(screen.getByText(unbreakable)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Show less" })).toHaveAttribute("aria-expanded", "true");
 
@@ -179,6 +179,19 @@ describe("MessageRow for a bot", () => {
     expect(mediaCalls().sort()).toEqual(
       ["https://example.com/alice.png", "https://example.com/chart.png", "https://example.com/ci.png", "https://example.com/thumb.png"].map(media),
     );
+  });
+
+  it("drops an embed's author line that only repeats the bot's name, and keeps one that links somewhere", () => {
+    renderBot(
+      botMessage({
+        embeds: [
+          { author: { name: "CI" }, title: "Build 1" },
+          { author: { name: "CI", url: "https://example.com/ci" }, title: "Build 2" },
+        ],
+      }),
+    );
+    expect(screen.getAllByText("CI")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: "CI" })).toHaveAttribute("href", "https://example.com/ci");
   });
 
   it("shows the footer with the calendar time and the exact moment on hover", () => {

@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 
-import { pageTitleClass } from "@/components/PageHeader";
+import { ClampedTitle, pageTitleClassFor } from "@/components/PageHeader";
 import { TitleTextarea } from "@/components/TitleTextarea";
 import { cn } from "@/lib/utils";
 
@@ -14,9 +14,9 @@ interface DocTitleFieldProps {
 }
 
 export const DocTitleField = ({ editable, title, staticTitle, onChange, onBlur, inputRef }: DocTitleFieldProps) => (
-  <>
+  <ClampedTitle title={editable ? title : staticTitle}>
     {!editable && (
-      <h1 dir="auto" className={pageTitleClass}>
+      <h1 dir="auto" className={pageTitleClassFor(staticTitle)}>
         {staticTitle}
       </h1>
     )}
@@ -29,9 +29,9 @@ export const DocTitleField = ({ editable, title, staticTitle, onChange, onBlur, 
         onBlur={onBlur}
         blurOnEnter
         aria-label="Title"
-        className={cn(pageTitleClass, "text-start")}
+        className={cn(pageTitleClassFor(title), "text-start")}
         data-testid="doc-title-input"
       />
     )}
-  </>
+  </ClampedTitle>
 );

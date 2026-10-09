@@ -1,9 +1,11 @@
+import { FileTextIcon } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Navigate, useParams } from "react-router";
 
 import { DocsListPane } from "@/components/doc/DocsListPane";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ListDetailLayout } from "@/components/listpane/ListDetailLayout";
+import { ListDetailPlaceholder } from "@/components/listpane/ListDetailPlaceholder";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoProjectsState } from "@/components/project/NoProjectsState";
 import { useFetchDoc, useFetchDocsByProject } from "@/hooks/DocHooks";
@@ -36,7 +38,7 @@ export const DocsPage = () => {
         <ListDetailLayout
           hasSelection={!!docId}
           list={<DocsListPane docs={docs} project={current} selectedId={docId} />}
-          placeholder="Select a doc"
+          placeholder={<ListDetailPlaceholder icon={FileTextIcon} title="Select a doc" summary={`${docs.length} ${docs.length === 1 ? "doc" : "docs"} in ${current.name}`} searchable />}
           detail={
             <Suspense fallback={<LoadingDisplay />}>
               <DocPage key={docId} />

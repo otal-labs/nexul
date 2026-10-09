@@ -1,7 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
 import { ListPaneResizeHandle } from "@/components/listpane/ListPaneResizeHandle";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { useListPaneStore } from "@/stores/listPaneStore";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +9,7 @@ interface ListDetailLayoutProps {
   detail: ReactNode;
   hasSelection: boolean;
   /** Shown in the detail pane while nothing is selected. */
-  placeholder: string;
+  placeholder: ReactNode;
 }
 
 // The app sidebar, a list, and the open record, for an editor: below lg one pane shows at a time, since the editor needs the width.
@@ -35,7 +34,7 @@ export const ListDetailLayout = ({ list, detail, hasSelection, placeholder }: Li
         {hasSelection && detail}
         {!hasSelection && (
           <div className="flex h-full items-center justify-center">
-            <NoDataDisplay message={placeholder} size="compact" className="border-0" />
+            {placeholder}
           </div>
         )}
       </div>

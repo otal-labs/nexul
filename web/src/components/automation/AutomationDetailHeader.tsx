@@ -1,6 +1,6 @@
 import { AutomationConfigStatusBadge } from "@/components/automation/AutomationConfigStatusBadge";
 import { AutomationKindBadge } from "@/components/automation/AutomationKindBadge";
-import { PageHeader, pageTitleClass } from "@/components/PageHeader";
+import { ClampedTitle, PageHeader, pageTitleClassFor } from "@/components/PageHeader";
 import { Switch } from "@/components/ui/switch";
 import { useSetAutomationEnabled } from "@/hooks/AutomationHooks";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
@@ -21,7 +21,11 @@ export const AutomationDetailHeader = ({ automation }: AutomationDetailHeaderPro
       crumbs={[workspaceCrumb, { label: "Automations", to: wsPath("/automations") }]}
       title={
         <>
-          <h1 className={pageTitleClass}>{automation.name}</h1>
+          <ClampedTitle title={automation.name}>
+            <h1 dir="auto" className={pageTitleClassFor(automation.name)}>
+              {automation.name}
+            </h1>
+          </ClampedTitle>
           {automation.description && (
             <p className="mt-1.5 max-w-2xl text-sm text-pretty text-muted-foreground">{automation.description}</p>
           )}

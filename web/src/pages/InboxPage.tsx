@@ -1,6 +1,8 @@
+import { InboxIcon } from "lucide-react";
 import { useParams } from "react-router";
 
 import { ListDetailLayout } from "@/components/listpane/ListDetailLayout";
+import { ListDetailPlaceholder } from "@/components/listpane/ListDetailPlaceholder";
 import { NotificationDetailPanel } from "@/components/notifications/NotificationDetailPanel";
 import { NotificationsSidebar } from "@/components/notifications/NotificationsSidebar";
 import { useFetchInbox, useMarkAllNotificationsRead, useSelectedInboxRow } from "@/hooks/NotificationHooks";
@@ -28,7 +30,7 @@ export const InboxPage = () => {
             isMarkingAllRead={markAllRead.isPending}
           />
         }
-        placeholder="Select a notification"
+        placeholder={<ListDetailPlaceholder icon={InboxIcon} title="Select a notification" />}
         detail={<NotificationDetailPanel selected={selected?.notification} />}
       />
     </EmbeddedCrumbsContext>
