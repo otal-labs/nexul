@@ -238,9 +238,6 @@ func (s *Service) teamProjects(ctx context.Context, actorID string, memberships 
 	for _, m := range memberships {
 		m.EveryProject = everyProject(m.Restricted)
 		m.Projects = byMembership[m.WorkspaceID+"\x00"+m.UserID]
-		if m.Projects == nil {
-			m.Projects = []*ProjectAccess{}
-		}
 	}
 	return nil
 }
