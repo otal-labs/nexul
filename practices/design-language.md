@@ -109,7 +109,8 @@ its panels follow its `card`. The default palette is labelled Nexul (id
   `shadow-card`, `shadow-elevated`, `shadow-overlay` stay for cards, popovers
   and dialogs. No border where the surface step already separates.
 - People without a photo get a seeded conic-gradient avatar
-  (`web/src/lib/avatarGradient.ts`) with white initials; under 24px it shows
+  (`web/src/lib/avatarGradient.ts`) with white initials, your own profile's
+  preview included; under 24px it shows
   one initial at 10px.
 
 ## Motion

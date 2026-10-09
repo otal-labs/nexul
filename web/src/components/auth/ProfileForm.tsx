@@ -4,6 +4,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { errorMessage } from "@/api/client";
+import { ProfileAvatarPreview } from "@/components/auth/ProfileAvatarPreview";
 import { FormInput } from "@/components/FormInput";
 import { Button } from "@/components/ui/button";
 import { useUpdateProfile } from "@/hooks/AuthHooks";
@@ -40,6 +41,7 @@ export const ProfileForm = ({ user, submitLabel, submitClassName, onSaved }: Pro
   });
 
   const avatarOverrideUrl = useWatch({ control: form.control, name: "avatarOverrideUrl" });
+  const name = useWatch({ control: form.control, name: "name" });
   const avatarError = form.formState.errors.avatarOverrideUrl?.message as string | undefined;
   const previewSrc = avatarOverrideUrl || user.avatar_url;
 
@@ -78,15 +80,7 @@ export const ProfileForm = ({ user, submitLabel, submitClassName, onSaved }: Pro
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
       <div className="flex items-center gap-4">
-        {previewSrc && (
-          <img
-            src={previewSrc}
-            alt=""
-            className="size-16 rounded-full object-cover"
-            referrerPolicy="no-referrer"
-          />
-        )}
-        {!previewSrc && <div className="size-16 rounded-full bg-muted" />}
+        <ProfileAvatarPreview src={previewSrc} login={user.login} name={name} />
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
