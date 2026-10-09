@@ -1,9 +1,8 @@
-import { CreateTicketFooter } from "@/components/ticket/CreateTicketFooter";
-import { CreateTicketForm, emptyTicketForm } from "@/components/ticket/CreateTicketForm";
 import { ProjectDialogHeader } from "@/components/project/ProjectDialogHeader";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { SaveTicketFormSchema, type SaveTicketFormData } from "@/models/Ticket";
+import { loadTicketForm } from "@/utils/loadTicketForm";
 
 interface CreateTicketOptions {
   // Links the new ticket to this doc.
@@ -21,6 +20,7 @@ export const useCreateTicketDialog = (
   const { open } = useFormDialog();
   if (!canCreate) return undefined;
   return async ({ docId = "", categoryId = "" }: CreateTicketOptions = {}) => {
+    const { CreateTicketForm, CreateTicketFooter, emptyTicketForm } = await loadTicketForm();
     const result = await open<SaveTicketFormData>({
       title: "New ticket",
       schema: SaveTicketFormSchema,

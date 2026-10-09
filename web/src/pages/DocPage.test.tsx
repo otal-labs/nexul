@@ -112,7 +112,7 @@ describe("DocPage", () => {
 
     await user.click(await screen.findByRole("button", { name: "Doc actions" }));
     await user.click(await screen.findByRole("button", { name: "Create ticket from this doc" }));
-    await user.type(screen.getByLabelText("Title"), "New task");
+    await user.type(await screen.findByLabelText("Title"), "New task");
     await user.click(screen.getByRole("button", { name: "Create ticket" }));
 
     expect(api.post).toHaveBeenCalledWith("/api/tickets", {
