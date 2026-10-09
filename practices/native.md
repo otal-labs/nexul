@@ -17,7 +17,7 @@ documentation disagree on an API, the documentation wins.
 | Icons | lucide-react-native | Same icon set as the web app |
 | Server state | TanStack Query | Online manager on `expo-network`, focus manager on `AppState`, wired once in `src/lib/queryClient.ts` and the root layout |
 | Client state | Zustand | Persisted through `expo-sqlite/kv-store` via `src/lib/storage.ts`; synchronous, so stores hydrate before first render |
-| Secrets | expo-secure-store | The session token and the instance it belongs to, nothing else; never in a Zustand store |
+| Secrets | expo-secure-store | The session token and the instance it belongs to, nothing else; never in a Zustand store. The token is read once at launch into a module variable in `src/stores/sessionStore.tsx` (a read decrypts on the JS thread) and cleared on sign-out |
 | Fonts | expo-font config plugin | Inter and JetBrains Mono embedded at build time, one family each with its weights; the display face is `assets/fonts/Fraunces-Display.ttf`, a static cut of Fraunces at the web's axes (opsz 28, wght 560, SOFT 50, WONK 1) made with fontTools' instancer from the Google Fonts variable file, because Android does not apply variable axes reliably |
 | Motion | react-native-reanimated with react-native-worklets | Every animation runs on the UI thread from shared values; the curves and the reduced-motion hook are in `src/lib/motion.ts` |
 | Gestures | react-native-gesture-handler | The board's hold-and-drag and the Inbox's swipe to mark read; `GestureHandlerRootView` wraps the app in the root layout |
