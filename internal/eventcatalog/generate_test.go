@@ -23,8 +23,8 @@ var (
 )
 
 // generateSchemas returns each topic's schema text, generated from the payload types the domains declare: jsonschema-go
-// infers the shape, the json tags say what is left out when empty, and the enum, minimum, type and deprecated tags
-// add what reflection cannot see.
+// infers the shape, jsonx's rules say a list is never null, the json tags say what is left out when empty, and the
+// enum, minimum, type and deprecated tags add what reflection cannot see.
 func generateSchemas() (map[string]string, error) {
 	generated, err := generate(declared())
 	if err != nil {
@@ -128,8 +128,11 @@ func implements(t, iface reflect.Type) bool {
 	return t.Implements(iface) || reflect.PointerTo(t).Implements(iface)
 }
 
-// shape fits an inferred schema to what encoding/json writes and the contract promises.
+// shape fits an inferred schema to what jsonx writes and the contract promises.
 func (g *generator) shape(t reflect.Type, s *jsonschema.Schema) {
+	if s != nil && t.Kind() == reflect.Slice && t.Elem().Kind() != reflect.Uint8 {
+		dropNull(s)
+	}
 	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
@@ -195,7 +198,7 @@ func jsonField(f reflect.StructField) (string, bool) {
 	return name, slices.Contains(settings, "omitempty") || slices.Contains(settings, "omitzero")
 }
 
-// dropNull removes null from a left-out-when-empty field's types: encoding/json omits a nil value, never writes null.
+// dropNull removes null from a type jsonx never writes as null: a list, or a field left out when empty.
 func dropNull(s *jsonschema.Schema) {
 	s.Types = slices.DeleteFunc(s.Types, func(t string) bool { return t == "null" })
 	if len(s.Types) == 1 {

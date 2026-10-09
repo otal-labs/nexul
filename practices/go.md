@@ -535,14 +535,15 @@ No version numbers here; `go.mod` is the manifest of record.
 ## 16. JSON on the wire
 
 - `internal/platform/jsonx` is the one encoder for everything a client
-  reads: `httpx.WriteJSON`, MCP tool results and resources, and live
-  frames. It is `json.Marshal` with every nil slice written as `[]`, so a
+  reads: `httpx.WriteJSON`, MCP tool results and resources, live frames,
+  and event payloads, which the outbox and the bus encode for webhooks and
+  automations. It is `json.Marshal` with every nil slice written as `[]`, so a
   client never has to tell `null` from an empty list. A byte slice keeps
   `null`, and a nil slice under an `omitzero` field stays omitted.
-- A domain returns its nil slices as they are. A hand-written
-  "nil to `[]`" patch in a use-case or handler duplicates `jsonx` and drifts
-  from it; the one place it stays is a payload `jsonx` never sees, such as
-  an outbox event, which the outbox encodes with plain `json.Marshal`.
+- A domain returns its nil slices as they are, event payloads included. A
+  hand-written "nil to `[]`" patch in a use-case or handler duplicates
+  `jsonx` and drifts from it. The generated event schemas follow the same
+  rule, so a list field there is an array, never `null`.
 - `jsonx` never writes into the value it encodes, because handlers pass
   values other goroutines still hold; it copies only the path down to a nil
   slice and caches a plan per type. Keep both properties when changing it.

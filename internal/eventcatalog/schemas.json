@@ -571,19 +571,13 @@
         "type": "boolean"
       },
       "added_user_ids": {
-        "type": [
-          "null",
-          "array"
-        ],
+        "type": "array",
         "items": {
           "type": "string"
         }
       },
       "removed_user_ids": {
-        "type": [
-          "null",
-          "array"
-        ],
+        "type": "array",
         "items": {
           "type": "string"
         }
@@ -666,10 +660,7 @@
             "type": "string"
           },
           "mentions": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "object",
               "properties": {
@@ -714,10 +705,7 @@
                   "type": "string"
                 },
                 "user_ids": {
-                  "type": [
-                    "null",
-                    "array"
-                  ],
+                  "type": "array",
                   "items": {
                     "type": "string"
                   }
@@ -756,10 +744,7 @@
                   "type": "string"
                 },
                 "steps": {
-                  "type": [
-                    "null",
-                    "array"
-                  ],
+                  "type": "array",
                   "items": {
                     "type": "object",
                     "properties": {
@@ -928,10 +913,7 @@
             "type": "string"
           },
           "mentions": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "object",
               "properties": {
@@ -976,10 +958,7 @@
                   "type": "string"
                 },
                 "user_ids": {
-                  "type": [
-                    "null",
-                    "array"
-                  ],
+                  "type": "array",
                   "items": {
                     "type": "string"
                   }
@@ -1018,10 +997,7 @@
                   "type": "string"
                 },
                 "steps": {
-                  "type": [
-                    "null",
-                    "array"
-                  ],
+                  "type": "array",
                   "items": {
                     "type": "object",
                     "properties": {
@@ -1202,10 +1178,7 @@
         "type": "boolean"
       },
       "providers": {
-        "type": [
-          "null",
-          "array"
-        ],
+        "type": "array",
         "items": {
           "type": "object",
           "properties": {
@@ -2784,10 +2757,7 @@
             "type": "string"
           },
           "linked_ticket_ids": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             }
@@ -2894,10 +2864,7 @@
             "type": "string"
           },
           "linked_ticket_ids": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             }
@@ -2960,10 +2927,7 @@
             "type": "string"
           },
           "linked_ticket_ids": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             }
@@ -3805,10 +3769,7 @@
     "type": "object",
     "properties": {
       "user_ids": {
-        "type": [
-          "null",
-          "array"
-        ],
+        "type": "array",
         "items": {
           "type": "string"
         },
@@ -3833,10 +3794,7 @@
     "type": "object",
     "properties": {
       "notifications": {
-        "type": [
-          "null",
-          "array"
-        ],
+        "type": "array",
         "items": {
           "type": "object",
           "properties": {
@@ -3942,10 +3900,7 @@
             ]
           },
           "excluded_project_ids": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             }
@@ -4216,10 +4171,7 @@
             ]
           },
           "excluded_project_ids": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             }
@@ -5138,10 +5090,7 @@
             "format": "date-time"
           },
           "labels": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             }
@@ -5287,10 +5236,7 @@
             "format": "date-time"
           },
           "labels": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             }
@@ -5434,10 +5380,7 @@
             "format": "date-time"
           },
           "labels": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             }
@@ -5562,10 +5505,7 @@
             "format": "date-time"
           },
           "labels": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             }
@@ -5758,10 +5698,7 @@
             "format": "date-time"
           },
           "labels": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             }
@@ -5922,10 +5859,7 @@
             "format": "date-time"
           },
           "labels": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             }
@@ -6050,10 +5984,7 @@
             "format": "date-time"
           },
           "labels": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             }
@@ -6178,10 +6109,7 @@
             "format": "date-time"
           },
           "labels": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             }
@@ -6306,10 +6234,7 @@
             "format": "date-time"
           },
           "labels": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             }
@@ -6522,10 +6447,7 @@
             "type": "integer"
           },
           "nodes": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "object",
               "properties": {
@@ -6592,10 +6514,7 @@
             }
           },
           "edges": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": "array",
             "items": {
               "type": "object",
               "properties": {
@@ -6672,10 +6591,7 @@
         "type": "string"
       },
       "occupants": {
-        "type": [
-          "null",
-          "array"
-        ],
+        "type": "array",
         "items": {
           "type": "object",
           "properties": {
