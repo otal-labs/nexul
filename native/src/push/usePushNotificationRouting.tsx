@@ -5,25 +5,34 @@ import { useEffect } from "react";
 import { api } from "@/api/client";
 import { subjectRoute } from "@/components/inbox/InboxScreen";
 import { getNotificationsKey } from "@/hooks/NotificationHooks";
+import { myRoleQuery } from "@/hooks/WorkspaceHooks";
 import { queryClient } from "@/lib/queryClient";
+import { AREA_PERMISSION } from "@/models/Access";
 import type { Notification } from "@/models/Notification";
+import { projectPermissions } from "@/models/Workspace";
 
+// The Inbox caches one list per workspace and a push can come from any of them; the unscoped list holds them all.
 const findNotification = async (notificationId: string): Promise<Notification | undefined> => {
-  const cached = queryClient.getQueryData<Notification[]>([getNotificationsKey]);
-  const notifications =
-    cached ??
-    (await queryClient.fetchQuery<Notification[]>({
-      queryKey: [getNotificationsKey],
-      queryFn: () => api.get<Notification[]>("/api/notifications"),
-    }));
+  const cached = queryClient
+    .getQueriesData<Notification[]>({ queryKey: [getNotificationsKey] })
+    .flatMap(([, list]) => list ?? [])
+    .find((n) => n.id === notificationId);
+  if (cached) return cached;
+  const notifications = await api.get<Notification[]>("/api/notifications");
   return notifications.find((n) => n.id === notificationId);
+};
+
+// The same answer the Inbox's useAreaAccess gives, for the workspace the notification belongs to.
+const canReadTickets = async (workspaceId: string): Promise<boolean> => {
+  const role = await queryClient.ensureQueryData(myRoleQuery(workspaceId));
+  return projectPermissions(role, undefined).includes(AREA_PERMISSION.tickets);
 };
 
 // Tapping only navigates; the mark-read call stays where the Inbox already makes it.
 const openNotification = async (notificationId: string, router: ImperativeRouter): Promise<void> => {
   router.push("/inbox" as Href);
   const notification = await findNotification(notificationId);
-  const target = notification && subjectRoute(notification);
+  const target = notification && subjectRoute(notification, await canReadTickets(notification.workspace_id));
   if (target) router.push(target, { withAnchor: true });
 };
 

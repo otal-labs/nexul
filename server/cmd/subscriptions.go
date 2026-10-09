@@ -307,7 +307,7 @@ func wireIntegrationFanout(ctx context.Context, bus *inprocess.Bus, store *stora
 	for _, topic := range eventcatalog.AllTopics() {
 		mustSubscribe(ctx, bus, "integrations.fanout", topic, "", fanout.HandleEvent)
 	}
-	deliveryRelay := integrations.NewRelay(store.IntegrationDeliveries, integrations.RelayConfig{Logger: logger})
+	deliveryRelay := integrations.NewRelay(store.IntegrationDeliveries, integrations.RelayConfig{Wake: store.Commits().Next, Logger: logger})
 	go func() {
 		if err := deliveryRelay.Run(ctx); err != nil {
 			logger.Error("integration delivery relay stopped", "error", err)

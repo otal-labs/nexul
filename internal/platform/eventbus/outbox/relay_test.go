@@ -19,9 +19,12 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/wake"
 )
 
 var errPublish = errors.New("publish refused")
+
+const fallbackInterval = 5 * time.Second
 
 func insertRow(t *testing.T, db *sql.DB, id, topic string, published int, createdAt int64) {
 	_, err := db.Exec(`INSERT INTO outbox (id, topic, payload, created_at, published) VALUES (?, ?, ?, ?, ?)`,
@@ -237,14 +240,22 @@ func TestRelay_CrashRedelivery_DedupeEndToEnd(t *testing.T) {
 }
 
 type memStore struct {
-	mu   sync.Mutex
-	rows []outbox.Entry
+	mu    sync.Mutex
+	rows  []outbox.Entry
+	reads int
 }
 
 func (m *memStore) Unpublished(context.Context, int) ([]outbox.Entry, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.reads++
 	return slices.Clone(m.rows), nil
+}
+
+func (m *memStore) readCount() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.reads
 }
 
 func (m *memStore) MarkPublished(_ context.Context, id string) error {
@@ -258,18 +269,62 @@ func TestRelay_Run_ACommitWakesItBeforeTheNextPoll(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		store := &memStore{}
 		pub := &fakePublisher{}
-		wake := make(chan struct{}, 1)
-		relay := outbox.NewRelay(store, pub, outbox.RelayConfig{Interval: time.Hour, Wake: wake, Logger: testutil.DiscardLogger()})
+		var commits wake.Broadcast
+		relay := outbox.NewRelay(store, pub, outbox.RelayConfig{Wake: commits.Next, Logger: testutil.DiscardLogger()})
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 		go func() { _ = relay.Run(ctx) }()
+		synctest.Wait()
 
 		store.mu.Lock()
 		store.rows = append(store.rows, outbox.Entry{ID: "e1", Topic: "chat.message.created", Payload: []byte(`{}`)})
 		store.mu.Unlock()
-		wake <- struct{}{}
+		commits.Notify()
 		synctest.Wait()
 
 		assert.Equal(t, []string{"chat.message.created"}, pub.topics(), "published with no time passing")
+	})
+}
+
+func TestRelay_Run_AnIdleRelayReadsOnlyAtTheFallbackInterval(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := &memStore{}
+		var commits wake.Broadcast
+		relay := outbox.NewRelay(store, &fakePublisher{}, outbox.RelayConfig{Wake: commits.Next, Logger: testutil.DiscardLogger()})
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		go func() { _ = relay.Run(ctx) }()
+		synctest.Wait()
+		atStart := store.readCount()
+
+		time.Sleep(fallbackInterval - time.Nanosecond)
+		assert.Equal(t, atStart, store.readCount(), "no read before the fallback interval")
+
+		time.Sleep(time.Nanosecond)
+		synctest.Wait()
+		assert.Equal(t, atStart+1, store.readCount(), "one read when the fallback interval passes")
+	})
+}
+
+func TestRelay_Run_AFailedPublishIsRetriedAtTheFallbackInterval(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := &memStore{rows: []outbox.Entry{{ID: "e1", Topic: "chat.message.created", Payload: []byte(`{}`)}}}
+		pub := &fakePublisher{}
+		pub.failCount.Store(1)
+		var commits wake.Broadcast
+		relay := outbox.NewRelay(store, pub, outbox.RelayConfig{Wake: commits.Next, Logger: testutil.DiscardLogger()})
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		go func() { _ = relay.Run(ctx) }()
+		synctest.Wait()
+		require.Empty(t, pub.topics(), "the first publish is refused")
+
+		time.Sleep(fallbackInterval - time.Nanosecond)
+		synctest.Wait()
+		require.Empty(t, pub.topics(), "nothing retries it before the fallback interval")
+
+		time.Sleep(time.Nanosecond)
+		synctest.Wait()
+		assert.Equal(t, []string{"chat.message.created"}, pub.topics(), "the fallback poll retries it")
 	})
 }

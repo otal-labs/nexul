@@ -24,11 +24,11 @@ func TestIntegration_TicketKeysAreUniquePerWorkspace(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{"norwood", "otal"}, []string{nor.Slug, otal.Slug})
 
-	norWeb, err := f.svc.workspaceSvc.Create(owner, uOwner, nor.ID, "Web", "WEB", "")
+	norWeb, err := f.svc.workspaceSvc.Create(owner, nor.ID, "Web", "WEB", "")
 	require.NoError(t, err)
-	otalWeb, err := f.svc.workspaceSvc.Create(owner, uOwner, otal.ID, "Web", "WEB", "")
+	otalWeb, err := f.svc.workspaceSvc.Create(owner, otal.ID, "Web", "WEB", "")
 	require.NoError(t, err, "another workspace may use the same prefix")
-	_, err = f.svc.workspaceSvc.Create(owner, uOwner, otal.ID, "Web again", "WEB", "")
+	_, err = f.svc.workspaceSvc.Create(owner, otal.ID, "Web again", "WEB", "")
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "a prefix stays unique inside its workspace")
 
 	norTicket, err := f.svc.ticketsSvc.Create(owner, norWeb.ID, "Norwood login", "", "", "")

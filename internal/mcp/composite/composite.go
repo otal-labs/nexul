@@ -38,13 +38,13 @@ func runSteps(ctx context.Context, steps []step) ([]string, error) {
 	return applied, nil
 }
 
-// ownerActor is the caller the owner gate checks; an empty id would read as a trusted adapter and skip the gate.
-func ownerActor(ctx context.Context) (string, error) {
+// requireOwnerActor refuses a call with no signed-in caller; an empty id would read as a trusted adapter and skip the gate.
+func requireOwnerActor(ctx context.Context) error {
 	a, ok := identity.ActorFromCtx(ctx)
 	if !ok || a.ID == "" {
-		return "", fmt.Errorf("%w: changing a project needs a signed-in owner", apperrs.ErrUnauthorized)
+		return fmt.Errorf("%w: changing a project needs a signed-in owner", apperrs.ErrUnauthorized)
 	}
-	return a.ID, nil
+	return nil
 }
 
 // moveTo returns ids with id moved to position, clamped to the list, for the use-cases that take a whole new order.
