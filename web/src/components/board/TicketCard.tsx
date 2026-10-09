@@ -102,7 +102,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
         {run}
         {thread}
       </span>
-      <span title={ticket.title} className="-mt-1 line-clamp-3 text-sm font-medium leading-snug break-words">{ticket.title}</span>
+      <span dir="auto" title={ticket.title} className="-mt-1 line-clamp-3 text-sm font-medium leading-snug break-words">{ticket.title}</span>
       <TicketBlockedLine ticketId={ticket.id} />
       <span className="flex items-end justify-between gap-2">
         {pills}
