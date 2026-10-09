@@ -1,4 +1,6 @@
-import { Monitor, Smartphone, X } from "lucide-react-native";
+import Monitor from "lucide-react-native/icons/monitor";
+import Smartphone from "lucide-react-native/icons/smartphone";
+import X from "lucide-react-native/icons/x";
 import { Pressable, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 

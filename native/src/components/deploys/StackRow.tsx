@@ -1,4 +1,4 @@
-import { Layers } from "lucide-react-native";
+import Layers from "lucide-react-native/icons/layers";
 import { Pressable, View } from "react-native";
 
 import { RelativeTime } from "@/components/RelativeTime";

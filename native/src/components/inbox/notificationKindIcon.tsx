@@ -1,16 +1,14 @@
-import {
-  ArrowRightLeft,
-  AtSign,
-  Brain,
-  CircleHelp,
-  FilePenLine,
-  FilePlus,
-  MessageCircleQuestion,
-  MessageSquareReply,
-  Sparkles,
-  UserPlus,
-  type LucideIcon,
-} from "lucide-react-native";
+import ArrowRightLeft from "lucide-react-native/icons/arrow-right-left";
+import AtSign from "lucide-react-native/icons/at-sign";
+import Brain from "lucide-react-native/icons/brain";
+import CircleHelp from "lucide-react-native/icons/circle-question-mark";
+import FilePenLine from "lucide-react-native/icons/file-pen-line";
+import FilePlus from "lucide-react-native/icons/file-plus";
+import MessageCircleQuestion from "lucide-react-native/icons/message-circle-question-mark";
+import MessageSquareReply from "lucide-react-native/icons/message-square-reply";
+import Sparkles from "lucide-react-native/icons/sparkles";
+import UserPlus from "lucide-react-native/icons/user-plus";
+import type { LucideIcon } from "lucide-react-native";
 
 import { NotificationKind } from "@/models/Notification";
 

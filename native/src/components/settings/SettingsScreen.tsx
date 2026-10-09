@@ -1,5 +1,7 @@
 import { useRouter } from "expo-router";
-import { Building2, MonitorSmartphone, SunMoon } from "lucide-react-native";
+import Building2 from "lucide-react-native/icons/building-complex";
+import MonitorSmartphone from "lucide-react-native/icons/monitor-smartphone";
+import SunMoon from "lucide-react-native/icons/sun-moon";
 import { ScrollView, View } from "react-native";
 
 import { ScreenHeader } from "@/components/ScreenHeader";

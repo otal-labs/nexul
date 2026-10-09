@@ -1,6 +1,8 @@
 import { LegendList, type LegendListRef, type NativeScrollEvent, type NativeSyntheticEvent } from "@legendapp/list/react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { ArrowDown, ScrollText, WifiOff } from "lucide-react-native";
+import ArrowDown from "lucide-react-native/icons/arrow-down";
+import ScrollText from "lucide-react-native/icons/scroll-text";
+import WifiOff from "lucide-react-native/icons/wifi-off";
 import { useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useCSSVariable } from "uniwind";

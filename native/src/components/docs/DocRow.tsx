@@ -1,4 +1,5 @@
-import { FileText, Lock } from "lucide-react-native";
+import FileText from "lucide-react-native/icons/file-text";
+import Lock from "lucide-react-native/icons/lock";
 import { Pressable, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 

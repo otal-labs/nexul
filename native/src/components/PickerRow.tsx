@@ -1,4 +1,4 @@
-import { Check } from "lucide-react-native";
+import Check from "lucide-react-native/icons/check";
 import type { ReactNode } from "react";
 import { Pressable } from "react-native";
 import { useCSSVariable } from "uniwind";

@@ -1,5 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronDown, MessageSquare } from "lucide-react-native";
+import ChevronDown from "lucide-react-native/icons/chevron-down";
+import MessageSquare from "lucide-react-native/icons/message-square";
 import { Pressable, ScrollView, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 

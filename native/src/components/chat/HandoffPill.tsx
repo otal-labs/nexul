@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { Bot } from "lucide-react-native";
+import Bot from "lucide-react-native/icons/bot";
 import { Pressable, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 
