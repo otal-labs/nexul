@@ -43,6 +43,33 @@ func TestPublishCatalogIdempotent(t *testing.T) {
 	assert.Len(t, entries, len(catalogSchemas))
 }
 
+// TestPublishCatalog_AfterASchemaEdit_PublishesTheNewTextAsTheNextVersion guards an upgraded instance: a topic seeded
+// with an older schema text gets the current text as its next version, and an unchanged topic gets no new row.
+func TestPublishCatalog_AfterASchemaEdit_PublishesTheNewTextAsTheNextVersion(t *testing.T) {
+	f := newFakeData()
+	svc := newTestServiceWithOwner(f, true)
+	require.NoError(t, svc.cfg.Schemas.Publish(t.Context(), SchemaEntry{Topic: "doc.created", Version: 1, Schema: `{"type":"object"}`}))
+	require.NoError(t, svc.cfg.Schemas.Publish(t.Context(), SchemaEntry{Topic: "ticket.created", Version: 1, Schema: catalogSchemas["ticket.created"]}))
+
+	require.NoError(t, svc.PublishCatalog(t.Context()))
+	require.NoError(t, svc.PublishCatalog(t.Context()))
+
+	entries, err := svc.Catalog(t.Context())
+	require.NoError(t, err)
+	versions := map[string][]SchemaEntry{}
+	for _, e := range entries {
+		versions[e.Topic] = append(versions[e.Topic], e)
+	}
+	require.Len(t, versions["doc.created"], 2, "the old version stays beside the new one")
+	for _, e := range versions["doc.created"] {
+		if e.Version == 2 {
+			assert.Equal(t, catalogSchemas["doc.created"], e.Schema)
+		}
+	}
+	require.Len(t, versions["ticket.created"], 1, "an unchanged schema publishes no new version")
+	assert.Len(t, entries, len(catalogSchemas)+1)
+}
+
 func TestCatalogSchemasAreCompleteContracts(t *testing.T) {
 	// Guard against an empty catalog regressing the published surface: the
 	// catalog is the frozen public contract (ADR 0044), so it must keep every topic
