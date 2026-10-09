@@ -73,11 +73,11 @@ func TestHub_PublishFansOutToConnectedClients(t *testing.T) {
 	srv := serveHub(t, hub)
 	conn := dialClient(t, hub, srv)
 
-	require.NoError(t, hub.Publish(context.Background(), "runner.connected", map[string]any{"runner_id": "r-1"}))
+	require.NoError(t, hub.Publish(context.Background(), "runner.connected", map[string]any{"runner_id": "r-1", "labels": []string(nil)}))
 	f := readFrame(t, conn)
 	assert.Equal(t, "runner.connected", f.Topic)
 	assert.Equal(t, "event", f.Type)
-	require.NotNil(t, f.Payload)
+	assert.Equal(t, map[string]any{"runner_id": "r-1", "labels": []any{}}, f.Payload, "a nil slice reaches the browser as []")
 }
 
 func TestHub_PublishWithNoClientsIsNoOp(t *testing.T) {

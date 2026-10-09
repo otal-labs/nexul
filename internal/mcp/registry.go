@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -25,6 +24,7 @@ import (
 	"github.com/otal-labs/nexul/internal/mentions"
 	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/deadletter"
+	"github.com/otal-labs/nexul/internal/platform/jsonx"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/repository"
@@ -172,7 +172,7 @@ func topologyResource(s *topology.Service) resource {
 			if err != nil {
 				return "", err
 			}
-			b, err := json.Marshal(c)
+			b, err := jsonx.Marshal(c)
 			if err != nil {
 				return "", fmt.Errorf("marshal topology: %w", err)
 			}

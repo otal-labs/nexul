@@ -106,9 +106,6 @@ func projectView(ctx context.Context, w *workspace.Service, t *tickets.Service, 
 	if d.Repositories, err = w.ListRepos(ctx, id); err != nil {
 		return d, err
 	}
-	if d.Repositories == nil {
-		d.Repositories = []workspace.RepoRef{}
-	}
 	if err := d.addBoard(ctx, w, id); err != nil {
 		return d, err
 	}

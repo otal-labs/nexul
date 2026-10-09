@@ -568,7 +568,6 @@ func TestService_DescribeTunnel(t *testing.T) {
 		assert.False(t, info.Tracked)
 		assert.Empty(t, info.Routes)
 		assert.Empty(t, info.Records)
-		assert.NotNil(t, info.Routes, "empty lists serialize as [] for the wizard")
 	})
 
 	t.Run("an unknown tunnel id is the provider's not-found", func(t *testing.T) {

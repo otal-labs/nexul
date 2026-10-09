@@ -126,9 +126,6 @@ func groupRunners(machines []*Machine, runners []RunnerView) ([]machineResult, [
 	out := make([]machineResult, 0, len(machines))
 	for _, m := range machines {
 		rs := byName[m.Name]
-		if rs == nil {
-			rs = []runnerResult{}
-		}
 		out = append(out, machineResult{
 			ID: m.ID, Name: m.Name, StackRoot: m.StackRoot, ReportedHostname: m.ReportedHostname,
 			LastSeen: m.LastSeen, Runners: rs,

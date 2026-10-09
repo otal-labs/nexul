@@ -33,7 +33,7 @@ func (r *Runner) Run(ctx context.Context, in RunInput) (*Trail, error) {
 		TargetType: in.TargetType, TargetID: strings.TrimSpace(in.TargetID), ProjectID: tgt.projectID,
 		StarterID: starter, Via: in.Via, SelectedMemoryIDs: normalizeIDs(in.MemoryIDs),
 		CustomInstructions: strings.TrimSpace(in.CustomInstructions),
-		State:              TrailStarting, StartedAt: r.now().UTC(), Activity: []ActivityEntry{},
+		State:              TrailStarting, StartedAt: r.now().UTC(),
 	}
 	options, err := harness.CleanOptions(in.ModelOptions)
 	if err != nil {

@@ -576,9 +576,6 @@ func teamPeople(accounts []*TeamAccount, memberships []*TeamMembership, visible 
 		if held == nil && !everyone {
 			continue
 		}
-		if held == nil {
-			held = []*TeamMembership{}
-		}
 		person := &TeamPerson{TeamAccount: *a, Workspaces: held}
 		person.AvatarURL = effectiveAvatarURL(a)
 		people = append(people, person)

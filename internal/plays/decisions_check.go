@@ -109,7 +109,7 @@ func (r *Runner) startDecisionsCheck(ctx context.Context, ticketID, starter stri
 	trail := &Trail{
 		ID: ids.New(), WorkspaceID: workspaceID, PlayID: play.ID, PlayLabel: play.Label, TargetType: TargetTicket,
 		TargetID: ticketID, ProjectID: tgt.projectID, StarterID: starter, Via: via, SelectedMemoryIDs: []string{},
-		State: TrailStarting, StartedAt: r.now().UTC(), Activity: []ActivityEntry{},
+		State: TrailStarting, StartedAt: r.now().UTC(),
 	}
 	if err := r.checkDecisionsStarter(ctx, starter, workspaceID); err != nil {
 		if record {

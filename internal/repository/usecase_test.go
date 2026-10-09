@@ -43,23 +43,6 @@ func TestScan_NoCandidates(t *testing.T) {
 	assert.Equal(t, "main", result.DefaultBranch)
 	assert.Empty(t, result.Candidates)
 	assert.Empty(t, result.EnvKeys)
-	assert.NotNil(t, result.EnvKeys, "empty lists must serialize as [] for the wizard")
-}
-
-func TestScan_EmptyListsAreNeverNil(t *testing.T) {
-	s := &fakeScanner{
-		resolvedRef: "main",
-		tree:        []TreeEntry{{Path: "Dockerfile", Type: "blob"}},
-		files:       map[string][]byte{"Dockerfile": []byte("FROM go\n")},
-	}
-	result, err := Scan(context.Background(), nil, s, "acme", "app", "")
-	require.NoError(t, err)
-	require.Len(t, result.Candidates, 1)
-	svc := result.Candidates[0].Services[0]
-	assert.NotNil(t, svc.Ports)
-	assert.NotNil(t, svc.Expose)
-	assert.NotNil(t, svc.EnvKeys)
-	assert.NotNil(t, result.EnvKeys)
 }
 
 func TestScan_ComposeSortsBeforeDockerfile(t *testing.T) {

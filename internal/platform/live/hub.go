@@ -3,7 +3,6 @@ package live
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -12,6 +11,7 @@ import (
 	"github.com/coder/websocket"
 
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/jsonx"
 )
 
 // Frame is the wire shape pushed to browser clients. The SPA parses
@@ -88,7 +88,7 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Publish queues a frame for every browser its audience allows; a client too far behind is dropped and reconnects
 // with backoff, so one stalled socket never holds up the others.
 func (h *Hub) Publish(ctx context.Context, topic string, payload any) error {
-	data, err := json.Marshal(Frame{Topic: topic, Type: "event", Payload: payload})
+	data, err := jsonx.Marshal(Frame{Topic: topic, Type: "event", Payload: payload})
 	if err != nil {
 		return err
 	}

@@ -1,10 +1,13 @@
 package integrations
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 // This file defines the published event-schema catalog (ADR 0044), seeded into event_schemas on startup.
 
-// catalogSchemas maps topic -> latest published schema JSON; PublishCatalog assigns version numbers from map position.
+// catalogSchemas maps topic -> current schema JSON; PublishCatalog publishes a changed text as the topic's next version.
 var catalogSchemas = map[string]string{
 	"invitation.created":       `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"invitation_id":{"type":"string"},"actor_id":{"type":"string"}}}`,
 	"invitation.revoked":       `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"invitation_id":{"type":"string"},"actor_id":{"type":"string"}}}`,
@@ -1594,15 +1597,26 @@ func botwebhookSchema(extra string) string {
 	}`
 }
 
-// PublishCatalog seeds catalog schemas idempotently before any integration installs.
+// PublishCatalog publishes each topic whose current schema differs from its latest stored version as the next
+// version, leaving earlier versions in place; an unchanged catalog writes nothing.
 func (s *Service) PublishCatalog(ctx context.Context) error {
+	published, err := s.cfg.Schemas.Catalog(ctx)
+	if err != nil {
+		return fmt.Errorf("read published schemas: %w", err)
+	}
+	latest := make(map[string]SchemaEntry, len(published))
+	for _, e := range published {
+		if e.Version > latest[e.Topic].Version {
+			latest[e.Topic] = e
+		}
+	}
+	now := s.cfg.Now().UTC()
 	for topic, schema := range catalogSchemas {
-		if err := s.cfg.Schemas.Publish(ctx, SchemaEntry{
-			Topic:     topic,
-			Version:   1,
-			Schema:    schema,
-			CreatedAt: s.cfg.Now().UTC(),
-		}); err != nil {
+		prev, ok := latest[topic]
+		if ok && prev.Schema == schema {
+			continue
+		}
+		if err := s.cfg.Schemas.Publish(ctx, SchemaEntry{Topic: topic, Version: prev.Version + 1, Schema: schema, CreatedAt: now}); err != nil {
 			return err
 		}
 	}

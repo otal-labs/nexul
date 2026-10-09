@@ -90,6 +90,7 @@ type world struct {
 	access     []workspace.ProjectAccessEntry
 	target     tickets.TestTarget
 	fail       string
+	gets       int // ticket reads by id, so a test can pin how often a tool loads each ticket
 }
 
 var errBoom = errors.New("storage is down")
@@ -229,6 +230,7 @@ func (r ticketRepo) CreateWithLink(ctx context.Context, t *tickets.Ticket, link 
 }
 
 func (r ticketRepo) GetByID(_ context.Context, id string) (*tickets.Ticket, error) {
+	r.w.gets++
 	t, ok := r.w.tickets[id]
 	if !ok {
 		return nil, apperrs.ErrNotFound

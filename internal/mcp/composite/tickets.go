@@ -118,10 +118,6 @@ func (n *names) ticket(ctx context.Context, t *tickets.Ticket) (ticketResult, er
 	if err != nil {
 		return ticketResult{}, err
 	}
-	labels := t.Labels
-	if labels == nil {
-		labels = []string{}
-	}
 	body, err := richtext.ToMarkdown(t.Body)
 	if err != nil {
 		body = t.Body
@@ -130,7 +126,7 @@ func (n *names) ticket(ctx context.Context, t *tickets.Ticket) (ticketResult, er
 		ID: t.ID, Key: ticketKey(pn.prefix, t.Number), Title: t.Title, Body: body, ProjectID: t.ProjectID,
 		StatusID: string(t.Status), Status: pn.statuses[string(t.Status)],
 		TypeID: t.TypeID, Type: pn.types[t.TypeID], CategoryID: t.CategoryID, Category: pn.categories[t.CategoryID],
-		Developer: t.Developer, Tester: t.Tester, Reporter: t.Reporter, Labels: labels, DocID: t.DocID,
+		Developer: t.Developer, Tester: t.Tester, Reporter: t.Reporter, Labels: t.Labels, DocID: t.DocID,
 		CreatedAt: t.CreatedAt, UpdatedAt: t.UpdatedAt, FinishedAt: t.FinishedAt,
 	}, nil
 }
@@ -204,11 +200,7 @@ func searchTickets(ctx context.Context, t *tickets.Service, query string) ([]*ti
 	}
 	out := make([]*tickets.Ticket, 0, len(hits))
 	for _, h := range hits {
-		tk, err := t.Get(ctx, h.ID)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, tk)
+		out = append(out, h.Ticket)
 	}
 	return out, nil
 }
@@ -333,9 +325,6 @@ func (d *ticketDetail) addLinks(ctx context.Context, t *tickets.Service, id stri
 		d.PullRequests = append(d.PullRequests, pullRequestResult{Owner: p.Owner, Repo: p.Repo, Number: p.Number, Title: p.Title, State: p.State})
 	}
 	d.Branches = branches
-	if d.Branches == nil {
-		d.Branches = []tickets.BranchLink{}
-	}
 	set, err := t.Links(ctx, id)
 	if err != nil {
 		return err

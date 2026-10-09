@@ -152,7 +152,7 @@ func TestIntegration_RestrictedMember_NoticesAndTrailsFollowAccess(t *testing.T)
 		ID: "tr-1", WorkspaceID: wsDefault, PlayID: "play-1", PlayLabel: "Fix", TargetType: plays.TargetTicket, TargetID: f.ticket.ID,
 		ProjectID: pGeneral, StarterID: uOwner, Via: plays.ViaWeb, State: plays.TrailDone, StartedAt: time.Now(), Activity: []plays.ActivityEntry{},
 	}))
-	runner := plays.NewRunner(plays.RunnerConfig{Plays: f.store.Plays, Trails: f.store.PlayTrails, Perm: playsPermissionGate{svc: s.accessSvc}})
+	runner := plays.NewRunner(plays.RunnerConfig{Plays: f.store.Plays, Trails: f.store.PlayTrails, Perm: s.accessSvc})
 
 	visible := func() (notices, unread, trails int, trailErr string) {
 		ns, err := s.notifSvc.List(ctx, uClient, wsDefault, 50)

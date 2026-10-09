@@ -73,9 +73,8 @@ func TestGetChangeContext_PRWithNoTickets_ReturnsEmptyLists(t *testing.T) {
 	p, _ := changeFixture()
 	got, err := GetChangeContext(context.Background(), nil, p, &fakeChangeReader{}, ChangeRef{Owner: "acme", Repo: "app", Number: 7})
 	require.NoError(t, err)
-	assert.NotNil(t, got.Tickets)
 	assert.Empty(t, got.Tickets)
-	assert.NotNil(t, got.Decisions)
+	assert.Empty(t, got.Decisions)
 }
 
 func TestGetChangeContext_Errors(t *testing.T) {

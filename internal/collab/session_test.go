@@ -142,7 +142,7 @@ func testLogger() *slog.Logger {
 }
 
 func newTestClient(id string) *client {
-	return &client{id: id, mode: ModeEdit, send: make(chan []byte, sendBuffer), done: make(chan struct{})}
+	return &client{id: id, mode: ModeEdit, send: make(chan []byte, sendBuffer), done: make(chan struct{}), hangUp: func() {}}
 }
 
 func newTestSession(store Store) *session {
@@ -436,29 +436,47 @@ func TestSessionCommitTrimFailureStillWritesBody(t *testing.T) {
 	assert.Equal(t, 1, writer.count(), "a failed trim must not block the canonical write")
 }
 
-func TestSessionBroadcastDropsStuckPeerAndLeaveIsIdempotent(t *testing.T) {
+// TestSessionBroadcastDropsStuckPeerLikeALeave guards against a dropped peer that stops receiving edits but can still
+// commit its stale body: the drop runs the whole leave path, so its presence goes, the seed moves on, and its writes are refused.
+func TestSessionBroadcastDropsStuckPeerLikeALeave(t *testing.T) {
+	writer := &fakeWriter{}
 	s := newTestSession(newFakeStore())
-	a := newTestClient("alice")
-	b := newTestClient("bob")
-	s.join(a)
-	s.join(b)
+	s.writer = writer
+	bob := newTestClient("bob")
+	s.join(bob)
+	require.NoError(t, s.sendInit(t.Context(), bob))
+	assert.Equal(t, msgInit, drain(t, bob).Type)
+	assert.Equal(t, msgSeed, drain(t, bob).Type)
+	bob.clientID = 7
+	s.handlePresence(bob, ClientMsg{Type: msgPresence, ClientID: 7, Payload: "Ym9i"})
+	hungUp := false
+	bob.hangUp = func() { hungUp = true }
+	alice, carol := newTestClient("alice"), newTestClient("carol")
+	alice.mode = ModeView
+	s.join(alice)
+	s.join(carol)
 
-	// Fill bob's queue so the broadcast drop path fires.
 	for range sendBuffer {
-		b.send <- []byte(`{"type":"commit","from":"alice"}`)
+		bob.send <- []byte(`{}`)
 	}
-	s.broadcast(a, ServerMsg{Type: msgCommit, From: "alice", Seq: 1})
+	s.handlePresence(alice, ClientMsg{Type: msgPresence, ClientID: 11, Payload: "YWxpY2U="})
 
-	got := drain(t, a)
-	assert.Equal(t, msgLeave, got.Type)
-	assert.Equal(t, 0, got.ClientID, "bob never announced a client id")
-	assert.False(t, s.empty())
+	assert.Equal(t, msgPresence, drain(t, carol).Type)
+	leave := drain(t, carol)
+	assert.Equal(t, msgLeave, leave.Type)
+	assert.Equal(t, 7, leave.ClientID)
+	assert.Equal(t, msgSeed, drain(t, carol).Type, "the dropped seeder hands the seed on")
+	assert.True(t, hungUp, "the dropped peer's socket is closed so it reconnects")
+	s.leave(bob)
+	assert.Zero(t, len(carol.send), "the read loop's own leave after the hang-up is a no-op")
 
-	// The drop marked bob closed: a second leave is a no-op (no extra frame).
-	s.leave(b)
-	select {
-	case raw := <-a.send:
-		t.Fatalf("duplicate leave after closed guard: %s", raw)
-	case <-time.After(50 * time.Millisecond):
-	}
+	s.handleCommit(t.Context(), bob, ClientMsg{Type: msgCommit, Update: "c3RhbGU=", Title: "T", Body: `{"stale":true}`})
+	assert.Equal(t, 0, writer.count(), "a dropped peer's commit must not reach the canonical body")
+
+	dave := newTestClient("dave")
+	s.join(dave)
+	require.NoError(t, s.sendInit(t.Context(), dave))
+	init := drain(t, dave)
+	require.Len(t, init.Presence, 1, "the dropped peer's presence is cleared")
+	assert.Equal(t, 11, init.Presence[0].ClientID)
 }

@@ -36,7 +36,7 @@ func (a runnerTunnelDescriberAdapter) DescribeTunnel(ctx context.Context, tunnel
 	if err != nil {
 		return nil, err
 	}
-	out := &runner.TunnelInfo{ID: info.ID, Name: info.Name, Status: info.Status, Tracked: info.Tracked, Routes: []runner.TunnelRoute{}, Records: []runner.TunnelRecord{}}
+	out := &runner.TunnelInfo{ID: info.ID, Name: info.Name, Status: info.Status, Tracked: info.Tracked}
 	for _, r := range info.Routes {
 		out.Routes = append(out.Routes, runner.TunnelRoute{Hostname: r.Hostname, Service: r.Service})
 	}

@@ -95,11 +95,11 @@ func newTeamFixture(t *testing.T) teamFixture {
 	accessSvc := access.NewService(s.Access, realUsers{s.Users})
 	rolesSvc := roles.NewService(s.Roles, nil)
 	online := map[string]bool{}
-	svc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testCreatorGate{access: accessSvc}, testRoleNameGate{svc: rolesSvc}, testWorkspacePermissionGate{svc: accessSvc}, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testDefaultsGate{}, testAccountGate{users: s.Users, sessions: s.Sessions, online: online})
+	svc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testCreatorGate{access: accessSvc}, testRoleNameGate{svc: rolesSvc}, accessSvc, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testDefaultsGate{}, testAccountGate{users: s.Users, sessions: s.Sessions, online: online})
 	rolesSvc.SetMemberGate(testMemberGate{svc: svc})
 	accessSvc.SetRoles(accessRoleResolver{tenancy: svc, roles: rolesSvc})
 	accessSvc.SetScopes(testScopes{s: s})
-	rolesSvc.SetPermissionGate(testWorkspacePermissionGate{svc: accessSvc})
+	rolesSvc.SetPermissionGate(accessSvc)
 
 	seedUser(t, s, "admin", "admin")
 	seedUser(t, s, "dana", "dana")

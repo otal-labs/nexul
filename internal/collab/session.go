@@ -18,6 +18,7 @@ type client struct {
 	clientID int // y client id announced in hello (presence routing)
 	send     chan []byte
 	done     chan struct{} // closed by the pump when the peer is gone
+	hangUp   func()        // closes the socket so the read loop ends and the peer reconnects
 	closed   bool
 	stale    bool // joined before a reset, so its writes describe state the room no longer holds
 }
@@ -84,15 +85,20 @@ func (s *session) claimSeed(c *client) bool {
 	return true
 }
 
-// writable refuses a viewer's writes and any write to a locked doc; a failed lock lookup refuses too.
+// writable refuses a viewer's writes, a dropped peer's, and any write to a locked doc; a failed lock lookup refuses too.
 func (s *session) writable(ctx context.Context, c *client) bool {
 	if c.mode != ModeEdit {
 		s.log.Warn("collab: dropped a write from a viewer", "doc", s.docID, "user", c.id)
 		return false
 	}
 	s.mu.Lock()
+	_, member := s.clients[c]
 	stale := c.stale
 	s.mu.Unlock()
+	if !member {
+		s.log.Info("collab: dropped a write from a peer no longer in the room", "doc", s.docID, "user", c.id)
+		return false
+	}
 	if stale {
 		s.log.Info("collab: dropped a write made before a reset", "doc", s.docID, "user", c.id)
 		return false
@@ -188,6 +194,10 @@ func (s *session) writeBody(ctx context.Context, title, body string) {
 // handlePresence relays a participant's awareness state and remembers it for late joiners.
 func (s *session) handlePresence(c *client, m ClientMsg) {
 	s.mu.Lock()
+	if _, member := s.clients[c]; !member {
+		s.mu.Unlock()
+		return
+	}
 	s.presence[m.ClientID] = m.Payload
 	s.mu.Unlock()
 	s.broadcast(c, ServerMsg{Type: msgPresence, From: c.id, ClientID: m.ClientID, Payload: m.Payload})
@@ -238,7 +248,7 @@ func (s *session) reset(seq int64) {
 	s.broadcast(nil, ServerMsg{Type: msgReset, Seq: seq})
 }
 
-// broadcast sends to every participant but one; a stuck peer is dropped, never blocking the session.
+// broadcast sends to every participant but one; a stuck peer leaves and is hung up on, never blocking the session.
 func (s *session) broadcast(except *client, m ServerMsg) {
 	data, err := json.Marshal(m)
 	if err != nil {
@@ -255,14 +265,13 @@ func (s *session) broadcast(except *client, m ServerMsg) {
 		case c.send <- data:
 		default:
 			s.log.Warn("collab: dropping slow peer", "doc", s.docID, "client", c.id)
-			delete(s.clients, c)
 			dropped = append(dropped, c)
 		}
 	}
 	s.mu.Unlock()
 	for _, c := range dropped {
-		c.closed = true
-		s.broadcast(nil, ServerMsg{Type: msgLeave, ClientID: c.clientID})
+		s.leave(c)
+		c.hangUp()
 	}
 }
 

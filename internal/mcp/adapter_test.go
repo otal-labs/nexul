@@ -312,6 +312,10 @@ func TestResultText(t *testing.T) {
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"id":"x","deleted":true}`, text)
 
+	text, err = resultText(mcptool.Page[string]{})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"items":[],"total":0,"has_more":false}`, text, "a nil slice reaches the model as [], never null")
+
 	_, err = resultText(map[string]any{"bad": make(chan int)})
 	require.Error(t, err)
 	var syntax *json.UnsupportedTypeError

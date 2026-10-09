@@ -48,7 +48,7 @@ func (r *Runner) ListTrails(ctx context.Context, targetType TargetType, targetID
 	}
 	list = slices.DeleteFunc(list, func(t *Trail) bool { return !r.opensProject(ctx, t) })
 	if len(list) == 0 {
-		return []*Trail{}, nil
+		return nil, nil
 	}
 	if err := r.requireTrailAccess(ctx, list[0].WorkspaceID, targetType, targetID); err != nil {
 		return nil, err

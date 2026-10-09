@@ -127,11 +127,8 @@ type SetupChoices struct {
 	Folder       string                             `json:"folder"`
 }
 
-// withEmpty swaps nil for empty, so the wire never carries null for a list or a map.
+// withEmpty swaps a nil map for an empty one, so the wire never carries null for one.
 func (c SetupChoices) withEmpty() SetupChoices {
-	if c.Skipped == nil {
-		c.Skipped = []string{}
-	}
 	if c.Models == nil {
 		c.Models = map[string]string{}
 	}

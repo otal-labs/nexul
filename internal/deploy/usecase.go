@@ -673,9 +673,6 @@ func (s *Service) Log(ctx context.Context, id string) ([]LogLine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list deploy %s log: %w", id, err)
 	}
-	if lines == nil {
-		return []LogLine{}, nil
-	}
 	return lines, nil
 }
 
