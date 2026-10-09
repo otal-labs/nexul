@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { CircleHelp, LoaderCircle, MessageSquare } from "lucide-react";
-import { memo, useState, type CSSProperties } from "react";
+import { memo, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
@@ -25,13 +25,7 @@ import { cardPerson, ticketPath, type Ticket } from "@/models/Ticket";
 
 interface TicketCardProps {
   ticket: Ticket;
-  /** Position within its column — drives the mount stagger. */
-  index?: number;
 }
-
-// Reflow/entrance stagger; matches the `window.matchMedia?.(...) ?? false` reduced-motion idiom used elsewhere.
-const STAGGER_STEP_MS = 24;
-const STAGGER_MAX_INDEX = 7;
 
 interface TicketCardBodyProps {
   ticket: Ticket;
@@ -55,61 +49,70 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const type = ticketType?.name ?? "";
   const labels = ticket.labels ?? [];
 
+  const avatar = person.login && (
+    <span role="img" aria-label={`${person.role} ${personLabel(shown)}`} className="shrink-0">
+      <PersonAvatar login={person.login} src={shown.avatar_url} className="size-5 text-[10px]" />
+    </span>
+  );
+  const pills = (
+    <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+      {type !== "" && (
+        <span
+          data-slot="pill"
+          className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", pillClass(ticketTypeColor(type, ticketType?.color)))}
+        >
+          <TicketTypeIcon typeName={type} className="size-3" aria-hidden />
+          {type}
+        </span>
+      )}
+      {labels.map((label) => (
+        <span
+          key={label}
+          data-slot="pill"
+          className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", pillClass(labelDotColor(label, labelColors?.[label])))}
+        >
+          {label}
+        </span>
+      ))}
+    </span>
+  );
+  const run = (
+    <>
+      {runState === "waiting" && (
+        <CircleHelp className="size-3 shrink-0 text-info" role="img" aria-label="Play waiting for an answer" />
+      )}
+      {runState !== undefined && runState !== "waiting" && (
+        <span className="flex items-center gap-1">
+          <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="Play running" />
+          {runStartedAt !== undefined && <RunTimer startedAt={runStartedAt} />}
+        </span>
+      )}
+    </>
+  );
+  const thread = hasThread && (
+    <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" role="img" aria-label="Has a thread" />
+  );
+
   return (
     <>
-      {/* The whole card is the drag handle and click target; a still click never activates dnd-kit, so no inner handler is needed. */}
-      <span className="flex items-center gap-2.5">
-        {person.login && (
-          <span role="img" aria-label={`${person.role} ${personLabel(shown)}`} className="shrink-0">
-            <PersonAvatar login={person.login} src={shown.avatar_url} className="size-7 text-[10px]" />
-          </span>
-        )}
-        <span className="min-w-0 flex-1 text-sm font-medium leading-snug">{ticket.title}</span>
-        {hasThread && (
-          <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" role="img" aria-label="Has a chat thread" />
-        )}
+      {/* The key leads like an eyebrow so the title gets the card's full width; who acts next sits opposite the pills. */}
+      <span className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+        <span className="tabular-nums">{prefix}-{ticket.number}</span>
+        <span className="flex-1" />
+        {run}
+        {thread}
       </span>
+      <span title={ticket.title} className="-mt-1 line-clamp-3 text-sm font-medium leading-snug break-words">{ticket.title}</span>
       <TicketBlockedLine ticketId={ticket.id} />
-      {/* Tinted pills for type and labels, ticket id on the right; color stays inside the pills, never on the card. */}
       <span className="flex items-end justify-between gap-2">
-        <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-          {type !== "" && (
-            <span
-              data-slot="pill"
-              className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", pillClass(ticketTypeColor(type, ticketType?.color)))}
-            >
-              <TicketTypeIcon typeName={type} className="size-3" aria-hidden />
-              {type}
-            </span>
-          )}
-          {labels.map((label) => (
-            <span
-              key={label}
-              data-slot="pill"
-              className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", pillClass(labelDotColor(label, labelColors?.[label])))}
-            >
-              {label}
-            </span>
-          ))}
-        </span>
-        <span className="flex shrink-0 items-center gap-1.5 font-mono text-[10.5px] text-muted-foreground">
-          {runState === "waiting" && (
-            <CircleHelp className="size-3 shrink-0 text-info" role="img" aria-label="A play is waiting for an answer" />
-          )}
-          {runState !== undefined && runState !== "waiting" && (
-            <span className="flex items-center gap-1">
-              <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="A play is running" />
-              {runStartedAt !== undefined && <RunTimer startedAt={runStartedAt} />}
-            </span>
-          )}
-          {prefix}-{ticket.number}
-        </span>
+        {pills}
+        {avatar}
       </span>
     </>
   );
 });
 
-const TicketCardImpl = ({ ticket, index = 0 }: TicketCardProps) => {
+const TicketCardImpl = ({ ticket }: TicketCardProps) => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const queryClient = useQueryClient();
@@ -121,23 +124,12 @@ const TicketCardImpl = ({ ticket, index = 0 }: TicketCardProps) => {
     data: { type: "card", ticketId: ticket.id, statusId: ticket.status, categoryId: ticket.category_id } satisfies DropTargetData,
     transition: { duration: 200, easing: "ease" },
   });
-  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-  // The ghost remounts in every column it's dragged through; replaying the staggered entrance there reads as lag.
+  // The ghost remounts in every column it's dragged through; an entrance there reads as lag.
   const [mountedWhileDragging] = useState(isDragging);
-  const entrance = !reduceMotion && !mountedWhileDragging;
 
-  // Explicit inline animation-* longhands so the mount animation never fights the permanent hover transition.
-  const entranceStyle: CSSProperties = !entrance
-    ? {}
-    : {
-        animationDelay: `${Math.min(index, STAGGER_MAX_INDEX) * STAGGER_STEP_MS}ms`,
-        animationDuration: "200ms",
-        animationTimingFunction: "var(--ease-out)",
-      };
-
-  // dnd-kit's inline `transition` fully replaces the className's, which would kill hover transitions, so append.
+  // dnd-kit's inline `transition` replaces the className's, so append; never opacity, or the drop's handover blinks.
   const dragTransition = transition
-    ? `${transition}, opacity 150ms var(--ease-standard), border-color 150ms var(--ease-standard)`
+    ? `${transition}, border-color 150ms var(--ease-standard), translate 150ms var(--ease-standard)`
     : undefined;
 
   // Equivalent to dnd-kit's CSS.Transform.toString: translate3d plus per-axis scale while dragging.
@@ -148,7 +140,8 @@ const TicketCardImpl = ({ ticket, index = 0 }: TicketCardProps) => {
   return (
     <div
       ref={setNodeRef}
-      style={{ ...entranceStyle, transform: dragCssTransform, transition: dragTransition }}
+      style={{ transform: dragCssTransform, transition: dragTransition }}
+      data-no-enter={mountedWhileDragging || undefined}
       {...listeners}
       {...attributes}
       onClick={open}
@@ -157,13 +150,16 @@ const TicketCardImpl = ({ ticket, index = 0 }: TicketCardProps) => {
         if (event.key === "Enter") open();
       }}
       className={cn(
-        "group flex select-none flex-col gap-2.5 rounded-lg border border-border bg-card p-3 transition-[opacity,border-color] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "group relative flex select-none flex-col gap-2.5 rounded-lg border border-border bg-card p-3 transition-[border-color,translate] duration-150 ease-standard hover:border-muted-foreground/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         "cursor-grab active:cursor-grabbing",
-        entrance && "animate-in fade-in-0 slide-in-from-bottom-1 fill-mode-both",
+        // A 1px lift on hover; the before strip keeps the vacated pixel inside the card so the hover never flickers off.
+        "before:absolute before:inset-x-0 before:-bottom-px before:h-px motion-safe:hover:-translate-y-px",
+        "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:opacity-0 after:shadow-elevated after:transition-opacity after:duration-150 after:ease-standard hover:after:opacity-50",
         // TicketCardOverlay carries the "lifted" look; this is just a dimmed placeholder for the slot.
         isDragging && "opacity-40",
       )}
     >
+      <span data-wash aria-hidden className="pointer-events-none absolute inset-0 rounded-[inherit] bg-success/15 opacity-0" />
       <TicketCardBody ticket={ticket} />
     </div>
   );

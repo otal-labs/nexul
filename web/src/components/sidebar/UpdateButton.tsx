@@ -8,13 +8,12 @@ import { useServerVersion } from "@/hooks/VersionHooks";
 import { cn } from "@/lib/utils";
 
 interface UpdateButtonProps {
-  enabled: boolean;
   className?: string;
 }
 
 // Hover (or focus) previews what changed; a click or tap goes to the instance version settings to upgrade.
-export const UpdateButton = ({ enabled, className }: UpdateButtonProps) => {
-  const { data } = useServerVersion(enabled);
+export const UpdateButton = ({ className }: UpdateButtonProps) => {
+  const { data } = useServerVersion();
 
   if (!data?.update_available || !data.latest) return null;
 

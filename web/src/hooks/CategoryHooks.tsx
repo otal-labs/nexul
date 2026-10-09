@@ -80,7 +80,7 @@ export const useDeleteCategory = () => {
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getCategoriesKey] });
       await client.invalidateQueries({ queryKey: [getProjectCategoriesKey] });
-      toast.success("Category removed — its tickets are now uncategorized");
+      toast.success("Category deleted. Its tickets are uncategorized now.");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

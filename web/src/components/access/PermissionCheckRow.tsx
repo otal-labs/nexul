@@ -19,7 +19,7 @@ export const PermissionCheckRow = ({
 }: PermissionCheckRowProps) => (
   <label
     className={cn(
-      "flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-accent",
+      "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-accent",
       className,
     )}
   >

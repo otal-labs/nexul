@@ -18,8 +18,8 @@ export const CanvasEmptyHint = ({ onAddNode }: CanvasEmptyHintProps) => {
     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
       <EmptyState
         icon={WorkflowIcon}
-        title="Your infra, drawn like you'd explain it."
-        message="Sketch the pieces Nexul doesn't manage — domains, tunnels, databases — and deployed services will appear here on their own."
+        title="Nothing on the canvas yet"
+        message="Deployed services show up here by themselves. Add nodes for what Nexul doesn't run, like domains or databases."
         action={
           <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-3">
             {canAddService && (

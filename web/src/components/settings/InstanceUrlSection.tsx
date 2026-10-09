@@ -47,8 +47,8 @@ export const InstanceUrlSection = ({ settings }: InstanceUrlSectionProps) => {
       title="Instance"
       description={
         <>
-          The address this instance is reached at. Changing it regenerates connection tokens.
-          Register the callback below as the GitHub OAuth callback.
+          Where people reach this instance. Changing it issues new connection tokens. Register the callback below
+          as the GitHub OAuth callback.
         </>
       }
     >
@@ -83,7 +83,7 @@ export const InstanceUrlSection = ({ settings }: InstanceUrlSectionProps) => {
               aria-label="Copy OAuth callback"
               title="Copy"
               onClick={copyCallback}
-              className="shrink-0 rounded-sm text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
+              className="shrink-0 rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
             >
               {copied && <Check className="size-3.5 text-success" />}
               {!copied && <Copy className="size-3.5" />}

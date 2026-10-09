@@ -23,7 +23,7 @@ export const PrivateChannelRow = ({ checked, onCheckedChange, fixed = false, cla
           Private channel
         </p>
         <p className="text-sm text-muted-foreground">
-          {checked ? "Only members see it and read it." : "Everyone in the workspace sees it and reads it."}
+          {checked ? "Only its members can see it." : "Everyone in the workspace can read it."}
         </p>
       </div>
       <Switch aria-labelledby={labelId} checked={checked} disabled={fixed} onCheckedChange={onCheckedChange} />

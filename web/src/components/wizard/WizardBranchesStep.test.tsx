@@ -96,7 +96,7 @@ describe("WizardBranchesStep", () => {
 
     await user.click(await screen.findByRole("button", { name: /add branch/i }));
     await user.type(screen.getByLabelText("Branch"), "feature/*");
-    await pickOption(user, "Network", "qa_default — postgres, redis · no gateway, hostnames unavailable");
+    await pickOption(user, "Network", "qa_default · postgres, redis · no gateway, hostnames unavailable");
     expect(screen.queryByText(productionWarning)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Hostname")).toBeDisabled();
     expect(screen.getByText("qa_default: no gateway, hostnames unavailable.")).toBeInTheDocument();

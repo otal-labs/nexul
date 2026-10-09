@@ -134,7 +134,7 @@ describe("ProjectWizardImportPage", () => {
     expect(screen.getByRole("list", { name: /dns records pointing at home/i })).toHaveTextContent(
       "app.example.com CNAME tun-1.cfargotunnel.com",
     );
-    expect(screen.getByText(/could not read the tunnel: not found: tunnel tun-2/i)).toBeInTheDocument();
+    expect(screen.getByText(/couldn.t read the tunnel: not found: tunnel tun-2/i)).toBeInTheDocument();
   });
 
   it("reports each ticked gateway's adoption: hostnames now on the canvas, unmatched routes, or the reason", async () => {

@@ -69,10 +69,12 @@ describe("usePostMessage", () => {
     const { result } = renderHook(() => usePostMessage("c1"), { wrapper: wrapperWith });
     act(() => result.current.mutate("hello"));
     await waitFor(() => expect(client.getQueryData(["getChatMessages", "c1", undefined])).toHaveLength(1));
-    expect(client.getQueryData(["getChatMessages", "c1", undefined])).toMatchObject([{ body: "hello", author_id: "u1", pending: true }]);
+    const [pending] = client.getQueryData<{ id: string }[]>(["getChatMessages", "c1", undefined])!;
+    expect(pending).toMatchObject({ body: "hello", author_id: "u1", pending: true });
 
     act(() => resolvePost({ data: saved }));
-    await waitFor(() => expect(client.getQueryData(["getChatMessages", "c1", undefined])).toEqual([saved]));
+    // The server copy keeps the pending row's key, so the row on screen is the same one and its entrance isn't cut short.
+    await waitFor(() => expect(client.getQueryData(["getChatMessages", "c1", undefined])).toEqual([{ ...saved, client_key: pending!.id }]));
   });
 
   it("drops the pending row when the post fails", async () => {

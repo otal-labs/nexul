@@ -25,7 +25,7 @@ export const useChannelSettingsActions = (channel: Conversation) => {
   const makePrivate = () =>
     openForm<ChannelPeopleFormData>({
       title: `Who stays in ${label}?`,
-      description: "Everyone you leave unchecked loses it at once.",
+      description: "Anyone left unchecked loses access right away.",
       schema: ChannelPeopleFormSchema,
       okLabel: "Make private",
       form: <WhoStaysForm channel={channel} />,
@@ -46,7 +46,7 @@ export const useChannelSettingsActions = (channel: Conversation) => {
     openForm<ChannelPeopleFormData>({
       title: `Add people to ${label}`,
       schema: AddChannelPeopleFormSchema,
-      okLabel: "Add",
+      okLabel: "Add people",
       form: <AddChannelPeopleForm channel={channel} />,
       formOptions: { defaultValues: { user_ids: [] } },
     });

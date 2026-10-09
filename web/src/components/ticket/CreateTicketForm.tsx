@@ -151,7 +151,7 @@ export const CreateTicketForm = ({
       }}
     >
       {noProjects && (
-        <NoDataDisplay message="Create a project first — every ticket belongs to exactly one project." />
+        <NoDataDisplay message="Create a project first. Every ticket belongs to one." />
       )}
       {!noProjects && (
         <div className="space-y-3">

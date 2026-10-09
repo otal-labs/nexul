@@ -7,10 +7,13 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Logo } from "@/components/Logo";
 import { DiscordMark, GithubMark, GoogleMark } from "@/components/ProviderMarks";
+import { displayTitleClass } from "@/components/PageHeader";
+import { ShowcaseSurface } from "@/components/showcase/ShowcaseSurface";
 import { Button } from "@/components/ui/button";
 import { useBootstrapStatus } from "@/hooks/AuthHooks";
 import { signInErrorMessage } from "@/models/SignInError";
 import { useSessionStore } from "@/stores/sessionStore";
+import { cn } from "@/lib/utils";
 
 export const LoginPage = () => {
   const [searchParams] = useSearchParams();
@@ -53,69 +56,60 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="blueprint-bg min-h-screen">
-      {exchange.isPending && (
-        <div className="flex min-h-screen items-center justify-center">
-          <LoadingDisplay label="Completing sign in…" />
-        </div>
-      )}
-      {!exchange.isPending && (
-        <div className="flex min-h-screen flex-col items-center justify-center px-4 py-16">
-          <div className="w-full max-w-sm">
-            <div className="flex flex-col items-center text-center">
-              <Logo className="size-11 rounded-xl" />
-              <p className="mt-5 font-mono text-[11px] font-medium tracking-[0.24em] text-primary/90 uppercase">
-                Nexul
-              </p>
-              <h1 className="mt-3 text-2xl font-semibold tracking-tight">
-                Sign in to your workspace
-              </h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {clientsEnabled
-                  ? "GitHub for the team, Google or Discord for clients — no passwords to remember."
-                  : "One GitHub account, no passwords to remember."}
-              </p>
-            </div>
+    <ShowcaseSurface live>
+      <div className="flex min-h-full items-center justify-center px-6 py-16">
+        {exchange.isPending && <LoadingDisplay label="Signing you in…" />}
+        {!exchange.isPending && (
+          <div className="panel w-full max-w-[25rem] p-8 [--panel-opacity:72%]">
+            <Logo className="size-10 rounded-lg" />
+            <h1 className={cn(displayTitleClass, "mt-6 text-[2rem]")}>Sign in to Nexul</h1>
+            <p className="mt-3 text-sm text-pretty text-muted-foreground">
+              {clientsEnabled
+                ? "GitHub for the team. Clients use the other options."
+                : "Sign in with your GitHub account."}
+            </p>
             {failure != null && (
-              <div className="mt-6 text-left">
+              <div className="mt-6">
                 <ErrorDisplay title="Couldn't sign you in" message={signInErrorMessage(failure)} />
               </div>
             )}
             {exchange.error != null && (
-              <div className="mt-6 text-left">
+              <div className="mt-6">
                 <ErrorDisplay error={exchange.error} />
               </div>
             )}
-            <Button onClick={() => startOAuth("/auth/github")} className="mt-8 w-full" size="lg">
-              <GithubMark />
-              Continue with GitHub
-            </Button>
-            {googleEnabled && (
-              <Button onClick={() => startOAuth("/auth/google")} className="mt-3 w-full" size="lg" variant="outline">
-                <GoogleMark />
-                Continue with Google
+            <div className="mt-8 flex flex-col gap-3">
+              <Button onClick={() => startOAuth("/auth/github")} size="lg">
+                <GithubMark />
+                Continue with GitHub
               </Button>
-            )}
-            {discordEnabled && (
-              <Button onClick={() => startOAuth("/auth/discord")} className="mt-3 w-full" size="lg" variant="outline">
-                <DiscordMark />
-                Continue with Discord
-              </Button>
-            )}
+              {googleEnabled && (
+                <Button onClick={() => startOAuth("/auth/google")} size="lg" variant="outline">
+                  <GoogleMark />
+                  Continue with Google
+                </Button>
+              )}
+              {discordEnabled && (
+                <Button onClick={() => startOAuth("/auth/discord")} size="lg" variant="outline">
+                  <DiscordMark />
+                  Continue with Discord
+                </Button>
+              )}
+            </div>
             {bootstrapStatus?.reconfigurable && (
-              <p className="mt-4 text-center text-sm text-muted-foreground">
+              <p className="mt-4 text-sm text-muted-foreground">
                 Sign-in failing?{" "}
                 <Link to="/setup" className="underline underline-offset-4 hover:text-foreground">
                   Set up the GitHub App again
                 </Link>
               </p>
             )}
-            <p className="mt-6 text-center font-mono text-[11px] text-muted-foreground">
+            <p className="mt-8 border-t border-border pt-5 font-mono text-xs text-muted-foreground">
               self-hosted · sqlite · no cloud required
             </p>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </ShowcaseSurface>
   );
 };

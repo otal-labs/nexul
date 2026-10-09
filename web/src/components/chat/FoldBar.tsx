@@ -1,21 +1,26 @@
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 interface FoldBarProps {
   label: string;
   open: boolean;
   onToggle: () => void;
+  className?: string;
 }
 
-// One hairline row that opens what a long bot post hides, then closes it again.
-export const FoldBar = ({ label, open, onToggle }: FoldBarProps) => (
+// Opens what a long bot post hides, then closes it again.
+export const FoldBar = ({ label, open, onToggle, className }: FoldBarProps) => (
   <button
     type="button"
     onClick={onToggle}
     aria-expanded={open}
-    className="flex w-full items-center justify-between gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+    className={cn(
+      "-mx-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors duration-150 ease-standard hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+      className,
+    )}
   >
-    <span>{label}</span>
-    {open && <ChevronUp className="size-3.5" aria-hidden />}
-    {!open && <ChevronDown className="size-3.5" aria-hidden />}
+    {label}
+    <ChevronDown aria-hidden className={cn("size-3.5 transition-transform duration-150 ease-standard", open && "rotate-180")} />
   </button>
 );

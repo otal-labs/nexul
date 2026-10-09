@@ -93,7 +93,7 @@ export const WizardRepositoryStep = ({ onDone }: WizardRepositoryStepProps) => {
       {notInstalled && (
         <EmptyState
           icon={AlertCircle}
-          title="Not installed on this repository"
+          title="The GitHub App isn't installed on this repository"
           message={errorMessage(scanRepository.error)}
           size="compact"
           action={
@@ -108,11 +108,11 @@ export const WizardRepositoryStep = ({ onDone }: WizardRepositoryStepProps) => {
           }
         />
       )}
-      {scanRepository.isError && !notInstalled && <ErrorDisplay error={scanRepository.error} title="Scan failed" />}
+      {scanRepository.isError && !notInstalled && <ErrorDisplay error={scanRepository.error} title="Couldn't scan the repository." />}
       {nothingFound && (
         <EmptyState
           title="Nothing to deploy found"
-          message="No Dockerfile or compose file in this repository. Point the wizard at a Dockerfile yourself to continue."
+          message="No Dockerfile or compose file found. Enter a Dockerfile path to continue."
           size="compact"
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">

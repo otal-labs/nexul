@@ -19,7 +19,7 @@ export const ConflictBanner = ({ onKeepMine, onTakeServer }: ConflictBannerProps
     >
       <AlertTriangleIcon className="size-4 text-destructive" aria-hidden="true" />
       <span className="min-w-0 flex-1 text-destructive">
-        The session received an incompatible change and cannot merge it automatically.
+        This change conflicts with another edit and can't be merged. Pick a version to keep.
       </span>
       <div className="flex gap-2">
         <Button variant="outline" size="sm" onClick={onKeepMine}>

@@ -5,6 +5,7 @@ import { AutomationTokenReveal } from "@/components/automation/AutomationTokenRe
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
+import { SettingsCard } from "@/components/settings/SettingsCard";
 import { useMintAutomationToken, useRevokeAutomationToken } from "@/hooks/AutomationHooks";
 import type { Automation } from "@/models/Automation";
 
@@ -21,9 +22,26 @@ export const AutomationTokenSection = ({ automation }: AutomationTokenSectionPro
   const onRotate = () => mint.mutate(undefined, { onSuccess: (result) => setRotated(result.token) });
 
   return (
-    <section className="space-y-4 rounded-lg border border-border bg-card p-4">
-      <h2 className="text-sm font-semibold">Token</h2>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <SettingsCard
+      id="token"
+      title="Token"
+      description="What this automation's token may do. Rotate shows a new token once. Revoke cuts its access at once."
+      footer={
+        <div className="flex items-center gap-1">
+          <Button type="button" variant="outline" size="sm" onClick={onRotate} loading={mint.isPending}>
+            Rotate
+          </Button>
+          <ConfirmDestroyButton
+            icon={KeyRound}
+            idleLabel="Revoke"
+            loading={revoke.isPending}
+            disabled={!!automation.token_revoked_at}
+            onConfirm={() => revoke.mutate()}
+          />
+        </div>
+      }
+    >
+      <div className="space-y-4">
         <div className="min-w-0 space-y-2">
           <div className="flex flex-wrap gap-1.5">
             {automation.scopes.map((scope) => (
@@ -37,20 +55,8 @@ export const AutomationTokenSection = ({ automation }: AutomationTokenSectionPro
           )}
           {automation.token_revoked_at && <p className="text-xs text-destructive">Revoked</p>}
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <Button type="button" variant="outline" size="sm" onClick={onRotate} loading={mint.isPending}>
-            Rotate
-          </Button>
-          <ConfirmDestroyButton
-            icon={KeyRound}
-            idleLabel="Revoke"
-            loading={revoke.isPending}
-            disabled={!!automation.token_revoked_at}
-            onConfirm={() => revoke.mutate()}
-          />
-        </div>
+        {rotated && <AutomationTokenReveal token={rotated} />}
       </div>
-      {rotated && <AutomationTokenReveal token={rotated} />}
-    </section>
+    </SettingsCard>
   );
 };

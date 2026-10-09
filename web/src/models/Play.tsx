@@ -63,7 +63,7 @@ export const SavePlayFormSchema = z
         ? (PLAY_STAGES as readonly string[]).includes(data.show_when_stage)
         : data.show_when_stage === "",
     {
-      message: "A ticket play needs exactly one show-when stage; other plays can't have one",
+      message: "A ticket play needs one show-when stage. Other plays have none.",
       path: ["show_when_stage"],
     },
   );

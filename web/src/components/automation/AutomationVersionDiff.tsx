@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
-import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { EmptyRow } from "@/components/EmptyRow";
+import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useMergeAutomationVersion } from "@/hooks/AutomationVersionHooks";
 import type { AutomationVersionDiff as VersionDiffData } from "@/models/AutomationVersion";
@@ -28,16 +29,20 @@ export const AutomationVersionDiff = ({ automationId, diff, canUpdate }: Automat
   const lines = useMemo(() => diffLines(diff.active?.code ?? "", pending?.code ?? ""), [diff.active, pending]);
 
   return (
-    <section className="space-y-3 rounded-lg border border-border bg-card p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold">Pending vs active</h2>
-        {pending && canUpdate && (
+    <SettingsCard
+      id="pending-version"
+      title="Pending vs active"
+      description="A pushed version waits here until you merge it. The active one keeps running."
+      footer={
+        pending &&
+        canUpdate && (
           <Button type="button" size="sm" onClick={() => merge.mutate(pending.id)} loading={merge.isPending}>
             Merge
           </Button>
-        )}
-      </div>
-      {!pending && <NoDataDisplay message="No pending version" size="compact" />}
+        )
+      }
+    >
+      {!pending && <EmptyRow>No pending version</EmptyRow>}
       {pending && (
         <div className="terminal-window">
           <div className="terminal-window__bar">
@@ -57,6 +62,6 @@ export const AutomationVersionDiff = ({ automationId, diff, canUpdate }: Automat
           </pre>
         </div>
       )}
-    </section>
+    </SettingsCard>
   );
 };

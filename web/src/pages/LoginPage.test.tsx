@@ -123,7 +123,7 @@ describe("LoginPage", () => {
       value: { assign: vi.fn() },
     });
     renderPage(["/login?code=abc123"]);
-    await screen.findByText(/completing sign in/i);
+    await screen.findByText(/signing you in/i);
     resolvePost!({ data: { token: "tok-oauth" } });
     await vi.waitFor(() => {
       expect(useSessionStore.getState().isLoggedIn).toBe(true);
@@ -155,7 +155,7 @@ describe("LoginPage", () => {
   it("explains an invitation-required sign-in above the buttons", async () => {
     renderPage(["/login?error=invitation_required"]);
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "This instance is invite-only. Ask someone on it for an invitation link, then open that link to join.",
+      "This instance is invite-only. Ask someone on it for an invitation link.",
     );
     expect(screen.getByRole("button", { name: /continue with github/i })).toBeInTheDocument();
   });

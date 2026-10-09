@@ -8,7 +8,7 @@ import { useFetchAllContainers, useFetchStacks } from "@/hooks/StackHooks";
 import { useFetchTopology, useSaveTopology } from "@/hooks/TopologyHooks";
 import type { HostnameNode, TopologyNode } from "@/models/Topology";
 import { useFlowStore } from "@/stores/flowStore";
-import { alignPillsToRows, buildNetworkRects, layoutGraph, type Positions } from "@/utils/TopologyLayout";
+import { alignPillsToRows, buildNetworkRects, layoutGraph, overlaps, type Positions } from "@/utils/TopologyLayout";
 
 // Two nodes should not fill the screen; cap at 1:1 so cards keep their designed size.
 const FIT = { padding: 0.2, maxZoom: 1 };
@@ -49,8 +49,9 @@ export const useTopologyView = () => {
   const networkRects = useMemo(() => buildNetworkRects(wiring.networks, viewNodes), [wiring.networks, viewNodes]);
 
   // Stored positions are the owner's: the automatic layout only runs while some stored node has never been placed
-  // (the server adds a service node at 0,0), and its result is saved so it never runs again for those nodes. When
-  // everything is placed, only the pills (never stored) are put level with their gateway rows. Runs again when the
+  // (the server adds a service node at 0,0) or the stored arrangement draws cards or network boxes over each other
+  // (positions saved before a card grew), and its result is saved so it does not run again. Otherwise only the pills
+  // (never stored) are placed, beside their gateway rows or their service. Runs again when the
   // set of nodes or the network boxes change, since containers load after the stored nodes do; a run that a newer
   // set superseded is dropped, not applied. The camera is set once: the saved viewport when there is one, else fit.
   const laidOut = useRef("");
@@ -90,12 +91,17 @@ export const useTopologyView = () => {
         void fitView(FIT);
       });
     };
+    const stored = new Map(viewNodes.map((n) => [n.id, n.position]));
     const unplaced = wiring.nodes.some((n) => n.position.x === 0 && n.position.y === 0);
-    if (unplaced) {
-      void layoutGraph(viewNodes, viewEdges, wiring.networks).then((positions) => settle(positions, true));
+    if (unplaced || overlaps(wiring.nodes, stored, wiring.networks)) {
+      // A layout ELK refuses still places the pills, over the stored positions.
+      void layoutGraph(viewNodes, viewEdges, wiring.networks).then(
+        (positions) => settle(positions, true),
+        () => settle(alignPillsToRows(viewNodes, stored, viewEdges, wiring.networks), false),
+      );
       return;
     }
-    settle(alignPillsToRows(viewNodes, new Map(viewNodes.map((n) => [n.id, n.position]))), false);
+    settle(alignPillsToRows(viewNodes, stored, viewEdges, wiring.networks), false);
   }, [isPending, viewNodes, viewEdges, wiring.nodes, wiring.networks, fitView, setViewport, save]);
 
   // Store nodes take their changes in the store; derived nodes keep theirs (measurements, mostly) here.

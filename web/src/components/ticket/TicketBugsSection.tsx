@@ -1,5 +1,6 @@
 import { PlusIcon } from "lucide-react";
 
+import { microheaderClass } from "@/components/Microheader";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { LinkGroupSection } from "@/components/ticket/LinkGroupSection";
@@ -9,9 +10,6 @@ import { useFetchTicketLinkSet } from "@/hooks/TicketLinkHooks";
 import { useReportBugDialog } from "@/hooks/useReportBugDialog";
 import { StatusKind } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
-
-const microheaderClass =
-  "font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase";
 
 interface TicketBugsSectionProps {
   ticket: Ticket;
@@ -39,7 +37,7 @@ export const TicketBugsSection = ({ ticket }: TicketBugsSectionProps) => {
         </button>
       </div>
       {isPending && <LoadingDisplay label="Loading bugs…" />}
-      {error && <ErrorDisplay error={error} title="Failed to load bugs." />}
+      {error && <ErrorDisplay error={error} title="Couldn't load bugs." />}
       {links && links.bugs_found.length === 0 && <p className="px-2 text-xs text-muted-foreground">No bugs reported.</p>}
       {links && links.bugs_found.length > 0 && (
         <LinkGroupSection title={done ? "Found after done" : "Found in this ticket"}>

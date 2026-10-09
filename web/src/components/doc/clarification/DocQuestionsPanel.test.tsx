@@ -157,7 +157,7 @@ describe("DocQuestionsPanel", () => {
     const running: Clarification = { ...waiting, running: true, rounds: [...waiting.rounds, round(2, [], { running: true })] };
     serve(running);
     const { unmount } = renderPanel(client_, { ...doc, locked: true });
-    expect(await screen.findByText("More questions are on the way")).toBeInTheDocument();
+    expect(await screen.findByText("More questions coming")).toBeInTheDocument();
     expect(screen.queryByText(/running/)).not.toBeInTheDocument();
     unmount();
 

@@ -29,7 +29,7 @@ export const DnsSetupStepper = () => {
     <ol className="list-none">
       <DnsStep
         title="How should traffic reach this instance?"
-        description="Nexul deploys your chosen entry path itself, like any other service."
+        description="Nexul deploys what you pick like any other service."
         state={stepState(true, path !== null)}
         summary={chosen?.label}
         onChange={restart}
@@ -39,7 +39,7 @@ export const DnsSetupStepper = () => {
       {isTunnel && (
         <DnsStep
           title="Deploy the tunnel"
-          description="Nexul creates the tunnel at Cloudflare and runs cloudflared on your runner until it connects."
+          description="Nexul creates the tunnel at Cloudflare and runs cloudflared on a machine until it connects."
           state={stepState(true, tunnel !== null)}
           summary={tunnel && `Tunnel ${tunnel.tunnelName} connected · cloudflared on ${tunnel.target}`}
         >

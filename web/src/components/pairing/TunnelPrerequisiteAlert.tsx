@@ -14,7 +14,7 @@ const COPY: Record<TunnelPrerequisite, { title: string; body: string }> = {
   },
   zero_trust_disabled: {
     title: "Zero Trust isn't enabled",
-    body: "Nexul closes every computer's hostname with Cloudflare Access, which needs Zero Trust. Enable it once in the Cloudflare dashboard: pick a team name and the Free plan. Then try again.",
+    body: "Nexul puts every computer's hostname behind Cloudflare Access, which needs Zero Trust. Enable it once in the Cloudflare dashboard with a team name and the Free plan, then try again.",
   },
 };
 

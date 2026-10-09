@@ -10,8 +10,7 @@ export const AutomationHostInstallCommands = ({ enrollment }: AutomationHostInst
     <RunnerInstallCommand label="Linux / macOS" command={enrollment.commands.unix} />
     <RunnerInstallCommand label="Windows" command={enrollment.commands.windows} />
     <p className="text-xs text-muted-foreground">
-      Run one of these on the machine; it installs the automations host as a service. The code in it works once
-      and expires within the hour.
+      Run one on the machine to install the host as a service. Its enrollment code works once, within the hour.
     </p>
   </div>
 );

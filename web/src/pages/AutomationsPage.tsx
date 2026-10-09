@@ -8,15 +8,18 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PageHeader } from "@/components/PageHeader";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { useFetchAutomations } from "@/hooks/AutomationHooks";
+import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 
 export const AutomationsPage = () => {
   const { data, error, isPending } = useFetchAutomations();
+  const workspaceCrumb = useWorkspaceCrumb();
 
   return (
-    <Container className="space-y-6 py-6">
+    <Container className="space-y-6 py-8">
       <PageHeader
+        crumbs={[workspaceCrumb]}
         title="Automations"
-        subtitle="First-party code that reacts to what happens in this workspace — Default automations ship with the instance, Custom ones are yours."
+        meta="Code that runs when something happens in this workspace. Default ones ship with Nexul, Custom ones are yours."
         actions={<NewAutomationDialog />}
       />
       <PageTabs

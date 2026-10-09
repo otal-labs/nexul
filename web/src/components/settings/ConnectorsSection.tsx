@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { EmptyRow } from "@/components/EmptyRow";
 import { ConnectorCard } from "@/components/settings/ConnectorCard";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { cn } from "@/lib/utils";
@@ -64,7 +65,7 @@ export const ConnectorsSection = ({ bare = false }: ConnectorsSectionProps = {})
                 aria-selected={tab === t}
                 onClick={() => setPickedTab(t)}
                 className={cn(
-                  "rounded px-3 py-1 text-sm font-medium transition-colors duration-150 ease-standard",
+                  "rounded-md px-3 py-1 text-sm font-medium transition-colors duration-150 ease-standard",
                   tab === t ? "bg-accent text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -73,13 +74,13 @@ export const ConnectorsSection = ({ bare = false }: ConnectorsSectionProps = {})
             ))}
           </div>
 
-          {filtered.length === 0 && <NoDataDisplay message="No connectors here" />}
+          {filtered.length === 0 && <EmptyRow>No connectors here</EmptyRow>}
           {filtered.length > 0 && (
-            <ul className="divide-y divide-border overflow-hidden rounded-md border">
+            <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
               {filtered.map((entry) => (
                 <ConnectorCard key={entry.connector.id} entry={entry} />
               ))}
-            </ul>
+            </EnterList>
           )}
         </div>
       )}
@@ -92,7 +93,7 @@ export const ConnectorsSection = ({ bare = false }: ConnectorsSectionProps = {})
     <SettingsCard
       id="connectors"
       title="Connectors"
-      description="Let this instance call out to third-party tools on your behalf."
+      description="Third-party tools this instance calls for you, each with one stored credential."
     >
       {content}
     </SettingsCard>

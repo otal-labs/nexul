@@ -97,7 +97,7 @@ describe("InstanceRecordForm", () => {
     renderForm();
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText(/points to/i), "203.0.113.10");
-    expect(await screen.findByRole("alert")).toHaveTextContent(/localhost:5173.*not under example\.com/i);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/localhost:5173.*isn.t under example\.com/i);
     expect(screen.getByRole("link", { name: /settings/i })).toHaveAttribute("href", "/settings/instance");
     expect(screen.getByRole("button", { name: /create instance record/i })).toBeDisabled();
   });
@@ -109,7 +109,7 @@ describe("InstanceRecordForm", () => {
     const user = userEvent.setup();
     await pickOption(user, /^Zone$/, "other.dev");
     await user.type(screen.getByLabelText(/points to/i), "203.0.113.10");
-    expect(screen.getByRole("alert")).toHaveTextContent(/not under other\.dev/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/isn.t under other\.dev/i);
     expect(screen.getByRole("button", { name: /create instance record/i })).toBeDisabled();
   });
 

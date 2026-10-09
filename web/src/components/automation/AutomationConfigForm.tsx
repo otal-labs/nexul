@@ -1,7 +1,8 @@
 import { useForm } from "react-hook-form";
 
 import { AutomationConfigFieldControl } from "@/components/automation/AutomationConfigFieldControl";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { EmptyRow } from "@/components/EmptyRow";
+import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useUpdateAutomationConfig } from "@/hooks/AutomationHooks";
 import { parseConfigSchema, parseConfigValues } from "@/models/Automation";
@@ -25,19 +26,26 @@ export const AutomationConfigForm = ({ automation }: AutomationConfigFormProps) 
   const onSubmit = (data: Record<string, string>) => updateConfig.mutate(data);
 
   return (
-    <section className="space-y-4 rounded-lg border border-border bg-card p-4">
-      <h2 className="text-sm font-semibold">Configuration</h2>
-      {fields.length === 0 && <NoDataDisplay message="This automation has no config knobs" size="compact" />}
+    <SettingsCard
+      id="configuration"
+      title="Configuration"
+      description="Declared by the automation's code. The next run uses the saved values."
+      footer={
+        fields.length > 0 && (
+          <Button type="submit" form="automation-config" size="sm" loading={updateConfig.isPending}>
+            Save configuration
+          </Button>
+        )
+      }
+    >
+      {fields.length === 0 && <EmptyRow>This automation has no settings.</EmptyRow>}
       {fields.length > 0 && (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form id="automation-config" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           {fields.map((field) => (
             <AutomationConfigFieldControl key={field.key} control={form.control} field={field} />
           ))}
-          <Button type="submit" size="sm" loading={updateConfig.isPending}>
-            Save configuration
-          </Button>
         </form>
       )}
-    </section>
+    </SettingsCard>
   );
 };

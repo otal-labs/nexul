@@ -105,6 +105,6 @@ describe("DevelopmentSection", () => {
   it("shows an error state", async () => {
     vi.mocked(api.get).mockRejectedValue(new Error("boom"));
     renderSection();
-    expect(await screen.findByText("Failed to load development links.")).toBeInTheDocument();
+    expect(await screen.findByText("Couldn't load development links.")).toBeInTheDocument();
   });
 });

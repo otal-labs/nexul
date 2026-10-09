@@ -73,6 +73,17 @@ describe("YourSettingsPage", () => {
     expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "/settings/security");
   });
 
+  it("shows the gradient initials without a picture, and they follow the name as it is typed", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const name = await screen.findByLabelText("Display name");
+    expect(screen.getByText("ON")).toBeInTheDocument();
+
+    await user.clear(name);
+    await user.type(name, "Lena Kowalski");
+    expect(screen.getByText("LK")).toBeInTheDocument();
+  });
+
   it("marks T3 Code Setup and its Computers tab while one of your computers has out-of-date skills", async () => {
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/pairing/computers")
@@ -94,7 +105,7 @@ describe("YourSettingsPage", () => {
     renderPage("/settings/security");
     expect(await screen.findByRole("tab", { name: "Devices", selected: true })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy connection token" })).toBeInTheDocument();
-    expect(await screen.findByText(/no other devices are signed in/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no other devices signed in/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/token name/i)).not.toBeInTheDocument();
   });
 

@@ -69,3 +69,32 @@ const ZONELESS_TIME = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
 
 // Discord reads a timestamp without a zone as UTC; Uptime Kuma sends one, and the browser would read it as local.
 export const embedTimestamp = (raw: string): string => (ZONELESS_TIME.test(raw) ? `${raw.replace(" ", "T")}Z` : raw);
+
+export type EmbedTone = "success" | "warning" | "destructive" | "info";
+
+// First match wins, worst first: "failed, rolled back to the healthy image" reads as a failure.
+const TONE_WORDS: [EmbedTone, RegExp][] = [
+  ["destructive", /\b(fail(s|ed|ing|ure)?|errors?|errored|crash(ed|ing)?|outage|broken|critical|rejected)\b|\[down\]|\b(is|went) down\b/i],
+  ["warning", /\b(warn(s|ing)?|degraded|pending|stopped|paused|retrying|timed out|unstable|skipped)\b/i],
+  ["success", /\b(healthy|succeeded|success(ful)?|passed|resolved|recovered|ok|completed?|finished|deployed)\b|\[up\]|\b(is|back) up\b/i],
+  ["info", /\b(started|running|in progress|queued|redeployed|redeploying|deploying|building)\b/i],
+];
+
+// The server drops a sender's color, so a post's state is read from its words; null when they name none.
+// ponytail: an English keyword list; a sender in another language reads as neutral.
+export const embedTone = (text: string | undefined): EmbedTone | null =>
+  (text && TONE_WORDS.find(([, words]) => words.test(text))?.[0]) || null;
+
+// The card's state comes from its headline, the description only when there is no title: "Nightly summary" stays neutral.
+export const embedCardTone = (embed: Embed): EmbedTone | null => embedTone(embed.title ?? embed.description);
+
+// A field whose value is a state word or two ("healthy", "timed out") gets a status dot; a sentence stays plain.
+export const fieldTone = (value: string): EmbedTone | null => (value.split(/\s+/).length <= 3 ? embedTone(value) : null);
+
+// An author line that only names the bot posting it repeats the message header above the card.
+export const dropEchoedAuthor = (embed: Embed, botName: string): Embed => {
+  if (embed.author?.name !== botName || embed.author.url || embed.author.icon_url) return embed;
+  const rest = { ...embed };
+  delete rest.author;
+  return rest;
+};

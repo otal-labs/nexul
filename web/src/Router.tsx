@@ -56,7 +56,7 @@ const staticTabs = (path: string, tabs: string[], area: RouteArea, element: Reac
 // Every page reached from a workspace's sidebar lives under its slug; personal and instance pages stay unprefixed.
 const workspaceRoutes: RouteObject[] = [
   { index: true, element: <HomePage /> },
-  { path: "inbox/:tab?", element: <InboxPage /> },
+  { path: "inbox/:rowKey?/:tab?", element: <InboxPage /> },
   { path: "chat", element: <ChatPage /> },
   { path: "chat/:conversationId", element: <ChatPage /> },
   { path: "wizard/project/import", handle: gate("newProject"), element: <ProjectWizardImportPage /> },

@@ -29,7 +29,7 @@ export const ComposerAttachButton = ({ onFiles }: { onFiles: (files: File[]) => 
         size="icon"
         variant="ghost"
         aria-label="Attach image"
-        className="mt-0.5"
+        className="text-muted-foreground hover:text-foreground"
         onClick={() => fileInputRef.current?.click()}
       >
         <ImagePlus className="size-4" aria-hidden />

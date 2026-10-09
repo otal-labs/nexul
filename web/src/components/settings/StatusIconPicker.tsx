@@ -25,7 +25,7 @@ export const StatusIconPicker = ({ label, value, onChange }: StatusIconPickerPro
       role="radio"
       aria-checked={value === ""}
       aria-label="No icon"
-      className={cn(optionClass(value === ""), "text-[11px] font-medium tracking-wide")}
+      className={cn(optionClass(value === ""), "text-xs font-medium")}
       onClick={() => onChange("")}
     >
       None

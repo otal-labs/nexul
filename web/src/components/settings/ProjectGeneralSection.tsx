@@ -1,3 +1,4 @@
+import { Microheader } from "@/components/Microheader";
 import { ProjectIconPicker } from "@/components/project/ProjectIconPicker";
 import { ProjectName } from "@/components/project/ProjectName";
 import { SettingsCard } from "@/components/settings/SettingsCard";
@@ -16,7 +17,7 @@ export const ProjectGeneralSection = ({ project }: ProjectGeneralSectionProps) =
     <SettingsCard id="general" title="General">
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:divide-x sm:divide-border">
         <div className="sm:pr-6">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Icon & Name</p>
+          <Microheader>Icon & name</Microheader>
           <div className="mt-2 flex items-center gap-2">
             <ProjectIconPicker
               icon={project.icon ?? ""}
@@ -33,9 +34,9 @@ export const ProjectGeneralSection = ({ project }: ProjectGeneralSectionProps) =
           </div>
         </div>
         <div className="sm:pl-6">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Identifier</p>
+          <Microheader>Prefix</Microheader>
           <p className="mt-2 font-mono text-sm">{project.prefix}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Used in ticket IDs</p>
+          <p className="mt-1 text-xs text-muted-foreground">Starts every ticket key</p>
         </div>
       </div>
     </SettingsCard>

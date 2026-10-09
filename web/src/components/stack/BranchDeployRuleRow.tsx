@@ -31,13 +31,13 @@ export const BranchDeployRuleRow = ({ stack, rule, index }: BranchDeployRuleRowP
     <li className="@container space-y-3 px-3 py-2.5 text-xs">
       <div className="flex flex-col gap-2 @sm:flex-row @sm:items-center @sm:justify-between @sm:gap-3">
         <div className="min-w-0 space-y-0.5">
-          <p className="font-mono">{rule.pattern}</p>
-          <p className="truncate text-muted-foreground">
+          <p className="font-mono wrap-anywhere">{rule.pattern}</p>
+          <p className="wrap-anywhere text-muted-foreground">
             {rule.docker_network}
             {rule.hostname_template && ` → ${rule.hostname_template}${rule.port ? `:${rule.port}` : ""}`}
           </p>
           {overrideKeys.length > 0 && (
-            <p className="truncate font-mono text-muted-foreground">overrides {overrideKeys.join(", ")}</p>
+            <p className="font-mono break-words text-muted-foreground">overrides {overrideKeys.join(", ")}</p>
           )}
         </div>
         <div className="flex shrink-0 gap-1">

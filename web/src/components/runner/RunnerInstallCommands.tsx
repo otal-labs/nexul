@@ -18,8 +18,7 @@ export const RunnerInstallCommands = ({ enrollment, gitToken }: RunnerInstallCom
       command={withGitToken(enrollment.commands.windows, RunnerPlatform.Windows, gitToken)}
     />
     <p className="text-xs text-muted-foreground">
-      Run one of these on the machine; it installs the runner as a service. The code in it works once and
-      expires within the hour.
+      Run one on the machine to install the runner as a service. Its enrollment code works once, within the hour.
     </p>
   </div>
 );

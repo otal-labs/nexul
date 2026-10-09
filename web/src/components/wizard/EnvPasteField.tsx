@@ -32,7 +32,7 @@ export const EnvPasteField = ({ text, onText, parsed }: EnvPasteFieldProps) => (
       ))}
       {parsed.duplicateKeys.length > 0 && (
         <p className="text-muted-foreground">
-          {parsed.duplicateKeys.join(", ")} appears more than once; the last value is used.
+          {parsed.duplicateKeys.join(", ")} appears more than once. The last value wins.
         </p>
       )}
     </div>

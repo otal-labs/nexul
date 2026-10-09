@@ -1,3 +1,4 @@
+import { EnterList } from "@/components/EnterList";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -36,14 +37,14 @@ export const ServicesSection = ({ stackId }: ServicesSectionProps) => {
       footer={services && services.length > 0 && <p className="text-xs text-muted-foreground">{summary(services)}</p>}
     >
       {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} title="Could not load services" />}
-      {services && services.length === 0 && <EmptyRow>No services parsed for this stack yet.</EmptyRow>}
+      {error && <ErrorDisplay error={error} title="Couldn't load services." />}
+      {services && services.length === 0 && <EmptyRow flush>No services found in this stack yet.</EmptyRow>}
       {services && services.length > 0 && (
-        <ul className="divide-y divide-border rounded-lg border border-border">
+        <EnterList className="divide-y divide-border rounded-lg border border-border">
           {services.map((c) => (
             <ServiceRow key={c.id} container={c} hostnames={hostnamesOf(c.id)} />
           ))}
-        </ul>
+        </EnterList>
       )}
     </SettingsCard>
   );

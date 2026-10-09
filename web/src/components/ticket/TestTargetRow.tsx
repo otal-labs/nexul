@@ -17,7 +17,7 @@ export const TestTargetRow = ({ ticket }: TestTargetRowProps) => {
     <div className="space-y-1">
       <h3 className="px-2 text-xs text-muted-foreground">Where to test</h3>
       {isPending && <LoadingDisplay label="Finding a test environment…" className="p-3" />}
-      {error && <ErrorDisplay error={error} title="Failed to find a test environment." />}
+      {error && <ErrorDisplay error={error} title="Couldn't find a test environment." />}
       {target && target.url === "" && <NoTestTargetRow projectId={ticket.project_id} />}
       {target && target.url !== "" && (
         <div className="px-2">

@@ -41,7 +41,7 @@ export const MentionChipField = ({ id, value, onChange }: MentionChipFieldProps)
             key={token}
             type="button"
             onClick={() => onChange(`${value}{ticket.${token}}`)}
-            className="rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-xs text-muted-foreground hover:bg-muted"
+            className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-xs text-muted-foreground hover:bg-muted"
           >
             {`{ticket.${token}}`}
           </button>

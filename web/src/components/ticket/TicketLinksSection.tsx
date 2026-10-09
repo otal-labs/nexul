@@ -1,3 +1,4 @@
+import { microheaderClass } from "@/components/Microheader";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { AddTicketLinkMenu } from "@/components/ticket/AddTicketLinkMenu";
@@ -8,9 +9,6 @@ import { TicketSourceRow } from "@/components/ticket/TicketSourceRow";
 import { useSetTicketSource } from "@/hooks/TicketHooks";
 import { useFetchTicketLinkSet, useRemoveBlocker, useRemoveFoundIn } from "@/hooks/TicketLinkHooks";
 import type { Ticket } from "@/models/Ticket";
-
-const microheaderClass =
-  "font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase";
 
 interface TicketLinksSectionProps {
   ticket: Ticket;
@@ -32,8 +30,8 @@ export const TicketLinksSection = ({ ticket }: TicketLinksSectionProps) => {
         <AddTicketLinkMenu ticket={ticket} />
       </div>
       {isPending && <LoadingDisplay label="Loading linked tickets…" />}
-      {error && <ErrorDisplay error={error} title="Failed to load linked tickets." />}
-      {empty && <p className="px-2 text-xs text-muted-foreground">No source doc, blockers, or found-in links.</p>}
+      {error && <ErrorDisplay error={error} title="Couldn't load linked tickets." />}
+      {empty && <p className="px-2 text-xs text-muted-foreground">No links yet.</p>}
       {ticket.doc_id && (
         <LinkGroupSection title="Source">
           <TicketSourceRow docId={ticket.doc_id} onRemove={() => setSource.mutate({ id: ticketId, docId: "" })} />

@@ -10,11 +10,8 @@ export const DangerZoneSection = () => (
     title="Danger zone"
     danger
     icon={TriangleAlert}
-    description="Irreversible workspace actions live here, separated from daily settings so nothing destructive is one stray click away."
+    description="Workspace actions that can't be undone."
   >
-    <p className="text-sm text-muted-foreground">
-      No irreversible workspace-wide action exists on this instance yet. Anything added here
-      will use the same confirm-before-continue step revoking a personal access token does.
-    </p>
+    <p className="text-sm text-muted-foreground">None yet. Each one added here will ask you to confirm first.</p>
   </SettingsCard>
 );

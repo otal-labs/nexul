@@ -22,7 +22,7 @@ describe("ErrorPage", () => {
     );
     render(<RouterProvider router={router} />);
     expect(screen.getByRole("heading", { name: "Page not found" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back home" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go home" })).toBeInTheDocument();
   });
 
   it("navigates back when Go back is clicked", async () => {
@@ -51,6 +51,6 @@ describe("ErrorPage", () => {
     );
     render(<RouterProvider router={router} />);
     expect(screen.getByRole("heading", { name: "Something went wrong", level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
   });
 });

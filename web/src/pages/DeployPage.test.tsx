@@ -80,13 +80,15 @@ describe("DeployPage", () => {
   it("renders the header, derived steps, and the log lines for a running build", async () => {
     mockApi(deploy({}), lines);
     renderPage();
-    expect(await screen.findByRole("heading", { name: "api" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /back to deploy history/i })).toHaveAttribute("href", "/acme/stacks/stack-1/history");
+    expect(await screen.findByRole("heading", { level: 1, name: "Building and deploying" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "api" })).toHaveAttribute("href", "/acme/stacks/stack-1");
+    expect(screen.getByRole("link", { name: "Deploys" })).toHaveAttribute("href", "/acme/stacks/stack-1/history");
     expect(screen.getByText("d-1")).toBeInTheDocument();
     expect(screen.getByText("running")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Building and deploying" })).toBeInTheDocument();
 
-    const steps = screen.getAllByRole("listitem").filter((li) => li.closest("ol") && !li.closest("[role='log']"));
+    const steps = screen
+      .getAllByRole("listitem")
+      .filter((li) => li.closest("ol") && !li.closest("[role='log']") && !li.closest("nav"));
     expect(steps.map((li) => li.textContent)).toEqual([
       "Waiting for a runnerdone5s",
       "Cloning repositorydone7s",
@@ -105,16 +107,16 @@ describe("DeployPage", () => {
   it("shows the cancel button only while the deploy is active", async () => {
     mockApi(deploy({}), lines);
     renderPage();
-    expect(await screen.findByRole("button", { name: "Cancel deployment" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Cancel deploy" })).toBeInTheDocument();
   });
 
   it("hides cancel, checks every started step, and titles a healthy deploy as deployed", async () => {
     mockApi(deploy({ status: "healthy", updated_at: new Date(T0 + 20_000).toISOString() }), lines);
     renderPage();
     expect(await screen.findByRole("heading", { name: "Deployed" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Cancel deployment" })).not.toBeInTheDocument();
-    expect(screen.getByText("Building").parentElement).toHaveTextContent("done8s");
-    expect(screen.getByText("Deploying").parentElement).toHaveTextContent("—");
+    expect(screen.queryByRole("button", { name: "Cancel deploy" })).not.toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "Steps" })).getByText("Building").parentElement).toHaveTextContent("done8s");
+    expect(within(screen.getByRole("list", { name: "Steps" })).getByText("Deploying").parentElement).toHaveTextContent("—");
   });
 
   it("marks the last started step failed and titles the page accordingly", async () => {
@@ -124,7 +126,7 @@ describe("DeployPage", () => {
     ]);
     renderPage();
     expect(await screen.findByRole("heading", { name: "Deploy failed" })).toBeInTheDocument();
-    expect(screen.getByText("Building").parentElement).toHaveTextContent("failed");
+    expect(within(screen.getByRole("list", { name: "Steps" })).getByText("Building").parentElement).toHaveTextContent("failed");
     expect(within(await screen.findByRole("log")).getByText("deploy failed: exit 1")).toBeInTheDocument();
   });
 
@@ -133,7 +135,7 @@ describe("DeployPage", () => {
     mocks.post.mockResolvedValue({ data: {} });
     renderPage();
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    await user.click(await screen.findByRole("button", { name: "Cancel deployment" }));
+    await user.click(await screen.findByRole("button", { name: "Cancel deploy" }));
     expect(mocks.post).toHaveBeenCalledWith("/api/deploys/d-1/cancel");
     await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Cancel requested"));
   });
@@ -180,7 +182,7 @@ describe("DeployPage", () => {
   it("shows the no-output empty state for a terminal deploy without lines", async () => {
     mockApi(deploy({ status: "failed" }), []);
     renderPage();
-    expect(await screen.findByText("No output was recorded.")).toBeInTheDocument();
+    expect(await screen.findByText("No output recorded.")).toBeInTheDocument();
   });
 
   it("renders the error display when the deploy cannot be loaded", async () => {
@@ -189,11 +191,13 @@ describe("DeployPage", () => {
     expect(await screen.findByRole("alert")).toBeInTheDocument();
   });
 
-  it("drops the back link to deploy history when the viewer can't read stacks", async () => {
+  it("drops the stack and deploy history crumbs when the viewer can't read stacks", async () => {
     access.areas = [];
     mockApi(deploy({}), lines);
     renderPage();
-    expect(await screen.findByRole("heading", { name: "api" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /back to deploy history/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Building and deploying" })).toBeInTheDocument();
+    await screen.findByRole("log");
+    expect(mocks.get).toHaveBeenCalledWith("/api/stacks/stack-1");
+    expect(screen.queryByRole("link", { name: "Deploys" })).not.toBeInTheDocument();
   });
 });

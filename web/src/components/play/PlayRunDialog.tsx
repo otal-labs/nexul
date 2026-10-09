@@ -41,7 +41,7 @@ const PlayRunDialogBody = ({ play, projectId, targetType, targetId, onDone }: Pl
   return (
     <div className="space-y-5">
       {isPending && <LoadingDisplay label="Loading choices…" />}
-      {error && <ErrorDisplay error={error} title="Failed to load the run choices" />}
+      {error && <ErrorDisplay error={error} title="Couldn't load the run choices." />}
       {play.builtin_key === "clarify" && targetType === "doc" && <UnansweredQuestionsSignal docId={targetId} />}
       {memories.data && choices.data && readiness && (
         <PlayRunForm

@@ -28,7 +28,7 @@ export const TicketTypeRow = ({ type, projectId }: TicketTypeRowProps) => {
   const editTemplate = () =>
     openTemplate<SaveTicketTypeTemplateFormData>({
       title: `Template for ${type.name}`,
-      description: `Pre-fills the body of new ${type.name} tickets. Tickets already created keep their body.`,
+      description: `New ${type.name} tickets start with this body. Existing tickets keep theirs.`,
       schema: SaveTicketTypeTemplateFormSchema,
       okLabel: "Save template",
       form: <TicketTypeTemplateForm typeId={type.id} />,
@@ -45,7 +45,7 @@ export const TicketTypeRow = ({ type, projectId }: TicketTypeRowProps) => {
   };
 
   return (
-    <li className="-mx-2 flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors duration-[120ms] ease-standard hover:bg-accent/40">
+    <li className="-mx-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-[120ms] ease-standard hover:bg-accent/40">
       {editing && (
         <input
           className="flex-1 rounded-md border border-input px-2 py-1 text-sm"
@@ -61,7 +61,7 @@ export const TicketTypeRow = ({ type, projectId }: TicketTypeRowProps) => {
       )}
       {!editing && (
         <div className="min-w-0 flex-1">
-          <span className="text-sm font-medium">{type.name}</span>
+          <span className="block truncate text-sm font-medium" title={type.name}>{type.name}</span>
           <TicketTypeTemplateLine type={type} projectId={projectId} />
         </div>
       )}

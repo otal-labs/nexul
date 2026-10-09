@@ -51,10 +51,14 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
           type="button"
           aria-expanded={!collapsed}
           onClick={() => toggleLane(projectId, lane.key)}
-          className="group/lane flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm px-1.5 py-1 text-left transition-colors duration-150 ease-standard hover:bg-accent/40"
+          className="group/lane flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors duration-150 ease-standard hover:bg-accent/40"
         >
-          <span className="sticky left-0 flex min-w-0 items-center gap-3">
-            <span className="min-w-0 truncate text-sm font-semibold">{lane.label}</span>{" "}
+          <span className="sticky left-0 flex min-w-0 items-center gap-2">
+            <ChevronDownIcon
+              className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 ease-standard group-hover/lane:text-foreground", collapsed && "-rotate-90")}
+              aria-hidden
+            />
+            <span title={lane.label} className="min-w-0 truncate text-sm font-semibold">{lane.label}</span>{" "}
             {allDone && <CircleCheckBig className="size-3 shrink-0 text-success" role="img" aria-label="All done" />}{" "}
             {runs.running + runs.waiting > 0 && (
               <span className="flex shrink-0 items-center gap-2.5 font-mono text-xs text-muted-foreground">
@@ -69,26 +73,23 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
               </span>
             )}
           </span>{" "}
-          <span className="sticky right-0 flex shrink-0 items-center gap-1 font-mono text-xs text-muted-foreground transition-colors group-hover/lane:text-foreground">
+          <span className="sticky right-0 flex shrink-0 items-center gap-2.5 font-mono text-xs tabular-nums text-muted-foreground">
+            <span className="h-1 w-14 overflow-hidden rounded-full bg-border" aria-hidden>
+              <span
+                className="block h-full origin-left rounded-full bg-success transition-transform duration-250 ease-standard"
+                style={{ transform: `scaleX(${lane.tickets.length > 0 ? doneCount / lane.tickets.length : 0})` }}
+              />
+            </span>
             {doneCount}/{lane.tickets.length} tickets
-            <ChevronDownIcon
-              className={cn("size-3.5 transition-transform duration-150 ease-standard", collapsed && "-rotate-90")}
-              aria-hidden
-            />
           </span>
         </button>
       </h3>
-      {/* Grid-row 1fr→0fr collapse needs no measured height; content stays mounted (inert) so expanding never replays entrances. */}
+      {/* Content stays mounted (inert) so expanding never replays entrances; inline-size containment drops a collapsed lane's columns from the shared scroll width. */}
       <div
         inert={collapsed}
         aria-hidden={collapsed}
-        className={cn(
-          "grid transition-[grid-template-rows,opacity] motion-reduce:transition-[opacity]",
-          // inline-size containment drops a collapsed lane's columns from the shared scroll width, so all-collapsed lanes need no scrollbar.
-          collapsed
-            ? "[grid-template-rows:0fr] opacity-0 contain-inline-size duration-150 ease-standard"
-            : "[grid-template-rows:1fr] opacity-100 duration-200 ease-out",
-        )}
+        data-closed={collapsed || undefined}
+        className={cn("disclosure", collapsed && "contain-inline-size")}
       >
         <div className="min-h-0 overflow-hidden">
           <SortableContext

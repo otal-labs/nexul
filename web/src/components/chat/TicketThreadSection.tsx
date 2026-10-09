@@ -19,11 +19,11 @@ import { cn } from "@/lib/utils";
 interface TicketThreadSectionProps {
   workspaceId: string;
   ticketId: string;
-  /** The thread is a sticky, viewport-tall pane beside the body, composer at its foot. */
+  /** The thread is its own full-height panel beside the body, composer at its foot. */
   pane?: boolean;
 }
 
-// "starting" is local UI state for the one-shot "Start chat" click; an existing thread loads on its own.
+// "starting" is local UI state for the one-shot "Start thread" click; an existing thread loads on its own.
 export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: TicketThreadSectionProps) => {
   const [starting, setStarting] = useState(false);
   const client = useQueryClient();
@@ -45,7 +45,7 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
       className={cn(
         "space-y-3 border-t border-border pt-6",
         pane &&
-          "@min-[46rem]:sticky @min-[46rem]:top-4 @min-[46rem]:flex @min-[46rem]:h-[calc(100dvh-2rem)] @min-[46rem]:flex-col @min-[46rem]:border-t-0 @min-[46rem]:pt-0",
+          "@min-[46rem]:flex @min-[46rem]:min-h-0 @min-[46rem]:flex-1 @min-[46rem]:flex-col @min-[46rem]:border-t-0 @min-[46rem]:pt-0",
       )}
     >
       <div className="flex shrink-0 items-center justify-between gap-2">
@@ -61,16 +61,16 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
       {showStart && (
         <Button variant="outline" size="sm" className={cn(pane && "w-full")} onClick={() => setStarting(true)}>
           <MessageSquare className="size-4" aria-hidden />
-          Start chat
+          Start thread
         </Button>
       )}
       {shouldLoad && isPending && <LoadingDisplay label="Loading thread…" />}
-      {shouldLoad && error && <ErrorDisplay error={error} title="Failed to load the thread." />}
+      {shouldLoad && error && <ErrorDisplay error={error} title="Couldn't load the thread." />}
       {conversation && (
         <div
           className={cn(
             "h-96 overflow-hidden rounded-lg border border-border",
-            pane && "@min-[46rem]:h-auto @min-[46rem]:min-h-0 @min-[46rem]:flex-1",
+            pane && "@min-[46rem]:h-auto @min-[46rem]:min-h-0 @min-[46rem]:flex-1 @min-[46rem]:rounded-none @min-[46rem]:border-0",
           )}
         >
           <ConversationThread workspaceId={workspaceId} conversation={conversation} showHeader={false} />

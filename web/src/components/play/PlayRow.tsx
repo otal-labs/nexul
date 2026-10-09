@@ -38,7 +38,9 @@ export const PlayRow = ({ play, workspaceId, canWrite, canDelete, onEdit }: Play
     <li className="flex flex-wrap items-center gap-3 bg-card px-3 py-3">
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium">{play.label}</span>
+          <span className="line-clamp-2 min-w-0 text-sm font-medium break-words" title={play.label}>
+            {play.label}
+          </span>
           <NoFillBadge color="text-muted-foreground">{PLAY_TYPE_LABELS[play.type]}</NoFillBadge>
           {play.type === "ticket" && play.show_when_stage && (
             <NoFillBadge color="text-muted-foreground">{PLAY_STAGE_LABELS[play.show_when_stage]}</NoFillBadge>

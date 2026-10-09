@@ -20,7 +20,7 @@ export const GitHubInstallationsSection = () => {
     <SettingsCard
       id="github-installations"
       title="Installations"
-      description="Where the App is installed. Nexul reads repositories in these accounts and organisations."
+      description="Nexul reads repositories in these accounts and organisations."
       footer={
         app.app_slug && (
           <Button asChild variant="outline" size="sm">

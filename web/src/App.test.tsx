@@ -18,13 +18,13 @@ describe("App", () => {
   });
 
   // Each test re-imports the whole app graph (vi.resetModules above); under full-suite load that alone can pass vitest's 5s default.
-  const wholeAppImport = 20_000;
+  const wholeAppImport = 45_000;
 
   it("renders the home page through the router", async () => {
     const { App } = await import("./App");
     render(<App />);
     expect(
-      await screen.findByRole("heading", { name: "One button. The trail shows every step the agent took." }),
+      await screen.findByRole("heading", { name: "Docs, tickets, chat, and deploys in one place." }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
   }, wholeAppImport);

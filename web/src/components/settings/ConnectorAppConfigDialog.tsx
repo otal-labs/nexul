@@ -30,8 +30,8 @@ export const ConnectorAppConfigDialog = ({ connector }: ConnectorAppConfigDialog
         <DialogHeader>
           <DialogTitle>Set up the {connector.name} app</DialogTitle>
           <DialogDescription>
-            Register an OAuth app with {connector.name} using <code className="break-all">{callback}</code> as the
-            redirect URL, then paste its credentials here. Nexul never holds or manages the app itself.
+            Register an OAuth app with {connector.name}, set its redirect URL to{" "}
+            <code className="break-all">{callback}</code>, and paste its credentials here. The app stays yours to manage.
           </DialogDescription>
         </DialogHeader>
         <ConnectorAppConfigForm connectorId={connector.id} onSaved={() => setOpen(false)} />

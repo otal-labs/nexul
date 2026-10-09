@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -75,7 +75,7 @@ describe("MemoryVersionRow", () => {
     renderRow(version(), false, true);
 
     await user.click(screen.getByRole("button", { name: /Revert/ }));
-    await user.click(await screen.findByRole("button", { name: "Confirm" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Revert" }));
 
     expect(mocks.post).toHaveBeenCalledWith("/api/memories/mem-1/revert", { version: 2 });
   });
@@ -86,7 +86,7 @@ describe("MemoryVersionRow", () => {
     renderRow(version(), false, true, "stacked");
 
     await user.click(screen.getByRole("button", { name: "Revert to v2" }));
-    await user.click(await screen.findByRole("button", { name: "Confirm" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Revert" }));
 
     expect(mocks.post).toHaveBeenCalledWith("/api/memories/mem-1/revert", { version: 2 });
   });

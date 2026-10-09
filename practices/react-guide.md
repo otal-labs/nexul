@@ -368,7 +368,7 @@ Rules:
 
 | Pattern | Name | Purpose |
 |---|---|---|
-| Page header | `PageHeader` | Semibold tracking-tight title + one-line subtitle (page-level marquee) |
+| Page header | `PageHeader` | Display-face title (`pageTitleClassFor`, held to three lines by `ClampedTitle`) + one-line subtitle (page-level marquee) |
 | List view | `XxxFeed` | Hairline-row list with search, filter, actions |
 | Create dialog | `CreateXxxDialog` | New-entity dialog |
 | Delete dialog | `DeleteXxxDialog` | Confirmation dialog |
@@ -1176,7 +1176,8 @@ stored data, not part of the serialized JSON itself. First paint uses
 ### Theming the canvas
 
 Override React Flow's CSS with the same variables as shadcn so nodes, edges,
-and the minimap follow light/dark for free; selected node = shadcn `ring`.
+and the controls follow light/dark for free; selected node = shadcn `ring`. The canvas
+has no minimap and hides the library's attribution (`proOptions`).
 Node detail (logs, env, deploy history, SSH/docker config) opens in a shadcn
 `Sheet` on click. Canvas is overview, sheet is depth.
 
@@ -1217,10 +1218,13 @@ export const Button = ({ className, variant, size, ref, ...props }: ButtonProps)
 - Icons from `lucide-react`: `<Plus className="h-4 w-4" />`.
 - Named-export custom components; shadcn primitives follow whatever the CLI
   emits (it now generates React-19-compatible code).
-- Enter/exit motion uses `tw-animate-css` utilities (`animate-in`/`animate-out`
-  + `fade-in-0`, `zoom-in-95`, `slide-in-from-*`) with `ease-standard` and
-  150-250ms durations; the global `prefers-reduced-motion` block in
-  `index.css` disables all transitions/animations.
+- Enter/exit motion on primitives uses `tw-animate-css` utilities
+  (`animate-in`/`animate-out` + `fade-in-0`, `zoom-in-97`, `slide-in-from-*`)
+  with `ease-out` and 150-250ms durations. Page, list and highlight motion
+  goes through the shared primitives (`EnterList`, `ActiveIndicator`,
+  `usePageEntrance`, `lib/motion.ts`); the numbers are the Motion baseline in
+  `practices/design-language.md`. The global `prefers-reduced-motion` block in
+  `index.css` flattens CSS motion; the primitives keep a short fade.
 
 The shadcn CLI now defaults a fresh `init` to Base UI, not Radix; this repo
 stays on the unified `radix-ui` package (`components/ui/dialog.tsx` and every
@@ -1242,17 +1246,25 @@ variant. **Tokens are not specified here, see
 `practices/design-language.md` (the visual spec of record) for the direction
 and `web/src/index.css` (the token source of record) for the values.**
 Structurally the theme adds, beyond the default shadcn set: a `surface-2`
-token (board fields, canvas, section breaks), the status tokens (`--success`,
+token (wells inside a panel: board columns, canvas, logs), the `panel` token
+and `panel` utility (the frosted surface every page floats in), the `brand`
+accent (`bg-brand`, `text-brand-foreground`), the status tokens (`--success`,
 `--warning`, `--info`), an elevation scale
 (`shadow-card`/`-elevated`/`-overlay`), the motion tokens (`ease-standard` =
 `cubic-bezier(0.25, 0.1, 0.25, 1)`, `ease-out` =
-`cubic-bezier(0.16, 1, 0.3, 1)`), and the locally bundled type stack: Inter
-Variable (UI + display, tight tracking) + JetBrains Mono (technical data),
-via `@fontsource-variable`, no CDN. No serif or script type.
+`cubic-bezier(0.16, 1, 0.3, 1)`, and the springs `ease-spring` and
+`ease-spring-pop` as `linear()` curves), and the locally bundled type stack: Inter
+Variable (UI), JetBrains Mono (technical data), and Fraunces (`font-display`,
+the `type-display` utility) for page titles, empty-state and showcase
+headlines only, via `@fontsource-variable`, no CDN. No script type.
 
-Radius system: **6px interactive** (`rounded-md`), 8px large cards
-(`rounded-lg`), pills (`rounded-full`) only for chips/badges/avatars/status,
+Radius system: **7px controls** (`rounded-md`), 9px cards (`rounded-lg`), 12px
+panels (`rounded-xl`), pills (`rounded-full`) only for chips/badges/avatars/status,
 never buttons or inputs.
+
+Pages never draw their own outer surface: the layout's frame is the page's
+panel. A page built from panes puts `data-pane-layout` on its root and a
+`panel` on each pane (`ListDetailLayout` is the reference).
 
 Use container queries (`@container`, `@min-*`/`@max-*`) for component-level
 responsiveness, not viewport breakpoints, whenever a component's layout
@@ -1279,6 +1291,7 @@ mounted in today.
   --color-info: var(--info);
   --font-sans: var(--font-sans-stack);
   --font-mono: var(--font-mono-stack);
+  --font-display: var(--font-display-stack);
   --shadow-card: var(--shadow-card);
   --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
   /* ...the rest of the shadcn tokens */
@@ -1293,10 +1306,11 @@ mounted in today.
   `themeStore` initialises from the resulting class so it never disagrees
   with the DOM.
 - All colors are semantic tokens; never hard-code palette classes for themed
-  surfaces. Status hues come from `success` / `warning` / `info` /
-  `destructive` tokens, rendered as a colored icon or dot next to plain text,
-  never a filled or tinted-background chip, except the board card's own pill
-  row (see `practices/design-language.md`).
+  surfaces. The one accent is `brand`, held to the roles in
+  `practices/design-language.md`. Status hues come from `success` / `warning` /
+  `info` / `destructive` tokens, rendered as a colored icon or dot next to
+  plain text, never a filled or tinted-background chip; type and label may be
+  tinted pills (see `practices/design-language.md`).
 - Conditional classes via `cn()`:
 
 ```tsx
@@ -1381,11 +1395,14 @@ export const AppRouter = () => {
 - The shell is a **sidebar layout**: a sticky left rail
   (`components/sidebar/Sidebar.tsx`). Its header holds the logo, the update
   button, and the collapse toggle (instant width swap, no layout animation,
-  see the motion rules). Below it: the workspace switcher; a scrolling nav
-  with Inbox, Chat, the channels, and one project at a time behind a project
-  switcher, its pages listed once; the workspace section (Runners, Topology,
-  Automations, Configuration) docked under the scroll area and foldable; the
-  account menu (Support, Logout) and the Your settings gear at the bottom. Pages render inside `<main>` under
+  see the motion rules). Below it: the workspace switcher; one scrolling nav
+  with Search (the command palette) and Inbox, then one project at a time
+  behind a project switcher, its pages listed once, then the foldable
+  workspace section (Runners, Topology, Automations, Configuration), then the
+  conversations (channels, voice channels, direct messages, threads); the
+  account menu (Support, Sign out) and the Your settings gear at the bottom.
+  The icon rail keeps every page and adds one Chat link for the conversations. The
+  signed-out pages and the wizards render without it. Pages render inside `<main>` under
   `Container` (`mx-auto w-full max-w-7xl`).
 - Every page reached from a workspace's sidebar lives under `/:workspace`, the
   workspace's slug (ADR 0089); personal and instance pages (`/settings/*`,

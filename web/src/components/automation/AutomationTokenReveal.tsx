@@ -27,9 +27,9 @@ export const AutomationTokenReveal = ({ token }: AutomationTokenRevealProps) => 
   return (
     <div className="animate-in fade-in-0 slide-in-from-top-1 space-y-3 rounded-md bg-muted p-4 duration-200 ease-out">
       <div className="space-y-2">
-        <p className="text-sm font-medium">Copy this token now — it won&apos;t be shown again.</p>
+        <p className="text-sm font-medium">Copy this token now. It won&apos;t be shown again.</p>
         <div className="flex items-center gap-2">
-          <p className="min-w-0 flex-1 truncate rounded bg-card p-2 font-mono text-xs">{token}</p>
+          <p className="min-w-0 flex-1 truncate rounded-md bg-card p-2 font-mono text-xs">{token}</p>
           <Button type="button" variant="outline" size="sm" onClick={copyToken}>
             {copied && <Check className="size-4" />}
             {!copied && <Copy className="size-4" />}

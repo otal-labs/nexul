@@ -68,11 +68,10 @@ describe("DnsOnboardingPage", () => {
     mocks.toast.error.mockClear();
   });
 
-  it("renders as a single-step wizard with a quiet skip link", async () => {
+  it("renders the wizard with a quiet skip link", async () => {
     mockConnected();
     renderPage();
-    expect(await screen.findByRole("status", { name: /step 1 of 1/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /set up dns/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /set up dns/i })).toBeInTheDocument();
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /skip for now/i }));
     expect(await screen.findByText("home-page")).toBeInTheDocument();
@@ -87,7 +86,7 @@ describe("DnsOnboardingPage", () => {
     expect(await screen.findByText(/connect cloudflare first/i)).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: /bare public address/i })).not.toBeInTheDocument();
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: /go to settings/i }));
+    await user.click(screen.getByRole("button", { name: /^connect cloudflare$/i }));
     expect(await screen.findByText("settings-page")).toBeInTheDocument();
   });
 
@@ -130,6 +129,6 @@ describe("DnsOnboardingPage", () => {
     });
     renderPage();
     expect(await screen.findByText(/connect cloudflare first/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /go to settings/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^connect cloudflare$/i })).not.toBeInTheDocument();
   });
 });

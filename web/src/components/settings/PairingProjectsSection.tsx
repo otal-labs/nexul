@@ -23,8 +23,7 @@ export const PairingProjectsSection = () => {
     <SettingsCard
       id="pairing-projects"
       title="Projects"
-      description="The computer, T3 project, and model your @Agent turns use in each project. Only yours: everyone
-        picks their own, and a project you leave alone uses your defaults."
+      description="The computer, T3 project, and model your @Agent turns use in each project. Nobody else's turns use them, and a project you leave unlinked uses your defaults."
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}

@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 
-import { Container } from "@/components/Container";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { InvitationAcceptancePanel } from "@/components/invitation/InvitationAcceptancePanel";
 import { InvitationGrantSummary } from "@/components/invitation/InvitationGrantSummary";
 import { InvitationProviderList } from "@/components/invitation/InvitationProviderList";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { microheaderClass } from "@/components/Microheader";
+import { displayTitleClass } from "@/components/PageHeader";
+import { ShowcaseSurface } from "@/components/showcase/ShowcaseSurface";
 import { Button } from "@/components/ui/button";
 import {
   useCreateInvitationAcceptance,
@@ -18,8 +20,9 @@ import { useBootstrapStatus } from "@/hooks/AuthHooks";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { parseInvitationFragment, type InvitationAcceptance, type InvitationProvider } from "@/models/Invitation";
+import { cn } from "@/lib/utils";
 
-const INVALID_MESSAGE = "This invitation is invalid or has expired.";
+const INVALID_MESSAGE = "This invitation has expired or isn't valid";
 
 export const InvitePreviewPage = () => {
   const location = useLocation();
@@ -63,6 +66,8 @@ export const InvitePreviewPage = () => {
   if (bootstrapStatus?.google_configured) providers.push("google");
   if (bootstrapStatus?.discord_configured) providers.push("discord");
   const instanceName = details?.instance_name ?? (details?.instance_url ? new URL(details.instance_url).host : "this instance");
+  // A preview with no token to read is disabled, and a disabled query stays pending, so only a running fetch counts.
+  const checking = (preview.isPending && preview.isFetching) || exchange.isPending;
   const invalid = fragment.malformed || Boolean((fragment.token === "" && !publicPreview && !exchange.isPending) || preview.error || exchange.error);
 
   // The link left the address bar on arrival, so a reload would lose it; retry with the token already read.
@@ -91,21 +96,21 @@ export const InvitePreviewPage = () => {
   };
 
   return (
-    <div className="blueprint-bg min-h-screen">
-      <Container className="mx-auto flex min-h-screen w-full max-w-xl items-center py-12">
-        <div className="w-full space-y-6">
-          <header className="space-y-2 text-center">
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-primary/80">Nexul invitation</p>
-            <h1 className="text-2xl font-semibold tracking-tight">Join {instanceName}</h1>
-            <p className="text-sm text-muted-foreground">This one-use link expires {details ? new Date(details.expires_at).toLocaleString() : "soon"}.</p>
+    <ShowcaseSurface>
+      <div className="flex min-h-full items-center justify-center px-6 py-12">
+        <div className="panel w-full max-w-xl space-y-6 p-8 [--panel-opacity:72%]">
+          <header className="space-y-3">
+            <p className={microheaderClass}>Invitation</p>
+            <h1 className={cn(displayTitleClass, "text-[2rem]")}>Join {instanceName}</h1>
+            <p className="text-sm text-muted-foreground">This link works once and expires {details ? new Date(details.expires_at).toLocaleString() : "soon"}.</p>
           </header>
-          {(preview.isPending || exchange.isPending) && <LoadingDisplay label="Checking invitation…" />}
-          {invalid && <div className="space-y-3"><ErrorDisplay title={INVALID_MESSAGE} />{fragment.token && <Button type="button" variant="outline" onClick={retry}>Try again</Button>}</div>}
+          {checking && <LoadingDisplay label="Checking invitation…" />}
+          {invalid && <div className="space-y-3"><ErrorDisplay title={INVALID_MESSAGE} message="Ask whoever sent it for a new link." />{fragment.token && <Button type="button" variant="outline" onClick={retry}>Try again</Button>}</div>}
           {!invalid && details && <InvitationGrantSummary invitation={details} detailed={acceptance != null} />}
           {!invalid && acceptance && <InvitationAcceptancePanel pending={redeem.isPending} onAccept={accept} onDecline={() => navigate("/", { replace: true })} />}
           {!invalid && !acceptance && publicPreview && <InvitationProviderList providers={providers} disabled={oauth.isPending} onSelect={startOAuth} />}
         </div>
-      </Container>
-    </div>
+      </div>
+    </ShowcaseSurface>
   );
 };

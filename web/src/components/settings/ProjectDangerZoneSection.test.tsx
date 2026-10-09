@@ -48,7 +48,7 @@ describe("ProjectDangerZoneSection", () => {
     await vi.waitFor(() => expect(mocks.get).toHaveBeenCalled());
     await user.click(screen.getByRole("button", { name: "Remove project" }));
 
-    expect(await screen.findByText("This project is empty and can be removed. This cannot be undone.")).toBeInTheDocument();
+    expect(await screen.findByText("The project is empty. Removing it can't be undone.")).toBeInTheDocument();
     expect(screen.queryByText(/lose access/)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
   });

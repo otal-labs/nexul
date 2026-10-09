@@ -51,7 +51,7 @@ export const CreateMemoryForm = ({ defaultProjectId = "" }: CreateMemoryFormProp
         control={control}
         name="when_to_use"
         label="When to use"
-        placeholder="use this if you are writing React code"
+        placeholder="e.g. when writing React code"
       />
       <label className="flex items-center gap-2 text-sm font-medium">
         <Switch

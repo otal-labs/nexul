@@ -174,7 +174,7 @@ describe("DocsPage", () => {
     await user.click(await screen.findByRole("button", { name: "More actions for Storage Spine" }));
     await user.click(await screen.findByRole("menuitem", { name: "Clone" }));
     const dialog = await screen.findByRole("dialog", { name: "Clone to…" });
-    await user.click(await within(dialog).findByRole("button", { name: "Clone" }));
+    await user.click(await within(dialog).findByRole("button", { name: "Clone doc" }));
 
     await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/clone", { project_id: "p-1" }));
     expect(await screen.findByText("editing doc-9")).toBeInTheDocument();
@@ -214,14 +214,14 @@ describe("DocsPage", () => {
     await user.click(await screen.findByRole("button", { name: "New folder" }));
     const dialog = await screen.findByRole("dialog", { name: "New folder" });
     await user.type(within(dialog).getByLabelText("Name"), "Episodes");
-    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    await user.click(within(dialog).getByRole("button", { name: "Create folder" }));
     await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/folders", { project_id: "p-1", name: "Episodes" }));
 
     await user.click(screen.getByRole("button", { name: "More actions for GetSource" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     const confirm = await screen.findByRole("dialog", { name: "Delete GetSource?" });
-    expect(within(confirm).getByText("1 doc moves to Main; none is deleted.")).toBeInTheDocument();
-    await user.click(within(confirm).getByRole("button", { name: "Delete" }));
+    expect(within(confirm).getByText("1 doc moves to Main. None are deleted.")).toBeInTheDocument();
+    await user.click(within(confirm).getByRole("button", { name: "Delete folder" }));
     await vi.waitFor(() => expect(api.delete).toHaveBeenCalledWith("/api/docs/folders/f-gs"));
   });
 
@@ -244,6 +244,6 @@ describe("DocsPage", () => {
   it("shows the shared error display when the list fails", async () => {
     renderPage("/acme/docs", ["docs:read"], { "/api/docs": new Error("boom") });
 
-    expect(await screen.findByText("Failed to load docs.")).toBeInTheDocument();
+    expect(await screen.findByText("Couldn't load docs.")).toBeInTheDocument();
   });
 });

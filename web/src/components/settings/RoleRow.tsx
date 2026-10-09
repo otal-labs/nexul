@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type KeyboardEvent } from "react";
-import { CopyIcon, CrownIcon, PencilIcon, Trash2 } from "lucide-react";
+import { CopyIcon, PencilIcon, Trash2 } from "lucide-react";
 
 import { RoleLevelSections } from "@/components/access/RoleLevelSections";
 import { CloneRoleDialog } from "@/components/settings/CloneRoleDialog";
@@ -20,7 +20,6 @@ interface RoleRowProps {
   catalog: PermissionInfo[];
 }
 
-// Owner role is protected server-side; this is defense-in-depth, hiding edit/delete too.
 export const RoleRow = ({ role, workspaceId, catalog }: RoleRowProps) => {
   const updateRole = useUpdateWorkspaceRole(workspaceId);
   const deleteRole = useDeleteWorkspaceRole(workspaceId);
@@ -31,17 +30,6 @@ export const RoleRow = ({ role, workspaceId, catalog }: RoleRowProps) => {
   const canClone = useHasPermission("roles:clone");
 
   const summary = summarize(domainsOf(catalog), role.permissions);
-
-  if (role.is_owner_role) {
-    return (
-      <li className="flex items-center gap-2 bg-card px-3 py-3">
-        <span className="flex-1 text-sm font-medium">{role.name}</span>
-        <NoFillBadge icon={CrownIcon} color="text-muted-foreground">
-          Protected role
-        </NoFillBadge>
-      </li>
-    );
-  }
 
   const startEditing = () => {
     setNameDraft(role.name);
@@ -66,7 +54,7 @@ export const RoleRow = ({ role, workspaceId, catalog }: RoleRowProps) => {
   return (
     <li className={cn("flex items-center gap-2 bg-card px-3 py-3 transition-colors duration-150 ease-standard", !editing && "hover:bg-accent/40")}>
       {editing && (
-        <form onSubmit={commit} className="flex flex-1 flex-col gap-3">
+        <form onSubmit={commit} className="flex min-w-0 flex-1 flex-col gap-3">
           <Input
             aria-label="Role name"
             value={nameDraft}
@@ -87,8 +75,10 @@ export const RoleRow = ({ role, workspaceId, catalog }: RoleRowProps) => {
         </form>
       )}
       {!editing && (
-        <div className="flex flex-1 flex-col gap-1.5">
-          <span className="text-sm font-medium">{role.name}</span>
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <span className="truncate text-sm font-medium" title={role.name}>
+            {role.name}
+          </span>
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             {summary.length === 0 && <span className="text-xs text-muted-foreground">No permissions</span>}
             {summary.map((line) => (

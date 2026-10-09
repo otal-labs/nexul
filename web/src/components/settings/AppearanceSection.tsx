@@ -28,7 +28,7 @@ export const AppearanceSection = () => {
   );
 
   return (
-    <SettingsCard id="appearance" title="Appearance" description="Choose how Nexul looks.">
+    <SettingsCard id="appearance" title="Appearance">
       <div className="space-y-6">
         <div>
           <h3 className="text-sm font-semibold">Color scheme</h3>
@@ -45,7 +45,7 @@ export const AppearanceSection = () => {
                   className={cn(
                     "flex flex-col items-center gap-1.5 rounded-md border p-3 text-sm transition-colors duration-150 ease-standard",
                     active
-                      ? "border-primary bg-accent/60 text-foreground"
+                      ? "border-brand bg-accent/60 text-foreground"
                       : "border-border text-muted-foreground hover:bg-accent/30",
                   )}
                 >
@@ -71,7 +71,7 @@ export const AppearanceSection = () => {
                   onClick={() => setThemeId(theme.id)}
                   className={cn(
                     "flex flex-col items-center gap-2 rounded-md border p-3 transition-colors duration-150 ease-standard",
-                    active ? "border-primary bg-accent/60" : "border-border hover:bg-accent/30",
+                    active ? "border-brand bg-accent/60" : "border-border hover:bg-accent/30",
                   )}
                 >
                   <span className="flex -space-x-1.5">
@@ -96,7 +96,7 @@ export const AppearanceSection = () => {
         <div className="border-t pt-6">
           <h3 className="text-sm font-semibold">Glass opacity</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Control how transparent glass surfaces are. Higher values make dialogs and menus more solid.
+            Higher makes dialogs and menus more solid.
           </p>
           <div className="mt-3 flex items-center gap-3 sm:w-64">
             <Slider

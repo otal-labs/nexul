@@ -153,13 +153,14 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
   };
 
   return (
-    <div className="border-t border-border py-3" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
-      <div className="relative w-full px-3">
+    <div className="px-3 pt-1 pb-3" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+      <div className="relative mx-auto w-full max-w-3xl">
         {trigger && matches.length > 0 && (
           <ComposerMentionSuggestions matches={matches} selectedIndex={selectedIndex} onPick={pickMention} />
         )}
         {pending.length > 0 && <ComposerAttachmentStrip pending={pending} onRemove={remove} />}
-        <div className="flex items-start gap-2">
+        {/* One framed field holding attach, text and emoji; the frame takes the focus ring, not the textarea. */}
+        <div className="flex items-start gap-1 rounded-xl bg-card p-1 shadow-card ring-1 ring-input transition-shadow duration-150 ease-standard focus-within:ring-ring/60">
           <ComposerAttachButton onFiles={addFiles} />
           <Textarea
             ref={textareaRef}
@@ -171,10 +172,10 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
             onClick={handleClickOrKeyUp}
             onPaste={handlePaste}
             rows={1}
-            className="quiet-focus field-sizing-content max-h-[50dvh] min-h-10 flex-1 resize-none text-sm focus-visible:border-ring/40 focus-visible:ring-0"
+            className="quiet-focus field-sizing-content max-h-[50dvh] min-h-9 flex-1 resize-none border-0 bg-transparent px-1.5 py-2 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent"
           />
           <EmojiPickerPopover onPick={insertEmoji} align="end" restoreFocus={false}>
-            <Button type="button" size="icon" variant="ghost" aria-label="Add emoji" className="mt-0.5">
+            <Button type="button" size="icon" variant="ghost" aria-label="Add emoji" className="text-muted-foreground hover:text-foreground">
               <Smile className="size-4" aria-hidden />
             </Button>
           </EmojiPickerPopover>

@@ -34,7 +34,7 @@ export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selec
       className={cn(
         "group relative flex items-center gap-2 border-l-2 px-3 transition-colors duration-150 ease-standard",
         snippet === "" ? "min-h-10" : "min-h-14",
-        selected ? "border-muted-foreground bg-accent" : "border-transparent hover:bg-accent/40",
+        selected ? "border-l-brand bg-accent" : "border-l-transparent hover:bg-accent/40",
       )}
     >
       <Link
@@ -42,12 +42,18 @@ export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selec
         aria-current={selected ? "page" : undefined}
         className="min-w-0 flex-1 py-2 outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
       >
-        <span className="flex min-w-0 items-center gap-1.5">
-          {leading}
-          <span className="truncate text-[13px] font-medium text-foreground">{title}</span>
-          {titleIcon}
+        <span className="flex min-w-0 items-start gap-1.5 text-[13px]">
+          {leading && <span className="flex h-lh shrink-0 items-center">{leading}</span>}
+          <span dir="auto" title={title} className="line-clamp-2 min-w-0 font-medium break-words text-foreground">
+            {title}
+          </span>
+          {titleIcon && <span className="flex h-lh shrink-0 items-center">{titleIcon}</span>}
         </span>
-        {snippet !== "" && <span className="block truncate text-xs text-muted-foreground">{snippet}</span>}
+        {snippet !== "" && (
+          <span dir="auto" className="block truncate text-xs text-muted-foreground">
+            {snippet}
+          </span>
+        )}
       </Link>
       {!!meta && (
         <div

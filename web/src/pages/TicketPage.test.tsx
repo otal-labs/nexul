@@ -173,10 +173,10 @@ describe("TicketPage sections", () => {
     expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Thread" })).toBeInTheDocument();
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
-    expect(await screen.findByText("Pass and fail open in a Testing column.")).toBeInTheDocument();
+    expect(await screen.findByText("Pass and Fail show in a testing column.")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Source" })).toBeInTheDocument();
     expect(await screen.findByText("No bugs reported.")).toBeInTheDocument();
-    expect(await screen.findByText("No plays have run on this ticket yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No play runs yet.")).toBeInTheDocument();
   });
 
   it("gives the thread a resizable pane on the page and keeps it under the body in a split view", async () => {

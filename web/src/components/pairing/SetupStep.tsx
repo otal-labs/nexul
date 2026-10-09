@@ -119,7 +119,7 @@ export const SetupStep = ({ computer }: SetupStepProps) => {
         <div className={cn(LEFT_PANE, CONTROLS)}>
           <SetupLead name={computer.name} />
           {isPending && <LoadingDisplay label="Reading setup" className="justify-start p-0" />}
-          {error && <ErrorDisplay error={error} title="Couldn't read setup" className="p-4" />}
+          {error && <ErrorDisplay error={error} title="Couldn't read setup." className="p-4" />}
         </div>
       )}
       {setup && (

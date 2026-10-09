@@ -14,8 +14,7 @@ export const PairingDefaultsSection = () => {
     <SettingsCard
       id="pairing-defaults"
       title="Defaults"
-      description="Used by @Agent in channels and DMs outside a project, and in every project you haven't linked
-        on the Projects tab."
+      description="What @Agent uses outside a project, and in any project you haven't linked on the Projects tab."
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}

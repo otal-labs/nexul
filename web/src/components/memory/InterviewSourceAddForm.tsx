@@ -26,7 +26,7 @@ interface InterviewSourceAddFormProps {
 
 const STANCE_HINT: Record<SourceStance, string> = {
   follow: "The agent drafts answers from it.",
-  question: "Never drafted from; the follow-ups ask about it.",
+  question: "Never drafted from. The follow-ups ask about it.",
 };
 
 const kindClass = "h-7 px-2.5 text-xs text-muted-foreground data-[state=on]:bg-accent data-[state=on]:text-foreground";
@@ -66,7 +66,7 @@ export const InterviewSourceAddForm = ({ projectId, onClose }: InterviewSourceAd
         </ToggleGroup>
         {kind === "path" && (
           <div className="space-y-2">
-            <FormInput control={form.control} name="path" label="Path" placeholder="practices/ or docs/standards.md" className="font-mono text-[13px]" />
+            <FormInput control={form.control} name="path" label="Path" placeholder="practices/ or docs/standards.md" className="font-mono" />
             <p className="text-xs text-muted-foreground">A file or folder, relative to the project's checkout.</p>
           </div>
         )}

@@ -1,10 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { EmptyRow } from "@/components/EmptyRow";
 import { AutomationSecretRow } from "@/components/automation/AutomationSecretRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,7 @@ export const AutomationSecretsSection = () => {
     <SettingsCard
       id="automation-secrets"
       title="Automation secrets"
-      description="Shared with every automation as ctx.secrets.NAME. Values are write-only — once saved, they can never be read back, only replaced or deleted."
+      description="Every automation reads these as ctx.secrets.NAME. A saved value can't be read back, only replaced or deleted."
     >
       <div className="space-y-6">
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-wrap items-end gap-2">
@@ -60,13 +61,13 @@ export const AutomationSecretsSection = () => {
 
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} />}
-        {data && data.length === 0 && <NoDataDisplay message="No secrets yet" />}
+        {data && data.length === 0 && <EmptyRow>No secrets yet</EmptyRow>}
         {data && data.length > 0 && (
-          <ul className="divide-y divide-border overflow-hidden rounded-md border">
+          <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
             {data.map((secret) => (
               <AutomationSecretRow key={secret.name} secret={secret} />
             ))}
-          </ul>
+          </EnterList>
         )}
       </div>
     </SettingsCard>

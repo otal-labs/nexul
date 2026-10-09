@@ -71,7 +71,7 @@ export const AddSourceFormSchema = z
     path: z.string(),
     ref: z.string(),
     label: z.string(),
-    body: z.string().max(MAX_SOURCE_TEXT_CHARS, `Pasted text is at most ${MAX_SOURCE_TEXT_CHARS.toLocaleString()} characters`),
+    body: z.string().max(MAX_SOURCE_TEXT_CHARS, `Paste at most ${MAX_SOURCE_TEXT_CHARS.toLocaleString()} characters`),
     // "" until the person picks one; the kind's default stands in for it.
     stance: z.enum(SOURCE_STANCES).or(z.literal("")),
   })

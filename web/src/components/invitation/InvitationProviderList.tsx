@@ -9,7 +9,7 @@ interface InvitationProviderListProps {
 
 export const InvitationProviderList = ({ providers, disabled, onSelect }: InvitationProviderListProps) => (
   <div className="space-y-3">
-    <p className="text-center text-sm text-muted-foreground">Choose a configured provider to sign in and accept this invitation.</p>
+    <p className="text-center text-sm text-muted-foreground">Sign in to accept.</p>
     {providers.map((provider) => <InvitationProviderButton key={provider} provider={provider} disabled={disabled} onSelect={onSelect} />)}
   </div>
 );

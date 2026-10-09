@@ -80,10 +80,10 @@ describe("StackPage", () => {
     expect(screen.getByText("compose")).toBeInTheDocument();
     expect(screen.getByText("instance")).toBeInTheDocument();
     expect(screen.getByText("No deploys yet")).toBeInTheDocument();
-    expect(screen.getByText("api", { selector: "span.font-mono" })).toBeInTheDocument();
+    expect(screen.getByText("api", { selector: "header span.font-mono" })).toBeInTheDocument();
   });
 
-  it("an instance stack with no project links back to Topology and offers no repository to attach", async () => {
+  it("an instance stack with no project has Topology as its parent crumb and offers no repository to attach", async () => {
     const gateway = { ...stack, project_id: "", name: "cloudflared-instance", slug: "cloudflared-instance", managed: false };
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/stacks/stack-1") return Promise.resolve({ data: gateway });
@@ -92,7 +92,7 @@ describe("StackPage", () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "cloudflared-instance" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /back to topology/i })).toHaveAttribute("href", "/acme/topology");
+    expect(screen.getByRole("link", { name: "Topology" })).toHaveAttribute("href", "/acme/topology");
     expect(screen.queryByRole("link", { name: /attach repository/i })).not.toBeInTheDocument();
   });
 
@@ -348,7 +348,7 @@ describe("StackPage", () => {
     });
     renderPage("/acme/stacks/stack-1/history");
     expect(await screen.findAllByText("ghcr.io/onik/api:v1")).not.toHaveLength(0);
-    expect(screen.getByText("last deploy 3h ago")).toBeInTheDocument();
+    expect(screen.getByText("deployed 3h ago")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Deploy history" })).toBeInTheDocument();
     expect(screen.getByText("d-1")).toBeInTheDocument();
   });

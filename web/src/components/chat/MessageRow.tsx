@@ -39,17 +39,19 @@ interface MessageRowProps {
 // timeOnHover is the clock time a grouped message of yours reveals beside its bubble, in place of the header it dropped.
 interface MessageBubbleProps {
   message: ChatMessage;
-  align: MessageAlign;
+  own: boolean;
   timeOnHover: boolean;
   actions: ReactNode;
 }
 
-const MessageBubble = ({ message, align, timeOnHover, actions }: MessageBubbleProps) => (
+const MessageBubble = ({ message, own, timeOnHover, actions }: MessageBubbleProps) => (
   <div
     data-slot="bubble"
     className={cn(
-      "relative w-fit max-w-[75%] space-y-1.5 rounded-2xl bg-accent px-3 py-2 text-sm break-words text-accent-foreground",
-      align === "end" ? "rounded-br-md" : "rounded-bl-md",
+      "relative w-fit max-w-[75%] space-y-1.5 rounded-lg px-3 py-2 text-sm break-words",
+      // Yours is the one bubble; everyone else's text runs plain under their name, so a long thread reads as a transcript.
+      own && "bg-brand text-brand-foreground",
+      !own && "max-w-[72ch] px-0 py-0",
     )}
   >
     {timeOnHover && (
@@ -122,7 +124,7 @@ export const MessageRow = ({ message, author, isOwn, continuation = false, quest
   };
 
   const remove = async () => {
-    const confirmed = await confirmDelete({ message: "Delete this message?" });
+    const confirmed = await confirmDelete({ message: "Delete this message?", confirmLabel: "Delete message" });
     if (confirmed) await onDelete(message.id);
   };
 
@@ -133,7 +135,7 @@ export const MessageRow = ({ message, author, isOwn, continuation = false, quest
       {!isSystem && !isBot && (
         <Message align={align} className={cn("group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent/40", message.pending && "opacity-60")}>
           {align === "start" && !continuation && (
-            <MessageAvatar className="size-6 self-start bg-transparent">
+            <MessageAvatar className="size-8 self-start bg-transparent">
               <MessageRowAvatar isAgent={isAgent} author={author} />
             </MessageAvatar>
           )}
@@ -153,7 +155,7 @@ export const MessageRow = ({ message, author, isOwn, continuation = false, quest
             {!editing && !isAgent && (
               <MessageBubble
                 message={message}
-                align={align}
+                own={align === "end"}
                 timeOnHover={continuation && align === "end"}
                 actions={
                   !message.pending && (

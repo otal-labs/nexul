@@ -9,7 +9,7 @@ export const BoardNotFoundState = () => {
   const wsPath = useWorkspacePath();
   return (
     <>
-      <PageHeader title="Board" subtitle="Every ticket in its lane, traffic optional." />
+      <PageHeader title="Board" />
       <EmptyState
         title="Project not found"
         action={

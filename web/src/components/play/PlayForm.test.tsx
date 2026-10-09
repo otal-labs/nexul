@@ -133,7 +133,7 @@ describe("PlayForm", () => {
     await user.click(screen.getByRole("option", { name: "No stage" }));
     await user.click(screen.getByRole("button", { name: "Create play" }));
 
-    expect(await screen.findByText(/needs exactly one show-when stage/)).toBeInTheDocument();
+    expect(await screen.findByText(/needs one show-when stage/)).toBeInTheDocument();
     expect(api.post).not.toHaveBeenCalled();
     await user.keyboard("{Escape}");
   });
@@ -163,7 +163,7 @@ describe("PlayForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Open" }));
     expect(screen.queryByLabelText("Type")).not.toBeInTheDocument();
-    expect(screen.getByText(/can't change after create/)).toBeInTheDocument();
+    expect(screen.getByText(/can't change once created/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(api.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/play-fix", expect.objectContaining({

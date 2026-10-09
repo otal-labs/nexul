@@ -58,6 +58,11 @@ describe("tokenizeMessageText", () => {
       ],
     },
     {
+      name: "the domain of an email address is never a mention",
+      text: "write to ann@bob.example.com",
+      want: [{ kind: "text", text: "write to ann@bob.example.com" }],
+    },
+    {
       name: "javascript: is never a link",
       text: "click javascript:alert(document.cookie)",
       want: [{ kind: "text", text: "click javascript:alert(document.cookie)" }],

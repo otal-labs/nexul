@@ -19,7 +19,7 @@ You never build that by hand: Nexul gives you the finished URL to copy.
 ## Create a bot
 
 1. Open the conversation's bots. For a channel or voice channel, open its **Settings** from the **…** menu in the sidebar and find **Bots**. For a direct message, a ticket's thread, or a doc thread, choose **Bots** in the conversation's **…** menu.
-2. Press **New bot**, pick an avatar if you like, type a name, and press **Create**.
+2. Press **New bot**, pick an avatar if you like, type a name, and press **Create bot**.
 3. Copy the **Webhook URL**.
 
 Each bot belongs to one conversation. To post to three channels, make three bots. A conversation holds up to ten, and a name is unique within it, ignoring case. Without an avatar a bot shows a Nexul glyph.
@@ -57,8 +57,9 @@ Most other tools that list Discord as a destination work the same way.
 ## What shows in chat
 
 - **Author row.** The bot's avatar and name, a **BOT** tag, and the time. A post can carry its own `username` and `avatar_url`; Nexul shows those, and adds **via** and the bot's name so a post calling itself "GitHub" can't pass for a person. Messages keep the name they were posted with, even after the bot is renamed or deleted; the avatar follows the bot's current one unless the post brought its own.
-- **Text and embeds.** The text and every embed share one bubble. An embed is a card with an author line, title (a link when it has a URL), description, a table of fields, an image or thumbnail, and a footer. The sender's color is dropped, because a status hue would be misread.
-- **Long posts fold.** Past six fields, a very long description, or more than two embeds, a bar such as **Show 19 more fields** opens the rest and becomes **Show less**.
+- **Text and embeds.** The text and every embed share one bubble. An embed is a card with an author line, title (a link when it has a URL), description, its fields, an image or thumbnail, and a footer. Inline fields sit side by side; the rest take a full row.
+- **State from the words.** The sender's color is dropped. Instead, a title that says what happened (failed, down, healthy, stopped, running) colors the card's edge and puts an icon before the title, and a field whose value is such a word gets a status dot. A title that names no state leaves the card plain.
+- **Long posts fold.** Past six fields, a very long description, or more than two embeds, a button such as **Show 19 more fields** opens the rest and becomes **Show less**.
 - **Pictures.** Images, thumbnails, and icons load through your Nexul server, so the sender never learns who read the message or when. Only pictures that are part of a message you can read are fetched, and never from a private address.
 - **Formatting.** A bot's text renders Discord's subset: bold, italics, inline code, `[text](url)` links, lists, quotes, and `<t:…>` time codes.
 

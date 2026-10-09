@@ -1,8 +1,10 @@
+import { BrainIcon } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { useParams } from "react-router";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ListDetailLayout } from "@/components/listpane/ListDetailLayout";
+import { ListDetailPlaceholder } from "@/components/listpane/ListDetailPlaceholder";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { MemoriesListPane } from "@/components/memory/MemoriesListPane";
 import { NoProjectsState } from "@/components/project/NoProjectsState";
@@ -19,19 +21,19 @@ export const MemoriesPage = () => {
   const { data: memories, error, isPending } = useFetchMemoriesByProject(current?.id ?? "");
 
   return (
-    <div>
+    <div className="h-full">
       {projects && projects.length === 0 && (
         <div className="p-6">
-          <NoProjectsState message="Memories live in a project. Create a project to start." />
+          <NoProjectsState message="Every memory belongs to a project. Create one to start." />
         </div>
       )}
       {current && isPending && <LoadingDisplay label="Loading memories…" />}
-      {error && <ErrorDisplay error={error} title="Failed to load memories." />}
+      {error && <ErrorDisplay error={error} title="Couldn't load memories." />}
       {current && memories && (
         <ListDetailLayout
           hasSelection={!!memoryId}
           list={<MemoriesListPane memories={memories} project={current} selectedId={memoryId} />}
-          placeholder="Select a memory"
+          placeholder={<ListDetailPlaceholder icon={BrainIcon} title="Select a memory" summary={`${memories.length} ${memories.length === 1 ? "memory" : "memories"} in ${current.name}`} searchable />}
           detail={
             <Suspense fallback={<LoadingDisplay />}>
               <MemoryPage key={memoryId} />

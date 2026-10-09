@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   MessageScroller,
@@ -12,13 +12,17 @@ import {
 } from "@/components/ui/message-scroller";
 
 import { AgentStreamBubble } from "@/components/chat/AgentStreamBubble";
+import { ChatDayDivider } from "@/components/chat/ChatDayDivider";
+import { ChatPaneState } from "@/components/chat/ChatPaneState";
 import { MessageRow } from "@/components/chat/MessageRow";
+import { playSend } from "@/components/chat/sendMotion";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { useThreadTrailBlocks } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
 import { isContinuation, isNote, type Conversation, type Message } from "@/models/Chat";
 import type { Person } from "@/models/Person";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
+import { startsDay } from "@/utils/ChatDayUtility";
 import { trailBlockFor } from "@/utils/ThreadTrailUtility";
 
 interface MessageListProps {
@@ -62,6 +66,18 @@ const answeredAfter = (messages: Message[], index: number): boolean =>
     .slice(index + 1)
     .some((m) => (m.author_kind === "agent" && !isNote(m)) || (m.author_kind === "user" && m.body.startsWith("Answered")));
 
+const rowKey = (message: Message) => message.client_key ?? message.id;
+
+type Entrance = "send" | "arrive";
+
+// After the conversation opens: yours plays the send, others' rise in, the Agent's arrives as its stream bubble instead.
+const entranceOf = (message: Message, seen: Set<string>, own: boolean): Entrance | undefined => {
+  if (seen.has(rowKey(message))) return undefined;
+  if (own) return "send";
+  if (message.author_kind === "agent") return undefined;
+  return "arrive";
+};
+
 // MessageScroller follows the live edge while streamed text grows, and releases the moment the reader scrolls away.
 export const MessageList = ({
   conversation,
@@ -76,41 +92,49 @@ export const MessageList = ({
   const stream = useAgentStreamStore((s) => s.streams[conversation.id]);
   const blocks = useThreadTrailBlocks(conversation);
 
+  const [seen] = useState(() => new Set(messages.map(rowKey)));
+  const [streamAtOpen] = useState(() => stream !== undefined);
   const empty = messages.length === 0 && !stream;
 
   return (
     <>
       {empty && (
-        <div className="min-h-0 flex-1 py-2">
-          <NoDataDisplay message="No messages yet — say hello" size="compact" />
-        </div>
+        <ChatPaneState>
+          <NoDataDisplay message="No messages yet. Say hello." size="compact" />
+        </ChatPaneState>
       )}
       {!empty && (
         <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
           <MessageScroller className="min-h-0 flex-1">
             <MessageScrollerViewport>
-              <MessageScrollerContent className="w-full gap-0 py-2" aria-busy={stream?.streaming ?? false}>
+              <MessageScrollerContent className="mx-auto w-full max-w-3xl gap-0 py-2" aria-busy={stream?.streaming ?? false}>
                 {messages.map((message, i) => {
                   const continuation = isContinuation(messages[i - 1], message);
+                  const own = message.author_id === currentUserId;
+                  const entrance = entranceOf(message, seen, own);
+                  const newDay = startsDay(messages[i - 1], message);
                   return (
                     // Only the newest message, when it is an @Agent turn, anchors: the scroller jumps to any older anchor on a same-count swap (pending row confirmed, stream bubble replaced).
                     <MessageScrollerItem
-                      key={message.id}
+                      key={rowKey(message)}
+                      ref={entrance === "send" ? playSend : undefined}
                       messageId={message.id}
                       // The item's content-visibility clips paint to its box; the margin lets the Edit/Delete pill rise into the gap above.
                       // The newest row renders eagerly: its 10rem placeholder would park a just-sent message above the bottom edge.
                       className={cn(
-                        continuation ? "[overflow-clip-margin:1rem]" : "pt-4",
+                        continuation ? "pt-1.5 [overflow-clip-margin:1rem]" : "pt-4",
                         i === messages.length - 1 && "[content-visibility:visible]",
+                        entrance === "arrive" && "arrive",
                       )}
                       scrollAnchor={
                         i === messages.length - 1 && message.author_kind === "user" && (message.mentions ?? []).some((m) => m.kind === "agent")
                       }
                     >
+                      {newDay && <ChatDayDivider createdAt={message.created_at} />}
                       <MessageRow
                         message={message}
                         author={resolveAuthor(message.author_id)}
-                        isOwn={message.author_id === currentUserId}
+                        isOwn={own}
                         continuation={continuation}
                         questionAnswered={message.author_kind === "agent" && answeredAfter(messages, i)}
                         trailBlock={trailBlockFor(message, blocks)}
@@ -122,7 +146,7 @@ export const MessageList = ({
                   );
                 })}
                 {stream && (
-                  <MessageScrollerItem messageId={`stream-${conversation.id}`} className="pt-5 [content-visibility:visible]">
+                  <MessageScrollerItem messageId={`stream-${conversation.id}`} className={cn("pt-5 [content-visibility:visible]", !streamAtOpen && "arrive")}>
                     <AgentStreamBubble frame={stream} onInterrupt={onInterruptAgent} live={blocks.live} />
                   </MessageScrollerItem>
                 )}

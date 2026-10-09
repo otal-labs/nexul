@@ -19,7 +19,7 @@ export const WorkspaceSwitcherMenu = ({
 }: WorkspaceSwitcherMenuProps) => {
   const { data: unread } = useFetchUnreadByWorkspace();
   return (
-    <SwitcherMenu createLabel="New Workspace" onCreate={canCreateWorkspace ? onCreate : undefined}>
+    <SwitcherMenu createLabel="New workspace" onCreate={canCreateWorkspace ? onCreate : undefined}>
       {workspaces?.map((ws) => (
         <SwitcherMenuItem
           key={ws.id}

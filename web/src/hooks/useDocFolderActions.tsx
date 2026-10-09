@@ -1,22 +1,37 @@
+import { useNavigate } from "react-router";
+
 import { DocFolderNameForm } from "@/components/doc/DocFolderNameForm";
 import { useDeleteDocFolder, useFetchDocFolders } from "@/hooks/DocFolderHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useCreateDocDialog } from "@/hooks/useCreateDocDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
+import { useFetchProjects } from "@/hooks/ProjectHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { DocFolderFormSchema, type DocFolder, type DocFolderFormData } from "@/models/DocFolder";
+import { docPath, projectTokenById } from "@/models/Project";
 
 const moveLine = (n: number, to: string) => (n === 1 ? `1 doc moves to ${to}` : `${n} docs move to ${to}`);
 
 // A folder row's New doc, Rename, and Delete, each undefined without docs:write; the default folder offers only Rename, the header's + files there.
 export const useDocFolderActions = (folder: DocFolder, total: number) => {
   const canWrite = useHasPermission("docs:write");
-  const onNewDoc = useCreateDocDialog(folder.project_id, folder.id);
+  const createDoc = useCreateDocDialog(folder.project_id, folder.id);
+  const navigate = useNavigate();
+  const wsPath = useWorkspacePath();
+  const { data: projects } = useFetchProjects();
   const { open: openForm } = useFormDialog();
   const { open: confirm } = useConfirmationDialog();
   const deleteFolder = useDeleteDocFolder();
   const { data: folders } = useFetchDocFolders(folder.project_id);
   const defaultName = folders?.find((f) => f.is_default)?.name ?? "the default folder";
+
+  const onNewDoc =
+    createDoc &&
+    (async () => {
+      const id = await createDoc();
+      if (id) void navigate(wsPath(docPath(projectTokenById(projects ?? [], folder.project_id), id)));
+    });
 
   const rename = () =>
     void openForm<DocFolderFormData>({
@@ -28,8 +43,8 @@ export const useDocFolderActions = (folder: DocFolder, total: number) => {
     });
 
   const remove = async () => {
-    const message = total === 0 ? "It holds no docs." : `${moveLine(total, defaultName)}; none is deleted.`;
-    const ok = await confirm({ title: `Delete ${folder.name}?`, message, confirmLabel: "Delete" });
+    const message = total === 0 ? "It's empty." : `${moveLine(total, defaultName)}. None are deleted.`;
+    const ok = await confirm({ title: `Delete ${folder.name}?`, message, confirmLabel: "Delete folder" });
     if (ok) deleteFolder.mutate(folder.id);
   };
 

@@ -56,7 +56,7 @@ describe("VoiceCallSection", () => {
     useVoiceCallStore.setState({ join });
     renderSection(false);
 
-    expect(screen.getByText("Not connected to this voice channel")).toBeInTheDocument();
+    expect(screen.getByText("You're not in this call")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Join call" }));
     expect(join).toHaveBeenCalledWith("c1", "huddle");
   });
@@ -64,7 +64,7 @@ describe("VoiceCallSection", () => {
   it("after leaving a call for being alone, says why in place of the join bar and Rejoin rejoins the channel", async () => {
     const user = userEvent.setup();
     const join = vi.fn();
-    const reason = "You left huddle because you were alone in the call for 5 minutes.";
+    const reason = "You left huddle after 5 minutes alone in the call.";
     useVoiceCallStore.setState({ join, leftAlone: { conversationId: "c1", reason } });
     renderSection(false);
 
@@ -75,7 +75,7 @@ describe("VoiceCallSection", () => {
   });
 
   it("drops the reason once the person moves away from the channel", () => {
-    useVoiceCallStore.setState({ leftAlone: { conversationId: "c1", reason: "You left huddle because you were alone in the call for 5 minutes." } });
+    useVoiceCallStore.setState({ leftAlone: { conversationId: "c1", reason: "You left huddle after 5 minutes alone in the call." } });
     const { unmount } = renderSection(false);
 
     unmount();
@@ -96,7 +96,7 @@ describe("VoiceCallSection", () => {
     renderSection(true);
 
     expect(screen.getByText(/needs a LiveKit connector/)).toBeInTheDocument();
-    const settingsLink = screen.getByRole("link", { name: "Open Settings" });
+    const settingsLink = screen.getByRole("link", { name: "Open connectors" });
     expect(settingsLink).toHaveAttribute("href", "/settings/connectors");
     // No disabled/dead join control in this state.
     expect(screen.queryByRole("button", { name: "Join call" })).not.toBeInTheDocument();
@@ -128,7 +128,7 @@ describe("VoiceCallSection", () => {
     renderSection(true);
 
     expect(screen.getByText(/needs a LiveKit connector/)).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Open Settings" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open connectors" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
   });
 });

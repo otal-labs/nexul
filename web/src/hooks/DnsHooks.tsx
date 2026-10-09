@@ -99,7 +99,7 @@ export const useProvisionTunnelAgent = () => {
       ).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDnsTunnelsKey] });
-      toast.success("cloudflared provisioned");
+      toast.success("cloudflared deployed");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -115,7 +115,7 @@ export const useProvisionReverseProxy = () => {
     }) => (await api.post<{ service_id: string }>("/api/dns/reverse-proxy", input)).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getServicesKey] });
-      toast.success("Reverse proxy provisioned");
+      toast.success("Reverse proxy deployed");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

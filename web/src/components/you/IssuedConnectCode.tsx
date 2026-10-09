@@ -43,7 +43,7 @@ export const IssuedConnectCode = ({ code, onNewCode, generating }: IssuedConnect
         )
       }
     >
-      <p className="text-muted-foreground">Works once, for two minutes. Nobody else can use it after your phone does.</p>
+      <p className="text-muted-foreground">Works once, for two minutes.</p>
       <p className="font-mono text-xs tabular-nums">
         <span className="text-muted-foreground">Code </span>
         {code.code}

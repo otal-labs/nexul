@@ -29,7 +29,8 @@ const trimUrl = (raw: string): string => {
 const splitMentions = (text: string, mentionHandles: string[]): MessageTextPart[] => {
   if (mentionHandles.length === 0) return [{ kind: "text", text }];
   const escaped = mentionHandles.map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const pattern = new RegExp(`(@(?:${escaped.join("|")})\\b)`, "gi");
+  // An @ inside a word is an email address, not a mention.
+  const pattern = new RegExp(`((?<![\\w.])@(?:${escaped.join("|")})\\b)`, "gi");
   return text.split(pattern).map((piece, i): MessageTextPart => ({ kind: i % 2 === 1 ? "mention" : "text", text: piece }));
 };
 

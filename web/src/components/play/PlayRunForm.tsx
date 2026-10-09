@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { microheaderClass } from "@/components/Microheader";
 import { HarnessPickerPill, type HarnessPick } from "@/components/play/HarnessPickerPill";
 import { MemoryPickSection } from "@/components/play/MemoryPickSection";
 import { PlayRunError } from "@/components/play/PlayRunError";
@@ -21,8 +22,6 @@ interface PlayRunFormProps {
   resolvedHarness: HarnessPick;
   onDone: () => void;
 }
-
-const microheaderClass = "font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase";
 
 // Mounted once per open, so the seed from the caller's latest trail needs no effect.
 export const PlayRunForm = ({
@@ -87,7 +86,7 @@ export const PlayRunForm = ({
         <Textarea
           rows={3}
           aria-label="Instructions for this run"
-          placeholder="Optional. Steer the play; these win over the play's own instructions."
+          placeholder="Optional. These override the play's own instructions."
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
         />

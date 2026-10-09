@@ -41,14 +41,14 @@ describe("machineNetworks", () => {
 
   it("labels a network with its services, or just its name when nothing was seen on it", () => {
     expect(networkLabel({ name: "qa_default", services: ["postgres", "redis"], hasGateway: true })).toBe(
-      "qa_default — postgres, redis",
+      "qa_default · postgres, redis",
     );
     expect(networkLabel({ name: "web_default", services: [], hasGateway: true })).toBe("web_default");
   });
 
   it("labels a network without a gateway as unable to serve hostnames", () => {
     expect(networkLabel({ name: "qa_default", services: ["postgres", "redis"], hasGateway: false })).toBe(
-      "qa_default — postgres, redis · no gateway, hostnames unavailable",
+      "qa_default · postgres, redis · no gateway, hostnames unavailable",
     );
   });
 });

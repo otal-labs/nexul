@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { PlusIcon } from "lucide-react";
 
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { EmptyRow } from "@/components/EmptyRow";
 import { CreateRoleForm } from "@/components/settings/CreateRoleForm";
+import { OwnerRoleRow } from "@/components/settings/OwnerRoleRow";
 import { RoleRow } from "@/components/settings/RoleRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
@@ -27,8 +29,7 @@ export const RoleSettingsSection = () => {
     <SettingsCard
       id="roles"
       title="Roles & permissions"
-      description="Custom roles this workspace can assign when inviting someone. The Owner role is a
-        protected singleton and can't be renamed, edited, or deleted here."
+      description="Roles you can give people in this workspace. The Owner role can't be renamed, edited, or deleted."
       footer={
         roles &&
         catalog &&
@@ -44,13 +45,16 @@ export const RoleSettingsSection = () => {
       {error && <ErrorDisplay error={error} />}
       {roles && catalog && (
         <div className="space-y-4">
-          {roles.length === 0 && <NoDataDisplay message="No roles yet" />}
+          {roles.length === 0 && <EmptyRow>No roles yet</EmptyRow>}
           {roles.length > 0 && (
-            <ul className="divide-y divide-border overflow-hidden rounded-md border">
+            <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
               {roles.map((role) => (
-                <RoleRow key={role.id} role={role} workspaceId={workspaceId} catalog={catalog} />
+                <Fragment key={role.id}>
+                  {role.is_owner_role && <OwnerRoleRow role={role} />}
+                  {!role.is_owner_role && <RoleRow role={role} workspaceId={workspaceId} catalog={catalog} />}
+                </Fragment>
               ))}
-            </ul>
+            </EnterList>
           )}
 
           {creating && (

@@ -5,12 +5,9 @@ import { Container } from "@/components/Container";
 import { DocDetail } from "@/components/doc/DocDetail";
 import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { CreateTicketFooter } from "@/components/ticket/CreateTicketFooter";
-import { CreateTicketForm, emptyTicketForm } from "@/components/ticket/CreateTicketForm";
-import { ProjectDialogHeader } from "@/components/project/ProjectDialogHeader";
 import { useArchiveDoc, useFetchDoc, useFetchDocClarification, useRestoreDoc } from "@/hooks/DocHooks";
+import { useCreateTicketDialog } from "@/hooks/useCreateTicketDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
-import { SaveTicketFormSchema, type SaveTicketFormData } from "@/models/Ticket";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { LiveSocket } from "@/api/ws";
 
@@ -25,24 +22,13 @@ export const DocPage = ({ wsFactory, docId: docIdProp }: DocPageProps = {}) => {
   const { docId: routeDocId } = useParams<{ docId: string }>();
   const docId = docIdProp ?? routeDocId;
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  const { open: openCreateTicket } = useFormDialog();
   const { open: openPermissions } = useFormDialog();
   const { data: doc, error, isPending } = useFetchDoc(docId);
+  const createTicket = useCreateTicketDialog(doc?.project_id ?? "");
   // Fetched beside the doc, so a page opening on its Questions view doesn't flash the article first.
   useFetchDocClarification(docId);
   const archiveDoc = useArchiveDoc();
   const restoreDoc = useRestoreDoc();
-
-  const openCreateTicketDialog = (targetDocId: string) =>
-    openCreateTicket<SaveTicketFormData>({
-      title: "New ticket",
-      schema: SaveTicketFormSchema,
-      okLabel: "Create",
-      header: <ProjectDialogHeader title="New ticket" />,
-      footerStart: <CreateTicketFooter />,
-      form: <CreateTicketForm docId={targetDocId} defaultProjectId={doc?.project_id ?? ""} />,
-      formOptions: { defaultValues: emptyTicketForm() },
-    });
 
   const openPermissionsDialog = (targetDocId: string) =>
     openPermissions<PermissionsFormData>({
@@ -53,7 +39,7 @@ export const DocPage = ({ wsFactory, docId: docIdProp }: DocPageProps = {}) => {
     });
 
   return (
-    <Container className="p-6">
+    <Container className="py-8">
       {isPending && <LoadingDisplay />}
       {error && <DetailErrorDisplay error={error} embedded={docIdProp !== undefined} />}
       {doc && (
@@ -61,7 +47,7 @@ export const DocPage = ({ wsFactory, docId: docIdProp }: DocPageProps = {}) => {
           doc={doc}
           workspaceId={workspaceId}
           {...(wsFactory ? { wsFactory } : {})}
-          onCreateTicket={() => void openCreateTicketDialog(doc.id)}
+          onCreateTicket={createTicket && (() => void createTicket({ docId: doc.id }))}
           onPermissions={() => void openPermissionsDialog(doc.id)}
           onArchive={() => archiveDoc.mutate(doc.id)}
           onRestore={() => restoreDoc.mutate(doc.id)}
