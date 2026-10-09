@@ -1,44 +1,25 @@
 :root {
-	--page-bg: #050505;
-	--page-surface: #0a0a0a;
-	--page-card: #111111;
-	--page-popover: #161616;
-	--page-fg: #f5f5f5;
-	--page-muted: #9a9a9a;
-	--page-dim: #c2c2c2;
-	--page-border: #262626;
-	--page-primary: #f5f5f5;
-	--page-primary-fg: #0a0a0a;
-	--page-success: #4ade80;
-	--page-warning: #fbbf24;
-	--page-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
-	--page-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
-	--page-ease: cubic-bezier(0.16, 1, 0.3, 1);
-	color-scheme: dark;
-}
-@media (prefers-color-scheme: light) {
-	:root {
-		--page-bg: #ececec;
-		--page-surface: #f1f1f1;
-		--page-card: #f6f6f6;
-		--page-popover: #fcfcfc;
-		--page-fg: #0a0a0a;
-		--page-muted: #656565;
-		--page-dim: #3d3d3d;
-		--page-border: #d9d9d9;
-		--page-primary: #0a0a0a;
-		--page-primary-fg: #f5f5f5;
-		--page-success: #15803d;
-		--page-warning: #b45309;
-		color-scheme: light;
-	}
+	--page-bg: var(--background);
+	--page-surface: var(--surface-2);
+	--page-card: var(--card);
+	--page-popover: var(--popover);
+	--page-fg: var(--foreground);
+	--page-muted: var(--muted-foreground);
+	--page-dim: var(--secondary-foreground);
+	--page-border: var(--border);
+	--page-primary: var(--brand);
+	--page-primary-fg: var(--brand-foreground);
+	--page-success: var(--success);
+	--page-warning: var(--warning);
+	--page-sans: var(--font-sans-stack);
+	--page-mono: var(--font-mono-stack);
+	--page-ease: var(--ease-out);
 }
 * { box-sizing: border-box; }
 html { scroll-padding-top: 88px; }
 body { margin: 0; background: var(--page-bg); color: var(--page-fg); font-family: var(--page-sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
-::selection { background: var(--page-fg); color: var(--page-bg); }
 a { color: inherit; text-decoration: none; }
-a:focus-visible, button:focus-visible { outline: 2px solid var(--page-fg); outline-offset: 5px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
 button, a { -webkit-tap-highlight-color: transparent; }
 code, .technical { font-family: var(--page-mono); }
 .technical { font-size: 10px; letter-spacing: .04em; }
@@ -51,7 +32,7 @@ h1, h2, h3 { text-wrap: balance; }
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 16px; min-height: 48px; padding: 12px 20px; background: var(--page-primary); color: var(--page-primary-fg); border: 1px solid transparent; border-radius: 6px; font-size: 13px; font-weight: 500; white-space: nowrap; transition: opacity 150ms var(--page-ease), transform 150ms var(--page-ease); }
 .text-link { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; font-size: 13px; font-weight: 500; }
 .text-link span, .capability-arrow, .detail-link > span { color: var(--page-muted); transition: transform 150ms var(--page-ease); }
-.skip-link { position: fixed; top: 8px; left: 16px; transform: translateY(-150%); z-index: 30; background: var(--page-primary); color: var(--page-primary-fg); padding: 12px 16px; border-radius: 6px; }
+.skip-link { position: fixed; top: 8px; left: 16px; transform: translateY(-150%); z-index: 50; background: var(--foreground); color: var(--background); padding: 12px 16px; border-radius: 6px; }
 .skip-link:focus { transform: translateY(0); }
 .hero { padding-top: 48px; }
 .brand-mark { width: 6px; height: 6px; background: var(--page-fg); }
