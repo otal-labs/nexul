@@ -1122,11 +1122,12 @@ a.mention-chip:hover {
   }
 }
 
-/* A theme switch hands its motion to switchTheme in lib/motion.ts; the browser's own crossfade is turned off. */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
+/* A theme switch lands in one frame: withoutTransitions (lib/motion.ts) holds every colour transition while the
+   palette changes. */
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
 }
 
 /* Reduced motion flattens every transition and keyframe; what still needs to say "this arrived" does it with a fade

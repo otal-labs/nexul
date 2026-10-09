@@ -146,37 +146,12 @@ export const rowGlide = (container: HTMLElement) => {
   };
 };
 
-const THEME_REVEAL_MS = 400;
-
-type ViewTransitionDocument = Document & { startViewTransition?: (update: () => void) => { ready: Promise<void> } };
-
-// A pointer pick spreads the new palette from the tile as a circle over 400ms; reduced motion fades it in, a key swaps at once.
-export const switchTheme = (apply: () => void, origin?: HTMLElement | null) => {
-  const doc = document as ViewTransitionDocument;
-  if (!doc.startViewTransition || lastInputWasKeyboard()) {
-    apply();
-    return;
-  }
-  const transition = doc.startViewTransition(apply);
-  const reduced = prefersReducedMotion();
-  if (reduced || !origin) {
-    void transition.ready.then(() =>
-      document.documentElement.animate([{ opacity: 0 }, { opacity: 1 }], {
-        duration: 200,
-        easing: EASE_OUT,
-        pseudoElement: "::view-transition-new(root)",
-      }),
-    );
-    return;
-  }
-  const box = origin.getBoundingClientRect();
-  const x = box.left + box.width / 2;
-  const y = box.top + box.height / 2;
-  const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
-  void transition.ready.then(() =>
-    document.documentElement.animate(
-      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
-      { duration: THEME_REVEAL_MS, easing: EASE_OUT, pseudoElement: "::view-transition-new(root)" },
-    ),
-  );
+// A palette swap changes every colour token at once; with transitions live, each button and row fades its own colour
+// (about two hundred transitions on a settings page, ten frames over budget under a 4x CPU throttle).
+export const withoutTransitions = (apply: () => void) => {
+  const root = document.documentElement;
+  root.classList.add("theme-switching");
+  apply();
+  void getComputedStyle(root).color;
+  requestAnimationFrame(() => root.classList.remove("theme-switching"));
 };
