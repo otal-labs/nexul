@@ -962,9 +962,11 @@ Model Context Protocol — the standard LLM agents use to call tools. The
 ### How we talk about the frontend
 
 **Design language**:
-The web app's visual spec of record: frosted panels floating on a light field,
-dark first, one ember accent (`brand`) for action, focus and selection, status
-in its own hues. Tokens in `web/src/index.css`, spec in
+The visual spec of record for the web app, the public site and the phone app:
+raised surfaces over a still light field, frosted panels in the web app, dark
+first, one ember accent (`brand`) for action and selection, focus in ink,
+status in its own hues. Tokens in `web/src/index.css`,
+`website/src/styles/tokens.css` and `native/src/global.css`, spec in
 `practices/design-language.md` (ADR 0133).
 _Avoid_: the Mono Console (the monochrome direction it replaced).
 

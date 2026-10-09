@@ -1,7 +1,7 @@
 # Suspend the Midnight Console spec for Board, pending a later unification pass
 
 The Board redesign (`.scratch/board-redesign/`) hit a wall: the token-bound
-Midnight Console spec (now the [Mono Console spec](https://nexul.io/docs/contributing/coding-standards/#design-language--the-mono-console)) was constraining the
+Midnight Console spec (later the Mono Console spec, since replaced by ADR 0133) was constraining the
 visual exploration rather than helping it, and the owner didn't like what it
 was producing. Rather than iterate inside a spec that isn't working, Board
 components (`web/src/components/board/` and Board-specific pages/settings)
@@ -16,7 +16,7 @@ items, so it isn't lost between sessions.
 **Resolved (2026-08-18):** the owner was happy with Board's black-and-white
 look, and the Design unification effort (`.scratch/design-unification/`)
 adopted it as the app's monochrome spec of record in
-the [Mono Console spec](https://nexul.io/docs/contributing/coding-standards/#design-language--the-mono-console), flipped the shared `:root`/`.dark` tokens to
+the Mono Console spec (replaced by ADR 0133), flipped the shared `:root`/`.dark` tokens to
 match it exactly, then retired Board's `.board-bw` override entirely — Board
 now renders off the shared tokens like every other domain. This suspension is
 lifted; the standing `ROADMAP.md` reminder has been removed per its own

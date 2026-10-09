@@ -1,141 +1,368 @@
 # Design language: glass over a light field
 
-This file is the visual spec of record for the web app in `web/`. The token
-values live in `web/src/index.css`; the component grammar (F1 to F7) lives in
-`practices/react-guide.md`. When a screen and this file disagree, the screen
-is the defect.
+This file is the visual spec of record for all three surfaces: the web app in
+`web/`, the public site in `website/` and the phone app in `native/`. They
+speak one language. The token values live in `web/src/index.css`,
+`website/src/styles/tokens.css` and `native/src/global.css`; the three carry
+the same token names (the phone spells them `--color-*`) and the same values,
+and a change to one is made to the others in the same change. When a screen and this file disagree, the screen is the
+defect.
 
-## The direction in one paragraph
+Read the shared core before any visual change, then your surface's section.
+The shared core holds for every surface unless a surface section names an
+adaptation and its reason. The component grammar (F1 to F7) is in
+`practices/react-guide.md`, the phone's mechanics in `practices/native.md`,
+and the site's build in the contributing page `website.md`.
 
-Content floats. The canvas is near-black in dark mode and a soft grey in light
-mode, and behind everything sits a still, soft light field: an ember glow top right,
-a cool blue glow bottom left, a hint of pink between. Every page's content
-lives in a raised, frosted panel that floats 8px from the canvas edges and from
-its neighbours; the sidebar sits straight on the canvas with no surface of its
-own. Cards inside a panel are a step lighter with the same hairline ring. One
-ember accent marks what you act on and where you are: the primary action,
-the active nav item, selection, your own messages, checked controls and
-progress. Focus is ink, not the ember. Status keeps its own hues as a dot or icon beside plain text.
-Technical data (ids, repositories, targets, counts, timestamps) is set in a
-monospace face, and page titles in a soft serif. Dense where the work is
+## Contents
+
+- [Shared core](#shared-core)
+  - [Direction](#direction)
+  - [Tokens](#tokens)
+  - [The accent](#the-accent)
+  - [Focus](#focus)
+  - [Status](#status)
+  - [Type](#type)
+  - [Shape and depth](#shape-and-depth)
+  - [Motion](#motion)
+  - [Icons over words](#icons-over-words)
+  - [Do and don't](#do-and-dont)
+  - [Decision ledger](#decision-ledger)
+- [Web app](#web-app)
+  - [What the web app adapts](#what-the-web-app-adapts)
+  - [Canvas (topology)](#canvas-topology)
+  - [Pattern spec](#pattern-spec)
+  - [Web decisions](#web-decisions)
+  - [Motion baseline](#motion-baseline)
+  - [Motion locks: board, chat and ticket](#motion-locks-board-chat-and-ticket)
+  - [Motion locks: lists, states and feedback](#motion-locks-lists-states-and-feedback)
+  - [Motion locks: overlays](#motion-locks-overlays)
+  - [Motion locks: navigation](#motion-locks-navigation)
+  - [Motion locks: settings sections](#motion-locks-settings-sections)
+- [Public site](#public-site)
+  - [What the site adapts](#what-the-site-adapts)
+  - [Site tokens and type](#site-tokens-and-type)
+  - [Site chrome](#site-chrome)
+  - [Docs pages](#docs-pages)
+  - [Home page](#home-page)
+  - [Roadmap and changelog](#roadmap-and-changelog)
+  - [Site motion](#site-motion)
+- [Phone app](#phone-app)
+  - [What the phone adapts](#what-the-phone-adapts)
+  - [Phone tokens and type](#phone-tokens-and-type)
+  - [Phone surfaces](#phone-surfaces)
+  - [Phone lists and chat](#phone-lists-and-chat)
+  - [Phone motion](#phone-motion)
+
+## Shared core
+
+### Direction
+
+Content floats over a still light field. The canvas is near-black in dark mode
+and a soft grey in light mode, and behind everything sits a still, soft light
+field: an ember glow top right, a cool blue glow bottom left, a hint of pink
+between. Content sits on raised surfaces, a step lighter than the canvas with
+a hairline ring: frosted panels in the web app, solid cards and sheets on the
+phone, and on the site's reading pages the canvas itself. One ember accent
+marks what you act on and where you are: the primary action, the active nav
+item, selection, your own messages, checked controls and progress. Focus is
+ink, not the ember. Status keeps its own hues as a dot or icon beside plain
+text. Technical data (ids, repositories, targets, counts, timestamps) is set
+in a monospace face, and titles in a soft serif. Dense where the work is
 dense, calm everywhere else.
+
+Light mode is its own soft-grey identity with a pastel field and white
+panels, not an inversion. Dark is the web app's default; the site and the
+phone follow the system until the person picks a mode.
+
+### Tokens
+
+Themed surfaces use tokens only, never a hard-coded palette class or a
+one-off hex. The full set (surfaces, status hues, shadows, shapes, curves) is
+in the three token files; this table holds the roles.
+
+| Token | Dark | Light | Role | Surface differences |
+|---|---|---|---|---|
+| `background` | `oklch(0.13 0.005 265)` | `oklch(0.95 0.004 265)` | canvas, behind the light field | |
+| `surface-2` | `oklch(0.155 0.005 265)` | `oklch(0.965 0.004 265)` | wells inside a panel: board columns, logs, code, the topology field | phone: the board's columns |
+| `panel` | `card` 60% into `background` | `card` | the frosted panel, painted at `--panel-opacity` (85%) | phone: solid, never frosted (`oklch(0.178 0.005 265)` dark, the same mix precomputed) |
+| `card` | `oklch(0.21 0.005 265)` | white | cards and nodes, a step lighter than their panel | |
+| `popover` | `oklch(0.225 0.006 265)` | white | menus, dialogs, sheets | |
+| `foreground` | `oklch(0.97 0.003 265)` | `oklch(0.2 0.01 265)` | primary text | |
+| `muted-foreground` | `oklch(0.71 0.01 265)` | `oklch(0.48 0.01 265)` | secondary text, meta lines; 6:1 or better on every surface | |
+| `accent` | white at 7% | ink at 6% | hover and selected-row lift, reads on any surface | phone: the press tint |
+| `primary` | `foreground` | `foreground` | strong ink for emphasis (`text-primary`); not the action colour | site: Fumadocs' `fd-primary` is this ink |
+| `brand` | `oklch(0.68 0.2 35)` | `oklch(0.565 0.19 35)` | the ember accent, held to [its roles](#the-accent) | |
+| `brand-foreground` | `oklch(0.16 0.03 35)` | white | ink on `brand`, 6.2:1 dark and 5:1 light | |
+| `success` | `#4ade80` | `#15803d` | health, success, and open pull requests | |
+| `warning` | `#fbbf24` | `#b45309` | in-flight states | |
+| `info` | `#5cc8f5` | `#0369a1` | open and informational states | |
+| `merged` | `#a371f7` | `#8250df` | merged pull requests only | |
+| `destructive` | `#f97066` | `#dc2626` | errors, danger zone, closed pull requests | |
+| `destructive-fill` | `oklch(0.55 0.2 25)` | `#c81e1e` | the fill behind a destructive button's white label, deeper than the text hue so it never reads as the ember | site: none, it has no destructive button |
+| `border` / `input` | white at 8% / 12% | ink at 10% / 16% | hairlines, the same on every surface | |
+| `ring` | `brand` | `brand` | canvas selection and the console glow | site: none; Fumadocs' `fd-ring` is `focus` |
+| `focus` | `foreground` at 80% | `foreground` at 80% | the one focus indicator, see [Focus](#focus) | phone: a colour token, `--color-focus` |
+| `panel-ring` / `panel-highlight` | white at 7% / 5% | ink at 8% / white at 90% | a panel's hairline and its inner top edge | web and site only |
+| `field-warm` / `field-pink` / `field-cool` | `brand` at 34%, pink, blue | `brand` at 30%, pastel pink, pastel blue | the light field's three glows; the warm one follows the palette's accent | phone: colour tokens (`--color-field-warm`, `-pink`, `-cool`) |
+| `font-display` | Fraunces Variable | same | titles and showcase headlines, through `type-display` | site: the same family name over one pinned file; phone: `Fraunces Display`, a static cut; see [Type](#type) |
+| `font-sans` | Inter Variable | same | everything else: UI, body, card and section headings | phone: `Inter`, one embedded family with its weights |
+| `font-mono` | JetBrains Mono Variable | same | technical data | phone: `JetBrains Mono`, one embedded family with its weights |
+
+How each surface spells the names: the web app defines bare names
+(`--background`) and exposes them to Tailwind through `@theme inline`; the site
+uses the same bare names, writes each colour once with `light-dark()`, and maps
+Fumadocs' `--color-fd-*` onto them; the phone defines `--color-*` directly for
+Uniwind, because it reads every colour through `useCSSVariable`. Palettes,
+which retheme the surface, text and accent roles, exist only in the web app;
+the site and the phone show the default palette.
+
+A token that a design needs and this table lacks is added to the token file of
+every surface that uses it and to this table in the same change. A one-off
+class is drift.
+
+### The accent
+
+`brand`, the ember, marks what you act on and where you are, on every surface:
+
+| Role | Web app | Site | Phone |
+|---|---|---|---|
+| Primary action | the primary button | the home page's copy button, the 404's Open the docs | the send button, once there is text |
+| Active nav | the sidebar's and section nav's 2px edge | the header's current page edge, the docs sidebar and phone menu edge | the active tab |
+| Selection | selected rows, canvas selection (`ring`), text selection | text selection (`brand` at 32%) | the drop target a held card is over |
+| Your own messages | the chat bubble | | the chat bubble |
+| Checked controls | checkbox, switch | | the "Only mine" switch |
+| Progress | progress fills, the loader's dot | | pull to refresh |
+| Prose links | `brand` text | ink text with a `brand` underline (see [Docs pages](#docs-pages)) | |
 
 Why one accent and only those roles: an accent everywhere stops meaning
 "here", and it competes with status colour; held to action and selection it
-reads as the app's voice while a red, amber or green dot still reads as state
-(ADR 0133). Focus left the accent in round four: the ember sits a few degrees
-from the destructive coral, and an ember ring on a field read as a field in
-error.
+reads as the product's voice while a red, amber or green dot still reads as
+state (ADR 0133).
 
-## Token quick reference
+Never the accent on anything else in the chrome: headings, icons at rest,
+borders, chips, badges, a hover. Never a second accent hue, and never a chip
+tinted with the accent. Text on `brand` is `brand-foreground`: white on the
+bright dark-mode ember is 3:1, dark ink holds 6:1 there, and the deeper
+light-mode ember holds 5:1 with white.
 
-Dark is the default. Light is its own soft-grey identity with a pastel field
-and white panels, not an inversion. The full set (surfaces, status hues,
-shadows, motion) is in `web/src/index.css`; themed surfaces use tokens only,
-never a hard-coded palette class.
+### Focus
 
-| Token | Dark | Light | Role |
-|---|---|---|---|
-| `background` | `oklch(0.13 0.005 265)` | `oklch(0.95 0.004 265)` | canvas, behind the light field |
-| `surface-2` | `oklch(0.155 0.005 265)` | `oklch(0.965 0.004 265)` | wells inside a panel: board columns, logs, code, the topology field |
-| `panel` | `card` 60% into `background` | `card` | the frosted panel, painted at `--panel-opacity` (85%) |
-| `card` | `oklch(0.21 0.005 265)` | white | cards and nodes, a step lighter than their panel |
-| `popover` | `oklch(0.225 0.006 265)` | white | menus, dialogs, sheets |
-| `foreground` | `oklch(0.97 0.003 265)` | `oklch(0.2 0.01 265)` | primary text |
-| `muted-foreground` | `oklch(0.71 0.01 265)` | `oklch(0.48 0.01 265)` | secondary text, meta lines; 6:1 or better on every surface |
-| `accent` | white at 7% | ink at 6% | hover and selected-row lift, reads on any surface |
-| `primary` | `foreground` | `foreground` | strong ink for emphasis (`text-primary`); not the action colour |
-| `brand` | `oklch(0.68 0.2 35)` | `oklch(0.565 0.19 35)` | the ember accent: primary button, active nav marker, selection, own messages, checked controls, progress, prose links |
-| `brand-foreground` | `oklch(0.16 0.03 35)` | white | ink on `brand`, 6.2:1 dark and 5:1 light |
-| `success` | `#4ade80` | `#15803d` | health, success, and open pull requests |
-| `warning` | `#fbbf24` | `#b45309` | in-flight states |
-| `info` | `#5cc8f5` | `#0369a1` | open and informational states |
-| `merged` | `#a371f7` | `#8250df` | merged pull requests only |
-| `destructive` | `#f97066` | `#dc2626` | errors, danger zone, closed pull requests |
-| `destructive-fill` | `oklch(0.55 0.2 25)` | `#c81e1e` | the fill behind a destructive button's white label, deeper than the text hue so it never reads as the ember |
-| `border` / `input` | white at 8% / 12% | ink at 10% / 16% | hairlines, the same on every surface |
-| `ring` | `brand` | `brand` | canvas selection and the console glow |
-| `focus` | `foreground` at 80% | `foreground` at 80% | the one focus indicator: a 2px outline, 2px out (1px on a field) |
-| `panel-ring` / `panel-highlight` | white at 7% / 5% | ink at 8% / white at 90% | a panel's hairline and its inner top edge |
-| `field-warm` / `field-pink` / `field-cool` | `brand` at 34%, pink, blue | `brand` at 30%, pastel pink, pastel blue | the light field's three glows; the warm one follows the palette's accent |
-| `font-display` | Fraunces Variable | same | page titles, empty-state and showcase headlines, through `type-display` |
-| `font-sans` | Inter Variable | same | everything else: UI, body, card and section headings |
-| `font-mono` | JetBrains Mono Variable | same | technical data |
+One indicator everywhere: a 2px `focus` outline (ink at 80%), 2px out, 1px on
+a field, which keeps its border; a component's own ring utility is cleared on
+focus. Errors keep `destructive` on the border and message, so a focused field
+in error is an ink ring around a red border.
 
-A token that a design needs and this table lacks is added to `index.css` and
-to this table in the same change. A one-off class is drift.
+Focus is not the accent: the ember sits a few degrees from the destructive
+coral, and an ember ring on a field read as a field in error. Ink at 80% reads
+as focus on every palette and keeps 3:1 on every surface.
 
-Palettes (Appearance settings, `web/src/lib/themePalettes.ts`) override the
-surface and text roles; a palette's `primary` becomes its `brand` (and so its
-the field's warm glow) unless it names a brand of its own, and
-its panels follow its `card`. The default palette is labelled Nexul (id
-`console`). Brutalism's zero radius applies to panels too.
+### Status
 
-## Type
+Status is a coloured dot or icon in its own hue (`success`, `warning`,
+`info`, `merged`, `destructive`) beside plain text, never a filled or
+tinted-background chip: readable in both themes, and it keeps status from
+competing with the accent. Type and label, which are tags rather than state,
+may be tinted pills (the web app's board). A destructive button is white on
+`destructive-fill`.
 
-- Fraunces Variable is the display face: page titles, empty-state headlines
-  and the showcase screens (signed out, onboarding, the error page), nothing
-  else. The `type-display` utility sets it: weight 560, `"SOFT" 50, "WONK" 1`
-  (soft terminals, the irregular alternates), optical sizing on, `-0.025em`
-  tracking, `1.12` leading. A page title is 28px, 24px past 50 characters
-  and 20px past 100 (`pageTitleClassFor`), and holds three lines
-  (`ClampedTitle`): past them its last line fades out at the end and a
-  muted "Show full title" opens the rest; editing the title opens it too. A
-  headline takes `displayTitleClass` and its own size, never under 20px,
-  where the soft serif turns muddy.
-- Inter Variable for everything else: UI, body, card and section headings,
-  dialog titles. Headings use tight tracking (`-0.022em`) and
-  `text-wrap: balance`.
-- JetBrains Mono Variable for technical data: ids, repositories, targets,
-  counts, timestamps, code, terminal output. Use `.technical` or `font-mono`.
-- All three are bundled locally through `@fontsource-variable` (Fraunces as
-  its `full` build, the one that carries the SOFT and WONK axes). No CDN,
-  because a font request to a third party is a render-blocking dependency the
-  product does not control.
-- A title in a script Fraunces lacks (Japanese, Arabic) falls back to the
-  system serif for that script; the 1.12 leading, looser than the 1.08 a Latin
-  serif wants, is what keeps two lines of Japanese from touching.
-- No script face, and no fourth family.
+A live status (a runner, an execution log, a health dot) reuses the one
+`status-pulse` keyframe; there is no second pulse, and a status that is not
+live (a roadmap item) stays still.
 
-## Shape and depth
+### Type
+
+Three families, all bundled locally, no CDN: a font request to a third party
+is a render-blocking dependency the product does not control. No script face,
+and no fourth family.
+
+- Fraunces is the display face, and only that: page, screen and record
+  titles, empty-state headlines, and the headlines of the showcase screens
+  (the web app's signed-out, onboarding and error pages) and the site's
+  landing pages.
+  Never under 20px (20pt on the phone), where the soft serif turns muddy.
+  Its settings are weight 560, `"SOFT" 50, "WONK" 1` (soft terminals, the
+  irregular alternates), optical sizing on, `-0.025em` tracking, `1.12`
+  leading, set by the `type-display` utility on the web and the site.
+- Inter for everything else: UI, body, card and section headings, dialog
+  titles. Headings use tight tracking (`-0.022em`) and `text-wrap: balance`.
+- JetBrains Mono for technical data: ids, repositories, targets, counts,
+  timestamps, code, terminal output. Use `.technical` or `font-mono`.
+
+Each surface loads Fraunces the way its platform renders it best, at the same
+axis settings:
+
+| Surface | File | Axes |
+|---|---|---|
+| Web app | `@fontsource-variable/fraunces`, its `full` build: the variable file that carries the SOFT and WONK axes | set at runtime by `type-display`: weight 560, `font-variation-settings: "SOFT" 50, "WONK" 1`, `font-optical-sizing: auto` |
+| Site | one pinned subset, `fraunces-display-latin.woff2` (34KB against the package's 121KB), preloaded | weight 560, SOFT 50 and WONK 1 pinned into the file, optical sizing kept; any other weight renders at 560 |
+| Phone | a static cut, `assets/fonts/Fraunces-Display.ttf`, family `Fraunces Display` | opsz 28, wght 560, SOFT 50, WONK 1 baked in, because Android does not apply variable axes reliably |
+
+Title sizes are per surface: the web app in [What the web app
+adapts](#what-the-web-app-adapts), the site in [Site tokens and
+type](#site-tokens-and-type), the phone in [Phone tokens and
+type](#phone-tokens-and-type).
+
+### Shape and depth
 
 - Radius: 7px for controls (`rounded-md`), 9px for cards (`rounded-lg`), 12px
-  for panels (`rounded-xl`, the `panel` utility), full pills (`rounded-full`)
-  only for badges, chips, and avatars. Never a pill button or input; a pill
-  reads as a tag, not a control.
-- Panels: the `panel` utility in `index.css`, applied once by the layout. A
-  single page gets one panel for its whole content (`.app-frame` in
-  `Layout.tsx`); a page built from panes marks its root `data-pane-layout`,
-  which turns the frame off, and gives each pane its own `panel` with an 8px
-  (`gap-2`) gutter. Never a panel inside a panel.
-- Depth inside a panel: a card is a step lighter (`bg-card`) with the hairline
-  `border`; a well is a step darker (`bg-surface-2`). The contained shadows
-  `shadow-card`, `shadow-elevated`, `shadow-overlay` stay for cards, popovers
-  and dialogs. No border where the surface step already separates.
+  for panels and sheets (`rounded-xl`), full pills (`rounded-full`) only for
+  badges, chips, and avatars. Never a pill button or input; a pill reads as a
+  tag, not a control.
+- Depth: a card is a step lighter (`bg-card`) than what it sits on, with the
+  hairline `border`; a well is a step darker (`bg-surface-2`). The contained
+  shadows `shadow-card`, `shadow-elevated`, `shadow-overlay` stay for cards,
+  popovers and dialogs. No border where the surface step already separates,
+  and no box inside a box: never a panel inside a panel, never a card inside a
+  card.
 - People without a photo get a seeded conic-gradient avatar
   (`web/src/lib/avatarGradient.ts`) with white initials, your own profile's
-  preview included; under 24px it shows
-  one initial at 10px.
+  preview included; under 24px it shows one initial at 10px.
 
-## Motion
+### Motion
 
-Fast and fluid, never slow: 150 to 250ms for anything small, up to 400ms only
-for the few moments that carry a gesture or a page. Only `transform`
-(`translate`, `scale`) and `opacity` move; a box that has to change size snaps
-in one layout step and its content does the moving.
+Fast and fluid, never slow. This is the baseline every surface shares; the web
+app's [Motion baseline](#motion-baseline) holds the numbers for each primitive,
+and the site and the phone reuse them unless their section names a change.
 
-- Curves, all in `web/src/index.css`: `--ease-out` (`cubic-bezier(0.16, 1,
-  0.3, 1)`) for everything that enters; `--ease-standard` for state changes
-  (hover, colour, a status); `--ease-spring`, a bounce-free spring written as
-  a `linear()` curve and paired with 200ms, for anything that slides from one
-  place to another; `--ease-spring-pop`, the one small-bounce spring (0.2,
-  paired with 350ms), only on the checkbox mark. JavaScript motion uses the
-  same numbers from `web/src/lib/motion.ts`. Exits run about 20% faster than
-  entrances. Never `ease-in`, never from `scale(0)`.
-- Frequency decides: keyboard moves (Enter, Space, arrows) and dozens-an-hour
-  actions get no decoration. A page reached with a key, or with back and
-  forward, does not replay its entrance, and a highlight moved by the arrows
-  jumps instead of sliding.
+- Duration: 150 to 250ms for anything small, up to 400ms only for the few
+  moments that carry a gesture or a page. Exits run about 20% faster than
+  entrances. A moment that runs longer is a named lock with its reason.
+- Only `transform` (`translate`, `scale`) and `opacity` move; a box that has
+  to change size snaps in one layout step and its content does the moving.
+- Paired elements (overlay and dialog, drawer and backdrop, filter bar and
+  result list) share identical duration and easing, or the pair reads as two
+  events.
+
+Curves, the same numbers on every surface:
+
+| Curve | Value | For |
+|---|---|---|
+| `--ease-out` | `cubic-bezier(0.16, 1, 0.3, 1)` | everything that enters |
+| `--ease-standard` | `cubic-bezier(0.25, 0.1, 0.25, 1)` | state changes: hover, colour, a status |
+| `--ease-spring` | a bounce-free spring written as a `linear()` curve, paired with 200ms | anything that slides from one place to another |
+| `--ease-spring-pop` | the one small-bounce spring (0.2), written as `linear()`, paired with 350ms | a mark that pops in: the checkbox mark, the check of a copy, a save or a picked tile, a finished deploy step |
+| `--ease-drawer` | `cubic-bezier(0.32, 0.72, 0, 1)` | sheets, 300ms in |
+
+Never `ease-in`, never from `scale(0)`. The web app keeps them in
+`web/src/index.css` and, for JavaScript motion, `web/src/lib/motion.ts`; the
+site in `website/src/styles/tokens.css`; the phone in `native/src/lib/motion.ts`
+(`ease.out`, `ease.standard`).
+
+- Keyboard-instant. Frequency decides: keyboard moves (Enter, Space, arrows)
+  and dozens-an-hour actions get no decoration. A page reached with a key, or
+  with back and forward, does not replay its entrance; a highlight moved by
+  the arrows jumps instead of sliding; an overlay opened or closed from a key
+  shows and goes in the same frame.
+- Interruptible. Motion runs on transitions, not keyframes, wherever it can be
+  reversed, so an overlay reopened mid-close turns back from where it is and a
+  sliding highlight plays back from wherever it was. A click never waits on
+  motion, and a closing overlay never takes a click.
+- Reduced motion is gentler, not none. What tells the reader something
+  arrived keeps a 150ms fade instead; nothing travels, scales or loops. A
+  movement the act needs stays: a dropped card still glides to its slot, a
+  drag still tracks the finger.
+- Nothing moves behind a blur. The light field is still: gradients or one
+  static image, no filter, no animation. Behind backdrop blur any motion
+  re-blurs every panel each frame, which held 50ms idle frames under a 4x CPU
+  throttle while the field drifted; nothing may animate behind the panels,
+  and there is no ambient motion. The web app's live field on its showcase
+  surfaces replaces the frame instead of sitting behind it. A header that text
+  scrolls under is opaque, not frosted.
+- A motion decision is made by building live variants on the real surface
+  with seeded data, recording them at 1x and 0.25x with frame strips, and
+  judging them against this baseline. The lock records the pick, the numbers,
+  and every rejected variant with why it lost.
+
+### Icons over words
+
+A well-known destination or tool is an icon: GitHub, theme, search, menu. The
+product's own places (Docs, Board, Roadmap, Changelog) stay words, because no
+icon says what they are. An icon-only control carries an `aria-label` and a
+tooltip of the same words. In a list of words, such as a menu, an icon gets
+its word beside it: an icon alone would be the one row nobody can read, and a
+phone has no tooltip. A filled brand mark sits 2px smaller than the stroked
+icons beside it, or it reads heavier.
+
+### Do and don't
+
+Do: float content on raised surfaces over the still field; keep the accent to
+action, active nav, selection, own messages, checked controls and progress;
+status as a coloured dot or icon next to plain text; mono for technical data;
+hairline rings that read on any surface; dense but controlled spacing; check
+both modes, which are each designed, not inverted.
+
+Don't: the accent on anything else in the chrome (headings, icons at rest,
+borders, chips, badges); a second accent hue; a panel inside a panel, or a
+border where a surface step already separates; tint a chip with the accent; a
+filled or tinted-background chip for status (type and label may be tinted
+pills, `pillClass` in `web/src/components/board/ticketTypeColor.tsx`); the
+serif anywhere but a title or a showcase, landing or empty-state headline;
+script type; pill buttons or inputs; heavy shadows for co-planar depth; a
+second ambient animation or anything animating layout behind the panels;
+backdrop blur on the phone; scroll-triggered reveals or parallax.
+
+### Decision ledger
+
+The decisions every surface inherits. Each surface section records its own.
+
+| Decision | Why |
+|---|---|
+| One design language for `web/`, `website/` and `native/`, specified here (2026-10-09) | A person moving from the site to the app to the phone meets one product; one spec means a decision is made once and every surface follows it |
+| Glass over a light field, dark first (ADR 0133) | The monochrome console read flat after every page was cleaned up; floating panels over a soft light field give depth and a recognisable look without decorating the content |
+| One ember accent, held to action, active nav, selection, own messages, checked controls and progress | Used everywhere an accent stops meaning "here" and fights status colour; held to these roles it is the product's voice |
+| Panels at 85% with a 20px blur, not the mock's lower opacity | The field glows through the edges while body and muted text keep at least 6:1 on the panel |
+| Light mode as its own identity | A soft grey canvas, pastel field and white panels read intentional; an inversion of the dark look did not |
+| Ink on the dark accent, white on the light accent | White on the bright dark-mode ember is 3:1; dark ink holds 6:1 there, and the deeper light-mode ember holds 5:1 with white |
+| Status as icon or dot plus text, never a tinted chip | Readable in both themes and keeps status from competing with the accent; tinted fills washed out once several hues appeared together |
+| Fraunces for titles over Inter and JetBrains Mono | A serif display face over a neutral sans is contrast, not resemblance: the titles get a voice no other developer tool has while every control, row and number stays in the precise technical pair. Soft and a little wonky (SOFT 50, WONK 1) at 560, because a sharp high-contrast serif read as editorial and a thin one vanished at 21px |
+| 7px controls, 9px cards, 12px panels | Soft but precise; pills stay badge-only so controls and tags never look alike |
+| Terminal-window motif, neutral glow | Code, log, and hero surfaces read as consoles |
+| Focus as one ink outline, not the ember | The ember is a few degrees from the destructive coral: an autofocused field in the project wizard read as a validation error before anything was typed. Ink at 80% reads as focus on every palette and keeps 3:1 on every surface |
+| Overlays on transitions, instant from a key | Keyframes restart when an overlay reopens mid-close; a transition turns back from where it is. Opened tens of times an hour, a menu or dialog driven from the keyboard must not wait on motion |
+| Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
+
+## Web app
+
+The web app in `web/` is the language's fullest form: every token, the
+frosted panels, palettes, and the pattern layer below. It is built at 768px
+first and verified at 768, 1024 and 1440px; phones are served by the phone
+app.
+
+### What the web app adapts
+
+Panels. Every page's content lives in a raised, frosted panel that floats 8px
+from the canvas edges and from its neighbours; the sidebar sits straight on
+the canvas with no surface of its own. Cards inside a panel are a step lighter
+with the same hairline ring. The panel is the `panel` utility in `index.css`,
+applied once by the layout. A single page gets one panel for its whole content
+(`.app-frame` in `Layout.tsx`); a page built from panes marks its root
+`data-pane-layout`, which turns the frame off, and gives each pane its own
+`panel` with an 8px (`gap-2`) gutter. Never a panel inside a panel.
+
+Palettes. Appearance settings (`web/src/lib/themePalettes.ts`) override the
+surface and text roles; a palette's `primary` becomes its `brand` (and so the
+field's warm glow) unless it names a brand of its own, and its panels follow
+its `card`. The default palette is labelled Nexul (id `console`). Brutalism's
+zero radius applies to panels too.
+
+Prose links. The web app's prose links are `brand` text: on the doc sheet's
+white card they hold contrast. The site, whose text sits on the canvas, uses
+ink with a `brand` underline instead.
+
+Titles. A page title is Fraunces at 28px, 24px past 50 characters and 20px
+past 100 (`pageTitleClassFor`), and holds three lines (`ClampedTitle`): past
+them its last line fades out at the end and a muted "Show full title" opens
+the rest; editing the title opens it too. A headline takes
+`displayTitleClass` and its own size, never under 20px. Fraunces is bundled
+as its `full` build, the one that carries the SOFT and WONK axes; Inter and
+JetBrains Mono as their `@fontsource-variable` files. A title in a script
+Fraunces lacks (Japanese, Arabic) falls back to the system serif for that
+script; the 1.12 leading, looser than the 1.08 a Latin serif wants, is what
+keeps two lines of Japanese from touching.
+
+Motion, beyond the shared core:
+
 - Panels and the sidebar never move. On a route change only the content
   inside the panels arrives.
 - `transition-property` defaults to `none` (base layer), so a bare
@@ -146,20 +373,15 @@ in one layout step and its content does the moving.
   labels change. Opening wipes them in from the rail's edge (`revealSidebar`,
   a clip-path over 220ms `--ease-out`); closing snaps. The sidebar starts as
   the icon rail below 1024px.
-- The light field is still: gradients only, no filter, no animation. Behind
-  backdrop blur any motion re-blurs every panel each frame, which held 50ms
-  idle frames under a 4x CPU throttle while the field drifted; nothing may
-  animate behind the panels, and the app has no ambient motion.
-  The one exception is the live field of a showcase surface (Pattern spec),
-  which replaces the frame instead of sitting behind it and runs only on the
-  signed-out home and sign-in.
-- Reduced motion is gentler, not none. The global block in `index.css`
-  flattens every CSS transition and keyframe to its end state; what tells the
-  reader something arrived keeps a 150ms fade instead (page and list
-  entrances, chat arrivals, the send, the done wash), and nothing travels,
-  scales or loops.
+- The one exception to the still field is the live field of a showcase
+  surface (Pattern spec), which replaces the frame instead of sitting behind
+  it and runs only on the signed-out home and sign-in.
+- Reduced motion: the global block in `index.css` flattens every CSS
+  transition and keyframe to its end state; what tells the reader something
+  arrived keeps a 150ms fade instead (page and list entrances, chat arrivals,
+  the send, the done wash), and nothing travels, scales or loops.
 
-## Canvas (topology)
+### Canvas (topology)
 
 React Flow reads the same tokens: a `surface-2` well with a hairline ring for
 the field, a faint `muted-foreground` dot pattern, hairline edges, and `ring`
@@ -189,72 +411,7 @@ again. The controls sit bottom left as one `canvas-card` strip; there is no
 minimap (at the canvas's size it covered a fifth of the map and showed grey
 blocks) and no library attribution.
 
-## Do and don't
-
-Do: float content in panels and keep the sidebar on the canvas; keep the
-accent to action, active nav, selection, own messages, checked
-controls and progress; status as a coloured dot or icon next to plain text;
-mono for technical data; hairline rings that read on any surface; dense but
-controlled spacing; check both modes, which are each designed, not inverted.
-
-Don't: the accent on anything else in the chrome (headings, icons at rest,
-borders, chips, badges); a second accent hue; a panel inside a panel, or a
-border where a surface step already separates; tint a chip with the accent; a
-filled or tinted-background chip for status (type and label may be tinted
-pills, `pillClass` in `web/src/components/board/ticketTypeColor.tsx`); the
-serif anywhere but a page title or a showcase or empty-state headline; script
-type; pill buttons or inputs; heavy shadows for co-planar depth; a
-second ambient animation or anything animating layout behind the panels.
-
-## Decision ledger
-
-| Decision | Why |
-|---|---|
-| Glass over a light field, dark first (ADR 0133) | The monochrome console read flat after every page was cleaned up; floating panels over a soft light field give depth and a recognisable look without decorating the content |
-| One ember accent, held to action, active nav, selection, own messages, checked controls and progress | Used everywhere an accent stops meaning "here" and fights status colour; held to these roles it is the app's voice |
-| Panels at 85% with a 20px blur, not the mock's lower opacity | The field glows through the edges while body and muted text keep at least 6:1 on the panel |
-| Light mode as its own identity | A soft grey canvas, pastel field and white panels read intentional; an inversion of the dark look did not |
-| Ink on the dark accent, white on the light accent | White on the bright dark-mode ember is 3:1; dark ink holds 6:1 there, and the deeper light-mode ember holds 5:1 with white |
-| Status as icon or dot plus text, never a tinted chip | Readable in both themes and keeps status from competing with the accent; tinted fills washed out once several hues appeared together |
-| Board cards: type and label as tinted pills | The 15% tint with an 800/400 text shade holds 4.5:1 in both themes. Type and label may use the same pill wherever they show as a tag group; status never does |
-| Board cards: the key as an eyebrow, the person opposite the pills | Against the avatar-beside-title card and a card with a ruled footer: with the 28px avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the footer rule made every card taller for a line that spacing already separates |
-| Others' chat messages as plain text, yours as the bubble | Against bubbles for everyone: a channel of bubbles was a column of boxes on a panel; plain text under the name reads as a conversation and leaves the ember bubble to mean "you" |
-| Chat in a 48rem column | Against the full panel width: at 1440 your reply sat over 1000px from the message it answered |
-| Stack status as one well split in three | Against three separate stat tiles: the tiles were three more boxes inside the panel and had no room to list the services, which are what the stack is |
-| Deploy steps beside the log | Against the steps over the log: beside it the timeline stays in view while the log scrolls, and the log gets the panel's height |
-| Doc body on a sheet, the ticket body open | Against an open doc body and the boxed card: the sheet with page margins makes the doc read as the thing being written; a ticket's body is short and sits beside its rail, where a box only framed the empty editing space |
-| Board header: a project mark and the stage bar beside the title | Against a full-width stage strip and a stat row of stages under the header: both cost the board 50 to 80px of height on the page where height is cards; beside the title the summary is free and still reads first |
-| Palettes theme the accent and the field | A palette's primary becomes its brand, so Ocean is blue and Grove is green everywhere the ember was, field included |
-| Fraunces for titles over Inter and JetBrains Mono | A serif display face over a neutral sans is contrast, not resemblance: the titles get a voice no other developer tool has while every control, row and number stays in the precise technical pair. Soft and a little wonky (SOFT 50, WONK 1) at 560, because a sharp high-contrast serif read as editorial and a thin one vanished at 21px |
-| 7px controls, 9px cards, 12px panels | Soft but precise; pills stay badge-only so controls and tags never look alike |
-| Terminal-window motif, neutral glow | Code, log, and hero surfaces read as consoles |
-| The live light field on showcase surfaces only | Picked over a fluted-glass refraction (busy vertical bands fought the text and the frosted vocabulary, and no CSS still could stand in for it) and an aurora (a band across the top only, nearly invisible in light mode); the field is the app's own light field moving, so its fallback still is exact and every palette retints it |
-| The live field on the signed-out home and sign-in only | It repaints every frame while the page is open and the library's frame cap is out of reach from React; a wizard or an invitation stays open for minutes of form work, so there the still does the job at under 1% CPU |
-| Empty states: the orbit mark | Picked over a placeholder card grid (generic, implied an add action the callers do not have, and looped) and a tile of the live field (a GPU canvas inside an everyday panel, grainy at 96px, impossible at compact size); the static orbit carries the field's colours at any size and costs nothing |
-| Loading: the orbit at spinner size | Over the plain spinner and a gradient arc; it ties loading to the empty mark, keeps the ember to progress, and stays one small SVG |
-| Long page titles step down to 24 and 20px and clamp at three lines | Against stepping alone (a sentence-long ticket title still ran six lines at 20px and pushed the body below the fold, and nothing bounds a title's length) and clamping at 28px alone (three lines held about half as many words); the step keeps short titles at full voice and the clamp bounds the rest |
-| Bot embeds as status-edged cards with facts | Against a header strip over hairline key and value rows (scanned well for long values but read as the old table again, nine summary rows tall) and a 2px status bar across the top (the same card, but the bar read as the accent's decoration rather than state); the leading edge is the topology node's status signal reused |
-| List pane placeholder: icon, count and the palette shortcut, compact | Against the icon alone (said nothing about the list) and the full empty-state size with a Fraunces headline (read as an empty page beside a full list) |
-| A doc's first heading that repeats its title stays | The title and the body are separate fields; hiding a matching heading in a collaborative editor would put the caret in invisible text and show readers and writers different docs, so the author's content is shown as written |
-| Runners: one card per machine, actions in its header, dashed when offline | Against a facts grid band per machine (a second header's worth of height, truncated the host and stack root, and hid the actions in a menu) and one table with machine group rows (aligned, but machines stopped reading as units and an offline machine looked like any other); greying a whole row to 60% made offline runners hard to read, a dashed unlit card says offline at full contrast |
-| Topology cards: an icon tile, the name and status on one line, facts under a rule | Against a dot-and-mono-lines card (compact, but the status hue sat on a 6px dot and the word was a muted mono line) and a title strip with a coloured leading edge (a third band of height and colour on every card); the tile and trailing status echo the runner cards, and network boxes became faint filled regions instead of dashed outlines, which read as unfinished next to the lit cards |
-| Focus as one ink outline, not the ember | The ember is a few degrees from the destructive coral: an autofocused field in the project wizard read as a validation error before anything was typed. Ink at 80% reads as focus on every palette and keeps 3:1 on every surface |
-| Overlays on transitions, instant from a key | Keyframes restart when an overlay reopens mid-close; a transition turns back from where it is. Opened tens of times an hour, a menu or dialog driven from the keyboard must not wait on motion |
-| Gradient avatars for people without a photo | A seeded gradient tells people apart at a glance where flat initials circles all looked the same |
-| Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
-| Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
-| Segmented control: a well with a raised thumb | Against joined outline buttons with an accent fill (read as a toolbar of buttons, the same box as Copy and Download beside it in the logs) and a ghost row with an accent thumb (the same grey block as the section nav's top row, so a filter looked like navigation); the well and card step is the panel's own depth vocabulary, and it reads as one control |
-| Section nav in the sidebar's grammar | Against the grey block alone (the sidebar marks where you are with the ember edge, the section nav with nothing, so the two navs on one screen read as unrelated) and a hairline rail with a sliding ember segment (a table of contents, not navigation, and the rows lost their click target) |
-| A role row is a tally of levels, every area one click away | Against a fingerprint of one three-rung bar per domain (aligned across roles, but noise at 6px and unreadable without hovering each bar) and one stacked bar of the levels (showed the proportions, lost which level was which and needed a legend anyway); "Delete 18 · Write 8 · Read 2 · None 5" with the level strip in miniature reads without a key, and the first areas with no access say what the role leaves out |
-| Danger zones are rows of action, consequence and an outline button | Against the solid red button in the card (the loudest thing on the page for the rarest action, and the confirm dialog repeated it); the red fill is the dialog's, where deleting is the one thing left to do |
-| Project settings lead with the project mark | The sidebar and the board already show the gradient mark; a plain initial on a square in General made the settings look like another project |
-| Settings cards: a quiet header, settings as rows | Against the old header band (an 18px title over a full-width rule, so every section read as the same generic form) and the title outside the card (heading on the glass, content in the card: two surfaces for one unit, and a paired card's heading wrapped out of line with its neighbour's); a 15px title flowing into its rows keeps the unit whole and saves the rule |
-| Settings save from a strip that is always there | Against a strip that opens when something changes (it pushed every card below it 52px on the first keystroke), a bar floating over the page (detached from the card it saves and covering the next one) and a Save beside the field (fits one field, not a card of them) |
-| Save answers in its button, not a toast | Against the toast (it lands a panel away from the click) and a Saved line at the strip's left (opposite the pointer); the button the pointer is on turns into Saved |
-| Theme and mode tiles are the app in miniature | Against swatch dots, which named a palette without showing what it changes; the miniature shows the canvas, the panel, text and the accent in that palette and mode |
-| Person dialog: a tab per workspace, changes held until Confirm | Several workspaces stacked in one scroll mixed their controls, and applying each change on the spot made the dialog change under the owner; tabs separate the workspaces and Confirm makes the edit one deliberate act |
-
-## Pattern spec
+### Pattern spec
 
 The pattern layer above the tokens: list and table treatment, filter bars,
 detail headers, empty and loading states, and the multi-step forms. New
@@ -267,7 +424,7 @@ a whole (the kanban `TicketCard`). Row hover is a
 reserved for draggable cards. The primary field sits left in normal weight;
 secondary and meta fields trail right in `muted-foreground`, and in mono with
 `tabular-nums` whenever the value is a count, amount, id, or timestamp. Status
-renders per the badge rule above, in a fixed-width column when it leads the
+renders per the shared Status rule, in a fixed-width column when it leads the
 row, so the field after it never shifts between Success and Failure. A page
 that needs bulk actions uses a left
 checkbox column; no page invents its own selection affordance.
@@ -422,12 +579,6 @@ icon-only control; the first waits 500ms, the next shows at once
 
 Toast. The menus' glass at 9px, the status hue on the icon only, the action
 in `brand`; bottom right, stacked by the library.
-
-Focus. One indicator everywhere: a 2px `focus` outline (ink at 80%), 2px
-out, 1px on a field, which keeps its border; a component's own ring utility
-is cleared on focus. Errors keep `destructive` on the border and message,
-so a focused field in error is an ink ring around a red border. A
-destructive button is white on `destructive-fill`.
 
 Detail page header. The page header above, with the record's mono id chip
 and status in the meta line. Only a page with a genuine single-record view gets this header. In-context
@@ -854,7 +1005,45 @@ an hour. Arrows wrap, Enter opens, Escape closes and hands focus back to
 where it was; the count is announced once a search settles. `CommandPalette` in `web/src/components/command/` is the
 reference.
 
-## Motion baseline
+### Web decisions
+
+The web app's pattern decisions, each with what it was picked over.
+
+| Decision | Why |
+|---|---|
+| Board cards: type and label as tinted pills | The 15% tint with an 800/400 text shade holds 4.5:1 in both themes. Type and label may use the same pill wherever they show as a tag group; status never does |
+| Board cards: the key as an eyebrow, the person opposite the pills | Against the avatar-beside-title card and a card with a ruled footer: with the 28px avatar gone from the title row the title wraps a line less, the key reads first the way people quote it, and the footer rule made every card taller for a line that spacing already separates |
+| Others' chat messages as plain text, yours as the bubble | Against bubbles for everyone: a channel of bubbles was a column of boxes on a panel; plain text under the name reads as a conversation and leaves the ember bubble to mean "you" |
+| Chat in a 48rem column | Against the full panel width: at 1440 your reply sat over 1000px from the message it answered |
+| Stack status as one well split in three | Against three separate stat tiles: the tiles were three more boxes inside the panel and had no room to list the services, which are what the stack is |
+| Deploy steps beside the log | Against the steps over the log: beside it the timeline stays in view while the log scrolls, and the log gets the panel's height |
+| Doc body on a sheet, the ticket body open | Against an open doc body and the boxed card: the sheet with page margins makes the doc read as the thing being written; a ticket's body is short and sits beside its rail, where a box only framed the empty editing space |
+| Board header: a project mark and the stage bar beside the title | Against a full-width stage strip and a stat row of stages under the header: both cost the board 50 to 80px of height on the page where height is cards; beside the title the summary is free and still reads first |
+| Palettes theme the accent and the field | A palette's primary becomes its brand, so Ocean is blue and Grove is green everywhere the ember was, field included |
+| The live light field on showcase surfaces only | Picked over a fluted-glass refraction (busy vertical bands fought the text and the frosted vocabulary, and no CSS still could stand in for it) and an aurora (a band across the top only, nearly invisible in light mode); the field is the app's own light field moving, so its fallback still is exact and every palette retints it |
+| The live field on the signed-out home and sign-in only | It repaints every frame while the page is open and the library's frame cap is out of reach from React; a wizard or an invitation stays open for minutes of form work, so there the still does the job at under 1% CPU |
+| Empty states: the orbit mark | Picked over a placeholder card grid (generic, implied an add action the callers do not have, and looped) and a tile of the live field (a GPU canvas inside an everyday panel, grainy at 96px, impossible at compact size); the static orbit carries the field's colours at any size and costs nothing |
+| Loading: the orbit at spinner size | Over the plain spinner and a gradient arc; it ties loading to the empty mark, keeps the ember to progress, and stays one small SVG |
+| Long page titles step down to 24 and 20px and clamp at three lines | Against stepping alone (a sentence-long ticket title still ran six lines at 20px and pushed the body below the fold, and nothing bounds a title's length) and clamping at 28px alone (three lines held about half as many words); the step keeps short titles at full voice and the clamp bounds the rest |
+| Bot embeds as status-edged cards with facts | Against a header strip over hairline key and value rows (scanned well for long values but read as the old table again, nine summary rows tall) and a 2px status bar across the top (the same card, but the bar read as the accent's decoration rather than state); the leading edge is the topology node's status signal reused |
+| List pane placeholder: icon, count and the palette shortcut, compact | Against the icon alone (said nothing about the list) and the full empty-state size with a Fraunces headline (read as an empty page beside a full list) |
+| A doc's first heading that repeats its title stays | The title and the body are separate fields; hiding a matching heading in a collaborative editor would put the caret in invisible text and show readers and writers different docs, so the author's content is shown as written |
+| Runners: one card per machine, actions in its header, dashed when offline | Against a facts grid band per machine (a second header's worth of height, truncated the host and stack root, and hid the actions in a menu) and one table with machine group rows (aligned, but machines stopped reading as units and an offline machine looked like any other); greying a whole row to 60% made offline runners hard to read, a dashed unlit card says offline at full contrast |
+| Topology cards: an icon tile, the name and status on one line, facts under a rule | Against a dot-and-mono-lines card (compact, but the status hue sat on a 6px dot and the word was a muted mono line) and a title strip with a coloured leading edge (a third band of height and colour on every card); the tile and trailing status echo the runner cards, and network boxes became faint filled regions instead of dashed outlines, which read as unfinished next to the lit cards |
+| Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
+| Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
+| Segmented control: a well with a raised thumb | Against joined outline buttons with an accent fill (read as a toolbar of buttons, the same box as Copy and Download beside it in the logs) and a ghost row with an accent thumb (the same grey block as the section nav's top row, so a filter looked like navigation); the well and card step is the panel's own depth vocabulary, and it reads as one control |
+| Section nav in the sidebar's grammar | Against the grey block alone (the sidebar marks where you are with the ember edge, the section nav with nothing, so the two navs on one screen read as unrelated) and a hairline rail with a sliding ember segment (a table of contents, not navigation, and the rows lost their click target) |
+| A role row is a tally of levels, every area one click away | Against a fingerprint of one three-rung bar per domain (aligned across roles, but noise at 6px and unreadable without hovering each bar) and one stacked bar of the levels (showed the proportions, lost which level was which and needed a legend anyway); "Delete 18 · Write 8 · Read 2 · None 5" with the level strip in miniature reads without a key, and the first areas with no access say what the role leaves out |
+| Danger zones are rows of action, consequence and an outline button | Against the solid red button in the card (the loudest thing on the page for the rarest action, and the confirm dialog repeated it); the red fill is the dialog's, where deleting is the one thing left to do |
+| Project settings lead with the project mark | The sidebar and the board already show the gradient mark; a plain initial on a square in General made the settings look like another project |
+| Settings cards: a quiet header, settings as rows | Against the old header band (an 18px title over a full-width rule, so every section read as the same generic form) and the title outside the card (heading on the glass, content in the card: two surfaces for one unit, and a paired card's heading wrapped out of line with its neighbour's); a 15px title flowing into its rows keeps the unit whole and saves the rule |
+| Settings save from a strip that is always there | Against a strip that opens when something changes (it pushed every card below it 52px on the first keystroke), a bar floating over the page (detached from the card it saves and covering the next one) and a Save beside the field (fits one field, not a card of them) |
+| Save answers in its button, not a toast | Against the toast (it lands a panel away from the click) and a Saved line at the strip's left (opposite the pointer); the button the pointer is on turns into Saved |
+| Theme and mode tiles are the app in miniature | Against swatch dots, which named a palette without showing what it changes; the miniature shows the canvas, the panel, text and the accent in that palette and mode |
+| Person dialog: a tab per workspace, changes held until Confirm | Several workspaces stacked in one scroll mixed their controls, and applying each change on the spot made the dialog change under the owner; tabs separate the workspaces and Confirm makes the edit one deliberate act |
+
+### Motion baseline
 
 The primitives carry the numbers; a new surface reuses them instead of
 writing its own.
@@ -1012,7 +1201,7 @@ writing its own.
   (`withoutTransitions`); the picked tile's ring changes over 150ms and its
   check pops on `--ease-spring-pop`.
 
-### Hero locks
+### Motion locks: board, chat and ticket
 
 Each was built as three live variants on the real surface, recorded at 1x
 and 0.25x, and picked against the motion character above.
@@ -1053,7 +1242,7 @@ Opening a ticket from the board: decided 2026-10-08.
   panels, which never move on a route change, and 0.98 was too small to read
   as coming from the card.
 
-### Round-three locks
+### Motion locks: lists, states and feedback
 
 Decided 2026-10-09 without the owner in the loop: each built as two to four
 live variants on the real surface with seeded data, scrubbed frame by frame
@@ -1132,9 +1321,9 @@ Settings save. Decided 2026-10-09 from four variants on the real card.
 
 Removing a row. Glide. Rejected: a fade then a snap (the rows under it jumped
 a row's height in one frame) and a collapse that shut the row's box after its
-fade (the same jump, a frame later). The first glide shrank the list's box at
-once, so the last row slid up from outside it and was clipped; the box now
-holds its height until the glide ends.
+fade (the same jump, a frame later). The list's box holds its height until
+the glide ends: shrinking it at once let the last row slide up from outside it
+and be clipped.
 
 Copy. Icon swap. Rejected: the label turning into Copied (the button kept the
 long label's width, so "Copied" floated in a half-empty button) and a Copied
@@ -1149,11 +1338,11 @@ twelve 67ms frames under 4x) and a crossfade through the same view transition
 changes took the instant swap from about ten frames over budget to one under
 a 4x throttle.
 
-Toasts, dialogs, sheets, popovers, menus: already on the baseline's clocks;
-nothing changed but the sheet, whose open and close are animations and no
-longer carry an unnamed transition list.
+Toasts, dialogs, sheets, popovers, menus: on the baseline's clocks, moving as
+Motion locks: overlays sets out; no overlay carries an unnamed transition
+list.
 
-### Round-four locks: overlays
+### Motion locks: overlays
 
 Decided 2026-10-09 without the owner in the loop, each built as three or four
 live variants on the real surface, judged from frame strips seeked to fixed
@@ -1203,7 +1392,7 @@ barely different from one unfocused). Destructive button: white on a deeper
 red. Rejected: a tinted outline (too quiet for the act it confirms) and the
 coral with dark ink (the ember's twin beside the primary).
 
-### Round-four locks: navigation
+### Motion locks: navigation
 
 Decided 2026-10-09 without the owner in the loop, each built as live
 variants on the seeded app, recorded at 1x and 0.25x with frame strips at
@@ -1239,11 +1428,11 @@ Sidebar collapse.
 
 Nav row hover: lands at once, lets go over 150ms (Motion baseline).
 
-Switchers: the overlay clock (Round-four locks: overlays), from the
+Switchers: the overlay clock (Motion locks: overlays), from the
 trigger's corner, with the trigger holding its pressed fill while the menu
 is open so the menu reads as coming from it.
 
-### Round-four locks: settings sections
+### Motion locks: settings sections
 
 Decided 2026-10-09 without the owner in the loop, each built as live
 variants in Configuration's Roles card and the Categories card with seeded
@@ -1270,170 +1459,176 @@ Moving a category from its menu.
   the two rows that traded (said which rows changed, not where the row went,
   and the row under the menu vanished from under the pointer).
 
-Removing a row, and saving a card: the round's shared locks (Removing a row,
-Settings save) apply to roles, plays, categories, repositories, exposures,
+Removing a row, and saving a card: the shared locks (Removing a row,
+Settings save, in Motion locks: lists, states and feedback) apply to roles, plays, categories, repositories, exposures,
 secrets and the workspace, template and automation configuration cards. A
 Motion `layout` glide on a bounce-free spring was built first and lost to the
 shared glide only for being a second vocabulary for the same act.
 
-## Phone app (draft, folded in at unification)
+## Public site
 
-The phone app in `native/` speaks this language on a phone. It is recorded
-here as a draft and folded into the sections above when the language is next
-rewritten as one. Every decision below was built as live variants on the
-Android emulator with the seeded workspace, judged from screenshots, 1x and
-0.25x recordings and frame strips, and measured with `gfxinfo`; the emulator
-judges whether motion runs and degrades, not its final feel.
+The public site in `website/`: the home page, the roadmap and changelog, the
+docs pages and the 404. It is built mobile first at 320, 375 and 414px and
+verified at 320, 375, 414 and 768px, the docs pages at 1024 and 1440px too,
+in both schemes.
 
-Tokens. `native/src/global.css` holds the web's values under the same names,
-dark and light. `focus` and the light field's three glows are colour tokens
-there (`--color-focus`, `--color-field-warm`, `-pink`, `-cool`), because the
-phone reads every colour through `useCSSVariable`. The phone has no theme
-picker yet, so it shows the default palette.
+Every site decision below was made on 2026-10-09 without the owner in the
+loop: each built as live variants on the real, built pages (the roadmap and
+changelog with real release data), shot at 320 to 1440px in both schemes, and
+the motion judged from frame strips at 0.1x and recordings at 1x and 0.25x.
 
-Type. Fraunces is a static cut at the web's axes (opsz 28, wght 560, SOFT
-50, WONK 1), `Fraunces Display`, for screen titles, record titles and
-empty-state headlines. A screen title is 30pt, 25pt past 44 characters and
-22pt past 90, three lines at most. Rejected: the static Fraunces SemiBold
-Google Fonts serves, which sits at opsz 9 with SOFT 0 and read wide and sharp
-next to the web's soft titles.
+### What the site adapts
 
-Surfaces. A tab's root sits on the canvas with the still light field behind
-it and its rows straight on the field; pushed screens are the plain canvas;
-cards, wells and sheets are solid. Picked over a raised panel inset 8pt (the
-field only showed in an 8pt frame and the panel cost 16pt of a 412pt width)
-and the plain canvas everywhere (correct and anonymous). The field is one
-static SVG: Board scrolling measured p50 16ms and p90 16ms with it, the same
-as without it. Backdrop blur was tried on the board's drop bar, over a board
-that holds still while a card is held, and lost: frames went to a 95th
-percentile GPU time of 4.95s, so the phone has no blur.
+The site shares the tokens under the app's names, the `type-display`
+settings, the accent's roles, ink focus, status hues, the radii, and the app's
+sheet, dialog, palette, sliding-highlight and copy clocks. It adapts these,
+each for a reason recorded below:
 
-Lists. Rows on a tab root are separated by space, not hairlines: a 36pt
-tile or avatar with its state as a dot on the corner, the title, mono meta
-trailing; read titles turn muted. Rows grouped in a card keep hairlines.
-Board columns are `surface-2` wells of cards (the mono key as an eyebrow,
-the title, type and label pills, whoever acts next), under a header with the
-project mark, the stage bar and an "Only mine" switch that takes the ember
-when on. The tab bar's active tab is the ember; its unread count is the ink
-pill.
+- Reading text sits on the canvas, with no panel and no sheet, and the light
+  field shows only beside the reading column from 1280px.
+- Prose links are ink with a `brand` underline, not `brand` text.
+- The header is the canvas colour with a hairline foot, not frosted.
+- Fraunces ships as one pinned file, and the landing pages set their section
+  titles in it.
+- Code blocks are the app's console in both modes.
+- Each docs page is a full page load, so the docs sidebar's active row stays
+  still.
 
-Chat. Your messages are the ember bubble on the right (12pt corners, the
-bottom-right one 2pt); everyone else's text runs plain under a 32pt avatar
-with the name and mono clock time; day dividers are the microheader between
-hairlines. Bot embeds are the web's status-edged cards with facts. The
-composer is one framed field with the send button inside it, ember once
-there is text.
+### Site tokens and type
 
-Motion. The numbers are the web's motion baseline unless named.
-- Screen push, tab switch and sheets: the platform's. Rejected for push:
-  slide from the right (a 300ms slide on an act repeated all session) and
-  fade from the bottom (the board and the ticket showed through each other,
-  the reason the web dropped its title morph). Sheets take a 12pt corner.
-- Sending a message: Rise, 12px over 240ms from 0.96 out of the bubble's
-  bottom-right corner; the server's copy keeps the pending row's key, so the
-  rise is never cut. Rejected: rising from the composer (64px; on a phone it
-  doubled the list's own scroll to the end and read as two moves), a pop from
-  0.9 (the bubble's text shifted as it scaled) and none (the bubble appeared
-  with the list's jump and nothing said it was yours).
-- Moving a card: hold 280ms to pick it up; it lifts to 1.03 with the
-  elevated shadow in 150ms (a shadow layer drawn once and faded, never an
-  animated shadow), follows the finger 1:1, and the columns rise in as drop
-  targets along the bottom; over one the card shrinks to 0.55 around the
-  finger so the target stays in view and the target takes the ember edge.
-  Dropped, it glides onto the target in 220ms and shrinks into it while the
-  board moves the card at once; let go anywhere else, it springs back
-  (300ms, no bounce). Under reduced motion nothing scales and the glide
-  stays. Drag frames measured p50 16ms, p90 27ms on the emulator, whose input
-  injection paces the frames. Each card also offers "Move to" accessibility
-  actions.
-- Inbox: an unread row swipes left to mark it read (its "Mark read" action
-  is the alternative); the unread dot shrinks to 0.6 as it fades over 150ms.
-- Pull to refresh: the platform's spinner in the ember, since it is progress.
-  Rejected: the muted spinner the phone had, which read as disabled.
-- Press: the `accent` tint on rows and cards, on touch; a labelled button
-  also presses to 0.97. Rejected: the Android ripple (no iOS counterpart and
-  the same at rest).
-- Empty state: the orbit turns into place as on the web; a compact one fades
-  and rises 4px. Loader: the orbit at 16pt, a linear 1.2s keyframe turn,
-  held back 300ms. Hand-off: content that replaces a loader rises 6px over
-  200ms where it stood.
-- Reduced motion (Android's Remove animations): every moment is a 150ms
-  fade or nothing; the loader holds still; a drag still tracks the finger.
+Tokens. `website/src/styles/tokens.css` holds the app's values under the app's
+names (`--background`, `--surface-2`, `--card`, `--popover`, `--foreground`,
+`--muted-foreground`, `--accent`, `--brand`, `--brand-foreground`, `--border`,
+`--input`, `--focus`, the status hues, the panel and field values, the
+shadows, `--shape-*` and the curves) and maps Fumadocs' `--color-fd-*` onto
+them: `fd-primary` is the ink, as the app's `primary`; `fd-ring` is `focus`;
+`fd-overlay` is the dialog scrim (the canvas at 60%). Colours are written once
+with `light-dark()`; shadows, which change geometry between modes, are
+restated for light. The scheme follows the system until the header's toggle
+sets `.light` or `.dark` on `<html>`, which a head script restores before
+first paint. Selection is `brand` at 32%, as in the app. The ember holds the
+app's roles here too: the primary action (the home page's copy button, the
+404's Open the docs), the active nav marker (header and docs sidebar),
+selection, and the link underline. Pages add no tokens of their own.
 
-Rejected and not built: a theme picker (the phone has none today) and blur
-anywhere (see Surfaces).
+Fraunces. Docs titles, the 404 and the landing headlines use `.type-display`
+(the app's settings).
 
-## Site: roadmap and changelog
+- A docs title is 28px on a phone and 32px from 768px. Rejected: 28px
+  everywhere (small against the 18px lede under it) and 40px (a showcase size
+  on a page people read in sequence).
+- The home page's headline is 40px at 320, 44 from 414, 56 from 768, 68 from
+  1024 and 76 from 1280; its section titles are Fraunces at 30, 36 and 40px.
+- A roadmap or changelog hero headline is 36px rising to 56px from 1100px.
+- The 404's "Page not found" is 32px, 40px from 768px.
 
-Decided 2026-10-09 without the owner in the loop, each built as live variants
-on the real pages with real release data, shot at 320 to 1440px in both
-schemes, and the motion recorded at 1x and 0.25x with frame strips.
-`website/src/styles/pages.css` holds the rules.
+The face ships as one file, `fraunces-display-latin.woff2`: the Latin build
+with weight 560, SOFT 50 and WONK 1 pinned and optical sizing kept, 34KB
+against the package's 121KB, so it renders exactly as the app's settings do.
+Mobile Lighthouse on the built home page, three serial runs each, median:
 
-Page hero. A microheader eyebrow, the headline in Fraunces (the app's display
-settings, 36px rising to 56px from 1100px), a muted lede whose links take the
-prose-link role (`--color-fd-primary`). The hero matches the width of the
-content under it, so both start on one edge.
+| Variant | Score | LCP | Other |
+|---|---|---|---|
+| Full file, preloaded | 94 | 3.08s | |
+| Full file, not preloaded | 94 | 2.93s | FCP 1.95s, CLS 0.035 from the swap |
+| Full file, `font-display: optional` | 93 | 3.08s | |
+| No Fraunces at all | 98 | 2.25s | |
+| Pinned file, not preloaded | 97 | 2.40s | CLS 0.035 |
+| Pinned file, preloaded with `swap` | 98 | 2.40s | FCP 1.20s, CLS 0 |
 
-Roadmap.
-- Grouped by status, In progress, then Planned, then Shipped, each newest
-  first, under an Inter heading with its status dot and a mono count; a row of
-  the same three as jump links sits under the lede. Rejected: the one
-  interleaved list it replaces (nothing said what was next).
-- Items are hairline rows: the name in 16px Inter medium (a feature name is
-  not technical data, so not mono), the summary muted under it at 62ch.
-  Shipped runs in two columns from 1024px, about 1700px shorter at 1440.
-  Rejected: one column at every width (5900px tall at 1440) and cards for In
-  progress and Planned (a box per item where rows already separate, and two
-  vocabularies on one page).
-- Status: `warning` dot for in progress, `success` for shipped, a hollow muted
-  ring for planned, the deploy steps' pending mark. No accent anywhere on it.
+The pinned file, preloaded, is the pick: the same score as no display face,
+and no layout shift. Its cost: any weight but 560 renders at 560, which the
+type rule already forbids.
 
-Changelog.
-- One row per release: a leading chevron, the version in 15px mono, the date
-  and the change count in 12px mono, the newest marked Latest and open; the
-  rest are closed `<details>`. From 768px the version holds a 9.5rem gutter
-  and the changes align under the date. Below it, the date and count drop to a
-  second line. Rejected: each release as a card (a box per row, against the
-  row rule) and the full open list it replaces (one long wall).
-- Changes keep the pull request titles; Dependabot's bumps sit last under a
-  "Dependency updates" microheader, muted. Grouping by verb was rejected: only
-  5 of 469 titles start with Fix, so a Fixes group would have been mostly
-  wrong.
-- Each release is a permalink (`/changelog/#v0.3.31-beta`), from its Link in
-  the meta row; landing on one opens it.
+### Site chrome
 
-Motion.
-- A release opening: the disclosure (the box snaps open, the content fades in
-  as it settles 4px over 200ms `--ease-out`; closing, it fades out in 120ms and
-  the box shuts after), built on `::details-content` with `content-visibility`
-  as a discrete transition; a browser without it snaps. Chevron turns 90° in
-  150ms `--ease-standard`. Rejected: a snap (only the chevron said anything
-  opened) and a height animation with `interpolate-size` (the rows below glide,
-  but every frame re-lays the page: 89 layouts across six toggles of the
-  33-change release under a 4x CPU throttle against 7 for the disclosure, 2.5
-  times the layout time, growing with the page; the app's rule is that a box
-  changing size snaps). A grid-rows height animation was not built: it costs
-  the same layout per frame.
-- A jump to a roadmap group or a release lands at once and its heading row
-  takes a wash, `foreground` at 9% fading out over 900ms `--ease-out`.
-  Rejected: native smooth scrolling (about 800ms to travel 1850px at 375px,
-  its curve out of our hands, and it delays reading on every keyboard jump)
-  and smooth scrolling plus the wash (slower still).
-- Status markers stay still. Rejected: the `status-pulse` loop on the in
-  progress dots (it says live, and a roadmap is not live; ambient motion on a
-  reading page) and a one-time ring on load (decoration with nothing behind
-  it).
-- Reduced motion: the release content fades in 150ms with no travel, and the
-  wash shortens to 400ms.
+Header. One header on every page: the wordmark, then from 768px Docs, Roadmap
+and Changelog as words, docs search (an icon below 1024px, the field from
+there), GitHub as an icon button and the theme toggle. No button in `brand`:
+the home page's install block is the call to action, and a header button
+repeated it on pages where nobody was about to install. The current page is
+ink with a 2px `brand` edge along the header's foot. Rejected: the section
+nav's `bg-accent` block (read as a button) and ink text alone (the current
+page barely differed from the rest). The header is the canvas colour with a
+hairline foot, not frosted: text scrolls under it all the time, and nothing
+may move behind a blur.
 
-## The public site: home page
+Header icons, per [Icons over words](#icons-over-words). GitHub, theme,
+search and menu are each a 44px ghost icon button, muted until hovered, with
+an `aria-label` and a native `title` tooltip of the same words. The filled
+GitHub mark is 16px beside the 18px stroked icons. GitHub goes before the
+theme toggle: the toggle is a setting and ends the row. Rejected: GitHub
+after the toggle (the setting landed between two destinations), the GitHub
+icon in the phone bar too (four icons beside the wordmark on a docs page at
+320px; it fit, but the menu already lists it), and the mark in ink (the
+filled shape outweighed every other control).
 
-Decided 2026-10-09 without the owner in the loop, each built as live variants
-on the built page and judged from screenshots at 320 to 1440px in both
-schemes, frame strips and 1x and 0.25x recordings. The home page
-(`website/src/pages/index.astro`, `website/src/styles/home.css`) reads the
-site's tokens and adds none.
+Phone menu. Below 768px every page shows the wordmark, search on docs pages,
+the theme toggle and a menu button. The menu is one sheet everywhere: the
+app's sheet, frosted, 8px from the right edge at 12px, up to 320px wide, over
+the dialog scrim. On the landing pages it is a `<dialog>` holding Docs,
+Roadmap, Changelog and GitHub, as tall as its links; on docs pages it is the
+sidebar drawer, the page tree first and the same links at its foot. GitHub is
+a row like the others with its mark before the word. Rows are 44px, the
+current one `bg-accent` with the `brand` edge; its close mark is an X on both.
+
+Theme toggle. A 44px ghost icon button showing the mode you are in (moon in
+dark, sun in light). The palette lands in one frame with every colour
+transition held, as in the app.
+
+404. The app's error page: the light field at half strength fading out
+toward the footer, the orbit mark around a compass, "Page not found" in
+Fraunces, one muted line, then Open the docs in `brand` and Home as an
+outline button.
+
+### Docs pages
+
+Reading surface. Docs text sits on the canvas with no panel and no sheet. The
+light field shows only from 1280px, at half strength and with its warm and
+cool glows only, where they fall beside the reading column (behind the
+sidebar and the on-this-page rail). Rejected: the field at every width (at
+375px its blue and pink glows sat behind body text), the app's doc sheet
+behind the article (narrowed the phone measure by 16px a side, and put the
+console code blocks in a box inside a box) and a frosted panel for the whole
+page (the panel stopped at the rail and doubled the edges on a page that is
+all reading).
+
+Links. Prose links are ink with a 1px `brand` underline 3px below, 2px on
+hover. Rejected: `brand` text, as the app's prose links (4.3:1 on the light
+canvas, under the 4.5:1 body text needs; it passes only on the app's white
+sheet) and a 2px underline at rest (heavy in a paragraph with several links).
+
+Docs sidebar. The app sidebar's grammar on the canvas: mono microheader
+groups, 14px muted rows with the `bg-accent/60` hover that lands at once and
+lets go over 150ms, the open page `bg-accent` with a 2px `brand` edge 8px in
+from its top and bottom.
+
+Code. The app's console in both modes: `#0b0b0b`, a `#232323` hairline, 9px,
+13px mono at 1.65, emphasis from a grey ramp (keywords `#f5f5f5`, strings
+`#a3a3a3`, comments and punctuation `#737373`, comments italic). Rejected:
+ember keywords (the accent on something that is not an action; YAML keys read
+as links) and the app's editor hues (green strings read as success and indigo
+as a second accent on a reading page). Astro's own highlighter is off so the
+docs highlighter sees each block's language; with it on, every block rendered
+as plain text.
+
+Tables, inline code, cards. Tables are the app's ruled data: a hairline under
+each row, a muted 13px header over a stronger rule, tabular figures. Inline
+code is mono at 0.85em on `muted` with a hairline. The docs home cards are
+the app's card (`card`, the panel ring and lit top edge, 9px) under mono
+microheader groups. The docs content has no callouts or blockquotes; a
+blockquote takes the app's 2px rule in `foreground` at 25%.
+
+Copy page. A quiet outline control (`border` hairline, muted text, 7px) beside
+the title.
+
+Search. The app's command palette surface (the popover glass at 12px over the
+dialog scrim), 40rem wide, hung at 14% of the viewport from 768px.
+
+### Home page
+
+The home page (`website/src/pages/index.astro`, `website/src/styles/home.css`)
+reads the site's tokens and adds none.
 
 Showing the product.
 - Real 2x screenshots of the seeded example workspace (Northwind), one per
@@ -1466,17 +1661,14 @@ Showing the product.
   motion beside the headline, and the reduced-motion still is the same
   screenshot anyway) and the old three-pane illustration re-skinned in the
   tokens (no bytes and crisp, but it drew a layout the app does not have, and
-  at 375px it stacked into a 1300px column). Frames rejected: the shot
-  bare on the page (in dark mode its canvas met the page's and the frame
-  vanished) and inset on all four sides (smallest text, and read as a panel
-  inside a panel).
+  at 375px it stacked into a 1300px column). Frames rejected: the shot bare on
+  the page (in dark mode its canvas met the page's and the frame vanished)
+  and inset on all four sides (smallest text, and read as a panel inside a
+  panel).
 
-Type and accent. The headline is Fraunces through `.type-display`: 40px at
-320, 44 from 414, 56 from 768, 68 from 1024 and 76 from 1280; section titles
-are Fraunces at 30, 36 and 40px. The ember is the copy button, the one
-primary action on the page; the platform switcher is the segmented control
-(well and raised thumb), links stay ink, and status keeps its hues (the
-connection and beta dots).
+Accent. The ember is the copy button, the one primary action on the page;
+the platform switcher is the segmented control (well and raised thumb), links
+stay ink, and status keeps its hues (the connection and beta dots).
 
 Install command. One line always, the copy button inline. The command is mono
 12px under 414px, 12.5px to 768 and 13px above; when it is wider than its box
@@ -1484,149 +1676,45 @@ it scrolls sideways with no scrollbar and its cut edge fades over 32px until
 the end is reached. Rejected: shrinking it to fit (about 8px at 320, below
 reading size) and wrapping it (breaks the one line people select and paste).
 
-Motion.
-- Hero arrival: the text never moves; the board shot waits until it has
-  decoded, then rises 12px and fades in over 400ms `--ease-out`, once per
-  session (a 150ms fade under reduced motion). Rejected: the page entrance
-  on the text (headline blank for the first 30 to 90ms, so reading waited),
-  no motion (the image popped in whenever it finished decoding, sometimes
-  after the text had been read) and a clip-path wipe (a curtain with no
-  origin, finished within 100ms on the ease-out so it read as a flash). It
-  cost about 0.1s of lab LCP on a throttled phone.
-- Platform switch: the app's sliding highlight for the thumb (200ms
-  `--ease-spring`) and its tab swap for the command (6px from the picked
-  tab's side, 160ms `--ease-out`); a key switch moves at once.
-- Copy: the app's icon swap (the copy icon shrinks to 0.6 and blurs out over
-  150ms as the check pops on `--ease-spring-pop`), held 1.4s, announced as
-  Copied; instant from a key, a 150ms fade under reduced motion.
-- No scroll-triggered reveals, no parallax: the step shots are lazy images
-  that simply appear.
+### Roadmap and changelog
 
-## Public site (draft, folded in at unification)
+`website/src/styles/pages.css` holds the rules.
 
-The site's shared layer: tokens, fonts, the header and phone menu, the docs
-pages, the 404 and their motion. Decided 2026-10-09 without the owner in the
-loop, each built as live variants on the real pages, shot at 320 to 1440px in
-both schemes, and the motion judged from frame strips at 0.1x and recordings
-at 1x and 0.25x.
+Page hero. A microheader eyebrow, the headline in Fraunces, a muted lede whose
+links take the prose-link role (`--color-fd-primary`). The hero matches the
+width of the content under it, so both start on one edge.
 
-Tokens. `website/src/styles/tokens.css` holds the app's values under the app's
-names (`--background`, `--surface-2`, `--card`, `--popover`, `--foreground`,
-`--muted-foreground`, `--accent`, `--brand`, `--brand-foreground`, `--border`,
-`--input`, `--focus`, the status hues, the panel and field values, the
-shadows, `--shape-*` and the curves) and maps Fumadocs' `--color-fd-*` onto
-them: `fd-primary` is the ink, as the app's `primary`; `fd-ring` is `focus`;
-`fd-overlay` is the dialog scrim (the canvas at 60%). Colours are written once
-with `light-dark()`; shadows, which change geometry between modes, are
-restated for light. The scheme follows the system until the header's toggle
-sets `.light` or `.dark` on `<html>`, which a head script restores before
-first paint. Selection is `brand` at 32%, as in the app. The ember holds the
-app's roles here too: the primary action (the home page's copy button, the
-404's Open the docs), the active nav marker
-(header and docs sidebar), selection, and the link underline.
+Roadmap.
+- Grouped by status, In progress, then Planned, then Shipped, each newest
+  first, under an Inter heading with its status dot and a mono count; a row of
+  the same three as jump links sits under the lede. Rejected: one interleaved
+  list (nothing said what was next).
+- Items are hairline rows: the name in 16px Inter medium (a feature name is
+  not technical data, so not mono), the summary muted under it at 62ch.
+  Shipped runs in two columns from 1024px, about 1700px shorter at 1440.
+  Rejected: one column at every width (5900px tall at 1440) and cards for In
+  progress and Planned (a box per item where rows already separate, and two
+  vocabularies on one page).
+- Status: `warning` dot for in progress, `success` for shipped, a hollow muted
+  ring for planned, the deploy steps' pending mark. No accent anywhere on it.
 
-Fraunces. Docs titles, the 404 and the landing headlines use `.type-display`
-(the app's settings). A docs title is 28px on a phone and 32px from 768px.
-Rejected: 28px everywhere (small against the 18px lede under it) and 40px (a
-showcase size on a page people read in sequence). The face ships as one file,
-`fraunces-display-latin.woff2`: the Latin build with weight 560, SOFT 50 and
-WONK 1 pinned and optical sizing kept, 34KB against the package's 121KB, so it
-renders exactly as the app's settings do. Mobile Lighthouse on the built home
-page, three serial runs each, median: the full file preloaded scored 94 with
-LCP 3.08s; the full file not preloaded 94, LCP 2.93s, FCP 1.95s and CLS
-0.035 from the swap; the full file with `font-display: optional` 93, LCP
-3.08s; no Fraunces at all 98, LCP 2.25s; the pinned file not preloaded 97,
-LCP 2.40s, CLS 0.035; the pinned file preloaded with `swap` 98, LCP 2.40s,
-FCP 1.20s, CLS 0. The pinned file, preloaded, is the pick: the same score as
-no display face, and no layout shift. Its cost: any weight but 560 renders at
-560, which the type rule already forbids.
+Changelog.
+- One row per release: a leading chevron, the version in 15px mono, the date
+  and the change count in 12px mono, the newest marked Latest and open; the
+  rest are closed `<details>`. From 768px the version holds a 9.5rem gutter
+  and the changes align under the date. Below it, the date and count drop to a
+  second line. Rejected: each release as a card (a box per row, against the
+  row rule) and the full open list (one long wall).
+- Changes keep the pull request titles; Dependabot's bumps sit last under a
+  "Dependency updates" microheader, muted. Grouping by verb was rejected: only
+  5 of 469 titles start with Fix, so a Fixes group would have been mostly
+  wrong.
+- Each release is a permalink (`/changelog/#v0.3.31-beta`), from its Link in
+  the meta row; landing on one opens it.
 
-Reading surface. Docs text sits on the canvas with no panel and no sheet. The
-light field shows only from 1280px, at half strength and with its warm and
-cool glows only, where they fall beside the reading column (behind the
-sidebar and the on-this-page rail). Rejected: the field at every width (at
-375px its blue and pink glows sat behind body text), the app's doc sheet
-behind the article (narrowed the phone measure by 16px a side, and put the
-console code blocks in a box inside a box) and a frosted panel for the whole
-page (the panel stopped at the rail and doubled the edges on a page that is
-all reading).
+### Site motion
 
-Links. Prose links are ink with a 1px `brand` underline 3px below, 2px on
-hover. Rejected: `brand` text, as the app's prose links (4.3:1 on the light
-canvas, under the 4.5:1 body text needs; it passes only on the app's white
-sheet) and a 2px underline at rest (heavy in a paragraph with several links).
-
-Header. One header on every page: the wordmark, then from 768px Docs, Roadmap
-and Changelog as words, docs search (an icon below 1024px, the field from
-there), GitHub as an icon button and the theme toggle. No button in `brand`:
-the home page's install block is the call to action, and a header button
-repeated it on pages where nobody was about to install. The current page is
-ink with a 2px `brand` edge along the header's foot. Rejected: the section
-nav's `bg-accent` block (read as a button) and ink text alone (the current
-page barely differed from the rest). The header is the canvas colour with a
-hairline foot, not frosted: text scrolls under it all the time, and nothing
-may move behind a blur.
-
-Icons over words. Well-known destinations and tools are icon-only: GitHub,
-theme, search, menu. Each is a 44px ghost icon button, muted until hovered,
-with an `aria-label` and a native `title` tooltip of the same words. The
-product's own places (Docs, Roadmap, Changelog) stay words, because no icon
-says what they are. A filled brand mark sits 2px smaller (16px) than the
-stroked icons beside it (18px), or it reads heavier. GitHub goes before the
-theme toggle: the toggle is a setting and ends the row. Rejected: GitHub
-after the toggle (the setting landed between two destinations), the GitHub
-icon in the phone bar too (four icons beside the wordmark on a docs page at
-320px; it fit, but the menu already lists it), and the mark in ink (the
-filled shape outweighed every other control).
-
-Phone menu. Below 768px every page shows the wordmark, search on docs pages,
-the theme toggle and a menu button. The menu is one sheet everywhere: the
-app's sheet, frosted, 8px from the right edge at 12px, up to 320px wide, over
-the dialog scrim. On the landing pages it is a `<dialog>` holding Docs,
-Roadmap, Changelog and GitHub, as tall as its links; on docs pages it is the
-sidebar drawer, the page tree first and the same links at its foot. GitHub is
-a row like the others with its mark before the word: in a list of words an
-icon alone would be the one row nobody can read, and a phone has no tooltip.
-Rows are 44px, the current one `bg-accent` with the `brand` edge; its close
-mark is an X on both.
-
-Theme toggle. A 44px ghost icon button showing the mode you are in (moon in
-dark, sun in light). The palette lands in one frame with every colour
-transition held, as in the app.
-
-Docs sidebar. The app sidebar's grammar on the canvas: mono microheader
-groups, 14px muted rows with the `bg-accent/60` hover that lands at once and
-lets go over 150ms, the open page `bg-accent` with a 2px `brand` edge 8px in
-from its top and bottom.
-
-Code. The app's console in both modes: `#0b0b0b`, a `#232323` hairline, 9px,
-13px mono at 1.65, emphasis from a grey ramp (keywords `#f5f5f5`, strings
-`#a3a3a3`, comments and punctuation `#737373`, comments italic). Rejected:
-ember keywords (the accent on something that is not an action; YAML keys read
-as links) and the app's editor hues (green strings read as success and indigo
-as a second accent on a reading page). Astro's own highlighter is off so the
-docs highlighter sees each block's language; before, every block rendered as
-plain text.
-
-Tables, inline code, cards. Tables are the app's ruled data: a hairline under
-each row, a muted 13px header over a stronger rule, tabular figures. Inline
-code is mono at 0.85em on `muted` with a hairline. The docs home cards are
-the app's card (`card`, the panel ring and lit top edge, 9px) under mono
-microheader groups. The docs content has no callouts or blockquotes today; a
-blockquote takes the app's 2px rule in `foreground` at 25%.
-
-Copy page. A quiet outline control (`border` hairline, muted text, 7px) beside
-the title.
-
-Search. The app's command palette surface (the popover glass at 12px over the
-dialog scrim), 40rem wide, hung at 14% of the viewport from 768px.
-
-404. The app's error page: the light field at half strength fading out
-toward the footer, the orbit mark around a compass, "Page not found" in
-Fraunces at 32px (40px from 768px), one muted line, then Open the docs in
-`brand` and Home as an outline button.
-
-Motion.
+Shared layer: the header, menu, docs and 404.
 - Phone menu: the app's sheet clock, sliding in from its edge 300ms on
   `--ease-drawer` and out in 220ms `--ease-out`, the scrim fading on the same
   clock; instant when opened or closed from a key. The dialog runs it as
@@ -1662,3 +1750,157 @@ Motion.
 - Under a 4x CPU throttle at 375px the landing menu held 16.7ms frames; the
   docs drawer and search hit a 33ms p95 from mounting their React trees in the
   first frame, not from the slide.
+
+Home page.
+- Hero arrival: the text never moves; the board shot waits until it has
+  decoded, then rises 12px and fades in over 400ms `--ease-out`, once per
+  session (a 150ms fade under reduced motion). Rejected: the page entrance
+  on the text (headline blank for the first 30 to 90ms, so reading waited),
+  no motion (the image popped in whenever it finished decoding, sometimes
+  after the text had been read) and a clip-path wipe (a curtain with no
+  origin, finished within 100ms on the ease-out so it read as a flash). It
+  cost about 0.1s of lab LCP on a throttled phone.
+- Platform switch: the app's sliding highlight for the thumb (200ms
+  `--ease-spring`) and its tab swap for the command (6px from the picked
+  tab's side, 160ms `--ease-out`); a key switch moves at once.
+- Copy: the app's icon swap (the copy icon shrinks to 0.6 and blurs out over
+  150ms as the check pops on `--ease-spring-pop`), held 1.4s, announced as
+  Copied; instant from a key, a 150ms fade under reduced motion.
+- No scroll-triggered reveals, no parallax: the step shots are lazy images
+  that simply appear.
+
+Roadmap and changelog.
+- A release opening: the disclosure (the box snaps open, the content fades in
+  as it settles 4px over 200ms `--ease-out`; closing, it fades out in 120ms and
+  the box shuts after), built on `::details-content` with `content-visibility`
+  as a discrete transition; a browser without it snaps. Chevron turns 90° in
+  150ms `--ease-standard`. Rejected: a snap (only the chevron said anything
+  opened) and a height animation with `interpolate-size` (the rows below glide,
+  but every frame re-lays the page: 89 layouts across six toggles of the
+  33-change release under a 4x CPU throttle against 7 for the disclosure, 2.5
+  times the layout time, growing with the page; the app's rule is that a box
+  changing size snaps). A grid-rows height animation was not built: it costs
+  the same layout per frame.
+- A jump to a roadmap group or a release lands at once and its heading row
+  takes a wash, `foreground` at 9% fading out over 900ms `--ease-out`.
+  Rejected: native smooth scrolling (about 800ms to travel 1850px at 375px,
+  its curve out of our hands, and it delays reading on every keyboard jump)
+  and smooth scrolling plus the wash (slower still).
+- Status markers stay still. Rejected: the `status-pulse` loop on the in
+  progress dots (it says live, and a roadmap is not live; ambient motion on a
+  reading page) and a one-time ring on load (decoration with nothing behind
+  it).
+- Reduced motion: the release content fades in 150ms with no travel, and the
+  wash shortens to 400ms.
+
+## Phone app
+
+The phone app in `native/` speaks this language on a phone. Its mechanics
+(Uniwind, `useCSSVariable`, Reanimated worklets, the navigation shape) are in
+`practices/native.md`; this section holds how it looks and moves.
+
+Every decision below was built as live variants on the Android emulator with
+the seeded workspace, judged from screenshots, 1x and 0.25x recordings and
+frame strips, and measured with `gfxinfo`; the emulator judges whether motion
+runs and degrades, not its final feel.
+
+### What the phone adapts
+
+The phone shares the tokens, the accent's roles, ink focus, status hues, the
+three families, the radii and the web's motion numbers. It adapts these:
+
+- No backdrop blur anywhere: solid surfaces on a still field, which shows
+  behind tab roots only (Phone surfaces).
+- No palette picker, so it shows the default palette; light and dark follow
+  the system until the Appearance setting picks one.
+- Fraunces is a static cut, and titles are sized in points.
+- Push, tab switch and sheets move as the platform does.
+- Press feedback lands on touch, and every gesture has a second way to do the
+  same thing.
+- Rows on a tab root are separated by space, not hairlines.
+
+### Phone tokens and type
+
+Tokens. `native/src/global.css` holds the web's values under the same names,
+dark and light. `focus` and the light field's three glows are colour tokens
+there (`--color-focus`, `--color-field-warm`, `-pink`, `-cool`), because the
+phone reads every colour through `useCSSVariable`.
+
+Type. Fraunces is a static cut at the web's axes (opsz 28, wght 560, SOFT
+50, WONK 1), `Fraunces Display`, for screen titles, record titles and
+empty-state headlines, never under 20pt. A screen title is 30pt, 25pt past 44
+characters and 22pt past 90, three lines at most. Rejected: the static
+Fraunces SemiBold Google Fonts serves, which sits at opsz 9 with SOFT 0 and
+read wide and sharp next to the web's soft titles.
+
+### Phone surfaces
+
+A tab's root sits on the canvas with the still light field behind it and its
+rows straight on the field; pushed screens are the plain canvas; cards, wells
+and sheets are solid. Picked over a raised panel inset 8pt (the field only
+showed in an 8pt frame and the panel cost 16pt of a 412pt width) and the plain
+canvas everywhere (correct and anonymous). The field is one static SVG: Board
+scrolling measured p50 16ms and p90 16ms with it, the same as without it.
+Backdrop blur was tried on the board's drop bar, over a board that holds still
+while a card is held, and lost: frames went to a 95th percentile GPU time of
+4.95s, so the phone has no blur.
+
+Rejected and not built: a theme picker (the phone has none) and blur anywhere.
+
+### Phone lists and chat
+
+Lists. Rows on a tab root are separated by space, not hairlines: a 36pt tile
+or avatar with its state as a dot on the corner, the title, mono meta
+trailing; read titles turn muted. Rows grouped in a card keep hairlines.
+Board columns are `surface-2` wells of cards (the mono key as an eyebrow, the
+title, type and label pills, whoever acts next), under a header with the
+project mark, the stage bar and an "Only mine" switch that takes the ember
+when on. The tab bar's active tab is the ember; its unread count is the ink
+pill.
+
+Chat. Your messages are the ember bubble on the right (12pt corners, the
+bottom-right one 2pt); everyone else's text runs plain under a 32pt avatar
+with the name and mono clock time; day dividers are the microheader between
+hairlines. Bot embeds are the web's status-edged cards with facts. The
+composer is one framed field with the send button inside it, ember once there
+is text.
+
+### Phone motion
+
+The numbers are the web's [Motion baseline](#motion-baseline) unless named.
+
+- Screen push, tab switch and sheets: the platform's. Rejected for push:
+  slide from the right (a 300ms slide on an act repeated all session) and
+  fade from the bottom (the board and the ticket showed through each other,
+  the reason the web dropped its title morph). Sheets take a 12pt corner.
+- Sending a message: Rise, 12px over 240ms from 0.96 out of the bubble's
+  bottom-right corner; the server's copy keeps the pending row's key, so the
+  rise is never cut. Rejected: rising from the composer (64px; on a phone it
+  doubled the list's own scroll to the end and read as two moves), a pop from
+  0.9 (the bubble's text shifted as it scaled) and none (the bubble appeared
+  with the list's jump and nothing said it was yours).
+- Moving a card: hold 280ms to pick it up; it lifts to 1.03 with the
+  elevated shadow in 150ms (a shadow layer drawn once and faded, never an
+  animated shadow), follows the finger 1:1, and the columns rise in as drop
+  targets along the bottom; over one the card shrinks to 0.55 around the
+  finger so the target stays in view and the target takes the ember edge.
+  Dropped, it glides onto the target in 220ms and shrinks into it while the
+  board moves the card at once; let go anywhere else, it springs back
+  (300ms, no bounce). Under reduced motion nothing scales and the glide
+  stays. Drag frames measured p50 16ms, p90 27ms on the emulator, whose input
+  injection paces the frames. Each card also offers "Move to" accessibility
+  actions.
+- Inbox: an unread row swipes left to mark it read (its "Mark read" action
+  is the alternative); the unread dot shrinks to 0.6 as it fades over 150ms.
+- Pull to refresh: the platform's spinner in the ember, since it is progress.
+  Rejected: a muted spinner, which read as disabled.
+- Press: the `accent` tint on rows and cards, on touch; a labelled button
+  also presses to 0.97 over 100ms and lets go over 150ms; an icon button
+  answers with its background alone. Rejected: the Android ripple (no iOS
+  counterpart, the same at rest, and it doubled the tint where both ran).
+- Empty state: the orbit turns into place as on the web; a compact one fades
+  and rises 4px. Loader: the orbit at 16pt, a linear 1.2s keyframe turn,
+  held back 300ms. Hand-off: content that replaces a loader rises 6px over
+  200ms where it stood.
+- Reduced motion (Android's Remove animations): every moment is a 150ms
+  fade or nothing; the loader holds still; a drag still tracks the finger.

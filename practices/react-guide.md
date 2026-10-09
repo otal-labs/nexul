@@ -139,8 +139,8 @@ Every screen decomposes into named, single-responsibility components:
 - **`XxxPage`**: fetches, handles loading/error/empty, composes Feeds. No
   data transforms, no inline lists.
 - **`XxxFeed`**: the list of entities (search/filter/actions). Lists are
-  hairline rows, never a table library, see `practices/design-language.md`'s
-  row pattern.
+  hairline rows, never a table library, see the design language's
+  [Pattern spec](design-language.md#pattern-spec) (List and row).
 - **`XxxSection`**: a titled group rendered inside a page or feed.
 - **`XxxCard`/`XxxRow`/`XxxItem`**: one repeated entity.
 
@@ -442,8 +442,9 @@ export const TicketSummary = ({ ticket, compact = false }: TicketSummaryProps) =
 
 A list is a hand-built hairline-row list, never a table library: a column-header
 row over a `<ul>` of `border-b`/`divide-y` rows, exactly like the real
-`ServicesFeed.tsx`. `practices/design-language.md`'s "List / row" pattern spec
-is the row layout of record; this section covers the component shape only.
+`ServicesFeed.tsx`. The design language's
+[Pattern spec](design-language.md#pattern-spec) (List and row) is the row
+layout of record; this section covers the component shape only.
 
 ```tsx
 import type { Ticket } from "@/models/Ticket";
@@ -1036,7 +1037,8 @@ Rules:
 
 The deploy topology is rendered with `@xyflow/react`. Visual tokens (canvas
 field, node cards, edges, selection ring) live in the shared theme; see
-`practices/design-language.md` (the spec of record) and `web/src/index.css`
+[Canvas (topology)](design-language.md#canvas-topology) (the spec of record)
+and `web/src/index.css`
 (the token source of record); this section covers mechanics only. The nodes
 are ours and carry Nexul-specific signals (MCP index health, owning
 ticket, live deploy status).
@@ -1226,8 +1228,8 @@ export const Button = ({ className, variant, size, ref, ...props }: ButtonProps)
   its transitions in `index.css`; a new overlay takes one of them, never
   `animate-in`/`animate-out` keyframes, which restart on a reopen. Page, list
   and highlight motion goes through the shared primitives (`EnterList`, `ActiveIndicator`,
-  `usePageEntrance`, `lib/motion.ts`); the numbers are the Motion baseline in
-  `practices/design-language.md`. The global `prefers-reduced-motion` block in
+  `usePageEntrance`, `lib/motion.ts`); the numbers are the design language's
+  [Motion baseline](design-language.md#motion-baseline). The global `prefers-reduced-motion` block in
   `index.css` flattens CSS motion; the primitives keep a short fade.
 
 The shadcn CLI now defaults a fresh `init` to Base UI, not Radix; this repo
@@ -1246,9 +1248,10 @@ from the CLI: shadcn's headless-primitives line, already used for
 
 Tailwind v4 is configured in CSS, not a JS config. shadcn's v4 setup uses
 `@theme inline` to expose CSS variables to utilities, plus a class-based dark
-variant. **Tokens are not specified here, see
-`practices/design-language.md` (the visual spec of record) for the direction
-and `web/src/index.css` (the token source of record) for the values.**
+variant. **Tokens are not specified here, see the design language's
+[Shared core](design-language.md#shared-core) (the visual spec of record) for
+the direction and `web/src/index.css` (the token source of record) for the
+values.**
 Structurally the theme adds, beyond the default shadcn set: a `surface-2`
 token (wells inside a panel: board columns, canvas, logs), the `panel` token
 and `panel` utility (the frosted surface every page floats in), the `brand`
@@ -1311,10 +1314,10 @@ mounted in today.
   with the DOM.
 - All colors are semantic tokens; never hard-code palette classes for themed
   surfaces. The one accent is `brand`, held to the roles in
-  `practices/design-language.md`. Status hues come from `success` / `warning` /
+  [The accent](design-language.md#the-accent). Status hues come from `success` / `warning` /
   `info` / `destructive` tokens, rendered as a colored icon or dot next to
   plain text, never a filled or tinted-background chip; type and label may be
-  tinted pills (see `practices/design-language.md`).
+  tinted pills (see [Status](design-language.md#status)).
 - Conditional classes via `cn()`:
 
 ```tsx
