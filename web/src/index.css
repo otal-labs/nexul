@@ -958,6 +958,85 @@ a.mention-chip:hover {
   transition-duration: 200ms, 150ms;
 }
 
+/* An empty state's own entrance, the orbit turning into place (design-language.md, Motion baseline). */
+.empty-state {
+  animation: empty-rise 200ms var(--ease-out) both;
+}
+.empty-state[data-size="default"] {
+  animation: none;
+  [data-orbit-outer],
+  [data-orbit-inner],
+  [data-orbit-ember],
+  [data-orbit-cool] {
+    transform-box: view-box;
+    transform-origin: 56px 56px;
+  }
+  [data-orbit-outer] {
+    animation: orbit-ring 520ms var(--ease-out) both;
+  }
+  [data-orbit-inner] {
+    animation: orbit-inner 620ms var(--ease-out) 40ms both;
+  }
+  [data-orbit-ember] {
+    animation: orbit-swing 700ms var(--ease-out) 60ms both;
+  }
+  [data-orbit-cool] {
+    animation: orbit-swing 700ms var(--ease-out) 100ms both;
+  }
+  [data-orbit-disc] {
+    animation: orbit-disc 320ms var(--ease-out) both;
+  }
+  > :nth-child(2) {
+    animation: empty-rise-6 260ms var(--ease-out) 90ms both;
+  }
+  > :nth-child(3) {
+    animation: empty-rise-6 260ms var(--ease-out) 140ms both;
+  }
+  > :nth-child(4) {
+    animation: empty-rise-6 260ms var(--ease-out) 190ms both;
+  }
+}
+@keyframes orbit-ring {
+  from {
+    opacity: 0;
+    scale: 0.92;
+  }
+}
+@keyframes orbit-inner {
+  from {
+    opacity: 0;
+    rotate: -40deg;
+    scale: 0.9;
+  }
+}
+@keyframes orbit-swing {
+  from {
+    opacity: 0;
+    rotate: -75deg;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+@keyframes orbit-disc {
+  from {
+    opacity: 0;
+    scale: 0.94;
+  }
+}
+@keyframes empty-rise {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+@keyframes empty-rise-6 {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+
 /* Command palette rows that join the list after it opened fade in; opacity only, since the list is being read. */
 .command-results[data-settled] [role="group"],
 .command-results[data-settled] [role="option"] {
@@ -982,7 +1061,8 @@ a.mention-chip:hover {
   .disclosure > * {
     transition-delay: 0s !important;
   }
-  .arrive {
+  .arrive,
+  .empty-state {
     animation: fade-in 150ms var(--ease-out) both !important;
   }
 }
@@ -1076,4 +1156,5 @@ a.mention-chip:hover {
   --lk-font-family: var(--font-sans);
   --lk-border-radius: var(--radius-md);
 }
+
 

@@ -384,8 +384,8 @@ then a Fraunces headline at 26px, one plain muted line, and the action. No
 border around it: an empty page reads as a first-run screen, not a
 placeholder box. The `compact` size (list panes, sub-sections) keeps the same
 mark at 56px with a 14px Inter title, because Fraunces never goes under 20px.
-The mark is static SVG on every surface; the live field never runs inside a
-panel. `NoDataDisplay` passes an `icon` through for the glyph that names the
+The mark is SVG on every surface and still once it has arrived (its entrance
+is in the Motion baseline); the live field never runs inside a panel. `NoDataDisplay` passes an `icon` through for the glyph that names the
 page. Loading is the same orbit at 16px, the ember dot circling a faint ring
 (1.2s a turn, still under reduced motion), plus a label, held back 300ms; no
 skeleton screens. `EmptyState` is for a whole empty page; an empty list inside
@@ -649,8 +649,9 @@ writing its own.
   workspace) changes by a click, the blocks inside its panels rise 6px and
   fade in over 200ms `--ease-out`, the first three 30ms apart, the rest with
   the third. Blocks that mount while the page's data lands (within 400ms) rise
-  as they arrive. A block holding an `EnterList` leaves the motion to its
-  rows; a block that runs its own entrance keeps it. A tab, a settings
+  as they arrive. A block holding an `EnterList` or an `EmptyState`
+  (`data-enter-list`, `data-enter-own`) leaves the motion to them; a block
+  that runs its own entrance keeps it. A tab, a settings
   section or another record inside the same page changes in place.
 - Lists (`EnterList`): the rows on screen at mount rise 4px and fade over
   200ms, the first eight 25ms apart, the rest with the eighth; a list of 50 or
@@ -706,6 +707,20 @@ writing its own.
   `translateX` and `scaleX`) over 250ms `--ease-standard`, and a count that
   changed rises 6px as it fades in over 200ms. Reduced motion: no scale, the
   changed count fades in 150ms.
+- Empty state (`.empty-state` in `index.css`): a whole-page one turns its
+  orbit into place. The outer ring settles from 0.92 (520ms), the dashed one
+  turns in from -40° and 0.9 (620ms), the ember and blue dots swing 75° along
+  their orbits (700ms, 60 and 100ms in), the disc settles from 0.94 (320ms),
+  and the headline, line and action rise 6px over 260ms at 90, 140 and 190ms,
+  all `--ease-out`: readable by 350ms, still by 760ms, which a rare first-run
+  screen can afford. A compact one fades and rises 4px over 200ms. Reduced
+  motion: one 150ms fade.
+- Loader hand-off (`LoadingDisplay`, `enterAfterLoader`): content that
+  replaces a loader that was on screen rises 6px and fades in over 200ms where
+  the loader stood, the page entrance's own numbers, so late data arrives the
+  same way as data that landed inside the entrance's 400ms; never a panel,
+  and never outside the page frame. The loader itself stays a linear 1.2s
+  turn.
 - Paired elements (overlay and dialog, drawer and backdrop, filter bar and
   result list) share identical duration and easing, or the pair reads as two
   events.
@@ -785,3 +800,15 @@ Command palette.
 - Active row: still jumps. Rejected: a sliding highlight on pointer moves,
   which trailed the cursor and split from the brand icon and enter mark that
   jump with it.
+
+Empty state and loader.
+- Entrance: the orbit turns into place (above). Rejected: the block's plain
+  fade and 4px rise (it also doubled with the page entrance's rise of the
+  block around it) and a quiet stagger of mark, headline, line and action
+  (correct and forgettable; the mark's motion is what says it is an orbit).
+- Loader idle: unchanged, linear. Rejected: a two-dot comet tail (a smear at
+  16px) and an eased turn (it slowed at the top of every turn, which read as
+  the load stalling).
+- Hand-off: the rise. Rejected: a snap (content popped where the loader
+  was) and an opacity-only fade (a second arrival vocabulary beside the page
+  entrance's rise).

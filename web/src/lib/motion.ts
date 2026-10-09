@@ -68,16 +68,28 @@ const findPanels = (el: Element, depth: number): Element[] =>
 
 const unwrap = (el: Element): Element[] => (getComputedStyle(el).display === "contents" ? [...el.children].flatMap(unwrap) : [el]);
 
-// A block that holds an entering list leaves the motion to its rows; one that runs its own entrance keeps it.
+// A block that holds an entering list or an empty state leaves the motion to them; one that runs its own entrance keeps it.
+const OWN_ENTRANCE = "[data-enter-list], [data-enter-own]";
 const pageBlocks = (frame: HTMLElement): Element[] => {
   const panels = isPanel(frame) ? [frame.firstElementChild].filter((el) => el !== null) : findPanels(frame, 4);
   return panels
     .flatMap((panel) => [...panel.children].flatMap(unwrap))
-    .filter((block) => !block.matches("[data-enter-list]") && !block.querySelector("[data-enter-list]") && (block.getAnimations?.().length ?? 0) === 0);
+    .filter((block) => !block.matches(OWN_ENTRANCE) && !block.querySelector(OWN_ENTRANCE) && (block.getAnimations?.().length ?? 0) === 0);
+};
+
+let pageEnteredAt = -Infinity;
+
+// Content replacing a loader that was on screen rises in like a late page block; never a panel, since panels never move.
+export const enterAfterLoader = (parent: HTMLElement, before: Set<Element>) => {
+  if (performance.now() - pageEnteredAt < PAGE_WINDOW_MS || !parent.closest(".app-frame")) return;
+  [...parent.children]
+    .filter((child) => !before.has(child) && !isPanel(child) && !child.matches(OWN_ENTRANCE) && !child.querySelector(OWN_ENTRANCE))
+    .forEach((child) => enter(child, rise(6), 200));
 };
 
 // The page's content rises inside its panels, which never move; blocks that mount while its data lands rise as they arrive.
 export const enterPage = (frame: HTMLElement) => {
+  pageEnteredAt = performance.now();
   const seen = new WeakSet<Element>();
   const run = (stagger: boolean) =>
     pageBlocks(frame)
