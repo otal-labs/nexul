@@ -218,15 +218,22 @@ func (s *Service) ExistingThread(ctx context.Context, kind Kind, targetID, calle
 	return c, nil
 }
 
-// listed keeps the conversations the caller reads; membership was checked once, and threads ask their project.
-func (s *Service) listed(ctx context.Context, workspaceID, userID string, cs []*Conversation) ([]*Conversation, error) {
-	v := s.viewer(userID, workspaceID)
+// listed keeps the conversations the caller reads; membership was checked once, and the doc and ticket threads are
+// asked about in one batch each.
+func (s *Service) listed(ctx context.Context, userID string, cs []*Conversation) ([]*Conversation, error) {
+	threads, err := s.readableThreads(ctx, userID, cs)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]*Conversation, 0, len(cs))
 	for _, c := range cs {
-		err := s.reads(ctx, v, c)
-		if err == nil && projectThread(c.Kind) {
-			err = s.requireGate(ctx, c)
+		if readable, thread := threads[c.ID]; thread {
+			if readable {
+				out = append(out, c)
+			}
+			continue
 		}
+		err := s.reads(ctx, userID, c)
 		if err != nil && !permissions.Refused(err) {
 			return nil, err
 		}
@@ -235,6 +242,57 @@ func (s *Service) listed(ctx context.Context, workspaceID, userID string, cs []*
 		}
 	}
 	return out, nil
+}
+
+// readableThreads answers every doc, ticket, and interview thread in cs, by conversation id: docs:thread on the doc
+// for all doc threads at once, tickets:read through each ticket's project for all ticket threads at once.
+func (s *Service) readableThreads(ctx context.Context, userID string, cs []*Conversation) (map[string]bool, error) {
+	docs, tickets, err := s.threadTargets(ctx, userID, cs)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]bool{}
+	for _, c := range cs {
+		switch {
+		case c.Kind == KindDocThread:
+			out[c.ID] = docs[c.DocID]
+		case c.Kind == KindTicketThread && tickets != nil:
+			out[c.ID] = tickets[c.TicketID]
+		case projectThread(c.Kind):
+			err := s.requireGate(ctx, c)
+			if err != nil && !permissions.Refused(err) {
+				return nil, err
+			}
+			out[c.ID] = err == nil
+		}
+	}
+	return out, nil
+}
+
+// threadTargets is which of cs's thread docs userID holds docs:thread on and which thread tickets they read; tickets
+// is nil without a thread gate, leaving each ticket thread to its workspace check.
+func (s *Service) threadTargets(ctx context.Context, userID string, cs []*Conversation) (docs, tickets map[string]bool, err error) {
+	var docIDs, ticketIDs []string
+	for _, c := range cs {
+		if c.Kind == KindDocThread {
+			docIDs = append(docIDs, c.DocID)
+		}
+		if c.Kind == KindTicketThread {
+			ticketIDs = append(ticketIDs, c.TicketID)
+		}
+	}
+	docs = map[string]bool{}
+	if s.docAccess != nil && userID != "" && len(docIDs) > 0 {
+		docs = s.docAccess.CanDocs(ctx, userID, "", docIDs, permissions.DocsThread)
+	}
+	if s.threads == nil || len(ticketIDs) == 0 {
+		return docs, nil, nil
+	}
+	tickets, err = s.threads.RequireTickets(ctx, ticketIDs, permissions.TicketsRead)
+	if err != nil {
+		return nil, nil, fmt.Errorf("ticket threads: %w", err)
+	}
+	return docs, tickets, nil
 }
 
 // canThread reports whether userID holds docs:thread on docID; a service with no wired DocAccess fails closed.
@@ -407,5 +465,5 @@ func (s *Service) ListConversations(ctx context.Context, workspaceID, userID str
 	if err != nil {
 		return nil, fmt.Errorf("list conversations for user %s: %w", userID, err)
 	}
-	return s.listed(ctx, workspaceID, userID, cs)
+	return s.listed(ctx, userID, cs)
 }

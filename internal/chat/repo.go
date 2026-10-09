@@ -12,6 +12,8 @@ import (
 // listing, messages, and get-or-create by docs:thread (ADR 0057); wired to access.Service.Can.
 type DocAccess interface {
 	Can(ctx context.Context, userID, docID string, action permissions.Action) (bool, error)
+	// CanDocs answers Can for each of docIDs at the cost of one check; an empty projectID reads where each doc lives.
+	CanDocs(ctx context.Context, userID, projectID string, docIDs []string, action permissions.Action) map[string]bool
 }
 
 // Repo is the consumer-side persistence contract for chat; mutations carry outbox events.

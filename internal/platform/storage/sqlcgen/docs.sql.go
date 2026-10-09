@@ -8,6 +8,7 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
+	"strings"
 )
 
 const bumpDocVersion = `-- name: BumpDocVersion :execrows
@@ -208,6 +209,51 @@ func (q *Queries) InsertNamedDocVersion(ctx context.Context, arg InsertNamedDocV
 		arg.CreatedAt,
 	)
 	return err
+}
+
+const listDocScopes = `-- name: ListDocScopes :many
+SELECT d.id, COALESCE(d.project_id, '') AS project_id, COALESCE(p.workspace_id, '') AS workspace_id
+FROM docs d LEFT JOIN projects p ON p.id = d.project_id
+WHERE d.id IN (/*SLICE:ids*/?)
+`
+
+type ListDocScopesRow struct {
+	ID          string
+	ProjectID   string
+	WorkspaceID string
+}
+
+func (q *Queries) ListDocScopes(ctx context.Context, ids []string) ([]ListDocScopesRow, error) {
+	query := listDocScopes
+	var queryParams []interface{}
+	if len(ids) > 0 {
+		for _, v := range ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDocScopesRow
+	for rows.Next() {
+		var i ListDocScopesRow
+		if err := rows.Scan(&i.ID, &i.ProjectID, &i.WorkspaceID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listDocVersions = `-- name: ListDocVersions :many

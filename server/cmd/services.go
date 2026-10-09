@@ -270,7 +270,8 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	templatesSvc := wireTemplates(store, accessSvc, memoriesSvc, tenancySvc, playsSvc, workspaceSvc)
 	// HasPermission's role-mask layer needs both roles and tenancy, wired only after the cycle above closes.
 	accessSvc.SetRoles(accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc})
-	accessSvc.SetDocWorkspaces(accessDocWorkspaceResolver{docs: store.Docs, projects: store.Projects})
+	accessSvc.SetDocWorkspaces(accessDocWorkspaceResolver{docs: store.Docs})
+	accessSvc.SetCommits(store.Commits())
 	accessSvc.SetScopes(accessScopes{projects: store.Projects, members: store.WorkspaceMembers})
 	accessSvc.SetPlayWorkspaces(accessPlayWorkspaceResolver{plays: store.Plays})
 	docsSvc.SetClarifyGate(clarifyPlayGate{access: accessSvc, plays: store.Plays, projects: store.Projects})
@@ -279,7 +280,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	chatSvc.SetGate(accessSvc)
 	chatSvc.SetMembership(membershipGate{members: store.WorkspaceMembers})
 	chatSvc.SetThreadGate(chatThreadGate{projectEntityGate{access: accessSvc, projects: store.Projects, tickets: store.Tickets}})
-	chatSvc.SetStanding(chatStanding{roles: accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc}})
+	chatSvc.SetStanding(accessSvc)
 	attachmentsSvc.SetConversations(chatAttachmentConversations{svc: chatSvc})
 	botwebhookSvc := botwebhook.NewService(botwebhook.Config{
 		Repo: store.Botwebhooks, Gate: accessSvc, Conversations: botwebhookConversations{svc: chatSvc}, Instance: dnsSettingsAdapter{store.Settings},
