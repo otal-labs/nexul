@@ -142,6 +142,38 @@ func TestWriteJSON_NilSlicesInsideStructsMarshalAsEmptyArrays(t *testing.T) {
 	assert.JSONEq(t, `{"items":[{"prs":[],"branches":[],"names":[],"ptr":[]}]}`, rec.Body.String())
 }
 
+func TestWriteJSON_NilSlicesBehindPointersAndInterfacesMarshalAsEmptyArrays(t *testing.T) {
+	type entity struct {
+		Topics []string        `json:"topics"`
+		Raw    json.RawMessage `json:"raw"`
+	}
+	tests := []struct {
+		name string
+		v    any
+		want string
+	}{
+		{"pointer to a struct", &entity{}, `{"topics":[],"raw":null}`},
+		{"slice of pointers", []*entity{{}}, `[{"topics":[],"raw":null}]`},
+		{"map of interface values", map[string]any{"items": []string(nil), "one": &entity{}}, `{"items":[],"one":{"topics":[],"raw":null}}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			WriteJSON(rec, http.StatusOK, tt.v)
+			assert.JSONEq(t, tt.want, rec.Body.String())
+		})
+	}
+}
+
+func TestWriteJSON_PointerArgumentIsNotMutated(t *testing.T) {
+	type entity struct {
+		Topics []string `json:"topics"`
+	}
+	e := &entity{}
+	WriteJSON(httptest.NewRecorder(), http.StatusOK, e)
+	assert.Nil(t, e.Topics)
+}
+
 func TestDecodeJSON_ValidBody(t *testing.T) {
 	r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"title":"hi"}`))
 	var v map[string]string

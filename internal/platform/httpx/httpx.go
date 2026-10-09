@@ -64,12 +64,20 @@ func normalizeNilSlicesValue(rv reflect.Value) reflect.Value {
 		return normalizeNilSliceStruct(rv)
 	case reflect.Map:
 		return normalizeNilSliceMap(rv)
+	case reflect.Pointer:
+		return normalizeNilSlicePointer(rv)
+	case reflect.Interface:
+		return normalizeNilSliceInterface(rv)
 	default:
 		return rv
 	}
 }
 
 func normalizeNilSliceKind(rv reflect.Value) reflect.Value {
+	// An empty json.RawMessage fails to marshal and an empty []byte reads as "", so byte slices keep their null.
+	if rv.Type().Elem().Kind() == reflect.Uint8 {
+		return rv
+	}
 	if rv.IsNil() {
 		return reflect.MakeSlice(rv.Type(), 0, 0)
 	}
@@ -92,6 +100,27 @@ func normalizeNilSliceStruct(rv reflect.Value) reflect.Value {
 		f.Set(normalizeNilSlicesValue(f))
 	}
 	return rv
+}
+
+// normalizeNilSlicePointer walks a copy of the pointee so the caller's value is never mutated.
+func normalizeNilSlicePointer(rv reflect.Value) reflect.Value {
+	if rv.IsNil() {
+		return rv
+	}
+	cp := reflect.New(rv.Elem().Type())
+	cp.Elem().Set(rv.Elem())
+	cp.Elem().Set(normalizeNilSlicesValue(cp.Elem()))
+	return cp
+}
+
+func normalizeNilSliceInterface(rv reflect.Value) reflect.Value {
+	if rv.IsNil() {
+		return rv
+	}
+	inner := reflect.ValueOf(normalizeNilSlice(rv.Elem().Interface()))
+	out := reflect.New(rv.Type()).Elem()
+	out.Set(inner)
+	return out
 }
 
 func normalizeNilSliceMap(rv reflect.Value) reflect.Value {
