@@ -8,10 +8,12 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
+// SearchResult is one ranked hit; Search fills Ticket with the ticket it loaded to check the caller may read it.
 type SearchResult struct {
-	ID    string
-	Title string
-	Rank  float64
+	ID     string
+	Title  string
+	Rank   float64
+	Ticket *Ticket `json:"-"`
 }
 
 // StatusStore is workspace's status columns, used to validate transitions without importing workspace (ADR 0017).

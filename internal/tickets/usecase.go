@@ -811,10 +811,19 @@ func (s *Service) Search(ctx context.Context, query string, limit int) ([]Search
 	if err != nil {
 		return nil, fmt.Errorf("search tickets: %w", err)
 	}
-	return permissions.Filter(results, func(r SearchResult) string { return r.ID }, func(id string) error {
-		_, err := s.load(ctx, id, permissions.TicketsRead)
-		return err
-	})
+	out := make([]SearchResult, 0, len(results))
+	for _, r := range results {
+		t, err := s.load(ctx, r.ID, permissions.TicketsRead)
+		if permissions.Refused(err) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		r.Ticket = t
+		out = append(out, r)
+	}
+	return out, nil
 }
 
 // LinkPR is a no-op on a duplicate link; the ticket must already exist.

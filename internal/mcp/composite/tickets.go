@@ -204,11 +204,7 @@ func searchTickets(ctx context.Context, t *tickets.Service, query string) ([]*ti
 	}
 	out := make([]*tickets.Ticket, 0, len(hits))
 	for _, h := range hits {
-		tk, err := t.Get(ctx, h.ID)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, tk)
+		out = append(out, h.Ticket)
 	}
 	return out, nil
 }
