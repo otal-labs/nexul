@@ -69,38 +69,6 @@ export const withExtra = (value: string[], extra: PermissionInfo, on: boolean): 
   return [...rest, extra.value];
 };
 
-// The level most domains share, so a role reads as its exceptions plus one "everything else" line.
-const baseLevelOf = (domains: PermissionDomain[], value: string[]): number => {
-  const top = Math.max(0, ...domains.map((domain) => domain.levels.length));
-  let base = 0;
-  let best = 0;
-  for (let level = 1; level <= top; level++) {
-    const count = domains.filter((domain) => levelOf(domain, value) === Math.min(level, domain.levels.length)).length;
-    if (count <= best) continue;
-    base = level;
-    best = count;
-  }
-  if (best * 2 <= domains.length) return 0;
-  return base;
-};
-
-// One line per domain that differs from the shared level ("Docs · Write + Thread"), instead of one badge per action.
-export const summarize = (domains: PermissionDomain[], value: string[]): string[] => {
-  const base = baseLevelOf(domains, value);
-  const exceptions = domains.flatMap((domain) => {
-    const level = levelOf(domain, value);
-    const extras = domain.extras.filter((entry) => value.includes(entry.value)).map((entry) => capitalize(entry.action));
-    const atBase = base > 0 && level === Math.min(base, domain.levels.length);
-    if (atBase && extras.length === 0) return [];
-    if (level === 0 && extras.length === 0 && base === 0) return [];
-    const parts = [...(level > 0 || base > 0 ? [levelName(level)] : []), ...extras];
-    return [`${domain.name} · ${parts.join(" + ")}`];
-  });
-  if (base === 0) return exceptions;
-  const rest = exceptions.length === 0 ? "Every domain" : "Everything else";
-  return [...exceptions, `${rest} · ${levelName(base)}`];
-};
-
 // One line under each rung in a level menu, so the ladder explains itself where it is picked.
 export const LEVEL_HINTS = ["No access", "Open and read", "Create and edit", "Also delete"];
 
@@ -139,4 +107,27 @@ export const changeSummary = (domains: PermissionDomain[], before: string[], aft
   if (!first) return "access updated";
   if (changed.length > 1) return `every area → ${projectLevelLabel(domains, after)}`;
   return `${first.name.toLowerCase()} → ${levelLabel(first, after)}`;
+};
+
+export interface LevelTally {
+  // Domains per level, None first; a read-only domain at Read counts under Read.
+  counts: number[];
+  // Domains the set holds nothing in, by name, in catalog order.
+  missing: string[];
+  // Extra verbs held (Run, Clone, Thread), counted across every domain.
+  extras: number;
+}
+
+// How many domains sit at each level, for a role that reads at a glance.
+export const levelTally = (domains: PermissionDomain[], value: string[]): LevelTally => {
+  const counts = Array.from({ length: LEVEL_ACTIONS.length + 1 }, () => 0);
+  const missing: string[] = [];
+  let extras = 0;
+  for (const domain of domains) {
+    const level = levelOf(domain, value);
+    counts[level] = (counts[level] ?? 0) + 1;
+    if (level === 0) missing.push(domain.name);
+    extras += domain.extras.filter((extra) => value.includes(extra.value)).length;
+  }
+  return { counts, missing, extras };
 };
