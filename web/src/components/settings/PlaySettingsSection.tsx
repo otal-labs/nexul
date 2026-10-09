@@ -1,4 +1,5 @@
 import { PlusIcon } from "lucide-react";
+import { AnimatePresence } from "motion/react";
 
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -71,17 +72,20 @@ export const PlaySettingsSection = ({ canWrite, canDelete }: PlaySettingsSection
       {error && <ErrorDisplay error={error} />}
       {plays && plays.length === 0 && <EmptyRow>No plays yet</EmptyRow>}
       {plays && plays.length > 0 && (
-        <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
-          {plays.map((play) => (
-            <PlayRow
-              key={play.id}
-              play={play}
-              workspaceId={workspaceId}
-              canWrite={canWrite}
-              canDelete={canDelete}
-              onEdit={() => void openDialog(play)}
-            />
-          ))}
+        <EnterList className="relative divide-y divide-border overflow-hidden rounded-md border">
+          <AnimatePresence initial={false} mode="popLayout">
+            {plays.map((play, index) => (
+              <PlayRow
+                key={play.id}
+                index={index}
+                play={play}
+                workspaceId={workspaceId}
+                canWrite={canWrite}
+                canDelete={canDelete}
+                onEdit={() => void openDialog(play)}
+              />
+            ))}
+          </AnimatePresence>
         </EnterList>
       )}
     </SettingsCard>
