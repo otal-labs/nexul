@@ -10,6 +10,7 @@ export const queueItem = (overrides: Partial<PlayQueueItem> = {}): PlayQueueItem
   play_id: "play-1",
   play_label: "Fix with AI",
   auto_play_id: "ap-1",
+  automation_id: "",
   person_id: "u-alice",
   run_on: "developer",
   moment: "ticket.unblocked",

@@ -98,6 +98,36 @@ func (q *Queries) GetPlay(ctx context.Context, id string) (Play, error) {
 	return i, err
 }
 
+const getPlayByLabel = `-- name: GetPlayByLabel :one
+SELECT id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key FROM plays WHERE workspace_id = ? AND label = ? COLLATE NOCASE
+`
+
+type GetPlayByLabelParams struct {
+	WorkspaceID string
+	Label       string
+}
+
+func (q *Queries) GetPlayByLabel(ctx context.Context, arg GetPlayByLabelParams) (Play, error) {
+	row := q.db.QueryRowContext(ctx, getPlayByLabel, arg.WorkspaceID, arg.Label)
+	var i Play
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Label,
+		&i.Type,
+		&i.Description,
+		&i.Instructions,
+		&i.Enabled,
+		&i.ShowWhenStage,
+		&i.ExcludedProjectIds,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.BuiltinKey,
+	)
+	return i, err
+}
+
 const listPlays = `-- name: ListPlays :many
 SELECT id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key FROM plays WHERE workspace_id = ? ORDER BY label
 `

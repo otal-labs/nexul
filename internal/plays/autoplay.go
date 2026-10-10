@@ -21,6 +21,8 @@ const (
 	MomentTicketTestFailed   Moment = "ticket.test_failed"
 	MomentDocCreated         Moment = "doc.created"
 	MomentDocChanged         Moment = "doc.changed"
+	// MomentAutomation marks a queued run an automation's runPlay asked for; no auto play waits for it.
+	MomentAutomation Moment = "automation"
 )
 
 var momentPlayType = map[Moment]Type{

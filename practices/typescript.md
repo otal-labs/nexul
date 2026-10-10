@@ -108,7 +108,8 @@ export class ApiError extends Error {
 `status` is the HTTP status the gateway's own `internal/platform/httpx`
 package chose for the underlying domain error, `body` is the parsed JSON
 response (typically the gateway's `{message, code}` envelope), and
-`message` is a short `"<method> <path> failed: <status>"` string for logs.
+`message` is `"<method> <path> failed: <status>: <the envelope's message>"`,
+so a handler that lets it escape leaves the server's reason in run history.
 A new SDK failure path throws `ApiError` or a subclass of it, never a bare
 string, a plain object, or an unthrown rejection value a caller has to
 inspect by hand.

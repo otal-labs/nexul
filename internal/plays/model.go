@@ -83,6 +83,8 @@ type Via string
 const (
 	ViaWeb Via = "web"
 	ViaMCP Via = "mcp"
+	// ViaAutomation is a run an automation queued with runPlay.
+	ViaAutomation Via = "automation"
 )
 
 // TrailState is where a run stands; starting precedes the harness accepting, waiting is a turn stopped on a

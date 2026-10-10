@@ -79,31 +79,32 @@ func (q *Queries) GetPlayQueueItem(ctx context.Context, id string) (PlayQueue, e
 }
 
 const insertPlayQueueItem = `-- name: InsertPlayQueueItem :execrows
-INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, automation_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT DO NOTHING
 `
 
 type InsertPlayQueueItemParams struct {
-	ID          string
-	WorkspaceID string
-	ProjectID   string
-	TargetType  string
-	TargetID    string
-	PlayID      string
-	PlayLabel   string
-	AutoPlayID  string
-	PersonID    string
-	RunOn       string
-	Moment      string
-	Via         string
-	Priority    int64
-	Status      string
-	Reason      string
-	TrailID     string
-	QueuedAt    int64
-	DecidedAt   sql.NullInt64
-	NotBefore   int64
+	ID           string
+	WorkspaceID  string
+	ProjectID    string
+	TargetType   string
+	TargetID     string
+	PlayID       string
+	PlayLabel    string
+	AutoPlayID   string
+	AutomationID string
+	PersonID     string
+	RunOn        string
+	Moment       string
+	Via          string
+	Priority     int64
+	Status       string
+	Reason       string
+	TrailID      string
+	QueuedAt     int64
+	DecidedAt    sql.NullInt64
+	NotBefore    int64
 }
 
 func (q *Queries) InsertPlayQueueItem(ctx context.Context, arg InsertPlayQueueItemParams) (int64, error) {
@@ -116,6 +117,7 @@ func (q *Queries) InsertPlayQueueItem(ctx context.Context, arg InsertPlayQueueIt
 		arg.PlayID,
 		arg.PlayLabel,
 		arg.AutoPlayID,
+		arg.AutomationID,
 		arg.PersonID,
 		arg.RunOn,
 		arg.Moment,

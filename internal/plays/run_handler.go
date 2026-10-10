@@ -52,6 +52,7 @@ func (h *RunHandler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/plays/decisions-check", h.retryDecisionsCheck)
 	mux.HandleFunc("GET /api/plays/queue", h.queue)
 	mux.HandleFunc("GET /api/plays/queued", h.queued)
+	mux.HandleFunc("POST /api/plays/queue", h.queuePlay)
 	mux.HandleFunc("POST /api/plays/queue/resume", h.resumeQueue)
 	mux.HandleFunc("POST /api/plays/queue/{itemID}/cancel", h.cancelQueued)
 	return mux
@@ -76,6 +77,35 @@ func (h *RunHandler) queued(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, items)
+}
+
+type queuePlayRequest struct {
+	Play     string `json:"play"`
+	TicketID string `json:"ticket_id"`
+	RunOn    RunOn  `json:"run_on"`
+	Priority Level  `json:"priority"`
+}
+
+// queuedRun is what runPlay answers: the run's queue id, queued or didnt_run, and why or what it waits on.
+type queuedRun struct {
+	ID     string      `json:"id"`
+	State  QueueStatus `json:"state"`
+	Reason string      `json:"reason"`
+}
+
+// queuePlay is the SDK's runPlay: an automation queues a ticket play by its label.
+func (h *RunHandler) queuePlay(w http.ResponseWriter, r *http.Request) {
+	var req queuePlayRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	it, err := h.runner.QueuePlay(r.Context(), QueuePlayInput(req))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusAccepted, queuedRun{ID: it.ID, State: it.Status, Reason: it.Reason})
 }
 
 type targetRequest struct {

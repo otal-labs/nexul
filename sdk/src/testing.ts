@@ -1,7 +1,7 @@
 import { ApiClient, type FetchLike } from "./api-client.ts";
 import type { ConfigSchema, ConfigValues } from "./config-schema.ts";
 import { defaultConfigValues } from "./config-schema.ts";
-import type { Ctx } from "./context.ts";
+import { buildCtx, type Ctx, type QueuedRun } from "./context.ts";
 export { eventFixtures, TOPICS } from "./events.generated.ts";
 export type { Topic, EventPayloads } from "./events.generated.ts";
 
@@ -25,6 +25,11 @@ export interface MockContextOptions<S extends ConfigSchema> {
   responses?: Record<string, unknown>;
 }
 
+// A queued run, so a handler reading runPlay's result works without a scripted response.
+const defaultResponses: Record<string, unknown> = {
+  "POST /api/plays/queue": { id: "mock-run", state: "queued", reason: "" } satisfies QueuedRun,
+};
+
 // createMockContext gives handler tests (and the `dev` harness) a ctx whose
 // api client records every call instead of making it — no live effects, ever.
 export function createMockContext<S extends ConfigSchema>(schema: S, opts: MockContextOptions<S> = {}): MockContext<S> {
@@ -35,7 +40,7 @@ export function createMockContext<S extends ConfigSchema>(schema: S, opts: MockC
     const method = init?.method ?? "GET";
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
     calls.push({ method, path, body });
-    const response = opts.responses?.[`${method} ${path}`];
+    const response = opts.responses?.[`${method} ${path}`] ?? defaultResponses[`${method} ${path}`];
     return new Response(response !== undefined ? JSON.stringify(response) : null, { status: 200 });
   };
   const api = new ApiClient({ baseUrl: "http://mock.invalid", token: "mock", fetchImpl });
@@ -43,5 +48,5 @@ export function createMockContext<S extends ConfigSchema>(schema: S, opts: MockC
   const log = (message: string, meta?: Record<string, unknown>) => {
     logs.push(JSON.stringify({ message, ...meta }));
   };
-  return { api, config, secrets: opts.secrets ?? {}, log, calls, logs };
+  return { ...buildCtx(api, config, opts.secrets ?? {}, log), calls, logs };
 }

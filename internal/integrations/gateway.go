@@ -92,6 +92,7 @@ var verbRouteScope = map[string]Scope{
 	"DELETE /api/memories/interview-sources/{id}":                Scope(permissions.MemoriesWrite),
 	"DELETE /api/memories/interview-drafts/{id}":                 Scope(permissions.MemoriesWrite),
 	"POST /api/plays/{id}/run":                                   Scope(permissions.PlaysRun),
+	"POST /api/plays/queue":                                      Scope(permissions.PlaysRun),
 }
 
 // verbRoutes matches a request to its verbRouteScope pattern the way the serving mux would.

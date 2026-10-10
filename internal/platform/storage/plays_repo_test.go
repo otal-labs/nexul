@@ -191,3 +191,18 @@ func TestPlaysRepo_CreateAndUpdate_TakenLabel_ReturnsConflict(t *testing.T) {
 	require.ErrorIs(t, s.Plays.Update(ctx, other), apperrs.ErrConflict)
 	require.NoError(t, s.Plays.Create(ctx, newTestPlay("play-4", "ws-2")), "another workspace's labels are its own")
 }
+
+func TestPlaysRepo_GetByLabel_IgnoresCaseWithinTheWorkspace(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-1", "Acme")))
+	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-2", "Globex")))
+	require.NoError(t, s.Plays.Create(ctx, newTestPlay("play-1", "ws-1")))
+
+	got, err := s.Plays.GetByLabel(ctx, "ws-1", "DOC play")
+	require.NoError(t, err)
+	assert.Equal(t, "play-1", got.ID)
+	_, err = s.Plays.GetByLabel(ctx, "ws-2", "Doc play")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
