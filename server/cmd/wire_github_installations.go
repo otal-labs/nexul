@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"slices"
-	"strings"
 
 	"github.com/otal-labs/nexul/internal/connectors"
 	"github.com/otal-labs/nexul/internal/gitprovider/github"
@@ -25,42 +23,49 @@ func githubOAuth(registry []connectors.Connector) connectors.OAuthClient {
 	return nil
 }
 
-// githubInstallers trades an installer's code for their own token, which lists only the installations they can see.
+// githubInstallers trades an installer's code for their own token, which lists only the installations they can see
+// and says whether they administer the installation's account.
 type githubInstallers struct {
 	oauth      connectors.OAuthClient
 	appConfigs connectors.AppConfigStore
 }
 
-func (g githubInstallers) InstallerAccount(ctx context.Context, code string, installationID int64) (string, error) {
+func (g githubInstallers) Installer(ctx context.Context, code string, installationID int64) (repository.Installer, error) {
 	if g.oauth == nil {
-		return "", fmt.Errorf("%w: the GitHub connector has no OAuth client", apperrs.ErrInvalid)
+		return repository.Installer{}, fmt.Errorf("%w: the GitHub connector has no OAuth client", apperrs.ErrInvalid)
 	}
 	ts, err := g.oauth.Exchange(ctx, code)
 	if err != nil {
-		return "", err
+		return repository.Installer{}, err
 	}
 	cfg, err := g.appConfigs.GetAppConfig(ctx, githubConnectorID)
 	if err != nil {
-		return "", err
+		return repository.Installer{}, err
 	}
 	var opts []github.Option
 	if cfg.BaseURL != "" {
 		u, err := url.Parse(cfg.BaseURL)
 		if err != nil {
-			return "", fmt.Errorf("parse github base url: %w", err)
+			return repository.Installer{}, fmt.Errorf("parse github base url: %w", err)
 		}
 		opts = append(opts, github.WithBaseURL(u))
 	}
-	installs, err := github.New(ts.AccessToken, opts...).ListInstallations(ctx)
+	client := github.New(ts.AccessToken, opts...)
+	installs, err := client.ListInstallations(ctx)
 	if err != nil {
-		return "", err
+		return repository.Installer{}, err
 	}
 	for _, inst := range installs {
-		if inst.ID == installationID {
-			return inst.AccountLogin, nil
+		if inst.ID != installationID {
+			continue
 		}
+		admin, err := client.AdministersAccount(ctx, inst)
+		if err != nil {
+			return repository.Installer{}, err
+		}
+		return repository.Installer{AccountID: inst.AccountID, AccountLogin: inst.AccountLogin, Admin: admin}, nil
 	}
-	return "", fmt.Errorf("%w: the installer cannot see installation %d", apperrs.ErrForbidden, installationID)
+	return repository.Installer{}, fmt.Errorf("%w: the installer cannot see installation %d", apperrs.ErrForbidden, installationID)
 }
 
 // installationClaimer adapts the repository claim to auth's callback and lands the installer in the workspace.
@@ -93,12 +98,13 @@ type githubInstallationScope struct {
 	projects   interface {
 		Get(ctx context.Context, id string) (*workspace.Project, error)
 	}
-	assignments interface {
-		InstallationAccountsIn(ctx context.Context, workspaceIDs []string) ([]string, error)
+	// assigned is the repository use-case's check, set once it is built, since it reads GitHub through this scope.
+	assigned interface {
+		RequireAssigned(ctx context.Context, workspaceID, owner, name string) error
 	}
 }
 
-func (s *githubInstallationScope) Require(ctx context.Context, projectID, owner, connectorID string) error {
+func (s *githubInstallationScope) Require(ctx context.Context, projectID, owner, name, connectorID string) error {
 	if connectorID != githubConnectorID {
 		return nil
 	}
@@ -113,12 +119,5 @@ func (s *githubInstallationScope) Require(ctx context.Context, projectID, owner,
 	if err != nil {
 		return err
 	}
-	accounts, err := s.assignments.InstallationAccountsIn(ctx, []string{project.WorkspaceID})
-	if err != nil {
-		return err
-	}
-	if !slices.Contains(accounts, strings.ToLower(owner)) {
-		return fmt.Errorf("%w: repository is not assigned to this workspace", apperrs.ErrNotFound)
-	}
-	return nil
+	return s.assigned.RequireAssigned(ctx, project.WorkspaceID, owner, name)
 }

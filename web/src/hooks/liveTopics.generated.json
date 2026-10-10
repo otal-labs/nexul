@@ -85,6 +85,8 @@
   "play.run",
   "play.updated",
   "project.setup_changed",
+  "repository.installation.assigned",
+  "repository.installation.unassigned",
   "role.updated",
   "runner.connected",
   "runner.disconnected",

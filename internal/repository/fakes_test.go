@@ -3,8 +3,11 @@ package repository
 import (
 	"context"
 	"slices"
+	"strings"
+	"time"
 
 	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 // fakeScanner is an in-memory Scanner: tree entries and file contents are set up per test, keyed by path.
@@ -70,55 +73,149 @@ func (f *fakeScanner) GetFile(_ context.Context, _, _, _, path string) ([]byte, 
 	return b, nil
 }
 
-// fakeStore is an in-memory InstallationStore: account -> workspace ids.
-type fakeStore map[string][]string
+// fakeStore is an in-memory InstallationStore and InstallStateStore; events records what each write published.
+type fakeStore struct {
+	rows   []Assignment
+	events []eventbus.OutboxEvent
+	states map[string]InstallState
+}
 
-func (f fakeStore) ListInstallationWorkspaces(context.Context) (map[string][]InstallationWorkspace, error) {
-	out := map[string][]InstallationWorkspace{}
-	for account, ids := range f {
-		for _, id := range ids {
-			out[account] = append(out[account], InstallationWorkspace{ID: id, Name: id})
+func (f *fakeStore) ListAssignments(context.Context) ([]Assignment, error) {
+	return slices.Clone(f.rows), nil
+}
+
+func (f *fakeStore) AssignmentsIn(_ context.Context, workspaceIDs []string) ([]Assignment, error) {
+	var out []Assignment
+	for _, r := range f.rows {
+		if slices.Contains(workspaceIDs, r.WorkspaceID) {
+			out = append(out, r)
 		}
 	}
 	return out, nil
 }
 
-func (f fakeStore) InstallationAccountsIn(_ context.Context, workspaceIDs []string) ([]string, error) {
-	var out []string
-	for account, ids := range f {
-		if slices.ContainsFunc(ids, func(id string) bool { return slices.Contains(workspaceIDs, id) }) {
-			out = append(out, account)
+func (f *fakeStore) AssignedAccountsIn(ctx context.Context, workspaceIDs []string) ([]int64, error) {
+	rows, _ := f.AssignmentsIn(ctx, workspaceIDs) // the fake's read cannot fail
+	return liveIDs(rows), nil
+}
+
+func (f *fakeStore) AssignedAccounts(context.Context) ([]int64, error) {
+	return liveIDs(f.rows), nil
+}
+
+func liveIDs(rows []Assignment) []int64 {
+	var out []int64
+	for _, r := range rows {
+		if r.AccountID != 0 && !r.Gone && !slices.Contains(out, r.AccountID) {
+			out = append(out, r.AccountID)
 		}
 	}
-	return out, nil
+	return out
 }
 
-func (f fakeStore) AssignInstallation(_ context.Context, account, workspaceID string) error {
-	if !slices.Contains(f[account], workspaceID) {
-		f[account] = append(f[account], workspaceID)
+func (f *fakeStore) HasUnresolvedAssignments(context.Context) (bool, error) {
+	return slices.ContainsFunc(f.rows, func(r Assignment) bool { return r.AccountID == 0 && !r.Gone }), nil
+}
+
+func (f *fakeStore) AssignInstallation(_ context.Context, a Assignment, events ...eventbus.OutboxEvent) (bool, error) {
+	i := slices.IndexFunc(f.rows, func(r Assignment) bool { return r.AccountID == a.AccountID && r.WorkspaceID == a.WorkspaceID })
+	if i >= 0 && !f.rows[i].Gone {
+		return false, nil
 	}
+	a.WorkspaceName = a.WorkspaceID
+	if i >= 0 {
+		f.rows[i] = a
+	}
+	if i < 0 {
+		f.rows = append(f.rows, a)
+	}
+	f.events = append(f.events, events...)
+	return true, nil
+}
+
+func (f *fakeStore) UnassignInstallation(_ context.Context, a Assignment, events ...eventbus.OutboxEvent) (bool, error) {
+	n := len(f.rows)
+	f.rows = slices.DeleteFunc(f.rows, func(r Assignment) bool {
+		return r.WorkspaceID == a.WorkspaceID && r.sameAccount(a.AccountID, a.AccountLogin)
+	})
+	if len(f.rows) == n {
+		return false, nil
+	}
+	f.events = append(f.events, events...)
+	return true, nil
+}
+
+func (f *fakeStore) SyncAccounts(_ context.Context, s AccountSync, events ...eventbus.OutboxEvent) error {
+	for i, r := range f.rows {
+		if id, ok := s.Resolved[r.AccountLogin]; ok && r.AccountID == 0 {
+			f.rows[i].AccountID = id
+		}
+		if login, ok := s.Renamed[r.AccountID]; ok {
+			f.rows[i].AccountLogin = login
+		}
+		if slices.ContainsFunc(s.Gone, func(g Assignment) bool {
+			return g.WorkspaceID == r.WorkspaceID && r.sameAccount(g.AccountID, g.AccountLogin)
+		}) {
+			f.rows[i].Gone = true
+		}
+	}
+	f.rows = slices.DeleteFunc(f.rows, func(r Assignment) bool { return r.Gone && slices.Contains(s.Reinstalled, r.AccountID) })
+	f.events = append(f.events, events...)
 	return nil
 }
 
-func (f fakeStore) UnassignInstallation(_ context.Context, account, workspaceID string) error {
-	f[account] = slices.DeleteFunc(f[account], func(id string) bool { return id == workspaceID })
+func (f *fakeStore) SaveInstallState(_ context.Context, hash string, st InstallState, _ time.Time) error {
+	if f.states == nil {
+		f.states = map[string]InstallState{}
+	}
+	f.states[hash] = st
 	return nil
 }
 
-// fakeInstallers sees the installations in its map, id -> account, for the one code it accepts.
-type fakeInstallers map[int64]string
+func (f *fakeStore) ConsumeInstallState(_ context.Context, hash string) (InstallState, error) {
+	st, ok := f.states[hash]
+	if !ok {
+		return InstallState{}, apperrors.ErrNotFound
+	}
+	delete(f.states, hash)
+	return st, nil
+}
 
-func (f fakeInstallers) InstallerAccount(_ context.Context, code string, id int64) (string, error) {
-	account, ok := f[id]
+// fakeAccounts is the App's installations as AccountResolver: InstallationAccounts lists them, AccountOf finds the
+// one on a repository's owner by login, and lists counts how often GitHub was asked.
+type fakeAccounts struct {
+	installs []Installation
+	lists    int
+}
+
+func (f *fakeAccounts) InstallationAccounts(context.Context) ([]Installation, error) {
+	f.lists++
+	return f.installs, nil
+}
+
+func (f *fakeAccounts) AccountOf(_ context.Context, owner, _ string) (int64, error) {
+	for _, inst := range f.installs {
+		if strings.EqualFold(inst.AccountLogin, owner) {
+			return inst.AccountID, nil
+		}
+	}
+	return 0, apperrors.ErrNotFound
+}
+
+// fakeInstallers answers for the one code it accepts with its installer.
+type fakeInstallers map[int64]Installer
+
+func (f fakeInstallers) Installer(_ context.Context, code string, id int64) (Installer, error) {
+	inst, ok := f[id]
 	if code != "good-code" || !ok {
-		return "", apperrors.ErrForbidden
+		return Installer{}, apperrors.ErrForbidden
 	}
-	return account, nil
+	return inst, nil
 }
 
-func newTestService(s *fakeScanner, store fakeStore) *Service {
+func newTestService(s *fakeScanner, store *fakeStore) *Service {
 	if store == nil {
-		store = fakeStore{}
+		store = &fakeStore{}
 	}
-	return NewService(Config{Scanner: s, Installations: s, Store: store, StateKey: []byte("test-key")})
+	return NewService(Config{Scanner: s, Installations: s, Accounts: &fakeAccounts{}, Store: store, States: store})
 }

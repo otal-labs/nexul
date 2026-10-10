@@ -61,8 +61,8 @@ type workspaceUpdateIn struct {
 	Name                 *string  `json:"name,omitempty" jsonschema:"The workspace's new display name, for example Norwood Labs. Omit to keep it."`
 	Slug                 *string  `json:"slug,omitempty" jsonschema:"The workspace's new name in web links, for example norwood: lowercase letters and digits joined by single dashes, at most 48 characters, not a reserved path such as settings, and not taken by another workspace. Omit to keep it."`
 	AutoPlayDailyCap     *int     `json:"auto_play_daily_cap,omitempty" jsonschema:"How many automatic runs auto plays may start on one ticket per rolling day, across every auto play, 1 to 50; a ticket past it pauses its auto plays. Omit to keep it."`
-	AddGitHubAccounts    []string `json:"add_github_accounts,omitempty" jsonschema:"GitHub accounts or organisations, by login such as acme, whose GitHub App installation this workspace starts seeing the repositories of. repository_list with installations lists them. Needs connectors:write."`
-	RemoveGitHubAccounts []string `json:"remove_github_accounts,omitempty" jsonschema:"GitHub accounts or organisations, by login, whose installation's repositories this workspace stops seeing. Needs connectors:write."`
+	AddGitHubAccounts    []string `json:"add_github_accounts,omitempty" jsonschema:"GitHub accounts or organisations, by login such as acme, whose GitHub App installation this workspace starts seeing the repositories of. repository_list with installations lists them. Needs connectors:write in this workspace, and also in a workspace already holding the installation when one does."`
+	RemoveGitHubAccounts []string `json:"remove_github_accounts,omitempty" jsonschema:"GitHub accounts or organisations, by login, whose installation's repositories this workspace stops seeing. Needs connectors:write in this workspace."`
 }
 
 type workspaceUpdateResult struct {

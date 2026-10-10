@@ -8,11 +8,15 @@ type Repo struct {
 	FullName      string `json:"full_name"`
 	DefaultBranch string `json:"default_branch"`
 	HTMLURL       string `json:"html_url"`
+	// AccountID is the id of the account whose installation listed the repository, set by installation reads.
+	AccountID int64 `json:"-"`
 }
 
 // Installation is one account or organisation the git host's App is installed on, as the connected user sees it.
 type Installation struct {
-	ID           int64
+	ID int64
+	// AccountID is the git host's numeric id of the account, which survives a rename.
+	AccountID    int64
 	AccountLogin string
 	// AccountType is "user" or "organization".
 	AccountType      string
@@ -23,6 +27,8 @@ type Installation struct {
 	RepositoryCount *int
 	// HTMLURL is the installation's settings page on the git host.
 	HTMLURL string
+	// Problem says why the git host refused to read this installation; the others read on.
+	Problem string
 }
 
 // PRState is the lifecycle state of a pull request.

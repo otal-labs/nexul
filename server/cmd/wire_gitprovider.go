@@ -90,16 +90,14 @@ func (g gitProviderRouter) installations(ctx context.Context) (installationReade
 	return g.resolveConnector(ctx, githubConnectorID)
 }
 
-// RepoToken is the token a runner clones fullName ("owner/name") with: its installation's once a key is set.
+// RepoToken is the token a runner clones fullName ("owner/name") with: once a key is set, one minted for that
+// repository alone with contents:read, and only while its installation is assigned to the project's workspace.
 func (g gitProviderRouter) RepoToken(ctx context.Context, fullName string) (runner.CloneCredentials, error) {
 	owner, name, ok := strings.Cut(fullName, "/")
 	if !ok {
 		return runner.CloneCredentials{}, fmt.Errorf("%w: repository must be owner/name", apperrs.ErrInvalid)
 	}
-	if err := githubapp.ValidateRepository(owner, name); err != nil {
-		return runner.CloneCredentials{}, err
-	}
-	app, err := g.githubApp(ctx)
+	app, err := g.cloneScope(ctx, owner, name)
 	if err != nil {
 		return runner.CloneCredentials{}, err
 	}
@@ -107,11 +105,33 @@ func (g gitProviderRouter) RepoToken(ctx context.Context, fullName string) (runn
 		token, err := g.connectors.AccessToken(ctx, githubConnectorID)
 		return runner.CloneCredentials{Token: token, AllowFallback: true}, err
 	}
-	if _, err := g.resolve(ctx, owner, name); err != nil {
-		return runner.CloneCredentials{}, err
-	}
-	token, err := app.RepoToken(ctx, owner, name)
+	token, err := app.CloneToken(ctx, owner, name)
 	return runner.CloneCredentials{Token: token}, err
+}
+
+// cloneScope is RepoToken's check without the token: the App when it reads GitHub and owner/name is linked to a
+// project whose workspace is assigned its installation, nil before a key is set.
+func (g gitProviderRouter) cloneScope(ctx context.Context, owner, name string) (*github.App, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
+	app, err := g.githubApp(ctx)
+	if err != nil || app == nil {
+		return nil, err
+	}
+	ref, err := g.workspace.GetRepoByFullName(ctx, owner, name)
+	if err != nil {
+		return nil, fmt.Errorf("resolve git provider for %s/%s: %w", owner, name, err)
+	}
+	if ref.ConnectorID != githubConnectorID {
+		return nil, fmt.Errorf("%w: %s/%s is not a GitHub repository", apperrs.ErrInvalid, owner, name)
+	}
+	if g.scope != nil {
+		if err := g.scope.Require(ctx, ref.ProjectID, owner, name, ref.ConnectorID); err != nil {
+			return nil, err
+		}
+	}
+	return app, nil
 }
 
 // resolve builds a fresh GitProvider for owner/name's linked connector; failures are scoped to this call only.
@@ -124,7 +144,7 @@ func (g gitProviderRouter) resolve(ctx context.Context, owner, name string) (git
 		return nil, fmt.Errorf("resolve git provider for %s/%s: %w", owner, name, err)
 	}
 	if g.scope != nil {
-		if err := g.scope.Require(ctx, ref.ProjectID, owner, ref.ConnectorID); err != nil {
+		if err := g.scope.Require(ctx, ref.ProjectID, owner, name, ref.ConnectorID); err != nil {
 			return nil, err
 		}
 	}

@@ -24,6 +24,7 @@ import { peopleFollower } from "@/hooks/PeopleHooks";
 import { playFollower } from "@/hooks/PlayHooks";
 import { projectFollower } from "@/hooks/ProjectHooks";
 import { reactionFollower } from "@/hooks/ReactionHooks";
+import { repositoryFollower } from "@/hooks/RepositoryHooks";
 import { roleFollower } from "@/hooks/RoleHooks";
 import { runnerFollower } from "@/hooks/RunnerHooks";
 import { serviceFollower } from "@/hooks/ServiceHooks";
@@ -84,6 +85,7 @@ const followers: LiveFollower[] = [
   playFollower,
   projectFollower,
   reactionFollower,
+  repositoryFollower,
   roleFollower,
   runnerFollower,
   serviceFollower,

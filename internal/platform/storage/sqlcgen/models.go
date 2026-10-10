@@ -443,10 +443,19 @@ type EventSchema struct {
 	CreatedAt int64
 }
 
+type GithubInstallState struct {
+	StateHash   string
+	WorkspaceID string
+	UserID      string
+	ExpiresAt   int64
+}
+
 type GithubInstallationWorkspace struct {
+	AccountID    sql.NullInt64
 	AccountLogin string
 	WorkspaceID  string
 	AssignedAt   int64
+	GoneAt       sql.NullInt64
 }
 
 type GithubManifestRequest struct {

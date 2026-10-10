@@ -111,6 +111,8 @@ export interface EventPayloads {
   "play.run_waiting": { "trail_id": string; "play_id": string; "play_label": string; "target_type": "ticket" | "doc" | "interview"; "target_id": string; "target_title": string; "starter_id": string; "via": "web" | "mcp"; "workspace_id"?: string; };
   "play.updated": { "play": { "id": string; "workspace_id": string; "label": string; "type": string; "description": string; "instructions": string; "enabled": boolean; "show_when_stage": null | string; "excluded_project_ids": string[]; "builtin_key": string; "created_by": string; "created_at": string; "updated_at": string; }; };
   "project.setup_changed": { "project_id": string; "workspace_id": string; "setup": { "stack_id"?: string; "env_keys"?: string[]; "finished": boolean; "steps": Record<string, string>; }; };
+  "repository.installation.assigned": { "account_id": number; "account_login": string; "workspace_id": string; "actor_id"?: string; "uninstalled"?: boolean; };
+  "repository.installation.unassigned": { "account_id": number; "account_login": string; "workspace_id": string; "actor_id"?: string; "uninstalled"?: boolean; };
   "review.status_changed": { "id": string; "repo": string; "pr_number": number; "status": string; "reviewer"?: string; };
   "role.updated": { "role_id": string; "workspace_id": string; "actor_id"?: string; };
   "runner.connected": { "runner_id": string; "name"?: string; };
@@ -260,6 +262,8 @@ export const TOPICS: Topic[] = [
   "play.run_waiting",
   "play.updated",
   "project.setup_changed",
+  "repository.installation.assigned",
+  "repository.installation.unassigned",
   "review.status_changed",
   "role.updated",
   "runner.connected",
@@ -407,6 +411,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "play.run_waiting": {"trail_id":"fixture-trail_id","play_id":"fixture-play_id","play_label":"fixture-play_label","target_type":"ticket","target_id":"fixture-target_id","target_title":"fixture-target_title","starter_id":"fixture-starter_id","via":"web","workspace_id":"fixture-workspace_id"},
   "play.updated": {"play":{"id":"fixture-id","workspace_id":"fixture-workspace_id","label":"fixture-label","type":"fixture-type","description":"fixture-description","instructions":"fixture-instructions","enabled":false,"show_when_stage":"fixture-show_when_stage","excluded_project_ids":["fixture-excluded_project_ids"],"builtin_key":"fixture-builtin_key","created_by":"fixture-created_by","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}},
   "project.setup_changed": {"project_id":"fixture-project_id","workspace_id":"fixture-workspace_id","setup":{"stack_id":"fixture-stack_id","env_keys":["fixture-env_keys"],"finished":false,"steps":{}}},
+  "repository.installation.assigned": {"account_id":1,"account_login":"fixture-account_login","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id","uninstalled":false},
+  "repository.installation.unassigned": {"account_id":1,"account_login":"fixture-account_login","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id","uninstalled":false},
   "review.status_changed": {"id":"fixture-id","repo":"fixture-repo","pr_number":1,"status":"fixture-status","reviewer":"fixture-reviewer"},
   "role.updated": {"role_id":"fixture-role_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id"},
   "runner.connected": {"runner_id":"fixture-runner_id","name":"fixture-name"},

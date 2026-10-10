@@ -19,7 +19,7 @@ export const GitHubInstallationsList = () => {
       {installations && installations.length > 0 && (
         <EnterList className="divide-y divide-border overflow-hidden rounded-md border border-border">
           {installations.map((installation) => (
-            <GitHubInstallationRow key={installation.id} installation={installation} />
+            <GitHubInstallationRow key={`${installation.account_id}-${installation.account_login}`} installation={installation} />
           ))}
         </EnterList>
       )}

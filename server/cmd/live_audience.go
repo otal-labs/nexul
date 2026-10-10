@@ -18,6 +18,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/plays"
+	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/templates"
@@ -172,6 +173,9 @@ var liveRules = map[string]liveRule{
 	dns.TopicTunnelChanged:             anywhere(permissions.DNSRead),
 	dns.TopicGatewayChanged:            anywhere(permissions.DNSRead),
 	dns.TopicExposureChanged:           anywhere(permissions.DNSRead),
+
+	repository.TopicInstallationAssigned:   installationFrame,
+	repository.TopicInstallationUnassigned: installationFrame,
 }
 
 // allows is the hub's Audience.
@@ -253,6 +257,18 @@ func topologyCanvasFrame(ctx context.Context, a liveAudience, raw json.RawMessag
 		WorkspaceID string `json:"workspace_id"`
 	}
 	return decode(raw, &p) && p.WorkspaceID != "" && a.access.Require(ctx, p.WorkspaceID, permissions.TopologyRead) == nil
+}
+
+// installationFrame reaches who reads the workspace's installations or lists its repositories in the project wizard.
+func installationFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		WorkspaceID string `json:"workspace_id"`
+	}
+	if !decode(raw, &p) || p.WorkspaceID == "" {
+		return false
+	}
+	return a.access.Require(ctx, p.WorkspaceID, permissions.ConnectorsRead) == nil ||
+		a.access.Require(ctx, p.WorkspaceID, permissions.ProjectsWrite) == nil
 }
 
 func anywhere(action permissions.Action) liveRule {

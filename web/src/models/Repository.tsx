@@ -16,7 +16,10 @@ export const REPOSITORY_SEARCH_MIN_LENGTH = 3;
 
 // One account or organisation the GitHub App is installed on; together they decide which repositories Nexul sees.
 export interface Installation {
+  // 0 for an uninstalled account still assigned somewhere (gone).
   id: number;
+  // GitHub's id for the account, which survives a rename; 0 for an assignment made before ids were kept.
+  account_id: number;
   account_login: string;
   account_type: "user" | "organization";
   account_avatar_url: string;
@@ -27,6 +30,10 @@ export interface Installation {
   html_url: string;
   // The workspaces that list its repositories; none means it is unassigned.
   workspaces: InstallationWorkspace[];
+  // Why GitHub refused to read it, a suspension for one; the other installations still list.
+  problem?: string;
+  // GitHub no longer lists it: the App was uninstalled from the account, and its workspaces wait to be cleared.
+  gone?: boolean;
 }
 
 export interface InstallationWorkspace {

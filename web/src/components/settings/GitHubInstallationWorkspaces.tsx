@@ -16,7 +16,7 @@ export const GitHubInstallationWorkspaces = ({ installation, canManage }: GitHub
 
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1.5">
-      {installation.workspaces.length === 0 && (
+      {installation.workspaces.length === 0 && !installation.gone && (
         <SettingsStatus tone="warning" detail="no workspace lists its repositories">
           Unassigned
         </SettingsStatus>
@@ -37,7 +37,7 @@ export const GitHubInstallationWorkspaces = ({ installation, canManage }: GitHub
           )}
         </span>
       ))}
-      {canManage && <GitHubInstallationAssign installation={installation} />}
+      {canManage && !installation.gone && <GitHubInstallationAssign installation={installation} />}
     </div>
   );
 };

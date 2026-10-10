@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/githubapp"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
 // tokenRefreshMargin renews a token this long before it expires, so a clone never starts on one about to lapse.
@@ -29,7 +31,7 @@ type App struct {
 
 	mu     sync.Mutex
 	tokens map[int64]appToken
-	owners map[string]int64
+	owners map[string]appInstallation
 }
 
 type appToken struct {
@@ -37,12 +39,18 @@ type appToken struct {
 	expires time.Time
 }
 
+// appInstallation is the installation on one account: its id and the account's.
+type appInstallation struct {
+	id        int64
+	accountID int64
+}
+
 // NewApp builds an App signing as clientID; now defaults to time.Now.
 func NewApp(clientID string, key *rsa.PrivateKey, now func() time.Time, opts ...Option) *App {
 	if now == nil {
 		now = time.Now
 	}
-	return &App{clientID: clientID, key: key, opts: opts, now: now, tokens: map[int64]appToken{}, owners: map[string]int64{}}
+	return &App{clientID: clientID, key: key, opts: opts, now: now, tokens: map[int64]appToken{}, owners: map[string]appInstallation{}}
 }
 
 func (a *App) appClient() (*githubapi.Client, error) {
@@ -61,16 +69,9 @@ func (a *App) InstallationToken(ctx context.Context, id int64) (string, error) {
 	if ok && a.now().Before(cached.expires.Add(-tokenRefreshMargin)) {
 		return cached.value, nil
 	}
-	gh, err := a.appClient()
+	tok, err := a.mint(ctx, id, nil)
 	if err != nil {
 		return "", err
-	}
-	tok, _, err := gh.Apps.CreateInstallationToken(ctx, id, nil)
-	if err != nil {
-		return "", fmt.Errorf("mint a token for installation %d: %w", id, mapErr(err))
-	}
-	if tok.GetToken() == "" {
-		return "", fmt.Errorf("%w: GitHub returned no installation token", apperrors.ErrUnauthorized)
 	}
 	minted := appToken{value: tok.GetToken(), expires: tok.GetExpiresAt().Time}
 	a.mu.Lock()
@@ -79,60 +80,98 @@ func (a *App) InstallationToken(ctx context.Context, id int64) (string, error) {
 	return minted.value, nil
 }
 
-// RepoToken returns a token of the installation on owner/name's account, what a runner clones with.
-func (a *App) RepoToken(ctx context.Context, owner, name string) (string, error) {
-	id, err := a.installationFor(ctx, owner, name)
+func (a *App) mint(ctx context.Context, id int64, opts *githubapi.InstallationTokenOptions) (*githubapi.InstallationToken, error) {
+	gh, err := a.appClient()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	tok, err := a.InstallationToken(ctx, id)
+	tok, _, err := gh.Apps.CreateInstallationToken(ctx, id, opts)
 	if err != nil {
-		// A reinstalled App gets a new installation id on the same account; forget the old one for the next call.
-		a.mu.Lock()
-		delete(a.owners, strings.ToLower(owner))
-		a.mu.Unlock()
-		return "", err
+		return nil, fmt.Errorf("mint a token for installation %d: %w", id, mapErr(err))
+	}
+	if tok.GetToken() == "" {
+		return nil, fmt.Errorf("%w: GitHub returned no installation token", apperrors.ErrUnauthorized)
 	}
 	return tok, nil
 }
 
+// CloneToken mints a token that reads only owner/name's contents, what a runner clones with; it is never cached, so
+// no other repository or permission of the installation ever reaches a runner.
+func (a *App) CloneToken(ctx context.Context, owner, name string) (string, error) {
+	inst, err := a.installationFor(ctx, owner, name)
+	if err != nil {
+		return "", err
+	}
+	tok, err := a.mint(ctx, inst.id, &githubapi.InstallationTokenOptions{
+		Repositories: []string{name},
+		Permissions:  &githubapi.InstallationPermissions{Contents: githubapi.Ptr("read")},
+	})
+	if err != nil {
+		a.forget(owner)
+		return "", err
+	}
+	return tok.GetToken(), nil
+}
+
+// AccountOf is the id of the account whose installation covers owner/name.
+func (a *App) AccountOf(ctx context.Context, owner, name string) (int64, error) {
+	inst, err := a.installationFor(ctx, owner, name)
+	if err != nil {
+		return 0, err
+	}
+	return inst.accountID, nil
+}
+
 // ForRepo is a Client reading owner/name with its installation's token.
 func (a *App) ForRepo(ctx context.Context, owner, name string) (*Client, error) {
-	tok, err := a.RepoToken(ctx, owner, name)
+	inst, err := a.installationFor(ctx, owner, name)
 	if err != nil {
+		return nil, err
+	}
+	tok, err := a.InstallationToken(ctx, inst.id)
+	if err != nil {
+		a.forget(owner)
 		return nil, err
 	}
 	return New(tok, a.opts...), nil
 }
 
+// forget drops owner's installation, since a reinstalled App gets a new installation id on the same account.
+func (a *App) forget(owner string) {
+	a.mu.Lock()
+	delete(a.owners, strings.ToLower(owner))
+	a.mu.Unlock()
+}
+
 // installationFor finds the installation covering owner/name; an App has one per account, so it is kept per owner.
-func (a *App) installationFor(ctx context.Context, owner, name string) (int64, error) {
+func (a *App) installationFor(ctx context.Context, owner, name string) (appInstallation, error) {
 	if err := githubapp.ValidateRepository(owner, name); err != nil {
-		return 0, err
+		return appInstallation{}, err
 	}
 	key := strings.ToLower(owner)
 	a.mu.Lock()
-	id, ok := a.owners[key]
+	cached, ok := a.owners[key]
 	a.mu.Unlock()
 	if ok {
-		return id, nil
+		return cached, nil
 	}
 	gh, err := a.appClient()
 	if err != nil {
-		return 0, err
+		return appInstallation{}, err
 	}
 	inst, _, err := gh.Apps.FindRepositoryInstallation(ctx, owner, name)
 	if err != nil {
-		return 0, fmt.Errorf("find the App's installation on %s/%s: %w", owner, name, mapErr(err))
+		return appInstallation{}, fmt.Errorf("find the App's installation on %s/%s: %w", owner, name, mapErr(err))
 	}
+	found := appInstallation{id: inst.GetID(), accountID: inst.GetAccount().GetID()}
 	a.mu.Lock()
-	a.owners[key] = inst.GetID()
+	a.owners[key] = found
 	a.mu.Unlock()
-	return inst.GetID(), nil
+	return found, nil
 }
 
 // eachInstallation walks every installation of the App, a page of 100 at a time.
-func (a *App) eachInstallation(ctx context.Context, fn func(*githubapi.Installation) error) error {
+func (a *App) eachInstallation(ctx context.Context, fn func(*githubapi.Installation)) error {
 	gh, err := a.appClient()
 	if err != nil {
 		return err
@@ -144,9 +183,7 @@ func (a *App) eachInstallation(ctx context.Context, fn func(*githubapi.Installat
 			return fmt.Errorf("list the App's installations: %w", mapErr(err))
 		}
 		for _, inst := range installs {
-			if err := fn(inst); err != nil {
-				return err
-			}
+			fn(inst)
 		}
 		if resp == nil || resp.NextPage == 0 {
 			return nil
@@ -155,25 +192,14 @@ func (a *App) eachInstallation(ctx context.Context, fn func(*githubapi.Installat
 	}
 }
 
-// ListInstallations implements gitprovider.GitProvider's installation read for every account the App is on.
-func (a *App) ListInstallations(ctx context.Context) ([]*gitprovider.Installation, error) {
+// suspendedProblem is what an installation its account suspended reports; GitHub refuses it every token.
+const suspendedProblem = "suspended on GitHub: its repositories cannot be read until the account unsuspends the App"
+
+// InstallationAccounts lists every installation of the App with its account, one request per hundred.
+func (a *App) InstallationAccounts(ctx context.Context) ([]*gitprovider.Installation, error) {
 	var out []*gitprovider.Installation
-	err := a.eachInstallation(ctx, func(inst *githubapi.Installation) error {
-		i := toInstallation(inst)
-		if i.RepositorySelection == "selected" {
-			gh, err := a.installationClient(ctx, inst.GetID())
-			if err != nil {
-				return err
-			}
-			page, _, err := gh.Apps.ListRepos(ctx, &githubapi.ListOptions{PerPage: 1})
-			if err != nil {
-				return fmt.Errorf("count repos for installation %d: %w", inst.GetID(), mapErr(err))
-			}
-			n := page.GetTotalCount()
-			i.RepositoryCount = &n
-		}
-		out = append(out, i)
-		return nil
+	err := a.eachInstallation(ctx, func(inst *githubapi.Installation) {
+		out = append(out, toInstallation(inst))
 	})
 	if err != nil {
 		return nil, err
@@ -181,33 +207,98 @@ func (a *App) ListInstallations(ctx context.Context) ([]*gitprovider.Installatio
 	return out, nil
 }
 
-// ListInstallationRepos implements gitprovider.GitProvider's repository read across every installation of the App.
-func (a *App) ListInstallationRepos(ctx context.Context) ([]*gitprovider.Repo, error) {
-	var out []*gitprovider.Repo
-	err := a.eachInstallation(ctx, func(inst *githubapi.Installation) error {
-		gh, err := a.installationClient(ctx, inst.GetID())
+// ListInstallations implements gitprovider.GitProvider's installation read for every account the App is on. An
+// installation GitHub refuses, a suspended one included, carries its problem and the others still list.
+func (a *App) ListInstallations(ctx context.Context) ([]*gitprovider.Installation, error) {
+	var out []*gitprovider.Installation
+	err := a.eachInstallation(ctx, func(inst *githubapi.Installation) {
+		i := toInstallation(inst)
+		out = append(out, i)
+		if inst.SuspendedAt != nil {
+			i.Problem = suspendedProblem
+			return
+		}
+		if i.RepositorySelection != "selected" {
+			return
+		}
+		n, err := a.countRepos(ctx, inst.GetID())
 		if err != nil {
-			return err
+			i.Problem = unreadable(ctx, inst, err)
+			return
 		}
-		opts := &githubapi.ListOptions{PerPage: 100}
-		for {
-			page, resp, err := gh.Apps.ListRepos(ctx, opts)
-			if err != nil {
-				return fmt.Errorf("list repos for installation %d: %w", inst.GetID(), mapErr(err))
-			}
-			for _, r := range page.Repositories {
-				out = append(out, toRepo(r))
-			}
-			if resp == nil || resp.NextPage == 0 {
-				return nil
-			}
-			opts.Page = resp.NextPage
-		}
+		i.RepositoryCount = &n
 	})
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
+}
+
+func (a *App) countRepos(ctx context.Context, id int64) (int, error) {
+	gh, err := a.installationClient(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	page, _, err := gh.Apps.ListRepos(ctx, &githubapi.ListOptions{PerPage: 1})
+	if err != nil {
+		return 0, fmt.Errorf("count repos for installation %d: %w", id, mapErr(err))
+	}
+	return page.GetTotalCount(), nil
+}
+
+// unreadable logs an installation GitHub refused, without its token, and returns the problem the owner sees.
+func unreadable(ctx context.Context, inst *githubapi.Installation, err error) string {
+	logging.FromCtx(ctx).Warn("github installation unreadable, skipped",
+		"installation_id", inst.GetID(), "account", inst.GetAccount().GetLogin(), "error", err)
+	if errors.Is(err, apperrors.ErrUnauthorized) || errors.Is(err, apperrors.ErrForbidden) {
+		return "GitHub refused the App access to it; check the installation on GitHub"
+	}
+	return "GitHub could not read it just now; it is retried on the next refresh"
+}
+
+// ListInstallationRepos implements gitprovider.GitProvider's repository read across every installation of the App;
+// a suspended or refused installation is skipped and logged, so the others still list.
+func (a *App) ListInstallationRepos(ctx context.Context) ([]*gitprovider.Repo, error) {
+	var out []*gitprovider.Repo
+	err := a.eachInstallation(ctx, func(inst *githubapi.Installation) {
+		if inst.SuspendedAt != nil {
+			return
+		}
+		repos, err := a.installationRepos(ctx, inst)
+		if err != nil {
+			unreadable(ctx, inst, err)
+			return
+		}
+		out = append(out, repos...)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (a *App) installationRepos(ctx context.Context, inst *githubapi.Installation) ([]*gitprovider.Repo, error) {
+	gh, err := a.installationClient(ctx, inst.GetID())
+	if err != nil {
+		return nil, err
+	}
+	var out []*gitprovider.Repo
+	opts := &githubapi.ListOptions{PerPage: 100}
+	for {
+		page, resp, err := gh.Apps.ListRepos(ctx, opts)
+		if err != nil {
+			return nil, fmt.Errorf("list repos for installation %d: %w", inst.GetID(), mapErr(err))
+		}
+		for _, r := range page.Repositories {
+			repo := toRepo(r)
+			repo.AccountID = inst.GetAccount().GetID()
+			out = append(out, repo)
+		}
+		if resp == nil || resp.NextPage == 0 {
+			return out, nil
+		}
+		opts.Page = resp.NextPage
+	}
 }
 
 func (a *App) installationClient(ctx context.Context, id int64) (*githubapi.Client, error) {
