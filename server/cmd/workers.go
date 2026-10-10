@@ -32,15 +32,13 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	go svc.pairingSvc.RunTunnelWatch(ctx)
 
 	wsHandler = runner.NewHandler(runner.HandlerConfig{
-		Bus:      bus,
-		Repo:     store.Runners,
-		Machines: store.Machines,
-		Upgrades: store.InstanceUpgrades,
-		Envs:     runnerEnvLookupAdapter{deploy: svc.deploySvc},
-		GitTokens: runnerGitTokenAdapter{token: func(ctx context.Context) (string, error) {
-			return svc.connectorsSvc.AccessToken(ctx, "github")
-		}},
-		Logger: logger,
+		Bus:       bus,
+		Repo:      store.Runners,
+		Machines:  store.Machines,
+		Upgrades:  store.InstanceUpgrades,
+		Envs:      runnerEnvLookupAdapter{deploy: svc.deploySvc},
+		GitTokens: svc.gitRouter,
+		Logger:    logger,
 	})
 	// dns can only join a connected runner's gateway once the WS handler exists (workers start after core services).
 	svc.dnsSvc.SetRunnerJoin(dnsRunnerJoinAdapter{handler: wsHandler})

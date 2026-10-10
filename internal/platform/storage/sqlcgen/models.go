@@ -201,6 +201,7 @@ type ConnectorAppConfig struct {
 	ClientSecret string
 	BaseUrl      string
 	AppSlug      string
+	PrivateKey   string
 }
 
 type ConnectorCredential struct {
@@ -440,6 +441,18 @@ type EventSchema struct {
 	Version   int64
 	Schema    string
 	CreatedAt int64
+}
+
+type GithubInstallationWorkspace struct {
+	AccountLogin string
+	WorkspaceID  string
+	AssignedAt   int64
+}
+
+type GithubManifestRequest struct {
+	StateHash     string
+	InitiatorHash string
+	ExpiresAt     int64
 }
 
 type InstanceSetting struct {

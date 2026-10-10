@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WizardRepositoryStep } from "@/components/wizard/WizardRepositoryStep";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), errorMessage: vi.fn() }));
 
@@ -52,11 +53,13 @@ beforeEach(() => {
   mocks.errorMessage.mockReset();
   mocks.errorMessage.mockImplementation((error: unknown) => (error as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "");
   useProjectWizardStore.getState().reset();
+  useWorkspaceStore.getState().selectWorkspace("", "");
   mocks.get.mockResolvedValue({ data: { repositories: repos } });
 });
 
 describe("WizardRepositoryStep", () => {
-  it("asks for nothing until three letters are typed, then searches once for the whole word", async () => {
+  it("asks for nothing until three letters are typed, then searches the workspace's repositories once for the whole word", async () => {
+    useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
     renderStep();
     const user = userEvent.setup();
     const input = screen.getByLabelText("Search repositories");
@@ -68,7 +71,7 @@ describe("WizardRepositoryStep", () => {
     await user.type(input, "ik97");
     expect(await screen.findByText("onik97/api")).toBeInTheDocument();
     expect(repositoryRequests()).toHaveLength(1);
-    expect(repositoryRequests()[0]![1]).toEqual(expect.objectContaining({ params: { q: "onik97" } }));
+    expect(repositoryRequests()[0]![1]).toEqual(expect.objectContaining({ params: { workspace_id: "ws-1", q: "onik97" } }));
     expect(screen.queryByText(/Type at least 3 letters/)).not.toBeInTheDocument();
   });
 
@@ -94,6 +97,7 @@ describe("WizardRepositoryStep", () => {
   });
 
   it("advances once a scan finds a candidate", async () => {
+    useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
     const onDone = renderStep();
     const user = userEvent.setup();
     mocks.post.mockResolvedValue({
@@ -106,7 +110,7 @@ describe("WizardRepositoryStep", () => {
 
     await search(user);
     await user.click(screen.getByText("onik97/worker"));
-    expect(mocks.post).toHaveBeenCalledWith("/api/repositories/scan", { owner: "onik97", name: "worker" });
+    expect(mocks.post).toHaveBeenCalledWith("/api/repositories/scan", { owner: "onik97", name: "worker", workspace_id: "ws-1" });
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(useProjectWizardStore.getState().candidate?.name).toBe("api");
   });
@@ -121,6 +125,24 @@ describe("WizardRepositoryStep", () => {
     expect(link).toHaveAttribute("href", "https://github.com/apps/nexul-otal/installations/new");
     expect(link).toHaveAttribute("target", "_blank");
     expect(screen.getByText(/installs the App there and gives the connected account access to it/)).toBeInTheDocument();
+    expect(screen.getByText(/Only the connected account's repositories are visible until the App's private key is added/)).toBeInTheDocument();
+  });
+
+  it("once Nexul reads GitHub as the App, links an install that lands in this workspace and drops the connected-account signal", async () => {
+    useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
+    const stateURL = "https://github.com/apps/nexul-otal/installations/new?state=install.ws-1.1.sig";
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/connectors/github/app-config") return { data: { configured: true, app_slug: "nexul-otal", private_key_set: true } };
+      if (url === "/api/repositories/install-url") return { data: { url: stateURL } };
+      return { data: { repositories: repos } };
+    });
+    renderStep();
+
+    expect(await screen.findByText(/lists the repositories of the GitHub accounts assigned to it/)).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(screen.getByRole("link", { name: "Install it on another account or organisation" })).toHaveAttribute("href", stateURL),
+    );
+    expect(screen.queryByText(/Only the connected account's repositories are visible/)).not.toBeInTheDocument();
   });
 
   it("explains where repositories come from without a broken link when no App slug is configured", async () => {

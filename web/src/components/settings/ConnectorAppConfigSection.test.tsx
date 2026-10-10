@@ -1,8 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { GitHubInstallationsSection } from "@/components/settings/GitHubInstallationsSection";
 import { ConnectorAppConfigSection } from "@/components/settings/ConnectorAppConfigSection";
 
 const mocks = vi.hoisted(() => ({
@@ -180,6 +182,43 @@ describe("ConnectorAppConfigSection", () => {
         app_slug: "nexul-renamed",
       });
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    });
+
+    it("signals the missing private key and stores one only after GitHub accepts it", async () => {
+      const key = "-----BEGIN RSA PRIVATE KEY-----";
+      mocks.post.mockResolvedValue({ data: undefined });
+      mocks.put.mockResolvedValue({ data: { ...registered, private_key_set: true } });
+      let asApp = false;
+      const installation = (account: string) => ({ id: 1, account_login: account, account_type: "Organization", account_avatar_url: "", repository_selection: "all", html_url: "https://github.example.com/installations/1", workspaces: [] });
+      mocks.get.mockImplementation(async (url: string) => {
+        if (url === "/api/connectors/github/app-config") return { data: registered };
+        if (url === "/api/connectors") return { data: [{ connector: { id: "github" }, status: { configured: true } }] };
+        if (url === "/api/auth/me") return { data: { instance_permissions: [] } };
+        if (url === "/api/repositories/installations") return { data: { installations: [installation(asApp ? "globex" : "acme")] } };
+        throw new Error(`unexpected GET ${url}`);
+      });
+      mocks.put.mockImplementation(async () => {
+        asApp = true;
+        return { data: { ...registered, private_key_set: true } };
+      });
+      const user = userEvent.setup();
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      render(<QueryClientProvider client={client}><MemoryRouter><ConnectorAppConfigSection /><GitHubInstallationsSection /></MemoryRouter></QueryClientProvider>);
+      expect(await screen.findByText("acme")).toBeInTheDocument();
+
+      expect(await screen.findByText("only the connected account's repositories are visible", { exact: false })).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Add private key" }));
+      const dialog = await screen.findByRole("dialog");
+      await user.type(within(dialog).getByLabelText("Private key"), key);
+      await user.click(within(dialog).getByRole("button", { name: "Verify" }));
+
+      expect(mocks.post).toHaveBeenCalledWith("/api/connectors/github/private-key/verify", { private_key: key });
+      expect(mocks.put).not.toHaveBeenCalled();
+      await user.click(await within(dialog).findByRole("button", { name: "Save" }));
+      expect(mocks.put).toHaveBeenCalledWith("/api/connectors/github/private-key", { private_key: key });
+      expect(await screen.findByText("Nexul reads every installation as the App", { exact: false })).toBeInTheDocument();
+      expect(await screen.findByText("globex")).toBeInTheDocument();
+      expect(screen.queryByText("acme")).not.toBeInTheDocument();
     });
   });
 });

@@ -8,6 +8,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/connectors"
 	"github.com/otal-labs/nexul/internal/platform/crypto"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -38,7 +39,36 @@ func (r *ConnectorAppConfigRepo) GetAppConfig(ctx context.Context, connectorID s
 		}
 		c.ClientSecret = string(secret)
 	}
+	if row.PrivateKey != "" {
+		key, err := crypto.Decrypt(r.encKey, row.PrivateKey)
+		if err != nil {
+			return connectors.AppConfig{}, fmt.Errorf("decrypt private key %s: %w", connectorID, err)
+		}
+		c.PrivateKey = string(key)
+	}
 	return c, nil
+}
+
+// SetPrivateKey encrypts and stores connectorID's private key, or clears it when privateKey is empty.
+func (r *ConnectorAppConfigRepo) SetPrivateKey(ctx context.Context, connectorID, privateKey string) error {
+	enc := ""
+	if privateKey != "" {
+		var err error
+		enc, err = crypto.Encrypt(r.encKey, []byte(privateKey))
+		if err != nil {
+			return fmt.Errorf("encrypt private key %s: %w", connectorID, err)
+		}
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetConnectorAppPrivateKey(ctx, sqlcgen.SetConnectorAppPrivateKeyParams{PrivateKey: enc, ConnectorID: connectorID})
+		if err != nil {
+			return fmt.Errorf("save private key %s: %w", connectorID, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("save private key %s: %w", connectorID, apperrs.ErrNotFound)
+		}
+		return nil
+	})
 }
 
 // SetAppConfig upserts connectorID's config, encrypting the secret before it reaches SQL, for setup or rotation.

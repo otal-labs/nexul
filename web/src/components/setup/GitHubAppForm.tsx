@@ -3,6 +3,7 @@ import type { AxiosError } from "axios";
 import { useForm, useWatch } from "react-hook-form";
 
 import { api, errorMessage, joinAPIURL } from "@/api/client";
+import { GitHubManifestSetup } from "@/components/setup/GitHubManifestSetup";
 import { FormInput } from "@/components/FormInput";
 import { TickerRow } from "@/components/TickerRow";
 import { Button } from "@/components/ui/button";
@@ -71,7 +72,10 @@ export const GitHubAppForm = ({ instanceUrl }: GitHubAppFormProps) => {
   const callbackUrl = `${instanceUrl.replace(/\/$/, "")}/auth/callback`;
 
   return (
-    <form onSubmit={form.handleSubmit(verified ? onSubmit : onVerify)} className="space-y-4">
+    <div className="space-y-6">
+      <GitHubManifestSetup />
+      <p className="text-sm text-muted-foreground">Already registered an App? Enter its credentials below.</p>
+      <form onSubmit={form.handleSubmit(verified ? onSubmit : onVerify)} className="space-y-4">
       <p className="text-sm text-muted-foreground">
         Instance URL <span className="break-all font-mono text-xs text-foreground">{instanceUrl}</span>
       </p>
@@ -125,6 +129,7 @@ export const GitHubAppForm = ({ instanceUrl }: GitHubAppFormProps) => {
         {verifying && "Verifying…"}
         {!form.formState.isSubmitting && !verifying && (verified ? "Set up instance" : "Verify")}
       </Button>
-    </form>
+      </form>
+    </div>
   );
 };

@@ -467,3 +467,16 @@ func (g memoryAttachmentsAccessGate) Can(ctx context.Context, _, memoryID string
 	}
 	return g.access.RequireProject(ctx, m.ProjectID, action) == nil, nil
 }
+
+// githubManifestConverter adapts the generated credentials without returning them through an HTTP response.
+type githubManifestConverter struct {
+	client githubapp.ManifestClient
+}
+
+func (g githubManifestConverter) Convert(ctx context.Context, code string) (auth.GitHubAppCredentials, error) {
+	app, err := g.client.Convert(ctx, code)
+	if err != nil {
+		return auth.GitHubAppCredentials{}, err
+	}
+	return auth.GitHubAppCredentials{ClientID: app.ClientID, ClientSecret: app.ClientSecret, Slug: app.Slug, PrivateKey: app.PrivateKey}, nil
+}

@@ -5,19 +5,21 @@ import { describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { useSearchRepositories } from "@/hooks/RepositoryHooks";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({ api: { get: vi.fn() } }));
 
 describe("useSearchRepositories", () => {
   it("asks the server past its cache when a loaded search is refetched, so a newly installed account shows up", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: { repositories: [] } });
+    useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
     renderHook(() => useSearchRepositories(" onik "), { wrapper });
     await waitFor(() => expect(api.get).toHaveBeenCalledTimes(1));
-    expect(vi.mocked(api.get).mock.calls[0]![1]).toEqual(expect.objectContaining({ params: { q: "onik" } }));
+    expect(vi.mocked(api.get).mock.calls[0]![1]).toEqual(expect.objectContaining({ params: { workspace_id: "ws-1", q: "onik" } }));
 
     await client.refetchQueries({ queryKey: ["repositories"] });
-    expect(vi.mocked(api.get).mock.calls[1]![1]).toEqual(expect.objectContaining({ params: { q: "onik", refresh: 1 } }));
+    expect(vi.mocked(api.get).mock.calls[1]![1]).toEqual(expect.objectContaining({ params: { workspace_id: "ws-1", q: "onik", refresh: 1 } }));
   });
 });

@@ -25,6 +25,13 @@ export interface Installation {
   repository_count?: number;
   // The installation's settings page on GitHub, where its repository access is changed.
   html_url: string;
+  // The workspaces that list its repositories; none means it is unassigned.
+  workspaces: InstallationWorkspace[];
+}
+
+export interface InstallationWorkspace {
+  id: string;
+  name: string;
 }
 
 export const CandidateKinds = ["compose", "dockerfile"] as const;

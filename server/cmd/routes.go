@@ -88,7 +88,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	repoGate := projectEntityGate{access: svc.accessSvc, projects: store.Projects, tickets: store.Tickets}
 	changeContext := changeContextReader{tickets: svc.ticketsSvc, docs: svc.docsSvc, workspace: svc.workspaceSvc, memories: svc.memoriesSvc}
 	mountGateway(apiMux, "/api/repos", gitprovider.NewHandler(svc.gitRouter, repoGate).WithChangeContext(changeContext).Routes())
-	mountGateway(apiMux, "/api/repositories", repository.NewHandler(svc.repositoryScanner, svc.repositoryScanner, svc.accessSvc).Routes())
+	mountGateway(apiMux, "/api/repositories", repository.NewHandler(svc.repositorySvc).Routes())
 	mountGateway(apiMux, "/api/permissions", access.NewHandler(svc.accessSvc).Routes())
 	mountGateway(apiMux, "/api/mentions", mentions.NewHandler(svc.mentionsSvc).Routes())
 	mountGateway(apiMux, "/api/projects", withUserID(workspace.WithUserID)(workspace.NewHandler(svc.workspaceSvc).Routes()))
@@ -147,23 +147,21 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	spec.AddSecuritySchemes()
 
 	mcpServer := mcp.New(mcp.RegistryOptions{
-		Docs:                    svc.docsSvc,
-		Attachments:             svc.attachmentsSvc,
-		Memories:                svc.memoriesSvc,
-		Templates:               svc.templatesSvc,
-		Tickets:                 svc.ticketsSvc,
-		Topology:                svc.topoSvc,
-		Deploy:                  svc.deploySvc,
-		Reviews:                 svc.reviewSvc,
-		Workspace:               svc.workspaceSvc,
-		Notifications:           svc.notifSvc,
-		Git:                     svc.gitRouter,
-		ChangeContext:           changeContext,
-		GitGate:                 repoGate,
-		Repository:              svc.repositoryScanner,
-		RepositoryInstallations: svc.repositoryScanner,
-		RepositoryGate:          svc.accessSvc,
-		Runner:                  runnerSvc,
+		Docs:          svc.docsSvc,
+		Attachments:   svc.attachmentsSvc,
+		Memories:      svc.memoriesSvc,
+		Templates:     svc.templatesSvc,
+		Tickets:       svc.ticketsSvc,
+		Topology:      svc.topoSvc,
+		Deploy:        svc.deploySvc,
+		Reviews:       svc.reviewSvc,
+		Workspace:     svc.workspaceSvc,
+		Notifications: svc.notifSvc,
+		Git:           svc.gitRouter,
+		ChangeContext: changeContext,
+		GitGate:       repoGate,
+		Repository:    svc.repositorySvc,
+		Runner:        runnerSvc,
 		Hosts: map[string]composite.HostKind{
 			"runner":      runnerHostKind{svc: runnerSvc},
 			"automations": automationsHostKind{svc: svc.automationHostsSvc},
@@ -330,8 +328,11 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/reviews/{id}", "Get a code review", "reviews")
 	spec.Register("GET", "/api/repos/{owner}/{repo}/prs", "List pull requests", "repos")
 	spec.Register("POST", "/api/repositories/scan", "Scan a repository's tree for deployable candidates", "repositories")
-	spec.Register("GET", "/api/repositories", "List repositories the connected GitHub App installation grants; ?q= (3 or more characters) keeps those whose owner/name contains it, ?refresh=1 skips the one-minute cache", "repositories")
-	spec.Register("GET", "/api/repositories/installations", "List the accounts and organisations the GitHub App is installed on", "repositories")
+	spec.Register("GET", "/api/repositories", "List the repositories a workspace can make a project from; ?workspace_id= names it, ?q= (3 or more characters) keeps those whose owner/name contains it, ?refresh=1 skips the one-minute cache", "repositories")
+	spec.Register("GET", "/api/repositories/installations", "List the accounts and organisations the GitHub App is installed on, with the workspaces that see each", "repositories")
+	spec.Register("GET", "/api/repositories/install-url", "GitHub's page for installing the App on another account, assigning it to ?workspace_id=", "repositories")
+	spec.Register("PUT", "/api/repositories/installations/{account}/workspaces/{workspaceID}", "Let a workspace see an installation's repositories", "repositories")
+	spec.Register("DELETE", "/api/repositories/installations/{account}/workspaces/{workspaceID}", "Stop a workspace seeing an installation's repositories", "repositories")
 	spec.Register("GET", "/api/permissions", "List document permission grants", "permissions")
 	spec.Register("GET", "/api/permissions/catalog", "List the permission grid roles, tokens, and grants share", "permissions")
 	spec.Register("GET", "/api/mentions/search", "Search mention targets for the @ picker", "mentions")

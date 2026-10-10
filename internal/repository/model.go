@@ -15,8 +15,7 @@ type Repo struct {
 	Provider string `json:"provider"`
 }
 
-// Installation is one account or organisation the connector's GitHub App is installed on, visible to its user;
-// together they decide which repositories Nexul can read.
+// Installation is one account or organisation the GitHub App is installed on, with the workspaces that list it.
 type Installation struct {
 	ID           int64  `json:"id"`
 	AccountLogin string `json:"account_login"`
@@ -29,6 +28,14 @@ type Installation struct {
 	RepositoryCount *int `json:"repository_count,omitempty"`
 	// HTMLURL is where the installation's repository access is managed on GitHub.
 	HTMLURL string `json:"html_url"`
+	// Workspaces see this installation's repositories; none means it is unassigned.
+	Workspaces []InstallationWorkspace `json:"workspaces"`
+}
+
+// InstallationWorkspace is one workspace an installation is assigned to.
+type InstallationWorkspace struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // TreeEntry is one entry of a recursive git tree: a file (blob), directory (tree), or submodule (commit).

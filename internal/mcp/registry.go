@@ -52,11 +52,8 @@ type RegistryOptions struct {
 	Git           gitprovider.GitProvider
 	ChangeContext gitprovider.ChangeContextReader
 	GitGate       gitprovider.Gate
-	Repository    repository.Scanner
-	// RepositoryInstallations answers repository_list's installations flag.
-	RepositoryInstallations repository.InstallationLister
-	RepositoryGate          repository.Gate
-	Runner                  *runner.Service
+	Repository    *repository.Service
+	Runner        *runner.Service
 	// Hosts adapts each host kind (runner, automations host) to the shared host_create and host_delete tools.
 	Hosts       map[string]composite.HostKind
 	DNS         *dns.Service
@@ -122,13 +119,13 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		runner.MCPTools(opts.Runner),
 		composite.HostTools(opts.Hosts),
 		gitprovider.MCPTools(opts.Git, opts.ChangeContext, opts.GitGate),
-		repository.MCPTools(opts.Repository, opts.RepositoryInstallations, opts.RepositoryGate),
+		repository.MCPTools(opts.Repository),
 		dns.MCPTools(opts.DNS),
 		automations.MCPTools(opts.Automations),
 		access.MCPTools(opts.Access),
 		auth.MCPTools(opts.Auth),
 		composite.AccountTools(opts.Auth, opts.Workspaces),
-		composite.WorkspaceTools(opts.Workspaces, opts.Roles, opts.Plays),
+		composite.WorkspaceTools(opts.Workspaces, opts.Roles, opts.Plays, opts.Repository),
 		roles.MCPTools(opts.Roles),
 		tenancy.MCPTools(opts.Invitations),
 		mentions.MCPTools(opts.Mentions),

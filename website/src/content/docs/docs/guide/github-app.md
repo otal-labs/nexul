@@ -7,6 +7,12 @@ sidebar:
 
 You create one GitHub App per instance, then paste its details into the [setup wizard](/docs/guide/setup-wizard/). It has to be a GitHub App, not an OAuth App: only a GitHub App has per-repository permissions and installations, and an OAuth App cannot be converted later.
 
+## Create an App during setup
+
+On the GitHub step, choose **Create App on GitHub**. GitHub opens a registration with the callback addresses and required permissions filled in. Choose a unique name and create it. Back in Nexul, press **Finish setup**. Nexul receives and stores the private key with the App credentials, then opens sign-in. Use the same browser and setup pass throughout; the return expires after fifteen minutes and can be used once. If registration fails or expires, start it again.
+
+The manual form below remains available for an App you already registered. Its private key can be added in Settings after signing in.
+
 ## 1. Create the App
 
 On GitHub, go to **Settings → Developer settings → GitHub Apps → New GitHub App** and fill in:
@@ -35,6 +41,8 @@ Without Contents: Read, a runner cloning a private repository fails with "Write 
 
 Generate a client secret on the App's page and copy it. GitHub shows it once.
 
+Then, under **Private keys** on the same page, click **Generate a private key**. GitHub downloads a `.pem` file; keep it for step 3.
+
 ## 2. Install it
 
 On the App's page, click **Install App**, pick your account, and choose **All repositories** or the ones you want to deploy. Nexul only sees repositories in accounts the App is installed on.
@@ -43,19 +51,24 @@ On the App's page, click **Install App**, pick your account, and choose **All re
 
 1. In the setup wizard, paste the client ID, client secret and App slug.
 2. In the owner wizard's **Connect your tools** step, or later under **Settings → Connectors**, click **Connect** on GitHub and approve. If you already authorized the App while installing it, GitHub skips the approval screen.
+3. Open **Settings → Connectors → GitHub App**, click **Add private key**, paste the whole `.pem` file, then **Verify** and **Save**. Nexul checks the key with GitHub first and never shows it again; **Replace private key** swaps it and **Remove key** takes it away.
 
 To change the client ID or secret later, open **Settings → Connectors → GitHub App** and click **Edit**.
 
+## Reading as the App
+
+With the private key set, Nexul reads GitHub as the App itself, with a short-lived token for each account the App is installed on. Installing the App on an account is all it takes for its repositories to be readable: listing, scanning, cloning, webhooks and pull requests all work whoever clicked **Connect**.
+
+Without the key, Nexul reads GitHub as the account that clicked **Connect**, and the GitHub App card and the project wizard say that only that account's repositories are visible. A repository then lists only when the App is installed on its owner and the connected account can open it, and adding its webhook needs admin rights on it. An instance that upgrades keeps working this way until a key is added.
+
 ## Adding an account or organisation
 
-**Settings → Connectors → GitHub App** lists every account the App is installed on under **Installations**, with whether it grants all repositories or a selection. Click **Add account or organisation** to install it somewhere else; the list updates when you come back to the tab.
+Each installation belongs to the workspaces that list its repositories, so one client's workspace never sees another's. **Settings → Connectors → GitHub App** lists every account the App is installed on under **Installations**, with whether it grants all repositories or a selection, and the workspaces it is assigned to.
 
-Nexul reads GitHub as the account that clicked **Connect**, not as each person signed in. So it lists a repository only when the App is installed on the account that owns it and the connected account can open it. For a repository in someone else's account, such as a client's, its owner does both:
+- **From the project wizard.** **Install it on another account or organisation**, under the repository search, opens GitHub with this workspace attached. Once the owner of that account installs the App, GitHub sends them back to Nexul and the account joins the workspace. The link is good for a week, so you can send it to a client to install.
+- **From Settings.** **Add account or organisation** installs the App with no workspace attached. The new installation shows as **Unassigned** until someone who manages connectors picks a workspace for it with **Assign to…**. The **×** next to a workspace takes the installation away from it again.
 
-1. Installs the App there, from `https://github.com/apps/<slug>/installations/new`, with that repository selected.
-2. Gives the connected account access to the repository: a collaborator with admin rights, or an organisation member with admin rights on it. Admin is what lets Nexul add its webhook; with less, the repository lists and deploys but pull request changes don't arrive as they happen.
-
-Installing the App alone is not enough: the repository stays out of the list until the connected account can open it. Agents see the same list through `repository_list` with `installations` set.
+Upgrading assigns each account to every workspace whose projects already use one of its repositories. Agents see the installations, with their workspaces, through `repository_list` with `installations` set, and assign them with `workspace_update`.
 
 ## Changing permissions later
 
@@ -64,4 +77,7 @@ Adding or raising a permission on the App does not reach existing installations.
 ## Which token does what
 
 - Sign-in uses your own GitHub token, only to read your profile.
-- The connector token, stored when you click **Connect**, is what the server uses for repositories, pull requests and webhooks, and what it hands a runner for a build. If it ever leaks, click **Disconnect**, confirm, and then **Connect** for a fresh one.
+- With the private key set, the server reads repositories, pull requests and webhooks with an installation token of the App, and hands a runner one for its build. Each lasts an hour. If the key ever leaks, delete it on the App's page on GitHub, generate a new one, and **Replace private key**.
+- Without the key, the connector token, stored when you click **Connect**, does all of that. If it ever leaks, click **Disconnect**, confirm, and then **Connect** for a fresh one.
+
+Once a private key is set, repository reads and builds stay within the installation assigned to the project's workspace. Removing that assignment prevents new builds from being dispatched, even if the runner has its own GitHub credential or the repository is public. Pending builds fail with the authorization reason.

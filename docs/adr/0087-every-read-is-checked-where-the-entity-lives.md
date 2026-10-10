@@ -68,3 +68,7 @@ full check per socket.
 
 Amended 2026-10-10 by ADR 0141: a DM's participants must be members of its workspace when it is started, and
 reading one takes being its participant alone; it shows in every workspace all its people share.
+
+Amended 2026-10-10 by ADR 0144: the wizard's repository list takes `projects:write` in the workspace it lists for, and
+lists only the installations assigned to it once Nexul reads GitHub as its App; the installations list takes
+`connectors:read`.

@@ -57,6 +57,15 @@ func (c *OAuthClient) VerifyApp(ctx context.Context, cfg connectors.AppConfig) e
 	return githubapp.Verify(ctx, c.httpc, apiBase, cfg.ClientID, cfg.ClientSecret, cfg.AppSlug)
 }
 
+// VerifyKey implements connectors.AppKeyVerifier: GitHub must accept a JWT signed with privateKey as this App.
+func (c *OAuthClient) VerifyKey(ctx context.Context, cfg connectors.AppConfig, privateKey string) error {
+	apiBase := apiBaseURL
+	if cfg.BaseURL != "" {
+		apiBase = strings.TrimRight(cfg.BaseURL, "/") + "/api/v3"
+	}
+	return githubapp.VerifyKey(ctx, c.httpc, apiBase, cfg.ClientID, privateKey)
+}
+
 // config reads the connector's current AppConfig fresh: no caching, no startup snapshot (T13a).
 func (c *OAuthClient) config(ctx context.Context) (connectors.AppConfig, error) {
 	return c.store.GetAppConfig(ctx, c.connectorID)

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -1089,6 +1090,45 @@ func TestHandler_InvitationCallback_FailuresRedirectToSignIn(t *testing.T) {
 
 			require.Equal(t, http.StatusFound, rec.Code)
 			assert.Equal(t, "https://deploy.example.com/login?error="+tt.want, rec.Header().Get("Location"))
+		})
+	}
+}
+
+// fakeClaimer claims states starting "install." and lands on /acme; failErr makes the claim fail.
+type fakeClaimer struct {
+	failErr error
+	got     []string
+}
+
+func (f *fakeClaimer) ClaimsState(state string) bool { return strings.HasPrefix(state, "install.") }
+
+func (f *fakeClaimer) ClaimInstallation(_ context.Context, state, code, installationID string) (string, error) {
+	f.got = append(f.got, state+"|"+code+"|"+installationID)
+	return "/acme", f.failErr
+}
+
+func TestHandler_CallbackGET_AnInstallLinkIsClaimedNotSignedIn(t *testing.T) {
+	tests := []struct {
+		name    string
+		failErr error
+		want    string
+	}{
+		{"the installation joins the link's workspace", nil, "https://deploy.example.com/acme"},
+		{"a refused claim still lands in the app", errors.New("installer cannot see it"), "https://deploy.example.com/"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, _, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "alice")})
+			_, err := settings.Set(t.Context(), "https://deploy.example.com")
+			require.NoError(t, err)
+			claims := &fakeClaimer{failErr: tt.failErr}
+			s.SetInstallationClaimer(claims)
+			rec := httptest.NewRecorder()
+			NewHandler(s).Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/auth/callback?code=c&installation_id=42&setup_action=install&state=install.ws.1.sig", nil))
+			assert.Equal(t, http.StatusFound, rec.Code)
+			assert.Equal(t, tt.want, rec.Header().Get("Location"))
+			assert.Equal(t, []string{"install.ws.1.sig|c|42"}, claims.got)
+			assert.Empty(t, rec.Result().Cookies(), "nobody is signed in")
 		})
 	}
 }

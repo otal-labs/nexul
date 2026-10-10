@@ -33,6 +33,7 @@ type Store struct {
 	Users                 *UsersRepo
 	Allowlist             *AllowlistRepo
 	Settings              *SettingsRepo
+	GitHubManifests       *GitHubManifestsRepo
 	SetupCodes            *SetupCodesRepo
 	ConnectCodes          *ConnectCodesRepo
 	Access                *AccessRepo
@@ -70,6 +71,7 @@ type Store struct {
 	Audit                 *AuditRepo
 	Connectors            *ConnectorsRepo
 	ConnectorAppConfig    *ConnectorAppConfigRepo
+	GitHubInstallations   *GitHubInstallationsRepo
 	Chat                  *ChatRepo
 	Botwebhooks           *BotwebhooksRepo
 	Pairing               *PairingRepo
@@ -101,6 +103,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Users:                 &UsersRepo{db: db, w: w, q: q},
 		Allowlist:             &AllowlistRepo{db: db, w: w, q: q},
 		Settings:              &SettingsRepo{db: db, w: w, q: q, encKey: encKey},
+		GitHubManifests:       &GitHubManifestsRepo{db: db, w: w, q: q, encKey: encKey},
 		SetupCodes:            &SetupCodesRepo{db: db, w: w, q: q},
 		ConnectCodes:          &ConnectCodesRepo{db: db, w: w, q: q},
 		Access:                &AccessRepo{db: db, w: w, q: q},
@@ -138,6 +141,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Audit:                 &AuditRepo{db: db, w: w, q: q},
 		Connectors:            &ConnectorsRepo{db: db, w: w, q: q, encKey: encKey},
 		ConnectorAppConfig:    &ConnectorAppConfigRepo{db: db, w: w, q: q, encKey: encKey},
+		GitHubInstallations:   &GitHubInstallationsRepo{db: db, w: w, q: q},
 		Chat:                  &ChatRepo{db: db, w: w, q: q},
 		Botwebhooks:           &BotwebhooksRepo{db: db, w: w, q: q, encKey: encKey},
 		Pairing:               &PairingRepo{db: db, w: w, q: q},

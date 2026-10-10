@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 
-import { api } from "@/api/client";
+import { api, joinAPIURL } from "@/api/client";
 import { getBootstrapStatusKey } from "@/hooks/AuthHooks";
 import { useSetupPassStore } from "@/stores/setupPassStore";
-import type { PublicAddress, SetupPass } from "@/models/Setup";
+import type { GitHubManifestStart, PublicAddress, SetupPass } from "@/models/Setup";
 import { retry } from "@/utils/RetryUtility";
 
 const FINISH_RETRY_MS = 5000;
@@ -45,4 +45,15 @@ export const useFetchPublicAddress = () =>
     queryKey: [getPublicAddressKey],
     queryFn: async () => (await api.get<PublicAddress>("/api/setup/public-address")).data,
     staleTime: Infinity,
+  });
+
+export const useStartGitHubManifest = () =>
+  useMutation({ mutationFn: async () => (await api.post<GitHubManifestStart>("/api/setup/github-app/start")).data });
+
+export const useCompleteGitHubManifest = () =>
+  useMutation({
+    mutationFn: async (callback: { code: string; state: string }) => {
+      await api.post("/api/setup/github-app/callback", callback);
+    },
+    onSuccess: () => window.location.assign(joinAPIURL("/auth/github")),
   });

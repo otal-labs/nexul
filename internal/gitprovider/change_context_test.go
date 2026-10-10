@@ -85,6 +85,7 @@ func TestGetChangeContext_Errors(t *testing.T) {
 		want    error
 	}{
 		{"no repo", nil, ChangeRef{Owner: "acme", Number: 7}, apperrs.ErrInvalid},
+		{"path-bearing repo", nil, ChangeRef{Owner: "acme", Repo: "app/extra", Number: 7}, apperrs.ErrInvalid},
 		{"neither number nor commit", nil, ChangeRef{Owner: "acme", Repo: "app"}, apperrs.ErrInvalid},
 		{"commit in no PR", func(p *fakeProvider, _ *fakeChangeReader) { p.prs = nil }, ChangeRef{Owner: "acme", Repo: "app", Commit: "abc"}, apperrs.ErrNotFound},
 		{"provider fails on commit", func(p *fakeProvider, _ *fakeChangeReader) { p.err = apperrs.ErrUnauthorized }, ChangeRef{Owner: "acme", Repo: "app", Commit: "abc"}, apperrs.ErrUnauthorized},

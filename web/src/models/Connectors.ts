@@ -60,6 +60,8 @@ export interface AppConfigStatus {
   client_id?: string;
   base_url?: string;
   app_slug?: string;
+  // True once the App's private key is stored: Nexul then reads GitHub as the App, not as the connected account.
+  private_key_set?: boolean;
 }
 
 // Only GitHub Apps carry a slug and a self-hosted base URL; every other OAuth app is just client ID + secret.
@@ -86,3 +88,10 @@ export const githubAppURL = (app: AppConfigStatus): string =>
 export const githubAppInstallURL = (app: AppConfigStatus): string => `${githubAppURL(app)}/installations/new`;
 
 export type ConnectorAppConfigFormData = z.infer<ReturnType<typeof connectorAppConfigFormSchema>>;
+
+// A GitHub App private key is the whole .pem GitHub downloads; the server parses and checks it with GitHub.
+export const privateKeyFormSchema = z.object({
+  private_key: z.string().trim().min(1, "Paste the private key"),
+});
+
+export type PrivateKeyFormData = z.infer<typeof privateKeyFormSchema>;

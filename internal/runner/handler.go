@@ -27,12 +27,18 @@ type Bus interface {
 	Subscribe(ctx context.Context, topic string, h eventbus.Handler) error
 }
 
-// EnvLookup resolves real env values at dispatch time; deploy.requested only carries redacted keys.
-// GitTokenLookup hands dispatch a token that can clone the repo a build job names; a connector token, not an env var.
+// GitTokenLookup resolves clone credentials and whether a missing token permits the pre-key runner fallback.
 type GitTokenLookup interface {
-	RepoToken(ctx context.Context, repo string) (string, error)
+	RepoToken(ctx context.Context, repo string) (CloneCredentials, error)
 }
 
+// CloneCredentials explicitly permits the pre-key runner credential fallback; App authorization never does.
+type CloneCredentials struct {
+	Token         string `json:"-"`
+	AllowFallback bool
+}
+
+// EnvLookup resolves real env values at dispatch time; deploy.requested only carries redacted keys.
 type EnvLookup interface {
 	ResolveEnv(ctx context.Context, service string) (map[string]string, error)
 }
@@ -326,6 +332,9 @@ func (h *Handler) handleRequest(ctx context.Context, ev eventbus.Event) error {
 		return nil
 	}
 	if err := h.dispatchOne(ctx, c, req); err != nil {
+		if h.failDeniedBuild(ctx, req, err) {
+			return nil
+		}
 		h.queue(req)
 	}
 	return nil
@@ -385,15 +394,43 @@ func (h *Handler) buildFrame(ctx context.Context, req DeployRequestedEvent) (Fra
 		return Frame{}, err
 	}
 	if req.Kind == RequestBuild && h.cfg.GitTokens != nil {
-		token, err := h.cfg.GitTokens.RepoToken(ctx, req.Repo)
+		token, err := h.cloneToken(ctx, req.Repo)
 		if err != nil {
-			// A public repo clones fine without one; a private one fails on the runner with git's own message.
-			h.log.Warn("no clone token for build; runner falls back to its own", "id", req.ID, "repo", req.Repo, "error", err)
+			return Frame{}, err
 		}
 		frame.GitToken = token
 	}
 	frame.StackRoot = h.stackRootFor(ctx, req.Target)
 	return frame, nil
+}
+
+func (h *Handler) cloneToken(ctx context.Context, repo string) (string, error) {
+	credentials, err := h.cfg.GitTokens.RepoToken(ctx, repo)
+	if credentials.AllowFallback {
+		if err != nil {
+			h.log.Warn("legacy clone uses runner credentials", "repo", repo, "error", err)
+		}
+		return credentials.Token, nil
+	}
+	if err != nil {
+		err = fmt.Errorf("authorize repository clone: %w", err)
+		if errors.Is(err, apperrs.ErrNotFound) || errors.Is(err, apperrs.ErrForbidden) || errors.Is(err, apperrs.ErrUnauthorized) || errors.Is(err, apperrs.ErrInvalid) {
+			return "", apperrs.Fatal(err)
+		}
+		return "", err
+	}
+	if credentials.Token == "" {
+		return "", apperrs.Fatal(fmt.Errorf("%w: the App returned no clone credential", apperrs.ErrUnauthorized))
+	}
+	return credentials.Token, nil
+}
+
+func (h *Handler) failDeniedBuild(ctx context.Context, req DeployRequestedEvent, err error) bool {
+	if req.Kind != RequestBuild || !errors.Is(err, apperrs.ErrFatal) {
+		return false
+	}
+	h.publish(ctx, TopicDeployBuildCompleted, BuildCompletedEvent{ID: req.ID, Status: BuildStatusFailed, Error: err.Error()})
+	return true
 }
 
 // stackRootFor looks up the target machine's stack root at dispatch time (spec §2/§4); empty when Machines
@@ -434,6 +471,9 @@ func (h *Handler) dispatchPending(ctx context.Context, c *runnerConn) {
 		}
 
 		if err := h.dispatchOne(ctx, c, req); err != nil {
+			if h.failDeniedBuild(ctx, req, err) {
+				continue
+			}
 			h.log.Warn("queued dispatch failed", "runner_id", c.id, "id", req.ID, "error", err)
 			h.mu.Lock()
 			h.pending = append([]DeployRequestedEvent{req}, h.pending...)

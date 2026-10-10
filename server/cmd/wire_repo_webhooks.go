@@ -10,6 +10,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	"github.com/otal-labs/nexul/internal/platform/crypto"
+	"github.com/otal-labs/nexul/internal/platform/githubapp"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -133,9 +134,20 @@ func (h repoWebhooks) ensureAll(ctx context.Context, list func(context.Context) 
 type hookedProjects struct {
 	workspace.Repo
 	hooks repoWebhooks
+	scope *githubInstallationScope
 }
 
 func (p hookedProjects) AddRepo(ctx context.Context, projectID string, r workspace.RepoRef) error {
+	if r.ConnectorID == githubConnectorID {
+		if err := githubapp.ValidateRepository(r.Owner, r.Name); err != nil {
+			return err
+		}
+	}
+	if p.scope != nil {
+		if err := p.scope.Require(ctx, projectID, r.Owner, r.ConnectorID); err != nil {
+			return err
+		}
+	}
 	if err := p.Repo.AddRepo(ctx, projectID, r); err != nil {
 		return err
 	}

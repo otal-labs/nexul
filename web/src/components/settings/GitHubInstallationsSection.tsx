@@ -20,7 +20,11 @@ export const GitHubInstallationsSection = () => {
     <SettingsCard
       id="github-installations"
       title="Installations"
-      description="Nexul reads repositories in these accounts and organisations."
+      description={
+        app.private_key_set
+          ? "Nexul reads these accounts and organisations as the App. Each one's repositories list in the workspaces it is assigned to."
+          : "Nexul reads repositories in these accounts and organisations as the connected account, so it sees only what that account can open."
+      }
       footer={
         app.app_slug && (
           <Button asChild variant="outline" size="sm">
@@ -34,7 +38,7 @@ export const GitHubInstallationsSection = () => {
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {connector && !connector.status.configured && (
+      {connector && !connector.status.configured && !app.private_key_set && (
         <p className="text-sm text-muted-foreground">
           Connect GitHub on the{" "}
           <Link to={tabPath()} className="underline underline-offset-2 hover:text-foreground">
@@ -43,7 +47,7 @@ export const GitHubInstallationsSection = () => {
           to see where the App is installed.
         </p>
       )}
-      {connector?.status.configured && <GitHubInstallationsList />}
+      {(app.private_key_set || connector?.status.configured) && <GitHubInstallationsList />}
     </SettingsCard>
   );
 };

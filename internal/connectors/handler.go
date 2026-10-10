@@ -52,6 +52,9 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/connectors/{id}/disconnect", h.disconnect)
 	mux.HandleFunc("GET /api/connectors/{id}/app-config", h.appConfig)
 	mux.HandleFunc("PUT /api/connectors/{id}/app-config", h.setAppConfig)
+	mux.HandleFunc("POST /api/connectors/{id}/private-key/verify", h.verifyPrivateKey)
+	mux.HandleFunc("PUT /api/connectors/{id}/private-key", h.setPrivateKey)
+	mux.HandleFunc("DELETE /api/connectors/{id}/private-key", h.removePrivateKey)
 	return mux
 }
 
@@ -253,6 +256,56 @@ func (h *Handler) setAppConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	st, err := h.svc.SetAppConfig(r.Context(), userID, connectorID, body.ClientID, body.ClientSecret, body.BaseURL, body.AppSlug)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, st)
+}
+
+type privateKeyRequest struct {
+	PrivateKey string `json:"private_key"`
+}
+
+func decodePrivateKey(r *http.Request) (string, error) {
+	var body privateKeyRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return "", fmt.Errorf("%w: invalid request body", apperrs.ErrInvalid)
+	}
+	return body.PrivateKey, nil
+}
+
+// verifyPrivateKey is the ticker's one check: GitHub accepts the key as this App. Nothing is stored.
+func (h *Handler) verifyPrivateKey(w http.ResponseWriter, r *http.Request) {
+	key, err := decodePrivateKey(r)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.VerifyPrivateKey(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), key); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// setPrivateKey stores the App's private key once GitHub accepts it; the response says only that one is set.
+func (h *Handler) setPrivateKey(w http.ResponseWriter, r *http.Request) {
+	key, err := decodePrivateKey(r)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	st, err := h.svc.SetPrivateKey(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), key)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, st)
+}
+
+func (h *Handler) removePrivateKey(w http.ResponseWriter, r *http.Request) {
+	st, err := h.svc.RemovePrivateKey(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

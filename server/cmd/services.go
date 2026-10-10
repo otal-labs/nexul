@@ -23,6 +23,7 @@ import (
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/dns/cloudflare"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/gitprovider/github"
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/integrations"
 	"github.com/otal-labs/nexul/internal/memories"
@@ -31,11 +32,13 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/config"
 	"github.com/otal-labs/nexul/internal/platform/crypto"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
+	"github.com/otal-labs/nexul/internal/platform/githubapp"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/presence"
 	"github.com/otal-labs/nexul/internal/push"
+	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/t3client"
 	"github.com/otal-labs/nexul/internal/t3clientv2"
@@ -105,6 +108,7 @@ type coreServices struct {
 	gitRouter         gitProviderRouter
 	repoHooks         repoWebhooks
 	repositoryScanner repositoryScanner
+	repositorySvc     *repository.Service
 
 	integrationsSvc *integrations.Service
 
@@ -145,14 +149,17 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Registry:       connectorsRegistry,
 	})
 	connectorsHandler := connectors.NewHandler(connectorsSvc)
+	// One App for both routers, so an installation token minted for a webhook serves the next scan too.
+	githubApps := &github.AppCache{}
+	githubScope := &githubInstallationScope{appConfigs: store.ConnectorAppConfig, projects: store.Projects, assignments: store.GitHubInstallations}
 	repoHooks := repoWebhooks{
-		git:         gitProviderRouter{workspace: store.Projects, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig},
+		git:         gitProviderRouter{workspace: store.Projects, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig, apps: githubApps, scope: githubScope},
 		instanceURL: dnsSettingsAdapter{store.Settings}.GetInstanceURL,
 		secret:      githubWebhookSecret(cfg.AuthSecret),
 		openPRs:     store.Tickets.ListOpenPRNumbers,
 		bus:         bus,
 	}
-	projects := hookedProjects{Repo: store.Projects, hooks: repoHooks}
+	projects := hookedProjects{Repo: store.Projects, hooks: repoHooks, scope: githubScope}
 	topoSvc := topology.NewService(store.Topology)
 	deploySvc := deploy.NewService(store.Deploys, store.Stacks, store.Services, deployProjectStore{projects: projects})
 	topoSvc.SetGate(accessSvc)
@@ -170,22 +177,24 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		logger.Warn("DEV AUTH BYPASS ENABLED — /auth/dev-login mints sessions with no GitHub round trip; never set NEXUL_DEV_LOGIN in production")
 	}
 	authSvc := auth.NewService(auth.Config{
-		Secret:        []byte(cfg.AuthSecret),
-		SPAOrigin:     cfg.SPAOrigin,
-		Users:         store.Users,
-		OAuthHandoffs: store.OAuthHandoffs,
-		Allowlist:     store.Allowlist,
-		Settings:      store.Settings,
-		PATs:          store.PATs,
-		Sessions:      store.Sessions,
-		ConnectorApps: connectorAppSeederGate{store: store.ConnectorAppConfig},
-		GitHubApp:     githubAppVerifierGate{hc: &http.Client{Timeout: 15 * time.Second}},
-		DevLogin:      cfg.DevLogin,
-		SetupCodes:    store.SetupCodes,
-		ConnectCodes:  store.ConnectCodes,
-		EnrollDir:     filepath.Join(filepath.Dir(cfg.DBPath), "enroll"),
-		Local:         cfg.Local,
-		Permissions:   accessSvc,
+		Secret:              []byte(cfg.AuthSecret),
+		SPAOrigin:           cfg.SPAOrigin,
+		Users:               store.Users,
+		OAuthHandoffs:       store.OAuthHandoffs,
+		Allowlist:           store.Allowlist,
+		Settings:            store.Settings,
+		PATs:                store.PATs,
+		Sessions:            store.Sessions,
+		ConnectorApps:       connectorAppSeederGate{store: store.ConnectorAppConfig},
+		GitHubApp:           githubAppVerifierGate{hc: &http.Client{Timeout: 15 * time.Second}},
+		GitHubManifest:      githubManifestConverter{client: githubapp.ManifestClient{Client: &http.Client{Timeout: 15 * time.Second}}},
+		GitHubManifestStore: store.GitHubManifests,
+		DevLogin:            cfg.DevLogin,
+		SetupCodes:          store.SetupCodes,
+		ConnectCodes:        store.ConnectCodes,
+		EnrollDir:           filepath.Join(filepath.Dir(cfg.DBPath), "enroll"),
+		Local:               cfg.Local,
+		Permissions:         accessSvc,
 	})
 	authHandler := auth.NewHandler(authSvc)
 	invitationSvc := tenancy.NewInvitationService(store.Invitations, authSvc)
@@ -300,8 +309,17 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Targets: ticketTestTargets{deploy: deploySvc},
 	})
 	// gitRouter resolves per-repo since different projects' repos can live on different git hosts.
-	gitRouter := gitProviderRouter{workspace: workspaceSvc, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig}
+	gitRouter := gitProviderRouter{workspace: workspaceSvc, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig, apps: githubApps, scope: githubScope}
 	repoScanner := newRepositoryScanner(gitRouter, store.ConnectorAppConfig)
+	repositorySvc := repository.NewService(repository.Config{
+		Gate:          accessSvc,
+		Scanner:       repoScanner,
+		Installations: repoScanner,
+		Store:         store.GitHubInstallations,
+		Installers:    githubInstallers{oauth: githubOAuth(connectorsRegistry), appConfigs: store.ConnectorAppConfig},
+		StateKey:      crypto.DeriveKey("nexul github install state:" + cfg.AuthSecret),
+	})
+	authSvc.SetInstallationClaimer(installationClaimer{svc: repositorySvc, workspaces: store.Workspaces})
 	integrationsSvc := integrations.NewService(integrations.Config{
 		Installs:   store.IntegrationInstalls,
 		Tokens:     store.IntegrationTokens,
@@ -384,6 +402,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		gitRouter:         gitRouter,
 		repoHooks:         repoHooks,
 		repositoryScanner: repoScanner,
+		repositorySvc:     repositorySvc,
 
 		integrationsSvc: integrationsSvc,
 

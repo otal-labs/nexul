@@ -8,18 +8,20 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// Gate is the permission check the project wizard's repository reads pass. An installation's repositories belong to
-// no project yet, so a caller needs projects:write, what making a project from one takes, in any workspace (ADR 0087).
+// Gate is the permission check the repository reads and the installation assignments pass (ADR 0087, ADR 0144).
 type Gate interface {
 	RequireAnywhere(ctx context.Context, action permissions.Action) error
+	Require(ctx context.Context, workspaceID string, action permissions.Action) error
+	// WorkspacesWith lists the workspaces in which the caller holds action.
+	WorkspacesWith(ctx context.Context, action permissions.Action) ([]string, error)
 }
 
+// requireWizard is what a scan takes: projects:write, what making a project from a repository needs, anywhere.
 func requireWizard(ctx context.Context, g Gate) error {
 	if g == nil {
 		return permissions.Ungated(ctx)
@@ -105,43 +107,6 @@ func scanCandidates(ctx context.Context, s Scanner, owner, name, resolvedRef str
 
 // MinSearchLength is the shortest q accepted; fewer characters match too much of an installation to be worth it.
 const MinSearchLength = 3
-
-// ListRepos filters the installation's repositories by q (case-insensitive, empty lists all); refresh skips the cache.
-func ListRepos(ctx context.Context, g Gate, s Scanner, q string, refresh bool) ([]Repo, error) {
-	if err := requireWizard(ctx, g); err != nil {
-		return nil, err
-	}
-	q = strings.ToLower(strings.TrimSpace(q))
-	if q != "" && utf8.RuneCountInString(q) < MinSearchLength {
-		return nil, fmt.Errorf("%w: q needs at least %d characters", apperrors.ErrInvalid, MinSearchLength)
-	}
-	repos, err := s.ListInstallationRepos(ctx, refresh)
-	if err != nil {
-		return nil, fmt.Errorf("list installation repositories: %w", err)
-	}
-	if q == "" {
-		return repos, nil
-	}
-	matches := []Repo{}
-	for _, r := range repos {
-		if strings.Contains(strings.ToLower(r.FullName), q) {
-			matches = append(matches, r)
-		}
-	}
-	return matches, nil
-}
-
-// ListInstallations lists the accounts and organisations whose repositories the connector can read.
-func ListInstallations(ctx context.Context, g Gate, l InstallationLister) ([]Installation, error) {
-	if err := requireWizard(ctx, g); err != nil {
-		return nil, err
-	}
-	installs, err := l.ListInstallations(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("list installations: %w", err)
-	}
-	return installs, nil
-}
 
 // candidateName derives a candidate's display name from the repo name plus the file's directory, when not root.
 func candidateName(repoName, filePath string) string {

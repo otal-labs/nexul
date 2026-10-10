@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { getInstallationsKey, getRepositoriesKey } from "@/hooks/RepositoryHooks";
 import { api, errorMessage } from "@/api/client";
 import type { AppConfigStatus, ConnectorStatus, CredentialStatus } from "@/models/Connectors";
 
@@ -56,6 +57,35 @@ export const useSetConnectorAppConfig = () => {
       toast.success("Connector app saved");
       void queryClient.invalidateQueries({ queryKey: [getConnectorsKey] });
       void queryClient.invalidateQueries({ queryKey: [getConnectorAppConfigKey, payload.id] });
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+// The key never comes back: the answer only says one is set (private_key_set).
+export const useSetPrivateKey = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { id: string; private_key: string }) =>
+      (await api.put<AppConfigStatus>(`/api/connectors/${payload.id}/private-key`, { private_key: payload.private_key })).data,
+    onSuccess: (status, payload) => {
+      toast.success("Private key saved");
+      queryClient.setQueryData([getConnectorAppConfigKey, payload.id], status);
+      void queryClient.invalidateQueries({ queryKey: [getInstallationsKey] });
+      void queryClient.invalidateQueries({ queryKey: [getRepositoriesKey] });
+    },
+  });
+};
+
+export const useRemovePrivateKey = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.delete<AppConfigStatus>(`/api/connectors/${id}/private-key`)).data,
+    onSuccess: (status, id) => {
+      toast.success("Private key removed");
+      queryClient.setQueryData([getConnectorAppConfigKey, id], status);
+      void queryClient.invalidateQueries({ queryKey: [getInstallationsKey] });
+      void queryClient.invalidateQueries({ queryKey: [getRepositoriesKey] });
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

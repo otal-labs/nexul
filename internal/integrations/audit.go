@@ -26,6 +26,7 @@ type ActorResolver func(ctx context.Context) (actorType, actorID, tokenID string
 var readOnlyRoutes = []string{
 	"POST /api/auth/bootstrap/verify",
 	"POST /api/connectors/{id}/manual/verify",
+	"POST /api/connectors/{id}/private-key/verify",
 	"POST /api/dns/tunnels/{tunnelID}/verify",
 	"POST /api/dns/verify",
 	"POST /api/invitations/preview",
