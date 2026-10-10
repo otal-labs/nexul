@@ -604,7 +604,11 @@ is a run of sections, each a mono uppercase microheader with its one action
 trailing as a ghost `+`, compact rows, and a muted one-line sentence
 when empty ("No bugs reported."): Properties, Plays, Development, Reviews,
 Attachments, Links, Testing, Bugs, Trail. Plays is stage-bound, so it is
-absent, not empty, when no play applies to the ticket's stage. Links leads with the Source group
+absent, not empty, when no play applies to the ticket's stage, unless an auto play waits there or the daily cap paused
+it: a queued run is an `info` clock over "<person> · <why it waits>", a paused ticket a `warning` pause over its runs
+today, each with its one ghost action (Cancel, Resume). What an auto play already did is an event line in the Thread
+at its time: a small icon in a circle under the avatar column, the play's name in medium weight, the rest muted, a mono
+time, and an outline "Run it" on a didn't-run. Links leads with the Source group
 when the ticket has one: a muted file icon and the doc's title as a link. A linked ticket is its
 status icon and mono key only; hovering or focusing the key opens a hover
 card with the title, two clamped lines of description, and the status, and a

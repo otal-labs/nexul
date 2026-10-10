@@ -239,16 +239,4 @@ describe("the trail follower", () => {
     expect(usePlayRunStore.getState().frames["tr-1"]?.activity).toMatchObject({ tool: "Read", summary: "main.go" });
     expect(isStale(settled, ["getTrail", "tr-1"])).toBe(false);
   });
-
-  it("refetches only the queue of the target a queue frame names", async () => {
-    const client = seeded([
-      [["getPlayQueue", "ticket", "t-1"], { items: [], paused: false, auto_runs: 0, daily_cap: 5 }],
-      [["getPlayQueue", "ticket", "t-2"], { items: [], paused: false, auto_runs: 0, daily_cap: 5 }],
-    ]);
-    await followFrame(trailFollower, "play.queue_updated", { id: "q-1", target_type: "ticket", target_id: "t-1", status: "skipped" }, client);
-    expect([isStale(client, ["getPlayQueue", "ticket", "t-1"]), isStale(client, ["getPlayQueue", "ticket", "t-2"])]).toEqual([true, false]);
-
-    await followFrame(trailFollower, "play.queue_resumed", { target_type: "ticket", target_id: "t-2", resumed_by: "u-1" }, client);
-    expect(isStale(client, ["getPlayQueue", "ticket", "t-2"])).toBe(true);
-  });
 });

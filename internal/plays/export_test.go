@@ -59,6 +59,14 @@ func (q *QueueRig) GrantWrite(userID string) {
 	q.perm.grants[userID] = append(q.perm.grants[userID], permissions.AutoplaysWrite)
 }
 
+// GrantRead adds autoplays:read to userID's grants.
+func (q *QueueRig) GrantRead(userID string) {
+	q.perm.grants[userID] = append(q.perm.grants[userID], permissions.AutoplaysRead)
+}
+
+// HideProject makes projectID one userID may not open.
+func (q *QueueRig) HideProject(userID, projectID string) { q.perm.hideProject(userID, projectID) }
+
 // Exclude denies userID plays:run on playID, as a play's own settings exclude a person.
 func (q *QueueRig) Exclude(userID, playID string) { q.perm.deny(userID, playID) }
 

@@ -505,12 +505,15 @@ func TestDispatch_DailyCap_PausesUntilResumed(t *testing.T) {
 	assert.Equal(t, []any{true, 2, 2}, []any{q.Paused, q.AutoRuns, q.DailyCap})
 	assert.Equal(t, []any{plays.QueueQueued, plays.ReasonPaused}, []any{q.Items[0].Status, q.Items[0].Reason})
 	assert.Equal(t, start.Add(24*time.Hour).Sub(r.clock), wait, "wakes when the oldest run leaves the day")
+	require.NotNil(t, q.PausedUntil)
+	assert.Equal(t, start.Add(24*time.Hour), q.PausedUntil.UTC(), "the page looks again when the oldest run leaves the day")
 
 	_, err = r.Runner.ResumeAutoPlays(as(t.Context(), "u-stranger"), plays.TargetTicket, "t-1")
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 	q, err = r.Runner.ResumeAutoPlays(as(t.Context(), dev), plays.TargetTicket, "t-1")
 	require.NoError(t, err)
 	assert.Equal(t, []any{false, 0}, []any{q.Paused, q.AutoRuns})
+	assert.Nil(t, q.PausedUntil)
 	assert.True(t, r.Kicked())
 
 	r.dispatch(t)
@@ -536,6 +539,44 @@ func TestQueue_Cancel(t *testing.T) {
 
 	r.dispatch(t)
 	assert.Zero(t, r.Resolves())
+}
+
+func TestQueuedForPlay_ListsWhatWaitsWhereTheCallerMayLook(t *testing.T) {
+	r := newRig(t, openStore(t))
+	fix := r.play(t, "Fix it")
+	other := r.play(t, "Other")
+	r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked)
+	r.autoPlay(t, other.ID, plays.MomentTicketUnblocked)
+	for _, id := range []string{"t-1", "t-2"} {
+		r.ticket(id)
+		r.unblock(t, id)
+	}
+	cancelled := r.queued(t, "t-1")
+	for _, it := range cancelled {
+		if it.PlayID == fix.ID {
+			_, err := r.Runner.CancelQueued(as(t.Context(), dev), it.ID)
+			require.NoError(t, err)
+		}
+	}
+	ctx := as(t.Context(), dev)
+
+	_, err := r.Runner.QueuedForPlay(ctx, fix.ID)
+	require.ErrorIs(t, err, apperrs.ErrForbidden, "autoplays:read is required")
+	r.GrantRead(dev)
+	_, err = r.Runner.QueuedForPlay(ctx, " ")
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	_, err = r.Runner.QueuedForPlay(ctx, "missing")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+
+	items, err := r.Runner.QueuedForPlay(ctx, fix.ID)
+	require.NoError(t, err)
+	require.Len(t, items, 1, "the cancelled run and the other play's runs are left out")
+	assert.Equal(t, []any{"t-2", plays.QueueQueued}, []any{items[0].TargetID, items[0].Status})
+
+	r.HideProject(dev, project)
+	items, err = r.Runner.QueuedForPlay(ctx, fix.ID)
+	require.NoError(t, err)
+	assert.Empty(t, items, "a project the caller may not open shows nothing")
 }
 
 // The loop recovers a start a crash cut short, starts what is due, and wakes on its own for an offline retry.
@@ -648,6 +689,13 @@ func TestQueueSurfaces_HTTP(t *testing.T) {
 	require.Len(t, q.Items, 1)
 
 	assert.Equal(t, http.StatusBadRequest, call(http.MethodGet, "/api/plays/queue?target_type=interview&target_id=p-1", "").Code)
+	assert.Equal(t, http.StatusForbidden, call(http.MethodGet, "/api/plays/queued?play_id="+fix.ID, "").Code)
+	r.GrantRead(dev)
+	rec = call(http.MethodGet, "/api/plays/queued?play_id="+fix.ID, "")
+	require.Equal(t, http.StatusOK, rec.Code)
+	var waiting []plays.QueueItem
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &waiting))
+	assert.Len(t, waiting, 1)
 	assert.Equal(t, http.StatusConflict, call(http.MethodPost, "/api/plays/queue/resume", `{"target_type":"ticket","target_id":"t-1"}`).Code)
 	assert.Equal(t, http.StatusOK, call(http.MethodPost, "/api/plays/queue/"+q.Items[0].ID+"/cancel", "").Code)
 	assert.Equal(t, http.StatusNotFound, call(http.MethodPost, "/api/plays/queue/missing/cancel", "").Code)

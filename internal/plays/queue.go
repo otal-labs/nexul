@@ -61,6 +61,8 @@ type Queue struct {
 	Paused   bool         `json:"paused"`
 	AutoRuns int          `json:"auto_runs"`
 	DailyCap int          `json:"daily_cap"`
+	// PausedUntil is when the oldest counted run leaves the rolling day, so a page can look again then; null unless paused.
+	PausedUntil *time.Time `json:"paused_until"`
 }
 
 // QueueResumedEvent is the play.queue_resumed payload: the target's daily count of automatic runs starts again from ResumedAt.
@@ -85,12 +87,46 @@ func (r *Runner) GetQueue(ctx context.Context, targetType TargetType, targetID s
 		return nil, fmt.Errorf("list the queue of %s %s: %w", targetType, targetID, err)
 	}
 	q := &Queue{Items: items}
-	q.AutoRuns, q.DailyCap, _, err = r.autoRunsToday(ctx, workspaceID, targetType, targetID)
+	var frees time.Time
+	q.AutoRuns, q.DailyCap, frees, err = r.autoRunsToday(ctx, workspaceID, targetType, targetID)
 	if err != nil {
 		return nil, err
 	}
 	q.Paused = q.AutoRuns >= q.DailyCap
+	if q.Paused {
+		q.PausedUntil = &frees
+	}
 	return q, nil
+}
+
+// QueuedForPlay returns what waits for a play, in queue order, where the caller may open the project (autoplays:read).
+func (r *Runner) QueuedForPlay(ctx context.Context, playID string) ([]*QueueItem, error) {
+	playID = strings.TrimSpace(playID)
+	if playID == "" {
+		return nil, fmt.Errorf("%w: play id is required", apperrs.ErrInvalid)
+	}
+	if r.queue == nil {
+		return nil, fmt.Errorf("%w: auto plays are not running on this server", apperrs.ErrNotFound)
+	}
+	play, err := r.plays.Get(ctx, playID)
+	if err != nil {
+		return nil, fmt.Errorf("get play %s: %w", playID, err)
+	}
+	actor := actorID(ctx)
+	if !r.perm.HasPermission(ctx, actor, play.WorkspaceID, permissions.AutoplaysRead, "", "") {
+		return nil, fmt.Errorf("%w: %s required", apperrs.ErrForbidden, permissions.AutoplaysRead)
+	}
+	items, err := r.queue.ListQueuedByPlay(ctx, play.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the queued runs of play %s: %w", play.ID, err)
+	}
+	visible := make([]*QueueItem, 0, len(items))
+	for _, it := range items {
+		if r.perm.HasPermission(ctx, actor, it.WorkspaceID, permissions.Member, resourceTypeProject, it.ProjectID) {
+			visible = append(visible, it)
+		}
+	}
+	return visible, nil
 }
 
 // CancelQueued drops a queued item before it starts: the person it runs on or an autoplays:write holder may.

@@ -46,6 +46,8 @@ type QueueRepo interface {
 	MoveQueueItem(ctx context.Context, it *QueueItem, from QueueStatus, evts ...eventbus.OutboxEvent) error
 	// ListQueueByTarget returns a target's items, newest first.
 	ListQueueByTarget(ctx context.Context, targetType TargetType, targetID string) ([]*QueueItem, error)
+	// ListQueuedByPlay returns a play's queued items across every target, highest priority then oldest first.
+	ListQueuedByPlay(ctx context.Context, playID string) ([]*QueueItem, error)
 	// Resume restarts the target's count of automatic runs from at.
 	Resume(ctx context.Context, targetType TargetType, targetID, by string, at time.Time, evts ...eventbus.OutboxEvent) error
 	QueueDispatchRepo

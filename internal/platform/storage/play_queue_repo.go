@@ -78,6 +78,14 @@ func (r *PlayQueueRepo) ListQueueByTarget(ctx context.Context, targetType plays.
 	return toQueueItems(rows), nil
 }
 
+func (r *PlayQueueRepo) ListQueuedByPlay(ctx context.Context, playID string) ([]*plays.QueueItem, error) {
+	rows, err := r.q.ListQueuedPlayQueueByPlay(ctx, playID)
+	if err != nil {
+		return nil, fmt.Errorf("list the queued runs of play %s: %w", playID, err)
+	}
+	return toQueueItems(rows), nil
+}
+
 func (r *PlayQueueRepo) Resume(ctx context.Context, targetType plays.TargetType, targetID, by string, at time.Time, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).UpsertPlayQueueResume(ctx, sqlcgen.UpsertPlayQueueResumeParams{
