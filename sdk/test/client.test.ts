@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { defineAutomation } from "../src/define-automation.ts";
 import { DialinClient } from "../src/client.ts";
 import type { ConfigSchema } from "../src/config-schema.ts";

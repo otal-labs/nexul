@@ -412,9 +412,3 @@ repository is the reference for field names.
 
 The official Go SDK, `github.com/modelcontextprotocol/go-sdk`, and its
 package documentation, for the adapter's wiring.
-
-Anthropic's guidance on tools for agents: the tool-use documentation on
-defining tools, the engineering article "Writing effective tools for
-agents", and the `mcp-builder` skill's best-practices reference, for tool
-count, consolidation, naming, descriptions, response shaping, and error
-text.

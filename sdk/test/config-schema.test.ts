@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { defaultConfigValues, toJsonSchema, type ConfigSchema } from "../src/config-schema.ts";
 
 const schema = {

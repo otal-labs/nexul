@@ -164,7 +164,7 @@ Bun packages test with `bun test`. Bun ships its own test runner with a
 Jest-compatible API, built-in watch mode, and built-in coverage, so a Bun
 package that also depends on a separate runner and its own config file is
 carrying a second test stack the runtime already replaced.
-`automations` already does this (`"test": "bun test"`, `bun:test`
+`automations` and `sdk` do this (`"test": "bun test"`, `bun:test`
 imports throughout `test/`); every Bun package follows the same rule. A
 Bun test never needs `happy-dom` or `jsdom` unless it actually renders a
 DOM.

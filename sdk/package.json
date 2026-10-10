@@ -17,12 +17,11 @@
   "scripts": {
     "generate:events": "bun run tools/generate-events.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "bun test",
+    "test:watch": "bun test --watch"
   },
   "devDependencies": {
     "@types/bun": "1.4.2",
-    "typescript": "7.0.2",
-    "vitest": "5.0.3"
+    "typescript": "7.0.2"
   }
 }

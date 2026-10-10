@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, mock } from "bun:test";
 import { ApiClient, ApiError } from "../src/api-client.ts";
 
 function fakeFetch(response: { status: number; body?: unknown }) {
-  return vi.fn(async (_input: string, _init?: RequestInit) => new Response(response.body !== undefined ? JSON.stringify(response.body) : null, { status: response.status }));
+  return mock(async (_input: string, _init?: RequestInit) => new Response(response.body !== undefined ? JSON.stringify(response.body) : null, { status: response.status }));
 }
 
 describe("ApiClient", () => {
