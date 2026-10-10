@@ -979,7 +979,7 @@ func cancelledWithCause(ctx context.Context) bool {
 
 // replyNotConfigured turns a ResolveTarget failure into a specific, never-silent system reply.
 func (s *Service) replyNotConfigured(ctx context.Context, conversationID, viaUserID string, err error) {
-	msg := "Agent isn't configured to run yet — check Settings → Pairing."
+	msg := "Agent isn't configured to run yet — check Settings → Computers."
 	if errors.Is(err, harness.ErrProtocol) {
 		s.postSystemMessage(ctx, conversationID, viaUserID, err.Error())
 		return
@@ -992,13 +992,13 @@ func (s *Service) replyNotConfigured(ctx context.Context, conversationID, viaUse
 	}
 	switch nc.Reason {
 	case pairing.ReasonUnpaired:
-		msg = "@Agent needs a paired computer — connect one in Settings → Pairing."
+		msg = "@Agent needs a paired computer — add one in Settings → Computers."
 	case pairing.ReasonExpiredToken:
-		msg = "@Agent's paired computer's session has expired — re-pair it in Settings → Pairing."
+		msg = "@Agent's paired computer's session has expired — re-pair it in Settings → Computers."
 	case pairing.ReasonNoDefault:
-		msg = "@Agent needs a project on the paired computer to run against — link this project in Settings → T3 Code Setup → Projects, or set a fallback under Defaults."
+		msg = "@Agent needs a project on the paired computer to run against — link this project in Settings → Computers → Projects, or set a fallback under Defaults."
 	case pairing.ReasonNoDefaultComputer:
-		msg = "@Agent found several paired computers — pick a default one in Settings → Pairing."
+		msg = "@Agent found several paired computers — pick a default one in Settings → Computers."
 	case pairing.ReasonSetupRequired, pairing.ReasonOffline:
 		msg = nc.Error()
 	}
@@ -1019,7 +1019,7 @@ func (s *Service) warnVersionIfChanged(ctx context.Context, conversationID, viaU
 		return
 	}
 	s.postSystemMessage(ctx, conversationID, viaUserID, fmt.Sprintf(
-		"This computer's agent harness changed release since it was paired (%s → %s) — if the agent misbehaves, re-pair or check Settings → Pairing.",
+		"This computer's agent harness changed release since it was paired (%s → %s) — if the agent misbehaves, re-pair or check Settings → Computers.",
 		computer.HarnessVersion, live))
 }
 

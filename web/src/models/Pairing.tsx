@@ -19,6 +19,23 @@ export interface Computer {
   // Absent until the computer's runner first reports; facts_at is when they last changed.
   facts?: ComputerFacts;
   facts_at?: string;
+  // The personal runner that reaches it; absent before one enrolls and after one is revoked.
+  runner?: ComputerRunner;
+  // Why the last pairing through the runner failed; absent once one succeeds.
+  pair_error?: string;
+}
+
+export interface ComputerRunner {
+  connected: boolean;
+  last_seen: string;
+}
+
+// A computer waiting for its runner, with the one-time command that installs it; Windows stays empty until it installs there.
+export interface ComputerEnrollment {
+  computer: Computer;
+  token: string;
+  expires_at: string;
+  commands: { unix: string; windows: string };
 }
 
 // A computer's own personal access token, "Nexul MCP on <computer>"; never carries the secret.
@@ -272,7 +289,7 @@ export interface RefusalDetails {
 // Mirrors pairing.ReasonSetupRequired, the refusal whose fix is running setup on the computer it names.
 export const SETUP_REQUIRED_REASON = "setup_required";
 
-// Your settings → T3 Code Setup with the computer's Set up step open.
+// Your settings → Computers with the computer's Set up step open.
 export const computerSetupPath = (computerId: string) =>
   `/settings/pairing?setup=${encodeURIComponent(computerId)}`;
 
@@ -288,19 +305,6 @@ export const setupRefusalComputerId = (error: unknown): string | undefined => {
   if (details?.reason !== SETUP_REQUIRED_REASON) return undefined;
   return details.computer_id;
 };
-
-// What the instance needs before any computer can be reached through a tunnel; mirrors pairing.PrerequisiteReason.
-export type TunnelPrerequisite = "cloudflare_not_connected" | "zero_trust_disabled";
-
-// The Go default in pairing.DefaultT3CodePort; the port T3 Code serves on unless started with another.
-export const DEFAULT_T3_CODE_PORT = 3773;
-
-export const CreateComputerTunnelFormSchema = z.object({
-  name: z.string().trim().min(1, "Name this computer"),
-  port: z.coerce.number<number>().int("Enter a whole port number").min(1, "Enter a port between 1 and 65535").max(65535, "Enter a port between 1 and 65535"),
-});
-
-export type CreateComputerTunnelFormData = z.infer<typeof CreateComputerTunnelFormSchema>;
 
 // Labels for the harness kinds a computer can be paired with; keys match the Go harness.Kind values.
 export const HARNESS_LABELS: Record<string, string> = { t3code: "T3 Code", "t3code-v2": "T3 Code" };
@@ -431,6 +435,10 @@ export const PairComputerFormSchema = z.object({
 
 export type PairComputerFormData = z.infer<typeof PairComputerFormSchema>;
 
+export const RenameComputerFormSchema = z.object({ name: z.string().trim().min(1, "Name this computer") });
+
+export type RenameComputerFormData = z.infer<typeof RenameComputerFormSchema>;
+
 // The inputs the pairing routes key a failure under, so it shows on the field that caused it.
 export const PAIR_FIELDS = ["name", "server_url", "token"] as const satisfies readonly (keyof PairComputerFormData)[];
 export type PairField = (typeof PAIR_FIELDS)[number];
@@ -474,9 +482,9 @@ export const canChooseRunLocation = (readiness: HarnessReadiness, linked: boolea
 
 // Copy for every non-ready state; shared by the hook's join and the settings readiness line.
 export const HARNESS_READINESS_COPY: Record<Exclude<HarnessReadiness["state"], "ready">, string> = {
-  unpaired: "Pair a computer in Settings to run plays.",
+  unpaired: "Add a computer in Settings to run plays.",
   expired: "Your computer's pairing has expired. Re-pair it in Settings.",
-  no_harness_project: "Link this project in Settings → T3 Code Setup → Projects, or set a fallback under Defaults.",
+  no_harness_project: "Link this project in Settings → Computers → Projects, or set a fallback under Defaults.",
   no_default_computer: "Several computers are paired. Pick a default in Settings.",
   offline: "T3 Code on your computer is offline.",
 };

@@ -31,5 +31,11 @@ export const tunnelCommands = (token: string): Record<TunnelOs, OsCommand> => ({
   },
 });
 
+// The command Add a computer shows, the same on Linux and macOS: the server renders it with this computer's one-time token.
+export const computerCommands = (commands: { unix: string; windows: string }): Record<TunnelOs, OsCommand> => ({
+  [TunnelOs.Unix]: { lines: [commands.unix], note: "On a Mac, T3 Code answers only while you're logged in" },
+  [TunnelOs.Windows]: { lines: commands.windows ? [commands.windows] : [], note: "Windows is coming soon" },
+});
+
 export const detectTunnelOs = (userAgent: string): TunnelOs =>
   /windows/i.test(userAgent) ? TunnelOs.Windows : TunnelOs.Unix;

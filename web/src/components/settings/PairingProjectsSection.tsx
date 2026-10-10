@@ -29,7 +29,7 @@ export const PairingProjectsSection = () => {
       {error && <ErrorDisplay error={error} />}
       {computers && computers.length === 0 && (
         <EmptyRow>
-          Pair a computer on the{" "}
+          Add a computer on the{" "}
           <Link to={tabPath()} className="text-foreground underline underline-offset-4">
             Computers
           </Link>{" "}

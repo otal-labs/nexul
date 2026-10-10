@@ -200,7 +200,7 @@ describe("PlayRunDialog", () => {
       response: {
         status: 400,
         data: {
-          message: "@Agent can't use Claude on Onik's PC until its setup is done — run setup for Onik's PC in Settings → T3 Code Setup.",
+          message: "@Agent can't use Claude on Onik's PC until its setup is done — run setup for Onik's PC in Settings → Computers.",
           code: "INVALID",
           details: { reason: "setup_required", computer_id: "c-1", computer: "Onik's PC", provider_id: "claude", provider: "Claude" },
         },
@@ -224,7 +224,7 @@ describe("PlayRunDialog", () => {
     const user = userEvent.setup();
     mockApi(["plays:run", "tickets:write"]);
     vi.mocked(api.post).mockRejectedValue({
-      response: { status: 400, data: { message: "no computer is paired to run it on; pair one in Settings → T3 Code Setup", code: "INVALID", details: { reason: "unpaired" } } },
+      response: { status: 400, data: { message: "no computer is paired to run it on; add one in Settings → Computers", code: "INVALID", details: { reason: "unpaired" } } },
     });
     renderDialog();
 

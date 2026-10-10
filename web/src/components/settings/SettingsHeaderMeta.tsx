@@ -60,7 +60,7 @@ const SecurityMeta = () => {
 
 const PairingMeta = () => {
   const { data: computers } = useListComputers();
-  return <Facts parts={[computers && count(computers.length, "paired computer")]} />;
+  return <Facts parts={[computers && count(computers.length, "computer")]} />;
 };
 
 const InstanceMeta = () => {

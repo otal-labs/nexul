@@ -1,5 +1,4 @@
 import { ConnectionPanel } from "@/components/pairing/ConnectionPanel";
-import { NameComputerForm } from "@/components/pairing/NameComputerForm";
 import { TunnelChecks } from "@/components/pairing/TunnelChecks";
 import { TunnelInstallSteps } from "@/components/pairing/TunnelInstallSteps";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -25,20 +24,15 @@ const TunnelConnection = ({ computer }: TunnelConnectionProps) => {
 };
 
 interface ConnectStepProps {
-  computer: Computer | undefined;
-  onCreated: (computer: Computer) => void;
-  onPairByUrl: () => void;
+  computer: Computer;
 }
 
-// Step one of pairing: name the computer, install its tunnel, and wait until the tunnel and the harness both answer.
-export const ConnectStep = ({ computer, onCreated, onPairByUrl }: ConnectStepProps) => (
+// A tunnel computer's first step: its tunnel command, and the wait until the tunnel and the harness both answer.
+export const ConnectStep = ({ computer }: ConnectStepProps) => (
   <div className="@container">
-    {!computer && <NameComputerForm onCreated={onCreated} onPairByUrl={onPairByUrl} />}
-    {computer && (
-      <div className="grid grid-cols-1 gap-5 @2xl:grid-cols-[minmax(0,1fr)_16rem]">
-        <TunnelConnection computer={computer} />
-        <TunnelInstallSteps computerId={computer.id} />
-      </div>
-    )}
+    <div className="grid grid-cols-1 gap-5 @2xl:grid-cols-[minmax(0,1fr)_16rem]">
+      <TunnelConnection computer={computer} />
+      <TunnelInstallSteps computerId={computer.id} />
+    </div>
   </div>
 );

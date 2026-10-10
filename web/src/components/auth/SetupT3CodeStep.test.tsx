@@ -29,7 +29,7 @@ describe("SetupT3CodeStep", () => {
     mocks.useListComputers.mockReturnValue({ data: [] });
     renderStep();
     expect(screen.getByRole("button", { name: /finish setup/i })).toBeDisabled();
-    expect(screen.getByText("Pair a computer to finish setup.")).toBeInTheDocument();
+    expect(screen.getByText("Add a computer to finish setup.")).toBeInTheDocument();
   });
 
   it("keeps Finish setup locked while the only computer is still pairing", () => {
@@ -42,6 +42,6 @@ describe("SetupT3CodeStep", () => {
     mocks.useListComputers.mockReturnValue({ data: [computer("2026-11-07T00:00:00Z")] });
     renderStep();
     expect(screen.getByRole("button", { name: /finish setup/i })).toBeEnabled();
-    expect(screen.queryByText("Pair a computer to finish setup.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Add a computer to finish setup.")).not.toBeInTheDocument();
   });
 });

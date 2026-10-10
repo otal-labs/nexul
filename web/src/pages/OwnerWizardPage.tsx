@@ -29,7 +29,7 @@ const STEP_COPY = [
   },
   {
     title: "Set up T3 Code",
-    subtitle: "Agents run on your own computer through T3 Code. Pair it so Nexul can reach it from anywhere.",
+    subtitle: "Agents run on your own computer through T3 Code. Add it with one command, and Nexul pairs it for you.",
   },
 ] as const;
 
@@ -55,7 +55,7 @@ export const OwnerWizardPage = () => {
     setStep(step - 1);
   };
 
-  // Steps 3 and 4 connect tools and pair a computer, which need the owner's permissions, so the owner is made here.
+  // Steps 3 and 4 connect tools and add a computer, which need the owner's permissions, so the owner is made here.
   const onStep2Continue = async ({ workspaceId, workspaceName }: WorkspaceSetupData) => {
     if (!settings) return;
     try {
