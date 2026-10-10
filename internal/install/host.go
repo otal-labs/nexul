@@ -46,6 +46,8 @@ type Paths struct {
 	UserPlugins string
 	// DockerApp is Docker Desktop's app bundle on macOS, started when it is installed but not running.
 	DockerApp string
+	// UserRuntime holds each user's runtime directory, where their systemd user manager listens.
+	UserRuntime string
 }
 
 // Host is everything the installer touches on the machine, swappable in tests.
@@ -151,6 +153,7 @@ func pathsFor(goos, home string, getenv func(string) string) Paths {
 		SystemdProbe: "/run/systemd/system",
 		UserPlugins:  filepath.Join(home, ".docker", "cli-plugins"),
 		DockerApp:    "/Applications/Docker.app",
+		UserRuntime:  "/run/user",
 	}
 	if goos == "darwin" {
 		p.UnitRoot = filepath.Join(home, "Library", "Application Support", "nexul")

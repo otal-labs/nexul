@@ -209,6 +209,59 @@ for (const kind of ['runner', 'automations']) {
   });
 }
 
+// computerToken is a token as Add a computer signs it; the script reads it but cannot check the signature.
+const computerToken = (claims: object) =>
+  ['{"alg":"HS256","typ":"JWT"}', JSON.stringify(claims)].map((part) => Buffer.from(part).toString('base64url')).join('.') + '.c2lnbmF0dXJl';
+const computerScript = new URL('../public/computer.sh', import.meta.url).pathname;
+
+test('computer.sh installs as the person, into ~/.local/bin without sudo, as `nexul install computer --token`', async () => {
+  const { directory, env } = setup({ uid: 1000 });
+  const home = join(directory, 'home');
+  // Each length leaves the payload needing a different padding, which the script must restore before decoding.
+  for (const server of ['https://nexul.example.com', 'https://nexul.example.co', 'https://nexul.example.c']) {
+    const token = computerToken({ server, code: 'nxe_a-b_c', computer: 'c-laptop', exp: 4102444800 });
+    const result = spawnSync('/bin/sh', [computerScript, token], { env: { ...env, HOME: home, NEXUL_BIN_DIR: undefined }, input: '', encoding: 'utf8' });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain(`Adding this computer to ${server}`);
+    expect(await read(directory, 'argv')).toBe(['install', 'computer', '--token', token].join('\n') + '\n');
+  }
+  expect(await exists(directory, 'home/.local/bin/nexul')).toBe(true);
+  expect(await exists(directory, 'sudo')).toBe(false);
+});
+
+for (const [name, args] of [
+  ['no token', []],
+  ['an old two-flag command', ['--server', 'https://nexul.example.com', '--code', 'nxe_abc']],
+  ['a token naming no server', [computerToken({ code: 'nxe_abc' })]],
+  ['a code where the token goes', ['nxe_abc']],
+] as const) {
+  test(`computer.sh stops before downloading anything given ${name}`, async () => {
+    const { directory, env } = setup({ uid: 1000 });
+    const result = spawnSync('/bin/sh', [computerScript, ...args], { env, input: '', encoding: 'utf8' });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('Add a computer');
+    expect(await exists(directory, 'urls')).toBe(false);
+  });
+}
+
+test('computer.sh on a Mac says it is coming soon and downloads nothing', async () => {
+  const { directory, env } = setup({ os: 'Darwin', machine: 'arm64', uid: 501 });
+  const result = spawnSync('/bin/sh', [computerScript, computerToken({ server: 'https://nexul.example.com' })], { env, input: '', encoding: 'utf8' });
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toContain('coming soon');
+  expect(await exists(directory, 'urls')).toBe(false);
+});
+
+test('a computer install as root stops before downloading or installing anything', async () => {
+  const { directory, env } = setup({ uid: 0 });
+  const result = run({ ...env, HOME: join(directory, 'home') }, ['computer', '--token', 'eyJ.x.y']);
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toContain('not as root');
+  expect(await exists(directory, 'urls')).toBe(false);
+  expect(await exists(directory, 'installed-bin/nexul')).toBe(false);
+  expect(await exists(directory, 'args')).toBe(false);
+});
+
 test('runner.sh stops when install.sh cannot be downloaded', async () => {
   const { directory, env } = setup();
   const runnerScript = new URL('../public/runner.sh', import.meta.url).pathname;

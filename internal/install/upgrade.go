@@ -173,6 +173,9 @@ func (h *Host) runUninstall(ctx context.Context, args []string) error {
 	if len(args) > 0 && (args[0] == kindRunner || args[0] == kindAutomations) {
 		return h.runUninstallHost(ctx, args[0], args[1:])
 	}
+	if len(args) > 0 && args[0] == kindComputer {
+		return h.runUninstallComputer(ctx, args[1:])
+	}
 	fs := flag.NewFlagSet("uninstall", flag.ContinueOnError)
 	fs.SetOutput(h.Out)
 	purge := fs.Bool("purge", false, "also delete the install directory: the database, logs and stack checkouts")

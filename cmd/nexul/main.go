@@ -50,10 +50,12 @@ Commands:
   install [server]         Install the server, OpenObserve and the bundled runner and automations host
   install runner           Install a named runner: --server URL --name N --code C
   install automations      Install a named automations host: --server URL --name N --code C
+  install computer         Add this computer to Nexul as yourself, never root: --token T (computer.sh runs it)
   upgrade                  Upgrade every Nexul service on this machine to the newest release, or to --version
   status                   List every Nexul service on this machine with its state and version
   uninstall                Remove every Nexul service on this machine; --purge also deletes the data
   uninstall runner <name>  Remove one runner; uninstall automations <name> removes one automations host
+  uninstall computer       Remove this computer's runner, as the user who added it
   version                  Print this binary's version
 
 Run "nexul <command> --help" for a command's flags.

@@ -92,6 +92,9 @@ func (u Unit) describe() string {
 	if u.Kind == kindRunner {
 		return "Nexul runner " + u.Host
 	}
+	if u.Kind == kindComputer {
+		return "Nexul computer runner"
+	}
 	return "Nexul automations host " + u.Host
 }
 

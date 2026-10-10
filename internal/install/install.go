@@ -70,6 +70,9 @@ func (h *Host) runInstall(ctx context.Context, args []string) error {
 	if len(args) > 0 && (args[0] == kindRunner || args[0] == kindAutomations) {
 		return h.runInstallHost(ctx, args[0], args[1:])
 	}
+	if len(args) > 0 && args[0] == kindComputer {
+		return h.runInstallComputer(ctx, args[1:])
+	}
 	if len(args) > 0 && args[0] == kindServer {
 		args = args[1:]
 	}
