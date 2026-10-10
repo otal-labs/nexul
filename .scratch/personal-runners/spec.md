@@ -457,7 +457,8 @@ builds it.
    (rule 5), and it is reading only.
 2. **Nobody else can see one.** Another person's computers and personal runners are not listed, have no
    facts, no status, no command history and no shell output for anyone else, on every path:
-   - HTTP and MCP: every computer query is keyed by the caller (`user_id = ?`, or a live grant, below).
+   - HTTP and MCP: every computer query is keyed by the caller (`user_id = ?`, or a live computer rule naming
+     them, below).
      Another person's computer id answers 404, never 403, so its existence is not confirmed.
    - Runner lists: `GET /api/runners`, the machine list, the import wizard and dispatch read
      `WHERE owner_user_id = ''`, so `runners:read` and `machines:read` show nobody's computer.
@@ -476,8 +477,10 @@ builds it.
      query. Only Read computer activity does.
    - Facts are the owner's alone: not a grantee, not a holder of Read computer activity, not a workspace
      Owner.
-3. **The checks are ownership, never permission.** They do not go through the permission gate, so no role,
-   permission overwrite or the Owner's bypass (ADR 0042) can reach a person's computer.
+3. **The checks are ownership, plus the owner's own rules naming people, never a role.** They do not go through
+   the role gate, so no role, Everyone rule, Owner or role holding every bit (ADR 0042) can reach a person's
+   computer. The only way in besides owning it is a computer rule the owner wrote for a named person
+   (permission-overrides ticket 12, ADR 0148), which gives exactly what it names.
 4. **The one admin lever** is the account. Disabling or removing an account calls
    `RevokePersonalRunners(userID)` on the runner domain, which tombstones each credential (ADR 0074) and
    closes its connection, so each runner uninstalls itself; and deletes every grant the person gave or
@@ -499,9 +502,9 @@ The order every use of a computer is checked in (a turn's target, a relay dial, 
 container log), for caller `U`, computer `C` and capability `X` (`agents` or `commands`):
 
 1. `U` is signed in and active.
-2. One query loads `C` only if `C.user_id = U`, or a grant row for `(C, U)` has `X` on, `C`'s owner is
+2. One query loads `C` only if `C.user_id = U`, or a computer rule naming `U` allows See and `X`, `C`'s owner is
    active, and `U` and the owner share a workspace. No row: not found.
-3. `U` is the owner: allowed. Otherwise allowed only through that grant level.
+3. `U` is the owner: allowed. Otherwise allowed only through what that rule allows.
 4. The capability's own gate: for `agents`, the setup confirmation (ADR 0063); for `commands`, the
    computer's own opt-in and the Nexul switch (Later: shell jobs).
 
@@ -670,7 +673,10 @@ offers the same, as an optional capability:
 ## Later: sharing a computer
 
 The owner may let named people use a computer, per person, with two separate levels, both off by default and
-both shipping (tickets 18 and 19):
+both shipping (tickets 18 and 19). Sharing is built on the permission overrides model (ADR 0148,
+`.scratch/permission-overrides/`, ticket 12): a **grant** is a **computer rule**, a row naming the person and
+the computer's three permissions, See this computer, Run agents and Run commands. Ticket 12 owns the storage,
+the checks and the privacy tests; tickets 18 and 19 build the runner-side work on top.
 
 - **Run agents**: plays and `@Agent` turns run through its T3 Code, picked like one's own computer in the
   run dialog and in a project link (amends ADR 0102, which allows only one's own computer). The run acts
@@ -684,7 +690,8 @@ Owner's rules (2026-10-10):
 
 - **Only the computer's owner grants or revokes.** Never the grantee for themselves or anyone else (no
   re-sharing), never an admin, the instance's owner or anyone holding every bit, and no grant raises a
-  level the owner did not set. The routes are keyed by ownership, with no permission bit to hold.
+  level the owner did not set. The routes are keyed by ownership, with no role permission to hold. Targets are
+  named people only: no Everyone, no role.
 - **A grant follows the grantee's identity and nobody else's.** With "Run commands", Bob may run shell jobs
   on Alice's laptop himself, and so may everything acting as Bob: his plays, his `@Agent` turns, and MCP
   calls made with his own token (`command_run`). Nobody acting as anyone else gets in through Bob's grant.
@@ -706,12 +713,11 @@ Owner's rules (2026-10-10):
   deletes the row, so it does not come back if they rejoin.
 - Removing the computer deletes its grants.
 
-Data model: `computer_grants (computer_id TEXT NOT NULL REFERENCES pairing_computers(id) ON DELETE CASCADE,
-grantee_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, run_agents INTEGER NOT NULL DEFAULT 0,
-run_commands INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY
-KEY (computer_id, grantee_id))`, with an index on `(grantee_id, computer_id)` for the grantee's list. A grant
-with both levels off is deleted, not stored. Event `computer.grant_changed` (outbox, members-only) carries
-ids and the two levels, never the computer's name, and reaches the owner and the grantee.
+Data model: no `computer_grants` table. A grant is a `permission_overwrites` row with `resource_type =
+'computer'` and `target = 'person'` (permission-overrides ticket 12), holding See this computer and, where
+granted, Run agents and Run commands. A person with no row holds nothing, and the rows are deleted with the
+computer and with either account. Event `computer.grant_changed` (outbox, members-only) carries ids and the
+permissions, never the computer's name, and reaches the owner and the grantee.
 
 **"Run agents" acts as the person who started the run.** Setup writes the owner's personal access token
 into the providers on the computer (CONTEXT, Personal access token), which would make a grantee's agent act as
@@ -759,10 +765,12 @@ What sharing really hands over, which the grant dialog must say plainly:
   topics. Every `computer.*` payload, old and new, gains `members_only` (a field beside the others, ADR
   0044). Bridged ones go in `livePushTopics` with their audience rule and `make live-topics`.
 - Phone: nothing. The phone app shows no computers (`native/src` has no pairing calls).
-- Permissions: none for using computers (ownership checks, rule 3); personal runners filtered out of
-  `runners:read` lists; `computer_activity:read` (Read computer activity, instance area, Owner role by
-  default) for reading the record of commands, with shell jobs; later `runners:shell` for shell jobs on
-  runners that are not personal. Run commands and Run agents are grants, not permissions.
+- Permissions: none for using computers through a role (ownership checks and the owner's computer rules, rule
+  3); personal runners filtered out of `runners:read` lists; `computer_activity:read` (Read computer activity,
+  instance area, Owner role by default) for reading the record of commands, with shell jobs; later
+  `runners:shell` for shell jobs on runners that are not personal. Run commands and Run agents are computer
+  rules (permission-overrides ticket 12), not role permissions; the instance areas above take rules from
+  permission-overrides ticket 13.
 - Reverse states: remove a computer revokes its runner; account removal revokes; adoption is the way back
   for a computer that lost its runner.
 - Docs: `paired-computers.md`, `setup-wizard.md`, `mcp-server.md`, `runners.md`; `CONTEXT.md` per Naming;
@@ -808,5 +816,6 @@ What sharing really hands over, which the grant dialog must say plainly:
 ## Build order
 
 - Platforms: Linux first (tickets 01 to 07 and 20), then macOS (ticket 08), then Windows (ticket 09).
-- The owner may rework permissions. Tickets 15 to 19 add permissions and grants and should be built after any
-  rework the owner starts; tickets 01 to 10 and 20 do not depend on it.
+- The owner is reworking permissions (`.scratch/permission-overrides/`, ADR 0148). Tickets 15 and 16 wait for its
+  ticket 01; tickets 18 and 19 wait for its ticket 12, which builds the computer rules they stand on. Tickets 01
+  to 10, 17 and 20 do not depend on it.

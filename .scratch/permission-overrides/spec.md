@@ -1,6 +1,6 @@
 # Permission overwrites per entity, with a source for every answer
 
-**Status:** ready-for-agent (tickets 01 to 07); 08 waits on an owner answer; 09 to 11 are needs-triage
+**Status:** ready-for-agent (tickets 01 to 14, built in order: 01 to 07, then 08, then 09 to 14)
 
 ADR 0148 (proposed) records the model. The glossary term stays **Permission overwrite**. The UI calls the three
 states Allow, Fallback and Deny.
@@ -38,7 +38,7 @@ it, shown in the web app and to agents.
 | Play exclusion | `internal/access/usecase.go:381-390` | A deny of `plays:run` for one person on one play, managed with `plays:write`. |
 | Private channels | ADR 0098 | Membership, not overwrites: participant rows. The Owner sees every one. |
 | Memories | ADR 0099 | Project-scoped only; checked through the project. No overwrites. |
-| Computers | `.scratch/personal-runners/spec.md`, Access and privacy, rule 3 | Ownership checks that never go through the permission gate. |
+| Computers | `.scratch/personal-runners/spec.md`, Access and privacy, rule 3 | Ownership checks that never go through the permission gate. Sharing a computer is not built yet; ticket 12 builds it as rules. |
 | The evaluator | `internal/access/usecase.go:95-110` (`decide`), `:162-176` (`has`), `:227-236` (`applyOverwrite`) | Owner bypass, then hidden-project, then role, then workspace-wide override, then the resource's own row; deny beats allow inside a row. Every check path ends here: `Require`, `RequireProject` (`gate.go:27-60`), `HasPermission`, `CanDocs`, `ProjectsWith` (`gate.go:269-290`), `DocsWith` (`usecase.go:270-295`). |
 | The memo | `internal/access/memo.go:12-20`, ADR 0135 | Reads memoised per request until the next commit. |
 | Lists in SQL | ADR 0140, `practices/go.md` section 17 | `CallerProjects`, `ProjectsAnywhere` and `DocsWith` turn the evaluator's answers into id sets a list filters by in SQL. `server/cmd/list_paging_test.go:221` holds every paged list to the row-by-row answer; `server/cmd/access_memo_test.go:268-336` pins statement counts. |
@@ -70,42 +70,55 @@ A rule targets one of:
 - **A role**: every member holding it.
 - **A person**: one member.
 
+Which targets an entity takes depends on the entity: a computer takes named people only, and an instance area
+takes a role or a person but never Everyone (see Entities).
+
 ### Entities
 
-A rule is set on an entity. The chain a check walks, outermost first:
+A rule is set on an entity. Rules apply to everything in Nexul that is a natural access boundary, including a
+person's computers and the instance's own areas (owner, 2026-10-10). The chain a check walks, outermost first:
 
 ```
 workspace (person rules only: the Team override that exists today)
 └─ project
-   ├─ doc folder (later, ticket 09)
+   ├─ doc folder (ticket 09)
    │  └─ doc
-   └─ stack (later, ticket 10)
+   └─ stack (ticket 10)
 workspace
 ├─ play
-└─ channel (later, ticket 11)
+└─ channel (ticket 11)
+outside any workspace
+├─ computer (ticket 12)
+└─ instance area (tickets 13 and 14)
 ```
 
 The first set, deliberately small, is the entities that already carry overwrites, so the effort unifies what
-exists before adding anything:
+exists before adding anything. The build order after it is doc folders, stacks, channels, then computers, then
+instance areas.
 
-| Entity | Targets | Permissions a rule may set | Managed with (unchanged) |
+| Entity | Targets | Permissions a rule may set | Written with |
 |---|---|---|---|
 | Workspace | Person | every catalog action (today's Team override) | `members:write` |
 | Project | Everyone, role, person | the project-area actions | `members:write` in its workspace |
 | Doc | Everyone, role, person | `docs:*`, `permissions:write` | `permissions:write` on the doc |
 | Play | Everyone, role, person | `plays:run` | `plays:write` on the play |
+| Doc folder (09) | Everyone, role, person | `docs:*` for the docs in it | `permissions:write` on the folder |
+| Stack (10) | Everyone, role, person | `stacks:*`, `deploys:*` | `stacks:write` on the stack |
+| Channel (11) | Everyone, role, person | `channels:read`, a new posting permission | `channels:write` on the channel |
+| Computer (12) | Named people only | See this computer, Run agents, Run commands | only the computer's owner |
+| Instance area (13, 14) | A role or a person, never Everyone | the area's actions (Instance areas below) | only the instance Owner |
 
-Never: instance-area actions on any entity (runners, DNS, accounts, the instance, `computer_activity:read`,
-`runners:shell`), since they belong to no workspace; computers, which are ownership and never go through the
-gate; tickets, memories and attachments one by one, which follow their project; Everyone or role rules on the
-workspace itself, which would be a second way to edit a role.
+Not entities: tickets, memories and attachments one by one, which follow their project; and Everyone or role
+rules on the workspace itself, which would be a second way to edit a role.
 
 ### Evaluation order
 
 For person `P` asking for action `A` on entity `E`:
 
 1. **Not a member** of `E`'s workspace: not found. The server's own calls pass. (Unchanged.)
-2. **Owner** of the workspace: allowed. No rule can deny the Owner. (Unchanged, ADR 0042.)
+2. **Owner** of the workspace: allowed. No rule on any entity can deny the Owner, so nothing is ever locked away
+   from everyone (ADR 0042). The one exception is a personal computer, which the Owner's bypass does not reach
+   (Computers below).
 3. **Base.** The role's set. For a Restricted member, a project-area action starts as not held, and an
    instance-area action is never held. (Unchanged, ADR 0097.)
 4. **Workspace person rule** applies on top, except to a Restricted member's project-area actions.
@@ -116,7 +129,13 @@ For person `P` asking for action `A` on entity `E`:
 6. **Restricted members.** On a project-area action, Everyone and role rules may only Deny; only a rule naming
    the person may Allow. A project where a Restricted member holds no project-area action after step 5 is not
    found. (This keeps ADR 0097's promise: a client sees a project only when it is given to them by name.)
-7. **The source** is the last rule that set Allow or Deny, or the base when none did.
+7. **A denied project is hidden.** When the rules on the project itself, taken in the order above, end in Deny
+   for `projects:read` ("Read projects and board settings"), the project is not found for `P`: in lists, links,
+   search and live frames, as a private channel is (ADR 0098). This holds for any member who is not the Owner,
+   Restricted or not. It is checked at the project before the chain walks inward, so nothing inside a hidden
+   project is reachable, a doc's own rule for `P` included. A deny of `projects:read` anywhere else, such as the
+   workspace rule or a role, hides nothing, as today.
+8. **The source** is the last rule that set Allow or Deny, or the base when none did.
 
 Decisions inside the order:
 
@@ -127,6 +146,84 @@ Decisions inside the order:
 - **One rule cannot both allow and deny** a permission; the write is refused.
 - **Two roles** cannot conflict while a member holds one role. If several roles per member ever ship, allow
   wins between role rules on the same entity and the person rule still beats both. Not built now.
+
+### Computers
+
+A person's computer is the one entity the Owner's bypass does not reach. Computers are private: hidden from
+everyone, workspace Owners and the instance Owner included, unless the computer's owner shares it by name.
+For person `P` asking for permission `X` on computer `C`:
+
+1. `P` is signed in and active.
+2. `P` owns `C` (the person who installed its runner): allowed, everything. The owner is never denied their own
+   computer.
+3. Otherwise `C` is found only through a rule that names `P` and allows See this computer, and only while the
+   owner's account is active and `P` shares a workspace with the owner. `P` then holds exactly the permissions
+   that rule allows.
+4. Nothing else counts: no role, no Everyone rule, no workspace person rule, no Owner role, no role holding
+   every bit, no instance Owner. No match is not found, never forbidden, so a computer's existence is not
+   confirmed.
+
+The permissions on a computer are **See this computer**, **Run agents** and **Run commands**. Allowing either of
+the last two also allows See, since a person must find a computer to use it. They live in their own small set,
+not in the role grid: no role can hold them, which is what keeps every-bit roles out. Only the computer's owner
+writes the rules; a grantee cannot re-share and nobody else (an admin, the instance Owner, an Owner) can write one.
+Targets are named people only: no Everyone, no role. A computer rule holds Allow or Fallback; Deny is refused, since
+a person with no rule holds nothing and the owner cannot be denied. Revoking is immediate: a computer check
+reads the rules in its own query and is never served from the memo. A rule ends when the person shares no
+workspace with the owner or either account is disabled or removed, and it is deleted with the computer or the
+account.
+
+`computer_activity:read` is a different thing and is unchanged: an instance-area permission that reads the
+audit record of what ran on computers (personal runners spec, Access and privacy, rule 5). It lists no
+computer, shows no facts and grants no use, so it does not make a computer visible.
+
+### Instance areas
+
+An instance area is a part of the instance that belongs to no workspace (`AreaInstance` in
+`internal/platform/permissions`). Today a person holds one by a role bit in any workspace they are in unrestricted
+(ADR 0088). Each area now carries rules, so the instance Owner can hand out one area without a custom role:
+"bob manages DNS but not connectors".
+
+The areas, from the permission table's instance rows. A rule on an entity sets the listed actions for that part
+only; when two entities share an action, the entity is the part of the instance the rule limits.
+
+| Entity | Actions a rule may set |
+|---|---|
+| The instance itself (URL, upgrades, failed events, public address) | `instance:read`, `instance:write`, `events:read` |
+| Sign-in providers | `instance:read`, `instance:write`, for the providers only |
+| Each connector (GitHub, Cloudflare, LiveKit, and any added later) | `connectors:read`, `connectors:write` |
+| DNS and gateways (zones, records, tunnels, gateways, exposures) | `dns:read`, `dns:write`, `dns:delete` |
+| Instance templates | `templates:read`, `templates:write` |
+| Accounts (the Team directory) | `accounts:read`, `accounts:write`, `accounts:delete` |
+| Runners and machines | `runners:read`, `runners:write`, `runners:delete`, `machines:read`, `machines:write`, `runners:shell` once built |
+| Topology registry | `topology:read`, `topology:write`, `topology:delete` |
+| Automation hosts | `automations:read`, `automations:write`, `automations:delete` |
+| Integrations | `integrations:read`, `integrations:write`, `integrations:delete` |
+| Audit log | `audit:read` |
+| Computer activity | `computer_activity:read` once built |
+
+A guard test fails when an instance-area action in the table belongs to no entity, so a new area cannot ship
+without being coverable. `workspaces:create` is a workspace-area verb and stays a role bit.
+
+Targets are a role or a person, never Everyone, because Everyone would hand an instance power to every member of
+every workspace. A role is one workspace's role: the rule reaches the members who hold it there. Only the instance
+Owner writes these rules, the holder of the Owner role of the default workspace, the one the owner wizard made
+(ADR 0088). For person `P` asking for action `A` on area entity `E`:
+
+1. `P` is signed in and active.
+2. `P` is an Owner of any workspace: allowed. No instance-area rule can deny an Owner.
+3. Base: `A` held through a role in a workspace where `P` is unrestricted, with that workspace's person rule on
+   top (ADR 0088, unchanged). A Restricted membership holds no instance area.
+4. On `E`: the rules for the roles `P` holds, then the rules naming `P`. Allow or Deny replaces the answer and
+   the source; Fallback leaves them. A person rule beats role rules. If `P` holds roles in several workspaces and
+   their rules on `E` disagree, Allow wins, the same as holding an action in any one workspace counts today.
+5. A Restricted member gains nothing from a role rule; only a rule naming the person allows. A role rule may
+   still deny.
+6. The source names the rule, or the role and workspace that hold the bit, or the Owner.
+
+Reads that need only membership today (a signed-in member reads instance templates, for one) stay open whatever
+a rule on that area says. `/api/auth/me`'s `instance_permissions` lists an action when `P` holds it on at least one
+entity, so Settings shows the entry; the entry's page asks per entity.
 
 ### Worked example
 
@@ -153,6 +250,21 @@ Rules: project Storefront: Everyone Deny `deploys:write`; role Engineer Allow `d
 | lena | anything | project Backoffice (no rules) | holds nothing there | not found | (no explanation: the project does not exist for her) |
 | sam | `tickets:write` | Storefront | base not held, nothing sets it | Not held | Not in role Contractor |
 
+Instance areas and computers, in the same workspace. Role Engineer holds no instance bit. Rules: DNS and gateways:
+bob Allow `dns:read`, `dns:write`. Computer: sam owns the laptop and wrote a rule naming bob that allows See and
+Run commands.
+
+| Who | Action | On | Steps that set a state | Answer | Source shown |
+|---|---|---|---|---|---|
+| bob | `dns:write` | DNS and gateways | base not held, bob Allow on the area | Allow | Allowed on DNS and gateways for bob |
+| bob | `connectors:write` | connector GitHub | base not held, nothing sets it | Not held | Not in role Engineer |
+| lena (Restricted) | `dns:write` | DNS and gateways | Restricted holds no instance area, role rules cannot allow her | Not held | Not given to lena |
+| alice | `dns:write` | DNS and gateways, with a rule naming alice that denies it | Owner | Allow | Owner of Acme |
+| sam | anything | sam's laptop | owner | Allow | Owner of this computer |
+| bob | Run commands | sam's laptop | rule naming bob | Allow | Shared with bob by sam |
+| bob | Run agents | sam's laptop | the rule does not allow it | Not held | Not shared with bob |
+| alice | See this computer | sam's laptop | no rule names alice; the Owner role does not reach a computer | not found | (no explanation) |
+
 ## Source and explain
 
 **One evaluator.** `decide` becomes the one function every check calls, and it returns a decision, not a
@@ -167,7 +279,8 @@ catalog action, and every entity.
 action the entity's rules may set (every catalog action for the workspace), `{action, allowed, source}` with
 the source's names and a sentence ("Denied on doc Pricing for role Contractor"). Anyone may explain their own
 access on what they can open; explaining someone else's takes the entity's manage permission, the same as
-listing its rules. An entity the caller cannot open is not found.
+listing its rules: the computer's owner for a computer, the instance Owner for an instance area. An entity the
+caller cannot open is not found, and for a computer that means anyone it is not shared with.
 
 **Forbidden errors say why** (ticket 01). A `forbidden` answer carries the source sentence, so an agent and a person
 both read "docs:write required; denied on project Storefront for bob". A not-found answer never does.
@@ -186,6 +299,11 @@ both read "docs:write required; denied on project Storefront for bob". A not-fou
   statements as one with none (`practices/testing.md` section 10).
 - **Numbers.** Ticket 02 and ticket 04 each report `doc_list`, `ticket_list` and a live frame's statement
   count and median time on the heavy copy, production build, before and after.
+- **Computers cost one statement.** A computer check is one query keyed by the owner or the named person, read
+  fresh each time so a revoke is immediate. A list of computers is that query, never a per-row check.
+- **Instance areas ride the existing reads.** Area rules come back with the role reads `HoldsAnywhere` and
+  `PermissionsAnywhere` already do, memoised under the same commit fence; `/api/auth/me` costs the same
+  statements with rules on every area as with none.
 - **Explain is off the hot path.** It may look names up; nothing else calls it.
 
 ## Migration plan
@@ -210,6 +328,11 @@ Production has real users, so no one's effective access may change.
    rows, Restricted, workspace allow and deny, doc creator grants, play exclusions) at the previous schema,
    upgraded, and compared with a golden matrix generated before the change.
 
+5. **Computers and instance areas add rows, not a rebuild.** Their rules are new `permission_overwrites` rows
+   with `resource_type` `computer` and `instance_area`; nothing is shared and no area has a rule yet, so there is
+   nothing to backfill and no one's access changes. The matrix gains the computer and instance-area rows, so the
+   diff stays empty.
+
 Invitations keep their shape: `allow_json`, `deny_json` and `project_access_json` become person rules when
 redeemed, as now.
 
@@ -232,17 +355,24 @@ Structure only; the look goes through design mode when ticket 03 starts.
 - **Team keeps its view of a person.** Project access in Team edits the same person rules on each project, so
   there is one store with two ways in.
 - The role editor stays the place roles are edited; it is the fallback the panel shows.
+- **Computers.** The computer row's sharing dialog (personal runners ticket 18) is the panel limited to named
+  people and the three computer permissions, with the warning that a grantee's agents and commands run as the
+  owner's own OS user. Design mode decides how much of the panel it reuses.
+- **Instance areas.** Each Settings entry for an instance area gains an access section for the instance Owner,
+  the panel with a role or person picker (ticket 14); everyone else does not see it.
 
 ## MCP
 
 No new tool; the surface is at 110 of 111.
 
-- `permission_overwrite_list`: `resource_type` gains `project` and `workspace`; each row says its target
+- `permission_overwrite_list`: `resource_type` gains `project`, `workspace`, `computer` and `instance_area`;
+  each row says its target
   (`target`, `user_id` or `role_id`). A new optional `user_id` returns that person's `effective` answers,
   each with `allowed` and `source`, the explain path above.
 - `permission_overwrite_update`: gains `target` (`person`, `role`, `everyone`), `role_ids`, and `state`
   (`allow`, `fallback`, `deny`). `grant` stays and keeps its meaning when `state` is absent, so existing
-  callers are unaffected.
+  callers are unaffected. It is also how a computer is shared and an instance area is opened to someone, with
+  the entity's own writer check (the owner, the instance Owner), so sharing needs no tool of its own.
 - `account_update`'s `allow`, `deny` and `project_access` keep working; `project_access` is accepted for any
   member, not only a Restricted one.
 - Forbidden errors carry the source sentence (above).
@@ -250,19 +380,23 @@ No new tool; the surface is at 110 of 111.
 ## What personal runner tickets 15 to 19 should assume
 
 - **15 and 16 add instance-area bits** (`computer_activity:read`, `runners:shell`). They wait for ticket 01
-  here, so the bits land in the evaluator that names sources. Instance areas carry no entity rules: the
-  source is the role (and workspace) that holds the bit, or the Owner. Nothing else changes for them.
-- **17, 18 and 19 have no technical dependency** on this effort; they may still be sequenced after it. A computer's checks are ownership, never permission (personal runners spec,
-  rule 3). `computer_grants` stays its own table with two on/off levels, never an overwrite, never shown in
-  an entity's panel or an explain answer, and no role, Everyone or Owner rule reaches a computer.
-- If the sharing dialog wants to look like the permissions panel, it reuses the panel's row component with
-  two states; design mode decides.
+  here, so the bits land in the evaluator that names sources. Once ticket 13 ships, both are entities in the
+  instance-area table (Computer activity, Runners and machines) and the instance Owner may hand them to a role
+  or a person with a rule; until then the role is the only way, and nothing in 15 or 16 changes.
+- **Sharing a computer is the computer rules of ticket 12.** The grant storage, its checks, the immediate
+  revoke and its privacy tests live there. `computer_grants` is no longer a table: a grant is a computer rule
+  naming a person. Personal runners 18 and 19 wait for ticket 12 and keep only the runner-side work (the shell
+  job gate, the per-run starter identity for Run agents, the attribution line, the warning dialog, and revoking
+  queued and running work).
+- **17 stays owner-only.** Container logs are not a computer permission and no rule shares them.
+- The privacy rules of the personal runners spec hold in full. The checks stay ownership, extended only by the
+  owner's own rules naming people; no role, Owner or every-bit role reaches a computer.
 
 ## Out of scope
 
-Several roles per member; rules on instance areas; rules on single tickets, memories or attachments; token
-scopes (held at the gateway, ADR 0087), which explain does not cover; time-limited rules; doc folders, stacks
-and channels until tickets 09 to 11 are triaged; the phone app's editing (it refreshes on the new event fields
+Several roles per member; rules on single tickets, memories or attachments; token scopes (held at the
+gateway, ADR 0087), which explain does not cover; time-limited rules; Deny on a computer; Everyone or role rules
+on a computer; Everyone rules on an instance area; the phone app's editing (it refreshes on the new event fields
 and shows nothing new).
 
 ## Risks
@@ -276,22 +410,41 @@ and shows nothing new).
   each socket's frames are re-checked by the memo as today.
 - **Width.** A project's rules cover about thirty actions; the panel lists one target's permissions at a time
   so it fits 768px.
+- **An instance-area rule can take away someone's instance power in one write.** The Owner is never deniable, so
+  the instance Owner cannot lock themselves out, and the explain line names the rule.
+- **A computer is the only place the Owner is not trusted.** An Owner who is named by a computer rule holds
+  exactly what is named; an Owner who is not named finds nothing. The tests assert both.
 - **`ListUsers`** gates the user picker on holding `permissions:write` on any doc through a person row
   (`internal/access/usecase.go:456`); ticket 02 counts role and Everyone rows too.
 
-## Open questions for the owner
+## Owner's decisions (2026-10-10)
 
-1. **Can a role or Everyone rule give a Restricted member more?** Recommended: no. They gain only from rules
-   naming them, and role or Everyone rules can only take away, so a rule for "Contractor" never shows one
-   client's project to another client.
-2. **Should a deny hide a project from someone who sees every project**, the way a private channel is hidden?
-   Recommended: yes, when "Read projects and board settings" is denied for them on that project (by a rule on
-   it for them, their role or everyone), the project reads as not found. Ticket 08 builds it once you agree.
-3. **Can the workspace Owner ever be denied?** Recommended: no, as today, so nothing is ever locked away from
-   everyone.
-4. **Which entities come next**? Recommended: doc folders, then stacks, then channels; never computers or
-   instance settings.
+1. **Role and Everyone rules cannot give a Restricted member more.** They can only deny; only a rule naming the
+   person grants, so a rule for "Contractor" never shows one client's project to another client. (Evaluation
+   order, step 6.)
+2. **A deny hides a project.** When the rules on the project itself end in Deny for "Read projects and board
+   settings", the project reads as not found, like a private channel. Only a deny on that project hides it; a
+   workspace-level or role deny elsewhere hides nothing. Ticket 08 builds it.
+3. **The workspace Owner can never be denied anything**, so nothing is locked away from everyone. The one
+   exception is a personal computer (decision 5).
+4. **Rules apply to everything,** computers and instance areas included, not only the workspace, project, doc and
+   play. The build order after the first set is doc folders, stacks, channels, then computers and instance
+   areas (tickets 09 to 14).
+5. **Personal computers are hidden from everyone,** workspace Owners and the instance Owner included, unless the
+   computer's owner shares it with them by name. An Owner or an every-bit role gets no bypass on a computer.
+   Reading the record of what ran on computers (`computer_activity:read`) stays as the personal runners spec
+   decided: it reads the record only and shows no computer.
+6. **Computer rules are the computer sharing feature.** Only the person who installed the runner writes them;
+   targets are named people only; the permissions are See this computer, Run agents and Run commands. Run agents
+   runs with the starter's own identity and shows "Run by bob using alice's laptop", and the dialog warns that a
+   grantee's agents and commands run as the owner's OS user. Revoking is immediate, and only the owner grants or
+   revokes.
+7. **Each instance area carries rules** for a role or a person, never Everyone, written only by the instance
+   Owner: the instance itself, sign-in providers, each connector, DNS and gateways, templates, and the other
+   instance areas in the table. The purpose: "bob manages DNS but not connectors" without a custom role.
 
 ## Tickets
 
-`issues/01` to `issues/11`, in build order.
+`issues/01` to `issues/14`, in build order: 01 to 07 the model, the doc, project and play panels and Team; 08 a
+denied project is hidden; 09 to 11 doc folders, stacks and channels; 12 computers (sharing); 13 and 14 instance
+areas.

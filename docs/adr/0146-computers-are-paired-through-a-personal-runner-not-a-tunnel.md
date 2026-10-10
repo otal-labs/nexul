@@ -4,6 +4,8 @@ Status: proposed, with the personal runners effort (`.scratch/personal-runners/`
 
 Supersedes ADR 0062 and ADR 0142. Amends ADR 0031, ADR 0073, ADR 0074 and ADR 0102.
 
+Sharing a computer is built as computer rules (ADR 0148, `.scratch/permission-overrides/`).
+
 Nexul runs on a server; T3 Code runs on each person's own computer, usually behind a router. ADR 0062 reached it
 through a tunnel in the instance's own Cloudflare account, one per computer, closed by an Access rule. That made
 Cloudflare with Zero Trust a precondition for the main feature, made pairing three steps (a tunnel command, a
@@ -40,9 +42,10 @@ runner's usual outbound WebSocket, and the server reaches T3 Code through it:
 - **The runner never updates T3 Code.** It reports the version it finds and restarts a stopped background service;
   updating is the person's.
 - **A personal runner is private to its owner.** It never takes deploy jobs, never shows in runner or machine
-  lists, publishes members-only events that reach only its owner's sockets, and is checked by ownership rather
-  than permission, so no role or Owner bypass reaches it. Its facts are the owner's alone. The owner may later
-  share a computer with named people, at two levels, running commands and running agents; a run an agent makes for
+  lists, publishes members-only events that reach only its owner's sockets, and is checked by ownership and the
+  owner's own rules, never by role, so no role or Owner bypass reaches it (ADR 0148). Its facts are the owner's
+  alone. The owner may later share a computer with named people through computer rules (ADR 0148), at two
+  levels, running commands and running agents; a run an agent makes for
   a grantee carries a short-lived Nexul token for the person who started it, never the owner's. Disabling or
   removing an account revokes its runners.
 - **One deliberate exception: commands on a computer are on the record.** The audit log records which computer

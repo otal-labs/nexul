@@ -8,7 +8,10 @@ Read first: `practices/go.md`, `practices/architecture.md`, `practices/mcp.md` (
 `practices/react-guide.md`, `practices/design-language.md`, `practices/testing.md`, ADRs 0087, 0088, 0091, 0138,
 `internal/platform/permissions`, the spec (Later: shell jobs, Access and privacy).
 
-Build after any permissions rework the owner starts (this ticket adds a permission).
+This ticket adds an instance-area permission, so it lands in the evaluator that names sources (permission-overrides
+01). Once permission-overrides 13 ships, Read computer activity is an entity the instance Owner can give to a role
+or a person with a rule; nothing here changes for that. A grantee's shell jobs come from permission-overrides 12
+and ticket 18.
 
 ## What to build
 
@@ -19,7 +22,7 @@ Build after any permissions rework the owner starts (this ticket adds a permissi
   own opt-in, and the runner refuses `shell_run` when it is off.
 - `runners.shell_enabled`, on by default for a personal runner (its owner is the person who installed it, not
   the instance's owner), with a per-computer off switch on the computer row; turning it off cancels running
-  jobs. Sharing stays off until the owner grants it (ticket 18).
+  jobs. Sharing stays off until the owner shares the computer by name (ticket 18).
 - `runner_shell_jobs`: the command line, who ran it, when and the exit code kept forever; the output, capped at
   1 MiB, deleted after 30 days by a daily purge loop (the audit log's loop pattern) that empties the column
   and keeps the row. The job record is exempt from the audit log's 45-day purge.
@@ -41,8 +44,8 @@ Build after any permissions rework the owner starts (this ticket adds a permissi
 - [ ] `TestShellJobs_RefusedWithoutTheComputersOwnOptIn` (server switch on, unit opt-in off: refused by the
       runner, recorded as refused), and `TestShellJobs_OnByDefaultForThePersonWhoInstalledIt` (not the
       instance's owner, unless they installed it).
-- [ ] `TestShellJobs_OnlyTheOwnerStartsOrReadsThem`: a workspace Owner and an every-bit role get 404 over
-      HTTP and MCP, and see no job in any list.
+- [ ] `TestShellJobs_OnlyTheOwnerStartsOrReadsThem`: a workspace Owner and an every-bit role that no
+      computer rule names get 404 over HTTP and MCP, and see no job in any list.
 - [ ] `TestShellJobs_NeverReachAnotherUsersSocket` and the job topics are members-only.
 - [ ] An audit row is written per start, naming the computer and the job; `TestComputerActivity_AuditReadAloneSeesNone`
       (a caller with `audit:read` and every other bit but `computer_activity:read` gets no computer rows), and

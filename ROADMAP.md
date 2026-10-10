@@ -260,8 +260,9 @@ Turn the integration contract into a platform and widen the surface area
 without changing the core architecture.
 
 - **Permissions per entity** — allow, fall back to the role, or deny each
-  permission on a project, doc or play for everyone, a role or one person, and
-  see which rule decided any answer (`.scratch/permission-overrides/`, ADR 0148).
+  permission on a project, doc, play, computer or instance area for everyone,
+  a role or one person, and see which rule decided any answer
+  (`.scratch/permission-overrides/`, ADR 0148).
 - **Add a computer in one command** — a personal runner installs, pairs and
   keeps T3 Code paired through its own connection, so pairing needs no
   Cloudflare tunnel or domain (`.scratch/personal-runners/`, ADR 0146).
