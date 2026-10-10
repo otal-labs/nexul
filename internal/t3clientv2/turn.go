@@ -322,6 +322,11 @@ func (t *turn) start(ctx context.Context, title string, prompts harness.TurnProm
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("watch t3 thread %s: %w", t.threadID, err)
 	}
+	if t.projectChanged(fresh) {
+		src.Close()
+		t.target.SessionID = ""
+		return t.start(ctx, title, prompts)
+	}
 	if t.prompted {
 		return src, w, notes, nil
 	}
@@ -341,6 +346,10 @@ func (t *turn) start(ctx context.Context, title string, prompts harness.TurnProm
 		return nil, nil, nil, err
 	}
 	return src, w, append(notes, more...), nil
+}
+
+func (t *turn) projectChanged(fresh bool) bool {
+	return !fresh && !t.target.KeepSession && t.target.ProjectID != "" && t.snapshot.Thread.ProjectID != t.target.ProjectID
 }
 
 // create makes the turn's thread on the target's model and options, launching it with the prompt for a worktree.

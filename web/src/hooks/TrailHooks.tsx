@@ -73,8 +73,10 @@ export const useRunPlay = () => {
   return useMutation({
     mutationFn: async ({ playId, input }: { playId: string; input: RunPlayInput }) =>
       (await api.post<Trail>(`/api/plays/${playId}/run`, input)).data,
-    onSuccess: async (trail, { input }) => {
+    onSettled: async (_trail, _error, { input }) => {
       if (input.harness_project_id) await invalidateProjectLinks(client);
+    },
+    onSuccess: async (trail) => {
       client.setQueryData<Trail[]>([getTrailsKey, trail.target_type, trail.target_id], (old) => [
         trail,
         ...(old ?? []).filter((t) => t.id !== trail.id),

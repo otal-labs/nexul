@@ -16,6 +16,8 @@ A play is a button that starts an agent on a piece of work, such as **Fix with A
 5. Check the provider and model on the pill under it. They come from your project link; change them here for this run only.
 6. Start the run.
 
+Changing location starts a fresh T3 thread. If the computer is offline, your choice stays saved; retrying uses that choice and starts a fresh thread when the old one belongs to another T3 project. Editing or unlinking settings after a run is confirmed cannot redirect that run.
+
 If no computer or T3 project is set as your default, pick them in the run dialog. If the play can't run, the dialog says why instead: no computer paired, a pairing that expired, the computer offline, or setup still needed. A play on a blocked ticket asks you to confirm first.
 
 The agent decides where the ticket goes when it finishes. It reads your footer memories for that, so a footer memory that says "move the card to Review when the pull request is open" is how you get cards to move.

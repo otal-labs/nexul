@@ -127,7 +127,7 @@ func toHarnessChoice(target *pairing.ResolvedTarget, err error) (plays.HarnessCh
 	if err != nil {
 		return plays.HarnessChoice{}, err
 	}
-	return plays.HarnessChoice{ComputerID: target.Computer.ID, Provider: target.Provider, Model: target.Model, ModelOptions: target.ModelOptions}, nil
+	return plays.HarnessChoice{Worktree: target.Worktree, ComputerID: target.Computer.ID, HarnessProjectID: target.HarnessProjectID, Provider: target.Provider, Model: target.Model, ModelOptions: target.ModelOptions}, nil
 }
 
 // playsMemoryReader adapts memories to the runner's MemoryReader seam.

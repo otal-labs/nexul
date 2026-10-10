@@ -249,6 +249,27 @@ describe("PlayRunDialog", () => {
     expect(await screen.findByRole("button", { name: "Claude · Haiku" })).toBeInTheDocument();
   });
 
+  it("reopens a failed location change with the saved checkout and retries there", async () => {
+    const user = userEvent.setup();
+    mockApi(["plays:run", "tickets:write"]);
+    vi.mocked(api.post).mockImplementationOnce(async () => {
+      links = [{ project_id: "p-1", computer_id: "c-1", harness_project_id: "t3-home" }];
+      resolve.harness_project_id = "t3-home";
+      throw { response: { status: 400, data: { message: "The computer is offline", code: "INVALID", details: { reason: "offline" } } } };
+    });
+    const { close, reopen } = renderDialog();
+    await user.click(await screen.findByRole("button", { name: "Change" }));
+    await pickOption(user, "T3 project", "Home");
+    await user.click(screen.getByRole("button", { name: "Run Fix with AI" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The computer is offline");
+    close();
+    reopen();
+    expect(await screen.findByText(/· Home$/)).toBeInTheDocument();
+    vi.mocked(api.post).mockResolvedValue({ data: { id: "tr-2", play_id: play.id, play_label: play.label, target_type: "ticket", target_id: "t-1", project_id: "p-1", state: "starting" } });
+    await user.click(screen.getByRole("button", { name: "Run Fix with AI" }));
+    expect(api.post).toHaveBeenLastCalledWith("/api/plays/play-1/run", expect.objectContaining({ computer_id: "c-1" }));
+  });
+
   it("asks where on the first run in a project, suggesting the defaults, and runs there without asking once saved", async () => {
     const user = userEvent.setup();
     links = [];

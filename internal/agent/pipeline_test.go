@@ -188,6 +188,10 @@ type fakeTargets struct {
 	hang     bool
 }
 
+func (f *fakeTargets) ResolveConfirmedTarget(_ context.Context, _ string, target pairing.ResolvedTarget) (*pairing.ResolvedTarget, error) {
+	return &target, f.err
+}
+
 func (f *fakeTargets) ResolveTarget(ctx context.Context, _, _ string) (*pairing.ResolvedTarget, error) {
 	if f.hang {
 		<-ctx.Done()

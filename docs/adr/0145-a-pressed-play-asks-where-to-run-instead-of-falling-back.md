@@ -20,7 +20,8 @@ is there to answer.
 - **What is saved.** The computer and T3 project, the run's provider and model (filled from the defaults on the
   default computer), and the link's existing start-in. The run dialog's **Change** saves the same way, so a wrong
   link is fixed from the run. The Projects tab still edits and clears links; clearing one brings the question back.
-- **Thread.** An explicit location starts a fresh T3 thread, so an existing thread in the old checkout cannot keep the run there. Later linked runs and Continue reuse their thread.
+- **Launch.** The validated computer, T3 project, provider, model, options and start-in travel with the turn. Editing or clearing settings after validation cannot redirect that run.
+- **Thread.** An explicit location starts a fresh T3 thread. A later linked run checks the stored thread's T3 project before sending and starts fresh when it differs, including after a failed Change. Runs in the same project and Continue reuse their thread.
 - **Web.** The run dialog shows **Where to run**: two pickers on a first run, one line with **Change** after. The
   harness pill keeps provider and model for the one run (ADR 0058); the computer moved into **Where to run**.
 - **MCP.** `play_run` takes `t3_project_id` beside `computer_id` and saves both as the caller's link, and its

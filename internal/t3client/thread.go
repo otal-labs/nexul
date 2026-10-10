@@ -70,8 +70,9 @@ type Update struct {
 
 // Subscription watches one thread's turn to a terminal state, then closes; one turn per subscription.
 type Subscription struct {
-	updates chan Update
-	cancel  context.CancelFunc
+	projectID string
+	updates   chan Update
+	cancel    context.CancelFunc
 	// dropped is set before updates closes when the connection died mid-turn; ResumeThread continues from it.
 	dropped *turnWatch
 	// ready closes once the first snapshot is in, or with err once the stream ended before one.
@@ -82,6 +83,9 @@ type Subscription struct {
 
 // Updates yields snapshots/approvals and finally one Terminal, then closes; a dropped connection closes it without one.
 func (s *Subscription) Updates() <-chan Update { return s.updates }
+
+// ProjectID is valid only after Ready returns, when the initial snapshot has arrived.
+func (s *Subscription) ProjectID() string { return s.projectID }
 
 // Close stops watching; the server-side stream is interrupted best-effort.
 func (s *Subscription) Close() { s.cancel() }
@@ -343,6 +347,7 @@ func (c *conn) subscribe(ctx context.Context, threadID string, w *turnWatch) (*S
 	subCtx, cancel := context.WithCancel(ctx)
 	sub := &Subscription{updates: make(chan Update, 16), cancel: cancel, ready: make(chan struct{})}
 	if w.synced {
+		sub.projectID = w.projectID
 		sub.markReady(nil)
 	}
 	go c.runSubscription(subCtx, stream, sub, w)
@@ -383,6 +388,9 @@ func (c *conn) runSubscription(ctx context.Context, stream *t3rpc.Stream, sub *S
 			updates, terminal := c.streamItemUpdates(raw, w)
 			// Synced first: a followed thread that is idle ends on its first snapshot, and that is still a ready watch.
 			if w.synced {
+				if !sub.isReady {
+					sub.projectID = w.projectID
+				}
 				sub.markReady(nil)
 			}
 			if terminal != nil {
@@ -418,8 +426,9 @@ type turnWatch struct {
 	// lastSeq is the highest global event sequence applied, the cursor a resume replays after and dedupes against.
 	lastSeq int64
 	// synced marks the first snapshot taken; seen holds message and activity ids reported or older than the turn.
-	synced bool
-	seen   map[string]bool
+	synced    bool
+	projectID string
+	seen      map[string]bool
 	// follow takes the first snapshot's turn in flight as the one to watch, since another watcher started it.
 	follow bool
 }
@@ -490,6 +499,7 @@ type sessionSetPayload struct {
 type threadSnapshot struct {
 	SnapshotSequence int64 `json:"snapshotSequence"`
 	Thread           struct {
+		ProjectID string  `json:"projectId"`
 		DeletedAt *string `json:"deletedAt"`
 		Messages  []struct {
 			ID        string  `json:"id"`
@@ -725,6 +735,7 @@ func (c *conn) snapshotUpdates(raw json.RawMessage, w *turnWatch) ([]Update, *Tu
 		return nil, &TurnResult{State: TurnError, LastError: "the thread was deleted in T3 Code"}
 	}
 	if !w.synced {
+		w.projectID = s.Thread.ProjectID
 		w.synced = true
 		for _, m := range s.Thread.Messages {
 			w.see(m.ID)

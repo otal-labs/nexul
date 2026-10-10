@@ -89,6 +89,7 @@ type ProjectLookup interface {
 // dialog, or what the resolution picked from their project link or pairing defaults when they picked none.
 type HarnessChoice struct {
 	ComputerID string
+	Worktree   bool
 	// HarnessProjectID is the T3 project a person picked beside ComputerID, saved as their project link as the run starts.
 	HarnessProjectID string
 	Provider         string

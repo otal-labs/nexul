@@ -115,7 +115,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	r.startTurn(ctx, trail, targetTitle, agent.TurnRequest{
 		ConversationID: conversationID, ViaUserID: trail.StarterID, NewThread: pick.HarnessProjectID != "",
 		Play:   &agent.PlayContext{Label: play.Label, Instructions: play.Instructions, Blocks: links, Memories: memories.read, Custom: trail.CustomInstructions, Conclude: memories.conclude},
-		Target: &agent.TargetOverride{ComputerID: choice.ComputerID, Provider: choice.Provider, Model: choice.Model, ModelOptions: choice.ModelOptions},
+		Target: &agent.TargetOverride{ComputerID: choice.ComputerID, HarnessProjectID: choice.HarnessProjectID, Worktree: choice.Worktree, Provider: choice.Provider, Model: choice.Model, ModelOptions: choice.ModelOptions},
 	}, false)
 	return &snapshot, nil
 }

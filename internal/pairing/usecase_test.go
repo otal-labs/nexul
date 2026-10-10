@@ -445,17 +445,19 @@ func TestService_ResolvePersonRun_AsksWhereOnceThenUsesTheLink(t *testing.T) {
 func TestService_ResolvePersonRun_Where(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name         string
-		otherPicked  bool
-		harnessProj  string
-		wantReason   NotConfiguredReason
-		wantInvalid  bool
-		wantStartIn  StartIn
-		wantHarnProj string
+		name              string
+		otherPicked       bool
+		replacedAfterSave bool
+		harnessProj       string
+		wantReason        NotConfiguredReason
+		wantInvalid       bool
+		wantStartIn       StartIn
+		wantHarnProj      string
 	}{
 		{name: "another computer without its T3 project asks again", otherPicked: true, wantReason: ReasonNeedsLocation},
 		{name: "a T3 project without its computer is refused", harnessProj: "t3-other", wantInvalid: true},
 		{name: "changing where keeps the link's start-in", otherPicked: true, harnessProj: "t3-other", wantStartIn: StartInWorktree, wantHarnProj: "t3-other"},
+		{name: "another tab replaces the link while the pick is saved", otherPicked: true, harnessProj: "t3-other", replacedAfterSave: true, wantStartIn: StartInFolder, wantHarnProj: "t3-other"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -481,6 +483,10 @@ func TestService_ResolvePersonRun_Where(t *testing.T) {
 				computerID = other.ID
 			}
 
+			if tt.replacedAfterSave {
+				svc.repo = replacedRunLocationRepo{svc.repo}
+			}
+
 			target, err := svc.ResolvePersonRun(ctx, "u1", "proj-1", computerID, tt.harnessProj, "claude", "", nil)
 
 			if tt.wantInvalid {
@@ -495,6 +501,10 @@ func TestService_ResolvePersonRun_Where(t *testing.T) {
 			}
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantHarnProj, target.HarnessProjectID)
+			if tt.replacedAfterSave {
+				assert.True(t, target.Worktree, "the run keeps the start-in captured before the competing save")
+				assert.Empty(t, target.Model, "the competing model is not this run's choice")
+			}
 			link, err := svc.GetProjectLink(ctx, "u1", "proj-1")
 			require.NoError(t, err)
 			assert.Equal(t, other.ID, link.ComputerID)
@@ -793,4 +803,14 @@ func TestService_SetDefaults_RejectsForeignComputer(t *testing.T) {
 
 	_, err = svc.SetDefaults(context.Background(), "u1", Defaults{DefaultComputerID: other.ID})
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+type replacedRunLocationRepo struct{ Repo }
+
+func (r replacedRunLocationRepo) SaveProjectLink(ctx context.Context, link ProjectLink) error {
+	if err := r.Repo.SaveProjectLink(ctx, link); err != nil {
+		return err
+	}
+	link.HarnessProjectID, link.Model, link.StartIn = "t3-replaced", "other-model", StartInFolder
+	return r.Repo.SaveProjectLink(ctx, link)
 }

@@ -37,6 +37,7 @@ type projection struct {
 }
 
 type appThread struct {
+	ProjectID      string         `json:"projectId"`
 	RuntimeMode    string         `json:"runtimeMode"`
 	ModelSelection modelSelection `json:"modelSelection"`
 	// HistoryOrigin is absent on a native thread and "v1_import" on one T3 copied from protocol 1.

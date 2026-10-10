@@ -16,10 +16,11 @@ import (
 // fakeSubscription is a threadSub test double: pump reads it in a
 // goroutine, so buffer generously and close it explicitly per test.
 type fakeSubscription struct {
-	ch       chan Update
-	closed   bool
-	dropped  *turnWatch
-	readyErr error
+	ch        chan Update
+	closed    bool
+	dropped   *turnWatch
+	readyErr  error
+	projectID string
 }
 
 func newFakeSubscription(updates ...Update) *fakeSubscription {
@@ -31,6 +32,7 @@ func newFakeSubscription(updates ...Update) *fakeSubscription {
 	return &fakeSubscription{ch: ch}
 }
 
+func (f *fakeSubscription) ProjectID() string           { return f.projectID }
 func (f *fakeSubscription) Updates() <-chan Update      { return f.ch }
 func (f *fakeSubscription) Close()                      { f.closed = true }
 func (f *fakeSubscription) Dropped() *turnWatch         { return f.dropped }

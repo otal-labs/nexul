@@ -538,6 +538,35 @@ func (s *Service) ResolveTargetOverride(ctx context.Context, userID, projectID, 
 	return s.requireSetup(ctx, target)
 }
 
+// ResolveConfirmedTarget rechecks the same computer and setup without reading mutable location or model settings.
+func (s *Service) ResolveConfirmedTarget(ctx context.Context, userID string, target ResolvedTarget) (*ResolvedTarget, error) {
+	resolved, err := s.resolveConfirmedTarget(ctx, userID, target)
+	if err != nil {
+		return nil, err
+	}
+	return s.requireSetup(ctx, resolved)
+}
+
+func (s *Service) resolveConfirmedTarget(ctx context.Context, userID string, target ResolvedTarget) (*ResolvedTarget, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)
+	}
+	if len(s.key) == 0 {
+		return nil, apperrs.Fatal(fmt.Errorf("%w: pairing encryption key is not configured", apperrs.ErrFatal))
+	}
+	computer, err := s.fetchTargetComputer(ctx, userID, target.Computer.ID)
+	if err != nil {
+		return nil, err
+	}
+	decrypted, err := crypto.Decrypt(s.key, computer.BearerToken)
+	if err != nil {
+		return nil, fmt.Errorf("decrypt bearer token for computer %s: %w", computer.ID, err)
+	}
+	target.Computer = *computer
+	target.Computer.BearerToken = string(decrypted)
+	return &target, nil
+}
+
 // ResolvePersonRun requires a project link or saves the caller's explicit location before checking setup (ADR 0145).
 func (s *Service) ResolvePersonRun(ctx context.Context, userID, projectID, computerID, harnessProjectID, provider, model string, options []harness.OptionSetting) (*ResolvedTarget, error) {
 	target, err := s.resolvePersonRun(ctx, userID, projectID, computerID, harnessProjectID, modelPick{provider: provider, model: model, options: options})
@@ -549,43 +578,42 @@ func (s *Service) ResolvePersonRun(ctx context.Context, userID, projectID, compu
 
 func (s *Service) resolvePersonRun(ctx context.Context, userID, projectID, computerID, harnessProjectID string, pick modelPick) (*ResolvedTarget, error) {
 	projectID, computerID, harnessProjectID = strings.TrimSpace(projectID), strings.TrimSpace(computerID), strings.TrimSpace(harnessProjectID)
-	if harnessProjectID != "" {
-		if err := s.saveRunLocation(ctx, userID, projectID, computerID, harnessProjectID, pick); err != nil {
-			return nil, err
-		}
-		return s.resolveTargetOverride(ctx, userID, projectID, computerID, pick)
+	if harnessProjectID != "" && computerID == "" {
+		return nil, fmt.Errorf("%w: a T3 project needs the computer it is on", apperrs.ErrInvalid)
 	}
 	link, err := s.repo.GetProjectLink(ctx, userID, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("get project link %s: %w", projectID, err)
 	}
-	if link.ComputerID == "" || (computerID != "" && computerID != link.ComputerID) {
+	if harnessProjectID == "" && (link.ComputerID == "" || (computerID != "" && computerID != link.ComputerID)) {
 		return nil, &NotConfiguredError{Reason: ReasonNeedsLocation}
-	}
-	return s.resolveTargetOverride(ctx, userID, projectID, computerID, pick)
-}
-
-// Changing location keeps start-in because it controls how new threads are isolated.
-func (s *Service) saveRunLocation(ctx context.Context, userID, projectID, computerID, harnessProjectID string, pick modelPick) error {
-	if computerID == "" {
-		return fmt.Errorf("%w: a T3 project needs the computer it is on", apperrs.ErrInvalid)
-	}
-	existing, err := s.repo.GetProjectLink(ctx, userID, projectID)
-	if err != nil {
-		return fmt.Errorf("get project link %s: %w", projectID, err)
 	}
 	defaults, err := s.repo.GetDefaults(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("get defaults: %w", err)
+		return nil, fmt.Errorf("get defaults: %w", err)
 	}
-	if defaults.DefaultComputerID == computerID {
+	if harnessProjectID != "" {
+		if defaults.DefaultComputerID == computerID {
+			pick = fillPick(pick, modelPick{defaults.Provider, defaults.Model, defaults.ModelOptions})
+		}
+		link, err = s.SetProjectLink(ctx, userID, projectID, ProjectLink{
+			ComputerID: computerID, HarnessProjectID: harnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options, StartIn: link.StartIn,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	pick = fillPick(pick, modelPick{link.Provider, link.Model, link.ModelOptions})
+	if defaults.DefaultComputerID == link.ComputerID {
 		pick = fillPick(pick, modelPick{defaults.Provider, defaults.Model, defaults.ModelOptions})
 	}
-	_, err = s.SetProjectLink(ctx, userID, projectID, ProjectLink{
-		ComputerID: computerID, HarnessProjectID: harnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options,
-		StartIn: existing.StartIn,
+	startIn := link.StartIn
+	if startIn == "" {
+		startIn = defaults.StartIn
+	}
+	return s.resolveConfirmedTarget(ctx, userID, ResolvedTarget{
+		Computer: Computer{ID: link.ComputerID}, HarnessProjectID: link.HarnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options, Worktree: startIn == StartInWorktree,
 	})
-	return err
 }
 
 // PreviewTarget is ResolveTarget without the gate or bearer token, so readiness never greys a play that refuses on press.
