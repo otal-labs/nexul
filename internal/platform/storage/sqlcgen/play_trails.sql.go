@@ -12,8 +12,8 @@ import (
 )
 
 const createPlayTrail = `-- name: CreatePlayTrail :exec
-INSERT INTO play_trails (id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, model_options, question, failure_reason)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO play_trails (id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, model_options, question, failure_reason, harness_project_id, worktree)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreatePlayTrailParams struct {
@@ -42,6 +42,8 @@ type CreatePlayTrailParams struct {
 	ModelOptions       string
 	Question           sql.NullString
 	FailureReason      string
+	HarnessProjectID   string
+	Worktree           int64
 }
 
 func (q *Queries) CreatePlayTrail(ctx context.Context, arg CreatePlayTrailParams) error {
@@ -71,12 +73,14 @@ func (q *Queries) CreatePlayTrail(ctx context.Context, arg CreatePlayTrailParams
 		arg.ModelOptions,
 		arg.Question,
 		arg.FailureReason,
+		arg.HarnessProjectID,
+		arg.Worktree,
 	)
 	return err
 }
 
 const getPlayTrail = `-- name: GetPlayTrail :one
-SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options FROM play_trails WHERE id = ?
+SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options, harness_project_id, worktree FROM play_trails WHERE id = ?
 `
 
 func (q *Queries) GetPlayTrail(ctx context.Context, id string) (PlayTrail, error) {
@@ -108,12 +112,14 @@ func (q *Queries) GetPlayTrail(ctx context.Context, id string) (PlayTrail, error
 		&i.Question,
 		&i.FailureReason,
 		&i.ModelOptions,
+		&i.HarnessProjectID,
+		&i.Worktree,
 	)
 	return i, err
 }
 
 const latestPlayTrailForChoices = `-- name: LatestPlayTrailForChoices :one
-SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options FROM play_trails WHERE starter_id = ? AND play_id = ? AND project_id = ? ORDER BY started_at DESC, id DESC LIMIT 1
+SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options, harness_project_id, worktree FROM play_trails WHERE starter_id = ? AND play_id = ? AND project_id = ? ORDER BY started_at DESC, id DESC LIMIT 1
 `
 
 type LatestPlayTrailForChoicesParams struct {
@@ -151,12 +157,14 @@ func (q *Queries) LatestPlayTrailForChoices(ctx context.Context, arg LatestPlayT
 		&i.Question,
 		&i.FailureReason,
 		&i.ModelOptions,
+		&i.HarnessProjectID,
+		&i.Worktree,
 	)
 	return i, err
 }
 
 const latestPlayTrailInConversation = `-- name: LatestPlayTrailInConversation :one
-SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options FROM play_trails WHERE conversation_id = ? ORDER BY started_at DESC, id DESC LIMIT 1
+SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options, harness_project_id, worktree FROM play_trails WHERE conversation_id = ? ORDER BY started_at DESC, id DESC LIMIT 1
 `
 
 func (q *Queries) LatestPlayTrailInConversation(ctx context.Context, conversationID string) (PlayTrail, error) {
@@ -188,12 +196,14 @@ func (q *Queries) LatestPlayTrailInConversation(ctx context.Context, conversatio
 		&i.Question,
 		&i.FailureReason,
 		&i.ModelOptions,
+		&i.HarnessProjectID,
+		&i.Worktree,
 	)
 	return i, err
 }
 
 const listActivePlayTrailsByTargets = `-- name: ListActivePlayTrailsByTargets :many
-SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options FROM play_trails WHERE target_type = ? AND target_id IN (/*SLICE:ids*/?) AND state IN ('starting', 'running', 'waiting')
+SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options, harness_project_id, worktree FROM play_trails WHERE target_type = ? AND target_id IN (/*SLICE:ids*/?) AND state IN ('starting', 'running', 'waiting')
 `
 
 type ListActivePlayTrailsByTargetsParams struct {
@@ -247,6 +257,8 @@ func (q *Queries) ListActivePlayTrailsByTargets(ctx context.Context, arg ListAct
 			&i.Question,
 			&i.FailureReason,
 			&i.ModelOptions,
+			&i.HarnessProjectID,
+			&i.Worktree,
 		); err != nil {
 			return nil, err
 		}
@@ -262,7 +274,7 @@ func (q *Queries) ListActivePlayTrailsByTargets(ctx context.Context, arg ListAct
 }
 
 const listPlayTrailsByTarget = `-- name: ListPlayTrailsByTarget :many
-SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options FROM play_trails WHERE target_type = ? AND target_id = ? ORDER BY started_at DESC, id DESC
+SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options, harness_project_id, worktree FROM play_trails WHERE target_type = ? AND target_id = ? ORDER BY started_at DESC, id DESC
 `
 
 type ListPlayTrailsByTargetParams struct {
@@ -305,6 +317,8 @@ func (q *Queries) ListPlayTrailsByTarget(ctx context.Context, arg ListPlayTrails
 			&i.Question,
 			&i.FailureReason,
 			&i.ModelOptions,
+			&i.HarnessProjectID,
+			&i.Worktree,
 		); err != nil {
 			return nil, err
 		}
@@ -320,7 +334,7 @@ func (q *Queries) ListPlayTrailsByTarget(ctx context.Context, arg ListPlayTrails
 }
 
 const listRunningPlayTrails = `-- name: ListRunningPlayTrails :many
-SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options FROM play_trails WHERE state IN ('starting', 'running')
+SELECT id, workspace_id, play_id, play_label, target_type, target_id, project_id, conversation_id, starter_id, via, selected_memory_ids, custom_instructions, harness_session_id, state, started_at, ended_at, last_error, reply_message_id, activity, computer_id, provider, model, question, failure_reason, model_options, harness_project_id, worktree FROM play_trails WHERE state IN ('starting', 'running')
 `
 
 func (q *Queries) ListRunningPlayTrails(ctx context.Context) ([]PlayTrail, error) {
@@ -358,6 +372,8 @@ func (q *Queries) ListRunningPlayTrails(ctx context.Context) ([]PlayTrail, error
 			&i.Question,
 			&i.FailureReason,
 			&i.ModelOptions,
+			&i.HarnessProjectID,
+			&i.Worktree,
 		); err != nil {
 			return nil, err
 		}

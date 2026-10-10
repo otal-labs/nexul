@@ -167,13 +167,16 @@ func (o *trailObserver) OnFinished(result harness.TurnResult, replyMessageID str
 	o.r.finish(o.ctx, o.trail, o.targetTitle, result, replyMessageID, "")
 }
 
-// threadGoneNote is the line a continued trail ends on when its harness thread was deleted (ADR 0128).
-const threadGoneNote = "This run's thread is gone from T3 Code; the play started again in a new run."
+// The lines a continued trail ends on when its harness thread was deleted, once the play did or didn't start again (ADR 0128).
+const (
+	threadGoneNote             = "This run's thread is gone from T3 Code; the play started again in a new run."
+	threadGoneNotStartedNote   = "This run's thread is gone from T3 Code, and the play didn't start again: pick where it runs."
+	threadGoneNotStartedPrefix = "This run's thread is gone from T3 Code, and the play didn't start again: "
+)
 
-// putBack returns a continued trail to how it had ended, keeping the message it was asked, and tells Continue to run again.
+// putBack returns a continued trail to how it had ended and tells Continue to run again, which notes how that went.
 func (o *trailObserver) putBack() {
 	o.trail.State, o.trail.EndedAt, o.trail.LastError = o.before.State, o.before.EndedAt, o.before.LastError
-	o.r.note(o.ctx, o.trail, threadGoneNote)
 	o.r.save(o.ctx, o.trail)
 	o.signalOpen(true)
 }
@@ -270,7 +273,7 @@ func (r *Runner) ResumeRunsAfterRestart(ctx context.Context) error {
 		r.save(ctx, trail)
 		r.startTurn(ctx, trail, tgt.title, agent.TurnRequest{
 			ConversationID: trail.ConversationID, ViaUserID: trail.StarterID, Watch: true,
-			Target: &agent.TargetOverride{ComputerID: trail.ComputerID, Provider: trail.Provider, Model: trail.Model, ModelOptions: trail.ModelOptions},
+			Target: trailTarget(trail),
 		}, true)
 	}
 	return nil

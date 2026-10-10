@@ -106,3 +106,42 @@ func TestContinue_Refusals(t *testing.T) {
 	assert.ErrorIs(t, err, apperrs.ErrConflict, "another run on the target is going")
 	assert.Len(t, f.turns.reqs, 1, "nothing was sent")
 }
+
+func TestContinue_ThreadGone_StartingAgainNeedsALocation_SaysItDidNotStart(t *testing.T) {
+	f := newRunnerFixture()
+	trail := endedRun(t, f)
+	f.harness.unlinked = true
+
+	done, req := continueAsync(t, f, trail.ID, "Keep two threads.")
+	req.Observer.OnFinished(harness.TurnResult{State: harness.TurnError, LastError: "the harness session is gone", SessionGone: true}, "")
+	got := <-done
+
+	var refusal *HarnessRefusal
+	require.ErrorAs(t, got.err, &refusal, "the caller hears it needs a location, to ask where")
+	assert.Equal(t, RefusalNeedsLocation, refusal.Reason)
+	assert.Len(t, f.trails.all(), 1, "no new run started")
+	assert.NotContains(t, f.threads.noteBodies(), threadGoneNote, "nothing claims the play started again")
+	old, err := f.trails.GetTrail(t.Context(), trail.ID)
+	require.NoError(t, err)
+	assert.Equal(t, threadGoneNotStartedNote, old.Activity[len(old.Activity)-1].Summary)
+}
+
+func TestContinue_ThreadGone_StartsAgainWhereTheRunWas_WithoutAskingOrTheLink(t *testing.T) {
+	f := newRunnerFixture()
+	in := ticketRun()
+	in.ComputerID, in.HarnessProjectID = "c-1", "t3-nexul"
+	trail, obs := driveTurn(t, f, in)
+	obs.OnStarted("th-1")
+	obs.OnFinished(harness.TurnResult{State: harness.TurnError, LastError: "Lost the connection to T3 Code"}, "")
+	f.harness.unlinked = true
+
+	done, req := continueAsync(t, f, trail.ID, "Keep two threads.")
+	req.Observer.OnFinished(harness.TurnResult{State: harness.TurnError, LastError: "the harness session is gone", SessionGone: true}, "")
+	got := <-done
+
+	require.NoError(t, got.err, "the run knows where it ran, so nobody is asked")
+	assert.NotEqual(t, trail.ID, got.trail.ID)
+	assert.True(t, f.harness.recorded, "the old run's location is rechecked, not the starter's link")
+	assert.Equal(t, "t3-nexul", f.harness.lastChoice.HarnessProjectID)
+	assert.Contains(t, f.threads.noteBodies(), threadGoneNote)
+}

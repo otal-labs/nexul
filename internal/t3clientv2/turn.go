@@ -322,7 +322,7 @@ func (t *turn) start(ctx context.Context, title string, prompts harness.TurnProm
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("watch t3 thread %s: %w", t.threadID, err)
 	}
-	if t.projectChanged(fresh) {
+	if t.projectChanged(fresh, prompts) {
 		src.Close()
 		t.target.SessionID = ""
 		return t.start(ctx, title, prompts)
@@ -348,8 +348,9 @@ func (t *turn) start(ctx context.Context, title string, prompts harness.TurnProm
 	return src, w, append(notes, more...), nil
 }
 
-func (t *turn) projectChanged(fresh bool) bool {
-	return !fresh && !t.target.KeepSession && t.target.ProjectID != "" && t.snapshot.Thread.ProjectID != t.target.ProjectID
+// projectChanged is a reused thread in another T3 project than the turn's; an answer belongs to the thread that asked it, wherever.
+func (t *turn) projectChanged(fresh bool, prompts harness.TurnPrompts) bool {
+	return prompts.Answer == nil && !fresh && !t.target.KeepSession && t.target.ProjectID != "" && t.snapshot.Thread.ProjectID != t.target.ProjectID
 }
 
 // create makes the turn's thread on the target's model and options, launching it with the prompt for a worktree.

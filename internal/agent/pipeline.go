@@ -347,14 +347,6 @@ type TurnRequest struct {
 	Since string
 	// KeepThread continues the conversation's own harness thread or nothing: a gone one ends the turn SessionGone.
 	KeepThread bool
-	NewThread  bool
-}
-
-func (r TurnRequest) threadID(current string) string {
-	if r.NewThread {
-		return ""
-	}
-	return current
 }
 
 // RunTurn runs one Agent turn and blocks until it ends; every failure surfaces as a system message or a log line.
@@ -373,8 +365,6 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		failed(fmt.Sprintf("get conversation: %v", err))
 		return
 	}
-
-	conv.ThreadID = req.threadID(conv.ThreadID)
 
 	thread, projectID := s.loadThreadTarget(ctx, conv, viaUserID)
 	if projectID == "" {

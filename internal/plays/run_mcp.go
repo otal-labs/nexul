@@ -278,7 +278,8 @@ func steerTrail(ctx context.Context, r *Runner, in trailUpdateIn) (*Trail, error
 		return nil, fmt.Errorf("%w: pass exactly one of answer, stop: true, or continue", apperrs.ErrInvalid)
 	}
 	if in.Continue != "" {
-		return r.Continue(ctx, in.ID, in.Continue, ViaMCP)
+		t, err := r.Continue(ctx, in.ID, in.Continue, ViaMCP)
+		return t, locationHint(err)
 	}
 	if in.Stop {
 		return r.Stop(ctx, in.ID)
@@ -299,6 +300,11 @@ func startHint(err error) error {
 	if errors.Is(err, apperrs.ErrConflict) {
 		return fmt.Errorf("%w; trail_list with target_type and target_id shows the active trail, and trail_update with stop ends it", err)
 	}
+	return locationHint(err)
+}
+
+// locationHint points a run that needs a location, pressed or started again by a continue, at play_run (ADR 0145).
+func locationHint(err error) error {
 	var refusal *HarnessRefusal
 	if errors.As(err, &refusal) && refusal.Reason == RefusalNeedsLocation {
 		return fmt.Errorf("%w Ask the user which computer and T3 project to run in, then call play_run again with computer_id "+

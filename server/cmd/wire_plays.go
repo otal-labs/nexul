@@ -119,6 +119,13 @@ func (a playsHarnessResolver) ResolvePersonTarget(ctx context.Context, userID, p
 	return toHarnessChoice(a.svc.ResolvePersonRun(ctx, userID, projectID, choice.ComputerID, choice.HarnessProjectID, choice.Provider, choice.Model, choice.ModelOptions))
 }
 
+func (a playsHarnessResolver) ResolveRecordedTarget(ctx context.Context, userID, _ string, choice plays.HarnessChoice) (plays.HarnessChoice, error) {
+	return toHarnessChoice(a.svc.ResolveConfirmedTarget(ctx, userID, pairing.ResolvedTarget{
+		Computer: pairing.Computer{ID: choice.ComputerID}, HarnessProjectID: choice.HarnessProjectID, Worktree: choice.Worktree,
+		Provider: choice.Provider, Model: choice.Model, ModelOptions: choice.ModelOptions,
+	}))
+}
+
 func toHarnessChoice(target *pairing.ResolvedTarget, err error) (plays.HarnessChoice, error) {
 	var nc *pairing.NotConfiguredError
 	if errors.As(err, &nc) {

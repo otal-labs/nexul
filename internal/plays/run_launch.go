@@ -43,7 +43,7 @@ func (r *Runner) startRun(ctx context.Context, in RunInput, mode launchMode) (*T
 	if err != nil {
 		return nil, err
 	}
-	pick := HarnessChoice{ComputerID: in.ComputerID, HarnessProjectID: in.HarnessProjectID, Provider: in.Provider, Model: in.Model, ModelOptions: options}
+	pick := HarnessChoice{ComputerID: in.ComputerID, HarnessProjectID: in.HarnessProjectID, Worktree: in.Worktree, Provider: in.Provider, Model: in.Model, ModelOptions: options}
 	return r.launch(ctx, play, trail, tgt, pick, mode)
 }
 
@@ -59,6 +59,8 @@ const (
 	launchQueued
 	// launchPerson is a press through the run dialog or play_run: as launchPress, but it asks where rather than fall back.
 	launchPerson
+	// launchAgain starts a gone thread's run again where that run was, without reading or saving the starter's link.
+	launchAgain
 )
 
 // launch resolves the harness and starts the turn, keeping refusals as failed trails as mode says.
@@ -75,6 +77,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 		return nil, err
 	}
 	trail.ComputerID, trail.Provider, trail.Model, trail.ModelOptions = choice.ComputerID, choice.Provider, choice.Model, choice.ModelOptions
+	trail.HarnessProjectID, trail.Worktree = choice.HarnessProjectID, choice.Worktree
 	if err := r.refuseIfActive(ctx, trail.TargetType, trail.TargetID); err != nil {
 		return refuse(err)
 	}
@@ -113,7 +116,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	// Copied before the turn starts: from here on the observer's goroutine owns trail.
 	snapshot := *trail
 	r.startTurn(ctx, trail, targetTitle, agent.TurnRequest{
-		ConversationID: conversationID, ViaUserID: trail.StarterID, NewThread: pick.HarnessProjectID != "",
+		ConversationID: conversationID, ViaUserID: trail.StarterID,
 		Play:   &agent.PlayContext{Label: play.Label, Instructions: play.Instructions, Blocks: links, Memories: memories.read, Custom: trail.CustomInstructions, Conclude: memories.conclude},
 		Target: &agent.TargetOverride{ComputerID: choice.ComputerID, HarnessProjectID: choice.HarnessProjectID, Worktree: choice.Worktree, Provider: choice.Provider, Model: choice.Model, ModelOptions: choice.ModelOptions},
 	}, false)
@@ -133,6 +136,9 @@ func (r *Runner) resolveHarness(ctx context.Context, trail *Trail, targetTitle s
 	resolve := r.harness.ResolveTarget
 	if mode == launchPerson {
 		resolve = r.harness.ResolvePersonTarget
+	}
+	if mode == launchAgain {
+		resolve = r.harness.ResolveRecordedTarget
 	}
 	choice, err := resolve(ctx, trail.StarterID, trail.ProjectID, pick)
 	if err == nil {
@@ -354,7 +360,7 @@ func (r *Runner) Answer(ctx context.Context, trailID string, answer harness.Ques
 		ConversationID: trail.ConversationID, ViaUserID: trail.StarterID, RequestBody: body,
 		Answer: &harness.PendingAnswer{RequestID: trail.Question.RequestID, Answer: answer},
 		Play:   r.answerContext(ctx, trail),
-		Target: &agent.TargetOverride{ComputerID: trail.ComputerID, Provider: trail.Provider, Model: trail.Model, ModelOptions: trail.ModelOptions},
+		Target: trailTarget(trail),
 	}, true)
 	return &snapshot, nil
 }
@@ -399,14 +405,16 @@ func (r *Runner) Continue(ctx context.Context, trailID, message string, via Via)
 	o := &trailObserver{trail: trail, targetTitle: tgt.title, resumed: true, opened: make(chan bool, 1), before: &before}
 	r.start(ctx, o, agent.TurnRequest{
 		ConversationID: trail.ConversationID, ViaUserID: trail.StarterID, RequestBody: message, KeepThread: true,
-		Target: &agent.TargetOverride{ComputerID: trail.ComputerID, Provider: trail.Provider, Model: trail.Model, ModelOptions: trail.ModelOptions},
+		Target: trailTarget(trail),
 	})
 	wait := time.NewTimer(continueWait)
 	defer wait.Stop()
 	select {
 	case gone := <-o.opened:
 		if gone {
-			return r.runAgain(ctx, &before, message, via)
+			next, err := r.runAgain(ctx, &before, message, via)
+			r.noteStartedAgain(ctx, trail, err)
+			return next, err
 		}
 	case <-wait.C:
 	case <-ctx.Done():
@@ -417,16 +425,38 @@ func (r *Runner) Continue(ctx context.Context, trailID, message string, via Via)
 // continueWait bounds how long Continue waits to learn whether the harness took the turn; past it the trail just runs.
 const continueWait = 30 * time.Second
 
-// runAgain starts a gone thread's play again on the same target with the same choices, its instructions ending with message.
+// runAgain starts a gone thread's play again where it ran with the same choices plus message; an unrecorded place asks where.
 func (r *Runner) runAgain(ctx context.Context, old *Trail, message string, via Via) (*Trail, error) {
 	custom := message
 	if old.CustomInstructions != "" {
 		custom = old.CustomInstructions + "\n\n" + message
 	}
-	return r.Run(ctx, RunInput{
+	in := RunInput{
 		PlayID: old.PlayID, TargetType: old.TargetType, TargetID: old.TargetID, MemoryIDs: old.SelectedMemoryIDs, CustomInstructions: custom,
-		ComputerID: old.ComputerID, Provider: old.Provider, Model: old.Model, ModelOptions: old.ModelOptions, Via: via,
-	})
+		ComputerID: old.ComputerID, HarnessProjectID: old.HarnessProjectID, Worktree: old.Worktree,
+		Provider: old.Provider, Model: old.Model, ModelOptions: old.ModelOptions, Via: via,
+	}
+	if old.HarnessProjectID == "" {
+		return r.Run(ctx, in)
+	}
+	return r.startRun(ctx, in, launchAgain)
+}
+
+// noteStartedAgain tells a gone thread's trail whether its play started again as a new run, and if not, why.
+func (r *Runner) noteStartedAgain(ctx context.Context, trail *Trail, err error) {
+	r.note(ctx, trail, startedAgainNote(err))
+	r.save(ctx, trail)
+}
+
+func startedAgainNote(err error) string {
+	if err == nil {
+		return threadGoneNote
+	}
+	var refusal *HarnessRefusal
+	if errors.As(err, &refusal) && refusal.Reason == RefusalNeedsLocation {
+		return threadGoneNotStartedNote
+	}
+	return threadGoneNotStartedPrefix + err.Error()
 }
 
 // recordFollowUps keeps an interview run's answered question as the project's next round; a failed record is only logged.
@@ -675,6 +705,13 @@ func (r *Runner) openThread(ctx context.Context, workspaceID string, targetType 
 	return id, nil
 }
 
+// trailTarget is where a run's follow-up turns go: where it started, never where the starter's link points now.
+func trailTarget(t *Trail) *agent.TargetOverride {
+	return &agent.TargetOverride{
+		ComputerID: t.ComputerID, HarnessProjectID: t.HarnessProjectID, Worktree: t.Worktree, Provider: t.Provider, Model: t.Model, ModelOptions: t.ModelOptions,
+	}
+}
+
 // startTurn runs the turn detached from the request's cancellation: it outlives the HTTP call, and chat's
 // silence window is chat's, not a play's. A resumed turn continues an existing trail, so it announces no start.
 // The channel closes once the turn has ended.
@@ -728,7 +765,7 @@ func (r *Runner) FollowThread(ctx context.Context, conversationID, threadID, use
 	r.save(ctx, trail)
 	return r.startTurn(ctx, trail, tgt.title, agent.TurnRequest{
 		ConversationID: conversationID, ViaUserID: trail.StarterID, Watch: true, Since: since,
-		Target: &agent.TargetOverride{ComputerID: trail.ComputerID, Provider: trail.Provider, Model: trail.Model, ModelOptions: trail.ModelOptions},
+		Target: trailTarget(trail),
 	}, true), true
 }
 

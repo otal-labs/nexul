@@ -48,7 +48,7 @@ func (r *PlayTrailsRepo) CreateTrail(ctx context.Context, t *plays.Trail, evts .
 			HarnessSessionID: t.HarnessSessionID, State: string(t.State),
 			StartedAt: t.StartedAt.Unix(), EndedAt: nullUnixPtr(t.EndedAt), LastError: t.LastError,
 			ReplyMessageID: t.ReplyMessageID, Activity: activity, ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model, ModelOptions: options,
-			Question: question, FailureReason: t.FailureReason,
+			Question: question, FailureReason: t.FailureReason, HarnessProjectID: t.HarnessProjectID, Worktree: boolToInt(t.Worktree),
 		})
 		if err != nil {
 			return fmt.Errorf("insert trail %s: %w", t.ID, classifyWriteErr(err))
@@ -217,7 +217,8 @@ func toTrail(row sqlcgen.PlayTrail) (*plays.Trail, error) {
 		TargetType: plays.TargetType(row.TargetType), TargetID: row.TargetID, ProjectID: row.ProjectID,
 		ConversationID: row.ConversationID, StarterID: row.StarterID, Via: plays.Via(row.Via),
 		SelectedMemoryIDs: memories, CustomInstructions: row.CustomInstructions,
-		ComputerID: row.ComputerID, Provider: row.Provider, Model: row.Model, ModelOptions: options,
+		ComputerID: row.ComputerID, HarnessProjectID: row.HarnessProjectID, Worktree: row.Worktree != 0,
+		Provider: row.Provider, Model: row.Model, ModelOptions: options,
 		HarnessSessionID: row.HarnessSessionID, State: plays.TrailState(row.State),
 		StartedAt: time.Unix(row.StartedAt, 0).UTC(), EndedAt: endedAt, LastError: row.LastError, FailureReason: row.FailureReason,
 		ReplyMessageID: row.ReplyMessageID, Activity: activity, Question: question,

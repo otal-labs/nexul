@@ -593,13 +593,7 @@ func (s *Service) resolvePersonRun(ctx context.Context, userID, projectID, compu
 		return nil, fmt.Errorf("get defaults: %w", err)
 	}
 	if harnessProjectID != "" {
-		if defaults.DefaultComputerID == computerID {
-			pick = fillPick(pick, modelPick{defaults.Provider, defaults.Model, defaults.ModelOptions})
-		}
-		link, err = s.SetProjectLink(ctx, userID, projectID, ProjectLink{
-			ComputerID: computerID, HarnessProjectID: harnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options, StartIn: link.StartIn,
-		})
-		if err != nil {
+		if link, err = s.savePickedLocation(ctx, userID, projectID, computerID, harnessProjectID, link, defaults); err != nil {
 			return nil, err
 		}
 	}
@@ -614,6 +608,51 @@ func (s *Service) resolvePersonRun(ctx context.Context, userID, projectID, compu
 	return s.resolveConfirmedTarget(ctx, userID, ResolvedTarget{
 		Computer: Computer{ID: link.ComputerID}, HarnessProjectID: link.HarnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options, Worktree: startIn == StartInWorktree,
 	})
+}
+
+// savePickedLocation saves a picked location the computer lists as the link, never the run's own model (ADR 0145).
+func (s *Service) savePickedLocation(ctx context.Context, userID, projectID, computerID, harnessProjectID string, link ProjectLink, defaults Defaults) (ProjectLink, error) {
+	if err := s.requireListedProject(ctx, userID, computerID, harnessProjectID); err != nil {
+		return ProjectLink{}, err
+	}
+	keep := linkModel(link, defaults, computerID)
+	return s.SetProjectLink(ctx, userID, projectID, ProjectLink{
+		ComputerID: computerID, HarnessProjectID: harnessProjectID, Provider: keep.provider, Model: keep.model, ModelOptions: keep.options, StartIn: link.StartIn,
+	})
+}
+
+// linkModel is the model a link moved to computerID keeps: its own on the same computer, else the defaults on the default one.
+func linkModel(link ProjectLink, defaults Defaults, computerID string) modelPick {
+	if link.ComputerID == computerID {
+		return modelPick{link.Provider, link.Model, link.ModelOptions}
+	}
+	if defaults.DefaultComputerID == computerID {
+		return modelPick{defaults.Provider, defaults.Model, defaults.ModelOptions}
+	}
+	return modelPick{}
+}
+
+// requireListedProject refuses a T3 project the computer does not list, or cannot be asked about, so no typo becomes a link.
+func (s *Service) requireListedProject(ctx context.Context, userID, computerID, harnessProjectID string) error {
+	target, err := s.resolveConfirmedTarget(ctx, userID, ResolvedTarget{Computer: Computer{ID: computerID}})
+	if err != nil {
+		return err
+	}
+	client, err := s.client(target.Computer.Kind)
+	if err != nil {
+		return err
+	}
+	projects, err := client.ListProjects(ctx, target.Computer.Session())
+	if errors.Is(err, harness.ErrProtocol) {
+		return err
+	}
+	if err != nil {
+		return &NotConfiguredError{Reason: ReasonOffline, Computer: target.Computer.Name, ComputerID: target.Computer.ID, Err: err}
+	}
+	if !slices.ContainsFunc(projects, func(p harness.Project) bool { return p.ID == harnessProjectID }) {
+		return fmt.Errorf("%w: %s is not one of the T3 projects on %s", apperrs.ErrInvalid, harnessProjectID, target.Computer.Name)
+	}
+	return nil
 }
 
 // PreviewTarget is ResolveTarget without the gate or bearer token, so readiness never greys a play that refuses on press.

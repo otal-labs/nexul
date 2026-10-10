@@ -104,6 +104,8 @@ type HarnessResolver interface {
 	ResolveTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error)
 	// ResolvePersonTarget requires an explicit location or the caller's project link (ADR 0145).
 	ResolvePersonTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error)
+	// ResolveRecordedTarget rechecks the location an earlier run recorded, reading and saving no link.
+	ResolveRecordedTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error)
 }
 
 // RefusalNeedsLocation is the refusal of a person's run in a project they have not linked: a question, not a failure.
@@ -305,10 +307,12 @@ type RunInput struct {
 	CustomInstructions string
 	ComputerID         string
 	HarnessProjectID   string
-	Provider           string
-	Model              string
-	ModelOptions       []harness.OptionSetting
-	Via                Via
+	// Worktree is the start-in of a recorded location a run starts again in; a press takes its link's.
+	Worktree     bool
+	Provider     string
+	Model        string
+	ModelOptions []harness.OptionSetting
+	Via          Via
 }
 
 // Choices is what the run dialog pre-selects from the starter's latest trail of a play in a project.
