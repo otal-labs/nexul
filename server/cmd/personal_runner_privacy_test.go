@@ -108,7 +108,7 @@ func addComputer(t *testing.T, c privacyCast, token, name string) (id, enrollTok
 		} `json:"commands"`
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
-	require.Equal(t, "curl -fsSL https://nexul.io/computer.sh | sh -s -- "+got.Token, got.Commands.Unix)
+	require.Equal(t, "curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- "+got.Token, got.Commands.Unix)
 	return got.Computer.ID, got.Token
 }
 

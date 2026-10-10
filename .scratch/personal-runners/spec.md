@@ -389,13 +389,16 @@ Code's own background service is a user service on Linux, so now that the instal
 lingering for that user (`loginctl enable-linger`), so T3 Code survives logout too (ticket 07 confirms how T3
 Code installs its service). It prints what it installs and never prompts, as ADR 0142 requires of a piped script.
 
-The service is `nexul-computer`, one per OS user. `nexul uninstall computer`, run with `sudo`, removes it. A
-revoked runner has to remove itself too (`internal/runner/client.go:300`, ADR 0074), but a process running as the
-person cannot delete a root-owned unit. So the install also writes a small root-owned helper that only removes the
-service, its files and its own sudoers entry (on Linux `/usr/local/libexec/nexul-computer-uninstall`), and a
-`sudoers.d` entry that lets only that user run only that helper without a password. The helper stays outside the
-user's reach: it and its directory are root-owned, and the entry names its full path. It is the one privilege the
-install leaves behind, and it can only undo the install.
+The service is `nexul-computer`, one per machine for now (the unit's name is fixed). A revoked runner has to remove
+itself too (`internal/runner/client.go:300`, ADR 0074), but a process running as the person cannot delete a
+root-owned unit, and no sudo rule is installed (owner, 2026-10-10). So the install also leaves a root cleanup: a
+root-owned copy of `nexul` (`/usr/local/libexec/nexul-computer-uninstall`), a folder only the person may write in
+(`/var/lib/nexul-computer`), and a systemd path unit, `nexul-computer-cleanup.path`, that starts the oneshot
+`nexul-computer-cleanup.service` once `remove-requested` exists there. The service runs the copy's one fixed removal
+for the person named in its unit: it reads neither the request's contents nor anything in the person's home, removes
+the person's files as the person, and is idempotent. `nexul uninstall computer --detach`, which a removed runner
+already runs, and `nexul uninstall computer` run as the person only write that request; under `sudo` the command
+removes everything at once.
 
 ## Data model
 
@@ -427,7 +430,7 @@ Personal runner names are generated (`computer-<8 random>`) because runner names
   pairing token, restart the service), and a personal runner refuses every build, deploy and upgrade frame.
   Shell jobs, which do run what they are sent, are a separate capability: on for the computer's owner, off for
   everyone else until granted, and recorded (see "Later: shell jobs").
-- **The install's root step is narrow.** It places the service and one root-owned removal helper (Installing
+- **The install's root step is narrow.** It places the service and one root cleanup that can only remove the install (Installing
   a personal runner); the runner process, T3 Code and every file in the person's home stay the person's.
 - **Streams are bound to their runner.** A stream id is single-use, lives 10 seconds, and is accepted only
   from the runner it was issued to, over that runner's host credential.
@@ -792,9 +795,9 @@ What sharing really hands over, which the grant dialog must say plainly:
 - **Proxies in front of the instance** must pass a second WebSocket path. The control socket already
   crosses them, and the T3 session's 30-second ping keeps a relayed socket inside Cloudflare's idle limit.
 - **The install needs sudo.** A computer where the person cannot use sudo cannot be added, and the message
-  says so. The one thing the install leaves with root is the removal helper and its sudoers entry, which can
-  only undo the install; a mistake there is a local privilege problem, so ticket 20 tests the entry with
-  `visudo -c` and keeps the helper path root-owned.
+  says so. The one thing the install leaves with root is the cleanup path unit and its service, which can
+  only undo the install; a mistake there is a local privilege problem, so the service reads nothing the person
+  can write and ticket 20 tests that the request's contents steer nothing.
 - **Development and end-to-end recipes use Pair by URL** (a throwaway T3 server, the local stack). With it
   gone they run a personal runner on the developer's own computer against the dev server; ticket 03 writes
   that recipe before any old path is removed.

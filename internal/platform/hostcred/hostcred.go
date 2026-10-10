@@ -64,10 +64,11 @@ func InstallCommands(script, instanceURL, name, code string) (unix, windows stri
 	return unixCommand(script, args), windows
 }
 
-// ComputerCommand renders the one-liner that adds a computer through computer.sh, run as the person on Linux or macOS;
-// a site or release other than nexul.io's travels in the command, for an instance tested against its own build.
+// ComputerCommand renders the one-liner that adds a computer through computer.sh, run with sudo from the person's own
+// account; a site or release other than nexul.io's travels in the command, for an instance tested against its own
+// build, as variables sudo sets for the script.
 func ComputerCommand(site, release, token string) string {
-	env := ""
+	env := "sudo "
 	if site != DefaultSite {
 		env += "NEXUL_INSTALL_URL=" + site + "/install.sh "
 	}

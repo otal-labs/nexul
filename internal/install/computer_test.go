@@ -1,10 +1,12 @@
 package install
 
 import (
-	"errors"
+	"encoding/json"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,12 +15,22 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 )
 
-// asPerson makes the test host alice's own session: uid 1000 with a systemd user manager to talk to.
-func (th *testHost) asPerson(t *testing.T) {
+// sudoFromAlice makes the test host root under sudo, typed by alice (uid 1000, home th.Home). What root deletes as
+// alice through runuser is really deleted.
+func (th *testHost) sudoFromAlice(t *testing.T) {
 	t.Helper()
-	th.Getuid = func() int { return 1000 }
-	t.Setenv("XDG_RUNTIME_DIR", "/run/user/1000")
+	th.Getuid = func() int { return 0 }
+	t.Setenv("SUDO_USER", "alice")
 	withVersion(t, "v0.3.1")
+	th.exec.onRun = func(line string) {
+		for _, rm := range []string{"runuser -u alice -- rm -rf ", "runuser -u alice -- rm -f "} {
+			if paths, ok := strings.CutPrefix(line, rm); ok {
+				for _, path := range strings.Fields(paths) {
+					require.NoError(t, os.RemoveAll(path))
+				}
+			}
+		}
+	}
 }
 
 // computerToken is a token as Add a computer signs it, naming server; the installer reads it but never checks it.
@@ -34,10 +46,24 @@ func (th *testHost) installComputer(t *testing.T) error {
 	return th.runInstall(t.Context(), []string{"computer", "--token", computerToken(t, th.web.URL+"/")})
 }
 
-func TestInstallComputer_RunsTheRunnerAsThePersonsOwnUserService(t *testing.T) {
+// assertHomeIsAlices fails for anything under alice's home the install made and left root's.
+func assertHomeIsAlices(t *testing.T, th *testHost) {
+	t.Helper()
+	err := filepath.WalkDir(th.Home, func(path string, _ fs.DirEntry, err error) error {
+		if err != nil || path == th.Home {
+			return err
+		}
+		assert.Equal(t, "1000:1000", th.chowned[path], path)
+		return nil
+	})
+	if !os.IsNotExist(err) {
+		require.NoError(t, err)
+	}
+}
+
+func TestInstallComputer_RunsTheRunnerAsASystemServiceOfThePersonWhoTypedSudo(t *testing.T) {
 	th := newTestHost(t)
-	th.asPerson(t)
-	th.set("loginctl show-user", "no", nil)
+	th.sudoFromAlice(t)
 
 	require.NoError(t, th.installComputer(t))
 
@@ -47,7 +73,7 @@ func TestInstallComputer_RunsTheRunnerAsThePersonsOwnUserService(t *testing.T) {
 		"the whole token goes to the instance it names, which checks it; the code names the runner, so no name is sent")
 	dir := filepath.Join(th.Home, ".local", "share", "nexul", "computer")
 	ctl := filepath.Join(th.Home, ".local", "bin", "nexul")
-	assert.Equal(t, "this-binary", readFile(t, ctl), "the nexul command lands in ~/.local/bin")
+	assert.Equal(t, "this-binary", readFile(t, ctl), "the nexul command lands in alice's ~/.local/bin")
 	assert.Equal(t, "nexul-runner-binary", readFile(t, filepath.Join(dir, "nexul-runner")))
 	assert.Equal(t, "cred-laptop\n", readFile(t, filepath.Join(dir, "credential")))
 	for _, f := range []string{"credential", "env"} {
@@ -64,69 +90,82 @@ func TestInstallComputer_RunsTheRunnerAsThePersonsOwnUserService(t *testing.T) {
 		"NEXUL_RUNNER_NAME":     "computer-ab12cd34",
 		"NEXUL_RUNNER_MODE":     "personal",
 	}, env)
+	unitFile := filepath.Join(th.Paths.Services, "nexul-computer.service")
 	assert.Equal(t, `[Unit]
 Description=Nexul computer runner
+Wants=network-online.target
+After=network-online.target
 
 [Service]
+User=alice
 EnvironmentFile=`+filepath.Join(dir, "env")+`
 WorkingDirectory=`+dir+`
 ExecStart=`+filepath.Join(dir, "nexul-runner")+`
+RestartPreventExitStatus=0
 Restart=always
 RestartSec=5
 
 [Install]
-WantedBy=default.target
-`, readFile(t, filepath.Join(th.Home, ".config", "systemd", "user", "nexul-computer.service")))
-	assert.Equal(t, []string{"systemctl --user daemon-reload", "systemctl --user enable nexul-computer.service", "systemctl --user restart nexul-computer.service"},
+WantedBy=multi-user.target
+`, readFile(t, unitFile))
+	assert.Equal(t, []string{"systemctl daemon-reload", "systemctl enable --now nexul-computer-cleanup.path",
+		"systemctl daemon-reload", "systemctl enable nexul-computer.service", "systemctl restart nexul-computer.service"},
 		th.exec.callsTo("systemctl"))
-	assert.Equal(t, []string{"loginctl show-user 1000 --property=Linger --value", "loginctl enable-linger"}, th.exec.callsTo("loginctl"))
+	assertHomeIsAlices(t, th)
+	assert.NotContains(t, th.chowned, unitFile, "the service definition stays root's")
+	requests := filepath.Join(th.root, "var-lib-nexul-computer")
+	assert.Equal(t, `[Unit]
+Description=Remove the Nexul computer runner when it asks
+
+[Path]
+PathExists=`+filepath.Join(requests, "remove-requested")+`
+Unit=nexul-computer-cleanup.service
+
+[Install]
+WantedBy=multi-user.target
+`, readFile(t, filepath.Join(th.Paths.Services, "nexul-computer-cleanup.path")))
+	cleanupExe := filepath.Join(th.root, "libexec", "nexul-computer-uninstall")
+	assert.Equal(t, `[Unit]
+Description=Remove the Nexul computer runner
+
+[Service]
+Type=oneshot
+ExecStart=`+cleanupExe+` uninstall computer --cleanup-for alice
+`, readFile(t, filepath.Join(th.Paths.Services, "nexul-computer-cleanup.service")))
+	assert.Equal(t, "this-binary", readFile(t, cleanupExe), "the cleanup runs root's own copy, never the one in alice's home")
+	assert.NotContains(t, th.chowned, cleanupExe)
+	assert.Equal(t, "1000:1000", th.chowned[requests], "only the request folder is alice's to write in")
+	assert.False(t, th.exec.ran("loginctl"), "a system service needs no lingering")
 	assert.False(t, th.exec.ran("docker"), "a computer needs no Docker")
-	assert.False(t, th.exec.ran("sudo"), "lingering as the person needed no sudo")
-	assert.NoDirExists(t, filepath.Join(th.root, "opt"), "nothing goes where root's services live")
-	assert.Contains(t, th.out.String(), "nexul uninstall computer")
+	assert.NoDirExists(t, filepath.Join(th.root, "opt"), "nothing goes where the deploy services live")
+	assert.Contains(t, th.out.String(), "Remove it      nexul uninstall computer")
 }
 
-func TestInstallComputer_RefusesRootAndInstallsNothing(t *testing.T) {
-	th := newTestHost(t)
-	withVersion(t, "v0.3.1")
-
-	err := th.installComputer(t)
-
-	require.ErrorContains(t, err, "not as root")
-	assert.Empty(t, th.exec.calls)
-	assert.Empty(t, th.instance.calls("/api/runners/enroll"), "the code is not spent")
-	assert.NoDirExists(t, filepath.Join(th.Home, ".local"))
-	assert.NoFileExists(t, filepath.Join(th.Paths.BinDir, "nexul"))
-}
-
-func TestInstallComputer_Lingering(t *testing.T) {
+func TestInstallComputer_InstallsOnlyForAPersonWhoTypedSudo(t *testing.T) {
 	tests := []struct {
-		name  string
-		setup func(th *testHost)
-		want  string
-		sudo  bool
+		name     string
+		uid      int
+		sudoUser string
+		wantErr  string
 	}{
-		{"already on", func(th *testHost) { th.set("loginctl show-user", "yes", nil) }, "Lingering ....... on\n", false},
-		{"turned on as the person", func(*testHost) {}, "turned on", false},
-		{"turned on through passwordless sudo", func(th *testHost) {
-			th.set("loginctl enable-linger", "", errors.New("access denied"))
-		}, "turned on with sudo", true},
-		{"left off, and said so", func(th *testHost) {
-			th.set("loginctl enable-linger", "", errors.New("access denied"))
-			th.set("sudo -n", "", errors.New("a password is required"))
-		}, "sudo loginctl enable-linger $USER keeps it running", true},
+		{"run without sudo", 1000, "", "run this with sudo"},
+		{"a root login, with no SUDO_USER", 0, "", "from your own account with sudo, not as root"},
+		{"sudo from root", 0, "root", "from your own account with sudo, not as root"},
+		{"an account this machine cannot look up", 0, "bob", "look up bob"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			th := newTestHost(t)
-			th.asPerson(t)
-			tt.setup(th)
+			withVersion(t, "v0.3.1")
+			th.Getuid = func() int { return tt.uid }
+			t.Setenv("SUDO_USER", tt.sudoUser)
 
-			require.NoError(t, th.installComputer(t), "lingering never stops the install")
+			require.ErrorContains(t, th.installComputer(t), tt.wantErr)
 
-			assert.Contains(t, th.out.String(), tt.want)
-			assert.Equal(t, tt.sudo, th.exec.ran("sudo -n loginctl enable-linger 1000"))
-			assert.True(t, th.exec.ran("systemctl --user restart nexul-computer.service"))
+			assert.Empty(t, th.exec.calls)
+			assert.Empty(t, th.instance.calls("/api/runners/enroll"), "the code is not spent")
+			assert.NoDirExists(t, th.Home)
+			assert.NoFileExists(t, filepath.Join(th.Paths.Services, "nexul-computer.service"))
 		})
 	}
 }
@@ -150,14 +189,14 @@ func TestInstallComputer_Failures(t *testing.T) {
 		{"a conflict from an instance that gives no reason", func(th *testHost) {
 			th.instance.status["/api/runners/enroll"] = http.StatusConflict
 		}, nil, "it does not add a computer"},
-		{"no user manager to run under", func(th *testHost) {
-			t.Setenv("XDG_RUNTIME_DIR", "")
-		}, nil, "systemd user manager is not running"},
+		{"another account's runner on this computer", func(th *testHost) {
+			require.NoError(t, os.WriteFile(filepath.Join(th.Paths.Services, "nexul-computer.service"), []byte("[Unit]\n"), 0o644))
+		}, nil, "installed for another account"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			th := newTestHost(t)
-			th.asPerson(t)
+			th.sudoFromAlice(t)
 			tt.setup(th)
 			args := tt.args
 			if args == nil {
@@ -167,73 +206,165 @@ func TestInstallComputer_Failures(t *testing.T) {
 			require.ErrorContains(t, th.runInstall(t.Context(), args), tt.wantErr)
 
 			assert.NoDirExists(t, filepath.Join(th.Home, ".local", "share", "nexul", "computer"), "a failed install leaves no runner behind")
+			assertHomeIsAlices(t, th)
 		})
 	}
 
 	t.Run("twice", func(t *testing.T) {
 		th := newTestHost(t)
-		th.asPerson(t)
+		th.sudoFromAlice(t)
 		require.NoError(t, th.installComputer(t))
 		require.ErrorContains(t, th.installComputer(t), "already has its runner")
 		assert.Len(t, th.instance.calls("/api/runners/enroll"), 1, "the second code is not spent")
 	})
 }
 
-func TestInstallComputer_WaitsForTheUserManagerLingeringStarts(t *testing.T) {
-	th := newTestHost(t)
-	th.asPerson(t)
-	t.Setenv("XDG_RUNTIME_DIR", "")
-	runtime := filepath.Join(th.Paths.UserRuntime, "1000")
-	th.exec.onRun = func(line string) {
-		if line == "loginctl enable-linger" {
-			require.NoError(t, os.MkdirAll(runtime, 0o700))
-			require.NoError(t, os.WriteFile(filepath.Join(runtime, "bus"), nil, 0o600))
-		}
-	}
-
-	require.NoError(t, th.installComputer(t))
-
-	assert.Equal(t, runtime, os.Getenv("XDG_RUNTIME_DIR"), "systemctl --user reaches the manager lingering started")
+// userServiceInstall lays out a runner as an earlier release installed it: its record under alice's home and a
+// systemd user unit, with no system service.
+func userServiceInstall(t *testing.T, th *testHost) (dir, userUnit string) {
+	t.Helper()
+	dir = filepath.Join(th.Home, ".local", "share", "nexul", "computer")
+	require.NoError(t, os.MkdirAll(dir, 0o700))
+	cred := filepath.Join(dir, "credential")
+	require.NoError(t, os.WriteFile(cred, []byte("cred-laptop\n"), 0o600))
+	u := Unit{Name: "nexul-computer", Kind: kindComputer, Host: "computer-ab12cd34", Version: "v0.3.0", Dir: dir, WorkDir: dir,
+		Exec: filepath.Join(dir, "nexul-runner"), Env: map[string]string{"NEXUL_SERVER_URL": th.web.URL, "NEXUL_CREDENTIAL_FILE": cred}}
+	data, err := json.Marshal(u)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "unit.json"), data, 0o600))
+	userUnit = filepath.Join(th.Home, ".config", "systemd", "user", "nexul-computer.service")
+	require.NoError(t, os.MkdirAll(filepath.Dir(userUnit), 0o755))
+	require.NoError(t, os.WriteFile(userUnit, []byte("[Unit]\n"), 0o644))
+	return dir, userUnit
 }
 
-func TestUninstallComputer_RemovesTheUserServiceAndTellsTheInstance(t *testing.T) {
+func TestInstallComputer_MovesAUserServiceToTheSystemServiceKeepingItsRunner(t *testing.T) {
 	th := newTestHost(t)
-	th.asPerson(t)
+	th.sudoFromAlice(t)
+	dir, userUnit := userServiceInstall(t, th)
+
 	require.NoError(t, th.installComputer(t))
-	th.exec.calls = nil
+
+	assert.Empty(t, th.instance.calls("/api/runners/enroll"), "the runner keeps its credential, so the computer keeps its row")
+	assert.Equal(t, "cred-laptop\n", readFile(t, filepath.Join(dir, "credential")))
+	assert.True(t, th.exec.ran("runuser -u alice -- env XDG_RUNTIME_DIR=/run/user/1000 systemctl --user disable --now nexul-computer.service"))
+	assert.NoFileExists(t, userUnit)
+	assert.Contains(t, readFile(t, filepath.Join(th.Paths.Services, "nexul-computer.service")), "\nUser=alice\n")
+	assert.Contains(t, readFile(t, filepath.Join(dir, "unit.json")), `"user": "alice"`)
+	assert.Equal(t, "1000:1000", th.chowned[filepath.Join(dir, "unit.json")], "the rewritten record stays alice's")
+	assert.Contains(t, th.out.String(), "moved from your user service")
+	assert.FileExists(t, filepath.Join(th.Paths.Services, "nexul-computer-cleanup.path"), "a moved runner can ask for its removal too")
+}
+
+// assertNothingLeft fails for any piece of a computer's install still on the machine.
+func assertNothingLeft(t *testing.T, th *testHost) {
+	t.Helper()
+	for _, path := range []string{
+		filepath.Join(th.Paths.Services, "nexul-computer.service"),
+		filepath.Join(th.Paths.Services, "nexul-computer-cleanup.path"),
+		filepath.Join(th.Paths.Services, "nexul-computer-cleanup.service"),
+		filepath.Join(th.root, "libexec", "nexul-computer-uninstall"),
+		filepath.Join(th.root, "var-lib-nexul-computer"),
+		filepath.Join(th.Home, ".local", "share", "nexul", "computer"),
+		filepath.Join(th.Home, ".local", "bin", "nexul"),
+		filepath.Join(th.Home, ".config", "systemd", "user", "nexul-computer.service"),
+	} {
+		assert.NoFileExists(t, path)
+		assert.NoDirExists(t, path)
+	}
+}
+
+func TestUninstallComputer_UnderSudo_RemovesEverythingAndTellsTheInstance(t *testing.T) {
+	th := newTestHost(t)
+	th.sudoFromAlice(t)
+	require.NoError(t, th.installComputer(t))
 
 	require.NoError(t, th.runUninstall(t.Context(), []string{"computer", "--yes"}))
 
 	remove := th.instance.calls("/api/runners/self/remove")
 	require.Len(t, remove, 1)
 	assert.Equal(t, "Bearer cred-laptop", remove[0].auth)
-	assert.Equal(t, []string{"systemctl --user disable --now nexul-computer.service", "systemctl --user daemon-reload"}, th.exec.callsTo("systemctl"))
-	assert.NoFileExists(t, filepath.Join(th.Home, ".config", "systemd", "user", "nexul-computer.service"))
-	assert.NoDirExists(t, filepath.Join(th.Home, ".local", "share", "nexul", "computer"))
+	assertNothingLeft(t, th)
+	assert.True(t, th.exec.ran("runuser -u alice -- rm -rf"), "alice's files go as alice, so a link in her home leads root nowhere")
 	assert.Contains(t, th.out.String(), "the instance was told")
+}
+
+func TestUninstallComputer_RemovesAUserServiceAnEarlierReleaseLeft(t *testing.T) {
+	th := newTestHost(t)
+	th.sudoFromAlice(t)
+	userServiceInstall(t, th)
+
+	require.NoError(t, th.runUninstall(t.Context(), []string{"computer", "--yes"}))
+
+	assert.True(t, th.exec.ran("runuser -u alice -- env XDG_RUNTIME_DIR=/run/user/1000 systemctl --user disable --now nexul-computer.service"))
+	assertNothingLeft(t, th)
+}
+
+func TestUninstallComputer_TheCleanupRemovesOnlyTheInstallWhateverTheRequestSays(t *testing.T) {
+	th := newTestHost(t)
+	th.sudoFromAlice(t)
+	require.NoError(t, th.installComputer(t))
+	elsewhere := filepath.Join(th.root, "etc", "precious")
+	require.NoError(t, os.MkdirAll(elsewhere, 0o755))
+	request := filepath.Join(th.root, "var-lib-nexul-computer", "remove-requested")
+	require.NoError(t, os.WriteFile(request, []byte(elsewhere+"\n--cleanup-for bob\n"), 0o600))
+	secret := filepath.Join(elsewhere, "secret")
+	require.NoError(t, os.WriteFile(secret, []byte("root's secret"), 0o600))
+	record := filepath.Join(th.Home, ".local", "share", "nexul", "computer", "unit.json")
+	require.NoError(t, os.WriteFile(record, []byte(`{"name":"nexul-computer","dir":"`+elsewhere+`","env":{"NEXUL_CREDENTIAL_FILE":"`+secret+`","NEXUL_SERVER_URL":"`+th.web.URL+`"}}`), 0o600))
+	t.Setenv("SUDO_USER", "")
+	th.exec.calls = nil
+
+	require.NoError(t, th.runUninstall(t.Context(), []string{"computer", "--cleanup-for", "alice"}))
+
+	assertNothingLeft(t, th)
+	assert.FileExists(t, secret, "neither the request nor alice's record steers what root removes")
+	assert.Empty(t, th.instance.calls("/api/runners/self/remove"), "root sends no credential anywhere alice's record names")
+	require.NoError(t, th.runUninstall(t.Context(), []string{"computer", "--cleanup-for", "alice"}), "a second run finds nothing left and is fine")
+}
+
+func TestUninstallComputer_AsThePerson_AsksTheCleanup(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		wantTold int
+	}{
+		{"a removed runner, with --detach", []string{"computer", "--detach"}, 0},
+		{"the person, without sudo", []string{"computer", "--yes"}, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			th := newTestHost(t)
+			th.sudoFromAlice(t)
+			require.NoError(t, th.installComputer(t))
+			th.Getuid = func() int { return 1000 }
+			th.exec.calls = nil
+
+			require.NoError(t, th.runUninstall(t.Context(), tt.args))
+
+			assert.FileExists(t, filepath.Join(th.root, "var-lib-nexul-computer", "remove-requested"))
+			assert.Empty(t, th.exec.calls, "no sudo is tried: the root path unit does the removal")
+			assert.Len(t, th.instance.calls("/api/runners/self/remove"), tt.wantTold)
+		})
+	}
 }
 
 func TestUninstallComputer_Refusals(t *testing.T) {
 	th := newTestHost(t)
+	withVersion(t, "v0.3.1")
+	t.Setenv("SUDO_USER", "")
 	require.ErrorContains(t, th.runUninstall(t.Context(), []string{"computer", "--yes"}), "not as root")
-	th.asPerson(t)
-	require.ErrorContains(t, th.runUninstall(t.Context(), []string{"computer", "--yes"}), "no Nexul runner installed")
+	require.ErrorContains(t, th.runUninstall(t.Context(), []string{"computer", "--cleanup-for", "bob"}), "look up bob")
+	th.Getuid = func() int { return 1000 }
+	require.ErrorContains(t, th.runUninstall(t.Context(), []string{"computer", "--cleanup-for", "alice"}), "runs as root")
+	require.ErrorContains(t, th.runUninstall(t.Context(), []string{"computer", "--detach"}), "sudo ~/.local/bin/nexul uninstall computer",
+		"a computer installed without the cleanup says how to remove it")
+	th.sudoFromAlice(t)
+	require.ErrorContains(t, th.runUninstall(t.Context(), []string{"computer", "--yes"}), "no Nexul runner installed for alice")
 	require.ErrorContains(t, th.runUninstall(t.Context(), []string{"computer", "extra"}), `"extra"`)
 	require.NoError(t, th.installComputer(t))
 	require.ErrorContains(t, th.runUninstall(t.Context(), []string{"computer"}), "--yes")
 	assert.FileExists(t, filepath.Join(th.Home, ".local", "share", "nexul", "computer", "unit.json"))
-}
-
-func TestUninstallComputer_Detach_RunsInTheUsersOwnManager(t *testing.T) {
-	th := newTestHost(t)
-	th.asPerson(t)
-
-	require.NoError(t, th.runUninstall(t.Context(), []string{"computer", "--detach"}))
-
-	self, _ := th.Executable()
-	calls := th.exec.calls
-	require.Len(t, calls, 1, "no sudo: the person removes their own service")
-	assert.Regexp(t, `^systemd-run --user --unit nexul-uninstall-computer-[a-z2-7]{8} --collect --quiet `+self+` uninstall computer --yes$`, calls[0])
 }
 
 func TestInstallHost_AComputersCodeIsRefusedInTheInstancesWords(t *testing.T) {

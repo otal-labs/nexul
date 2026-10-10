@@ -81,7 +81,10 @@ func systemdUnit(u Unit) string {
 		"[Service]",
 	}
 	if u.User != "" {
-		lines = append(lines, "User="+u.User, "Group="+u.User)
+		lines = append(lines, "User="+u.User)
+	}
+	if u.User != "" && u.Kind != kindComputer { // a person's primary group need not share their name; systemd picks it
+		lines = append(lines, "Group="+u.User)
 	}
 	lines = append(lines, "EnvironmentFile="+u.envFile(), "WorkingDirectory="+u.WorkDir, "ExecStart="+u.Exec)
 	if u.Kind == kindServer {
@@ -90,6 +93,9 @@ func systemdUnit(u Unit) string {
 	}
 	if u.Kind == kindLogs {
 		lines = append(lines, "MemoryMax=1G")
+	}
+	if u.Kind == kindComputer { // a removed runner exits 0; its person cannot remove the service, and a restart is refused again
+		lines = append(lines, "RestartPreventExitStatus=0")
 	}
 	lines = append(lines, "Restart=always", "RestartSec=5", "", "[Install]", "WantedBy=multi-user.target", "")
 	return strings.Join(lines, "\n")

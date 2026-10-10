@@ -5,19 +5,24 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 )
 
-// A person's own computer runs one personal runner, as that person, under their own service manager (ADR 0146).
+// A person's own computer runs one personal runner, as a system service that runs as that person (ADR 0146).
 const (
 	kindComputer = "computer"
 	computerUnit = "nexul-computer"
+	// cleanupUnit is the root path unit and oneshot service that remove the runner once it asks, through a file it
+	// may write, with no sudo rule and no input from the person.
+	cleanupUnit = "nexul-computer-cleanup"
+	// removeRequest is the file whose existence asks for the removal; its contents are never read.
+	removeRequest = "remove-requested"
 )
 
 // ComputerOptions are the choices `nexul install computer` takes.
@@ -31,6 +36,13 @@ type ComputerOptions struct {
 // the instance's to check; a token whose server was swapped fails there, and its single-use code with it.
 type computerClaims struct {
 	Server string `json:"server"`
+}
+
+// person is the account a computer's runner is installed for and runs as: whoever typed sudo.
+type person struct {
+	name     string
+	uid, gid int
+	home     string
 }
 
 func (h *Host) runInstallComputer(ctx context.Context, args []string) error {
@@ -50,10 +62,11 @@ func (h *Host) runInstallComputer(ctx context.Context, args []string) error {
 	return h.InstallComputer(ctx, o)
 }
 
-// InstallComputer installs this computer's personal runner as the person's own user service: the runner binary and
-// its credential under their home, the nexul command in ~/.local/bin, and nothing as root.
+// InstallComputer installs this computer's personal runner for the person who typed sudo: the nexul command, the
+// runner and its credential under their home and owned by them, and a system service that runs it as them.
 func (h *Host) InstallComputer(ctx context.Context, o ComputerOptions) error {
-	if err := h.checkComputerUser(); err != nil {
+	p, err := h.computerPerson()
+	if err != nil {
 		return err
 	}
 	var claims computerClaims
@@ -68,62 +81,89 @@ func (h *Host) InstallComputer(ctx context.Context, o ComputerOptions) error {
 	if err != nil {
 		return err
 	}
-	h.Paths = h.computerPaths()
-	h.printf("Nexul %s computer installer\n\n", tag)
-	if err := h.step("Command", h.installSelf); err != nil {
+	h.Paths = h.computerPaths(p)
+	h.printf("Nexul %s computer installer, for %s\n\n", tag, p.name)
+	err = h.step("Command", func() (string, error) {
+		ctl, err := h.installSelf()
+		if err != nil {
+			return "", err
+		}
+		return ctl, h.giveTo(p, ctl)
+	})
+	if err != nil {
 		return err
 	}
-	if err := h.step("Lingering", func() (string, error) { return h.enableLinger(ctx), nil }); err != nil {
+	if err := h.step("Runner", func() (string, error) { return h.installComputerRunner(ctx, ho, tag, p) }); err != nil {
 		return err
 	}
-	if err := h.step("Runner", func() (string, error) { return h.installComputerRunner(ctx, ho, tag) }); err != nil {
-		return err
-	}
-	h.printf("\nThis computer's runner is running as your %s service; Nexul shows the computer connected once it reaches %s.\n", computerUnit, ho.Server)
-	h.printf("  Remove it      nexul uninstall computer\n  Logs           journalctl --user -u %s\n", computerUnit)
+	h.printf("\nThis computer's runner runs as %s under the %s system service, from boot and after you log out; Nexul shows the computer connected once it reaches %s.\n", p.name, computerUnit, ho.Server)
+	h.printf("  Remove it      nexul uninstall computer\n  Logs           journalctl -u %s\n", computerUnit)
 	return nil
 }
 
-// checkComputerUser refuses root: the runner reaches the person's own T3 Code as them, and root would own its files.
-func (h *Host) checkComputerUser() error {
+// computerPerson is the person a computer's runner is for. The install runs as root under sudo only to place the
+// service; a direct root login names nobody, and the runner must never run as root.
+func (h *Host) computerPerson() (person, error) {
 	if h.GOOS != "linux" {
-		return fmt.Errorf("nexul install computer runs on Linux for now, not %s", h.GOOS)
+		return person{}, fmt.Errorf("nexul install computer runs on Linux for now, not %s", h.GOOS)
 	}
-	if h.Getuid() == 0 {
-		return errors.New("run this as yourself, not as root or with sudo: the computer's runner runs as you")
+	if h.Getuid() != 0 {
+		return person{}, errors.New("run this with sudo: it installs a system service that runs the computer's runner as you")
 	}
-	return nil
+	name := os.Getenv("SUDO_USER")
+	if name == "" || name == "root" {
+		return person{}, errors.New("run this from your own account with sudo, not as root: the computer's runner runs as the person who typed sudo")
+	}
+	return h.lookupPerson(name)
 }
 
-// computerPaths keeps everything in the person's home: the command in ~/.local/bin, the runner under
-// ~/.local/share/nexul, and its unit with their other systemd user units.
-func (h *Host) computerPaths() Paths {
-	p := h.Paths
-	p.BinDir = filepath.Join(h.Home, ".local", "bin")
-	p.UnitRoot = filepath.Join(h.Home, ".local", "share", "nexul")
-	p.Services = filepath.Join(h.Home, ".config", "systemd", "user")
-	return p
+func (h *Host) lookupPerson(name string) (person, error) {
+	account, err := h.LookupUser(name)
+	if err != nil {
+		return person{}, fmt.Errorf("look up %s: %w", name, err)
+	}
+	uid, uidErr := strconv.Atoi(account.Uid)
+	gid, gidErr := strconv.Atoi(account.Gid)
+	if err := errors.Join(uidErr, gidErr); err != nil {
+		return person{}, fmt.Errorf("look up %s: %w", name, err)
+	}
+	return person{name: name, uid: uid, gid: gid, home: account.HomeDir}, nil
 }
 
-// installComputerRunner downloads the runner, trades the code for its credential and starts it as a user service. A
-// failure removes its directory again, so the next attempt starts clean.
-func (h *Host) installComputerRunner(ctx context.Context, o HostOptions, tag string) (string, error) {
+// computerPaths keeps everything but the service in the person's home: the command in ~/.local/bin and the runner
+// under ~/.local/share/nexul. The service itself is a system unit, root's.
+func (h *Host) computerPaths(p person) Paths {
+	paths := h.Paths
+	paths.BinDir = filepath.Join(p.home, ".local", "bin")
+	paths.UnitRoot = filepath.Join(p.home, ".local", "share", "nexul")
+	return paths
+}
+
+// installComputerRunner downloads the runner, trades the code for its credential and starts it as a system service
+// running as the person. A failure removes its directory again, so the next attempt starts clean.
+func (h *Host) installComputerRunner(ctx context.Context, o HostOptions, tag string, p person) (string, error) {
 	existing, err := h.loadUnit(computerUnit)
 	if err != nil {
 		return "", err
 	}
+	if existing != nil && fileExists(h.userUnitPath(p)) {
+		return h.moveToSystemService(ctx, *existing, p)
+	}
 	if existing != nil {
 		return "", errors.New("this computer already has its runner; remove it first with: nexul uninstall computer")
 	}
+	if fileExists(systemd{h}.path(Unit{Name: computerUnit})) {
+		return "", errors.New("this computer's runner is installed for another account; that account removes it with: nexul uninstall computer")
+	}
 	dir := h.unitDir(computerUnit)
-	u := Unit{Name: computerUnit, Kind: kindComputer, Version: tag, Dir: dir, WorkDir: dir, Exec: filepath.Join(dir, h.exeName(binaryFor(kindRunner)))}
-	if err := h.setUpComputer(ctx, &u, o, tag); err != nil {
-		return "", errors.Join(err, os.RemoveAll(u.Dir))
+	u := Unit{Name: computerUnit, Kind: kindComputer, Version: tag, Dir: dir, WorkDir: dir, Exec: filepath.Join(dir, h.exeName(binaryFor(kindRunner))), User: p.name}
+	if err := h.setUpComputer(ctx, &u, o, tag, p); err != nil {
+		return "", errors.Join(err, h.removeCleanup(ctx), os.RemoveAll(u.Dir), h.giveTo(p, filepath.Dir(u.Dir)))
 	}
 	return u.Name + ", " + u.Host, nil
 }
 
-func (h *Host) setUpComputer(ctx context.Context, u *Unit, o HostOptions, tag string) error {
+func (h *Host) setUpComputer(ctx context.Context, u *Unit, o HostOptions, tag string, p person) error {
 	if err := os.MkdirAll(u.Dir, 0o700); err != nil {
 		return fmt.Errorf("create %s: %w", u.Dir, err)
 	}
@@ -149,29 +189,179 @@ func (h *Host) setUpComputer(ctx context.Context, u *Unit, o HostOptions, tag st
 	if err := h.saveUnit(*u); err != nil {
 		return err
 	}
-	return userSystemd{h}.install(ctx, *u)
+	if err := h.giveTo(p, u.Dir); err != nil {
+		return err
+	}
+	if err := h.installCleanup(ctx, p); err != nil {
+		return err
+	}
+	return systemd{h}.install(ctx, *u)
 }
 
-// enableLinger keeps the person's service manager running after they log out and from boot: as them first, then
-// through sudo without a password prompt. Without it the runner runs while they are logged in, and it says so.
-func (h *Host) enableLinger(ctx context.Context) string {
-	uid := strconv.Itoa(h.Getuid())
-	if out, _ := h.Exec.Run(ctx, "loginctl", "show-user", uid, "--property=Linger", "--value"); strings.TrimSpace(out) == "yes" { // fails for a user with no session yet
-		return "on"
+// moveToSystemService takes over a runner an earlier release installed as the person's own user service: its
+// credential stays, so the computer keeps its runner and its row, and the token goes unused.
+func (h *Host) moveToSystemService(ctx context.Context, u Unit, p person) (string, error) {
+	if err := h.dropUserUnit(ctx, p); err != nil {
+		return "", err
 	}
-	if _, err := h.Exec.Run(ctx, "loginctl", "enable-linger"); err == nil {
-		return "turned on"
+	u.User = p.name
+	if err := h.saveUnit(u); err != nil {
+		return "", err
 	}
-	if _, err := h.Exec.Run(ctx, "sudo", "-n", "loginctl", "enable-linger", uid); err == nil {
-		return "turned on with sudo"
+	if err := h.giveTo(p, u.Dir); err != nil {
+		return "", err
 	}
-	return "off: the runner stops when you log out; sudo loginctl enable-linger $USER keeps it running"
+	if err := h.installCleanup(ctx, p); err != nil {
+		return "", err
+	}
+	if err := (systemd{h}).install(ctx, u); err != nil {
+		return "", err
+	}
+	return u.Name + ", " + u.Host + ", moved from your user service", nil
+}
+
+// userUnitPath is where an earlier release put the runner's systemd user unit.
+func (h *Host) userUnitPath(p person) string {
+	return filepath.Join(p.home, ".config", "systemd", "user", computerUnit+".service")
+}
+
+// dropUserUnit stops and deletes an earlier release's user unit as the person, so it never runs beside the system
+// service and a link in their home leads root nowhere.
+func (h *Host) dropUserUnit(ctx context.Context, p person) error {
+	path := h.userUnitPath(p)
+	if !fileExists(path) {
+		return nil
+	}
+	runtime := "XDG_RUNTIME_DIR=/run/user/" + strconv.Itoa(p.uid)
+	_, _ = h.Exec.Run(ctx, "runuser", "-u", p.name, "--", "env", runtime, "systemctl", "--user", "disable", "--now", computerUnit+".service") // a user manager that is not running has nothing running to stop
+	_, err := h.Exec.Run(ctx, "runuser", "-u", p.name, "--", "rm", "-f", path)
+	return err
+}
+
+// giveTo hands what root made under the person's home to them: each path, everything in it, and the folders above
+// it up to their home, which the install may have created.
+func (h *Host) giveTo(p person, paths ...string) error {
+	for _, path := range paths {
+		if !strings.HasPrefix(path, p.home+string(filepath.Separator)) {
+			continue
+		}
+		for dir := filepath.Dir(path); dir != p.home; dir = filepath.Dir(dir) {
+			if err := h.Chown(dir, p.uid, p.gid); err != nil {
+				return fmt.Errorf("give %s to %s: %w", dir, p.name, err)
+			}
+		}
+		err := filepath.WalkDir(path, func(f string, _ fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			return h.Chown(f, p.uid, p.gid)
+		})
+		if err != nil {
+			return fmt.Errorf("give %s to %s: %w", path, p.name, err)
+		}
+	}
+	return nil
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// installCleanup lets the runner remove itself without sudo: root's own copy of nexul, a request folder only the
+// person may write in, and a path unit that runs the copy's fixed removal once a request appears there.
+func (h *Host) installCleanup(ctx context.Context, p person) error {
+	exe, err := h.executable()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(h.Paths.Libexec, 0o755); err != nil {
+		return fmt.Errorf("create %s: %w", h.Paths.Libexec, err)
+	}
+	if err := copyFile(exe, h.cleanupExe()); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(h.Paths.Requests); err != nil { // a request left from before would fire at once
+		return fmt.Errorf("clear %s: %w", h.Paths.Requests, err)
+	}
+	if err := os.Mkdir(h.Paths.Requests, 0o700); err != nil {
+		return fmt.Errorf("create %s: %w", h.Paths.Requests, err)
+	}
+	if err := h.Chown(h.Paths.Requests, p.uid, p.gid); err != nil {
+		return fmt.Errorf("give %s to %s: %w", h.Paths.Requests, p.name, err)
+	}
+	files := map[string]string{
+		h.cleanupPath(".path"):    cleanupPathUnit(filepath.Join(h.Paths.Requests, removeRequest)),
+		h.cleanupPath(".service"): cleanupServiceUnit(h.cleanupExe(), p.name),
+	}
+	for path, text := range files {
+		if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", path, err)
+		}
+	}
+	for _, args := range [][]string{{"daemon-reload"}, {"enable", "--now", cleanupUnit + ".path"}} {
+		if _, err := h.Exec.Run(ctx, "systemctl", args...); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// removeCleanup takes the cleanup away again; any piece already gone is not an error.
+func (h *Host) removeCleanup(ctx context.Context) error {
+	_, _ = h.Exec.Run(ctx, "systemctl", "disable", "--now", cleanupUnit+".path") // fails once the unit is gone
+	for _, path := range []string{h.cleanupPath(".path"), h.cleanupPath(".service"), h.cleanupExe()} {
+		if err := removeIfPresent(path); err != nil {
+			return fmt.Errorf("remove %s: %w", path, err)
+		}
+	}
+	if err := os.RemoveAll(h.Paths.Requests); err != nil {
+		return fmt.Errorf("remove %s: %w", h.Paths.Requests, err)
+	}
+	_, err := h.Exec.Run(ctx, "systemctl", "daemon-reload")
+	return err
+}
+
+func (h *Host) cleanupPath(ext string) string {
+	return filepath.Join(h.Paths.Services, cleanupUnit+ext)
+}
+
+func (h *Host) cleanupExe() string { return filepath.Join(h.Paths.Libexec, "nexul-computer-uninstall") }
+
+// cleanupPathUnit starts the cleanup once the request file exists; the path unit reads nothing from it.
+func cleanupPathUnit(request string) string {
+	return strings.Join([]string{
+		"[Unit]",
+		"Description=Remove the Nexul computer runner when it asks",
+		"",
+		"[Path]",
+		"PathExists=" + request,
+		"Unit=" + cleanupUnit + ".service",
+		"",
+		"[Install]",
+		"WantedBy=multi-user.target",
+		"",
+	}, "\n")
+}
+
+// cleanupServiceUnit runs root's copy for the person named at install, so nothing the person can change steers it.
+func cleanupServiceUnit(exe, name string) string {
+	return strings.Join([]string{
+		"[Unit]",
+		"Description=Remove the Nexul computer runner",
+		"",
+		"[Service]",
+		"Type=oneshot",
+		"ExecStart=" + exe + " uninstall computer --cleanup-for " + name,
+		"",
+	}, "\n")
 }
 
 func (h *Host) runUninstallComputer(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("uninstall computer", flag.ContinueOnError)
 	fs.SetOutput(h.Out)
-	detach := fs.Bool("detach", false, "run the removal outside the runner's own service and return at once")
+	detach := fs.Bool("detach", false, "ask for the removal and return at once, as a removed runner does")
+	cleanupFor := fs.String("cleanup-for", "", "the removal the cleanup service runs as root for this person")
 	yes := fs.Bool("yes", false, "do not ask for confirmation")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -179,24 +369,49 @@ func (h *Host) runUninstallComputer(ctx context.Context, args []string) error {
 	if fs.NArg() > 0 {
 		return fmt.Errorf("unexpected argument %q", fs.Arg(0))
 	}
+	if *cleanupFor != "" {
+		return h.cleanUpComputer(ctx, *cleanupFor)
+	}
 	if *detach {
-		return h.detach(ctx, append([]string{"uninstall", kindComputer}, args...))
+		if err := h.requestRemoval(); err != nil {
+			return err
+		}
+		h.printf("Asked for this computer's runner to be removed; journalctl -u %s shows it.\n", cleanupUnit)
+		return nil
 	}
 	return h.UninstallComputer(ctx, *yes)
 }
 
-// UninstallComputer removes this computer's runner: its user service and its directory, and tells the instance.
-func (h *Host) UninstallComputer(ctx context.Context, yes bool) error {
-	if err := h.checkComputerUser(); err != nil {
-		return err
+// requestRemoval asks root's cleanup to remove this computer's runner, as the person: it is what a removed runner
+// calls (`nexul uninstall computer --detach`), and it returns at once.
+func (h *Host) requestRemoval() error {
+	path := filepath.Join(h.Paths.Requests, removeRequest)
+	if err := os.WriteFile(path, nil, 0o600); err != nil {
+		return fmt.Errorf("ask for this computer's runner to be removed: %w; remove it with: sudo ~/.local/bin/nexul uninstall computer", err)
 	}
-	h.Paths = h.computerPaths()
+	return nil
+}
+
+// UninstallComputer removes this computer's runner and tells the instance. Under sudo it removes it at once; as the
+// person, it asks root's cleanup to, as a removed runner does.
+func (h *Host) UninstallComputer(ctx context.Context, yes bool) error {
+	if h.GOOS != "linux" {
+		return fmt.Errorf("nexul uninstall computer runs on Linux for now, not %s", h.GOOS)
+	}
+	p := person{name: "your account", home: h.Home}
+	if h.Getuid() == 0 {
+		var err error
+		if p, err = h.computerPerson(); err != nil {
+			return err
+		}
+	}
+	h.Paths = h.computerPaths(p)
 	u, err := h.loadUnit(computerUnit)
 	if err != nil {
 		return err
 	}
 	if u == nil {
-		return errors.New("this computer has no Nexul runner installed for your user")
+		return fmt.Errorf("this computer has no Nexul runner installed for %s", p.name)
 	}
 	h.printf("This removes this computer's runner and tells the instance it is gone.\n")
 	if err := h.confirm(yes); err != nil {
@@ -204,97 +419,49 @@ func (h *Host) UninstallComputer(ctx context.Context, yes bool) error {
 	}
 	h.printf("\n")
 	err = h.step(u.Name, func() (string, error) {
-		detail := "removed" + h.tellInstance(ctx, *u)
-		if err := (userSystemd{h}).remove(ctx, *u); err != nil {
-			return "", err
+		told := h.tellInstance(ctx, *u)
+		if h.Getuid() != 0 {
+			return "removal asked for" + told, h.requestRemoval()
 		}
-		if err := os.RemoveAll(u.Dir); err != nil {
-			return "", fmt.Errorf("remove %s: %w", u.Dir, err)
-		}
-		return detail, nil
+		return "removed" + told, h.removeComputer(ctx, p)
 	})
 	if err != nil {
 		return err
+	}
+	if h.Getuid() != 0 {
+		h.printf("\nThis computer's cleanup service removes the runner in a moment; journalctl -u %s shows it.\n", cleanupUnit)
+		return nil
 	}
 	h.printf("\nThis computer's runner is uninstalled.\n")
 	return nil
 }
 
-// userSystemd runs a unit under the person's own systemd user manager, at boot too once lingering is on.
-type userSystemd struct{ h *Host }
+// cleanUpComputer is the cleanup service's removal, run as root because the runner asked. It reads nothing the
+// person can write, neither the request nor the runner's own record, so asking can only ever remove the runner.
+func (h *Host) cleanUpComputer(ctx context.Context, name string) error {
+	if h.Getuid() != 0 {
+		return errors.New("--cleanup-for is the cleanup service's, which runs as root")
+	}
+	p, err := h.lookupPerson(name)
+	if err != nil {
+		return err
+	}
+	h.Paths = h.computerPaths(p)
+	return h.removeComputer(ctx, p)
+}
 
-func (s userSystemd) path(u Unit) string { return filepath.Join(s.h.Paths.Services, u.Name+".service") }
-
-func (s userSystemd) systemctl(ctx context.Context, args ...string) error {
-	_, err := s.h.Exec.Run(ctx, "systemctl", append([]string{"--user"}, args...)...)
+// removeComputer removes everything the install made: the service, the cleanup, a user service an earlier release
+// left, and, as the person, so a link in their home leads nowhere else, the runner's folder and the nexul command.
+func (h *Host) removeComputer(ctx context.Context, p person) error {
+	if err := (systemd{h}).remove(ctx, Unit{Name: computerUnit}); err != nil {
+		return err
+	}
+	if err := h.removeCleanup(ctx); err != nil {
+		return err
+	}
+	if err := h.dropUserUnit(ctx, p); err != nil {
+		return err
+	}
+	_, err := h.Exec.Run(ctx, "runuser", "-u", p.name, "--", "rm", "-rf", h.unitDir(computerUnit), filepath.Join(h.Paths.BinDir, "nexul"))
 	return err
-}
-
-func (s userSystemd) install(ctx context.Context, u Unit) error {
-	if err := s.h.userBus(ctx); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(s.h.Paths.Services, 0o755); err != nil {
-		return fmt.Errorf("create %s: %w", s.h.Paths.Services, err)
-	}
-	if err := os.WriteFile(s.path(u), []byte(userUnit(u)), 0o644); err != nil {
-		return fmt.Errorf("write %s: %w", s.path(u), err)
-	}
-	for _, args := range [][]string{{"daemon-reload"}, {"enable", u.Name + ".service"}, {"restart", u.Name + ".service"}} {
-		if err := s.systemctl(ctx, args...); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s userSystemd) remove(ctx context.Context, u Unit) error {
-	if err := s.h.userBus(ctx); err != nil {
-		return err
-	}
-	_ = s.systemctl(ctx, "disable", "--now", u.Name+".service") // fails for a unit already gone; the removals below are what matter
-	if err := os.Remove(s.path(u)); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("remove %s: %w", s.path(u), err)
-	}
-	return s.systemctl(ctx, "daemon-reload")
-}
-
-// userUnit restarts the runner whenever it exits, so a crash the runner cannot recover from costs a few seconds.
-func userUnit(u Unit) string {
-	return strings.Join([]string{
-		"[Unit]",
-		"Description=" + u.describe(),
-		"",
-		"[Service]",
-		"EnvironmentFile=" + u.envFile(),
-		"WorkingDirectory=" + u.WorkDir,
-		"ExecStart=" + u.Exec,
-		"Restart=always",
-		"RestartSec=5",
-		"",
-		"[Install]",
-		"WantedBy=default.target",
-		"",
-	}, "\n")
-}
-
-// userBus points systemctl --user at the person's manager when the installer's shell has no login session of its
-// own (su, sudo -u, a remote command), waiting for the manager lingering has just started.
-func (h *Host) userBus(ctx context.Context) error {
-	if os.Getenv("XDG_RUNTIME_DIR") != "" {
-		return nil
-	}
-	dir := filepath.Join(h.Paths.UserRuntime, strconv.Itoa(h.Getuid()))
-	ctx, cancel := context.WithTimeout(ctx, h.HealthTimeout)
-	defer cancel()
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "bus")); err == nil {
-			return os.Setenv("XDG_RUNTIME_DIR", dir)
-		}
-		select {
-		case <-ctx.Done():
-			return errors.New("your systemd user manager is not running: log in to this computer, or run sudo loginctl enable-linger $USER, then run this again")
-		case <-time.After(h.PollInterval):
-		}
-	}
 }

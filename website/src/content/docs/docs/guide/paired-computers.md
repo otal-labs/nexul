@@ -43,6 +43,21 @@ For a machine the server can already reach, such as a VPS or a computer on the s
 
 **Not installed yet** shows how to install T3 Code by hand. T3 Code's background service listens on `127.0.0.1` only, so on Linux the command writes a systemd override that sets `T3CODE_HOST=0.0.0.0` before `t3 service install`, and `t3 pair` then prints a link with the machine's first network address. That opens T3 Code's port on every interface, so keep it behind a firewall or a private network such as Tailscale. T3 Code's macOS service has no such setting: run `t3 serve --host <address>` there, or use a tunnel.
 
+### Add a Linux computer with its runner
+
+A Linux computer can also join through a runner of its own, which needs no Cloudflare. [`computer_create`](/docs/guide/mcp-server/) gives the command; run it on that computer from your own account:
+
+```sh
+curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- <token>
+```
+
+`sudo` is there only to place a system service. Everything else is installed for you, the person who typed `sudo`:
+
+- the `nexul` command in your `~/.local/bin`, and the runner with its credential in `~/.local/share/nexul`, all owned by you, with the credential readable only by you;
+- `nexul-computer`, a system service that runs the runner as you, never as root. It starts at boot and keeps running after you log out.
+
+Logged in as root, the command refuses: run it from your own account. On a computer without `sudo`, the shell says `sudo` is not found; as root, install sudo and add your account to the `sudo` group (`usermod -aG sudo <you>` on Debian and Ubuntu, the `wheel` group elsewhere), log in again, and rerun the command. Its logs are in `journalctl -u nexul-computer`. To remove it, run `nexul uninstall computer` from the same account: it tells Nexul, and a small root service the install left, which can only remove this runner, takes the service and its files away; no sudo rule is involved. With sudo it removes them at once (`sudo ~/.local/bin/nexul uninstall computer`, since sudo does not search `~/.local/bin`).
+
 ## Keep it paired
 
 Each computer is one row: its name, whether it's **Connected**, **Trying to connect**, or **Not connected**, and its setup state. A row shows a button only when something needs doing (**Pair**, **Re-pair**, **Set up**, **Update skills**); everything else is in its **…** menu. Click the name to unfold the details: the address, the T3 Code version, the date the pairing lasts until, each provider's setup, and the MCP token.

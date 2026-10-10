@@ -19,12 +19,6 @@ func (h *Host) detach(ctx context.Context, args []string) error {
 	}
 	child := slices.DeleteFunc(slices.Clone(args), isDetachFlag)
 	child = append(child, "--yes")
-	if h.GOOS == "linux" && slices.Equal(args[:min(2, len(args))], []string{"uninstall", kindComputer}) {
-		// A computer's runner is a user service, so its removal runs as a transient unit of the same user manager.
-		unit := "nexul-uninstall-computer-" + strings.ToLower(rand.Text()[:8])
-		_, err := h.Exec.Run(ctx, "systemd-run", append([]string{"--user", "--unit", unit, "--collect", "--quiet", exe}, child...)...)
-		return err
-	}
 	if h.GOOS == "linux" && h.Getuid() != 0 {
 		// The sudoers drop-in allows the call exactly as it was made, --detach included.
 		_, err := h.Exec.Run(ctx, "sudo", append([]string{"-n", exe}, args...)...)

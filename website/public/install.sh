@@ -5,7 +5,7 @@
 #   curl -fsSL https://nexul.io/install.sh | sh -s -- --dir /srv/nexul --port 8080 --yes
 #   curl -fsSL https://nexul.io/install.sh | sh -s -- runner --server <url> --name <name> --code <code>
 #   curl -fsSL https://nexul.io/install.sh | sh -s -- computer --token <token>   (computer.sh runs this)
-# A computer installs as you, never as root: the nexul command goes in ~/.local/bin, without sudo.
+# A computer installs with sudo for the person who typed it: the nexul command goes in their own ~/.local/bin.
 # NEXUL_VERSION=v0.2.1 pins a release; unset, it takes the newest stable release, or the newest beta before one exists.
 set -eu
 
@@ -33,11 +33,14 @@ main() {
   command -v curl >/dev/null 2>&1 || fail "curl is required"
 
   # Copying into the bin directory may need sudo; on a Mac the installer itself then runs as you, since Homebrew
-  # refuses to run as root. A computer is the person's own, so it needs neither sudo nor root.
+  # refuses to run as root. A computer's command goes in the home of the person who typed sudo, and
+  # `nexul install computer` hands it, and every folder it made there, to them.
   sudo=""
   if [ "${1:-}" = computer ]; then
-    [ "$(id -u)" -ne 0 ] || fail "run this as yourself, not as root or with sudo: the computer's runner runs as you"
-    BIN_DIR=${NEXUL_BIN_DIR:-$HOME/.local/bin}
+    home=""
+    [ "${SUDO_USER:-root}" = root ] || home=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+    [ -n "$home" ] || fail "run this from your own account with sudo, not logged in as root: the computer's runner runs as the person who typed sudo"
+    BIN_DIR=${NEXUL_BIN_DIR:-$home/.local/bin}
   elif [ "$(id -u)" -ne 0 ]; then
     command -v sudo >/dev/null 2>&1 || fail "run this as root"
     sudo=sudo

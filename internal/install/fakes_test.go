@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -192,6 +193,8 @@ type testHost struct {
 	web      *httptest.Server
 	reexec   []string
 	detached [][]string
+	// chowned is each path a computer's install handed over, with the uid:gid it got.
+	chowned map[string]string
 }
 
 var testTargets = []string{"linux-amd64", "darwin-arm64", "windows-amd64"}
@@ -226,7 +229,7 @@ func newTestHost(t *testing.T) *testHost {
 
 	fe := &fakeExec{}
 	out := &bytes.Buffer{}
-	th := &testHost{exec: fe, out: out, root: root, release: rel, instance: inst, web: web}
+	th := &testHost{exec: fe, out: out, root: root, release: rel, instance: inst, web: web, chowned: map[string]string{}}
 	nextPort := 15080
 	th.Host = &Host{
 		Exec:       fe,
@@ -245,7 +248,8 @@ func newTestHost(t *testing.T) *testHost {
 			SystemdProbe: systemd,
 			UserPlugins:  filepath.Join(root, "home", ".docker", "cli-plugins"),
 			DockerApp:    filepath.Join(root, "Applications", "Docker.app"),
-			UserRuntime:  filepath.Join(root, "run-user"),
+			Libexec:      filepath.Join(root, "libexec"),
+			Requests:     filepath.Join(root, "var-lib-nexul-computer"),
 		},
 		Home:        filepath.Join(root, "home"),
 		PrependPath: func(string) {},
@@ -256,6 +260,12 @@ func newTestHost(t *testing.T) *testHost {
 		PortFree:    func(int) bool { return true },
 		LookPath:    func(file string) (string, error) { return "/usr/bin/" + file, nil },
 		Executable:  func() (string, error) { return self, nil },
+		LookupUser: func(name string) (*user.User, error) {
+			if name != "alice" {
+				return nil, user.UnknownUserError(name)
+			}
+			return &user.User{Username: "alice", Uid: "1000", Gid: "1000", HomeDir: filepath.Join(root, "home")}, nil
+		},
 		LocalPort: func() (int, error) {
 			nextPort++
 			return nextPort - 1, nil
@@ -266,6 +276,10 @@ func newTestHost(t *testing.T) *testHost {
 	}
 	th.Reexec = func(path string, args []string) error {
 		th.reexec = args
+		return nil
+	}
+	th.Chown = func(path string, uid, gid int) error {
+		th.chowned[path] = fmt.Sprintf("%d:%d", uid, gid)
 		return nil
 	}
 	th.StartDetached = func(name string, args []string, logPath string) error {
