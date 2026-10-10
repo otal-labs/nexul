@@ -10,6 +10,7 @@ import { useApplicableTicketPlays } from "@/hooks/PlayHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
 import { invalidateProjectLinks } from "@/hooks/PairingProjectHooks";
 import { conversationPlayTarget } from "@/models/Chat";
+import { isNeedsLocationRefusal } from "@/models/Pairing";
 import { DECISIONS_CHECK_KEY, type PlayType } from "@/models/Play";
 import type { QuestionAnswers } from "@/models/Question";
 import { isTrailActive, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunFrame, type RunPlace, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
@@ -168,7 +169,11 @@ export const useContinueTrail = () => {
       }
       toast.success("Sent to the run");
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => {
+      // Starting the play again may need a location, which the form asks for instead.
+      if (isNeedsLocationRefusal(error)) return;
+      toast.error(errorMessage(error));
+    },
   });
 };
 

@@ -25,6 +25,8 @@ interface PlayRunFormProps {
   // The person's project link, else their defaults as the suggestion; linked says which.
   where: RunWhere;
   linked: boolean;
+  instructions: string;
+  askWhere: boolean;
   onDone: () => void;
 }
 
@@ -38,6 +40,8 @@ export const PlayRunForm = ({
   resolvedHarness,
   where: seedWhere,
   linked,
+  instructions: seedInstructions,
+  askWhere,
   onDone,
 }: PlayRunFormProps) => {
   const runPlay = useRunPlay();
@@ -45,9 +49,9 @@ export const PlayRunForm = ({
   const [selected, setSelected] = useState<string[]>(() =>
     choices.memory_ids.filter((id) => memories.some((m) => m.id === id && !m.always_included)),
   );
-  const [instructions, setInstructions] = useState("");
+  const [instructions, setInstructions] = useState(seedInstructions);
   const [where, setWhere] = useState<RunWhere>(seedWhere);
-  const [changing, setChanging] = useState(false);
+  const [changing, setChanging] = useState(askWhere);
   // The model last picked on this computer for this play wins; else the resolved one.
   const [harness, setHarness] = useState<HarnessPick>(() =>
     choices.computer_id === seedWhere.computer_id && choices.computer_id !== ""

@@ -2,9 +2,9 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import { getHarnessResolveKey, useFetchHarnessProjects, useFetchHarnessProviders, useListComputers } from "@/hooks/PairingHooks";
+import { getHarnessResolveKey, useFetchHarnessProjects, useFetchHarnessProviders, useHarnessReadiness, useListComputers } from "@/hooks/PairingHooks";
 import { findModel } from "@/models/ModelPick";
-import { START_IN_SHORT_LABELS, type ProjectLink, type ProjectLinkFormData } from "@/models/Pairing";
+import { canChooseRunLocation, START_IN_SHORT_LABELS, type ProjectLink, type ProjectLinkFormData } from "@/models/Pairing";
 
 export const getProjectLinksKey = "getProjectLinks";
 
@@ -14,6 +14,16 @@ export const useFetchProjectLinks = () =>
     queryKey: [getProjectLinksKey],
     queryFn: async () => (await api.get<{ links: ProjectLink[] }>("/api/pairing/projects")).data.links,
   });
+
+// Why no play can start in the project, "" when one can; undefined until readiness and the caller's links have loaded.
+export const useRunBlockedReason = (projectId: string): string | undefined => {
+  const readiness = useHarnessReadiness(projectId);
+  const links = useFetchProjectLinks();
+  if (readiness === undefined || links.isPending) return undefined;
+  if (readiness.state === "ready") return "";
+  const linked = links.data?.some((l) => l.project_id === projectId && !!l.computer_id) ?? false;
+  return canChooseRunLocation(readiness, linked) ? "" : readiness.message;
+};
 
 // A link changes which computer the caller's turns in that project resolve to, so readiness refetches with it.
 export const invalidateProjectLinks = (client: QueryClient) =>

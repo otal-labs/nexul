@@ -64,9 +64,10 @@ interface Scenario {
   resolve?: unknown;
   presence?: Record<string, string>;
   trails?: Trail[];
+  links?: { project_id: string; computer_id: string; harness_project_id: string }[];
 }
 
-const mockApi = ({ permissions = ["plays:run"], resolve = { ok: true, computer_id: "c-1" }, presence = { "c-1": "connected" }, trails = [] }: Scenario) =>
+const mockApi = ({ permissions = ["plays:run"], resolve = { ok: true, computer_id: "c-1" }, presence = { "c-1": "connected" }, trails = [], links = [] }: Scenario) =>
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
     if (url === "/api/auth/me") return { data: { user: { id: "u-me", login: "me" } } };
@@ -75,6 +76,7 @@ const mockApi = ({ permissions = ["plays:run"], resolve = { ok: true, computer_i
     if (url === "/api/pairing/computers") return { data: { computers: [{ id: "c-1", name: "Onik's PC" }] } };
     if (url === "/api/pairing/computers/c-1/providers") return { data: { providers: [] } };
     if (url === "/api/plays/runs") return { data: trails };
+    if (url === "/api/pairing/projects") return { data: { links } };
     if (url === "/api/plays/latest-choices")
       return { data: { memory_ids: [], computer_id: "", provider: "", model: "" } };
     return { data: [] };
@@ -128,6 +130,16 @@ describe("PlayButton", () => {
     expect(screen.getByRole("button", { name: "Fix with AI" })).toBeDisabled();
   });
 
+
+  it.each([
+    ["offline", { ok: true, computer_id: "c-1" }, "T3 Code on your computer is offline."],
+    ["expired", { ok: false, reason: "expired_token" }, "Your computer's pairing has expired. Re-pair it in Settings."],
+  ])("is disabled with the reason when the project's linked computer is %s", async (_, resolve, reason) => {
+    mockApi({ resolve, presence: {}, links: [{ project_id: "p-1", computer_id: "c-1", harness_project_id: "t3-app" }] });
+    renderButton();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription(reason));
+    expect(screen.getByRole("button", { name: "Fix with AI" })).toBeDisabled();
+  });
 
   it("is disabled with 'a run is in progress' when someone else's trail is active", async () => {
     mockApi({ trails: [runningTrail("u-other")] });

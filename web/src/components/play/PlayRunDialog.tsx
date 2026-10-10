@@ -16,6 +16,9 @@ interface PlayRunDialogProps {
   targetId: string;
   open: boolean;
   onClose: () => void;
+  // Seeds the run's own instructions and opens Where to run, for a run started again after it asked where.
+  instructions?: string;
+  askWhere?: boolean;
 }
 
 interface PlayRunDialogBodyProps {
@@ -23,11 +26,13 @@ interface PlayRunDialogBodyProps {
   projectId: string;
   targetType: PlayType;
   targetId: string;
+  instructions: string;
+  askWhere: boolean;
   onDone: () => void;
 }
 
 // Loads what the form is seeded from; the form mounts once everything is here so its initial state needs no effect.
-const PlayRunDialogBody = ({ play, projectId, targetType, targetId, onDone }: PlayRunDialogBodyProps) => {
+const PlayRunDialogBody = ({ play, projectId, targetType, targetId, instructions, askWhere, onDone }: PlayRunDialogBodyProps) => {
   const memories = useFetchMemoriesByProject(projectId);
   const choices = useFetchLatestChoices(play.id, projectId);
   // Shares the resolve query's cache with the play button that gated this dialog open, so this costs no extra call.
@@ -63,6 +68,8 @@ const PlayRunDialogBody = ({ play, projectId, targetType, targetId, onDone }: Pl
           resolvedHarness={resolvedHarness}
           where={where}
           linked={!!link?.computer_id}
+          instructions={instructions}
+          askWhere={askWhere}
           onDone={onDone}
         />
       )}
@@ -71,7 +78,7 @@ const PlayRunDialogBody = ({ play, projectId, targetType, targetId, onDone }: Pl
 };
 
 // The content unmounts on close, so every open re-reads the caller's latest choices.
-export const PlayRunDialog = ({ play, projectId, targetType, targetId, open, onClose }: PlayRunDialogProps) => (
+export const PlayRunDialog = ({ play, projectId, targetType, targetId, open, onClose, instructions = "", askWhere = false }: PlayRunDialogProps) => (
   <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
     <DialogContent className="gap-5 sm:max-w-lg">
       <DialogHeader>
@@ -80,7 +87,15 @@ export const PlayRunDialog = ({ play, projectId, targetType, targetId, open, onC
           {play.description !== "" && `${play.description.replace(/\.+$/, "")}. `}Runs on your paired harness as you.
         </DialogDescription>
       </DialogHeader>
-      <PlayRunDialogBody play={play} projectId={projectId} targetType={targetType} targetId={targetId} onDone={onClose} />
+      <PlayRunDialogBody
+        play={play}
+        projectId={projectId}
+        targetType={targetType}
+        targetId={targetId}
+        instructions={instructions}
+        askWhere={askWhere}
+        onDone={onClose}
+      />
     </DialogContent>
   </Dialog>
 );

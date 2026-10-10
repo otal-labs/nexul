@@ -58,7 +58,7 @@ export const TrailDetailBody = ({ trail }: TrailDetailBodyProps) => {
           </MessageScroller>
         </MessageScrollerProvider>
       </section>
-      {!isTrailActive(state) && <TrailContinueForm trailId={trail.id} />}
+      {!isTrailActive(state) && <TrailContinueForm trail={trail} />}
     </div>
   );
 };

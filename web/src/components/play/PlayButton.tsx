@@ -5,11 +5,10 @@ import { PlayRunDialog } from "@/components/play/PlayRunDialog";
 import { TrailDetail } from "@/components/play/TrailDetail";
 import { Button } from "@/components/ui/button";
 import { useFetchMe } from "@/hooks/AuthHooks";
-import { useHarnessReadiness } from "@/hooks/PairingHooks";
 import { useActiveTrail, useStopTrail } from "@/hooks/TrailHooks";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
-import { canChooseRunLocation, type HarnessReadiness } from "@/models/Pairing";
+import { useRunBlockedReason } from "@/hooks/PairingProjectHooks";
 import type { Play, PlayType } from "@/models/Play";
 import { cn } from "@/lib/utils";
 
@@ -26,11 +25,10 @@ interface PlayButtonProps {
   className?: string;
 }
 
-const disabledReason = (running: boolean, waiting: boolean, readiness: HarnessReadiness | undefined): string => {
+const disabledReason = (running: boolean, waiting: boolean, blocked: string | undefined): string => {
   if (waiting) return "a run is waiting for an answer";
   if (running) return "a run is in progress";
-  if (readiness && readiness.state !== "ready" && !canChooseRunLocation(readiness)) return readiness.message;
-  return "";
+  return blocked ?? "";
 };
 
 // Hidden without plays:run; the starter or a plays:write holder gets Stop while a run occupies the target.
@@ -38,7 +36,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
   const canRun = useHasPermission("plays:run");
   const canWrite = useHasPermission("plays:write");
   const { data: me } = useFetchMe();
-  const readiness = useHarnessReadiness(projectId);
+  const blocked = useRunBlockedReason(projectId);
   const activeTrail = useActiveTrail(targetType, targetId);
   const liveState = usePlayRunStore((s) => (activeTrail ? s.frames[activeTrail.id]?.state : undefined));
   const stopTrail = useStopTrail();
@@ -53,7 +51,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
   // Only the play that asked reads as waiting; its siblings stay disabled with the reason.
   const waiting = running && (liveState ?? activeTrail.state) === "waiting" && activeTrail.play_id === play.id;
   const anyWaiting = (liveState ?? activeTrail?.state) === "waiting";
-  const reason = disabledReason(running, anyWaiting, readiness);
+  const reason = disabledReason(running, anyWaiting, blocked);
   // Readiness holds for every button on the page, so HarnessReadinessNote says it once; only a run's state is said here.
   const runReason = disabledReason(running, anyWaiting, undefined);
 
@@ -105,7 +103,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
         <Button
           variant={variant}
           size="sm"
-          disabled={reason !== "" || readiness === undefined}
+          disabled={reason !== "" || blocked === undefined}
           title={reason || play.description}
           onClick={() => setDialogOpen(true)}
         >
