@@ -1,6 +1,6 @@
 # Personal runners: one command adds a computer
 
-**Status:** ready-for-agent (open questions at the end go to the owner; the tickets that wait on them are `needs-triage`)
+**Status:** ready-for-agent
 
 ## Problem
 
@@ -49,7 +49,8 @@ Owner's calls (2026-10-10):
    pasted pairing link and Pair by URL all go. A VPS or a computer on the LAN gets a personal runner too.
 3. **Existing computers keep working until their owner installs a runner,** which adopts the same computer
    record. Then the old tunnel is retired, and once the old computers have moved, a last slice deletes the
-   tunnel pairing code, UI, scripts, docs and the "Computer tunnel" term.
+   tunnel pairing code, UI, scripts, docs and the "Computer tunnel" term. They keep working for at least 30
+   days after runners ship (decision 20).
 4. **Cloudflare becomes optional.** Setup and onboarding offer it for what it is still for (the instance's
    own domain through a tunnel, exposures, DNS) and stop presenting it as needed for agents.
 
@@ -102,6 +103,44 @@ Technical decisions made for this spec:
 19. **One process, isolated lanes.** The runner relays T3 Code and also runs jobs, shell jobs, container
     logs and, on deploy runners, deploys. Each is a lane that cannot stall or kill another (see "Lanes"
     under Architecture).
+
+Owner's answers to the open questions (2026-10-10, second round):
+
+20. **Tunnel-paired computers keep working for at least 30 days after runners ship.** The removal slice
+    (ticket 14) deletes tunnel pairing only once no tunnel or URL computer remains, or every remaining owner
+    has had the in-app notice for 30 days. Their rows, links and setup are kept either way (Moving existing
+    computers).
+21. **The runner never updates T3 Code,** neither automatically nor from a button. The desktop app updates
+    itself; a command-line install is the person's to update. The runner reports the version it finds.
+22. **The install line is `curl -fsSL <site>/computer.sh | sudo sh -s -- <token>`.** It installs for
+    `$SUDO_USER`, the person who typed `sudo`, never for root. A direct root login with no `SUDO_USER` is
+    refused, and a machine without sudo gets a clear message. Because sudo is always there, Linux installs a
+    **system** service, `/etc/systemd/system/nexul-computer.service` with `User=<that user>`: it starts at
+    boot and survives logout with no lingering. macOS installs a LaunchDaemon with `UserName` set to that
+    user, and Windows a service under that user's account or the closest equivalent (Installing a personal
+    runner). The runner process itself never runs as root.
+23. **The app says Computers.** The settings page titled "T3 Code Setup" is renamed **Computers**. "Personal
+    runner" stays internal, in code and `CONTEXT.md`.
+24. **Commands on a computer are on the record, and a new permission reads them.** The audit log records
+    which computer and the command for actions on a computer. A new instance-wide permission, **Read
+    computer activity**, grants reading that; the Owner role has it by default. Each computer's page tells
+    its owner: "Commands run here are recorded and can be read by people with Read computer activity." This
+    is the one deliberate exception to "nobody else sees another person's computer" (Access and privacy,
+    rule 5).
+25. **Retention.** A shell job's command line, who ran it, when and its exit code are kept forever. Its
+    output is deleted after 30 days; until then the computer's owner and holders of Read computer activity
+    can read it.
+26. **Sharing ships with both levels, "Run commands" and "Run agents".** "Run agents" runs with the
+    starter's own Nexul identity: each run carries a short-lived token for the person who started it, so
+    Bob's agent sees only what Bob can see in Nexul, never Alice's login. Every place the run appears shows
+    "Run by Bob using Alice's <computer name>" (Later: sharing a computer).
+27. **Shell commands are on by default for the computer's owner,** the person who installed the runner, not
+    the instance's owner, with a per-computer off switch. Sharing is off until the owner grants it.
+28. **Facts** are the computer's OS and architecture, the versions of T3 Code, `cloudflared` and the
+    providers, which providers are signed in, T3 Code's projects and their folders, the git name and email,
+    and free disk. They are visible only to the owner and to agents acting for them. Read computer activity
+    does not reach them.
+29. **Platform order:** Linux, then macOS, then Windows.
 
 ## Architecture
 
@@ -235,8 +274,8 @@ The runner is one process with separate lanes, so heavy work in one never starve
   job, a log stream, a T3 Code action) runs under a recover that logs the panic, ends only that unit with
   an error frame or a closed stream, and leaves the rest running. What a recover cannot catch (a fatal
   runtime error, running out of memory) ends the process, and the service manager starts it again
-  (`Restart=always` on the systemd unit, `KeepAlive` on the LaunchAgent, restart on failure on the
-  Windows task).
+  (`Restart=always` on the systemd service, `KeepAlive` on the LaunchDaemon, restart on failure on the
+  Windows service or task).
 - **Caps per lane.** 32 relayed streams, 16 log streams (ADR 0091), 4 shell jobs with the rest queued,
   each with its own output rate and size limits. No lane borrows another's budget.
 - **Restarts and updates.** A self-update (ADR 0052) or a restart drops open relayed streams for a few
@@ -284,10 +323,15 @@ What only the computer knows comes from the runner; what T3 Code knows comes fro
 relay, as the settings pages already read it:
 
 - From the runner: OS, architecture, hostname, the runner's version, T3 Code's state, install kind
-  (`service`, `command line`, `desktop app`), version and port, git's global `user.name` and `user.email`,
-  and free disk space in the home folder.
+  (`service`, `command line`, `desktop app`), version and port, the version of `cloudflared` when it is
+  installed, git's global `user.name` and `user.email`, and free disk space in the home folder.
 - From T3 Code, read by the server after each pairing and each facts report: providers with their versions
-  and models (`ListProviders`), and projects with their folders (`ListProjects`).
+  and models and whether each is signed in (`ListProviders`), and projects with their folders
+  (`ListProjects`).
+
+Facts are the owner's alone. The owner reads them on the computer's row, and an agent acting for the owner
+reads them through `computer_list`. No grantee, no workspace Owner and no holder of Read computer activity
+does (Access and privacy).
 
 The runner domain hands a report to the pairing domain as `runner.facts_reported` on the bus (ephemeral,
 never bridged to a socket). Pairing stores it as one JSON column with its time on the computer row, shows it
@@ -299,15 +343,16 @@ only its owner's sockets (Access and privacy, rule 2).
 
 ### Installing a personal runner
 
-The person runs one line, `curl -fsSL https://nexul.io/computer.sh | sh -s -- <token>` (`computer.ps1` on
-Windows, ticket 09); nobody types `nexul`. The token is an HS256 JWT the instance signs with a key derived from
-its existing auth secret (no new secret, no new env var). Its claims carry the instance's address, the single-use
-enrollment code, the computer's id and `exp`, the code's one-hour expiry. `computer.sh` checks the OS (Linux now;
-macOS and Windows say "coming soon" until tickets 08 and 09), decodes the token's middle segment in POSIX sh
-(base64url to base64, re-pad, `base64 -d`, a `sed` for `server`; no `jq`) only to say where it connects, and hands
-over to `install.sh`, which downloads and checksums the `nexul` command into `~/.local/bin` and runs
-`nexul install computer --token <token>`. That engine sends the whole token to the instance it names, which checks
-the signature, the expiry and that the code is unused before enrolling.
+The person runs one line, `curl -fsSL <site>/computer.sh | sudo sh -s -- <token>` (`computer.ps1` on Windows,
+ticket 09); nobody types `nexul`. `<site>` is `https://nexul.io` unless the instance sets another. The token is an
+HS256 JWT the instance signs with a key derived from its existing auth secret (no new secret, no new env var). Its
+claims carry the instance's address, the single-use enrollment code, the computer's id and `exp`, the code's
+one-hour expiry. `computer.sh` checks the OS (Linux now; macOS and Windows say "coming soon" until tickets 08 and
+09), decodes the token's middle segment in POSIX sh (base64url to base64, re-pad, `base64 -d`, a `sed` for
+`server`; no `jq`) only to say where it connects, and hands over to `install.sh`, which downloads and checksums
+the `nexul` command into the user's own `~/.local/bin` and runs `nexul install computer --token <token>`. That
+engine sends the whole token to the instance it names, which checks the signature, the expiry and that the code is
+unused before enrolling.
 
 The script cannot check the signature, and needs not: the key never leaves the instance, a token whose payload was
 altered (a swapped server, another computer) fails at the instance that signed it, and any other instance has a
@@ -316,23 +361,41 @@ is worth nothing once used. An instance tested against its own build renders the
 and release (`NEXUL_SITE_URL`, `NEXUL_RELEASE_URL` on the server), carried as `NEXUL_INSTALL_URL` and
 `NEXUL_RELEASE_URL` for the scripts, as `runner.sh` honours them.
 
-It runs as the person, never as root:
+**Who it installs for.** `sudo` runs the installer as root, only to place a system service; the runner it installs
+never runs as root.
+
+- It installs for `$SUDO_USER`, the person who typed `sudo`. Run as root with no `SUDO_USER` (a direct root login),
+  or with `SUDO_USER=root`, it refuses and says to run the command from your own account with `sudo`; nothing is
+  installed.
+- Run without root, it says to put `sudo` in front of `sh`. On a machine with no `sudo`, the piped command itself
+  fails with the shell's own "command not found", so the script, run without root, checks `command -v sudo` and
+  says that this computer has no sudo: install it and add your account to the sudo group, then run the command
+  again. The guide says the same.
+- Everything under the user's home (the `nexul` command, the data folder with the host credential at mode 0600) is
+  owned by that user; only the service definition belongs to root.
 
 | OS | Where | Service | Notes |
 |---|---|---|---|
-| Linux | `~/.local/bin/nexul`, unit directory under `~/.local/share/nexul` | systemd **user** unit `nexul-computer.service` | Turns on lingering so it runs at boot and after logout: `loginctl enable-linger` as the user first, then with sudo; if both fail it says so and runs while logged in. |
-| macOS | `~/Library/Application Support/nexul` (today's macOS root) | LaunchAgent, as today | No change from the existing macOS path beyond skipping Docker. |
-| Windows | `%LOCALAPPDATA%\Nexul` | per-user Scheduled Task at log on, restart on failure | No administrator: T3 Code on Windows is the desktop app, which runs only while the person is logged in anyway. |
+| Linux | `~/.local/bin/nexul`, data under `~/.local/share/nexul`, both the user's | systemd **system** service `/etc/systemd/system/nexul-computer.service` with `User=<that user>`, `Restart=always`, enabled and started | Starts at boot and survives logout. No lingering and no user manager are involved for the runner. |
+| macOS | `~/Library/Application Support/nexul` (today's macOS root) | LaunchDaemon with `UserName` set to that user, `KeepAlive` | Ticket 08. The existing macOS path, as a daemon, skipping Docker. |
+| Windows | `%LOCALAPPDATA%\Nexul` | A service under that user's account, or the closest equivalent | Ticket 09. A service under a named account needs that person's password or the log-on-as-service right; the fallback is the per-user Scheduled Task at log on with restart on failure. T3 Code on Windows is the desktop app, which runs only while the person is logged in anyway. Ticket 09 decides. |
 
-Today `checkUser` requires root on Linux (`internal/install/host.go:200`), `install.sh` copies into
-`/usr/local/bin` with sudo, and runner installs check Docker (`internal/install/hosts.go:69`). The
-`computer` kind refuses root on Linux and macOS, installs into the user's own folders, and skips Docker. It
-then makes sure T3 Code is there (the logic `tunnel.sh` has today, moved into Go so the three OSes share
-it), and starts the service. It prints what it installs and never prompts, as ADR 0142 requires of a piped
-script.
+Today's code is ahead of this table: ticket 02 shipped a systemd **user** unit with lingering, which refuses root.
+Ticket 20 changes it to the Linux row, and removes the lingering step.
 
-The unit is `nexul-computer`, one per OS user. `nexul uninstall computer` removes it, and a revoked runner
-calls it on itself, as runners do (`internal/runner/client.go:300`).
+The `computer` kind skips Docker. It then makes sure T3 Code is there (the logic `tunnel.sh` has today, moved into
+Go so the three OSes share it), running T3 Code's own installer as the user, not root, and starts the service. T3
+Code's own background service is a user service on Linux, so now that the installer has root it also turns on
+lingering for that user (`loginctl enable-linger`), so T3 Code survives logout too (ticket 07 confirms how T3
+Code installs its service). It prints what it installs and never prompts, as ADR 0142 requires of a piped script.
+
+The service is `nexul-computer`, one per OS user. `nexul uninstall computer`, run with `sudo`, removes it. A
+revoked runner has to remove itself too (`internal/runner/client.go:300`, ADR 0074), but a process running as the
+person cannot delete a root-owned unit. So the install also writes a small root-owned helper that only removes the
+service, its files and its own sudoers entry (on Linux `/usr/local/libexec/nexul-computer-uninstall`), and a
+`sudoers.d` entry that lets only that user run only that helper without a password. The helper stays outside the
+user's reach: it and its directory are root-owned, and the entry names its full path. It is the one privilege the
+install leaves behind, and it can only undo the install.
 
 ## Data model
 
@@ -362,12 +425,15 @@ Personal runner names are generated (`computer-<8 random>`) because runner names
   else on the person's network.
 - **The pairing path runs no command the server sends.** Its T3 Code actions are a fixed list (mint a
   pairing token, restart the service), and a personal runner refuses every build, deploy and upgrade frame.
-  Shell jobs, which do run what they are sent, are a separate capability that is off until the person turns
-  it on at the computer itself (see "Later: shell jobs").
+  Shell jobs, which do run what they are sent, are a separate capability: on for the computer's owner, off for
+  everyone else until granted, and recorded (see "Later: shell jobs").
+- **The install's root step is narrow.** It places the service and one root-owned removal helper (Installing
+  a personal runner); the runner process, T3 Code and every file in the person's home stay the person's.
 - **Streams are bound to their runner.** A stream id is single-use, lives 10 seconds, and is accepted only
   from the runner it was issued to, over that runner's host credential.
 - **T3 Code stays on loopback.** Nothing asks the person to set `T3CODE_HOST=0.0.0.0` any more.
-- **Credentials.** The host credential lives in the person's own unit directory, mode 0600 (ADR 0074). The
+- **Credentials.** The host credential lives in the person's own data folder (`~/.local/share/nexul`), owned by
+  them, mode 0600 (ADR 0074). The
   one-time pairing token lives 5 minutes and travels only on the authenticated control connection. The
   bearer session stays encrypted at rest on the server, as today. Logs never carry a token.
 - **What the server trusts from the computer** does not change: T3 Code's answers were already untrusted
@@ -384,7 +450,8 @@ builds it.
 
 1. **Only its owner uses a personal runner and its computer**, plus that owner's own `@Agent` turns and
    play runs, and the people the owner shares it with (Sharing, below). Not a workspace Owner, not the
-   instance's owner, not anyone holding every permission bit.
+   instance's owner, not anyone holding every permission bit. Reading what ran on it is the one exception
+   (rule 5), and it is reading only.
 2. **Nobody else can see one.** Another person's computers and personal runners are not listed, have no
    facts, no status, no command history and no shell output for anyone else, on every path:
    - HTTP and MCP: every computer query is keyed by the caller (`user_id = ?`, or a live grant, below).
@@ -400,8 +467,12 @@ builds it.
    - Live push: every `computer.*` topic and `runner.personal_changed` uses the `ownFrame` audience
      (`live_audience.go:64`); a grant's topic reaches exactly its owner and its grantee; shell job topics
      reach the computer's owner and the job's requester. `runner.facts_reported` is never bridged.
-   - Audit log: rows hold only the method and path, never a body (`internal/integrations/audit.go:65`), so
-     no command text reaches `audit:read`. See open question 5 for whether even the path should.
+   - Audit log: rows hold only the method and path, never a body (`internal/integrations/audit.go:65`). The
+     rows for actions on a computer are the exception to that and to the log's audience: they name the
+     computer and, for a shell job, the command (rule 5), and `audit:read` alone returns none of them, in the
+     query. Only Read computer activity does.
+   - Facts are the owner's alone: not a grantee, not a holder of Read computer activity, not a workspace
+     Owner.
 3. **The checks are ownership, never permission.** They do not go through the permission gate, so no role,
    permission overwrite or the Owner's bypass (ADR 0042) can reach a person's computer.
 4. **The one admin lever** is the account. Disabling or removing an account calls
@@ -410,6 +481,16 @@ builds it.
    holds. The admin sees only that the account's computers were disconnected, never which ones or their
    data. Reactivating the account does not restore them; the person adds the computer again, and adoption
    keeps its record, links and setup (the way back).
+5. **Computer activity is the one deliberate exception to rule 2.** Actions on a computer are recorded: which
+   computer, whose it is, who acted, when, and for a shell job the command line, the exit code and, for 30
+   days, the output (Later: shell jobs). A new instance-wide permission, **Read computer activity**
+   (`computer_activity:read`, an instance area like `runners:read`), lets its holder read that record. The
+   Owner role has it by default; no other role gets it on upgrade. It reads the record only: it grants no
+   use of any computer, and shows no list of computers, no facts, no status and no agent transcript, and a
+   computer id still answers 404 to everyone else. Each computer's page tells its owner, in these words:
+   "Commands run here are recorded and can be read by people with Read computer activity." The check is the
+   permission, not ownership, and is applied in the query that reads the record, so a missing bit returns
+   no rows.
 
 The order every use of a computer is checked in (a turn's target, a relay dial, a pairing, a shell job, a
 container log), for caller `U`, computer `C` and capability `X` (`agents` or `commands`):
@@ -428,7 +509,8 @@ from. A grantee never sees facts, git identity, free disk, or anyone else's jobs
 ## Naming and `CONTEXT.md`
 
 People never see "runner" for their own computer. In the UI it is their **Computer**: Your settings →
-T3 Code Setup → Computers, **Add a computer**, and on the computer `nexul install computer`. In the domain:
+**Computers** (the page titled "T3 Code Setup" is renamed, ticket 06), **Add a computer**, and on the computer
+`nexul install computer`. "Personal runner" stays internal, in code and `CONTEXT.md`. In the domain:
 
 - **Personal runner** (new): "The runner on a person's own computer, enrolled by that person for that
   computer. It reaches the computer's harness for Nexul and reports the computer's facts; it never builds
@@ -440,6 +522,9 @@ T3 Code Setup → Computers, **Add a computer**, and on the computer `nexul inst
 - **Computer facts** (new): "What a computer's personal runner and harness last reported about it: OS,
   T3 Code and provider versions, models, projects, git identity, free disk. A snapshot, replaced whole on
   each report. _Avoid_: inventory, telemetry, specs."
+- **Computer activity** (new, with ticket 15): "The record of commands run on a computer: which computer, who
+  ran what and when, the exit code, and the output for 30 days. Read with Read computer activity. _Avoid_:
+  audit trail, history."
 - **Enrollment code** and **Host credential**: add "or a personal runner, bound to its person and
   computer".
 - **Computer tunnel**: deleted with the removal slice. Until then it gains "The old way to reach a paired
@@ -464,7 +549,13 @@ it:
 The tunnel is retired only after the relay pairing has worked, so a failed move leaves the computer as it
 was.
 
-Removal of the old paths (the last slice):
+**How long the old way lasts.** Computers paired by tunnel or URL keep working for at least 30 days after
+runners ship. The 30 days start when the release carrying the notice ships (ticket 12), and each owner's
+count starts at their inbox notification. The removal slice below runs in the first release after that when
+no tunnel or URL computer remains, or when every remaining owner has had the notice for 30 days. Until then
+nothing about those computers changes: rows, links, setup, and re-pairing keep working.
+
+Removal of the old paths (the last slice, after the 30 days above):
 
 - Deletes the tunnel and URL pairing use-cases, the tunnel watch, the Access transport in the harness
   client, `tunnel.sh`/`tunnel.ps1`, the Tunnel step, the pairing-link field, Pair by URL,
@@ -487,32 +578,49 @@ stdout and stderr; an exit code. This is remote command execution, so the rules 
 **It runs as the runner's own user.** On a personal runner that is the person. On a runner that is not
 personal it is root on Linux (ADR 0073), so a shell job there is root on that server.
 
-**Off unless the computer or machine itself agreed.** Two switches, both needed:
+**On for the computer's owner, off for everyone else.** Two switches, both needed, and who they start on
+depends on whose machine it is:
 
-- At the computer or machine: the install flag `--allow-shell` (or `nexul shell on|off` later, run there),
-  stored in the unit's own env. The runner refuses `shell_run` without it and says so. The server can
+- A personal runner: its owner is the person who ran the install command, not the instance's owner. Running
+  the command is their opt-in, so it installs with shell jobs on (`--no-shell` installs it off), and
+  `runners.shell_enabled` starts on. Each computer has an off switch on its row, and `nexul shell on|off`,
+  run at the computer, flips the unit's own setting. Either one off makes the runner refuse `shell_run` and say
+  so, and turning Nexul's switch off cancels running jobs. Sharing is off until granted: a grantee gets
+  shell jobs only through a "Run commands" grant, and only while both switches are on. The server can never
+  turn on what the computer's own setting turned off.
+- Any other runner or machine: both off until its operator agrees. At the machine: the install flag
+  `--allow-shell` (or `nexul shell on|off` later, run there), stored in the unit's own env; the server can
   never turn this one on, so a compromised instance, or an admin of the instance who does not run the
-  machine, cannot gain a shell where the machine's operator never opted in.
-- In Nexul: `runners.shell_enabled`, off by default, the everyday switch. On a personal runner its owner
-  flips it from the computer row; on another runner it takes `runners:shell`. Turning it off cancels
-  running jobs.
+  machine, cannot gain a shell where the machine's operator never opted in. In Nexul: `runners.shell_enabled`,
+  off by default, flipped with `runners:shell`.
 
 **Who may start one:**
 
 - A personal runner: its owner, from the web, or over MCP with the owner's own token, which is how the
   owner's own `@Agent` turns and play runs reach it; and a person the owner granted "Run commands" (Later:
-  sharing a computer). Nobody else, the workspace Owner included (Access and privacy, rule 1).
+  sharing a computer). Nobody else, the workspace Owner included, can start one (Access and privacy, rule 1).
+  Holders of Read computer activity can read the record of what ran, not start anything (rule 5).
 - Any other runner: a new verb `runners:shell` in the permission table (`internal/platform/permissions`),
   an instance area checked in any workspace like `runners:write` (ADRs 0087, 0088). No role gets it on
   upgrade; a workspace Owner holds it by bypass; a scoped token needs it among its own scopes.
 
 **Every job is recorded and visible.** A `runner_shell_jobs` row holds the runner, who asked, through
 which adapter and from which turn or play run if any, the shell, command, folder, start and end, exit code
-and status, and the output capped at 1 MiB. The route and the MCP tool also write audit rows (ADR 0138).
-Jobs are kept 45 days, like the audit log. The computer row (and the runner row, for other runners) lists
-them with their output; a running one streams live through a per-viewer socket, the container-log pattern
-(ADR 0091). On a computer its owner sees every job, a grantee's included, and a grantee sees only their own; on
-another runner `runners:shell` holders see them. Output may hold secrets, so nobody else does.
+and status, and the output capped at 1 MiB. The route and the MCP tool also write audit rows (ADR 0138); the
+audit row for a start names the computer and the job, and the command is read from the job record, so there is
+one copy of it.
+
+**Retention.** The command line, who ran it, when, and the exit code are kept forever, so the job record is
+exempt from the audit log's 45-day purge. The output is deleted after 30 days: a daily purge loop (the audit
+log's loop pattern) empties the output column and keeps the row. This holds for every shell job, personal or
+not.
+
+**Who sees it.** The computer row (and the runner row, for other runners) lists jobs with their output; a
+running one streams live through a per-viewer socket, the container-log pattern (ADR 0091). On a computer its
+owner sees every job, a grantee's included, and a grantee sees only their own. While it is kept, the output
+is also readable by holders of Read computer activity (Access and privacy, rule 5), through the audit log's
+computer activity view. On another runner `runners:shell` holders see the jobs. Output may hold secrets, so
+nobody else does.
 
 **Limits:** no stdin (non-interactive), timeout 60 seconds by default and 1 hour at most, 4 jobs at once per
 runner with the rest waiting in the server's in-memory queue (each checked again when it starts), output streamed at up to 64 KB a second with skipped-line markers, the `NEXUL_*` variables stripped
@@ -558,10 +666,12 @@ offers the same, as an optional capability:
 
 ## Later: sharing a computer
 
-The owner may let named people use a computer, per person, with two separate levels, both off by default:
+The owner may let named people use a computer, per person, with two separate levels, both off by default and
+both shipping (tickets 18 and 19):
 
 - **Run agents**: plays and `@Agent` turns run through its T3 Code, picked like one's own computer in the
-  run dialog and in a project link (amends ADR 0102, which allows only one's own computer).
+  run dialog and in a project link (amends ADR 0102, which allows only one's own computer). The run acts
+  as the person who started it in Nexul (below).
 - **Run commands**: shell jobs, under the same two switches as the owner's.
 
 Grants are per computer: Alice can share her laptop with Bob and keep her PC to herself. Grantees see it
@@ -580,13 +690,14 @@ Owner's rules (2026-10-10):
   since they run on her computer. A grantee's agent transcript is never shown to her through the computer.
   It stays where the run landed, the ticket's or doc's thread, under that page's own access, so she sees it
   only if Bob's work is somewhere she can already read. The grant dialog tells Bob that his runs execute on
-  Alice's computer, where T3 Code keeps its own threads.
+  Alice's computer, where T3 Code keeps its own threads. Wherever such a run appears (the trail, the thread
+  and the owner's run log), it carries the line "Run by Bob using Alice's <computer name>".
 - **Revoking takes effect at once.** Every check reads the grant in its own query, with no cache, so the
   next start is refused. A queued job (one waiting for a free slot on the runner, ADR 0031's in-memory
   queue) is checked again when it would start, and dropped as "access revoked". A running job of Bob's on
   that computer is cancelled at the revoke, its process killed and its record marked "cancelled: access
   revoked", because a shell job can do in seconds whatever Bob would do next. A grantee's agent turn
-  already running when "Run agents" is revoked is interrupted the same way (when that level exists).
+  already running when "Run agents" is revoked is interrupted the same way.
 - A grant ends when the grantee no longer shares any workspace with the owner, or either account is
   disabled or removed: the check's query requires it, and a consumer of the membership and account events
   deletes the row, so it does not come back if they rejoin.
@@ -599,18 +710,23 @@ KEY (computer_id, grantee_id))`, with an index on `(grantee_id, computer_id)` fo
 with both levels off is deleted, not stored. Event `computer.grant_changed` (outbox, members-only) carries
 ids and the two levels, never the computer's name, and reaches the owner and the grantee.
 
+**"Run agents" acts as the person who started the run.** Setup writes the owner's personal access token
+into the providers on the computer (CONTEXT, Personal access token), which would make a grantee's agent act as
+the owner in Nexul. So a run started through a grant does not use it. At the start, Nexul mints a short-lived
+token for the person who started the run (Bob), expiring with the run, and the run's calls to Nexul over MCP
+carry that token. Bob's agent therefore sees only what Bob can see in Nexul: a project only Alice can open
+stays closed to it, and it never holds Alice's login. The owner's own runs keep using the token setup wrote.
+Ticket 19 builds this, and starts by confirming how T3 Code can give one thread its own MCP credential.
+
 What sharing really hands over, which the grant dialog must say plainly:
 
 - **Both levels run code as the owner's OS user.** An agent has a shell, so "Run agents" is not a lesser
   grant than "Run commands". The grantee can read whatever that user can: SSH keys, git credentials,
   provider logins, and the computer's own Nexul MCP token in the providers' config files, which acts as the
-  owner in Nexul.
-- **A grantee's agent would act as the owner in Nexul.** Setup writes the owner's personal access token
-  into the providers on the computer (CONTEXT, Personal access token), so a grantee's turn reaching Nexul
-  over MCP would carry the owner's permissions: the grantee's agent could read the owner's private projects.
-  "Run agents" therefore waits until a turn's MCP calls can act as the person who started the turn (open
-  question 6). "Run commands" does not have that problem inside Nexul, because Nexul records the grantee as
-  the job's requester; the exposure on the computer above still applies.
+  owner in Nexul. The starter's own token keeps the run's calls to Nexul in Bob's name, but it cannot stop an
+  agent that runs as Alice's OS user from reading a file in Alice's account; ticket 19 decides whether to
+  close that too, or to state it in the dialog.
+- "Run commands" has no such Nexul-side question: Nexul records the grantee as the job's requester.
 
 ## What this unlocks
 
@@ -622,8 +738,8 @@ What sharing really hands over, which the grant dialog must say plainly:
 - **Facts about each computer,** for the computer row, for agents through `computer_list`, and later for
   choosing a computer or model without a live call.
 - **A per-person agent on each computer** that the later slices extend without another install: shell
-  jobs, container logs, and sharing a computer with named people; and later still, updating T3 Code or
-  deploys on a personal runner.
+  jobs, container logs, and sharing a computer with named people; and later still, deploys on a personal
+  runner.
 
 ## Hit every surface
 
@@ -640,8 +756,10 @@ What sharing really hands over, which the grant dialog must say plainly:
   topics. Every `computer.*` payload, old and new, gains `members_only` (a field beside the others, ADR
   0044). Bridged ones go in `livePushTopics` with their audience rule and `make live-topics`.
 - Phone: nothing. The phone app shows no computers (`native/src` has no pairing calls).
-- Permissions: none for computers (ownership checks, rule 3); personal runners filtered out of
-  `runners:read` lists; later `runners:shell` for shell jobs on runners that are not personal.
+- Permissions: none for using computers (ownership checks, rule 3); personal runners filtered out of
+  `runners:read` lists; `computer_activity:read` (Read computer activity, instance area, Owner role by
+  default) for reading the record of commands, with shell jobs; later `runners:shell` for shell jobs on
+  runners that are not personal. Run commands and Run agents are grants, not permissions.
 - Reverse states: remove a computer revokes its runner; account removal revokes; adoption is the way back
   for a computer that lost its runner.
 - Docs: `paired-computers.md`, `setup-wizard.md`, `mcp-server.md`, `runners.md`; `CONTEXT.md` per Naming;
@@ -650,6 +768,7 @@ What sharing really hands over, which the grant dialog must say plainly:
 ## Out of scope
 
 - Deploys on a personal runner. A later effort can let the owner turn them on.
+- Updating T3 Code, automatically or by a button (decision 21). The runner reports the version only.
 - Removing Cloudflare tunnels for the instance's own domain, gateways or exposures.
 - Harnesses other than T3 Code. The relay is harness-neutral (one local port), and the minting step is
   the one T3-specific piece.
@@ -664,15 +783,18 @@ What sharing really hands over, which the grant dialog must say plainly:
   asleep, means the computer is offline. Today's tunnel had the same property through `cloudflared`, but
   the installer is new code on three OSes, and macOS and Windows native installs are still untested
   (ADR 0073's trade-offs).
-- **Windows has no service host for a per-user process.** The Scheduled Task path is new to
-  `internal/install` (`servicehost_windows.go` serves the Service Control Manager only).
+- **Windows cannot run a service under a named user without that person's password** or the log-on-as-service
+  right, and `internal/install` has no per-user process host (`servicehost_windows.go` serves the Service Control
+  Manager only). Ticket 09 chooses between a service and a per-user Scheduled Task, which is new code either way.
 - **`NetConn` deadlines close the whole socket** (coder/websocket's documented behaviour). `http.Transport`
   does not set deadlines on idle HTTP/1.1 connections, but ticket 01 proves a keep-alive reuse and a 30-minute
   idle WebSocket through the relay before anything builds on it.
 - **Proxies in front of the instance** must pass a second WebSocket path. The control socket already
   crosses them, and the T3 session's 30-second ping keeps a relayed socket inside Cloudflare's idle limit.
-- **Linux lingering needs root on some distributions.** Without it the runner stops at logout, like any
-  user service; the installer says so.
+- **The install needs sudo.** A computer where the person cannot use sudo cannot be added, and the message
+  says so. The one thing the install leaves with root is the removal helper and its sudoers entry, which can
+  only undo the install; a mistake there is a local privilege problem, so ticket 20 tests the entry with
+  `visudo -c` and keeps the helper path root-owned.
 - **Development and end-to-end recipes use Pair by URL** (a throwaway T3 server, the local stack). With it
   gone they run a personal runner on the developer's own computer against the dev server; ticket 03 writes
   that recipe before any old path is removed.
@@ -680,25 +802,8 @@ What sharing really hands over, which the grant dialog must say plainly:
   minting here happens in the long-running runner, over its own authenticated connection, never in the
   command a person pasted, which is the concern that ADR raised.
 
-## Open questions for the owner
+## Build order
 
-1. **How long do computers paired the old way keep working before the old code is removed?**
-   Recommendation: the removal ships in the first release at least 30 days after the runner release, and
-   only once production shows no computer still on a tunnel or a URL, or each remaining owner has had the
-   notice for those 30 days. A computer that never moved keeps its row, links and setup and runs again as
-   soon as its owner adds it with the app.
-2. **Should the runner update T3 Code by itself?** Recommendation: not yet. Show the installed version and
-   an "Update T3 Code" action for a command-line install; the desktop app already updates itself. Automatic
-   updates can follow once the button has run for a while.
-3. **May the Linux installer ask for the sudo password once,** to keep the runner running after logout?
-   Recommendation: yes, after trying without it, and carry on without lingering if the person declines.
-4. **Naming:** "Add a computer" in the app, `nexul install computer` on the computer, "personal runner"
-   only in the code and the glossary. Recommendation: yes.
-5. **Should the audit log record that someone acted on their own computer at all?** Today a row holds the
-   method and the path, which for these routes names the computer's id, though never a command.
-   Recommendation: keep the row, with the route's pattern in place of the path for computer routes, so an
-   auditor can see that a person ran commands on one of their computers, but not which one or what.
-6. **"Run agents" sharing gives the grantee's agent the owner's Nexul permissions** (the computer's MCP
-   token is the owner's). Recommendation: ship "Run commands" sharing first with a plain warning in the
-   grant dialog, and hold "Run agents" until a turn's MCP calls can act as the person who started it, which
-   needs its own research into how T3 Code can give one thread its own MCP credential.
+- Platforms: Linux first (tickets 01 to 07 and 20), then macOS (ticket 08), then Windows (ticket 09).
+- The owner may rework permissions. Tickets 15 to 19 add permissions and grants and should be built after any
+  rework the owner starts; tickets 01 to 10 and 20 do not depend on it.

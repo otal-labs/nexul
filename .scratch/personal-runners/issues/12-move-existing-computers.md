@@ -14,7 +14,8 @@ the deprecation-and-migration approach, the spec (Moving existing computers).
 - When its runner connects, pair through it, keeping the id, links, defaults, setup, MCP token and trails.
   Only after that pairing succeeds: delete its tunnel, DNS record and Access app, clear its tunnel columns,
   and show the command that removes `cloudflared` from the computer.
-- One inbox notification per owner of such a computer, once, when the release ships.
+- One inbox notification per owner of such a computer, once, when the release ships. Its receipt time is
+  the start of that owner's 30 days (spec, decision 20), which ticket 14 reads.
 - A computer whose runner was revoked (ticket 04) is adopted the same way.
 
 ## Acceptance criteria

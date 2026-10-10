@@ -1,14 +1,18 @@
 # 14 — Remove tunnel and URL pairing
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
-**Blocked by:** 12, 13, and the owner's answer to the spec's open question 1 (when)
+**Blocked by:** 12, 13
 
 Read first: `practices/go.md`, `practices/architecture.md`, `practices/mcp.md` (section 11),
 `practices/react-guide.md`, ADRs 0062, 0082, 0142, 0146, the deprecation-and-migration approach, the spec
 (Moving existing computers, removal list).
 
 ## What to build
+
+Ships only after the owner's 30 days (spec, decision 20): at least 30 days after the release carrying ticket
+12's notice, and either no tunnel or URL computer remains or every remaining owner has had the notice for 30
+days (their inbox receipt). The old computers' rows, links and setup are kept.
 
 - Delete: `CreateComputerTunnel`, `ComputerTunnelToken`, the tunnel watch, URL pairing in `pair`/`Repair`,
   `AccessTransport` in the harness client, `computerTunnelAccess`, `tunnel.sh` and `tunnel.ps1`, the Tunnel
@@ -25,8 +29,8 @@ Read first: `practices/go.md`, `practices/architecture.md`, `practices/mcp.md` (
 
 ## Acceptance criteria
 
-- [ ] Production shows no tunnel or URL computer, or the owner accepted the remaining ones per open
-      question 1.
+- [ ] At least 30 days have passed since the release with ticket 12's notice, and production shows no tunnel
+      or URL computer, or every remaining owner's inbox receipt is at least 30 days old.
 - [ ] `rg -i 'tunnel'` over `internal/pairing`, `web/src/components/pairing` and the computer guide pages
       finds nothing that pairs.
 - [ ] Upgrade test from the previous schema with a tunnel computer in it: the cleanup runs once and the

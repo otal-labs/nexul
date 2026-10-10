@@ -10,10 +10,14 @@ Cloudflare with Zero Trust a precondition for the main feature, made pairing thr
 pasted pairing link, setup), and left a paste every 30 days because T3 Code's session cannot be refreshed. Pair by
 URL, the other way, asked people to open T3 Code's port on every interface.
 
-Decision: a person adds a computer by installing a **personal runner** on it with one command. The runner is the
-existing `nexul-runner` in a personal mode: enrolled with a one-time code bound to that person and that computer,
-running as the person's own OS user (a systemd user unit, a LaunchAgent, a per-user logon task on Windows), with
-no Docker. It holds the runner's usual outbound WebSocket, and the server reaches T3 Code through it:
+Decision: a person adds a computer by installing a **personal runner** on it with one command,
+`curl -fsSL <site>/computer.sh | sudo sh -s -- <token>`. The runner is the existing `nexul-runner` in a personal
+mode: enrolled with a one-time code bound to that person and that computer, with no Docker. The script installs for
+`$SUDO_USER`, the person who typed `sudo`, never for root, and refuses a root login with no `SUDO_USER`. Because
+sudo is always there, the runner is a system service whose user is that person (a systemd system unit with
+`User=`, a LaunchDaemon with `UserName`, on Windows a service under their account or the closest equivalent), so
+it starts at boot and survives logout with no lingering, and the process itself never runs as root. It holds the
+runner's usual outbound WebSocket, and the server reaches T3 Code through it:
 
 - **Each relayed connection is its own WebSocket, opened by the runner.** The server asks over the control
   connection (`harness_dial {id}`); the runner dials T3 Code on loopback and opens `/api/runners/streams/{id}`
@@ -30,11 +34,22 @@ no Docker. It holds the runner's usual outbound WebSocket, and the server reache
   own before the 30-day session ends.
 - **It is the only way to pair.** The tunnel flow, the pasted link and Pair by URL are retired: existing
   computers keep working until their owner installs a runner, which adopts the same computer record, and then
-  the tunnel pairing code is deleted. Cloudflare stays for the instance's domain, gateways and exposures.
+  the tunnel pairing code is deleted. They keep working for at least 30 days after runners ship, and the
+  deletion waits until none remain or every remaining owner has had the in-app notice for 30 days; their rows,
+  links and setup are kept. Cloudflare stays for the instance's domain, gateways and exposures.
+- **The runner never updates T3 Code.** It reports the version it finds and restarts a stopped background service;
+  updating is the person's.
 - **A personal runner is private to its owner.** It never takes deploy jobs, never shows in runner or machine
   lists, publishes members-only events that reach only its owner's sockets, and is checked by ownership rather
-  than permission, so no role or Owner bypass reaches it. The owner may later share a computer with named
-  people; disabling or removing an account revokes its runners.
+  than permission, so no role or Owner bypass reaches it. Its facts are the owner's alone. The owner may later
+  share a computer with named people, at two levels, running commands and running agents; a run an agent makes for
+  a grantee carries a short-lived Nexul token for the person who started it, never the owner's. Disabling or
+  removing an account revokes its runners.
+- **One deliberate exception: commands on a computer are on the record.** The audit log records which computer
+  and the command for actions on it, and a new instance-wide permission, Read computer activity, lets its holder
+  read that. The Owner role has it by default. It reads the record only: it lists no computers, shows no facts and
+  grants no use. Each computer's page tells its owner so. The command line, who ran it, when and the exit code
+  are kept forever; command output is deleted after 30 days.
 
 Why one WebSocket per relayed connection: each relayed connection keeps TCP's own flow control end to end, a
 large transcript never delays another stream or the control connection's heartbeats, and a control reconnect
@@ -57,16 +72,23 @@ enrolled connection; the pasted command only installs.
   pairing path; automatic re-pairing already makes the 30 days invisible.
 - **A second binary for computers.** Rejected: enrollment, credentials, self-update and self-removal are the
   runner's already.
+- **A systemd user unit with lingering, installed without sudo.** Rejected: lingering needs root on some
+  distributions, so the runner would stop at logout on exactly those. With sudo always present, a system service
+  that runs as the person starts at boot with nothing to configure.
 
 ## Consequences
 
 - Every computer needs the runner running. A sleeping laptop is offline, as it was with `cloudflared`, and a run
   aimed at an offline computer fails saying so rather than moving to another of the person's computers.
-- `internal/install` gains a user-level install on three OSes, including a Windows path that is not a service.
+- `internal/install` gains an install on three OSes that puts a system service under the person's own user: a
+  systemd unit, a LaunchDaemon, and on Windows a service or, if a service under a named account is not workable,
+  a per-user logon task. A revoked runner removes itself through a small root-owned helper that only undoes the
+  install, because a process running as the person cannot delete a root-owned unit.
 - The retired tunnel routes stay mounted and answer 410, because ADR 0082 never removes a route.
 - ADR 0074's enrollment codes gain a personal kind that any signed-in person may mint for their own computer,
   with no `runners:write`. ADR 0073's "runners run as root" holds for deploy runners only. ADR 0031's connection
   carries harness dial requests, while the bytes ride their own sockets. ADR 0102's "always one of their own"
   computer gains shared computers once sharing ships.
+- The settings page called T3 Code Setup is renamed Computers; "personal runner" stays in code and `CONTEXT.md`.
 
 Decided 2026-10-10.

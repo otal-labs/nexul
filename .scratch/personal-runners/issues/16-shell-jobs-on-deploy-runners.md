@@ -6,6 +6,10 @@
 
 Read first: `practices/go.md`, `practices/mcp.md`, ADRs 0057, 0087, 0088, the spec (Later: shell jobs).
 
+Build after any permissions rework the owner starts (this ticket adds a permission). Jobs here follow ticket 15's
+retention: the record kept forever, the output deleted after 30 days. Unlike a personal runner, a machine's
+shell jobs stay off until its operator opts in.
+
 ## What to build
 
 - `runners:shell` in the permission table, instance area; no role gets it on upgrade; scoped tokens need it

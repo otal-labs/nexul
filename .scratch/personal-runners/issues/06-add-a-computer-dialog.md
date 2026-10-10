@@ -9,10 +9,17 @@ Read first: `practices/react-guide.md` (F1 to F7 and the self-review checklist),
 
 ## What to build
 
-- Your settings → T3 Code Setup → Computers: **Add a computer** replaces **Pair a computer**. The dialog
-  shows the command (macOS / Linux and Windows tabs, Windows marked coming until ticket 09), then three
-  live checks driven by `runner.personal_changed` and `computer.paired`: Computer connected, T3 Code found,
-  Paired; then the existing Set up step.
+- Rename the settings page "T3 Code Setup" to **Computers** (owner, 2026-10-10): the nav label
+  (`YourSettingsNav.tsx`), the panel's label, the setup-card references, and every message that sends a
+  person to "Settings → T3 Code Setup" (`internal/pairing/model.go`, `internal/agent/pipeline.go` and their
+  tests, `web/src/models/Pairing.tsx`), plus `CONTEXT.md`, `practices/design-language.md` and the guide pages.
+  Check with `rg 'T3 Code Setup'`. The page keeps its sections (Computers, Projects, Defaults).
+  "Personal runner" stays out of the UI.
+- Your settings → Computers: **Add a computer** replaces **Pair a computer**. The dialog shows the command
+  (macOS / Linux and Windows tabs, macOS and Windows marked coming until tickets 08 and 09; the Linux command
+  is `curl -fsSL <site>/computer.sh | sudo sh -s -- <token>`, and the dialog says it needs sudo and which
+  account it installs for), then three live checks driven by `runner.personal_changed` and `computer.paired`:
+  Computer connected, T3 Code found, Paired; then the existing Set up step.
 - The computer row: each lane's health on its own (runner connected, T3 Code answering through it), Rename,
   Re-pair now, Remove; "Open T3 Code" when the desktop app is closed.
 - The tunnel step, the pairing-link step and Pair by URL are no longer reachable for a new computer. They
@@ -27,3 +34,5 @@ Read first: `practices/react-guide.md` (F1 to F7 and the self-review checklist),
 - [ ] Screenshots at 768, 1024 and 1440px of each dialog state and the row, in the PR.
 - [ ] Component tests for each check's states, following F1 to F7; no `useEffect` for the live checks.
 - [ ] The guide pages match the UI word for word on button and step names.
+- [ ] `rg 'T3 Code Setup'` finds nothing in `web/src`, `internal`, `CONTEXT.md`, `practices` and the guide
+      (accepted ADRs keep their old wording).

@@ -4,6 +4,8 @@
 
 **Blocked by:** 15
 
+Build after any permissions rework the owner starts (grants are new access rules).
+
 Read first: `practices/go.md` (section 17), `practices/architecture.md` (sections 2, 3, 6),
 `practices/react-guide.md`, `practices/mcp.md`, ADRs 0097, 0102, 0140, the spec (Later: sharing a computer,
 Access and privacy).

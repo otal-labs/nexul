@@ -82,3 +82,5 @@ unique, so a computer has one runner), `AddComputer` / `EnrollComputer` / `Renam
   no `computer-` runner in `/api/runners` or `machine_list`. The same command as root stopped before downloading.
 - For 03: `Computer.ServerURL` is empty on a runner computer until it pairs; `Computer.Session()` and `pair` need
   the relay address there. For 04: `RemoveRunner` hides personal runners, so retiring one goes through a new seam.
+- Superseded in part by ticket 20 (owner, 2026-10-10): the install line gains `sudo`, and Linux gets a system service
+  running as the user instead of a user unit with lingering. Open question 3 is answered by it: sudo is how it installs.
