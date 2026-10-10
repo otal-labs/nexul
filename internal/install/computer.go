@@ -30,6 +30,9 @@ type ComputerOptions struct {
 	// Token is the signed token Add a computer's command carries: the instance, the one-time code and the computer.
 	Token   string
 	Version string
+	// NoT3 skips the T3 Code step; T3Port is the port T3 Code is installed on, when not its own 3773.
+	NoT3   bool
+	T3Port int
 }
 
 // computerClaims is the part of a computer's token the installer reads: where to enroll. The token's signature is
@@ -51,6 +54,8 @@ func (h *Host) runInstallComputer(ctx context.Context, args []string) error {
 	var o ComputerOptions
 	fs.StringVar(&o.Token, "token", "", "the token Add a computer's command carries")
 	fs.StringVar(&o.Version, "version", "", "release to install (default: this binary's version)")
+	fs.BoolVar(&o.NoT3, "no-t3", false, "leave T3 Code alone: neither look for it nor install it")
+	fs.IntVar(&o.T3Port, "t3-port", 0, "port T3 Code's service listens on when this installs it (default 3773)")
 	fs.Bool("yes", false, "accepted for scripts; this install never asks")
 	fs.Bool("y", false, "shorthand for --yes")
 	if err := fs.Parse(args); err != nil {
@@ -91,6 +96,9 @@ func (h *Host) InstallComputer(ctx context.Context, o ComputerOptions) error {
 		return ctl, h.giveTo(p, ctl)
 	})
 	if err != nil {
+		return err
+	}
+	if err := h.installT3(ctx, p, o); err != nil {
 		return err
 	}
 	if err := h.step("Runner", func() (string, error) { return h.installComputerRunner(ctx, ho, tag, p) }); err != nil {

@@ -387,8 +387,8 @@ Ticket 20 changes it to the Linux row, and removes the lingering step.
 The `computer` kind skips Docker. It then makes sure T3 Code is there (the logic `tunnel.sh` has today, moved into
 Go so the three OSes share it), running T3 Code's own installer as the user, not root, and starts the service. T3
 Code's own background service is a user service on Linux, so now that the installer has root it also turns on
-lingering for that user (`loginctl enable-linger`), so T3 Code survives logout too (ticket 07 confirms how T3
-Code installs its service). It prints what it installs and never prompts, as ADR 0142 requires of a piped script.
+lingering for that user (`loginctl enable-linger`), so T3 Code survives logout too (`t3code.service` in the
+person's systemd user manager). It prints what it installs and never prompts, as ADR 0142 requires of a piped script.
 
 The service is `nexul-computer`, one per machine for now (the unit's name is fixed). A revoked runner has to remove
 itself too (`internal/runner/client.go:300`, ADR 0074), but a process running as the person cannot delete a

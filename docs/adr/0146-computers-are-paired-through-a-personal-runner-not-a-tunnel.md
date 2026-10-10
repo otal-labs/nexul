@@ -39,6 +39,10 @@ runner's usual outbound WebSocket, and the server reaches T3 Code through it:
   the tunnel pairing code is deleted. They keep working for at least 30 days after runners ship, and the
   deletion waits until none remain or every remaining owner has had the in-app notice for 30 days; their rows,
   links and setup are kept. Cloudflare stays for the instance's domain, gateways and exposures.
+- **The install makes T3 Code answer, as the person.** `nexul install computer` reuses a T3 Code it finds,
+  starts the background service of a `t3` command line that is not running, and otherwise runs T3 Code's own
+  installer and `t3 service install` as the person, never as root (`--no-t3` skips all of it). T3 Code's Linux
+  service is a systemd user service, so the install turns on lingering for that person; the runner needs none.
 - **The runner never updates T3 Code.** It reports the version it finds and restarts a stopped background service;
   updating is the person's.
 - **A personal runner is private to its owner.** It never takes deploy jobs, never shows in runner or machine

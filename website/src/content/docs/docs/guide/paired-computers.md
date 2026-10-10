@@ -13,29 +13,12 @@ The instance needs Cloudflare connected with Zero Trust enabled. T3 Code on the 
 
 1. Open your settings, **T3 Code Setup → Computers**, and press **Pair a computer**.
 2. On the **Tunnel** step, enter a **Computer name** and press **Create tunnel**. Change **T3 Code port** under **Advanced options** only if T3 Code doesn't run on its default port.
-3. Pick **macOS / Linux** or **Windows** and run the command shown on that computer. It installs `cloudflared` if needed and keeps a tunnel open to the instance's Cloudflare account as a background service. The token in it is secret, so keep it to that computer. It then makes sure T3 Code answers on the tunnel's port; see [What the tunnel command installs](#what-the-tunnel-command-installs).
+3. Pick **macOS / Linux** or **Windows** and run the command shown on that computer. It installs `cloudflared` if needed and keeps a tunnel open to the instance's Cloudflare account as a background service. The token in it is secret, so keep it to that computer. It then installs T3 Code if it's missing; add `--no-t3` (`-NoT3` on Windows) to skip that, and `--port <port>` (`-Port <port>`) if you changed **T3 Code port**.
 4. Wait for both checks, **Tunnel online** and **T3 Code answering**, then press **Next**.
 5. Pick how T3 Code is installed on the computer and make a pairing link there. **Desktop app** (the default) needs no terminal: in T3 Code open **Settings → Connections**, under **Authorized clients** choose **Create link** and **Create link** again, then on the new link choose **Share** and **Copy link**. **Command line** runs plain `t3 pair`, and **Not installed yet** shows the same command for the T3 Code the tunnel command installed; copy the **Pairing URL** it prints. Paste the link into **Pairing link**. Nexul reaches T3 Code over the tunnel, so only the token in the link is used; its address, a local one such as `192.168.1.107`, is ignored. A bare token still works. A refused link shows on the field: make a fresh one, because each works once.
 6. On the last step, [set up the computer](/docs/guide/computer-setup/).
 
 The computer gets a hostname made from its name plus eight random characters, and only the Nexul server can reach it. If you close the dialog early, the row reads **Pairing in progress**; press **Pair** on it to carry on.
-
-### What the tunnel command installs
-
-After the tunnel, the command looks for T3 Code: a server already answering on the tunnel's port, the desktop app, or the `t3` command line. It installs nothing when it finds one; a closed desktop app gets "Open T3 Code, then continue in Nexul". When it finds none, it says what it's about to install and then:
-
-- On macOS and Linux, installs T3 Code's command line with T3 Code's own installer into `~/.local/bin`, and runs it as a background service for your user (`t3 service install`). On Linux it turns on lingering so the service starts at boot and keeps running after you log out, and installs `libatomic1`, which T3 Code needs and minimal server images leave out. It waits until T3 Code answers, then prints the exact pairing command, such as `~/.local/bin/t3 pair`.
-- On Windows, T3 Code has no background service, so it installs the desktop app with `winget install T3Tools.T3Code`. Open T3 Code once, then run the pairing command it prints.
-
-It never pairs for you: the pairing link still goes through the **Pair T3 Code** step.
-
-To install T3 Code yourself, add `--no-t3` to the command (`-NoT3` on Windows):
-
-```sh
-curl -fsSL https://nexul.io/tunnel.sh | sh -s -- <token> --no-t3
-```
-
-If you changed **T3 Code port** under **Advanced options**, add `--port <port>` (`-Port <port>` on Windows) so it looks for T3 Code there; on Linux the service it installs then listens on that port. On macOS T3 Code's service always starts on 3773, so with another port, install T3 Code yourself and run `t3 serve --port <port>`.
 
 ### Pair by URL
 
@@ -55,8 +38,27 @@ curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- <token>
 
 - the `nexul` command in your `~/.local/bin`, and the runner with its credential in `~/.local/share/nexul`, all owned by you, with the credential readable only by you;
 - `nexul-computer`, a system service that runs the runner as you, never as root. It starts at boot and keeps running after you log out.
+- T3 Code, when it's missing; see [What the command installs](#what-the-command-installs).
 
 Logged in as root, the command refuses: run it from your own account. On a computer without `sudo`, the shell says `sudo` is not found; as root, install sudo and add your account to the `sudo` group (`usermod -aG sudo <you>` on Debian and Ubuntu, the `wheel` group elsewhere), log in again, and rerun the command. Its logs are in `journalctl -u nexul-computer`. To remove it, run `nexul uninstall computer` from the same account: it tells Nexul, and a small root service the install left, which can only remove this runner, takes the service and its files away; no sudo rule is involved. With sudo it removes them at once (`sudo ~/.local/bin/nexul uninstall computer`, since sudo does not search `~/.local/bin`).
+
+### What the command installs
+
+Before the runner, the command looks for T3 Code in your account: a server already answering, the desktop app, or the `t3` command line. It reuses what it finds:
+
+- **T3 Code answering**: left as it is. When T3 Code's own background service runs it, the command turns on lingering for you, so the service keeps running after you log out.
+- **The desktop app, closed**: it says "Open T3 Code". Nexul pairs it once it runs.
+- **The `t3` command line, not running**: it starts T3 Code's background service for you (`t3 service install`), with lingering on.
+
+With none, it says what it's about to install, then installs T3 Code's command line with T3 Code's own installer into your `~/.local/bin`, as you and never as root, and runs it as your background service (`t3 service install`) on port 3773. It turns on lingering for you, so T3 Code starts at boot and keeps running after you log out, and installs `libatomic1`, which T3 Code needs and minimal server images leave out. It waits until T3 Code answers, then starts the runner, and Nexul pairs T3 Code through it on its own: there's no pairing link to paste.
+
+If T3 Code can't be installed or started, the command stops before the runner and says why, and the same command works again. To leave T3 Code alone, add `--no-t3`:
+
+```sh
+curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- <token> --no-t3
+```
+
+For T3 Code's service on another port, add `--t3-port <port>`.
 
 ## Keep it paired
 
