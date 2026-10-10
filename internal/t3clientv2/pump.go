@@ -30,6 +30,9 @@ const (
 // resubscribeBackoff is the wait before each resubscribe in a row; its length is how many are tried.
 var resubscribeBackoff = []time.Duration{time.Second, 5 * time.Second, 25 * time.Second}
 
+// resubscribeGrace is how long a stream stays up before its end no longer counts toward the resubscribes in a row.
+const resubscribeGrace = time.Minute
+
 // pump feeds a turn's stream through its watch until the watch ends the turn, resubscribing when the stream ends.
 type pump struct {
 	w    *watch
@@ -39,7 +42,7 @@ type pump struct {
 	decline   func(ctx context.Context, requestID string) error
 	log       *slog.Logger
 	live      *runningTurn
-	// failures counts resubscribes since the stream last delivered anything.
+	// failures counts resubscribes since the stream last delivered anything or stayed up past resubscribeGrace.
 	failures int
 	// note is the standing note last shown, due when it is shown again.
 	note string
@@ -58,10 +61,14 @@ func (p *pump) run(ctx context.Context, src source, out chan<- harness.Update) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer p.unfollow(cancel)
 	for src != nil {
+		opened := time.Now()
 		done, err := p.drain(ctx, src, out)
 		src.Close()
 		if done {
 			return
+		}
+		if time.Since(opened) >= resubscribeGrace {
+			p.failures = 0
 		}
 		p.log.Warn("t3clientv2: thread stream ended mid-turn", "after_sequence", p.w.cursor, "error", err)
 		src = p.resubscribe(ctx, err, out)

@@ -64,6 +64,11 @@ type Server struct {
 	ShellThreads []any
 	// ShellSubscribed gets the requestId of each subscribeShell stream, for the changes a test writes after its snapshot.
 	ShellSubscribed chan string
+	// Pings gets each Ping frame received, answered with a Pong unless IgnorePings is set.
+	Pings       chan struct{}
+	IgnorePings bool
+	// IdleDrop cuts a socket that sends nothing for this long without a close frame, as a tunnel does; set it before connect.
+	IdleDrop time.Duration
 
 	connMu sync.Mutex
 	conn   *websocket.Conn
@@ -102,6 +107,7 @@ func New(t testing.TB) *Server {
 		Launched:    make(chan map[string]any, 4),
 
 		ShellSubscribed: make(chan string, 4),
+		Pings:           make(chan struct{}, 64),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/oauth/token", f.handleExchange)
@@ -189,8 +195,19 @@ func (f *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	f.connMu.Unlock()
 	for {
 		var env clientEnv
-		if err := wsjson.Read(r.Context(), conn, &env); err != nil {
+		if err := f.read(r.Context(), conn, &env); err != nil {
+			_ = conn.CloseNow()
 			return
+		}
+		if env.Tag == "Ping" {
+			select {
+			case f.Pings <- struct{}{}:
+			default:
+			}
+			if !f.IgnorePings {
+				f.Write(map[string]any{"_tag": "Pong"})
+			}
+			continue
 		}
 		if env.Tag == "Ack" {
 			select {
@@ -204,6 +221,16 @@ func (f *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		}
 		f.handleRequest(env)
 	}
+}
+
+// read takes the next client frame, giving up after IdleDrop when it is set.
+func (f *Server) read(ctx context.Context, conn *websocket.Conn, env *clientEnv) error {
+	if f.IdleDrop <= 0 {
+		return wsjson.Read(ctx, conn, env)
+	}
+	ctx, cancel := context.WithTimeout(ctx, f.IdleDrop)
+	defer cancel()
+	return wsjson.Read(ctx, conn, env)
 }
 
 func (f *Server) handleRequest(env clientEnv) {

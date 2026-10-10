@@ -183,3 +183,39 @@ func TestStream_FailedExit_NamesItsCauses(t *testing.T) {
 		})
 	}
 }
+
+// A tunnel cuts a socket that stays silent too long without a close frame, so a session pings to stay up through a
+// long quiet turn, and a ping left unanswered ends it.
+func TestConn_Keepalive_PingsThroughAnIdleCutAndEndsWhenUnanswered(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		ignorePings bool
+		wantErr     string
+	}{
+		{"a tunnel that cuts idle sockets keeps a pinging session", false, ""},
+		{"a server that stops answering ends the session", true, "stopped answering pings"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f := t3rpctest.New(t)
+			f.IdleDrop = 500 * time.Millisecond
+			f.IgnorePings = tt.ignorePings
+			c, err := Connect(testCtx(t), f.Session(), Options{HTTPClient: f.Client(), RPCTimeout: 5 * time.Second, PingEvery: 50 * time.Millisecond})
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = c.Close() })
+
+			if tt.wantErr != "" {
+				t3rpctest.WaitFor(t, c.Done(), "the session to end")
+				assert.ErrorContains(t, c.Err(), tt.wantErr)
+				return
+			}
+			for range 12 {
+				t3rpctest.WaitFor(t, f.Pings, "a ping")
+			}
+			_, err = c.Call(testCtx(t), "server.getConfig", nil)
+			require.NoError(t, err, "still up after more than its idle cut")
+		})
+	}
+}
