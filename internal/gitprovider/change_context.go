@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/githubapp"
 )
 
 // ChangeDoc is the doc a changed ticket came from.
@@ -87,8 +88,8 @@ func GetChangeContext(ctx context.Context, g Gate, p GitProvider, r ChangeContex
 }
 
 func resolveChangePR(ctx context.Context, g Gate, p GitProvider, ref ChangeRef) (*PR, error) {
-	if ref.Owner == "" || ref.Repo == "" {
-		return nil, fmt.Errorf("%w: owner and repo are required", apperrors.ErrInvalid)
+	if err := githubapp.ValidateRepository(ref.Owner, ref.Repo); err != nil {
+		return nil, err
 	}
 	if err := requireRead(ctx, g, ref.Owner, ref.Repo); err != nil {
 		return nil, err

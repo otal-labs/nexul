@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/githubapp"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -52,8 +53,22 @@ func NewService(cfg Config) *Service {
 	return &Service{cfg: cfg}
 }
 
-// Scan is Scan over the wired gate and scanner.
-func (s *Service) Scan(ctx context.Context, owner, name, ref string) (*ScanResult, error) {
+// Scan confines a wizard scan to the named workspace, or the caller's writable workspaces when omitted.
+func (s *Service) Scan(ctx context.Context, workspaceID, owner, name, ref string) (*ScanResult, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
+	workspaces, err := s.wizardWorkspaces(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	visible, err := s.visibleAccounts(ctx, workspaces)
+	if err != nil {
+		return nil, err
+	}
+	if visible != nil && !visible[strings.ToLower(owner)] {
+		return nil, fmt.Errorf("%w: repository is not assigned to this workspace", apperrors.ErrNotFound)
+	}
 	return Scan(ctx, s.cfg.Gate, s.cfg.Scanner, owner, name, ref)
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/githubapp"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -24,8 +25,8 @@ func requireRead(ctx context.Context, g Gate, owner, name string) error {
 // ListPRs lists pull requests for a repository, validating caller input first
 // (ADR 0019: one use-case per capability, shared by the HTTP and MCP adapters).
 func ListPRs(ctx context.Context, g Gate, p GitProvider, owner, name string, opts PROpts) ([]*PR, error) {
-	if owner == "" || name == "" {
-		return nil, fmt.Errorf("%w: owner and repo are required", apperrors.ErrInvalid)
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
 	}
 	if err := requireRead(ctx, g, owner, name); err != nil {
 		return nil, err
@@ -35,8 +36,8 @@ func ListPRs(ctx context.Context, g Gate, p GitProvider, owner, name string, opt
 
 // GetPR fetches a single pull request, validating caller input first.
 func GetPR(ctx context.Context, g Gate, p GitProvider, owner, name string, number int) (*PR, error) {
-	if owner == "" || name == "" {
-		return nil, fmt.Errorf("%w: owner and repo are required", apperrors.ErrInvalid)
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
 	}
 	if number < 1 {
 		return nil, fmt.Errorf("%w: number must be a positive integer", apperrors.ErrInvalid)
@@ -49,8 +50,8 @@ func GetPR(ctx context.Context, g Gate, p GitProvider, owner, name string, numbe
 
 // GetRepo fetches a repository, validating caller input first.
 func GetRepo(ctx context.Context, g Gate, p GitProvider, owner, name string) (*Repo, error) {
-	if owner == "" || name == "" {
-		return nil, fmt.Errorf("%w: owner and repo are required", apperrors.ErrInvalid)
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
 	}
 	if err := requireRead(ctx, g, owner, name); err != nil {
 		return nil, err

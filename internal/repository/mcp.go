@@ -60,9 +60,10 @@ func repositoryListTool(svc *Service) mcptool.Tool {
 }
 
 type repositoryScanIn struct {
-	Owner string `json:"owner" jsonschema:"The repository's owner, for example acme."`
-	Repo  string `json:"repo" jsonschema:"The repository's name, for example api."`
-	Ref   string `json:"ref,omitempty" jsonschema:"The branch, tag, or commit to scan, for example main. Defaults to the repository's default branch."`
+	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"The workspace from repository_list. Omit for the union of workspaces where you can create projects."`
+	Owner       string `json:"owner" jsonschema:"The repository's owner, for example acme."`
+	Repo        string `json:"repo" jsonschema:"The repository's name, for example api."`
+	Ref         string `json:"ref,omitempty" jsonschema:"The branch, tag, or commit to scan, for example main. Defaults to the repository's default branch."`
 }
 
 func repositoryScanTool(svc *Service) mcptool.Tool {
@@ -73,7 +74,7 @@ func repositoryScanTool(svc *Service) mcptool.Tool {
 			"provider only; nothing is created.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in repositoryScanIn) (any, error) {
-			out, err := svc.Scan(ctx, in.Owner, in.Repo, in.Ref)
+			out, err := svc.Scan(ctx, in.WorkspaceID, in.Owner, in.Repo, in.Ref)
 			if errors.Is(err, apperrors.ErrNotFound) {
 				return nil, fmt.Errorf("%w; repository_list lists the repositories Nexul can read", err)
 			}

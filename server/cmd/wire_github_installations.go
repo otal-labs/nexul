@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"slices"
+	"strings"
 
 	"github.com/otal-labs/nexul/internal/connectors"
 	"github.com/otal-labs/nexul/internal/gitprovider/github"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/tenancy"
+	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 // githubOAuth is the GitHub connector's OAuth client from the wired registry, nil when it has none.
@@ -82,4 +85,40 @@ func (c installationClaimer) ClaimInstallation(ctx context.Context, state, code,
 		landing += ws.Slug
 	}
 	return landing, nil
+}
+
+// githubInstallationScope holds every linked repository operation to its project's installation assignment.
+type githubInstallationScope struct {
+	appConfigs connectors.AppConfigStore
+	projects   interface {
+		Get(ctx context.Context, id string) (*workspace.Project, error)
+	}
+	assignments interface {
+		InstallationAccountsIn(ctx context.Context, workspaceIDs []string) ([]string, error)
+	}
+}
+
+func (s *githubInstallationScope) Require(ctx context.Context, projectID, owner, connectorID string) error {
+	if connectorID != githubConnectorID {
+		return nil
+	}
+	cfg, err := s.appConfigs.GetAppConfig(ctx, githubConnectorID)
+	if err != nil {
+		return err
+	}
+	if cfg.PrivateKey == "" {
+		return nil
+	}
+	project, err := s.projects.Get(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	accounts, err := s.assignments.InstallationAccountsIn(ctx, []string{project.WorkspaceID})
+	if err != nil {
+		return err
+	}
+	if !slices.Contains(accounts, strings.ToLower(owner)) {
+		return fmt.Errorf("%w: repository is not assigned to this workspace", apperrs.ErrNotFound)
+	}
+	return nil
 }

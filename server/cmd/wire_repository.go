@@ -36,7 +36,6 @@ func newRepositoryScanner(git gitProviderRouter, appConfigs connectors.AppConfig
 const installationReposTTL = time.Minute
 
 // installationRepoCache holds one walk at a time so concurrent searches wait for it instead of starting their own.
-// ponytail: one instance-wide list filtered per workspace afterwards; a cache per installation if many grow large.
 type installationRepoCache struct {
 	mu    sync.Mutex
 	at    time.Time

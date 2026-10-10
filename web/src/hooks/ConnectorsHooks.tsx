@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { getInstallationsKey, getRepositoriesKey } from "@/hooks/RepositoryHooks";
 import { api, errorMessage } from "@/api/client";
 import type { AppConfigStatus, ConnectorStatus, CredentialStatus } from "@/models/Connectors";
 
@@ -70,6 +71,8 @@ export const useSetPrivateKey = () => {
     onSuccess: (status, payload) => {
       toast.success("Private key saved");
       queryClient.setQueryData([getConnectorAppConfigKey, payload.id], status);
+      void queryClient.invalidateQueries({ queryKey: [getInstallationsKey] });
+      void queryClient.invalidateQueries({ queryKey: [getRepositoriesKey] });
     },
   });
 };
@@ -81,6 +84,8 @@ export const useRemovePrivateKey = () => {
     onSuccess: (status, id) => {
       toast.success("Private key removed");
       queryClient.setQueryData([getConnectorAppConfigKey, id], status);
+      void queryClient.invalidateQueries({ queryKey: [getInstallationsKey] });
+      void queryClient.invalidateQueries({ queryKey: [getRepositoriesKey] });
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

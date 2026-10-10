@@ -13,11 +13,16 @@ for an installation access token per account (`POST /app/installations/{id}/acce
 installations and their repositories, scans, clones, registers webhooks and reads pull requests and commits. Installing
 the App on an account is enough for its repositories to be readable.
 
-- **The key.** The setup wizard collects a client ID, secret and slug, not a manifest, so no key arrives with it. The
-  owner pastes the `.pem` GitHub generates (App settings → General → Private keys) into Settings → Connectors → GitHub
-  App. It is checked with GitHub (`GET /app` must answer as this client ID), stored encrypted beside the client secret
-  in `connector_app_config.private_key`, and never sent back: the status says only `private_key_set`. Removing it is the
-  way back. No environment variable is involved.
+- **The key.** New setup can create an App through GitHub's manifest flow: GitHub supplies its client ID, secret,
+  slug and PEM directly to the server. The setup pass that started it alone can finish it. New setup passes carry a
+  random nonce, the state is signed and stored only as a hash beside that pass's hash, and it expires after fifteen
+  minutes. The callback consumes it before exchanging the code, including failed exchanges. Sign-in and connector
+  credentials are stored encrypted in one transaction, refused if someone has already signed in. A no-referrer
+  redirect moves GitHub's query parameters into a fragment before the browser loads setup. The browser removes them
+  from its address bar and sends the code back in a JSON body; it never sees credentials.
+  For an existing App, the owner pastes the PEM into Settings → Connectors → GitHub App. GitHub checks it through
+  `GET /app`, and the stored status says only `private_key_set`. Removing it is the way back. No environment variable
+  is involved.
 - **Without a key, nothing changes.** Every read keeps the connector's token, every workspace lists the connected
   account's view, and the repository list and the GitHub App card say that only the connected account's repositories
   are visible. An upgrade breaks nothing; it signals.
@@ -36,10 +41,14 @@ the App on an account is enough for its repositories to be readable.
   `workspace_update`'s `add_github_accounts` and `remove_github_accounts`.
 - **The upgrade.** Migration 0088 assigns each account to every workspace whose projects already attach a repository
   from it. An account no project uses stays unassigned.
-- **Permissions.** Listing a workspace's repositories takes `projects:write` in that workspace, and without one named,
+- **Permissions.** Listing and scanning a workspace's repositories take `projects:write` in that workspace, and without one named,
   the union of the workspaces where the caller holds it. Listing installations is an instance-level read,
   `connectors:read` anywhere. Assigning takes `connectors:write` and membership of the workspace; unassigning
-  `connectors:write`.
+  `connectors:write`. Repository attachment, pull requests, webhooks and clone credentials also require the installation
+  to be assigned to the linked project's workspace, even for background work. Owner and repository name are validated
+  as single path segments before a lookup or cache access, so URL normalization cannot select another installation.
+  App-mode clone authorization is mandatory: a denial fails the build before dispatch, including queued work. Only
+  pre-key mode explicitly permits the runner's own credential fallback.
 
 The trade-offs: an account renamed on GitHub loses its assignment until it is assigned again, the price of a key the
 migration could compute from what projects already store. One instance-wide repository walk is cached for a minute and
@@ -48,8 +57,7 @@ from a plain GitHub link, or with "Request user authorization during installatio
 a connector manager. The App's own webhook stays off, so an uninstalled App is noticed when GitHub stops listing the
 installation rather than by an `installation` event.
 
-Rejected: generating the App from a manifest to receive its key, which would rebuild the setup wizard's GitHub step for
-an instance already running; requiring a key, which would break every instance on upgrade; a workspace picked by the
+Rejected: requiring a key, which would break every instance on upgrade; a workspace picked by the
 installer on GitHub, which GitHub has no field for; trusting the installation id in the callback URL; and keying the
 assignment by installation id, which the migration cannot know without calling GitHub.
 

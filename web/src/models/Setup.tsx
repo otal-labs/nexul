@@ -101,3 +101,8 @@ export const ProxyDomainFormSchema = z.object({
 });
 
 export type ProxyDomainFormData = z.infer<typeof ProxyDomainFormSchema>;
+
+export interface GitHubManifestStart {
+  url: string;
+  manifest: Record<string, unknown>;
+}

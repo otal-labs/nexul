@@ -7,6 +7,12 @@ sidebar:
 
 You create one GitHub App per instance, then paste its details into the [setup wizard](/docs/guide/setup-wizard/). It has to be a GitHub App, not an OAuth App: only a GitHub App has per-repository permissions and installations, and an OAuth App cannot be converted later.
 
+## Create an App during setup
+
+On the GitHub step, choose **Create App on GitHub**. GitHub opens a registration with the callback addresses and required permissions filled in. Choose a unique name and create it. Back in Nexul, press **Finish setup**. Nexul receives and stores the private key with the App credentials, then opens sign-in. Use the same browser and setup pass throughout; the return expires after fifteen minutes and can be used once. If registration fails or expires, start it again.
+
+The manual form below remains available for an App you already registered. Its private key can be added in Settings after signing in.
+
 ## 1. Create the App
 
 On GitHub, go to **Settings → Developer settings → GitHub Apps → New GitHub App** and fill in:
@@ -73,3 +79,5 @@ Adding or raising a permission on the App does not reach existing installations.
 - Sign-in uses your own GitHub token, only to read your profile.
 - With the private key set, the server reads repositories, pull requests and webhooks with an installation token of the App, and hands a runner one for its build. Each lasts an hour. If the key ever leaks, delete it on the App's page on GitHub, generate a new one, and **Replace private key**.
 - Without the key, the connector token, stored when you click **Connect**, does all of that. If it ever leaks, click **Disconnect**, confirm, and then **Connect** for a fresh one.
+
+Once a private key is set, repository reads and builds stay within the installation assigned to the project's workspace. Removing that assignment prevents new builds from being dispatched, even if the runner has its own GitHub credential or the repository is public. Pending builds fail with the authorization reason.

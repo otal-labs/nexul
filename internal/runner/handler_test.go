@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -278,11 +279,14 @@ func TestHandler_idleConnected_PoolsByMachine(t *testing.T) {
 }
 
 type fakeGitTokens struct {
-	token string
-	err   error
+	token         string
+	err           error
+	allowFallback bool
 }
 
-func (f fakeGitTokens) RepoToken(context.Context, string) (string, error) { return f.token, f.err }
+func (f fakeGitTokens) RepoToken(context.Context, string) (CloneCredentials, error) {
+	return CloneCredentials{Token: f.token, AllowFallback: f.allowFallback}, f.err
+}
 
 // A build frame carries the connector token the server resolved; deploy frames never do.
 func TestHandler_buildFrame_AttachesCloneTokenToBuilds(t *testing.T) {
@@ -294,7 +298,9 @@ func TestHandler_buildFrame_AttachesCloneTokenToBuilds(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, deploy.GitToken)
 
-	h = newTestHandler(newFakeBus(), newFakeRunnerRepo(), func(c *HandlerConfig) { c.GitTokens = fakeGitTokens{err: errors.New("github not connected")} })
+	h = newTestHandler(newFakeBus(), newFakeRunnerRepo(), func(c *HandlerConfig) {
+		c.GitTokens = fakeGitTokens{err: errors.New("github not connected"), allowFallback: true}
+	})
 	build, err = h.buildFrame(context.Background(), DeployRequestedEvent{ID: "b2", Kind: RequestBuild, Repo: "org/app", Ref: "main"})
 	require.NoError(t, err, "a missing token degrades to the runner's own, never blocks dispatch")
 	assert.Empty(t, build.GitToken)
@@ -901,4 +907,54 @@ func TestHandler_machineName_UnknownMachineIsEmpty(t *testing.T) {
 	h := newTestHandler(newFakeBus(), newFakeRunnerRepo())
 	assert.Empty(t, h.machineName(context.Background(), "m-ghost"))
 	assert.Empty(t, h.machineName(context.Background(), ""))
+}
+
+func TestHandler_DispatchRefusesAppAuthorizationAndOnlyPermitsExplicitLegacyFallback(t *testing.T) {
+	connections := make(chan *websocket.Conn, 1)
+	release, exited := make(chan struct{}), make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer close(exited)
+		conn, err := websocket.Accept(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer func() { _ = conn.CloseNow() }()
+		connections <- conn
+		<-release
+	}))
+	t.Cleanup(srv.Close)
+	t.Cleanup(func() { close(release); <-exited })
+	client, _, err := websocket.Dial(t.Context(), wsURL(srv), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, client.CloseNow()) })
+	connection := &runnerConn{id: "r-1", ws: <-connections}
+	req := DeployRequestedEvent{ID: "b1", Kind: RequestBuild, Repo: "acme/api", Ref: "main"}
+	for _, deny := range []error{apperrs.ErrNotFound, apperrs.ErrForbidden, apperrs.ErrUnauthorized} {
+		bus := newFakeBus()
+		h := newTestHandler(bus, newFakeRunnerRepo(), func(c *HandlerConfig) { c.GitTokens = fakeGitTokens{err: deny} })
+		err := h.dispatchOne(t.Context(), connection, req)
+		assert.ErrorIs(t, err, deny)
+		assert.Nil(t, connection.jobSnapshot(), "a denied build never acquires or dispatches work to the runner")
+		connection.clearJob(req.ID)
+		h.conns[connection.id] = connection
+		require.NoError(t, h.handleRequest(t.Context(), eventbus.Event{Payload: mustJSON(t, req)}))
+		assert.Nil(t, connection.jobSnapshot())
+		assert.Empty(t, h.pending)
+		failed := bus.topicEvents(TopicDeployBuildCompleted)
+		require.Len(t, failed, 1)
+		assert.Equal(t, BuildStatusFailed, decodeEvent[BuildCompletedEvent](t, failed[0]).Status)
+		h.queue(req)
+		h.dispatchPending(t.Context(), connection)
+		assert.Nil(t, connection.jobSnapshot())
+		assert.Empty(t, h.pending)
+		assert.Len(t, bus.topicEvents(TopicDeployBuildCompleted), 2)
+	}
+	h := newTestHandler(newFakeBus(), newFakeRunnerRepo(), func(c *HandlerConfig) {
+		c.GitTokens = fakeGitTokens{err: errors.New("legacy connector not configured"), allowFallback: true}
+	})
+	require.NoError(t, h.dispatchOne(t.Context(), connection, req))
+	var frame Frame
+	require.NoError(t, wsjson.Read(t.Context(), client, &frame))
+	assert.Equal(t, FrameAssignBuild, frame.Type)
+	assert.Empty(t, frame.GitToken, "the pre-key frame explicitly permits the existing runner credential fallback")
 }

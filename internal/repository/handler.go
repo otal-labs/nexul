@@ -29,9 +29,10 @@ func (h *Handler) Routes() http.Handler {
 }
 
 type scanRequest struct {
-	Owner string `json:"owner"`
-	Name  string `json:"name"`
-	Ref   string `json:"ref"`
+	WorkspaceID string `json:"workspace_id"`
+	Owner       string `json:"owner"`
+	Name        string `json:"name"`
+	Ref         string `json:"ref"`
 }
 
 func (h *Handler) scan(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +41,7 @@ func (h *Handler) scan(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	result, err := h.svc.Scan(r.Context(), req.Owner, req.Name, req.Ref)
+	result, err := h.svc.Scan(r.Context(), req.WorkspaceID, req.Owner, req.Name, req.Ref)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

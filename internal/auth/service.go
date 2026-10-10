@@ -161,8 +161,10 @@ type Config struct {
 	// ConnectorApps seeds github's app-level OAuth registration during Bootstrap, before Settings is reachable (ADR 0017).
 	ConnectorApps ConnectorAppSeeder
 	// GitHubApp checks the pasted App credentials against GitHub before Bootstrap stores them; nil skips (tests).
-	GitHubApp GitHubAppVerifier
-	Now       func() time.Time
+	GitHubApp           GitHubAppVerifier
+	GitHubManifest      GitHubManifestConverter
+	GitHubManifestStore GitHubManifestStore
+	Now                 func() time.Time
 	// DevLogin enables GitHub-free session minting at /auth/dev-login for local dev; must be false in production.
 	DevLogin bool
 	// SetupCodes stores the setup code's hash; EnrollDir is where the installer reads the code itself.

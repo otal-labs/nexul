@@ -7,8 +7,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,6 +20,8 @@ import (
 	"github.com/otal-labs/nexul/internal/connectors"
 	"github.com/otal-labs/nexul/internal/gitprovider/github"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -243,14 +248,126 @@ func TestGitProviderRouter_ReadsAsTheAppOnlyOnceAKeyIsSet(t *testing.T) {
 	require.NoError(t, err)
 	clone, err := router.RepoToken(t.Context(), "acme/widgets")
 	require.NoError(t, err)
-	assert.Equal(t, "token-connected-account", clone, "with no key a runner clones as the connected account")
+	assert.Equal(t, "token-connected-account", clone.Token, "with no key a runner clones as the connected account")
+
+	legacyClone, err := router.RepoToken(t.Context(), "acme/unlinked")
+	require.NoError(t, err)
+	assert.Equal(t, "token-connected-account", legacyClone.Token, "pre-key instance stacks keep cloning repositories without a project link")
+	assert.True(t, legacyClone.AllowFallback)
 
 	require.NoError(t, appConfigs.SetPrivateKey(t.Context(), "github", pemKey))
 	_, err = router.GetRepo(t.Context(), "acme", "widgets")
 	require.NoError(t, err)
 	clone, err = router.RepoToken(t.Context(), "acme/widgets")
 	require.NoError(t, err)
-	assert.Equal(t, "ghs_installation", clone, "with a key a runner clones as the App's installation")
+	assert.Equal(t, "ghs_installation", clone.Token, "with a key a runner clones as the App's installation")
+	assert.False(t, clone.AllowFallback)
 
 	assert.Equal(t, []string{"Bearer token-connected-account", "Bearer ghs_installation"}, seen)
+}
+
+func TestGitProviderRouter_InstallationAssignmentConfinesEveryLinkedOperation(t *testing.T) {
+	db := mentionsTestDB(t)
+	store := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
+	_, err := db.Exec(`INSERT INTO workspaces (id, name, slug, created_at, updated_at) VALUES ('ws-globex', 'Globex', 'globex', 1, 1)`)
+	require.NoError(t, err)
+	require.NoError(t, store.GitHubInstallations.AssignInstallation(t.Context(), "globex", "ws-globex"))
+	require.NoError(t, store.Projects.AddRepo(t.Context(), "project-general", workspace.RepoRef{Owner: "globex", Name: "api", FullName: "globex/api", ConnectorID: "github"}))
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	pemKey := string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}))
+	var requests atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		if strings.HasSuffix(r.URL.Path, "/installation") {
+			_, _ = w.Write([]byte(`{"id":9}`))
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/access_tokens") {
+			_, _ = w.Write([]byte(`{"token":"ghs_globex","expires_at":"2099-01-01T00:00:00Z"}`))
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/hooks") {
+			_, _ = w.Write([]byte(`[]`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"full_name":"globex/api","number":1}`))
+	}))
+	t.Cleanup(srv.Close)
+	cfg := &fakeAppConfigStore{cfgs: map[string]connectors.AppConfig{"github": {ConnectorID: "github", ClientID: "Iv1.acme", PrivateKey: pemKey, BaseURL: srv.URL}}}
+	scope := &githubInstallationScope{appConfigs: cfg, projects: store.Projects, assignments: store.GitHubInstallations}
+	router := gitProviderRouter{workspace: store.Projects, appConfigs: cfg, apps: &github.AppCache{}, scope: scope}
+	for _, tt := range []struct {
+		name string
+		call func() error
+	}{
+		{"repository", func() error { _, err := router.GetRepo(t.Context(), "globex", "api"); return err }},
+		{"pull request", func() error { _, err := router.GetPR(t.Context(), "globex", "api", 1); return err }},
+		{"webhooks", func() error { _, err := router.ListWebhooks(t.Context(), "globex", "api"); return err }},
+		{"clone credential", func() error { _, err := router.RepoToken(t.Context(), "globex/api"); return err }},
+		{"attachment", func() error {
+			p := hookedProjects{Repo: store.Projects, scope: scope, hooks: newTestRepoWebhooks(&fakeHookHost{}, "https://nexul.example.com")}
+			return p.AddRepo(t.Context(), "project-general", workspace.RepoRef{Owner: "globex", Name: "other", FullName: "globex/other", ConnectorID: "github"})
+		}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			require.ErrorIs(t, tt.call(), apperrs.ErrNotFound)
+			assert.Zero(t, requests.Load(), "another workspace's installation is never contacted")
+		})
+	}
+	_, err = store.Projects.GetRepoByFullName(t.Context(), "globex", "other")
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "a refused attachment is not stored")
+	require.NoError(t, store.GitHubInstallations.AssignInstallation(t.Context(), "globex", "workspace-default"))
+	token, err := router.RepoToken(t.Context(), "globex/api")
+	require.NoError(t, err)
+	assert.Equal(t, "ghs_globex", token.Token, "assignment grants this project's runner the installation credential")
+	require.NoError(t, store.GitHubInstallations.UnassignInstallation(t.Context(), "globex", "workspace-default"))
+	denied, err := router.RepoToken(t.Context(), "globex/api")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	assert.False(t, denied.AllowFallback, "unassignment cannot permit the runner's own token")
+}
+
+func TestRepositoryScan_TraversalNeverMintsOrCachesAForeignInstallationToken(t *testing.T) {
+	store := storage.New(mentionsTestDB(t), []byte("0123456789abcdef0123456789abcdef"))
+	require.NoError(t, store.GitHubInstallations.AssignInstallation(t.Context(), "acme", "workspace-default"))
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	pemKey := string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}))
+	for _, name := range []string{"../../repos/globex/private-api", "../api", ".", "..", "api/other", `api\other`, "%2e%2e%2frepos%2fglobex%2fprivate-api", "api%2fother", "api%5cother", "api%252fother"} {
+		t.Run(name, func(t *testing.T) {
+			var paths, treeTokens []string
+			mux := http.NewServeMux()
+			mux.HandleFunc("GET /repos/{owner}/{repo}/installation", func(w http.ResponseWriter, r *http.Request) {
+				paths = append(paths, r.URL.Path)
+				id := 1
+				if r.PathValue("owner") == "globex" {
+					id = 2
+				}
+				_, _ = fmt.Fprintf(w, `{"id":%d}`, id)
+			})
+			mux.HandleFunc("POST /app/installations/{id}/access_tokens", func(w http.ResponseWriter, r *http.Request) {
+				paths = append(paths, r.URL.Path)
+				_, _ = fmt.Fprintf(w, `{"token":"ghs_%s","expires_at":"2099-01-01T00:00:00Z"}`, r.PathValue("id"))
+			})
+			mux.HandleFunc("GET /repos/{owner}/{repo}/git/trees/{ref}", func(w http.ResponseWriter, r *http.Request) {
+				paths = append(paths, r.URL.Path)
+				treeTokens = append(treeTokens, r.Header.Get("Authorization"))
+				_, _ = w.Write([]byte(`{"tree":[]}`))
+			})
+			srv := httptest.NewServer(mux)
+			t.Cleanup(srv.Close)
+			cfg := &fakeAppConfigStore{cfgs: map[string]connectors.AppConfig{"github": {ClientID: "Iv1.acme", PrivateKey: pemKey, BaseURL: srv.URL}}}
+			router := gitProviderRouter{appConfigs: cfg, apps: &github.AppCache{}}
+			scanner := newRepositoryScanner(router, cfg)
+			svc := repository.NewService(repository.Config{Scanner: scanner, Installations: scanner, Store: store.GitHubInstallations})
+			got, err := svc.Scan(t.Context(), "workspace-default", "acme", name, "main")
+			assert.ErrorIs(t, err, apperrs.ErrInvalid)
+			assert.Nil(t, got)
+			assert.Empty(t, paths, "validation precedes every lookup and token mint")
+			paths, treeTokens = nil, nil
+			_, err = svc.Scan(t.Context(), "workspace-default", "acme", "api.v2-web_tools", "main")
+			require.NoError(t, err)
+			assert.Equal(t, []string{"Bearer ghs_1"}, treeTokens, "a rejected name cannot poison acme's cached installation")
+		})
+	}
 }

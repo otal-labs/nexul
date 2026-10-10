@@ -449,6 +449,12 @@ type GithubInstallationWorkspace struct {
 	AssignedAt   int64
 }
 
+type GithubManifestRequest struct {
+	StateHash     string
+	InitiatorHash string
+	ExpiresAt     int64
+}
+
 type InstanceSetting struct {
 	ID                       int64
 	InstanceUrl              string

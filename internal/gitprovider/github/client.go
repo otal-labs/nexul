@@ -15,6 +15,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/githubapp"
 )
 
 // Client is the go-github-backed GitProvider implementation.
@@ -54,6 +55,9 @@ func New(token string, opts ...Option) *Client {
 
 // GetRepo implements gitprovider.GitProvider.
 func (c *Client) GetRepo(ctx context.Context, owner, name string) (*gitprovider.Repo, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
 	r, _, err := c.gh.Repositories.Get(ctx, owner, name)
 	if err != nil {
 		return nil, fmt.Errorf("get repo %s/%s: %w", owner, name, mapErr(err))
@@ -63,6 +67,9 @@ func (c *Client) GetRepo(ctx context.Context, owner, name string) (*gitprovider.
 
 // ListPRs implements gitprovider.GitProvider.
 func (c *Client) ListPRs(ctx context.Context, owner, name string, opts gitprovider.PROpts) ([]*gitprovider.PR, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
 	if opts.State == "" {
 		opts.State = "open"
 	}
@@ -83,6 +90,9 @@ func (c *Client) ListPRs(ctx context.Context, owner, name string, opts gitprovid
 
 // GetPR implements gitprovider.GitProvider.
 func (c *Client) GetPR(ctx context.Context, owner, name string, number int) (*gitprovider.PR, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
 	p, _, err := c.gh.PullRequests.Get(ctx, owner, name, number)
 	if err != nil {
 		return nil, fmt.Errorf("get PR %s/%s#%d: %w", owner, name, number, mapErr(err))
@@ -92,6 +102,9 @@ func (c *Client) GetPR(ctx context.Context, owner, name string, number int) (*gi
 
 // PRsForCommit implements gitprovider.GitProvider.
 func (c *Client) PRsForCommit(ctx context.Context, owner, name, sha string) ([]*gitprovider.PR, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
 	prs, _, err := c.gh.PullRequests.ListPullRequestsWithCommit(ctx, owner, name, sha, nil)
 	if err != nil {
 		return nil, fmt.Errorf("list PRs for commit %s in %s/%s: %w", sha, owner, name, mapErr(err))
@@ -108,6 +121,9 @@ var webhookEvents = []string{"pull_request", "pull_request_review", "pull_reques
 
 // CreateWebhook implements gitprovider.GitProvider, returning the hook id.
 func (c *Client) CreateWebhook(ctx context.Context, owner, name string, cfg gitprovider.WebhookConfig) (string, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return "", err
+	}
 	hook, _, err := c.gh.Repositories.CreateHook(ctx, owner, name, &githubapi.Hook{
 		Events: webhookEvents,
 		Config: &githubapi.HookConfig{
@@ -124,6 +140,9 @@ func (c *Client) CreateWebhook(ctx context.Context, owner, name string, cfg gitp
 
 // ListWebhooks implements gitprovider.GitProvider.
 func (c *Client) ListWebhooks(ctx context.Context, owner, name string) ([]gitprovider.Webhook, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
 	var out []gitprovider.Webhook
 	opts := &githubapi.ListOptions{PerPage: 100}
 	for {
@@ -143,6 +162,9 @@ func (c *Client) ListWebhooks(ctx context.Context, owner, name string) ([]gitpro
 
 // DeleteWebhook implements gitprovider.GitProvider.
 func (c *Client) DeleteWebhook(ctx context.Context, owner, name, hookID string) error {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return err
+	}
 	id, err := strconv.ParseInt(hookID, 10, 64)
 	if err != nil {
 		return fmt.Errorf("delete webhook %s/%s: %w: hook id %q is not an integer", owner, name, apperrors.ErrInvalid, hookID)
@@ -261,6 +283,9 @@ func (c *Client) listInstallationRepos(ctx context.Context, installID int64) ([]
 // GetTree implements gitprovider.GitProvider: the recursive tree at ref, resolving ref to the repo's default
 // branch via GetRepo when empty.
 func (c *Client) GetTree(ctx context.Context, owner, name, ref string) ([]gitprovider.TreeEntry, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
 	ref, err := c.resolveRef(ctx, owner, name, ref)
 	if err != nil {
 		return nil, err
@@ -279,6 +304,9 @@ func (c *Client) GetTree(ctx context.Context, owner, name, ref string) ([]gitpro
 // GetFile implements gitprovider.GitProvider: a file's decoded content at ref, resolving ref to the repo's
 // default branch via GetRepo when empty.
 func (c *Client) GetFile(ctx context.Context, owner, name, ref, filePath string) ([]byte, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return nil, err
+	}
 	ref, err := c.resolveRef(ctx, owner, name, ref)
 	if err != nil {
 		return nil, err

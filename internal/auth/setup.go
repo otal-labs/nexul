@@ -153,11 +153,16 @@ func (s *Service) setupCodeValid(ctx context.Context, code string, now time.Time
 }
 
 type setupPassClaims struct {
-	Exp int64 `json:"exp"`
+	Exp   int64  `json:"exp"`
+	Nonce string `json:"nonce,omitempty"`
 }
 
 func (s *Service) signSetupPass(exp time.Time) (SetupPass, error) {
-	payload, err := json.Marshal(setupPassClaims{Exp: exp.Unix()})
+	nonce, _, err := hostcred.MintCredential("sp_")
+	if err != nil {
+		return SetupPass{}, err
+	}
+	payload, err := json.Marshal(setupPassClaims{Exp: exp.Unix(), Nonce: nonce})
 	if err != nil {
 		return SetupPass{}, fmt.Errorf("sign setup pass: %w", err)
 	}

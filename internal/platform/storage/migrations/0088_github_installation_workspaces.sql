@@ -21,3 +21,9 @@ SELECT DISTINCT lower(r.owner), p.workspace_id, CAST(strftime('%s', 'now') AS IN
 FROM project_repos r
 JOIN projects p ON p.id = r.project_id
 WHERE r.connector_id = 'github';
+
+CREATE TABLE github_manifest_requests (
+    state_hash TEXT PRIMARY KEY,
+    initiator_hash TEXT NOT NULL UNIQUE,
+    expires_at INTEGER NOT NULL
+);

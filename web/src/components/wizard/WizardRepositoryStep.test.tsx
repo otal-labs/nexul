@@ -97,6 +97,7 @@ describe("WizardRepositoryStep", () => {
   });
 
   it("advances once a scan finds a candidate", async () => {
+    useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
     const onDone = renderStep();
     const user = userEvent.setup();
     mocks.post.mockResolvedValue({
@@ -109,7 +110,7 @@ describe("WizardRepositoryStep", () => {
 
     await search(user);
     await user.click(screen.getByText("onik97/worker"));
-    expect(mocks.post).toHaveBeenCalledWith("/api/repositories/scan", { owner: "onik97", name: "worker" });
+    expect(mocks.post).toHaveBeenCalledWith("/api/repositories/scan", { owner: "onik97", name: "worker", workspace_id: "ws-1" });
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(useProjectWizardStore.getState().candidate?.name).toBe("api");
   });

@@ -486,3 +486,40 @@ func TestGetFile(t *testing.T) {
 		assertErrorIs(t, err, apperrs.ErrNotFound)
 	})
 }
+
+func TestClient_RepositorySegmentsAreCheckedBeforeEveryNamedRequest(t *testing.T) {
+	calls := 0
+	client := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		_, _ = fmt.Fprint(w, repoJSON("lena_acme", ".github"))
+	}))
+	owner, name := "acme", "../../repos/globex/private-api"
+	for _, tt := range []struct {
+		name string
+		call func() error
+	}{
+		{"repository", func() error { _, err := client.GetRepo(t.Context(), owner, name); return err }},
+		{"pull requests", func() error { _, err := client.ListPRs(t.Context(), owner, name, gitprovider.PROpts{}); return err }},
+		{"pull request", func() error { _, err := client.GetPR(t.Context(), owner, name, 1); return err }},
+		{"commit pull requests", func() error { _, err := client.PRsForCommit(t.Context(), owner, name, "main"); return err }},
+		{"tree", func() error { _, err := client.GetTree(t.Context(), owner, name, "main"); return err }},
+		{"file", func() error { _, err := client.GetFile(t.Context(), owner, name, "main", "Dockerfile"); return err }},
+		{"create webhook", func() error {
+			_, err := client.CreateWebhook(t.Context(), owner, name, gitprovider.WebhookConfig{})
+			return err
+		}},
+		{"list webhooks", func() error { _, err := client.ListWebhooks(t.Context(), owner, name); return err }},
+		{"delete webhook", func() error { return client.DeleteWebhook(t.Context(), owner, name, "1") }},
+	} {
+		t.Run(tt.name, func(t *testing.T) { require.ErrorIs(t, tt.call(), apperrs.ErrInvalid); assert.Zero(t, calls) })
+	}
+	for _, owner := range []string{"..", "acme/other", `acme\other`, "acme%2fother"} {
+		_, err := client.GetRepo(t.Context(), owner, "api")
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+		assert.Zero(t, calls)
+	}
+	got, err := client.GetRepo(t.Context(), "lena_acme", ".github")
+	require.NoError(t, err)
+	assert.Equal(t, "lena_acme/.github", got.FullName)
+	assert.Equal(t, 1, calls)
+}

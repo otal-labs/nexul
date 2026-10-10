@@ -33,6 +33,7 @@ type callbackRequest struct {
 func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /auth/github", h.startOAuth(ProviderGitHub))
+	mux.HandleFunc("GET /auth/github/manifest/callback", h.returnGitHubManifest)
 	mux.HandleFunc("GET /auth/callback", h.callbackGET(ProviderGitHub))
 	mux.HandleFunc("POST /auth/callback", h.callbackPOST)
 	mux.HandleFunc("GET /auth/google", h.startOAuth(ProviderGoogle))
@@ -99,6 +100,8 @@ func (h *Handler) unlockSetup(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) SetupRoutes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("PUT /api/setup/instance-url", h.setSetupInstanceURL)
+	mux.HandleFunc("POST /api/setup/github-app/start", h.startGitHubManifest)
+	mux.HandleFunc("POST /api/setup/github-app/callback", h.completeGitHubManifest)
 	mux.HandleFunc("GET /api/setup/public-address", h.publicAddress)
 	return mux
 }

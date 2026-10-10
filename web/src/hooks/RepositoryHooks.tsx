@@ -6,8 +6,8 @@ import { REPOSITORY_SEARCH_MIN_LENGTH, type Installation, type Repo, type ScanRe
 import { pause } from "@/lib/pause";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
-const getRepositoriesKey = "repositories";
-const getInstallationsKey = "repository-installations";
+export const getRepositoriesKey = "repositories";
+export const getInstallationsKey = "repository-installations";
 const getInstallURLKey = "repository-install-url";
 
 const searchDebounceMs = 250;
@@ -84,8 +84,10 @@ export const useUnassignInstallation = () => {
 
 // No onSuccess/onError toasting: the repository step renders the scan's loading/error/empty states inline
 // rather than as a toast, since "not installed" and "nothing found" are real UI states, not failures to dismiss.
-export const useScanRepository = () =>
-  useMutation({
+export const useScanRepository = () => {
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  return useMutation({
     mutationFn: async (input: { owner: string; name: string; ref?: string }) =>
-      (await api.post<ScanResult>("/api/repositories/scan", input)).data,
+      (await api.post<ScanResult>("/api/repositories/scan", { ...input, workspace_id: workspaceId })).data,
   });
+};

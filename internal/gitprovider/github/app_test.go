@@ -50,6 +50,10 @@ func TestApp_InstallationToken_ExchangesAJWTAndReusesTheTokenUntilNearExpiry(t *
 		claims := appJWTClaims(t, r, &key.PublicKey)
 		assert.Equal(t, "Iv1.acme", claims["iss"], "the client ID is the issuer")
 		n := mints.Add(1)
+		if n == 3 {
+			_, _ = fmt.Fprint(w, `{"token":"","expires_at":"2099-01-01T00:00:00Z"}`)
+			return
+		}
 		_, _ = fmt.Fprintf(w, `{"token":"ghs_%d","expires_at":%q}`, n, now.Add(time.Hour).Format(time.RFC3339)) // test server: write errors are irrelevant
 	}))
 	t.Cleanup(srv.Close)
@@ -71,6 +75,9 @@ func TestApp_InstallationToken_ExchangesAJWTAndReusesTheTokenUntilNearExpiry(t *
 	require.NoError(t, err)
 	assert.Equal(t, "ghs_2", tok, "a token within minutes of expiring is replaced")
 	assert.Equal(t, int32(2), mints.Load())
+	now = now.Add(time.Hour)
+	_, err = app.InstallationToken(t.Context(), 42)
+	require.Error(t, err, "an empty App credential must never create an anonymous client")
 }
 
 func TestApp_ListInstallationRepos_ReadsEveryInstallationWithItsOwnToken(t *testing.T) {

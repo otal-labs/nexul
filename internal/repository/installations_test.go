@@ -153,3 +153,34 @@ func TestClaimInstallation_AssignsOnlyAnInstallationTheInstallerSees(t *testing.
 		})
 	}
 }
+
+func TestScan_RejectsAnInstallationOutsideTheCallersWorkspaces(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		asApp bool
+		owner string
+		want  error
+	}{
+		{"another workspace's installation is hidden", true, "globex", apperrors.ErrNotFound},
+		{"an unassigned installation is hidden", true, "initech", apperrors.ErrNotFound},
+		{"an assigned installation is readable ignoring account case", true, "ACME", nil},
+		{"without a key the connector's existing access survives", false, "globex", nil},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			scanner := &fakeScanner{asApp: tt.asApp, resolvedRef: "main"}
+			svc := NewService(Config{
+				Gate:    fakeGate{"": {"ws-a", "ws-b"}, permissions.ProjectsWrite: {"ws-a", "ws-b"}},
+				Scanner: scanner, Installations: scanner,
+				Store: fakeStore{"acme": {"ws-a"}, "globex": {"ws-b"}},
+			})
+			got, err := svc.Scan(t.Context(), "ws-a", tt.owner, "api", "")
+			if tt.want != nil {
+				require.ErrorIs(t, err, tt.want)
+				assert.Nil(t, got)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, "main", got.DefaultBranch)
+		})
+	}
+}

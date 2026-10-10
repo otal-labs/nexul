@@ -69,6 +69,9 @@ func (a *App) InstallationToken(ctx context.Context, id int64) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("mint a token for installation %d: %w", id, mapErr(err))
 	}
+	if tok.GetToken() == "" {
+		return "", fmt.Errorf("%w: GitHub returned no installation token", apperrors.ErrUnauthorized)
+	}
 	minted := appToken{value: tok.GetToken(), expires: tok.GetExpiresAt().Time}
 	a.mu.Lock()
 	a.tokens[id] = minted
@@ -104,6 +107,9 @@ func (a *App) ForRepo(ctx context.Context, owner, name string) (*Client, error) 
 
 // installationFor finds the installation covering owner/name; an App has one per account, so it is kept per owner.
 func (a *App) installationFor(ctx context.Context, owner, name string) (int64, error) {
+	if err := githubapp.ValidateRepository(owner, name); err != nil {
+		return 0, err
+	}
 	key := strings.ToLower(owner)
 	a.mu.Lock()
 	id, ok := a.owners[key]
