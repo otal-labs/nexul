@@ -150,6 +150,10 @@ func (h *switchableHarness) ResolveTarget(context.Context, string, string, Harne
 	return HarnessChoice{ComputerID: "c-1", Provider: "codex"}, nil
 }
 
+func (h *switchableHarness) ResolvePersonTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error) {
+	return h.ResolveTarget(ctx, userID, projectID, choice)
+}
+
 // idleTurns accepts a turn and never reports on it, so its trail stays starting and holds its slot until a test ends it.
 type idleTurns struct{}
 

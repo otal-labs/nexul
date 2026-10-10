@@ -39,7 +39,8 @@ func (r *Runner) Run(ctx context.Context, in RunInput) (*Trail, error) {
 	if err != nil {
 		return nil, err
 	}
-	return r.launch(ctx, play, trail, tgt, HarnessChoice{ComputerID: in.ComputerID, Provider: in.Provider, Model: in.Model, ModelOptions: options}, launchPress)
+	pick := HarnessChoice{ComputerID: in.ComputerID, HarnessProjectID: in.HarnessProjectID, Provider: in.Provider, Model: in.Model, ModelOptions: options}
+	return r.launch(ctx, play, trail, tgt, pick, launchPerson)
 }
 
 // launchMode says which refusals launch keeps as a failed trail on the target.
@@ -52,6 +53,8 @@ const (
 	launchRecorded
 	// launchQueued keeps every refusal but an offline computer and a busy target, which wait in the queue instead.
 	launchQueued
+	// launchPerson is a press through the run dialog or play_run: as launchPress, but it asks where rather than fall back.
+	launchPerson
 )
 
 // launch resolves the harness and starts the turn, keeping refusals as failed trails as mode says.
@@ -122,14 +125,21 @@ func (m launchMode) keeps(err error) bool {
 }
 
 // resolveHarness asks the starter's computer to take the turn; its refusal is kept as a failed trail, so the person sees
-// the fix, unless a queued run waits on an offline computer instead.
+// the fix, unless a queued run waits on an offline computer instead or the person is only asked where to run.
 func (r *Runner) resolveHarness(ctx context.Context, trail *Trail, targetTitle string, pick HarnessChoice, mode launchMode) (HarnessChoice, error) {
-	choice, err := r.harness.ResolveTarget(ctx, trail.StarterID, trail.ProjectID, pick)
+	resolve := r.harness.ResolveTarget
+	if mode == launchPerson {
+		resolve = r.harness.ResolvePersonTarget
+	}
+	choice, err := resolve(ctx, trail.StarterID, trail.ProjectID, pick)
 	if err == nil {
 		return choice, nil
 	}
 	var refusal *HarnessRefusal
-	if errors.As(err, &refusal) {
+	if errors.As(err, &refusal) && refusal.Reason == RefusalNeedsLocation {
+		return HarnessChoice{}, err
+	}
+	if refusal != nil {
 		trail.FailureReason, trail.ComputerID, trail.Provider = refusal.Reason, refusal.ComputerID, refusal.Provider
 	}
 	if mode != launchQueued || trail.FailureReason != RefusalOffline {

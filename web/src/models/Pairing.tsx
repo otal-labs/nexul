@@ -272,6 +272,12 @@ export const SETUP_REQUIRED_REASON = "setup_required";
 export const computerSetupPath = (computerId: string) =>
   `/settings/pairing?setup=${encodeURIComponent(computerId)}`;
 
+// Mirrors pairing.ReasonNeedsLocation: a person's run in a project they never linked asks where to run (ADR 0143).
+export const NEEDS_LOCATION_REASON = "needs_location";
+
+export const isNeedsLocationRefusal = (error: unknown) =>
+  ((error as AxiosError<ApiErrorBody> | undefined)?.response?.data?.details as RefusalDetails | undefined)?.reason === NEEDS_LOCATION_REASON;
+
 // The computer a setup refusal names, read from the error envelope's details; undefined for any other error.
 export const setupRefusalComputerId = (error: unknown): string | undefined => {
   const details = (error as AxiosError<ApiErrorBody> | undefined)?.response?.data?.details as RefusalDetails | undefined;
@@ -454,7 +460,7 @@ export const EXPIRY_WARNING_DAYS = 5;
 // can't, joined against presence. provider/model travel here so the run dialog's pill can preselect them
 // without a second call to the same resolve endpoint.
 export type HarnessReadiness =
-  | { state: "ready"; computerId: string; provider: string; model: string; modelOptions: OptionSetting[] }
+  | { state: "ready"; computerId: string; harnessProjectId: string; provider: string; model: string; modelOptions: OptionSetting[] }
   | { state: "unpaired" | "expired" | "no_harness_project" | "no_default_computer" | "offline"; message: string };
 
 // Copy for every non-ready state; shared by the hook's join and the settings readiness line.

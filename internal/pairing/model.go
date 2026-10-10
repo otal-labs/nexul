@@ -335,6 +335,8 @@ const (
 	ReasonSetupRequired NotConfiguredReason = "setup_required"
 	// ReasonOffline: the resolved computer's harness did not answer, so the setup gate could not check its providers.
 	ReasonOffline NotConfiguredReason = "offline"
+	// ReasonNeedsLocation: a person's run in a project they never linked asks where to run instead of using their defaults (ADR 0143).
+	ReasonNeedsLocation NotConfiguredReason = "needs_location"
 )
 
 // NotConfiguredError unwraps to ErrInvalid; Reason carries the specific fix.
@@ -357,6 +359,10 @@ func (e *NotConfiguredError) Error() string {
 	}
 	if e.Reason == ReasonOffline {
 		return fmt.Sprintf("@Agent can't reach %s — is T3 Code running there?", e.Computer)
+	}
+	if e.Reason == ReasonNeedsLocation {
+		return "Pick where plays run in this project: a computer and its T3 project. It's saved as your link for this project, " +
+			"which Settings → T3 Code Setup → Projects can change."
 	}
 	return fmt.Sprintf("pairing not configured: %s", e.Reason)
 }

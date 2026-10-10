@@ -538,6 +538,59 @@ func (s *Service) ResolveTargetOverride(ctx context.Context, userID, projectID, 
 	return s.requireSetup(ctx, target)
 }
 
+// ResolvePersonRun resolves a run a person started, behind the setup gate (ADR 0145): a picked T3 project is saved with its
+// computer as their project link first, and with no link the run asks where instead of using their pairing defaults.
+func (s *Service) ResolvePersonRun(ctx context.Context, userID, projectID, computerID, harnessProjectID, provider, model string, options []harness.OptionSetting) (*ResolvedTarget, error) {
+	target, err := s.resolvePersonRun(ctx, userID, projectID, computerID, harnessProjectID, modelPick{provider: provider, model: model, options: options})
+	if err != nil {
+		return nil, err
+	}
+	return s.requireSetup(ctx, target)
+}
+
+// resolvePersonRun is ResolvePersonRun with no setup gate; a computer other than the linked one needs its T3 project picked too.
+func (s *Service) resolvePersonRun(ctx context.Context, userID, projectID, computerID, harnessProjectID string, pick modelPick) (*ResolvedTarget, error) {
+	projectID, computerID, harnessProjectID = strings.TrimSpace(projectID), strings.TrimSpace(computerID), strings.TrimSpace(harnessProjectID)
+	if harnessProjectID != "" {
+		if err := s.saveRunLocation(ctx, userID, projectID, computerID, harnessProjectID, pick); err != nil {
+			return nil, err
+		}
+		return s.resolveTargetOverride(ctx, userID, projectID, computerID, pick)
+	}
+	link, err := s.repo.GetProjectLink(ctx, userID, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("get project link %s: %w", projectID, err)
+	}
+	if link.ComputerID == "" || (computerID != "" && computerID != link.ComputerID) {
+		return nil, &NotConfiguredError{Reason: ReasonNeedsLocation}
+	}
+	return s.resolveTargetOverride(ctx, userID, projectID, computerID, pick)
+}
+
+// saveRunLocation saves a run's computer and T3 project as the person's link with the run's model, filled from their
+// defaults on their default computer; the link's start-in stays.
+func (s *Service) saveRunLocation(ctx context.Context, userID, projectID, computerID, harnessProjectID string, pick modelPick) error {
+	if computerID == "" {
+		return fmt.Errorf("%w: a T3 project needs the computer it is on", apperrs.ErrInvalid)
+	}
+	existing, err := s.repo.GetProjectLink(ctx, userID, projectID)
+	if err != nil {
+		return fmt.Errorf("get project link %s: %w", projectID, err)
+	}
+	defaults, err := s.repo.GetDefaults(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("get defaults: %w", err)
+	}
+	if defaults.DefaultComputerID == computerID {
+		pick = fillPick(pick, modelPick{defaults.Provider, defaults.Model, defaults.ModelOptions})
+	}
+	_, err = s.SetProjectLink(ctx, userID, projectID, ProjectLink{
+		ComputerID: computerID, HarnessProjectID: harnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options,
+		StartIn: existing.StartIn,
+	})
+	return err
+}
+
 // PreviewTarget is ResolveTarget without the gate or bearer token, so readiness never greys a play that refuses on press.
 func (s *Service) PreviewTarget(ctx context.Context, userID, projectID string) (*ResolvedTarget, error) {
 	target, err := s.resolveTarget(ctx, userID, projectID)

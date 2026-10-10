@@ -399,6 +399,91 @@ func TestService_ResolveTarget_FallsBackToUserDefaults(t *testing.T) {
 	assert.Equal(t, "default-proj", target.HarnessProjectID)
 }
 
+// TestService_ResolvePersonRun_AsksWhereOnceThenUsesTheLink guards ADR 0143: a person's first run in a project they never
+// linked asks where instead of running on their defaults, their answer becomes their link, and the next run uses it.
+func TestService_ResolvePersonRun_AsksWhereOnceThenUsesTheLink(t *testing.T) {
+	t.Parallel()
+	svc := newTestService(newFakeRepo(), &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
+	ctx := t.Context()
+	home, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	require.NoError(t, err)
+	_, err = svc.SetDefaults(ctx, "u1", Defaults{DefaultComputerID: home.ID, FallbackProjectID: "default-proj", Provider: "claude", Model: "sonnet"})
+	require.NoError(t, err)
+
+	_, err = svc.resolvePersonRun(ctx, "u1", "proj-1", "", "", modelPick{})
+	var nc *NotConfiguredError
+	require.ErrorAs(t, err, &nc, "the defaults would resolve, but a person's run never falls back to them")
+	assert.Equal(t, ReasonNeedsLocation, nc.Reason)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+
+	target, err := svc.resolvePersonRun(ctx, "u1", "proj-1", home.ID, "t3-app", modelPick{})
+	require.NoError(t, err)
+	assert.Equal(t, "t3-app", target.HarnessProjectID)
+	link, err := svc.GetProjectLink(ctx, "u1", "proj-1")
+	require.NoError(t, err)
+	assert.Equal(t, home.ID, link.ComputerID, "the answer is saved as their link")
+	assert.Equal(t, "t3-app", link.HarnessProjectID)
+	assert.Equal(t, "claude/sonnet", link.Provider+"/"+link.Model, "on their default computer the link takes their default model")
+
+	target, err = svc.resolvePersonRun(ctx, "u1", "proj-1", "", "", modelPick{})
+	require.NoError(t, err, "a linked project runs without asking")
+	assert.Equal(t, home.ID, target.Computer.ID)
+	assert.Equal(t, "t3-app", target.HarnessProjectID)
+}
+
+func TestService_ResolvePersonRun_Where(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		otherPicked  bool
+		harnessProj  string
+		wantReason   NotConfiguredReason
+		wantInvalid  bool
+		wantStartIn  StartIn
+		wantHarnProj string
+	}{
+		{name: "another computer without its T3 project asks again", otherPicked: true, wantReason: ReasonNeedsLocation},
+		{name: "a T3 project without its computer is refused", harnessProj: "t3-other", wantInvalid: true},
+		{name: "changing where keeps the link's start-in", otherPicked: true, harnessProj: "t3-other", wantStartIn: StartInWorktree, wantHarnProj: "t3-other"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc := newTestService(newFakeRepo(), &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
+			ctx := t.Context()
+			home, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+			require.NoError(t, err)
+			other, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Other", "https://o.example.com", "tok")
+			require.NoError(t, err)
+			_, err = svc.SetProjectLink(ctx, "u1", "proj-1", ProjectLink{ComputerID: home.ID, HarnessProjectID: "t3-app", StartIn: StartInWorktree})
+			require.NoError(t, err)
+			computerID := ""
+			if tt.otherPicked {
+				computerID = other.ID
+			}
+
+			target, err := svc.resolvePersonRun(ctx, "u1", "proj-1", computerID, tt.harnessProj, modelPick{})
+
+			if tt.wantInvalid {
+				require.ErrorIs(t, err, apperrs.ErrInvalid)
+				return
+			}
+			var nc *NotConfiguredError
+			if tt.wantReason != "" {
+				require.ErrorAs(t, err, &nc)
+				assert.Equal(t, tt.wantReason, nc.Reason)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantHarnProj, target.HarnessProjectID)
+			link, err := svc.GetProjectLink(ctx, "u1", "proj-1")
+			require.NoError(t, err)
+			assert.Equal(t, other.ID, link.ComputerID)
+			assert.Equal(t, tt.wantStartIn, link.StartIn)
+		})
+	}
+}
+
 // TestService_ProjectLink_EachPersonResolvesTheirOwn guards ADR 0102: a teammate's link never sends someone else's
 // turns to the teammate's computer, and two people's links for one project sit side by side.
 func TestService_ProjectLink_EachPersonResolvesTheirOwn(t *testing.T) {

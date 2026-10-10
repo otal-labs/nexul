@@ -86,7 +86,8 @@ type playRunIn struct {
 	TargetID           string                  `json:"target_id" jsonschema:"The ticket's or doc's id (a UUID, not a ticket key such as REF-102), or for an interview the project's id."`
 	MemoryIDs          []string                `json:"memory_ids,omitempty" jsonschema:"Ids of the target project's memories the agent reads before the run, from memory_list; the project's always-included memories come along anyway."`
 	CustomInstructions string                  `json:"custom_instructions,omitempty" jsonschema:"Extra instructions for this run only; they win over the play's where the two conflict."`
-	ComputerID         string                  `json:"computer_id,omitempty" jsonschema:"One of the caller's own paired computers, from computer_list. Omit to use the caller's own link for this project, else their pairing defaults."`
+	ComputerID         string                  `json:"computer_id,omitempty" jsonschema:"One of the caller's own paired computers, from computer_list. Omit to use the caller's own link for this project."`
+	T3ProjectID        string                  `json:"t3_project_id,omitempty" jsonschema:"With computer_id: the T3 project on that computer to run in, from computer_list with that computer's id. Saved as the caller's link for the target's project, so later runs there need neither. Required the first time the caller runs a play in a project they have not linked."`
 	Provider           string                  `json:"provider,omitempty" jsonschema:"The harness provider to run on, for example claude. Omit to use the computer's default."`
 	Model              string                  `json:"model,omitempty" jsonschema:"The model to run, for example sonnet-5. Omit to use the provider's default."`
 	ModelOptions       []harness.OptionSetting `json:"model_options,omitempty" jsonschema:"Options for the picked model, for example [{\"id\": \"effort\", \"value\": \"high\"}, {\"id\": \"fastMode\", \"value\": true}]: a choice id for a select option such as reasoning level or context window, true or false for a switch such as fast mode, as the harness lists them per model. Only applies with model; an option left out keeps the harness default."`
@@ -140,7 +141,9 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				"leaves the log alone; use that when the ticket shows the decisions check didn't run. With "+
 				"resume_auto_plays true it resumes auto plays on a ticket or doc the daily cap paused, so its queued runs go "+
 				"ahead, and returns its queue as trail_list with queue does. Otherwise returns the trail "+
-				"in state starting; poll trail_list with its id for the outcome, and answer or stop it with trail_update.",
+				"in state starting; poll trail_list with its id for the outcome, and answer or stop it with trail_update. "+
+				"The first run in a project the caller has not linked needs computer_id and t3_project_id, which are then "+
+				"saved as their link there; without them it refuses rather than run on their pairing defaults.",
 			mcptool.Hints{},
 			func(ctx context.Context, in playRunIn) (any, error) {
 				if in.ResumeAutoPlays {
@@ -231,7 +234,7 @@ func toQueuePage(q *Queue, page mcptool.PageArgs) queuePage {
 // resumeAutoPlays is play_run's resume_auto_plays: it starts no run itself, but lets the paused queue go on.
 func resumeAutoPlays(ctx context.Context, r *Runner, in playRunIn) (any, error) {
 	choices := in.PlayID != "" || in.DecisionsCheck || len(in.MemoryIDs) > 0 || in.CustomInstructions != "" ||
-		in.ComputerID != "" || in.Provider != "" || in.Model != "" || len(in.ModelOptions) > 0
+		in.ComputerID != "" || in.T3ProjectID != "" || in.Provider != "" || in.Model != "" || len(in.ModelOptions) > 0
 	if choices {
 		return nil, fmt.Errorf("%w: resume_auto_plays takes only target_type and target_id", apperrs.ErrInvalid)
 	}
@@ -251,11 +254,12 @@ func runPlay(ctx context.Context, r *Runner, in playRunIn) (*Trail, error) {
 		return r.Run(ctx, RunInput{
 			PlayID: in.PlayID, TargetType: in.TargetType, TargetID: in.TargetID, MemoryIDs: in.MemoryIDs,
 			CustomInstructions: in.CustomInstructions,
-			ComputerID:         in.ComputerID, Provider: in.Provider, Model: in.Model, ModelOptions: in.ModelOptions, Via: ViaMCP,
+			ComputerID:         in.ComputerID, HarnessProjectID: in.T3ProjectID, Provider: in.Provider, Model: in.Model,
+			ModelOptions: in.ModelOptions, Via: ViaMCP,
 		})
 	}
 	choices := in.PlayID != "" || len(in.MemoryIDs) > 0 || in.CustomInstructions != "" ||
-		in.ComputerID != "" || in.Provider != "" || in.Model != "" || len(in.ModelOptions) > 0
+		in.ComputerID != "" || in.T3ProjectID != "" || in.Provider != "" || in.Model != "" || len(in.ModelOptions) > 0
 	if choices || in.TargetType != TargetTicket {
 		return nil, fmt.Errorf("%w: decisions_check takes only target_type ticket and target_id; it runs with its own "+
 			"instructions on the caller's default computer", apperrs.ErrInvalid)
@@ -294,6 +298,11 @@ func startHint(err error) error {
 	}
 	if errors.Is(err, apperrs.ErrConflict) {
 		return fmt.Errorf("%w; trail_list with target_type and target_id shows the active trail, and trail_update with stop ends it", err)
+	}
+	var refusal *HarnessRefusal
+	if errors.As(err, &refusal) && refusal.Reason == RefusalNeedsLocation {
+		return fmt.Errorf("%w Ask the user which computer and T3 project to run in, then call play_run again with computer_id "+
+			"and t3_project_id; computer_list lists their computers, and with a computer's id that computer's T3 projects", err)
 	}
 	return err
 }

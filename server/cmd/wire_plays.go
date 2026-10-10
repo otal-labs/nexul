@@ -106,14 +106,21 @@ func (a playsProjectLookup) GetProject(ctx context.Context, projectID string) (p
 	return plays.ProjectTarget{Name: p.Name, TestsLocation: string(p.TestsLocation)}, nil
 }
 
-// playsHarnessResolver adapts pairing's ResolveTarget/ResolveTargetOverride to the runner's seam: an empty
-// choice resolves the caller's own project link or pairing defaults, same as a chat mention.
+// playsHarnessResolver adapts pairing's resolution to the runner's seam: an unattended run's empty choice resolves the
+// starter's own project link or pairing defaults, same as a chat mention; a person's run asks where instead (ADR 0145).
 type playsHarnessResolver struct {
 	svc *pairing.Service
 }
 
 func (a playsHarnessResolver) ResolveTarget(ctx context.Context, userID, projectID string, choice plays.HarnessChoice) (plays.HarnessChoice, error) {
-	target, err := a.svc.ResolveTargetOverride(ctx, userID, projectID, choice.ComputerID, choice.Provider, choice.Model, choice.ModelOptions)
+	return toHarnessChoice(a.svc.ResolveTargetOverride(ctx, userID, projectID, choice.ComputerID, choice.Provider, choice.Model, choice.ModelOptions))
+}
+
+func (a playsHarnessResolver) ResolvePersonTarget(ctx context.Context, userID, projectID string, choice plays.HarnessChoice) (plays.HarnessChoice, error) {
+	return toHarnessChoice(a.svc.ResolvePersonRun(ctx, userID, projectID, choice.ComputerID, choice.HarnessProjectID, choice.Provider, choice.Model, choice.ModelOptions))
+}
+
+func toHarnessChoice(target *pairing.ResolvedTarget, err error) (plays.HarnessChoice, error) {
 	var nc *pairing.NotConfiguredError
 	if errors.As(err, &nc) {
 		return plays.HarnessChoice{}, &plays.HarnessRefusal{Reason: string(nc.Reason), ComputerID: nc.ComputerID, Provider: nc.ProviderID, Err: err}

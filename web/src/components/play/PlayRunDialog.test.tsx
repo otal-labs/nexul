@@ -52,8 +52,9 @@ const computers = [
 const providers = [{ id: "claude", driver: "claudeAgent", name: "Claude", models: [{ slug: "sonnet-5", name: "Sonnet 5" }, { slug: "haiku", name: "Haiku" }] }];
 
 let choices: LatestChoices;
-let resolve: { ok: boolean; computer_id?: string; provider?: string; model?: string; reason?: string };
+let resolve: { ok: boolean; computer_id?: string; harness_project_id?: string; provider?: string; model?: string; reason?: string };
 let presence: Record<string, string>;
+let links: { project_id: string; computer_id: string; harness_project_id: string }[];
 
 const mockApi = (permissions: string[], memoriesOverride: unknown[] = memories) =>
   vi.mocked(api.get).mockImplementation(async (url: string) => {
@@ -65,6 +66,9 @@ const mockApi = (permissions: string[], memoriesOverride: unknown[] = memories) 
     if (url === "/api/pairing/computers") return { data: { computers } };
     if (url === "/api/pairing/computers/c-1/providers") return { data: { providers } };
     if (url === "/api/pairing/computers/c-2/providers") return { data: { providers: [] } };
+    if (url === "/api/pairing/projects") return { data: { links } };
+    if (url === "/api/pairing/computers/c-1/projects") return { data: { projects: [{ id: "t3-home", title: "Home" }, { id: "t3-app", title: "App" }] } };
+    if (url === "/api/pairing/computers/c-2/projects") return { data: { projects: [{ id: "t3-box", title: "Box" }] } };
     return { data: [] };
   });
 
@@ -85,8 +89,9 @@ beforeEach(() => {
   vi.mocked(api.post).mockReset();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   choices = { memory_ids: ["m-always", "m-react"], computer_id: "", provider: "", model: "" };
-  resolve = { ok: true, computer_id: "c-1", provider: "claude", model: "sonnet-5" };
+  resolve = { ok: true, computer_id: "c-1", harness_project_id: "t3-app", provider: "claude", model: "sonnet-5" };
   presence = { "c-1": "connected", "c-2": "connecting" };
+  links = [{ project_id: "p-1", computer_id: "c-1", harness_project_id: "t3-app" }];
 });
 
 describe("PlayRunDialog", () => {
@@ -128,7 +133,7 @@ describe("PlayRunDialog", () => {
     expect(await screen.findByText("Reads the ticket and opens a pull request. Runs on your paired harness as you.")).toBeInTheDocument();
   });
 
-  it("posts the chosen memories, footer memories, and instructions, then pre-selects them on the next open", async () => {
+  it("posts the chosen memories, footer memories, and instructions to the linked project, then pre-selects them on the next open", async () => {
     const user = userEvent.setup();
     mockApi(["plays:run", "tickets:write"]);
     vi.mocked(api.post).mockImplementation(async (_url: string, body: unknown) => {
@@ -228,35 +233,82 @@ describe("PlayRunDialog", () => {
     expect(screen.queryByRole("link", { name: /Set up/ })).not.toBeInTheDocument();
   });
 
-  it("preselects the resolved harness when the caller never ran this play here before", async () => {
+  it("names where a linked project runs, with the resolved model", async () => {
     mockApi(["plays:run", "tickets:write"]);
     renderDialog();
-    expect(await screen.findByRole("button", { name: "Onik's PC · Claude · Sonnet 5" })).toBeInTheDocument();
+    expect(await screen.findByText("Onik's PC · App")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Computer" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Claude · Sonnet 5" })).toBeInTheDocument();
   });
 
-  it("preselects the caller's last harness choice over the resolved target", async () => {
-    choices.computer_id = "c-2";
-    choices.provider = "";
-    choices.model = "";
+  it("preselects the caller's last model on that computer over the resolved one", async () => {
+    choices = { ...choices, computer_id: "c-1", provider: "claude", model: "haiku" };
     mockApi(["plays:run", "tickets:write"]);
     renderDialog();
-    expect(await screen.findByRole("button", { name: "VPS · Provider default · Model default" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Claude · Haiku" })).toBeInTheDocument();
   });
 
-  it("changing the harness in the popover is honoured by the run", async () => {
+  it("asks where on the first run in a project, suggesting the defaults, and runs there without asking once saved", async () => {
+    const user = userEvent.setup();
+    links = [];
+    resolve.harness_project_id = "t3-home";
+    mockApi(["plays:run", "tickets:write"]);
+    vi.mocked(api.post).mockImplementation(async (_url: string, body: unknown) => {
+      const input = body as { computer_id: string; harness_project_id?: string };
+      if (input.harness_project_id) links = [{ project_id: "p-1", computer_id: input.computer_id, harness_project_id: input.harness_project_id }];
+      return { data: { id: "tr-2", play_id: "play-1", play_label: "Fix with AI", target_type: "ticket", target_id: "t-1", project_id: "p-1", state: "starting" } };
+    });
+    const { onClose, close, reopen } = renderDialog();
+
+    expect(await screen.findByText(/Your first run in this project/)).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Computer" })).toHaveTextContent("Onik's PC");
+    expect(await screen.findByRole("combobox", { name: "T3 project" })).toHaveTextContent("Home");
+    await pickOption(user, "T3 project", "App");
+    await user.click(screen.getByRole("button", { name: "Run Fix with AI" }));
+
+    expect(api.post).toHaveBeenCalledWith(
+      "/api/plays/play-1/run",
+      expect.objectContaining({ computer_id: "c-1", harness_project_id: "t3-app", provider: "claude", model: "sonnet-5" }),
+    );
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+    close();
+    reopen();
+    expect(await screen.findByText("Onik's PC · App")).toBeInTheDocument();
+    expect(screen.queryByText(/Your first run in this project/)).not.toBeInTheDocument();
+  });
+
+  it("changes where from the run, which sends the new place to be saved", async () => {
     const user = userEvent.setup();
     presence["c-2"] = "connected";
     mockApi(["plays:run", "tickets:write"]);
     renderDialog();
 
-    await user.click(await screen.findByRole("button", { name: "Onik's PC · Claude · Sonnet 5" }));
+    await user.click(await screen.findByRole("button", { name: "Change" }));
+    expect(screen.getByText("What you pick here replaces your link for this project.")).toBeInTheDocument();
     await pickOption(user, "Computer", "VPS");
-    await user.click(await screen.findByRole("button", { name: "Run Fix with AI" }));
+    expect(screen.getByRole("button", { name: "Run Fix with AI" })).toBeDisabled();
+    await pickOption(user, "T3 project", "Box");
+    await user.click(screen.getByRole("button", { name: "Run Fix with AI" }));
 
     expect(api.post).toHaveBeenCalledWith(
       "/api/plays/play-1/run",
-      expect.objectContaining({ computer_id: "c-2", provider: "", model: "" }),
+      expect.objectContaining({ computer_id: "c-2", harness_project_id: "t3-box", provider: "", model: "" }),
     );
+  });
+
+  it("asks where when the server says the project has no link", async () => {
+    const user = userEvent.setup();
+    mockApi(["plays:run", "tickets:write"]);
+    vi.mocked(api.post).mockRejectedValue({
+      response: { status: 400, data: { message: "Pick where plays run in this project", code: "INVALID", details: { reason: "needs_location" } } },
+    });
+    renderDialog();
+
+    await user.click(await screen.findByRole("button", { name: "Run Fix with AI" }));
+    expect(await screen.findByRole("combobox", { name: "T3 project" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Change" })).not.toBeInTheDocument();
   });
 
   it("cannot pick an offline computer", async () => {
@@ -264,7 +316,7 @@ describe("PlayRunDialog", () => {
     mockApi(["plays:run", "tickets:write"]);
     renderDialog();
 
-    await user.click(await screen.findByRole("button", { name: "Onik's PC · Claude · Sonnet 5" }));
+    await user.click(await screen.findByRole("button", { name: "Change" }));
     await user.click(await screen.findByRole("combobox", { name: "Computer" }));
     const vps = await screen.findByRole("option", { name: /VPS/ });
     expect(vps).toHaveTextContent("Offline");

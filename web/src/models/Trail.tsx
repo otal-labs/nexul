@@ -106,6 +106,8 @@ export interface RunPlayInput {
   memory_ids: string[];
   custom_instructions: string;
   computer_id: string;
+  // Sent when the person picks where to run; the server saves it with computer_id as their project link (ADR 0143).
+  harness_project_id?: string;
   provider: string;
   model: string;
   model_options: OptionSetting[];

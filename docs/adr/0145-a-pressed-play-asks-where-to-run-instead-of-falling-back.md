@@ -1,0 +1,40 @@
+# A pressed play asks where to run instead of falling back
+
+A person with no project link for a project ran every play there on their pairing defaults: their default computer
+and fallback T3 project (ADR 0102). The fallback T3 project is one checkout, so a play pressed in any unlinked project
+ran in that checkout, and nothing in the run dialog said so. The owner kept finding runs in the wrong checkout.
+
+Decision: a play a person starts never falls back. The first run in a project they have not linked asks where (a
+computer and a T3 project, with their defaults filled in as the suggestion), and the answer is saved as their project
+link for that project. Later runs use the link without asking. Runs nobody presses keep the fallback, because nobody
+is there to answer.
+
+- **Who asks.** `Runner.Run` (the run dialog, `play_run`, and Continue on a run whose thread is gone) resolves
+  through `pairing.ResolvePersonRun`. Without a link and without a picked T3 project it refuses with
+  `needs_location`, an `ErrInvalid` whose details carry the reason, and keeps no failed trail: being asked is not a
+  failed run. A picked computer that is not the linked one needs its T3 project too, so a pick can never land in a
+  fallback project either.
+- **Who falls back.** Auto plays from the queue, the decisions check when a card enters done, and the decisions
+  check's Run again resolve through the starter's link, else their defaults, as before. The decisions check works
+  through MCP, not in a checkout, and its Run again has no dialog to ask in.
+- **What is saved.** The computer and T3 project, the run's provider and model (filled from the defaults on the
+  default computer), and the link's existing start-in. The run dialog's **Change** saves the same way, so a wrong
+  link is fixed from the run. The Projects tab still edits and clears links; clearing one brings the question back.
+- **Web.** The run dialog shows **Where to run**: two pickers on a first run, one line with **Change** after. The
+  harness pill keeps provider and model for the one run (ADR 0058); the computer moved into **Where to run**.
+- **MCP.** `play_run` takes `t3_project_id` beside `computer_id` and saves both as the caller's link, and its
+  refusal says to ask the user and which tool lists the choices. `computer_list` with one computer's id lists that
+  computer's T3 projects. No new tool.
+- **Events.** None. A link is one person's own setting, changed only by them, and their own client refetches it after
+  the run that saved it (ADR 0102).
+
+The trade-off: one extra confirm per person per project, and an integration that starts plays through the HTTP
+gateway now gets `needs_location` until its user has a link there. `@Agent` mentions still use the defaults in an
+unlinked project; a mention has no dialog to ask in.
+
+Rejected: asking only when the fallback T3 project looks wrong for the project, which needs a guess at what "wrong"
+means; asking on every run, which turns the common case into two clicks; and saving the pick without running, which
+makes the first run a settings detour.
+
+Amends ADR 0102 for plays a person starts, and ADR 0058's run dialog, whose computer pick moved into the location.
+Decided 2026-10-10.

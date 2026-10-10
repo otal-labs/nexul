@@ -395,6 +395,17 @@ type fakeHarnessResolver struct {
 	resolved HarnessChoice
 	// lastChoice records the caller's requested choice, for asserting an override reached the seam.
 	lastChoice HarnessChoice
+	// unlinked makes a person's run without a picked T3 project refuse as pairing does where they have no link;
+	// an unattended run still resolves, as pairing falls back to the starter's defaults.
+	unlinked bool
+}
+
+func (f *fakeHarnessResolver) ResolvePersonTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error) {
+	if f.unlinked && choice.HarnessProjectID == "" {
+		f.lastChoice = choice
+		return HarnessChoice{}, &HarnessRefusal{Reason: RefusalNeedsLocation, Err: &pairing.NotConfiguredError{Reason: pairing.ReasonNeedsLocation}}
+	}
+	return f.ResolveTarget(ctx, userID, projectID, choice)
 }
 
 func (f *fakeHarnessResolver) ResolveTarget(_ context.Context, _, _ string, choice HarnessChoice) (HarnessChoice, error) {

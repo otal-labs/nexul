@@ -16,7 +16,7 @@ export const useFetchProjectLinks = () =>
   });
 
 // A link changes which computer the caller's turns in that project resolve to, so readiness refetches with it.
-const invalidateLinks = (client: QueryClient) =>
+export const invalidateProjectLinks = (client: QueryClient) =>
   Promise.all([
     client.invalidateQueries({ queryKey: [getProjectLinksKey] }),
     client.invalidateQueries({ queryKey: [getHarnessResolveKey] }),
@@ -28,7 +28,7 @@ export const useSetProjectLink = (projectId: string, projectName: string) => {
     mutationFn: async (input: ProjectLinkFormData) =>
       (await api.put<ProjectLink>(`/api/pairing/projects/${projectId}`, input)).data,
     onSuccess: async () => {
-      await invalidateLinks(client);
+      await invalidateProjectLinks(client);
       toast.success(`${projectName} linked`);
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -42,7 +42,7 @@ export const useClearProjectLink = (projectId: string, projectName: string) => {
       await api.delete(`/api/pairing/projects/${projectId}`);
     },
     onSuccess: async () => {
-      await invalidateLinks(client);
+      await invalidateProjectLinks(client);
       toast.success(`${projectName} uses your defaults`);
     },
     onError: (error) => toast.error(errorMessage(error)),
