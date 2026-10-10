@@ -72,6 +72,10 @@ type Host struct {
 	Paths           Paths
 	// BrewInstallURL is Homebrew's install script, run on macOS when Docker and Homebrew are both missing.
 	BrewInstallURL string
+	// T3InstallerURL is T3 Code's own install script, run as the person when a computer has no T3 Code.
+	T3InstallerURL string
+	// T3Port is the loopback port T3 Code listens on unless told otherwise, 3773.
+	T3Port int
 	// Home is the user's home directory; macOS and Windows installs live under it.
 	Home string
 	// PrependPath puts a directory in front of this process's PATH, for tools installed while it runs.
@@ -93,7 +97,7 @@ type Host struct {
 	StartDetached func(name string, args []string, logPath string) error
 	// OpenObserve is the pinned log store build the server install downloads.
 	OpenObserve OpenObserve
-	// HealthTimeout bounds how long the installer waits for the server to answer after starting it.
+	// HealthTimeout bounds how long the installer waits for a service it started (the server, T3 Code) to answer.
 	HealthTimeout time.Duration
 	PollInterval  time.Duration
 
@@ -125,6 +129,8 @@ func NewHost() *Host {
 		DockerScriptURL: "https://get.docker.com",
 		ComposeURL:      "https://github.com/docker/compose/releases/latest/download",
 		BrewInstallURL:  "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh",
+		T3InstallerURL:  "https://t3.codes/install.sh",
+		T3Port:          3773,
 		Paths:           pathsFor(runtime.GOOS, home, os.Getenv),
 		Home:            home,
 		PrependPath: func(dir string) {

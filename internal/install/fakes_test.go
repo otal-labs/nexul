@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -195,6 +197,31 @@ type testHost struct {
 	detached [][]string
 	// chowned is each path a computer's install handed over, with the uid:gid it got.
 	chowned map[string]string
+	t3      *fakeT3
+}
+
+// fakeT3 is T3 Code's descriptor on a loopback port of its own, answering only while up.
+type fakeT3 struct {
+	srv *httptest.Server
+	up  atomic.Bool
+}
+
+func newFakeT3(t *testing.T) *fakeT3 {
+	t.Helper()
+	f := &fakeT3{}
+	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !f.up.Load() || r.URL.Path != "/.well-known/t3/environment" {
+			http.Error(w, "down", http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = fmt.Fprint(w, `{"serverVersion":"0.0.46"}`)
+	}))
+	t.Cleanup(f.srv.Close)
+	return f
+}
+
+func (f *fakeT3) port() int {
+	return f.srv.Listener.Addr().(*net.TCPAddr).Port
 }
 
 var testTargets = []string{"linux-amd64", "darwin-arm64", "windows-amd64"}
@@ -229,14 +256,16 @@ func newTestHost(t *testing.T) *testHost {
 
 	fe := &fakeExec{}
 	out := &bytes.Buffer{}
-	th := &testHost{exec: fe, out: out, root: root, release: rel, instance: inst, web: web, chowned: map[string]string{}}
+	rel.files["t3-install.sh"] = []byte("#!/bin/sh\necho T3 Code's installer\n")
+	th := &testHost{exec: fe, out: out, root: root, release: rel, instance: inst, web: web, chowned: map[string]string{}, t3: newFakeT3(t)}
 	nextPort := 15080
 	th.Host = &Host{
-		Exec:       fe,
-		HTTP:       srv.Client(),
-		Out:        out,
-		In:         bufio.NewReader(strings.NewReader("")),
-		ReleaseURL: srv.URL,
+		Exec:           fe,
+		HTTP:           srv.Client(),
+		Out:            out,
+		In:             bufio.NewReader(strings.NewReader("")),
+		ReleaseURL:     srv.URL,
+		T3InstallerURL: srv.URL + "/t3/t3-install.sh",
 		Paths: Paths{
 			Config:       filepath.Join(root, "etc", "nexul.conf"),
 			BinDir:       filepath.Join(root, "bin"),
@@ -274,6 +303,7 @@ func newTestHost(t *testing.T) *testHost {
 		HealthTimeout: time.Second,
 		PollInterval:  time.Millisecond,
 	}
+	th.T3Port = th.t3.port()
 	th.Reexec = func(path string, args []string) error {
 		th.reexec = args
 		return nil

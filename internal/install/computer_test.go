@@ -2,6 +2,7 @@ package install
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -15,13 +16,16 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 )
 
-// sudoFromAlice makes the test host root under sudo, typed by alice (uid 1000, home th.Home). What root deletes as
-// alice through runuser is really deleted.
+// sudoFromAlice makes the test host root under sudo, typed by alice (uid 1000, home th.Home), whose T3 Code answers
+// on its own port. What root deletes as alice through runuser is really deleted.
 func (th *testHost) sudoFromAlice(t *testing.T) {
 	t.Helper()
 	th.Getuid = func() int { return 0 }
 	t.Setenv("SUDO_USER", "alice")
 	withVersion(t, "v0.3.1")
+	th.missing("t3")
+	th.t3.up.Store(true)
+	th.aliceHas(t, ".t3/userdata/server-runtime.json", fmt.Sprintf(`{"version":1,"port":%d}`, th.t3.port()), 0o600)
 	th.exec.onRun = func(line string) {
 		for _, rm := range []string{"runuser -u alice -- rm -rf ", "runuser -u alice -- rm -f "} {
 			if paths, ok := strings.CutPrefix(line, rm); ok {
@@ -30,6 +34,17 @@ func (th *testHost) sudoFromAlice(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// aliceHas puts a file of alice's own in her home, owned by her as everything she made is.
+func (th *testHost) aliceHas(t *testing.T, rel, content string, mode os.FileMode) {
+	t.Helper()
+	path := filepath.Join(th.Home, rel)
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	require.NoError(t, os.WriteFile(path, []byte(content), mode))
+	for p := path; p != th.Home; p = filepath.Dir(p) {
+		th.chowned[p] = "1000:1000"
 	}
 }
 

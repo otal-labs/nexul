@@ -232,6 +232,14 @@ test('computer.sh under sudo installs into the home of the person who typed it, 
   expect(await exists(directory, 'sudo')).toBe(false);
 });
 
+test('computer.sh hands the options after the token to `nexul install computer`', async () => {
+  const { directory, env } = setup({ uid: 0 });
+  const token = computerToken({ server: 'https://nexul.example.com' });
+  const result = spawnSync('/bin/sh', [computerScript, token, '--no-t3'], { env: asAlice(env), input: '', encoding: 'utf8' });
+  expect(result.status).toBe(0);
+  expect(await read(directory, 'argv')).toBe(['install', 'computer', '--token', token, '--no-t3'].join('\n') + '\n');
+});
+
 for (const [name, args] of [
   ['no token', []],
   ['an old two-flag command', ['--server', 'https://nexul.example.com', '--code', 'nxe_abc']],
