@@ -46,7 +46,8 @@ Decision: Nexul mints the message id, and the turn is the run whose `userMessage
 - **The stream.** A pure reducer folds it: a snapshot replaces the state and the cursor, events at or below the
   cursor are dropped, and unknown event types are skipped but still move the cursor. Once the first snapshot is in,
   any end of the stream, a defect such as `LiveStreamBufferError` included, resubscribes after the cursor, up to three
-  times in a row with backoff, and then the turn ends in error. A reconnect that finds T3 Code on another protocol
+  times in a row with backoff, and then the turn ends in error. A stream that delivered anything or stayed up a minute
+  starts the row again, so a quiet turn whose socket a tunnel cuts is not ended by reconnects that worked. A reconnect that finds T3 Code on another protocol
   ends the turn at once: "T3 Code was updated during this turn; ask again". A Stop during the backoff ends the turn
   interrupted at once, and every end shows the notes Stop left first.
 - **Stop.** Stop acts on the run of the turn it names. A turn is named by its message id, so with a second turn

@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coder/websocket"
@@ -29,9 +30,12 @@ const (
 
 	// maxFrameBytes bounds inbound WS frames well above T3's own payload caps.
 	maxFrameBytes = 1 << 25
+
+	// pingEvery stays well under the 125s a Cloudflare tunnel lets a silent socket live.
+	pingEvery = 30 * time.Second
 )
 
-// Options configures Connect. The zero value is usable: http.DefaultClient, slog.Default, 30s per-RPC timeout.
+// Options configures Connect. The zero value is usable: http.DefaultClient, slog.Default, 30s per-RPC timeout, a ping every 30s.
 type Options struct {
 	HTTPClient *http.Client
 	Logger     *slog.Logger
@@ -39,6 +43,8 @@ type Options struct {
 	RPCTimeout time.Duration
 	// Query rides on the /ws dial beside wsTicket.
 	Query url.Values
+	// PingEvery is how often the session pings T3; a ping still unanswered at the next one ends the session.
+	PingEvery time.Duration
 }
 
 // Conn is one authenticated Effect RPC session; safe for concurrent use, Close ends it.
@@ -52,6 +58,8 @@ type Conn struct {
 
 	// writeMu serializes WS writes: a websocket.Conn allows only one writer at a time (concurrent writers corrupt frames).
 	writeMu sync.Mutex
+	// unanswered is set by each Ping and cleared by its Pong.
+	unanswered atomic.Bool
 
 	mu      sync.Mutex
 	pending map[string]chan serverEnvelope
@@ -93,7 +101,8 @@ func (c *Conn) ack(id string) {
 	c.log.Debug("t3rpc: ack sent", "request", id)
 }
 
-type pongEnvelope struct {
+// controlEnvelope is a Ping or Pong frame, which carries nothing but its tag.
+type controlEnvelope struct {
 	Tag string `json:"_tag"`
 }
 
@@ -174,6 +183,7 @@ func Connect(ctx context.Context, s harness.Session, opts Options) (*Conn, error
 		done:    make(chan struct{}),
 	}
 	go c.readLoop()
+	go c.keepalive(pingInterval(opts.PingEvery))
 
 	config, err := c.Call(ctx, "server.getConfig", nil)
 	if err != nil {
@@ -347,11 +357,41 @@ func (c *Conn) handleEnvelope(data []byte) {
 		c.fail(fmt.Errorf("t3 server defect: %s", Snippet(env.Defect)))
 	case "Ping":
 		// Ping is documented as client→server only, but T3's Effect patch adds ping/pong hooks; answer just in case.
-		_ = c.send(c.ctx, pongEnvelope{Tag: "Pong"})
+		_ = c.send(c.ctx, controlEnvelope{Tag: "Pong"})
 	case "Pong":
+		c.unanswered.Store(false)
 	default:
 		c.log.Debug("t3rpc: unknown frame tag skipped", "tag", env.Tag, "frame", Snippet(data))
 	}
+}
+
+// keepalive pings T3 until the session ends: a tunnel cuts a silent socket without a close frame, which only a ping
+// catches before a stream waits on it for good.
+func (c *Conn) keepalive(every time.Duration) {
+	tick := time.NewTicker(every)
+	defer tick.Stop()
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		case <-tick.C:
+		}
+		if c.unanswered.Swap(true) {
+			c.fail(fmt.Errorf("T3 Code stopped answering pings for %s", every))
+			return
+		}
+		if err := c.send(c.ctx, controlEnvelope{Tag: "Ping"}); err != nil {
+			c.fail(fmt.Errorf("ping T3 Code: %w", err))
+			return
+		}
+	}
+}
+
+func pingInterval(every time.Duration) time.Duration {
+	if every <= 0 {
+		return pingEvery
+	}
+	return every
 }
 
 func (c *Conn) deliver(env serverEnvelope) {

@@ -51,6 +51,15 @@ func (s *fakeSource) Close() { s.closed.Store(true) }
 
 func items(values ...json.RawMessage) chunkOrEnd { return chunkOrEnd{values: values} }
 
+// quietDrop is a subscription that opens, sends nothing, and drops after d, as a tunnel cutting an idle socket does.
+func quietDrop(d time.Duration, err error) func() (source, error) {
+	return func() (source, error) {
+		src := newFakeSource()
+		time.AfterFunc(d, func() { src.ch <- chunkOrEnd{err: err} })
+		return src, nil
+	}
+}
+
 // silentThread is a handed-off agent's thread that sends nothing.
 func silentThread(context.Context, string, int64) (source, error) { return newFakeSource(), nil }
 
@@ -156,6 +165,12 @@ func TestPump_StreamEndsMidTurn(t *testing.T) {
 			},
 			ended(harness.TurnError, "Lost the connection to T3 Code and couldn't resume the turn after 3 tries: dial T3 websocket: connection refused"),
 			31 * time.Second, ""},
+		{"reconnects that stay up and drop later keep the turn", lost,
+			[]func() (source, error){
+				quietDrop(2*time.Minute, lost), quietDrop(2*time.Minute, lost), quietDrop(2*time.Minute, lost),
+				quietDrop(2*time.Minute, lost), func() (source, error) { return newFakeSource(waitingSnapshot), nil },
+			},
+			ended(harness.TurnDone, ""), 4*(time.Second+2*time.Minute) + time.Second, runOne},
 		{"a T3 Code that changed protocol ends the turn at once", lost,
 			[]func() (source, error){func() (source, error) {
 				return nil, harness.ProtocolRefusal("T3 Code on laptop went back to its old orchestrator; Nexul only moves forward. Update T3 Code there.")
