@@ -72,6 +72,7 @@ type Store struct {
 	Connectors            *ConnectorsRepo
 	ConnectorAppConfig    *ConnectorAppConfigRepo
 	GitHubInstallations   *GitHubInstallationsRepo
+	GitHubUserLinks       *GitHubUserLinksRepo
 	Chat                  *ChatRepo
 	Botwebhooks           *BotwebhooksRepo
 	Pairing               *PairingRepo
@@ -142,6 +143,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Connectors:            &ConnectorsRepo{db: db, w: w, q: q, encKey: encKey},
 		ConnectorAppConfig:    &ConnectorAppConfigRepo{db: db, w: w, q: q, encKey: encKey},
 		GitHubInstallations:   &GitHubInstallationsRepo{db: db, w: w, q: q},
+		GitHubUserLinks:       &GitHubUserLinksRepo{db: db, w: w, q: q, encKey: encKey},
 		Chat:                  &ChatRepo{db: db, w: w, q: q},
 		Botwebhooks:           &BotwebhooksRepo{db: db, w: w, q: q, encKey: encKey},
 		Pairing:               &PairingRepo{db: db, w: w, q: q},

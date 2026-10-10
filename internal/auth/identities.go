@@ -131,20 +131,32 @@ func (s *Service) CompleteIdentityLink(ctx context.Context, provider Provider, s
 	if err != nil {
 		return err
 	}
-	accessToken, err := client.Exchange(ctx, code)
+	grant, err := exchange(ctx, client, code)
 	if err != nil {
 		return err
 	}
-	pu, err := client.FetchUser(ctx, accessToken)
+	pu, err := client.FetchUser(ctx, grant.AccessToken)
 	if err != nil {
 		return err
+	}
+	if provider == ProviderGitHub && s.ownsIdentity(ctx, user.ID, pu.ID) {
+		return s.keepGitHubLink(ctx, user.ID, grant)
 	}
 	identity := providerIdentity(user.ID, provider, pu)
 	identity.CreatedAt = s.cfg.Now()
 	if err := s.cfg.Users.LinkIdentity(ctx, identity, identityEvent(TopicIdentityLinked, *identity)); err != nil {
 		return fmt.Errorf("link %s identity: %w", provider, err)
 	}
-	return nil
+	if provider != ProviderGitHub {
+		return nil
+	}
+	return s.keepGitHubLink(ctx, user.ID, grant)
+}
+
+// ownsIdentity reports a GitHub account already linked to userID, which Connect GitHub reconnects instead of linking.
+func (s *Service) ownsIdentity(ctx context.Context, userID, githubUserID string) bool {
+	owner, err := s.cfg.Users.GetUserByProvider(ctx, ProviderGitHub, githubUserID)
+	return err == nil && owner.ID == userID
 }
 
 // UnlinkIdentity detaches one of the caller's sign-in accounts; the store refuses the last one.
@@ -160,7 +172,10 @@ func (s *Service) UnlinkIdentity(ctx context.Context, userID string, provider Pr
 	if err := s.cfg.Users.UnlinkIdentity(ctx, userID, provider, identityEvent(TopicIdentityUnlinked, identities[i])); err != nil {
 		return fmt.Errorf("unlink %s identity: %w", provider, err)
 	}
-	return nil
+	if provider != ProviderGitHub {
+		return nil
+	}
+	return s.DisconnectGitHub(ctx, userID)
 }
 
 func identityEvent(topic string, id Identity) eventbus.OutboxEvent {

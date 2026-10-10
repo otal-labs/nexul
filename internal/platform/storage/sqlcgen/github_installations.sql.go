@@ -38,23 +38,6 @@ func (q *Queries) AssignGitHubInstallation(ctx context.Context, arg AssignGitHub
 	return result.RowsAffected()
 }
 
-const consumeGitHubInstallState = `-- name: ConsumeGitHubInstallState :one
-DELETE FROM github_install_states WHERE state_hash = ? RETURNING workspace_id, user_id, expires_at
-`
-
-type ConsumeGitHubInstallStateRow struct {
-	WorkspaceID string
-	UserID      string
-	ExpiresAt   int64
-}
-
-func (q *Queries) ConsumeGitHubInstallState(ctx context.Context, stateHash string) (ConsumeGitHubInstallStateRow, error) {
-	row := q.db.QueryRowContext(ctx, consumeGitHubInstallState, stateHash)
-	var i ConsumeGitHubInstallStateRow
-	err := row.Scan(&i.WorkspaceID, &i.UserID, &i.ExpiresAt)
-	return i, err
-}
-
 const countGitHubUnresolvedAssignments = `-- name: CountGitHubUnresolvedAssignments :one
 SELECT COUNT(*) FROM github_installation_workspaces WHERE account_id IS NULL AND gone_at IS NULL
 `
@@ -64,15 +47,6 @@ func (q *Queries) CountGitHubUnresolvedAssignments(ctx context.Context) (int64, 
 	var count int64
 	err := row.Scan(&count)
 	return count, err
-}
-
-const deleteExpiredGitHubInstallStates = `-- name: DeleteExpiredGitHubInstallStates :exec
-DELETE FROM github_install_states WHERE expires_at <= ?
-`
-
-func (q *Queries) DeleteExpiredGitHubInstallStates(ctx context.Context, expiresAt int64) error {
-	_, err := q.db.ExecContext(ctx, deleteExpiredGitHubInstallStates, expiresAt)
-	return err
 }
 
 const dropGitHubUnresolvedDuplicates = `-- name: DropGitHubUnresolvedDuplicates :exec
@@ -196,7 +170,11 @@ func (q *Queries) ListGitHubInstallationAssignments(ctx context.Context) ([]List
 }
 
 const listGitHubInstallationAssignmentsIn = `-- name: ListGitHubInstallationAssignmentsIn :many
-SELECT a.account_id, a.account_login, a.workspace_id, w.name AS workspace_name, a.gone_at
+SELECT a.account_id, a.account_login, a.workspace_id, w.name AS workspace_name, a.gone_at,
+    EXISTS (
+        SELECT 1 FROM project_repos r JOIN projects p ON p.id = r.project_id
+        WHERE p.workspace_id = a.workspace_id AND r.connector_id = 'github' AND lower(r.owner) = a.account_login
+    ) AS attached
 FROM github_installation_workspaces a
 JOIN workspaces w ON w.id = a.workspace_id
 WHERE a.workspace_id IN (SELECT value FROM json_each(?))
@@ -209,6 +187,7 @@ type ListGitHubInstallationAssignmentsInRow struct {
 	WorkspaceID   string
 	WorkspaceName string
 	GoneAt        sql.NullInt64
+	Attached      bool
 }
 
 func (q *Queries) ListGitHubInstallationAssignmentsIn(ctx context.Context, jsonEach interface{}) ([]ListGitHubInstallationAssignmentsInRow, error) {
@@ -226,6 +205,7 @@ func (q *Queries) ListGitHubInstallationAssignmentsIn(ctx context.Context, jsonE
 			&i.WorkspaceID,
 			&i.WorkspaceName,
 			&i.GoneAt,
+			&i.Attached,
 		); err != nil {
 			return nil, err
 		}
@@ -289,27 +269,6 @@ type ResolveGitHubInstallationAccountParams struct {
 
 func (q *Queries) ResolveGitHubInstallationAccount(ctx context.Context, arg ResolveGitHubInstallationAccountParams) error {
 	_, err := q.db.ExecContext(ctx, resolveGitHubInstallationAccount, arg.AccountID, arg.AccountLogin)
-	return err
-}
-
-const saveGitHubInstallState = `-- name: SaveGitHubInstallState :exec
-INSERT INTO github_install_states (state_hash, workspace_id, user_id, expires_at) VALUES (?, ?, ?, ?)
-`
-
-type SaveGitHubInstallStateParams struct {
-	StateHash   string
-	WorkspaceID string
-	UserID      string
-	ExpiresAt   int64
-}
-
-func (q *Queries) SaveGitHubInstallState(ctx context.Context, arg SaveGitHubInstallStateParams) error {
-	_, err := q.db.ExecContext(ctx, saveGitHubInstallState,
-		arg.StateHash,
-		arg.WorkspaceID,
-		arg.UserID,
-		arg.ExpiresAt,
-	)
 	return err
 }
 

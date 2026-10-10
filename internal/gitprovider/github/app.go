@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rsa"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -16,7 +15,6 @@ import (
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/githubapp"
-	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
 // tokenRefreshMargin renews a token this long before it expires, so a clone never starts on one about to lapse.
@@ -192,9 +190,6 @@ func (a *App) eachInstallation(ctx context.Context, fn func(*githubapi.Installat
 	}
 }
 
-// suspendedProblem is what an installation its account suspended reports; GitHub refuses it every token.
-const suspendedProblem = "suspended on GitHub: its repositories cannot be read until the account unsuspends the App"
-
 // InstallationAccounts lists every installation of the App with its account, one request per hundred.
 func (a *App) InstallationAccounts(ctx context.Context) ([]*gitprovider.Installation, error) {
 	var out []*gitprovider.Installation
@@ -205,108 +200,6 @@ func (a *App) InstallationAccounts(ctx context.Context) ([]*gitprovider.Installa
 		return nil, err
 	}
 	return out, nil
-}
-
-// ListInstallations implements gitprovider.GitProvider's installation read for every account the App is on. An
-// installation GitHub refuses, a suspended one included, carries its problem and the others still list.
-func (a *App) ListInstallations(ctx context.Context) ([]*gitprovider.Installation, error) {
-	var out []*gitprovider.Installation
-	err := a.eachInstallation(ctx, func(inst *githubapi.Installation) {
-		i := toInstallation(inst)
-		out = append(out, i)
-		if inst.SuspendedAt != nil {
-			i.Problem = suspendedProblem
-			return
-		}
-		if i.RepositorySelection != "selected" {
-			return
-		}
-		n, err := a.countRepos(ctx, inst.GetID())
-		if err != nil {
-			i.Problem = unreadable(ctx, inst, err)
-			return
-		}
-		i.RepositoryCount = &n
-	})
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (a *App) countRepos(ctx context.Context, id int64) (int, error) {
-	gh, err := a.installationClient(ctx, id)
-	if err != nil {
-		return 0, err
-	}
-	page, _, err := gh.Apps.ListRepos(ctx, &githubapi.ListOptions{PerPage: 1})
-	if err != nil {
-		return 0, fmt.Errorf("count repos for installation %d: %w", id, mapErr(err))
-	}
-	return page.GetTotalCount(), nil
-}
-
-// unreadable logs an installation GitHub refused, without its token, and returns the problem the owner sees.
-func unreadable(ctx context.Context, inst *githubapi.Installation, err error) string {
-	logging.FromCtx(ctx).Warn("github installation unreadable, skipped",
-		"installation_id", inst.GetID(), "account", inst.GetAccount().GetLogin(), "error", err)
-	if errors.Is(err, apperrors.ErrUnauthorized) || errors.Is(err, apperrors.ErrForbidden) {
-		return "GitHub refused the App access to it; check the installation on GitHub"
-	}
-	return "GitHub could not read it just now; it is retried on the next refresh"
-}
-
-// ListInstallationRepos implements gitprovider.GitProvider's repository read across every installation of the App;
-// a suspended or refused installation is skipped and logged, so the others still list.
-func (a *App) ListInstallationRepos(ctx context.Context) ([]*gitprovider.Repo, error) {
-	var out []*gitprovider.Repo
-	err := a.eachInstallation(ctx, func(inst *githubapi.Installation) {
-		if inst.SuspendedAt != nil {
-			return
-		}
-		repos, err := a.installationRepos(ctx, inst)
-		if err != nil {
-			unreadable(ctx, inst, err)
-			return
-		}
-		out = append(out, repos...)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (a *App) installationRepos(ctx context.Context, inst *githubapi.Installation) ([]*gitprovider.Repo, error) {
-	gh, err := a.installationClient(ctx, inst.GetID())
-	if err != nil {
-		return nil, err
-	}
-	var out []*gitprovider.Repo
-	opts := &githubapi.ListOptions{PerPage: 100}
-	for {
-		page, resp, err := gh.Apps.ListRepos(ctx, opts)
-		if err != nil {
-			return nil, fmt.Errorf("list repos for installation %d: %w", inst.GetID(), mapErr(err))
-		}
-		for _, r := range page.Repositories {
-			repo := toRepo(r)
-			repo.AccountID = inst.GetAccount().GetID()
-			out = append(out, repo)
-		}
-		if resp == nil || resp.NextPage == 0 {
-			return out, nil
-		}
-		opts.Page = resp.NextPage
-	}
-}
-
-func (a *App) installationClient(ctx context.Context, id int64) (*githubapi.Client, error) {
-	tok, err := a.InstallationToken(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return New(tok, a.opts...).gh, nil
 }
 
 // AppCache keeps one App per key, client ID and server, so its tokens outlive the request that minted them.

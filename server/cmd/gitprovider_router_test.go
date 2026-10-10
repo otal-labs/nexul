@@ -24,6 +24,7 @@ import (
 	"github.com/otal-labs/nexul/internal/gitprovider/github"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -303,7 +304,7 @@ func TestGitProviderRouter_InstallationAssignmentConfinesEveryLinkedOperation(t 
 	scope := &githubInstallationScope{appConfigs: cfg, projects: store.Projects}
 	router := gitProviderRouter{workspace: store.Projects, appConfigs: cfg, apps: &github.AppCache{}, scope: scope}
 	scanner := newRepositoryScanner(router, cfg)
-	scope.assigned = repository.NewService(repository.Config{Installations: scanner, Accounts: scanner, Store: store.GitHubInstallations})
+	scope.repos = repository.NewService(repository.Config{Installations: scanner, Accounts: scanner, Store: store.GitHubInstallations})
 	for _, tt := range []struct {
 		name string
 		call func() error
@@ -336,48 +337,29 @@ func TestGitProviderRouter_InstallationAssignmentConfinesEveryLinkedOperation(t 
 	assert.False(t, denied.AllowFallback, "unassignment cannot permit the runner's own token")
 }
 
-func TestRepositoryScan_TraversalNeverMintsOrCachesAForeignInstallationToken(t *testing.T) {
-	store := storage.New(mentionsTestDB(t), []byte("0123456789abcdef0123456789abcdef"))
-	_, err := store.GitHubInstallations.AssignInstallation(t.Context(), repository.Assignment{AccountID: 1, AccountLogin: "acme", WorkspaceID: "workspace-default"})
-	require.NoError(t, err)
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-	pemKey := string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}))
+func TestRepositoryScan_ReadsWithThePersonsOwnTokenAfterValidatingTheName(t *testing.T) {
 	for _, name := range []string{"../../repos/globex/private-api", "../api", ".", "..", "api/other", `api\other`, "%2e%2e%2frepos%2fglobex%2fprivate-api", "api%2fother", "api%5cother", "api%252fother"} {
 		t.Run(name, func(t *testing.T) {
 			var paths, treeTokens []string
 			mux := http.NewServeMux()
-			mux.HandleFunc("GET /repos/{owner}/{repo}/installation", func(w http.ResponseWriter, r *http.Request) {
-				paths = append(paths, r.URL.Path)
-				id := 1
-				if r.PathValue("owner") == "globex" {
-					id = 2
-				}
-				_, _ = fmt.Fprintf(w, `{"id":%d,"account":{"id":%d}}`, id, id)
-			})
-			mux.HandleFunc("POST /app/installations/{id}/access_tokens", func(w http.ResponseWriter, r *http.Request) {
-				paths = append(paths, r.URL.Path)
-				_, _ = fmt.Fprintf(w, `{"token":"ghs_%s","expires_at":"2099-01-01T00:00:00Z"}`, r.PathValue("id"))
-			})
-			mux.HandleFunc("GET /repos/{owner}/{repo}/git/trees/{ref}", func(w http.ResponseWriter, r *http.Request) {
+			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				paths = append(paths, r.URL.Path)
 				treeTokens = append(treeTokens, r.Header.Get("Authorization"))
-				_, _ = w.Write([]byte(`{"tree":[]}`))
+				_, _ = w.Write([]byte(`{"tree":[]}`)) // test server: write errors are irrelevant
 			})
 			srv := httptest.NewServer(mux)
 			t.Cleanup(srv.Close)
-			cfg := &fakeAppConfigStore{cfgs: map[string]connectors.AppConfig{"github": {ClientID: "Iv1.acme", PrivateKey: pemKey, BaseURL: srv.URL}}}
-			router := gitProviderRouter{appConfigs: cfg, apps: &github.AppCache{}}
-			scanner := newRepositoryScanner(router, cfg)
-			svc := repository.NewService(repository.Config{Scanner: scanner, Installations: scanner, Accounts: scanner, Store: store.GitHubInstallations})
-			got, err := svc.Scan(t.Context(), "workspace-default", "acme", name, "main")
+			cfg := &fakeAppConfigStore{cfgs: map[string]connectors.AppConfig{"github": {ClientID: "Iv1.acme", BaseURL: srv.URL}}}
+			svc := repository.NewService(repository.Config{Gate: projectWriter{}, People: newGitHubPeople(fakeGitHubTokens{"alice": "ghu_alice"}, cfg)})
+			alice := identity.WithActor(t.Context(), identity.Actor{ID: "alice"})
+			got, err := svc.Scan(alice, "", "acme", name, "main")
 			assert.ErrorIs(t, err, apperrs.ErrInvalid)
 			assert.Nil(t, got)
-			assert.Empty(t, paths, "validation precedes every lookup and token mint")
-			paths, treeTokens = nil, nil
-			_, err = svc.Scan(t.Context(), "workspace-default", "acme", "api.v2-web_tools", "main")
+			assert.Empty(t, paths, "validation precedes every request")
+			_, err = svc.Scan(alice, "", "acme", "api.v2-web_tools", "main")
 			require.NoError(t, err)
-			assert.Equal(t, []string{"Bearer ghs_1"}, treeTokens, "a rejected name cannot poison acme's cached installation")
+			assert.Equal(t, []string{"/repos/acme/api.v2-web_tools/git/trees/main"}, paths)
+			assert.Equal(t, []string{"Bearer ghu_alice"}, treeTokens, "a scan reads as the person, never as an installation")
 		})
 	}
 }
@@ -444,7 +426,7 @@ func TestPushesRunnersMayClone_AnUnassignedInstallationQueuesNoBuild(t *testing.
 	scope := &githubInstallationScope{appConfigs: cfg, projects: store.Projects}
 	router := gitProviderRouter{workspace: store.Projects, appConfigs: cfg, apps: &github.AppCache{}, scope: scope}
 	scanner := newRepositoryScanner(router, cfg)
-	scope.assigned = repository.NewService(repository.Config{Installations: scanner, Accounts: scanner, Store: store.GitHubInstallations})
+	scope.repos = repository.NewService(repository.Config{Installations: scanner, Accounts: scanner, Store: store.GitHubInstallations})
 	var built []string
 	handler := pushesRunnersMayClone(router, func(_ context.Context, ev eventbus.Event) error {
 		built = append(built, string(ev.Payload))

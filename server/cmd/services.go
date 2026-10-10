@@ -196,6 +196,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		EnrollDir:           filepath.Join(filepath.Dir(cfg.DBPath), "enroll"),
 		Local:               cfg.Local,
 		Permissions:         accessSvc,
+		GitHubLinks:         store.GitHubUserLinks,
 	})
 	authHandler := auth.NewHandler(authSvc)
 	invitationSvc := tenancy.NewInvitationService(store.Invitations, authSvc)
@@ -313,15 +314,12 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	repoScanner := newRepositoryScanner(gitRouter, store.ConnectorAppConfig)
 	repositorySvc := repository.NewService(repository.Config{
 		Gate:          accessSvc,
-		Scanner:       repoScanner,
+		People:        newGitHubPeople(authSvc, store.ConnectorAppConfig),
 		Installations: repoScanner,
 		Accounts:      repoScanner,
 		Store:         store.GitHubInstallations,
-		States:        store.GitHubInstallations,
-		Installers:    githubInstallers{oauth: githubOAuth(connectorsRegistry), appConfigs: store.ConnectorAppConfig},
 	})
-	githubScope.assigned = repositorySvc
-	authSvc.SetInstallationClaimer(installationClaimer{svc: repositorySvc, workspaces: store.Workspaces})
+	githubScope.repos = repositorySvc
 	integrationsSvc := integrations.NewService(integrations.Config{
 		Installs:   store.IntegrationInstalls,
 		Tokens:     store.IntegrationTokens,

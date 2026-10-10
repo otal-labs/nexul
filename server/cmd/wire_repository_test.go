@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -12,23 +11,34 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/connectors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
-	"github.com/otal-labs/nexul/internal/workspace"
+	"github.com/otal-labs/nexul/internal/repository"
 )
 
-func newTestRepositoryScanner(t *testing.T, h http.Handler, appSlug string) repositoryScanner {
+// fakeGitHubTokens is auth's person-token read: each person's own token, or the not-connected error.
+type fakeGitHubTokens map[string]string
+
+func (f fakeGitHubTokens) GitHubToken(_ context.Context, userID string) (string, error) {
+	tok, ok := f[userID]
+	if !ok {
+		return "", auth.ErrGitHubNotConnected
+	}
+	return tok, nil
+}
+
+// newTestPersonView is Alice's GitHub view, read with her own token against h.
+func newTestPersonView(t *testing.T, h http.Handler, appSlug string) repository.GitHubView {
 	t.Helper()
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
-	router := gitProviderRouter{
-		workspace:  &fakeGitRepoResolver{repos: map[string]workspace.RepoRef{}},
-		connectors: &fakeGitTokenResolver{tokens: map[string]string{"github": "tok"}},
-		appConfigs: &fakeAppConfigStore{cfgs: map[string]connectors.AppConfig{
-			"github": {ConnectorID: "github", BaseURL: srv.URL, AppSlug: appSlug},
-		}},
-	}
-	return newRepositoryScanner(router, router.appConfigs)
+	people := newGitHubPeople(fakeGitHubTokens{"alice": "ghu_alice"}, &fakeAppConfigStore{cfgs: map[string]connectors.AppConfig{
+		"github": {ConnectorID: "github", BaseURL: srv.URL, AppSlug: appSlug},
+	}})
+	v, err := people.GitHubView(t.Context(), "alice")
+	require.NoError(t, err)
+	return v
 }
 
 func repoJSONFixture(owner, name, defaultBranch string) string {
@@ -38,7 +48,7 @@ func repoJSONFixture(owner, name, defaultBranch string) string {
 	)
 }
 
-func TestRepositoryScanner_ListInstallationRepos(t *testing.T) {
+func TestPersonView_Repos(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/user/installations", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprintln(w, `{"installations":[{"id":10}]}`) // test server: write errors are irrelevant
@@ -46,17 +56,17 @@ func TestRepositoryScanner_ListInstallationRepos(t *testing.T) {
 	mux.HandleFunc("/user/installations/10/repositories", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprintln(w, `{"repositories":[`+repoJSONFixture("acme", "app", "main")+`]}`) // test server: write errors are irrelevant
 	})
-	s := newTestRepositoryScanner(t, mux, "my-app")
+	s := newTestPersonView(t, mux, "my-app")
 
-	repos, err := s.ListInstallationRepos(context.Background(), false)
+	repos, err := s.Repos(context.Background(), false)
 	require.NoError(t, err)
 	require.Len(t, repos, 1)
 	assert.Equal(t, "acme/app", repos[0].FullName)
 	assert.Equal(t, "github", repos[0].Provider)
 }
 
-func TestRepositoryScanner_ListInstallationRepos_Cache(t *testing.T) {
-	newScanner := func(t *testing.T, walks *atomic.Int32, failFirst bool) repositoryScanner {
+func TestPersonView_Repos_Cache(t *testing.T) {
+	newScanner := func(t *testing.T, walks *atomic.Int32, failFirst bool) repository.GitHubView {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/user/installations", func(w http.ResponseWriter, r *http.Request) {
 			if walks.Add(1) == 1 && failFirst {
@@ -65,7 +75,7 @@ func TestRepositoryScanner_ListInstallationRepos_Cache(t *testing.T) {
 			}
 			_, _ = fmt.Fprintln(w, `{"installations":[]}`) // test server: write errors are irrelevant
 		})
-		return newTestRepositoryScanner(t, mux, "my-app")
+		return newTestPersonView(t, mux, "my-app")
 	}
 
 	t.Run("a second search is served without walking GitHub again, until a refresh", func(t *testing.T) {
@@ -73,12 +83,12 @@ func TestRepositoryScanner_ListInstallationRepos_Cache(t *testing.T) {
 		s := newScanner(t, &walks, false)
 
 		for range 2 {
-			_, err := s.ListInstallationRepos(t.Context(), false)
+			_, err := s.Repos(t.Context(), false)
 			require.NoError(t, err)
 		}
 		assert.EqualValues(t, 1, walks.Load())
 
-		_, err := s.ListInstallationRepos(t.Context(), true)
+		_, err := s.Repos(t.Context(), true)
 		require.NoError(t, err)
 		assert.EqualValues(t, 2, walks.Load())
 	})
@@ -87,23 +97,23 @@ func TestRepositoryScanner_ListInstallationRepos_Cache(t *testing.T) {
 		var walks atomic.Int32
 		s := newScanner(t, &walks, true)
 
-		_, err := s.ListInstallationRepos(t.Context(), false)
+		_, err := s.Repos(t.Context(), false)
 		require.Error(t, err)
-		_, err = s.ListInstallationRepos(t.Context(), false)
+		_, err = s.Repos(t.Context(), false)
 		require.NoError(t, err)
 		assert.EqualValues(t, 2, walks.Load())
 	})
 }
 
-func TestRepositoryScanner_GitHubRefusingTheTokenIsNotASignedOutSession(t *testing.T) {
+func TestPersonView_GitHubRefusingTheTokenIsNotASignedOutSession(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/user/installations", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"message":"Bad credentials"}`, http.StatusUnauthorized)
 	})
-	s := newTestRepositoryScanner(t, mux, "my-app")
+	s := newTestPersonView(t, mux, "my-app")
 
-	_, reposErr := s.ListInstallationRepos(context.Background(), false)
-	_, installsErr := s.ListInstallations(context.Background())
+	_, reposErr := s.Repos(context.Background(), false)
+	_, installsErr := s.Installations(context.Background())
 	for _, err := range []error{reposErr, installsErr} {
 		require.ErrorIs(t, err, apperrs.ErrForbidden)
 		assert.NotErrorIs(t, err, apperrs.ErrUnauthorized)
@@ -111,7 +121,7 @@ func TestRepositoryScanner_GitHubRefusingTheTokenIsNotASignedOutSession(t *testi
 	}
 }
 
-func TestRepositoryScanner_GetTree(t *testing.T) {
+func TestPersonView_GetTree(t *testing.T) {
 	t.Run("empty ref resolves and reports the default branch", func(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/repos/acme/app", func(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +130,7 @@ func TestRepositoryScanner_GetTree(t *testing.T) {
 		mux.HandleFunc("/repos/acme/app/git/trees/main", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = fmt.Fprintln(w, `{"sha":"abc","tree":[{"path":"Dockerfile","type":"blob"}]}`) // test server: write errors are irrelevant
 		})
-		s := newTestRepositoryScanner(t, mux, "my-app")
+		s := newTestPersonView(t, mux, "my-app")
 
 		resolved, entries, err := s.GetTree(context.Background(), "acme", "app", "")
 		require.NoError(t, err)
@@ -138,7 +148,7 @@ func TestRepositoryScanner_GetTree(t *testing.T) {
 			w.WriteHeader(http.StatusConflict)
 			_, _ = fmt.Fprintln(w, `{"message":"Git Repository is empty."}`) // test server: write errors are irrelevant
 		})
-		s := newTestRepositoryScanner(t, mux, "my-app")
+		s := newTestPersonView(t, mux, "my-app")
 
 		resolved, entries, err := s.GetTree(context.Background(), "acme", "app", "")
 		require.NoError(t, err)
@@ -152,7 +162,7 @@ func TestRepositoryScanner_GetTree(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = fmt.Fprintln(w, `{"message":"not found"}`) // test server: write errors are irrelevant
 		})
-		s := newTestRepositoryScanner(t, mux, "my-app")
+		s := newTestPersonView(t, mux, "my-app")
 
 		_, _, err := s.GetTree(context.Background(), "acme", "app", "")
 		require.Error(t, err)
@@ -166,7 +176,7 @@ func TestRepositoryScanner_GetTree(t *testing.T) {
 			w.WriteHeader(http.StatusForbidden)
 			_, _ = fmt.Fprintln(w, `{"message":"forbidden"}`) // test server: write errors are irrelevant
 		})
-		s := newTestRepositoryScanner(t, mux, "")
+		s := newTestPersonView(t, mux, "")
 
 		_, _, err := s.GetTree(context.Background(), "acme", "app", "")
 		require.Error(t, err)
@@ -174,26 +184,24 @@ func TestRepositoryScanner_GetTree(t *testing.T) {
 		assert.NotContains(t, err.Error(), "installations/new")
 	})
 
-	t.Run("no live token fails without hitting the not-installed mapping", func(t *testing.T) {
-		router := gitProviderRouter{
-			workspace:  &fakeGitRepoResolver{repos: map[string]workspace.RepoRef{}},
-			connectors: &fakeGitTokenResolver{errs: map[string]error{"github": errors.New("credentials revoked")}},
-			appConfigs: &fakeAppConfigStore{cfgs: map[string]connectors.AppConfig{}},
-		}
-		s := newRepositoryScanner(router, router.appConfigs)
-		_, _, err := s.GetTree(context.Background(), "acme", "app", "main")
-		require.Error(t, err)
-		assert.NotErrorIs(t, err, apperrs.ErrNotFound)
+	t.Run("a person with no GitHub link gets no view and GitHub is never asked", func(t *testing.T) {
+		var asked atomic.Int32
+		srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { asked.Add(1) }))
+		t.Cleanup(srv.Close)
+		people := newGitHubPeople(fakeGitHubTokens{}, &fakeAppConfigStore{cfgs: map[string]connectors.AppConfig{"github": {BaseURL: srv.URL}}})
+		_, err := people.GitHubView(t.Context(), "carol")
+		require.ErrorIs(t, err, auth.ErrGitHubNotConnected)
+		assert.Zero(t, asked.Load(), "no other credential is tried in its place")
 	})
 }
 
-func TestRepositoryScanner_GetFile(t *testing.T) {
+func TestPersonView_GetFile(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/repos/acme/app/contents/Dockerfile", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = fmt.Fprintln(w, `{"type":"file","encoding":"base64","content":"RlJPTSBnbw==","name":"Dockerfile","path":"Dockerfile"}`) // test server: write errors are irrelevant
 		})
-		s := newTestRepositoryScanner(t, mux, "my-app")
+		s := newTestPersonView(t, mux, "my-app")
 
 		b, err := s.GetFile(context.Background(), "acme", "app", "main", "Dockerfile")
 		require.NoError(t, err)
@@ -206,7 +214,7 @@ func TestRepositoryScanner_GetFile(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = fmt.Fprintln(w, `{"message":"not found"}`) // test server: write errors are irrelevant
 		})
-		s := newTestRepositoryScanner(t, mux, "my-app")
+		s := newTestPersonView(t, mux, "my-app")
 
 		_, err := s.GetFile(context.Background(), "acme", "app", "main", "missing.yml")
 		assert.ErrorIs(t, err, apperrs.ErrNotFound)

@@ -1,10 +1,14 @@
 package repository
 
 import (
+	"fmt"
 	"net/http"
 
+	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 )
+
+var errAssignRemoved = fmt.Errorf("%w: an installation is no longer assigned by hand; a workspace uses an account once someone who can open one of its repositories attaches it to a project", apperrors.ErrForbidden)
 
 // Handler adapts the repository use-cases to the HTTP/JSON gateway (ADR 0019).
 type Handler struct {
@@ -69,7 +73,7 @@ func (h *Handler) installations(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) installURL(w http.ResponseWriter, r *http.Request) {
-	u, err := h.svc.InstallURL(r.Context(), r.URL.Query().Get("workspace_id"))
+	u, err := h.svc.InstallURL(r.Context())
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -77,12 +81,9 @@ func (h *Handler) installURL(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"url": u})
 }
 
-func (h *Handler) assign(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.AssignInstallation(r.Context(), r.PathValue("account"), r.PathValue("workspaceID")); err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
+// assign keeps answering for clients built before ADR 0147, and links nothing: attaching a repository does.
+func (h *Handler) assign(w http.ResponseWriter, _ *http.Request) {
+	httpx.WriteError(w, errAssignRemoved)
 }
 
 func (h *Handler) unassign(w http.ResponseWriter, r *http.Request) {

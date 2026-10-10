@@ -122,3 +122,12 @@ type SessionStore interface {
 	// LastActiveByUser is each user's latest last-active time across their sessions.
 	LastActiveByUser(ctx context.Context) (map[string]time.Time, error)
 }
+
+// GitHubLinkStore keeps each person's GitHub link, its tokens encrypted at rest.
+type GitHubLinkStore interface {
+	// GetGitHubLink returns ErrNotFound for a person who never connected GitHub.
+	GetGitHubLink(ctx context.Context, userID string) (GitHubLink, error)
+	SaveGitHubLink(ctx context.Context, l GitHubLink) error
+	// DeleteGitHubLink is a no-op for a person with no link.
+	DeleteGitHubLink(ctx context.Context, userID string) error
+}

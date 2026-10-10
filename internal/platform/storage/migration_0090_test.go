@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/repository"
 )
@@ -90,18 +89,4 @@ func TestGitHubInstallationsRepo_WritesItsEventOnlyWhenTheAssignmentChanges(t *t
 	require.NoError(t, err)
 	assert.False(t, changed)
 	assert.Equal(t, 3, outbox())
-}
-
-func TestGitHubInstallationsRepo_AnInstallStateIsConsumedOnce(t *testing.T) {
-	s := openConnectorAppConfigStore(t)
-	ctx := t.Context()
-	now := time.Unix(1_800_000_000, 0)
-	st := repository.InstallState{WorkspaceID: "workspace-default", UserID: "alice", ExpiresAt: now.Add(time.Hour)}
-	require.NoError(t, s.GitHubInstallations.SaveInstallState(ctx, "hash-1", st, now))
-
-	got, err := s.GitHubInstallations.ConsumeInstallState(ctx, "hash-1")
-	require.NoError(t, err)
-	assert.Equal(t, st, got)
-	_, err = s.GitHubInstallations.ConsumeInstallState(ctx, "hash-1")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
