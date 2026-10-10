@@ -6,8 +6,6 @@ name: Computer on macOS
 
 on:
   workflow_dispatch:
-  push:
-    branches: [feat/computer-runner-macos]
 
 permissions:
   contents: read
