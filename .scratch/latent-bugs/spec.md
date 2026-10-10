@@ -145,3 +145,16 @@ created yet (no use-case sets `parent_message_id`) and the web has no screen
 for one, so they have no menu to carry it. When channel threads get a screen,
 give its menu the same "Bots" item (`useBotsDialog`).
 
+
+## A switched-off automation's token still works
+
+Switching an automation off stops its events but not its credentials: no
+authentication path checks `Enabled` (`RequireAutomation` in
+`internal/automations/gateway.go`, `AuthenticateToken` in `usecase.go`, host
+tokens in `hosts_usecase.go`, and the dial-in socket in `dialin.go` all accept
+it), and `SetEnabled` neither revokes the token nor closes its connections. So
+its token, or a host token minted before it was switched off, still calls
+`/api/` routes within its scopes, including queueing plays with `runPlay`.
+Refuse a switched-off automation's token on every path and close its open
+connections when it is switched off; switching it back on lets the same token
+work again.
