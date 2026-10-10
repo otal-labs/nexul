@@ -102,6 +102,11 @@ these win.
     and 1440px before calling web work done; phones are served by the
     Android app in `native/` (ADR 0080). `website/` stays mobile first: build
     at 320, 375, and 414px and verify at 320, 375, 414, and 768px.
+13. Fast by default, and kept fast by a test. Lists page and filter by access
+    in SQL, a client refreshes only what a frame names, and a background loop
+    waits on the commit broadcast instead of polling. A performance fix ships
+    with a before and after number from a production build and a guard test
+    that counts something deterministic (`practices/testing.md`, section 10).
 
 ## What enforces the rules
 

@@ -199,3 +199,8 @@ These apply everywhere, regardless of surface:
 - **Tablet and desktop.** Build the web app at 768px first and verify at
   768 / 1024 / 1440px before calling web work done; phones are served by the
   Android app. The website stays mobile-first at 320 / 375 / 414px.
+- **Fast by default, kept fast by a test.** Lists page and filter by access
+  in SQL, clients refresh only what a frame names, background loops wait on
+  the commit broadcast instead of polling. A performance fix ships with a
+  before and after number from a production build and a guard test that
+  counts something deterministic.
