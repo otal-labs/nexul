@@ -54,7 +54,7 @@ export const PairT3CodeForm = ({ computer, onPaired }: PairT3CodeFormProps) => {
         control={form.control}
         name="token"
         label="One-time pairing token"
-        placeholder="Paste the token printed by `t3 pair`"
+        placeholder="Paste the token the command printed"
         autoComplete="off"
         autoFocus={!!computer}
       />

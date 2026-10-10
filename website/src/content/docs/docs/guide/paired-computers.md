@@ -15,14 +15,14 @@ You need T3 Code running on the computer, and the instance needs Cloudflare conn
 2. On the **Tunnel** step, enter a **Computer name** and press **Create tunnel**. Change **T3 Code port** under **Advanced options** only if T3 Code doesn't run on its default port.
 3. Run the command shown for your system on that computer. It installs `cloudflared` if needed and keeps a tunnel open to the instance's Cloudflare account as a background service. The token in it is secret, so keep it to that computer.
 4. Wait for both checks, **Tunnel online** and **T3 Code answering**, then press **Next**.
-5. Run `t3 pair` on the computer and paste the one-time token it prints. A refused token shows on the token field: run `t3 pair` again for a fresh one.
+5. Pick how T3 Code is installed on the computer and run the command shown. **Desktop app** (the default) runs the launcher the app keeps in `~/.t3/bin` (`t3.cmd` on Windows), because the app's `t3` isn't on your `PATH` until you press **Install** next to **t3 command** under T3 Code's **Settings → General → About**. **Command line** runs plain `t3 pair`. **Not installed yet** installs T3 Code first. Paste the one-time token it prints. A refused token shows on the token field: run the command again for a fresh one.
 6. On the last step, [set up the computer](/docs/guide/computer-setup/).
 
 The computer gets a hostname made from its name plus eight random characters, and only the Nexul server can reach it. If you close the dialog early, the row reads **Pairing in progress**; press **Pair** on it to carry on.
 
 ### Pair by URL
 
-For a machine the server can already reach, such as a VPS or a computer on the same network, skip the tunnel. On the **Tunnel** step choose **Pair by URL** under the form, and enter a **Name**, the **T3 server URL** the server reaches it at, and the **One-time pairing token** from `t3 pair`.
+For a machine the server can already reach, such as a VPS or a computer on the same network, skip the tunnel. On the **Tunnel** step choose **Pair by URL** under the form, and enter a **Name**, the **T3 server URL** the server reaches it at, and the **One-time pairing token** the same command prints.
 
 ## Keep it paired
 

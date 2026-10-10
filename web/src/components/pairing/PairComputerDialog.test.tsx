@@ -126,7 +126,6 @@ describe("PairComputerDialog", () => {
     expect(screen.getByLabelText(/^name$/i)).toHaveAttribute("readonly");
     expect(screen.getByLabelText(/t3 server url/i)).toHaveValue("https://work-laptop-ab12cd34.example.com");
     expect(screen.getByLabelText(/t3 server url/i)).toHaveAttribute("readonly");
-    expect(screen.getByText("t3 pair")).toBeInTheDocument();
 
     mocks.post.mockResolvedValueOnce({ data: { ...created, token_expires_at: "2026-10-24T00:00:00Z", harness_version: "0.0.40" } });
     await user.type(screen.getByLabelText(/one-time pairing token/i), "t3-pair-token");
@@ -140,12 +139,28 @@ describe("PairComputerDialog", () => {
     expect(screen.getByRole("button", { name: /^done$/i })).toBeInTheDocument();
   });
 
+  it("shows the pairing command for how T3 Code is installed, starting from the desktop app whose t3 is off PATH", async () => {
+    const user = userEvent.setup();
+    const client = renderDialog();
+    await reachPairStep(user, client);
+
+    expect(screen.getByText("~/.t3/bin/t3 pair")).toBeInTheDocument();
+    expect(screen.queryByText("t3 pair")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("radio", { name: "Command line" }));
+    expect(screen.getByText("t3 pair")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("radio", { name: "Not installed yet" }));
+    expect(screen.getByText(/t3\.codes\/install\.sh/)).toBeInTheDocument();
+    expect(screen.getByText("~/.local/bin/t3 pair")).toBeInTheDocument();
+  });
+
   it("shows a refused token on the token field and an unreachable harness on the URL field", async () => {
     const user = userEvent.setup();
     const client = renderDialog();
     await reachPairStep(user, client);
 
-    const refused = "the harness refused this token, run t3 pair for a fresh one";
+    const refused = "the harness refused this token, get a fresh one from T3 Code on the computer";
     mocks.post.mockRejectedValueOnce(apiError({ message: refused, code: "INVALID" }, { token: [refused] }));
     await user.type(screen.getByLabelText(/one-time pairing token/i), "stale");
     await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
