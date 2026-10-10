@@ -64,7 +64,7 @@ Each computer is one row: its name, whether it's **Connected**, **Trying to conn
 
 A pairing lasts 30 days, because T3 Code's session can't be refreshed. The row warns in its last days and shows **Re-pair**; once it has expired the row says it acts as unpaired. **Re-pair** is also in the **…** menu at any time; it takes a fresh pairing link the same way. The tunnel keeps its hostname.
 
-**Remove**, in the **…** menu, asks first, then deletes the pairing, revokes the computer's MCP token, and deletes its tunnel and hostname. Neither Remove nor Re-pair ends Nexul's session inside T3 Code, which offers no way to do that from outside. To end it before it expires, run `t3 auth session list` on the computer and `t3 auth session revoke <id>` on the `Nexul` entry. A removed tunnel computer is already unreachable.
+**Remove**, in the **…** menu, asks first, then deletes the pairing and revokes the computer's MCP token. On a computer added with the command, it also revokes the runner's credential: the runner removes its `nexul-computer` service and files within a heartbeat, or the next time the computer comes online, and on the way out ends every T3 Code session labelled `Nexul`, so Nexul keeps no way into T3 Code there. A command made for the computer and never run stops working too. On a computer paired through a tunnel, Remove deletes the tunnel and hostname instead, which already makes it unreachable; Nexul's session inside T3 Code stays until it expires, or until you run `t3 auth session list` on the computer and `t3 auth session revoke <id>` on the `Nexul` entry. Re-pair never ends a session.
 
 ### The computer's MCP token
 

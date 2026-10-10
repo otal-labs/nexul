@@ -55,6 +55,18 @@ func (r *RunnersRepo) GetByComputer(ctx context.Context, computerID string) (*ru
 	return toRunner(row), nil
 }
 
+func (r *RunnersRepo) ListByOwner(ctx context.Context, userID string) ([]*runner.Runner, error) {
+	rows, err := r.q.ListRunnersByOwner(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list runners of %s: %w", userID, err)
+	}
+	var out []*runner.Runner
+	for _, row := range rows {
+		out = append(out, toRunner(row))
+	}
+	return out, nil
+}
+
 func (r *RunnersRepo) GetByID(ctx context.Context, id string) (*runner.Runner, error) {
 	row, err := r.q.GetRunner(ctx, id)
 	if err != nil {
@@ -123,6 +135,24 @@ func (r *RunnersRepo) CreateEnrollment(ctx context.Context, e *runner.Enrollment
 		})
 		if err != nil {
 			return fmt.Errorf("insert runner enrollment code: %w", classifyWriteErr(err))
+		}
+		return nil
+	})
+}
+
+func (r *RunnersRepo) DeleteComputerEnrollments(ctx context.Context, computerID string) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		if err := r.q.WithTx(tx).DeleteRunnerEnrollmentCodesByComputer(ctx, computerID); err != nil {
+			return fmt.Errorf("delete enrollment codes of computer %s: %w", computerID, err)
+		}
+		return nil
+	})
+}
+
+func (r *RunnersRepo) DeleteOwnerEnrollments(ctx context.Context, userID string) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		if err := r.q.WithTx(tx).DeleteRunnerEnrollmentCodesByOwner(ctx, userID); err != nil {
+			return fmt.Errorf("delete enrollment codes of %s: %w", userID, err)
 		}
 		return nil
 	})

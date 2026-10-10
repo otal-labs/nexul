@@ -25,7 +25,7 @@ A link works once. The Owner role is never offered; ownership doesn't move throu
 
 Nothing applies as you edit. A tab with changes shows a dot, **Confirm** applies them all, and **Cancel** asks before throwing them away. If one change is refused, the dialog says which and keeps the rest waiting for the next **Confirm**.
 
-Account actions apply at once, each after its own confirmation: **Disable** stops someone signing in and keeps their access, **Reactivate** undoes it, and **Remove account** removes them. **Restore** brings a removed account back with no workspace access.
+Account actions apply at once, each after its own confirmation: **Disable** stops someone signing in and keeps their access, **Reactivate** undoes it, and **Remove account** removes them. **Restore** brings a removed account back with no workspace access. Disable and Remove account also disconnect the person's computers: each one's runner uninstalls itself, and you are told only that their computers were disconnected, never which ones. Reactivating or restoring the account brings none back; the person adds each computer again from their own settings.
 
 Seeing everyone takes `accounts:read`. Changing someone in a workspace takes `members:write` there. Without `accounts:read`, someone who manages members finds Team under **Configuration** instead, showing only the workspaces they manage.
 

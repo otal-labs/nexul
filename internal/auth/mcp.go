@@ -66,7 +66,8 @@ func accountGetTool(s *Service) mcptool.Tool {
 
 func accountDeleteTool(s *Service) mcptool.Tool {
 	return mcptool.New("account_delete", "Remove account",
-		"Removes an account: it can no longer sign in, and its credentials and workspace memberships are deleted, "+
+		"Removes an account: it can no longer sign in, its credentials and workspace memberships are deleted, "+
+			"and its computers are disconnected, "+
 			"while everything it authored stays. The account remains listed as removed; account_update with status "+
 			"active restores it, without the deleted access. Needs accounts:delete in any workspace, and the last "+
 			"active Owner cannot be removed; returns {id, deleted: true}.",

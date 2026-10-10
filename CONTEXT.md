@@ -76,7 +76,9 @@ _Avoid_: Agent, worker, executor
 **Personal runner**:
 The runner on a person's own computer, enrolled by that person for that
 computer. It reaches the computer's harness for Nexul and reports the
-computer's facts; it never builds or deploys.
+computer's facts; it never builds or deploys. Removing the computer, or
+disabling or removing its person's account, revokes it, and it uninstalls
+itself.
 _Avoid_: agent, relay, daemon, helper, connector
 
 **Agent**:

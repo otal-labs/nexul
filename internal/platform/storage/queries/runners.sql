@@ -22,6 +22,9 @@ SELECT * FROM runners WHERE name = ?;
 -- name: GetRunnerByComputer :one
 SELECT * FROM runners WHERE computer_id = ? AND computer_id != '' LIMIT 1;
 
+-- name: ListRunnersByOwner :many
+SELECT * FROM runners WHERE owner_user_id = ? AND owner_user_id != '' ORDER BY created_at;
+
 -- name: PruneRunnerEnrollmentCodes :exec
 DELETE FROM runner_enrollment_codes WHERE expires_at <= ?;
 
@@ -30,6 +33,12 @@ INSERT INTO runner_enrollment_codes (code_hash, name, machine, created_at, expir
 
 -- name: GetRunnerEnrollmentCode :one
 SELECT * FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?;
+
+-- name: DeleteRunnerEnrollmentCodesByComputer :exec
+DELETE FROM runner_enrollment_codes WHERE computer_id = ? AND computer_id != '';
+
+-- name: DeleteRunnerEnrollmentCodesByOwner :exec
+DELETE FROM runner_enrollment_codes WHERE owner_user_id = ? AND owner_user_id != '';
 
 -- name: ConsumeRunnerEnrollmentCode :execrows
 DELETE FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?;

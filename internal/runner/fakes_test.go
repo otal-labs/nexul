@@ -105,6 +105,44 @@ func (f *fakeRunnerRepo) personal(id, userID, computerID string) string {
 	return raw
 }
 
+func (f *fakeRunnerRepo) ListByOwner(_ context.Context, userID string) ([]*Runner, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	var out []*Runner
+	for _, r := range f.runners {
+		if userID != "" && r.OwnerUserID == userID {
+			cp := *r
+			out = append(out, &cp)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeRunnerRepo) DeleteComputerEnrollments(_ context.Context, computerID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for hash, e := range f.codes {
+		if computerID != "" && e.ComputerID == computerID {
+			delete(f.codes, hash)
+		}
+	}
+	return nil
+}
+
+func (f *fakeRunnerRepo) DeleteOwnerEnrollments(_ context.Context, userID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for hash, e := range f.codes {
+		if userID != "" && e.OwnerUserID == userID {
+			delete(f.codes, hash)
+		}
+	}
+	return nil
+}
+
 func (f *fakeRunnerRepo) CreateEnrollment(_ context.Context, e *EnrollmentCode) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

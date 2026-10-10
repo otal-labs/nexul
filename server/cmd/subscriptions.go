@@ -9,6 +9,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/agent"
+	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/codereview"
 	"github.com/otal-labs/nexul/internal/deploy"
@@ -324,6 +325,10 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	// A computer added without a name takes the hostname its runner reports when it enrolls.
 	mustSubscribe(ctx, bus, "pairing.computer_name", runner.TopicPersonalChanged, "", svc.pairingSvc.HandleRunnerChanged)
 	mustSubscribe(ctx, bus, "pairing.through_runner", runner.TopicFactsReported, "", svc.pairingSvc.HandleFactsReported)
+	// A disabled or removed account's computers lose their runners, which uninstall themselves.
+	for _, topic := range []string{auth.TopicAccountDisabled, auth.TopicAccountRemoved} {
+		mustSubscribe(ctx, bus, "runner.revoke_personal", topic, "", svc.computers.HandleAccountClosed)
+	}
 
 	// Pushes leave the request path here: the outbox event names the rows, the sender posts to Expo per phone.
 	mustSubscribe(ctx, bus, "push.notifications", workspace.TopicNotificationPushRequested, "", svc.pushSender.HandleNotificationPushRequested)

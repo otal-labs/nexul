@@ -22,6 +22,9 @@ Read first: `practices/react-guide.md` (F1 to F7 and the self-review checklist),
   Computer connected, T3 Code found, Paired; then the existing Set up step.
 - The computer row: each lane's health on its own (runner connected, T3 Code answering through it), Rename,
   Re-pair now, Remove; "Open T3 Code" when the desktop app is closed.
+- A computer whose runner was revoked (its owner's account disabled, then reactivated; ticket 04) keeps its row and shows
+  **Add this computer again**, which opens the dialog with a fresh command for that row
+  (`POST /api/pairing/computers/enrollments {id}`).
 - The tunnel step, the pairing-link step and Pair by URL are no longer reachable for a new computer. They
   stay only on old computers' rows, for re-pairing, until ticket 14.
 - The owner wizard's last step uses the same dialog; its subtitle drops "from anywhere" and the tunnel.

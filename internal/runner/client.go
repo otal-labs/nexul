@@ -337,6 +337,7 @@ func (c *Client) uninstall(ctx context.Context) {
 	kind, name := "runner", c.cfg.Name
 	if c.cfg.Personal {
 		kind, name = "computer", ""
+		c.revokeNexulSessions(ctx)
 	}
 	if err := c.cfg.Executor.Uninstall(ctx, kind, name); err != nil {
 		c.log.Error("uninstall failed; remove the service by hand", "runner", c.cfg.Name, "error", err)

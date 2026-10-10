@@ -123,8 +123,8 @@ func accountListTool(t Team) mcptool.Tool {
 
 func accountUpdateTool(a AccountStatusSetter, t Team) mcptool.Tool {
 	return mcptool.New("account_update", "Update account",
-		"Changes an account's status and its workspace access. status disabled blocks sign-in while keeping "+
-			"memberships and credentials; active reactivates a disabled account, or restores a removed one without "+
+		"Changes an account's status and its workspace access. status disabled blocks sign-in and disconnects "+
+			"their computers while keeping memberships and credentials; active reactivates a disabled account, or restores a removed one without "+
 			"the access account_delete took away; status needs accounts:write in any workspace. workspaces adds the "+
 			"account to a workspace, changes its role, or replaces its overrides there, and remove_workspace_ids "+
 			"takes it out of one; each needs members:write in that workspace, a role or allow override may only "+

@@ -19,6 +19,8 @@ type RunnerStore interface {
 	GetByName(ctx context.Context, name string) (*Runner, error)
 	// GetByComputer returns the personal runner that reaches computerID, or apperrs.ErrNotFound.
 	GetByComputer(ctx context.Context, computerID string) (*Runner, error)
+	// ListByOwner returns the personal runners userID enrolled.
+	ListByOwner(ctx context.Context, userID string) ([]*Runner, error)
 	// List returns the deploy runners; a personal runner is never listed (ADR 0146).
 	List(ctx context.Context) ([]*Runner, error)
 	Heartbeat(ctx context.Context, id string, at time.Time) error
@@ -31,6 +33,10 @@ type RunnerStore interface {
 type CredentialStore interface {
 	// CreateEnrollment stores a code and prunes every expired one.
 	CreateEnrollment(ctx context.Context, e *EnrollmentCode) error
+	// DeleteComputerEnrollments drops every unused code that would enroll computerID's runner.
+	DeleteComputerEnrollments(ctx context.Context, computerID string) error
+	// DeleteOwnerEnrollments drops every unused code that would enroll a personal runner for userID.
+	DeleteOwnerEnrollments(ctx context.Context, userID string) error
 	// GetEnrollment returns the unexpired code with codeHash, or apperrs.ErrNotFound.
 	GetEnrollment(ctx context.Context, codeHash string, now time.Time) (*EnrollmentCode, error)
 	// Enroll consumes the code, creates the runner and stores its credential in one transaction; a code already

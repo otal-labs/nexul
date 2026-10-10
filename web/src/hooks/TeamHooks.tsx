@@ -25,13 +25,13 @@ const invalidateTeam = (client: QueryClient) =>
     client.invalidateQueries({ queryKey: [getProjectPeopleKey] }),
   ]);
 
-const useTeamMutation = <TInput,>(request: (input: TInput) => Promise<unknown>, success: string) => {
+const useTeamMutation = <TInput,>(request: (input: TInput) => Promise<unknown>, success: (input: TInput) => string) => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: request,
-    onSuccess: async () => {
+    onSuccess: async (_data, input) => {
       await invalidateTeam(client);
-      toast.success(success);
+      toast.success(success(input));
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -54,14 +54,17 @@ export const useApplyMemberStep = () => {
   });
 };
 
+// The same words whatever the person had: who closes an account learns nothing about their computers.
+const computersDisconnected = "Their computers were disconnected.";
+
 export const useUpdateAccountStatus = () =>
   useTeamMutation(
     ({ id, status }: { id: string; status: "active" | "disabled" }) => api.patch(`/api/auth/accounts/${encodeURIComponent(id)}`, { status }),
-    "Account status updated",
+    ({ status }) => (status === "disabled" ? `Account disabled. ${computersDisconnected}` : "Account status updated"),
   );
 
 export const useRemoveAccount = () =>
-  useTeamMutation((id: string) => api.delete(`/api/auth/accounts/${encodeURIComponent(id)}`), "Account removed");
+  useTeamMutation((id: string) => api.delete(`/api/auth/accounts/${encodeURIComponent(id)}`), () => `Account removed. ${computersDisconnected}`);
 
 // The Team follows account and membership changes made anywhere; presence frames name nobody, so it refetches whole.
 export const teamFollower: LiveFollower = followEach(
