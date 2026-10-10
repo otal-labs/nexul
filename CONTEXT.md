@@ -255,7 +255,8 @@ becomes unblocked, enters a stage, is created, gets a developer or tester,
 fails a test; a doc is created, or changed once edits have settled and not
 by an agent), conditions on the ticket's or doc's existing fields in all/any
 groups, a priority, limits, and whom it runs on: the developer, the tester,
-or whoever caused the moment. The play's show-when stage does not apply; a
+or whoever caused the moment (a doc play always runs on whoever caused it,
+since a doc has no developer). The play's show-when stage does not apply; a
 "Stage is" condition does that. A match waits in that person's queue, highest
 priority then oldest first, until they have a free slot and their computer
 is online, and is checked again before it starts. A ticket past the daily

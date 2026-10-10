@@ -18,3 +18,10 @@ for each path, integration tests against real SQLite.
 
 - Auto runs skip `checkPlay`'s show-when stage gate (03's answer); manual
   presses keep it.
+- `doc.settled` carries `first`: `first: true` matches the stored moment
+  `doc.created`, `first: false` matches `doc.changed`. `ticket.unblocked`
+  matches `ticket.unblocked`; the other ticket moments map from the existing
+  topics (`ticket.created`, `ticket.status_changed` into a stage,
+  `ticket.developer_changed` and `ticket.tester_changed` to someone,
+  `ticket.test_failed`).
+- The matcher reads `idx_auto_plays_moment` (workspace, moment, enabled).

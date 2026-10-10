@@ -115,6 +115,8 @@ resolved.
 - 06, the ticket signals: queued and paused in the rail, the rest in the
   Thread.
 - 07, the ADR: ADR 0132, amending 0055 and 0066.
+- 08, the moments: built, PR #522.
+- 09, the record and surfaces: built, PR #524.
 
 ## Not yet specified
 
