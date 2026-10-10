@@ -29,6 +29,7 @@
   "chat.message.updated",
   "computer.facts_changed",
   "computer.harness_switched",
+  "computer.pair_failed",
   "computer.paired",
   "computer.setup_confirmed",
   "computer.setup_finished",

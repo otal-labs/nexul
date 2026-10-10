@@ -63,6 +63,14 @@ func TestComputerEvents_AreMembersOnly(t *testing.T) {
 		check(e.Topic, e.Payload)
 	}
 
+	runner := newRunnerFixture(t, Computer{Name: "Laptop"})
+	runner.runners.tokenErr = errBoom
+	_, err = runner.svc.PairComputer(ctx, "u-alice", "c-laptop", "")
+	require.Error(t, err)
+	for _, failed := range runner.bus.pairFailed {
+		check(TopicPairFailed, failed)
+	}
+
 	for _, topic := range Topics() {
 		assert.True(t, seen[topic.Name], "no flow here publishes %s; add one", topic.Name)
 	}

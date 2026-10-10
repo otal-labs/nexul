@@ -74,6 +74,7 @@ var liveRules = map[string]liveRule{
 	pairing.TopicHarnessSwitched:     ownFrame,
 	runner.TopicPersonalChanged:      ownFrame,
 	pairing.TopicFactsChanged:        ownFrame,
+	pairing.TopicPairFailed:          ownFrame,
 	access.TopicGrantChanged:         grantFrame,
 
 	tenancy.TopicWorkspaceMemberAdded:   memberFrame,

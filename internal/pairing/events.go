@@ -23,6 +23,8 @@ const (
 	TopicHarnessSwitched   = "computer.harness_switched"
 	// TopicFactsChanged names the computer whose facts changed and never carries them: they are its owner's alone.
 	TopicFactsChanged = "computer.facts_changed"
+	// TopicPairFailed is ephemeral: a pairing through the computer's runner failed, its reason on the computer list.
+	TopicPairFailed = "computer.pair_failed"
 )
 
 // Topics returns every topic the pairing domain publishes.
@@ -39,6 +41,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicSetupTurnActivity, Payload: SetupTurnActivityEvent{}},
 		{Name: TopicHarnessSwitched, Payload: HarnessSwitchedEvent{}},
 		{Name: TopicFactsChanged, Payload: FactsChangedEvent{}},
+		{Name: TopicPairFailed, Payload: PairFailedEvent{}},
 	}
 }
 
@@ -142,6 +145,13 @@ type SetupTurnActivityEvent struct {
 	Text        string    `json:"text,omitempty"`
 	At          time.Time `json:"at"`
 	MembersOnly bool      `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
+}
+
+// PairFailedEvent names the computer whose pairing through its runner failed; the reason is read from the computer list.
+type PairFailedEvent struct {
+	ComputerID  string `json:"computer_id"`
+	UserID      string `json:"user_id" jsonschema:"The computer's owner."`
+	MembersOnly bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }
 
 // FactsChangedEvent is a computer's stored facts changing; read them with the computer, as its owner.
