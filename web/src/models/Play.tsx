@@ -85,3 +85,44 @@ export const toSavePlayRequest = (data: SavePlayFormData): SavePlayRequest => ({
   ...data,
   show_when_stage: data.show_when_stage === "" ? null : (data.show_when_stage as PlayStage),
 });
+
+// Mirrors internal/plays/autoplay.go: what starts a play by itself, its conditions, priority, and whom it runs on.
+export type AutoPlayMoment =
+  | "ticket.unblocked"
+  | "ticket.entered_stage"
+  | "ticket.created"
+  | "ticket.developer_set"
+  | "ticket.tester_set"
+  | "ticket.test_failed"
+  | "doc.created"
+  | "doc.changed";
+
+export type AutoPlayMatch = "all" | "any";
+export type AutoPlayLevel = "high" | "normal" | "low";
+
+export interface AutoPlayRule {
+  field: string;
+  op: "is" | "is_not" | "set" | "unset";
+  values?: string[];
+}
+
+export interface AutoPlayGroup {
+  match: AutoPlayMatch;
+  rules: AutoPlayRule[];
+}
+
+export interface AutoPlay {
+  id: string;
+  play_id: string;
+  workspace_id: string;
+  enabled: boolean;
+  moment: AutoPlayMoment;
+  moment_stage: PlayStage | null;
+  conditions: { match: AutoPlayMatch; groups: AutoPlayGroup[] };
+  priority: { rules: { level: AutoPlayLevel; when: AutoPlayGroup }[]; otherwise: AutoPlayLevel };
+  once_within_minutes: number;
+  run_on: "developer" | "tester" | "causer";
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}

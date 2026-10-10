@@ -18,6 +18,10 @@ const (
 	TopicRunStarted  = "play.run_started"
 	TopicRunWaiting  = "play.run_waiting"
 	TopicRunFinished = "play.run_finished"
+
+	TopicAutoPlayCreated = "auto_play.created"
+	TopicAutoPlayUpdated = "auto_play.updated"
+	TopicAutoPlayDeleted = "auto_play.deleted"
 )
 
 // TopicPlayRun is the live-hub topic for trail state and activity; ephemeral, never persisted or catalogued.
@@ -32,7 +36,22 @@ func Topics() []eventbus.Topic {
 		{Name: TopicRunStarted, Payload: RunStartedEvent{}},
 		{Name: TopicRunWaiting, Payload: RunWaitingEvent{}},
 		{Name: TopicRunFinished, Payload: RunFinishedEvent{}},
+		{Name: TopicAutoPlayCreated, Payload: AutoPlayEvent{}},
+		{Name: TopicAutoPlayUpdated, Payload: AutoPlayEvent{}},
+		{Name: TopicAutoPlayDeleted, Payload: AutoPlayDeletedEvent{}},
 	}
+}
+
+// AutoPlayEvent is the payload for auto_play.created and auto_play.updated.
+type AutoPlayEvent struct {
+	AutoPlay AutoPlay `json:"auto_play"`
+}
+
+// AutoPlayDeletedEvent is the auto_play.deleted payload; a play's delete takes its auto plays without one each.
+type AutoPlayDeletedEvent struct {
+	ID          string `json:"id"`
+	PlayID      string `json:"play_id"`
+	WorkspaceID string `json:"workspace_id"`
 }
 
 // CreatedEvent is the payload for play.created; field names are part of the event contract (ADR 0044).

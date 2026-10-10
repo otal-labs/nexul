@@ -142,6 +142,9 @@ var liveRules = map[string]liveRule{
 	plays.TopicCreated:                   playFrame,
 	plays.TopicUpdated:                   playFrame,
 	plays.TopicDeleted:                   playFrame,
+	plays.TopicAutoPlayCreated:           autoPlayFrame,
+	plays.TopicAutoPlayUpdated:           autoPlayFrame,
+	plays.TopicAutoPlayDeleted:           autoPlayFrame,
 	botwebhook.TopicCreated:              botwebhookFrame,
 	botwebhook.TopicUpdated:              botwebhookFrame,
 	botwebhook.TopicDeleted:              botwebhookFrame,
@@ -427,6 +430,21 @@ func playFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 		return true
 	}
 	return a.access.HasPermission(ctx, actorID(ctx), workspaceID, permissions.PlaysRun, "play", id)
+}
+
+// autoPlayFrame reaches whoever reads the workspace's auto plays; the workspace is top level on a delete, nested otherwise.
+func autoPlayFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		WorkspaceID string `json:"workspace_id"`
+		AutoPlay    struct {
+			WorkspaceID string `json:"workspace_id"`
+		} `json:"auto_play"`
+	}
+	if !decode(raw, &p) {
+		return false
+	}
+	workspaceID := p.WorkspaceID + p.AutoPlay.WorkspaceID
+	return workspaceID != "" && a.access.Require(ctx, workspaceID, permissions.AutoplaysRead) == nil
 }
 
 func stackFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {

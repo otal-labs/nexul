@@ -69,6 +69,9 @@ const (
 	PlaysWrite         Action = "plays:write"
 	PlaysDelete        Action = "plays:delete"
 	PlaysRun           Action = "plays:run"
+	AutoplaysRead      Action = "autoplays:read"
+	AutoplaysWrite     Action = "autoplays:write"
+	AutoplaysDelete    Action = "autoplays:delete"
 	MemoriesRead       Action = "memories:read"
 	MemoriesWrite      Action = "memories:write"
 	MemoriesDelete     Action = "memories:delete"
@@ -134,6 +137,7 @@ var domainTable = []domainInfo{
 	{"docs", "docs", []string{read, write, delete, thread, clone, lock}, AreaProject},
 	{"attachments", "attachments", []string{read, write, delete}, AreaProject},
 	{"plays", "plays", []string{read, write, delete, run}, AreaWorkspace},
+	{"autoplays", "auto plays", []string{read, write, delete}, AreaWorkspace},
 	{"memories", "memories", []string{read, write, delete, clone}, AreaProject},
 	{"tickets", "tickets", []string{read, write, delete}, AreaProject},
 	{"deploys", "deploys", []string{read, write}, AreaProject},

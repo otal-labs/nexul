@@ -19,6 +19,19 @@ type Repo interface {
 	// DecisionsCheckEnabled and SetDecisionsCheckEnabled hold the built-in decisions check's per-workspace switch.
 	DecisionsCheckEnabled(ctx context.Context, workspaceID string) (bool, error)
 	SetDecisionsCheckEnabled(ctx context.Context, workspaceID string, enabled bool) error
+	AutoPlayRepo
+}
+
+// AutoPlayRepo persists a play's auto plays, which go with their play, and the workspace's daily cap on them.
+type AutoPlayRepo interface {
+	CreateAutoPlay(ctx context.Context, a *AutoPlay, evts ...eventbus.OutboxEvent) error
+	GetAutoPlay(ctx context.Context, id string) (*AutoPlay, error)
+	// ListAutoPlays returns the auto plays of every play named in one read, each play's oldest first.
+	ListAutoPlays(ctx context.Context, playIDs []string) ([]*AutoPlay, error)
+	UpdateAutoPlay(ctx context.Context, a *AutoPlay, evts ...eventbus.OutboxEvent) error
+	DeleteAutoPlay(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
+	AutoPlayDailyCap(ctx context.Context, workspaceID string) (int, error)
+	SetAutoPlayDailyCap(ctx context.Context, workspaceID string, limit int) error
 }
 
 // TrailRepo is the consumer-side persistence contract for trails; implemented in internal/platform/storage.

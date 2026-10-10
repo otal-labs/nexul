@@ -2,6 +2,7 @@ package plays
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -21,10 +22,111 @@ type fakeRepo struct {
 	deleteErr error
 	// decisionsCheck holds each workspace's decisions check switch; absent is off, as a new workspace starts.
 	decisionsCheck map[string]bool
+	autoPlays      []*AutoPlay
+	autoPlayErr    error
+	// autoPlayLists counts ListAutoPlays calls, so a list proves it reads once per page.
+	autoPlayLists int
+	dailyCap      map[string]int
 }
 
 func newFakeRepo() *fakeRepo {
-	return &fakeRepo{byID: map[string]*Play{}, decisionsCheck: map[string]bool{}}
+	return &fakeRepo{byID: map[string]*Play{}, decisionsCheck: map[string]bool{}, dailyCap: map[string]int{}}
+}
+
+func (f *fakeRepo) CreateAutoPlay(_ context.Context, a *AutoPlay, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.autoPlayErr != nil {
+		return f.autoPlayErr
+	}
+	cp := *a
+	f.autoPlays = append(f.autoPlays, &cp)
+	f.published = append(f.published, evts...)
+	return nil
+}
+
+func (f *fakeRepo) GetAutoPlay(_ context.Context, id string) (*AutoPlay, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, a := range f.autoPlays {
+		if a.ID == id {
+			cp := *a
+			return &cp, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
+func (f *fakeRepo) ListAutoPlays(_ context.Context, playIDs []string) ([]*AutoPlay, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.autoPlayLists++
+	if f.autoPlayErr != nil {
+		return nil, f.autoPlayErr
+	}
+	var out []*AutoPlay
+	for _, a := range f.autoPlays {
+		if slices.Contains(playIDs, a.PlayID) {
+			cp := *a
+			out = append(out, &cp)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeRepo) UpdateAutoPlay(_ context.Context, a *AutoPlay, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.autoPlayErr != nil {
+		return f.autoPlayErr
+	}
+	for i, existing := range f.autoPlays {
+		if existing.ID == a.ID {
+			cp := *a
+			f.autoPlays[i] = &cp
+			f.published = append(f.published, evts...)
+			return nil
+		}
+	}
+	return apperrs.ErrNotFound
+}
+
+func (f *fakeRepo) DeleteAutoPlay(_ context.Context, id string, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.autoPlayErr != nil {
+		return f.autoPlayErr
+	}
+	for i, a := range f.autoPlays {
+		if a.ID == id {
+			f.autoPlays = slices.Delete(f.autoPlays, i, i+1)
+			f.published = append(f.published, evts...)
+			return nil
+		}
+	}
+	return apperrs.ErrNotFound
+}
+
+func (f *fakeRepo) AutoPlayDailyCap(_ context.Context, workspaceID string) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.autoPlayErr != nil {
+		return 0, f.autoPlayErr
+	}
+	if limit, ok := f.dailyCap[workspaceID]; ok {
+		return limit, nil
+	}
+	return DefaultAutoPlayDailyCap, nil
+}
+
+func (f *fakeRepo) SetAutoPlayDailyCap(_ context.Context, workspaceID string, limit int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.autoPlayErr != nil {
+		return f.autoPlayErr
+	}
+	f.dailyCap[workspaceID] = limit
+	return nil
 }
 
 func (f *fakeRepo) DecisionsCheckEnabled(_ context.Context, workspaceID string) (bool, error) {

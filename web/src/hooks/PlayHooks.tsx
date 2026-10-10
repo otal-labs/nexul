@@ -3,7 +3,7 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
-import type { Play, PlayStage, PlayType, SavePlayFormData } from "@/models/Play";
+import type { AutoPlay, Play, PlayStage, PlayType, SavePlayFormData } from "@/models/Play";
 import { toSavePlayRequest } from "@/models/Play";
 import type { Ticket } from "@/models/Ticket";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -11,12 +11,21 @@ import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getWorkspacePlaysKey = "getWorkspacePlays";
 export const getApplicablePlaysKey = "getApplicablePlays";
+export const getAutoPlaysKey = "getAutoPlays";
 
 export const useFetchWorkspacePlays = (workspaceId: string) =>
   useQuery({
     queryKey: [getWorkspacePlaysKey, workspaceId],
     queryFn: async () => (await api.get<Play[]>(`/api/workspaces/${workspaceId}/plays`)).data,
     enabled: workspaceId !== "",
+  });
+
+// A play's auto plays, oldest first, for its settings page.
+export const useFetchAutoPlays = (workspaceId: string, playId: string) =>
+  useQuery({
+    queryKey: [getAutoPlaysKey, workspaceId, playId],
+    queryFn: async () => (await api.get<AutoPlay[]>(`/api/workspaces/${workspaceId}/plays/${playId}/auto-plays`)).data,
+    enabled: workspaceId !== "" && playId !== "",
   });
 
 // The run buttons a ticket or doc shows: enabled plays of that type the caller may fire on this project, at this stage.
@@ -121,7 +130,16 @@ const refetchWorkspacePlays = (client: QueryClient, workspaceId: string) =>
     client.invalidateQueries({ queryKey: [getApplicablePlaysKey, workspaceId] }),
   ]);
 
+const refetchAutoPlays = (client: QueryClient, workspaceId: string, playId: string) =>
+  client.invalidateQueries({ queryKey: [getAutoPlaysKey, workspaceId, playId], exact: true });
+
 export const playFollower: LiveFollower = {
   ...followEach(["play.created", "play.updated"], ({ play }: { play: Play }, { client }) => refetchWorkspacePlays(client, play.workspace_id)),
-  "play.deleted": ({ workspace_id }: { workspace_id: string }, { client }) => refetchWorkspacePlays(client, workspace_id),
+  "play.deleted": ({ id, workspace_id }: { id: string; workspace_id: string }, { client }) =>
+    Promise.all([refetchWorkspacePlays(client, workspace_id), refetchAutoPlays(client, workspace_id, id)]),
+  ...followEach(["auto_play.created", "auto_play.updated"], ({ auto_play }: { auto_play: AutoPlay }, { client }) =>
+    refetchAutoPlays(client, auto_play.workspace_id, auto_play.play_id),
+  ),
+  "auto_play.deleted": ({ play_id, workspace_id }: { play_id: string; workspace_id: string }, { client }) =>
+    refetchAutoPlays(client, workspace_id, play_id),
 };

@@ -142,6 +142,40 @@ func TestLiveAudience_PlayFramesReachWhoSeesThePlay(t *testing.T) {
 	}
 }
 
+// TestLiveAudience_AutoPlayFramesReachTheirReaders: an auto play reaches whoever holds autoplays:read in its workspace,
+// not a play reader without it, and a frame naming no workspace reaches nobody.
+func TestLiveAudience_AutoPlayFramesReachTheirReaders(t *testing.T) {
+	f := newPermFixture(t)
+	ctx := t.Context()
+	now := time.Now()
+	const uAutoReader, uPlayReader = "u-auto-reader", "u-play-reader"
+	for user, perm := range map[string]string{uAutoReader: "autoplays:read", uPlayReader: "plays:read"} {
+		_, _, err := f.store.Users.UpsertUser(ctx, &auth.Identity{UserID: user, Provider: auth.ProviderGitHub, ProviderUserID: user, Login: user})
+		require.NoError(t, err)
+		require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-" + user, WorkspaceID: "workspace-default", Name: user, Permissions: grant(perm), CreatedAt: now, UpdatedAt: now}))
+		require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: user, WorkspaceID: "workspace-default", RoleID: "role-" + user, CreatedAt: now}))
+	}
+	a := liveAudience{access: f.svc.accessSvc}
+	auto := plays.AutoPlay{ID: "ap-1", PlayID: "play-1", WorkspaceID: "workspace-default"}
+	cases := []struct {
+		topic   string
+		payload any
+		want    map[string]bool
+	}{
+		{plays.TopicAutoPlayCreated, plays.AutoPlayEvent{AutoPlay: auto}, map[string]bool{uOwner: true, uAutoReader: true, uPlayReader: false, uOutsider: false}},
+		{plays.TopicAutoPlayUpdated, plays.AutoPlayEvent{AutoPlay: auto}, map[string]bool{uAutoReader: true, uPlayReader: false}},
+		{plays.TopicAutoPlayDeleted, plays.AutoPlayDeletedEvent{ID: "ap-1", PlayID: "play-1", WorkspaceID: "workspace-default"}, map[string]bool{uAutoReader: true, uPlayReader: false, uOutsider: false}},
+		{plays.TopicAutoPlayDeleted, plays.AutoPlayDeletedEvent{ID: "ap-1", PlayID: "play-1"}, map[string]bool{uOwner: false}},
+	}
+	for _, tc := range cases {
+		raw, err := json.Marshal(tc.payload)
+		require.NoError(t, err)
+		for user, want := range tc.want {
+			assert.Equal(t, want, a.allows(as(user), tc.topic, json.RawMessage(raw)), "%s as %s", tc.topic, user)
+		}
+	}
+}
+
 // TestLiveAudience_InstanceAndDeletedTicketFrames: the upgrade card follows instance:read, held in any workspace,
 // a deleted ticket's title reaches only readers of its project's tickets, and a new notice only its recipients.
 func TestLiveAudience_InstanceAndDeletedTicketFrames(t *testing.T) {
