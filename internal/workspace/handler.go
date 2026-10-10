@@ -45,6 +45,15 @@ type createProjectRequest struct {
 	Prefix      string `json:"prefix"`
 	WorkspaceID string `json:"workspace_id"`
 	Icon        string `json:"icon"`
+	// SetupFinished false starts the project in the wizard's setup; omitted, it is finished (ADR 0143).
+	SetupFinished *bool `json:"setup_finished"`
+}
+
+type changeSetupRequest struct {
+	StackID  *string                 `json:"stack_id"`
+	EnvKeys  *[]string               `json:"env_keys"`
+	Finished *bool                   `json:"finished"`
+	Steps    map[SetupStep]SetupMark `json:"steps"`
 }
 
 type setPrefixRequest struct {
@@ -105,6 +114,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PATCH /api/projects/{id}", h.rename)
 	mux.HandleFunc("POST /api/projects/{id}/prefix", h.setPrefix)
 	mux.HandleFunc("PUT /api/projects/{id}/tests-location", h.setTestsLocation)
+	mux.HandleFunc("PUT /api/projects/{id}/setup", h.changeSetup)
 	mux.HandleFunc("DELETE /api/projects/{id}", h.delete)
 	mux.HandleFunc("GET /api/projects/{id}/impact", h.impact)
 	mux.HandleFunc("GET /api/projects/{id}/access", h.access)
@@ -154,12 +164,30 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	p, err := h.svc.Create(r.Context(), req.WorkspaceID, req.Name, req.Prefix, ProjectIcon(req.Icon))
+	create := h.svc.Create
+	if req.SetupFinished != nil && !*req.SetupFinished {
+		create = h.svc.CreateInSetup
+	}
+	p, err := create(r.Context(), req.WorkspaceID, req.Name, req.Prefix, ProjectIcon(req.Icon))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, p)
+}
+
+func (h *Handler) changeSetup(w http.ResponseWriter, r *http.Request) {
+	var req changeSetupRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	p, err := h.svc.ChangeSetup(r.Context(), r.PathValue("id"), SetupChange(req))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, p)
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {

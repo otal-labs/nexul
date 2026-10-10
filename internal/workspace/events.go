@@ -41,6 +41,9 @@ const (
 // TopicTicketCategoryChanged re-renders the board's swimlane via WS push.
 const TopicTicketCategoryChanged = "ticket.category_changed"
 
+// TopicProjectSetupChanged flips the project's sidebar between Continue setup and its pages (ADR 0143).
+const TopicProjectSetupChanged = "project.setup_changed"
+
 // Topics returns every topic the workspace domain publishes.
 func Topics() []eventbus.Topic {
 	return []eventbus.Topic{
@@ -56,6 +59,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicStatusUpdated, Payload: StatusEvent{}},
 		{Name: TopicStatusDeleted, Payload: StatusEvent{}},
 		{Name: TopicTicketCategoryChanged, Payload: TicketCategoryChangedEvent{}},
+		{Name: TopicProjectSetupChanged, Payload: ProjectSetupChangedEvent{}},
 	}
 }
 
@@ -74,6 +78,13 @@ type StatusEvent struct {
 	Status Status `json:"status"`
 	// PreviousKind is set on status.updated, so a reader can tell whether the column's stage moved.
 	PreviousKind StatusKind `json:"previous_kind,omitempty" jsonschema:"On status.updated, the column's stage before the change."`
+}
+
+// ProjectSetupChangedEvent is the payload for project.setup_changed: the project's whole setup record after the change.
+type ProjectSetupChangedEvent struct {
+	ProjectID   string       `json:"project_id"`
+	WorkspaceID string       `json:"workspace_id"`
+	Setup       ProjectSetup `json:"setup"`
 }
 
 // TicketCategoryChangedEvent is the payload for ticket.category_changed.

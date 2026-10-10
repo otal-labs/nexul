@@ -3,6 +3,7 @@ package workspace
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -72,6 +73,7 @@ type fakeRepo struct {
 	countErr  error
 	repoErr   error
 	moveErr   error
+	saved     []eventbus.OutboxEvent
 }
 
 func newFakeRepo() *fakeRepo {
@@ -146,6 +148,20 @@ func (f *fakeRepo) Update(_ context.Context, p *Project) error {
 	return nil
 }
 
+func (f *fakeRepo) SaveSetup(_ context.Context, id string, apply func(*Project) []eventbus.OutboxEvent) (*Project, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	cur, ok := f.projects[id]
+	if !ok {
+		return nil, apperrs.ErrNotFound
+	}
+	f.saved = append(f.saved, apply(cur)...)
+	return cur, nil
+}
+
 func (f *fakeRepo) Delete(_ context.Context, id string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -193,6 +209,15 @@ func (f *fakeRepo) CountRepos(_ context.Context, projectID string) (int, error) 
 		return 0, f.countErr
 	}
 	return len(f.repos[projectID]), nil
+}
+
+func (f *fakeRepo) ProjectForStack(_ context.Context, stackID string) (string, error) {
+	for projectID, stacks := range f.services {
+		if slices.Contains(stacks, stackID) {
+			return projectID, nil
+		}
+	}
+	return "", apperrs.ErrNotFound
 }
 
 func (f *fakeRepo) CountServices(_ context.Context, projectID string) (int, error) {

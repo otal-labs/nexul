@@ -1,11 +1,16 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RouterProvider, createMemoryRouter, useParams } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WizardProgress } from "@/components/wizard/WizardProgress";
+import type { ProjectSetup } from "@/models/Project";
 import type { WizardStepId } from "@/models/ProjectWizard";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
+
+const mocks = vi.hoisted(() => ({ get: vi.fn() }));
+vi.mock("@/api/client", () => ({ api: { get: mocks.get }, errorMessage: vi.fn() }));
 
 const AtStep = () => {
   const { step } = useParams();
@@ -17,55 +22,53 @@ const AtStep = () => {
   );
 };
 
-const renderAt = (step: string) =>
-  render(<RouterProvider router={createMemoryRouter([{ path: "/acme/wizard/project/:step", element: <AtStep /> }], { initialEntries: [`/acme/wizard/project/${step}`] })} />);
+const renderAt = (step: string, setup?: ProjectSetup) => {
+  if (setup) {
+    mocks.get.mockResolvedValue({ data: { id: "p-1", name: "Backend", setup } });
+    useProjectWizardStore.getState().setProjectId("p-1", "Backend");
+  }
+  return render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <RouterProvider
+        router={createMemoryRouter([{ path: "/acme/wizard/project/:step", element: <AtStep /> }], {
+          initialEntries: [`/acme/wizard/project/${step}`],
+        })}
+      />
+    </QueryClientProvider>,
+  );
+};
 
 const items = () => within(screen.getByRole("list", { name: "Project wizard steps" })).getAllByRole("listitem");
+const states = () => items().map((item) => item.getAttribute("data-state"));
 
 beforeEach(() => {
+  mocks.get.mockReset();
   useProjectWizardStore.getState().reset();
 });
 
 describe("WizardProgress", () => {
-  it("marks the steps before the current one done, the current one current, and the rest future", () => {
-    renderAt("service");
+  it("shows each step as the project records it: done, skipped, the one on screen, or never visited", async () => {
+    renderAt("reach", { finished: false, steps: { project: "done", repository: "skipped" } });
 
-    expect(items().map((item) => item.getAttribute("data-state"))).toEqual([
-      "done",
-      "done",
-      "current",
-      "future",
-      "future",
-      "future",
-    ]);
-    expect(items()[2]!.querySelector("[aria-current='step']")).not.toBeNull();
-    expect(items().filter((item) => item.querySelector("[aria-current]"))).toHaveLength(1);
+    await vi.waitFor(() => expect(states()).toEqual(["done", "skipped", "unvisited", "current", "unvisited", "unvisited"]));
+    expect(items()[3]!.querySelector("[aria-current='step']")).not.toBeNull();
   });
 
-  it("turns a done step into a control that goes back to it, and never the project step, which already exists", async () => {
+  it("shows Done as done once setup was finished", async () => {
+    renderAt("project", { finished: true, steps: { project: "done" } });
+
+    await vi.waitFor(() => expect(states().at(-1)).toBe("done"));
+  });
+
+  it("opens any step from the row, whatever happened there, ahead of the one on screen included", async () => {
     const user = userEvent.setup();
-    renderAt("service");
+    renderAt("repository", { finished: false, steps: { project: "done" } });
 
-    expect(within(items()[0]!).queryByRole("button")).not.toBeInTheDocument();
-    await user.click(within(items()[1]!).getByRole("button", { name: "Back to Repository" }));
+    await user.click(await screen.findByRole("button", { name: "Deploy branches" }));
+    expect(await screen.findByText("at branches")).toBeInTheDocument();
 
-    expect(await screen.findByText("at repository")).toBeInTheDocument();
-  });
-
-  it("locks every done step once the stack exists, since revisiting Service would create a second one", () => {
-    useProjectWizardStore.getState().setStackId("stack-1");
-    renderAt("reach");
-
-    expect(items()[1]).toHaveAttribute("data-state", "done");
-    expect(screen.queryByRole("button", { name: /^Back to/ })).not.toBeInTheDocument();
-  });
-
-  it("disables the future steps so they cannot be jumped to", () => {
-    renderAt("service");
-
-    for (const label of ["Reach", "Deploy branches", "Done"]) {
-      expect(within(items().find((item) => item.textContent?.includes(label))!).getByRole("button")).toBeDisabled();
-    }
+    await user.click(screen.getByRole("button", { name: "Info, done" }));
+    expect(await screen.findByText("at project")).toBeInTheDocument();
   });
 
   it("shows one counter and the current label under the row for narrow widths, with the per-step labels hidden until wide", () => {

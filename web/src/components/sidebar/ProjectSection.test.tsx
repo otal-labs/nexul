@@ -1,22 +1,30 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { ProjectSection } from "@/components/sidebar/ProjectSection";
+import { projectFollower } from "@/hooks/ProjectHooks";
+import type { ProjectSetup } from "@/models/Project";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { followFrame } from "@/test/followFrame";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
   errorMessage: vi.fn(),
 }));
 
+const setUp: ProjectSetup = { finished: true, steps: {} };
+
 const projects = [
-  { id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" },
-  { id: "p-2", name: "Frontend", prefix: "FE", position: 1, created_at: "", updated_at: "" },
+  { id: "p-1", name: "Backend", prefix: "BE", position: 0, workspace_id: "ws-1", setup: setUp, created_at: "", updated_at: "" },
+  { id: "p-2", name: "Frontend", prefix: "FE", position: 1, workspace_id: "ws-1", setup: setUp, created_at: "", updated_at: "" },
 ];
+
+// A project the wizard made on some other device: the server's record is all this browser has to go on.
+const inSetup: (typeof projects)[number] = { ...projects[0]!, setup: { finished: false, steps: { project: "done", repository: "skipped" } } };
 
 const ownerPermissions = ["docs:read", "docs:write", "memories:read", "projects:read", "projects:write", "tickets:read"];
 
@@ -38,7 +46,7 @@ const LocationSpy = () => <div data-testid="location">{useLocation().pathname}</
 const renderSection = ({ path = "/acme/inbox", collapsed = false, list = projects, permissions = ownerPermissions, me = {} as MeExtra } = {}) => {
   mockApi(list, permissions, me);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const view = render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <ProjectSection collapsed={collapsed} />
@@ -46,6 +54,7 @@ const renderSection = ({ path = "/acme/inbox", collapsed = false, list = project
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return { ...view, client };
 };
 
 beforeEach(() => {
@@ -54,6 +63,15 @@ beforeEach(() => {
 });
 
 describe("ProjectSection", () => {
+  it("Continue setup resumes Environment when a detected key still needs its value", async () => {
+    const user = userEvent.setup();
+    renderSection({ list: [{ ...projects[0]!, setup: { finished: false, steps: { project: "done", repository: "done", service: "done" }, stack_id: "stack-1", env_keys: ["PORT"] } }] });
+
+    await user.click(await screen.findByRole("link", { name: "Continue setup" }));
+
+    expect(screen.getByTestId("location")).toHaveTextContent("/acme/wizard/project/env");
+  });
+
   it("lists one project's pages once, not a copy per project", async () => {
     renderSection();
 
@@ -65,6 +83,38 @@ describe("ProjectSection", () => {
     expect(screen.getByRole("link", { name: "Memories" })).toHaveAttribute("href", "/acme/memories");
     expect(screen.queryByRole("link", { name: "Runbook" })).not.toBeInTheDocument();
     expect(screen.queryByText("Frontend")).not.toBeInTheDocument();
+  });
+
+  it("while setup is open, offers only Continue setup, at the first step neither done nor skipped", async () => {
+    renderSection({ list: [inSetup] });
+
+    expect(await screen.findByRole("link", { name: "Continue setup" })).toHaveAttribute(
+      "href",
+      "/acme/wizard/project/service?project=p-1",
+    );
+    for (const page of ["Board", "Interview", "Docs", "Memories", "Settings"]) {
+      expect(screen.queryByRole("link", { name: page })).not.toBeInTheDocument();
+    }
+  });
+
+  it("tells a member who can't change the project that it is being set up, with nothing to press", async () => {
+    renderSection({ list: [inSetup], permissions: ["projects:read", "tickets:read"] });
+
+    expect(await screen.findByText("Being set up")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Continue setup" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Board" })).not.toBeInTheDocument();
+  });
+
+  it("lists the project's pages once someone else finishes its setup", async () => {
+    const { client } = renderSection({ list: [inSetup] });
+    await screen.findByRole("link", { name: "Continue setup" });
+
+    await act(() =>
+      followFrame(projectFollower, "project.setup_changed", { project_id: "p-1", workspace_id: "ws-1", setup: setUp }, client),
+    );
+
+    expect(await screen.findByRole("link", { name: "Board" })).toHaveAttribute("href", "/acme/board/BE");
+    expect(screen.queryByRole("link", { name: "Continue setup" })).not.toBeInTheDocument();
   });
 
   it("follows the project in the URL and remembers it", async () => {

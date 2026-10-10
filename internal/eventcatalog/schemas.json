@@ -5167,6 +5167,54 @@
       "play"
     ]
   },
+  "project.setup_changed": {
+    "type": "object",
+    "properties": {
+      "project_id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "setup": {
+        "type": "object",
+        "properties": {
+          "stack_id": {
+            "type": "string",
+            "description": "The exact stack created or adopted by the project wizard."
+          },
+          "env_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Detected environment variable names; values remain on the stack."
+          },
+          "finished": {
+            "type": "boolean",
+            "description": "Whether the project wizard's Finish was pressed; a project made any other way starts finished."
+          },
+          "steps": {
+            "type": "object",
+            "description": "Each wizard step marked done or skipped, by step id; a step not listed was never visited.",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "finished",
+          "steps"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "project_id",
+      "workspace_id",
+      "setup"
+    ]
+  },
   "review.status_changed": {
     "type": "object",
     "properties": {

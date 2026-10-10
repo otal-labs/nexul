@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 
 	"github.com/otal-labs/nexul/internal/docs"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/jsonx"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -24,11 +27,16 @@ type ProjectsRepo struct {
 }
 
 func (r *ProjectsRepo) Create(ctx context.Context, p *workspace.Project) error {
+	steps, envKeys, err := setupJSON(p)
+	if err != nil {
+		return err
+	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		err := q.CreateProject(ctx, sqlcgen.CreateProjectParams{
 			ID: p.ID, Name: p.Name, Prefix: p.Prefix, Position: int64(p.Position),
-			WorkspaceID: p.WorkspaceID, Icon: string(p.Icon), CreatedAt: p.CreatedAt.Unix(), UpdatedAt: p.UpdatedAt.Unix(),
+			WorkspaceID: p.WorkspaceID, Icon: string(p.Icon), SetupFinished: boolToInt(p.Setup.Finished), SetupSteps: steps, SetupStackID: p.Setup.StackID, SetupEnvKeys: envKeys,
+			CreatedAt: p.CreatedAt.Unix(), UpdatedAt: p.UpdatedAt.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("insert project %s: %w", p.ID, classifyWriteErr(err))
@@ -108,7 +116,7 @@ func (r *ProjectsRepo) Get(ctx context.Context, id string) (*workspace.Project, 
 	if err != nil {
 		return nil, fmt.Errorf("get project %s: %w", id, notFoundIfNoRows(err))
 	}
-	return toProject(row), nil
+	return toProject(row)
 }
 
 // List returns a workspace's projects ordered by position; a project always nests under exactly one workspace.
@@ -117,7 +125,7 @@ func (r *ProjectsRepo) List(ctx context.Context, workspaceID string) ([]*workspa
 	if err != nil {
 		return nil, fmt.Errorf("list projects: %w", err)
 	}
-	return toProjects(rows), nil
+	return toProjects(rows)
 }
 
 func (r *ProjectsRepo) Update(ctx context.Context, p *workspace.Project) error {
@@ -134,6 +142,40 @@ func (r *ProjectsRepo) Update(ctx context.Context, p *workspace.Project) error {
 		}
 		return nil
 	})
+}
+
+func (r *ProjectsRepo) SaveSetup(ctx context.Context, id string, apply func(*workspace.Project) []eventbus.OutboxEvent) (*workspace.Project, error) {
+	var p *workspace.Project
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		row, err := q.GetProject(ctx, id)
+		if err != nil {
+			return fmt.Errorf("get setup of project %s: %w", id, notFoundIfNoRows(err))
+		}
+		p, err = toProject(row)
+		if err != nil {
+			return err
+		}
+		evts := apply(p)
+		if len(evts) == 0 {
+			return nil
+		}
+		steps, envKeys, err := setupJSON(p)
+		if err != nil {
+			return err
+		}
+		_, err = q.UpdateProjectSetup(ctx, sqlcgen.UpdateProjectSetupParams{
+			SetupFinished: boolToInt(p.Setup.Finished), SetupSteps: steps, SetupStackID: p.Setup.StackID, SetupEnvKeys: envKeys, UpdatedAt: p.UpdatedAt.Unix(), ID: p.ID,
+		})
+		if err != nil {
+			return fmt.Errorf("save setup of project %s: %w", p.ID, classifyWriteErr(err))
+		}
+		return insertOutboxRows(ctx, tx, evts)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 func (r *ProjectsRepo) Delete(ctx context.Context, id string) error {
@@ -198,6 +240,14 @@ func (r *ProjectsRepo) CountRepos(ctx context.Context, projectID string) (int, e
 // Counts the "stacks" table; the "services" table holds observed containers, which have no project_id of their own.
 func (r *ProjectsRepo) CountServices(ctx context.Context, projectID string) (int, error) {
 	return r.count(ctx, projectID, "stacks")
+}
+
+func (r *ProjectsRepo) ProjectForStack(ctx context.Context, stackID string) (string, error) {
+	row, err := r.q.GetStack(ctx, stackID)
+	if err != nil {
+		return "", notFoundIfNoRows(err)
+	}
+	return row.ProjectID.String, nil
 }
 
 func (r *ProjectsRepo) count(ctx context.Context, projectID, table string) (int, error) {
@@ -286,7 +336,34 @@ func (r *ProjectsRepo) MoveTicket(ctx context.Context, ticketID, projectID strin
 	})
 }
 
-func toProject(row sqlcgen.Project) *workspace.Project {
+func setupJSON(p *workspace.Project) (string, string, error) {
+	steps := "{}"
+	if len(p.Setup.Steps) > 0 {
+		encoded, err := json.Marshal(p.Setup.Steps)
+		if err != nil {
+			return "", "", fmt.Errorf("encode setup of project %s: %w", p.ID, err)
+		}
+		steps = string(encoded)
+	}
+	envKeys, err := jsonx.Marshal(p.Setup.EnvKeys)
+	if err != nil {
+		return "", "", fmt.Errorf("encode setup environment of project %s: %w", p.ID, err)
+	}
+	return steps, string(envKeys), nil
+}
+
+func toProject(row sqlcgen.Project) (*workspace.Project, error) {
+	steps := map[workspace.SetupStep]workspace.SetupMark{}
+	if err := json.Unmarshal([]byte(row.SetupSteps), &steps); err != nil {
+		return nil, fmt.Errorf("decode setup of project %s: %w", row.ID, err)
+	}
+	var envKeys []string
+	if err := json.Unmarshal([]byte(row.SetupEnvKeys), &envKeys); err != nil {
+		return nil, fmt.Errorf("decode setup environment of project %s: %w", row.ID, err)
+	}
+	if len(envKeys) == 0 {
+		envKeys = nil
+	}
 	return &workspace.Project{
 		ID:            row.ID,
 		Name:          row.Name,
@@ -295,15 +372,20 @@ func toProject(row sqlcgen.Project) *workspace.Project {
 		WorkspaceID:   row.WorkspaceID,
 		Icon:          workspace.ProjectIcon(row.Icon),
 		TestsLocation: workspace.TestsLocation(row.TestsLocation),
+		Setup:         workspace.ProjectSetup{Finished: row.SetupFinished != 0, Steps: steps, StackID: row.SetupStackID, EnvKeys: envKeys},
 		CreatedAt:     time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt:     time.Unix(row.UpdatedAt, 0).UTC(),
-	}
+	}, nil
 }
 
-func toProjects(rows []sqlcgen.Project) []*workspace.Project {
-	var out []*workspace.Project
+func toProjects(rows []sqlcgen.Project) ([]*workspace.Project, error) {
+	out := make([]*workspace.Project, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, toProject(row))
+		p, err := toProject(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, p)
 	}
-	return out
+	return out, nil
 }

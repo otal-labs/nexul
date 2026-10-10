@@ -38,6 +38,11 @@ decision tickets they wait on are resolved.
   `practices/react-guide.md` and `practices/design-language.md` before any
   web edit.
 
+- Since ADR 0143, Skip for now records the step skipped and moves to the next
+  step instead of leaving for the board, every step opens from the row, and
+  the Done step lists what was skipped and ends with Finish. The early exits
+  built here land on that Done step.
+
 ## Decisions so far
 
 - [How attaching without deploying and the Add-service shortcut work](issues/03-attach-and-shortcut-mechanics.md): no server change; attach through the existing repos endpoint after the scan, save the tests answer on every exit, derive "undeployed" in the web, Done renders on the project.

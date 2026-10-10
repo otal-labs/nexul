@@ -61,8 +61,17 @@ func (s *Service) requireOn(ctx context.Context, projectID string, action permis
 	return s.gate.RequireProject(ctx, projectID, action)
 }
 
-// Create adds a project to a workspace with the next display position (projects:write).
+// Create adds a project to a workspace with the next display position (projects:write); its setup starts finished.
 func (s *Service) Create(ctx context.Context, workspaceID, name, prefix string, icon ProjectIcon) (*Project, error) {
+	return s.create(ctx, workspaceID, name, prefix, icon, NewSetup(true))
+}
+
+// CreateInSetup is Create for the project wizard: the project's setup starts unfinished with its Info step done (ADR 0143).
+func (s *Service) CreateInSetup(ctx context.Context, workspaceID, name, prefix string, icon ProjectIcon) (*Project, error) {
+	return s.create(ctx, workspaceID, name, prefix, icon, NewSetup(false))
+}
+
+func (s *Service) create(ctx context.Context, workspaceID, name, prefix string, icon ProjectIcon, setup ProjectSetup) (*Project, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required — create a workspace before creating a project", apperrs.ErrInvalid)
@@ -98,7 +107,7 @@ func (s *Service) Create(ctx context.Context, workspaceID, name, prefix string, 
 	if err != nil {
 		return nil, err
 	}
-	p := &Project{ID: ids.New(), Name: name, Prefix: prefix, Position: position, WorkspaceID: workspaceID, Icon: icon, CreatedAt: now, UpdatedAt: now, SeedTicketTypes: types}
+	p := &Project{ID: ids.New(), Name: name, Prefix: prefix, Position: position, WorkspaceID: workspaceID, Icon: icon, Setup: setup, CreatedAt: now, UpdatedAt: now, SeedTicketTypes: types}
 	// Default statuses/types are seeded by ProjectsRepo.Create in the same transaction, not here.
 	if err := s.repo.Create(ctx, p); err != nil {
 		return nil, fmt.Errorf("create project: %w", err)

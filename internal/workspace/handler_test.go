@@ -106,6 +106,31 @@ func TestHandler_Create(t *testing.T) {
 		rec := do(t, h.Routes(), http.MethodPost, "/api/projects", `{"workspace_id":"ws-1","name":"Backend","prefix":"BE","icon":"bogus"}`, "u-1")
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
+	t.Run("only setup_finished false starts the project in setup", func(t *testing.T) {
+		h, _ := newTestHandler(t, true)
+		for body, want := range map[string]ProjectSetup{
+			`{"workspace_id":"ws-1","name":"Backend","prefix":"BE"}`:                        {Finished: true, Steps: map[SetupStep]SetupMark{}},
+			`{"workspace_id":"ws-1","name":"Backend","prefix":"BF","setup_finished":true}`:  {Finished: true, Steps: map[SetupStep]SetupMark{}},
+			`{"workspace_id":"ws-1","name":"Backend","prefix":"BG","setup_finished":false}`: {Steps: map[SetupStep]SetupMark{"project": SetupDone}},
+		} {
+			rec := do(t, h.Routes(), http.MethodPost, "/api/projects", body, "u-1")
+			require.Equal(t, http.StatusCreated, rec.Code, body)
+			assert.Equal(t, want, decodeProject(t, rec).Setup, body)
+		}
+	})
+}
+
+func TestHandler_ChangeSetup(t *testing.T) {
+	h, repo := newTestHandler(t, true)
+	repo.services["p-1"] = []string{"stack-1"}
+	repo.projects["p-1"] = &Project{ID: "p-1", WorkspaceID: "ws-1", Setup: NewSetup(false)}
+
+	rec := do(t, h.Routes(), http.MethodPut, "/api/projects/p-1/setup", `{"steps":{"bogus":"done"}}`, "u-1")
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	rec = do(t, h.Routes(), http.MethodPut, "/api/projects/p-1/setup", `{"finished":true,"steps":{"repository":"skipped"},"stack_id":"stack-1","env_keys":["PORT"]}`, "u-1")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, ProjectSetup{Finished: true, StackID: "stack-1", EnvKeys: []string{"PORT"}, Steps: map[SetupStep]SetupMark{"project": SetupDone, "repository": SetupSkipped}}, decodeProject(t, rec).Setup)
 }
 
 func TestHandler_Get(t *testing.T) {

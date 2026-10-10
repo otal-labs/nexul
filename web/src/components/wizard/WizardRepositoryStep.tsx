@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { RepositorySearch } from "@/components/wizard/RepositorySearch";
 import { TestsLocationChoice } from "@/components/wizard/TestsLocationChoice";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
-import { WizardSkipButton } from "@/components/wizard/WizardSkipButton";
+import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
 import { useFetchProjectRepos, useSaveTestsAnswer } from "@/hooks/ProjectHooks";
 import { useScanRepository } from "@/hooks/RepositoryHooks";
 import { manualCandidate, parseInstallUrl, type Repo } from "@/models/Repository";
@@ -19,11 +19,12 @@ import { TestsLocation } from "@/enums/Project";
 
 interface WizardRepositoryStepProps {
   onDone: () => void;
+  onSkip?: (() => void) | undefined;
 }
 
 // Searches installation repositories (spec §5/§7); picking one scans it. A scan can land in three places: candidates
 // found (advance), nothing found (offer a manual Dockerfile candidate), or the App isn't installed (link to fix it).
-export const WizardRepositoryStep = ({ onDone }: WizardRepositoryStepProps) => {
+export const WizardRepositoryStep = ({ onDone, onSkip }: WizardRepositoryStepProps) => {
   const scanRepository = useScanRepository();
   const setRepository = useProjectWizardStore((s) => s.setRepository);
   const setScanResult = useProjectWizardStore((s) => s.setScanResult);
@@ -130,7 +131,7 @@ export const WizardRepositoryStep = ({ onDone }: WizardRepositoryStepProps) => {
           }
         />
       )}
-      <WizardFooter skip={!attachStackId && <WizardSkipButton />} />
+      <WizardFooter skip={onSkip && <WizardSkipLink onClick={onSkip} />} />
     </div>
   );
 };

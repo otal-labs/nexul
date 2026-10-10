@@ -882,6 +882,10 @@ type Project struct {
 	UpdatedAt     int64
 	Icon          string
 	TestsLocation string
+	SetupFinished int64
+	SetupSteps    string
+	SetupStackID  string
+	SetupEnvKeys  string
 }
 
 type ProjectRepo struct {

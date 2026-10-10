@@ -200,6 +200,21 @@ func TestProjectUpdate_EveryField(t *testing.T) {
 	assert.Empty(t, d.TicketTypes)
 }
 
+func TestProjectUpdate_FinishesSetup(t *testing.T) {
+	f := newFixture(t)
+	f.w.stacks["stack-1"] = "p-3"
+	must(t, f.w.projects.put(&workspace.Project{ID: "p-3", Name: "Ops", WorkspaceID: "ws-1", Setup: workspace.NewSetup(false)}))
+
+	_, err := call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-3","setup":{"steps":{"deploy":"done"}}}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	got, err := call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-3","setup":{"finished":true,"steps":{"reach":"skipped"},"stack_id":"stack-1","env_keys":["PORT"]}}`)
+	require.NoError(t, err)
+
+	res := got.(projectUpdateResult)
+	assert.Equal(t, []string{"setup"}, res.Applied)
+	assert.Equal(t, workspace.ProjectSetup{Finished: true, StackID: "stack-1", EnvKeys: []string{"PORT"}, Steps: map[workspace.SetupStep]workspace.SetupMark{"project": workspace.SetupDone, "reach": workspace.SetupSkipped}}, res.Project.Setup)
+}
+
 func TestProjectUpdate_ReordersWithinTheProject(t *testing.T) {
 	f := newFixture(t)
 	must(t, f.w.categories.put(&workspace.Category{ID: "c-2", ProjectID: "p-1", Name: "Sprint 2"}))

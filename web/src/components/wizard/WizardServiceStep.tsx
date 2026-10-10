@@ -8,6 +8,7 @@ import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
+import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
 import { CandidateChoice } from "@/components/wizard/CandidateChoice";
 import { declaredFrom } from "@/components/wizard/declaredFrom";
 import { MachinePicker } from "@/components/MachinePicker";
@@ -35,6 +36,7 @@ const buildSourceFrom = (repository: Repo, candidate: Candidate, branch: string)
 interface WizardServiceStepProps {
   onDone: () => void;
   onBack?: (() => void) | undefined;
+  onSkip?: (() => void) | undefined;
 }
 
 // Candidate pick (compose preselected by the repository step, switchable here for a monorepo scan) and the
@@ -45,7 +47,7 @@ interface WizardServiceStepProps {
 //   build_source (and compose_path) onto the existing record and starts the deploy itself.
 // Both modes hold the first deploy back when the scan found .env.example keys — a compose file's
 // `env_file: .env` or `${VAR}` needs the values in place first, which the env step supplies.
-export const WizardServiceStep = ({ onDone, onBack }: WizardServiceStepProps) => {
+export const WizardServiceStep = ({ onDone, onBack, onSkip }: WizardServiceStepProps) => {
   const { projectId, repository, scanResult, candidate, name, attachStackId } = useProjectWizardStore(
     useShallow((s) => ({
       projectId: s.projectId,
@@ -175,7 +177,7 @@ export const WizardServiceStep = ({ onDone, onBack }: WizardServiceStepProps) =>
       {candidatePicker}
       <FormInput control={form.control} name="name" label="Name" placeholder="e.g. web" />
       <MachinePicker control={form.control} name="machine" />
-      <WizardFooter onBack={onBack}>
+      <WizardFooter onBack={onBack} skip={onSkip && <WizardSkipLink onClick={onSkip} />}>
         <Button type="submit" loading={createStack.isPending}>
           {envStepFollows ? "Create" : "Create & deploy"}
         </Button>

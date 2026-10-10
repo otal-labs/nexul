@@ -97,6 +97,8 @@ const project: Project = {
   position: 0,
   icon: "",
   tests_location: "",
+  workspace_id: "ws-1",
+  setup: { finished: true, steps: {} },
   created_at: "",
   updated_at: "",
 };

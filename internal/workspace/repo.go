@@ -31,11 +31,14 @@ type Repo interface {
 	Get(ctx context.Context, id string) (*Project, error)
 	List(ctx context.Context, workspaceID string) ([]*Project, error)
 	Update(ctx context.Context, p *Project) error
+	// SaveSetup merges setup under the write transaction, so concurrent step marks cannot overwrite each other.
+	SaveSetup(ctx context.Context, id string, apply func(*Project) []eventbus.OutboxEvent) (*Project, error)
 	Delete(ctx context.Context, id string) error
 	Reorder(ctx context.Context, ids []string) error
 	CountTickets(ctx context.Context, projectID string) (int, error)
 	CountRepos(ctx context.Context, projectID string) (int, error)
 	CountServices(ctx context.Context, projectID string) (int, error)
+	ProjectForStack(ctx context.Context, stackID string) (string, error)
 	AddRepo(ctx context.Context, projectID string, r RepoRef) error
 	RemoveRepo(ctx context.Context, owner, name string) error
 	ListRepos(ctx context.Context, projectID string) ([]RepoRef, error)

@@ -23,6 +23,7 @@ const stack = {
   machine: "prod",
   strategy: "compose" as const,
   managed: true,
+  build_source: { branch: "main" },
   created_at: "",
   updated_at: "",
 };
@@ -43,7 +44,7 @@ beforeEach(() => {
   mocks.post.mockReset();
   mocks.post.mockResolvedValue({ data: { id: "d1", stack_id: "stack-1", status: "pending", kind: "build" } });
   useProjectWizardStore.getState().reset();
-  useProjectWizardStore.getState().setStackId("stack-1");
+  useProjectWizardStore.getState().setStackId("stack-1", ["API_KEY", "DB_URL"]);
   useProjectWizardStore.getState().setScanResult({ default_branch: "main", candidates: [], env_keys: ["API_KEY", "DB_URL"] });
   mocks.get.mockResolvedValue({ data: stack });
 });

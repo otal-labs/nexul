@@ -37,21 +37,25 @@ func projectListTool(s *Service) mcptool.Tool {
 }
 
 type projectCreateIn struct {
-	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id (a UUID) the project belongs to."`
-	Name        string `json:"name" jsonschema:"The project's display name, for example Backend."`
-	Prefix      string `json:"prefix" jsonschema:"2 to 5 letters or digits, starting with a letter, that no other project uses. It starts the project's ticket keys, for example REF for REF-102 or P1 for P1-12, and cannot change later."`
-	Icon        string `json:"icon,omitempty" jsonschema:"A display icon: Box, Rocket, Server, Globe, Database, Layers, Terminal, Shield, Zap, Package, Cpu, or Cloud. Omit for none."`
+	WorkspaceID   string `json:"workspace_id" jsonschema:"The workspace's id (a UUID) the project belongs to."`
+	Name          string `json:"name" jsonschema:"The project's display name, for example Backend."`
+	Prefix        string `json:"prefix" jsonschema:"2 to 5 letters or digits, starting with a letter, that no other project uses. It starts the project's ticket keys, for example REF for REF-102 or P1 for P1-12, and cannot change later."`
+	Icon          string `json:"icon,omitempty" jsonschema:"A display icon: Box, Rocket, Server, Globe, Database, Layers, Terminal, Shield, Zap, Package, Cpu, or Cloud. Omit for none."`
+	SetupFinished *bool  `json:"setup_finished,omitempty" jsonschema:"Omit, or true, for a project ready to use. false starts it in the project wizard's setup, so its sidebar offers Continue setup until someone finishes it."`
 }
 
 func projectCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("project_create", "Create project",
 		"Creates a project, the grouping tickets, repositories, and stacks belong to, with the default status "+
-			"columns and ticket types (task, bug, feature). Owners only. Use project_update afterwards to rename it, "+
+			"columns and ticket types (task, bug, feature), its setup finished unless setup_finished is false. Owners only. Use project_update afterwards to rename it, "+
 			"attach repositories, or change its columns, categories, and ticket types. Returns the new project.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in projectCreateIn) (any, error) {
 			if err := requireOwnerActor(ctx); err != nil {
 				return nil, err
+			}
+			if in.SetupFinished != nil && !*in.SetupFinished {
+				return s.CreateInSetup(ctx, in.WorkspaceID, in.Name, in.Prefix, ProjectIcon(in.Icon))
 			}
 			return s.Create(ctx, in.WorkspaceID, in.Name, in.Prefix, ProjectIcon(in.Icon))
 		})

@@ -88,7 +88,8 @@ func projectGetTool(w *workspace.Service, t *tickets.Service, d DocFolders) mcpt
 			"another), delete_impact, the tickets, repositories, "+
 			"and services that block deleting it and the Restricted members who lose access with it, and access, the "+
 			"Restricted members who may open it with the actions they hold, filled only when you hold members:write in "+
-			"its workspace and empty otherwise; account_update changes that access. Call it before ticket_create or ticket_update to get valid "+
+			"its workspace and empty otherwise; account_update changes that access. Its setup says whether the project "+
+			"wizard was finished and which steps were done or skipped; an unfinished project still works in full. Call it before ticket_create or ticket_update to get valid "+
 			"status, type, and category ids, and before doc_create or doc_update to get folder ids; change any of "+
 			"these with project_update. Use project_list to find a project's id.",
 		mcptool.Hints{ReadOnly: true, Local: true},
@@ -215,6 +216,14 @@ type projectUpdateIn struct {
 	TicketTypes   *ticketTypeChanges `json:"ticket_types,omitempty" jsonschema:"Ticket types to create, change, or delete."`
 	LabelColors   []labelColorIn     `json:"label_colors,omitempty" jsonschema:"Colors for labels in this project, even for a label no ticket uses yet."`
 	DocFolders    *docFolderChanges  `json:"doc_folders,omitempty" jsonschema:"Doc folders to create, rename, or delete. A folder groups the project's docs one level deep and every doc lives in exactly one; the default folder, Main, takes new docs and can be renamed but never deleted. Needs docs:write."`
+	Setup         *setupIn           `json:"setup,omitempty" jsonschema:"The project wizard's record of this project, as project_get shows it under setup."`
+}
+
+type setupIn struct {
+	StackID  *string           `json:"stack_id,omitempty" jsonschema:"The exact stack the wizard created or adopted; empty clears it."`
+	EnvKeys  *[]string         `json:"env_keys,omitempty" jsonschema:"Detected environment variable names; an empty list clears them. Values belong to the stack."`
+	Finished *bool             `json:"finished,omitempty" jsonschema:"true finishes setup, so the sidebar lists the project's pages instead of Continue setup; false reopens it."`
+	Steps    map[string]string `json:"steps,omitempty" jsonschema:"Wizard steps to mark, each done or skipped, keyed by step: project, repository, service, env, reach, or branches. A step already done stays done when marked skipped."`
 }
 
 type docFolderChanges struct {
@@ -317,7 +326,8 @@ func projectUpdateTool(w *workspace.Service, t *tickets.Service, d DocFolders) m
 		"Changes a project: its name, icon, prefix (only when it has none), place in the workspace, and tests "+
 			"location; attaches and detaches repositories; creates, changes, reorders (position), and deletes its "+
 			"status columns, categories, and ticket types; sets label colors; and creates, renames, and deletes doc "+
-			"folders, the groups a project's docs live in (doc_update moves a doc between them). Only the fields you send change; "+
+			"folders, the groups a project's docs live in (doc_update moves a doc between them); and finishes or reopens its setup "+
+			"and marks project wizard steps done or skipped. Only the fields you send change; "+
 			"an omitted field keeps its value. The changes apply in the order the fields are listed here, creates "+
 			"before updates before deletes, and stop at the first failure, whose message names the field and the "+
 			"ones already applied. Owners only, except label colors and doc folders, which take docs:write. Returns the updated project as project_get "+
@@ -378,7 +388,17 @@ func (u projectUpdate) steps(in projectUpdateIn) []step {
 			return discard(u.t.SetLabelColor(ctx, u.id, lc.Label, colors.Color(lc.Color)))
 		}})
 	}
-	return append(steps, u.docFolderSteps(in.DocFolders)...)
+	steps = append(steps, u.docFolderSteps(in.DocFolders)...)
+	if in.Setup != nil {
+		steps = append(steps, step{"setup", "", func(ctx context.Context) error {
+			change := workspace.SetupChange{Finished: in.Setup.Finished, StackID: in.Setup.StackID, EnvKeys: in.Setup.EnvKeys, Steps: map[workspace.SetupStep]workspace.SetupMark{}}
+			for step, mark := range in.Setup.Steps {
+				change.Steps[workspace.SetupStep(step)] = workspace.SetupMark(mark)
+			}
+			return discard(u.w.ChangeSetup(ctx, u.id, change))
+		}})
+	}
+	return steps
 }
 
 const docFolderHint = "project_get lists the project's doc folders"

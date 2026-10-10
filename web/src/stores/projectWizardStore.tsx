@@ -26,6 +26,7 @@ export type ProjectWizardStore = {
   machine: string | null;
   envValues: Record<string, string>;
   stackId: string | null;
+  serviceEnvKeys: string[];
   exposureId: string | null;
   exposureHostname: string | null;
   branchesSummary: string | null;
@@ -40,7 +41,7 @@ export type ProjectWizardStore = {
   setName: (name: string) => void;
   setMachine: (machine: string) => void;
   setEnvValues: (envValues: Record<string, string>) => void;
-  setStackId: (stackId: string) => void;
+  setStackId: (stackId: string, envKeys?: string[]) => void;
   setExposure: (exposureId: string, hostname: string) => void;
   setBranchesSummary: (branchesSummary: string) => void;
   reset: () => void;
@@ -60,6 +61,7 @@ const initialState: Pick<
   | "name"
   | "machine"
   | "envValues"
+  | "serviceEnvKeys"
   | "stackId"
   | "exposureId"
   | "exposureHostname"
@@ -78,6 +80,7 @@ const initialState: Pick<
   machine: null,
   envValues: {},
   stackId: null,
+  serviceEnvKeys: [],
   exposureId: null,
   exposureHostname: null,
   branchesSummary: null,
@@ -88,15 +91,15 @@ export const useProjectWizardStore = create<ProjectWizardStore>((set) => ({
   setProjectId: (projectId, projectName, preselected = false) =>
     set({ projectId, projectName, projectPreselected: preselected }),
   setAttachStackId: (attachStackId) => set({ attachStackId }),
-  setRepository: (repository) => set({ repository, name: repository.name }),
+  setRepository: (repository) => set((state) => ({ repository, ...(!state.stackId && { name: repository.name }) })),
   setTestsLocation: (testsLocation) => set({ testsLocation }),
   setTestsRepo: (testsRepo) => set({ testsRepo }),
   setScanResult: (scanResult) => set({ scanResult }),
-  setCandidate: (candidate) => set({ candidate, name: candidate.name }),
+  setCandidate: (candidate) => set((state) => ({ candidate, ...(!state.stackId && { name: candidate.name }) })),
   setName: (name) => set({ name }),
   setMachine: (machine) => set({ machine }),
   setEnvValues: (envValues) => set({ envValues }),
-  setStackId: (stackId) => set({ stackId }),
+  setStackId: (stackId, envKeys) => set((state) => ({ stackId, serviceEnvKeys: envKeys ?? state.scanResult?.env_keys ?? [], envValues: {} })),
   setExposure: (exposureId, exposureHostname) => set({ exposureId, exposureHostname }),
   setBranchesSummary: (branchesSummary) => set({ branchesSummary }),
   reset: () => set(initialState),

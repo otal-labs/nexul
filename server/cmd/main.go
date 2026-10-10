@@ -270,6 +270,7 @@ var livePushTopics = []string{
 	workspace.TopicStatusCreated,
 	workspace.TopicStatusUpdated,
 	workspace.TopicStatusDeleted,
+	workspace.TopicProjectSetupChanged,
 	chat.TopicConversationCreated,
 	chat.TopicConversationUpdated,
 	chat.TopicConversationDeleted,

@@ -17,11 +17,19 @@ Press **New project** in the sidebar. A new workspace shows the same button on i
 4. **Environment.** Only if the repository has a `.env.example`: fill in its values.
 5. **Reach.** Optional: give the service a hostname now, or later from the stack page.
 6. **Deploy branches.** Optional: deploy other branches, such as `feature/*`, as their own copies. See [Stacks and deploys](/docs/guide/stacks-and-deploys/).
-7. **Done.** Start the project's [interview](/docs/guide/interview/), then **View stack** or **View on the canvas**.
+7. **Done.** Start the project's [interview](/docs/guide/interview/), check what's left for later, then press **Finish**.
 
 Skipping the interview asks if you're sure. Agents still work, but without the project's rules, and the board shows a banner until the interview is done.
 
-The project exists from the moment you press **Continue** on the Info step, so you can leave at any step after it and keep it. To install the GitHub App on another account first, leave the wizard and come back: until the project has a repository to deploy, its board and the **New project** wizard show **Continue setup**, which reopens the wizard at the Repository step for that project. Dismiss it if the project doesn't need a repository. The way back is remembered in the browser that named the project.
+### Skipping steps and coming back
+
+Click any step in the row at the top to open it, in any order. Each one shows whether it's done, skipped, or not visited yet. **Skip for now** marks a step skipped and moves on to the next one. A step that needs an earlier one, such as **Service** before a repository is picked, says so and takes you there.
+
+The project exists from the moment you press **Continue** on the Info step, and stays in setup until you press **Finish** on the last step. **Finish** works with steps skipped; the Done step lists them, each with a way back. Until then, the project's part of the sidebar shows only **Continue setup**, on every device and for everyone who can change the project, and it reopens the wizard at the first step that's neither done nor skipped. If setup already created a service, resuming uses that same stack even when another service was added later. Detected Environment fields and saved stack values return on another device; **Continue** stays on Service when progress cannot be saved, so it can be retried without creating again. Everyone else sees **Being set up**. The board, docs, and settings still open from a link while setup is open.
+
+After **Finish**, the sidebar lists the project's pages. To revisit a step later, open the project's **Settings → General** and press **Open the wizard**. The project stays set up.
+
+A project made over [MCP](/docs/guide/mcp-server/) or the API is set up straight away, unless the call asks for setup with `setup_finished` set to `false`.
 
 ## Add another service or repository
 

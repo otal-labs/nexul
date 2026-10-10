@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -29,6 +31,115 @@ func TestProjectsRepo_Create_Get_RoundTrip(t *testing.T) {
 	assert.Equal(t, want.Name, got.Name)
 	assert.Equal(t, 0, got.Position)
 	assert.Equal(t, workspace.ProjectIcon(""), got.Icon)
+}
+
+func TestProjectsRepo_SaveSetup_WritesTheRecordAndItsEvent(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	p := newTestProject("p-1", "Backend", 0)
+	p.Setup = workspace.NewSetup(false)
+	require.NoError(t, s.Projects.Create(ctx, p))
+	got, err := s.Projects.Get(ctx, "p-1")
+	require.NoError(t, err)
+	assert.Equal(t, workspace.NewSetup(false), got.Setup, "a project the wizard makes reads back in setup")
+
+	stack := newTestStack("svc-1")
+	stack.ProjectID = p.ID
+	require.NoError(t, s.Stacks.Create(ctx, stack))
+	p.Name = "Renamed"
+	p.Setup = workspace.ProjectSetup{Finished: true, StackID: "svc-1", EnvKeys: []string{"PORT"}, Steps: map[workspace.SetupStep]workspace.SetupMark{"project": workspace.SetupDone, "reach": workspace.SetupSkipped}}
+	evt := eventbus.OutboxEvent{ID: "evt-1", Topic: workspace.TopicProjectSetupChanged, Payload: workspace.ProjectSetupChangedEvent{ProjectID: "p-1"}}
+	_, err = s.Projects.SaveSetup(ctx, p.ID, func(current *workspace.Project) []eventbus.OutboxEvent {
+		current.Setup = p.Setup
+		return []eventbus.OutboxEvent{evt}
+	})
+	require.NoError(t, err)
+
+	got, err = s.Projects.Get(ctx, "p-1")
+	require.NoError(t, err)
+	assert.Equal(t, p.Setup, got.Setup)
+	assert.Equal(t, "Backend", got.Name, "saving the setup writes nothing else")
+	assert.Equal(t, 1, count(t, s.db, `SELECT COUNT(*) FROM outbox WHERE id = 'evt-1' AND topic = 'project.setup_changed'`))
+
+	_, err = s.Projects.SaveSetup(ctx, "p-missing", nil)
+	assert.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+func TestProjectSetup_StackContextMustBelongToProject(t *testing.T) {
+	s := newTestStore(t)
+	ctx := t.Context()
+	for _, id := range []string{"p-1", "p-2"} {
+		p := newTestProject(id, id, 0)
+		p.Setup = workspace.NewSetup(false)
+		require.NoError(t, s.Projects.Create(ctx, p))
+		stack := newTestStack("stack-" + id)
+		stack.Name = id
+		stack.Slug = id
+		stack.ProjectID = id
+		require.NoError(t, s.Stacks.Create(ctx, stack))
+	}
+	svc := workspace.NewService(s.Projects, nil, nil, nil, nil, nil)
+	for _, id := range []string{"missing", "stack-p-2"} {
+		t.Run(id, func(t *testing.T) {
+			finished := true
+			keys := []string{"PORT"}
+			_, err := svc.ChangeSetup(ctx, "p-1", workspace.SetupChange{StackID: &id, EnvKeys: &keys, Finished: &finished})
+			assert.ErrorIs(t, err, apperrs.ErrInvalid)
+			p, err := s.Projects.Get(ctx, "p-1")
+			require.NoError(t, err)
+			assert.Equal(t, workspace.NewSetup(false), p.Setup)
+			assert.Equal(t, 0, count(t, s.db, `SELECT COUNT(*) FROM outbox WHERE topic = 'project.setup_changed'`))
+		})
+	}
+	id := "stack-p-1"
+	keys := []string{"PORT"}
+	got, err := svc.ChangeSetup(ctx, "p-1", workspace.SetupChange{StackID: &id, EnvKeys: &keys})
+	require.NoError(t, err)
+	assert.Equal(t, id, got.Setup.StackID)
+	assert.Equal(t, keys, got.Setup.EnvKeys)
+	id = ""
+	keys = []string{}
+	got, err = svc.ChangeSetup(ctx, "p-1", workspace.SetupChange{StackID: &id, EnvKeys: &keys})
+	require.NoError(t, err)
+	assert.Empty(t, got.Setup.StackID)
+	assert.Empty(t, got.Setup.EnvKeys)
+	assert.Equal(t, 2, count(t, s.db, `SELECT COUNT(*) FROM outbox WHERE topic = 'project.setup_changed'`))
+}
+
+type concurrentSetupRepo struct {
+	workspace.Repo
+	writes sync.WaitGroup
+}
+
+func (r *concurrentSetupRepo) SaveSetup(ctx context.Context, id string, apply func(*workspace.Project) []eventbus.OutboxEvent) (*workspace.Project, error) {
+	r.writes.Done()
+	r.writes.Wait()
+	return r.Repo.SaveSetup(ctx, id, apply)
+}
+
+func TestProjectSetup_ConcurrentStepsPreserveBothMarks(t *testing.T) {
+	s := newTestStore(t)
+	p := newTestProject("p-1", "Backend", 0)
+	p.Setup = workspace.NewSetup(false)
+	require.NoError(t, s.Projects.Create(t.Context(), p))
+	repo := &concurrentSetupRepo{Repo: s.Projects}
+	repo.writes.Add(2)
+	svc := workspace.NewService(repo, nil, nil, nil, nil, nil)
+	errs := make(chan error, 2)
+	for _, step := range []workspace.SetupStep{"repository", "service"} {
+		go func() {
+			_, err := svc.ChangeSetup(t.Context(), p.ID, workspace.SetupChange{Steps: map[workspace.SetupStep]workspace.SetupMark{step: workspace.SetupSkipped}})
+			errs <- err
+		}()
+	}
+	require.NoError(t, <-errs)
+	require.NoError(t, <-errs)
+	got, err := s.Projects.Get(t.Context(), p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, workspace.ProjectSetup{Steps: map[workspace.SetupStep]workspace.SetupMark{
+		"project": workspace.SetupDone, "repository": workspace.SetupSkipped, "service": workspace.SetupSkipped,
+	}}, got.Setup)
 }
 
 func TestProjectsRepo_IconRoundTrip(t *testing.T) {

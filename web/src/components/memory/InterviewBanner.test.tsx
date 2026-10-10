@@ -12,7 +12,7 @@ import type { Project } from "@/models/Project";
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock("@/api/client", () => ({ api: mocks, errorMessage: vi.fn() }));
 
-const project: Project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, icon: "", tests_location: "", created_at: "", updated_at: "" };
+const project: Project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, workspace_id: "ws-1", icon: "", tests_location: "", setup: { finished: true, steps: {} }, created_at: "", updated_at: "" };
 
 const memory = (kind: string): Memory => ({
   id: `mem-${kind}`,

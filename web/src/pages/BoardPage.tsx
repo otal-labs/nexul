@@ -5,7 +5,6 @@ import { BoardUnscopedStates } from "@/components/board/BoardUnscopedStates";
 import { ProjectBoardSection } from "@/components/board/ProjectBoardSection";
 import { Container } from "@/components/Container";
 import { InterviewBanner } from "@/components/memory/InterviewBanner";
-import { UnfinishedProjectBanner } from "@/components/project/UnfinishedProjectBanner";
 import { useFetchCategories } from "@/hooks/CategoryHooks";
 import { useBoardActions } from "@/hooks/useBoardActions";
 import { useBoardFilters } from "@/hooks/useBoardFilters";
@@ -72,7 +71,6 @@ export const BoardPage = () => {
         />
       )}
       {scopedNotFound && <BoardNotFoundState />}
-      {scopedProject && <UnfinishedProjectBanner projectId={scopedProject.id} />}
       {scopedProject && <InterviewBanner project={scopedProject} />}
       {routeParam && !scopedNotFound && (
         <ProjectBoardSection

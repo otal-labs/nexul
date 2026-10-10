@@ -81,6 +81,7 @@ type world struct {
 	branches   map[string][]tickets.BranchLink
 	labelColor map[string]colors.Color
 	projects   rows[*workspace.Project]
+	stacks     map[string]string
 	repos      map[string][]workspace.RepoRef
 	statuses   rows[*workspace.Status]
 	categories rows[*workspace.Category]
@@ -123,6 +124,7 @@ func newFixture(t *testing.T) fixture {
 		categories: rows[*workspace.Category]{id: func(c *workspace.Category) string { return c.ID }},
 		types:      rows[*workspace.TicketType]{id: func(tt *workspace.TicketType) string { return tt.ID }},
 		owner:      true,
+		stacks:     map[string]string{},
 	}
 	must(t, w.projects.put(&workspace.Project{ID: "p-1", Name: "Backend", Prefix: "REF", WorkspaceID: "ws-1", Icon: workspace.ProjectIconServer, TestsLocation: workspace.TestsLocationSame}))
 	must(t, w.projects.put(&workspace.Project{ID: "p-2", Name: "Frontend", Prefix: "WEB", WorkspaceID: "ws-1"}))
@@ -563,6 +565,15 @@ func (r projectRepo) Update(_ context.Context, p *workspace.Project) error {
 	return r.w.projects.put(p)
 }
 
+func (r projectRepo) SaveSetup(_ context.Context, id string, apply func(*workspace.Project) []eventbus.OutboxEvent) (*workspace.Project, error) {
+	p, err := r.w.projects.get(id)
+	if err != nil {
+		return nil, err
+	}
+	apply(p)
+	return p, r.w.projects.put(p)
+}
+
 func (r projectRepo) Reorder(_ context.Context, ids []string) error { return r.w.projects.reorder(ids) }
 
 func (r projectRepo) CountTickets(_ context.Context, projectID string) (int, error) {
@@ -580,6 +591,14 @@ func (r projectRepo) CountTickets(_ context.Context, projectID string) (int, err
 
 func (r projectRepo) CountRepos(_ context.Context, projectID string) (int, error) {
 	return len(r.w.repos[projectID]), nil
+}
+
+func (r projectRepo) ProjectForStack(_ context.Context, stackID string) (string, error) {
+	projectID, ok := r.w.stacks[stackID]
+	if !ok {
+		return "", apperrs.ErrNotFound
+	}
+	return projectID, nil
 }
 
 func (r projectRepo) CountServices(context.Context, string) (int, error) { return 0, nil }

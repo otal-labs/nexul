@@ -84,6 +84,7 @@
   "play.queued",
   "play.run",
   "play.updated",
+  "project.setup_changed",
   "role.updated",
   "runner.connected",
   "runner.disconnected",
