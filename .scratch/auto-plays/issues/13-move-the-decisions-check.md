@@ -21,3 +21,7 @@ guide's decisions check and automations pages.
 - Rewrite `CONTEXT.md`'s Decisions check entry (an ordinary play with a
   seeded auto play, switched on the play's page) and the Play entry's
   "fires with one button" to allow auto plays.
+- Seed the play with a label free in each workspace (play labels become
+  unique per workspace in 14; if "Decisions check" is taken, add " (2)").
+- Move the check onto 10's queue: its consumer goes; the seeded auto play
+  is `ticket.entered_stage` with stage done, run on `causer`.
