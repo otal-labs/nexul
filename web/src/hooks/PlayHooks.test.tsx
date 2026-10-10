@@ -194,6 +194,17 @@ describe("the play follower", () => {
     expect(isStale(client, ["getAutoPlays", "ws-1", "pl-2"])).toBe(true);
   });
 
+  it("patches the daily cap of the workspace a frame names, with no request", async () => {
+    const client = seeded([
+      [["getAutoPlayLimits", "ws-1"], { daily_cap_per_ticket: 5 }],
+      [["getAutoPlayLimits", "ws-2"], { daily_cap_per_ticket: 5 }],
+    ]);
+    await followFrame(playFollower, "auto_play.limits_updated", { workspace_id: "ws-1", daily_cap_per_ticket: 9 }, client);
+    expect(client.getQueryData(["getAutoPlayLimits", "ws-1"])).toEqual({ daily_cap_per_ticket: 9 });
+    expect(client.getQueryData(["getAutoPlayLimits", "ws-2"])).toEqual({ daily_cap_per_ticket: 5 });
+    expect(isStale(client, ["getAutoPlayLimits", "ws-1"])).toBe(false);
+  });
+
   it("drops a deleted play's auto plays with it", async () => {
     const client = seeded([[["getAutoPlays", "ws-1", "pl-1"], []]]);
     await followFrame(playFollower, "play.deleted", { id: "pl-1", label: "Review", workspace_id: "ws-1" }, client);

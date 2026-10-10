@@ -104,7 +104,7 @@ func (r *PlaysRepo) AutoPlayDailyCap(ctx context.Context, workspaceID string) (i
 }
 
 // SetAutoPlayDailyCap changes workspaceID's cap on automatic runs per ticket per day.
-func (r *PlaysRepo) SetAutoPlayDailyCap(ctx context.Context, workspaceID string, limit int) error {
+func (r *PlaysRepo) SetAutoPlayDailyCap(ctx context.Context, workspaceID string, limit int, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).SetAutoPlayDailyCap(ctx, sqlcgen.SetAutoPlayDailyCapParams{AutoPlayDailyCap: int64(limit), ID: workspaceID})
 		if err != nil {
@@ -113,7 +113,7 @@ func (r *PlaysRepo) SetAutoPlayDailyCap(ctx context.Context, workspaceID string,
 		if n == 0 {
 			return apperrs.ErrNotFound
 		}
-		return nil
+		return enqueuePlaysOutbox(ctx, tx, evts)
 	})
 }
 

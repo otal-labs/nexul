@@ -67,6 +67,24 @@ A built-in play says whether its instructions match the instance's template, wit
 
 To stop one person from running one play, press **Exclude users** on its row.
 
+## Auto plays
+
+An auto play starts its play by itself when something happens to a ticket or doc, so nobody has to press the button. A play can have several. Open the play in **Configuration → Plays**, press **Edit**, and go to the **Auto plays** tab. Interview plays have none.
+
+Each auto play reads as one sentence, such as "When a ticket **becomes unblocked**, if **Type is Bug** → **High**, else **Normal**, runs on **Developer**", with a switch to turn it on or off. A new one starts switched off. Press a row to change it, or use its menu to duplicate or delete it.
+
+An auto play has:
+
+- **When**, the moment it waits for. A ticket play: the ticket becomes unblocked, enters a stage, is created, gets a developer, gets a tester, or fails a test. A doc play: the doc is created, or changes. A change counts once edits have stopped for 10 minutes, and never for an agent's edits.
+- **If**, conditions on the ticket's or doc's fields: type, project, stage, status column, category, label, developer, tester, whether it has a source doc or a linked pull request, and whether it is blocked; a doc's project and folder. Pick whether all or any of them must match, and add a group one level in for an "any of these" inside an "all of these". With no conditions, every match of the moment runs it.
+- **Priority**, High, Normal, or Low, with rules such as "High if Type is Bug" checked in order, then the level for everything else. A higher priority runs first in the person's queue.
+- **Limits**, at most once per ticket or doc every hour, 24 hours, or 7 days, or no limit.
+- **Run on**, whose computer runs it: the ticket's developer, its tester, or whoever caused the moment. A doc play always runs on whoever caused it.
+
+The play's **Show when** stage does not apply to an auto play; add a **Stage is** condition instead. A run waits until its person has a free slot and their computer is online, and its conditions are checked again before it starts. The person it runs on needs `plays:run`.
+
+**Each ticket runs at most 5 auto plays a day** across every play, so two auto plays can't keep starting each other. Change the number under the list of any ticket play's auto plays; it applies to the whole workspace.
+
 ## The decisions check
 
 The decisions check is a play nobody presses. When a ticket enters a Done column, the agent reads the ticket and its pull requests and updates the project's [decisions log](/docs/guide/memories/#the-decisions-log): it adds an entry, marks an older one superseded, or leaves the log alone.
@@ -83,5 +101,8 @@ If it can't start, the ticket shows **Decisions check didn't run** with the reas
 | `plays:read` | open **Configuration → Plays** |
 | `plays:write` | create and edit plays, exclude people, stop anyone's run |
 | `plays:delete` | delete plays |
+| `autoplays:read` | see a play's auto plays and the daily cap |
+| `autoplays:write` | add, change, and switch auto plays, and set the daily cap |
+| `autoplays:delete` | delete auto plays |
 
 Agents run plays with `play_run` and read trails with `trail_list`. See [MCP server](/docs/guide/mcp-server/).

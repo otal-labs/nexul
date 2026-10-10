@@ -145,6 +145,7 @@ var liveRules = map[string]liveRule{
 	plays.TopicAutoPlayCreated:           autoPlayFrame,
 	plays.TopicAutoPlayUpdated:           autoPlayFrame,
 	plays.TopicAutoPlayDeleted:           autoPlayFrame,
+	plays.TopicAutoPlayLimitsUpdated:     autoPlayFrame,
 	botwebhook.TopicCreated:              botwebhookFrame,
 	botwebhook.TopicUpdated:              botwebhookFrame,
 	botwebhook.TopicDeleted:              botwebhookFrame,

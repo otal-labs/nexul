@@ -22,6 +22,8 @@ const (
 	TopicAutoPlayCreated = "auto_play.created"
 	TopicAutoPlayUpdated = "auto_play.updated"
 	TopicAutoPlayDeleted = "auto_play.deleted"
+
+	TopicAutoPlayLimitsUpdated = "auto_play.limits_updated"
 )
 
 // TopicPlayRun is the live-hub topic for trail state and activity; ephemeral, never persisted or catalogued.
@@ -39,6 +41,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicAutoPlayCreated, Payload: AutoPlayEvent{}},
 		{Name: TopicAutoPlayUpdated, Payload: AutoPlayEvent{}},
 		{Name: TopicAutoPlayDeleted, Payload: AutoPlayDeletedEvent{}},
+		{Name: TopicAutoPlayLimitsUpdated, Payload: AutoPlayLimitsEvent{}},
 	}
 }
 
@@ -52,6 +55,12 @@ type AutoPlayDeletedEvent struct {
 	ID          string `json:"id"`
 	PlayID      string `json:"play_id"`
 	WorkspaceID string `json:"workspace_id"`
+}
+
+// AutoPlayLimitsEvent is the auto_play.limits_updated payload: a workspace's caps on automatic runs after a change.
+type AutoPlayLimitsEvent struct {
+	WorkspaceID       string `json:"workspace_id"`
+	DailyCapPerTicket int    `json:"daily_cap_per_ticket" jsonschema:"How many automatic runs auto plays may start on one ticket per rolling day."`
 }
 
 // CreatedEvent is the payload for play.created; field names are part of the event contract (ADR 0044).

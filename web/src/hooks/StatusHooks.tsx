@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
@@ -10,13 +10,15 @@ import { dropRow, replaceRow, type LiveFollower } from "@/lib/live";
 export const getStatusesKey = "getStatuses";
 export const getProjectStatusesKey = "getProjectStatuses";
 
-export const useFetchProjectStatuses = (projectId: string | undefined) =>
-  useQuery({
+export const projectStatusesQuery = (projectId: string | undefined) =>
+  queryOptions({
     queryKey: [getProjectStatusesKey, projectId],
     queryFn: async () =>
       (await api.get<BoardStatus[]>("/api/statuses", { params: { project_id: projectId } })).data,
     enabled: !!projectId,
   });
+
+export const useFetchProjectStatuses = (projectId: string | undefined) => useQuery(projectStatusesQuery(projectId));
 
 // Tickets filed before statuses became per-project columns can still hold one of these values.
 const legacyStatuses: Record<string, Pick<BoardStatus, "name" | "kind" | "icon">> = {

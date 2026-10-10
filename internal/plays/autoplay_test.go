@@ -271,9 +271,13 @@ func TestAutoPlayDailyCap_StaysInItsBounds(t *testing.T) {
 		_, err := s.SetAutoPlayDailyCap(ctxAs("editor"), workspaceID, bad)
 		require.ErrorIs(t, err, apperrs.ErrInvalid, "%d", bad)
 	}
+	repo.published = nil
 	limit, err = s.SetAutoPlayDailyCap(ctxAs("editor"), workspaceID, 12)
 	require.NoError(t, err)
 	assert.Equal(t, 12, limit)
+	require.Len(t, repo.published, 1)
+	assert.Equal(t, TopicAutoPlayLimitsUpdated, repo.published[0].Topic)
+	assert.Equal(t, AutoPlayLimitsEvent{WorkspaceID: workspaceID, DailyCapPerTicket: 12}, repo.published[0].Payload)
 
 	repo.autoPlayErr = errors.New("disk full")
 	_, err = s.AutoPlayDailyCap(ctxAs("editor"), workspaceID)

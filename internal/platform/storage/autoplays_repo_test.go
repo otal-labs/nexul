@@ -124,10 +124,14 @@ func TestAutoPlaysRepo_DailyCapStartsAtFive(t *testing.T) {
 	limit, err := s.Plays.AutoPlayDailyCap(ctx, "ws-1")
 	require.NoError(t, err)
 	assert.Equal(t, plays.DefaultAutoPlayDailyCap, limit)
-	require.NoError(t, s.Plays.SetAutoPlayDailyCap(ctx, "ws-1", 9))
+	evt := eventbus.OutboxEvent{ID: "evt-cap", Topic: plays.TopicAutoPlayLimitsUpdated, Payload: plays.AutoPlayLimitsEvent{WorkspaceID: "ws-1", DailyCapPerTicket: 9}}
+	require.NoError(t, s.Plays.SetAutoPlayDailyCap(ctx, "ws-1", 9, evt))
 	limit, err = s.Plays.AutoPlayDailyCap(ctx, "ws-1")
 	require.NoError(t, err)
 	assert.Equal(t, 9, limit)
+	var topic string
+	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT topic FROM outbox WHERE id = 'evt-cap'`).Scan(&topic))
+	assert.Equal(t, plays.TopicAutoPlayLimitsUpdated, topic)
 
 	_, err = s.Plays.AutoPlayDailyCap(ctx, "ghost")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
