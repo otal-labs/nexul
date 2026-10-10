@@ -103,7 +103,7 @@ git history, and anything durable it decided is an ADR.
   computer: one command adds the computer, Nexul reaches T3 Code through the
   runner's connection instead of a Cloudflare tunnel (ADR 0146), the old
   tunnel and URL pairing retired after existing computers move; later shell
-  jobs, container logs and sharing a computer. Spec and tickets 01–19
+  jobs, container logs and sharing a computer. Spec and tickets 01–20
   written 2026-10-10.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
