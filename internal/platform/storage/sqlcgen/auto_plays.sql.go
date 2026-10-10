@@ -139,6 +139,52 @@ func (q *Queries) ListAutoPlaysByPlays(ctx context.Context, playIds interface{})
 	return items, nil
 }
 
+const listEnabledAutoPlaysByMoment = `-- name: ListEnabledAutoPlaysByMoment :many
+SELECT id, play_id, workspace_id, enabled, moment, moment_stage, conditions, priority, once_within_minutes, run_on, created_by, created_at, updated_at FROM auto_plays WHERE workspace_id = ? AND moment = ? AND enabled = 1 ORDER BY created_at, id
+`
+
+type ListEnabledAutoPlaysByMomentParams struct {
+	WorkspaceID string
+	Moment      string
+}
+
+func (q *Queries) ListEnabledAutoPlaysByMoment(ctx context.Context, arg ListEnabledAutoPlaysByMomentParams) ([]AutoPlay, error) {
+	rows, err := q.db.QueryContext(ctx, listEnabledAutoPlaysByMoment, arg.WorkspaceID, arg.Moment)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AutoPlay
+	for rows.Next() {
+		var i AutoPlay
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlayID,
+			&i.WorkspaceID,
+			&i.Enabled,
+			&i.Moment,
+			&i.MomentStage,
+			&i.Conditions,
+			&i.Priority,
+			&i.OnceWithinMinutes,
+			&i.RunOn,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setAutoPlayDailyCap = `-- name: SetAutoPlayDailyCap :execrows
 UPDATE workspaces SET auto_play_daily_cap = ? WHERE id = ?
 `

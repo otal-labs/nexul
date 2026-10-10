@@ -224,8 +224,11 @@ type RunnerConfig struct {
 	Rounds ClarifyRounds
 	// Checkouts is optional; nil names every project source with no checkout on the run's computer.
 	Checkouts Checkouts
-	Logger    *slog.Logger
-	Now       func() time.Time
+	// Queue and Facts are optional; without both no auto play matches and the queue never runs.
+	Queue  QueueRepo
+	Facts  FactReader
+	Logger *slog.Logger
+	Now    func() time.Time
 	// SilenceTimeout defaults to HarnessSilenceTimeout; tests shorten it.
 	SilenceTimeout time.Duration
 }
@@ -248,9 +251,13 @@ type Runner struct {
 	links     LinkReader
 	answers   InterviewAnswers
 	checkouts Checkouts
+	queue     QueueRepo
+	facts     FactReader
 	log       *slog.Logger
 	now       func() time.Time
 	silence   time.Duration
+	// kick wakes the queue's dispatcher; one buffered kick is enough, since a pass reads everything due.
+	kick chan struct{}
 
 	mu   sync.Mutex
 	runs map[string]*trailObserver // trail id -> the live run, so it can be stopped
@@ -273,7 +280,8 @@ func NewRunner(cfg RunnerConfig) *Runner {
 	return &Runner{
 		plays: cfg.Plays, trails: redactedTrails{cfg.Trails}, perm: cfg.Perm, targets: cfg.Targets, docs: cfg.Docs, rounds: cfg.Rounds, projects: cfg.Projects,
 		harness: cfg.Harness, memories: cfg.Memories, threads: redactedThreads{cfg.Threads}, turns: cfg.Turns,
-		live: cfg.Live, users: cfg.Users, links: cfg.Links, answers: cfg.Answers, checkouts: cfg.Checkouts, log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout,
+		live: cfg.Live, users: cfg.Users, links: cfg.Links, answers: cfg.Answers, checkouts: cfg.Checkouts, queue: cfg.Queue, facts: cfg.Facts,
+		log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout, kick: make(chan struct{}, 1),
 		runs: map[string]*trailObserver{},
 	}
 }

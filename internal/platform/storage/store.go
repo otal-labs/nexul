@@ -50,6 +50,7 @@ type Store struct {
 	Roles                 *RolesRepo
 	Plays                 *PlaysRepo
 	PlayTrails            *PlayTrailsRepo
+	PlayQueue             *PlayQueueRepo
 	DNS                   *DNSRepo
 	Automations           *AutomationsRepo
 	AutomationHosts       *AutomationHostsRepo
@@ -117,6 +118,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Roles:                 &RolesRepo{db: db, w: w, q: q},
 		Plays:                 &PlaysRepo{db: db, w: w, q: q},
 		PlayTrails:            &PlayTrailsRepo{db: db, w: w, q: q},
+		PlayQueue:             &PlayQueueRepo{db: db, w: w, q: q},
 		DNS:                   &DNSRepo{db: db, w: w, q: q},
 		Automations:           &AutomationsRepo{db: db, w: w, q: q},
 		AutomationHosts:       &AutomationHostsRepo{db: db, w: w, q: q},

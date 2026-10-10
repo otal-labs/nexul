@@ -24,6 +24,9 @@ const (
 	TopicAutoPlayDeleted = "auto_play.deleted"
 
 	TopicAutoPlayLimitsUpdated = "auto_play.limits_updated"
+	TopicQueued                = "play.queued"
+	TopicQueueUpdated          = "play.queue_updated"
+	TopicQueueResumed          = "play.queue_resumed"
 )
 
 // TopicPlayRun is the live-hub topic for trail state and activity; ephemeral, never persisted or catalogued.
@@ -42,6 +45,9 @@ func Topics() []eventbus.Topic {
 		{Name: TopicAutoPlayUpdated, Payload: AutoPlayEvent{}},
 		{Name: TopicAutoPlayDeleted, Payload: AutoPlayDeletedEvent{}},
 		{Name: TopicAutoPlayLimitsUpdated, Payload: AutoPlayLimitsEvent{}},
+		{Name: TopicQueued, Payload: QueueItem{}, Description: "An auto play's moment matched a ticket or doc: the run waits in its person's queue, or did not run when there was nobody to run it on or they may not run the play."},
+		{Name: TopicQueueUpdated, Payload: QueueItem{}, Description: "A queued auto run changed: it waits for another reason, started, was skipped because it no longer matched, did not run, or was cancelled."},
+		{Name: TopicQueueResumed, Payload: QueueResumedEvent{}, Description: "Someone resumed auto plays on a ticket or doc the daily cap had paused; its count of automatic runs starts again."},
 	}
 }
 

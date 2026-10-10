@@ -94,6 +94,23 @@ func (r *PlaysRepo) DeleteAutoPlay(ctx context.Context, id string, evts ...event
 	})
 }
 
+// ListEnabledAutoPlays reads a workspace's switched-on auto plays waiting for moment, through idx_auto_plays_moment.
+func (r *PlaysRepo) ListEnabledAutoPlays(ctx context.Context, workspaceID string, moment plays.Moment) ([]*plays.AutoPlay, error) {
+	rows, err := r.q.ListEnabledAutoPlaysByMoment(ctx, sqlcgen.ListEnabledAutoPlaysByMomentParams{WorkspaceID: workspaceID, Moment: string(moment)})
+	if err != nil {
+		return nil, fmt.Errorf("list auto plays for %s in workspace %s: %w", moment, workspaceID, err)
+	}
+	out := make([]*plays.AutoPlay, 0, len(rows))
+	for _, row := range rows {
+		a, err := toAutoPlay(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, nil
+}
+
 // AutoPlayDailyCap reads workspaceID's cap on automatic runs per ticket per day.
 func (r *PlaysRepo) AutoPlayDailyCap(ctx context.Context, workspaceID string) (int, error) {
 	limit, err := r.q.GetAutoPlayDailyCap(ctx, workspaceID)

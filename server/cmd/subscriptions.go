@@ -380,6 +380,8 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Links:     playsLinkReader{tickets: svc.ticketsSvc},
 		Answers:   playsInterviewAnswers{svc: svc.memoriesSvc},
 		Checkouts: playsCheckouts{svc: svc.pairingSvc},
+		Queue:     store.PlayQueue,
+		Facts:     playsFacts{store: store},
 		Logger:    logger,
 	})
 	if err := svc.playsRunner.ResumeRunsAfterRestart(ctx); err != nil {
@@ -391,6 +393,13 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 
 	// A ticket entering done fires the built-in decisions check on the mover's or the developer's harness.
 	mustSubscribe(ctx, bus, "plays.decisions_check", tickets.TopicStatusChanged, "", svc.playsRunner.HandleTicketStatusChanged)
+	// A moment an auto play waits for queues its run; a run ending frees a slot in someone's queue (ADR 0132).
+	for _, topic := range plays.MomentTopics {
+		mustSubscribe(ctx, bus, "plays.auto_match", topic, " for auto plays", svc.playsRunner.HandleAutoPlayMoment)
+	}
+	mustSubscribe(ctx, bus, "plays.queue", plays.TopicRunFinished, " for the run queue", svc.playsRunner.HandleRunFinished)
+	// After ResumeRunsAfterRestart, so the active trails each person's slot is counted against are accurate.
+	go svc.playsRunner.RunQueue(ctx)
 
 	mustSubscribe(ctx, bus, "topology.live_canvas", topology.TopicUpdated, " for live push", topologyLiveHandler(svc.topoSvc, store.Workspaces, liveHub.Publish))
 

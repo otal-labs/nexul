@@ -74,6 +74,22 @@ func (f *fakeRepo) ListAutoPlays(_ context.Context, playIDs []string) ([]*AutoPl
 	return out, nil
 }
 
+func (f *fakeRepo) ListEnabledAutoPlays(_ context.Context, workspaceID string, moment Moment) ([]*AutoPlay, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.autoPlayErr != nil {
+		return nil, f.autoPlayErr
+	}
+	var out []*AutoPlay
+	for _, a := range f.autoPlays {
+		if a.WorkspaceID == workspaceID && a.Moment == moment && a.Enabled {
+			cp := *a
+			out = append(out, &cp)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeRepo) UpdateAutoPlay(_ context.Context, a *AutoPlay, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
