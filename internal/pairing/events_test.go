@@ -57,6 +57,12 @@ func TestComputerEvents_AreMembersOnly(t *testing.T) {
 		check(e.Topic, e.Payload)
 	}
 
+	facts := newFactsFixture(t)
+	require.NoError(t, facts.svc.HandleFactsReported(ctx, reportEvent(t, laptopReport("answering", 5e10))))
+	for _, e := range facts.repo.outbox {
+		check(e.Topic, e.Payload)
+	}
+
 	for _, topic := range Topics() {
 		assert.True(t, seen[topic.Name], "no flow here publishes %s; add one", topic.Name)
 	}

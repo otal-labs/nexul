@@ -42,7 +42,7 @@ func (q *Queries) DeletePairingProjectLink(ctx context.Context, arg DeletePairin
 }
 
 const getPairingComputer = `-- name: GetPairingComputer :one
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder FROM pairing_computers WHERE id = ? AND user_id = ?
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at FROM pairing_computers WHERE id = ? AND user_id = ?
 `
 
 type GetPairingComputerParams struct {
@@ -75,6 +75,8 @@ func (q *Queries) GetPairingComputer(ctx context.Context, arg GetPairingComputer
 		&i.SetupModels,
 		&i.SetupModelOptions,
 		&i.SetupFolder,
+		&i.Facts,
+		&i.FactsAt,
 	)
 	return i, err
 }
@@ -133,7 +135,7 @@ func (q *Queries) GetPairingProjectLink(ctx context.Context, arg GetPairingProje
 }
 
 const listPairingComputers = `-- name: ListPairingComputers :many
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]PairingComputer, error) {
@@ -167,6 +169,8 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 			&i.SetupModels,
 			&i.SetupModelOptions,
 			&i.SetupFolder,
+			&i.Facts,
+			&i.FactsAt,
 		); err != nil {
 			return nil, err
 		}
@@ -504,6 +508,30 @@ func (q *Queries) SavePairingSetupTurn(ctx context.Context, arg SavePairingSetup
 		arg.EndedAt,
 	)
 	return err
+}
+
+const setPairingComputerFacts = `-- name: SetPairingComputerFacts :execrows
+UPDATE pairing_computers SET facts = ?, facts_at = ? WHERE id = ? AND user_id = ?
+`
+
+type SetPairingComputerFactsParams struct {
+	Facts   string
+	FactsAt sql.NullInt64
+	ID      string
+	UserID  string
+}
+
+func (q *Queries) SetPairingComputerFacts(ctx context.Context, arg SetPairingComputerFactsParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setPairingComputerFacts,
+		arg.Facts,
+		arg.FactsAt,
+		arg.ID,
+		arg.UserID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const setPairingComputerSetupChoices = `-- name: SetPairingComputerSetupChoices :execrows

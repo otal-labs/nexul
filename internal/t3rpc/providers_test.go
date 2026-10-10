@@ -14,7 +14,7 @@ import (
 func TestConn_Providers_ParsesConfig(t *testing.T) {
 	t.Parallel()
 	c := &Conn{config: json.RawMessage(`{"providers":[
-		{"instanceId":"claudeAgent","driver":"claudeAgent","displayName":"Claude","enabled":true,"installed":true,"version":null,
+		{"instanceId":"claudeAgent","driver":"claudeAgent","displayName":"Claude","enabled":true,"installed":true,"version":null,"auth":{"status":"authenticated","email":"alice@example.com"},
 		 "models":[
 			{"slug":"claude-opus-5-5","name":"Claude Opus 5.5","badge":"new","isCustom":false,"capabilities":{"optionDescriptors":[
 				{"id":"effort","label":"Reasoning","type":"select","options":[
@@ -26,7 +26,7 @@ func TestConn_Providers_ParsesConfig(t *testing.T) {
 					{"id":"200k","label":"200k"},{"id":"1m","label":"1M","isDefault":true}]}]}},
 			{"slug":"claude-fable-5","name":"Claude Fable 5","isCustom":false,"isLegacy":true,"capabilities":null}
 		 ]},
-		{"instanceId":"opencode","driver":"opencode","enabled":true,"installed":true,"version":"2.0.22",
+		{"instanceId":"opencode","driver":"opencode","enabled":true,"installed":true,"version":"2.0.22","auth":{"status":"unauthenticated"},
 		 "models":[{"slug":"github-copilot/claude-haiku-4.5","name":"Claude Haiku 4.5 (latest)","subProvider":"GitHub Copilot","isCustom":false,
 			"capabilities":{"optionDescriptors":[{"id":"agent","label":"Agent","type":"select","options":[
 				{"id":"build","label":"Build"},{"id":"plan","label":"Plan"}],"currentValue":"build"}]}}]},
@@ -40,6 +40,8 @@ func TestConn_Providers_ParsesConfig(t *testing.T) {
 	assert.Equal(t, "claudeAgent", providers[0].Driver, "the driver kind travels beside the instance id for the setup gate")
 	assert.Empty(t, providers[0].Version, "a null version is unknown")
 	assert.Equal(t, "2.0.22", providers[1].Version, "setup gates Pi on this")
+	assert.Equal(t, harness.SignedIn, providers[0].SignIn)
+	assert.Equal(t, harness.SignedOut, providers[1].SignIn)
 	assert.Equal(t, []harness.ProviderModel{
 		{Slug: "claude-opus-5-5", Name: "Claude Opus 5.5", IsNew: true, Options: []harness.ModelOption{
 			{ID: "effort", Label: "Reasoning", Type: harness.OptionSelect, Choices: []harness.OptionChoice{
@@ -69,4 +71,5 @@ func TestConn_Providers_DriverNameFallback(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, providers, 1)
 	assert.Equal(t, "opencode", providers[0].Name)
+	assert.Equal(t, harness.SignInUnknown, providers[0].SignIn, "a provider reporting no auth is unknown")
 }

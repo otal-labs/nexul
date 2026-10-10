@@ -14,6 +14,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	shipped "github.com/otal-labs/nexul/internal/platform/skills"
 )
@@ -207,7 +208,14 @@ func (s *Service) PairComputer(ctx context.Context, userID, computerID, secret s
 		return nil, err
 	}
 	if strings.TrimSpace(secret) == "" && existing.Tunnel == nil {
-		return s.pairThroughRunner(ctx, *existing)
+		paired, err := s.pairThroughRunner(ctx, *existing)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.recordFacts(ctx, userID, paired.ID, nil); err != nil {
+			logging.FromCtx(ctx).Warn("computer facts not read after pairing", "computer_id", paired.ID, "error", err)
+		}
+		return paired, nil
 	}
 	return s.pair(ctx, *existing, existing.address(), secret)
 }

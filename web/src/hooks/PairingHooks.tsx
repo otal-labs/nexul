@@ -289,6 +289,12 @@ export const pairingFollower: LiveFollower = {
   "computer.tunnel_created": (_p: unknown, { client }) => refetchComputers(client, false),
   // A computer row follows its personal runner enrolling, connecting and going away.
   "runner.personal_changed": (_p: unknown, { client }) => refetchComputers(client, false),
+  // A computer row's details follow its facts, which the frame never carries; its pickers follow what T3 Code lists.
+  "computer.facts_changed": ({ computer_id }: ComputerPayload, { client }) =>
+    Promise.all([
+      refetchComputers(client, false),
+      client.invalidateQueries({ queryKey: [getHarnessProvidersKey, computer_id], exact: true }),
+    ]),
   "computer.tunnel_status_changed": (p: ComputerPayload & TunnelStatus, { client }) =>
     client.setQueryData<TunnelStatus>([getTunnelStatusKey, p.computer_id], {
       tunnel: p.tunnel,

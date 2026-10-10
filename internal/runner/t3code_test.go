@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -27,8 +28,8 @@ import (
 )
 
 // personalClient is a personal runner whose T3 Code lives in home and whose t3 command is t3 ("" for none), connected
-// to serve.
-func personalClient(t *testing.T, home, t3 string, logs *bytes.Buffer, serve func(ctx context.Context, conn *websocket.Conn)) {
+// to serve. stop ends it, so logs can be read without racing it; the test's cleanup stops it too.
+func personalClient(t *testing.T, home, t3 string, logs *bytes.Buffer, serve func(ctx context.Context, conn *websocket.Conn)) (stop func()) {
 	t.Helper()
 	c := newTestClient(wsURL(wsTestServer(t, serve)), &fakeExecutor{})
 	c.cfg.Personal, c.cfg.T3Home = true, home
@@ -37,10 +38,12 @@ func personalClient(t *testing.T, home, t3 string, logs *bytes.Buffer, serve fun
 		c.log = slog.New(slog.NewTextHandler(logs, nil))
 	}
 	cancel, done := runClient(t, c)
-	t.Cleanup(func() {
+	stop = sync.OnceFunc(func() {
 		cancel()
 		<-done
 	})
+	t.Cleanup(stop)
+	return stop
 }
 
 // firstFacts is the first facts frame a personal runner sends once connected.
@@ -68,7 +71,9 @@ func firstFacts(t *testing.T, home, t3 string) Facts {
 	}
 }
 
-func TestPersonalRunner_ReportsT3CodeOnConnect(t *testing.T) {
+// TestPersonalRunner_ReportsItsComputerOnConnect: the first facts frame carries T3 Code's state and install, and the
+// computer's system, git identity, cloudflared and free disk as the person's own account finds them.
+func TestPersonalRunner_ReportsItsComputerOnConnect(t *testing.T) {
 	t3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/.well-known/t3/environment" {
 			http.NotFound(w, r)
@@ -84,6 +89,36 @@ func TestPersonalRunner_ReportsT3CodeOnConnect(t *testing.T) {
 	hostname, err := os.Hostname()
 	require.NoError(t, err)
 
+	home, bin := t.TempDir(), t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	require.NoError(t, os.WriteFile(filepath.Join(home, ".gitconfig"), []byte("[user]\n\tname = Alice Example\n\temail = alice@example.com\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(bin, "cloudflared"), []byte("#!/bin/sh\necho 'cloudflared version 2025.9.1 (built 2025-09-22-1200 UTC)'\n"), 0o700))
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	got := firstFacts(t, writeRuntimeFile(t, `{"host":"127.0.0.1","port":`+u.Port()+`}`), "")
+	assert.Equal(t, T3Facts{State: T3Answering, Port: port, Version: "0.0.34"}, got.T3)
+	assert.Equal(t, hostname, got.Hostname)
+	assert.Equal(t, runtime.GOOS, got.OS)
+	assert.Equal(t, runtime.GOARCH, got.Arch)
+	assert.Equal(t, "dev", got.RunnerVersion)
+	assert.Equal(t, "2025.9.1", got.Cloudflared)
+	assert.Equal(t, "Alice Example", got.GitName)
+	assert.Equal(t, "alice@example.com", got.GitEmail)
+	assert.Positive(t, got.FreeDiskBytes, "free space in the home folder")
+}
+
+func TestPersonalRunner_ReportsT3CodesStateAndInstall(t *testing.T) {
+	t3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"serverVersion":"0.0.34","orchestrationProtocolVersion":2}`))
+	}))
+	t.Cleanup(t3.Close)
+	u, err := url.Parse(t3.URL)
+	require.NoError(t, err)
+	port, err := strconv.Atoi(u.Port())
+	require.NoError(t, err)
+	desktop := t.TempDir()
+
 	tests := []struct {
 		name string
 		home string
@@ -91,13 +126,16 @@ func TestPersonalRunner_ReportsT3CodeOnConnect(t *testing.T) {
 		want T3Facts
 	}{
 		{"answering on loopback", writeRuntimeFile(t, `{"host":"127.0.0.1","port":`+u.Port()+`}`), "", T3Facts{State: T3Answering, Port: port, Version: "0.0.34"}},
-		{"bound to a LAN address", writeRuntimeFile(t, `{"host":"192.168.1.20","port":`+u.Port()+`}`), "/usr/bin/t3", T3Facts{State: T3NotLoopback}},
-		{"installed, nothing answers", t.TempDir(), "/usr/bin/t3", T3Facts{State: T3NotRunning}},
+		{"run by its service", writeRuntimeFile(t, `{"host":"127.0.0.1","port":`+u.Port()+`,"serviceManaged":true}`), "/home/alice/.local/bin/t3",
+			T3Facts{State: T3Answering, Install: T3InstallService, Port: port, Version: "0.0.34"}},
+		{"bound to a LAN address", writeRuntimeFile(t, `{"host":"192.168.1.20","port":`+u.Port()+`}`), "/usr/bin/t3", T3Facts{State: T3NotLoopback, Install: T3InstallCommandLine}},
+		{"desktop app closed", desktop, filepath.Join(desktop, "bin", "t3"), T3Facts{State: T3NotRunning, Install: T3InstallDesktopApp}},
+		{"installed, nothing answers", t.TempDir(), "/usr/bin/t3", T3Facts{State: T3NotRunning, Install: T3InstallCommandLine}},
 		{"not installed", t.TempDir(), "", T3Facts{State: T3Missing}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, Facts{Hostname: hostname, T3: tt.want}, firstFacts(t, tt.home, tt.t3))
+			assert.Equal(t, tt.want, firstFacts(t, tt.home, tt.t3).T3)
 		})
 	}
 }
@@ -118,7 +156,7 @@ func pairTokenAnswer(t *testing.T, home, t3 string) (Frame, string) {
 	t.Helper()
 	answer := make(chan Frame, 1)
 	var logs bytes.Buffer
-	personalClient(t, home, t3, &logs, func(ctx context.Context, conn *websocket.Conn) {
+	stop := personalClient(t, home, t3, &logs, func(ctx context.Context, conn *websocket.Conn) {
 		_ = wsjson.Write(ctx, conn, Frame{Type: FrameT3PairTokenRequest, ID: "p1"})
 		for {
 			var f Frame
@@ -133,6 +171,7 @@ func pairTokenAnswer(t *testing.T, home, t3 string) (Frame, string) {
 	})
 	select {
 	case f := <-answer:
+		stop()
 		return f, logs.String()
 	case <-time.After(10 * time.Second):
 		t.Fatal("no t3_pair_token within 10s")

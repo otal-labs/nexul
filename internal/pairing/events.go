@@ -21,6 +21,8 @@ const (
 	// TopicSetupTurnActivity is ephemeral: the running turn's latest step, never written to the outbox.
 	TopicSetupTurnActivity = "computer.setup_turn_activity"
 	TopicHarnessSwitched   = "computer.harness_switched"
+	// TopicFactsChanged names the computer whose facts changed and never carries them: they are its owner's alone.
+	TopicFactsChanged = "computer.facts_changed"
 )
 
 // Topics returns every topic the pairing domain publishes.
@@ -36,6 +38,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicSetupFinished, Payload: SetupFinishedEvent{}},
 		{Name: TopicSetupTurnActivity, Payload: SetupTurnActivityEvent{}},
 		{Name: TopicHarnessSwitched, Payload: HarnessSwitchedEvent{}},
+		{Name: TopicFactsChanged, Payload: FactsChangedEvent{}},
 	}
 }
 
@@ -138,5 +141,13 @@ type SetupTurnActivityEvent struct {
 	// Text is a text step's whole message, which the dialog shows as prose; Status stays its one-line preview.
 	Text        string    `json:"text,omitempty"`
 	At          time.Time `json:"at"`
+	MembersOnly bool      `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
+}
+
+// FactsChangedEvent is a computer's stored facts changing; read them with the computer, as its owner.
+type FactsChangedEvent struct {
+	ComputerID  string    `json:"computer_id"`
+	UserID      string    `json:"user_id" jsonschema:"The computer's owner, the only person who reads its facts."`
+	FactsAt     time.Time `json:"facts_at" jsonschema:"When the facts changed."`
 	MembersOnly bool      `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }

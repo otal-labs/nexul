@@ -38,6 +38,69 @@ type Computer struct {
 	Runner *ComputerRunner `json:"runner,omitempty"`
 	// PairError is why the last pairing through the runner failed, cleared when one succeeds; set on a list only.
 	PairError string `json:"pair_error,omitempty"`
+	// Facts are nil until the computer's runner first reports; FactsAt is when they last changed. Its owner's alone.
+	Facts   *Facts     `json:"facts,omitempty"`
+	FactsAt *time.Time `json:"facts_at,omitempty"`
+}
+
+// Facts is what a computer's owner reads about it (ADR 0146): its runner's report, and what its T3 Code last listed
+// through the runner, kept while T3 Code is not answering.
+type Facts struct {
+	Hostname      string            `json:"hostname,omitempty"`
+	OS            string            `json:"os,omitempty"`
+	Arch          string            `json:"arch,omitempty"`
+	RunnerVersion string            `json:"runner_version,omitempty"`
+	T3            T3Facts           `json:"t3"`
+	Cloudflared   string            `json:"cloudflared,omitempty"`
+	GitName       string            `json:"git_name,omitempty"`
+	GitEmail      string            `json:"git_email,omitempty"`
+	FreeDiskBytes int64             `json:"free_disk_bytes,omitempty"`
+	Providers     []ProviderFacts   `json:"providers"`
+	Projects      []harness.Project `json:"projects"`
+}
+
+// T3Facts is T3 Code on the computer as its runner found it.
+type T3Facts struct {
+	// State is answering, not_running, missing or not_loopback.
+	State string `json:"state"`
+	// Install is service, command_line or desktop_app, "" when unknown.
+	Install string `json:"install,omitempty"`
+	Port    int    `json:"port,omitempty"`
+	Version string `json:"version,omitempty"`
+	// RestartedAt is when the runner last restarted T3 Code's background service; RestartError why it could not.
+	RestartedAt  *time.Time `json:"restarted_at,omitempty"`
+	RestartError string     `json:"restart_error,omitempty"`
+}
+
+// t3Answering is the T3Facts state of a T3 Code answering on the computer's loopback.
+const t3Answering = "answering"
+
+// ProviderFacts is one provider T3 Code lists on the computer: its CLI's version, whether it is signed in, its models.
+type ProviderFacts struct {
+	ID      string         `json:"id"`
+	Driver  string         `json:"driver"`
+	Name    string         `json:"name"`
+	Version string         `json:"version,omitempty"`
+	SignIn  harness.SignIn `json:"sign_in"`
+	Models  []ModelFacts   `json:"models"`
+}
+
+// ModelFacts is one model a provider offers, named as T3 Code names it.
+type ModelFacts struct {
+	Slug string `json:"slug"`
+	Name string `json:"name"`
+}
+
+func providerFacts(providers []harness.Provider) []ProviderFacts {
+	out := make([]ProviderFacts, 0, len(providers))
+	for _, p := range providers {
+		models := make([]ModelFacts, 0, len(p.Models))
+		for _, m := range p.Models {
+			models = append(models, ModelFacts{Slug: m.Slug, Name: m.Name})
+		}
+		out = append(out, ProviderFacts{ID: p.ID, Driver: p.Driver, Name: p.Name, Version: p.Version, SignIn: p.SignIn, Models: models})
+	}
+	return out
 }
 
 // ComputerHostSuffix names a computer reached through its personal runner (ADR 0146); .invalid never resolves.

@@ -146,7 +146,7 @@ func TestSessionCalls_Protocol2_ReturnWhatProtocol1Returns(t *testing.T) {
 
 	providers, err := h.ListProviders(ctx, laptop(f))
 	require.NoError(t, err)
-	assert.Equal(t, []harness.Provider{{ID: "claudeAgent", Driver: "claudeAgent", Name: "Claude", Version: "2.1.288",
+	assert.Equal(t, []harness.Provider{{ID: "claudeAgent", Driver: "claudeAgent", Name: "Claude", Version: "2.1.288", SignIn: harness.SignInUnknown,
 		Models: []harness.ProviderModel{{Slug: "claude-opus-5-5", Name: "Claude Opus 5.5", IsDefault: true}}}}, providers)
 	dial := t3rpctest.WaitFor(t, f.Dialed, "providers dial")
 	assert.Equal(t, url.Values{"orchestrationProtocol": {"2"}, "clientAppVersion": {"nexul/dev"}}, dial)

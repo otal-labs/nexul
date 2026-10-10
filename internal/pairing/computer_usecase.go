@@ -1,6 +1,7 @@
 package pairing
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/jsonx"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
@@ -34,6 +36,9 @@ const (
 	repairWindow = 7 * 24 * time.Hour
 	// pairTimeout bounds one pairing through a runner: the token's mint on the computer, then its exchange.
 	pairTimeout = time.Minute
+	diskGranule = 1 << 30
+	// snapshotTimeout bounds reading a computer's providers and projects from its T3 Code for its facts.
+	snapshotTimeout = 30 * time.Second
 )
 
 // Enrollment is the signed token carrying a personal runner's one-time code, and the command that installs it.
@@ -158,23 +163,16 @@ func (s *Service) HandleRunnerChanged(ctx context.Context, ev eventbus.Event) er
 	return nil
 }
 
-// HandleFactsReported pairs through its runner a computer whose T3 Code answers and whose session ends within repairWindow.
+// HandleFactsReported stores what a computer's runner reported, and pairs the computer through its runner first when its
+// T3 Code answers and its session ends within repairWindow.
 func (s *Service) HandleFactsReported(ctx context.Context, ev eventbus.Event) error {
 	var p struct {
 		ComputerID string `json:"computer_id"`
 		UserID     string `json:"user_id"`
-		Facts      struct {
-			Hostname string `json:"hostname"`
-			T3       struct {
-				State string `json:"state"`
-			} `json:"t3"`
-		} `json:"facts"`
+		Facts      Facts  `json:"facts"`
 	}
 	if err := json.Unmarshal(ev.Payload, &p); err != nil {
 		return apperrs.Fatal(fmt.Errorf("parse %s: %w", ev.Topic, err))
-	}
-	if p.Facts.T3.State != "answering" {
-		return nil
 	}
 	computer, err := s.ownComputer(ctx, p.UserID, p.ComputerID)
 	if errors.Is(err, apperrs.ErrNotFound) {
@@ -183,21 +181,110 @@ func (s *Service) HandleFactsReported(ctx context.Context, ev eventbus.Event) er
 	if err != nil {
 		return err
 	}
-	if computer.Paired() && computer.TokenExpiresAt.After(s.now().Add(repairWindow)) {
-		return nil
+	// Whole GiB only: free space moves by a few bytes between reports, and a report that changes nothing writes nothing.
+	p.Facts.FreeDiskBytes -= p.Facts.FreeDiskBytes % diskGranule
+	if p.Facts.T3.State == t3Answering && (!computer.Paired() || !computer.TokenExpiresAt.After(s.now().Add(repairWindow))) {
+		s.pairOnReport(ctx, *computer, p.Facts.Hostname)
 	}
-	if computer.Name == "" {
-		computer.Name = strings.TrimSpace(p.Facts.Hostname)
+	return s.recordFacts(ctx, p.UserID, p.ComputerID, &p.Facts)
+}
+
+// pairOnReport pairs c through its runner; a failure is the row's pair_error, never the report's.
+func (s *Service) pairOnReport(ctx context.Context, c Computer, hostname string) {
+	if c.Name == "" {
+		c.Name = strings.TrimSpace(hostname)
 	}
 	ctx, cancel := context.WithTimeout(ctx, pairTimeout)
 	defer cancel()
-	paired, err := s.pairThroughRunner(ctx, *computer)
+	paired, err := s.pairThroughRunner(ctx, c)
 	if err != nil {
-		logging.FromCtx(ctx).Warn("pairing through the runner failed", "computer_id", computer.ID, "error", err)
-		return nil
+		logging.FromCtx(ctx).Warn("pairing through the runner failed", "computer_id", c.ID, "error", err)
+		return
 	}
 	logging.FromCtx(ctx).Info("computer paired through its runner", "computer_id", paired.ID, "kind", paired.Kind, "version", paired.HarnessVersion)
+}
+
+// recordFacts stores a computer's facts when they changed, and only then publishes computer.facts_changed. reported
+// replaces the runner's part (nil keeps it); what T3 Code lists is read again unless the report says it is not answering.
+func (s *Service) recordFacts(ctx context.Context, userID, computerID string, reported *Facts) error {
+	computer, err := s.ownComputer(ctx, userID, computerID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var next Facts
+	if computer.Facts != nil {
+		next = *computer.Facts
+	}
+	if reported != nil {
+		providers, projects := next.Providers, next.Projects
+		next = *reported
+		next.Providers, next.Projects = providers, projects
+	}
+	if reported == nil || reported.T3.State == t3Answering {
+		s.readT3Snapshot(ctx, userID, computerID, &next)
+	}
+	same, err := sameFacts(computer.Facts, next)
+	if err != nil || same {
+		return err
+	}
+	at := s.now().UTC()
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicFactsChanged, Payload: FactsChangedEvent{
+		ComputerID: computerID, UserID: userID, FactsAt: at, MembersOnly: true,
+	}}
+	if err := s.repo.SetFacts(ctx, userID, computerID, next, at, evt); err != nil {
+		return fmt.Errorf("save facts of computer %s: %w", computerID, err)
+	}
 	return nil
+}
+
+// sameFacts compares facts as they are stored, so an empty list and a missing one read alike.
+func sameFacts(stored *Facts, next Facts) (bool, error) {
+	if stored == nil {
+		return false, nil
+	}
+	a, err := jsonx.Marshal(stored)
+	if err != nil {
+		return false, fmt.Errorf("encode stored facts: %w", err)
+	}
+	b, err := jsonx.Marshal(next)
+	if err != nil {
+		return false, fmt.Errorf("encode facts: %w", err)
+	}
+	return bytes.Equal(a, b), nil
+}
+
+// readT3Snapshot sets facts' providers and projects to what the computer's T3 Code lists through its runner; a computer
+// with no live session, or a T3 Code that does not answer, keeps the last ones read.
+func (s *Service) readT3Snapshot(ctx context.Context, userID, computerID string, facts *Facts) {
+	session, err := s.sessionComputer(ctx, userID, computerID)
+	if errors.Is(err, apperrs.ErrInvalid) {
+		return
+	}
+	log := logging.FromCtx(ctx)
+	if err != nil {
+		log.Warn("computer facts: no session to read T3 Code with", "computer_id", computerID, "error", err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, snapshotTimeout)
+	defer cancel()
+	providers, err := s.harnessProviders(ctx, session)
+	if err != nil {
+		log.Warn("computer facts: T3 Code listed no providers", "computer_id", computerID, "error", err)
+		return
+	}
+	client, err := s.client(session.Kind)
+	if err != nil {
+		return
+	}
+	projects, err := client.ListProjects(ctx, session.Session())
+	if err != nil {
+		log.Warn("computer facts: T3 Code listed no projects", "computer_id", computerID, "error", err)
+		return
+	}
+	facts.Providers, facts.Projects = providerFacts(providers), projects
 }
 
 // pairThroughRunner pairs c through its runner; a failure leaves c as it was and stays its row's reason until one succeeds.

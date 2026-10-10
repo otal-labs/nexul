@@ -99,6 +99,64 @@ describe("ComputersSection", () => {
     expect(screen.getByText("0.0.34")).toBeInTheDocument();
   });
 
+  it("shows a computer reached through its runner by its T3 Code and facts, never the relay address", async () => {
+    serveComputers([
+      computer({
+        server_url: "http://c1.nexul-computer.invalid",
+        facts_at: "2026-10-10T12:00:00Z",
+        facts: {
+          hostname: "alice-laptop",
+          os: "linux",
+          arch: "amd64",
+          git_name: "Alice Example",
+          git_email: "alice@example.com",
+          free_disk_bytes: 50 * 1024 ** 3,
+          t3: { state: "answering", install: "service", port: 47200, version: "0.0.46" },
+          providers: [{ id: "codex", driver: "codex", name: "Codex", version: "0.50.0", sign_in: "signed_out", models: [{ slug: "gpt-5", name: "GPT-5" }] }],
+          projects: [{ id: "p1", title: "app", path: "/home/alice/code/app" }],
+        },
+      }),
+    ]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Home" }));
+    const terms = screen.getAllByRole("term").map((t) => t.textContent);
+    expect(terms).not.toContain("Address");
+    expect(screen.queryByText(/nexul-computer\.invalid/)).not.toBeInTheDocument();
+    expect(screen.getByText("Running")).toBeInTheDocument();
+    expect(screen.getByText(/port 47200 · 0\.0\.46 · background service/)).toBeInTheDocument();
+    expect(screen.getByText("Signed out")).toBeInTheDocument();
+    expect(screen.getByText("/home/alice/code/app")).toBeInTheDocument();
+    expect(screen.getByText("Alice Example <alice@example.com>")).toBeInTheDocument();
+    expect(screen.getByText("50.0 GB")).toBeInTheDocument();
+  });
+
+  it("asks to open a closed desktop app", async () => {
+    serveComputers([computer({ server_url: "", facts: { t3: { state: "not_running", install: "desktop_app" }, providers: [], projects: [] } })]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Home" }));
+    expect(screen.getByText("Not running")).toBeInTheDocument();
+    expect(screen.getByText(/Open T3 Code · desktop app/)).toBeInTheDocument();
+  });
+
+  it("says why a stopped background service could not be restarted, or when it was", async () => {
+    const t3 = { state: "not_running", install: "service", restarted_at: "2026-10-10T12:00:00Z" };
+    serveComputers([
+      computer({ facts: { t3: { ...t3, restart_error: "the user service manager is not running" }, providers: [], projects: [] } }),
+      computer({ id: "c2", name: "Desk", facts: { t3, providers: [], projects: [] } }),
+    ]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Home" }));
+    await user.click(screen.getByRole("button", { name: "Desk" }));
+    expect(screen.getByText("Restart failed: the user service manager is not running")).toBeInTheDocument();
+    expect(screen.getAllByText(/^restarted /)).toHaveLength(1);
+  });
+
   it("flags a computer expiring within the warning window", async () => {
     const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
     serveComputers([computer({ token_expires_at: soon })]);

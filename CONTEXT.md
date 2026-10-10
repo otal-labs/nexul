@@ -125,6 +125,14 @@ runners is reached through its computer tunnel, or by URL. Owned by one user; no
 else can see it or run on it, a workspace Owner included.
 _Avoid_: Device, host, runner (a runner builds and deploys)
 
+**Computer facts**:
+What a paired computer's personal runner and harness last reported about it:
+OS, T3 Code's state, port and version, provider versions, models and sign-in,
+T3 projects, git identity, free disk. A snapshot, stored only when it changes,
+and its owner's alone: no workspace Owner and no one the computer is shared
+with reads it.
+_Avoid_: inventory, telemetry, specs
+
 **Project link**:
 One person's choice of paired computer, T3 project, provider, model, model
 options, and start-in for one project they can open, set in Your settings →

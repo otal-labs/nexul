@@ -23,6 +23,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/version"
 	"github.com/otal-labs/nexul/internal/t3rpc"
 )
 
@@ -47,17 +48,34 @@ const (
 	t3RestartGap = 5 * time.Minute
 	// t3RestartTimeout bounds `t3 service restart`, which stops the service and waits for it to start again.
 	t3RestartTimeout = time.Minute
+	// factCommandTimeout bounds each command a facts report reads a version or setting from.
+	factCommandTimeout = 10 * time.Second
+)
+
+// How T3 Code is installed on the computer, as its runner tells.
+const (
+	T3InstallService     = "service"
+	T3InstallCommandLine = "command_line"
+	T3InstallDesktopApp  = "desktop_app"
 )
 
 // Facts is what a personal runner reports about its computer.
 type Facts struct {
-	Hostname string  `json:"hostname,omitempty" jsonschema:"The computer's hostname."`
-	T3       T3Facts `json:"t3"`
+	Hostname      string  `json:"hostname,omitempty" jsonschema:"The computer's hostname."`
+	OS            string  `json:"os,omitempty" jsonschema:"The computer's operating system as Go names it, for example linux, darwin or windows."`
+	Arch          string  `json:"arch,omitempty" jsonschema:"The computer's architecture as Go names it, for example amd64 or arm64."`
+	RunnerVersion string  `json:"runner_version,omitempty" jsonschema:"The personal runner's own version."`
+	T3            T3Facts `json:"t3"`
+	Cloudflared   string  `json:"cloudflared,omitempty" jsonschema:"The version of cloudflared, sent only when it is installed."`
+	GitName       string  `json:"git_name,omitempty" jsonschema:"git's global user.name for the person the runner runs as."`
+	GitEmail      string  `json:"git_email,omitempty" jsonschema:"git's global user.email for the person the runner runs as."`
+	FreeDiskBytes int64   `json:"free_disk_bytes,omitempty" jsonschema:"Free disk space in the person's home folder, in bytes."`
 }
 
 // T3Facts is T3 Code on the computer as its runner found it.
 type T3Facts struct {
 	State        string     `json:"state" enum:"answering,not_running,missing,not_loopback" jsonschema:"answering: T3 Code answers on loopback; not_running: installed but nothing answers; missing: not installed; not_loopback: bound to an address the runner refuses to reach."`
+	Install      string     `json:"install,omitempty" enum:"service,command_line,desktop_app" jsonschema:"How T3 Code is installed: its background service, the command line, or the desktop app; absent when unknown."`
 	Port         int        `json:"port,omitempty" jsonschema:"The loopback port T3 Code answers on; sent while answering."`
 	Version      string     `json:"version,omitempty" jsonschema:"T3 Code's server version; sent while answering."`
 	RestartedAt  *time.Time `json:"restarted_at,omitempty" jsonschema:"When the runner last restarted T3 Code's background service after it stopped answering."`
@@ -159,7 +177,59 @@ func (c *Client) facts(ctx context.Context) *Facts {
 	if err != nil {
 		c.log.Warn("read hostname", "error", err)
 	}
-	return &Facts{Hostname: hostname, T3: c.t3.withRestart(c.t3Probe(ctx).facts)}
+	f := &Facts{
+		Hostname: hostname, OS: runtime.GOOS, Arch: runtime.GOARCH, RunnerVersion: version.Version, T3: c.t3.withRestart(c.t3Probe(ctx).facts),
+		Cloudflared: cloudflaredVersion(commandLine(ctx, "cloudflared", "--version")),
+		GitName:     commandLine(ctx, "git", "config", "--global", "user.name"),
+		GitEmail:    commandLine(ctx, "git", "config", "--global", "user.email"),
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		f.FreeDiskBytes, err = freeDisk(home)
+		if err != nil {
+			c.log.Warn("read free disk space", "error", err)
+		}
+	}
+	return f
+}
+
+// t3Install is how T3 Code is installed: run by its background service, the desktop app's launcher in home, or the
+// command line; "" when nothing says.
+func t3Install(serviceManaged bool, home, t3 string) string {
+	if serviceManaged {
+		return T3InstallService
+	}
+	if t3 == "" {
+		return ""
+	}
+	if filepath.Dir(filepath.Clean(t3)) == filepath.Join(home, "bin") {
+		return T3InstallDesktopApp
+	}
+	return T3InstallCommandLine
+}
+
+// commandLine is the first line a command prints, "" when it is not installed or fails.
+func commandLine(ctx context.Context, name string, args ...string) string {
+	path, err := exec.LookPath(name)
+	if err != nil {
+		return ""
+	}
+	ctx, cancel := context.WithTimeout(ctx, factCommandTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, path, args...).Output()
+	if err != nil {
+		return ""
+	}
+	line, _, _ := strings.Cut(strings.TrimSpace(string(out)), "\n")
+	return strings.TrimSpace(line)
+}
+
+// cloudflaredVersion is the version in cloudflared's "cloudflared version 2025.9.1 (built ...)" line.
+func cloudflaredVersion(line string) string {
+	fields := strings.Fields(line)
+	if len(fields) >= 3 && fields[1] == "version" {
+		return fields[2]
+	}
+	return ""
 }
 
 // t3Probed is one look at T3 Code: what facts report, and whether its own background service runs it.
@@ -168,22 +238,24 @@ type t3Probed struct {
 	serviceManaged bool
 }
 
-// t3Probe finds T3 Code: the port its runtime file names, whether it answers there, and its command.
+// t3Probe finds T3 Code: the port its runtime file names, whether it answers there, its command and how it is installed.
 func (c *Client) t3Probe(ctx context.Context) t3Probed {
+	t3 := c.findT3(c.cfg.T3Home)
 	addr, serviceManaged, err := t3Runtime(c.cfg.T3Home, defaultT3Home())
+	install := t3Install(serviceManaged, c.cfg.T3Home, t3)
 	if errors.Is(err, errNotLoopback) {
-		return t3Probed{facts: T3Facts{State: T3NotLoopback}}
+		return t3Probed{facts: T3Facts{State: T3NotLoopback, Install: install}}
 	}
 	if err == nil {
 		if version, err := c.probeT3(ctx, addr); err == nil {
 			ap, _ := netip.ParseAddrPort(addr) // t3Runtime joined a loopback IP and a valid port
-			return t3Probed{facts: T3Facts{State: T3Answering, Port: int(ap.Port()), Version: version}, serviceManaged: serviceManaged}
+			return t3Probed{facts: T3Facts{State: T3Answering, Install: install, Port: int(ap.Port()), Version: version}, serviceManaged: serviceManaged}
 		}
 	}
-	if c.findT3(c.cfg.T3Home) == "" {
+	if t3 == "" {
 		return t3Probed{facts: T3Facts{State: T3Missing}}
 	}
-	return t3Probed{facts: T3Facts{State: T3NotRunning}}
+	return t3Probed{facts: T3Facts{State: T3NotRunning, Install: install}}
 }
 
 // t3Keeper probes T3 Code every t3ProbeInterval and restarts a background service that stopped answering. A T3 Code

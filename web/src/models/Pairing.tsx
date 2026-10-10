@@ -2,6 +2,7 @@ import type { AxiosError } from "axios";
 import { z } from "zod";
 
 import type { ApiErrorBody } from "@/api/client";
+import type { ComputerFacts } from "@/models/ComputerFacts";
 
 // The bearer token never reaches the browser — only the metadata settings needs.
 export interface Computer {
@@ -15,6 +16,9 @@ export interface Computer {
   updated_at: string;
   // Absent for a computer paired by URL.
   tunnel?: ComputerTunnel;
+  // Absent until the computer's runner first reports; facts_at is when they last changed.
+  facts?: ComputerFacts;
+  facts_at?: string;
 }
 
 // A computer's own personal access token, "Nexul MCP on <computer>"; never carries the secret.

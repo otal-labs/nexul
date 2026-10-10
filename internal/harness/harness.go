@@ -152,8 +152,18 @@ type Provider struct {
 	Driver  string          `json:"driver"`
 	Name    string          `json:"name"`
 	Version string          `json:"-"` // the provider CLI's version, "" when unknown
+	SignIn  SignIn          `json:"-"`
 	Models  []ProviderModel `json:"models"`
 }
+
+// SignIn is whether a provider's CLI is signed in to its account.
+type SignIn string
+
+const (
+	SignedIn      SignIn = "signed_in"
+	SignedOut     SignIn = "signed_out"
+	SignInUnknown SignIn = "unknown"
+)
 
 // Target names the computer, harness-side project, model choice and durable session a turn runs against.
 type Target struct {

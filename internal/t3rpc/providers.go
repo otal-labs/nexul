@@ -10,14 +10,28 @@ import (
 )
 
 type configProvider struct {
-	InstanceID   string        `json:"instanceId"`
-	Driver       string        `json:"driver"`
-	DisplayName  string        `json:"displayName"`
-	Version      string        `json:"version"`
-	Enabled      bool          `json:"enabled"`
-	Installed    bool          `json:"installed"`
-	Availability string        `json:"availability"`
-	Models       []configModel `json:"models"`
+	InstanceID   string `json:"instanceId"`
+	Driver       string `json:"driver"`
+	DisplayName  string `json:"displayName"`
+	Version      string `json:"version"`
+	Enabled      bool   `json:"enabled"`
+	Installed    bool   `json:"installed"`
+	Availability string `json:"availability"`
+	Auth         struct {
+		Status string `json:"status"`
+	} `json:"auth"`
+	Models []configModel `json:"models"`
+}
+
+// signIn maps T3 Code's provider auth status; one it does not report, or a status newer than this code, is unknown.
+func signIn(status string) harness.SignIn {
+	switch status {
+	case "authenticated":
+		return harness.SignedIn
+	case "unauthenticated":
+		return harness.SignedOut
+	}
+	return harness.SignInUnknown
 }
 
 type configModel struct {
@@ -73,7 +87,7 @@ func (c *Conn) Providers() ([]harness.Provider, error) {
 			}
 			models = append(models, providerModel(m))
 		}
-		providers = append(providers, harness.Provider{ID: p.InstanceID, Driver: p.Driver, Name: name, Version: p.Version, Models: models})
+		providers = append(providers, harness.Provider{ID: p.InstanceID, Driver: p.Driver, Name: name, Version: p.Version, SignIn: signIn(p.Auth.Status), Models: models})
 	}
 	return providers, nil
 }

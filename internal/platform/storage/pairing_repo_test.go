@@ -563,3 +563,38 @@ func TestPairingRepo_SwitchComputerKind_ConcurrentSwitchesWriteOneEvent(t *testi
 	require.NoError(t, err)
 	assert.Len(t, entries, 1, "every caller that found the computer already moved wrote nothing")
 }
+
+// TestPairingRepo_SetFacts_RoundTripsOwnerOnlyAndSurvivesRePair: facts read back whole with their time and their event
+// in the outbox, another person's write is not found and leaves nothing, and a re-pair never drops them.
+func TestPairingRepo_SetFacts_RoundTripsOwnerOnlyAndSurvivesRePair(t *testing.T) {
+	t.Parallel()
+	s := newSetupTestStore(t)
+	got, err := s.Pairing.GetComputer(t.Context(), "u1", "c1")
+	require.NoError(t, err)
+	assert.Nil(t, got.Facts, "no facts before the runner reports")
+	assert.Nil(t, got.FactsAt)
+
+	at := time.Unix(1_700_000_000, 0).UTC()
+	facts := pairing.Facts{Hostname: "alice-laptop", GitEmail: "alice@example.com", T3: pairing.T3Facts{State: "answering", Port: 3773},
+		Providers: []pairing.ProviderFacts{{ID: "codex", Driver: "codex", Name: "Codex", SignIn: harness.SignedOut}}}
+	evt := eventbus.OutboxEvent{ID: "e1", Topic: pairing.TopicFactsChanged, Payload: pairing.FactsChangedEvent{ComputerID: "c1", UserID: "u1", FactsAt: at, MembersOnly: true}}
+
+	require.ErrorIs(t, s.Pairing.SetFacts(t.Context(), "u2", "c1", facts, at, evt), apperrs.ErrNotFound)
+	entries, err := s.Outbox.Unpublished(t.Context(), 10)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "the outbox write rolls back with the missed update")
+
+	require.NoError(t, s.Pairing.SetFacts(t.Context(), "u1", "c1", facts, at, evt))
+	require.NoError(t, s.Pairing.SaveComputer(t.Context(), newTestComputer("c1", "u1", "renamed")))
+	got, err = s.Pairing.GetComputer(t.Context(), "u1", "c1")
+	require.NoError(t, err)
+	require.NotNil(t, got.Facts, "a re-pair keeps the facts")
+	assert.Equal(t, "alice-laptop", got.Facts.Hostname)
+	assert.Equal(t, harness.SignedOut, got.Facts.Providers[0].SignIn)
+	assert.Empty(t, got.Facts.Projects)
+	assert.Equal(t, at, *got.FactsAt)
+	entries, err = s.Outbox.Unpublished(t.Context(), 10)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	assert.Equal(t, pairing.TopicFactsChanged, entries[0].Topic)
+}

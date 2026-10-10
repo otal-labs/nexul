@@ -64,7 +64,13 @@ Once installed, the runner checks T3 Code every 30 seconds. When T3 Code's backg
 
 ## Keep it paired
 
-Each computer is one row: its name, whether it's **Connected**, **Trying to connect**, or **Not connected**, and its setup state. A row shows a button only when something needs doing (**Pair**, **Re-pair**, **Set up**, **Update skills**); everything else is in its **…** menu. Click the name to unfold the details: the address, the T3 Code version, the date the pairing lasts until, each provider's setup, and the MCP token.
+Each computer is one row: its name, whether it's **Connected**, **Trying to connect**, or **Not connected**, and its setup state. A row shows a button only when something needs doing (**Pair**, **Re-pair**, **Set up**, **Update skills**); everything else is in its **…** menu. Click the name to unfold the details: the address, the T3 Code version, the date the pairing lasts until, each provider's setup, and the MCP token. A computer added with its runner shows T3 Code's state there instead of an address (**Running** with its port and version, **Not running**, or **Not installed**), then its facts.
+
+### The computer's facts
+
+A computer's runner reports on it when it connects and every 6 hours: its hostname, OS and architecture, the runner's version, T3 Code's state, port, version and how it is installed, `cloudflared`'s version when it is there, your git name and email, and the free disk space in your home folder. Nexul adds what T3 Code lists through the runner: each provider's CLI version, whether it is signed in, its models, and T3 Code's projects with their folders. They are stored only when something changed, and **Facts changed** says when that was.
+
+Facts are yours alone. Nobody else sees them, a workspace Owner included, and an agent reads them through `computer_list` only when it acts for you.
 
 A pairing lasts 30 days, because T3 Code's session can't be refreshed. The row warns in its last days and shows **Re-pair**; once it has expired the row says it acts as unpaired. **Re-pair** is also in the **…** menu at any time; it takes a fresh pairing link the same way. The tunnel keeps its hostname.
 
