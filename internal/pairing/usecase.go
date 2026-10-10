@@ -229,7 +229,7 @@ func (s *Service) pair(ctx context.Context, base Computer, serverURL, secret str
 	if err != nil {
 		return nil, &FieldError{Field: "server_url", Err: err}
 	}
-	secret = strings.TrimSpace(secret)
+	secret = pairingSecret(secret)
 	if secret == "" {
 		return nil, &FieldError{Field: "token", Err: fmt.Errorf("%w: pairing token is required", apperrs.ErrInvalid)}
 	}

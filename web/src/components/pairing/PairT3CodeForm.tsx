@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import { FormInput } from "@/components/FormInput";
+import { PairingLinkField } from "@/components/pairing/PairingLinkField";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/api/client";
 import { pairFieldErrors, usePairComputer } from "@/hooks/PairingHooks";
@@ -14,7 +15,7 @@ interface PairT3CodeFormProps {
   onPaired: (computer: Computer) => void;
 }
 
-// Over a tunnel only the token is typed: the name and verified hostname are the Connect step's, read-only here.
+// Over a tunnel only the pairing link is pasted: the name and verified hostname are the Connect step's, read-only here.
 export const PairT3CodeForm = ({ computer, onPaired }: PairT3CodeFormProps) => {
   const pair = usePairComputer();
   const form = useForm<PairComputerFormData>({
@@ -50,14 +51,7 @@ export const PairT3CodeForm = ({ computer, onPaired }: PairT3CodeFormProps) => {
         readOnly={!!computer}
         className={cn("font-mono text-xs", computer && "text-muted-foreground")}
       />
-      <FormInput
-        control={form.control}
-        name="token"
-        label="One-time pairing token"
-        placeholder="Paste the token the command printed"
-        autoComplete="off"
-        autoFocus={!!computer}
-      />
+      <PairingLinkField control={form.control} setValue={form.setValue} viaTunnel={!!computer} autoFocus={!!computer} />
       {form.formState.errors.root && (
         <p role="alert" className="text-sm text-destructive">
           {form.formState.errors.root.message}

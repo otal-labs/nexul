@@ -445,3 +445,14 @@ func validateServerURL(raw string) (string, error) {
 	}
 	return strings.TrimRight(raw, "/"), nil
 }
+
+// pairingSecret reads the token out of a pasted pairing link (`<origin>/pair#token=<token>`, what `t3 pair` prints and T3 Code's Share panel copies); anything else is the token itself.
+func pairingSecret(raw string) string {
+	raw = strings.TrimSpace(raw)
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
+		return raw
+	}
+	fragment, _ := url.ParseQuery(u.Fragment)
+	return strings.TrimSpace(fragment.Get("token"))
+}

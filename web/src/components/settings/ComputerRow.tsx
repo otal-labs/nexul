@@ -68,7 +68,7 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
   const repair = async () => {
     await openRepair<PairComputerFormData>({
       title: `Re-pair ${computer.name}`,
-      description: "Get a fresh one-time token on the computer and paste it below.",
+      description: "Create a fresh pairing link in T3 Code on the computer and paste it below.",
       schema: PairComputerFormSchema,
       okLabel: "Re-pair",
       form: <PairComputerForm computer={computer} />,

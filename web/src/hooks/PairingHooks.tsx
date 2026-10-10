@@ -8,6 +8,7 @@ import {
   HARNESS_READINESS_COPY,
   PAIR_FIELDS,
   leftoverSessionNote,
+  pairingToken,
   type Computer,
   type CreateComputerTunnelFormData,
   type HarnessProject,
@@ -69,8 +70,9 @@ export const usePairComputer = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async ({ computerId, form }: PairComputerInput) => {
-      if (computerId) return (await api.post<Computer>(`/api/pairing/computers/${computerId}/pair`, { token: form.token })).data;
-      return (await api.post<Computer>("/api/pairing/computers", form)).data;
+      const token = pairingToken(form.token);
+      if (computerId) return (await api.post<Computer>(`/api/pairing/computers/${computerId}/pair`, { token })).data;
+      return (await api.post<Computer>("/api/pairing/computers", { ...form, token })).data;
     },
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
@@ -131,7 +133,7 @@ export const useRepairComputer = (computer: Computer) => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: PairComputerFormData) =>
-      (await api.post<Computer>(`/api/pairing/computers/${computer.id}/repair`, input)).data,
+      (await api.post<Computer>(`/api/pairing/computers/${computer.id}/repair`, { ...input, token: pairingToken(input.token) })).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
       toast.success("Computer re-paired", sessionNoteToast(leftoverSessionNote(computer, true)));

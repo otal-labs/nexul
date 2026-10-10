@@ -19,35 +19,39 @@ export interface PairPlan {
   commands: Record<TunnelOs, OsCommand>;
 }
 
-const DESKTOP_UNIX = "~/.t3/bin/t3 pair";
+// T3 Code's own labels, in order (Settings → Connections); Local network only shows once Network access is on.
+export const desktopSteps = (viaTunnel: boolean): string[] => [
+  "In T3 Code on the computer, open Settings → Connections.",
+  ...(viaTunnel ? [] : ["Switch on Network access, so T3 Code answers on the local network."]),
+  "Under Authorized clients choose Create link, then Create link again in the dialog.",
+  viaTunnel
+    ? "On the new link choose Share, then Copy link, and paste it below."
+    : "On the new link choose Share, pick Local network under Reach this machine via, then Copy link and paste it below.",
+];
+
 const DESKTOP_WINDOWS = '& "$HOME\\.t3\\bin\\t3.cmd" pair';
 const CLI_PAIR = "~/.local/bin/t3 pair";
+const UNIT_DIR = "~/.config/systemd/user/t3code.service.d";
+// The background service binds 127.0.0.1 unless T3CODE_HOST says otherwise, and Nexul on another machine can't reach that.
+const LISTEN_ON_NETWORK = [`mkdir -p ${UNIT_DIR}`, `printf '[Service]\\nEnvironment=T3CODE_HOST=0.0.0.0\\n' > ${UNIT_DIR}/nexul-host.conf`];
 
-// Paths are spelled out because neither the desktop launcher (~/.t3/bin) nor the install script's ~/.local/bin is reliably on PATH.
+type CommandInstall = Exclude<T3Install, typeof T3Install.Desktop>;
+
+// Paths are spelled out because the install script's ~/.local/bin is not reliably on PATH.
 // viaTunnel: the tunnel command already installed T3 Code where it was missing, so only pairing is left.
-export const pairPlan = (install: T3Install, viaTunnel: boolean): PairPlan => {
+export const pairPlan = (install: CommandInstall, viaTunnel: boolean): PairPlan => {
   if (install === T3Install.CommandLine) {
     return {
-      lead: "T3 Code's server has to be running on the computer. Run this there.",
+      lead: "T3 Code's server has to be running on the computer. Run this there and paste the Pairing URL it prints.",
       commands: {
         [TunnelOs.Unix]: { lines: ["t3 pair"], note: "No server running? Start one with t3 service install" },
         [TunnelOs.Windows]: { lines: ["t3 pair"], note: "No server running? Start one with t3 serve" },
       },
     };
   }
-  const desktopNote = "Install t3 command in Settings → General → About for plain t3 pair";
-  if (install === T3Install.Desktop) {
-    return {
-      lead: "Keep T3 Code open on the computer and run this there.",
-      commands: {
-        [TunnelOs.Unix]: { lines: [DESKTOP_UNIX], note: desktopNote },
-        [TunnelOs.Windows]: { lines: [DESKTOP_WINDOWS], note: desktopNote },
-      },
-    };
-  }
   if (viaTunnel) {
     return {
-      lead: "The tunnel command installed T3 Code, so only pairing is left.",
+      lead: "The tunnel command installed T3 Code, so only pairing is left. Run this there and paste the Pairing URL it prints.",
       commands: {
         [TunnelOs.Unix]: { lines: [CLI_PAIR], note: "The tunnel command prints this line when it finishes" },
         [TunnelOs.Windows]: { lines: [DESKTOP_WINDOWS], note: "Open T3 Code once first, so its server is running" },
@@ -55,11 +59,11 @@ export const pairPlan = (install: T3Install, viaTunnel: boolean): PairPlan => {
     };
   }
   return {
-    lead: "Install T3 Code on the computer, then pair it.",
+    lead: "Install T3 Code on the computer, then pair it. Pairing prints a URL; paste it below.",
     commands: {
       [TunnelOs.Unix]: {
-        lines: ["curl -fsSL https://t3.codes/install.sh | sh", "~/.local/bin/t3 service install", CLI_PAIR],
-        note: "If it finds no server, wait a few seconds and run the last line again",
+        lines: ["curl -fsSL https://t3.codes/install.sh | sh", ...LISTEN_ON_NETWORK, "~/.local/bin/t3 service install", CLI_PAIR],
+        note: "Linux: the two middle lines make T3 Code listen on the network. If it finds no server, wait a few seconds and run the last line again",
       },
       [TunnelOs.Windows]: {
         lines: ["winget install T3Tools.T3Code"],

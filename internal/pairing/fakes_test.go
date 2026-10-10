@@ -272,10 +272,12 @@ type fakeExchanger struct {
 	versionErr  error
 	probedURL   string
 	pairedURL   string
+	pairedToken string
 }
 
-func (f *fakeExchanger) Pair(_ context.Context, serverURL, _ string) (harness.PairResult, error) {
+func (f *fakeExchanger) Pair(_ context.Context, serverURL, token string) (harness.PairResult, error) {
 	f.pairedURL = serverURL
+	f.pairedToken = token
 	if f.exchangeErr != nil {
 		return harness.PairResult{}, f.exchangeErr
 	}

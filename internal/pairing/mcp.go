@@ -35,7 +35,7 @@ type computerCreateIn struct {
 }
 
 type computerPairIn struct {
-	Token     string `json:"token" jsonschema:"The one-time token t3 pair prints on the computer."`
+	Token     string `json:"token" jsonschema:"The one-time token t3 pair prints on the computer, or the whole pairing link it prints (Pairing URL) or T3 Code copies from Authorized clients."`
 	ID        string `json:"id,omitempty" jsonschema:"One of your computers to pair or re-pair, for example the one computer_create returned. Omit it to pair a new computer by name and server_url."`
 	Name      string `json:"name,omitempty" jsonschema:"The computer's name, for example Onik Laptop. Required without id; with id it renames the computer, and omitting it keeps the name."`
 	ServerURL string `json:"server_url,omitempty" jsonschema:"The T3 Code server URL this server reaches, for example https://vps.example.com:3773. Required without id; with id it moves a computer paired by URL, and omitting it keeps the address. A tunnel computer always pairs over its own hostname."`
@@ -176,7 +176,7 @@ func computerCreateTool(s *Service) mcptool.Tool {
 
 func computerPairTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_pair", "Pair computer",
-		"Pairs T3 Code on a computer with the one-time token t3 pair prints there, giving Nexul a harness session on it. "+
+		"Pairs T3 Code on a computer with the one-time token t3 pair prints there, or the pairing link around it, giving Nexul a harness session on it. "+
 			"Pass id to pair a computer computer_create made, over its tunnel hostname, or to re-pair one of your "+
 			"computers after its session expired; with id, name renames it and server_url moves a computer paired "+
 			"by URL, and an omitted one keeps its value. Without id, name and server_url pair a new machine this "+
