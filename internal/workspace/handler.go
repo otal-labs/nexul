@@ -50,6 +50,8 @@ type createProjectRequest struct {
 }
 
 type changeSetupRequest struct {
+	StackID  *string                 `json:"stack_id"`
+	EnvKeys  *[]string               `json:"env_keys"`
 	Finished *bool                   `json:"finished"`
 	Steps    map[SetupStep]SetupMark `json:"steps"`
 }

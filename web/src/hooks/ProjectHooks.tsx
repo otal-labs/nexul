@@ -85,14 +85,16 @@ const patchSetup = (client: QueryClient, { project_id, workspace_id, setup }: Se
 export interface SetupChangeInput {
   projectId: string;
   finished?: boolean;
+  stack_id?: string;
+  env_keys?: string[];
   steps?: Partial<Record<string, SetupMark>>;
 }
 
 export const useChangeProjectSetup = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, finished, steps }: SetupChangeInput) =>
-      (await api.put<Project>(`/api/projects/${projectId}/setup`, { finished, steps })).data,
+    mutationFn: async ({ projectId, ...change }: SetupChangeInput) =>
+      (await api.put<Project>(`/api/projects/${projectId}/setup`, change)).data,
     onSuccess: (project) =>
       patchSetup(client, { project_id: project.id, workspace_id: project.workspace_id, setup: project.setup }),
     onError: (error) => toast.error(errorMessage(error)),

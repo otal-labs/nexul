@@ -127,9 +127,9 @@ func TestHandler_ChangeSetup(t *testing.T) {
 	rec := do(t, h.Routes(), http.MethodPut, "/api/projects/p-1/setup", `{"steps":{"bogus":"done"}}`, "u-1")
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 
-	rec = do(t, h.Routes(), http.MethodPut, "/api/projects/p-1/setup", `{"finished":true,"steps":{"repository":"skipped"}}`, "u-1")
+	rec = do(t, h.Routes(), http.MethodPut, "/api/projects/p-1/setup", `{"finished":true,"steps":{"repository":"skipped"},"stack_id":"stack-1","env_keys":["PORT"]}`, "u-1")
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, ProjectSetup{Finished: true, Steps: map[SetupStep]SetupMark{"project": SetupDone, "repository": SetupSkipped}}, decodeProject(t, rec).Setup)
+	assert.Equal(t, ProjectSetup{Finished: true, StackID: "stack-1", EnvKeys: []string{"PORT"}, Steps: map[SetupStep]SetupMark{"project": SetupDone, "repository": SetupSkipped}}, decodeProject(t, rec).Setup)
 }
 
 func TestHandler_Get(t *testing.T) {

@@ -13,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/jsonx"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -26,7 +27,7 @@ type ProjectsRepo struct {
 }
 
 func (r *ProjectsRepo) Create(ctx context.Context, p *workspace.Project) error {
-	steps, err := setupStepsJSON(p)
+	steps, envKeys, err := setupJSON(p)
 	if err != nil {
 		return err
 	}
@@ -34,7 +35,7 @@ func (r *ProjectsRepo) Create(ctx context.Context, p *workspace.Project) error {
 		q := r.q.WithTx(tx)
 		err := q.CreateProject(ctx, sqlcgen.CreateProjectParams{
 			ID: p.ID, Name: p.Name, Prefix: p.Prefix, Position: int64(p.Position),
-			WorkspaceID: p.WorkspaceID, Icon: string(p.Icon), SetupFinished: boolToInt(p.Setup.Finished), SetupSteps: steps,
+			WorkspaceID: p.WorkspaceID, Icon: string(p.Icon), SetupFinished: boolToInt(p.Setup.Finished), SetupSteps: steps, SetupStackID: p.Setup.StackID, SetupEnvKeys: envKeys,
 			CreatedAt: p.CreatedAt.Unix(), UpdatedAt: p.UpdatedAt.Unix(),
 		})
 		if err != nil {
@@ -159,12 +160,12 @@ func (r *ProjectsRepo) SaveSetup(ctx context.Context, id string, apply func(*wor
 		if len(evts) == 0 {
 			return nil
 		}
-		steps, err := setupStepsJSON(p)
+		steps, envKeys, err := setupJSON(p)
 		if err != nil {
 			return err
 		}
 		_, err = q.UpdateProjectSetup(ctx, sqlcgen.UpdateProjectSetupParams{
-			SetupFinished: boolToInt(p.Setup.Finished), SetupSteps: steps, UpdatedAt: p.UpdatedAt.Unix(), ID: p.ID,
+			SetupFinished: boolToInt(p.Setup.Finished), SetupSteps: steps, SetupStackID: p.Setup.StackID, SetupEnvKeys: envKeys, UpdatedAt: p.UpdatedAt.Unix(), ID: p.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("save setup of project %s: %w", p.ID, classifyWriteErr(err))
@@ -327,22 +328,33 @@ func (r *ProjectsRepo) MoveTicket(ctx context.Context, ticketID, projectID strin
 	})
 }
 
-// setupStepsJSON writes no steps as an empty object, never null, so every stored record decodes to a map.
-func setupStepsJSON(p *workspace.Project) (string, error) {
-	if len(p.Setup.Steps) == 0 {
-		return "{}", nil
+func setupJSON(p *workspace.Project) (string, string, error) {
+	steps := "{}"
+	if len(p.Setup.Steps) > 0 {
+		encoded, err := json.Marshal(p.Setup.Steps)
+		if err != nil {
+			return "", "", fmt.Errorf("encode setup of project %s: %w", p.ID, err)
+		}
+		steps = string(encoded)
 	}
-	steps, err := json.Marshal(p.Setup.Steps)
+	envKeys, err := jsonx.Marshal(p.Setup.EnvKeys)
 	if err != nil {
-		return "", fmt.Errorf("encode setup of project %s: %w", p.ID, err)
+		return "", "", fmt.Errorf("encode setup environment of project %s: %w", p.ID, err)
 	}
-	return string(steps), nil
+	return steps, string(envKeys), nil
 }
 
 func toProject(row sqlcgen.Project) (*workspace.Project, error) {
 	steps := map[workspace.SetupStep]workspace.SetupMark{}
 	if err := json.Unmarshal([]byte(row.SetupSteps), &steps); err != nil {
 		return nil, fmt.Errorf("decode setup of project %s: %w", row.ID, err)
+	}
+	var envKeys []string
+	if err := json.Unmarshal([]byte(row.SetupEnvKeys), &envKeys); err != nil {
+		return nil, fmt.Errorf("decode setup environment of project %s: %w", row.ID, err)
+	}
+	if len(envKeys) == 0 {
+		envKeys = nil
 	}
 	return &workspace.Project{
 		ID:            row.ID,
@@ -352,7 +364,7 @@ func toProject(row sqlcgen.Project) (*workspace.Project, error) {
 		WorkspaceID:   row.WorkspaceID,
 		Icon:          workspace.ProjectIcon(row.Icon),
 		TestsLocation: workspace.TestsLocation(row.TestsLocation),
-		Setup:         workspace.ProjectSetup{Finished: row.SetupFinished != 0, Steps: steps},
+		Setup:         workspace.ProjectSetup{Finished: row.SetupFinished != 0, Steps: steps, StackID: row.SetupStackID, EnvKeys: envKeys},
 		CreatedAt:     time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt:     time.Unix(row.UpdatedAt, 0).UTC(),
 	}, nil

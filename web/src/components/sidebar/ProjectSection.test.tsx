@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { ProjectSection } from "@/components/sidebar/ProjectSection";
 import { projectFollower } from "@/hooks/ProjectHooks";
+import type { ProjectSetup } from "@/models/Project";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { followFrame } from "@/test/followFrame";
 
@@ -15,7 +16,7 @@ vi.mock("@/api/client", () => ({
   errorMessage: vi.fn(),
 }));
 
-const setUp = { finished: true, steps: {} };
+const setUp: ProjectSetup = { finished: true, steps: {} };
 
 const projects = [
   { id: "p-1", name: "Backend", prefix: "BE", position: 0, workspace_id: "ws-1", setup: setUp, created_at: "", updated_at: "" },
@@ -23,7 +24,7 @@ const projects = [
 ];
 
 // A project the wizard made on some other device: the server's record is all this browser has to go on.
-const inSetup = { ...projects[0]!, setup: { finished: false, steps: { project: "done", repository: "skipped" } } };
+const inSetup: (typeof projects)[number] = { ...projects[0]!, setup: { finished: false, steps: { project: "done", repository: "skipped" } } };
 
 const ownerPermissions = ["docs:read", "docs:write", "memories:read", "projects:read", "projects:write", "tickets:read"];
 
@@ -62,6 +63,15 @@ beforeEach(() => {
 });
 
 describe("ProjectSection", () => {
+  it("Continue setup resumes Environment when a detected key still needs its value", async () => {
+    const user = userEvent.setup();
+    renderSection({ list: [{ ...projects[0]!, setup: { finished: false, steps: { project: "done", repository: "done", service: "done" }, stack_id: "stack-1", env_keys: ["PORT"] } }] });
+
+    await user.click(await screen.findByRole("link", { name: "Continue setup" }));
+
+    expect(screen.getByTestId("location")).toHaveTextContent("/acme/wizard/project/env");
+  });
+
   it("lists one project's pages once, not a copy per project", async () => {
     renderSection();
 

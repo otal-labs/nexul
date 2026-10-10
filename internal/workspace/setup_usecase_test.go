@@ -81,3 +81,24 @@ func TestChangeSetup_NothingNew_WritesNothing(t *testing.T) {
 		})
 	}
 }
+
+func TestChangeSetup_ServiceContextSurvivesLaterMarks(t *testing.T) {
+	s, repo, _ := newOwnerRepo(t, true)
+	repo.projects["p-1"] = &Project{ID: "p-1", WorkspaceID: "ws-1", Setup: NewSetup(false)}
+	stackID := "stack-1"
+	envKeys := []string{"PORT"}
+
+	got, err := s.ChangeSetup(t.Context(), "p-1", SetupChange{StackID: &stackID, EnvKeys: &envKeys})
+	require.NoError(t, err)
+	require.Len(t, repo.saved, 1)
+	assert.Equal(t, "stack-1", got.Setup.StackID)
+	assert.Equal(t, []string{"PORT"}, got.Setup.EnvKeys)
+
+	finished := true
+	got, err = s.ChangeSetup(t.Context(), "p-1", SetupChange{Finished: &finished, Steps: map[SetupStep]SetupMark{"env": SetupSkipped}})
+	require.NoError(t, err)
+	want := ProjectSetup{Finished: true, StackID: "stack-1", EnvKeys: []string{"PORT"}, Steps: map[SetupStep]SetupMark{"project": SetupDone, "env": SetupSkipped}}
+	assert.Equal(t, want, got.Setup)
+	require.Len(t, repo.saved, 2)
+	assert.Equal(t, ProjectSetupChangedEvent{ProjectID: "p-1", WorkspaceID: "ws-1", Setup: want}, repo.saved[1].Payload)
+}

@@ -3,11 +3,10 @@ import { useSearchParams } from "react-router";
 import { useShallow } from "zustand/react/shallow";
 
 import { useChangeProjectSetup, useFetchProject } from "@/hooks/ProjectHooks";
-import { useFetchStacks } from "@/hooks/StackHooks";
+import { useFetchStack } from "@/hooks/StackHooks";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { inSetup, type SetupMark } from "@/models/Project";
 import type { WizardStepId } from "@/models/ProjectWizard";
-import type { Stack } from "@/models/Stack";
 
 // The project the wizard is working on, as the server records it; undefined until Info has made one.
 export const useWizardProject = () => {
@@ -19,8 +18,18 @@ export const useWizardProject = () => {
 export const useMarkStep = () => {
   const projectId = useProjectWizardStore((s) => s.projectId);
   const change = useChangeProjectSetup();
+  const project = useWizardProject();
   return (step: WizardStepId, mark: SetupMark) => {
-    if (projectId && step !== "done") return change.mutateAsync({ projectId, steps: { [step]: mark } });
+    if (!projectId || step === "done") return;
+    const { stackId, scanResult } = useProjectWizardStore.getState();
+    return change.mutateAsync({
+      projectId,
+      steps: { [step]: mark },
+      ...(step === "service" && mark === "done" && stackId && {
+        stack_id: stackId,
+        env_keys: scanResult?.env_keys ?? project?.setup.env_keys ?? [],
+      }),
+    });
   };
 };
 
@@ -40,18 +49,25 @@ export const useSeedSetupStack = () => {
   const wanted =
     !!project &&
     (inSetup(project) || searchParams.has("revisit")) &&
-    project.setup.steps.service === "done" &&
+    !!project.setup.stack_id &&
     !stackId &&
     !attachStackId;
-  const { data: stacks } = useFetchStacks(project?.id, wanted);
-  const newest = stacks
-    ?.filter((s) => !s.derived_from)
-    .reduce<Stack | undefined>((best, s) => (!best || s.created_at > best.created_at ? s : best), undefined);
+  const { data: stack } = useFetchStack(wanted ? project.setup.stack_id : undefined);
 
   useEffect(() => {
-    if (!wanted || !newest) return;
-    setStackId(newest.id);
-    setName(newest.name);
-    setMachine(newest.machine);
-  }, [wanted, newest, setStackId, setName, setMachine]);
+    if (!wanted || !stack || stack.project_id !== project?.id) return;
+    setStackId(stack.id);
+    setName(stack.name);
+    setMachine(stack.machine);
+  }, [wanted, stack, project?.id, setStackId, setName, setMachine]);
+};
+
+export const useWizardEnvKeys = (): string[] => {
+  const project = useWizardProject();
+  const scan = useProjectWizardStore((s) => s.scanResult);
+  const stackId = useProjectWizardStore((s) => s.stackId);
+  if (scan) return scan.env_keys;
+  if (!project || (!inSetup(project) && stackId !== project.setup.stack_id)) return [];
+  if (stackId && stackId !== project.setup.stack_id) return [];
+  return project.setup.env_keys ?? [];
 };

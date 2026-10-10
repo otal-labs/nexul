@@ -38,7 +38,7 @@ func (q *Queries) AddProjectRepo(ctx context.Context, arg AddProjectRepoParams) 
 }
 
 const createProject = `-- name: CreateProject :exec
-INSERT INTO projects (id, name, prefix, position, workspace_id, icon, setup_finished, setup_steps, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO projects (id, name, prefix, position, workspace_id, icon, setup_finished, setup_steps, setup_stack_id, setup_env_keys, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateProjectParams struct {
@@ -50,6 +50,8 @@ type CreateProjectParams struct {
 	Icon          string
 	SetupFinished int64
 	SetupSteps    string
+	SetupStackID  string
+	SetupEnvKeys  string
 	CreatedAt     int64
 	UpdatedAt     int64
 }
@@ -64,6 +66,8 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) er
 		arg.Icon,
 		arg.SetupFinished,
 		arg.SetupSteps,
+		arg.SetupStackID,
+		arg.SetupEnvKeys,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -83,7 +87,7 @@ func (q *Queries) DeleteProject(ctx context.Context, id string) (int64, error) {
 }
 
 const getProject = `-- name: GetProject :one
-SELECT id, name, prefix, position, workspace_id, created_at, updated_at, icon, tests_location, setup_finished, setup_steps FROM projects WHERE id = ?
+SELECT id, name, prefix, position, workspace_id, created_at, updated_at, icon, tests_location, setup_finished, setup_steps, setup_stack_id, setup_env_keys FROM projects WHERE id = ?
 `
 
 func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
@@ -101,6 +105,8 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 		&i.TestsLocation,
 		&i.SetupFinished,
 		&i.SetupSteps,
+		&i.SetupStackID,
+		&i.SetupEnvKeys,
 	)
 	return i, err
 }
@@ -267,7 +273,7 @@ func (q *Queries) ListProjectRestrictedAccess(ctx context.Context, resourceID st
 }
 
 const listProjectsByWorkspace = `-- name: ListProjectsByWorkspace :many
-SELECT id, name, prefix, position, workspace_id, created_at, updated_at, icon, tests_location, setup_finished, setup_steps FROM projects WHERE workspace_id = ? ORDER BY position, id
+SELECT id, name, prefix, position, workspace_id, created_at, updated_at, icon, tests_location, setup_finished, setup_steps, setup_stack_id, setup_env_keys FROM projects WHERE workspace_id = ? ORDER BY position, id
 `
 
 func (q *Queries) ListProjectsByWorkspace(ctx context.Context, workspaceID string) ([]Project, error) {
@@ -291,6 +297,8 @@ func (q *Queries) ListProjectsByWorkspace(ctx context.Context, workspaceID strin
 			&i.TestsLocation,
 			&i.SetupFinished,
 			&i.SetupSteps,
+			&i.SetupStackID,
+			&i.SetupEnvKeys,
 		); err != nil {
 			return nil, err
 		}
@@ -437,12 +445,14 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (i
 }
 
 const updateProjectSetup = `-- name: UpdateProjectSetup :execrows
-UPDATE projects SET setup_finished = ?, setup_steps = ?, updated_at = ? WHERE id = ?
+UPDATE projects SET setup_finished = ?, setup_steps = ?, setup_stack_id = ?, setup_env_keys = ?, updated_at = ? WHERE id = ?
 `
 
 type UpdateProjectSetupParams struct {
 	SetupFinished int64
 	SetupSteps    string
+	SetupStackID  string
+	SetupEnvKeys  string
 	UpdatedAt     int64
 	ID            string
 }
@@ -451,6 +461,8 @@ func (q *Queries) UpdateProjectSetup(ctx context.Context, arg UpdateProjectSetup
 	result, err := q.db.ExecContext(ctx, updateProjectSetup,
 		arg.SetupFinished,
 		arg.SetupSteps,
+		arg.SetupStackID,
+		arg.SetupEnvKeys,
 		arg.UpdatedAt,
 		arg.ID,
 	)

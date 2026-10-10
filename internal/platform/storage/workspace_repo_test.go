@@ -44,8 +44,11 @@ func TestProjectsRepo_SaveSetup_WritesTheRecordAndItsEvent(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, workspace.NewSetup(false), got.Setup, "a project the wizard makes reads back in setup")
 
+	stack := newTestStack("svc-1")
+	stack.ProjectID = p.ID
+	require.NoError(t, s.Stacks.Create(ctx, stack))
 	p.Name = "Renamed"
-	p.Setup = workspace.ProjectSetup{Finished: true, Steps: map[workspace.SetupStep]workspace.SetupMark{"project": workspace.SetupDone, "reach": workspace.SetupSkipped}}
+	p.Setup = workspace.ProjectSetup{Finished: true, StackID: "svc-1", EnvKeys: []string{"PORT"}, Steps: map[workspace.SetupStep]workspace.SetupMark{"project": workspace.SetupDone, "reach": workspace.SetupSkipped}}
 	evt := eventbus.OutboxEvent{ID: "evt-1", Topic: workspace.TopicProjectSetupChanged, Payload: workspace.ProjectSetupChangedEvent{ProjectID: "p-1"}}
 	_, err = s.Projects.SaveSetup(ctx, p.ID, func(current *workspace.Project) []eventbus.OutboxEvent {
 		current.Setup = p.Setup

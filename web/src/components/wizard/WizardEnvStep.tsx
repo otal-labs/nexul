@@ -11,7 +11,9 @@ import { EnvPasteField } from "@/components/wizard/EnvPasteField";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
 import { useDeployStack, useFetchStack, useUpdateStackEnv } from "@/hooks/StackHooks";
+import { useWizardEnvKeys } from "@/hooks/useWizardSetup";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
+import type { Stack } from "@/models/Stack";
 import { formatEnvFile, parseEnvFile } from "@/models/EnvFile";
 
 interface WizardEnvStepProps {
@@ -20,27 +22,41 @@ interface WizardEnvStepProps {
   onSkip?: (() => void) | undefined;
 }
 
-// Only rendered when the scan found .env.example keys (spec §5/§7); values are optional, so an empty key is
-// simply not written into the stack's env map. The service step held the first deploy back for this rung, so
-// saving is what starts it: the values have to exist before compose reads `env_file: .env` or `${VAR}`.
-export const WizardEnvStep = ({ onDone, onBack, onSkip }: WizardEnvStepProps) => {
-  const { stackId, scanResult, envValues } = useProjectWizardStore(
-    useShallow((s) => ({ stackId: s.stackId, scanResult: s.scanResult, envValues: s.envValues })),
-  );
-  const setEnvValues = useProjectWizardStore((s) => s.setEnvValues);
+export const WizardEnvStep = (props: WizardEnvStepProps) => {
+  const stackId = useProjectWizardStore((s) => s.stackId);
+  const envKeys = useWizardEnvKeys();
   const { data: stack, isPending, error } = useFetchStack(stackId ?? undefined);
+  return (
+    <div>
+      {isPending && <LoadingDisplay />}
+      {error && <ErrorDisplay error={error} title="Couldn't load the stack." />}
+      {stack && <WizardEnvForm key={stack.id} stack={stack} envKeys={envKeys} {...props} />}
+    </div>
+  );
+};
+
+interface WizardEnvFormProps extends WizardEnvStepProps {
+  stack: Stack;
+  envKeys: string[];
+}
+
+const WizardEnvForm = ({ stack, envKeys, onDone, onBack, onSkip }: WizardEnvFormProps) => {
+  const { scanResult, envValues } = useProjectWizardStore(
+    useShallow((s) => ({ scanResult: s.scanResult, envValues: s.envValues })),
+  );
+  const initialValues = { ...stack.env, ...envValues };
+  const setEnvValues = useProjectWizardStore((s) => s.setEnvValues);
   const updateEnv = useUpdateStackEnv();
   const deployStack = useDeployStack();
-  const envKeys = scanResult?.env_keys ?? [];
   // Every key needs a default (even "") — an RHF field left out of defaultValues renders uncontrolled, then
   // flips to controlled the moment it's typed into, which React (rightly) warns about.
   const form = useForm<Record<string, string>>({
-    defaultValues: Object.fromEntries(envKeys.map((key) => [key, envValues[key] ?? ""])),
+    defaultValues: Object.fromEntries(envKeys.map((key) => [key, initialValues[key] ?? ""])),
   });
   const [mode, setMode] = useState<EnvMode>("fields");
   const [text, setText] = useState("");
   // Keys beyond the detected ones have no field; they ride along in Paste and are still saved.
-  const [extras, setExtras] = useState(() => Object.fromEntries(Object.entries(envValues).filter(([key]) => !envKeys.includes(key))));
+  const [extras, setExtras] = useState(() => Object.fromEntries(Object.entries(initialValues).filter(([key]) => !envKeys.includes(key))));
   const parsed = useMemo(() => parseEnvFile(text), [text]);
   const pasteBlocked = mode === "paste" && parsed.invalidLines.length > 0;
 
@@ -53,15 +69,6 @@ export const WizardEnvStep = ({ onDone, onBack, onSkip }: WizardEnvStepProps) =>
     setMode(next);
   };
 
-  if (!stack) {
-    return (
-      <>
-        {isPending && <LoadingDisplay />}
-        {error && <ErrorDisplay error={error} title="Couldn't load the stack." />}
-      </>
-    );
-  }
-
   const onSubmit = async (data: Record<string, string>) => {
     if (pasteBlocked) return;
     const entered = mode === "paste" ? parsed.values : { ...extras, ...data };
@@ -69,7 +76,7 @@ export const WizardEnvStep = ({ onDone, onBack, onSkip }: WizardEnvStepProps) =>
     try {
       await updateEnv.mutateAsync({ ...stack, env: { ...stack.env, ...filled } });
       setEnvValues(filled);
-      await deployStack.mutateAsync({ stackId: stack.id, ref: scanResult?.default_branch ?? "" });
+      await deployStack.mutateAsync({ stackId: stack.id, ref: scanResult?.default_branch ?? stack.build_source?.branch ?? "" });
       onDone();
     } catch {
       // Errors surface through the hook's toast; saving is retry-safe.

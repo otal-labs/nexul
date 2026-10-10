@@ -40,6 +40,8 @@ export type SetupMark = "done" | "skipped";
 
 // The project wizard's record of a project (ADR 0143): until finished, the sidebar offers Continue setup.
 export interface ProjectSetup {
+  stack_id?: string;
+  env_keys?: string[];
   finished: boolean;
   steps: Partial<Record<string, SetupMark>>;
 }

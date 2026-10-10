@@ -5179,6 +5179,17 @@
       "setup": {
         "type": "object",
         "properties": {
+          "stack_id": {
+            "type": "string",
+            "description": "The exact stack created or adopted by the project wizard."
+          },
+          "env_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Detected environment variable names; values remain on the stack."
+          },
           "finished": {
             "type": "boolean",
             "description": "Whether the project wizard's Finish was pressed; a project made any other way starts finished."

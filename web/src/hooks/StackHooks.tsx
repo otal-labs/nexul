@@ -15,12 +15,11 @@ export const getStackServicesKey = "getStackServices";
 export const getStackDeploysKey = "getStackDeploys";
 
 // No projectId lists every project's stacks, which the workspace-wide topology canvas wires from.
-export const useFetchStacks = (projectId?: string, enabled = true) =>
+export const useFetchStacks = (projectId?: string) =>
   useQuery({
     queryKey: [getStacksKey, projectId ?? "all"],
     queryFn: async () =>
       (await api.get<Stack[]>("/api/stacks", { params: projectId ? { project_id: projectId } : {} })).data,
-    enabled,
   });
 
 export const useFetchStack = (id: string | undefined) =>

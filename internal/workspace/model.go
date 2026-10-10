@@ -28,6 +28,8 @@ type Project struct {
 
 // ProjectSetup is the project wizard's record of a project (ADR 0143): until Finished, the sidebar offers Continue setup.
 type ProjectSetup struct {
+	StackID  string                  `json:"stack_id,omitempty" jsonschema:"The exact stack created or adopted by the project wizard."`
+	EnvKeys  []string                `json:"env_keys,omitempty" jsonschema:"Detected environment variable names; values remain on the stack."`
 	Finished bool                    `json:"finished" jsonschema:"Whether the project wizard's Finish was pressed; a project made any other way starts finished."`
 	Steps    map[SetupStep]SetupMark `json:"steps" jsonschema:"Each wizard step marked done or skipped, by step id; a step not listed was never visited."`
 }

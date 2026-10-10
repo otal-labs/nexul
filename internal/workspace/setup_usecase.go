@@ -14,6 +14,8 @@ import (
 
 // SetupChange patches a project's setup record: Finished when set, and a mark for each step named.
 type SetupChange struct {
+	StackID  *string
+	EnvKeys  *[]string
 	Finished *bool
 	Steps    map[SetupStep]SetupMark
 }
@@ -32,12 +34,19 @@ func (c SetupChange) validate() error {
 
 // apply returns setup with change laid over it; a skip never undoes a step already done.
 func (setup ProjectSetup) apply(change SetupChange) ProjectSetup {
-	next := ProjectSetup{Finished: setup.Finished, Steps: maps.Clone(setup.Steps)}
+	next := setup
+	next.Steps = maps.Clone(setup.Steps)
 	if next.Steps == nil {
 		next.Steps = map[SetupStep]SetupMark{}
 	}
 	if change.Finished != nil {
 		next.Finished = *change.Finished
+	}
+	if change.StackID != nil {
+		next.StackID = *change.StackID
+	}
+	if change.EnvKeys != nil {
+		next.EnvKeys = slices.Clone(*change.EnvKeys)
 	}
 	for step, mark := range change.Steps {
 		if mark == SetupSkipped && next.Steps[step] == SetupDone {
@@ -58,7 +67,7 @@ func (s *Service) ChangeSetup(ctx context.Context, projectID string, change Setu
 	}
 	updated, err := s.repo.SaveSetup(ctx, projectID, func(current *Project) []eventbus.OutboxEvent {
 		setup := current.Setup.apply(change)
-		if setup.Finished == current.Setup.Finished && maps.Equal(setup.Steps, current.Setup.Steps) {
+		if setup.Finished == current.Setup.Finished && setup.StackID == current.Setup.StackID && slices.Equal(setup.EnvKeys, current.Setup.EnvKeys) && maps.Equal(setup.Steps, current.Setup.Steps) {
 			return nil
 		}
 		current.Setup = setup
