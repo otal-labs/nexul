@@ -119,13 +119,14 @@ func (f *fakeRepo) AutoPlayDailyCap(_ context.Context, workspaceID string) (int,
 	return DefaultAutoPlayDailyCap, nil
 }
 
-func (f *fakeRepo) SetAutoPlayDailyCap(_ context.Context, workspaceID string, limit int) error {
+func (f *fakeRepo) SetAutoPlayDailyCap(_ context.Context, workspaceID string, limit int, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.autoPlayErr != nil {
 		return f.autoPlayErr
 	}
 	f.dailyCap[workspaceID] = limit
+	f.published = append(f.published, evts...)
 	return nil
 }
 

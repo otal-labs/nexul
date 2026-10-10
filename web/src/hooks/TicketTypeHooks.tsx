@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
@@ -8,13 +8,15 @@ import { dropRow, replaceRow, type LiveFollower } from "@/lib/live";
 export const getTicketTypesKey = "getTicketTypes";
 export const getProjectTicketTypesKey = "getProjectTicketTypes";
 
-export const useFetchProjectTicketTypes = (projectId: string | undefined) =>
-  useQuery({
+export const projectTicketTypesQuery = (projectId: string | undefined) =>
+  queryOptions({
     queryKey: [getProjectTicketTypesKey, projectId],
     queryFn: async () =>
       (await api.get<TicketType[]>("/api/ticket-types", { params: { project_id: projectId } })).data,
     enabled: !!projectId,
   });
+
+export const useFetchProjectTicketTypes = (projectId: string | undefined) => useQuery(projectTicketTypesQuery(projectId));
 
 export const useCreateTicketType = () => {
   const client = useQueryClient();

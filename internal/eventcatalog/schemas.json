@@ -427,6 +427,23 @@
       "workspace_id"
     ]
   },
+  "auto_play.limits_updated": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string"
+      },
+      "daily_cap_per_ticket": {
+        "type": "integer",
+        "description": "How many automatic runs auto plays may start on one ticket per rolling day."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "workspace_id",
+      "daily_cap_per_ticket"
+    ]
+  },
   "auto_play.updated": {
     "type": "object",
     "properties": {

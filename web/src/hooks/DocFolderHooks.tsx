@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
@@ -10,12 +10,14 @@ import { dropRow, type LiveFollower } from "@/lib/live";
 export const getDocFoldersKey = "getDocFolders";
 
 // The default folder first, then creation order; a viewer without docs:write gets only folders holding a doc they can open.
-export const useFetchDocFolders = (projectId: string) =>
-  useQuery({
+export const docFoldersQuery = (projectId: string) =>
+  queryOptions({
     queryKey: [getDocFoldersKey, projectId],
     queryFn: async () => (await api.get<DocFolder[]>("/api/docs/folders", { params: { project_id: projectId } })).data,
     enabled: !!projectId,
   });
+
+export const useFetchDocFolders = (projectId: string) => useQuery(docFoldersQuery(projectId));
 
 export const useCreateDocFolder = () => {
   const client = useQueryClient();

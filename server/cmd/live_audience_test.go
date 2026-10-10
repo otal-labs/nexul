@@ -166,6 +166,7 @@ func TestLiveAudience_AutoPlayFramesReachTheirReaders(t *testing.T) {
 		{plays.TopicAutoPlayUpdated, plays.AutoPlayEvent{AutoPlay: auto}, map[string]bool{uAutoReader: true, uPlayReader: false}},
 		{plays.TopicAutoPlayDeleted, plays.AutoPlayDeletedEvent{ID: "ap-1", PlayID: "play-1", WorkspaceID: "workspace-default"}, map[string]bool{uAutoReader: true, uPlayReader: false, uOutsider: false}},
 		{plays.TopicAutoPlayDeleted, plays.AutoPlayDeletedEvent{ID: "ap-1", PlayID: "play-1"}, map[string]bool{uOwner: false}},
+		{plays.TopicAutoPlayLimitsUpdated, plays.AutoPlayLimitsEvent{WorkspaceID: "workspace-default", DailyCapPerTicket: 3}, map[string]bool{uAutoReader: true, uPlayReader: false, uOutsider: false}},
 	}
 	for _, tc := range cases {
 		raw, err := json.Marshal(tc.payload)

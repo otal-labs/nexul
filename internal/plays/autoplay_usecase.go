@@ -144,7 +144,8 @@ func (s *Service) SetAutoPlayDailyCap(ctx context.Context, workspaceID string, l
 	if limit < MinAutoPlayDailyCap || limit > MaxAutoPlayDailyCap {
 		return 0, fmt.Errorf("%w: the daily cap on automatic runs per ticket is %d to %d", apperrs.ErrInvalid, MinAutoPlayDailyCap, MaxAutoPlayDailyCap)
 	}
-	if err := s.repo.SetAutoPlayDailyCap(ctx, workspaceID, limit); err != nil {
+	evt := s.event(TopicAutoPlayLimitsUpdated, AutoPlayLimitsEvent{WorkspaceID: workspaceID, DailyCapPerTicket: limit})
+	if err := s.repo.SetAutoPlayDailyCap(ctx, workspaceID, limit, evt); err != nil {
 		return 0, fmt.Errorf("set the auto play daily cap of workspace %s: %w", workspaceID, err)
 	}
 	return limit, nil

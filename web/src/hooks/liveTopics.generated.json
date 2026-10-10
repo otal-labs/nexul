@@ -9,6 +9,7 @@
   "account.restored",
   "auto_play.created",
   "auto_play.deleted",
+  "auto_play.limits_updated",
   "auto_play.updated",
   "botwebhook.created",
   "botwebhook.deleted",

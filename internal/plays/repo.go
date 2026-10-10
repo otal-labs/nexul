@@ -31,7 +31,7 @@ type AutoPlayRepo interface {
 	UpdateAutoPlay(ctx context.Context, a *AutoPlay, evts ...eventbus.OutboxEvent) error
 	DeleteAutoPlay(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
 	AutoPlayDailyCap(ctx context.Context, workspaceID string) (int, error)
-	SetAutoPlayDailyCap(ctx context.Context, workspaceID string, limit int) error
+	SetAutoPlayDailyCap(ctx context.Context, workspaceID string, limit int, evts ...eventbus.OutboxEvent) error
 }
 
 // TrailRepo is the consumer-side persistence contract for trails; implemented in internal/platform/storage.
