@@ -53,7 +53,7 @@ export interface Trail {
   project_id: string;
   conversation_id: string;
   starter_id: string;
-  via: "web" | "mcp";
+  via: "web" | "mcp" | "automation";
   selected_memory_ids: string[];
   custom_instructions: string;
   computer_id: string;

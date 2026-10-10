@@ -51,6 +51,15 @@ func (r *PlaysRepo) Get(ctx context.Context, id string) (*plays.Play, error) {
 	return toPlay(row)
 }
 
+// GetByLabel finds a workspace's play by label, ignoring case as the unique label index does.
+func (r *PlaysRepo) GetByLabel(ctx context.Context, workspaceID, label string) (*plays.Play, error) {
+	row, err := r.q.GetPlayByLabel(ctx, sqlcgen.GetPlayByLabelParams{WorkspaceID: workspaceID, Label: label})
+	if err != nil {
+		return nil, fmt.Errorf("get play %q in workspace %s: %w", label, workspaceID, notFoundIfNoRows(err))
+	}
+	return toPlay(row)
+}
+
 func (r *PlaysRepo) List(ctx context.Context, workspaceID string) ([]*plays.Play, error) {
 	rows, err := r.q.ListPlays(ctx, workspaceID)
 	if err != nil {

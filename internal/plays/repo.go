@@ -15,6 +15,8 @@ type Repo interface {
 	// across workspaces reports not found instead of leaking another workspace's play.
 	Get(ctx context.Context, id string) (*Play, error)
 	List(ctx context.Context, workspaceID string) ([]*Play, error)
+	// GetByLabel finds a workspace's play by its label, which is unique there ignoring case.
+	GetByLabel(ctx context.Context, workspaceID, label string) (*Play, error)
 	Update(ctx context.Context, p *Play, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
 	// DecisionsCheckEnabled and SetDecisionsCheckEnabled hold the built-in decisions check's per-workspace switch.

@@ -30,6 +30,22 @@ describe("ApiClient", () => {
     );
   });
 
+  it("carries the server's message in an ApiError, so run history says why", async () => {
+    const body = { message: 'not found: no play named "Fix" in this workspace', code: "NOT_FOUND" };
+    const api = new ApiClient({ baseUrl: "https://x", token: "t", fetchImpl: fakeFetch({ status: 404, body }) });
+    await expect(api.request("POST", "/api/plays/queue", {})).rejects.toMatchObject(
+      new ApiError(404, body, 'POST /api/plays/queue failed: 404: not found: no play named "Fix" in this workspace'),
+    );
+  });
+
+  it("keeps a plain-text error body rather than failing to parse it", async () => {
+    const fetchImpl = mock(async () => new Response("Bad Gateway", { status: 502 }));
+    const api = new ApiClient({ baseUrl: "https://x", token: "t", fetchImpl });
+    await expect(api.request("GET", "/api/automations")).rejects.toMatchObject(
+      new ApiError(502, "Bad Gateway", "GET /api/automations failed: 502: Bad Gateway"),
+    );
+  });
+
   it("wires the automations version-push helper to the right path and payload", async () => {
     const fetchImpl = fakeFetch({ status: 201, body: { id: "v1" } });
     const api = new ApiClient({ baseUrl: "https://x", token: "t", fetchImpl });

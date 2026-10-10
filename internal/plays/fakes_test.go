@@ -185,6 +185,18 @@ func (f *fakeRepo) labelTaken(p *Play) bool {
 	return false
 }
 
+func (f *fakeRepo) GetByLabel(_ context.Context, workspaceID, label string) (*Play, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, p := range f.byID {
+		if p.WorkspaceID == workspaceID && strings.EqualFold(p.Label, label) {
+			cp := *p
+			return &cp, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
 func (f *fakeRepo) Get(_ context.Context, id string) (*Play, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

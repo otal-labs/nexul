@@ -29,7 +29,7 @@ func (r *PlayQueueRepo) EnqueueRun(ctx context.Context, it *plays.QueueItem, evt
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).InsertPlayQueueItem(ctx, sqlcgen.InsertPlayQueueItemParams{
 			ID: it.ID, WorkspaceID: it.WorkspaceID, ProjectID: it.ProjectID, TargetType: string(it.TargetType), TargetID: it.TargetID,
-			PlayID: it.PlayID, PlayLabel: it.PlayLabel, AutoPlayID: it.AutoPlayID, PersonID: it.PersonID, RunOn: string(it.RunOn),
+			PlayID: it.PlayID, PlayLabel: it.PlayLabel, AutoPlayID: it.AutoPlayID, AutomationID: it.AutomationID, PersonID: it.PersonID, RunOn: string(it.RunOn),
 			Moment: string(it.Moment), Via: string(it.Via), Priority: levelPriority[it.Priority], Status: string(it.Status),
 			Reason: it.Reason, TrailID: it.TrailID, QueuedAt: it.QueuedAt.Unix(), DecidedAt: nullUnixPtr(it.DecidedAt),
 			NotBefore: it.NotBefore.Unix(),
@@ -170,7 +170,7 @@ func toQueueItem(row sqlcgen.PlayQueue) *plays.QueueItem {
 	}
 	return &plays.QueueItem{
 		ID: row.ID, WorkspaceID: row.WorkspaceID, ProjectID: row.ProjectID, TargetType: plays.TargetType(row.TargetType),
-		TargetID: row.TargetID, PlayID: row.PlayID, PlayLabel: row.PlayLabel, AutoPlayID: row.AutoPlayID, PersonID: row.PersonID,
+		TargetID: row.TargetID, PlayID: row.PlayID, PlayLabel: row.PlayLabel, AutoPlayID: row.AutoPlayID, AutomationID: row.AutomationID, PersonID: row.PersonID,
 		RunOn: plays.RunOn(row.RunOn), Moment: plays.Moment(row.Moment), Priority: level, Status: plays.QueueStatus(row.Status),
 		Reason: row.Reason, TrailID: row.TrailID, Via: plays.Via(row.Via), QueuedAt: time.Unix(row.QueuedAt, 0).UTC(),
 		DecidedAt: unixPtrFromNull(row.DecidedAt), NotBefore: time.Unix(row.NotBefore, 0).UTC(),

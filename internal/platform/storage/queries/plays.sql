@@ -8,6 +8,9 @@ SELECT * FROM plays WHERE id = ?;
 -- name: ListPlays :many
 SELECT * FROM plays WHERE workspace_id = ? ORDER BY label;
 
+-- name: GetPlayByLabel :one
+SELECT * FROM plays WHERE workspace_id = ? AND label = ? COLLATE NOCASE;
+
 -- name: UpdatePlay :execrows
 UPDATE plays SET label = ?, description = ?, instructions = ?, enabled = ?, show_when_stage = ?, excluded_project_ids = ?, updated_at = ?
 WHERE id = ?;

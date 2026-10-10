@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import type { QueuedRun } from "../src/context.ts";
 import { createMockContext } from "../src/testing.ts";
 import { eventFixtures } from "../src/events.generated.ts";
 
@@ -28,6 +29,23 @@ describe("createMockContext", () => {
     const ctx = createMockContext({});
     ctx.log("hello", { id: 1 });
     expect(ctx.logs).toEqual([JSON.stringify({ message: "hello", id: 1 })]);
+  });
+
+  it("records runPlay as the queue call it makes, answering with a queued run", async () => {
+    const ctx = createMockContext({});
+    const run = await ctx.runPlay("Fix with AI", "ticket-1", { runOn: "tester", priority: "high" });
+
+    expect(run).toEqual({ id: "mock-run", state: "queued", reason: "" });
+    expect(ctx.calls).toEqual([
+      { method: "POST", path: "/api/plays/queue", body: { play: "Fix with AI", ticket_id: "ticket-1", run_on: "tester", priority: "high" } },
+    ]);
+  });
+
+  it("lets a test script what runPlay answers", async () => {
+    const didntRun: QueuedRun = { id: "q-1", state: "didnt_run", reason: "nobody to run it on: the ticket has no developer" };
+    const ctx = createMockContext({}, { responses: { "POST /api/plays/queue": didntRun } });
+    expect(await ctx.runPlay("Fix with AI", "ticket-1")).toEqual(didntRun);
+    expect(ctx.calls[0]?.body).toEqual({ play: "Fix with AI", ticket_id: "ticket-1" });
   });
 
   it("exposes a fixture for every generated topic", () => {

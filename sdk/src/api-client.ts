@@ -1,9 +1,4 @@
-// Typed client over the automations-relevant HTTP surface. Every route
-// here is gated by internal/auth's RequireAuth (session cookie or a `dep_`
-// personal access token, see internal/auth/pats.go) — the automation's own
-// `dat_` token only ever authenticates the WS dial-in endpoint
-// (Service.AuthenticateToken in internal/automations/usecase.go has no path
-// for it on the HTTP gateway).
+// Typed client over the HTTP gateway, as a `dep_` personal access token (the CLI) or an automation's `dat_` token.
 
 export class ApiError extends Error {
   constructor(
@@ -50,11 +45,11 @@ export class ApiClient {
     const res = await this.fetchImpl(`${this.baseUrl}${path}`, init);
     if (res.status === 204) return undefined as T;
     const text = await res.text();
-    const parsed = text ? JSON.parse(text) : undefined;
     if (!res.ok) {
-      throw new ApiError(res.status, parsed, `${method} ${path} failed: ${res.status}`);
+      const body = parseBody(text);
+      throw new ApiError(res.status, body, `${method} ${path} failed: ${res.status}${serverText(body, text)}`);
     }
-    return parsed as T;
+    return (text ? JSON.parse(text) : undefined) as T;
   }
 
   readonly automations = {
@@ -88,4 +83,21 @@ export class ApiClient {
     set: (name: string, value: string) => this.request<void>("PUT", `/api/automation-secrets/${name}`, { value }),
     delete: (name: string) => this.request<void>("DELETE", `/api/automation-secrets/${name}`),
   };
+}
+
+// parseBody reads an error body as JSON, falling back to its text, since a proxy in front may answer in plain text.
+function parseBody(text: string): unknown {
+  if (!text) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+// serverText is the gateway's own message, so run history says why ("no play named …"), not only the status.
+function serverText(body: unknown, text: string): string {
+  const message = typeof body === "object" && body !== null && "message" in body ? body.message : undefined;
+  if (typeof message === "string" && message) return `: ${message}`;
+  return typeof body === "string" && text ? `: ${text.slice(0, 200)}` : "";
 }

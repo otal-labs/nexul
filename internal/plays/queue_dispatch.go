@@ -289,8 +289,13 @@ func (r *Runner) recheck(ctx context.Context, it *QueueItem, trails []*Trail) (*
 	return play, tgt, goAhead, nil
 }
 
-// recheckRecords reads the item's auto play and play again: removed, switched off, or waiting for another moment skips it.
+// recheckRecords reads the item's auto play and play again: removed, switched off, or waiting for another moment skips
+// it. A run an automation queued has no auto play, so only its play is read.
 func (r *Runner) recheckRecords(ctx context.Context, it *QueueItem) (*AutoPlay, *Play, verdict, error) {
+	if it.AutoPlayID == "" {
+		play, v, err := r.recheckPlay(ctx, it)
+		return nil, play, v, err
+	}
 	a, err := r.plays.GetAutoPlay(ctx, it.AutoPlayID)
 	if errors.Is(err, apperrs.ErrNotFound) {
 		return nil, nil, skip("its auto play was removed"), nil
@@ -304,18 +309,27 @@ func (r *Runner) recheckRecords(ctx context.Context, it *QueueItem) (*AutoPlay, 
 	if a.Moment != it.Moment {
 		return nil, nil, skip("its auto play now waits for another moment"), nil
 	}
-	play, err := r.plays.Get(ctx, it.PlayID)
-	if errors.Is(err, apperrs.ErrNotFound) {
-		return nil, nil, skip("the play was removed"), nil
-	}
-	if err != nil {
-		return nil, nil, goAhead, fmt.Errorf("get play %s: %w", it.PlayID, err)
-	}
-	return a, play, goAhead, nil
+	play, v, err := r.recheckPlay(ctx, it)
+	return a, play, v, err
 }
 
-// stillMatches checks the moment, the conditions, and the person against the target as it stands now.
+func (r *Runner) recheckPlay(ctx context.Context, it *QueueItem) (*Play, verdict, error) {
+	play, err := r.plays.Get(ctx, it.PlayID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil, skip("the play was removed"), nil
+	}
+	if err != nil {
+		return nil, goAhead, fmt.Errorf("get play %s: %w", it.PlayID, err)
+	}
+	return play, goAhead, nil
+}
+
+// stillMatches checks the moment, the conditions, and the person against the target as it stands now; a run an
+// automation queued has no moment or conditions, only its person.
 func stillMatches(a *AutoPlay, it *QueueItem, f Facts) verdict {
+	if a == nil {
+		return samePerson(it.RunOn, it.PersonID, f)
+	}
 	if f.Archived {
 		return skip("the doc was archived")
 	}
@@ -325,10 +339,14 @@ func stillMatches(a *AutoPlay, it *QueueItem, f Facts) verdict {
 	if !a.Conditions.holds(f) {
 		return skip("its conditions no longer hold")
 	}
-	if a.RunOn == RunOnDeveloper && f.Developer != it.PersonID {
+	return samePerson(a.RunOn, it.PersonID, f)
+}
+
+func samePerson(runOn RunOn, personID string, f Facts) verdict {
+	if runOn == RunOnDeveloper && f.Developer != personID {
 		return skip("the developer changed")
 	}
-	if a.RunOn == RunOnTester && f.Tester != it.PersonID {
+	if runOn == RunOnTester && f.Tester != personID {
 		return skip("the tester changed")
 	}
 	return goAhead

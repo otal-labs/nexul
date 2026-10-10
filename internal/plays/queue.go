@@ -31,28 +31,29 @@ const (
 	ReasonPaused     = "paused"
 )
 
-// QueueItem is one match of an auto play's moment on a ticket or doc (ADR 0132), queued on the person it runs on and
-// kept once decided, so the target shows it and the daily cap counts it.
+// QueueItem is one match of an auto play's moment on a ticket or doc, or an automation's runPlay call (ADR 0132),
+// queued on the person it runs on and kept once decided, so the target shows it and the daily cap counts it.
 type QueueItem struct {
-	ID          string      `json:"id"`
-	WorkspaceID string      `json:"workspace_id"`
-	ProjectID   string      `json:"project_id"`
-	TargetType  TargetType  `json:"target_type" enum:"ticket,doc"`
-	TargetID    string      `json:"target_id"`
-	PlayID      string      `json:"play_id"`
-	PlayLabel   string      `json:"play_label"`
-	AutoPlayID  string      `json:"auto_play_id" jsonschema:"The auto play whose moment matched."`
-	PersonID    string      `json:"person_id" jsonschema:"Whose computer the run lands on; empty when there was nobody to run it on."`
-	RunOn       RunOn       `json:"run_on" enum:"developer,tester,causer"`
-	Moment      Moment      `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed"`
-	Priority    Level       `json:"priority" enum:"high,normal,low"`
-	Status      QueueStatus `json:"status" enum:"queued,dispatching,started,skipped,didnt_run,cancelled"`
-	Reason      string      `json:"reason" jsonschema:"While queued: offline, ticket busy, paused, or empty while it waits for a free slot. Once skipped or didn't run: why."`
-	TrailID     string      `json:"trail_id" jsonschema:"The run's trail once started, or the failed trail of a run that didn't run."`
-	Via         Via         `json:"via" enum:"web,mcp"`
-	QueuedAt    time.Time   `json:"queued_at"`
-	DecidedAt   *time.Time  `json:"decided_at"`
-	NotBefore   time.Time   `json:"not_before" jsonschema:"The item is not tried before this; an offline computer is tried again a minute later."`
+	ID           string      `json:"id"`
+	WorkspaceID  string      `json:"workspace_id"`
+	ProjectID    string      `json:"project_id"`
+	TargetType   TargetType  `json:"target_type" enum:"ticket,doc"`
+	TargetID     string      `json:"target_id"`
+	PlayID       string      `json:"play_id"`
+	PlayLabel    string      `json:"play_label"`
+	AutoPlayID   string      `json:"auto_play_id" jsonschema:"The auto play whose moment matched; empty for a run an automation queued."`
+	AutomationID string      `json:"automation_id" jsonschema:"The automation whose runPlay queued the run; empty for an auto play's."`
+	PersonID     string      `json:"person_id" jsonschema:"Whose computer the run lands on; empty when there was nobody to run it on."`
+	RunOn        RunOn       `json:"run_on" enum:"developer,tester,causer"`
+	Moment       Moment      `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,automation"`
+	Priority     Level       `json:"priority" enum:"high,normal,low"`
+	Status       QueueStatus `json:"status" enum:"queued,dispatching,started,skipped,didnt_run,cancelled"`
+	Reason       string      `json:"reason" jsonschema:"While queued: offline, ticket busy, paused, or empty while it waits for a free slot. Once skipped or didn't run: why."`
+	TrailID      string      `json:"trail_id" jsonschema:"The run's trail once started, or the failed trail of a run that didn't run."`
+	Via          Via         `json:"via" enum:"web,mcp,automation"`
+	QueuedAt     time.Time   `json:"queued_at"`
+	DecidedAt    *time.Time  `json:"decided_at"`
+	NotBefore    time.Time   `json:"not_before" jsonschema:"The item is not tried before this; an offline computer is tried again a minute later."`
 }
 
 // Queue is a target's auto runs as its page shows them: every item newest first, and whether the daily cap paused it.

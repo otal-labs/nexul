@@ -4668,7 +4668,11 @@
       },
       "auto_play_id": {
         "type": "string",
-        "description": "The auto play whose moment matched."
+        "description": "The auto play whose moment matched; empty for a run an automation queued."
+      },
+      "automation_id": {
+        "type": "string",
+        "description": "The automation whose runPlay queued the run; empty for an auto play's."
       },
       "person_id": {
         "type": "string",
@@ -4692,7 +4696,8 @@
           "ticket.tester_set",
           "ticket.test_failed",
           "doc.created",
-          "doc.changed"
+          "doc.changed",
+          "automation"
         ]
       },
       "priority": {
@@ -4726,7 +4731,8 @@
         "type": "string",
         "enum": [
           "web",
-          "mcp"
+          "mcp",
+          "automation"
         ]
       },
       "queued_at": {
@@ -4757,6 +4763,7 @@
       "play_id",
       "play_label",
       "auto_play_id",
+      "automation_id",
       "person_id",
       "run_on",
       "moment",
@@ -4800,7 +4807,11 @@
       },
       "auto_play_id": {
         "type": "string",
-        "description": "The auto play whose moment matched."
+        "description": "The auto play whose moment matched; empty for a run an automation queued."
+      },
+      "automation_id": {
+        "type": "string",
+        "description": "The automation whose runPlay queued the run; empty for an auto play's."
       },
       "person_id": {
         "type": "string",
@@ -4824,7 +4835,8 @@
           "ticket.tester_set",
           "ticket.test_failed",
           "doc.created",
-          "doc.changed"
+          "doc.changed",
+          "automation"
         ]
       },
       "priority": {
@@ -4858,7 +4870,8 @@
         "type": "string",
         "enum": [
           "web",
-          "mcp"
+          "mcp",
+          "automation"
         ]
       },
       "queued_at": {
@@ -4889,6 +4902,7 @@
       "play_id",
       "play_label",
       "auto_play_id",
+      "automation_id",
       "person_id",
       "run_on",
       "moment",
