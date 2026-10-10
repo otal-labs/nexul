@@ -1,6 +1,7 @@
 package plays
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -87,7 +88,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	p, err := h.svc.Create(r.Context(), r.PathValue("workspaceID"), createInputFrom(req))
 	if err != nil {
-		httpx.WriteError(w, err)
+		writePlayError(w, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, p)
@@ -110,7 +111,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 	}
 	p, err := h.svc.Update(r.Context(), r.PathValue("workspaceID"), r.PathValue("playID"), updateInputFrom(req))
 	if err != nil {
-		httpx.WriteError(w, err)
+		writePlayError(w, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, p)
@@ -167,4 +168,13 @@ func (h *Handler) setDecisionsCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, p)
+}
+
+// writePlayError keys a taken label under the label field, the only conflict a play's create or update meets.
+func writePlayError(w http.ResponseWriter, err error) {
+	if errors.Is(err, apperrs.ErrConflict) {
+		httpx.WriteFieldError(w, err, "label")
+		return
+	}
+	httpx.WriteError(w, err)
 }

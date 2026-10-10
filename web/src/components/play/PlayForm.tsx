@@ -6,7 +6,7 @@ import { FormInput } from "@/components/FormInput";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { useCreatePlay, useUpdatePlay } from "@/hooks/PlayHooks";
+import { playLabelError, useCreatePlay, useUpdatePlay } from "@/hooks/PlayHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { PLAY_STAGE_LABELS, PLAY_STAGES, PLAY_TYPE_LABELS, PLAY_TYPES, type Play, type SavePlayFormData } from "@/models/Play";
 
@@ -21,7 +21,7 @@ interface PlayFormProps {
 }
 
 export const PlayForm = ({ workspaceId, editing }: PlayFormProps) => {
-  const { control, watch, setValue, onSubmit } = useFormDialogContext<SavePlayFormData>();
+  const { control, watch, setValue, setError, onSubmit } = useFormDialogContext<SavePlayFormData>();
   const { data: projects } = useFetchProjects();
   const createPlay = useCreatePlay(workspaceId);
   const updatePlay = useUpdatePlay(workspaceId);
@@ -29,9 +29,12 @@ export const PlayForm = ({ workspaceId, editing }: PlayFormProps) => {
   const excludedProjectIds = watch("excluded_project_ids");
 
   onSubmit(async (input) => {
-    const play = editing
-      ? await updatePlay.mutateAsync({ playId: editing.id, input })
-      : await createPlay.mutateAsync(input);
+    const save = editing ? updatePlay.mutateAsync({ playId: editing.id, input }) : createPlay.mutateAsync(input);
+    const play = await save.catch((error: unknown) => {
+      const taken = playLabelError(error);
+      if (taken) setError("label", { type: "server", message: taken }, { shouldFocus: true });
+      throw error;
+    });
     return { id: play.id, ...input };
   });
 

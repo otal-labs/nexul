@@ -57,6 +57,27 @@ func TestHandler_Create_TicketWithoutStageIsInvalid(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
+func TestHandler_CreateAndUpdate_TakenLabelIsAConflictOnTheLabelField(t *testing.T) {
+	h, _ := newTestHandler()
+	do(t, h.Routes(), http.MethodPost, "/api/workspaces/ws-1/plays", `{"label":"Doc","type":"doc"}`, "u-owner")
+	rec := do(t, h.Routes(), http.MethodPost, "/api/workspaces/ws-1/plays", `{"label":"Other","type":"doc"}`, "u-owner")
+	var other Play
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &other))
+
+	for _, rec := range []*httptest.ResponseRecorder{
+		do(t, h.Routes(), http.MethodPost, "/api/workspaces/ws-1/plays", `{"label":"doc","type":"doc"}`, "u-owner"),
+		do(t, h.Routes(), http.MethodPatch, "/api/workspaces/ws-1/plays/"+other.ID, `{"label":"DOC"}`, "u-owner"),
+	} {
+		require.Equal(t, http.StatusConflict, rec.Code)
+		var body struct {
+			Errors map[string][]string `json:"errors"`
+		}
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+		require.Len(t, body.Errors["label"], 1)
+		assert.Contains(t, body.Errors["label"][0], "already exists in this workspace")
+	}
+}
+
 func TestHandler_List(t *testing.T) {
 	h, _ := newTestHandler()
 	do(t, h.Routes(), http.MethodPost, "/api/workspaces/ws-1/plays", `{"label":"Doc","type":"doc"}`, "u-owner")

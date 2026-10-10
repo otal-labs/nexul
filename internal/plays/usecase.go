@@ -2,6 +2,7 @@ package plays
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -206,7 +207,7 @@ func (s *Service) Create(ctx context.Context, workspaceID string, in CreateInput
 		return nil, err
 	}
 	if err := s.repo.Create(ctx, p, s.event(TopicCreated, CreatedEvent{Play: *p})); err != nil {
-		return nil, fmt.Errorf("create play in workspace %s: %w", workspaceID, err)
+		return nil, labelTaken(p, fmt.Errorf("create play in workspace %s: %w", workspaceID, err))
 	}
 	return p, nil
 }
@@ -231,9 +232,17 @@ func (s *Service) Update(ctx context.Context, workspaceID, id string, in UpdateI
 		return nil, err
 	}
 	if err := s.repo.Update(ctx, p, s.event(TopicUpdated, UpdatedEvent{Play: *p})); err != nil {
-		return nil, fmt.Errorf("update play %s: %w", id, err)
+		return nil, labelTaken(p, fmt.Errorf("update play %s: %w", id, err))
 	}
 	return p, nil
+}
+
+// labelTaken words a write the unique label index refused, since a label names the play to automations (ADR 0132).
+func labelTaken(p *Play, err error) error {
+	if !errors.Is(err, apperrs.ErrConflict) {
+		return err
+	}
+	return fmt.Errorf("%w: a play named %q already exists in this workspace", apperrs.ErrConflict, p.Label)
 }
 
 // Delete removes a play; actorID must hold plays:delete.

@@ -30,7 +30,8 @@ INSERT INTO plays (id, workspace_id, label, type, description, instructions, ena
 		}
 	}
 	s := New(db, testEncKey)
-	for _, ws := range []string{"workspace-default", "ws-old"} {
+	// 0086 later renames the second of two same-named plays, here the seeded one.
+	for ws, label := range map[string]string{"workspace-default": want.Label, "ws-old": want.Label + " (2)"} {
 		list, err := s.Plays.List(t.Context(), ws)
 		require.NoError(t, err)
 		var clarify []*plays.Play
@@ -41,7 +42,7 @@ INSERT INTO plays (id, workspace_id, label, type, description, instructions, ena
 		}
 		require.Len(t, clarify, 1, "%s has one Clarify play", ws)
 		p := clarify[0]
-		assert.Equal(t, want.Label, p.Label)
+		assert.Equal(t, label, p.Label)
 		assert.Equal(t, plays.TypeDoc, p.Type)
 		assert.Equal(t, want.Description, p.Description)
 		assert.Equal(t, want.Instructions, p.Instructions, "the migration carries the code default verbatim")

@@ -212,6 +212,8 @@ func TestScopeAllows(t *testing.T) {
 		{"a doc is unlocked with docs:lock", "POST", "/api/docs/d1/unlock", []Scope{Scope("docs:lock")}, true},
 		{"docs:write no longer locks a doc", "POST", "/api/docs/d1/lock", []Scope{ScopeDocsWrite}, false},
 		{"docs:write no longer unlocks a doc", "POST", "/api/docs/d1/unlock", []Scope{ScopeDocsWrite}, false},
+		{"a play is run with plays:run", "POST", "/api/plays/p1/run", []Scope{Scope("plays:run")}, true},
+		{"plays:write no longer runs a play", "POST", "/api/plays/p1/run", []Scope{Scope("plays:write")}, false},
 		{"alias: agent routes to chat", "POST", "/api/agent/conversations/1/interrupt", []Scope{Scope("chat:write")}, true},
 		{"alias: agent denied with its own name", "POST", "/api/agent/conversations/1/interrupt", []Scope{Scope("agent:write")}, false},
 		{"alias: automation-secrets routes to automations", "GET", "/api/automation-secrets", []Scope{Scope("automations:read")}, true},

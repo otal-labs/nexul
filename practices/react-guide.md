@@ -501,7 +501,7 @@ dialog utilities:
 - `onSubmit(handler)`: register the mutation. The handler's **return**
   closes the dialog with that data; a **throw** keeps it open and the shell
   auto-surfaces the error (`root.serverError`, unless the form already set
-  one).
+  one, or put the error on a field such as a taken name).
 - `setLoading(bool)`: disables the shell's OK button (e.g. while the form
   loads its initial data).
 
