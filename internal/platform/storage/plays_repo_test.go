@@ -134,12 +134,12 @@ func TestPlaysRepo_Migration_SeedsDefaultWorkspaceWithTheDefaultPlays(t *testing
 	s := newTestStore(t)
 	got, err := s.Plays.List(context.Background(), "workspace-default")
 	require.NoError(t, err)
-	require.Len(t, got, 7)
+	require.Len(t, got, 8)
 	byLabel := map[string]*plays.Play{}
 	for _, p := range got {
 		byLabel[p.Label] = p
 	}
-	progress, testingStage := plays.StageProgress, plays.StageTesting
+	progress, testingStage, done := plays.StageProgress, plays.StageTesting, plays.StageDone
 	tests := []struct {
 		label    string
 		wantType plays.Type
@@ -153,6 +153,7 @@ func TestPlaysRepo_Migration_SeedsDefaultWorkspaceWithTheDefaultPlays(t *testing
 		{"Draft interview", plays.TypeInterview, nil, "`trail_id`"},
 		{"Clarify via AI", plays.TypeDoc, nil, "`no_gaps`"},
 		{"Audit via AI", plays.TypeInterview, nil, "doc_create"},
+		{"Decisions check", plays.TypeTicket, &done, "`decisions_log`"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.label, func(t *testing.T) {

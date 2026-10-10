@@ -34,7 +34,7 @@ INSERT INTO automations (id, name, kind, subscriptions, config_schema, config_va
 	require.NoError(t, Migrate(db))
 
 	labels := map[string]string{}
-	rows, err := db.Query(`SELECT id, label FROM plays`)
+	rows, err := db.Query(`SELECT id, label FROM plays WHERE builtin_key <> 'decisions-check'`)
 	require.NoError(t, err)
 	for rows.Next() {
 		var id, label string

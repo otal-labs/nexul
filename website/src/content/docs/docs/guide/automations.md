@@ -18,7 +18,7 @@ Every workspace comes with its own copy of two, switched on:
 
 Open each one's **Configuration** tab and pick the status. Until you do, it skips every event and logs why on its **Runs** tab.
 
-The **Decisions check** is listed with them. It's a [play](/docs/guide/plays/#the-decisions-check), not code, and starts off.
+The **Decisions check** isn't here: it's a [play](/docs/guide/plays/#the-decisions-check) with an auto play, switched on from the play.
 
 ## Write your own
 

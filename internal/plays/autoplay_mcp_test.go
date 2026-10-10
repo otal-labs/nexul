@@ -69,9 +69,6 @@ func TestPlayUpdate_AutoPlayFailuresSayWhatTookEffect(t *testing.T) {
 
 	_, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"`+play.ID+`","remove_auto_plays":["ghost"]}`)
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
-
-	_, err = callTool(t, tools, ctxAs("editor"), "play_update", `{"workspace_id":"$WS","id":"decisions-check","enabled":true,"remove_auto_plays":["x"]}`)
-	require.ErrorIs(t, err, apperrs.ErrInvalid, "the decisions check takes only enabled")
 }
 
 func TestPlayList_AttachesAutoPlaysInOneReadForTheirReaders(t *testing.T) {

@@ -6,10 +6,12 @@ import { useShallow } from "zustand/react/shallow";
 import type { Conversation } from "@nexul/client-core/chat";
 
 import { api, errorMessage } from "@/api/client";
+import { useApplicableTicketPlays } from "@/hooks/PlayHooks";
+import { useFetchTicket } from "@/hooks/TicketHooks";
 import { conversationPlayTarget } from "@/models/Chat";
-import type { PlayType } from "@/models/Play";
+import { DECISIONS_CHECK_KEY, type PlayType } from "@/models/Play";
 import type { QuestionAnswers } from "@/models/Question";
-import { DECISIONS_CHECK_PLAY_ID, isTrailActive, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunFrame, type RunPlace, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
+import { isTrailActive, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunFrame, type RunPlace, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
 import { targetKey, usePlayRunStore, type PlayRunStore } from "@/stores/playRunStore";
 import { threadTrailBlocks, type ThreadTrailBlocks } from "@/utils/ThreadTrailUtility";
 import type { LiveFollower } from "@/lib/live";
@@ -100,11 +102,14 @@ export const useRunDecisionsCheck = () => {
   });
 };
 
-// The ticket's latest decisions check when it failed, so the page can offer to run it again; trails come newest first.
+// The ticket's latest decisions check when it failed and the viewer may run it again; trails come newest first.
 export const useMissedDecisionsCheck = (ticketId: string): Trail | undefined => {
   const { data: trails } = useFetchTrails("ticket", ticketId);
+  const { data: ticket } = useFetchTicket(ticketId);
+  const { data: plays } = useApplicableTicketPlays(ticket);
   const frames = usePlayRunStore((s) => s.frames);
-  const latest = trails?.find((t) => t.play_id === DECISIONS_CHECK_PLAY_ID);
+  const check = plays?.find((p) => p.builtin_key === DECISIONS_CHECK_KEY);
+  const latest = check && trails?.find((t) => t.play_id === check.id);
   if (!latest || (frames[latest.id]?.state ?? latest.state) !== "failed") return undefined;
   return latest;
 };

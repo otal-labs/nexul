@@ -36,7 +36,7 @@ A doc play locks its doc when it starts, so nobody edits the doc under the agent
 
 ## The built-in plays
 
-Every workspace starts with seven. They are ordinary plays: rename, edit, or delete them.
+Every workspace starts with eight. They are ordinary plays: rename, edit, or delete them.
 
 | Play | Runs on | What it does |
 |---|---|---|
@@ -47,6 +47,7 @@ Every workspace starts with seven. They are ordinary plays: rename, edit, or del
 | **Interview** | a project's Interview page | Asks follow-ups and writes the project's rules for agents. See [Interview](/docs/guide/interview/). |
 | **Draft interview** | a project's Interview page | Drafts interview answers from the project's sources. |
 | **Audit via AI** | a project's Interview page | Checks code against the interview memory and writes the findings as a doc. |
+| **Decisions check** | a ticket in a Done column | Records in the project's decisions log whether the ticket changed how the project works. See [The decisions check](#the-decisions-check). |
 
 **Test with AI** works like pressing **Pass** or **Fail** yourself. It never tests production: with no safe test environment it stops and says a branch deploy is needed. A pass moves the card to the first Done column; a fail posts steps to reproduce, the expected result, and the actual result to the thread and moves the card back to In progress. Leave out footer memories that move the card for this play, because the result already does.
 
@@ -91,9 +92,9 @@ On the ticket, the rail's **Plays** section shows what is waiting: each queued r
 
 ## The decisions check
 
-The decisions check is a play nobody presses. When a ticket enters a Done column, the agent reads the ticket and its pull requests and updates the project's [decisions log](/docs/guide/memories/#the-decisions-log): it adds an entry, marks an older one superseded, or leaves the log alone.
+The **Decisions check** is a built-in play with one auto play, so nobody has to press it. When a ticket enters a Done column, the agent reads the ticket and its pull requests and updates the project's [decisions log](/docs/guide/memories/#the-decisions-log): it adds an entry, marks an older one superseded, or leaves the log alone.
 
-It starts off. Switch it on per workspace on the **Automations** page, among the default automations. It runs on the computer of the person who moved the card, or the ticket's developer's when an automation moved it.
+Its auto play starts off. To switch it on for a workspace, open **Configuration → Plays**, press **Edit** on **Decisions check**, go to the **Auto plays** tab, and turn on "When a ticket **enters Done**". It runs on the computer of the person who moved the card, or the ticket's developer's when an automation moved it. You can add conditions to it like any auto play, or press the play on a done ticket to run it by hand.
 
 If it can't start, the ticket shows **Decisions check didn't run** with the reason. Press **Run check** to run it on your own computer.
 

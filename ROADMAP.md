@@ -116,8 +116,8 @@ deleted after 90 days and every notification after 180.
 ### Automations per workspace
 
 An automation belongs to one workspace and each workspace has its own
-switches. The built-in Decisions check has a per-workspace switch, off by
-default, and a switched-off automation receives no events.
+switches, and a switched-off automation receives no events. The Decisions
+check is a play, switched on per workspace on its auto play.
 
 ### Chat and calls
 

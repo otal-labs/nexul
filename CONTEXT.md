@@ -216,31 +216,33 @@ memories when relevant, never named every turn.
 _Avoid_: Changelog, history, release notes
 
 **Decisions check**:
-The built-in play that fires by itself, once, when a ticket enters a
-done-stage column: on the paired computer of the person who moved the card,
-or the ticket's developer's when an automation moved it. It adds a
-decisions-log entry, marks an older one superseded, or leaves the log alone.
-A check that cannot start stays on the ticket as "Decisions check didn't run"
-with a way to run it again. Each workspace switches it on or off among the
-default automations; it starts off.
+A seeded ticket play, shown on done tickets, with one seeded auto play: a
+ticket entering a done stage runs it on whoever moved the card, or the
+ticket's developer when an automation moved it. It adds a decisions-log
+entry, marks an older one superseded, or leaves the log alone. A check that
+cannot start stays on the ticket as "Decisions check didn't run" with a way
+to run it again. A workspace switches it on or off on the play's Auto plays
+tab; it starts off.
 _Avoid_: Closing summary, retrospective, done hook
 
 **Play**:
 A pre-configured Agent turn a user fires from a ticket page, a doc page, or
 a project's Interview page with one button ("Fix with AI", "To tickets via
-AI", "Run the interview"). Defined per workspace with a label (unique in
-the workspace, ignoring case, since an automation names a play by it), a type
-(ticket, doc, or interview), a one-line description, base
-instructions, an enabled switch, and an excluded-projects list; a ticket
+AI", "Run the interview"), or that starts by itself through an auto play.
+Defined per workspace with a label (unique in the workspace, ignoring case,
+since an automation names a play by it), a type (ticket, doc, or interview),
+a one-line description, base instructions, an enabled switch, and an
+excluded-projects list; a ticket
 play also names the one stage it shows in. No default memories live on the
 definition — the run dialog picks those per run, footer memories among
 them. Runs on the clicking user's own paired harness and posts into the
 target's thread, which for an interview is hidden plumbing; a play never moves its ticket itself, the agent does, as
 its footer memories say. Every workspace,
-new or existing, is seeded with the same seven, "Fix with AI" (ticket,
+new or existing, is seeded with the same eight, "Fix with AI" (ticket,
 progress stage), "To tickets via AI" (doc), "Interview" (interview),
 "Test with AI" (ticket, testing stage), "Draft interview" (interview),
-"Clarify via AI" (doc), and "Audit via AI" (interview), as ordinary plays
+"Clarify via AI" (doc), "Audit via AI" (interview), and "Decisions check"
+(ticket, done stage, with its auto play), as ordinary plays
 a member
 may edit or delete; each keeps a built-in key through renames, and a new
 workspace's start from the instance template of their instructions. Seen and fired with `plays:run`, managed with

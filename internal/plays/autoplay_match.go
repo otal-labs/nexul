@@ -136,6 +136,8 @@ type moment struct {
 	// automation marks a moment an automation caused; it runs on the developer, as nobody pressed anything.
 	automation bool
 	via        Via
+	// eventID makes a redelivered event's match the same queue row, so it never queues a second run.
+	eventID string
 }
 
 // person is whose computer a's run lands on.
@@ -201,6 +203,7 @@ func (r *Runner) HandleAutoPlayMoment(ctx context.Context, ev eventbus.Event) er
 	if !ok {
 		return nil
 	}
+	m.eventID = ev.ID
 	if err := r.match(ctx, m); err != nil {
 		return apperrs.Retryable(err)
 	}
@@ -343,8 +346,9 @@ func (r *Runner) matchOne(ctx context.Context, workspaceID string, a *AutoPlay, 
 		}
 	}
 	it := &QueueItem{
-		ID: ids.New(), WorkspaceID: workspaceID, ProjectID: f.ProjectID, TargetType: m.targetType, TargetID: m.targetID,
-		PlayID: play.ID, PlayLabel: play.Label, AutoPlayID: a.ID, PersonID: a.person(f, m), RunOn: a.RunOn, Moment: m.name,
+		ID: ids.From("auto-play-match:" + m.eventID + ":" + a.ID), WorkspaceID: workspaceID, ProjectID: f.ProjectID,
+		TargetType: m.targetType, TargetID: m.targetID, PlayID: play.ID, PlayLabel: play.Label, AutoPlayID: a.ID,
+		PersonID: a.person(f, m), RunOn: a.RunOn, Moment: m.name,
 		Priority: a.Priority.level(f), Status: QueueQueued, Via: m.via, QueuedAt: now, NotBefore: now,
 	}
 	if reason := r.whyNobody(ctx, it); reason != "" {
@@ -358,6 +362,9 @@ func (r *Runner) matchOne(ctx context.Context, workspaceID string, a *AutoPlay, 
 
 // whyNobody says why a run has nobody to land on: no such person, or one the play's permissions leave out.
 func (r *Runner) whyNobody(ctx context.Context, it *QueueItem) string {
+	if it.PersonID == "" && it.RunOn == RunOnCauser {
+		return fmt.Sprintf("nobody to run it on: no person caused it and the %s has no developer", it.TargetType)
+	}
 	if it.PersonID == "" {
 		return fmt.Sprintf("nobody to run it on: the %s has no %s", it.TargetType, it.RunOn)
 	}
@@ -368,7 +375,7 @@ func (r *Runner) whyNobody(ctx context.Context, it *QueueItem) string {
 	return ""
 }
 
-// failedTrail keeps a run that didn't run as a failed trail on its target, as the decisions check's refusals are.
+// failedTrail keeps a run that didn't run as a failed trail on its target, so the target says why.
 func (r *Runner) failedTrail(ctx context.Context, it *QueueItem, reason string) {
 	trail := &Trail{
 		ID: ids.New(), WorkspaceID: it.WorkspaceID, PlayID: it.PlayID, PlayLabel: it.PlayLabel, TargetType: it.TargetType,

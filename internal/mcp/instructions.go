@@ -8,7 +8,7 @@ Tool families, named object_verb:
 - Planning: workspace_list (the workspace ids other tools need) and workspace_update, project_* (project_get lists a project's statuses, categories, ticket types, labels, repositories, doc folders), ticket_*, doc_*, memory_*.
 - Conversation: conversation_*, message_list, message_post, botwebhook_* (bots), mention_search, notification_*.
 - Shipping: stack_* (a stack is what gets deployed), deploy_*, machine_*, gateway_*, exposure_*, dns_*, topology_*, repository_*, pull_request_*.
-- Agents and automation: play_*, trail_* (a trail is the record of one play run), automation_* (per workspace; play_update sets its decisions check, off by default), computer_* (paired computers, their setup).
+- Agents and automation: play_*, trail_* (a trail is the record of one play run), automation_* (per workspace), computer_* (paired computers, their setup).
 - Administration: account_*, invitation_*, role_* (workspace_list with an id lists them), permission_overwrite_*, instance_*, template_* (defaults), dead_letter_*.
 
 Workflows:

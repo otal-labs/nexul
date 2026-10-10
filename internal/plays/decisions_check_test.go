@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -12,229 +11,39 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
-	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// newDecisionsFixture is the runner fixture with a progress column, two done columns, and a user who may not run plays.
+const checkPlayID = "play-decisions"
+
+// newDecisionsFixture is the runner fixture with a progress column, two done columns, a done ticket, and the seeded
+// decisions check play.
 func newDecisionsFixture() *runnerFixture {
 	f := newRunnerFixture()
 	f.targets.statuses["st-progress"] = StatusTarget{Name: "Doing", Stage: StageProgress}
 	f.targets.statuses["st-shipped"] = StatusTarget{Name: "Shipped", Stage: StageDone}
 	f.targets.setTicketStage(ticketID, StageDone)
-	f.plays.decisionsCheck[workspaceID] = true
+	done := StageDone
+	f.plays.byID[checkPlayID] = &Play{
+		ID: checkPlayID, WorkspaceID: workspaceID, Label: decisionsCheckLabel, Type: TypeTicket,
+		Instructions: decisionsCheckInstructions, Enabled: true, ShowWhenStage: &done, BuiltinKey: DecisionsCheckKey,
+	}
 	return f
 }
 
-func moveEvent(t *testing.T, from, to, actorKind, userID, developer string) eventbus.Event {
-	t.Helper()
-	raw, err := json.Marshal(map[string]any{
-		"ticket": map[string]any{"id": ticketID, "developer": developer},
-		"from":   from, "to": to,
-		"actor": map[string]any{"kind": actorKind, "user_id": userID},
-	})
-	require.NoError(t, err)
-	return eventbus.Event{ID: "ev-1", Topic: "ticket.status_changed", Payload: raw}
-}
-
-func decisionTrails(f *runnerFixture) []*Trail {
-	var out []*Trail
-	for _, t := range f.trails.all() {
-		if t.PlayID == DecisionsCheckPlayID {
-			out = append(out, t)
-		}
-	}
-	return out
-}
-
-func TestHandleTicketStatusChanged_EnteringDone_FiresExactlyOneCheck(t *testing.T) {
+func TestRetryDecisionsCheck_RunsTheSeededPlayOnTheCallersHarness(t *testing.T) {
 	f := newDecisionsFixture()
-	ev := moveEvent(t, "st-progress", "st-done", "user", starter, "")
-
-	require.NoError(t, f.runner.HandleTicketStatusChanged(context.Background(), ev))
-	<-f.turns.done
-	require.NoError(t, f.runner.HandleTicketStatusChanged(context.Background(), ev), "a redelivery is a no-op")
-	require.NoError(t, f.runner.HandleTicketStatusChanged(context.Background(), moveEvent(t, "st-progress", "st-shipped", "user", starter, "")))
-
-	trails := decisionTrails(f)
-	require.Len(t, trails, 1)
-	assert.Equal(t, starter, trails[0].StarterID, "runs on the mover's own harness")
-	assert.Equal(t, decisionsCheckLabel, trails[0].PlayLabel)
-	assert.Equal(t, ViaWeb, trails[0].Via)
-	req := f.turns.last()
-	assert.Equal(t, starter, req.ViaUserID)
-	require.NotNil(t, req.Play)
-	assert.Equal(t, decisionsCheckLabel, req.Play.Label)
-	assert.Contains(t, req.Play.Instructions, "decisions_log")
-	assert.Equal(t, "Started Decisions check", f.threads.snapshot()[0].body)
-}
-
-func TestHandleTicketStatusChanged_SwitchedOff_StartsNoCheck(t *testing.T) {
-	f := newDecisionsFixture()
-	f.plays.decisionsCheck[workspaceID] = false
-
-	require.NoError(t, f.runner.HandleTicketStatusChanged(context.Background(), moveEvent(t, "st-progress", "st-done", "user", starter, "")))
-
-	assert.Empty(t, f.trails.all(), "a workspace with the check off starts no run and keeps no failed trail")
-}
-
-func TestRetryDecisionsCheck_SwitchedOff_StillRunsForTheCaller(t *testing.T) {
-	f := newDecisionsFixture()
-	f.plays.decisionsCheck[workspaceID] = false
-	_, err := f.runner.RetryDecisionsCheck(ctxAs(starter), ticketID, ViaWeb)
-	require.NoError(t, err)
-	<-f.turns.done
-	assert.Len(t, decisionTrails(f), 1)
-}
-
-func TestHandleTicketStatusChanged_NotAnEntryIntoDone_DoesNothing(t *testing.T) {
-	tests := []struct{ name, from, to string }{
-		{"into a progress column", "st-review", "st-progress"},
-		{"between two done columns", "st-done", "st-shipped"},
-		{"into a deleted column", "st-progress", "st-gone"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			f := newDecisionsFixture()
-			require.NoError(t, f.runner.HandleTicketStatusChanged(context.Background(), moveEvent(t, tt.from, tt.to, "user", starter, "")))
-			assert.Empty(t, f.trails.all())
-		})
-	}
-}
-
-func TestHandleTicketStatusChanged_FromAMissingColumn_CountsAsEntering(t *testing.T) {
-	f := newDecisionsFixture()
-	require.NoError(t, f.runner.HandleTicketStatusChanged(context.Background(), moveEvent(t, "st-gone", "st-done", "user", starter, "")))
-	<-f.turns.done
-	assert.Len(t, decisionTrails(f), 1)
-}
-
-func TestHandleTicketStatusChanged_MergedPRMove_RunsOnTheDeveloper(t *testing.T) {
-	f := newDecisionsFixture()
-	require.NoError(t, f.runner.HandleTicketStatusChanged(context.Background(), moveEvent(t, "", "st-done", "automation", "", "login-"+starter)))
-	<-f.turns.done
-	trails := decisionTrails(f)
-	require.Len(t, trails, 1)
-	assert.Equal(t, starter, trails[0].StarterID)
-}
-
-func TestHandleTicketStatusChanged_McpMove_CarriesMcpProvenance(t *testing.T) {
-	f := newDecisionsFixture()
-	require.NoError(t, f.runner.HandleTicketStatusChanged(context.Background(), moveEvent(t, "st-progress", "st-done", "play:mcp", starter, "")))
-	<-f.turns.done
-	assert.Equal(t, ViaMCP, decisionTrails(f)[0].Via)
-}
-
-func TestHandleTicketStatusChanged_CannotStart_KeepsAFailedTrailOnTheTicket(t *testing.T) {
-	tests := []struct {
-		name      string
-		arrange   func(f *runnerFixture)
-		ev        func(t *testing.T) eventbus.Event
-		wantError string
-		wantEvent bool
-	}{
-		{
-			name:      "no developer to run it for",
-			ev:        func(t *testing.T) eventbus.Event { return moveEvent(t, "st-progress", "st-done", "automation", "", "") },
-			wantError: "nobody to run it for",
-		},
-		{
-			name: "developer is not a known user",
-			ev: func(t *testing.T) eventbus.Event {
-				return moveEvent(t, "st-progress", "st-done", "automation", "", "ghost")
-			},
-			wantError: "nobody to run it for",
-		},
-		{
-			name: "mover may not run plays",
-			ev: func(t *testing.T) eventbus.Event {
-				return moveEvent(t, "st-progress", "st-done", "user", "u-stranger", "")
-			},
-			wantError: "plays:run",
-			wantEvent: true,
-		},
-		{
-			name:      "setup gate refuses the provider",
-			arrange:   func(f *runnerFixture) { f.harness.err = errors.New("the provider is not confirmed on this computer") },
-			ev:        func(t *testing.T) eventbus.Event { return moveEvent(t, "st-progress", "st-done", "user", starter, "") },
-			wantError: "not confirmed",
-			wantEvent: true,
-		},
-		{
-			name: "another run holds the ticket",
-			arrange: func(f *runnerFixture) {
-				require.NoError(t, f.trails.CreateTrail(context.Background(), &Trail{ID: "busy", PlayID: fixPlayID, TargetType: TargetTicket, TargetID: ticketID, State: TrailRunning}))
-			},
-			ev:        func(t *testing.T) eventbus.Event { return moveEvent(t, "st-progress", "st-done", "user", starter, "") },
-			wantError: "in progress",
-			wantEvent: true,
-		},
-		{
-			name:      "the thread cannot be opened",
-			arrange:   func(f *runnerFixture) { f.threads.ticketErr = errors.New("chat down") },
-			ev:        func(t *testing.T) eventbus.Event { return moveEvent(t, "st-progress", "st-done", "user", starter, "") },
-			wantError: "chat down",
-			wantEvent: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			f := newDecisionsFixture()
-			if tt.arrange != nil {
-				tt.arrange(f)
-			}
-			require.NoError(t, f.runner.HandleTicketStatusChanged(context.Background(), tt.ev(t)))
-			trails := decisionTrails(f)
-			require.Len(t, trails, 1)
-			assert.Equal(t, TrailFailed, trails[0].State)
-			assert.Contains(t, trails[0].LastError, tt.wantError)
-			assert.Equal(t, tt.wantEvent, len(f.trails.eventsFor(TopicRunFinished)) == 1)
-			frames := f.live.snapshot()
-			require.NotEmpty(t, frames, "the ticket page learns of it live")
-			assert.Equal(t, TrailFailed, frames[len(frames)-1].State)
-		})
-	}
-}
-
-func TestHandleTicketStatusChanged_Errors(t *testing.T) {
-	tests := []struct {
-		name    string
-		arrange func(f *runnerFixture)
-		ev      func(t *testing.T) eventbus.Event
-		want    error
-	}{
-		{"bad payload", nil, func(*testing.T) eventbus.Event { return eventbus.Event{Payload: []byte("{")} }, apperrs.ErrFatal},
-		{"no ticket id", nil, func(*testing.T) eventbus.Event { return eventbus.Event{Payload: []byte(`{"to":"st-done"}`)} }, apperrs.ErrFatal},
-		{"trails unreadable", func(f *runnerFixture) { f.trails.listErr = errors.New("disk") }, func(t *testing.T) eventbus.Event {
-			return moveEvent(t, "st-progress", "st-done", "user", starter, "")
-		}, apperrs.ErrRetryable},
-		{"developer lookup fails", nil, func(t *testing.T) eventbus.Event {
-			return moveEvent(t, "st-progress", "st-done", "automation", "", "broken")
-		}, apperrs.ErrRetryable},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			f := newDecisionsFixture()
-			if tt.arrange != nil {
-				tt.arrange(f)
-			}
-			err := f.runner.HandleTicketStatusChanged(context.Background(), tt.ev(t))
-			require.ErrorIs(t, err, tt.want)
-		})
-	}
-}
-
-func TestRetryDecisionsCheck_StartsOnTheCallersHarness(t *testing.T) {
-	f := newDecisionsFixture()
-	require.NoError(t, f.runner.HandleTicketStatusChanged(context.Background(), moveEvent(t, "st-progress", "st-done", "automation", "", "")))
-	require.Equal(t, TrailFailed, decisionTrails(f)[0].State)
 
 	trail, err := f.runner.RetryDecisionsCheck(ctxAs(starter), ticketID, ViaWeb)
 	require.NoError(t, err)
 	<-f.turns.done
-	assert.Equal(t, TrailStarting, trail.State)
-	assert.Equal(t, starter, trail.StarterID)
-	assert.Len(t, decisionTrails(f), 2)
+
+	assert.Equal(t, []any{checkPlayID, starter, TrailStarting}, []any{trail.PlayID, trail.StarterID, trail.State})
+	req := f.turns.last()
+	assert.Equal(t, starter, req.ViaUserID)
+	require.NotNil(t, req.Play)
+	assert.Contains(t, req.Play.Instructions, "decisions_log")
+	assert.Equal(t, "Started Decisions check", f.threads.snapshot()[0].body)
 }
 
 func TestRetryDecisionsCheck_Refusals(t *testing.T) {
@@ -242,23 +51,30 @@ func TestRetryDecisionsCheck_Refusals(t *testing.T) {
 		name    string
 		ctx     context.Context
 		ticket  string
-		stage   Stage
+		arrange func(f *runnerFixture)
 		want    error
-		records bool
 	}{
-		{"no actor", context.Background(), ticketID, StageDone, apperrs.ErrUnauthorized, false},
-		{"no ticket id", ctxAs(starter), " ", StageDone, apperrs.ErrInvalid, false},
-		{"unknown ticket", ctxAs(starter), "t-missing", StageDone, apperrs.ErrNotFound, false},
-		{"ticket not done", ctxAs(starter), ticketID, StageTesting, apperrs.ErrInvalid, false},
-		{"caller may not run plays", ctxAs("u-stranger"), ticketID, StageDone, apperrs.ErrForbidden, false},
+		{"no actor", context.Background(), ticketID, nil, apperrs.ErrUnauthorized},
+		{"no ticket id", ctxAs(starter), " ", nil, apperrs.ErrInvalid},
+		{"unknown ticket", ctxAs(starter), "t-missing", nil, apperrs.ErrNotFound},
+		{"ticket not done", ctxAs(starter), ticketID, func(f *runnerFixture) { f.targets.setTicketStage(ticketID, StageTesting) }, apperrs.ErrInvalid},
+		{"caller may not run plays", ctxAs("u-stranger"), ticketID, nil, apperrs.ErrForbidden},
+		{"the play was deleted", ctxAs(starter), ticketID, func(f *runnerFixture) { delete(f.plays.byID, checkPlayID) }, apperrs.ErrNotFound},
+		{"the play is disabled", ctxAs(starter), ticketID, func(f *runnerFixture) { f.plays.byID[checkPlayID].Enabled = false }, apperrs.ErrInvalid},
+		{"the plays cannot be read", ctxAs(starter), ticketID, func(f *runnerFixture) { f.plays.listErr = errors.New("disk") }, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newDecisionsFixture()
-			f.targets.setTicketStage(ticketID, tt.stage)
+			if tt.arrange != nil {
+				tt.arrange(f)
+			}
 			_, err := f.runner.RetryDecisionsCheck(tt.ctx, tt.ticket, ViaWeb)
-			require.ErrorIs(t, err, tt.want)
-			assert.Equal(t, tt.records, len(f.trails.all()) > 0)
+			require.Error(t, err)
+			if tt.want != nil {
+				require.ErrorIs(t, err, tt.want)
+			}
+			assert.Empty(t, f.trails.all(), "a refused retry leaves no trail")
 		})
 	}
 }
@@ -278,35 +94,44 @@ func TestDecisionsCheckRun_HTTPAndMCP(t *testing.T) {
 	require.NoError(t, err)
 	<-f2.turns.done
 	assert.Equal(t, ViaMCP, out.(trailSummary).Via)
+	assert.Equal(t, checkPlayID, out.(trailSummary).PlayID)
 	_, err = callTool(t, tools, ctxAs(starter), "play_run", `{"decisions_check":true,"target_type":"ticket","target_id":""}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
 }
 
-func TestDecisionsCheckSwitch_HTTPAndMCP(t *testing.T) {
+func TestDecisionsCheckSwitch_IsGone_TheSeededPlayListsInstead(t *testing.T) {
 	repo := newFakeRepo()
 	perm := newFakePerm(map[string][]permissions.Action{
-		"owner":  {permissions.AutomationsRead, permissions.AutomationsWrite, permissions.PlaysRead},
-		"viewer": {permissions.AutomationsRead},
+		"owner": {permissions.AutomationsWrite, permissions.PlaysRead, permissions.PlaysWrite, permissions.AutoplaysRead},
 	})
 	s := newTestService(repo, perm)
+	require.NoError(t, s.SeedDefaults(context.Background(), workspaceID))
 	h := NewHandler(s).Routes()
 	path := "/api/workspaces/" + workspaceID + "/plays/decisions-check"
 
-	rec := do(t, h, http.MethodGet, path, "", "viewer")
-	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), `"enabled":false`, "a workspace starts with the check off")
-	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodPatch, path, `{"enabled":true}`, "viewer").Code, "switching takes automations:write")
-	rec = do(t, h, http.MethodPatch, path, `{"enabled":true}`, "owner")
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.True(t, repo.decisionsCheck[workspaceID])
+	assert.Equal(t, http.StatusNotFound, do(t, h, http.MethodGet, path, "", "owner").Code)
+	assert.Equal(t, http.StatusNotFound, do(t, h, http.MethodPatch, path, `{"enabled":true}`, "owner").Code)
 
 	tools := MCPTools(s)
-	_, err := callTool(t, tools, ctxAs("owner"), "play_update", `{"workspace_id":"`+workspaceID+`","id":"decisions-check","label":"x"}`)
-	require.ErrorIs(t, err, apperrs.ErrInvalid, "the check's label and instructions are built in")
-	out, err := callTool(t, tools, ctxAs("owner"), "play_update", `{"workspace_id":"`+workspaceID+`","id":"decisions-check","enabled":false}`)
-	require.NoError(t, err)
-	assert.False(t, out.(playResult).Enabled)
+	_, err := callTool(t, tools, ctxAs("owner"), "play_update", `{"workspace_id":"`+workspaceID+`","id":"decisions-check","enabled":true}`)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+
 	listed, err := callTool(t, tools, ctxAs("owner"), "play_list", `{"workspace_id":"`+workspaceID+`"}`)
 	require.NoError(t, err)
-	assert.Contains(t, fmt.Sprint(listed), DecisionsCheckPlayID, "play_list shows the switch to those who may read it")
+	raw, err := json.Marshal(listed)
+	require.NoError(t, err)
+	var page struct {
+		Items []playResult `json:"items"`
+	}
+	require.NoError(t, json.Unmarshal(raw, &page))
+	var check *playResult
+	for i, p := range page.Items {
+		assert.NotEqual(t, DecisionsCheckKey, p.ID, "no pseudo play rides on the list")
+		if p.Label == decisionsCheckLabel {
+			check = &page.Items[i]
+		}
+	}
+	require.NotNil(t, check)
+	require.Len(t, check.AutoPlays, 1)
+	assert.False(t, check.AutoPlays[0].Enabled, "a new workspace starts with the check off")
 }
