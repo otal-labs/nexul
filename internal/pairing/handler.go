@@ -192,10 +192,10 @@ type pairComputerRequest struct {
 	Token string `json:"token"`
 }
 
-// pairComputer pairs an existing computer at its own address, which for a computer tunnel is its hostname.
+// pairComputer pairs an existing computer now: through its runner with no body, or a computer tunnel with a token.
 func (h *Handler) pairComputer(w http.ResponseWriter, r *http.Request) {
 	var req pairComputerRequest
-	if err := httpx.DecodeJSON(r, &req); err != nil {
+	if err := optionalJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

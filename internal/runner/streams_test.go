@@ -276,7 +276,7 @@ func TestPersonalRunner_RefusesDeployFrames(t *testing.T) {
 			if err := wsjson.Read(ctx, conn, &f); err != nil {
 				return
 			}
-			if f.Type != FrameHeartbeat {
+			if f.Type != FrameHeartbeat && f.Type != FrameFacts {
 				got = append(got, f)
 			}
 		}

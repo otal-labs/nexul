@@ -15,9 +15,6 @@ import (
 	"github.com/otal-labs/nexul/internal/runner"
 )
 
-// computerHostSuffix names a computer reached through its personal runner (ADR 0146); .invalid never resolves.
-const computerHostSuffix = ".nexul-computer.invalid"
-
 // computerDialer opens a connection to a computer's T3 Code through its runner.
 type computerDialer interface {
 	DialComputer(ctx context.Context, computerID string) (net.Conn, error)
@@ -64,6 +61,15 @@ func (r *runnerComputers) ComputerRunner(ctx context.Context, computerID string)
 	return pairing.ComputerRunner{Connected: rn.Connected, LastSeen: rn.LastSeen}, nil
 }
 
+// PairingToken is pairing's seam for a one-time T3 Code pairing token minted on the computer by its runner.
+func (r *runnerComputers) PairingToken(ctx context.Context, computerID string) (string, error) {
+	h := r.handler.Load()
+	if h == nil {
+		return "", apperrs.Retryable(errors.New("the runner handler has not started"))
+	}
+	return h.PairingToken(ctx, computerID)
+}
+
 func (r *runnerComputers) DialComputer(ctx context.Context, computerID string) (net.Conn, error) {
 	h := r.handler.Load()
 	if h == nil {
@@ -78,7 +84,7 @@ func harnessHTTPClient(computers computerDialer, access cloudflare.AccessCredent
 	dial, proxy := base.DialContext, base.Proxy
 	base.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		host, _, err := net.SplitHostPort(addr)
-		if id, ok := strings.CutSuffix(host, computerHostSuffix); ok && err == nil {
+		if id, ok := strings.CutSuffix(host, pairing.ComputerHostSuffix); ok && err == nil {
 			return computers.DialComputer(ctx, id)
 		}
 		return dial(ctx, network, addr)
@@ -105,5 +111,5 @@ func (t asLoopback) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func isComputerHost(req *http.Request) bool {
-	return strings.HasSuffix(req.URL.Hostname(), computerHostSuffix)
+	return strings.HasSuffix(req.URL.Hostname(), pairing.ComputerHostSuffix)
 }

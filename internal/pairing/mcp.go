@@ -36,8 +36,8 @@ type computerCreateIn struct {
 }
 
 type computerPairIn struct {
-	Token     string `json:"token,omitempty" jsonschema:"The one-time token t3 pair prints on the computer, or the whole pairing link it prints (Pairing URL) or T3 Code copies from Authorized clients. Omit it with id and name to only rename the computer."`
-	ID        string `json:"id,omitempty" jsonschema:"One of your computers to pair or re-pair, for example one added with a tunnel. Omit it to pair a new computer by name and server_url."`
+	Token     string `json:"token,omitempty" jsonschema:"Only for a computer added before the Nexul app, with a tunnel or by URL: the one-time token t3 pair prints on it, or the whole pairing link it prints (Pairing URL) or T3 Code copies from Authorized clients. Omit it for a computer added with computer_create, which pairs through its Nexul app."`
+	ID        string `json:"id,omitempty" jsonschema:"One of your computers to pair or re-pair now; alone, it pairs a computer added with computer_create through its Nexul app. Omit it to pair a new computer by name and server_url."`
 	Name      string `json:"name,omitempty" jsonschema:"The computer's name, for example Onik Laptop. Required without id; with id it renames the computer, and omitting it keeps the name."`
 	ServerURL string `json:"server_url,omitempty" jsonschema:"The T3 Code server URL this server reaches, for example https://vps.example.com:3773. Required without id; with id it moves a computer paired by URL, and omitting it keeps the address. A tunnel computer always pairs over its own hostname."`
 }
@@ -81,6 +81,7 @@ type computerResult struct {
 	Tunnel            *ComputerTunnel   `json:"tunnel,omitempty"`
 	TunnelStatus      *TunnelStatus     `json:"tunnel_status,omitempty"`
 	Runner            *ComputerRunner   `json:"runner,omitempty"`
+	PairError         string            `json:"pair_error,omitempty"`
 	TunnelStatusError string            `json:"tunnel_status_error,omitempty"`
 	Setup             *Setup            `json:"setup,omitempty"`
 	MCPToken          *MCPToken         `json:"mcp_token,omitempty"`
@@ -89,7 +90,7 @@ type computerResult struct {
 }
 
 func toComputerResult(c Computer) computerResult {
-	r := computerResult{ID: c.ID, Name: c.Name, Kind: c.Kind, ServerURL: c.ServerURL, Paired: c.Paired(), HarnessVersion: c.HarnessVersion, Tunnel: c.Tunnel, Runner: c.Runner}
+	r := computerResult{ID: c.ID, Name: c.Name, Kind: c.Kind, ServerURL: c.ServerURL, Paired: c.Paired(), HarnessVersion: c.HarnessVersion, Tunnel: c.Tunnel, Runner: c.Runner, PairError: c.PairError}
 	if r.Paired {
 		r.SessionExpiresAt = &c.TokenExpiresAt
 	}
@@ -103,8 +104,9 @@ func computerListTool(s *Service) mcptool.Tool {
 			"computer alone with its tunnel's live status: tunnel is Cloudflare's connector state (inactive, healthy, "+
 			"degraded, or down) and harness_reachable says whether T3 Code answers through the hostname; pairing can "+
 			"continue with computer_pair once both pass. One computer also lists its T3 projects as T3 Code reports them, "+
-			"the t3_project_id play_run takes. A computer with paired false has a tunnel but no harness "+
-			"session yet, and one without setup.confirmed_at needs computer_setup_run before agent work can use it.",
+			"the t3_project_id play_run takes. A computer with paired false has no harness session yet, and pair_error "+
+			"says why its last pairing through its Nexul app failed; one without setup.confirmed_at needs computer_setup_run "+
+			"before agent work can use it.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in computerListIn) (any, error) {
 			userID := mcpActorID(ctx)
@@ -208,11 +210,13 @@ func createComputer(ctx context.Context, s *Service, in computerCreateIn) (*Comp
 
 func computerPairTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_pair", "Pair computer",
-		"Pairs T3 Code on a computer with the one-time token t3 pair prints there, or the pairing link around it, giving Nexul a harness session on it. "+
-			"Pass id to pair a computer added with a tunnel, over its tunnel hostname, or to re-pair one of your "+
-			"computers after its session expired; with id, name renames it and server_url moves a computer paired "+
-			"by URL, and an omitted one keeps its value. With id and name alone it only renames the computer. Without id, name and server_url pair a new machine this "+
-			"server can already reach. Returns the paired computer; run computer_setup_run next so agent work can use it.",
+		"Pairs T3 Code on one of your computers now, giving Nexul a harness session on it. A computer added with "+
+			"computer_create pairs, and re-pairs before its session ends, on its own once its Nexul app connects; pass only "+
+			"its id to pair it again now, which mints a one-time token on the computer and exchanges it there, and a failure "+
+			"says why and leaves the computer as it was. A computer added before the Nexul app takes the token t3 pair prints "+
+			"there: with id, over its tunnel hostname or its address, where name renames it and server_url moves one paired "+
+			"by URL; without id, name and server_url pair a new machine this server can already reach. With id and name "+
+			"alone it only renames the computer. Returns the paired computer; run computer_setup_run next so agent work can use it.",
 		mcptool.Hints{},
 		func(ctx context.Context, in computerPairIn) (any, error) {
 			c, err := pairComputer(ctx, s, in)
@@ -230,6 +234,9 @@ func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer
 	}
 	if in.ID == "" {
 		return s.Pair(ctx, userID, harness.KindT3Code, in.Name, in.ServerURL, in.Token)
+	}
+	if in.Name == "" && in.Token == "" && in.ServerURL == "" {
+		return s.PairComputer(ctx, userID, in.ID, "")
 	}
 	current, err := s.ownComputer(ctx, userID, in.ID)
 	if err != nil {

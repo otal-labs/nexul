@@ -370,5 +370,8 @@ func loopbackHost(bound string) (string, error) {
 	if ip := net.ParseIP(bound); ip != nil && ip.IsLoopback() {
 		return ip.String(), nil
 	}
-	return "", fmt.Errorf("T3 Code listens on %s, which is not a loopback address", bound)
+	return "", fmt.Errorf("T3 Code listens on %s, which %w", bound, errNotLoopback)
 }
+
+// errNotLoopback is T3 Code bound to an address the runner refuses to reach.
+var errNotLoopback = errors.New("is not a loopback address")

@@ -94,6 +94,10 @@ type Handler struct {
 	streamWaiters map[string]*streamWaiter
 	openStreams   map[string]map[string]context.CancelFunc
 
+	// pairMu/pairWaiters correlate a pairing token request with the runner asked for it (t3code.go).
+	pairMu      sync.Mutex
+	pairWaiters map[string]pairWaiter
+
 	// updateMu guards updateSettings/updateRelease: set once by SetUpdateSource after runnerSvc (and its release
 	// client) exist, since that happens after the handler is constructed in server/cmd/workers.go.
 	updateMu       sync.Mutex
@@ -151,6 +155,7 @@ func NewHandler(cfg HandlerConfig) *Handler {
 		logSubs:         make(map[string]logSub),
 		streamWaiters:   make(map[string]*streamWaiter),
 		openStreams:     make(map[string]map[string]context.CancelFunc),
+		pairWaiters:     make(map[string]pairWaiter),
 	}
 }
 
@@ -552,15 +557,7 @@ func (h *Handler) readLoop(ctx context.Context, c *runnerConn) {
 func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) error {
 	switch f.Type {
 	case FrameHeartbeat:
-		c.touchHeartbeat()
-		if err := h.repo.Heartbeat(ctx, c.id, time.Unix(f.TS, 0).UTC()); err != nil {
-			return fmt.Errorf("runner heartbeat repo: %w", err)
-		}
-		h.touchMachine(ctx, c)
-		if c.personal {
-			return nil
-		}
-		return h.bus.Publish(ctx, TopicRunnerHeartbeat, RunnerHeartbeatEvent{RunnerID: c.id, TS: f.TS})
+		return h.heartbeat(ctx, c, f)
 	case FrameBuildProgress:
 		if f.Step == 1 {
 			return h.bus.Publish(ctx, TopicDeployBuildStarted, BuildStartedEvent{ID: f.ID, Total: f.Total, Log: f.Log})
@@ -579,9 +576,11 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		return h.bus.Publish(ctx, TopicDeployStatusChanged, DeployStatusChangedEvent{
 			ID: f.ID, Status: f.Status, Error: f.Error, Address: f.Address, Services: f.Services,
 		})
-	case FrameDiscoverResult, FrameLogsChunk, FrameLogsEnd, FrameHarnessDialRefused:
+	case FrameDiscoverResult, FrameLogsChunk, FrameLogsEnd, FrameHarnessDialRefused, FrameT3PairToken:
 		h.deliverReply(c, f)
 		return nil
+	case FrameFacts:
+		return h.publishFacts(ctx, c, f)
 	case FrameJoinNetworksResult:
 		if f.Status == BuildStatusFailed {
 			h.log.Warn("join_networks failed on runner", "runner_id", c.id, "gateway_container", f.GatewayContainer, "error", f.Error)
@@ -597,6 +596,19 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 	}
 }
 
+// heartbeat records a runner's beat; a personal runner's is never published, since the topic reaches automations.
+func (h *Handler) heartbeat(ctx context.Context, c *runnerConn, f Frame) error {
+	c.touchHeartbeat()
+	if err := h.repo.Heartbeat(ctx, c.id, time.Unix(f.TS, 0).UTC()); err != nil {
+		return fmt.Errorf("runner heartbeat repo: %w", err)
+	}
+	h.touchMachine(ctx, c)
+	if c.personal {
+		return nil
+	}
+	return h.bus.Publish(ctx, TopicRunnerHeartbeat, RunnerHeartbeatEvent{RunnerID: c.id, TS: f.TS})
+}
+
 // deliverReply routes a frame answering a server request to whoever waits on its id.
 func (h *Handler) deliverReply(c *runnerConn, f Frame) {
 	switch f.Type {
@@ -606,6 +618,8 @@ func (h *Handler) deliverReply(c *runnerConn, f Frame) {
 		h.deliverLogs(f)
 	case FrameHarnessDialRefused:
 		h.deliverRefusal(c, f)
+	case FrameT3PairToken:
+		h.deliverPairToken(c, f)
 	}
 }
 

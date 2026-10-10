@@ -67,6 +67,9 @@ type Service struct {
 	setupMu   sync.Mutex
 	settingUp map[string]bool
 	setupRuns sync.WaitGroup
+	// pairMu guards pairFailures: why each computer's last pairing through its runner failed.
+	pairMu       sync.Mutex
+	pairFailures map[string]string
 }
 
 // NewService wires the pairing use-cases.
@@ -77,6 +80,7 @@ func NewService(cfg Config) *Service {
 	return &Service{
 		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
 		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, watching: map[string]tunnelWatch{}, settingUp: map[string]bool{},
+		pairFailures: map[string]string{},
 	}
 }
 
@@ -196,11 +200,14 @@ func (s *Service) Pair(ctx context.Context, userID string, kind harness.Kind, na
 	return s.pair(ctx, Computer{UserID: userID, Kind: kind, Name: name}, serverURL, secret)
 }
 
-// PairComputer pairs the harness at an existing computer's own address, over its tunnel hostname when it has one.
+// PairComputer pairs a computer now: through its runner with no secret, else (a tunnel computer always) at its address.
 func (s *Service) PairComputer(ctx context.Context, userID, computerID, secret string) (*Computer, error) {
 	existing, err := s.ownComputer(ctx, userID, computerID)
 	if err != nil {
 		return nil, err
+	}
+	if strings.TrimSpace(secret) == "" && existing.Tunnel == nil {
+		return s.pairThroughRunner(ctx, *existing)
 	}
 	return s.pair(ctx, *existing, existing.address(), secret)
 }
@@ -650,7 +657,7 @@ func (s *Service) requireListedProject(ctx context.Context, userID, computerID, 
 		return err
 	}
 	if err != nil {
-		return &NotConfiguredError{Reason: ReasonOffline, Computer: target.Computer.Name, ComputerID: target.Computer.ID, Err: err}
+		return s.offline(ctx, target.Computer, err)
 	}
 	if !slices.ContainsFunc(projects, func(p harness.Project) bool { return p.ID == harnessProjectID }) {
 		return fmt.Errorf("%w: %s is not one of the T3 projects on %s", apperrs.ErrInvalid, harnessProjectID, target.Computer.Name)
@@ -720,7 +727,7 @@ func (s *Service) requireSetup(ctx context.Context, target *ResolvedTarget) (*Re
 		return nil, err
 	}
 	if err != nil {
-		return nil, &NotConfiguredError{Reason: ReasonOffline, Computer: target.Computer.Name, ComputerID: target.Computer.ID, Err: err}
+		return nil, s.offline(ctx, target.Computer, err)
 	}
 	// The call may have moved the computer to a newer kind; the turn and its version-drift check read what it holds now.
 	stored, err := s.repo.GetComputer(ctx, target.Computer.UserID, target.Computer.ID)
@@ -743,6 +750,18 @@ func (s *Service) requireSetup(ctx context.Context, target *ResolvedTarget) (*Re
 	}
 	target.Provider = provider.ID
 	return target, nil
+}
+
+// offline is the refusal for a computer whose harness did not answer; a run aimed at it never moves to another computer.
+func (s *Service) offline(ctx context.Context, c Computer, err error) *NotConfiguredError {
+	nc := &NotConfiguredError{Reason: ReasonOffline, Computer: c.Name, ComputerID: c.ID, Err: err}
+	if s.runners == nil {
+		return nc
+	}
+	if r, rerr := s.runners.ComputerRunner(ctx, c.ID); rerr == nil && !r.Connected {
+		nc.Why = "it isn't connected to Nexul"
+	}
+	return nc
 }
 
 // pickProvider finds the stored instance id among the harness's providers, or the harness default for an empty one.

@@ -20,6 +20,17 @@ type fakeRunners struct {
 	minted  []string
 	runners map[string]ComputerRunner
 	err     error
+	// token is what PairingToken hands out, or tokenErr its failure; tokens counts the asks.
+	token    string
+	tokenErr error
+	tokens   int
+}
+
+func (f *fakeRunners) PairingToken(_ context.Context, _ string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.tokens++
+	return f.token, f.tokenErr
 }
 
 func (f *fakeRunners) EnrollComputer(_ context.Context, userID, computerID string) (Enrollment, error) {

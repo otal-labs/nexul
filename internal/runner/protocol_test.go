@@ -157,6 +157,20 @@ func TestFrame_Encode(t *testing.T) {
 			},
 			want: `{"type":"harness_dial_refused","id":"s1","error":"T3 Code is not running"}`,
 		},
+		{
+			name: "t3_pair_token wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameT3PairToken, ID: "p1", Token: "tok"}
+			},
+			want: `{"type":"t3_pair_token","id":"p1","token":"tok"}`,
+		},
+		{
+			name: "facts wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameFacts, Facts: &Facts{Hostname: "alice-laptop", T3: T3Facts{State: T3Answering, Port: 3773, Version: "0.0.34"}}}
+			},
+			want: `{"type":"facts","facts":{"hostname":"alice-laptop","t3":{"state":"answering","port":3773,"version":"0.0.34"}}}`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -200,6 +214,11 @@ func TestFrame_Encode_Invalid(t *testing.T) {
 		{name: "harness_dial missing id", f: Frame{Type: FrameHarnessDial}},
 		{name: "harness_dial_refused missing id", f: Frame{Type: FrameHarnessDialRefused, Error: "refused"}},
 		{name: "harness_dial_refused missing error", f: Frame{Type: FrameHarnessDialRefused, ID: "s1"}},
+		{name: "t3_pair_token_request missing id", f: Frame{Type: FrameT3PairTokenRequest}},
+		{name: "t3_pair_token with neither token nor error", f: Frame{Type: FrameT3PairToken, ID: "p1"}},
+		{name: "t3_pair_token with both token and error", f: Frame{Type: FrameT3PairToken, ID: "p1", Token: "tok", Error: "refused"}},
+		{name: "facts missing its report", f: Frame{Type: FrameFacts}},
+		{name: "facts with an unknown T3 Code state", f: Frame{Type: FrameFacts, Facts: &Facts{T3: T3Facts{State: "asleep"}}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

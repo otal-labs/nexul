@@ -68,6 +68,8 @@ type Client struct {
 	streams     sync.WaitGroup
 	openStreams atomic.Int32
 	dial        func(ctx context.Context, network, address string) (net.Conn, error)
+	// findT3 locates T3 Code's command for a home, "" when it is not installed.
+	findT3 func(home string) string
 }
 
 // NewClient wires the runner client with sane defaults for unset durations.
@@ -90,7 +92,7 @@ func NewClient(cfg ClientConfig) *Client {
 	if cfg.BackoffMax <= 0 {
 		cfg.BackoffMax = 30 * time.Second
 	}
-	return &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext}
+	return &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext, findT3: findT3}
 }
 
 // errRemoved ends the connection loop: the server removed this runner, so reconnecting can never succeed.
@@ -148,6 +150,9 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 	defer c.cancelJob("")
 
 	go c.heartbeatLoop(ctx, conn)
+	if c.cfg.Personal {
+		go c.factsLoop(ctx, conn)
+	}
 
 	for {
 		var raw json.RawMessage
@@ -190,6 +195,8 @@ func (c *Client) handleFrame(streamCtx, ctx context.Context, conn *websocket.Con
 		c.stopLogs(frame.ID)
 	case FrameHarnessDial:
 		c.startStream(streamCtx, ctx, conn, frame.ID)
+	case FrameT3PairTokenRequest:
+		c.answerPairToken(ctx, conn, frame.ID)
 	default:
 		c.log.Warn("unexpected server frame", "runner", c.cfg.Name, "type", frame.Type)
 	}

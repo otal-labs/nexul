@@ -100,6 +100,56 @@ Never run `docker compose -f docker-compose.debug.yml down -v` to pick up a
 dependency change — that also wipes the debug database and OpenObserve
 volumes. `exec ... bun install` is the fix; `down -v` is not.
 
+## Pairing a computer locally
+
+A computer pairs through its personal runner, so a local or end-to-end check
+runs one by hand against the debug stack or a local server, reaching a
+throwaway T3 Code so your own stays untouched. Keep the scratch files in a
+git-excluded folder such as `.verify/`.
+
+1. Start a throwaway T3 Code in a base directory of its own, on a port of
+   its own, and give it a project:
+
+   ```sh
+   t3 serve --base-dir "$PWD/.verify/t3home" --port 47190 --host 127.0.0.1 --no-browser
+   t3 project add --base-dir "$PWD/.verify/t3home" <a git folder>
+   ```
+
+   Any T3 Code build works: a release's AppImage, extracted with
+   `--appimage-extract`, runs as
+   `ELECTRON_RUN_AS_NODE=1 squashfs-root/t3code squashfs-root/resources/app.asar/apps/server/dist/bin.mjs`.
+   Put a small `t3` script that runs that command first on `PATH`, because
+   the runner mints its pairing token with the first `t3` it finds.
+2. Add a computer as yourself: `POST /api/pairing/computers/enrollments`
+   with `{}` returns the computer and its `token`.
+3. Trade the token for the runner's credential and save it to a file:
+
+   ```sh
+   curl -s -X POST http://127.0.0.1:8080/api/runners/enroll \
+     -H 'Content-Type: application/json' \
+     -d '{"token":"<token>","machine":"'"$(hostname)"'","os":"linux","arch":"amd64"}'
+   ```
+
+   The answer holds `name` and `credential`; the credential is shown once.
+4. Run the runner in personal mode, pointed at the throwaway's base
+   directory:
+
+   ```sh
+   NEXUL_SERVER_URL=http://127.0.0.1:8080 NEXUL_CREDENTIAL_FILE=.verify/credential \
+   NEXUL_RUNNER_MODE=personal NEXUL_RUNNER_NAME=<name> T3CODE_HOME="$PWD/.verify/t3home" \
+   go run ./runner/cmd
+   ```
+
+   A runner with a custom `T3CODE_HOME` reads the throwaway's port from its
+   runtime file and never falls back to 3773, so once the throwaway stops,
+   its dials are refused instead of reaching your own T3 Code.
+
+Within seconds the runner reports T3 Code answering and the computer pairs
+on its own: `GET /api/pairing/computers` shows a `token_expires_at`, or
+`pair_error` saying why it could not. `POST /api/pairing/computers/{id}/pair`
+with no body pairs it again now. Stop each process by the PID you started it
+with.
+
 ## Running tests
 
 ```sh

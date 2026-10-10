@@ -62,7 +62,6 @@ func TestMCPTools_InvalidArguments(t *testing.T) {
 		args string
 	}{
 		{"list with a numeric id", "computer_list", `{"id": 7}`},
-		{"pair without a token", "computer_pair", `{"id": "c1"}`},
 		{"pair by URL without a name", "computer_pair", `{"server_url": "https://vps.example.com", "token": "tok"}`},
 		{"delete without an id", "computer_delete", `{}`},
 		{"tunnel token without a computer", "computer_tunnel_token_get", `{}`},

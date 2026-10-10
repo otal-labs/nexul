@@ -36,6 +36,16 @@ type Computer struct {
 	Tunnel *ComputerTunnel `json:"tunnel,omitempty"`
 	// Runner is the personal runner that reaches the computer (ADR 0146), nil until one enrolls; set on a list only.
 	Runner *ComputerRunner `json:"runner,omitempty"`
+	// PairError is why the last pairing through the runner failed, cleared when one succeeds; set on a list only.
+	PairError string `json:"pair_error,omitempty"`
+}
+
+// ComputerHostSuffix names a computer reached through its personal runner (ADR 0146); .invalid never resolves.
+const ComputerHostSuffix = ".nexul-computer.invalid"
+
+// runnerAddress is the address the harness client reaches computerID's T3 Code at, through its runner.
+func runnerAddress(computerID string) string {
+	return "http://" + computerID + ComputerHostSuffix
 }
 
 // ComputerTunnel is a computer's own tunnel on the instance's Cloudflare, with what teardown needs to remove it.
@@ -104,9 +114,13 @@ func (c Computer) address() string {
 	return c.ServerURL
 }
 
-// Session is the harness-facing view of a computer; only call it on a decrypted copy.
+// Session is the harness-facing view of a decrypted computer; one added with a runner is reached through it (ADR 0146).
 func (c Computer) Session() harness.Session {
-	return harness.Session{ComputerID: c.ID, Name: c.Name, ServerURL: c.ServerURL, BearerToken: c.BearerToken}
+	serverURL := c.ServerURL
+	if serverURL == "" && c.Tunnel == nil {
+		serverURL = runnerAddress(c.ID)
+	}
+	return harness.Session{ComputerID: c.ID, Name: c.Name, ServerURL: serverURL, BearerToken: c.BearerToken}
 }
 
 // Setup is a computer's setup confirmation, overall and per provider (ADR 0063).
@@ -352,6 +366,8 @@ type NotConfiguredError struct {
 	ProviderID string
 	// Err is the harness failure behind ReasonOffline.
 	Err error
+	// Why says what is offline for ReasonOffline when Nexul knows more than that T3 Code did not answer.
+	Why string
 }
 
 // Error is the user-facing refusal for the gate's reasons, so chat, the play run dialog, and MCP all read the same line.
@@ -360,7 +376,11 @@ func (e *NotConfiguredError) Error() string {
 		return fmt.Sprintf("@Agent can't use %s on %s until its setup is done — run setup for %s in Settings → T3 Code Setup.", e.Provider, e.Computer, e.Computer)
 	}
 	if e.Reason == ReasonOffline {
-		return fmt.Sprintf("@Agent can't reach %s — is T3 Code running there?", e.Computer)
+		why := e.Why
+		if why == "" {
+			why = "T3 Code isn't answering there"
+		}
+		return fmt.Sprintf("%s is offline: %s.", e.Computer, why)
 	}
 	if e.Reason == ReasonNeedsLocation {
 		return "Pick where plays run in this project: a computer and its T3 project. It's saved as your link for this project, " +

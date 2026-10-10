@@ -5403,6 +5403,72 @@
       "runner_id"
     ]
   },
+  "runner.facts_reported": {
+    "type": "object",
+    "properties": {
+      "runner_id": {
+        "type": "string"
+      },
+      "computer_id": {
+        "type": "string",
+        "description": "The computer the runner reaches."
+      },
+      "user_id": {
+        "type": "string",
+        "description": "The person who owns the computer."
+      },
+      "facts": {
+        "type": "object",
+        "properties": {
+          "hostname": {
+            "type": "string",
+            "description": "The computer's hostname."
+          },
+          "t3": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string",
+                "description": "answering: T3 Code answers on loopback; not_running: installed but nothing answers; missing: not installed; not_loopback: bound to an address the runner refuses to reach.",
+                "enum": [
+                  "answering",
+                  "not_running",
+                  "missing",
+                  "not_loopback"
+                ]
+              },
+              "port": {
+                "type": "integer",
+                "description": "The loopback port T3 Code answers on; sent while answering."
+              },
+              "version": {
+                "type": "string",
+                "description": "T3 Code's server version; sent while answering."
+              }
+            },
+            "required": [
+              "state"
+            ]
+          }
+        },
+        "required": [
+          "t3"
+        ]
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Always true: a person's computer is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "runner_id",
+      "computer_id",
+      "user_id",
+      "facts",
+      "members_only"
+    ]
+  },
   "runner.heartbeat": {
     "type": "object",
     "properties": {
