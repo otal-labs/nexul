@@ -122,6 +122,7 @@ func TestHandler_Create(t *testing.T) {
 
 func TestHandler_ChangeSetup(t *testing.T) {
 	h, repo := newTestHandler(t, true)
+	repo.services["p-1"] = []string{"stack-1"}
 	repo.projects["p-1"] = &Project{ID: "p-1", WorkspaceID: "ws-1", Setup: NewSetup(false)}
 
 	rec := do(t, h.Routes(), http.MethodPut, "/api/projects/p-1/setup", `{"steps":{"bogus":"done"}}`, "u-1")

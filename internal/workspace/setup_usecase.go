@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -64,6 +65,15 @@ func (s *Service) ChangeSetup(ctx context.Context, projectID string, change Setu
 	}
 	if err := change.validate(); err != nil {
 		return nil, err
+	}
+	if change.StackID != nil && *change.StackID != "" {
+		owner, err := s.repo.ProjectForStack(ctx, *change.StackID)
+		if errors.Is(err, apperrs.ErrNotFound) || (err == nil && owner != projectID) {
+			return nil, fmt.Errorf("%w: setup stack must belong to this project", apperrs.ErrInvalid)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("check setup stack: %w", err)
+		}
 	}
 	updated, err := s.repo.SaveSetup(ctx, projectID, func(current *Project) []eventbus.OutboxEvent {
 		setup := current.Setup.apply(change)

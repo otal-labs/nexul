@@ -242,6 +242,14 @@ func (r *ProjectsRepo) CountServices(ctx context.Context, projectID string) (int
 	return r.count(ctx, projectID, "stacks")
 }
 
+func (r *ProjectsRepo) ProjectForStack(ctx context.Context, stackID string) (string, error) {
+	row, err := r.q.GetStack(ctx, stackID)
+	if err != nil {
+		return "", notFoundIfNoRows(err)
+	}
+	return row.ProjectID.String, nil
+}
+
 func (r *ProjectsRepo) count(ctx context.Context, projectID, table string) (int, error) {
 	var n int
 	// hand-written: sqlc cannot express a table name chosen at runtime

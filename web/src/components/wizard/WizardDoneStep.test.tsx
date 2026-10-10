@@ -26,7 +26,7 @@ const project = {
   workspace_id: "ws-1",
   icon: "",
   tests_location: "",
-  setup: { finished: false, steps: { project: "done", repository: "done", service: "done", reach: "skipped" } },
+  setup: { finished: false, stack_id: "s-1", env_keys: [], steps: { project: "done", repository: "done", service: "done", reach: "skipped" } },
   created_at: "",
   updated_at: "",
 };

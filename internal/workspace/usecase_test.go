@@ -3,6 +3,7 @@ package workspace
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -208,6 +209,15 @@ func (f *fakeRepo) CountRepos(_ context.Context, projectID string) (int, error) 
 		return 0, f.countErr
 	}
 	return len(f.repos[projectID]), nil
+}
+
+func (f *fakeRepo) ProjectForStack(_ context.Context, stackID string) (string, error) {
+	for projectID, stacks := range f.services {
+		if slices.Contains(stacks, stackID) {
+			return projectID, nil
+		}
+	}
+	return "", apperrs.ErrNotFound
 }
 
 func (f *fakeRepo) CountServices(_ context.Context, projectID string) (int, error) {

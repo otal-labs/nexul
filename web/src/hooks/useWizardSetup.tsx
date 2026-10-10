@@ -18,17 +18,14 @@ export const useWizardProject = () => {
 export const useMarkStep = () => {
   const projectId = useProjectWizardStore((s) => s.projectId);
   const change = useChangeProjectSetup();
-  const project = useWizardProject();
+  const pendingContext = usePendingServiceContext();
   return (step: WizardStepId, mark: SetupMark) => {
     if (!projectId || step === "done") return;
-    const { stackId, scanResult } = useProjectWizardStore.getState();
+    const context = pendingContext();
     return change.mutateAsync({
       projectId,
-      steps: { [step]: mark },
-      ...(step === "service" && mark === "done" && stackId && {
-        stack_id: stackId,
-        env_keys: scanResult?.env_keys ?? project?.setup.env_keys ?? [],
-      }),
+      ...context,
+      steps: { ...context.steps, [step]: mark },
     });
   };
 };
@@ -56,18 +53,28 @@ export const useSeedSetupStack = () => {
 
   useEffect(() => {
     if (!wanted || !stack || stack.project_id !== project?.id) return;
-    setStackId(stack.id);
+    setStackId(stack.id, project?.setup.env_keys ?? []);
     setName(stack.name);
     setMachine(stack.machine);
-  }, [wanted, stack, project?.id, setStackId, setName, setMachine]);
+  }, [wanted, stack, project?.id, project?.setup.env_keys, setStackId, setName, setMachine]);
 };
 
 export const useWizardEnvKeys = (): string[] => {
   const project = useWizardProject();
-  const scan = useProjectWizardStore((s) => s.scanResult);
-  const stackId = useProjectWizardStore((s) => s.stackId);
-  if (scan) return scan.env_keys;
-  if (!project || (!inSetup(project) && stackId !== project.setup.stack_id)) return [];
-  if (stackId && stackId !== project.setup.stack_id) return [];
+  const { scanResult, stackId, serviceEnvKeys } = useProjectWizardStore(
+    useShallow((s) => ({ scanResult: s.scanResult, stackId: s.stackId, serviceEnvKeys: s.serviceEnvKeys })),
+  );
+  if (stackId) return serviceEnvKeys;
+  if (scanResult) return scanResult.env_keys;
+  if (!project || !inSetup(project)) return [];
   return project.setup.env_keys ?? [];
+};
+
+export const usePendingServiceContext = () => {
+  const project = useWizardProject();
+  return () => {
+    const { stackId, serviceEnvKeys } = useProjectWizardStore.getState();
+    if (!stackId || (stackId === project?.setup.stack_id && serviceEnvKeys.length === (project.setup.env_keys ?? []).length && serviceEnvKeys.every((key, index) => key === project.setup.env_keys?.[index]))) return {};
+    return { stack_id: stackId, env_keys: serviceEnvKeys, steps: { service: "done" as const } };
+  };
 };

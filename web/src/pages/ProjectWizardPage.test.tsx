@@ -274,6 +274,76 @@ describe("ProjectWizardPage", () => {
     expect(mocks.post).toHaveBeenCalledWith("/api/deploys", expect.objectContaining({ stack_id: "stack-1", ref: "release" }));
   });
 
+  it("keeps restored service context when Repository scans another repository", async () => {
+    const setup = { finished: false, stack_id: "stack-1", env_keys: ["PORT"], steps: { project: "done", service: "done" } };
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/projects/p-1") return { data: { ...project, setup } };
+      if (url === "/api/stacks/stack-1") return { data: { ...stack, env: { PORT: "8000" }, build_source: { branch: "release" } } };
+      if (url === "/api/repositories") return { data: { repositories: [{ id: 2, owner: "acme", name: "other", full_name: "acme/other", provider: "github", default_branch: "develop" }] } };
+      return { data: [] };
+    });
+    mocks.post.mockImplementation(async (url: string) => {
+      if (url.includes("scan")) return { data: { default_branch: "develop", env_keys: ["OTHER_KEY"], candidates: [{ kind: "compose", path: "compose.yml", name: "other", services: [] }] } };
+      return { data: { id: "deploy-1" } };
+    });
+    mocks.put.mockResolvedValue({ data: { ...project, setup } });
+    mocks.patch.mockResolvedValue({ data: stack });
+    const user = userEvent.setup();
+    renderPage("/acme/wizard/project/service?project=p-1");
+    await screen.findByText(/api runs on/);
+    await user.click(within(rung("Repository")).getByRole("button"));
+    await user.type(screen.getByPlaceholderText("Search repositories…"), "other");
+    await user.click(await screen.findByRole("button", { name: /acme.*other/ }));
+    await screen.findByRole("heading", { name: "Service" });
+    await user.click(screen.getByRole("button", { name: "Continue to Environment" }));
+    expect(await screen.findByLabelText("PORT")).toHaveValue("8000");
+    expect(screen.queryByLabelText("OTHER_KEY")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save & deploy" }));
+    await screen.findByRole("heading", { name: "Reach" });
+    expect(mocks.post).toHaveBeenLastCalledWith("/api/deploys", expect.objectContaining({ stack_id: "stack-1", ref: "release" }));
+    for (const [, body] of mocks.put.mock.calls) expect(body.env_keys ?? ["PORT"]).toEqual(["PORT"]);
+  });
+
+  it.each(["Finish", "Back"])("%s retries pending service context after free navigation away from a failed Service save", async (action) => {
+    const store = useProjectWizardStore.getState();
+    store.setProjectId("p-1", "Backend");
+    store.setScanResult({ default_branch: "main", candidates: [], env_keys: ["PORT"] });
+    store.setCandidate({ kind: "compose", path: "compose.yml", name: "api", services: [] });
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/projects/p-1") return { data: inSetup({ project: "done" }) };
+      if (url === "/api/projects") return { data: [project] };
+      if (url === "/api/memories") return { data: [{ id: "m-1", project_id: "p-1", kind: "interview", body: "## Stack" }] };
+      if (url === "/api/machines") return { data: [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "" }] };
+      return { data: [] };
+    });
+    mocks.post.mockResolvedValue({ data: stack });
+    mocks.put.mockRejectedValueOnce(new Error("offline")).mockRejectedValueOnce(new Error("offline"));
+    mocks.put.mockResolvedValue({ data: project });
+    const user = userEvent.setup();
+    renderPage("/acme/wizard/project/service?project=p-1");
+    await pickOption(user, "Machine", "prod");
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    await screen.findByText(/api runs on/);
+    await vi.waitFor(() => expect(mocks.put).toHaveBeenCalledTimes(1));
+    const target = action === "Finish" ? "Done" : "Info";
+    await user.click(within(rung(target)).getByRole("button"));
+    await user.click(await screen.findByRole("button", { name: action }));
+    await vi.waitFor(() => expect(mocks.put).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole("heading", { name: target })).toBeInTheDocument();
+    expect(useProjectWizardStore.getState().stackId).toBe("stack-1");
+    await user.click(screen.getByRole("button", { name: action }));
+    if (action === "Finish") {
+      await screen.findByText("project board");
+    } else {
+      await screen.findByRole("heading", { name: "Service" });
+    }
+    expect(mocks.put).toHaveBeenLastCalledWith("/api/projects/p-1/setup", expect.objectContaining({
+      stack_id: "stack-1", env_keys: ["PORT"], steps: { service: "done" },
+      ...(action === "Finish" && { finished: true }),
+    }));
+    expect(mocks.post).toHaveBeenCalledTimes(1);
+  });
+
   it("skips a directly opened Environment URL with no scan to Reach rather than Info", async () => {
     mocks.put.mockResolvedValue({ data: inSetup({ env: "skipped" }) });
     const user = userEvent.setup();

@@ -84,6 +84,7 @@ func TestChangeSetup_NothingNew_WritesNothing(t *testing.T) {
 
 func TestChangeSetup_ServiceContextSurvivesLaterMarks(t *testing.T) {
 	s, repo, _ := newOwnerRepo(t, true)
+	repo.services["p-1"] = []string{"stack-1"}
 	repo.projects["p-1"] = &Project{ID: "p-1", WorkspaceID: "ws-1", Setup: NewSetup(false)}
 	stackID := "stack-1"
 	envKeys := []string{"PORT"}

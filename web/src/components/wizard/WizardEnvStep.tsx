@@ -41,8 +41,8 @@ interface WizardEnvFormProps extends WizardEnvStepProps {
 }
 
 const WizardEnvForm = ({ stack, envKeys, onDone, onBack, onSkip }: WizardEnvFormProps) => {
-  const { scanResult, envValues } = useProjectWizardStore(
-    useShallow((s) => ({ scanResult: s.scanResult, envValues: s.envValues })),
+  const { envValues } = useProjectWizardStore(
+    useShallow((s) => ({ envValues: s.envValues })),
   );
   const initialValues = { ...stack.env, ...envValues };
   const setEnvValues = useProjectWizardStore((s) => s.setEnvValues);
@@ -76,7 +76,7 @@ const WizardEnvForm = ({ stack, envKeys, onDone, onBack, onSkip }: WizardEnvForm
     try {
       await updateEnv.mutateAsync({ ...stack, env: { ...stack.env, ...filled } });
       setEnvValues(filled);
-      await deployStack.mutateAsync({ stackId: stack.id, ref: scanResult?.default_branch ?? stack.build_source?.branch ?? "" });
+      await deployStack.mutateAsync({ stackId: stack.id, ref: stack.build_source?.branch ?? "" });
       onDone();
     } catch {
       // Errors surface through the hook's toast; saving is retry-safe.

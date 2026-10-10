@@ -202,6 +202,7 @@ func TestProjectUpdate_EveryField(t *testing.T) {
 
 func TestProjectUpdate_FinishesSetup(t *testing.T) {
 	f := newFixture(t)
+	f.w.stacks["stack-1"] = "p-3"
 	must(t, f.w.projects.put(&workspace.Project{ID: "p-3", Name: "Ops", WorkspaceID: "ws-1", Setup: workspace.NewSetup(false)}))
 
 	_, err := call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-3","setup":{"steps":{"deploy":"done"}}}`)

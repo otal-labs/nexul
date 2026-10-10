@@ -24,7 +24,12 @@ a muted "Being set up" line. Continue setup opens the wizard at the first step n
   `finished` back to false; the web app never does.
 - **Continue saves before it moves.** Service creation leaves its summary available if the progress write fails;
   Continue retries the mark and stack identity without creating again. Another stack made later never changes
-  which stack this setup resumes.
+  which stack this setup resumes. Leaving through Info's Back or Done's actions also saves any pending service context;
+  Finish writes that context together with finished, and a failed write keeps the session available for retry.
+- **A scan describes one build source.** Once a service exists, its detected environment keys stay with that service;
+  scanning another repository on a revisit neither replaces those keys nor changes the service's deploy branch.
+- **An exact service belongs to the project.** Both adapters reject a missing or another-project stack before writing
+  setup or its event. An empty stack id clears the selection.
 - **A skip never undoes a done step**, so revisiting a step and skipping it keeps what it made.
 - **Live.** `project.setup_changed` carries the whole record and reaches whoever may open the project, so another
   member's sidebar flips the moment someone presses Finish.

@@ -8,6 +8,7 @@ import { WizardLeftoversSection } from "@/components/wizard/WizardLeftoversSecti
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useInterviewOffer } from "@/hooks/useInterviewOffer";
 import { useChangeProjectSetup, useFetchProjects } from "@/hooks/ProjectHooks";
+import { usePendingServiceContext } from "@/hooks/useWizardSetup";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { interviewPath, projectTokenById } from "@/models/Project";
@@ -34,19 +35,29 @@ export const WizardDoneStep = ({ onBack }: WizardDoneStepProps) => {
   const { data: projects } = useFetchProjects();
   const offer = useInterviewOffer(projectId, projectName ?? name);
   const changeSetup = useChangeProjectSetup();
+  const pendingContext = usePendingServiceContext();
   const token = projectId ? projectTokenById(projects ?? [], projectId) : "";
 
   const go = (to: string) => {
     navigate(wsPath(to));
   };
   // Leaving any other way than the interview counts as skipping it, so it asks first.
+  const saveAndGo = async (to: string) => {
+    try {
+      const context = pendingContext();
+      if (projectId && context.stack_id) await changeSetup.mutateAsync({ projectId, ...context });
+      go(to);
+    } catch {
+      return;
+    }
+  };
   const leave = async (to: string) => {
-    if (await offer.confirmSkip()) go(to);
+    if (await offer.confirmSkip()) await saveAndGo(to);
   };
   const finish = async () => {
     if (!projectId || !(await offer.confirmSkip())) return;
     try {
-      await changeSetup.mutateAsync({ projectId, finished: true });
+      await changeSetup.mutateAsync({ projectId, ...pendingContext(), finished: true });
       go(can?.("tickets") ? `/board/${token}` : "/");
     } catch {
       // The hook toasts the failure; the step stays so Finish can be pressed again.
@@ -67,7 +78,7 @@ export const WizardDoneStep = ({ onBack }: WizardDoneStepProps) => {
       {offer.pending && projectId && (
         <WizardInterviewOffer
           projectName={projectName ?? name}
-          onStart={() => go(interviewPath(token))}
+          onStart={() => void saveAndGo(interviewPath(token))}
           onSkip={() => void offer.confirmSkip()}
         />
       )}

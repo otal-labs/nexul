@@ -66,6 +66,47 @@ func TestProjectsRepo_SaveSetup_WritesTheRecordAndItsEvent(t *testing.T) {
 	assert.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
+func TestProjectSetup_StackContextMustBelongToProject(t *testing.T) {
+	s := newTestStore(t)
+	ctx := t.Context()
+	for _, id := range []string{"p-1", "p-2"} {
+		p := newTestProject(id, id, 0)
+		p.Setup = workspace.NewSetup(false)
+		require.NoError(t, s.Projects.Create(ctx, p))
+		stack := newTestStack("stack-" + id)
+		stack.Name = id
+		stack.Slug = id
+		stack.ProjectID = id
+		require.NoError(t, s.Stacks.Create(ctx, stack))
+	}
+	svc := workspace.NewService(s.Projects, nil, nil, nil, nil, nil)
+	for _, id := range []string{"missing", "stack-p-2"} {
+		t.Run(id, func(t *testing.T) {
+			finished := true
+			keys := []string{"PORT"}
+			_, err := svc.ChangeSetup(ctx, "p-1", workspace.SetupChange{StackID: &id, EnvKeys: &keys, Finished: &finished})
+			assert.ErrorIs(t, err, apperrs.ErrInvalid)
+			p, err := s.Projects.Get(ctx, "p-1")
+			require.NoError(t, err)
+			assert.Equal(t, workspace.NewSetup(false), p.Setup)
+			assert.Equal(t, 0, count(t, s.db, `SELECT COUNT(*) FROM outbox WHERE topic = 'project.setup_changed'`))
+		})
+	}
+	id := "stack-p-1"
+	keys := []string{"PORT"}
+	got, err := svc.ChangeSetup(ctx, "p-1", workspace.SetupChange{StackID: &id, EnvKeys: &keys})
+	require.NoError(t, err)
+	assert.Equal(t, id, got.Setup.StackID)
+	assert.Equal(t, keys, got.Setup.EnvKeys)
+	id = ""
+	keys = []string{}
+	got, err = svc.ChangeSetup(ctx, "p-1", workspace.SetupChange{StackID: &id, EnvKeys: &keys})
+	require.NoError(t, err)
+	assert.Empty(t, got.Setup.StackID)
+	assert.Empty(t, got.Setup.EnvKeys)
+	assert.Equal(t, 2, count(t, s.db, `SELECT COUNT(*) FROM outbox WHERE topic = 'project.setup_changed'`))
+}
+
 type concurrentSetupRepo struct {
 	workspace.Repo
 	writes sync.WaitGroup

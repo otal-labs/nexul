@@ -1,5 +1,8 @@
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 
+import { useChangeProjectSetup } from "@/hooks/ProjectHooks";
+import { usePendingServiceContext } from "@/hooks/useWizardSetup";
+import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useWizardStepOrder } from "@/hooks/useWizardStepOrder";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -24,14 +27,21 @@ export const useWizardBack = (step: WizardStepId): (() => void) => {
   const location = useLocation();
   const wsPath = useWorkspacePath();
   const goTo = useWizardGoTo();
+  const changeSetup = useChangeProjectSetup();
+  const pendingContext = usePendingServiceContext();
   const canOpenBoard = useAreaAccess()?.("tickets") ?? false;
   const order = useWizardStepOrder();
   const previous = order[order.indexOf(step) - 1];
 
   if (previous) return () => goTo(previous);
   return () => {
-    // "default" is the first entry of the session, so there is no in-app page to return to.
-    if (location.key !== "default") return void navigate(-1);
-    void navigate(wsPath(canOpenBoard ? "/board" : "/"));
+    const leave = async () => {
+      const projectId = useProjectWizardStore.getState().projectId;
+      const context = pendingContext();
+      if (projectId && context.stack_id) await changeSetup.mutateAsync({ projectId, ...context });
+      if (location.key !== "default") return void navigate(-1);
+      void navigate(wsPath(canOpenBoard ? "/board" : "/"));
+    };
+    void leave().catch(() => undefined);
   };
 };
