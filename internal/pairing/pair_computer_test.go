@@ -46,7 +46,7 @@ func TestService_PairComputer_FillsTheTunnelComputersSessionOverItsHostname(t *t
 	last := repo.outbox[len(repo.outbox)-1]
 	assert.Equal(t, TopicComputerPaired, last.Topic)
 	assert.Equal(t, ComputerPairedEvent{
-		ComputerID: id, UserID: "u1", ServerURL: "https://laptop-ab12cd34.example.com", HarnessVersion: "0.0.40", TokenExpiresAt: c.TokenExpiresAt,
+		ComputerID: id, UserID: "u1", ServerURL: "https://laptop-ab12cd34.example.com", HarnessVersion: "0.0.40", TokenExpiresAt: c.TokenExpiresAt, MembersOnly: true,
 	}, last.Payload)
 }
 

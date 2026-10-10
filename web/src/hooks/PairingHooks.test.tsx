@@ -152,4 +152,10 @@ describe("the pairing follower", () => {
     await followFrame(pairingFollower, "computer.paired", { computer_id: "c1", user_id: "u1" }, client);
     expect([isStale(client, ["getComputers"]), isStale(client, ["getHarnessResolve", null])]).toEqual([true, true]);
   });
+
+  it("refetches the computer rows when a computer's runner connects", async () => {
+    const client = seeded([[["getComputers"], []]]);
+    await followFrame(pairingFollower, "runner.personal_changed", { computer_id: "c1", user_id: "u1", state: "connected" }, client);
+    expect(isStale(client, ["getComputers"])).toBe(true);
+  });
 });

@@ -71,7 +71,7 @@ func TestTunnelWatch_PublishesEachChangeUntilBothChecksPass(t *testing.T) {
 	f.svc.pollTunnels(t.Context())
 	f.svc.pollTunnels(t.Context())
 	require.Len(t, f.bus.published(), 1, "an unchanged status is not pushed twice")
-	assert.Equal(t, TunnelStatusChangedEvent{ComputerID: c.ID, UserID: "u1", Tunnel: "inactive"}, f.bus.published()[0])
+	assert.Equal(t, TunnelStatusChangedEvent{ComputerID: c.ID, UserID: "u1", Tunnel: "inactive", MembersOnly: true}, f.bus.published()[0])
 
 	f.tunnels.status = "healthy"
 	f.exch.versionErr = errBoom
@@ -83,7 +83,7 @@ func TestTunnelWatch_PublishesEachChangeUntilBothChecksPass(t *testing.T) {
 	f.exch.versionErr = nil
 	f.svc.pollTunnels(t.Context())
 	require.Len(t, f.bus.published(), 3)
-	assert.Equal(t, TunnelStatusChangedEvent{ComputerID: c.ID, UserID: "u1", Tunnel: "healthy", HarnessReachable: true, HarnessVersion: "0.0.40"}, f.bus.published()[2])
+	assert.Equal(t, TunnelStatusChangedEvent{ComputerID: c.ID, UserID: "u1", Tunnel: "healthy", HarnessReachable: true, HarnessVersion: "0.0.40", MembersOnly: true}, f.bus.published()[2])
 	assert.Zero(t, f.watched(), "a connected tunnel stops being polled")
 }
 

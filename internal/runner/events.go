@@ -10,9 +10,12 @@ import (
 
 // Topics the runner domain publishes onto the bus; deploy.requested is the inverse, consumed not published.
 const (
-	TopicRunnerConnected       = "runner.connected"
-	TopicRunnerDisconnected    = "runner.disconnected"
-	TopicRunnerHeartbeat       = "runner.heartbeat"
+	TopicRunnerConnected    = "runner.connected"
+	TopicRunnerDisconnected = "runner.disconnected"
+	TopicRunnerHeartbeat    = "runner.heartbeat"
+	// TopicPersonalChanged is ephemeral: a personal runner enrolling, connecting, disconnecting or removed, in place of
+	// runner.connected and runner.disconnected, which every runners:read holder hears (ADR 0146).
+	TopicPersonalChanged       = "runner.personal_changed"
 	TopicDeployRequested       = "deploy.requested"
 	TopicDeployCancelRequested = "deploy.cancel_requested"
 	TopicDeployBuildStarted    = "deploy.build_started"
@@ -34,6 +37,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicRunnerConnected, Payload: RunnerConnectedEvent{}},
 		{Name: TopicRunnerDisconnected, Payload: RunnerDisconnectedEvent{}},
 		{Name: TopicRunnerHeartbeat, Payload: RunnerHeartbeatEvent{}},
+		{Name: TopicPersonalChanged, Payload: PersonalChangedEvent{}},
 		{Name: TopicDeployBuildStarted, Payload: BuildStartedEvent{}},
 		{Name: TopicDeployBuildProgress, Payload: BuildProgressEvent{}},
 		{Name: TopicDeployBuildCompleted, Payload: BuildCompletedEvent{}},
@@ -76,6 +80,29 @@ type RunnerConnectedEvent struct {
 type RunnerDisconnectedEvent struct {
 	RunnerID string `json:"runner_id"`
 	Reason   string `json:"reason,omitempty"`
+}
+
+// Personal runner states a PersonalChangedEvent reports.
+const (
+	PersonalEnrolled     = "enrolled"
+	PersonalConnected    = "connected"
+	PersonalDisconnected = "disconnected"
+	PersonalRemoved      = "removed"
+)
+
+// PersonalChangedEvent is one of a person's computer's runner changing state; it reaches only its owner.
+type PersonalChangedEvent struct {
+	RunnerID   string `json:"runner_id"`
+	ComputerID string `json:"computer_id" jsonschema:"The computer the runner reaches."`
+	UserID     string `json:"user_id" jsonschema:"The person who installed the runner and owns the computer."`
+	State      string `json:"state" enum:"enrolled,connected,disconnected,removed"`
+	// Hostname is the computer's hostname as its installer reported it, sent only when the runner enrolls.
+	Hostname    string `json:"hostname,omitempty" jsonschema:"The computer's hostname as its installer reported it; sent only with state enrolled."`
+	MembersOnly bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
+}
+
+func personalChanged(r *Runner, state, hostname string) PersonalChangedEvent {
+	return PersonalChangedEvent{RunnerID: r.ID, ComputerID: r.ComputerID, UserID: r.OwnerUserID, State: state, Hostname: hostname, MembersOnly: true}
 }
 
 // RunnerHeartbeatEvent carries a runner's liveness pulse.

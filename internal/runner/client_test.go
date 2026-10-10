@@ -452,7 +452,7 @@ func TestClient_RemovedRunner_UninstallsItselfAndStops(t *testing.T) {
 		_, done := runClient(t, newTestClient(wsURL(srv), exec))
 
 		require.NoError(t, <-done, "a removed runner exits cleanly instead of reconnecting")
-		assert.Equal(t, []string{"alpha"}, exec.uninstalled())
+		assert.Equal(t, []string{"runner alpha"}, exec.uninstalled())
 	})
 
 	t.Run("the server refusing it as removed", func(t *testing.T) {
@@ -468,8 +468,22 @@ func TestClient_RemovedRunner_UninstallsItselfAndStops(t *testing.T) {
 		_, done := runClient(t, newTestClient(wsURL(srv), exec))
 
 		require.NoError(t, <-done)
-		assert.Equal(t, []string{"alpha"}, exec.uninstalled())
+		assert.Equal(t, []string{"runner alpha"}, exec.uninstalled())
 		assert.Equal(t, "Bearer nxr_tok", gotAuth.Load())
+	})
+
+	t.Run("a personal runner removes its computer's unit", func(t *testing.T) {
+		srv := wsTestServer(t, func(ctx context.Context, conn *websocket.Conn) {
+			_ = wsjson.Write(ctx, conn, Frame{Type: FrameUninstall}) // the client's exit is what the test waits on
+			_, _, _ = conn.Read(ctx)
+		})
+		exec := &fakeExecutor{}
+		c := newTestClient(wsURL(srv), exec)
+		c.cfg.Personal = true
+		_, done := runClient(t, c)
+
+		require.NoError(t, <-done)
+		assert.Equal(t, []string{"computer"}, exec.uninstalled())
 	})
 }
 

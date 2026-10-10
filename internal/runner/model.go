@@ -44,13 +44,21 @@ type RunningJob struct {
 	Service string      `json:"service,omitempty"`
 }
 
-// EnrollmentCode is a stored one-time code: bound to the runner name it enrolls and, optionally, its machine.
+// EnrollmentCode is a stored one-time code: bound to the runner name it enrolls and, optionally, its machine; a
+// personal code is bound to its person and computer instead (ADR 0146).
 type EnrollmentCode struct {
-	CodeHash  string
-	Name      string
-	Machine   string
-	CreatedAt time.Time
-	ExpiresAt time.Time
+	CodeHash    string
+	Name        string
+	Machine     string
+	OwnerUserID string
+	ComputerID  string
+	CreatedAt   time.Time
+	ExpiresAt   time.Time
+}
+
+// Personal reports whether the code enrolls a personal runner.
+func (e *EnrollmentCode) Personal() bool {
+	return e.OwnerUserID != "" || e.ComputerID != ""
 }
 
 // Credential is a runner's stored credential; a removed runner's stays behind revoked.
@@ -61,9 +69,11 @@ type Credential struct {
 	Revoked    bool
 }
 
-// Enrollment is a freshly minted code with the one-line install commands that carry it.
+// Enrollment is a freshly minted code with the one-line install commands that carry it; a computer's code travels
+// inside its signed Token instead.
 type Enrollment struct {
 	Code      string          `json:"code"`
+	Token     string          `json:"token,omitempty"`
 	ExpiresAt time.Time       `json:"expires_at"`
 	Commands  InstallCommands `json:"commands"`
 }
@@ -76,6 +86,8 @@ type InstallCommands struct {
 
 // EnrollRequest is what a machine's installer sends to trade a code for a credential.
 type EnrollRequest struct {
+	// Token is a computer's signed enrollment token, from `nexul install computer`, in place of Code.
+	Token     string `json:"token,omitempty"`
 	Code      string `json:"code"`
 	Name      string `json:"name"`
 	OS        string `json:"os"`
@@ -89,7 +101,7 @@ type EnrollRequest struct {
 type Enrolled struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
-	Machine    string `json:"machine"`
+	Machine    string `json:"machine,omitempty"`
 	Credential string `json:"credential"`
 }
 

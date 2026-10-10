@@ -22,13 +22,15 @@ type RunnersRepo struct {
 func (r *RunnersRepo) Create(ctx context.Context, rn *runner.Runner) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).CreateRunner(ctx, sqlcgen.CreateRunnerParams{
-			ID:        rn.ID,
-			Name:      rn.Name,
-			Version:   rn.Version,
-			LastSeen:  rn.LastSeen.Unix(),
-			Connected: int64(boolInt(rn.Connected)),
-			CreatedAt: rn.CreatedAt.Unix(),
-			MachineID: rn.MachineID,
+			ID:          rn.ID,
+			Name:        rn.Name,
+			Version:     rn.Version,
+			LastSeen:    rn.LastSeen.Unix(),
+			Connected:   int64(boolInt(rn.Connected)),
+			CreatedAt:   rn.CreatedAt.Unix(),
+			MachineID:   rn.MachineID,
+			OwnerUserID: rn.OwnerUserID,
+			ComputerID:  rn.ComputerID,
 		})
 		if err != nil {
 			return fmt.Errorf("insert runner %s: %w", rn.ID, classifyWriteErr(err))
@@ -117,6 +119,7 @@ func (r *RunnersRepo) CreateEnrollment(ctx context.Context, e *runner.Enrollment
 		}
 		err := q.CreateRunnerEnrollmentCode(ctx, sqlcgen.CreateRunnerEnrollmentCodeParams{
 			CodeHash: e.CodeHash, Name: e.Name, Machine: e.Machine, CreatedAt: e.CreatedAt.Unix(), ExpiresAt: e.ExpiresAt.Unix(),
+			OwnerUserID: e.OwnerUserID, ComputerID: e.ComputerID,
 		})
 		if err != nil {
 			return fmt.Errorf("insert runner enrollment code: %w", classifyWriteErr(err))
@@ -131,7 +134,7 @@ func (r *RunnersRepo) GetEnrollment(ctx context.Context, codeHash string, now ti
 		return nil, fmt.Errorf("get runner enrollment code: %w", notFoundIfNoRows(err))
 	}
 	return &runner.EnrollmentCode{
-		CodeHash: row.CodeHash, Name: row.Name, Machine: row.Machine,
+		CodeHash: row.CodeHash, Name: row.Name, Machine: row.Machine, OwnerUserID: row.OwnerUserID, ComputerID: row.ComputerID,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), ExpiresAt: time.Unix(row.ExpiresAt, 0).UTC(),
 	}, nil
 }
@@ -149,6 +152,7 @@ func (r *RunnersRepo) Enroll(ctx context.Context, codeHash string, rn *runner.Ru
 		err = q.CreateRunner(ctx, sqlcgen.CreateRunnerParams{
 			ID: rn.ID, Name: rn.Name, Version: rn.Version, LastSeen: rn.LastSeen.Unix(),
 			Connected: int64(boolInt(rn.Connected)), CreatedAt: rn.CreatedAt.Unix(), MachineID: rn.MachineID,
+			OwnerUserID: rn.OwnerUserID, ComputerID: rn.ComputerID,
 		})
 		if err != nil {
 			return fmt.Errorf("insert runner %s: %w", rn.Name, classifyWriteErr(err))

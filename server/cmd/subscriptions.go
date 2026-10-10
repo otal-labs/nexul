@@ -26,6 +26,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/plays"
+	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -319,6 +320,9 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 
 	mustSubscribe(ctx, bus, "voice.close_room", chat.TopicConversationDeleted, "", voiceRoomCloseHandler(svc.voiceSvc))
 	mustSubscribe(ctx, bus, "voice.remove_from_call", chat.TopicConversationMembersChanged, "", voiceCallRemoveHandler(svc.voiceSvc))
+
+	// A computer added without a name takes the hostname its runner reports when it enrolls.
+	mustSubscribe(ctx, bus, "pairing.computer_name", runner.TopicPersonalChanged, "", svc.pairingSvc.HandleRunnerChanged)
 
 	// Pushes leave the request path here: the outbox event names the rows, the sender posts to Expo per phone.
 	mustSubscribe(ctx, bus, "push.notifications", workspace.TopicNotificationPushRequested, "", svc.pushSender.HandleNotificationPushRequested)

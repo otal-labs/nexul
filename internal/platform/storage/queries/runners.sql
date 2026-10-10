@@ -1,11 +1,11 @@
 -- name: CreateRunner :exec
-INSERT INTO runners (id, name, version, last_seen, connected, created_at, machine_id) VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO runners (id, name, version, last_seen, connected, created_at, machine_id, owner_user_id, computer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetRunner :one
 SELECT * FROM runners WHERE id = ?;
 
 -- name: ListRunners :many
-SELECT * FROM runners ORDER BY created_at;
+SELECT * FROM runners WHERE owner_user_id = '' ORDER BY created_at;
 
 -- name: SetRunnerVersion :execrows
 UPDATE runners SET version = ? WHERE id = ?;
@@ -26,7 +26,7 @@ SELECT * FROM runners WHERE computer_id = ? AND computer_id != '' LIMIT 1;
 DELETE FROM runner_enrollment_codes WHERE expires_at <= ?;
 
 -- name: CreateRunnerEnrollmentCode :exec
-INSERT INTO runner_enrollment_codes (code_hash, name, machine, created_at, expires_at) VALUES (?, ?, ?, ?, ?);
+INSERT INTO runner_enrollment_codes (code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id) VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetRunnerEnrollmentCode :one
 SELECT * FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?;

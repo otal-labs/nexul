@@ -327,7 +327,11 @@ func refusedAsRemoved(resp *http.Response) bool {
 // uninstall asks `nexul` to remove this runner's service from outside it; the service stopping ends this process.
 func (c *Client) uninstall(ctx context.Context) {
 	c.log.Warn("runner was removed from the instance; uninstalling", "runner", c.cfg.Name)
-	if err := c.cfg.Executor.Uninstall(ctx, c.cfg.Name); err != nil {
+	kind, name := "runner", c.cfg.Name
+	if c.cfg.Personal {
+		kind, name = "computer", ""
+	}
+	if err := c.cfg.Executor.Uninstall(ctx, kind, name); err != nil {
 		c.log.Error("uninstall failed; remove the service by hand", "runner", c.cfg.Name, "error", err)
 	}
 }

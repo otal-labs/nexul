@@ -287,6 +287,8 @@ export const pairingFollower: LiveFollower = {
   // A computer row goes from pairing to paired, gains or loses its tunnel, or shows its T3 Code's new version.
   ...followEach(["computer.paired", "computer.harness_switched", "computer.tunnel_removed"], (_p: unknown, { client }) => refetchComputers(client, true)),
   "computer.tunnel_created": (_p: unknown, { client }) => refetchComputers(client, false),
+  // A computer row follows its personal runner enrolling, connecting and going away.
+  "runner.personal_changed": (_p: unknown, { client }) => refetchComputers(client, false),
   "computer.tunnel_status_changed": (p: ComputerPayload & TunnelStatus, { client }) =>
     client.setQueryData<TunnelStatus>([getTunnelStatusKey, p.computer_id], {
       tunnel: p.tunnel,

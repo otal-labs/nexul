@@ -1,7 +1,9 @@
 package runner
 
 import (
+	"cmp"
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"os"
@@ -28,7 +30,19 @@ const (
 var (
 	errInvalidCode   = apperrs.WithCode("invalid_code", fmt.Errorf("%w: the enrollment code is unknown, used or expired", apperrs.ErrUnauthorized))
 	errRunnerRemoved = apperrs.WithCode("runner_removed", fmt.Errorf("%w: this runner was removed", apperrs.ErrUnauthorized))
+	errComputerCode  = apperrs.WithCode("computer_code", fmt.Errorf("%w: this code adds a computer; run it with nexul install computer, as Add a computer shows it", apperrs.ErrConflict))
+	errRunnerCode    = apperrs.WithCode("runner_code", fmt.Errorf("%w: this code enrolls a runner, not a computer; make a new code with Add a computer", apperrs.ErrConflict))
 )
+
+// ComputerClaims are what a computer's enrollment token carries: the instance to enroll with, the one-time code, the
+// computer it adds and the code's expiry. The installer reads the server without the key; only this instance can
+// check the rest.
+type ComputerClaims struct {
+	Server   string `json:"server"`
+	Code     string `json:"code"`
+	Computer string `json:"computer"`
+	Exp      int64  `json:"exp"`
+}
 
 // WithEnrollDir sets the directory the bundled runner's enrollment code file lives in (<data dir>/enroll).
 func (s *Service) WithEnrollDir(dir string) *Service {
@@ -56,6 +70,45 @@ func (s *Service) CreateEnrollment(ctx context.Context, name, machine string) (E
 	return Enrollment{Code: code, ExpiresAt: expiresAt, Commands: installCommands(instanceURL, strings.TrimSpace(name), code)}, nil
 }
 
+// CreatePersonalEnrollment mints a one-hour code that enrolls a personal runner for userID's computerID and renders
+// the command that installs it. It takes no permission: the pairing domain mints it only for the caller's own
+// computer, and a computer already reached by a runner gets no second one.
+func (s *Service) CreatePersonalEnrollment(ctx context.Context, userID, computerID string) (Enrollment, error) {
+	if userID == "" || computerID == "" {
+		return Enrollment{}, fmt.Errorf("%w: a personal runner needs its person and computer", apperrs.ErrInvalid)
+	}
+	_, err := s.repo.GetByComputer(ctx, computerID)
+	if err == nil {
+		return Enrollment{}, fmt.Errorf("%w: this computer already has its runner; remove the computer to add it again", apperrs.ErrConflict)
+	}
+	if !errors.Is(err, apperrs.ErrNotFound) {
+		return Enrollment{}, err
+	}
+	instanceURL, err := s.instanceURL(ctx)
+	if err != nil {
+		return Enrollment{}, fmt.Errorf("get instance url: %w", err)
+	}
+	if instanceURL == "" {
+		return Enrollment{}, fmt.Errorf("%w: set the instance URL in settings before adding a computer", apperrs.ErrConflict)
+	}
+	if len(s.install.TokenKey) == 0 {
+		return Enrollment{}, apperrs.Fatal(fmt.Errorf("%w: the computer token key is not wired", apperrs.ErrFatal))
+	}
+	code := &EnrollmentCode{Name: "computer-" + strings.ToLower(rand.Text()[:8]), OwnerUserID: userID, ComputerID: computerID}
+	raw, err := s.storeCode(ctx, code, enrollmentTTL)
+	if err != nil {
+		return Enrollment{}, err
+	}
+	claims := ComputerClaims{Server: strings.TrimRight(instanceURL, "/"), Code: raw, Computer: computerID, Exp: code.ExpiresAt.Unix()}
+	token, err := hostcred.SignToken(claims, s.install.TokenKey)
+	if err != nil {
+		return Enrollment{}, err
+	}
+	site := cmp.Or(strings.TrimRight(s.install.SiteURL, "/"), hostcred.DefaultSite)
+	unix := hostcred.ComputerCommand(site, strings.TrimRight(s.install.ReleaseURL, "/"), token)
+	return Enrollment{Token: token, ExpiresAt: code.ExpiresAt, Commands: InstallCommands{Unix: unix}}, nil
+}
+
 func (s *Service) mintEnrollment(ctx context.Context, name, machine string, ttl time.Duration) (string, time.Time, error) {
 	name = strings.TrimSpace(name)
 	if !hostcred.NamePattern.MatchString(name) {
@@ -68,16 +121,32 @@ func (s *Service) mintEnrollment(ctx context.Context, name, machine string, ttl 
 	if !errors.Is(err, apperrs.ErrNotFound) {
 		return "", time.Time{}, err
 	}
-	raw, hash, err := hostcred.MintCode()
+	code := &EnrollmentCode{Name: name, Machine: strings.TrimSpace(machine)}
+	raw, err := s.storeCode(ctx, code, ttl)
 	if err != nil {
 		return "", time.Time{}, err
 	}
-	now := s.now().UTC()
-	code := &EnrollmentCode{CodeHash: hash, Name: name, Machine: strings.TrimSpace(machine), CreatedAt: now, ExpiresAt: now.Add(ttl)}
-	if err := s.repo.CreateEnrollment(ctx, code); err != nil {
-		return "", time.Time{}, fmt.Errorf("create enrollment for %s: %w", name, err)
-	}
 	return raw, code.ExpiresAt, nil
+}
+
+// storeCode mints a raw code for code and stores its hash, valid for ttl.
+func (s *Service) storeCode(ctx context.Context, code *EnrollmentCode, ttl time.Duration) (string, error) {
+	raw, hash, err := hostcred.MintCode()
+	if err != nil {
+		return "", err
+	}
+	now := s.now().UTC()
+	code.CodeHash, code.CreatedAt, code.ExpiresAt = hash, now, now.Add(ttl)
+	if err := s.repo.CreateEnrollment(ctx, code); err != nil {
+		return "", fmt.Errorf("create enrollment for %s: %w", code.Name, err)
+	}
+	return raw, nil
+}
+
+// ComputerRunner returns the personal runner that reaches computerID, or apperrs.ErrNotFound. The server's own seam
+// for the pairing domain, which checks the computer is the caller's own, so it takes no permission.
+func (s *Service) ComputerRunner(ctx context.Context, computerID string) (*Runner, error) {
+	return s.repo.GetByComputer(ctx, computerID)
 }
 
 // installCommands renders the runner installer one-liners.
@@ -90,6 +159,10 @@ func installCommands(instanceURL, name, code string) InstallCommands {
 // credential is returned once. It is the public half of enrollment, so it takes no actor.
 func (s *Service) Enroll(ctx context.Context, req EnrollRequest) (Enrolled, error) {
 	now := s.now().UTC()
+	computerID, err := s.tokenCode(&req, now)
+	if err != nil {
+		return Enrolled{}, err
+	}
 	codeHash := hostcred.Hash(strings.TrimSpace(req.Code))
 	code, err := s.repo.GetEnrollment(ctx, codeHash, now)
 	if errors.Is(err, apperrs.ErrNotFound) {
@@ -97,6 +170,12 @@ func (s *Service) Enroll(ctx context.Context, req EnrollRequest) (Enrolled, erro
 	}
 	if err != nil {
 		return Enrolled{}, err
+	}
+	if code.Personal() {
+		return s.enrollPersonal(ctx, codeHash, code, req, computerID, now)
+	}
+	if req.Token != "" {
+		return Enrolled{}, errRunnerCode
 	}
 	if strings.TrimSpace(req.Name) != code.Name {
 		return Enrolled{}, apperrs.WithCode("name_mismatch", fmt.Errorf("%w: this code enrolls a runner named %s", apperrs.ErrConflict, code.Name))
@@ -106,22 +185,69 @@ func (s *Service) Enroll(ctx context.Context, req EnrollRequest) (Enrolled, erro
 	if err != nil {
 		return Enrolled{}, err
 	}
-	credential, credentialHash, err := hostcred.MintCredential(credentialPrefix)
+	r := &Runner{ID: ids.New(), Name: code.Name, Version: req.Version, LastSeen: now, CreatedAt: now, MachineID: machineID}
+	credential, err := s.enroll(ctx, codeHash, r, now)
 	if err != nil {
 		return Enrolled{}, err
-	}
-	r := &Runner{ID: ids.New(), Name: code.Name, Version: req.Version, LastSeen: now, CreatedAt: now, MachineID: machineID}
-	err = s.repo.Enroll(ctx, codeHash, r, credentialHash, now)
-	if errors.Is(err, apperrs.ErrNotFound) {
-		return Enrolled{}, errInvalidCode
-	}
-	if err != nil {
-		return Enrolled{}, fmt.Errorf("enroll runner %s: %w", code.Name, err)
 	}
 	if code.Name == instanceRunnerName {
 		s.removeInstanceEnrollFile()
 	}
 	return Enrolled{ID: r.ID, Name: r.Name, Machine: machine, Credential: credential}, nil
+}
+
+// tokenCode checks a computer's token, signature and expiry, and moves its code into req; it returns the computer
+// the token names. A request without a token is a runner's and passes through.
+func (s *Service) tokenCode(req *EnrollRequest, now time.Time) (string, error) {
+	if req.Token == "" {
+		return "", nil
+	}
+	var claims ComputerClaims
+	if err := hostcred.ParseToken(strings.TrimSpace(req.Token), s.install.TokenKey, &claims); err != nil || len(s.install.TokenKey) == 0 {
+		return "", errInvalidCode
+	}
+	if claims.Exp <= now.Unix() {
+		return "", errInvalidCode
+	}
+	req.Code = claims.Code
+	return claims.Computer, nil
+}
+
+// enrollPersonal makes the person's computer runner the code is bound to, on no machine; the code names it, so the
+// installer sends no name.
+func (s *Service) enrollPersonal(ctx context.Context, codeHash string, code *EnrollmentCode, req EnrollRequest, computerID string, now time.Time) (Enrolled, error) {
+	if req.Token == "" {
+		return Enrolled{}, errComputerCode
+	}
+	if computerID != code.ComputerID {
+		return Enrolled{}, errInvalidCode
+	}
+	r := &Runner{ID: ids.New(), Name: code.Name, Version: req.Version, LastSeen: now, CreatedAt: now, OwnerUserID: code.OwnerUserID, ComputerID: code.ComputerID}
+	credential, err := s.enroll(ctx, codeHash, r, now)
+	if errors.Is(err, apperrs.ErrConflict) {
+		return Enrolled{}, fmt.Errorf("%w: this computer already has its runner; remove the computer to add it again", apperrs.ErrConflict)
+	}
+	if err != nil {
+		return Enrolled{}, err
+	}
+	s.publish(ctx, TopicPersonalChanged, personalChanged(r, PersonalEnrolled, strings.TrimSpace(req.Machine)))
+	return Enrolled{ID: r.ID, Name: r.Name, Credential: credential}, nil
+}
+
+// enroll consumes the code, stores r and returns its new credential, once.
+func (s *Service) enroll(ctx context.Context, codeHash string, r *Runner, now time.Time) (string, error) {
+	credential, credentialHash, err := hostcred.MintCredential(credentialPrefix)
+	if err != nil {
+		return "", err
+	}
+	err = s.repo.Enroll(ctx, codeHash, r, credentialHash, now)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return "", errInvalidCode
+	}
+	if err != nil {
+		return "", fmt.Errorf("enroll runner %s: %w", r.Name, err)
+	}
+	return credential, nil
 }
 
 // machineFor finds or creates the machine named name; a new machine takes stackRoot, else the default.
@@ -152,7 +278,14 @@ func (s *Service) RemoveRunner(ctx context.Context, id string) error {
 	if err := s.require(ctx, permissions.RunnersDelete); err != nil {
 		return err
 	}
-	return s.remove(ctx, id)
+	r, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("get runner %s: %w", id, err)
+	}
+	if r.Personal() {
+		return fmt.Errorf("get runner %s: %w", id, apperrs.ErrNotFound)
+	}
+	return s.remove(ctx, r)
 }
 
 // RemoveSelf is removal asked for by the runner itself, authenticated by its own credential; a runner that was
@@ -165,15 +298,23 @@ func (s *Service) RemoveSelf(ctx context.Context, credential string) error {
 	if cred.Revoked {
 		return nil
 	}
-	return s.remove(ctx, cred.RunnerID)
+	r, err := s.repo.GetByID(ctx, cred.RunnerID)
+	if err != nil {
+		return fmt.Errorf("get runner %s: %w", cred.RunnerID, err)
+	}
+	return s.remove(ctx, r)
 }
 
-func (s *Service) remove(ctx context.Context, id string) error {
-	if err := s.repo.Remove(ctx, id, s.now().UTC()); err != nil {
-		return fmt.Errorf("remove runner %s: %w", id, err)
+func (s *Service) remove(ctx context.Context, r *Runner) error {
+	if err := s.repo.Remove(ctx, r.ID, s.now().UTC()); err != nil {
+		return fmt.Errorf("remove runner %s: %w", r.ID, err)
 	}
-	s.live.Uninstall(ctx, id)
-	s.publish(ctx, TopicRunnerDisconnected, RunnerDisconnectedEvent{RunnerID: id, Reason: "removed"})
+	s.live.Uninstall(ctx, r.ID)
+	if r.Personal() {
+		s.publish(ctx, TopicPersonalChanged, personalChanged(r, PersonalRemoved, ""))
+		return nil
+	}
+	s.publish(ctx, TopicRunnerDisconnected, RunnerDisconnectedEvent{RunnerID: r.ID, Reason: "removed"})
 	return nil
 }
 

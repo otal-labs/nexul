@@ -90,6 +90,7 @@
   "role.updated",
   "runner.connected",
   "runner.disconnected",
+  "runner.personal_changed",
   "service.created",
   "service.deleted",
   "service.updated",

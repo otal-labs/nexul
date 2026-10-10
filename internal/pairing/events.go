@@ -46,14 +46,16 @@ type SetupChangedEvent struct {
 	Provider    string     `json:"provider,omitempty"`
 	ConfirmedAt *time.Time `json:"confirmed_at,omitempty"`
 	Skills      []string   `json:"skills,omitempty"`
+	MembersOnly bool       `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }
 
 // TunnelChangedEvent is the payload for both tunnel topics; it never carries the connector token.
 type TunnelChangedEvent struct {
-	ComputerID string `json:"computer_id"`
-	UserID     string `json:"user_id"`
-	TunnelID   string `json:"tunnel_id"`
-	Hostname   string `json:"hostname"`
+	ComputerID  string `json:"computer_id"`
+	UserID      string `json:"user_id"`
+	TunnelID    string `json:"tunnel_id"`
+	Hostname    string `json:"hostname"`
+	MembersOnly bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }
 
 // TunnelStatusChangedEvent carries a watched tunnel's two checks whole, so a consumer replaces its view instead of refetching.
@@ -63,6 +65,7 @@ type TunnelStatusChangedEvent struct {
 	Tunnel           string `json:"tunnel"`
 	HarnessReachable bool   `json:"harness_reachable"`
 	HarnessVersion   string `json:"harness_version,omitempty"`
+	MembersOnly      bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }
 
 // ComputerPairedEvent is a computer gaining a harness session, whether first paired, re-paired, or paired over its tunnel.
@@ -72,6 +75,7 @@ type ComputerPairedEvent struct {
 	ServerURL      string    `json:"server_url"`
 	HarnessVersion string    `json:"harness_version,omitempty"`
 	TokenExpiresAt time.Time `json:"token_expires_at"`
+	MembersOnly    bool      `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }
 
 // HarnessSwitchedEvent is a computer's stored kind moving forward, because its harness moved on (ADR 0113).
@@ -81,6 +85,7 @@ type HarnessSwitchedEvent struct {
 	FromKind       harness.Kind `json:"from_kind" jsonschema:"The harness kind the computer was stored under, for example t3code."`
 	ToKind         harness.Kind `json:"to_kind" jsonschema:"The harness kind it moved forward to, for example t3code-v2; a computer never moves back."`
 	HarnessVersion string       `json:"harness_version" jsonschema:"The harness version read when the computer moved."`
+	MembersOnly    bool         `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }
 
 // SetupTurnChangedEvent is one provider's setup turn starting, confirming, or failing, with its short status line.
@@ -96,15 +101,17 @@ type SetupTurnChangedEvent struct {
 	Status       string         `json:"status"`
 	StartedAt    time.Time      `json:"started_at"`
 	EndedAt      *time.Time     `json:"ended_at,omitempty"`
+	MembersOnly  bool           `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }
 
 // SetupFinishedEvent closes a setup run: each provider's outcome and whether the computer ended confirmed overall.
 type SetupFinishedEvent struct {
-	ComputerID string             `json:"computer_id"`
-	UserID     string             `json:"user_id"`
-	RunID      string             `json:"run_id"`
-	Confirmed  bool               `json:"confirmed"`
-	Providers  []SetupTurnOutcome `json:"providers"`
+	ComputerID  string             `json:"computer_id"`
+	UserID      string             `json:"user_id"`
+	RunID       string             `json:"run_id"`
+	Confirmed   bool               `json:"confirmed"`
+	Providers   []SetupTurnOutcome `json:"providers"`
+	MembersOnly bool               `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }
 
 // SetupTurnOutcome is one provider's end state in a finished setup run.
@@ -129,6 +136,7 @@ type SetupTurnActivityEvent struct {
 	// Tool names the tool a call ran, so the dialog tells a command from any other tool.
 	Tool string `json:"tool,omitempty"`
 	// Text is a text step's whole message, which the dialog shows as prose; Status stays its one-line preview.
-	Text string    `json:"text,omitempty"`
-	At   time.Time `json:"at"`
+	Text        string    `json:"text,omitempty"`
+	At          time.Time `json:"at"`
+	MembersOnly bool      `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }

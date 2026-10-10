@@ -19,6 +19,7 @@ type RunnerStore interface {
 	GetByName(ctx context.Context, name string) (*Runner, error)
 	// GetByComputer returns the personal runner that reaches computerID, or apperrs.ErrNotFound.
 	GetByComputer(ctx context.Context, computerID string) (*Runner, error)
+	// List returns the deploy runners; a personal runner is never listed (ADR 0146).
 	List(ctx context.Context) ([]*Runner, error)
 	Heartbeat(ctx context.Context, id string, at time.Time) error
 	SetConnected(ctx context.Context, id string, connected bool) error

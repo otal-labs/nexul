@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 
 	"github.com/otal-labs/nexul/internal/dns/cloudflare"
+	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/runner"
 )
@@ -22,9 +23,45 @@ type computerDialer interface {
 	DialComputer(ctx context.Context, computerID string) (net.Conn, error)
 }
 
-// runnerComputers reaches the runner handler, which exists only once the workers start after the harness client.
+// runnerComputers reaches the runner handler and service, which exist only once the workers start after the harness
+// client and the pairing domain.
 type runnerComputers struct {
 	handler atomic.Pointer[runner.Handler]
+	svc     atomic.Pointer[runner.Service]
+}
+
+func (r *runnerComputers) service() (*runner.Service, error) {
+	s := r.svc.Load()
+	if s == nil {
+		return nil, apperrs.Retryable(errors.New("the runner service has not started"))
+	}
+	return s, nil
+}
+
+// EnrollComputer is pairing's seam for minting a computer's personal runner code.
+func (r *runnerComputers) EnrollComputer(ctx context.Context, userID, computerID string) (pairing.Enrollment, error) {
+	s, err := r.service()
+	if err != nil {
+		return pairing.Enrollment{}, err
+	}
+	e, err := s.CreatePersonalEnrollment(ctx, userID, computerID)
+	if err != nil {
+		return pairing.Enrollment{}, err
+	}
+	return pairing.Enrollment{Token: e.Token, ExpiresAt: e.ExpiresAt, Commands: pairing.InstallCommands{Unix: e.Commands.Unix, Windows: e.Commands.Windows}}, nil
+}
+
+// ComputerRunner is pairing's seam for reading the runner that reaches a computer.
+func (r *runnerComputers) ComputerRunner(ctx context.Context, computerID string) (pairing.ComputerRunner, error) {
+	s, err := r.service()
+	if err != nil {
+		return pairing.ComputerRunner{}, err
+	}
+	rn, err := s.ComputerRunner(ctx, computerID)
+	if err != nil {
+		return pairing.ComputerRunner{}, err
+	}
+	return pairing.ComputerRunner{Connected: rn.Connected, LastSeen: rn.LastSeen}, nil
 }
 
 func (r *runnerComputers) DialComputer(ctx context.Context, computerID string) (net.Conn, error) {

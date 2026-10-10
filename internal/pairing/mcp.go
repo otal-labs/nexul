@@ -30,13 +30,14 @@ type computerListIn struct {
 }
 
 type computerCreateIn struct {
-	Name string `json:"name" jsonschema:"The computer's name, for example Onik Laptop; its tunnel hostname is made from it."`
-	Port int    `json:"port,omitzero" jsonschema:"The local port T3 Code serves on, 1 to 65535. Defaults to 3773."`
+	Name string `json:"name,omitempty" jsonschema:"The computer's name, for example Alice Laptop. Omit it to name the computer after the hostname it reports when its runner enrolls."`
+	ID   string `json:"id,omitempty" jsonschema:"One of your computers that has no runner yet, to get a fresh command for it after the last one expired. Omit it to add a new computer."`
+	Port int    `json:"port,omitzero" jsonschema:"Ignored: the runner finds the port T3 Code serves on by itself."`
 }
 
 type computerPairIn struct {
-	Token     string `json:"token" jsonschema:"The one-time token t3 pair prints on the computer, or the whole pairing link it prints (Pairing URL) or T3 Code copies from Authorized clients."`
-	ID        string `json:"id,omitempty" jsonschema:"One of your computers to pair or re-pair, for example the one computer_create returned. Omit it to pair a new computer by name and server_url."`
+	Token     string `json:"token,omitempty" jsonschema:"The one-time token t3 pair prints on the computer, or the whole pairing link it prints (Pairing URL) or T3 Code copies from Authorized clients. Omit it with id and name to only rename the computer."`
+	ID        string `json:"id,omitempty" jsonschema:"One of your computers to pair or re-pair, for example one added with a tunnel. Omit it to pair a new computer by name and server_url."`
 	Name      string `json:"name,omitempty" jsonschema:"The computer's name, for example Onik Laptop. Required without id; with id it renames the computer, and omitting it keeps the name."`
 	ServerURL string `json:"server_url,omitempty" jsonschema:"The T3 Code server URL this server reaches, for example https://vps.example.com:3773. Required without id; with id it moves a computer paired by URL, and omitting it keeps the address. A tunnel computer always pairs over its own hostname."`
 }
@@ -79,6 +80,7 @@ type computerResult struct {
 	HarnessVersion    string            `json:"harness_version,omitempty"`
 	Tunnel            *ComputerTunnel   `json:"tunnel,omitempty"`
 	TunnelStatus      *TunnelStatus     `json:"tunnel_status,omitempty"`
+	Runner            *ComputerRunner   `json:"runner,omitempty"`
 	TunnelStatusError string            `json:"tunnel_status_error,omitempty"`
 	Setup             *Setup            `json:"setup,omitempty"`
 	MCPToken          *MCPToken         `json:"mcp_token,omitempty"`
@@ -87,7 +89,7 @@ type computerResult struct {
 }
 
 func toComputerResult(c Computer) computerResult {
-	r := computerResult{ID: c.ID, Name: c.Name, Kind: c.Kind, ServerURL: c.ServerURL, Paired: c.Paired(), HarnessVersion: c.HarnessVersion, Tunnel: c.Tunnel}
+	r := computerResult{ID: c.ID, Name: c.Name, Kind: c.Kind, ServerURL: c.ServerURL, Paired: c.Paired(), HarnessVersion: c.HarnessVersion, Tunnel: c.Tunnel, Runner: c.Runner}
 	if r.Paired {
 		r.SessionExpiresAt = &c.TokenExpiresAt
 	}
@@ -172,33 +174,43 @@ func listedT3Projects(ctx context.Context, s *Service, userID, computerID string
 	return projects, ""
 }
 
+// computerCreateResult is a computer waiting for its runner, with the command that installs the runner there.
+type computerCreateResult struct {
+	Computer computerResult `json:"computer"`
+	Enrollment
+}
+
 func computerCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_create", "Create computer",
-		"Starts pairing a computer through its own tunnel on the instance's Cloudflare: creates the computer, its tunnel, "+
-			"and a hostname closed to everything but this server. Next, install cloudflared on the computer with the "+
-			"token computer_tunnel_token_get reveals, wait for computer_list with this id to report the tunnel healthy "+
-			"and the harness reachable, then call computer_pair. For a machine this server can already reach by URL, "+
-			"skip this and call computer_pair with name and server_url. Returns the new, still unpaired computer.",
-		mcptool.Hints{Additive: true},
+		"Adds one of your computers: creates it, waiting for its runner, and returns the one command that installs "+
+			"the runner there (commands.unix, for Linux), ending in one signed token valid for an hour. Give the command "+
+			"to the computer's owner to run in a terminal on that computer as themselves, never as root; once the "+
+			"runner connects, computer_list shows runner.connected on the computer. Pass id instead of name for a "+
+			"fresh command when a computer of yours has no runner yet and its last code expired. Only you can see "+
+			"or use the computer.",
+		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in computerCreateIn) (any, error) {
-			port := in.Port
-			if port == 0 {
-				port = DefaultT3CodePort
-			}
-			c, err := s.CreateComputerTunnel(ctx, mcpActorID(ctx), harness.KindT3Code, in.Name, port)
+			e, err := createComputer(ctx, s, in)
 			if err != nil {
 				return nil, err
 			}
-			return toComputerResult(*c), nil
+			return computerCreateResult{Computer: toComputerResult(e.Computer), Enrollment: e.Enrollment}, nil
 		})
+}
+
+func createComputer(ctx context.Context, s *Service, in computerCreateIn) (*ComputerEnrollment, error) {
+	if in.ID != "" {
+		return s.EnrollComputer(ctx, mcpActorID(ctx), in.ID)
+	}
+	return s.AddComputer(ctx, mcpActorID(ctx), in.Name)
 }
 
 func computerPairTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_pair", "Pair computer",
 		"Pairs T3 Code on a computer with the one-time token t3 pair prints there, or the pairing link around it, giving Nexul a harness session on it. "+
-			"Pass id to pair a computer computer_create made, over its tunnel hostname, or to re-pair one of your "+
+			"Pass id to pair a computer added with a tunnel, over its tunnel hostname, or to re-pair one of your "+
 			"computers after its session expired; with id, name renames it and server_url moves a computer paired "+
-			"by URL, and an omitted one keeps its value. Without id, name and server_url pair a new machine this "+
+			"by URL, and an omitted one keeps its value. With id and name alone it only renames the computer. Without id, name and server_url pair a new machine this "+
 			"server can already reach. Returns the paired computer; run computer_setup_run next so agent work can use it.",
 		mcptool.Hints{},
 		func(ctx context.Context, in computerPairIn) (any, error) {
@@ -212,6 +224,9 @@ func computerPairTool(s *Service) mcptool.Tool {
 
 func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer, error) {
 	userID := mcpActorID(ctx)
+	if in.ID != "" && in.Name != "" && in.Token == "" && in.ServerURL == "" {
+		return s.RenameComputer(ctx, userID, in.ID, in.Name)
+	}
 	if in.ID == "" {
 		return s.Pair(ctx, userID, harness.KindT3Code, in.Name, in.ServerURL, in.Token)
 	}
@@ -241,7 +256,7 @@ func computerTunnelTokenGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_tunnel_token_get", "Reveal tunnel token",
 		"Reveals the secret connector token one of your computers installs cloudflared with (cloudflared service "+
 			"install <token>); this tool exists only to hand it over, so show it to the computer's owner and nobody "+
-			"else. Only a computer made by computer_create has one; a computer paired by URL has no tunnel. "+
+			"else. Only a computer added with a tunnel in the web app has one; a computer paired by URL or reached through its runner has none. "+
 			"computer_list shows the tunnel itself without its token.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in computerIDIn) (any, error) {

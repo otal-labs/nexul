@@ -88,7 +88,7 @@ func TestService_CreateComputerTunnel_StoresAnUnpairedComputerWithItsTunnel(t *t
 
 	require.Len(t, repo.outbox, 1)
 	assert.Equal(t, TopicTunnelCreated, repo.outbox[0].Topic)
-	assert.Equal(t, TunnelChangedEvent{ComputerID: c.ID, UserID: "u1", TunnelID: "tun-1", Hostname: "laptop-ab12cd34.example.com"}, repo.outbox[0].Payload)
+	assert.Equal(t, TunnelChangedEvent{ComputerID: c.ID, UserID: "u1", TunnelID: "tun-1", Hostname: "laptop-ab12cd34.example.com", MembersOnly: true}, repo.outbox[0].Payload)
 }
 
 func TestService_CreateComputerTunnel_Rejects(t *testing.T) {

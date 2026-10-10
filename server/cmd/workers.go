@@ -10,6 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/platform/config"
+	"github.com/otal-labs/nexul/internal/platform/crypto"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
 	"github.com/otal-labs/nexul/internal/platform/release"
@@ -50,11 +51,15 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		},
 	})
 	runnerSvc = runner.NewService(store.Runners, wsHandler).WithMachines(store.Machines).WithManaged(store.Services).WithTunnelDescriber(runnerTunnelDescriberAdapter{dns: svc.dnsSvc}).WithInstall(runner.InstallConfig{
-		Settings: dnsSettingsAdapter{store.Settings},
-		Release:  releaseClient,
+		Settings:   dnsSettingsAdapter{store.Settings},
+		Release:    releaseClient,
+		SiteURL:    cfg.SiteURL,
+		ReleaseURL: cfg.ReleaseURL,
+		TokenKey:   crypto.DeriveKey("nexul computer enrollment token key:" + cfg.AuthSecret),
 	}).WithUpgrades(store.InstanceUpgrades).WithBus(bus).WithGate(svc.accessSvc).
 		WithEnrollDir(filepath.Join(filepath.Dir(cfg.DBPath), "enroll")).
 		WithAutomationsHosts(runnerAutomationsHostsAdapter{svc: svc.automationHostsSvc})
+	svc.computers.svc.Store(runnerSvc)
 	// `nexul install` enrolls the bundled runner from this file; it goes away once that runner is enrolled.
 	if err := runnerSvc.WriteInstanceEnrollment(ctx); err != nil {
 		fail(fmt.Errorf("write instance runner enrollment: %w", err))

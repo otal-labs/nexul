@@ -9,6 +9,8 @@ A runner is a service on one of your machines. It connects out to the instance o
 
 `nexul install` already put one on your server, named `instance`. You can deploy with it straight away.
 
+A computer someone adds for their own agent work runs a runner of its own too. It never builds or deploys, and it never shows on the **Runners** page or as a machine, for anyone: only the person who added it sees it, with their computers.
+
 ## Machines
 
 Every runner belongs to a machine, and a stack deploys to a machine rather than to a runner. Any connected, idle runner on that machine picks up the job, so you scale a machine by adding runners to it. Jobs wait in the queue while no runner on the machine is connected.

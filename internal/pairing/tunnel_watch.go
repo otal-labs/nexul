@@ -115,7 +115,7 @@ func (s *Service) publishTunnelStatus(ctx context.Context, computerID, userID st
 	}
 	err := s.bus.Publish(ctx, TopicTunnelStatusChanged, TunnelStatusChangedEvent{
 		ComputerID: computerID, UserID: userID, Tunnel: status.Tunnel,
-		HarnessReachable: status.HarnessReachable, HarnessVersion: status.HarnessVersion,
+		HarnessReachable: status.HarnessReachable, HarnessVersion: status.HarnessVersion, MembersOnly: true,
 	})
 	if err != nil {
 		logging.FromCtx(ctx).Warn("publish computer tunnel status", "computer_id", computerID, "error", err)

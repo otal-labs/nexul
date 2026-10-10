@@ -90,7 +90,7 @@ func TestSwitchHarness_MovesTheComputerOnce_WithTheNewVersion(t *testing.T) {
 	assert.Equal(t, "0.0.46-nightly.20261003.2632", stored.HarnessVersion, "re-read from the descriptor, so the next turn sees no drift")
 	assert.Equal(t, []string{TopicComputerPaired, TopicHarnessSwitched}, topics(repo.outbox))
 	assert.Equal(t, HarnessSwitchedEvent{
-		ComputerID: c.ID, UserID: "u1", FromKind: harness.KindT3Code, ToKind: harness.KindT3CodeV2, HarnessVersion: "0.0.46-nightly.20261003.2632",
+		ComputerID: c.ID, UserID: "u1", FromKind: harness.KindT3Code, ToKind: harness.KindT3CodeV2, HarnessVersion: "0.0.46-nightly.20261003.2632", MembersOnly: true,
 	}, repo.outbox[1].Payload)
 	assert.Equal(t, []string{"u1"}, changed, "presence hears of the move once, so it holds the computer on its new kind")
 }
@@ -136,7 +136,7 @@ func TestPair_KindOnlyMovesForward(t *testing.T) {
 		assert.Equal(t, harness.KindT3CodeV2, updated.Kind)
 		assert.Equal(t, []string{TopicComputerPaired, TopicComputerPaired, TopicHarnessSwitched}, topics(repo.outbox))
 		assert.Equal(t, HarnessSwitchedEvent{
-			ComputerID: c.ID, UserID: "u1", FromKind: harness.KindT3Code, ToKind: harness.KindT3CodeV2, HarnessVersion: "0.0.46-nightly.20261003.2632",
+			ComputerID: c.ID, UserID: "u1", FromKind: harness.KindT3Code, ToKind: harness.KindT3CodeV2, HarnessVersion: "0.0.46-nightly.20261003.2632", MembersOnly: true,
 		}, repo.outbox[2].Payload)
 	})
 }

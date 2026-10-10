@@ -179,6 +179,6 @@ func (s *Service) tunnelSeam() (Tunnels, error) {
 
 func tunnelEvent(topic string, c Computer) eventbus.OutboxEvent {
 	return eventbus.OutboxEvent{ID: ids.New(), Topic: topic, Payload: TunnelChangedEvent{
-		ComputerID: c.ID, UserID: c.UserID, TunnelID: c.Tunnel.TunnelID, Hostname: c.Tunnel.Hostname,
+		ComputerID: c.ID, UserID: c.UserID, TunnelID: c.Tunnel.TunnelID, Hostname: c.Tunnel.Hostname, MembersOnly: true,
 	}}
 }

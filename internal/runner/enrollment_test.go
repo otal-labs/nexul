@@ -20,11 +20,13 @@ import (
 
 var enrollNow = time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
 
+var testTokenKey = []byte("0123456789abcdef0123456789abcdef")
+
 // newEnrollService wires enrollment over fakes, with the admin gate newUpgradeService uses and a fixed clock.
 func newEnrollService(repo *fakeRunnerRepo, dispatch *fakeDispatch) *Service {
 	svc := NewService(repo, dispatch).
 		WithMachines(repo.machines).
-		WithInstall(InstallConfig{Settings: &fakeSettingsReader{url: "https://nexul.example.com/"}}).
+		WithInstall(InstallConfig{Settings: &fakeSettingsReader{url: "https://nexul.example.com/"}, TokenKey: testTokenKey}).
 		WithGate(ownerGate{}).
 		WithBus(newFakeBus())
 	svc.now = func() time.Time { return enrollNow }
