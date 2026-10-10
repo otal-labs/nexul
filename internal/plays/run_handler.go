@@ -32,6 +32,7 @@ type runRequest struct {
 	MemoryIDs          []string                `json:"memory_ids"`
 	CustomInstructions string                  `json:"custom_instructions"`
 	ComputerID         string                  `json:"computer_id"`
+	HarnessProjectID   string                  `json:"harness_project_id"`
 	Provider           string                  `json:"provider"`
 	Model              string                  `json:"model"`
 	ModelOptions       []harness.OptionSetting `json:"model_options"`
@@ -209,7 +210,8 @@ func (h *RunHandler) run(w http.ResponseWriter, r *http.Request) {
 	trail, err := h.runner.Run(r.Context(), RunInput{
 		PlayID: r.PathValue("id"), TargetType: req.TargetType, TargetID: req.TargetID, MemoryIDs: req.MemoryIDs,
 		CustomInstructions: req.CustomInstructions,
-		ComputerID:         req.ComputerID, Provider: req.Provider, Model: req.Model, ModelOptions: req.ModelOptions, Via: ViaWeb,
+		ComputerID:         req.ComputerID, HarnessProjectID: req.HarnessProjectID, Provider: req.Provider, Model: req.Model,
+		ModelOptions: req.ModelOptions, Via: ViaWeb,
 	})
 	if err != nil {
 		httpx.WriteError(w, err)

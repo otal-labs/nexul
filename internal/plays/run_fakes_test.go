@@ -395,6 +395,15 @@ type fakeHarnessResolver struct {
 	resolved HarnessChoice
 	// lastChoice records the caller's requested choice, for asserting an override reached the seam.
 	lastChoice HarnessChoice
+	unlinked   bool
+}
+
+func (f *fakeHarnessResolver) ResolvePersonTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error) {
+	if f.unlinked && choice.HarnessProjectID == "" {
+		f.lastChoice = choice
+		return HarnessChoice{}, &HarnessRefusal{Reason: RefusalNeedsLocation, Err: &pairing.NotConfiguredError{Reason: pairing.ReasonNeedsLocation}}
+	}
+	return f.ResolveTarget(ctx, userID, projectID, choice)
 }
 
 func (f *fakeHarnessResolver) ResolveTarget(_ context.Context, _, _ string, choice HarnessChoice) (HarnessChoice, error) {
@@ -686,6 +695,10 @@ type agentTargets struct{}
 
 func (agentTargets) ResolveTarget(context.Context, string, string) (*pairing.ResolvedTarget, error) {
 	return &pairing.ResolvedTarget{Computer: pairing.Computer{ID: "c-1", Kind: "t3code"}, HarnessProjectID: "hp-1"}, nil
+}
+
+func (agentTargets) ResolveConfirmedTarget(_ context.Context, _ string, target pairing.ResolvedTarget) (*pairing.ResolvedTarget, error) {
+	return &target, nil
 }
 
 func (agentTargets) ResolveTargetOverride(_ context.Context, _, _, computerID, provider, model string, _ []harness.OptionSetting) (*pairing.ResolvedTarget, error) {

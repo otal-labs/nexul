@@ -28,6 +28,7 @@ type threadSub interface {
 	Close()
 	Dropped() *turnWatch
 	Ready(ctx context.Context) error
+	ProjectID() string
 }
 
 // rpcConn is the slice of *conn Harness needs; clientAdapter narrows SubscribeThread's return type.
@@ -184,7 +185,11 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 		return answeredTurn(threadID), nil
 	}
 
-	sub, err := h.subscribeAndStart(ctx, client, threadID, prompt, attachments)
+	projectID := ""
+	if usedStored && !target.KeepSession {
+		projectID = target.ProjectID
+	}
+	sub, err := h.subscribeAndStart(ctx, client, threadID, projectID, prompt, attachments)
 	if err != nil && usedStored {
 		// A stored thread id may be stale server-side; any failure on reuse gets exactly one retry with a fresh thread.
 		logger(h.Options).Info("t3client: reused thread failed, creating a new one", "thread", threadID, "error", err)
@@ -194,7 +199,7 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 			return harness.StartResult{}, err
 		}
 		// The fresh replacement thread has no context: send the full prompt.
-		sub, err = h.subscribeAndStart(ctx, client, threadID, prompts.Full, prompts.Attachments)
+		sub, err = h.subscribeAndStart(ctx, client, threadID, "", prompts.Full, prompts.Attachments)
 	}
 	if err != nil {
 		_ = client.Close()
@@ -257,7 +262,7 @@ func answeredTurn(threadID string) harness.StartResult {
 
 // subscribeAndStart opens the subscription and reads the thread's snapshot before starting the turn, so no events are
 // missed and a thread T3 no longer has fails here instead of mid-turn.
-func (h *Harness) subscribeAndStart(ctx context.Context, client rpcConn, threadID, prompt string, attachments []harness.Attachment) (threadSub, error) {
+func (h *Harness) subscribeAndStart(ctx context.Context, client rpcConn, threadID, projectID, prompt string, attachments []harness.Attachment) (threadSub, error) {
 	sub, err := client.SubscribeThread(ctx, threadID)
 	if err != nil {
 		return nil, fmt.Errorf("subscribe t3 thread: %w", err)
@@ -265,6 +270,10 @@ func (h *Harness) subscribeAndStart(ctx context.Context, client rpcConn, threadI
 	if err := sub.Ready(ctx); err != nil {
 		sub.Close()
 		return nil, fmt.Errorf("watch t3 thread %s: %w", threadID, err)
+	}
+	if projectID != "" && sub.ProjectID() != projectID {
+		sub.Close()
+		return nil, fmt.Errorf("%w: the stored thread belongs to another T3 project", apperrs.ErrInvalid)
 	}
 	if err := client.StartTurn(ctx, threadID, prompt, RuntimeModeFullAccess, attachments); err != nil {
 		sub.Close()

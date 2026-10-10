@@ -70,18 +70,20 @@ type computerSetupUpdateIn struct {
 
 // computerResult is a computer as an agent reads it: no bearer token, and its setup and MCP token only on a list.
 type computerResult struct {
-	ID                string          `json:"id"`
-	Name              string          `json:"name"`
-	Kind              harness.Kind    `json:"kind"`
-	ServerURL         string          `json:"server_url"`
-	Paired            bool            `json:"paired"`
-	SessionExpiresAt  *time.Time      `json:"session_expires_at,omitempty"`
-	HarnessVersion    string          `json:"harness_version,omitempty"`
-	Tunnel            *ComputerTunnel `json:"tunnel,omitempty"`
-	TunnelStatus      *TunnelStatus   `json:"tunnel_status,omitempty"`
-	TunnelStatusError string          `json:"tunnel_status_error,omitempty"`
-	Setup             *Setup          `json:"setup,omitempty"`
-	MCPToken          *MCPToken       `json:"mcp_token,omitempty"`
+	ID                string            `json:"id"`
+	Name              string            `json:"name"`
+	Kind              harness.Kind      `json:"kind"`
+	ServerURL         string            `json:"server_url"`
+	Paired            bool              `json:"paired"`
+	SessionExpiresAt  *time.Time        `json:"session_expires_at,omitempty"`
+	HarnessVersion    string            `json:"harness_version,omitempty"`
+	Tunnel            *ComputerTunnel   `json:"tunnel,omitempty"`
+	TunnelStatus      *TunnelStatus     `json:"tunnel_status,omitempty"`
+	TunnelStatusError string            `json:"tunnel_status_error,omitempty"`
+	Setup             *Setup            `json:"setup,omitempty"`
+	MCPToken          *MCPToken         `json:"mcp_token,omitempty"`
+	T3Projects        []harness.Project `json:"t3_projects,omitempty"`
+	T3ProjectsError   string            `json:"t3_projects_error,omitempty"`
 }
 
 func toComputerResult(c Computer) computerResult {
@@ -98,7 +100,8 @@ func computerListTool(s *Service) mcptool.Tool {
 			"provider's newest setup turn), and its MCP token's metadata, never the token itself. Pass id to read one "+
 			"computer alone with its tunnel's live status: tunnel is Cloudflare's connector state (inactive, healthy, "+
 			"degraded, or down) and harness_reachable says whether T3 Code answers through the hostname; pairing can "+
-			"continue with computer_pair once both pass. A computer with paired false has a tunnel but no harness "+
+			"continue with computer_pair once both pass. One computer also lists its T3 projects as T3 Code reports them, "+
+			"the t3_project_id play_run takes. A computer with paired false has a tunnel but no harness "+
 			"session yet, and one without setup.confirmed_at needs computer_setup_run before agent work can use it.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in computerListIn) (any, error) {
@@ -136,7 +139,13 @@ func listedComputer(ctx context.Context, s *Service, userID string, c Computer, 
 	if r.MCPToken, err = s.GetMCPToken(ctx, userID, c.ID); err != nil {
 		return r, err
 	}
-	if !live || c.Tunnel == nil {
+	if !live {
+		return r, nil
+	}
+	if r.Paired {
+		r.T3Projects, r.T3ProjectsError = listedT3Projects(ctx, s, userID, c.ID)
+	}
+	if c.Tunnel == nil {
 		return r, nil
 	}
 	status, err := s.ComputerTunnelStatus(ctx, userID, c.ID)
@@ -151,6 +160,16 @@ func listedComputer(ctx context.Context, s *Service, userID string, c Computer, 
 	}
 	r.TunnelStatus = &status
 	return r, nil
+}
+
+// listedT3Projects asks the computer's harness for its projects; like the tunnel status, a failure is a line, not the call's.
+func listedT3Projects(ctx context.Context, s *Service, userID, computerID string) ([]harness.Project, string) {
+	projects, err := s.ListProjects(ctx, userID, computerID)
+	if err != nil {
+		logging.FromCtx(ctx).Warn("computer t3 projects unavailable", "computer_id", computerID, "err", err)
+		return nil, "T3 Code on this computer didn't list its projects; check it is running, then ask again."
+	}
+	return projects, ""
 }
 
 func computerCreateTool(s *Service) mcptool.Tool {

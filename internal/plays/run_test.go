@@ -170,6 +170,28 @@ func TestRun_Refusals_LeaveNoTrail(t *testing.T) {
 	}
 }
 
+func TestRun_PersonRun_AsksWhereRatherThanFallingBack(t *testing.T) {
+	f := newRunnerFixture()
+	f.harness.unlinked = true
+
+	_, err := f.runner.Run(ctxAs(starter), ticketRun())
+
+	var refusal *HarnessRefusal
+	require.ErrorAs(t, err, &refusal)
+	assert.Equal(t, "needs_location", refusal.Reason)
+	assert.Empty(t, f.trails.all(), "being asked where is not a failed run")
+	assert.Empty(t, f.threads.snapshot(), "nothing reaches the thread")
+
+	in := ticketRun()
+	in.ComputerID, in.HarnessProjectID = "c-1", "t3-nexul"
+	trail, err := f.runner.Run(ctxAs(starter), in)
+	require.NoError(t, err)
+	assert.Equal(t, "t3-nexul", f.harness.lastChoice.HarnessProjectID)
+	assert.Equal(t, "c-1", trail.ComputerID)
+	<-f.turns.done
+	assert.True(t, f.turns.last().NewThread, "a picked location cannot reuse a thread in another checkout")
+}
+
 func TestRun_SetupNotConfirmed_FailsOnPressWithTheChatRefusal(t *testing.T) {
 	f := newRunnerFixture()
 	f.harness.err = &pairing.NotConfiguredError{Reason: pairing.ReasonSetupRequired, Provider: "Codex", Computer: "Onik's laptop"}

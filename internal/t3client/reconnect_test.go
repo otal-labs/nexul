@@ -96,20 +96,27 @@ func TestHarness_StoredThreadGoneInT3_IsRecreatedBeforeTheTurnIsSent(t *testing.
 		{"the thread was deleted in T3", func(f *t3rpctest.Server, subID string) {
 			f.Write(t3rpctest.Chunk(subID, deleted))
 		}},
+		{"the saved location changed to another project", func(f *t3rpctest.Server, subID string) {
+			snapshot := snapshotItem(5, nil, nil, "idle")
+			snapshot["snapshot"].(map[string]any)["thread"].(map[string]any)["projectId"] = "checkout-a"
+			f.Write(t3rpctest.Chunk(subID, snapshot))
+		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			f := t3rpctest.New(t)
 			h := NewHarness(Options{HTTPClient: f.Client(), RPCTimeout: 5 * time.Second})
-			started := startTurnAsync(t, h, harness.Target{Session: f.Session(), SessionID: "th-gone", Provider: "claudeAgent", Model: "claude-opus-5-5"})
+			started := startTurnAsync(t, h, harness.Target{Session: f.Session(), SessionID: "th-gone", ProjectID: "checkout-b", Provider: "claudeAgent", Model: "claude-opus-5-5"})
 
 			tt.answer(f, t3rpctest.WaitFor(t, f.Subscribed, "subscribe to the stored thread"))
 			create := t3rpctest.WaitFor(t, f.Dispatched, "thread.create dispatch")
-			assert.Equal(t, "thread.create", create["type"], "nothing is sent to the gone thread")
+			require.Equal(t, "thread.create", create["type"], "nothing is sent to the old thread")
 
 			fresh := t3rpctest.WaitFor(t, f.Subscribed, "subscribe to the new thread")
-			f.Write(t3rpctest.Chunk(fresh, snapshotItem(1, nil, nil, "idle")))
+			freshSnapshot := snapshotItem(1, nil, nil, "idle")
+			freshSnapshot["snapshot"].(map[string]any)["thread"].(map[string]any)["projectId"] = "checkout-b"
+			f.Write(t3rpctest.Chunk(fresh, freshSnapshot))
 			start := t3rpctest.WaitFor(t, f.Dispatched, "thread.turn.start dispatch")
 			assert.Equal(t, create["threadId"], start["threadId"])
 			assert.Equal(t, "full-prompt", start["message"].(map[string]any)["text"], "the new thread has no history, so it gets the full prompt")

@@ -88,17 +88,26 @@ type ProjectLookup interface {
 // HarnessChoice is the computer, provider, and model a run uses: either the caller's pick from the run
 // dialog, or what the resolution picked from their project link or pairing defaults when they picked none.
 type HarnessChoice struct {
-	ComputerID   string
-	Provider     string
-	Model        string
-	ModelOptions []harness.OptionSetting
+	ComputerID string
+	Worktree   bool
+	// HarnessProjectID is the T3 project a person picked beside ComputerID, saved as their project link as the run starts.
+	HarnessProjectID string
+	Provider         string
+	Model            string
+	ModelOptions     []harness.OptionSetting
 }
 
 // HarnessResolver is the runner's seam onto pairing: the readiness check before a run is started, given the
 // caller's pick (a zero HarnessChoice means none), and what it actually resolved to for the trail to record.
 type HarnessResolver interface {
+	// ResolveTarget resolves a run nobody is there to ask, falling back to the starter's pairing defaults.
 	ResolveTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error)
+	// ResolvePersonTarget requires an explicit location or the caller's project link (ADR 0145).
+	ResolvePersonTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error)
 }
+
+// RefusalNeedsLocation is the refusal of a person's run in a project they have not linked: a question, not a failure.
+const RefusalNeedsLocation = "needs_location"
 
 // HarnessRefusal is a resolver refusal naming its computer and provider, kept on the failed trail so the web can offer the fix.
 type HarnessRefusal struct {
@@ -295,6 +304,7 @@ type RunInput struct {
 	MemoryIDs          []string
 	CustomInstructions string
 	ComputerID         string
+	HarnessProjectID   string
 	Provider           string
 	Model              string
 	ModelOptions       []harness.OptionSetting

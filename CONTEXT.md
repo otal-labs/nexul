@@ -115,8 +115,9 @@ _Avoid_: Device, host, runner (a runner builds and deploys)
 One person's choice of paired computer, T3 project, provider, model, model
 options, and start-in for one project they can open, set in Your settings →
 T3 Code Setup → Projects. Each person has their own; nobody else's turns use it.
-A person with no link for a project runs there on their own pairing
-defaults (ADR 0102).
+A play a person starts in a project they have not linked asks where to run,
+their defaults filled in, and saves the answer as their link (ADR 0145);
+`@Agent` and runs nobody presses use their own pairing defaults there (ADR 0102).
 _Avoid_: Project pairing, shared link
 
 **Start-in**:
@@ -309,7 +310,8 @@ the harness's own outcome (ADR 0119); a `starting` one, which no thread
 accepted yet, ends `interrupted`, and a `waiting` one stays for its answer.
 Also records the computer, provider, and model the run used, whether the
 starter picked them in the run dialog or they came from the starter's own
-project link or pairing defaults (ADR 0058).
+project link, or for a run nobody pressed their pairing defaults (ADR 0058,
+ADR 0145).
 _Avoid_: Run history, log, execution
 
 **Doc thread**:

@@ -4,6 +4,9 @@ Amended by ADR 0102: the project link the run dialog resolves from is the starte
 
 Amended by ADR 0114: on T3 Code's protocol 2 the pick holds on a reused thread too, not only when the run creates it.
 
+Amended by ADR 0145: the computer is picked with its T3 project as where to run, saved as the starter's project link;
+the pill keeps provider and model for the one run.
+
 A run may pin the computer, provider, and model in the run dialog instead of
 always inheriting the project link or the starter's pairing defaults. The
 dialog preselects the resolved target, or the starter's own last choice for

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -32,18 +33,23 @@ func newDecisionsFixture() *runnerFixture {
 }
 
 func TestRetryDecisionsCheck_RunsTheSeededPlayOnTheCallersHarness(t *testing.T) {
-	f := newDecisionsFixture()
+	for _, unlinked := range []bool{false, true} {
+		t.Run(fmt.Sprintf("unlinked=%t", unlinked), func(t *testing.T) {
+			f := newDecisionsFixture()
+			f.harness.unlinked = unlinked
 
-	trail, err := f.runner.RetryDecisionsCheck(ctxAs(starter), ticketID, ViaWeb)
-	require.NoError(t, err)
-	<-f.turns.done
+			trail, err := f.runner.RetryDecisionsCheck(ctxAs(starter), ticketID, ViaWeb)
+			require.NoError(t, err)
+			<-f.turns.done
 
-	assert.Equal(t, []any{checkPlayID, starter, TrailStarting}, []any{trail.PlayID, trail.StarterID, trail.State})
-	req := f.turns.last()
-	assert.Equal(t, starter, req.ViaUserID)
-	require.NotNil(t, req.Play)
-	assert.Contains(t, req.Play.Instructions, "decisions_log")
-	assert.Equal(t, "Started Decisions check", f.threads.snapshot()[0].body)
+			assert.Equal(t, []any{checkPlayID, starter, TrailStarting}, []any{trail.PlayID, trail.StarterID, trail.State})
+			req := f.turns.last()
+			assert.Equal(t, starter, req.ViaUserID)
+			require.NotNil(t, req.Play)
+			assert.Contains(t, req.Play.Instructions, "decisions_log")
+			assert.Equal(t, "Started Decisions check", f.threads.snapshot()[0].body)
+		})
+	}
 }
 
 func TestRetryDecisionsCheck_Refusals(t *testing.T) {

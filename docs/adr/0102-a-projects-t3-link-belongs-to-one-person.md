@@ -1,5 +1,8 @@
 # A project's T3 link belongs to one person
 
+Amended by ADR 0145: a play a person starts in a project they have not linked asks where instead of using their
+defaults, and saves the answer as their link; `play_run` can set a link.
+
 A project's T3 link (the paired computer, T3 project, provider, model, and model options `@Agent` runs with inside
 that project) was one row per project, set from Project settings. It pointed at the computer of whoever saved it, so
 every teammate's `@Agent` in that project ran on that one person's machine. That broke the promise in ADR 0029 that a

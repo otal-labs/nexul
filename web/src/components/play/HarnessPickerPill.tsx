@@ -2,10 +2,9 @@ import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
-import { HarnessComputerField } from "@/components/settings/HarnessComputerField";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useFetchHarnessProviders, useFetchPresence, useListComputers } from "@/hooks/PairingHooks";
+import { useFetchHarnessProviders } from "@/hooks/PairingHooks";
 import { findModel, optionsLabel } from "@/models/ModelPick";
 import type { OptionSetting } from "@/models/Pairing";
 
@@ -24,65 +23,38 @@ interface HarnessPickerPillProps {
 // The popover's own form: a subscription (allowed under F5) forwards every change to the caller immediately,
 // so the pill's label and the run's payload never fall out of sync with what's shown.
 const HarnessPickerForm = ({ value, onChange }: HarnessPickerPillProps) => {
-  const { data: computers } = useListComputers();
-  const { data: presence } = useFetchPresence();
   const form = useForm<HarnessPick>({ defaultValues: value });
-
   const computerId = useWatch({ control: form.control, name: "computer_id" });
 
   useEffect(() => form.subscribe({ formState: { values: true }, callback: ({ values }) => onChange(values) }), [form, onChange]);
 
   return (
-    <div className="space-y-3">
-      {(!computers || computers.length === 0) && (
-        <p className="text-xs text-muted-foreground">Pair a computer in Settings to run plays.</p>
-      )}
-      {computers && computers.length > 0 && (
-        <HarnessComputerField
-          control={form.control}
-          name="computer_id"
-          computers={computers}
-          presence={presence ?? {}}
-          onChangeValue={() => {
-            form.setValue("provider", "");
-            form.setValue("model", "");
-            form.setValue("model_options", []);
-          }}
-        />
-      )}
-      {computers && computers.length > 0 && (
-        <HarnessProviderModelFields
-          control={form.control}
-          providerName="provider"
-          modelName="model"
-          optionsName="model_options"
-          computerId={computerId}
-          description="For this run only"
-          onPick={(provider, model, options) => {
-            form.setValue("provider", provider);
-            form.setValue("model", model);
-            form.setValue("model_options", options);
-          }}
-        />
-      )}
-    </div>
+    <HarnessProviderModelFields
+      control={form.control}
+      providerName="provider"
+      modelName="model"
+      optionsName="model_options"
+      computerId={computerId}
+      description="For this run only"
+      onPick={(provider, model, options) => {
+        form.setValue("provider", provider);
+        form.setValue("model", model);
+        form.setValue("model_options", options);
+      }}
+    />
   );
 };
 
-// The dialog footer's harness picker: a mono pill naming the computer, provider, and model, opening a
-// popover with the same fields the pairing settings use to change any of the three for this run only.
 export const HarnessPickerPill = ({ value, onChange }: HarnessPickerPillProps) => {
-  const { data: computers } = useListComputers();
   const { data: providers } = useFetchHarnessProviders(value.computer_id);
   const [open, setOpen] = useState(false);
 
-  const computerName = computers?.find((c) => c.id === value.computer_id)?.name;
   const providerEntry = providers?.find((p) => p.id === value.provider);
   const providerLabel = value.provider === "" ? "Provider default" : (providerEntry?.name ?? value.provider);
   const model = findModel(providers ?? [], value);
   const modelLabel = value.model === "" ? "Model default" : (model?.name ?? value.model);
   const optionsText = model?.options && value.model_options.length > 0 ? ` · ${optionsLabel(model.options, value.model_options)}` : "";
-  const label = computerName ? `${computerName} · ${providerLabel} · ${modelLabel}${optionsText}` : "Pick a harness";
+  const label = `${providerLabel} · ${modelLabel}${optionsText}`;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

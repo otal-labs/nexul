@@ -120,6 +120,7 @@ func (nopObserver) OnFinished(harness.TurnResult, string) {}
 
 // TargetResolver is the pipeline's seam onto pairing.
 type TargetResolver interface {
+	ResolveConfirmedTarget(ctx context.Context, userID string, target pairing.ResolvedTarget) (*pairing.ResolvedTarget, error)
 	ResolveTarget(ctx context.Context, userID, projectID string) (*pairing.ResolvedTarget, error)
 	// ResolveTargetOverride pins the computer, provider, and model a turn resolves against, checked against
 	// the caller's own; plain strings, not a TargetOverride, so pairing's implementation needs no agent import.
@@ -129,10 +130,12 @@ type TargetResolver interface {
 // TargetOverride pins a turn's computer, provider, and model, chosen for one run instead of derived from
 // the caller's project link or pairing defaults (a play's own run dialog, ticket 31).
 type TargetOverride struct {
-	ComputerID   string
-	Provider     string
-	Model        string
-	ModelOptions []harness.OptionSetting
+	ComputerID       string
+	HarnessProjectID string
+	Worktree         bool
+	Provider         string
+	Model            string
+	ModelOptions     []harness.OptionSetting
 }
 
 // Ticket is the slice of a ticket the pipeline needs to name it, attach its images, and resolve its project.
@@ -344,6 +347,14 @@ type TurnRequest struct {
 	Since string
 	// KeepThread continues the conversation's own harness thread or nothing: a gone one ends the turn SessionGone.
 	KeepThread bool
+	NewThread  bool
+}
+
+func (r TurnRequest) threadID(current string) string {
+	if r.NewThread {
+		return ""
+	}
+	return current
 }
 
 // RunTurn runs one Agent turn and blocks until it ends; every failure surfaces as a system message or a log line.
@@ -363,6 +374,8 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		return
 	}
 
+	conv.ThreadID = req.threadID(conv.ThreadID)
+
 	thread, projectID := s.loadThreadTarget(ctx, conv, viaUserID)
 	if projectID == "" {
 		projectID = conv.ProjectID
@@ -371,7 +384,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	// Failure posts stay on ctx: the window cancels setupCtx when it cuts setup off, and a post on it would fail.
 	setupCtx, disarm := setupWindow(ctx, req.Silence)
 	defer disarm()
-	target, err := s.resolveTarget(setupCtx, viaUserID, projectID, req.Target)
+	target, err := s.resolveTarget(setupCtx, viaUserID, projectID, req)
 	if err != nil {
 		s.replyNotConfigured(ctx, conversationID, viaUserID, err)
 		failed(err.Error())
@@ -503,10 +516,17 @@ func threadTitle(conv Conversation, target *threadTarget) string {
 	return "Nexul chat"
 }
 
-// resolveTarget honors an override, if given, over the caller's own project link or pairing defaults.
-func (s *Service) resolveTarget(ctx context.Context, userID, projectID string, override *TargetOverride) (*pairing.ResolvedTarget, error) {
+// resolveTarget keeps a validated launch choice while rechecking its computer, otherwise resolving current settings.
+func (s *Service) resolveTarget(ctx context.Context, userID, projectID string, req TurnRequest) (*pairing.ResolvedTarget, error) {
+	override := req.Target
 	if override == nil {
 		return s.targets.ResolveTarget(ctx, userID, projectID)
+	}
+	if override.HarnessProjectID != "" {
+		return s.targets.ResolveConfirmedTarget(ctx, userID, pairing.ResolvedTarget{
+			Computer: pairing.Computer{ID: override.ComputerID}, HarnessProjectID: override.HarnessProjectID,
+			Provider: override.Provider, Model: override.Model, ModelOptions: override.ModelOptions, Worktree: override.Worktree,
+		})
 	}
 	return s.targets.ResolveTargetOverride(ctx, userID, projectID, override.ComputerID, override.Provider, override.Model, override.ModelOptions)
 }

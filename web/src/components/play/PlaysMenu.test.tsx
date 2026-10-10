@@ -107,6 +107,24 @@ beforeEach(() => {
 });
 
 describe("PlaysMenu", () => {
+  it.each(["no_default", "no_default_computer", "offline", "expired_token"])("opens the location question when its suggestion needs attention (%s)", async (reason) => {
+    const user = userEvent.setup();
+    mockApi({ resolve: reason === "offline" ? { ok: true, computer_id: "c-1" } : { ok: false, reason }, presence: {} });
+    const base = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation(async (...args: Parameters<typeof api.get>) => {
+      if (args[0] === "/api/pairing/projects") return { data: { links: [] } };
+      if (args[0] === "/api/memories") return { data: [] };
+      return base(...args);
+    });
+    renderMenu();
+    await user.click(await screen.findByRole("button", { name: /Plays/ }));
+    const run = await screen.findByRole("button", { name: /To tickets via AI/ });
+    await waitFor(() => expect(run).toBeEnabled());
+    await user.click(run);
+    expect(await screen.findByText(/Your first run in this project/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run To tickets via AI" })).toBeDisabled();
+  });
+
   it("is hidden without plays:run", async () => {
     mockApi({ permissions: ["docs:thread"] });
     renderMenu();

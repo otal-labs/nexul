@@ -12,10 +12,13 @@ A play is a button that starts an agent on a piece of work, such as **Fix with A
 1. Open a ticket, a doc, or a project's **Interview** page and press the play's button. A ticket play only shows while the ticket sits in the stage it belongs to.
 2. In the run dialog, pick the memories the agent should read first under **Main**, and the ones it reads at the end under **Footer**. The dialog starts with what you picked last time for this play and project.
 3. Add **Instructions for this run** if you want to steer it. They win over the play's own instructions.
-4. Check the computer, provider, and model. They come from your project link or your defaults; change them here for this run only.
-5. Start the run.
+4. Check **Where to run**. The first time you run a play in a project you haven't linked, the dialog asks for a computer and a T3 project, with your defaults filled in. Your pick is saved as your [project link](/docs/guide/paired-computers/#choose-where-turns-run), so later runs there go straight to it. After that the dialog shows where in one line; **Change** picks somewhere else and saves that instead.
+5. Check the provider and model on the pill under it. They come from your project link; change them here for this run only.
+6. Start the run.
 
-If the play can't run, the dialog says why instead: no computer paired, a pairing that expired, the computer offline, no T3 project for this project, or several computers and no default. Each message names the setting that fixes it. A play on a blocked ticket asks you to confirm first.
+Changing location starts a fresh T3 thread. If the computer is offline, your choice stays saved; retrying uses that choice and starts a fresh thread when the old one belongs to another T3 project. Editing or unlinking settings after a run is confirmed cannot redirect that run.
+
+If no computer or T3 project is set as your default, pick them in the run dialog. If the play can't run, the dialog says why instead: no computer paired, a pairing that expired, the computer offline, or setup still needed. A play on a blocked ticket asks you to confirm first.
 
 The agent decides where the ticket goes when it finishes. It reads your footer memories for that, so a footer memory that says "move the card to Review when the pull request is open" is how you get cards to move.
 
@@ -110,4 +113,6 @@ If it can't start, the ticket shows **Decisions check didn't run** with the reas
 | `autoplays:write` | add, change, and switch auto plays, and set the daily cap |
 | `autoplays:delete` | delete auto plays |
 
-Agents run plays with `play_run` and read trails with `trail_list`. See [MCP server](/docs/guide/mcp-server/).
+Agents run plays with `play_run` and read trails with `trail_list`. See [MCP server](/docs/guide/mcp-server/). Like the dialog, `play_run` asks where the first time: in a project you haven't linked it needs `computer_id` and `t3_project_id`, and saves them as your link. `computer_list` with a computer's id lists its T3 projects.
+
+Auto plays, automation `runPlay` requests, and the automatic decisions check use your project link or, without one, your defaults. The decisions check's **Run again** keeps the same fallback. These paths have no location dialog.

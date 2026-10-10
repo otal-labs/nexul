@@ -399,6 +399,120 @@ func TestService_ResolveTarget_FallsBackToUserDefaults(t *testing.T) {
 	assert.Equal(t, "default-proj", target.HarnessProjectID)
 }
 
+func TestService_ResolvePersonRun_AsksWhereOnceThenUsesTheLink(t *testing.T) {
+	t.Parallel()
+	exch := &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"}
+	exch.ListProvidersFn = func(context.Context, harness.Session) ([]harness.Provider, error) {
+		return []harness.Provider{{ID: "claude", Driver: "claude", Name: "Provider"}}, nil
+	}
+	svc := newTestService(newFakeRepo(), exch)
+	ctx := t.Context()
+	home, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	require.NoError(t, err)
+	_, err = svc.ConfirmSetup(ctx, "u1", home.ID)
+	require.NoError(t, err)
+	_, err = svc.ConfirmProviderSetup(ctx, "u1", home.ID, "claude", []string{"tdd"})
+	require.NoError(t, err)
+	_, err = svc.SetDefaults(ctx, "u1", Defaults{DefaultComputerID: home.ID, FallbackProjectID: "default-proj", Provider: "claude", Model: "sonnet"})
+	require.NoError(t, err)
+
+	_, err = svc.ResolvePersonRun(ctx, "u1", "proj-1", "", "", "", "", nil)
+	var nc *NotConfiguredError
+	require.ErrorAs(t, err, &nc, "the defaults would resolve, but a person's run never falls back to them")
+	assert.Equal(t, ReasonNeedsLocation, nc.Reason)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+
+	target, err := svc.ResolvePersonRun(ctx, "u1", "proj-1", home.ID, "t3-app", "", "", nil)
+	require.NoError(t, err)
+	assert.Equal(t, "t3-app", target.HarnessProjectID)
+	link, err := svc.GetProjectLink(ctx, "u1", "proj-1")
+	require.NoError(t, err)
+	assert.Equal(t, home.ID, link.ComputerID, "the answer is saved as their link")
+	assert.Equal(t, "t3-app", link.HarnessProjectID)
+	assert.Equal(t, "claude/sonnet", link.Provider+"/"+link.Model, "on their default computer the link takes their default model")
+
+	target, err = svc.ResolvePersonRun(ctx, "u1", "proj-1", "", "", "", "", nil)
+	require.NoError(t, err, "a linked project runs without asking")
+	assert.Equal(t, home.ID, target.Computer.ID)
+	assert.Equal(t, "t3-app", target.HarnessProjectID)
+
+	require.NoError(t, svc.ClearProjectLink(ctx, "u1", "proj-1"))
+	_, err = svc.ResolvePersonRun(ctx, "u1", "proj-1", "", "", "", "", nil)
+	require.ErrorAs(t, err, &nc)
+	assert.Equal(t, ReasonNeedsLocation, nc.Reason)
+}
+
+func TestService_ResolvePersonRun_Where(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name              string
+		otherPicked       bool
+		replacedAfterSave bool
+		harnessProj       string
+		wantReason        NotConfiguredReason
+		wantInvalid       bool
+		wantStartIn       StartIn
+		wantHarnProj      string
+	}{
+		{name: "another computer without its T3 project asks again", otherPicked: true, wantReason: ReasonNeedsLocation},
+		{name: "a T3 project without its computer is refused", harnessProj: "t3-other", wantInvalid: true},
+		{name: "changing where keeps the link's start-in", otherPicked: true, harnessProj: "t3-other", wantStartIn: StartInWorktree, wantHarnProj: "t3-other"},
+		{name: "another tab replaces the link while the pick is saved", otherPicked: true, harnessProj: "t3-other", replacedAfterSave: true, wantStartIn: StartInFolder, wantHarnProj: "t3-other"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			exch := &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"}
+			exch.ListProvidersFn = func(context.Context, harness.Session) ([]harness.Provider, error) {
+				return []harness.Provider{{ID: "claude", Driver: "claude", Name: "Provider"}}, nil
+			}
+			svc := newTestService(newFakeRepo(), exch)
+			ctx := t.Context()
+			home, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+			require.NoError(t, err)
+			other, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Other", "https://o.example.com", "tok")
+			require.NoError(t, err)
+			_, err = svc.ConfirmProviderSetup(ctx, "u1", other.ID, "claude", []string{"tdd"})
+			require.NoError(t, err)
+			_, err = svc.ConfirmSetup(ctx, "u1", other.ID)
+			require.NoError(t, err)
+			_, err = svc.SetProjectLink(ctx, "u1", "proj-1", ProjectLink{ComputerID: home.ID, HarnessProjectID: "t3-app", StartIn: StartInWorktree})
+			require.NoError(t, err)
+			computerID := ""
+			if tt.otherPicked {
+				computerID = other.ID
+			}
+
+			if tt.replacedAfterSave {
+				svc.repo = replacedRunLocationRepo{svc.repo}
+			}
+
+			target, err := svc.ResolvePersonRun(ctx, "u1", "proj-1", computerID, tt.harnessProj, "claude", "", nil)
+
+			if tt.wantInvalid {
+				require.ErrorIs(t, err, apperrs.ErrInvalid)
+				return
+			}
+			var nc *NotConfiguredError
+			if tt.wantReason != "" {
+				require.ErrorAs(t, err, &nc)
+				assert.Equal(t, tt.wantReason, nc.Reason)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantHarnProj, target.HarnessProjectID)
+			if tt.replacedAfterSave {
+				assert.True(t, target.Worktree, "the run keeps the start-in captured before the competing save")
+				assert.Empty(t, target.Model, "the competing model is not this run's choice")
+			}
+			link, err := svc.GetProjectLink(ctx, "u1", "proj-1")
+			require.NoError(t, err)
+			assert.Equal(t, other.ID, link.ComputerID)
+			assert.Equal(t, tt.wantStartIn, link.StartIn)
+		})
+	}
+}
+
 // TestService_ProjectLink_EachPersonResolvesTheirOwn guards ADR 0102: a teammate's link never sends someone else's
 // turns to the teammate's computer, and two people's links for one project sit side by side.
 func TestService_ProjectLink_EachPersonResolvesTheirOwn(t *testing.T) {
@@ -689,4 +803,14 @@ func TestService_SetDefaults_RejectsForeignComputer(t *testing.T) {
 
 	_, err = svc.SetDefaults(context.Background(), "u1", Defaults{DefaultComputerID: other.ID})
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+type replacedRunLocationRepo struct{ Repo }
+
+func (r replacedRunLocationRepo) SaveProjectLink(ctx context.Context, link ProjectLink) error {
+	if err := r.Repo.SaveProjectLink(ctx, link); err != nil {
+		return err
+	}
+	link.HarnessProjectID, link.Model, link.StartIn = "t3-replaced", "other-model", StartInFolder
+	return r.Repo.SaveProjectLink(ctx, link)
 }

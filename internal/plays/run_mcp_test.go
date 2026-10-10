@@ -84,6 +84,12 @@ func TestPlayRun_RefusalsNameTheRecoveryTools(t *testing.T) {
 	_, err = callTool(t, tools, ctx, "play_run", run)
 	require.ErrorIs(t, err, apperrs.ErrConflict)
 	assert.Contains(t, err.Error(), "trail_update with stop ends it")
+
+	f = newRunnerFixture()
+	f.harness.unlinked = true
+	_, err = callTool(t, RunMCPTools(f.runner), ctx, "play_run", run)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.Contains(t, err.Error(), "call play_run again with computer_id and t3_project_id; computer_list lists their computers")
 }
 
 func TestPlayRun_ThenTrailList(t *testing.T) {
@@ -127,11 +133,12 @@ func TestPlayRun_HarnessChoicePassesThrough(t *testing.T) {
 	f.harness.resolved = HarnessChoice{ComputerID: "c-resolved", Provider: "claude", Model: "sonnet-5"}
 
 	out, err := callTool(t, RunMCPTools(f.runner), ctxAs(starter), "play_run", `{"play_id":"play-fix","target_type":"ticket",`+
-		`"target_id":"t-1","computer_id":"c-picked","provider":"claude","model":"sonnet-5"}`)
+		`"target_id":"t-1","computer_id":"c-picked","t3_project_id":"t3-nexul","provider":"claude","model":"sonnet-5"}`)
 	require.NoError(t, err)
 	<-f.turns.done
 
-	assert.Equal(t, HarnessChoice{ComputerID: "c-picked", Provider: "claude", Model: "sonnet-5"}, f.harness.lastChoice)
+	assert.Equal(t, HarnessChoice{ComputerID: "c-picked", HarnessProjectID: "t3-nexul", Provider: "claude", Model: "sonnet-5"}, f.harness.lastChoice,
+		"the T3 project reaches pairing, which saves it with the computer as the caller's link")
 	got, err := f.runner.GetTrail(ctxAs(starter), out.(trailSummary).ID)
 	require.NoError(t, err)
 	assert.Equal(t, "c-resolved", got.ComputerID)

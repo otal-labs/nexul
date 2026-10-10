@@ -8,6 +8,7 @@ import type { Conversation } from "@nexul/client-core/chat";
 import { api, errorMessage } from "@/api/client";
 import { useApplicableTicketPlays } from "@/hooks/PlayHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
+import { invalidateProjectLinks } from "@/hooks/PairingProjectHooks";
 import { conversationPlayTarget } from "@/models/Chat";
 import { DECISIONS_CHECK_KEY, type PlayType } from "@/models/Play";
 import type { QuestionAnswers } from "@/models/Question";
@@ -72,6 +73,9 @@ export const useRunPlay = () => {
   return useMutation({
     mutationFn: async ({ playId, input }: { playId: string; input: RunPlayInput }) =>
       (await api.post<Trail>(`/api/plays/${playId}/run`, input)).data,
+    onSettled: async (_trail, _error, { input }) => {
+      if (input.harness_project_id) await invalidateProjectLinks(client);
+    },
     onSuccess: async (trail) => {
       client.setQueryData<Trail[]>([getTrailsKey, trail.target_type, trail.target_id], (old) => [
         trail,

@@ -48,6 +48,7 @@ interface ResolveResponse {
   ok: boolean;
   reason?: string;
   computer_id?: string;
+  harness_project_id?: string;
   provider?: string;
   model?: string;
   model_options?: OptionSetting[];
@@ -229,6 +230,7 @@ export const useHarnessReadiness = (projectId?: string): HarnessReadiness | unde
   return {
     state: "ready",
     computerId,
+    harnessProjectId: resolve.data.harness_project_id ?? "",
     provider: resolve.data.provider ?? "",
     model: resolve.data.model ?? "",
     modelOptions: resolve.data.model_options ?? [],

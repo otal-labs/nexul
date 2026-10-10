@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
@@ -363,6 +364,33 @@ func TestComputerList_ALiveTunnelFailureStillReturnsTheComputer(t *testing.T) {
 	require.NotNil(t, one.Setup, "the stored setup state still comes back")
 	assert.Contains(t, one.TunnelStatusError, "unavailable")
 	assert.NotContains(t, one.TunnelStatusError, "502", "a provider's raw error stays in the log")
+}
+
+func TestComputerList_OneComputerNamesItsT3Projects(t *testing.T) {
+	t.Parallel()
+	failing := false
+	exch := &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"}
+	exch.ListProjectsFn = func(context.Context, harness.Session) ([]harness.Project, error) {
+		if failing {
+			return nil, errors.New("dial tcp: connection refused")
+		}
+		return []harness.Project{{ID: "t3-app", Title: "App", Path: "/home/alice/app"}}, nil
+	}
+	svc := newTestService(newFakeRepo(), exch)
+	ctx := actorCtx(t, "u1")
+	c, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	require.NoError(t, err)
+
+	out, err := callTool(t, ctx, svc, "computer_list", `{"id": "`+c.ID+`"}`)
+	require.NoError(t, err)
+	assert.Equal(t, []harness.Project{{ID: "t3-app", Title: "App", Path: "/home/alice/app"}}, out.(mcptool.Page[computerResult]).Items[0].T3Projects)
+
+	failing = true
+	out, err = callTool(t, ctx, svc, "computer_list", `{"id": "`+c.ID+`"}`)
+	require.NoError(t, err, "an unreachable harness still returns the computer")
+	one := out.(mcptool.Page[computerResult]).Items[0]
+	assert.Empty(t, one.T3Projects)
+	assert.NotContains(t, one.T3ProjectsError, "refused", "the harness's raw error stays in the log")
 }
 
 func TestComputerSetupRun_EveryProviderOrOneWithItsModel(t *testing.T) {
