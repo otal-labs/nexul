@@ -21,6 +21,8 @@ Press **New project** in the sidebar. A new workspace shows the same button on i
 
 Skipping the interview asks if you're sure. Agents still work, but without the project's rules, and the board shows a banner until the interview is done.
 
+The project exists from the moment you press **Continue** on the Info step, so you can leave at any step after it and keep it. To install the GitHub App on another account first, leave the wizard and come back: until the project has a repository to deploy, its board and the **New project** wizard show **Continue setup**, which reopens the wizard at the Repository step for that project. Dismiss it if the project doesn't need a repository. The way back is remembered in the browser that named the project.
+
 ## Add another service or repository
 
 From an existing project:

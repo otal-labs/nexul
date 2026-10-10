@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProjectWizardPage } from "@/pages/ProjectWizardPage";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
+import { useUnfinishedProjectStore } from "@/stores/unfinishedProjectStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const access = vi.hoisted(() => ({ areas: ["tickets"] as string[] }));
@@ -74,6 +75,7 @@ beforeEach(() => {
     return { data: [] };
   });
   useProjectWizardStore.getState().reset();
+  useUnfinishedProjectStore.getState().dismiss();
 });
 
 describe("ProjectWizardPage", () => {
@@ -144,6 +146,31 @@ describe("ProjectWizardPage", () => {
     expect(await screen.findByText("project board")).toBeInTheDocument();
     expect(mocks.post).toHaveBeenCalledTimes(1);
     expect(useProjectWizardStore.getState().projectId).toBeNull();
+    expect(useUnfinishedProjectStore.getState().projectId).toBeNull();
+  });
+
+  it("offers the way back to a project left before its repository was picked, the next time the wizard opens", async () => {
+    mocks.post.mockResolvedValueOnce({ data: project });
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/projects") return { data: [project] };
+      if (url === "/api/projects/p-1") return { data: project };
+      if (url === "/api/repositories") return { data: { repositories: [] } };
+      return { data: [] };
+    });
+    const user = userEvent.setup();
+    const first = renderPage("/acme/wizard/project/project");
+    await user.type(await screen.findByLabelText("Project name"), "Backend");
+    await user.type(screen.getByLabelText("Prefix"), "BE");
+    await user.click(screen.getByRole("button", { name: "Continue to Repository" }));
+    await screen.findByRole("heading", { name: "Repository" });
+    first.unmount();
+
+    renderPage("/acme/wizard/project/project");
+    await user.click(await screen.findByRole("link", { name: "Continue setup" }));
+
+    expect(await screen.findByRole("heading", { name: "Repository" })).toBeInTheDocument();
+    expect(rung("Info")).toHaveAttribute("data-state", "done");
+    expect(mocks.post).toHaveBeenCalledTimes(1);
   });
 
   it("redirects an unknown step back to the project step", async () => {
