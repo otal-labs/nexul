@@ -66,6 +66,16 @@ jobs:
           grep -q 'from your own account with sudo, not logged in as root' refused.txt
           test ! -e /Library/LaunchDaemons/io.nexul.nexul-computer.plist
 
+      # T3 Code's installer looks its release up on GitHub's API, which refuses the shared runners' addresses unsigned in;
+      # with the version pinned it never asks, and the command below then starts this command line's background service.
+      - name: Put T3 Code's command line on the account, not started
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(gh release view -R pingdotgg/t3code --json tagName -q .tagName)
+          curl -fsSL https://t3.codes/install.sh | T3CODE_VERSION="${version#v}" sh
+          ~/.local/bin/t3 --version
+
       - name: Run Add a computer's command as the runner's account
         run: |
           echo "account: $(id -un) ($(id -u)); GUI session: $(launchctl print gui/$(id -u) >/dev/null 2>&1 && echo yes || echo no)"
