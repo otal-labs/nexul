@@ -150,7 +150,7 @@ list. The web job runs typecheck, lint, and
 test with coverage, then build; `client-core/` is linted, tested and counted
 toward the gate there. The native job runs typecheck, lint and Jest. The sdk
 and automations jobs each run their own typecheck step, then their test
-script (Vitest in `sdk`, `bun test` in `automations`).
+script, `bun test` in both.
 `web/coverage/lcov.info` uploads as the `web-coverage` CI artifact.
 
 ---

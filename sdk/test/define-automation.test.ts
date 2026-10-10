@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { defineAutomation } from "../src/define-automation.ts";
 
 describe("defineAutomation", () => {

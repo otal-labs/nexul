@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { CATALOG_PATH, GENERATED_TS_PATH, generateSource, readCatalog } from "../tools/generate-events.ts";
 

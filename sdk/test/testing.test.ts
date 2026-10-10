@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { createMockContext } from "../src/testing.ts";
 import { eventFixtures } from "../src/events.generated.ts";
 

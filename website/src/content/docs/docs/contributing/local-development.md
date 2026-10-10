@@ -107,7 +107,7 @@ go test ./...                       # Go, all packages
 bun run --cwd web test              # web and client-core, Vitest
 bun run --cwd native test           # phone app, Jest
 bun run --cwd desktop test          # desktop, Vitest
-bun run --cwd sdk test              # sdk, Vitest
+bun run --cwd sdk test              # sdk, bun test
 bun run --cwd automations test # automations, bun test
 ```
 
