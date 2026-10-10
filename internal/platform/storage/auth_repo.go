@@ -129,6 +129,18 @@ func (r *UsersRepo) ListIdentities(ctx context.Context, userID string) ([]auth.I
 	return out, nil
 }
 
+func (r *UsersRepo) ListIdentityProviders(ctx context.Context) (map[string][]auth.Provider, error) {
+	rows, err := r.q.ListIdentityProviders(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list identity providers: %w", err)
+	}
+	out := make(map[string][]auth.Provider)
+	for _, row := range rows {
+		out[row.UserID] = append(out[row.UserID], auth.Provider(row.Provider))
+	}
+	return out, nil
+}
+
 // LinkIdentity looks up the owner first so each conflict gets its own message; the PRIMARY KEY still guards the race.
 func (r *UsersRepo) LinkIdentity(ctx context.Context, id *auth.Identity, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {

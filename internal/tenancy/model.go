@@ -136,6 +136,8 @@ type TeamAccount struct {
 	AvatarURL   string    `json:"avatar_url"`
 	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"created_at"`
+	// Providers are the sign-in accounts linked to this account, in the order they were linked.
+	Providers []string `json:"providers"`
 	// Online is a live browser socket open right now; LastSeenAt is their latest session activity, nil once signed out everywhere.
 	Online     bool       `json:"online"`
 	LastSeenAt *time.Time `json:"last_seen_at"`

@@ -71,9 +71,17 @@ func (g accountGate) ListAccounts(ctx context.Context) ([]*tenancy.TeamAccount, 
 	if err != nil {
 		return nil, err
 	}
+	providers, err := g.svc.SignInProviders(ctx)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]*tenancy.TeamAccount, 0, len(users))
 	for _, u := range users {
-		out = append(out, toTeamAccount(u))
+		a := toTeamAccount(u)
+		for _, p := range providers[u.ID] {
+			a.Providers = append(a.Providers, string(p))
+		}
+		out = append(out, a)
 	}
 	return out, nil
 }

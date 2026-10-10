@@ -1,3 +1,7 @@
+import type { ComponentType } from "react";
+
+import type { Provider } from "@/models/User";
+
 // lucide dropped brand marks, so the GitHub, Google, and Discord marks are inlined.
 export const GithubMark = ({ className = "size-4" }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
@@ -24,6 +28,13 @@ export const DiscordMark = () => (
     />
   </svg>
 );
+
+const providerMarks: Record<Provider, ComponentType> = { github: GithubMark, google: GoogleMark, discord: DiscordMark };
+
+export const ProviderMark = ({ provider }: { provider: Provider }) => {
+  const Mark = providerMarks[provider];
+  return <Mark />;
+};
 
 interface LoginProviderMarksProps {
   login: string;

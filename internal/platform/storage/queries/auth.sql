@@ -24,6 +24,9 @@ WHERE id = sqlc.arg(user_id)
 -- name: ListIdentitiesByUser :many
 SELECT * FROM user_identities WHERE user_id = ? ORDER BY created_at, provider;
 
+-- name: ListIdentityProviders :many
+SELECT user_id, provider FROM user_identities ORDER BY user_id, created_at, provider;
+
 -- name: CountIdentitiesByUser :one
 SELECT COUNT(*) FROM user_identities WHERE user_id = ?;
 

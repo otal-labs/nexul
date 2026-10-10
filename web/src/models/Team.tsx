@@ -1,3 +1,5 @@
+import type { Provider } from "@/models/User";
+
 // Mirrors internal/tenancy/model.go's Team wire shape (GET /api/team).
 export const AccountStatus = {
   Active: "active",
@@ -56,6 +58,8 @@ export interface TeamPerson {
   avatar_url: string;
   status: AccountStatus;
   created_at: string;
+  // The linked sign-in accounts, in the order they were linked.
+  providers: Provider[];
   // A live browser socket right now; last_seen_at is the latest session activity, to the hour, null once signed out everywhere.
   online: boolean;
   last_seen_at: string | null;

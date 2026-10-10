@@ -14,6 +14,8 @@ type IdentityStore interface {
 	CreateFirstUser(ctx context.Context, id *Identity, events ...eventbus.OutboxEvent) (*User, error)
 	GetUserByProvider(ctx context.Context, provider Provider, providerUserID string) (*User, error)
 	ListIdentities(ctx context.Context, userID string) ([]Identity, error)
+	// ListIdentityProviders is every user's linked providers by user id, in the order they were linked.
+	ListIdentityProviders(ctx context.Context) (map[string][]Provider, error)
 	// LinkIdentity attaches one more provider account; ErrConflict when it belongs to anyone already.
 	LinkIdentity(ctx context.Context, id *Identity, events ...eventbus.OutboxEvent) error
 	// UnlinkIdentity detaches a provider account; ErrConflict for the user's last one, so nobody locks themselves out.

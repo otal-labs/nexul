@@ -66,6 +66,15 @@ func (s *Service) verifyLinkState(state string, provider Provider) (string, erro
 	return claims.UserID, nil
 }
 
+// SignInProviders is the composition root's read for the Team list, which checks who may see each account itself.
+func (s *Service) SignInProviders(ctx context.Context) (map[string][]Provider, error) {
+	providers, err := s.cfg.Users.ListIdentityProviders(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("sign-in providers: %w", err)
+	}
+	return providers, nil
+}
+
 // ListIdentities returns the caller's sign-in accounts, oldest first.
 func (s *Service) ListIdentities(ctx context.Context, userID string) ([]Identity, error) {
 	identities, err := s.cfg.Users.ListIdentities(ctx, userID)
