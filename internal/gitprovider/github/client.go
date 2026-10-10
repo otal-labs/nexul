@@ -399,25 +399,3 @@ func mapErr(err error) error {
 	}
 	return err
 }
-
-// AdministersAccount reports whether the token's user is inst's account, for a user installation, or an active admin
-// of it, for an organisation. GitHub answers the membership read only when the App holds the organisation's Members
-// permission; a refusal reads as not shown to be an admin.
-func (c *Client) AdministersAccount(ctx context.Context, inst *gitprovider.Installation) (bool, error) {
-	if inst.AccountType == "organization" {
-		m, _, err := c.gh.Organizations.GetOrgMembership(ctx, "", inst.AccountLogin)
-		mapped := mapErr(err)
-		if err != nil && (errors.Is(mapped, apperrors.ErrNotFound) || errors.Is(mapped, apperrors.ErrUnauthorized)) {
-			return false, nil
-		}
-		if err != nil {
-			return false, fmt.Errorf("read membership of %s: %w", inst.AccountLogin, mapped)
-		}
-		return m.GetRole() == "admin" && m.GetState() == "active", nil
-	}
-	u, _, err := c.gh.Users.Get(ctx, "")
-	if err != nil {
-		return false, fmt.Errorf("read the installer: %w", mapErr(err))
-	}
-	return u.GetID() != 0 && u.GetID() == inst.AccountID, nil
-}

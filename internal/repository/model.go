@@ -1,11 +1,11 @@
 // Package repository reads a git repository's tree and proposes deployable candidates: compose
 // stacks and standalone Dockerfiles, with their services, ports and env keys. It never imports gitprovider or
-// deploy directly (ADR 0017) — server/cmd adapts a connector-backed provider to the Scanner seam below.
+// deploy directly (ADR 0017) — server/cmd adapts each person's own GitHub view to the GitHubView seam (ADR 0147).
 package repository
 
 import "strings"
 
-// Repo is a git repository visible through a connector's installation.
+// Repo is a git repository a person's own GitHub account can open where the App is installed.
 type Repo struct {
 	ID            int64  `json:"id"`
 	Owner         string `json:"owner"`

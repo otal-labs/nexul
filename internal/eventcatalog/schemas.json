@@ -5228,15 +5228,15 @@
       },
       "workspace_id": {
         "type": "string",
-        "description": "The workspace whose repository list changed."
+        "description": "The workspace the account was linked to or detached from."
       },
       "actor_id": {
         "type": "string",
-        "description": "The person who assigned or unassigned it, or who made the install link it was claimed through."
+        "description": "The person who attached a repository from the account, or who detached it; earlier events name who assigned it or made the install link it was claimed through."
       },
       "uninstalled": {
         "type": "boolean",
-        "description": "On repository.installation.unassigned, true when GitHub stopped listing the installation rather than someone unassigning it."
+        "description": "On repository.installation.unassigned, true when GitHub stopped listing the installation rather than someone detaching it."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5259,15 +5259,15 @@
       },
       "workspace_id": {
         "type": "string",
-        "description": "The workspace whose repository list changed."
+        "description": "The workspace the account was linked to or detached from."
       },
       "actor_id": {
         "type": "string",
-        "description": "The person who assigned or unassigned it, or who made the install link it was claimed through."
+        "description": "The person who attached a repository from the account, or who detached it; earlier events name who assigned it or made the install link it was claimed through."
       },
       "uninstalled": {
         "type": "boolean",
-        "description": "On repository.installation.unassigned, true when GitHub stopped listing the installation rather than someone unassigning it."
+        "description": "On repository.installation.unassigned, true when GitHub stopped listing the installation rather than someone detaching it."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",

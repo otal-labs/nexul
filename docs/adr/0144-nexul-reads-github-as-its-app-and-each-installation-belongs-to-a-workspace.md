@@ -1,5 +1,9 @@
 # Nexul reads GitHub as its App, and each installation belongs to a workspace
 
+ADR 0147 supersedes the discovery and assignment parts below: repositories list with each person's own GitHub
+sign-in, an installation is linked to a workspace only by attaching one of its repositories, and the install link
+claims nothing. Reading as the App for background work on attached repositories stands.
+
 Nexul read GitHub with one user token for the whole instance, the one stored when someone clicked Connect on the
 GitHub connector. GitHub answers a user token with the intersection of what the App is installed on and what that user
 can open, so when a client installed the App on their own account, their repositories never listed, and a scan, a

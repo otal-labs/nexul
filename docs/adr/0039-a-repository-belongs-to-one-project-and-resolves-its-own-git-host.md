@@ -18,3 +18,4 @@ hosts.
 Decided: 2026-09-03
 
 Amended by ADR 0144: a GitHub repository resolves to the App's installation token once its private key is set.
+Amended by ADR 0147: finding a repository to attach reads GitHub with the person's own sign-in, not a connector.

@@ -12,7 +12,7 @@ A project holds a piece of your work: its board, docs, memories, repository, and
 Press **New project** in the sidebar. A new workspace shows the same button on its empty board and docs list. The project wizard takes you from nothing to a deployed service:
 
 1. **Info.** Name the project and give it a prefix: 2 to 5 letters or digits, starting with a letter. Ticket keys start with it, such as `BE-42`. A prefix is unique within its workspace.
-2. **Repository.** Say where the project's tests live, then pick the repository to deploy from the repositories this workspace can see through your [GitHub App](/docs/guide/github-app/). The wizard scans it for a Dockerfile or compose file. Scans and repository links stay within that workspace's assigned accounts; naming another workspace's repository directly does not grant access. Once the App's private key is set, a workspace sees the accounts assigned to it; **Install it on another account or organisation** under the search installs the App somewhere new and assigns that account to this workspace.
+2. **Repository.** Say where the project's tests live, then pick the repository to deploy. The search lists the repositories your own GitHub account can open wherever the [GitHub App](/docs/guide/github-app/) is installed, and the wizard scans the one you pick with your GitHub too. If your GitHub isn't connected, the step shows **Connect GitHub to see your repositories** instead; **Connect GitHub** links it to your profile and brings you to **Settings → Profile**, and you come back to the wizard from there. **Install it on an account or organisation you manage** under the search installs the App somewhere new.
 3. **Service.** Check the service the scan proposes and pick the machine to run it on. See [Runners](/docs/guide/runners/).
 4. **Environment.** Only if the repository has a `.env.example`: fill in its values.
 5. **Reach.** Optional: give the service a hostname now, or later from the stack page.
@@ -39,7 +39,7 @@ From an existing project:
 - **Add repo**, in **Settings → Repositories**, attaches a repository without deploying it.
 - **Import from this machine**, on the [Runners](/docs/guide/runners/) page next to a machine, adopts what's already running there as unmanaged stacks. Press **Attach repository** on one to give it a repository and make it deployable.
 
-A repository belongs to one project. Attaching one that's already in another project is refused straight away.
+A repository belongs to one project. Attaching one that's already in another project is refused straight away. You can attach only a repository your own GitHub account lists; attaching it is what lets the workspace's deploys, webhooks and pull request reads use its account through the App, and the account then shows as **Used by** this workspace under **Settings → Connectors → GitHub App**.
 
 ## A tests repository
 

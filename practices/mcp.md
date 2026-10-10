@@ -125,7 +125,10 @@ for a newer revision.
   caller. Never splice user-authored text into server instructions, tool
   descriptions, or prompt templates.
 - **Never forward the caller's token.** Upstream calls (the git provider,
-  Cloudflare, a harness) use Nexul's own connector credentials.
+  Cloudflare, a harness) use Nexul's own credentials, never the bearer the
+  caller sent. Repository discovery reads GitHub with the GitHub token Nexul
+  keeps for the calling person (ADR 0147), so a tool never lists more than
+  they can open.
 - **Log the call, not the payload.** A tool call logs its name, the actor, the
   outcome, and the duration, under the request's `trace_id`. Arguments and
   results are never logged; they carry document bodies and secrets.
