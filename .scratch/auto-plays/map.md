@@ -119,6 +119,9 @@ resolved.
 - 09, the record and surfaces: built, PR #524.
 - 10, matching and the queue: built, PR #530.
 - 11, the composer: built, PR #529.
+- 12, the ticket signals: built, PR #536.
+- 13, the decisions check: built, PR #540.
+- 14, `runPlay` and unique play labels: built, PRs #537 and #538.
 
 ## Not yet specified
 

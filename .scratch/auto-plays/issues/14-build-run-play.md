@@ -1,7 +1,7 @@
 # 14: Build runPlay in the SDK and the automations host
 
 Type: task
-Status: open
+Status: resolved
 Blocked by: 04, 10
 
 ## Question
@@ -19,3 +19,14 @@ support, SDK tests, and the SDK docs page.
   `origin_kind`/`origin_id` (or a nullable `automation_id`) in a new
   migration, and the re-check and the ticket lines must handle a run with
   no auto play.
+
+## Answer
+
+Built in PRs #537 and #538: play labels unique per workspace ignoring
+case (migration 0086 renames duplicates " (2)", " (3)"), `play_queue`
+`automation_id`, `POST /api/plays/{id}/run` on `plays:run` instead of
+`plays:write`, `POST /api/plays/queue` for automations only, `ctx.runPlay`
+with the `PlayNames` union from `nexul types` (refreshed on `nexul push`,
+written empty by `nexul init`), `createMockContext` recording calls, and the
+guide's automations page. Left: `nexul push` doesn't type-check, and a
+renamed play doesn't flag automations still using its old name.

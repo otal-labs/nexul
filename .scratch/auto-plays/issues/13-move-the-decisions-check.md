@@ -1,7 +1,7 @@
 # 13: Make the decisions check an ordinary play with a seeded auto play
 
 Type: task
-Status: open
+Status: resolved
 Blocked by: 07, 10
 
 ## Question
@@ -25,3 +25,14 @@ guide's decisions check and automations pages.
   unique per workspace in 14; if "Decisions check" is taken, add " (2)").
 - Move the check onto 10's queue: its consumer goes; the seeded auto play
   is `ticket.entered_stage` with stage done, run on `causer`.
+
+## Answer
+
+Built in PR #540: the decisions check is a seeded ticket play (built-in
+key `decisions-check`, shown in done) with a seeded auto play (ticket
+enters done, run on whoever caused it), migration 0087 carrying each
+workspace's old switch onto it and pointing old trails at the play. The
+hardcoded consumer, the `.../plays/decisions-check` routes and the special
+`play_update` id are gone; the "didn't run" notice and its retry remain.
+A queue row's id now derives from the event and the auto play, so a
+redelivered event never queues a second run.
