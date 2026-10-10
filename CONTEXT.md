@@ -117,8 +117,9 @@ _Avoid_: Traits, knobs, model settings
 
 **Paired computer**:
 A user's own machine running a harness, attached to their Nexul account.
-It is reached through its personal runner; one paired before personal runners
-is reached through its computer tunnel, or by URL. Owned by one user; nobody
+It is reached through its personal runner, which also pairs it, and pairs it
+again before its session ends, with no one asking; one paired before personal
+runners is reached through its computer tunnel, or by URL. Owned by one user; nobody
 else can see it or run on it, a workspace Owner included.
 _Avoid_: Device, host, runner (a runner builds and deploys)
 

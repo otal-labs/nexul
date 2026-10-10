@@ -323,6 +323,7 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 
 	// A computer added without a name takes the hostname its runner reports when it enrolls.
 	mustSubscribe(ctx, bus, "pairing.computer_name", runner.TopicPersonalChanged, "", svc.pairingSvc.HandleRunnerChanged)
+	mustSubscribe(ctx, bus, "pairing.through_runner", runner.TopicFactsReported, "", svc.pairingSvc.HandleFactsReported)
 
 	// Pushes leave the request path here: the outbox event names the rows, the sender posts to Expo per phone.
 	mustSubscribe(ctx, bus, "push.notifications", workspace.TopicNotificationPushRequested, "", svc.pushSender.HandleNotificationPushRequested)

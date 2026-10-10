@@ -117,6 +117,7 @@ export interface EventPayloads {
   "role.updated": { "role_id": string; "workspace_id": string; "actor_id"?: string; };
   "runner.connected": { "runner_id": string; "name"?: string; };
   "runner.disconnected": { "runner_id": string; "reason"?: string; };
+  "runner.facts_reported": { "runner_id": string; "computer_id": string; "user_id": string; "facts": { "hostname"?: string; "t3": { "state": "answering" | "not_running" | "missing" | "not_loopback"; "port"?: number; "version"?: string; }; }; "members_only": boolean; };
   "runner.heartbeat": { "runner_id": string; "ts": number; };
   "runner.personal_changed": { "runner_id": string; "computer_id": string; "user_id": string; "state": "enrolled" | "connected" | "disconnected" | "removed"; "hostname"?: string; "members_only": boolean; };
   "service.created": { "stack": { "id": string; "project_id": string; "name": string; "slug": string; "machine": string; "strategy": string; "compose_path"?: string; "env"?: Record<string, string>; "docker_network"?: string; "ports"?: string[]; "mounts"?: string[]; "command"?: string[]; "build_source"?: { "repo_owner"?: string; "repo_name"?: string; "branch"?: string; "dockerfile"?: string; "compose_path"?: string; }; "branch_deploy_rules"?: { "pattern": string; "docker_network": string; "hostname_template"?: string; "name_suffix"?: string; "port"?: number; "overrides"?: Record<string, string>; }[]; "derived_from"?: string; "branch"?: string; "managed": boolean; "created_at": string; "updated_at": string; }; "services"?: { "id": string; "stack_id": string; "name": string; "declared": { "image"?: string; "build"?: string; "ports"?: string[]; "env_keys"?: string[]; }; "container_name"?: string; "image"?: string; "status": string; "networks"?: { "name": string; "address"?: string; }[]; "ports"?: string[]; "observed_at"?: string; }[]; };
@@ -269,6 +270,7 @@ export const TOPICS: Topic[] = [
   "role.updated",
   "runner.connected",
   "runner.disconnected",
+  "runner.facts_reported",
   "runner.heartbeat",
   "runner.personal_changed",
   "service.created",
@@ -419,6 +421,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "role.updated": {"role_id":"fixture-role_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id"},
   "runner.connected": {"runner_id":"fixture-runner_id","name":"fixture-name"},
   "runner.disconnected": {"runner_id":"fixture-runner_id","reason":"fixture-reason"},
+  "runner.facts_reported": {"runner_id":"fixture-runner_id","computer_id":"fixture-computer_id","user_id":"fixture-user_id","facts":{"hostname":"fixture-hostname","t3":{"state":"answering","port":1,"version":"fixture-version"}},"members_only":false},
   "runner.heartbeat": {"runner_id":"fixture-runner_id","ts":1},
   "runner.personal_changed": {"runner_id":"fixture-runner_id","computer_id":"fixture-computer_id","user_id":"fixture-user_id","state":"enrolled","hostname":"fixture-hostname","members_only":false},
   "service.created": {"stack":{"id":"fixture-id","project_id":"fixture-project_id","name":"fixture-name","slug":"fixture-slug","machine":"fixture-machine","strategy":"fixture-strategy","compose_path":"fixture-compose_path","env":{},"docker_network":"fixture-docker_network","ports":["fixture-ports"],"mounts":["fixture-mounts"],"command":["fixture-command"],"build_source":{"repo_owner":"fixture-repo_owner","repo_name":"fixture-repo_name","branch":"fixture-branch","dockerfile":"fixture-dockerfile","compose_path":"fixture-compose_path"},"branch_deploy_rules":[{"pattern":"fixture-pattern","docker_network":"fixture-docker_network","hostname_template":"fixture-hostname_template","name_suffix":"fixture-name_suffix","port":1,"overrides":{}}],"derived_from":"fixture-derived_from","branch":"fixture-branch","managed":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},"services":[{"id":"fixture-id","stack_id":"fixture-stack_id","name":"fixture-name","declared":{"image":"fixture-image","build":"fixture-build","ports":["fixture-ports"],"env_keys":["fixture-env_keys"]},"container_name":"fixture-container_name","image":"fixture-image","status":"fixture-status","networks":[{"name":"fixture-name","address":"fixture-address"}],"ports":["fixture-ports"],"observed_at":"2026-01-01T00:00:00Z"}]},

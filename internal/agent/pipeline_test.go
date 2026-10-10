@@ -476,7 +476,7 @@ func TestRunTurn_ResolveTargetNotConfigured_PostsSystemReply(t *testing.T) {
 		},
 		{
 			&pairing.NotConfiguredError{Reason: pairing.ReasonOffline, Computer: "Onik's laptop"},
-			"@Agent can't reach Onik's laptop — is T3 Code running there?",
+			"Onik's laptop is offline: T3 Code isn't answering there.",
 		},
 		{
 			harness.ProtocolRefusal("T3 Code on Onik's laptop went back to its old orchestrator; Nexul only moves forward. Update T3 Code there."),

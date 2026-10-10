@@ -131,7 +131,7 @@ func TestRequireSetup_HarnessAndStoreFailures_NeverPass(t *testing.T) {
 		var nc *NotConfiguredError
 		require.ErrorAs(t, err, &nc)
 		assert.Equal(t, ReasonOffline, nc.Reason)
-		assert.Equal(t, "@Agent can't reach Onik's laptop — is T3 Code running there?", err.Error())
+		assert.Equal(t, "Onik's laptop is offline: T3 Code isn't answering there.", err.Error())
 		assert.ErrorIs(t, err, apperrs.ErrInvalid, "the play press and MCP play run surface it as a bad request with this message")
 		assert.ErrorIs(t, err, errBoom, "the harness failure stays in the chain for logs")
 	})

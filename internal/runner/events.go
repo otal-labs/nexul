@@ -15,7 +15,9 @@ const (
 	TopicRunnerHeartbeat    = "runner.heartbeat"
 	// TopicPersonalChanged is ephemeral: a personal runner enrolling, connecting, disconnecting or removed, in place of
 	// runner.connected and runner.disconnected, which every runners:read holder hears (ADR 0146).
-	TopicPersonalChanged       = "runner.personal_changed"
+	TopicPersonalChanged = "runner.personal_changed"
+	// TopicFactsReported is ephemeral and never bridged to a socket: a personal runner's report, for pairing.
+	TopicFactsReported         = "runner.facts_reported"
 	TopicDeployRequested       = "deploy.requested"
 	TopicDeployCancelRequested = "deploy.cancel_requested"
 	TopicDeployBuildStarted    = "deploy.build_started"
@@ -38,6 +40,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicRunnerDisconnected, Payload: RunnerDisconnectedEvent{}},
 		{Name: TopicRunnerHeartbeat, Payload: RunnerHeartbeatEvent{}},
 		{Name: TopicPersonalChanged, Payload: PersonalChangedEvent{}},
+		{Name: TopicFactsReported, Payload: FactsReportedEvent{}},
 		{Name: TopicDeployBuildStarted, Payload: BuildStartedEvent{}},
 		{Name: TopicDeployBuildProgress, Payload: BuildProgressEvent{}},
 		{Name: TopicDeployBuildCompleted, Payload: BuildCompletedEvent{}},
@@ -98,6 +101,15 @@ type PersonalChangedEvent struct {
 	State      string `json:"state" enum:"enrolled,connected,disconnected,removed"`
 	// Hostname is the computer's hostname as its installer reported it, sent only when the runner enrolls.
 	Hostname    string `json:"hostname,omitempty" jsonschema:"The computer's hostname as its installer reported it; sent only with state enrolled."`
+	MembersOnly bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
+}
+
+// FactsReportedEvent is a personal runner's report about its computer, as the runner sent it.
+type FactsReportedEvent struct {
+	RunnerID    string `json:"runner_id"`
+	ComputerID  string `json:"computer_id" jsonschema:"The computer the runner reaches."`
+	UserID      string `json:"user_id" jsonschema:"The person who owns the computer."`
+	Facts       Facts  `json:"facts"`
 	MembersOnly bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }
 

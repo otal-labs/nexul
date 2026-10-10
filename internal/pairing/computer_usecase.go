@@ -12,6 +12,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
 // Runners is the runner domain as pairing reaches it: a computer's personal runner (ADR 0146). Pairing never writes a
@@ -21,7 +22,16 @@ type Runners interface {
 	EnrollComputer(ctx context.Context, userID, computerID string) (Enrollment, error)
 	// ComputerRunner returns the runner that reaches computerID, or ErrNotFound while none is enrolled.
 	ComputerRunner(ctx context.Context, computerID string) (ComputerRunner, error)
+	// PairingToken asks computerID's connected runner for a one-time T3 Code pairing token minted on the computer.
+	PairingToken(ctx context.Context, computerID string) (string, error)
 }
+
+const (
+	// repairWindow is how close to its end a computer's session is replaced through its runner.
+	repairWindow = 7 * 24 * time.Hour
+	// pairTimeout bounds one pairing through a runner: the token's mint on the computer, then its exchange.
+	pairTimeout = time.Minute
+)
 
 // Enrollment is the signed token carrying a personal runner's one-time code, and the command that installs it.
 type Enrollment struct {
@@ -145,8 +155,95 @@ func (s *Service) HandleRunnerChanged(ctx context.Context, ev eventbus.Event) er
 	return nil
 }
 
-// withRunners adds each computer's runner state; a computer whose runner is not enrolled yet has none.
+// HandleFactsReported pairs through its runner a computer whose T3 Code answers and whose session ends within repairWindow.
+func (s *Service) HandleFactsReported(ctx context.Context, ev eventbus.Event) error {
+	var p struct {
+		ComputerID string `json:"computer_id"`
+		UserID     string `json:"user_id"`
+		Facts      struct {
+			Hostname string `json:"hostname"`
+			T3       struct {
+				State string `json:"state"`
+			} `json:"t3"`
+		} `json:"facts"`
+	}
+	if err := json.Unmarshal(ev.Payload, &p); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse %s: %w", ev.Topic, err))
+	}
+	if p.Facts.T3.State != "answering" {
+		return nil
+	}
+	computer, err := s.ownComputer(ctx, p.UserID, p.ComputerID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if computer.Paired() && computer.TokenExpiresAt.After(s.now().Add(repairWindow)) {
+		return nil
+	}
+	if computer.Name == "" {
+		computer.Name = strings.TrimSpace(p.Facts.Hostname)
+	}
+	ctx, cancel := context.WithTimeout(ctx, pairTimeout)
+	defer cancel()
+	paired, err := s.pairThroughRunner(ctx, *computer)
+	if err != nil {
+		logging.FromCtx(ctx).Warn("pairing through the runner failed", "computer_id", computer.ID, "error", err)
+		return nil
+	}
+	logging.FromCtx(ctx).Info("computer paired through its runner", "computer_id", paired.ID, "kind", paired.Kind, "version", paired.HarnessVersion)
+	return nil
+}
+
+// pairThroughRunner pairs c through its runner; a failure leaves c as it was and stays its row's reason until one succeeds.
+func (s *Service) pairThroughRunner(ctx context.Context, c Computer) (*Computer, error) {
+	paired, err := s.mintAndPair(ctx, c)
+	s.pairMu.Lock()
+	defer s.pairMu.Unlock()
+	if err != nil {
+		s.pairFailures[c.ID] = err.Error()
+		return nil, err
+	}
+	delete(s.pairFailures, c.ID)
+	return paired, nil
+}
+
+func (s *Service) mintAndPair(ctx context.Context, c Computer) (*Computer, error) {
+	runners, err := s.runnerSeam()
+	if err != nil {
+		return nil, err
+	}
+	r, err := runners.ComputerRunner(ctx, c.ID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil, fmt.Errorf("%w: %s has no Nexul app yet; run the command from Add a computer on it", apperrs.ErrInvalid, c.Name)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get runner of computer %s: %w", c.ID, err)
+	}
+	if !r.Connected {
+		return nil, fmt.Errorf("%w: %s isn't connected to Nexul", apperrs.ErrConflict, c.Name)
+	}
+	token, err := runners.PairingToken(ctx, c.ID)
+	if err != nil {
+		return nil, fmt.Errorf("T3 Code on %s made no pairing token: %w", c.Name, err)
+	}
+	return s.pair(ctx, c, runnerAddress(c.ID), token)
+}
+
+// pairFailure is why the computer's last pairing through its runner failed, "" after a success.
+func (s *Service) pairFailure(computerID string) string {
+	s.pairMu.Lock()
+	defer s.pairMu.Unlock()
+	return s.pairFailures[computerID]
+}
+
+// withRunners adds each computer's runner state, none before one enrolls, and why its last pairing failed.
 func (s *Service) withRunners(ctx context.Context, cs []Computer) ([]Computer, error) {
+	for i := range cs {
+		cs[i].PairError = s.pairFailure(cs[i].ID)
+	}
 	if s.runners == nil {
 		return cs, nil
 	}

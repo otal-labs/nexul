@@ -50,6 +50,11 @@ const (
 	// Streams (ADR 0146): harness_dial opens stream id to T3 Code; no frame names a host or port, the runner picks.
 	FrameHarnessDial        FrameType = "harness_dial"
 	FrameHarnessDialRefused FrameType = "harness_dial_refused"
+	// FrameT3PairTokenRequest asks a personal runner to mint a one-time T3 Code pairing token, answered by FrameT3PairToken.
+	FrameT3PairTokenRequest FrameType = "t3_pair_token_request"
+	FrameT3PairToken        FrameType = "t3_pair_token"
+	// FrameFacts (runner -> server) is a personal runner's report about its computer, on connect and every 6 hours.
+	FrameFacts FrameType = "facts"
 )
 
 // Build and deploy statuses carried by result frames.
@@ -130,6 +135,10 @@ type Frame struct {
 	Tail      int                `json:"tail,omitempty"`
 	Follow    bool               `json:"follow,omitempty"`
 	Lines     []ContainerLogLine `json:"lines,omitempty"`
+	// Token carries a t3_pair_token's one-time T3 Code pairing token; it is never logged.
+	Token string `json:"token,omitempty"`
+	// Facts carries a facts frame's report.
+	Facts *Facts `json:"facts,omitempty"`
 }
 
 // ContainerLogLine is one line a container printed: Docker's RFC 3339 timestamp, stdout or stderr, and the text.
@@ -189,6 +198,9 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameLogsCancel:         (*Frame).validateID,
 	FrameHarnessDial:        (*Frame).validateID,
 	FrameHarnessDialRefused: (*Frame).validateHarnessDialRefused,
+	FrameT3PairTokenRequest: (*Frame).validateID,
+	FrameT3PairToken:        (*Frame).validateT3PairToken,
+	FrameFacts:              (*Frame).validateFacts,
 }
 
 // Validate checks the fields required by the frame's type; unknown types and malformed values return ErrInvalid.
@@ -342,6 +354,20 @@ func (f *Frame) validateLogsChunk() error {
 func (f *Frame) validateHarnessDialRefused() error {
 	if f.ID == "" || f.Error == "" {
 		return fmt.Errorf("%w: harness_dial_refused requires id and error", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+func (f *Frame) validateT3PairToken() error {
+	if f.ID == "" || (f.Token == "") == (f.Error == "") {
+		return fmt.Errorf("%w: t3_pair_token requires id and either token or error", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+func (f *Frame) validateFacts() error {
+	if f.Facts == nil || !oneOf(f.Facts.T3.State, T3Answering, T3NotRunning, T3Missing, T3NotLoopback) {
+		return fmt.Errorf("%w: facts requires facts with a valid T3 Code state", apperrs.ErrInvalid)
 	}
 	return nil
 }

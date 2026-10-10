@@ -166,9 +166,10 @@ The harness HTTP client gets a `DialContext` that recognises a computer reached 
 instead of a TCP dial, asks the runner domain for a `net.Conn`:
 
 1. A computer with a runner gets the session address `http://<computer id>.nexul-computer.invalid`
-   (`.invalid` never resolves, RFC 6761). `pairing.Computer.Session()` builds it; the stored and shown
-   address stays `http://127.0.0.1:<port>`. The transport sets the request's `Host` to that loopback
-   address, so T3 Code sees what a local client sends.
+   (`.invalid` never resolves, RFC 6761). Pairing through the runner stores it as the computer's
+   `server_url`, and `pairing.Computer.Session()` uses it for one not paired yet; the port lives only on the
+   computer. The transport sets the request's `Host` to the loopback address, so T3 Code sees what a local
+   client sends.
 2. `runner.Handler.DialComputer(ctx, computerID)` finds the connected personal runner for the computer,
    mints a single-use stream id, registers a waiter, and sends `harness_dial {id}` on the runner's control
    connection.

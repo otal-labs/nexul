@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/harness"
+	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/t3rpc"
@@ -79,7 +80,7 @@ func TestIntegration_PersonalRunnerReachesT3Code(t *testing.T) {
 
 	dials := &countingDialer{next: svc.computers}
 	client := harnessHTTPClient(dials, func(context.Context, string) (string, string, bool, error) { return "", "", false, nil })
-	address := "http://c-laptop" + computerHostSuffix
+	address := "http://c-laptop" + pairing.ComputerHostSuffix
 
 	desc, err := t3rpc.Describe(ctx, client, address)
 	require.NoError(t, err)

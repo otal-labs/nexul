@@ -247,7 +247,7 @@ func TestRun_HarnessOffline_FailsOnPressWithTheChatRefusal(t *testing.T) {
 	_, err := f.runner.Run(ctxAs(starter), ticketRun())
 
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
-	assert.Equal(t, "@Agent can't reach Onik's laptop — is T3 Code running there?", err.Error())
+	assert.Equal(t, "Onik's laptop is offline: T3 Code isn't answering there.", err.Error())
 	trails := f.trails.all()
 	require.Len(t, trails, 1)
 	assert.Equal(t, TrailFailed, trails[0].State)
