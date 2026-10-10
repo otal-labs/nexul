@@ -12,6 +12,7 @@ const (
 	TopicUpdated       = "doc.updated"
 	TopicDeleted       = "doc.deleted"
 	TopicMoved         = "doc.moved"
+	TopicSettled       = "doc.settled"
 	TopicFolderCreated = "doc.folder.created"
 	TopicFolderUpdated = "doc.folder.updated"
 	TopicFolderDeleted = "doc.folder.deleted"
@@ -36,6 +37,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicUpdated, Payload: UpdatedEvent{}},
 		{Name: TopicDeleted, Payload: DeletedEvent{}},
 		{Name: TopicMoved, Payload: MovedEvent{}, Description: "A doc moved to another folder of its project; doc carries its new folder_id."},
+		{Name: TopicSettled, Payload: SettledEvent{}, Description: "A signed-in person's edits to a doc stopped for ten minutes; an agent's edits over MCP and an automation's never open the window. first is true when the doc was created inside it, so a doc created and then edited settles once, as created. An archived doc never settles."},
 		{Name: TopicFolderCreated, Payload: FolderEvent{}},
 		{Name: TopicFolderUpdated, Payload: FolderUpdatedEvent{}, Description: "A doc folder was renamed."},
 		{Name: TopicFolderDeleted, Payload: FolderDeletedEvent{}, Description: "A doc folder was deleted; its docs moved to the project's default folder, never deleted."},
@@ -103,6 +105,13 @@ type FolderDeletedEvent struct {
 	Folder          Folder `json:"folder"`
 	MovedToFolderID string `json:"moved_to_folder_id"`
 	ActorID         string `json:"actor_id,omitempty"`
+}
+
+// SettledEvent is the doc.settled payload, built when the doc settles, so it names the doc as it then stands.
+type SettledEvent struct {
+	Doc     WatchedDoc `json:"doc"`
+	First   bool       `json:"first" jsonschema:"true when the doc was created inside the window: a create, not a change."`
+	ActorID string     `json:"actor_id" jsonschema:"The person whose save last moved the window."`
 }
 
 // WatchersChangedEvent is the doc.watchers.changed payload: who started (watching true) or stopped watching which doc.

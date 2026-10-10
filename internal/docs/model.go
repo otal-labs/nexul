@@ -16,6 +16,8 @@ type Doc struct {
 	CreatedBy string    `json:"created_by"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	// Settler is the person a create or save opens the doc's settle window for; empty leaves the window as it is.
+	Settler string `json:"-"`
 }
 
 // DocVersion is one historical snapshot; each update appends a row while the docs table holds the current pointer.

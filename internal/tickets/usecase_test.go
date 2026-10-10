@@ -48,6 +48,7 @@ type fakeRepo struct {
 	ticketLinkErr error
 	doneStatuses  map[Status]bool
 	prefixes      map[string]string
+	unblocked     UnblockedEvents
 	// workspaces maps a project to its workspace's id and slug; unlisted projects sit in workspace-default.
 	workspaces map[string][2]string
 }
@@ -153,9 +154,10 @@ func (f *fakeRepo) Page(_ context.Context, filter TicketFilter, _ TicketScope, w
 	return out[min(w.Offset, len(out)):min(w.Offset+w.Limit, len(out))], len(out), nil
 }
 
-func (f *fakeRepo) UpdateStatus(_ context.Context, id string, status Status, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) UpdateStatus(_ context.Context, id string, status Status, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.unblocked = unblocked
 	if f.statusErr != nil {
 		return f.statusErr
 	}
@@ -187,9 +189,10 @@ func (f *fakeRepo) nextPositionLocked(status Status, categoryID string) int {
 	return max + 1
 }
 
-func (f *fakeRepo) Delete(_ context.Context, id string, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) Delete(_ context.Context, id string, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.unblocked = unblocked
 	if f.deleteErr != nil {
 		return f.deleteErr
 	}

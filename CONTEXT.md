@@ -637,7 +637,9 @@ _Avoid_: Origin (that is Found in), parent doc, spec link
 **Blocked by**:
 A ticket's link to another ticket that must reach done first, in any project
 of the same workspace. It shows on the card and warns before a play runs, but
-never stops a card moving.
+never stops a card moving. A ticket not yet done becomes unblocked when its
+last open blocker enters a done stage, loses its link, or is deleted; a
+blocker leaving done and entering it again unblocks it again.
 _Avoid_: Depends on, dependency, blocker stage
 
 **Body template**:

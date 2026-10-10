@@ -10,6 +10,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
 func (f *fakeRepo) linkedLocked(id string) *LinkedTicket {
@@ -86,9 +87,10 @@ func (f *fakeRepo) PutLink(_ context.Context, link TicketLink, evts ...eventbus.
 	return nil
 }
 
-func (f *fakeRepo) DeleteLink(_ context.Context, link TicketLink, evts ...eventbus.OutboxEvent) (bool, error) {
+func (f *fakeRepo) DeleteLink(_ context.Context, link TicketLink, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.unblocked = unblocked
 	if f.ticketLinkErr != nil {
 		return false, f.ticketLinkErr
 	}
@@ -404,4 +406,43 @@ func TestTicketLinks_RepoFailure_IsWrapped(t *testing.T) {
 	}
 	_, err := s.Links(t.Context(), ts[0].ID)
 	require.ErrorIs(t, err, boom)
+}
+
+func TestUnblocked_EachPathNamesItsCauseAndActor(t *testing.T) {
+	automation := Actor{Kind: ActorKindAutomation, AutomationID: "auto-1", AutomationName: "merge"}
+	person := Actor{Kind: ActorKindUser, UserID: "u-1"}
+	tests := []struct {
+		name  string
+		act   func(ctx context.Context, s *Service, blocked, blocker string) error
+		cause string
+		actor Actor
+	}{
+		{"an automation moves the blocker to done", func(ctx context.Context, s *Service, _, blocker string) error {
+			_, err := s.SetStatusAs(ctx, blocker, StatusDone, automation, "run-1")
+			return err
+		}, UnblockedByBlockerDone, automation},
+		{"a person removes the blocker", func(ctx context.Context, s *Service, blocked, blocker string) error {
+			_, err := s.RemoveBlocker(ctx, blocked, blocker)
+			return err
+		}, UnblockedByLinkDeleted, person},
+		{"a person deletes the blocker", func(ctx context.Context, s *Service, _, blocker string) error {
+			return s.Delete(ctx, blocker)
+		}, UnblockedByBlockerDeleted, person},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			s := newTestService(repo)
+			ts := seedTickets(t, s, "blocked", "blocker")
+			_, err := s.AddBlocker(t.Context(), ts[0].ID, ts[1].ID)
+			require.NoError(t, err)
+
+			require.NoError(t, tt.act(identity.WithActor(t.Context(), identity.Actor{ID: "u-1"}), s, ts[0].ID, ts[1].ID))
+			require.NotNil(t, repo.unblocked)
+			evts := repo.unblocked([]Unblocked{{TicketID: ts[0].ID, ProjectID: ts[0].ProjectID}})
+			require.Len(t, evts, 1)
+			assert.Equal(t, TopicUnblocked, evts[0].Topic)
+			assert.Equal(t, UnblockedEvent{TicketID: ts[0].ID, ProjectID: ts[0].ProjectID, BlockerID: ts[1].ID, Cause: tt.cause, Actor: tt.actor}, evts[0].Payload)
+		})
+	}
 }

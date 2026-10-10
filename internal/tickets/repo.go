@@ -37,6 +37,15 @@ type TicketTypes interface {
 	FirstType(ctx context.Context, projectID string) (string, error)
 }
 
+// Unblocked is a ticket a change left waiting on no open blocker.
+type Unblocked struct {
+	TicketID  string
+	ProjectID string
+}
+
+// UnblockedEvents builds the events for the tickets a change unblocks, called inside the change's transaction.
+type UnblockedEvents func([]Unblocked) []eventbus.OutboxEvent
+
 // LinkRepo persists found-in and blocked-by links; writes carry outbox events.
 type LinkRepo interface {
 	// ListLinkEnds returns the links a ticket holds and the links other tickets hold against it.
@@ -50,7 +59,7 @@ type LinkRepo interface {
 	// PutLink inserts a link; a found_in link replaces any found-in the ticket already holds.
 	PutLink(ctx context.Context, link TicketLink, evts ...eventbus.OutboxEvent) error
 	// DeleteLink returns false when no such link existed; a found_in link is matched by ticket alone.
-	DeleteLink(ctx context.Context, link TicketLink, evts ...eventbus.OutboxEvent) (bool, error)
+	DeleteLink(ctx context.Context, link TicketLink, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) (bool, error)
 	// UnclearedBlockers maps each blocked ticket id to its blockers not yet in a done-stage status.
 	UnclearedBlockers(ctx context.Context) (map[string][]LinkedTicket, error)
 	// UnclearedBlockersOf is UnclearedBlockers for the tickets ids names only.
@@ -71,7 +80,7 @@ type Repo interface {
 	// they keep in all.
 	Page(ctx context.Context, f TicketFilter, scope TicketScope, w paging.Window) ([]*Ticket, int, error)
 	// UpdateStatus appends the ticket to the end of the new status's manual order, not its old position.
-	UpdateStatus(ctx context.Context, id string, status Status, evts ...eventbus.OutboxEvent) error
+	UpdateStatus(ctx context.Context, id string, status Status, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) error
 	// UpdateType changes a ticket's type id in place; the ticket keeps its identity.
 	UpdateType(ctx context.Context, id, typeID string) error
 	// UpdatePerson sets the ticket's developer or tester, enqueueing evts in the same transaction; empty clears it.
@@ -92,7 +101,7 @@ type Repo interface {
 	SetLabelColor(ctx context.Context, projectID, label string, color colors.Color) error
 	// LabelColors batches lookups in one query for the board, which renders many labels per screen.
 	LabelColors(ctx context.Context, projectID string, labels []string) (map[string]colors.Color, error)
-	Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
+	Delete(ctx context.Context, id string, unblocked UnblockedEvents, evts ...eventbus.OutboxEvent) error
 	Search(ctx context.Context, query string, limit int) ([]SearchResult, error)
 	LinkPR(ctx context.Context, id string, ref PRRef, state PRState) error
 	ListPRLinks(ctx context.Context, id string) ([]PRLink, error)

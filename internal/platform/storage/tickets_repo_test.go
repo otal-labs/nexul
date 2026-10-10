@@ -186,7 +186,7 @@ func TestTicketsRepo_UpdateTicket_Persists(t *testing.T) {
 func TestTicketsRepo_UpdateStatus_NotFound(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	err := s.Tickets.UpdateStatus(context.Background(), "missing", tickets.StatusDone)
+	err := s.Tickets.UpdateStatus(context.Background(), "missing", tickets.StatusDone, nil)
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
@@ -196,7 +196,7 @@ func TestTicketsRepo_UpdateStatus_Persists(t *testing.T) {
 	require.NoError(t, s.Docs.Create(context.Background(), newTestDoc("doc-1")))
 	require.NoError(t, s.Tickets.Create(context.Background(), newTestTicket("t-1", "doc-1")))
 
-	require.NoError(t, s.Tickets.UpdateStatus(context.Background(), "t-1", tickets.StatusDone))
+	require.NoError(t, s.Tickets.UpdateStatus(context.Background(), "t-1", tickets.StatusDone, nil))
 	got, err := s.Tickets.GetByID(context.Background(), "t-1")
 	require.NoError(t, err)
 	assert.Equal(t, tickets.StatusDone, got.Status)
@@ -306,7 +306,7 @@ func TestTicketsRepo_Create_ConcurrentIntoSameProjectAssignsDistinctNumbers(t *t
 func TestTicketsRepo_Delete_NotFound(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	err := s.Tickets.Delete(context.Background(), "missing")
+	err := s.Tickets.Delete(context.Background(), "missing", nil)
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
@@ -316,7 +316,7 @@ func TestTicketsRepo_Delete_RemovesTicket(t *testing.T) {
 	require.NoError(t, s.Docs.Create(context.Background(), newTestDoc("doc-1")))
 	require.NoError(t, s.Tickets.Create(context.Background(), newTestTicket("t-1", "doc-1")))
 
-	require.NoError(t, s.Tickets.Delete(context.Background(), "t-1"))
+	require.NoError(t, s.Tickets.Delete(context.Background(), "t-1", nil))
 	_, err := s.Tickets.GetByID(context.Background(), "t-1")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }

@@ -787,7 +787,7 @@ func (s *Service) transition(ctx context.Context, id string, to Status, actor Ac
 		evts = append(evts, build(updated))
 	}
 	// Position is assigned atomically in its own transaction (ADR 0002); re-fetch to return the persisted value.
-	if err := s.repo.UpdateStatus(ctx, id, to, evts...); err != nil {
+	if err := s.repo.UpdateStatus(ctx, id, to, unblockedEvents(id, UnblockedByBlockerDone, actor), evts...); err != nil {
 		return nil, fmt.Errorf("update ticket %s status: %w", id, err)
 	}
 	fresh, err := s.repo.GetByID(ctx, id)
@@ -828,7 +828,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("delete ticket %s: %w", id, err)
 	}
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDeleted, Payload: DeletedEvent{ID: t.ID, Title: t.Title, ProjectID: t.ProjectID}}
-	if err := s.repo.Delete(ctx, id, evt); err != nil {
+	if err := s.repo.Delete(ctx, id, unblockedEvents(id, UnblockedByBlockerDeleted, statusActor(ctx)), evt); err != nil {
 		return fmt.Errorf("delete ticket %s: %w", id, err)
 	}
 	return nil

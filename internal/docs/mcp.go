@@ -145,7 +145,7 @@ func docCreateTool(s *Service) mcptool.Tool {
 			"Returns the new doc with its body as markdown.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in docCreateIn) (any, error) {
-			d, err := createOrClone(ctx, s, in)
+			d, err := createOrClone(withViaMCP(ctx), s, in)
 			if err != nil {
 				return nil, err
 			}
@@ -178,7 +178,7 @@ func docUpdateTool(s *Service) mcptool.Tool {
 			"Returns the doc as it now stands.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in docUpdateIn) (any, error) {
-			d, err := updateDoc(ctx, s, in)
+			d, err := updateDoc(withViaMCP(ctx), s, in)
 			if err != nil {
 				return nil, err
 			}

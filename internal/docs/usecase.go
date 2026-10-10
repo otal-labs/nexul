@@ -119,6 +119,7 @@ func (s *Service) CreateInFolder(ctx context.Context, projectID, folderID, title
 
 // persistNew writes a new doc with its doc.created event and grants its author full permissions on it.
 func (s *Service) persistNew(ctx context.Context, d *Doc, mentioned []string) error {
+	d.Settler = settler(ctx, true)
 	if err := s.repo.Create(ctx, d, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicCreated, Payload: CreatedEvent{Doc: *d, ActorID: d.CreatedBy, MentionedUserIDs: mentioned}}); err != nil {
 		return fmt.Errorf("create doc: %w", err)
 	}
@@ -192,6 +193,22 @@ func (s *Service) attachmentIDMap(ctx context.Context, docID string) (map[string
 		idMap[oldID] = ids.New()
 	}
 	return idMap, nil
+}
+
+type viaMCPKey struct{}
+
+// withViaMCP marks a call as an agent's over MCP, whose saves never settle a doc.
+func withViaMCP(ctx context.Context) context.Context {
+	return context.WithValue(ctx, viaMCPKey{}, true)
+}
+
+// settler is who an edit settles the doc for: "" when nothing changed or an agent, automation, or the server made it.
+func settler(ctx context.Context, edited bool) string {
+	a, ok := identity.ActorFromCtx(ctx)
+	if !edited || !ok || a.Automation != nil || ctx.Value(viaMCPKey{}) != nil {
+		return ""
+	}
+	return a.ID
 }
 
 // actorID is the authenticated user behind ctx, or "" for a caller without one.
@@ -351,6 +368,7 @@ func (s *Service) Update(ctx context.Context, id, title, body string) (*Doc, err
 	}
 	mentioned := richtext.AddedPersonMentions(current.Body, body)
 	bodyChanged := body != current.Body
+	current.Settler = settler(ctx, bodyChanged || title != current.Title)
 	current.Title = title
 	current.Body = body
 	current.Version++
@@ -580,9 +598,11 @@ func (s *Service) CommitCollab(ctx context.Context, id, title, body string) erro
 	if current.Locked {
 		return errLocked(current.ID)
 	}
+	title = strings.TrimSpace(title)
+	current.Settler = settler(ctx, body != current.Body || title != "" && title != current.Title)
 	// An empty title means "unchanged": commits carry the title only from the
 	// client that actually renamed, so a peer's body commit never resets it.
-	if title = strings.TrimSpace(title); title != "" {
+	if title != "" {
 		current.Title = title
 	}
 	mentioned := richtext.AddedPersonMentions(current.Body, body)

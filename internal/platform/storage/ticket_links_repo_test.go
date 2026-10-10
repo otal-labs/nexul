@@ -78,7 +78,7 @@ func TestTicketLinks_Integration_BlockedClearsOnDoneStageAndCascades(t *testing.
 	assert.Len(t, origin.BugsFound, 1)
 	assert.Len(t, origin.Blocks, 1)
 
-	removed, err := s.Tickets.DeleteLink(ctx, tickets.TicketLink{TicketID: frontend.ID, Kind: tickets.LinkBlockedBy, TargetID: "missing"})
+	removed, err := s.Tickets.DeleteLink(ctx, tickets.TicketLink{TicketID: frontend.ID, Kind: tickets.LinkBlockedBy, TargetID: "missing"}, nil)
 	require.NoError(t, err)
 	assert.False(t, removed)
 
@@ -151,4 +151,107 @@ func TestTicketsRepo_Integration_SameWorkspace(t *testing.T) {
 	same, err = s.Tickets.SameWorkspace(ctx, "p-a", "p-c")
 	require.NoError(t, err)
 	assert.False(t, same)
+}
+
+// unblockFixture is ticket a blocked by the given tickets, every ticket starting in the backlog.
+type unblockFixture struct {
+	svc   *tickets.Service
+	stage map[workspace.StatusKind]string
+	ids   map[string]string
+}
+
+func newUnblockFixture(t *testing.T, s *Store, blockers []string) *unblockFixture {
+	t.Helper()
+	ctx := t.Context()
+	require.NoError(t, s.Projects.Create(ctx, newTestProject("p-unblock", "Unblock", 0)))
+	statuses, err := s.Statuses.ListByProject(ctx, "p-unblock")
+	require.NoError(t, err)
+	f := &unblockFixture{svc: tickets.NewService(s.Tickets, s.Statuses, nil), stage: map[workspace.StatusKind]string{}, ids: map[string]string{}}
+	for _, st := range statuses {
+		f.stage[st.Kind] = st.ID
+	}
+	for _, name := range []string{"a", "b", "c"} {
+		tk, err := f.svc.Create(ctx, "p-unblock", name, "", "", "")
+		require.NoError(t, err)
+		f.ids[name] = tk.ID
+	}
+	for _, b := range blockers {
+		_, err := f.svc.AddBlocker(ctx, f.ids["a"], f.ids[b])
+		require.NoError(t, err)
+	}
+	return f
+}
+
+func (f *unblockFixture) move(t *testing.T, name string, kind workspace.StatusKind) {
+	t.Helper()
+	_, err := f.svc.UpdateStatus(t.Context(), f.ids[name], tickets.Status(f.stage[kind]))
+	require.NoError(t, err)
+}
+
+func TestTicketsRepo_Integration_UnblockedFiresOncePerUnblock(t *testing.T) {
+	t.Parallel()
+	done, progress := workspace.StatusKindDone, workspace.StatusKindProgress
+	tests := []struct {
+		name     string
+		blockers []string
+		act      func(t *testing.T, f *unblockFixture)
+		want     [][3]string
+	}{
+		{"a blocker entering done unblocks", []string{"b"}, func(t *testing.T, f *unblockFixture) {
+			f.move(t, "b", done)
+		}, [][3]string{{"a", "b", "blocker_done"}}},
+		{"two open blockers unblock only when the last clears", []string{"b", "c"}, func(t *testing.T, f *unblockFixture) {
+			f.move(t, "b", done)
+			f.move(t, "c", done)
+		}, [][3]string{{"a", "c", "blocker_done"}}},
+		{"a blocker leaving done and entering it again unblocks again", []string{"b"}, func(t *testing.T, f *unblockFixture) {
+			f.move(t, "b", done)
+			f.move(t, "b", progress)
+			f.move(t, "b", done)
+		}, [][3]string{{"a", "b", "blocker_done"}, {"a", "b", "blocker_done"}}},
+		{"a blocker moving between open stages unblocks nothing", []string{"b"}, func(t *testing.T, f *unblockFixture) {
+			f.move(t, "b", progress)
+		}, nil},
+		{"removing the last open blocker's link unblocks", []string{"b"}, func(t *testing.T, f *unblockFixture) {
+			_, err := f.svc.RemoveBlocker(t.Context(), f.ids["a"], f.ids["b"])
+			require.NoError(t, err)
+		}, [][3]string{{"a", "b", "link_deleted"}}},
+		{"removing the link of a done blocker unblocks nothing more", []string{"b"}, func(t *testing.T, f *unblockFixture) {
+			f.move(t, "b", done)
+			_, err := f.svc.RemoveBlocker(t.Context(), f.ids["a"], f.ids["b"])
+			require.NoError(t, err)
+		}, [][3]string{{"a", "b", "blocker_done"}}},
+		{"removing one of two open blockers unblocks nothing", []string{"b", "c"}, func(t *testing.T, f *unblockFixture) {
+			_, err := f.svc.RemoveBlocker(t.Context(), f.ids["a"], f.ids["b"])
+			require.NoError(t, err)
+		}, nil},
+		{"deleting an open blocker unblocks", []string{"b"}, func(t *testing.T, f *unblockFixture) {
+			require.NoError(t, f.svc.Delete(t.Context(), f.ids["b"]))
+		}, [][3]string{{"a", "b", "blocker_deleted"}}},
+		{"deleting the blocked ticket unblocks nothing", []string{"b"}, func(t *testing.T, f *unblockFixture) {
+			require.NoError(t, f.svc.Delete(t.Context(), f.ids["a"]))
+		}, nil},
+		{"a ticket already done is never unblocked", []string{"b"}, func(t *testing.T, f *unblockFixture) {
+			f.move(t, "a", done)
+			f.move(t, "b", done)
+		}, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			s := newTestStore(t)
+			f := newUnblockFixture(t, s, tt.blockers)
+			tt.act(t, f)
+			names := map[string]string{}
+			for name, id := range f.ids {
+				names[id] = name
+			}
+			var got [][3]string
+			for _, p := range outboxPayload(t, s, tickets.TopicUnblocked) {
+				assert.Equal(t, "p-unblock", p["project_id"])
+				got = append(got, [3]string{names[p["ticket_id"].(string)], names[p["blocker_id"].(string)], p["cause"].(string)})
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
