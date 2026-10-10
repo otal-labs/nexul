@@ -84,12 +84,19 @@ describe("ComputersSection", () => {
     expect(await screen.findByText(/no computers paired yet/i)).toBeInTheDocument();
   });
 
-  it("lists paired computers", async () => {
+  it("lists paired computers folded, with their address and version one click away", async () => {
     serveComputers([computer()]);
+    const user = userEvent.setup();
     renderSection();
 
-    expect(await screen.findByText("Home")).toBeInTheDocument();
-    expect(screen.getByText(/https:\/\/home\.example\.com.*0\.0\.34/)).toBeInTheDocument();
+    const row = await screen.findByRole("button", { name: "Home" });
+    expect(row).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("term")).not.toBeInTheDocument();
+
+    await user.click(row);
+    expect(screen.getAllByRole("term").map((t) => t.textContent)).toContain("Address");
+    expect(screen.getByText("https://home.example.com")).toBeInTheDocument();
+    expect(screen.getByText("0.0.34")).toBeInTheDocument();
   });
 
   it("flags a computer expiring within the warning window", async () => {
@@ -167,6 +174,7 @@ describe("ComputersSection", () => {
     expect(await screen.findByText("Setup confirmed")).toBeInTheDocument();
     expect(screen.getByText("Codex")).toBeInTheDocument();
     expect(screen.getByText("confirmed 2d ago")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Actions for Home" }));
     expect(screen.getByRole("button", { name: /re-run setup/i })).toBeInTheDocument();
 
     setup = {
@@ -201,8 +209,10 @@ describe("ComputersSection", () => {
     renderSection();
 
     expect(await screen.findAllByText("skills out of date")).toHaveLength(2);
-    expect(screen.getByText("Setup confirmed")).toBeInTheDocument();
+    expect(screen.getByText("Skills out of date")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Actions for Home" }));
     expect(screen.getByRole("button", { name: /re-run setup/i })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
     await user.click(screen.getByRole("button", { name: /update skills/i }));
 
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/skills"));
@@ -241,13 +251,14 @@ describe("ComputersSection", () => {
     expect(screen.getByLabelText(/computer name/i)).toBeInTheDocument();
   });
 
-  it("re-pairs an existing computer, pre-filled with its name and URL", async () => {
+  it("re-pairs an existing computer from its menu, pre-filled with its name and URL", async () => {
     serveComputers([computer()]);
     mocks.post.mockResolvedValue({ data: computer({ harness_version: "0.0.35" }) });
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: /re-pair/i }));
+    await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
+    await user.click(screen.getByRole("button", { name: /re-pair/i }));
     const nameInput = screen.getByLabelText(/^name$/i) as HTMLInputElement;
     const urlInput = screen.getByLabelText(/t3 server url/i) as HTMLInputElement;
     expect(nameInput.value).toBe("Home");
@@ -271,16 +282,17 @@ describe("ComputersSection", () => {
     );
   });
 
-  it("removes a computer after arming the confirm step", async () => {
+  it("removes a computer from its menu only after the confirm", async () => {
     serveComputers([computer()]);
     mocks.del.mockResolvedValue({ data: {} });
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: /^remove$/i }));
+    await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
+    await user.click(screen.getByRole("button", { name: /^remove$/i }));
     expect(mocks.del).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+    await user.click(await screen.findByRole("button", { name: /^remove computer$/i }));
     await waitFor(() => expect(mocks.del).toHaveBeenCalledWith("/api/pairing/computers/c1"));
     await waitFor(() =>
       expect(toast.success).toHaveBeenLastCalledWith(
@@ -296,8 +308,9 @@ describe("ComputersSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: /^remove$/i }));
-    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+    await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
+    await user.click(screen.getByRole("button", { name: /^remove$/i }));
+    await user.click(await screen.findByRole("button", { name: /^remove computer$/i }));
     await waitFor(() => expect(toast.success).toHaveBeenLastCalledWith("Computer removed", undefined));
   });
 });

@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils";
 const FRAME =
   "flex max-h-[min(90dvh,52rem)] flex-col gap-0 p-0 sm:max-w-[min(48rem,calc(100%-2rem))] max-sm:inset-0 max-sm:top-0 max-sm:left-0 max-sm:h-dvh max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none max-sm:border-0";
 
-// Set up is two panes from md up: wider and taller, at a fixed height so the panes hold still while the transcript streams.
-const SETUP_FRAME = "md:h-[min(90dvh,56rem)] md:max-h-[min(90dvh,56rem)] md:max-w-[min(80rem,calc(100%-4rem))]";
+// Set up holds a fixed height from md up, so opening a provider's transcript scrolls the body instead of resizing the dialog.
+const SETUP_FRAME = "md:h-[min(90dvh,46rem)] md:max-w-[min(44rem,calc(100%-4rem))]";
 
 interface NextButtonProps {
   computerId: string;
@@ -60,13 +60,17 @@ interface PairComputerDialogProps {
   // Opens on mount, for a link straight to a computer's Set up step; onClosed lets that link's URL forget it.
   defaultOpen?: boolean | undefined;
   onClosed?: (() => void) | undefined;
+  // Controlled from outside, for a row that opens it from a menu item instead of a trigger.
+  open?: boolean | undefined;
+  onOpenChange?: ((open: boolean) => void) | undefined;
 }
 
 // Pair a computer: connect its tunnel, pair T3 Code over it, then set it up.
-export const PairComputerDialog = ({ trigger, primaryTrigger, existing, defaultOpen = false, onClosed }: PairComputerDialogProps) => {
+export const PairComputerDialog = ({ trigger, primaryTrigger, existing, defaultOpen = false, onClosed, open: controlled, onOpenChange: notify }: PairComputerDialogProps) => {
   const setupFor = existing && !stillPairing(existing) ? existing : undefined;
   const first: PairingStep = setupFor ? "setup" : "connect";
-  const [open, setOpen] = useState(defaultOpen);
+  const [uncontrolled, setOpen] = useState(defaultOpen);
+  const open = controlled ?? uncontrolled;
   const [step, setStep] = useState<PairingStep>(first);
   const [computer, setComputer] = useState<Computer | undefined>(existing);
   const [paired, setPaired] = useState<Computer | undefined>(setupFor);
@@ -74,6 +78,7 @@ export const PairComputerDialog = ({ trigger, primaryTrigger, existing, defaultO
   // Every way out but Done is Cancel: Esc, the corner close, and the Cancel button drop the Set up step's unsaved edits.
   const onOpenChange = (next: boolean) => {
     setOpen(next);
+    notify?.(next);
     if (paired) useSetupDraftStore.getState().discard(paired.id);
     if (next) return;
     onClosed?.();
@@ -100,16 +105,16 @@ export const PairComputerDialog = ({ trigger, primaryTrigger, existing, defaultO
           <DialogHeader className="gap-3 border-b border-border px-4 pt-5 pb-4 text-left sm:px-6">
             <DialogTitle className="pr-8">{dialogTitle(existing, setupFor)}</DialogTitle>
             <DialogDescription>{setupFor ? SETUP_LEAD : PAIR_LEAD}</DialogDescription>
-            <PairingStepTabs step={step} reachable={reachableStep(step, paired)} earliest={first} />
+            {first === "connect" && <PairingStepTabs step={step} reachable={reachableStep(step, paired)} />}
           </DialogHeader>
-          <div className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6", step === "setup" && "md:overflow-hidden md:p-0")}>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
             <TabsContent value="connect">
               <ConnectStep computer={computer} onCreated={setComputer} onPairByUrl={() => setStep("pair")} />
             </TabsContent>
             <TabsContent value="pair">
               <PairT3CodeStep computer={computer} onPaired={onPaired} />
             </TabsContent>
-            <TabsContent value="setup" className="md:h-full">
+            <TabsContent value="setup" tabIndex={-1}>
               {paired && <SetupStep computer={paired} />}
             </TabsContent>
           </div>
@@ -120,7 +125,7 @@ export const PairComputerDialog = ({ trigger, primaryTrigger, existing, defaultO
               Cancel
             </Button>
           </DialogClose>
-          {step === "connect" && <NextButton computerId={computer?.id ?? ""} onNext={() => setStep("pair")} />}
+          {step === "connect" && computer && <NextButton computerId={computer.id} onNext={() => setStep("pair")} />}
           {step === "setup" && paired && <SetupDoneButton computerId={paired.id} onDone={() => onOpenChange(false)} />}
         </div>
       </DialogContent>

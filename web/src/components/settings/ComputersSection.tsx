@@ -57,7 +57,7 @@ export const ComputersSection = ({ bare = false }: ComputersSectionProps = {}) =
         <SettingsCard
           id="pairing-computers"
           title="Paired computers"
-          description="Computers running T3 Code that @Agent works through. A pairing lasts 30 days and can't renew itself, so re-pair before it runs out."
+          description="Computers running T3 Code that @Agent works through. A pairing lasts 30 days; re-pair before it runs out."
           footer={pairButton}
         >
           <div className="space-y-4">

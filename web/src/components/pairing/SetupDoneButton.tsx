@@ -20,7 +20,8 @@ const SaveAndClose = ({ setup, onDone }: SaveAndCloseProps) => {
     save.mutate(body, { onSuccess: onDone });
   };
   return (
-    <Button type="button" onClick={done} loading={save.isPending}>
+    // The run's own button is the brand one until the computer is confirmed; Done only keeps the choices.
+    <Button type="button" variant={setup.confirmed_at ? "default" : "outline"} onClick={done} loading={save.isPending}>
       Done
     </Button>
   );
