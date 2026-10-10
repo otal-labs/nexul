@@ -13,10 +13,10 @@ A play is a button that starts an agent on a piece of work, such as **Fix with A
 2. In the run dialog, pick the memories the agent should read first under **Main**, and the ones it reads at the end under **Footer**. The dialog starts with what you picked last time for this play and project.
 3. Add **Instructions for this run** if you want to steer it. They win over the play's own instructions.
 4. Check **Where to run**. The first time you run a play in a project you haven't linked, the dialog asks for a computer and a T3 project, with your defaults filled in. Your pick is saved as your [project link](/docs/guide/paired-computers/#choose-where-turns-run), so later runs there go straight to it. After that the dialog shows where in one line; **Change** picks somewhere else and saves that instead.
-5. Check the provider and model on the pill under it. They come from your project link; change them here for this run only.
+5. Check the provider and model on the pill under it. They come from your project link; change them here for this run only. Your link keeps its own model, even on a first run or a **Change**.
 6. Start the run.
 
-Changing location starts a fresh T3 thread. If the computer is offline, your choice stays saved; retrying uses that choice and starts a fresh thread when the old one belongs to another T3 project. Editing or unlinking settings after a run is confirmed cannot redirect that run.
+A run keeps the target's T3 thread unless that thread is in another T3 project, which starts a fresh one; picking the same place again keeps it. Nexul saves a picked T3 project only once the computer lists it, so a computer that is offline can't take a new place until it is back. Once a run has started it stays where it started: an answer to its question, **Continue this run**, and following it again after a Nexul restart all go to its own thread, even if you change or clear your link meanwhile.
 
 If no computer or T3 project is set as your default, pick them in the run dialog. If the play can't run, the dialog says why instead: no computer paired, a pairing that expired, the computer offline, or setup still needed. A play on a blocked ticket asks you to confirm first.
 
@@ -33,7 +33,7 @@ While a run is going:
 - **The computer drops off.** The trail shows **Reconnecting to T3 Code…** and Nexul keeps trying. The run fails only if the computer stays unreachable.
 - **Nothing happens for 15 minutes.** The run fails and its turn in T3 Code is stopped.
 
-When a run has ended, type into **Continue this run** to send the agent its next step on the same thread. The play's instructions are not sent again. If you keep working on the thread in T3 Code itself, the trail picks up those turns while you have Nexul open.
+When a run has ended, type into **Continue this run** to send the agent its next step on the same thread. The play's instructions are not sent again. If you keep working on the thread in T3 Code itself, the trail picks up those turns while you have Nexul open. If the thread is gone from T3 Code, the play starts again as a new run in the same place, with your message added to its instructions. When Nexul doesn't know where an older run ran, the run dialog opens on **Where to run** instead, with your message filled in.
 
 A doc play locks its doc when it starts, so nobody edits the doc under the agent, and the doc stays locked afterwards. Someone with the lock permission unlocks it. **Clarify via AI** is the exception: it unlocks the doc when its round ends.
 
@@ -113,6 +113,6 @@ If it can't start, the ticket shows **Decisions check didn't run** with the reas
 | `autoplays:write` | add, change, and switch auto plays, and set the daily cap |
 | `autoplays:delete` | delete auto plays |
 
-Agents run plays with `play_run` and read trails with `trail_list`. See [MCP server](/docs/guide/mcp-server/). Like the dialog, `play_run` asks where the first time: in a project you haven't linked it needs `computer_id` and `t3_project_id`, and saves them as your link. `computer_list` with a computer's id lists its T3 projects.
+Agents run plays with `play_run` and read trails with `trail_list`. See [MCP server](/docs/guide/mcp-server/). Like the dialog, `play_run` asks where the first time: in a project you haven't linked it needs `computer_id` and `t3_project_id`, and saves them as your link once that computer lists the T3 project. `computer_list` with a computer's id lists its T3 projects.
 
 Auto plays, automation `runPlay` requests, and the automatic decisions check use your project link or, without one, your defaults. The decisions check's **Run again** keeps the same fallback. These paths have no location dialog.

@@ -311,10 +311,11 @@ the play started again as a new run when that thread is gone (ADR 0128). After a
 restart every `running` trail follows its harness thread again and ends with
 the harness's own outcome (ADR 0119); a `starting` one, which no thread
 accepted yet, ends `interrupted`, and a `waiting` one stays for its answer.
-Also records the computer, provider, and model the run used, whether the
-starter picked them in the run dialog or they came from the starter's own
-project link, or for a run nobody pressed their pairing defaults (ADR 0058,
-ADR 0145).
+Also records the computer, T3 project, start-in, provider, and model the run
+used, whether the starter picked them in the run dialog or they came from the
+starter's own project link, or for a run nobody pressed their pairing defaults
+(ADR 0058, ADR 0145); its answers and continues go there, whatever the link
+says later.
 _Avoid_: Run history, log, execution
 
 **Doc thread**:
