@@ -21,7 +21,9 @@ Read first: `practices/go.md`, `practices/architecture.md` (sections 2, 3, 5), `
 - `POST /api/pairing/computers/{id}/pair` and `computer_pair` take only the id and pair now through the
   runner (the token and URL fields stay accepted only for old computers until ticket 14).
 - A development recipe: run a personal runner against the debug stack or a local server, in the
-  contributing docs, replacing Pair by URL in local and end-to-end recipes.
+  contributing docs, replacing Pair by URL in local and end-to-end recipes. Point `T3CODE_HOME` at the
+  throwaway T3 Code's base directory: a runner with a custom home never falls back to 3773, so once the
+  throwaway stops its dials are refused instead of reaching the developer's own T3 Code.
 
 ## Acceptance criteria
 

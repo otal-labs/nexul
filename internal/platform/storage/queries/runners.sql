@@ -19,6 +19,9 @@ DELETE FROM runners WHERE id = ?;
 -- name: GetRunnerByName :one
 SELECT * FROM runners WHERE name = ?;
 
+-- name: GetRunnerByComputer :one
+SELECT * FROM runners WHERE computer_id = ? AND computer_id != '' LIMIT 1;
+
 -- name: PruneRunnerEnrollmentCodes :exec
 DELETE FROM runner_enrollment_codes WHERE expires_at <= ?;
 

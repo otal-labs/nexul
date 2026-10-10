@@ -47,6 +47,9 @@ const (
 	FrameLogsChunk   FrameType = "logs_chunk"
 	FrameLogsEnd     FrameType = "logs_end"
 	FrameLogsCancel  FrameType = "logs_cancel"
+	// Streams (ADR 0146): harness_dial opens stream id to T3 Code; no frame names a host or port, the runner picks.
+	FrameHarnessDial        FrameType = "harness_dial"
+	FrameHarnessDialRefused FrameType = "harness_dial_refused"
 )
 
 // Build and deploy statuses carried by result frames.
@@ -184,6 +187,8 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameLogsChunk:          (*Frame).validateLogsChunk,
 	FrameLogsEnd:            (*Frame).validateID,
 	FrameLogsCancel:         (*Frame).validateID,
+	FrameHarnessDial:        (*Frame).validateID,
+	FrameHarnessDialRefused: (*Frame).validateHarnessDialRefused,
 }
 
 // Validate checks the fields required by the frame's type; unknown types and malformed values return ErrInvalid.
@@ -330,6 +335,13 @@ func (f *Frame) validateLogsChunk() error {
 		if !oneOf(l.Stream, LogStreamStdout, LogStreamStderr) {
 			return fmt.Errorf("%w: logs_chunk line stream %q", apperrs.ErrInvalid, l.Stream)
 		}
+	}
+	return nil
+}
+
+func (f *Frame) validateHarnessDialRefused() error {
+	if f.ID == "" || f.Error == "" {
+		return fmt.Errorf("%w: harness_dial_refused requires id and error", apperrs.ErrInvalid)
 	}
 	return nil
 }

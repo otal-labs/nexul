@@ -15,6 +15,14 @@ type Runner struct {
 	CreatedAt time.Time
 	// MachineID is the machine this runner belongs to (issue 05); empty until its first connect resolves one.
 	MachineID string
+	// OwnerUserID and ComputerID make a personal runner (ADR 0146); both empty on a deploy runner.
+	OwnerUserID string
+	ComputerID  string
+}
+
+// Personal reports whether the runner belongs to a person's computer, which never takes deploy work.
+func (r *Runner) Personal() bool {
+	return r.OwnerUserID != "" || r.ComputerID != ""
 }
 
 // RunnerView is the product-facing runner record; running_job is always present, null when idle for a stable contract.

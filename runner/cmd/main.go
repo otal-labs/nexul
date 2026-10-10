@@ -45,6 +45,9 @@ func main() {
 		ConnectTimeout:    cfg.ConnectTimeout,
 		BackoffBase:       cfg.BackoffBase,
 		BackoffMax:        cfg.BackoffMax,
+		Personal:          cfg.Mode == runner.ModePersonal,
+		StreamURL:         cfg.StreamURL(),
+		T3Home:            cfg.T3Home,
 	})
 	if err := client.Run(ctx); err != nil {
 		logger.Error("runner exited with error", "error", err)

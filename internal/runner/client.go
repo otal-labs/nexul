@@ -8,12 +8,14 @@ import (
 	"io"
 	"log/slog"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coder/websocket"
@@ -38,6 +40,12 @@ type ClientConfig struct {
 	WriteTimeout      time.Duration
 	BackoffBase       time.Duration
 	BackoffMax        time.Duration
+	// Personal runs this runner for one person's computer (ADR 0146): it opens streams to T3 Code and refuses deploy work.
+	Personal bool
+	// StreamURL is the ws(s) base a stream opens under, as <StreamURL>/<id>.
+	StreamURL string
+	// T3Home is T3 Code's base directory, whose runtime file names the port it listens on.
+	T3Home string
 }
 
 // Client connects a runner over WS, executes assigned jobs, and reconnects with exponential backoff.
@@ -56,6 +64,10 @@ type Client struct {
 	// logsMu/logs hold the cancel of every open container log stream, keyed by stream id.
 	logsMu sync.Mutex
 	logs   map[string]context.CancelFunc
+	// streams joins every stream, openStreams counts them against maxStreams, and dial reaches T3 Code.
+	streams     sync.WaitGroup
+	openStreams atomic.Int32
+	dial        func(ctx context.Context, network, address string) (net.Conn, error)
 }
 
 // NewClient wires the runner client with sane defaults for unset durations.
@@ -78,7 +90,7 @@ func NewClient(cfg ClientConfig) *Client {
 	if cfg.BackoffMax <= 0 {
 		cfg.BackoffMax = 30 * time.Second
 	}
-	return &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}}
+	return &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext}
 }
 
 // errRemoved ends the connection loop: the server removed this runner, so reconnecting can never succeed.
@@ -87,6 +99,9 @@ var errRemoved = errors.New("runner removed")
 // Run dials the server and keeps the runner connected; a dropped connection retries with exponential backoff.
 // A removed runner uninstalls its own service and returns instead.
 func (c *Client) Run(ctx context.Context) error {
+	ctx, stopStreams := context.WithCancel(ctx)
+	defer c.streams.Wait()
+	defer stopStreams()
 	c.cleanupOldBinary()
 	c.log.Info("runner starting", "runner", c.cfg.Name, "server", c.cfg.URL)
 	backoff := NewBackoff(c.cfg.BackoffBase, c.cfg.BackoffMax,
@@ -127,6 +142,7 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 	}()
 	c.log.Info("runner connected", "runner", c.cfg.Name)
 
+	streamCtx := ctx
 	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
 	defer c.cancelJob("")
@@ -143,27 +159,39 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 			c.log.Warn("invalid frame from server", "runner", c.cfg.Name, "error", err)
 			continue
 		}
-		switch frame.Type {
-		case FrameUninstall:
+		if frame.Type == FrameUninstall {
 			return errRemoved
-		case FrameAssignBuild, FrameAssignDeploy, FrameAssignUpgrade:
-			c.startJob(ctx, conn, *frame)
-		case FrameCancel:
-			c.cancelJob(frame.ID)
-		case FrameDiscover:
-			go c.handleDiscover(ctx, conn, *frame)
-		case FrameJoinNetworks:
-			jn := *frame
-			go c.cfg.Executor.JoinNetworks(ctx, jn.GatewayContainer, jn.JoinNetworks, func(fr Frame) { c.sendFrame(ctx, conn, fr) })
-		case FrameUpdate:
-			go c.handleUpdate(ctx, *frame)
-		case FrameLogsRequest:
-			c.startLogs(ctx, conn, *frame)
-		case FrameLogsCancel:
-			c.stopLogs(frame.ID)
-		default:
-			c.log.Warn("unexpected server frame", "runner", c.cfg.Name, "type", frame.Type)
 		}
+		c.handleFrame(streamCtx, ctx, conn, *frame)
+	}
+}
+
+// handleFrame acts on one server frame; streamCtx outlives this connection, ctx does not.
+func (c *Client) handleFrame(streamCtx, ctx context.Context, conn *websocket.Conn, frame Frame) {
+	if reply, refused := refusal(frame); refused && c.cfg.Personal {
+		c.log.Warn("personal runner refused a frame", "runner", c.cfg.Name, "type", frame.Type)
+		c.sendFrame(ctx, conn, reply)
+		return
+	}
+	switch frame.Type {
+	case FrameAssignBuild, FrameAssignDeploy, FrameAssignUpgrade:
+		c.startJob(ctx, conn, frame)
+	case FrameCancel:
+		c.cancelJob(frame.ID)
+	case FrameDiscover:
+		go c.handleDiscover(ctx, conn, frame)
+	case FrameJoinNetworks:
+		go c.cfg.Executor.JoinNetworks(ctx, frame.GatewayContainer, frame.JoinNetworks, func(fr Frame) { c.sendFrame(ctx, conn, fr) })
+	case FrameUpdate:
+		go c.handleUpdate(ctx, frame)
+	case FrameLogsRequest:
+		c.startLogs(ctx, conn, frame)
+	case FrameLogsCancel:
+		c.stopLogs(frame.ID)
+	case FrameHarnessDial:
+		c.startStream(streamCtx, ctx, conn, frame.ID)
+	default:
+		c.log.Warn("unexpected server frame", "runner", c.cfg.Name, "type", frame.Type)
 	}
 }
 

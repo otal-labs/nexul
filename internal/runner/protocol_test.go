@@ -143,6 +143,20 @@ func TestFrame_Encode(t *testing.T) {
 			},
 			want: `{"type":"logs_cancel","id":"l1"}`,
 		},
+		{
+			name: "harness_dial wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameHarnessDial, ID: "s1"}
+			},
+			want: `{"type":"harness_dial","id":"s1"}`,
+		},
+		{
+			name: "harness_dial_refused wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameHarnessDialRefused, ID: "s1", Error: "T3 Code is not running"}
+			},
+			want: `{"type":"harness_dial_refused","id":"s1","error":"T3 Code is not running"}`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -183,6 +197,9 @@ func TestFrame_Encode_Invalid(t *testing.T) {
 		{name: "logs_chunk bad stream", f: Frame{Type: FrameLogsChunk, ID: "l1", Lines: []ContainerLogLine{{Stream: "stdin", Line: "x"}}}},
 		{name: "logs_end missing id", f: Frame{Type: FrameLogsEnd}},
 		{name: "logs_cancel missing id", f: Frame{Type: FrameLogsCancel}},
+		{name: "harness_dial missing id", f: Frame{Type: FrameHarnessDial}},
+		{name: "harness_dial_refused missing id", f: Frame{Type: FrameHarnessDialRefused, Error: "refused"}},
+		{name: "harness_dial_refused missing error", f: Frame{Type: FrameHarnessDialRefused, ID: "s1"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

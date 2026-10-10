@@ -1,6 +1,6 @@
 # 01 — Reach T3 Code through a personal runner's connection, proven with one call on Linux
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 **Blocked by:** None — can start immediately
 
@@ -31,21 +31,41 @@ For this slice a test marks a runner personal by writing the two columns; enroll
 
 ## Acceptance criteria
 
-- [ ] An integration test in `server/cmd` connects an in-process personal runner to a real server against
+- [x] An integration test in `server/cmd` connects an in-process personal runner to a real server against
       a `t3rpctest` fake T3 on loopback, and `t3rpc.Describe` through the harness client returns the fake's
       descriptor.
-- [ ] Through the same relay, a `t3rpc.Connect` session completes `server.getConfig`, and a second HTTP
+- [x] Through the same relay, a `t3rpc.Connect` session completes `server.getConfig`, and a second HTTP
       call reuses the pooled connection (one stream opened, counted).
-- [ ] A relayed WebSocket held idle for 30 minutes under `testing/synctest` (or a real-time soak run once and
+- [x] A relayed WebSocket held idle for 30 minutes under `testing/synctest` (or a real-time soak run once and
       reported in the PR) stays open; this settles the `NetConn` deadline risk in the spec.
-- [ ] `TestDialComputer_RefusesAStreamFromAnotherRunner`, `TestDialComputer_StreamIDIsSingleUse`,
+- [x] `TestDialComputer_RefusesAStreamFromAnotherRunner`, `TestDialComputer_StreamIDIsSingleUse`,
       `TestDialComputer_ExpiredStreamIsRefused`.
-- [ ] `TestPersonalRunner_RefusesDeployFrames` and `TestDispatch_NeverPicksAPersonalRunner` (a job with no
+- [x] `TestPersonalRunner_RefusesDeployFrames` and `TestDispatch_NeverPicksAPersonalRunner` (a job with no
       target machine stays queued while only a personal runner is connected).
-- [ ] The runner never dials anything but loopback: a test with T3 Code's runtime file naming a LAN address
+- [x] The runner never dials anything but loopback: a test with T3 Code's runtime file naming a LAN address
       gets `harness_dial_refused` and no connection attempt.
-- [ ] Manual check on Linux, reported in the PR: a `nexul-runner` started by hand in personal mode against
+- [x] Manual check on Linux, reported in the PR: a `nexul-runner` started by hand in personal mode against
       a local server, with a real T3 Code bound to `127.0.0.1`, answers a relayed descriptor request.
-- [ ] `TestRunner_APanicInOneStreamLeavesTheOthersRunning`: a relayed stream whose copy panics closes alone;
+- [x] `TestRunner_APanicInOneStreamLeavesTheOthersRunning`: a relayed stream whose copy panics closes alone;
       the control connection and another stream keep working (the spec's Lanes).
-- [ ] No new `require` in `go.mod`; `goleak` stays clean in `internal/runner`.
+- [x] No new `require` in `go.mod`; `goleak` stays clean in `internal/runner`.
+
+## Comments
+
+Built: migration 0091 (`runners.owner_user_id`, `runners.computer_id`, partial index serving `GetRunnerByComputer`),
+`internal/runner/streams.go` (both ends), `harnessHTTPClient` in `server/cmd/wire_computer_streams.go`, and
+`GET /api/runners/streams/{id}` beside `/ws/runner`.
+
+- A personal runner answers the six deploy-side frames with their failed terminal frame (`deploy_result`,
+  `upgrade_result`, `join_networks_result`, `discover_result`, `logs_end`) as well as a warning, so a server that
+  ever sent one fails fast instead of waiting.
+- The 30-minute idle check is `TestStream_IdleWebSocketStaysOpenForThirtyMinutes` under `testing/synctest`, over
+  in-memory pipes through the real stream endpoint, `websocket.NetConn` on both ends and `http.Transport`.
+- Go pools an upgrade request apart from plain requests, so a `t3rpc.Connect` takes its own stream; plain calls
+  share one (counted in `TestIntegration_PersonalRunnerReachesT3Code`).
+- T3 Code deletes `server-runtime.json` when it stops. Only the default home (`~/.t3`) falls back to 3773; a
+  custom `T3CODE_HOME` with no file refuses the dial (`TestPersonalRunner_CustomHomeWithoutARuntimeFileIsRefused`),
+  so a recipe pointed at a throwaway never reaches the developer's own T3 Code.
+- For 02: `POST /api/runners/enroll` still makes a machine row for every runner; a personal runner skips it.
+  Personal runners still show in `GET /api/runners` and still publish `runner.connected`/`disconnected`.
+- The relayed request's `Host` is `127.0.0.1` without a port, since only the runner knows the port.

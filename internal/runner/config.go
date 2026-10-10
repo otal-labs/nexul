@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -35,7 +36,14 @@ type RunnerConfig struct {
 	ConnectTimeout    time.Duration
 	BackoffBase       time.Duration
 	BackoffMax        time.Duration
+	// Mode is "personal" for a runner on a person's own computer (NEXUL_RUNNER_MODE, ADR 0146), empty otherwise.
+	Mode string
+	// T3Home is T3 Code's base directory (T3CODE_HOME, else ~/.t3), where a personal runner finds its port.
+	T3Home string
 }
+
+// ModePersonal is NEXUL_RUNNER_MODE for a runner on a person's own computer.
+const ModePersonal = "personal"
 
 // LoadRunnerConfig reads the runner env vars and its credential file; a deliberate break from config.Load since
 // it's a separate binary.
@@ -54,6 +62,8 @@ func LoadRunnerConfig() (*RunnerConfig, error) {
 		ConnectTimeout:    envDuration("NEXUL_RUNNER_CONNECT_TIMEOUT", 10*time.Second),
 		BackoffBase:       envDuration("NEXUL_RUNNER_BACKOFF_BASE", time.Second),
 		BackoffMax:        envDuration("NEXUL_RUNNER_BACKOFF_MAX", 30*time.Second),
+		Mode:              os.Getenv("NEXUL_RUNNER_MODE"),
+		T3Home:            envOrDefault("T3CODE_HOME", defaultT3Home()),
 	}
 	if cfg.CredentialFile == "" {
 		return cfg, nil
@@ -96,19 +106,40 @@ func (c *RunnerConfig) Validate() error {
 	if c.BackoffBase <= 0 || c.BackoffMax < c.BackoffBase {
 		return fmt.Errorf("NEXUL_RUNNER_BACKOFF_BASE must be positive and <= BACKOFF_MAX")
 	}
+	if c.Mode != "" && c.Mode != ModePersonal {
+		return fmt.Errorf("NEXUL_RUNNER_MODE must be empty or %q, got %q", ModePersonal, c.Mode)
+	}
 	return nil
 }
 
 // WSURL is the runner endpoint under ServerURL: ws(s)://<host>[<path>]/ws/runner. Call after Validate.
 func (c *RunnerConfig) WSURL() string {
+	return c.wsPath("/ws/runner")
+}
+
+// StreamURL is the base a relayed stream opens under: ws(s)://<host>[<path>]/api/runners/streams. Call after Validate.
+func (c *RunnerConfig) StreamURL() string {
+	return c.wsPath("/api/runners/streams")
+}
+
+func (c *RunnerConfig) wsPath(path string) string {
 	u, err := url.Parse(c.ServerURL)
 	if err != nil {
 		return ""
 	}
 	u.Scheme = strings.Replace(u.Scheme, "http", "ws", 1)
-	u.Path = strings.TrimRight(u.Path, "/") + "/ws/runner"
+	u.Path = strings.TrimRight(u.Path, "/") + path
 	u.RawQuery, u.Fragment = "", ""
 	return u.String()
+}
+
+// defaultT3Home is T3 Code's own default base directory, ~/.t3.
+func defaultT3Home() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".t3")
 }
 
 func envOrDefault(key, fallback string) string {

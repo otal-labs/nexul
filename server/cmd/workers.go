@@ -40,6 +40,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		GitTokens: svc.gitRouter,
 		Logger:    logger,
 	})
+	svc.computers.handler.Store(wsHandler)
 	// dns can only join a connected runner's gateway once the WS handler exists (workers start after core services).
 	svc.dnsSvc.SetRunnerJoin(dnsRunnerJoinAdapter{handler: wsHandler})
 	svc.deploySvc.SetLogSource(deployLogSourceAdapter{handler: wsHandler})
