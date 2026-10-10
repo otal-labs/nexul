@@ -73,8 +73,30 @@ resolved.
     fails the type check.
   - This changes ADR 0055 ("nothing fires a play but a person") and ADR
     0066 (the decisions check as a special case); a new ADR records it.
-- Look tickets go through `design-mode` and the owner picks by looking;
-  technical tickets are answered in the ticket and not grilled.
+- Master moved after the research (the app redesign, ADRs 0133 to 0140,
+  hard rule 13 in `AGENTS.md`). Where the research disagrees, these win:
+  - No polling loops. The doc settle loop sleeps on a timer to the
+    earliest `due_at` and wakes on the commit broadcast
+    (`store.Commits()`, `internal/platform/wake`), since a save moves
+    `due_at`. The run queue has no one-minute ticker: it wakes on its kicks
+    and on a timer to the earliest `not_before`, and an offline person's
+    rows get `not_before` a minute out, the retry `practices/go.md`
+    section 7 allows.
+  - New topics are declared in `Topics()` with their payload types and
+    followed by `make event-schemas` (ADR 0137); a pushed topic also gets
+    `make live-topics` and a web live follower (ADR 0134). Empty lists go
+    out as `[]`.
+  - `play_list` pages in SQL with access in the query (ADR 0140); auto
+    plays ride on it without breaking its parity and row guards.
+  - The permission entry for the phone goes in `client-core/permissions.ts`
+    (ADR 0139), not a native mirror.
+  - Code paths and line numbers in `research/` predate the Go file splits
+    (`run.go` is now several `run_*.go` files); re-locate before editing.
+  - Migrations are numbered at build time from the highest on master.
+- Look tickets run in `auto-design-mode` against the redesigned app (the
+  owner asked for no design questions since the redesign), with the
+  runner-up reported for a swap; technical tickets are answered in the
+  ticket and not grilled.
 - Web only for configuring, built at 768px and verified at 768, 1024, and
   1440px. Read `practices/react-guide.md` and `practices/design-language.md`
   before any web edit, `practices/go.md` and `practices/architecture.md`
