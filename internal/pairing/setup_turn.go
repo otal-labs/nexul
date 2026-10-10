@@ -79,7 +79,7 @@ func (s *Service) UpdateSkills(ctx context.Context, userID, computerID string) (
 		turn := s.runSkillsTurn(runCtx, userID, *run, p, pick, prompt)
 		s.saveSetupTurn(runCtx, turn, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicSetupFinished, Payload: SetupFinishedEvent{
 			ComputerID: session.ID, UserID: userID, RunID: run.RunID, Confirmed: s.computerConfirmed(runCtx, userID, session.ID),
-			Providers: []SetupTurnOutcome{{Provider: turn.Provider, State: turn.State, Status: turn.Status}},
+			Providers: []SetupTurnOutcome{{Provider: turn.Provider, State: turn.State, Status: turn.Status}}, MembersOnly: true,
 		}})
 	})
 	return run, nil
@@ -355,6 +355,7 @@ func (s *Service) runSetup(ctx context.Context, userID string, run SetupRun, pro
 		}
 		s.saveSetupTurn(ctx, turn, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicSetupFinished, Payload: SetupFinishedEvent{
 			ComputerID: computerID, UserID: userID, RunID: runID, Confirmed: s.computerConfirmed(ctx, userID, computerID), Providers: outcomes,
+			MembersOnly: true,
 		}})
 	}
 }
@@ -485,7 +486,7 @@ func (s *Service) recordSetupActivity(ctx context.Context, turn *SetupTurn, a ha
 	}
 	frame := SetupTurnActivityEvent{
 		ComputerID: turn.ComputerID, UserID: turn.UserID, RunID: turn.RunID, TurnID: turn.ID, Provider: turn.Provider,
-		Status: harness.Preview(a.Summary, 120), CallID: a.CallID, Kind: string(a.Kind), Tool: a.Tool, At: a.At,
+		Status: harness.Preview(a.Summary, 120), CallID: a.CallID, Kind: string(a.Kind), Tool: a.Tool, At: a.At, MembersOnly: true,
 	}
 	if a.Kind == harness.ActivityText {
 		frame.Text = a.Detail
@@ -539,6 +540,7 @@ func (s *Service) saveSetupTurn(ctx context.Context, turn SetupTurn, evts ...eve
 	changed := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicSetupTurnChanged, Payload: SetupTurnChangedEvent{
 		ComputerID: turn.ComputerID, UserID: turn.UserID, RunID: turn.RunID, TurnID: turn.ID, Provider: turn.Provider,
 		ProviderName: turn.ProviderName, Model: turn.Model, State: turn.State, Status: turn.Status, StartedAt: turn.StartedAt, EndedAt: turn.EndedAt,
+		MembersOnly: true,
 	}}
 	if err := s.repo.SaveSetupTurn(ctx, turn, append([]eventbus.OutboxEvent{changed}, evts...)...); err != nil {
 		logging.FromCtx(ctx).Error("save setup turn", "computer_id", turn.ComputerID, "provider", turn.Provider, "error", err)

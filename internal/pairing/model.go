@@ -34,6 +34,8 @@ type Computer struct {
 	SetupChoices SetupChoices `json:"-"`
 	// Tunnel is nil for a computer paired by URL (ADR 0062).
 	Tunnel *ComputerTunnel `json:"tunnel,omitempty"`
+	// Runner is the personal runner that reaches the computer (ADR 0146), nil until one enrolls; set on a list only.
+	Runner *ComputerRunner `json:"runner,omitempty"`
 }
 
 // ComputerTunnel is a computer's own tunnel on the instance's Cloudflare, with what teardown needs to remove it.

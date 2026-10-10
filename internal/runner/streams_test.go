@@ -451,7 +451,9 @@ func TestRunner_APanicInOneStreamLeavesTheOthersRunning(t *testing.T) {
 	broken, err := f.h.DialComputer(ctx, "c-laptop")
 	require.NoError(t, err)
 	_, err = io.ReadAll(broken)
-	require.NoError(t, err, "the stream whose copy panicked is closed")
+	if err != nil {
+		require.ErrorContains(t, err, "EOF", "the stream whose copy panicked is closed, with or without its close frame")
+	}
 	_ = broken.Close()
 
 	for range 2 {

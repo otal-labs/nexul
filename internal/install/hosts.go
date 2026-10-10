@@ -17,10 +17,12 @@ import (
 
 // HostOptions are the choices a runner or automations host is installed with.
 type HostOptions struct {
-	Kind      string
-	Server    string
-	Name      string
-	Code      string
+	Kind   string
+	Server string
+	Name   string
+	Code   string
+	// Token is a computer's signed enrollment token, which carries its code; set in place of Name and Code.
+	Token     string
 	StackRoot string
 	GitToken  string
 	Version   string
@@ -129,13 +131,13 @@ func (h *Host) setUpHost(ctx context.Context, u *Unit, o HostOptions, tag string
 	if o.Kind == kindRunner && o.StackRoot == "" {
 		o.StackRoot = u.Dir
 	}
-	credential, err := h.enroll(ctx, server, o, tag)
+	enrolled, err := h.enroll(ctx, server, o, tag)
 	if err != nil {
 		return err
 	}
-	credFile := filepath.Join(u.Dir, "credential")
-	if err := os.WriteFile(credFile, []byte(credential+"\n"), 0o600); err != nil {
-		return fmt.Errorf("write %s: %w", credFile, err)
+	credFile, err := writeCredential(u.Dir, enrolled.Credential)
+	if err != nil {
+		return err
 	}
 	u.Env = hostEnv(o, server, credFile, h.ctlPath())
 	if o.Kind == kindAutomations && h.GOOS == "linux" {
@@ -188,38 +190,75 @@ type enrollResponse struct {
 	Credential string `json:"credential"`
 }
 
-// enroll trades the one-time code for the host's own credential.
-func (h *Host) enroll(ctx context.Context, server string, o HostOptions, tag string) (string, error) {
+// writeCredential stores a host's credential in its directory, readable by its owner alone.
+func writeCredential(dir, credential string) (string, error) {
+	path := filepath.Join(dir, "credential")
+	if err := os.WriteFile(path, []byte(credential+"\n"), 0o600); err != nil {
+		return "", fmt.Errorf("write %s: %w", path, err)
+	}
+	return path, nil
+}
+
+// enroll trades the one-time code for the host's own credential; a computer's code names its runner itself.
+func (h *Host) enroll(ctx context.Context, server string, o HostOptions, tag string) (enrollResponse, error) {
 	body := map[string]string{"code": o.Code, "name": o.Name, "os": h.GOOS, "arch": h.GOARCH, "version": tag}
 	if o.Kind == kindRunner {
 		body["stack_root"] = o.StackRoot
+	}
+	if o.Kind == kindComputer {
+		body = map[string]string{"token": o.Token, "os": h.GOOS, "arch": h.GOARCH, "version": tag}
 	}
 	if hostname, err := h.Hostname(); err == nil {
 		body["machine"] = hostname
 	}
 	resp, err := h.postJSON(ctx, server+apiPath(o.Kind)+"/enroll", "", body)
 	if err != nil {
-		return "", fmt.Errorf("enroll with %s: %w", server, err)
+		return enrollResponse{}, fmt.Errorf("enroll with %s: %w", server, err)
 	}
 	defer func() { _ = resp.Body.Close() }() // read-only response body
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return "", fmt.Errorf("enroll with %s: %w", server, err)
+		return enrollResponse{}, fmt.Errorf("enroll with %s: %w", server, err)
 	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		return "", fmt.Errorf("the instance refused the enrollment code: it is unknown, already used or expired; make a new one with Add %s", o.Kind)
-	}
-	if resp.StatusCode == http.StatusConflict {
-		return "", fmt.Errorf("the enrollment code was made for a different name than %q; use the command exactly as the instance showed it", o.Name)
+	if err := enrollRefusal(resp, data, o); err != nil {
+		return enrollResponse{}, err
 	}
 	if resp.StatusCode/100 != 2 {
-		return "", fmt.Errorf("enroll with %s: the instance answered %s: %s", server, resp.Status, strings.TrimSpace(string(data)))
+		return enrollResponse{}, fmt.Errorf("enroll with %s: the instance answered %s: %s", server, resp.Status, strings.TrimSpace(string(data)))
 	}
 	var got enrollResponse
 	if err := json.Unmarshal(data, &got); err != nil || got.Credential == "" {
-		return "", fmt.Errorf("enroll with %s: the instance's answer holds no credential", server)
+		return enrollResponse{}, fmt.Errorf("enroll with %s: the instance's answer holds no credential", server)
 	}
-	return got.Credential, nil
+	return got, nil
+}
+
+// enrollRefusal explains a code the instance refused; a computer's code run as a runner's, or the other way round, is
+// told in the instance's own words.
+func enrollRefusal(resp *http.Response, data []byte, o HostOptions) error {
+	add := "Add " + o.Kind
+	if o.Kind == kindComputer {
+		add = "Add a computer"
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		return fmt.Errorf("the instance refused the enrollment code: it is unknown, already used or expired; make a new one with %s", add)
+	}
+	if resp.StatusCode != http.StatusConflict {
+		return nil
+	}
+	var refusal struct {
+		Message string `json:"message"`
+		Code    string `json:"code"`
+	}
+	_ = json.Unmarshal(data, &refusal) // a body that is not the error envelope leaves both empty
+	crossed := refusal.Code == "computer_code" || refusal.Code == "runner_code"
+	if refusal.Message != "" && (o.Kind == kindComputer || crossed) {
+		return fmt.Errorf("the instance refused the enrollment code: %s", refusal.Message)
+	}
+	if o.Kind == kindComputer {
+		return errors.New("the instance refused the enrollment code: it does not add a computer; make a new one with Add a computer")
+	}
+	return fmt.Errorf("the enrollment code was made for a different name than %q; use the command exactly as the instance showed it", o.Name)
 }
 
 func (h *Host) postJSON(ctx context.Context, url, bearer string, body any) (*http.Response, error) {

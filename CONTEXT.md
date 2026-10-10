@@ -117,8 +117,9 @@ _Avoid_: Traits, knobs, model settings
 
 **Paired computer**:
 A user's own machine running a harness, attached to their Nexul account.
-It is reached through its computer tunnel, or, for a machine the server can
-already reach, by URL. Owned by one user; nobody else can run on it.
+It is reached through its personal runner; one paired before personal runners
+is reached through its computer tunnel, or by URL. Owned by one user; nobody
+else can see it or run on it, a workspace Owner included.
 _Avoid_: Device, host, runner (a runner builds and deploys)
 
 **Project link**:
@@ -142,7 +143,9 @@ _Avoid_: Workspace (that is the tenant boundary), env mode
 **Computer tunnel**:
 The outbound connection a paired computer keeps open to the instance's own
 Cloudflare account, giving it a hostname made from the computer's name plus
-eight random characters, which only the Nexul server may reach.
+eight random characters, which only the Nexul server may reach. The old way to
+reach a paired computer, kept until its owner adds the computer with a personal
+runner.
 _Avoid_: Relay, VPN, proxy
 
 **Setup confirmation**:
@@ -574,13 +577,15 @@ _Avoid_: Automations container, runner (a runner builds and deploys)
 
 **Enrollment code**:
 A one-time code, valid for an hour, that lets one named runner or automations
-host enroll with the instance and receive its host credential. It travels
+host, or a personal runner bound to its person and computer, enroll with the
+instance and receive its host credential. A personal runner's code enrolls
+nothing else, and no other code enrolls a personal runner. It travels
 inside the install command the instance renders and is useless once used.
 _Avoid_: Join token, registration token, runner secret
 
 **Host credential**:
-The credential one runner or automations host authenticates with, its own
-and no other host's, from enrollment until the host is removed. Removal
+The credential one runner, personal runner or automations host authenticates
+with, its own and no other host's, from enrollment until the host is removed. Removal
 revokes it, and a host refused with a revoked credential uninstalls itself.
 _Avoid_: Runner secret, shared secret, token (a token acts for a person, an
 integration, or an automation)

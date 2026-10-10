@@ -101,6 +101,7 @@ Some tools worth knowing:
 - `attachment_create` puts a file on a doc, ticket, conversation, or memory, up to 10 MiB, and returns a markdown line to embed it. `attachment_get` reads one back; an image comes back as an image.
 - `ticket_get` includes the ticket's test target, and `ticket_test_report` passes or fails it like the **Pass** and **Fail** buttons.
 - `play_run` starts a [play](/docs/guide/plays/) on your paired computer.
+- `computer_create` adds one of your computers and returns the one command that installs its runner (`commands.unix`, for Linux), `curl -fsSL https://nexul.io/computer.sh | sh -s -- <token>`, where the token is good once, for an hour, and only on your instance. Run it on that computer as yourself, never with sudo. Once the runner connects, `computer_list` shows `runner.connected` on the computer; a computer added without a name takes its hostname. Pass `id` instead for a fresh command when the last one expired. Only you can see or use your computers; anyone else, a workspace Owner included, gets not found.
 
 The server also offers resources (`docs://{id}`, `tickets://{id}`, and `topology://{id}` for a workspace's canvas) and four prompts: `create_ticket_from_doc`, `deploy_and_watch_stack`, `investigate_failure`, and `ship_repository`, which runs the project wizard's steps end to end.
 

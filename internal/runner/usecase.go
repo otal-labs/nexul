@@ -45,6 +45,12 @@ type InstallConfig struct {
 	// Release wires the GitHub release lookups behind GET /api/runners/download/{target}
 	// and the runner's own LatestVersion/Download; also shared with the /api/version handler for one cache.
 	Release *release.Client
+	// SiteURL serves the install scripts a computer's command fetches; empty is nexul.io.
+	SiteURL string
+	// ReleaseURL is where those scripts download the release from, when not GitHub's; empty is GitHub's.
+	ReleaseURL string
+	// TokenKey signs the token a computer's command carries; derived from the instance's secret.
+	TokenKey []byte
 }
 
 // Service is the runner use-case layer (ADR 0019): runner and queue visibility over the repo + live dispatch state.

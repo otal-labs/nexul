@@ -54,8 +54,8 @@ type Executor interface {
 	JoinNetworks(ctx context.Context, gatewayContainer string, networks []string, send func(Frame))
 	// Upgrade starts `nexul upgrade` on the host for req.Version; send's error return reports a transport failure.
 	Upgrade(ctx context.Context, req Frame, send func(Frame) error) error
-	// Uninstall starts `nexul uninstall runner <name>` on the host, outside this runner's own service.
-	Uninstall(ctx context.Context, name string) error
+	// Uninstall starts `nexul uninstall <kind> [name]` on the host, outside this runner's own service.
+	Uninstall(ctx context.Context, kind, name string) error
 	// Logs streams one logs_request's container output, ending with logs_end (containerlogs.go).
 	Logs(ctx context.Context, req Frame, send func(Frame))
 }
@@ -577,9 +577,14 @@ func (e *ShellExecutor) awaitUpgradeReport(ctx context.Context, path string) str
 	}
 }
 
-// Uninstall hands removal to `nexul uninstall runner <name> --detach`, which stops this runner's service from outside it.
-func (e *ShellExecutor) Uninstall(ctx context.Context, name string) error {
-	_, err := e.output(ctx, e.ctl, "uninstall", "runner", name, "--detach")
+// Uninstall hands removal to `nexul uninstall <kind> [name] --detach`, which stops this runner's service from outside
+// it; a computer's runner is the one unit of its kind for its user, so it has no name to give.
+func (e *ShellExecutor) Uninstall(ctx context.Context, kind, name string) error {
+	args := []string{"uninstall", kind}
+	if name != "" {
+		args = append(args, name)
+	}
+	_, err := e.output(ctx, e.ctl, append(args, "--detach")...)
 	return err
 }
 

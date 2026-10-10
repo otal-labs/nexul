@@ -956,11 +956,13 @@ type RunnerCredential struct {
 }
 
 type RunnerEnrollmentCode struct {
-	CodeHash  string
-	Name      string
-	Machine   string
-	CreatedAt int64
-	ExpiresAt int64
+	CodeHash    string
+	Name        string
+	Machine     string
+	CreatedAt   int64
+	ExpiresAt   int64
+	OwnerUserID string
+	ComputerID  string
 }
 
 type Service struct {

@@ -24,6 +24,8 @@ func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/pairing/computers", h.listComputers)
 	mux.HandleFunc("POST /api/pairing/computers", h.pair)
+	mux.HandleFunc("POST /api/pairing/computers/enrollments", h.enrollComputer)
+	mux.HandleFunc("PATCH /api/pairing/computers/{id}", h.renameComputer)
 	mux.HandleFunc("POST /api/pairing/computers/tunnel", h.createTunnel)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/status", h.tunnelStatus)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/token", h.tunnelToken)
@@ -213,6 +215,51 @@ func writePairError(w http.ResponseWriter, err error) {
 		return
 	}
 	httpx.WriteError(w, err)
+}
+
+// enrollComputerRequest adds a computer, or with id mints a fresh command for one of the caller's computers.
+type enrollComputerRequest struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+func (h *Handler) enrollComputer(w http.ResponseWriter, r *http.Request) {
+	var req enrollComputerRequest
+	if err := optionalJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	enrolled, err := h.enrollment(r, req)
+	if err != nil {
+		writePairError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, enrolled)
+}
+
+func (h *Handler) enrollment(r *http.Request, req enrollComputerRequest) (*ComputerEnrollment, error) {
+	if req.ID != "" {
+		return h.svc.EnrollComputer(r.Context(), actorID(r), req.ID)
+	}
+	return h.svc.AddComputer(r.Context(), actorID(r), req.Name)
+}
+
+type renameComputerRequest struct {
+	Name string `json:"name"`
+}
+
+func (h *Handler) renameComputer(w http.ResponseWriter, r *http.Request) {
+	var req renameComputerRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	c, err := h.svc.RenameComputer(r.Context(), actorID(r), r.PathValue("id"), req.Name)
+	if err != nil {
+		writePairError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, c)
 }
 
 type createTunnelRequest struct {

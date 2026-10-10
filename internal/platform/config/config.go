@@ -29,6 +29,11 @@ type Config struct {
 	LogsURL *url.URL
 	// Local marks a desktop install (NEXUL_LOCAL), where first run stays on http://localhost instead of a domain.
 	Local bool
+	// SiteURL (NEXUL_SITE_URL) serves the install scripts a computer's command fetches; empty is nexul.io. For testing
+	// an instance against its own build.
+	SiteURL string
+	// ReleaseURL (NEXUL_RELEASE_URL) is where those scripts download the release from; empty is GitHub's.
+	ReleaseURL string
 }
 
 func Load() (*Config, error) {
@@ -43,6 +48,8 @@ func Load() (*Config, error) {
 		OTLPEndpoint: os.Getenv("NEXUL_OTLP_ENDPOINT"),
 		OTLPUser:     os.Getenv("NEXUL_OTLP_USER"),
 		OTLPToken:    os.Getenv("NEXUL_OTLP_TOKEN"),
+		SiteURL:      os.Getenv("NEXUL_SITE_URL"),
+		ReleaseURL:   os.Getenv("NEXUL_RELEASE_URL"),
 	}
 	logsURL, err := parseLogsURL(os.Getenv("NEXUL_LOGS_URL"))
 	if err != nil {

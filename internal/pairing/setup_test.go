@@ -116,9 +116,9 @@ func TestSetup_ConfirmAndUnconfirmOverall_PublishesEachChange(t *testing.T) {
 
 	require.Len(t, repo.outbox, 2)
 	assert.Equal(t, TopicSetupConfirmed, repo.outbox[0].Topic)
-	assert.Equal(t, SetupChangedEvent{ComputerID: "c1", UserID: "u1", ConfirmedAt: &testNow}, repo.outbox[0].Payload)
+	assert.Equal(t, SetupChangedEvent{ComputerID: "c1", UserID: "u1", ConfirmedAt: &testNow, MembersOnly: true}, repo.outbox[0].Payload)
 	assert.Equal(t, TopicSetupUnconfirmed, repo.outbox[1].Topic)
-	assert.Equal(t, SetupChangedEvent{ComputerID: "c1", UserID: "u1"}, repo.outbox[1].Payload)
+	assert.Equal(t, SetupChangedEvent{ComputerID: "c1", UserID: "u1", MembersOnly: true}, repo.outbox[1].Payload)
 	assert.NotEqual(t, repo.outbox[0].ID, repo.outbox[1].ID)
 }
 
@@ -140,7 +140,7 @@ func TestSetup_ConfirmAndUnconfirmProvider(t *testing.T) {
 
 	require.Len(t, repo.outbox, 2)
 	assert.Equal(t, TopicSetupConfirmed, repo.outbox[0].Topic)
-	assert.Equal(t, SetupChangedEvent{ComputerID: "c1", UserID: "u1", Provider: "claude", ConfirmedAt: &testNow, Skills: []string{"tdd", "diagnose"}}, repo.outbox[0].Payload)
+	assert.Equal(t, SetupChangedEvent{ComputerID: "c1", UserID: "u1", Provider: "claude", ConfirmedAt: &testNow, Skills: []string{"tdd", "diagnose"}, MembersOnly: true}, repo.outbox[0].Payload)
 	assert.Equal(t, TopicSetupUnconfirmed, repo.outbox[1].Topic)
 }
 

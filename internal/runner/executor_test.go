@@ -865,13 +865,19 @@ func TestShellExecutor_Upgrade(t *testing.T) {
 func TestShellExecutor_Uninstall(t *testing.T) {
 	t.Run("a failing nexul uninstall is returned", func(t *testing.T) {
 		cmd := &fakeCmd{failNext: 1, err: errors.New("sudo: a password is required")}
-		require.EqualError(t, newTestExecutor(cmd.run).Uninstall(t.Context(), "build-box"), "sudo: a password is required")
+		require.EqualError(t, newTestExecutor(cmd.run).Uninstall(t.Context(), "runner", "build-box"), "sudo: a password is required")
 	})
 
 	t.Run("runs nexul uninstall runner <name> --detach", func(t *testing.T) {
 		cmd := &fakeCmd{}
-		require.NoError(t, newTestExecutor(cmd.run).Uninstall(t.Context(), "build-box"))
+		require.NoError(t, newTestExecutor(cmd.run).Uninstall(t.Context(), "runner", "build-box"))
 		assert.Equal(t, [][]string{{"uninstall", "runner", "build-box", "--detach"}}, cmd.argsFor("/usr/local/bin/nexul"))
+	})
+
+	t.Run("a computer's runner runs nexul uninstall computer --detach", func(t *testing.T) {
+		cmd := &fakeCmd{}
+		require.NoError(t, newTestExecutor(cmd.run).Uninstall(t.Context(), "computer", ""))
+		assert.Equal(t, [][]string{{"uninstall", "computer", "--detach"}}, cmd.argsFor("/usr/local/bin/nexul"))
 	})
 }
 

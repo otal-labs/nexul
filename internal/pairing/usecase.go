@@ -45,6 +45,8 @@ type Config struct {
 	Instance InstanceSettings
 	// Projects keeps a person's project links to the projects they can open.
 	Projects ProjectGate
+	// Runners mints a computer's personal runner code and reads its runner; nil leaves only the old pairing paths.
+	Runners Runners
 }
 
 // Service is the pairing use-case layer (ADR 0019); bearer tokens never leave it except encrypted at rest.
@@ -59,6 +61,7 @@ type Service struct {
 	tokens    MCPTokens
 	instance  InstanceSettings
 	projects  ProjectGate
+	runners   Runners
 	watchMu   sync.Mutex
 	watching  map[string]tunnelWatch
 	setupMu   sync.Mutex
@@ -73,7 +76,7 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
-		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, watching: map[string]tunnelWatch{}, settingUp: map[string]bool{},
+		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, watching: map[string]tunnelWatch{}, settingUp: map[string]bool{},
 	}
 }
 
@@ -104,7 +107,7 @@ func (s *Service) ListComputers(ctx context.Context, userID string) ([]Computer,
 	for i := range cs {
 		cs[i].BearerToken = ""
 	}
-	return cs, nil
+	return s.withRunners(ctx, cs)
 }
 
 // sessionComputer decrypts a bearer token for a listing call only; it must never reach a response.
@@ -265,11 +268,11 @@ func (s *Service) pair(ctx context.Context, base Computer, serverURL, secret str
 		computer.CreatedAt = now
 	}
 	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: TopicComputerPaired, Payload: ComputerPairedEvent{
-		ComputerID: computer.ID, UserID: computer.UserID, ServerURL: serverURL, HarnessVersion: result.Version, TokenExpiresAt: computer.TokenExpiresAt,
+		ComputerID: computer.ID, UserID: computer.UserID, ServerURL: serverURL, HarnessVersion: result.Version, TokenExpiresAt: computer.TokenExpiresAt, MembersOnly: true,
 	}}}
 	if base.ID != "" && kindStep(kind) > kindStep(base.Kind) {
 		evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicHarnessSwitched, Payload: HarnessSwitchedEvent{
-			ComputerID: computer.ID, UserID: computer.UserID, FromKind: base.Kind, ToKind: kind, HarnessVersion: result.Version,
+			ComputerID: computer.ID, UserID: computer.UserID, FromKind: base.Kind, ToKind: kind, HarnessVersion: result.Version, MembersOnly: true,
 		}})
 	}
 	if err := s.repo.SaveComputer(ctx, computer, evts...); err != nil {
@@ -318,7 +321,7 @@ func (s *Service) SwitchHarness(ctx context.Context, sess harness.Session, to ha
 	evt := func(userID string) eventbus.OutboxEvent {
 		owner = userID
 		return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicHarnessSwitched, Payload: HarnessSwitchedEvent{
-			ComputerID: sess.ComputerID, UserID: userID, FromKind: from, ToKind: to, HarnessVersion: version,
+			ComputerID: sess.ComputerID, UserID: userID, FromKind: from, ToKind: to, HarnessVersion: version, MembersOnly: true,
 		}}
 	}
 	if err := s.repo.SwitchComputerKind(ctx, sess.ComputerID, from, to, version, s.now().UTC(), evt); err != nil {
@@ -1098,5 +1101,6 @@ func setupEvent(e SetupChangedEvent) eventbus.OutboxEvent {
 	if e.ConfirmedAt == nil {
 		topic = TopicSetupUnconfirmed
 	}
+	e.MembersOnly = true
 	return eventbus.OutboxEvent{ID: ids.New(), Topic: topic, Payload: e}
 }

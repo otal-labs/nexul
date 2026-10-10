@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -205,6 +206,9 @@ func (f *fakeRunnerRepo) List(context.Context) ([]*Runner, error) {
 	}
 	out := make([]*Runner, 0, len(f.runners))
 	for _, r := range f.runners {
+		if r.OwnerUserID != "" {
+			continue
+		}
 		cp := *r
 		out = append(out, &cp)
 	}
@@ -528,10 +532,10 @@ func (f *fakeExecutor) Logs(ctx context.Context, req Frame, send func(Frame)) {
 	fn(ctx, req, send)
 }
 
-func (f *fakeExecutor) Uninstall(_ context.Context, name string) error {
+func (f *fakeExecutor) Uninstall(_ context.Context, kind, name string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.uninstalls = append(f.uninstalls, name)
+	f.uninstalls = append(f.uninstalls, strings.TrimSpace(kind+" "+name))
 	return nil
 }
 
@@ -654,4 +658,10 @@ func dialRunner(ctx context.Context, srv *httptest.Server, credential, query str
 	return websocket.Dial(ctx, wsURL(srv)+query, &websocket.DialOptions{
 		HTTPHeader: http.Header{"Authorization": {"Bearer " + credential}},
 	})
+}
+
+func (f *fakeRunnerRepo) heartbeatCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.heartbeats
 }

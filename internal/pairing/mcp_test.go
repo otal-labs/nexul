@@ -62,8 +62,6 @@ func TestMCPTools_InvalidArguments(t *testing.T) {
 		args string
 	}{
 		{"list with a numeric id", "computer_list", `{"id": 7}`},
-		{"create without a name", "computer_create", `{}`},
-		{"create on a port outside TCP", "computer_create", `{"name": "Desk", "port": 70000}`},
 		{"pair without a token", "computer_pair", `{"id": "c1"}`},
 		{"pair by URL without a name", "computer_pair", `{"server_url": "https://vps.example.com", "token": "tok"}`},
 		{"delete without an id", "computer_delete", `{}`},
@@ -240,7 +238,7 @@ func confirmedProviders(s Setup) map[string]bool {
 	return out
 }
 
-func TestComputerCreatePairAndDelete_ThroughATunnel(t *testing.T) {
+func TestComputerPairAndDelete_ThroughATunnel(t *testing.T) {
 	t.Parallel()
 	exch := pairedExchanger()
 	tunnels := &fakeTunnels{}
@@ -248,9 +246,9 @@ func TestComputerCreatePairAndDelete_ThroughATunnel(t *testing.T) {
 	svc, _ := newTunnelService(repo, exch, tunnels)
 	ctx := actorCtx(t, "u1")
 
-	out, err := callTool(t, ctx, svc, "computer_create", `{"name": "Laptop"}`)
+	c, err := svc.CreateComputerTunnel(ctx, "u1", harness.KindT3Code, "Laptop", 3773)
 	require.NoError(t, err)
-	created := out.(computerResult)
+	created := toComputerResult(*c)
 	assert.Equal(t, "https://laptop-ab12cd34.example.com", created.ServerURL)
 	assert.False(t, created.Paired)
 	assert.Equal(t, "tun-1", created.Tunnel.TunnelID)
@@ -259,7 +257,7 @@ func TestComputerCreatePairAndDelete_ThroughATunnel(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, map[string]string{"computer_id": created.ID, "token": "connector-token-tun-1"}, token)
 
-	out, err = callTool(t, ctx, svc, "computer_pair", `{"id": "`+created.ID+`", "token": "tok"}`)
+	out, err := callTool(t, ctx, svc, "computer_pair", `{"id": "`+created.ID+`", "token": "tok"}`)
 	require.NoError(t, err)
 	paired := out.(computerResult)
 	assert.Equal(t, created.ID, paired.ID)

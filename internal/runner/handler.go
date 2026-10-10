@@ -107,8 +107,10 @@ type runnerConn struct {
 	// machine is the name of the machine the runner was enrolled on; dispatch pools on it.
 	machine   string
 	machineID string
-	// personal marks a person's computer runner (ADR 0146): dispatch and machine lookups never pick it.
+	// personal marks a person's computer runner (ADR 0146): dispatch and machine lookups never pick it, and its
+	// changes reach only its owner.
 	personal      bool
+	record        *Runner
 	ws            *websocket.Conn
 	ctx           context.Context
 	cancel        context.CancelFunc
@@ -191,7 +193,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	conn.SetReadLimit(h.cfg.ReadLimit)
 	q := r.URL.Query()
-	c := &runnerConn{id: rn.ID, name: rn.Name, machine: machine, machineID: rn.MachineID, personal: rn.Personal(), ws: conn}
+	c := &runnerConn{id: rn.ID, name: rn.Name, machine: machine, machineID: rn.MachineID, personal: rn.Personal(), record: rn, ws: conn}
 	h.handleConn(r.Context(), c, connectInfo{version: q.Get("version"), os: q.Get("os"), arch: q.Get("arch")})
 }
 
@@ -264,7 +266,7 @@ func (h *Handler) handleConn(ctx context.Context, c *runnerConn, info connectInf
 	}
 	h.sendUpdateIfNeeded(ctx, c, c.id, info.version, info.os, info.arch)
 	h.touchMachine(ctx, c)
-	h.publish(ctx, TopicRunnerConnected, RunnerConnectedEvent{RunnerID: c.id, Name: c.name})
+	h.publishPresence(ctx, c, true)
 
 	h.dispatchPending(ctx, c)
 
@@ -526,7 +528,7 @@ func (h *Handler) readLoop(ctx context.Context, c *runnerConn) {
 		if err := h.repo.SetConnected(ctx, c.id, false); err != nil && !errors.Is(err, apperrs.ErrNotFound) {
 			h.log.Warn("runner disconnect repo update failed", "runner_id", c.id, "error", err)
 		}
-		h.publish(ctx, TopicRunnerDisconnected, RunnerDisconnectedEvent{RunnerID: c.id, Reason: "disconnected"})
+		h.publishPresence(ctx, c, false)
 		_ = c.ws.Close(websocket.StatusNormalClosure, "")
 	}()
 	for {
@@ -555,6 +557,9 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 			return fmt.Errorf("runner heartbeat repo: %w", err)
 		}
 		h.touchMachine(ctx, c)
+		if c.personal {
+			return nil
+		}
 		return h.bus.Publish(ctx, TopicRunnerHeartbeat, RunnerHeartbeatEvent{RunnerID: c.id, TS: f.TS})
 	case FrameBuildProgress:
 		if f.Step == 1 {
@@ -668,6 +673,23 @@ func (h *Handler) failPendingUpgrade(ctx context.Context, id string) {
 	u.Status = UpgradeStatusFailed
 	u.Error = "runner disconnected"
 	h.publish(ctx, TopicInstanceUpgradeChanged, u)
+}
+
+// publishPresence announces a runner connecting or going away; a personal runner's reaches only its owner.
+func (h *Handler) publishPresence(ctx context.Context, c *runnerConn, connected bool) {
+	if c.personal {
+		state := PersonalDisconnected
+		if connected {
+			state = PersonalConnected
+		}
+		h.publish(ctx, TopicPersonalChanged, personalChanged(c.record, state, ""))
+		return
+	}
+	if connected {
+		h.publish(ctx, TopicRunnerConnected, RunnerConnectedEvent{RunnerID: c.id, Name: c.name})
+		return
+	}
+	h.publish(ctx, TopicRunnerDisconnected, RunnerDisconnectedEvent{RunnerID: c.id, Reason: "disconnected"})
 }
 
 // touchMachine refreshes the connected runner's machine last_seen at connect and on every heartbeat; best-effort.

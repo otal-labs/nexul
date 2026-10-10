@@ -132,8 +132,9 @@ func (r *fakeRelease) handler() http.Handler {
 type fakeInstance struct {
 	mu       sync.Mutex
 	requests []instanceRequest
-	// status overrides the answer for a path; unset paths answer 200.
+	// status overrides the answer for a path, with body as its body if set; unset paths answer 200.
 	status map[string]int
+	body   map[string]string
 }
 
 type instanceRequest struct {
@@ -154,6 +155,11 @@ func (f *fakeInstance) handler() http.Handler {
 		f.mu.Unlock()
 		if ok {
 			w.WriteHeader(status)
+			_, _ = fmt.Fprint(w, f.body[r.URL.Path])
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/enroll") && body["token"] != "" {
+			_, _ = fmt.Fprint(w, `{"id":"id-laptop","name":"computer-ab12cd34","credential":"cred-laptop"}`)
 			return
 		}
 		if strings.HasSuffix(r.URL.Path, "/enroll") {
@@ -239,6 +245,7 @@ func newTestHost(t *testing.T) *testHost {
 			SystemdProbe: systemd,
 			UserPlugins:  filepath.Join(root, "home", ".docker", "cli-plugins"),
 			DockerApp:    filepath.Join(root, "Applications", "Docker.app"),
+			UserRuntime:  filepath.Join(root, "run-user"),
 		},
 		Home:        filepath.Join(root, "home"),
 		PrependPath: func(string) {},

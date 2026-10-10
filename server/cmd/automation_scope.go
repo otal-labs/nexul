@@ -44,6 +44,7 @@ var scopeRules = map[string]scopeRule{
 	"computer.setup_turn_changed": instanceScope, "computer.setup_finished": instanceScope,
 	"computer.setup_turn_activity": instanceScope, "computer.harness_switched": instanceScope,
 	"runner.connected": instanceScope, "runner.disconnected": instanceScope, "runner.heartbeat": instanceScope,
+	"runner.personal_changed":    instanceScope,
 	"instance.upgrade_requested": instanceScope, "instance.upgrade_changed": instanceScope,
 	"topology.updated": workspaceScope, "notification.created": notificationScope,
 	"dns.record_changed": instanceScope, "dns.tunnel_changed": instanceScope, "dns.gateway_changed": instanceScope,

@@ -299,8 +299,23 @@ only its owner's sockets (Access and privacy, rule 2).
 
 ### Installing a personal runner
 
-`nexul install computer --server <url> --code <code>`, fetched by new `website/public/computer.sh` and
-`computer.ps1` wrappers like `runner.sh` (`website/public/runner.sh:9`), which hand over to `install.sh`.
+The person runs one line, `curl -fsSL https://nexul.io/computer.sh | sh -s -- <token>` (`computer.ps1` on
+Windows, ticket 09); nobody types `nexul`. The token is an HS256 JWT the instance signs with a key derived from
+its existing auth secret (no new secret, no new env var). Its claims carry the instance's address, the single-use
+enrollment code, the computer's id and `exp`, the code's one-hour expiry. `computer.sh` checks the OS (Linux now;
+macOS and Windows say "coming soon" until tickets 08 and 09), decodes the token's middle segment in POSIX sh
+(base64url to base64, re-pad, `base64 -d`, a `sed` for `server`; no `jq`) only to say where it connects, and hands
+over to `install.sh`, which downloads and checksums the `nexul` command into `~/.local/bin` and runs
+`nexul install computer --token <token>`. That engine sends the whole token to the instance it names, which checks
+the signature, the expiry and that the code is unused before enrolling.
+
+The script cannot check the signature, and needs not: the key never leaves the instance, a token whose payload was
+altered (a swapped server, another computer) fails at the instance that signed it, and any other instance has a
+different key. The code inside is single use and dies within the hour, so a token seen in shell history or a chat
+is worth nothing once used. An instance tested against its own build renders the command with its script site
+and release (`NEXUL_SITE_URL`, `NEXUL_RELEASE_URL` on the server), carried as `NEXUL_INSTALL_URL` and
+`NEXUL_RELEASE_URL` for the scripts, as `runner.sh` honours them.
+
 It runs as the person, never as root:
 
 | OS | Where | Service | Notes |
@@ -327,8 +342,9 @@ ticket lands.
 - `runners`: add `owner_user_id TEXT NOT NULL DEFAULT ''` and `computer_id TEXT NOT NULL DEFAULT ''`.
   Empty means a runner that is not personal, so every existing row is correct with no backfill. A partial
   index on `computer_id WHERE computer_id != ''` serves `DialComputer`'s lookup and the pairing seam.
-- `runner_enrollments`: add `owner_user_id` and `computer_id`, the same defaults. A personal code is bound
-  to its person and computer and enrolls nothing else.
+- `runner_enrollment_codes`: add `owner_user_id` and `computer_id`, the same defaults. A personal code is bound
+  to its person and computer and enrolls nothing else. The `computer_id` index on `runners` is unique, so a
+  computer has one runner even when two codes were minted for it.
 - `pairing_computers`: add `facts TEXT NOT NULL DEFAULT '{}'` and `facts_at INTEGER`. No backfill: facts
   arrive with the runner.
 - The tunnel columns (`migrations/0008_computer_tunnel.sql`) stay until the removal slice, which clears

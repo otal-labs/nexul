@@ -3,11 +3,14 @@
 package hostcred
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -53,14 +56,88 @@ func Matches(raw, hash string) bool {
 // macOS and on Windows; a release build pins them to its own version.
 func InstallCommands(script, instanceURL, name, code string) (unix, windows string) {
 	args := fmt.Sprintf("--server %s --name %s --code %s", strings.TrimRight(instanceURL, "/"), name, code)
-	unixPin, windowsPin := "", ""
+	windowsPin := ""
 	if version.IsRelease() {
-		unixPin = "NEXUL_VERSION=" + version.Version + " "
 		windowsPin = "$env:NEXUL_VERSION='" + version.Version + "'; "
 	}
-	unix = "curl -fsSL https://nexul.io/" + script + ".sh | " + unixPin + "sh -s -- " + args
 	windows = windowsPin + "& ([scriptblock]::Create((irm https://nexul.io/" + script + ".ps1))) " + args
-	return unix, windows
+	return unixCommand(script, args), windows
+}
+
+// ComputerCommand renders the one-liner that adds a computer through computer.sh, run as the person on Linux or macOS;
+// a site or release other than nexul.io's travels in the command, for an instance tested against its own build.
+func ComputerCommand(site, release, token string) string {
+	env := ""
+	if site != DefaultSite {
+		env += "NEXUL_INSTALL_URL=" + site + "/install.sh "
+	}
+	if release != "" {
+		env += "NEXUL_RELEASE_URL=" + release + " "
+	}
+	return unixCommandFrom(site, "computer", env, token)
+}
+
+func unixCommand(script, args string) string {
+	return unixCommandFrom(DefaultSite, script, "", args)
+}
+
+// unixCommandFrom pipes site's script into sh with env set for it; a release build pins its own version.
+func unixCommandFrom(site, script, env, args string) string {
+	if version.IsRelease() {
+		env += "NEXUL_VERSION=" + version.Version + " "
+	}
+	return "curl -fsSL " + site + "/" + script + ".sh | " + env + "sh -s -- " + args
+}
+
+// DefaultSite serves the install scripts.
+const DefaultSite = "https://nexul.io"
+
+// ErrBadToken is a token that is malformed, signed with another key, or past its expiry.
+var ErrBadToken = errors.New("the token is not one this instance issued, or it expired")
+
+var tokenHeader = base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JWT"}`))
+
+// SignToken renders claims as a compact HS256 JWT under key.
+func SignToken(claims any, key []byte) (string, error) {
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		return "", fmt.Errorf("encode token claims: %w", err)
+	}
+	unsigned := tokenHeader + "." + base64.RawURLEncoding.EncodeToString(payload)
+	return unsigned + "." + base64.RawURLEncoding.EncodeToString(tokenMAC(unsigned, key)), nil
+}
+
+// ParseToken checks token's signature under key and decodes its claims; the caller checks their expiry.
+func ParseToken(token string, key []byte, claims any) error {
+	i := strings.LastIndex(token, ".")
+	if strings.Count(token, ".") != 2 {
+		return ErrBadToken
+	}
+	got, err := base64.RawURLEncoding.DecodeString(token[i+1:])
+	if err != nil || !hmac.Equal(got, tokenMAC(token[:i], key)) {
+		return ErrBadToken
+	}
+	return PeekToken(token, claims)
+}
+
+// PeekToken decodes token's claims without checking its signature, for an installer that only needs to know where
+// to send it; the issuing instance is what checks it.
+func PeekToken(token string, claims any) error {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return ErrBadToken
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil || json.Unmarshal(payload, claims) != nil {
+		return ErrBadToken
+	}
+	return nil
+}
+
+func tokenMAC(unsigned string, key []byte) []byte {
+	mac := hmac.New(sha256.New, key)
+	mac.Write([]byte(unsigned))
+	return mac.Sum(nil)
 }
 
 // WriteCodeFile writes a bundled host's code (0600) through a rename, so an installer polling the file never reads

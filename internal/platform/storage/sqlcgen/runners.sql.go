@@ -60,17 +60,19 @@ func (q *Queries) CreateInstanceUpgrade(ctx context.Context, arg CreateInstanceU
 }
 
 const createRunner = `-- name: CreateRunner :exec
-INSERT INTO runners (id, name, version, last_seen, connected, created_at, machine_id) VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO runners (id, name, version, last_seen, connected, created_at, machine_id, owner_user_id, computer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateRunnerParams struct {
-	ID        string
-	Name      string
-	Version   string
-	LastSeen  int64
-	Connected int64
-	CreatedAt int64
-	MachineID string
+	ID          string
+	Name        string
+	Version     string
+	LastSeen    int64
+	Connected   int64
+	CreatedAt   int64
+	MachineID   string
+	OwnerUserID string
+	ComputerID  string
 }
 
 func (q *Queries) CreateRunner(ctx context.Context, arg CreateRunnerParams) error {
@@ -82,6 +84,8 @@ func (q *Queries) CreateRunner(ctx context.Context, arg CreateRunnerParams) erro
 		arg.Connected,
 		arg.CreatedAt,
 		arg.MachineID,
+		arg.OwnerUserID,
+		arg.ComputerID,
 	)
 	return err
 }
@@ -108,15 +112,17 @@ func (q *Queries) CreateRunnerCredential(ctx context.Context, arg CreateRunnerCr
 }
 
 const createRunnerEnrollmentCode = `-- name: CreateRunnerEnrollmentCode :exec
-INSERT INTO runner_enrollment_codes (code_hash, name, machine, created_at, expires_at) VALUES (?, ?, ?, ?, ?)
+INSERT INTO runner_enrollment_codes (code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id) VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateRunnerEnrollmentCodeParams struct {
-	CodeHash  string
-	Name      string
-	Machine   string
-	CreatedAt int64
-	ExpiresAt int64
+	CodeHash    string
+	Name        string
+	Machine     string
+	CreatedAt   int64
+	ExpiresAt   int64
+	OwnerUserID string
+	ComputerID  string
 }
 
 func (q *Queries) CreateRunnerEnrollmentCode(ctx context.Context, arg CreateRunnerEnrollmentCodeParams) error {
@@ -126,6 +132,8 @@ func (q *Queries) CreateRunnerEnrollmentCode(ctx context.Context, arg CreateRunn
 		arg.Machine,
 		arg.CreatedAt,
 		arg.ExpiresAt,
+		arg.OwnerUserID,
+		arg.ComputerID,
 	)
 	return err
 }
@@ -265,7 +273,7 @@ func (q *Queries) GetRunnerCredential(ctx context.Context, credentialHash string
 }
 
 const getRunnerEnrollmentCode = `-- name: GetRunnerEnrollmentCode :one
-SELECT code_hash, name, machine, created_at, expires_at FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?
+SELECT code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?
 `
 
 type GetRunnerEnrollmentCodeParams struct {
@@ -282,12 +290,14 @@ func (q *Queries) GetRunnerEnrollmentCode(ctx context.Context, arg GetRunnerEnro
 		&i.Machine,
 		&i.CreatedAt,
 		&i.ExpiresAt,
+		&i.OwnerUserID,
+		&i.ComputerID,
 	)
 	return i, err
 }
 
 const listRunners = `-- name: ListRunners :many
-SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id FROM runners ORDER BY created_at
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id FROM runners WHERE owner_user_id = '' ORDER BY created_at
 `
 
 func (q *Queries) ListRunners(ctx context.Context) ([]Runner, error) {
