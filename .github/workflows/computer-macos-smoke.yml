@@ -1,6 +1,7 @@
 # Adds a Mac as a computer end to end on a GitHub macOS runner: the branch's build of the server, nexul and the runner,
-# a throwaway instance on the runner itself, Add a computer's command run with sudo from the runner's account, T3 Code
-# installed by it and paired through the runner, then the computer removed and the install gone. Started by hand only.
+# a throwaway instance on the runner itself, Add a computer's command run with sudo from the runner's account, T3 Code's
+# service started by it and paired through the runner, then the computer removed and the install gone. Started by hand
+# only, from the branch to test: gh workflow run computer-macos-smoke.yml --ref <branch>.
 name: Computer on macOS
 
 on:
@@ -121,7 +122,6 @@ jobs:
           jq -e '.providers | type == "array"' providers.json
 
       - name: The runner restarts T3 Code's service when it stops
-        continue-on-error: true
         run: |
           launchctl bootout "gui/$(id -u)/com.t3tools.t3code.service"
           stopped=$(date +%s)
