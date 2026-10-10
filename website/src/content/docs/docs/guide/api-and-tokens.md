@@ -25,7 +25,7 @@ Browse the API at `/swagger`, or fetch the OpenAPI document at `/openapi.json`. 
 
 ## Permissions
 
-A permission is `<domain>:<action>`, where the action is `read`, `write` or `delete`, or a verb such as `plays:run` or `stacks:logs`. Roles, tokens and agents are all checked against the same list:
+A permission is `<domain>:<action>`, where the action is `read`, `write` or `delete`, or a verb such as `plays:run` (what a token needs to start a play) or `stacks:logs`. Roles, tokens and agents are all checked against the same list:
 
 ```
 GET /api/permissions/catalog

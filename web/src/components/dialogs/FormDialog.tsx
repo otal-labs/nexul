@@ -82,7 +82,7 @@ export const FormDialog = ({
       }
       proceed({ success: true, data: result });
     } catch (error) {
-      if (!methods.formState.errors.root?.serverError) {
+      if (Object.keys(methods.formState.errors).length === 0) {
         methods.setError("root.serverError", {
           type: "server",
           // errorMessage reads the backend envelope; Error.message alone is a useless status-code string.

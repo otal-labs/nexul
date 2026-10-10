@@ -166,6 +166,13 @@ func TestPlayTools_CreateListDelete(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, out.(mcptool.Page[playResult]).Items, "denied plays:run on this play")
 	})
+	t.Run("a taken label is refused with its name", func(t *testing.T) {
+		_, err := callTool(t, tools, owner, "play_create", `{"workspace_id":"$WS","label":"to tickets via ai","type":"doc"}`)
+		require.ErrorIs(t, err, apperrs.ErrConflict)
+		assert.ErrorContains(t, err, `a play named "to tickets via ai" already exists`)
+		_, err = callTool(t, tools, owner, "play_update", `{"workspace_id":"$WS","id":"`+fix.ID+`","label":"To Tickets via AI"}`)
+		require.ErrorIs(t, err, apperrs.ErrConflict)
+	})
 	t.Run("delete reports what it deleted", func(t *testing.T) {
 		out, err := callTool(t, tools, owner, "play_delete", `{"workspace_id":"$WS","id":"`+doc.ID+`"}`)
 		require.NoError(t, err)

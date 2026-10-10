@@ -228,7 +228,8 @@ _Avoid_: Closing summary, retrospective, done hook
 **Play**:
 A pre-configured Agent turn a user fires from a ticket page, a doc page, or
 a project's Interview page with one button ("Fix with AI", "To tickets via
-AI", "Run the interview"). Defined per workspace with a label, a type
+AI", "Run the interview"). Defined per workspace with a label (unique in
+the workspace, ignoring case, since an automation names a play by it), a type
 (ticket, doc, or interview), a one-line description, base
 instructions, an enabled switch, and an excluded-projects list; a ticket
 play also names the one stage it shows in. No default memories live on the

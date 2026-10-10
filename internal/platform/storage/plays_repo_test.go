@@ -172,3 +172,22 @@ func TestPlaysRepo_Delete_NotFound(t *testing.T) {
 	err := s.Plays.Delete(context.Background(), "missing")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
+
+func TestPlaysRepo_CreateAndUpdate_TakenLabel_ReturnsConflict(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-1", "Acme")))
+	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-2", "Globex")))
+	require.NoError(t, s.Plays.Create(ctx, newTestPlay("play-1", "ws-1")))
+	other := newTestPlay("play-2", "ws-1")
+	other.Label = "Other"
+	require.NoError(t, s.Plays.Create(ctx, other))
+
+	taken := newTestPlay("play-3", "ws-1")
+	taken.Label = "DOC PLAY"
+	require.ErrorIs(t, s.Plays.Create(ctx, taken), apperrs.ErrConflict)
+	other.Label = "doc play"
+	require.ErrorIs(t, s.Plays.Update(ctx, other), apperrs.ErrConflict)
+	require.NoError(t, s.Plays.Create(ctx, newTestPlay("play-4", "ws-2")), "another workspace's labels are its own")
+}

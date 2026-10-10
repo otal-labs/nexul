@@ -25,7 +25,9 @@ func seedPlays(t *testing.T, s *Store, ids ...string) {
 	t.Helper()
 	require.NoError(t, s.Workspaces.Create(t.Context(), newTestWorkspace("ws-1", "Acme")))
 	for _, id := range ids {
-		require.NoError(t, s.Plays.Create(t.Context(), newTestPlay(id, "ws-1")))
+		p := newTestPlay(id, "ws-1")
+		p.Label = id
+		require.NoError(t, s.Plays.Create(t.Context(), p))
 	}
 }
 

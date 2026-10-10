@@ -810,25 +810,26 @@ type Play struct {
 }
 
 type PlayQueue struct {
-	ID          string
-	WorkspaceID string
-	ProjectID   string
-	TargetType  string
-	TargetID    string
-	PlayID      string
-	PlayLabel   string
-	AutoPlayID  string
-	PersonID    string
-	RunOn       string
-	Moment      string
-	Via         string
-	Priority    int64
-	Status      string
-	Reason      string
-	TrailID     string
-	QueuedAt    int64
-	DecidedAt   sql.NullInt64
-	NotBefore   int64
+	ID           string
+	WorkspaceID  string
+	ProjectID    string
+	TargetType   string
+	TargetID     string
+	PlayID       string
+	PlayLabel    string
+	AutoPlayID   string
+	PersonID     string
+	RunOn        string
+	Moment       string
+	Via          string
+	Priority     int64
+	Status       string
+	Reason       string
+	TrailID      string
+	QueuedAt     int64
+	DecidedAt    sql.NullInt64
+	NotBefore    int64
+	AutomationID string
 }
 
 type PlayQueueResume struct {

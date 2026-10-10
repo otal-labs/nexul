@@ -70,7 +70,7 @@ INSERT INTO invitation_grants (invitation_id, workspace_id, role_id, allow_json,
 	assert.ElementsMatch(t, []string{"docs:read"}, scopeStrings(install.Scopes))
 
 	for id, want := range map[string][]string{
-		"auto-plays":       {"autoplays:read", "autoplays:write", "plays:write"},
+		"auto-plays":       {"autoplays:read", "autoplays:write", "plays:run", "plays:write"},
 		"auto-automations": {"automations:write"},
 		"auto-empty":       nil,
 	} {

@@ -3,6 +3,7 @@ package plays
 import (
 	"context"
 	"slices"
+	"strings"
 	"sync"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -165,13 +166,23 @@ func (f *fakeRepo) Create(_ context.Context, p *Play, evts ...eventbus.OutboxEve
 	if f.createErr != nil {
 		return f.createErr
 	}
-	if _, ok := f.byID[p.ID]; ok {
+	if _, ok := f.byID[p.ID]; ok || f.labelTaken(p) {
 		return apperrs.ErrConflict
 	}
 	cp := *p
 	f.byID[p.ID] = &cp
 	f.published = append(f.published, evts...)
 	return nil
+}
+
+// labelTaken mirrors the unique label index: another play of p's workspace has its label, ignoring case.
+func (f *fakeRepo) labelTaken(p *Play) bool {
+	for _, other := range f.byID {
+		if other.ID != p.ID && other.WorkspaceID == p.WorkspaceID && strings.EqualFold(other.Label, p.Label) {
+			return true
+		}
+	}
+	return false
 }
 
 func (f *fakeRepo) Get(_ context.Context, id string) (*Play, error) {
@@ -212,6 +223,9 @@ func (f *fakeRepo) Update(_ context.Context, p *Play, evts ...eventbus.OutboxEve
 	}
 	if _, ok := f.byID[p.ID]; !ok {
 		return apperrs.ErrNotFound
+	}
+	if f.labelTaken(p) {
+		return apperrs.ErrConflict
 	}
 	cp := *p
 	f.byID[p.ID] = &cp

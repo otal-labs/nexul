@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -154,6 +155,27 @@ describe("PlayForm", () => {
       "/api/workspaces/ws-1/plays",
       expect.objectContaining({ type: "doc", show_when_stage: null }),
     );
+  });
+
+  it("shows a taken label on the label field", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.post).mockRejectedValue({
+      response: {
+        status: 409,
+        data: { message: "taken", code: "CONFLICT", errors: { label: ['a play named "Fix with AI" already exists in this workspace'] } },
+      },
+    });
+    renderHarness();
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    await user.type(screen.getByLabelText("Label"), "Fix with AI");
+    await user.click(screen.getByRole("button", { name: "Create play" }));
+
+    expect(await screen.findByText(/already exists in this workspace/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Label")).toHaveAttribute("aria-invalid", "true");
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(screen.getByText("pending")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
   });
 
   it("shows type as read-only text when editing", async () => {

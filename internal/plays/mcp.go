@@ -41,7 +41,7 @@ type playListIn struct {
 
 type playCreateIn struct {
 	WorkspaceID        string   `json:"workspace_id" jsonschema:"The workspace's id (a UUID); project_list shows it on every project."`
-	Label              string   `json:"label" jsonschema:"The button text people press, for example Fix with AI."`
+	Label              string   `json:"label" jsonschema:"The button text people press, for example Fix with AI; unique in the workspace, ignoring case."`
 	Type               Type     `json:"type" jsonschema:"What the play runs on: ticket, doc, or interview. Fixed once created."`
 	Description        string   `json:"description,omitempty" jsonschema:"One line saying what the play does, shown under the button."`
 	Instructions       string   `json:"instructions,omitempty" jsonschema:"The base instructions the Agent gets on every run, as markdown."`
@@ -53,7 +53,7 @@ type playCreateIn struct {
 type playUpdateIn struct {
 	WorkspaceID        string             `json:"workspace_id" jsonschema:"The workspace's id (a UUID); project_list shows it on every project."`
 	ID                 string             `json:"id" jsonschema:"The play's id, from play_list, or decisions-check for the built-in decisions check's per-workspace switch."`
-	Label              *string            `json:"label,omitempty" jsonschema:"New button text; omit to keep it."`
+	Label              *string            `json:"label,omitempty" jsonschema:"New button text, unique in the workspace ignoring case; omit to keep it."`
 	Description        *string            `json:"description,omitempty" jsonschema:"New one-line description; omit to keep it, an empty string clears it."`
 	Instructions       *string            `json:"instructions,omitempty" jsonschema:"New base instructions as markdown, replacing the old ones whole; omit to keep them."`
 	Enabled            *bool              `json:"enabled,omitempty" jsonschema:"true shows the play and lets it run, false hides it; omit to keep it. With id decisions-check, true makes a ticket entering done start the check in this workspace and false stops it; it is off by default."`

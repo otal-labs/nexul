@@ -56,6 +56,25 @@ func TestCreate_WithoutPlaysWrite_ReturnsForbidden(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 }
 
+func TestCreateAndUpdate_TakenLabel_ReturnsConflictNamingIt(t *testing.T) {
+	s := newTestService(newFakeRepo(), allowAll("owner"))
+	_, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Fix", Type: TypeDoc})
+	require.NoError(t, err)
+	other, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Other", Type: TypeDoc})
+	require.NoError(t, err)
+
+	_, err = s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: " fix ", Type: TypeDoc})
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	assert.EqualError(t, err, `conflict: a play named "fix" already exists in this workspace`)
+
+	_, err = s.Update(ctxAs("owner"), workspaceID, other.ID, UpdateInput{Label: "FIX"})
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	assert.ErrorContains(t, err, `a play named "FIX" already exists`)
+
+	_, err = s.Create(ctxAs("owner"), "workspace-2", CreateInput{Label: "Fix", Type: TypeDoc})
+	require.NoError(t, err, "another workspace's labels are its own")
+}
+
 func TestCreate_ValidTicketPlay_PersistsAndPublishes(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))

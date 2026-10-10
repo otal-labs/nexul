@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import type { AxiosError } from "axios";
 import { toast } from "sonner";
 
-import { api, errorMessage } from "@/api/client";
+import { api, errorMessage, type ApiErrorBody } from "@/api/client";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import type { AutoPlay, AutoPlayLimits, SaveAutoPlayRequest } from "@/models/AutoPlay";
 import type { Play, PlayStage, PlayType, SavePlayFormData } from "@/models/Play";
@@ -139,6 +140,14 @@ export const useApplicableTicketPlays = (ticket: Ticket) => {
   return useFetchApplicablePlays(workspaceId, ticket.project_id, "ticket", stage);
 };
 
+// A taken label comes back keyed under the label field; the play dialog shows it there rather than in a toast.
+export const playLabelError = (error: unknown): string | undefined =>
+  (error as AxiosError<ApiErrorBody> | null)?.response?.data?.errors?.label?.[0];
+
+const toastUnlessLabelError = (error: unknown) => {
+  if (!playLabelError(error)) toast.error(errorMessage(error));
+};
+
 export const useCreatePlay = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
@@ -148,7 +157,7 @@ export const useCreatePlay = (workspaceId: string) => {
       await client.invalidateQueries({ queryKey: [getWorkspacePlaysKey, workspaceId] });
       toast.success("Play created");
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: toastUnlessLabelError,
   });
 };
 
@@ -161,7 +170,7 @@ export const useUpdatePlay = (workspaceId: string) => {
       await client.invalidateQueries({ queryKey: [getWorkspacePlaysKey, workspaceId] });
       toast.success("Play updated");
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: toastUnlessLabelError,
   });
 };
 
