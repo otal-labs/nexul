@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ProviderMark } from "@/components/ProviderMarks";
 import { useCanOpenSection } from "@/hooks/AccessHooks";
 import { useStartIdentityLink, useUnlinkIdentity } from "@/hooks/AuthHooks";
-import { providerLabel, type Identity, type Provider } from "@/models/User";
+import { identityAccount, providerLabel, type Identity, type Provider } from "@/models/User";
 
 interface IdentityRowProps {
   provider: Provider;
@@ -20,7 +20,7 @@ export const IdentityRow = ({ provider, identity, onlyOne }: IdentityRowProps) =
   const link = useStartIdentityLink();
   const unlink = useUnlinkIdentity();
   const canOpenConnectors = useCanOpenSection("connectors");
-  const account = identity && (provider === "github" ? `@${identity.login}` : identity.login);
+  const account = identity && identityAccount(identity);
 
   return (
     <li className="flex items-center gap-3 bg-card px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40">

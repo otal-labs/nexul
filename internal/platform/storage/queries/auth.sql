@@ -10,11 +10,11 @@ SELECT u.* FROM users u JOIN user_identities i ON i.user_id = u.id
 WHERE i.provider = ? AND i.provider_user_id = ?;
 
 -- name: InsertIdentity :exec
-INSERT INTO user_identities (user_id, provider, provider_user_id, login, name, avatar_url, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO user_identities (user_id, provider, provider_user_id, login, name, username, avatar_url, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: SyncIdentity :exec
-UPDATE user_identities SET login = ?, name = ?, avatar_url = ? WHERE provider = ? AND provider_user_id = ?;
+UPDATE user_identities SET login = ?, name = ?, username = ?, avatar_url = ? WHERE provider = ? AND provider_user_id = ?;
 
 -- name: SyncUserFromFirstIdentity :exec
 UPDATE users SET login = ?, name = ?, avatar_url = ?, updated_at = ?
@@ -25,7 +25,7 @@ WHERE id = sqlc.arg(user_id)
 SELECT * FROM user_identities WHERE user_id = ? ORDER BY created_at, provider;
 
 -- name: ListIdentityProviders :many
-SELECT user_id, provider FROM user_identities ORDER BY user_id, created_at, provider;
+SELECT user_id, provider, login, name, username FROM user_identities ORDER BY user_id, created_at, provider;
 
 -- name: CountIdentitiesByUser :one
 SELECT COUNT(*) FROM user_identities WHERE user_id = ?;

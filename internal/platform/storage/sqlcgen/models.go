@@ -1133,6 +1133,7 @@ type UserIdentity struct {
 	Name           string
 	AvatarUrl      string
 	CreatedAt      int64
+	Username       string
 }
 
 type Workspace struct {

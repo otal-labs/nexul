@@ -2,7 +2,7 @@ import { ChevronRight } from "lucide-react";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { AccountStatusLabel } from "@/components/team/AccountStatusLabel";
-import { TeamProviderMarks } from "@/components/team/TeamProviderMarks";
+import { TeamSignInAccounts } from "@/components/team/TeamSignInAccounts";
 import { cn } from "@/lib/utils";
 import type { TeamPerson } from "@/models/Team";
 import { personName, presenceText } from "@/utils/TeamUtility";
@@ -44,11 +44,9 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => (
         <span dir="auto" className="line-clamp-2 font-medium break-words" title={personName(person)}>
           {personName(person)}
         </span>
-        <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-          <TeamProviderMarks providers={person.providers} />
-          <span className="truncate">
-            <span className="font-mono">@{person.login}</span> · {membershipText(person)}
-          </span>
+        <span className="flex min-w-0 items-center gap-1.5 overflow-hidden text-xs whitespace-nowrap text-muted-foreground">
+          <TeamSignInAccounts person={person} />
+          <span className="truncate">{membershipText(person)}</span>
         </span>
       </span>
       <span className="flex shrink-0 flex-col items-end gap-1 text-right text-sm text-muted-foreground">

@@ -214,8 +214,8 @@ func (q *Queries) GetUserByLogin(ctx context.Context, lower string) (User, error
 }
 
 const insertIdentity = `-- name: InsertIdentity :exec
-INSERT INTO user_identities (user_id, provider, provider_user_id, login, name, avatar_url, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO user_identities (user_id, provider, provider_user_id, login, name, username, avatar_url, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertIdentityParams struct {
@@ -224,6 +224,7 @@ type InsertIdentityParams struct {
 	ProviderUserID string
 	Login          string
 	Name           string
+	Username       string
 	AvatarUrl      string
 	CreatedAt      int64
 }
@@ -235,6 +236,7 @@ func (q *Queries) InsertIdentity(ctx context.Context, arg InsertIdentityParams) 
 		arg.ProviderUserID,
 		arg.Login,
 		arg.Name,
+		arg.Username,
 		arg.AvatarUrl,
 		arg.CreatedAt,
 	)
@@ -325,7 +327,7 @@ func (q *Queries) ListAllowlist(ctx context.Context) ([]string, error) {
 }
 
 const listIdentitiesByUser = `-- name: ListIdentitiesByUser :many
-SELECT user_id, provider, provider_user_id, login, name, avatar_url, created_at FROM user_identities WHERE user_id = ? ORDER BY created_at, provider
+SELECT user_id, provider, provider_user_id, login, name, avatar_url, created_at, username FROM user_identities WHERE user_id = ? ORDER BY created_at, provider
 `
 
 func (q *Queries) ListIdentitiesByUser(ctx context.Context, userID string) ([]UserIdentity, error) {
@@ -345,6 +347,7 @@ func (q *Queries) ListIdentitiesByUser(ctx context.Context, userID string) ([]Us
 			&i.Name,
 			&i.AvatarUrl,
 			&i.CreatedAt,
+			&i.Username,
 		); err != nil {
 			return nil, err
 		}
@@ -360,12 +363,15 @@ func (q *Queries) ListIdentitiesByUser(ctx context.Context, userID string) ([]Us
 }
 
 const listIdentityProviders = `-- name: ListIdentityProviders :many
-SELECT user_id, provider FROM user_identities ORDER BY user_id, created_at, provider
+SELECT user_id, provider, login, name, username FROM user_identities ORDER BY user_id, created_at, provider
 `
 
 type ListIdentityProvidersRow struct {
 	UserID   string
 	Provider string
+	Login    string
+	Name     string
+	Username string
 }
 
 func (q *Queries) ListIdentityProviders(ctx context.Context) ([]ListIdentityProvidersRow, error) {
@@ -377,7 +383,13 @@ func (q *Queries) ListIdentityProviders(ctx context.Context) ([]ListIdentityProv
 	var items []ListIdentityProvidersRow
 	for rows.Next() {
 		var i ListIdentityProvidersRow
-		if err := rows.Scan(&i.UserID, &i.Provider); err != nil {
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Provider,
+			&i.Login,
+			&i.Name,
+			&i.Username,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -550,12 +562,13 @@ func (q *Queries) SetSettingsGitHubOAuth(ctx context.Context, arg SetSettingsGit
 }
 
 const syncIdentity = `-- name: SyncIdentity :exec
-UPDATE user_identities SET login = ?, name = ?, avatar_url = ? WHERE provider = ? AND provider_user_id = ?
+UPDATE user_identities SET login = ?, name = ?, username = ?, avatar_url = ? WHERE provider = ? AND provider_user_id = ?
 `
 
 type SyncIdentityParams struct {
 	Login          string
 	Name           string
+	Username       string
 	AvatarUrl      string
 	Provider       string
 	ProviderUserID string
@@ -565,6 +578,7 @@ func (q *Queries) SyncIdentity(ctx context.Context, arg SyncIdentityParams) erro
 	_, err := q.db.ExecContext(ctx, syncIdentity,
 		arg.Login,
 		arg.Name,
+		arg.Username,
 		arg.AvatarUrl,
 		arg.Provider,
 		arg.ProviderUserID,

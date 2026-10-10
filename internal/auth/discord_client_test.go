@@ -40,9 +40,9 @@ func TestHTTPDiscordClient_FetchUser(t *testing.T) {
 		wantErr error
 	}{
 		{"verified with avatar", `{"id":"123","username":"clientname","global_name":"Client","avatar":"abc","email":"Client@Example.com","verified":true}`,
-			&ProviderUser{ID: "123", Login: "client@example.com", Name: "Client", AvatarURL: "https://cdn.discordapp.com/avatars/123/abc.png"}, nil},
+			&ProviderUser{ID: "123", Login: "client@example.com", Name: "Client", Username: "clientname", AvatarURL: "https://cdn.discordapp.com/avatars/123/abc.png"}, nil},
 		{"falls back to username, no avatar", `{"id":"123","username":"clientname","avatar":null,"email":"a@b.c","verified":true}`,
-			&ProviderUser{ID: "123", Login: "a@b.c", Name: "clientname"}, nil},
+			&ProviderUser{ID: "123", Login: "a@b.c", Name: "clientname", Username: "clientname"}, nil},
 		{"unverified", `{"id":"123","username":"x","email":"a@b.c","verified":false}`, nil, apperrs.ErrUnauthorized},
 		{"no email scope", `{"id":"123","username":"x"}`, nil, apperrs.ErrUnauthorized},
 		{"invalid json", `nope`, nil, apperrs.ErrRetryable},

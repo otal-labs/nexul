@@ -60,6 +60,8 @@ export interface TeamPerson {
   created_at: string;
   // The linked sign-in accounts, in the order they were linked.
   providers: Provider[];
+  // The name others know each of those accounts by; a provider without one (Google) is absent.
+  usernames?: Partial<Record<Provider, string>>;
   // A live browser socket right now; last_seen_at is the latest session activity, to the hour, null once signed out everywhere.
   online: boolean;
   last_seen_at: string | null;

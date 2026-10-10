@@ -29,6 +29,8 @@ export interface Identity {
   provider: Provider;
   login: string;
   name: string;
+  // A Discord login is its email; the username is what to show.
+  username: string;
 }
 
 export type SessionClient = "browser" | "desktop" | "phone";

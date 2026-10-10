@@ -49,7 +49,7 @@ func (r *UsersRepo) UpsertUser(ctx context.Context, id *auth.Identity) (*auth.Us
 			return err
 		}
 		if err := q.SyncIdentity(ctx, sqlcgen.SyncIdentityParams{
-			Login: id.Login, Name: id.Name, AvatarUrl: id.AvatarURL, Provider: string(id.Provider), ProviderUserID: id.ProviderUserID,
+			Login: id.Login, Name: id.Name, Username: id.Username, AvatarUrl: id.AvatarURL, Provider: string(id.Provider), ProviderUserID: id.ProviderUserID,
 		}); err != nil {
 			return fmt.Errorf("sync identity: %w", err)
 		}
@@ -107,7 +107,7 @@ func insertUserWithIdentity(ctx context.Context, q *sqlcgen.Queries, id *auth.Id
 func insertIdentity(ctx context.Context, q *sqlcgen.Queries, id *auth.Identity, now time.Time) error {
 	if err := q.InsertIdentity(ctx, sqlcgen.InsertIdentityParams{
 		UserID: id.UserID, Provider: string(id.Provider), ProviderUserID: id.ProviderUserID,
-		Login: id.Login, Name: id.Name, AvatarUrl: id.AvatarURL, CreatedAt: now.Unix(),
+		Login: id.Login, Name: id.Name, Username: id.Username, AvatarUrl: id.AvatarURL, CreatedAt: now.Unix(),
 	}); err != nil {
 		return fmt.Errorf("insert identity: %w", classifyWriteErr(err))
 	}
@@ -124,19 +124,23 @@ func (r *UsersRepo) ListIdentities(ctx context.Context, userID string) ([]auth.I
 		out = append(out, auth.Identity{
 			UserID: row.UserID, Provider: auth.Provider(row.Provider), ProviderUserID: row.ProviderUserID,
 			Login: row.Login, Name: row.Name, AvatarURL: row.AvatarUrl, CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
+			Username: auth.PublicUsername(auth.Provider(row.Provider), row.Login, row.Name, row.Username),
 		})
 	}
 	return out, nil
 }
 
-func (r *UsersRepo) ListIdentityProviders(ctx context.Context) (map[string][]auth.Provider, error) {
+func (r *UsersRepo) ListIdentityProviders(ctx context.Context) (map[string][]auth.Identity, error) {
 	rows, err := r.q.ListIdentityProviders(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list identity providers: %w", err)
 	}
-	out := make(map[string][]auth.Provider)
+	out := make(map[string][]auth.Identity)
 	for _, row := range rows {
-		out[row.UserID] = append(out[row.UserID], auth.Provider(row.Provider))
+		provider := auth.Provider(row.Provider)
+		out[row.UserID] = append(out[row.UserID], auth.Identity{
+			UserID: row.UserID, Provider: provider, Username: auth.PublicUsername(provider, row.Login, row.Name, row.Username),
+		})
 	}
 	return out, nil
 }

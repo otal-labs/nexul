@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -75,9 +76,9 @@ func TestUsersRepo_Identities_LinkSignInAndUnlink(t *testing.T) {
 	t.Run("every user's providers come back in the order they were linked", func(t *testing.T) {
 		providers, err := s.Users.ListIdentityProviders(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, map[string][]auth.Provider{
-			"u1": {auth.ProviderGitHub, auth.ProviderGoogle},
-			"u2": {auth.ProviderGitHub},
+		assert.Equal(t, map[string][]auth.Identity{
+			"u1": {{UserID: "u1", Provider: auth.ProviderGitHub, Username: "onik97"}, {UserID: "u1", Provider: auth.ProviderGoogle}},
+			"u2": {{UserID: "u2", Provider: auth.ProviderGitHub, Username: "other"}},
 		}, providers)
 	})
 
@@ -107,4 +108,26 @@ func TestUsersRepo_Identities_LinkSignInAndUnlink(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "u1", u.ID)
 	})
+}
+
+func TestUsersRepo_DiscordIdentity_ShowsTheUsernameASignInLastStored(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "lena"))
+	require.NoError(t, err)
+	discord := &auth.Identity{UserID: "u1", Provider: auth.ProviderDiscord, ProviderUserID: "snow-1", Login: "lena@example.com", Name: "Lena", Username: "lena_d"}
+	require.NoError(t, s.Users.LinkIdentity(ctx, discord))
+	_, _, err = s.Users.UpsertUser(ctx, &auth.Identity{Provider: auth.ProviderDiscord, ProviderUserID: "snow-1", Login: "lena@example.com", Name: "Lena", Username: "lena_renamed"})
+	require.NoError(t, err)
+
+	ids, err := s.Users.ListIdentities(ctx, "u1")
+	require.NoError(t, err)
+	i := slices.IndexFunc(ids, func(id auth.Identity) bool { return id.Provider == auth.ProviderDiscord })
+	require.GreaterOrEqual(t, i, 0)
+	assert.Equal(t, "lena_renamed", ids[i].Username)
+	assert.Equal(t, "lena@example.com", ids[i].Login, "the allowlist still matches on the email")
+	providers, err := s.Users.ListIdentityProviders(ctx)
+	require.NoError(t, err)
+	assert.Contains(t, providers["u1"], auth.Identity{UserID: "u1", Provider: auth.ProviderDiscord, Username: "lena_renamed"})
 }

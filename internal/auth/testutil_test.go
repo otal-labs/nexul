@@ -144,12 +144,12 @@ func (f *fakeUserStore) GetUserByProvider(_ context.Context, provider Provider, 
 	return f.byID[id], nil
 }
 
-func (f *fakeUserStore) ListIdentityProviders(context.Context) (map[string][]Provider, error) {
+func (f *fakeUserStore) ListIdentityProviders(context.Context) (map[string][]Identity, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	out := make(map[string][]Provider)
+	out := make(map[string][]Identity)
 	for _, id := range f.identities {
-		out[id.UserID] = append(out[id.UserID], id.Provider)
+		out[id.UserID] = append(out[id.UserID], *id)
 	}
 	return out, nil
 }
