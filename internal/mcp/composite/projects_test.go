@@ -62,6 +62,28 @@ func TestProjectGet(t *testing.T) {
 	assert.Equal(t, workspace.DeleteImpact{Tickets: 2, Repos: 1, RestrictedMembers: []workspace.RestrictedMember{}}, d.DeleteImpact)
 }
 
+func TestProjectGet_SetupServiceIsFilledOnlyForAReaderOfStacks(t *testing.T) {
+	for name, tt := range map[string]struct {
+		denied permissions.Action
+		want   workspace.ProjectSetup
+	}{
+		"without stacks:read the service id and key names are left out": {permissions.StacksRead, workspace.ProjectSetup{Steps: map[workspace.SetupStep]workspace.SetupMark{"service": workspace.SetupDone}}},
+		"with stacks:read the setup shows them":                         {"", workspace.ProjectSetup{StackID: "stack-1", EnvKeys: []string{"STRIPE_SECRET_KEY"}, Steps: map[workspace.SetupStep]workspace.SetupMark{"service": workspace.SetupDone}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t)
+			must(t, f.w.projects.put(&workspace.Project{ID: "p-1", Name: "Backend", Prefix: "REF", WorkspaceID: "ws-1", Setup: workspace.ProjectSetup{
+				StackID: "stack-1", EnvKeys: []string{"STRIPE_SECRET_KEY"}, Steps: map[workspace.SetupStep]workspace.SetupMark{"service": workspace.SetupDone},
+			}}))
+			f.w.denied = tt.denied
+
+			got, err := call(t, t.Context(), f.projectTools(), "project_get", `{"id":"p-1"}`)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got.(projectDetail).Setup)
+		})
+	}
+}
+
 func TestProjectGet_AccessIsFilledOnlyForAHolderOfMembersWrite(t *testing.T) {
 	sam := workspace.ProjectAccessEntry{RestrictedMember: workspace.RestrictedMember{UserID: "u-sam", Name: "Sam"}, Actions: permissions.SetOf(permissions.TicketsRead)}
 	for name, tt := range map[string]struct {

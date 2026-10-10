@@ -20,7 +20,7 @@ const wsPath = useWorkspacePath();
   if (!canAdd) return null;
   return (
     <Button asChild variant={variant} size={size} className={className} {...props}>
-      <Link to={wsPath(projectId ? `/wizard/project/repository?project=${projectId}` : NEW_PROJECT_PATH)}>
+      <Link to={wsPath(projectId ? `/wizard/project/repository?project=${projectId}&add=1` : NEW_PROJECT_PATH)}>
         <PlusIcon className="size-3.5" aria-hidden />
         {children ?? "Add service"}
       </Link>

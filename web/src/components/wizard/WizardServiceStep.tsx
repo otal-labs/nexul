@@ -60,8 +60,6 @@ export const WizardServiceStep = ({ onDone, onBack, onSkip }: WizardServiceStepP
   );
   const envStepFollows = (scanResult?.env_keys.length ?? 0) > 0;
   const setCandidate = useProjectWizardStore((s) => s.setCandidate);
-  const setName = useProjectWizardStore((s) => s.setName);
-  const setMachine = useProjectWizardStore((s) => s.setMachine);
   const setStackId = useProjectWizardStore((s) => s.setStackId);
   const createStack = useCreateStack();
   const updateStack = useUpdateStack();
@@ -116,8 +114,6 @@ export const WizardServiceStep = ({ onDone, onBack, onSkip }: WizardServiceStepP
           ...(strategy === "compose" && { compose_path: candidate.path }),
           ...(strategy === "run" && { docker_network: attachStack.docker_network ?? `${attachStack.slug}_default` }),
         });
-        setName(stack.name);
-        setMachine(stack.machine);
         setStackId(stack.id);
         if (!envStepFollows) {
           await deployStack.mutateAsync({ stackId: stack.id, ref: scanResult?.default_branch ?? "" });
@@ -163,8 +159,6 @@ export const WizardServiceStep = ({ onDone, onBack, onSkip }: WizardServiceStepP
     };
     try {
       const stack = await createStack.mutateAsync(input);
-      setName(data.name);
-      setMachine(data.machine);
       setStackId(stack.id);
       onDone();
     } catch {

@@ -65,11 +65,11 @@ describe("ProjectServices", () => {
     ).toBeInTheDocument();
   });
 
-  it("New service opens the project wizard at the repository step, project preselected", async () => {
+  it("New service opens the project wizard at the repository step, project preselected, as a service beside any setup", async () => {
     renderServices([]);
     expect(await screen.findByRole("link", { name: /new service/i })).toHaveAttribute(
       "href",
-      "/acme/wizard/project/repository?project=p-1",
+      "/acme/wizard/project/repository?project=p-1&add=1",
     );
   });
 

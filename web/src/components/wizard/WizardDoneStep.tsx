@@ -8,7 +8,7 @@ import { WizardLeftoversSection } from "@/components/wizard/WizardLeftoversSecti
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useInterviewOffer } from "@/hooks/useInterviewOffer";
 import { useChangeProjectSetup, useFetchProjects } from "@/hooks/ProjectHooks";
-import { usePendingServiceContext } from "@/hooks/useWizardSetup";
+import { usePendingServiceContext, useSetupSession, useWizardStack, useWizardStackId } from "@/hooks/useWizardSetup";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { interviewPath, projectTokenById } from "@/models/Project";
@@ -22,16 +22,17 @@ export const WizardDoneStep = ({ onBack }: WizardDoneStepProps) => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const can = useAreaAccess();
-  const { name, machine, exposureHostname, stackId, projectId, projectName } = useProjectWizardStore(
+  const { name, exposureHostname, projectId, projectName } = useProjectWizardStore(
     useShallow((s) => ({
       name: s.name,
-      machine: s.machine,
       exposureHostname: s.exposureHostname,
-      stackId: s.stackId,
       projectId: s.projectId,
       projectName: s.projectName,
     })),
   );
+  const stackId = useWizardStackId();
+  const stack = useWizardStack();
+  const session = useSetupSession();
   const { data: projects } = useFetchProjects();
   const offer = useInterviewOffer(projectId, projectName ?? name);
   const changeSetup = useChangeProjectSetup();
@@ -57,7 +58,7 @@ export const WizardDoneStep = ({ onBack }: WizardDoneStepProps) => {
   const finish = async () => {
     if (!projectId || !(await offer.confirmSkip())) return;
     try {
-      await changeSetup.mutateAsync({ projectId, ...pendingContext(), finished: true });
+      if (session) await changeSetup.mutateAsync({ projectId, ...pendingContext(), finished: true });
       go(can?.("tickets") ? `/board/${token}` : "/");
     } catch {
       // The hook toasts the failure; the step stays so Finish can be pressed again.
@@ -66,10 +67,10 @@ export const WizardDoneStep = ({ onBack }: WizardDoneStepProps) => {
 
   return (
     <div className="space-y-5">
-      {stackId && (
+      {stack && (
         <div>
           <p className="text-sm">
-            {name} is deploying on {machine}.
+            {stack.name} is deploying on {stack.machine}.
           </p>
           {exposureHostname && <p className="mt-1 font-mono text-xs text-muted-foreground">{exposureHostname}</p>}
         </div>

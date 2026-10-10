@@ -37,6 +37,7 @@ const mockApi = (memories: unknown[]) =>
   mocks.get.mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: [project] };
     if (url === "/api/projects/p-1") return { data: project };
+    if (url === "/api/stacks/s-1") return { data: { id: "s-1", project_id: "p-1", name: "api", machine: "box-1" } };
     if (url === "/api/memories") return { data: memories };
     return { data: [] };
   });
@@ -62,8 +63,6 @@ beforeEach(() => {
   mocks.confirm.mockReset();
   useProjectWizardStore.getState().reset();
   useProjectWizardStore.getState().setProjectId("p-1", "Backend");
-  useProjectWizardStore.getState().setName("api");
-  useProjectWizardStore.getState().setMachine("box-1");
   useProjectWizardStore.getState().setStackId("s-1");
 });
 

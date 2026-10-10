@@ -23,7 +23,6 @@ export type ProjectWizardStore = {
   scanResult: ScanResult | null;
   candidate: Candidate | null;
   name: string;
-  machine: string | null;
   envValues: Record<string, string>;
   stackId: string | null;
   serviceEnvKeys: string[];
@@ -39,7 +38,6 @@ export type ProjectWizardStore = {
   setScanResult: (scanResult: ScanResult) => void;
   setCandidate: (candidate: Candidate) => void;
   setName: (name: string) => void;
-  setMachine: (machine: string) => void;
   setEnvValues: (envValues: Record<string, string>) => void;
   setStackId: (stackId: string, envKeys?: string[]) => void;
   setExposure: (exposureId: string, hostname: string) => void;
@@ -59,7 +57,6 @@ const initialState: Pick<
   | "scanResult"
   | "candidate"
   | "name"
-  | "machine"
   | "envValues"
   | "serviceEnvKeys"
   | "stackId"
@@ -77,7 +74,6 @@ const initialState: Pick<
   scanResult: null,
   candidate: null,
   name: "",
-  machine: null,
   envValues: {},
   stackId: null,
   serviceEnvKeys: [],
@@ -97,7 +93,6 @@ export const useProjectWizardStore = create<ProjectWizardStore>((set) => ({
   setScanResult: (scanResult) => set({ scanResult }),
   setCandidate: (candidate) => set((state) => ({ candidate, ...(!state.stackId && { name: candidate.name }) })),
   setName: (name) => set({ name }),
-  setMachine: (machine) => set({ machine }),
   setEnvValues: (envValues) => set({ envValues }),
   setStackId: (stackId, envKeys) => set((state) => ({ stackId, serviceEnvKeys: envKeys ?? state.scanResult?.env_keys ?? [], envValues: {} })),
   setExposure: (exposureId, exposureHostname) => set({ exposureId, exposureHostname }),

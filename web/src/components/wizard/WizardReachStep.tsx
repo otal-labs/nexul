@@ -2,7 +2,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
-import { useShallow } from "zustand/react/shallow";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
@@ -43,21 +42,18 @@ const DeployStatusLine = ({ stackId }: { stackId: string }) => {
 };
 
 interface WizardReachStepProps {
+  stackId: string;
   onDone: () => void;
   onSkip: () => void;
 }
 
 // Zone + subdomain + service/port, defaulted to the candidate's reachable service (spec §7 issue answer); the
 // server reuses or provisions the gateway, so the result just names which one it picked.
-export const WizardReachStep = ({ onDone, onSkip }: WizardReachStepProps) => {
-  const { stackId, candidate } = useProjectWizardStore(
-    useShallow((s) => ({ stackId: s.stackId, candidate: s.candidate })),
-  );
+export const WizardReachStep = ({ stackId, onDone, onSkip }: WizardReachStepProps) => {
+  const candidate = useProjectWizardStore((s) => s.candidate);
   const setExposure = useProjectWizardStore((s) => s.setExposure);
   const { data: zones, isPending: zonesPending, error: zonesError } = useFetchDnsZones();
-  const { data: services, isPending: servicesPending, error: servicesError } = useFetchStackServices(
-    stackId ?? undefined,
-  );
+  const { data: services, isPending: servicesPending, error: servicesError } = useFetchStackServices(stackId);
   const { data: gateways } = useFetchGateways();
   const createExposure = useCreateServiceExposure();
 
@@ -69,7 +65,7 @@ export const WizardReachStep = ({ onDone, onSkip }: WizardReachStepProps) => {
       {(zonesPending || servicesPending) && <LoadingDisplay />}
       {zonesError && <ErrorDisplay error={zonesError} title="Couldn't load zones." />}
       {servicesError && <ErrorDisplay error={servicesError} title="Couldn't load the stack's services." />}
-      {zones && services && stackId && (
+      {zones && services && (
         <ReachForm
           zones={zones}
           services={services}

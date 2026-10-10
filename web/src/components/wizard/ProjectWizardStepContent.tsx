@@ -11,7 +11,7 @@ import { WizardStepNeeds } from "@/components/wizard/WizardStepNeeds";
 import { WizardStepPanel } from "@/components/wizard/WizardStepPanel";
 import { WizardStepSummary } from "@/components/wizard/WizardStepSummary";
 import { useWizardBack, useWizardGoTo } from "@/hooks/useWizardNavigation";
-import { useMarkStep, useWizardEnvKeys } from "@/hooks/useWizardSetup";
+import { useMarkStep, useSetupSession, useWizardEnvKeys, useWizardProject, useWizardStack, useWizardStackId } from "@/hooks/useWizardSetup";
 import { useWizardStepOrder } from "@/hooks/useWizardStepOrder";
 import { wizardStepLabel, type WizardStepId } from "@/models/ProjectWizard";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
@@ -28,19 +28,23 @@ export const ProjectWizardStepContent = ({ step }: ProjectWizardStepContentProps
   const onBack = useWizardBack(step);
   const order = useWizardStepOrder();
   const markStep = useMarkStep();
-  const { projectId, projectName, attachStackId, stackId, name, machine, candidate } = useProjectWizardStore(
+  const { projectId, projectName, attachStackId, candidate } = useProjectWizardStore(
     useShallow((s) => ({
       projectId: s.projectId,
       projectName: s.projectName,
       attachStackId: s.attachStackId,
-      stackId: s.stackId,
-      name: s.name,
-      machine: s.machine,
       candidate: s.candidate,
     })),
   );
+  const stackId = useWizardStackId();
+  const stack = useWizardStack();
+  const project = useWizardProject();
+  const session = useSetupSession();
+  // The scan lives in this browser; a repository recorded done on another device or before a reload has none to build from.
+  const needsRescan = session && project?.setup.steps.repository === "done";
   const isAttach = !!attachStackId;
-  const showEnv = useWizardEnvKeys().length > 0;
+  const envKeys = useWizardEnvKeys();
+  const showEnv = envKeys.length > 0;
   const next = order[order.indexOf(step) + 1];
   const continueLabel = next ? `Continue to ${wizardStepLabel(next, isAttach)}` : "Continue";
   // Attach mode skips the Reach rung (the stack already has hostnames), so service and env land on "branches".
@@ -81,11 +85,23 @@ export const ProjectWizardStepContent = ({ step }: ProjectWizardStepContentProps
       )}
       {step === "service" && stackId && (
         <WizardStepSummary continueLabel={continueLabel} onContinue={() => complete(afterService)} onBack={onBack}>
-          {name} runs on <span className="font-mono">{machine}</span>.
+          {stack && (
+            <>
+              {stack.name} runs on <span className="font-mono">{stack.machine}</span>.
+            </>
+          )}
         </WizardStepSummary>
       )}
-      {step === "service" && !stackId && !candidate && (
+      {step === "service" && !stackId && !candidate && !needsRescan && (
         <WizardStepNeeds needs="repository" message="A service builds from a repository. Pick one first." onBack={onBack} onSkip={skip} />
+      )}
+      {step === "service" && !stackId && !candidate && needsRescan && (
+        <WizardStepNeeds
+          needs="repository"
+          message="The repository is recorded, but its scan isn't loaded on this device. Scan it again to set up the service."
+          onBack={onBack}
+          onSkip={skip}
+        />
       )}
       {step === "service" && !stackId && candidate && (
         <WizardServiceStep onDone={() => complete(afterService)} onBack={onBack} onSkip={isAttach ? undefined : skip} />
@@ -93,15 +109,17 @@ export const ProjectWizardStepContent = ({ step }: ProjectWizardStepContentProps
       {step === "env" && !stackId && (
         <WizardStepNeeds needs="service" message={`Environment values go to a service. ${noService}`} onBack={onBack} onSkip={skip} />
       )}
-      {step === "env" && stackId && <WizardEnvStep onDone={() => complete(afterEnv)} onBack={onBack} onSkip={skip} />}
+      {step === "env" && stackId && (
+        <WizardEnvStep stackId={stackId} envKeys={envKeys} onDone={() => complete(afterEnv)} onBack={onBack} onSkip={skip} />
+      )}
       {step === "reach" && !stackId && (
         <WizardStepNeeds needs="service" message={`Reach gives a service a hostname. ${noService}`} onBack={onBack} onSkip={skip} />
       )}
-      {step === "reach" && stackId && <WizardReachStep onDone={() => complete("branches")} onSkip={skip} />}
+      {step === "reach" && stackId && <WizardReachStep stackId={stackId} onDone={() => complete("branches")} onSkip={skip} />}
       {step === "branches" && !stackId && (
         <WizardStepNeeds needs="service" message={`Deploy branches copies a service. ${noService}`} onBack={onBack} onSkip={skip} />
       )}
-      {step === "branches" && stackId && <WizardBranchesStep onDone={() => complete("done")} onSkip={skip} />}
+      {step === "branches" && stackId && <WizardBranchesStep stackId={stackId} onDone={() => complete("done")} onSkip={skip} />}
       {step === "done" && !projectId && !isAttach && (
         <WizardStepNeeds needs="project" message="Finish sets a project up. Name the project first." onBack={onBack} />
       )}

@@ -6,9 +6,9 @@ import { ProjectWizardStepContent } from "@/components/wizard/ProjectWizardStepC
 import { WizardProgress } from "@/components/wizard/WizardProgress";
 import { useFetchProject, useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchStack } from "@/hooks/StackHooks";
-import { useSeedSetupStack, useWizardProject } from "@/hooks/useWizardSetup";
+import { useSetupSession, useWizardProject } from "@/hooks/useWizardSetup";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { inSetup, type Project } from "@/models/Project";
+import type { Project } from "@/models/Project";
 import { WizardSteps, type WizardStepId } from "@/models/ProjectWizard";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 
@@ -60,22 +60,25 @@ interface WizardFraming {
   // The project the wizard arrived with (?project=, ?stack=); undefined for a new one.
   project: Project | undefined;
   revisit: boolean;
+  // Whether this run continues the project's setup, rather than adding a service beside it.
+  continuing: boolean;
   firstProject: boolean;
 }
 
-const wizardTitle = ({ isAttach, project, revisit, firstProject }: WizardFraming): string => {
+const wizardTitle = ({ isAttach, project, revisit, continuing, firstProject }: WizardFraming): string => {
   if (isAttach) return "Attach a repository";
-  if (project && inSetup(project)) return "Continue setup";
+  if (project && continuing) return "Continue setup";
   if (project && revisit) return "Project setup";
   if (project) return "Add a service";
   if (firstProject) return "Create your first project";
   return "New project";
 };
 
-const wizardSubtitle = ({ isAttach, project, revisit, firstProject }: WizardFraming): string => {
+const wizardSubtitle = ({ isAttach, project, revisit, continuing, firstProject }: WizardFraming): string => {
   if (isAttach) return "Point this stack at a repository so Nexul can build and deploy it.";
-  if (project && inSetup(project)) return "Pick up where it stopped. Skip any step and come back to it, then Finish.";
+  if (project && continuing) return "Pick up where it stopped. Skip any step and come back to it, then Finish.";
   if (project && revisit) return "Open any step to change it. The project stays set up.";
+  if (project) return "Pick the repository for the new service. The project's setup stays as it is.";
   if (firstProject) return "Tickets, docs, and deploys all live in a project. Name it, then point Nexul at its repository.";
   return "Name the project, then pick the repository to deploy.";
 };
@@ -89,10 +92,10 @@ export const ProjectWizardPage = () => {
   const reset = useProjectWizardStore((s) => s.reset);
   // Leaving ends the run, so the next visit starts clean; a project it already made resumes through Continue setup.
   useEffect(() => reset, [reset]);
-  useSeedSetupStack();
   const projectPreselected = useProjectWizardStore((s) => s.projectPreselected);
   const project = useWizardProject();
   const isAttach = searchParams.has("stack");
+  const session = useSetupSession();
   const { data: projects } = useFetchProjects();
   const firstProject = step === "project" && projects?.length === 0;
 
@@ -100,6 +103,7 @@ export const ProjectWizardPage = () => {
     isAttach,
     project: projectPreselected ? project : undefined,
     revisit: searchParams.has("revisit"),
+    continuing: session && !searchParams.has("revisit"),
     firstProject,
   };
 

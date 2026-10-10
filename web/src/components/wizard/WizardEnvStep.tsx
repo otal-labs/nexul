@@ -11,33 +11,31 @@ import { EnvPasteField } from "@/components/wizard/EnvPasteField";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
 import { useDeployStack, useFetchStack, useUpdateStackEnv } from "@/hooks/StackHooks";
-import { useWizardEnvKeys } from "@/hooks/useWizardSetup";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import type { Stack } from "@/models/Stack";
 import { formatEnvFile, parseEnvFile } from "@/models/EnvFile";
 
 interface WizardEnvStepProps {
+  stackId: string;
+  envKeys: string[];
   onDone: () => void;
   onBack?: (() => void) | undefined;
   onSkip?: (() => void) | undefined;
 }
 
-export const WizardEnvStep = (props: WizardEnvStepProps) => {
-  const stackId = useProjectWizardStore((s) => s.stackId);
-  const envKeys = useWizardEnvKeys();
-  const { data: stack, isPending, error } = useFetchStack(stackId ?? undefined);
+export const WizardEnvStep = ({ stackId, ...props }: WizardEnvStepProps) => {
+  const { data: stack, isPending, error } = useFetchStack(stackId);
   return (
     <div>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} title="Couldn't load the stack." />}
-      {stack && <WizardEnvForm key={stack.id} stack={stack} envKeys={envKeys} {...props} />}
+      {stack && <WizardEnvForm key={stack.id} stack={stack} {...props} />}
     </div>
   );
 };
 
-interface WizardEnvFormProps extends WizardEnvStepProps {
+interface WizardEnvFormProps extends Omit<WizardEnvStepProps, "stackId"> {
   stack: Stack;
-  envKeys: string[];
 }
 
 const WizardEnvForm = ({ stack, envKeys, onDone, onBack, onSkip }: WizardEnvFormProps) => {

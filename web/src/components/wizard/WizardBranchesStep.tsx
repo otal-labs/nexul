@@ -1,5 +1,3 @@
-import { useShallow } from "zustand/react/shallow";
-
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { BranchRulesForm } from "@/components/wizard/BranchRulesForm";
@@ -10,16 +8,15 @@ import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { defaultNetwork } from "@/models/Stack";
 
 interface WizardBranchesStepProps {
+  stackId: string;
   onDone: () => void;
   onSkip: () => void;
 }
 
-export const WizardBranchesStep = ({ onDone, onSkip }: WizardBranchesStepProps) => {
-  const { stackId, candidate } = useProjectWizardStore(
-    useShallow((s) => ({ stackId: s.stackId, candidate: s.candidate })),
-  );
-  const stack = useFetchStack(stackId ?? undefined);
-  const services = useFetchStackServices(stackId ?? undefined);
+export const WizardBranchesStep = ({ stackId, onDone, onSkip }: WizardBranchesStepProps) => {
+  const candidate = useProjectWizardStore((s) => s.candidate);
+  const stack = useFetchStack(stackId);
+  const services = useFetchStackServices(stackId);
   const exposures = useFetchExposures();
   const networks = useFetchMachineNetworks(stack.data?.machine ?? "", stack.data ? defaultNetwork(stack.data) : "");
 

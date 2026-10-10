@@ -115,6 +115,16 @@ func (s *Service) create(ctx context.Context, workspaceID, name, prefix string, 
 	return p, nil
 }
 
+// forViewer hides the wizard's service id and environment key names from a caller who may not read the project's stacks (ADR 0143).
+func (s *Service) forViewer(ctx context.Context, p *Project) *Project {
+	if (p.Setup.StackID == "" && len(p.Setup.EnvKeys) == 0) || s.requireOn(ctx, p.ID, permissions.StacksRead) == nil {
+		return p
+	}
+	shaped := *p
+	shaped.Setup = p.Setup.withoutService()
+	return &shaped
+}
+
 // Get returns a project by id.
 func (s *Service) Get(ctx context.Context, id string) (*Project, error) {
 	if strings.TrimSpace(id) == "" {
@@ -127,7 +137,7 @@ func (s *Service) Get(ctx context.Context, id string) (*Project, error) {
 	if err := s.requireOn(ctx, id, permissions.Member); err != nil {
 		return nil, fmt.Errorf("get project %s: %w", id, err)
 	}
-	return p, nil
+	return s.forViewer(ctx, p), nil
 }
 
 // List returns the workspace's projects the caller may open, ordered by position (ADR 0097).
@@ -143,9 +153,16 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]*Project, err
 	if err != nil {
 		return nil, fmt.Errorf("list projects: %w", err)
 	}
-	return permissions.Filter(projects, func(p *Project) string { return p.ID }, func(projectID string) error {
+	visible, err := permissions.Filter(projects, func(p *Project) string { return p.ID }, func(projectID string) error {
 		return s.requireOn(ctx, projectID, permissions.Member)
 	})
+	if err != nil {
+		return nil, err
+	}
+	for i, p := range visible {
+		visible[i] = s.forViewer(ctx, p)
+	}
+	return visible, nil
 }
 
 // ProjectAccess lists the Restricted members who may open projectID and what they hold there; it takes
@@ -194,7 +211,7 @@ func (s *Service) Rename(ctx context.Context, id, name string, icon *ProjectIcon
 	if err := s.repo.Update(ctx, &updated); err != nil {
 		return nil, fmt.Errorf("rename project %s: %w", id, err)
 	}
-	return &updated, nil
+	return s.forViewer(ctx, &updated), nil
 }
 
 // SetPrefix needs projects:write and is refused if the project already has one.
@@ -212,7 +229,7 @@ func (s *Service) SetPrefix(ctx context.Context, id, prefix string) (*Project, e
 	}
 	// Same prefix again is a no-op, so the owner wizard's finish can be retried after a later step failed.
 	if current.Prefix == prefix {
-		return current, nil
+		return s.forViewer(ctx, current), nil
 	}
 	if current.Prefix != "" {
 		return nil, fmt.Errorf("%w: project %s already has a prefix", apperrs.ErrConflict, id)
@@ -232,7 +249,7 @@ func (s *Service) SetPrefix(ctx context.Context, id, prefix string) (*Project, e
 	if err := s.repo.Update(ctx, &updated); err != nil {
 		return nil, fmt.Errorf("set prefix for project %s: %w", id, err)
 	}
-	return &updated, nil
+	return s.forViewer(ctx, &updated), nil
 }
 
 // validateReorderIDs checks ids has no blank/duplicate entries and lists every existingIDs entry exactly once.
@@ -386,7 +403,11 @@ func (s *Service) SetTestsLocation(ctx context.Context, projectID string, locati
 	if err != nil {
 		return nil, fmt.Errorf("set tests location for project %s: %w", projectID, err)
 	}
-	return s.saveTestsLocation(ctx, project, location)
+	saved, err := s.saveTestsLocation(ctx, project, location)
+	if err != nil {
+		return nil, err
+	}
+	return s.forViewer(ctx, saved), nil
 }
 
 func (s *Service) saveTestsLocation(ctx context.Context, project *Project, location TestsLocation) (*Project, error) {

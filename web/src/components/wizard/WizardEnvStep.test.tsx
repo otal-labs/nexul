@@ -32,7 +32,7 @@ const renderStep = (onDone = vi.fn()) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <WizardEnvStep onDone={onDone} />
+      <WizardEnvStep stackId="stack-1" envKeys={["API_KEY", "DB_URL"]} onDone={onDone} />
     </QueryClientProvider>,
   );
   return onDone;
@@ -44,8 +44,6 @@ beforeEach(() => {
   mocks.post.mockReset();
   mocks.post.mockResolvedValue({ data: { id: "d1", stack_id: "stack-1", status: "pending", kind: "build" } });
   useProjectWizardStore.getState().reset();
-  useProjectWizardStore.getState().setStackId("stack-1", ["API_KEY", "DB_URL"]);
-  useProjectWizardStore.getState().setScanResult({ default_branch: "main", candidates: [], env_keys: ["API_KEY", "DB_URL"] });
   mocks.get.mockResolvedValue({ data: stack });
 });
 

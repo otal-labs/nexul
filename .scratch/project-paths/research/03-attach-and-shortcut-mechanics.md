@@ -29,7 +29,7 @@ Repositories picked from the search are already from the installation list, so a
 
 Lost today. It is saved only in `advance()`
 (`web/src/components/wizard/WizardRepositoryStep.tsx:47-52`), which only the
-deploy path reaches. `WizardSkipButton` navigates without saving, and the store
+deploy path reaches. The skip link (`WizardSkipLink`) records the skip and moves on without saving it, and the store
 resets on unmount (`web/src/pages/ProjectWizardPage.tsx:97`). The question still
 means something with no app repository: `tests_location` is a project field, and
 a separate tests repository needs no app repository.
