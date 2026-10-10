@@ -1,5 +1,6 @@
 import type { PlayType } from "@/models/Play";
 import type { PlayQueue, PlayQueueItem } from "@/models/PlayQueue";
+import { startsDay } from "@/utils/ChatDayUtility";
 
 const priorityRank = { high: 0, normal: 1, low: 2 } as const;
 
@@ -62,21 +63,32 @@ export interface PlacedQueueEvents {
   // Message id to the events decided after the message before it and by its own time.
   before: Map<string, ThreadQueueEvent[]>;
   after: ThreadQueueEvent[];
+  // The ids of the messages and event items that open a day, so its divider sits above the day's first entry.
+  opensDay: Set<string>;
 }
 
 export const placeQueueEvents = (messages: { id: string; created_at: string }[], events: ThreadQueueEvent[]): PlacedQueueEvents => {
   const before = new Map<string, ThreadQueueEvent[]>();
+  const opensDay = new Set<string>();
+  let previous: { created_at: string } | undefined;
+  const enter = (id: string, created_at: string) => {
+    if (startsDay(previous, { created_at })) opensDay.add(id);
+    previous = { created_at };
+  };
   let next = 0;
   for (const message of messages) {
     const at = Date.parse(message.created_at);
     const due: ThreadQueueEvent[] = [];
     while (next < events.length && Date.parse(events[next]!.item.decided_at) <= at) {
+      enter(events[next]!.item.id, events[next]!.item.decided_at);
       due.push(events[next]!);
       next++;
     }
     if (due.length > 0) before.set(message.id, due);
+    enter(message.id, message.created_at);
   }
-  return { before, after: events.slice(next) };
+  for (const event of events.slice(next)) enter(event.item.id, event.item.decided_at);
+  return { before, after: events.slice(next), opensDay };
 };
 
 export const hasPlayQueue = (targetType: PlayType) => targetType === "ticket" || targetType === "doc";

@@ -46,8 +46,8 @@ type QueueRepo interface {
 	MoveQueueItem(ctx context.Context, it *QueueItem, from QueueStatus, evts ...eventbus.OutboxEvent) error
 	// ListQueueByTarget returns a target's items, newest first.
 	ListQueueByTarget(ctx context.Context, targetType TargetType, targetID string) ([]*QueueItem, error)
-	// ListQueuedByPlay returns a play's queued items across every target, highest priority then oldest first.
-	ListQueuedByPlay(ctx context.Context, playID string) ([]*QueueItem, error)
+	// ListQueuedByPlay returns a play's queued items in the projects of scope, highest priority then oldest first.
+	ListQueuedByPlay(ctx context.Context, playID string, scope ProjectScope) ([]*QueueItem, error)
 	// Resume restarts the target's count of automatic runs from at.
 	Resume(ctx context.Context, targetType TargetType, targetID, by string, at time.Time, evts ...eventbus.OutboxEvent) error
 	QueueDispatchRepo
@@ -94,4 +94,12 @@ type TrailRepo interface {
 // resourceID are empty for a workspace-wide check and name a play or doc for a per-resource overwrite.
 type PermissionGate interface {
 	HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action, resourceType, resourceID string) bool
+	// CallerProjects lists the projects the caller on ctx may act in with action, so a list filters in SQL (ADR 0140).
+	CallerProjects(ctx context.Context, action permissions.Action) (projectIDs []string, all bool, err error)
+}
+
+// ProjectScope is the projects a list may return rows from: all of them, or those named.
+type ProjectScope struct {
+	All        bool
+	ProjectIDs []string
 }

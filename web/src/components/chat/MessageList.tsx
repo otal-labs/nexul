@@ -24,7 +24,6 @@ import { useThreadTrailBlocks } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/models/Chat";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
-import { startsDay } from "@/utils/ChatDayUtility";
 import { placeQueueEvents } from "@/utils/PlayQueueUtility";
 import { trailBlockFor } from "@/utils/ThreadTrailUtility";
 
@@ -118,14 +117,14 @@ export const MessageList = ({
                   return (
                     <Fragment key={rowKey(message)}>
                       {placed.before.get(message.id)?.map((event) => (
-                        <QueueEventLine key={event.item.id} event={event} arrived={Date.parse(event.item.decided_at) > openedAt} />
+                        <QueueEventLine key={event.item.id} event={event} arrived={Date.parse(event.item.decided_at) > openedAt} newDay={placed.opensDay.has(event.item.id)} />
                       ))}
                       <MessageListItem
                         message={message}
                         author={resolveAuthor(message.author_id)}
                         isOwn={own}
                         continuation={isContinuation(messages[i - 1], message)}
-                        newDay={startsDay(messages[i - 1], message)}
+                        newDay={placed.opensDay.has(message.id)}
                         newest={newest}
                         entrance={entranceOf(message, seen, own)}
                         // Only the newest message, when it is an @Agent turn, anchors: the scroller jumps to any older anchor on a same-count swap (pending row confirmed, stream bubble replaced).
@@ -140,7 +139,7 @@ export const MessageList = ({
                   );
                 })}
                 {placed.after.map((event) => (
-                  <QueueEventLine key={event.item.id} event={event} arrived={Date.parse(event.item.decided_at) > openedAt} />
+                  <QueueEventLine key={event.item.id} event={event} arrived={Date.parse(event.item.decided_at) > openedAt} newDay={placed.opensDay.has(event.item.id)} />
                 ))}
                 {stream && (
                   <MessageScrollerItem messageId={`stream-${conversation.id}`} className={cn("pt-5 [content-visibility:visible]", !streamAtOpen && "arrive")}>

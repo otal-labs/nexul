@@ -98,6 +98,24 @@ describe("MessageList auto play lines", () => {
     expect(screen.queryByText(/queued/)).not.toBeInTheDocument();
   });
 
+  it("puts a line on the same day as the next message under that day's divider, and gives a later day its own", () => {
+    mockApi([]);
+    renderThread(
+      [
+        { ...skipped, decided_at: "2026-10-10T11:00:00Z" },
+        { ...didnt, decided_at: "2026-10-11T12:00:00Z" },
+      ],
+      [message("m1", "First", "2026-10-09T12:00:00Z"), message("m2", "Second", "2026-10-10T12:00:00Z")],
+    );
+    const [day9, day10, day11] = screen.getAllByRole("separator");
+    const order = [day9, screen.getByText("First"), day10, screen.getByText(/skipped:/), screen.getByText("Second"), day11, screen.getByText(/didn't run:/)];
+    expect(order.every(Boolean)).toBe(true);
+    for (let i = 1; i < order.length; i++) {
+      expect(order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    expect(screen.getAllByRole("separator")).toHaveLength(3);
+  });
+
   it("shows the lines in a thread with no messages yet", () => {
     mockApi([]);
     renderThread([skipped], []);

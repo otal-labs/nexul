@@ -78,8 +78,10 @@ func (r *PlayQueueRepo) ListQueueByTarget(ctx context.Context, targetType plays.
 	return toQueueItems(rows), nil
 }
 
-func (r *PlayQueueRepo) ListQueuedByPlay(ctx context.Context, playID string) ([]*plays.QueueItem, error) {
-	rows, err := r.q.ListQueuedPlayQueueByPlay(ctx, playID)
+func (r *PlayQueueRepo) ListQueuedByPlay(ctx context.Context, playID string, scope plays.ProjectScope) ([]*plays.QueueItem, error) {
+	rows, err := r.q.ListQueuedPlayQueueByPlay(ctx, sqlcgen.ListQueuedPlayQueueByPlayParams{
+		PlayID: playID, AllProjects: scope.All, ProjectIds: idsJSON(scope.ProjectIDs),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list the queued runs of play %s: %w", playID, err)
 	}

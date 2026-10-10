@@ -388,6 +388,10 @@ func (ownerBypassPerm) HasPermission(context.Context, string, string, permission
 	return true
 }
 
+func (ownerBypassPerm) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
+	return nil, true, nil
+}
+
 func TestListApplicable_InvalidType_ReturnsInvalid(t *testing.T) {
 	s := newTestService(newFakeRepo(), runnerPerm("alice"))
 	_, err := s.ListApplicable(context.Background(), workspaceID, "alice", "proj-1", Type("bogus"), nil)

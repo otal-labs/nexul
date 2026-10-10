@@ -266,11 +266,20 @@ func (q *Queries) ListPlayQueuePeople(ctx context.Context, notBefore int64) ([]s
 }
 
 const listQueuedPlayQueueByPlay = `-- name: ListQueuedPlayQueueByPlay :many
-SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before FROM play_queue WHERE status = 'queued' AND play_id = ? ORDER BY priority DESC, queued_at, id
+SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before FROM play_queue
+WHERE status = 'queued' AND play_id = ?1
+  AND (?2 OR project_id IN (SELECT value FROM json_each(?3)))
+ORDER BY priority DESC, queued_at, id
 `
 
-func (q *Queries) ListQueuedPlayQueueByPlay(ctx context.Context, playID string) ([]PlayQueue, error) {
-	rows, err := q.db.QueryContext(ctx, listQueuedPlayQueueByPlay, playID)
+type ListQueuedPlayQueueByPlayParams struct {
+	PlayID      string
+	AllProjects interface{}
+	ProjectIds  interface{}
+}
+
+func (q *Queries) ListQueuedPlayQueueByPlay(ctx context.Context, arg ListQueuedPlayQueueByPlayParams) ([]PlayQueue, error) {
+	rows, err := q.db.QueryContext(ctx, listQueuedPlayQueueByPlay, arg.PlayID, arg.AllProjects, arg.ProjectIds)
 	if err != nil {
 		return nil, err
 	}

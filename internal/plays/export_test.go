@@ -24,7 +24,7 @@ type QueueRig struct {
 func NewQueueRig(playsRepo Repo, trails TrailRepo, queue QueueRepo, workspaceID, projectID string, now func() time.Time) *QueueRig {
 	q := &QueueRig{
 		harness: &switchableHarness{},
-		perm:    newFakePerm(map[string][]permissions.Action{}),
+		perm:    &fakePerm{grants: map[string][]permissions.Action{}, denied: map[string]map[string]bool{}, projects: []string{projectID}},
 		facts:   &fakeFacts{byID: map[string]Facts{}},
 		targets: &fakeTargets{tickets: map[string]TicketTarget{}, docs: map[string]DocTarget{}, statuses: map[string]StatusTarget{}},
 	}

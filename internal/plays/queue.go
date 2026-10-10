@@ -116,17 +116,15 @@ func (r *Runner) QueuedForPlay(ctx context.Context, playID string) ([]*QueueItem
 	if !r.perm.HasPermission(ctx, actor, play.WorkspaceID, permissions.AutoplaysRead, "", "") {
 		return nil, fmt.Errorf("%w: %s required", apperrs.ErrForbidden, permissions.AutoplaysRead)
 	}
-	items, err := r.queue.ListQueuedByPlay(ctx, play.ID)
+	projectIDs, all, err := r.perm.CallerProjects(ctx, permissions.Member)
+	if err != nil {
+		return nil, fmt.Errorf("list the projects the caller may open: %w", err)
+	}
+	items, err := r.queue.ListQueuedByPlay(ctx, play.ID, ProjectScope{All: all, ProjectIDs: projectIDs})
 	if err != nil {
 		return nil, fmt.Errorf("list the queued runs of play %s: %w", play.ID, err)
 	}
-	visible := make([]*QueueItem, 0, len(items))
-	for _, it := range items {
-		if r.perm.HasPermission(ctx, actor, it.WorkspaceID, permissions.Member, resourceTypeProject, it.ProjectID) {
-			visible = append(visible, it)
-		}
-	}
-	return visible, nil
+	return items, nil
 }
 
 // CancelQueued drops a queued item before it starts: the person it runs on or an autoplays:write holder may.

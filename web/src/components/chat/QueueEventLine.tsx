@@ -1,6 +1,7 @@
 import { CircleSlash, TriangleAlert } from "lucide-react";
 
 import { MessageScrollerItem } from "@/components/ui/message-scroller";
+import { ChatDayDivider } from "@/components/chat/ChatDayDivider";
 import { RunItButton } from "@/components/play/RunItButton";
 import { cn } from "@/lib/utils";
 import type { ThreadQueueEvent } from "@/utils/PlayQueueUtility";
@@ -11,13 +12,15 @@ interface QueueEventLineProps {
   event: ThreadQueueEvent;
   // Decided after the thread opened: it rises in like any message that arrives.
   arrived: boolean;
+  newDay: boolean;
 }
 
-export const QueueEventLine = ({ event: { item, retry }, arrived }: QueueEventLineProps) => {
+export const QueueEventLine = ({ event: { item, retry }, arrived, newDay }: QueueEventLineProps) => {
   const didntRun = item.status === "didnt_run";
 
   return (
     <MessageScrollerItem messageId={`queue-${item.id}`} className={cn("pt-1.5 [content-visibility:visible]", arrived && "arrive")}>
+      {newDay && <ChatDayDivider createdAt={item.decided_at} />}
       <div className="flex items-center gap-2 px-3 py-1">
         <span className="flex w-8 shrink-0 justify-center">
           <span className="flex size-6 items-center justify-center rounded-full border border-border bg-muted/60">
