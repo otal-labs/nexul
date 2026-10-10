@@ -10,6 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/otal-labs/nexul/internal/connectors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -578,4 +581,68 @@ func TestOAuthStart_ComingSoonConnector_Rejected(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("oauth start (coming soon) status = %d, want 400, body %s", rec.Code, rec.Body.String())
 	}
+}
+
+func (m *memAppConfigStore) SetPrivateKey(_ context.Context, connectorID, key string) error {
+	c, ok := m.rows[connectorID]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	c.PrivateKey = key
+	m.rows[connectorID] = c
+	return nil
+}
+
+// fakeKeyClient accepts only the private key "good-key".
+type fakeKeyClient struct{ fakeOAuthClient }
+
+func (fakeKeyClient) VerifyKey(_ context.Context, _ connectors.AppConfig, privateKey string) error {
+	if privateKey != "good-key" {
+		return errors.New("GitHub rejected the private key")
+	}
+	return nil
+}
+
+func TestPrivateKey_IsCheckedStoredAndNeverSentBack(t *testing.T) {
+	appStore := &memAppConfigStore{rows: map[string]connectors.AppConfig{
+		"github": {ConnectorID: "github", ClientID: "Iv1.abc", ClientSecret: "shh", AppSlug: "my-app"},
+	}}
+	h := connectors.NewHandler(connectors.NewService(connectors.Config{
+		Store:          &memStore{rows: map[string]connectors.Credentials{}},
+		AppConfigStore: appStore,
+		Gate:           fakeOwnerGate{},
+		Registry:       []connectors.Connector{{ID: "github", Name: "GitHub", OAuth: &fakeKeyClient{}}},
+	})).Routes()
+	send := func(method, path, body, userID string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req.WithContext(connectors.WithUserID(req.Context(), userID)))
+		return rec
+	}
+
+	rec := send("PUT", "/api/connectors/github/private-key", `{"private_key":"bad-key"}`, "owner-1")
+	assert.Equal(t, http.StatusBadRequest, rec.Code, "a key GitHub refuses is not stored")
+	rec = send("PUT", "/api/connectors/github/private-key", `{"private_key":"good-key"}`, "member-1")
+	assert.Equal(t, http.StatusForbidden, rec.Code, "storing a key takes connectors:write")
+	assert.Empty(t, appStore.rows["github"].PrivateKey)
+
+	rec = send("POST", "/api/connectors/github/private-key/verify", `{"private_key":"good-key"}`, "owner-1")
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Empty(t, appStore.rows["github"].PrivateKey, "verifying stores nothing")
+
+	rec = send("PUT", "/api/connectors/github/private-key", `{"private_key":"good-key"}`, "owner-1")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `"private_key_set":true`)
+	assert.Equal(t, "good-key", appStore.rows["github"].PrivateKey)
+	got := send("GET", "/api/connectors/github/app-config", "", "owner-1").Body.String()
+	assert.Contains(t, got, `"private_key_set":true`)
+	for _, body := range []string{rec.Body.String(), got} {
+		assert.NotContains(t, body, "good-key", "the key is write-only")
+	}
+
+	rec = send("DELETE", "/api/connectors/github/private-key", "", "owner-1")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"private_key_set":false`, "removing the key is the way back")
+	assert.Empty(t, appStore.rows["github"].PrivateKey)
+	assert.Equal(t, "shh", appStore.rows["github"].ClientSecret)
 }

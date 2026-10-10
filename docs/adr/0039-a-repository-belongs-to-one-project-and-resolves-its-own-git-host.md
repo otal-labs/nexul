@@ -16,3 +16,5 @@ been disconnected fails on its own without affecting repositories on other
 hosts.
 
 Decided: 2026-09-03
+
+Amended by ADR 0144: a GitHub repository resolves to the App's installation token once its private key is set.

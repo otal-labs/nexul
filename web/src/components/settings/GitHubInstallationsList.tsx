@@ -5,7 +5,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { GitHubInstallationRow } from "@/components/settings/GitHubInstallationRow";
 import { useFetchInstallations } from "@/hooks/RepositoryHooks";
 
-// Reads through the GitHub connector's token, so only mount it while that connector is connected.
+// Reads as the App once its private key is set, else through the connector's token, so mount it only when one exists.
 export const GitHubInstallationsList = () => {
   const { data: installations, error, isPending } = useFetchInstallations();
 

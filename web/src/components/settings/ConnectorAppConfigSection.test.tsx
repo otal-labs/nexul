@@ -181,5 +181,25 @@ describe("ConnectorAppConfigSection", () => {
       });
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     });
+
+    it("signals the missing private key and stores one only after GitHub accepts it", async () => {
+      const key = "-----BEGIN RSA PRIVATE KEY-----";
+      mocks.post.mockResolvedValue({ data: undefined });
+      mocks.put.mockResolvedValue({ data: { ...registered, private_key_set: true } });
+      const user = userEvent.setup();
+      renderSection();
+
+      expect(await screen.findByText("only the connected account's repositories are visible", { exact: false })).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Add private key" }));
+      const dialog = await screen.findByRole("dialog");
+      await user.type(within(dialog).getByLabelText("Private key"), key);
+      await user.click(within(dialog).getByRole("button", { name: "Verify" }));
+
+      expect(mocks.post).toHaveBeenCalledWith("/api/connectors/github/private-key/verify", { private_key: key });
+      expect(mocks.put).not.toHaveBeenCalled();
+      await user.click(await within(dialog).findByRole("button", { name: "Save" }));
+      expect(mocks.put).toHaveBeenCalledWith("/api/connectors/github/private-key", { private_key: key });
+      expect(await screen.findByText("Nexul reads every installation as the App", { exact: false })).toBeInTheDocument();
+    });
   });
 });

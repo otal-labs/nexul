@@ -7,3 +7,6 @@ VALUES (?, ?, ?, ?, ?)
 ON CONFLICT(connector_id) DO UPDATE SET
   client_id = excluded.client_id, client_secret = excluded.client_secret,
   base_url = excluded.base_url, app_slug = excluded.app_slug;
+
+-- name: SetConnectorAppPrivateKey :execrows
+UPDATE connector_app_config SET private_key = ? WHERE connector_id = ?;

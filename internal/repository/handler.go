@@ -8,14 +8,12 @@ import (
 
 // Handler adapts the repository use-cases to the HTTP/JSON gateway (ADR 0019).
 type Handler struct {
-	s Scanner
-	l InstallationLister
-	g Gate
+	svc *Service
 }
 
-// NewHandler wires the repository REST gateway over the given scanner and installation reader.
-func NewHandler(s Scanner, l InstallationLister, g Gate) *Handler {
-	return &Handler{s: s, l: l, g: g}
+// NewHandler wires the repository REST gateway over the given service.
+func NewHandler(svc *Service) *Handler {
+	return &Handler{svc: svc}
 }
 
 // Routes returns the repository REST endpoints.
@@ -24,6 +22,9 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/repositories/scan", h.scan)
 	mux.HandleFunc("GET /api/repositories", h.list)
 	mux.HandleFunc("GET /api/repositories/installations", h.installations)
+	mux.HandleFunc("GET /api/repositories/install-url", h.installURL)
+	mux.HandleFunc("PUT /api/repositories/installations/{account}/workspaces/{workspaceID}", h.assign)
+	mux.HandleFunc("DELETE /api/repositories/installations/{account}/workspaces/{workspaceID}", h.unassign)
 	return mux
 }
 
@@ -39,7 +40,7 @@ func (h *Handler) scan(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	result, err := Scan(r.Context(), h.g, h.s, req.Owner, req.Name, req.Ref)
+	result, err := h.svc.Scan(r.Context(), req.Owner, req.Name, req.Ref)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -48,7 +49,8 @@ func (h *Handler) scan(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	repos, err := ListRepos(r.Context(), h.g, h.s, r.URL.Query().Get("q"), r.URL.Query().Get("refresh") == "1")
+	q := r.URL.Query()
+	repos, err := h.svc.ListRepos(r.Context(), q.Get("workspace_id"), q.Get("q"), q.Get("refresh") == "1")
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -57,10 +59,35 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) installations(w http.ResponseWriter, r *http.Request) {
-	installs, err := ListInstallations(r.Context(), h.g, h.l)
+	installs, err := h.svc.ListInstallations(r.Context())
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"installations": installs})
+}
+
+func (h *Handler) installURL(w http.ResponseWriter, r *http.Request) {
+	u, err := h.svc.InstallURL(r.Context(), r.URL.Query().Get("workspace_id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"url": u})
+}
+
+func (h *Handler) assign(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.AssignInstallation(r.Context(), r.PathValue("account"), r.PathValue("workspaceID")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) unassign(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.UnassignInstallation(r.Context(), r.PathValue("account"), r.PathValue("workspaceID")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

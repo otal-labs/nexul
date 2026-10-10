@@ -27,6 +27,11 @@ type AppVerifier interface {
 	VerifyApp(ctx context.Context, cfg AppConfig) error
 }
 
+// AppKeyVerifier is an optional OAuthClient extension that checks an app's private key live before it is stored.
+type AppKeyVerifier interface {
+	VerifyKey(ctx context.Context, cfg AppConfig, privateKey string) error
+}
+
 // CredentialField describes one manual form input, rendered by the frontend; values are never part of this type.
 type CredentialField struct {
 	Key    string `json:"key"`

@@ -176,6 +176,15 @@ type Config struct {
 	PublicAddress PublicAddressLookup
 	// Permissions answers the instance-level checks; nil refuses every one of them.
 	Permissions PermissionGate
+	// Installations claims an App installation returned to the sign-in callback; nil sends it to the connectors page.
+	Installations InstallationClaimer
+}
+
+// InstallationClaimer assigns the installation an install link led to when GitHub returns its installer (ADR 0144).
+type InstallationClaimer interface {
+	ClaimsState(state string) bool
+	// ClaimInstallation returns the app path the browser lands on.
+	ClaimInstallation(ctx context.Context, state, code, installationID string) (string, error)
 }
 
 // PermissionGate is the access domain's instance-level answer (ADR 0087): what a user holds in any workspace they belong to.
@@ -282,6 +291,11 @@ func (s *Service) SetDefaultWorkspace(b DefaultWorkspaceBinder) {
 }
 
 // SetPendingInviteResolver wires tenancy's pending-invite resolver, same reason as SetDefaultWorkspace.
+// SetInstallationClaimer wires the claim of an installation an install link led to.
+func (s *Service) SetInstallationClaimer(c InstallationClaimer) {
+	s.cfg.Installations = c
+}
+
 func (s *Service) SetPendingInviteResolver(r PendingInviteResolver) {
 	s.cfg.PendingInvites = r
 }

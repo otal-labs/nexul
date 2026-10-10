@@ -2,10 +2,20 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/otal-labs/nexul/internal/connectors"
+	"github.com/otal-labs/nexul/internal/gitprovider/github"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -59,6 +69,13 @@ func (f *fakeAppConfigStore) GetAppConfig(_ context.Context, connectorID string)
 
 func (f *fakeAppConfigStore) SetAppConfig(_ context.Context, c connectors.AppConfig) error {
 	f.cfgs[c.ConnectorID] = c
+	return nil
+}
+
+func (f *fakeAppConfigStore) SetPrivateKey(_ context.Context, connectorID, key string) error {
+	c := f.cfgs[connectorID]
+	c.PrivateKey = key
+	f.cfgs[connectorID] = c
 	return nil
 }
 
@@ -189,4 +206,51 @@ func TestGitProviderRouter_UnrecognizedConnectorFailsClearly(t *testing.T) {
 	if !errors.Is(err, apperrs.ErrInvalid) {
 		t.Fatalf("resolve: want ErrInvalid, got %v", err)
 	}
+}
+
+// TestGitProviderRouter_ReadsAsTheAppOnlyOnceAKeyIsSet: reads and clones use the installation token only with a key.
+func TestGitProviderRouter_ReadsAsTheAppOnlyOnceAKeyIsSet(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	pemKey := string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}))
+	var seen []string
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /repos/acme/widgets/installation", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"id":9}`)) // test server: write errors are irrelevant
+	})
+	mux.HandleFunc("POST /app/installations/9/access_tokens", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"token":"ghs_installation","expires_at":"2099-01-01T00:00:00Z"}`)) // test server: write errors are irrelevant
+	})
+	mux.HandleFunc("GET /repos/acme/widgets", func(w http.ResponseWriter, r *http.Request) {
+		seen = append(seen, r.Header.Get("Authorization"))
+		_, _ = w.Write([]byte(`{"full_name":"acme/widgets","owner":{"login":"acme"}}`)) // test server: write errors are irrelevant
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	appConfigs := &fakeAppConfigStore{cfgs: map[string]connectors.AppConfig{
+		"github": {ConnectorID: "github", ClientID: "Iv1.acme", BaseURL: srv.URL},
+	}}
+	router := gitProviderRouter{
+		workspace: &fakeGitRepoResolver{repos: map[string]workspace.RepoRef{
+			"acme/widgets": {Owner: "acme", Name: "widgets", FullName: "acme/widgets", ConnectorID: "github"},
+		}},
+		connectors: &fakeGitTokenResolver{tokens: map[string]string{"github": "token-connected-account"}},
+		appConfigs: appConfigs,
+		apps:       &github.AppCache{},
+	}
+
+	_, err = router.GetRepo(t.Context(), "acme", "widgets")
+	require.NoError(t, err)
+	clone, err := router.RepoToken(t.Context(), "acme/widgets")
+	require.NoError(t, err)
+	assert.Equal(t, "token-connected-account", clone, "with no key a runner clones as the connected account")
+
+	require.NoError(t, appConfigs.SetPrivateKey(t.Context(), "github", pemKey))
+	_, err = router.GetRepo(t.Context(), "acme", "widgets")
+	require.NoError(t, err)
+	clone, err = router.RepoToken(t.Context(), "acme/widgets")
+	require.NoError(t, err)
+	assert.Equal(t, "ghs_installation", clone, "with a key a runner clones as the App's installation")
+
+	assert.Equal(t, []string{"Bearer token-connected-account", "Bearer ghs_installation"}, seen)
 }

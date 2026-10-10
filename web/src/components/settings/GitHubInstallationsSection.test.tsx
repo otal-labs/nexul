@@ -29,6 +29,7 @@ const installations = [
     account_avatar_url: "",
     repository_selection: "all",
     html_url: "https://github.com/organizations/otal-labs/settings/installations/1",
+    workspaces: [{ id: "ws-1", name: "Acme" }],
   },
   {
     id: 2,
@@ -38,12 +39,15 @@ const installations = [
     repository_selection: "selected",
     repository_count: 2,
     html_url: "https://github.com/settings/installations/2",
+    workspaces: [],
   },
 ];
 
-const stubApi = (appConfig: object, connected: boolean, accounts: object[] = installations) =>
+const stubApi = (appConfig: object, connected: boolean, accounts: object[] = installations, permissions: string[] = []) =>
   mocks.get.mockImplementation(async (url: string) => {
     if (url === "/api/connectors/github/app-config") return { data: appConfig };
+    if (url === "/api/auth/me") return { data: { instance_permissions: permissions } };
+    if (url === "/api/workspaces") return { data: [{ id: "ws-1", name: "Acme" }, { id: "ws-2", name: "Globex" }] };
     if (url === "/api/connectors") return { data: githubConnector(connected) };
     if (url === "/api/repositories/installations") return { data: { installations: accounts } };
     throw new Error(`unexpected GET ${url}`);
@@ -81,6 +85,31 @@ describe("GitHubInstallationsSection", () => {
       "https://github.com/settings/installations/2",
     );
     expect(await addLink()).toHaveAttribute("href", "https://github.com/apps/nexul-otal/installations/new");
+  });
+
+  it("shows which workspaces list each installation, and an unassigned one as such", async () => {
+    stubApi(app, true);
+    renderSection();
+
+    expect(await screen.findByText("Acme")).toBeInTheDocument();
+    expect(screen.getByText("Unassigned")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /assign onik/i })).not.toBeInTheDocument();
+  });
+
+  it("lets a connector manager assign an installation and take a workspace off it", async () => {
+    stubApi(app, true, installations, ["connectors:write"]);
+    renderSection();
+
+    expect(await screen.findByRole("combobox", { name: "Assign onik to a workspace" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stop Acme listing otal-labs's repositories" })).toBeInTheDocument();
+  });
+
+  it("reads the installations as the App once its private key is set, with GitHub not connected", async () => {
+    stubApi({ ...app, private_key_set: true }, false);
+    renderSection();
+
+    expect(await screen.findByText("otal-labs")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Connectors tab" })).not.toBeInTheDocument();
   });
 
   it("says so when the App is installed nowhere the connector can see, still offering to add one", async () => {

@@ -301,3 +301,5 @@ func TestOAuthClient_Revoke(t *testing.T) {
 	assert.Equal(t, "shh-secret", gotPass)
 	assert.Equal(t, "at-to-revoke", gotBody["access_token"])
 }
+
+func (m *memAppConfigStore) SetPrivateKey(context.Context, string, string) error { return nil }

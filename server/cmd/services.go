@@ -23,6 +23,7 @@ import (
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/dns/cloudflare"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/gitprovider/github"
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/integrations"
 	"github.com/otal-labs/nexul/internal/memories"
@@ -36,6 +37,7 @@ import (
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/presence"
 	"github.com/otal-labs/nexul/internal/push"
+	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/t3client"
 	"github.com/otal-labs/nexul/internal/t3clientv2"
@@ -105,6 +107,7 @@ type coreServices struct {
 	gitRouter         gitProviderRouter
 	repoHooks         repoWebhooks
 	repositoryScanner repositoryScanner
+	repositorySvc     *repository.Service
 
 	integrationsSvc *integrations.Service
 
@@ -145,8 +148,10 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Registry:       connectorsRegistry,
 	})
 	connectorsHandler := connectors.NewHandler(connectorsSvc)
+	// One App for both routers, so an installation token minted for a webhook serves the next scan too.
+	githubApps := &github.AppCache{}
 	repoHooks := repoWebhooks{
-		git:         gitProviderRouter{workspace: store.Projects, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig},
+		git:         gitProviderRouter{workspace: store.Projects, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig, apps: githubApps},
 		instanceURL: dnsSettingsAdapter{store.Settings}.GetInstanceURL,
 		secret:      githubWebhookSecret(cfg.AuthSecret),
 		openPRs:     store.Tickets.ListOpenPRNumbers,
@@ -300,8 +305,17 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Targets: ticketTestTargets{deploy: deploySvc},
 	})
 	// gitRouter resolves per-repo since different projects' repos can live on different git hosts.
-	gitRouter := gitProviderRouter{workspace: workspaceSvc, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig}
+	gitRouter := gitProviderRouter{workspace: workspaceSvc, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig, apps: githubApps}
 	repoScanner := newRepositoryScanner(gitRouter, store.ConnectorAppConfig)
+	repositorySvc := repository.NewService(repository.Config{
+		Gate:          accessSvc,
+		Scanner:       repoScanner,
+		Installations: repoScanner,
+		Store:         store.GitHubInstallations,
+		Installers:    githubInstallers{oauth: githubOAuth(connectorsRegistry), appConfigs: store.ConnectorAppConfig},
+		StateKey:      crypto.DeriveKey("nexul github install state:" + cfg.AuthSecret),
+	})
+	authSvc.SetInstallationClaimer(installationClaimer{svc: repositorySvc, workspaces: store.Workspaces})
 	integrationsSvc := integrations.NewService(integrations.Config{
 		Installs:   store.IntegrationInstalls,
 		Tokens:     store.IntegrationTokens,
@@ -384,6 +398,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		gitRouter:         gitRouter,
 		repoHooks:         repoHooks,
 		repositoryScanner: repoScanner,
+		repositorySvc:     repositorySvc,
 
 		integrationsSvc: integrationsSvc,
 

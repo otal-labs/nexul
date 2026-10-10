@@ -8,12 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/jsonx"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
 func callTool(t *testing.T, s *fakeScanner, name, args string) (any, error) {
 	t.Helper()
-	for _, tool := range MCPTools(s, s, nil) {
+	for _, tool := range MCPTools(newTestService(s, nil)) {
 		if tool.Name == name {
 			return tool.Call(t.Context(), json.RawMessage(args))
 		}
@@ -24,7 +25,7 @@ func callTool(t *testing.T, s *fakeScanner, name, args string) (any, error) {
 
 func TestMCPTools_Surface(t *testing.T) {
 	var names []string
-	for _, tool := range MCPTools(&fakeScanner{}, &fakeScanner{}, nil) {
+	for _, tool := range MCPTools(newTestService(&fakeScanner{}, nil)) {
 		names = append(names, tool.Name)
 		assert.NotEmpty(t, tool.Title, tool.Name)
 		assert.NotEmpty(t, tool.Description, tool.Name)
@@ -81,10 +82,10 @@ func TestRepositoryList_Installations(t *testing.T) {
 	}
 	got, err := callTool(t, s, "repository_list", `{"installations":true}`)
 	require.NoError(t, err)
-	b, err := json.Marshal(got)
+	b, err := jsonx.Marshal(got)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"items":[{"id":1,"owner":"","name":"","full_name":"acme/api","default_branch":"","html_url":"","provider":"github"}],"total":1,"has_more":false,
-		"installations":[{"id":9,"account_login":"acme","account_type":"organization","account_avatar_url":"","repository_selection":"all","html_url":""}]}`, string(b))
+		"installations":[{"id":9,"account_login":"acme","account_type":"organization","account_avatar_url":"","repository_selection":"all","html_url":"","workspaces":[]}]}`, string(b))
 }
 
 func TestRepositoryScan(t *testing.T) {

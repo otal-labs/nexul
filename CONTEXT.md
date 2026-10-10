@@ -574,11 +574,13 @@ _Avoid_: Integration (the other direction), OAuth app, provider
 
 **Installation**:
 One account or organisation Nexul's GitHub App is installed on, granting all
-of its repositories or a selection. The installations the GitHub connector's
-user can see decide which repositories Nexul reads: a repository is visible
-only when the App is installed on its owner and the connector's user can open
-it, so a repository in someone else's account also needs that user given
-access to it.
+of its repositories or a selection, and assigned to the workspaces whose
+repository lists show them. Once the App's private key is set, Nexul reads
+every installation as the App and a workspace lists only the installations
+assigned to it; an installation made from a workspace's install link joins
+that workspace, any other stays unassigned until someone holding
+`connectors:write` assigns it. Without a key Nexul reads as the GitHub
+connector's user, and every workspace lists what that user can open.
 _Avoid_: Install (that is the `nexul install` command), connection, grant
 
 **Pending version**:

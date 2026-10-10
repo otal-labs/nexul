@@ -1,10 +1,11 @@
 import { ExternalLink } from "lucide-react";
 
 import { ConnectorAppConfigForm } from "@/components/settings/ConnectorAppConfigForm";
-import { ConnectorAppEditDialog } from "@/components/settings/ConnectorAppEditDialog";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { Fact } from "@/components/Fact";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { GitHubAppActions } from "@/components/settings/GitHubAppActions";
+import { GitHubAppKeyFact } from "@/components/settings/GitHubAppKeyFact";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
 import { useFetchConnectorAppConfig } from "@/hooks/ConnectorsHooks";
@@ -21,7 +22,7 @@ export const ConnectorAppConfigSection = () => {
       title="GitHub App"
       description="People connect their GitHub accounts through this App. Register your own App and paste its credentials here. It stays yours to manage."
       aside={app && <SettingsStatus tone={registered ? "success" : "muted"}>{registered ? "Registered" : "Not set up"}</SettingsStatus>}
-      footer={app && registered && <ConnectorAppEditDialog connectorId="github" current={app} />}
+      footer={app && registered && <GitHubAppActions app={app} />}
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
@@ -45,6 +46,7 @@ export const ConnectorAppConfigSection = () => {
           <Fact label="Server">
             <span className="truncate font-mono text-xs">{app.base_url || "github.com"}</span>
           </Fact>
+          <GitHubAppKeyFact set={!!app.private_key_set} />
         </dl>
       )}
     </SettingsCard>

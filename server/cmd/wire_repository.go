@@ -21,7 +21,7 @@ const githubConnectorID = "github"
 // repositoryScanner adapts gitProviderRouter to repository.Scanner (ADR 0017): the repository domain never imports
 // gitprovider, so this is the one place their types meet. It resolves the GitHub connector directly, skipping
 // gitProviderRouter's per-repo workspace lookup — a scan targets a repo that usually isn't linked to a project
-// yet, which is the whole point of scanning it.
+// yet, which is the whole point of scanning it. It is also the repository domain's InstallationLister.
 type repositoryScanner struct {
 	git        gitProviderRouter
 	appConfigs connectors.AppConfigStore
@@ -36,42 +36,64 @@ func newRepositoryScanner(git gitProviderRouter, appConfigs connectors.AppConfig
 const installationReposTTL = time.Minute
 
 // installationRepoCache holds one walk at a time so concurrent searches wait for it instead of starting their own.
+// ponytail: one instance-wide list filtered per workspace afterwards; a cache per installation if many grow large.
 type installationRepoCache struct {
 	mu    sync.Mutex
 	at    time.Time
+	asApp bool
 	repos []repository.Repo
 }
 
-func (c *installationRepoCache) get(refresh bool, load func() ([]repository.Repo, error)) ([]repository.Repo, error) {
+// get serves the last walk while it is fresh and was read the same way, as the App or as the connected account.
+func (c *installationRepoCache) get(refresh, asApp bool, load func() ([]repository.Repo, error)) ([]repository.Repo, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if !refresh && !c.at.IsZero() && time.Since(c.at) < installationReposTTL {
+	if !refresh && !c.at.IsZero() && c.asApp == asApp && time.Since(c.at) < installationReposTTL {
 		return c.repos, nil
 	}
 	repos, err := load()
 	if err != nil {
 		return nil, err
 	}
-	c.repos, c.at = repos, time.Now()
+	c.repos, c.at, c.asApp = repos, time.Now(), asApp
 	return repos, nil
 }
 
-func (s repositoryScanner) provider(ctx context.Context) (gitprovider.GitProvider, error) {
-	return s.git.resolveConnector(ctx, githubConnectorID)
+// ReadsAsApp implements repository.InstallationLister: true once the App's private key is set.
+func (s repositoryScanner) ReadsAsApp(ctx context.Context) (bool, error) {
+	app, err := s.git.githubApp(ctx)
+	return app != nil, err
+}
+
+// InstallURL implements repository.InstallationLister: GitHub's page for installing the App on another account.
+func (s repositoryScanner) InstallURL(ctx context.Context) (string, error) {
+	cfg, err := s.appConfigs.GetAppConfig(ctx, githubConnectorID)
+	if err != nil || cfg.AppSlug == "" {
+		return "", err
+	}
+	return githubAppInstallURL(cfg), nil
+}
+
+func githubAppInstallURL(cfg connectors.AppConfig) string {
+	return "https://github.com/apps/" + cfg.AppSlug + "/installations/new"
 }
 
 func (s repositoryScanner) ListInstallationRepos(ctx context.Context, refresh bool) ([]repository.Repo, error) {
-	return s.repos.get(refresh, func() ([]repository.Repo, error) { return s.listInstallationRepos(ctx) })
+	asApp, err := s.ReadsAsApp(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list installation repositories: %w", err)
+	}
+	return s.repos.get(refresh, asApp, func() ([]repository.Repo, error) { return s.listInstallationRepos(ctx, asApp) })
 }
 
-func (s repositoryScanner) listInstallationRepos(ctx context.Context) ([]repository.Repo, error) {
-	p, err := s.provider(ctx)
+func (s repositoryScanner) listInstallationRepos(ctx context.Context, asApp bool) ([]repository.Repo, error) {
+	p, err := s.git.installations(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list installation repositories: %w", err)
 	}
 	repos, err := p.ListInstallationRepos(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list installation repositories: %w", connectorRefused(err))
+		return nil, fmt.Errorf("list installation repositories: %w", refused(err, asApp))
 	}
 	out := make([]repository.Repo, 0, len(repos))
 	for _, r := range repos {
@@ -81,24 +103,30 @@ func (s repositoryScanner) listInstallationRepos(ctx context.Context) ([]reposit
 }
 
 func (s repositoryScanner) ListInstallations(ctx context.Context) ([]repository.Installation, error) {
-	p, err := s.provider(ctx)
+	asApp, err := s.ReadsAsApp(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list installations: %w", err)
+	}
+	p, err := s.git.installations(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list installations: %w", err)
 	}
 	installs, err := p.ListInstallations(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list installations: %w", connectorRefused(err))
+		return nil, fmt.Errorf("list installations: %w", refused(err, asApp))
 	}
 	out := make([]repository.Installation, 0, len(installs))
 	for _, i := range installs {
-		// Identical field sets: the conversion stops compiling the day the two types drift apart.
-		out = append(out, repository.Installation(*i))
+		out = append(out, repository.Installation{
+			ID: i.ID, AccountLogin: i.AccountLogin, AccountType: i.AccountType, AccountAvatarURL: i.AccountAvatarURL,
+			RepositorySelection: i.RepositorySelection, RepositoryCount: i.RepositoryCount, HTMLURL: i.HTMLURL,
+		})
 	}
 	return out, nil
 }
 
 func (s repositoryScanner) GetTree(ctx context.Context, owner, name, ref string) (string, []repository.TreeEntry, error) {
-	p, err := s.provider(ctx)
+	p, err := s.git.githubForRepo(ctx, owner, name)
 	if err != nil {
 		return "", nil, err
 	}
@@ -126,7 +154,7 @@ func (s repositoryScanner) GetTree(ctx context.Context, owner, name, ref string)
 }
 
 func (s repositoryScanner) GetFile(ctx context.Context, owner, name, ref, path string) ([]byte, error) {
-	p, err := s.provider(ctx)
+	p, err := s.git.githubForRepo(ctx, owner, name)
 	if err != nil {
 		return nil, err
 	}
@@ -146,15 +174,18 @@ func (s repositoryScanner) mapNotInstalled(ctx context.Context, err error) error
 	}
 	msg := "repository not found, or the GitHub App is not installed on it"
 	if appCfg, cfgErr := s.appConfigs.GetAppConfig(ctx, githubConnectorID); cfgErr == nil && appCfg.AppSlug != "" {
-		msg = fmt.Sprintf("%s: install it at https://github.com/apps/%s/installations/new", msg, appCfg.AppSlug)
+		msg = fmt.Sprintf("%s: install it at %s", msg, githubAppInstallURL(appCfg))
 	}
 	return fmt.Errorf("%s: %w", msg, apperrs.ErrNotFound)
 }
 
-// connectorRefused turns GitHub refusing the connector's token into a 403: a 401 would sign the browser out.
-func connectorRefused(err error) error {
+// refused turns GitHub refusing Nexul's credential into a 403 naming it; a 401 would sign the browser out.
+func refused(err error, asApp bool) error {
 	if !errors.Is(err, apperrs.ErrUnauthorized) {
 		return err
+	}
+	if asApp {
+		return fmt.Errorf("GitHub refused the App's private key, replace it in Settings → Connectors → GitHub App: %w", apperrs.ErrForbidden)
 	}
 	return fmt.Errorf("GitHub refused the connector's token, reconnect GitHub in Settings → Connectors: %w", apperrs.ErrForbidden)
 }

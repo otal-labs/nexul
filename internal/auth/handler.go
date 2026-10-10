@@ -375,6 +375,17 @@ func (h *Handler) stateless(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, h.spaOrigin(r)+"/login", http.StatusFound)
 }
 
+// installationCallback claims the installation an install link led to; a failure leaves it unassigned.
+func (h *Handler) installationCallback(w http.ResponseWriter, r *http.Request, claims InstallationClaimer) {
+	q := r.URL.Query()
+	landing, err := claims.ClaimInstallation(r.Context(), q.Get("state"), q.Get("code"), q.Get("installation_id"))
+	if err != nil {
+		logging.FromCtx(r.Context()).Warn("github installation left unassigned", "installation_id", q.Get("installation_id"), "error", err)
+		landing = "/"
+	}
+	http.Redirect(w, r, h.spaOrigin(r)+landing, http.StatusFound)
+}
+
 func (h *Handler) callbackGET(provider Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
@@ -383,6 +394,10 @@ func (h *Handler) callbackGET(provider Provider) http.HandlerFunc {
 		state := r.URL.Query().Get("state")
 		if state == "" {
 			h.stateless(w, r)
+			return
+		}
+		if claims := h.svc.cfg.Installations; claims != nil && r.URL.Query().Get("installation_id") != "" && claims.ClaimsState(state) {
+			h.installationCallback(w, r, claims)
 			return
 		}
 		if cookie, cookieErr := r.Cookie(invitationStateCookie(hashCredential(state))); cookieErr == nil && cookie.Value == state {

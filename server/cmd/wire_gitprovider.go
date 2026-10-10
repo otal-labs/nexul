@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/otal-labs/nexul/internal/connectors"
 	"github.com/otal-labs/nexul/internal/gitprovider"
@@ -22,11 +23,13 @@ func (l ticketLinker) LinkPR(ctx context.Context, ticketID string, ref gitprovid
 	return l.svc.LinkPR(ctx, ticketID, tickets.PRRef{Owner: ref.Owner, Repo: ref.Repo, Number: ref.Number, Title: ref.Title, SHA: ref.SHA})
 }
 
-// gitProviderRouter resolves, per repo, which connector backs it; built fresh per call, never cached.
+// gitProviderRouter resolves, per repo, which connector backs it; built fresh per call except the App's cached tokens.
 type gitProviderRouter struct {
 	workspace  gitRepoResolver
 	connectors gitTokenResolver
 	appConfigs connectors.AppConfigStore
+	// apps is nil in tests that never read GitHub as the App.
+	apps *github.AppCache
 }
 
 // gitRepoResolver is the slice of workspace.Service the router needs (ADR 0017), narrow enough to fake in tests.
@@ -39,11 +42,73 @@ type gitTokenResolver interface {
 	AccessToken(ctx context.Context, connectorID string) (string, error)
 }
 
+// githubApp is the App Nexul reads GitHub as once its private key is set (ADR 0144), else nil.
+func (g gitProviderRouter) githubApp(ctx context.Context) (*github.App, error) {
+	if g.apps == nil {
+		return nil, nil
+	}
+	cfg, err := g.appConfigs.GetAppConfig(ctx, githubConnectorID)
+	if err != nil {
+		return nil, fmt.Errorf("github app config: %w", err)
+	}
+	if cfg.PrivateKey == "" {
+		return nil, nil
+	}
+	return g.apps.Get(cfg.ClientID, cfg.PrivateKey, cfg.BaseURL)
+}
+
+// githubForRepo reads owner/name, linked or not, as the App's installation once a key is set, else as the connector.
+func (g gitProviderRouter) githubForRepo(ctx context.Context, owner, name string) (gitprovider.GitProvider, error) {
+	app, err := g.githubApp(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if app == nil {
+		return g.resolveConnector(ctx, githubConnectorID)
+	}
+	return app.ForRepo(ctx, owner, name)
+}
+
+// installationReader is what the App and a connector-token client both answer: the installations and their repos.
+type installationReader interface {
+	ListInstallations(ctx context.Context) ([]*gitprovider.Installation, error)
+	ListInstallationRepos(ctx context.Context) ([]*gitprovider.Repo, error)
+}
+
+// installations reads every installation as the App once a key is set, else those the connected account sees.
+func (g gitProviderRouter) installations(ctx context.Context) (installationReader, error) {
+	app, err := g.githubApp(ctx)
+	if err != nil || app != nil {
+		return app, err
+	}
+	return g.resolveConnector(ctx, githubConnectorID)
+}
+
+// RepoToken is the token a runner clones fullName ("owner/name") with: its installation's once a key is set.
+func (g gitProviderRouter) RepoToken(ctx context.Context, fullName string) (string, error) {
+	app, err := g.githubApp(ctx)
+	if err != nil {
+		return "", err
+	}
+	owner, name, ok := strings.Cut(fullName, "/")
+	if app == nil || !ok {
+		return g.connectors.AccessToken(ctx, githubConnectorID)
+	}
+	return app.RepoToken(ctx, owner, name)
+}
+
 // resolve builds a fresh GitProvider for owner/name's linked connector; failures are scoped to this call only.
 func (g gitProviderRouter) resolve(ctx context.Context, owner, name string) (gitprovider.GitProvider, error) {
 	ref, err := g.workspace.GetRepoByFullName(ctx, owner, name)
 	if err != nil {
 		return nil, fmt.Errorf("resolve git provider for %s/%s: %w", owner, name, err)
+	}
+	if ref.ConnectorID == githubConnectorID {
+		p, err := g.githubForRepo(ctx, owner, name)
+		if err != nil {
+			return nil, fmt.Errorf("resolve git provider for %s/%s: %w", owner, name, err)
+		}
+		return p, nil
 	}
 	p, err := g.resolveConnector(ctx, ref.ConnectorID)
 	if err != nil {
@@ -136,7 +201,7 @@ func (g gitProviderRouter) DeleteWebhook(ctx context.Context, owner, name, hookI
 }
 
 func (g gitProviderRouter) ListInstallationRepos(ctx context.Context) ([]*gitprovider.Repo, error) {
-	p, err := g.resolveConnector(ctx, "github")
+	p, err := g.installations(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +209,7 @@ func (g gitProviderRouter) ListInstallationRepos(ctx context.Context) ([]*gitpro
 }
 
 func (g gitProviderRouter) ListInstallations(ctx context.Context) ([]*gitprovider.Installation, error) {
-	p, err := g.resolveConnector(ctx, "github")
+	p, err := g.installations(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -303,18 +303,8 @@ func (s *Service) ManualCredentials(ctx context.Context, connectorID string) (ma
 // SetAppConfig stores an app-level OAuth registration (CN3a); a person holding connectors:write sets it, since it
 // rotates an instance-wide credential.
 func (s *Service) SetAppConfig(ctx context.Context, userID, connectorID, clientID, clientSecret, baseURL, appSlug string) (AppConfigStatus, error) {
-	if userID == "" {
-		return AppConfigStatus{}, apperrs.ErrUnauthorized
-	}
-	if s.gate == nil {
-		return AppConfigStatus{}, fmt.Errorf("%w: no permission gate wired", apperrs.ErrForbidden)
-	}
-	held, err := s.gate.HoldsAnywhere(ctx, userID, permissions.ConnectorsWrite)
-	if err != nil {
-		return AppConfigStatus{}, fmt.Errorf("check %s: %w", permissions.ConnectorsWrite, err)
-	}
-	if !held {
-		return AppConfigStatus{}, fmt.Errorf("%w: %s required", apperrs.ErrForbidden, permissions.ConnectorsWrite)
+	if err := s.requireAppWriter(ctx, userID); err != nil {
+		return AppConfigStatus{}, err
 	}
 	if _, ok := s.registry[connectorID]; !ok {
 		return AppConfigStatus{}, fmt.Errorf("%w: unknown connector %q", apperrs.ErrNotFound, connectorID)
@@ -346,6 +336,85 @@ func (s *Service) SetAppConfig(ctx context.Context, userID, connectorID, clientI
 		return AppConfigStatus{}, fmt.Errorf("save app config %s: %w", connectorID, err)
 	}
 	return cfg.Status(), nil
+}
+
+// requireAppWriter checks userID holds connectors:write anywhere, what changing an instance-wide app credential takes.
+func (s *Service) requireAppWriter(ctx context.Context, userID string) error {
+	if userID == "" {
+		return apperrs.ErrUnauthorized
+	}
+	if s.gate == nil {
+		return fmt.Errorf("%w: no permission gate wired", apperrs.ErrForbidden)
+	}
+	held, err := s.gate.HoldsAnywhere(ctx, userID, permissions.ConnectorsWrite)
+	if err != nil {
+		return fmt.Errorf("check %s: %w", permissions.ConnectorsWrite, err)
+	}
+	if !held {
+		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, permissions.ConnectorsWrite)
+	}
+	return nil
+}
+
+// keyTarget is the registered app a private key change applies to, once userID may change it.
+func (s *Service) keyTarget(ctx context.Context, userID, connectorID string) (AppConfig, AppKeyVerifier, error) {
+	if err := s.requireAppWriter(ctx, userID); err != nil {
+		return AppConfig{}, nil, err
+	}
+	c, ok := s.registry[connectorID]
+	if !ok {
+		return AppConfig{}, nil, fmt.Errorf("%w: unknown connector %q", apperrs.ErrNotFound, connectorID)
+	}
+	v, ok := c.OAuth.(AppKeyVerifier)
+	if !ok || s.appConfigStore == nil {
+		return AppConfig{}, nil, fmt.Errorf("%w: %s takes no private key", apperrs.ErrInvalid, connectorID)
+	}
+	cfg, err := s.appConfigStore.GetAppConfig(ctx, connectorID)
+	if err != nil {
+		return AppConfig{}, nil, fmt.Errorf("get app config %s: %w", connectorID, err)
+	}
+	if !cfg.Configured() {
+		return AppConfig{}, nil, fmt.Errorf("%w: register the %s app before adding its private key", apperrs.ErrInvalid, c.Name)
+	}
+	return cfg, v, nil
+}
+
+// VerifyPrivateKey checks with GitHub that privateKey signs as the registered App, storing nothing.
+func (s *Service) VerifyPrivateKey(ctx context.Context, userID, connectorID, privateKey string) error {
+	cfg, v, err := s.keyTarget(ctx, userID, connectorID)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(privateKey) == "" {
+		return fmt.Errorf("%w: private_key is required", apperrs.ErrInvalid)
+	}
+	if err := v.VerifyKey(ctx, cfg, strings.TrimSpace(privateKey)); err != nil {
+		return asInvalid(err)
+	}
+	return nil
+}
+
+// SetPrivateKey checks privateKey with GitHub and stores it, so Nexul reads GitHub as the App (ADR 0144).
+func (s *Service) SetPrivateKey(ctx context.Context, userID, connectorID, privateKey string) (AppConfigStatus, error) {
+	if err := s.VerifyPrivateKey(ctx, userID, connectorID, privateKey); err != nil {
+		return AppConfigStatus{}, err
+	}
+	return s.storePrivateKey(ctx, connectorID, strings.TrimSpace(privateKey))
+}
+
+// RemovePrivateKey forgets the private key, so Nexul reads GitHub as the connected account again.
+func (s *Service) RemovePrivateKey(ctx context.Context, userID, connectorID string) (AppConfigStatus, error) {
+	if _, _, err := s.keyTarget(ctx, userID, connectorID); err != nil {
+		return AppConfigStatus{}, err
+	}
+	return s.storePrivateKey(ctx, connectorID, "")
+}
+
+func (s *Service) storePrivateKey(ctx context.Context, connectorID, privateKey string) (AppConfigStatus, error) {
+	if err := s.appConfigStore.SetPrivateKey(ctx, connectorID, privateKey); err != nil {
+		return AppConfigStatus{}, fmt.Errorf("save private key %s: %w", connectorID, err)
+	}
+	return s.AppConfigStatus(ctx, connectorID)
 }
 
 // AppConfigStatus returns connectorID's app registration without its secret.

@@ -189,3 +189,13 @@ func TestSetAppConfig_UnknownConnector_Rejected(t *testing.T) {
 		t.Fatalf("SetAppConfig (unknown connector) = %v, want ErrNotFound", err)
 	}
 }
+
+func (m *memAppConfigStore) SetPrivateKey(_ context.Context, connectorID, key string) error {
+	c, ok := m.rows[connectorID]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	c.PrivateKey = key
+	m.rows[connectorID] = c
+	return nil
+}

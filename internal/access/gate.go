@@ -122,6 +122,25 @@ func (s *Service) CallerProjects(ctx context.Context, action permissions.Action)
 	return projectIDs, false, nil
 }
 
+// WorkspacesWith lists the workspaces in which the caller on ctx holds action; none for the server's own calls.
+func (s *Service) WorkspacesWith(ctx context.Context, action permissions.Action) ([]string, error) {
+	userID, checked := caller(ctx)
+	if !checked {
+		return []string{}, nil
+	}
+	workspaceIDs, err := s.workspacesOf(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := []string{}
+	for _, workspaceID := range workspaceIDs {
+		if s.HasPermission(ctx, userID, workspaceID, action, "", "") {
+			out = append(out, workspaceID)
+		}
+	}
+	return out, nil
+}
+
 // HoldsAnywhere reports whether userID holds action in at least one workspace they belong to unrestricted; an Owner
 // of any workspace holds every action, which is all instance-level power there is (ADR 0088, ADR 0097).
 func (s *Service) HoldsAnywhere(ctx context.Context, userID string, action permissions.Action) (bool, error) {

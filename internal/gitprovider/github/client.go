@@ -176,15 +176,7 @@ func (c *Client) ListInstallationRepos(ctx context.Context) ([]*gitprovider.Repo
 func (c *Client) ListInstallations(ctx context.Context) ([]*gitprovider.Installation, error) {
 	var out []*gitprovider.Installation
 	err := c.eachInstallation(ctx, func(inst *githubapi.Installation) error {
-		account := inst.GetAccount()
-		i := &gitprovider.Installation{
-			ID:                  inst.GetID(),
-			AccountLogin:        account.GetLogin(),
-			AccountType:         strings.ToLower(cmp.Or(account.GetType(), inst.GetTargetType())),
-			AccountAvatarURL:    account.GetAvatarURL(),
-			RepositorySelection: inst.GetRepositorySelection(),
-			HTMLURL:             inst.GetHTMLURL(),
-		}
+		i := toInstallation(inst)
 		if i.RepositorySelection == "selected" {
 			n, err := c.installationRepoCount(ctx, inst.GetID())
 			if err != nil {
@@ -315,6 +307,18 @@ func (c *Client) resolveRef(ctx context.Context, owner, name, ref string) (strin
 		return "", fmt.Errorf("resolve default branch for %s/%s: %w", owner, name, err)
 	}
 	return repo.DefaultBranch, nil
+}
+
+func toInstallation(inst *githubapi.Installation) *gitprovider.Installation {
+	account := inst.GetAccount()
+	return &gitprovider.Installation{
+		ID:                  inst.GetID(),
+		AccountLogin:        account.GetLogin(),
+		AccountType:         strings.ToLower(cmp.Or(account.GetType(), inst.GetTargetType())),
+		AccountAvatarURL:    account.GetAvatarURL(),
+		RepositorySelection: inst.GetRepositorySelection(),
+		HTMLURL:             inst.GetHTMLURL(),
+	}
 }
 
 func toRepo(r *githubapi.Repository) *gitprovider.Repo {

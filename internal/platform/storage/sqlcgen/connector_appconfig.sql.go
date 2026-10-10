@@ -10,7 +10,7 @@ import (
 )
 
 const getConnectorAppConfig = `-- name: GetConnectorAppConfig :one
-SELECT connector_id, client_id, client_secret, base_url, app_slug FROM connector_app_config WHERE connector_id = ?
+SELECT connector_id, client_id, client_secret, base_url, app_slug, private_key FROM connector_app_config WHERE connector_id = ?
 `
 
 func (q *Queries) GetConnectorAppConfig(ctx context.Context, connectorID string) (ConnectorAppConfig, error) {
@@ -22,6 +22,7 @@ func (q *Queries) GetConnectorAppConfig(ctx context.Context, connectorID string)
 		&i.ClientSecret,
 		&i.BaseUrl,
 		&i.AppSlug,
+		&i.PrivateKey,
 	)
 	return i, err
 }
@@ -51,4 +52,21 @@ func (q *Queries) SetConnectorAppConfig(ctx context.Context, arg SetConnectorApp
 		arg.AppSlug,
 	)
 	return err
+}
+
+const setConnectorAppPrivateKey = `-- name: SetConnectorAppPrivateKey :execrows
+UPDATE connector_app_config SET private_key = ? WHERE connector_id = ?
+`
+
+type SetConnectorAppPrivateKeyParams struct {
+	PrivateKey  string
+	ConnectorID string
+}
+
+func (q *Queries) SetConnectorAppPrivateKey(ctx context.Context, arg SetConnectorAppPrivateKeyParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setConnectorAppPrivateKey, arg.PrivateKey, arg.ConnectorID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

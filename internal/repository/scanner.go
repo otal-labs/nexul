@@ -15,9 +15,12 @@ type Scanner interface {
 	GetFile(ctx context.Context, owner, name, ref, path string) ([]byte, error)
 }
 
-// InstallationLister is the seam over the git provider's installation read, kept apart from Scanner so each
-// interface stays small (go.md §6).
+// InstallationLister is the seam over the git provider's installations, apart from Scanner to keep both small.
 type InstallationLister interface {
-	// ListInstallations lists the App installations the connector's user can see.
+	// ListInstallations lists every installation read as the App, else those the connector's user can see.
 	ListInstallations(ctx context.Context) ([]Installation, error)
+	// ReadsAsApp reports whether a private key is set, so Nexul reads GitHub as its App (ADR 0144).
+	ReadsAsApp(ctx context.Context) (bool, error)
+	// InstallURL is GitHub's page for installing the App on another account, or "" while no App slug is registered.
+	InstallURL(ctx context.Context) (string, error)
 }

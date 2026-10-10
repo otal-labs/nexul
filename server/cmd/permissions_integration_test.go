@@ -131,6 +131,12 @@ func (noRepos) ListInstallationRepos(context.Context, bool) ([]repository.Repo, 
 	return nil, nil
 }
 
+func (noRepos) ListInstallations(context.Context) ([]repository.Installation, error) { return nil, nil }
+
+func (noRepos) ReadsAsApp(context.Context) (bool, error) { return true, nil }
+
+func (noRepos) InstallURL(context.Context) (string, error) { return "", nil }
+
 func grant(actions ...string) permissions.Set {
 	out := make([]permissions.Action, len(actions))
 	for i, a := range actions {
@@ -242,6 +248,7 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		WithInstall(runner.InstallConfig{Release: release.New(release.Config{APIBase: fakeReleaseServer(t, "v0.2.1").URL})}).
 		WithUpgrades(newMemUpgradeRepo()).WithBus(noopPublisher{}).WithGate(s.accessSvc)
 	entities := projectEntityGate{access: s.accessSvc, projects: f.store.Projects, tickets: f.store.Tickets}
+	repos := repository.NewService(repository.Config{Gate: s.accessSvc, Scanner: noRepos{}, Installations: noRepos{}, Store: f.store.GitHubInstallations})
 	instance := map[string]string{uOwner: ok, uSteward: ok, uPlain: forbidden, uManager: forbidden, uOutsider: forbidden}
 	cases := []struct {
 		name string
@@ -391,9 +398,20 @@ func TestIntegration_PermissionTable(t *testing.T) {
 			return s.connectorsSvc.Disconnect(ctx, "cloudflare")
 		}, map[string]string{uOwner: ok, uReader: forbidden, uWriter: forbidden, uOutsider: forbidden}},
 		{"repositories: list the installation's", func(ctx context.Context) error {
-			_, err := repository.ListRepos(ctx, s.accessSvc, noRepos{}, "", false)
+			_, err := repos.ListRepos(ctx, "", "", false)
 			return err
 		}, map[string]string{uOwner: ok, uWriter: ok, uReader: forbidden, uOutsider: forbidden}},
+		{"repositories: list a workspace's", func(ctx context.Context) error {
+			_, err := repos.ListRepos(ctx, "workspace-default", "", false)
+			return err
+		}, map[string]string{uOwner: ok, uWriter: ok, uReader: forbidden, uOutsider: notFound}},
+		{"repositories: list the installations", func(ctx context.Context) error {
+			_, err := repos.ListInstallations(ctx)
+			return err
+		}, map[string]string{uOwner: ok, uReader: ok, uWriter: forbidden, uOutsider: forbidden}},
+		{"repositories: assign an installation to a workspace", func(ctx context.Context) error {
+			return repos.AssignInstallation(ctx, "acme", "workspace-default")
+		}, map[string]string{uOwner: ok, uSteward: ok, uWriter: forbidden, uOutsider: forbidden}},
 		{"pull requests: list a project repository's", func(ctx context.Context) error {
 			_, err := gitprovider.ListPRs(ctx, entities, noPRs{}, "acme", "app", gitprovider.PROpts{})
 			return err

@@ -132,3 +132,22 @@ func TestPermissionsAnywhere(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, got)
 }
+
+// TestWorkspacesWith: the workspaces holding the action, never a restricted one, and none for the server's own call.
+func TestWorkspacesWith(t *testing.T) {
+	roles := newFakeRoles()
+	roles.set("ws-a", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.ProjectsWrite)})
+	roles.set("ws-b", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.TicketsRead)})
+	roles.set("ws-c", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.ProjectsWrite)})
+	s := newService(newFakeRepo(), newFakeUsers())
+	s.SetRoles(roles)
+	s.SetScopes(fakeScopes{workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}}, restricted: map[string][]string{"alice": {"ws-c"}}})
+
+	got, err := s.WorkspacesWith(identity.WithActor(context.Background(), identity.Actor{ID: "alice"}), permissions.ProjectsWrite)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"ws-a"}, got)
+
+	got, err = s.WorkspacesWith(context.Background(), permissions.ProjectsWrite)
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}

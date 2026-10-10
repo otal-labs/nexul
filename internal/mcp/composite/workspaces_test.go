@@ -67,6 +67,22 @@ func (f *fakeLimits) SetAutoPlayDailyCap(_ context.Context, workspaceID string, 
 	return limit, nil
 }
 
+// fakeAccounts records which accounts were assigned to or removed from which workspace; err refuses every change.
+type fakeAccounts struct {
+	changes []string
+	err     error
+}
+
+func (f *fakeAccounts) AssignInstallation(_ context.Context, account, workspaceID string) error {
+	f.changes = append(f.changes, "+"+account+"@"+workspaceID)
+	return f.err
+}
+
+func (f *fakeAccounts) UnassignInstallation(_ context.Context, account, workspaceID string) error {
+	f.changes = append(f.changes, "-"+account+"@"+workspaceID)
+	return f.err
+}
+
 type fakeRoles struct {
 	byWorkspace map[string][]*roles.Role
 	err         error
@@ -89,7 +105,7 @@ func newWorkspaceListCall(rolesErr error) func(context.Context, json.RawMessage)
 			{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors", Permissions: permissions.SetOf(permissions.DocsRead, permissions.RolesClone)},
 		},
 	}}
-	return WorkspaceTools(&ws, rs, &fakeLimits{err: apperrs.ErrForbidden})[0].Call
+	return WorkspaceTools(&ws, rs, &fakeLimits{err: apperrs.ErrForbidden}, &fakeAccounts{})[0].Call
 }
 
 func actorCtx(id string) context.Context {
@@ -148,25 +164,25 @@ func TestWorkspaceList_WithIDReturnsPeopleRolesAndCatalog(t *testing.T) {
 
 func TestWorkspaceList_ListFailurePropagates(t *testing.T) {
 	boom := errors.New("db down")
-	call := WorkspaceTools(&fakeWorkspaces{listErr: boom}, fakeRoles{}, &fakeLimits{})[0].Call
+	call := WorkspaceTools(&fakeWorkspaces{listErr: boom}, fakeRoles{}, &fakeLimits{}, &fakeAccounts{})[0].Call
 	_, err := call(actorCtx("u-1"), json.RawMessage(`{}`))
 	require.ErrorIs(t, err, boom)
 }
 
 func newWorkspaceUpdateCall(ws *fakeWorkspaces) func(context.Context, json.RawMessage) (any, error) {
-	return WorkspaceTools(ws, fakeRoles{}, &fakeLimits{caps: map[string]int{}})[1].Call
+	return WorkspaceTools(ws, fakeRoles{}, &fakeLimits{caps: map[string]int{}}, &fakeAccounts{})[1].Call
 }
 
 func TestWorkspaceList_WithIDShowsTheDailyCapToItsReaders(t *testing.T) {
 	ws := &fakeWorkspaces{byUser: map[string][]*tenancy.Workspace{"u-1": {{ID: "ws-1", Name: "Acme"}}}}
-	call := WorkspaceTools(ws, fakeRoles{}, &fakeLimits{caps: map[string]int{"ws-1": 7}})[0].Call
+	call := WorkspaceTools(ws, fakeRoles{}, &fakeLimits{caps: map[string]int{"ws-1": 7}}, &fakeAccounts{})[0].Call
 	out, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1"}`))
 	require.NoError(t, err)
 	got := out.(mcptool.Page[workspaceResult]).Items[0]
 	require.NotNil(t, got.AutoPlayDailyCap)
 	assert.Equal(t, 7, *got.AutoPlayDailyCap)
 
-	call = WorkspaceTools(ws, fakeRoles{}, &fakeLimits{err: errors.New("db down")})[0].Call
+	call = WorkspaceTools(ws, fakeRoles{}, &fakeLimits{err: errors.New("db down")}, &fakeAccounts{})[0].Call
 	_, err = call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1"}`))
 	require.Error(t, err, "a failure other than forbidden is not hidden")
 }
@@ -187,7 +203,7 @@ func TestWorkspaceUpdate_DailyCap(t *testing.T) {
 	})
 	t.Run("a refused cap after a rename says the rename took effect", func(t *testing.T) {
 		ws := &fakeWorkspaces{byUser: member}
-		call := WorkspaceTools(ws, fakeRoles{}, &fakeLimits{err: apperrs.ErrForbidden})[1].Call
+		call := WorkspaceTools(ws, fakeRoles{}, &fakeLimits{err: apperrs.ErrForbidden}, &fakeAccounts{})[1].Call
 		_, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","name":"Acme Labs","auto_play_daily_cap":9}`))
 		require.ErrorIs(t, err, apperrs.ErrForbidden)
 		var partial *mcptool.PartialError
@@ -195,7 +211,7 @@ func TestWorkspaceUpdate_DailyCap(t *testing.T) {
 		assert.Equal(t, []string{"name and slug"}, partial.Applied)
 	})
 	t.Run("a refused cap alone is the refusal", func(t *testing.T) {
-		call := WorkspaceTools(&fakeWorkspaces{byUser: member}, fakeRoles{}, &fakeLimits{err: apperrs.ErrInvalid})[1].Call
+		call := WorkspaceTools(&fakeWorkspaces{byUser: member}, fakeRoles{}, &fakeLimits{err: apperrs.ErrInvalid}, &fakeAccounts{})[1].Call
 		_, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","auto_play_daily_cap":0}`))
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 		var partial *mcptool.PartialError
@@ -234,4 +250,24 @@ func TestWorkspaceUpdate_Errors(t *testing.T) {
 			require.ErrorIs(t, err, tt.want)
 		})
 	}
+}
+
+func TestWorkspaceUpdate_GitHubAccounts(t *testing.T) {
+	member := map[string][]*tenancy.Workspace{"u-1": {{ID: "ws-1", Name: "Acme", Slug: "acme"}}}
+	t.Run("adds and removes accounts on the workspace", func(t *testing.T) {
+		accounts := &fakeAccounts{}
+		call := WorkspaceTools(&fakeWorkspaces{byUser: member}, fakeRoles{}, &fakeLimits{}, accounts)[1].Call
+		out, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","add_github_accounts":["globex"],"remove_github_accounts":["initech"]}`))
+		require.NoError(t, err)
+		assert.Equal(t, []string{"+globex@ws-1", "-initech@ws-1"}, accounts.changes)
+		assert.Equal(t, workspaceUpdateResult{ID: "ws-1", Name: "Acme", Slug: "acme", GitHubAccountsChanged: []string{"globex", "initech"}}, out)
+	})
+	t.Run("a refused account after a rename says the rename took effect", func(t *testing.T) {
+		call := WorkspaceTools(&fakeWorkspaces{byUser: member}, fakeRoles{}, &fakeLimits{}, &fakeAccounts{err: apperrs.ErrForbidden})[1].Call
+		_, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","name":"Acme Labs","add_github_accounts":["globex"]}`))
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+		var partial *mcptool.PartialError
+		require.ErrorAs(t, err, &partial)
+		assert.Equal(t, []string{"name and slug"}, partial.Applied)
+	})
 }

@@ -61,6 +61,31 @@ export const useSetConnectorAppConfig = () => {
   });
 };
 
+// The key never comes back: the answer only says one is set (private_key_set).
+export const useSetPrivateKey = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { id: string; private_key: string }) =>
+      (await api.put<AppConfigStatus>(`/api/connectors/${payload.id}/private-key`, { private_key: payload.private_key })).data,
+    onSuccess: (status, payload) => {
+      toast.success("Private key saved");
+      queryClient.setQueryData([getConnectorAppConfigKey, payload.id], status);
+    },
+  });
+};
+
+export const useRemovePrivateKey = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.delete<AppConfigStatus>(`/api/connectors/${id}/private-key`)).data,
+    onSuccess: (status, id) => {
+      toast.success("Private key removed");
+      queryClient.setQueryData([getConnectorAppConfigKey, id], status);
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 // The verify error comes back as the request rejection, not a toast, so ConnectorCard renders it inline.
 // Live provider check only; the dialog turns the result into a green light, so no toast here.
 export const useVerifyManualCredentials = () =>

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
@@ -25,6 +26,12 @@ type WorkspaceService interface {
 type AutoPlayLimits interface {
 	AutoPlayDailyCap(ctx context.Context, workspaceID string) (int, error)
 	SetAutoPlayDailyCap(ctx context.Context, workspaceID string, limit int) (int, error)
+}
+
+// GitHubAccounts is the slice of the repository use-cases that decides which workspaces see an installation (ADR 0144).
+type GitHubAccounts interface {
+	AssignInstallation(ctx context.Context, account, workspaceID string) error
+	UnassignInstallation(ctx context.Context, account, workspaceID string) error
 }
 
 // RoleReader is the slice of the roles use-cases workspace_list reads.
@@ -50,58 +57,62 @@ type workspaceResult struct {
 }
 
 type workspaceUpdateIn struct {
-	ID               string  `json:"id" jsonschema:"The workspace to change, from workspace_list."`
-	Name             *string `json:"name,omitempty" jsonschema:"The workspace's new display name, for example Norwood Labs. Omit to keep it."`
-	Slug             *string `json:"slug,omitempty" jsonschema:"The workspace's new name in web links, for example norwood: lowercase letters and digits joined by single dashes, at most 48 characters, not a reserved path such as settings, and not taken by another workspace. Omit to keep it."`
-	AutoPlayDailyCap *int    `json:"auto_play_daily_cap,omitempty" jsonschema:"How many automatic runs auto plays may start on one ticket per rolling day, across every auto play, 1 to 50; a ticket past it pauses its auto plays. Omit to keep it."`
+	ID                   string   `json:"id" jsonschema:"The workspace to change, from workspace_list."`
+	Name                 *string  `json:"name,omitempty" jsonschema:"The workspace's new display name, for example Norwood Labs. Omit to keep it."`
+	Slug                 *string  `json:"slug,omitempty" jsonschema:"The workspace's new name in web links, for example norwood: lowercase letters and digits joined by single dashes, at most 48 characters, not a reserved path such as settings, and not taken by another workspace. Omit to keep it."`
+	AutoPlayDailyCap     *int     `json:"auto_play_daily_cap,omitempty" jsonschema:"How many automatic runs auto plays may start on one ticket per rolling day, across every auto play, 1 to 50; a ticket past it pauses its auto plays. Omit to keep it."`
+	AddGitHubAccounts    []string `json:"add_github_accounts,omitempty" jsonschema:"GitHub accounts or organisations, by login such as acme, whose GitHub App installation this workspace starts seeing the repositories of. repository_list with installations lists them. Needs connectors:write."`
+	RemoveGitHubAccounts []string `json:"remove_github_accounts,omitempty" jsonschema:"GitHub accounts or organisations, by login, whose installation's repositories this workspace stops seeing. Needs connectors:write."`
 }
 
 type workspaceUpdateResult struct {
-	ID               string `json:"id"`
-	Name             string `json:"name"`
-	Slug             string `json:"slug"`
-	AutoPlayDailyCap *int   `json:"auto_play_daily_cap,omitempty"`
+	ID                    string   `json:"id"`
+	Name                  string   `json:"name"`
+	Slug                  string   `json:"slug"`
+	AutoPlayDailyCap      *int     `json:"auto_play_daily_cap,omitempty"`
+	GitHubAccountsChanged []string `json:"github_accounts_changed,omitempty"`
 }
 
 // WorkspaceTools lists the caller's workspaces, the ids the project, play, memory, role, and invitation tools are
 // scoped by, and renames one or changes its auto play cap.
-func WorkspaceTools(w WorkspaceService, r RoleReader, limits AutoPlayLimits) []mcptool.Tool {
-	return []mcptool.Tool{workspaceListTool(w, r, limits), workspaceUpdateTool(w, limits)}
+func WorkspaceTools(w WorkspaceService, r RoleReader, limits AutoPlayLimits, accounts GitHubAccounts) []mcptool.Tool {
+	return []mcptool.Tool{workspaceListTool(w, r, limits), workspaceUpdateTool(w, limits, accounts)}
 }
 
-func workspaceUpdateTool(w WorkspaceService, limits AutoPlayLimits) mcptool.Tool {
+func workspaceUpdateTool(w WorkspaceService, limits AutoPlayLimits, accounts GitHubAccounts) mcptool.Tool {
 	return mcptool.New("workspace_update", "Rename workspace or change its settings",
-		"Changes a workspace's display name, its slug, its daily cap on automatic runs per ticket, or several; a field you omit keeps its value. "+
+		"Changes a workspace's display name, its slug, its daily cap on automatic runs per ticket, which GitHub accounts' repositories it sees, or several; a field you omit keeps its value. "+
 			"Changing the slug moves every web link into the workspace, so links using the old slug stop working and are not redirected; "+
 			"a rename that keeps the slug leaves every link working. "+
-			"The name and slug need workspaces:write in that workspace and apply first; auto_play_daily_cap needs autoplays:write. "+
-			"Returns the workspace's id, name, and slug as they now stand, with the cap when it changed; workspace_list finds the id.",
+			"The name and slug need workspaces:write in that workspace and apply first; auto_play_daily_cap needs autoplays:write; the GitHub accounts need connectors:write and apply last. "+
+			"Returns the workspace's id, name, and slug as they now stand, with the cap and the GitHub accounts when they changed; workspace_list finds the id.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in workspaceUpdateIn) (any, error) {
 			a, ok := identity.ActorFromCtx(ctx)
 			if !ok || a.ID == "" {
 				return nil, fmt.Errorf("%w: changing a workspace needs a signed-in user", apperrs.ErrUnauthorized)
 			}
-			if in.Name == nil && in.Slug == nil && in.AutoPlayDailyCap == nil {
-				return nil, fmt.Errorf("%w: send name, slug, auto_play_daily_cap, or several", apperrs.ErrInvalid)
+			if in.Name == nil && in.Slug == nil && in.AutoPlayDailyCap == nil && len(in.AddGitHubAccounts) == 0 && len(in.RemoveGitHubAccounts) == 0 {
+				return nil, fmt.Errorf("%w: send name, slug, auto_play_daily_cap, add_github_accounts, remove_github_accounts, or several", apperrs.ErrInvalid)
 			}
-			return updateWorkspace(ctx, w, limits, a.ID, in)
+			out, applied, err := updateWorkspace(ctx, w, limits, a.ID, in)
+			if err != nil {
+				return nil, err
+			}
+			return changeGitHubAccounts(ctx, w, accounts, a.ID, in, out, applied)
 		})
 }
 
-func updateWorkspace(ctx context.Context, w WorkspaceService, limits AutoPlayLimits, userID string, in workspaceUpdateIn) (any, error) {
-	var out workspaceUpdateResult
-	var applied []string
-	if in.Name != nil || in.Slug != nil {
-		updated, err := w.Rename(ctx, userID, in.ID, in.Name, in.Slug)
-		if err != nil {
-			return nil, err
-		}
-		out = workspaceUpdateResult{ID: updated.ID, Name: updated.Name, Slug: updated.Slug}
-		applied = append(applied, "name and slug")
-	}
-	if in.AutoPlayDailyCap == nil {
+// changeGitHubAccounts assigns and unassigns installations last, saying which earlier parts applied when one fails.
+func changeGitHubAccounts(ctx context.Context, w WorkspaceService, accounts GitHubAccounts, userID string, in workspaceUpdateIn, out workspaceUpdateResult, applied []string) (any, error) {
+	if len(in.AddGitHubAccounts) == 0 && len(in.RemoveGitHubAccounts) == 0 {
 		return out, nil
+	}
+	fail := func(err error) (any, error) {
+		if len(applied) > 0 {
+			return nil, &mcptool.PartialError{Applied: applied, Err: err}
+		}
+		return nil, err
 	}
 	if out.ID == "" {
 		ws, err := memberWorkspace(ctx, w, userID, in.ID)
@@ -110,15 +121,52 @@ func updateWorkspace(ctx context.Context, w WorkspaceService, limits AutoPlayLim
 		}
 		out = workspaceUpdateResult{ID: ws.ID, Name: ws.Name, Slug: ws.Slug}
 	}
+	for _, account := range in.AddGitHubAccounts {
+		if err := accounts.AssignInstallation(ctx, account, in.ID); err != nil {
+			return fail(fmt.Errorf("add_github_accounts %s: %w", account, err))
+		}
+		applied = append(applied, "add "+account)
+	}
+	for _, account := range in.RemoveGitHubAccounts {
+		if err := accounts.UnassignInstallation(ctx, account, in.ID); err != nil {
+			return fail(fmt.Errorf("remove_github_accounts %s: %w", account, err))
+		}
+		applied = append(applied, "remove "+account)
+	}
+	out.GitHubAccountsChanged = slices.Concat(in.AddGitHubAccounts, in.RemoveGitHubAccounts)
+	return out, nil
+}
+
+func updateWorkspace(ctx context.Context, w WorkspaceService, limits AutoPlayLimits, userID string, in workspaceUpdateIn) (workspaceUpdateResult, []string, error) {
+	var out workspaceUpdateResult
+	var applied []string
+	if in.Name != nil || in.Slug != nil {
+		updated, err := w.Rename(ctx, userID, in.ID, in.Name, in.Slug)
+		if err != nil {
+			return out, nil, err
+		}
+		out = workspaceUpdateResult{ID: updated.ID, Name: updated.Name, Slug: updated.Slug}
+		applied = append(applied, "name and slug")
+	}
+	if in.AutoPlayDailyCap == nil {
+		return out, applied, nil
+	}
+	if out.ID == "" {
+		ws, err := memberWorkspace(ctx, w, userID, in.ID)
+		if err != nil {
+			return out, nil, err
+		}
+		out = workspaceUpdateResult{ID: ws.ID, Name: ws.Name, Slug: ws.Slug}
+	}
 	limit, err := limits.SetAutoPlayDailyCap(ctx, in.ID, *in.AutoPlayDailyCap)
 	if err != nil && len(applied) > 0 {
-		return nil, &mcptool.PartialError{Applied: applied, Err: fmt.Errorf("auto_play_daily_cap: %w", err)}
+		return out, nil, &mcptool.PartialError{Applied: applied, Err: fmt.Errorf("auto_play_daily_cap: %w", err)}
 	}
 	if err != nil {
-		return nil, err
+		return out, nil, err
 	}
 	out.AutoPlayDailyCap = &limit
-	return out, nil
+	return out, append(applied, "auto_play_daily_cap"), nil
 }
 
 func memberWorkspace(ctx context.Context, w WorkspaceService, userID, id string) (*tenancy.Workspace, error) {

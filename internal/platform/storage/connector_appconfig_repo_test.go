@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/connectors"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
 func openConnectorAppConfigStore(t *testing.T) *Store {
@@ -118,4 +119,21 @@ func TestConnectorAppConfigRepo_SetGet_MultipleConnectorsIndependent(t *testing.
 	github, err := s.ConnectorAppConfig.GetAppConfig(ctx, "github")
 	require.NoError(t, err)
 	assert.True(t, github.Configured())
+}
+
+func TestConnectorAppConfig_PrivateKeyIsEncryptedAtRestAndLeftAloneByAnEdit(t *testing.T) {
+	s := openConnectorAppConfigStore(t)
+	ctx := t.Context()
+	require.NoError(t, s.ConnectorAppConfig.SetAppConfig(ctx, connectors.AppConfig{ConnectorID: "github", ClientID: "Iv1.acme", ClientSecret: "s3cret"}))
+	require.NoError(t, s.ConnectorAppConfig.SetPrivateKey(ctx, "github", "-----BEGIN RSA PRIVATE KEY-----"))
+
+	var raw string
+	require.NoError(t, s.db.QueryRow(`SELECT private_key FROM connector_app_config WHERE connector_id = 'github'`).Scan(&raw))
+	assert.NotContains(t, raw, "PRIVATE KEY")
+
+	require.NoError(t, s.ConnectorAppConfig.SetAppConfig(ctx, connectors.AppConfig{ConnectorID: "github", ClientID: "Iv1.acme", ClientSecret: "rotated"}))
+	cfg, err := s.ConnectorAppConfig.GetAppConfig(ctx, "github")
+	require.NoError(t, err)
+	assert.Equal(t, "-----BEGIN RSA PRIVATE KEY-----", cfg.PrivateKey, "rotating the secret keeps the key")
+	assert.ErrorIs(t, s.ConnectorAppConfig.SetPrivateKey(ctx, "cloudflare", "k"), apperrs.ErrNotFound, "no registered app, no key")
 }
