@@ -9,14 +9,13 @@ import (
 	"github.com/otal-labs/nexul/internal/plays"
 )
 
-// TestMigration0085_TheDecisionsCheckBecomesASeededPlay upgrades a workspace with the check switched on, plays already
+// TestMigration0087_TheDecisionsCheckBecomesASeededPlay upgrades a workspace with the check switched on, plays already
 // holding its label and its " (2)" in other cases, and one failed check on a ticket, beside the default workspace with
-// it off; labels are already unique per workspace without case, as on an instance that ran that migration first.
-func TestMigration0085_TheDecisionsCheckBecomesASeededPlay(t *testing.T) {
-	db := migrateBefore(t, "0085")
+// it off; labels are already unique per workspace without case.
+func TestMigration0087_TheDecisionsCheckBecomesASeededPlay(t *testing.T) {
+	db := migrateBefore(t, "0087")
 	_, err := db.Exec(`
 INSERT INTO workspaces (id, name, slug, created_at, updated_at, decisions_check_enabled) VALUES ('ws-on', 'On', 'on', 1, 1, 1);
-CREATE UNIQUE INDEX unique_play_labels ON plays(workspace_id, label COLLATE NOCASE);
 INSERT INTO plays (id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, builtin_key, created_by, created_at, updated_at) VALUES
     ('play-mine', 'ws-on', 'decisions check', 'ticket', '', 'Mine.', 1, 'review', '[]', '', 'u-1', 1, 1),
     ('play-mine-2', 'ws-on', 'DECISIONS CHECK (2)', 'ticket', '', 'Mine too.', 1, 'review', '[]', '', 'u-1', 1, 1);
@@ -25,9 +24,9 @@ INSERT INTO play_trails (id, workspace_id, play_id, play_label, target_type, tar
 `)
 	require.NoError(t, err)
 
-	script, err := migrationFS.ReadFile("migrations/0085_decisions_check_play.sql")
+	script, err := migrationFS.ReadFile("migrations/0087_decisions_check_play.sql")
 	require.NoError(t, err)
-	require.NoError(t, applyMigration(db, "0085_decisions_check_play", string(script)))
+	require.NoError(t, applyMigration(db, "0087_decisions_check_play", string(script)))
 	require.NoError(t, Migrate(db), "every later migration applies on top, as an upgrade would")
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 	ctx := t.Context()
