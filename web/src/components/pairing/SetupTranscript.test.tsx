@@ -22,7 +22,7 @@ const steps: ActivityEntry[] = [
 ];
 
 const renderTranscript = (state: SetupRunRow["state"]) =>
-  render(<SetupTranscript row={row(state)} runningName={undefined} retryDisabled={false} onRetry={() => {}} />);
+  render(<SetupTranscript row={row(state)} runningName={undefined} />);
 
 describe("SetupTranscript", () => {
   beforeEach(() => useSetupActivityStore.setState({ steps: { t1: steps } }));
@@ -41,7 +41,7 @@ describe("SetupTranscript", () => {
   it("folds the live group shut once the turn is confirmed, leaving its count and the outcome", () => {
     const { rerender } = renderTranscript("running");
 
-    rerender(<SetupTranscript row={row("confirmed")} runningName={undefined} retryDisabled={false} onRetry={() => {}} />);
+    rerender(<SetupTranscript row={row("confirmed")} runningName={undefined} />);
 
     expect(screen.queryByText("python3 - <<'PY'")).not.toBeInTheDocument();
     expect(screen.getByText("Ran 1 command")).toBeInTheDocument();

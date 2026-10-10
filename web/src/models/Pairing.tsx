@@ -60,7 +60,7 @@ export const tunnelConnected = (status: TunnelStatus) => tunnelOnline(status) &&
 
 // The pair-a-computer dialog's steps, in order.
 export const PAIRING_STEPS = [
-  { value: "connect", label: "Connect" },
+  { value: "connect", label: "Tunnel" },
   { value: "pair", label: "Pair T3 Code" },
   { value: "setup", label: "Set up" },
 ] as const;
@@ -193,9 +193,9 @@ export const setupModelChoices = (
     return [{ provider: p.driver.toLowerCase(), name: p.name, instance: p, ...preselect(p, defaults, saved) }];
   });
 
-// The row the transcript follows: the running one, else the last that ran so a finished run stays put, else the first.
-export const followedSetupRow = (rows: SetupRunRow[]): SetupRunRow | undefined =>
-  rows.find((r) => r.state === "running") ?? [...rows].reverse().find((r) => r.state !== "queued") ?? rows[0];
+// The row that opens by itself: the running one, else the first failure; a settled run stays folded.
+export const openSetupRow = (rows: SetupRunRow[]): SetupRunRow | undefined =>
+  rows.find((r) => r.state === "running") ?? rows.find((r) => r.state === "failed");
 
 export const setupRunning = (rows: SetupRunRow[]) => rows.some((r) => r.state === "running" || r.state === "queued");
 
@@ -228,6 +228,27 @@ export const providerSetupLines = (setup: ComputerSetup): ProviderSetupLine[] =>
 export const SKILLS_OUTDATED = "skills out of date";
 
 export const hasOutdatedSkills = (setup: ComputerSetup) => setup.providers.some((p) => p.skills_outdated);
+
+export type SetupSummaryTone = "success" | "warning" | "destructive" | "info";
+
+export interface SetupSummary {
+  state: "running" | "failed" | "missing" | "outdated" | "confirmed";
+  tone: SetupSummaryTone;
+  text: string;
+  detail?: string;
+}
+
+// A computer's setup in one status: what is running, then what failed, then what is missing, then stale skills.
+export const setupSummary = (setup: ComputerSetup): SetupSummary => {
+  const lines = providerSetupLines(setup);
+  const names = (state: ProviderSetupLine["state"]) => lines.filter((l) => l.state === state).map((l) => l.name).join(", ");
+  const running = lines.find((l) => l.state === "running");
+  if (running) return { state: "running", tone: "warning", text: running.kind === "skills" ? "Updating skills" : `Setting up ${running.name}` };
+  if (lines.some((l) => l.state === "failed")) return { state: "failed", tone: "destructive", text: "Setup failed", detail: names("failed") };
+  if (setup.confirmed_at === null) return { state: "missing", tone: "warning", text: "Needs setup" };
+  if (lines.some((l) => l.skillsOutdated)) return { state: "outdated", tone: "info", text: "Skills out of date" };
+  return { state: "confirmed", tone: "success", text: "Setup confirmed", detail: names("confirmed") };
+};
 
 // Update skills fits only a confirmed computer whose every provider line is confirmed and where skills are what is left.
 export const onlySkillsOutdated = (setup: ComputerSetup) => {

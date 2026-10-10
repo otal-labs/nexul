@@ -860,6 +860,8 @@ description; past two embeds the same toggle opens the rest. Only a bot's
 text renders Discord's markdown subset. `BotMessageRow` and `EmbedCard` in
 `web/src/components/chat/` are the reference.
 
+Paired computers. One row per computer in the T3 Code Setup card: a chevron and the name, then at most one outline button for what needs doing (Pair, Re-pair, Set up, Update skills) and the `…` menu (Set up or Re-run setup, Re-pair, then Remove, which asks first). Under the name one line of `SettingsStatus`: the connection, an expiry warning, and the setup state with the providers it names. The name folds the rest open in a `surface-2` well: address, harness version, paired-until date, one line per provider, and the MCP token with its Replace and Revoke. The setup step of the pair dialog is one column: the run's state with its one action (brand until the computer is confirmed, then outline, while Done takes the brand), one row per provider (state glyph, name, mono model, state word or Retry) that opens its transcript in a well under it, the running or failed row opening by itself, and an Options disclosure (providers and models, folder, installs) open before the first run and folded to a mono read-back after. The step tabs show only while pairing a new computer. `ComputerRow`, `SetupStep` and `SetupRunRows` are the reference.
+
 Deploy page. The header names the outcome ("Deployed", "Deploy failed")
 with the status, id, image and time in its meta line. From a 48rem page the
 steps run down a 15rem column beside the log and stay in view while it
@@ -1041,6 +1043,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Settings save from a strip that is always there | Against a strip that opens when something changes (it pushed every card below it 52px on the first keystroke), a bar floating over the page (detached from the card it saves and covering the next one) and a Save beside the field (fits one field, not a card of them) |
 | Save answers in its button, not a toast | Against the toast (it lands a panel away from the click) and a Saved line at the strip's left (opposite the pointer); the button the pointer is on turns into Saved |
 | Theme and mode tiles are the app in miniature | Against swatch dots, which named a palette without showing what it changes; the miniature shows the canvas, the panel, text and the accent in that palette and mode |
+| Paired computers: a folded row per computer, the setup as one column of provider rows | Against a row that showed every fact and five buttons at once (status, address, version, three provider lines, the token, two delete icons that read alike) and a setup step of three panes' worth of controls beside a transcript pane; one action for the state, the rest a fold or a menu away, keeps every capability with a fraction on screen |
 | Person dialog: a tab per workspace, changes held until Confirm | Several workspaces stacked in one scroll mixed their controls, and applying each change on the spot made the dialog change under the owner; tabs separate the workspaces and Confirm makes the edit one deliberate act |
 
 ### Motion baseline

@@ -160,12 +160,13 @@ describe("PairComputerDialog", () => {
     expect(screen.queryByText(/is paired/i)).not.toBeInTheDocument();
   });
 
-  it("pairs a machine the server can already reach by URL, from Advanced", async () => {
+  it("offers Create tunnel as the Tunnel step's one action, and pairs a machine the server can already reach by URL beside it", async () => {
     const user = userEvent.setup();
     renderDialog();
 
     await user.click(screen.getByRole("button", { name: /pair a computer/i }));
-    await user.click(await screen.findByRole("button", { name: /advanced options/i }));
+    expect(await screen.findByRole("button", { name: /create tunnel/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^next$/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /pair by url/i }));
 
     await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
@@ -193,8 +194,7 @@ describe("PairComputerDialog", () => {
     renderDialog();
 
     await user.click(screen.getByRole("button", { name: /pair a computer/i }));
-    await user.click(await screen.findByRole("button", { name: /advanced options/i }));
-    await user.click(screen.getByRole("button", { name: /pair by url/i }));
+    await user.click(await screen.findByRole("button", { name: /pair by url/i }));
     await user.type(screen.getByLabelText(/^name$/i), "VPS");
     await user.type(screen.getByLabelText(/t3 server url/i), "https://vps.example.com");
     await user.type(screen.getByLabelText(/one-time pairing token/i), "t3-pair-token");
@@ -207,7 +207,7 @@ describe("PairComputerDialog", () => {
   it.each([
     ["zero_trust_disabled", /zero trust isn't enabled/i, /open zero trust/i],
     ["cloudflare_not_connected", /cloudflare isn't connected/i, /connect cloudflare/i],
-  ])("explains a missing %s prerequisite with its fix and retries", async (reason, title, fix) => {
+  ])("puts a missing %s prerequisite in the form's place with its fix, and retries with the name typed", async (reason, title, fix) => {
     mocks.post.mockRejectedValueOnce(apiError({ message: "missing", code: "INVALID", reason })).mockResolvedValueOnce({ data: created });
     const user = userEvent.setup();
     renderDialog();
@@ -216,10 +216,12 @@ describe("PairComputerDialog", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(title);
     expect(screen.getByRole("link", { name: fix })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/computer name/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /try again/i }));
     expect(await screen.findByText(/waiting for connection/i)).toBeInTheDocument();
     expect(mocks.post).toHaveBeenCalledTimes(2);
+    expect(mocks.post).toHaveBeenLastCalledWith("/api/pairing/computers/tunnel", { name: "Work laptop", port: 3773 });
   });
 
   it("shows any other failure inline under the form", async () => {
@@ -344,7 +346,7 @@ describe("PairComputerDialog opened at Set up", () => {
     });
   });
 
-  it("starts at Set up with the earlier steps locked, lists each provider's newest turn as a name-only row, and retries only the failed one", async () => {
+  it("starts at Set up with no way back to the earlier steps, opens the failed provider's row on its reason, and retries only that one", async () => {
     setup = {
       ...emptySetup,
       confirmed_at: "2026-09-24T00:00:00Z",
@@ -356,15 +358,16 @@ describe("PairComputerDialog opened at Set up", () => {
 
     await user.click(screen.getByRole("button", { name: /^open$/i }));
     expect(await screen.findByRole("heading", { name: /set up work laptop/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /connect/i })).toBeDisabled();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
     const list = within(await screen.findByRole("list", { name: "Providers" }));
-    const failedRow = list.getByRole("button", { name: /opencode/i }).closest("li");
-    expect(failedRow).toHaveTextContent(/^opencode: FailedRetry$/);
+    const failedRow = list.getByRole("button", { name: /^opencode/i });
+    expect(failedRow).toHaveAttribute("aria-expanded", "true");
+    expect(failedRow.closest("li")).toHaveTextContent(/No result within 10m0s/);
+    expect(list.getByRole("button", { name: /^codex/i })).toHaveAttribute("aria-expanded", "false");
     expect(list.queryByText(/Confirmed with 12 skills/)).not.toBeInTheDocument();
-    expect(screen.getByText(/No result within 10m0s/)).toBeInTheDocument();
     expect(screen.getByText("1/2 confirmed")).toBeInTheDocument();
 
-    await user.click(list.getByRole("button", { name: /^retry$/i }));
+    await user.click(list.getByRole("button", { name: /^retry opencode$/i }));
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "", model_options: [], folder: "" }));
     expect(mocks.post).toHaveBeenCalledTimes(1);
   });
@@ -414,8 +417,7 @@ describe("PairComputerDialog opened at Set up", () => {
     await user.click(await screen.findByRole("button", { name: /start setup/i }));
 
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", { models: {}, model_options: {}, folder: "" }));
-    expect(await screen.findByRole("heading", { name: "Codex" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /codex/i })).toHaveAttribute("aria-pressed", "true");
+    expect(await screen.findByRole("button", { name: /^codex/i })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("button", { name: /re-run setup/i })).toBeDisabled();
 
     const push = (kind: ActivityKind, summary: string, call_id: string) =>
@@ -426,8 +428,8 @@ describe("PairComputerDialog opened at Set up", () => {
     const log = screen.getByRole("log", { name: "Codex steps" });
     expect(within(log).getAllByText(/nexul mcp add|ls ~\/\.claude\/skills/).map((l) => l.textContent)).toEqual(["nexul mcp add", "ls ~/.claude/skills"]);
 
-    await user.click(screen.getByRole("button", { name: /opencode/i }));
-    expect(screen.getByRole("heading", { name: "OpenCode" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^opencode/i }));
+    expect(screen.getByRole("button", { name: /^opencode/i })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Waiting for its turn. Codex is setting up now.")).toBeInTheDocument();
     expect(screen.queryByRole("log", { name: "Codex steps" })).not.toBeInTheDocument();
   });
@@ -472,7 +474,7 @@ describe("PairComputerDialog opened at Set up", () => {
     expect(await screen.findByText("claude-big")).toBeInTheDocument();
 
     await pickOption(user, "OpenCode model", "GPT");
-    await user.click(await screen.findByRole("button", { name: /^retry$/i }));
+    await user.click(await screen.findByRole("button", { name: /^retry opencode$/i }));
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "gpt", model_options: [], folder: "" }));
   });
 
@@ -495,7 +497,8 @@ describe("PairComputerDialog opened at Set up", () => {
       renderDialog(paired);
 
       await user.click(screen.getByRole("button", { name: /^open$/i }));
-      await user.click(await screen.findByRole("switch", { name: "Codex" }));
+      await user.click(await screen.findByRole("button", { name: /^options/i }));
+      await user.click(screen.getByRole("switch", { name: "Codex" }));
       expect(screen.getByRole("combobox", { name: "Codex model" })).toBeDisabled();
       await user.click(screen.getByRole("button", { name: /re-run setup/i }));
 
@@ -550,7 +553,7 @@ describe("PairComputerDialog opened at Set up", () => {
 
     await pickOption(user, "Folder", /^App/);
     expect(screen.getByText("/home/me/app")).toBeInTheDocument();
-    await user.click(await screen.findByRole("button", { name: /^retry$/i }));
+    await user.click(await screen.findByRole("button", { name: /^retry codex$/i }));
     await waitFor(() =>
       expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/codex/retry", { model: "", model_options: [], folder: "/home/me/app" }),
     );

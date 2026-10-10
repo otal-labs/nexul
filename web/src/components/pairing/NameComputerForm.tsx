@@ -34,29 +34,34 @@ export const NameComputerForm = ({ onCreated, onPairByUrl }: NameComputerFormPro
   const prerequisite = tunnelPrerequisite(create.error);
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={submit} className="space-y-5">
       {prerequisite && <TunnelPrerequisiteAlert reason={prerequisite} onRetry={submit} retrying={create.isPending} />}
-      <FormInput control={form.control} name="name" label="Computer name" placeholder="e.g. Work laptop" autoFocus />
-      <AdvancedFields>
-        <FormInput control={form.control} name="port" label="T3 Code port" type="number" inputMode="numeric" />
-        <div className="space-y-2 border-t border-border pt-4">
-          <p className="text-sm text-muted-foreground">
-            Can this server already reach the machine, like a VPS or a computer on your network? Skip the tunnel.
-          </p>
-          <Button type="button" variant="outline" onClick={onPairByUrl}>
-            <LinkIcon className="size-4" aria-hidden />
-            Pair by URL
+      {!prerequisite && (
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <FormInput control={form.control} name="name" label="Computer name" placeholder="e.g. Work laptop" autoFocus />
+            <p className="text-xs text-muted-foreground">Its tunnel gets a hostname made from this name.</p>
+          </div>
+          <AdvancedFields>
+            <FormInput control={form.control} name="port" label="T3 Code port" type="number" inputMode="numeric" />
+          </AdvancedFields>
+          {create.error && (
+            <p role="alert" className="text-sm text-destructive">
+              {errorMessage(create.error)}
+            </p>
+          )}
+          <Button type="submit" loading={create.isPending}>
+            {create.isPending ? "Creating tunnel…" : "Create tunnel"}
           </Button>
         </div>
-      </AdvancedFields>
-      {create.error && !prerequisite && (
-        <p role="alert" className="text-sm text-destructive">
-          {errorMessage(create.error)}
-        </p>
       )}
-      <Button type="submit" loading={create.isPending}>
-        {create.isPending ? "Creating tunnel…" : "Create tunnel"}
-      </Button>
+      <p className="flex flex-wrap items-center gap-x-1 border-t border-border pt-4 text-sm text-muted-foreground">
+        Can this server already reach the machine, like a VPS?
+        <Button type="button" variant="link" className="h-auto p-0 text-foreground" onClick={onPairByUrl}>
+          <LinkIcon className="size-3.5" aria-hidden />
+          Pair by URL
+        </Button>
+      </p>
     </form>
   );
 };
