@@ -70,6 +70,8 @@ type Client struct {
 	dial        func(ctx context.Context, network, address string) (net.Conn, error)
 	// findT3 locates T3 Code's command for a home, "" when it is not installed.
 	findT3 func(home string) string
+	// t3 keeps a personal runner's T3 Code background service running.
+	t3 *t3Keeper
 }
 
 // NewClient wires the runner client with sane defaults for unset durations.
@@ -92,7 +94,9 @@ func NewClient(cfg ClientConfig) *Client {
 	if cfg.BackoffMax <= 0 {
 		cfg.BackoffMax = 30 * time.Second
 	}
-	return &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext, findT3: findT3}
+	c := &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext, findT3: findT3}
+	c.t3 = newT3Keeper(c.t3Probe, c.restartT3, cfg.Logger)
+	return c
 }
 
 // errRemoved ends the connection loop: the server removed this runner, so reconnecting can never succeed.
@@ -106,6 +110,9 @@ func (c *Client) Run(ctx context.Context) error {
 	defer stopStreams()
 	c.cleanupOldBinary()
 	c.log.Info("runner starting", "runner", c.cfg.Name, "server", c.cfg.URL)
+	if c.cfg.Personal {
+		c.streams.Go(func() { c.t3.run(ctx) })
+	}
 	backoff := NewBackoff(c.cfg.BackoffBase, c.cfg.BackoffMax,
 		rand.New(rand.NewSource(time.Now().UnixNano())))
 	attempt := 0

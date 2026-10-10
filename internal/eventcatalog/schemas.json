@@ -5444,6 +5444,15 @@
               "version": {
                 "type": "string",
                 "description": "T3 Code's server version; sent while answering."
+              },
+              "restarted_at": {
+                "type": "string",
+                "description": "When the runner last restarted T3 Code's background service after it stopped answering.",
+                "format": "date-time"
+              },
+              "restart_error": {
+                "type": "string",
+                "description": "Why the runner could not restart T3 Code's background service, such as the person's user service manager not running; cleared once T3 Code answers."
               }
             },
             "required": [
