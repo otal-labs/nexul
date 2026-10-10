@@ -40,7 +40,7 @@ const workspace = (name: string, canManage = true) => ({ id: `ws-${name.toLowerC
 const teamWith = (memberships: TeamMembership[], canManage = true): Team => ({
   can_manage_accounts: false,
   workspaces: [workspace("Nexul", canManage), workspace("Labs", canManage), workspace("Kit", canManage)],
-  people: [{ id: "u-bob", login: "bob", name: "Bob", avatar_url: "", status: "active", created_at: "", online: false, last_seen_at: null, workspaces: memberships }],
+  people: [{ id: "u-bob", login: "bob", name: "Bob", avatar_url: "", status: "active", created_at: "", providers: ["github"], online: false, last_seen_at: null, workspaces: memberships }],
 });
 
 const renderDialog = async (team: Team) => {

@@ -22,7 +22,7 @@ const team: Team = {
   ],
   people: [
     {
-      id: "u-bob", login: "bob", name: "Bob", avatar_url: "", status: "active", created_at: "",
+      id: "u-bob", login: "bob", name: "Bob", avatar_url: "", status: "active", created_at: "", providers: ["github"],
       online: true, last_seen_at: null,
       workspaces: [
         { workspace_id: "ws-nexul", workspace_name: "Nexul", role_id: "r-editor", role_name: "Editor", is_owner: false, allow: [], deny: [], every_project: "role", projects: [] },
@@ -58,7 +58,7 @@ describe("TeamSection", () => {
   it("shows when each person was last online with a presence dot, and names an account status only when it blocks sign-in", async () => {
     const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString();
     const person = (id: string, name: string, extra: Partial<TeamPerson>): TeamPerson => ({
-      id, login: id, name, avatar_url: "", status: "active", created_at: "", online: false, last_seen_at: null, workspaces: [], ...extra,
+      id, login: id, name, avatar_url: "", status: "active", created_at: "", providers: [], online: false, last_seen_at: null, workspaces: [], ...extra,
     });
     renderSection("/settings/team", {
       ...team,
@@ -85,6 +85,16 @@ describe("TeamSection", () => {
     expect(eve).toHaveTextContent("Last seen 3d ago");
     expect(eve).toHaveTextContent("Disabled");
     expect(dotOf(eve)).toHaveClass("bg-muted-foreground");
+  });
+
+  it("marks each person's linked sign-in accounts on their row", async () => {
+    renderSection("/settings/team", {
+      ...team,
+      people: [{ ...team.people[0]!, providers: ["github", "discord"] }],
+    });
+
+    const bob = await screen.findByRole("button", { name: "Open Bob" });
+    expect(within(bob).getByRole("img", { name: "Signs in with GitHub and Discord" })).toBeInTheDocument();
   });
 
   it("gives each workspace the person is in a tab, read-only with the reason where the viewer can't manage members", async () => {

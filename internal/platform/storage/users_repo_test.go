@@ -72,6 +72,15 @@ func TestUsersRepo_Identities_LinkSignInAndUnlink(t *testing.T) {
 		assert.Equal(t, "renamed@example.com", ids[1].Login, "the identity row itself syncs")
 	})
 
+	t.Run("every user's providers come back in the order they were linked", func(t *testing.T) {
+		providers, err := s.Users.ListIdentityProviders(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, map[string][]auth.Provider{
+			"u1": {auth.ProviderGitHub, auth.ProviderGoogle},
+			"u2": {auth.ProviderGitHub},
+		}, providers)
+	})
+
 	t.Run("an account already attached to anyone is refused", func(t *testing.T) {
 		err := s.Users.LinkIdentity(ctx, &auth.Identity{UserID: "u2", Provider: auth.ProviderGoogle, ProviderUserID: "sub-1", Login: "x"})
 		require.ErrorIs(t, err, apperrs.ErrConflict)

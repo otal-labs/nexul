@@ -359,6 +359,38 @@ func (q *Queries) ListIdentitiesByUser(ctx context.Context, userID string) ([]Us
 	return items, nil
 }
 
+const listIdentityProviders = `-- name: ListIdentityProviders :many
+SELECT user_id, provider FROM user_identities ORDER BY user_id, created_at, provider
+`
+
+type ListIdentityProvidersRow struct {
+	UserID   string
+	Provider string
+}
+
+func (q *Queries) ListIdentityProviders(ctx context.Context) ([]ListIdentityProvidersRow, error) {
+	rows, err := q.db.QueryContext(ctx, listIdentityProviders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListIdentityProvidersRow
+	for rows.Next() {
+		var i ListIdentityProvidersRow
+		if err := rows.Scan(&i.UserID, &i.Provider); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsers = `-- name: ListUsers :many
 SELECT id, login, name, avatar_url, first_login_done, display_name, avatar_override_url, account_status, created_at, updated_at FROM users ORDER BY login
 `
