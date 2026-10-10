@@ -2,39 +2,40 @@
 
 **Status:** ready-for-agent
 
-**Blocked by:** 15
-
-Build after any permissions rework the owner starts (grants are new access rules).
+**Blocked by:** permission-overrides 12, 15
 
 Read first: `practices/go.md` (section 17), `practices/architecture.md` (sections 2, 3, 6),
-`practices/react-guide.md`, `practices/mcp.md`, ADRs 0097, 0102, 0140, the spec (Later: sharing a computer,
-Access and privacy).
+`practices/react-guide.md`, `practices/mcp.md`, ADRs 0097, 0102, 0140, 0146, 0148, the spec (Later: sharing a
+computer, Access and privacy), `.scratch/permission-overrides/spec.md` (Computers) and its ticket 12.
+
+Sharing is built on computer rules (permission-overrides ticket 12): the storage, who may write a rule, the
+checks, the immediate revoke and the privacy tests live there. This ticket is the runner-side half for "Run
+commands". There is no `computer_grants` table.
 
 ## What to build
 
-- `computer_grants` as the spec defines it, with "Run agents" stored but not yet honoured (ticket 19).
-- The owner grants and revokes per person from the computer row, with the warning the spec requires in
-  the dialog. Grantees see "<owner>'s <computer> (shared)" with name and online state only, and may start
-  shell jobs on it under the computer's two switches.
-- The check order from the spec, in one query per check. A consumer of membership and account events
-  deletes grants that no longer share a workspace or whose either account is disabled or removed.
+- Shell jobs honour the computer rule's Run commands permission: the caller's start, list and read go through
+  ticket 12's computer check, and still need both of the computer's switches on. A grantee sees
+  "<owner>'s <computer> (shared)" with name and online state only (ticket 12), and may start shell jobs on it.
+- The owner's sharing dialog on the computer row, writing the computer rule through
+  `permission_overwrite_update` (named people only), with the warning the spec requires: the grantee's commands
+  run as the owner's own OS user on the owner's computer. If permission-overrides 03 has merged, reuse its row
+  component with two states; otherwise the dialog builds its own rows.
 - The grant follows the grantee's identity: their own web session, their plays and `@Agent` turns, and
   `command_run` with their own token. Nothing else gets in through it.
-- Revoking refuses the next start, drops the grantee's queued jobs on that computer as "access revoked",
-  and cancels their running ones, killing the process and recording "cancelled: access revoked".
-- The owner's run log of what grantees ran (who, when, what, how long, how it ended, shell output); no
-  agent transcript. A grantee sees only their own jobs.
-- `computer.grant_changed` (outbox, members-only) reaching the owner and the grantee.
-- MCP: grants are read on `computer_list` and changed through an existing computer tool's patch fields if
-  one fits; a new tool needs the reason `practices/mcp.md` section 4 asks for.
+- Revoking, through the rule change, drops the grantee's queued jobs on that computer as "access revoked" and
+  cancels their running ones, killing the process and recording "cancelled: access revoked".
+- The owner's run log of what grantees ran (who, when, what, how long, how it ended, shell output); no agent
+  transcript. A grantee sees only their own jobs.
+- MCP: sharing is `permission_overwrite_update` on the computer (ticket 12); `computer_list` shows the rules
+  to the owner. No new tool.
 
 ## Acceptance criteria
 
-- [ ] `TestGrants_OnlyTheOwnerGrants`, `TestGrants_NobodyGrantsThemselves`,
-      `TestGrants_AdminCannotGrantOnAnotherPersonsComputer`, `TestGrants_EndWhenNoWorkspaceIsShared`,
-      `TestGrants_EndWhenEitherAccountIsDisabled`.
-- [ ] `TestGrants_GranteeCannotReshareOrRaiseALevel`.
-- [ ] `TestGrants_FollowTheGranteesIdentity`: the grantee's own token starts a job; a third person's token,
-      and the owner's workspace Owner, get 404.
-- [ ] `TestGrants_RevokeDropsQueuedAndCancelsRunningJobs`, with no restart or cache wait.
+- [ ] `TestShellJobs_GranteeNeedsRunCommands`: a rule with See only is refused, a rule with Run commands starts a
+      job under both switches, and either switch off refuses it.
+- [ ] `TestShellJobs_FollowTheGranteesIdentity`: the grantee's own token starts a job; a third person's token,
+      and the owner's workspace Owner without a rule naming them, get 404.
+- [ ] `TestShellJobs_RevokeDropsQueuedAndCancelsRunningJobs`, with no restart or cache wait.
 - [ ] `TestGrantee_SeesNoFactsOrOtherPeoplesJobs`, and the owner's run log carries no transcript.
+- [ ] The dialog shows the OS-user warning, and only the computer's owner sees it.
