@@ -87,6 +87,8 @@ enrolled connection; the pasted command only installs.
 
 - Every computer needs the runner running. A sleeping laptop is offline, as it was with `cloudflared`, and a run
   aimed at an offline computer fails saying so rather than moving to another of the person's computers.
+- T3 Code's macOS service is a LaunchAgent, which launchd runs only while its person is logged in at the screen. A
+  Mac's runner is connected from boot, but its T3 Code, and so its runs, wait for that login.
 - `internal/install` gains an install on three OSes that puts a system service under the person's own user: a
   systemd unit, a LaunchDaemon, and on Windows a service or, if a service under a named account is not workable,
   a per-user logon task. A revoked runner removes itself through a small root-owned helper that only undoes the

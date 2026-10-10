@@ -348,8 +348,7 @@ The person runs one line, `curl -fsSL <site>/computer.sh | sudo sh -s -- <token>
 ticket 09); nobody types `nexul`. `<site>` is `https://nexul.io` unless the instance sets another. The token is an
 HS256 JWT the instance signs with a key derived from its existing auth secret (no new secret, no new env var). Its
 claims carry the instance's address, the single-use enrollment code, the computer's id and `exp`, the code's
-one-hour expiry. `computer.sh` checks the OS (Linux now; macOS and Windows say "coming soon" until tickets 08 and
-09), decodes the token's middle segment in POSIX sh (base64url to base64, re-pad, `base64 -d`, a `sed` for
+one-hour expiry. `computer.sh` checks the OS (Linux and macOS; Windows says "coming soon" until ticket 09), decodes the token's middle segment in POSIX sh (base64url to base64, re-pad, `base64 -d`, a `sed` for
 `server`; no `jq`) only to say where it connects, and hands over to `install.sh`, which downloads and checksums
 the `nexul` command into the user's own `~/.local/bin` and runs `nexul install computer --token <token>`. That
 engine sends the whole token to the instance it names, which checks the signature, the expiry and that the code is
@@ -378,7 +377,7 @@ never runs as root.
 | OS | Where | Service | Notes |
 |---|---|---|---|
 | Linux | `~/.local/bin/nexul`, data under `~/.local/share/nexul`, both the user's | systemd **system** service `/etc/systemd/system/nexul-computer.service` with `User=<that user>`, `Restart=always`, enabled and started | Starts at boot and survives logout. No lingering and no user manager are involved for the runner. |
-| macOS | `~/Library/Application Support/nexul` (today's macOS root) | LaunchDaemon with `UserName` set to that user, `KeepAlive` | Ticket 08. The existing macOS path, as a daemon, skipping Docker. |
+| macOS | `~/.local/bin/nexul`, the runner under `~/Library/Application Support/nexul`, its log in `~/Library/Logs/nexul`, all the user's | LaunchDaemon `/Library/LaunchDaemons/io.nexul.nexul-computer.plist` with `UserName` set to that user and `KeepAlive` (`SuccessfulExit` false, as Linux's `RestartPreventExitStatus=0`) | Starts at boot and survives logout. T3 Code's own macOS service is a LaunchAgent, which runs only while the person is logged in at the screen, so until then the computer is connected but T3 Code is not running. |
 | Windows | `%LOCALAPPDATA%\Nexul` | A service under that user's account, or the closest equivalent | Ticket 09. A service under a named account needs that person's password or the log-on-as-service right; the fallback is the per-user Scheduled Task at log on with restart on failure. T3 Code on Windows is the desktop app, which runs only while the person is logged in anyway. Ticket 09 decides. |
 
 Today's code is ahead of this table: ticket 02 shipped a systemd **user** unit with lingering, which refuses root.
@@ -397,7 +396,9 @@ root-owned copy of `nexul` (`/usr/local/libexec/nexul-computer-uninstall`), a fo
 (`/var/lib/nexul-computer`), and a systemd path unit, `nexul-computer-cleanup.path`, that starts the oneshot
 `nexul-computer-cleanup.service` once `remove-requested` exists there. The service runs the copy's one fixed removal
 for the person named in its unit: it reads neither the request's contents nor anything in the person's home, removes
-the person's files as the person, and is idempotent. `nexul uninstall computer --detach`, which a removed runner
+the person's files as the person, and is idempotent. On macOS the folder is `/Library/Application Support/nexul-computer`
+and the trigger a root LaunchDaemon, `io.nexul.nexul-computer-cleanup`, with `WatchPaths` on it; the watch fires on
+any change, so the removal first checks that `remove-requested` is there, and the daemon unloads itself last. `nexul uninstall computer --detach`, which a removed runner
 already runs, and `nexul uninstall computer` run as the person only write that request; under `sudo` the command
 removes everything at once.
 
