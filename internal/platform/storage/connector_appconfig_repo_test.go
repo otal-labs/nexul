@@ -121,7 +121,7 @@ func TestConnectorAppConfigRepo_SetGet_MultipleConnectorsIndependent(t *testing.
 	assert.True(t, github.Configured())
 }
 
-func TestConnectorAppConfig_PrivateKeyIsEncryptedAtRestAndLeftAloneByAnEdit(t *testing.T) {
+func TestConnectorAppConfig_PrivateKeyIsEncryptedAtRestKeptByAnEditAndDroppedForAnotherApp(t *testing.T) {
 	s := openConnectorAppConfigStore(t)
 	ctx := t.Context()
 	require.NoError(t, s.ConnectorAppConfig.SetAppConfig(ctx, connectors.AppConfig{ConnectorID: "github", ClientID: "Iv1.acme", ClientSecret: "s3cret"}))
@@ -135,5 +135,9 @@ func TestConnectorAppConfig_PrivateKeyIsEncryptedAtRestAndLeftAloneByAnEdit(t *t
 	cfg, err := s.ConnectorAppConfig.GetAppConfig(ctx, "github")
 	require.NoError(t, err)
 	assert.Equal(t, "-----BEGIN RSA PRIVATE KEY-----", cfg.PrivateKey, "rotating the secret keeps the key")
+	require.NoError(t, s.ConnectorAppConfig.SetAppConfig(ctx, connectors.AppConfig{ConnectorID: "github", ClientID: "Iv1.globex", ClientSecret: "rotated"}))
+	cfg, err = s.ConnectorAppConfig.GetAppConfig(ctx, "github")
+	require.NoError(t, err)
+	assert.Empty(t, cfg.PrivateKey, "another client ID is another App, so the old App's key goes")
 	assert.ErrorIs(t, s.ConnectorAppConfig.SetPrivateKey(ctx, "cloudflare", "k"), apperrs.ErrNotFound, "no registered app, no key")
 }
