@@ -8,22 +8,33 @@ import type { Conversation } from "@nexul/client-core/chat";
 import { api, errorMessage } from "@/api/client";
 import { conversationPlayTarget } from "@/models/Chat";
 import type { PlayType } from "@/models/Play";
+import type { PlayQueue } from "@/models/PlayQueue";
 import type { QuestionAnswers } from "@/models/Question";
 import { DECISIONS_CHECK_PLAY_ID, isTrailActive, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunFrame, type RunPlace, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
 import { targetKey, usePlayRunStore, type PlayRunStore } from "@/stores/playRunStore";
 import { threadTrailBlocks, type ThreadTrailBlocks } from "@/utils/ThreadTrailUtility";
-import type { LiveFollower } from "@/lib/live";
+import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getTrailsKey = "getTrails";
 export const getTrailKey = "getTrail";
 export const getActiveTrailsKey = "getActiveTrails";
 export const getLatestChoicesKey = "getLatestChoices";
+export const getPlayQueueKey = "getPlayQueue";
 
 export const useFetchTrails = (targetType: PlayType, targetId: string) =>
   useQuery({
     queryKey: [getTrailsKey, targetType, targetId],
     queryFn: async () =>
       (await api.get<Trail[]>("/api/plays/runs", { params: { target_type: targetType, target_id: targetId } })).data,
+    enabled: targetId !== "",
+  });
+
+// A ticket's or doc's auto runs and whether they are paused; the queue frames keep it live.
+export const useFetchPlayQueue = (targetType: PlayType, targetId: string) =>
+  useQuery({
+    queryKey: [getPlayQueueKey, targetType, targetId],
+    queryFn: async () =>
+      (await api.get<PlayQueue>("/api/plays/queue", { params: { target_type: targetType, target_id: targetId } })).data,
     enabled: targetId !== "",
   });
 
@@ -248,7 +259,16 @@ export const useTicketRunCounts = (projectId: string | undefined, ticketIds: str
 export const useDocRunState = (projectId: string, docId: string): TrailState | undefined =>
   useRunState("doc", docId, useFetchActiveDocTrails(projectId).data);
 
+// Where a queue frame's item or resume sits; every queue frame names its target.
+interface QueueFrame {
+  target_type: PlayType;
+  target_id: string;
+}
+
 export const trailFollower: LiveFollower = {
+  ...followEach(["play.queued", "play.queue_updated", "play.queue_resumed"], ({ target_type, target_id }: QueueFrame, { client }) =>
+    client.invalidateQueries({ queryKey: [getPlayQueueKey, target_type, target_id], exact: true }),
+  ),
   // Activity lines only move the store; a state change refetches the run, its target's runs, and its project's active set.
   "play.run": (run: RunFrame & RunPlace, { client }) => {
     const previous = usePlayRunStore.getState().frames[run.trail_id]?.state;

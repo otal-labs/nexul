@@ -532,7 +532,7 @@ func (s *Service) SetPerson(ctx context.Context, id string, role Role, login str
 	}
 	*field = login
 	updated.UpdatedAt = s.now().UTC()
-	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: personTopic(role), Payload: PersonChangedEvent{Ticket: updated, From: previous, To: login}}}
+	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: personTopic(role), Payload: PersonChangedEvent{Ticket: updated, From: previous, To: login, Actor: statusActor(ctx)}}}
 	if role == RoleDeveloper {
 		evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicAssigneeChanged, Payload: AssigneeChangedEvent{Ticket: updated, From: previous, To: login}})
 	}

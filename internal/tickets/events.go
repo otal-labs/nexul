@@ -74,6 +74,7 @@ type PersonChangedEvent struct {
 	Ticket Ticket `json:"ticket"`
 	From   string `json:"from"`
 	To     string `json:"to"`
+	Actor  Actor  `json:"actor,omitzero" jsonschema:"Who changed the person: a member, or an automation."`
 }
 
 // AssigneeChangedEvent is ticket.assignee_changed's unchanged payload, published beside ticket.developer_changed.

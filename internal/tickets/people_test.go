@@ -49,7 +49,7 @@ func TestSetPerson(t *testing.T) {
 				created, err := s.Create(t.Context(), "p-1", "ticket", "", "", "")
 				require.NoError(t, err)
 
-				got, err := s.SetPerson(t.Context(), created.ID, role, " onik97 ")
+				got, err := s.SetPerson(identity.WithActor(t.Context(), identity.Actor{ID: "u-9"}), created.ID, role, " onik97 ")
 				require.NoError(t, err)
 				assert.Equal(t, "onik97", personOf(got, role))
 				evts := repo.eventsFor(personTopic(role))
@@ -58,6 +58,7 @@ func TestSetPerson(t *testing.T) {
 				require.True(t, ok)
 				assert.Equal(t, "", e.From)
 				assert.Equal(t, "onik97", e.To)
+				assert.Equal(t, Actor{Kind: ActorKindUser, UserID: "u-9"}, e.Actor, "an auto play running on whoever set the person reads it")
 
 				got, err = s.SetPerson(t.Context(), created.ID, role, "")
 				require.NoError(t, err)

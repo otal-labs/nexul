@@ -39,25 +39,32 @@ func (r *Runner) Run(ctx context.Context, in RunInput) (*Trail, error) {
 	if err != nil {
 		return nil, err
 	}
-	return r.launch(ctx, play, trail, tgt, HarnessChoice{ComputerID: in.ComputerID, Provider: in.Provider, Model: in.Model, ModelOptions: options}, false)
+	return r.launch(ctx, play, trail, tgt, HarnessChoice{ComputerID: in.ComputerID, Provider: in.Provider, Model: in.Model, ModelOptions: options}, launchPress)
 }
 
-// launch resolves the harness and starts the turn; a harness refusal is always kept as a failed trail, recordRefusals keeps the rest too.
-func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt target, pick HarnessChoice, recordRefusals bool) (*Trail, error) {
+// launchMode says which refusals launch keeps as a failed trail on the target.
+type launchMode int
+
+const (
+	// launchPress keeps a harness refusal only, so the pressing person sees the fix on the trail.
+	launchPress launchMode = iota
+	// launchRecorded keeps every refusal, as nobody watches the run start.
+	launchRecorded
+	// launchQueued keeps every refusal but an offline computer and a busy target, which wait in the queue instead.
+	launchQueued
+)
+
+// launch resolves the harness and starts the turn, keeping refusals as failed trails as mode says.
+func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt target, pick HarnessChoice, mode launchMode) (*Trail, error) {
 	targetTitle := tgt.title
 	refuse := func(err error) (*Trail, error) {
-		if recordRefusals {
+		if mode.keeps(err) {
 			r.createFailed(ctx, trail, targetTitle, err.Error())
 		}
 		return nil, err
 	}
-	choice, err := r.harness.ResolveTarget(ctx, trail.StarterID, trail.ProjectID, pick)
+	choice, err := r.resolveHarness(ctx, trail, targetTitle, pick, mode)
 	if err != nil {
-		var refusal *HarnessRefusal
-		if errors.As(err, &refusal) {
-			trail.FailureReason, trail.ComputerID, trail.Provider = refusal.Reason, refusal.ComputerID, refusal.Provider
-		}
-		r.createFailed(ctx, trail, targetTitle, err.Error())
 		return nil, err
 	}
 	trail.ComputerID, trail.Provider, trail.Model, trail.ModelOptions = choice.ComputerID, choice.Provider, choice.Model, choice.ModelOptions
@@ -104,6 +111,31 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 		Target: &agent.TargetOverride{ComputerID: choice.ComputerID, Provider: choice.Provider, Model: choice.Model, ModelOptions: choice.ModelOptions},
 	}, false)
 	return &snapshot, nil
+}
+
+// keeps reports whether a refusal other than the harness's is kept as a failed trail.
+func (m launchMode) keeps(err error) bool {
+	if m == launchQueued {
+		return !errors.Is(err, apperrs.ErrConflict)
+	}
+	return m == launchRecorded
+}
+
+// resolveHarness asks the starter's computer to take the turn; its refusal is kept as a failed trail, so the person sees
+// the fix, unless a queued run waits on an offline computer instead.
+func (r *Runner) resolveHarness(ctx context.Context, trail *Trail, targetTitle string, pick HarnessChoice, mode launchMode) (HarnessChoice, error) {
+	choice, err := r.harness.ResolveTarget(ctx, trail.StarterID, trail.ProjectID, pick)
+	if err == nil {
+		return choice, nil
+	}
+	var refusal *HarnessRefusal
+	if errors.As(err, &refusal) {
+		trail.FailureReason, trail.ComputerID, trail.Provider = refusal.Reason, refusal.ComputerID, refusal.Provider
+	}
+	if mode != launchQueued || trail.FailureReason != RefusalOffline {
+		r.createFailed(ctx, trail, targetTitle, err.Error())
+	}
+	return HarnessChoice{}, err
 }
 
 // clearSuggestions drops the project's suggested changes as a drafting run starts, so only those it drafts again come back;
@@ -453,13 +485,18 @@ func (r *Runner) checkPlayAndTarget(ctx context.Context, starter string, in RunI
 	if err != nil {
 		return nil, target{}, err
 	}
-	if err := r.checkPlay(ctx, starter, play, tgt.projectID, tgt.stage); err != nil {
+	if err := r.checkPlay(ctx, starter, play, tgt.projectID); err != nil {
 		return nil, target{}, err
+	}
+	if play.Type == TypeTicket && (play.ShowWhenStage == nil || *play.ShowWhenStage != tgt.stage) {
+		return nil, target{}, fmt.Errorf("%w: play %q runs on tickets in the %s stage; this ticket is in %s", apperrs.ErrInvalid, play.Label, stageName(play.ShowWhenStage), tgt.stage)
 	}
 	return play, tgt, nil
 }
 
-func (r *Runner) checkPlay(ctx context.Context, starter string, play *Play, projectID string, stage Stage) error {
+// checkPlay checks the play may run for starter in projectID; a press checks the play's show-when stage beside it,
+// an auto run does not (ADR 0132).
+func (r *Runner) checkPlay(ctx context.Context, starter string, play *Play, projectID string) error {
 	workspaceID, err := r.projects.WorkspaceForProject(ctx, projectID)
 	if err != nil {
 		return fmt.Errorf("resolve workspace for project %s: %w", projectID, err)
@@ -478,9 +515,6 @@ func (r *Runner) checkPlay(ctx context.Context, starter string, play *Play, proj
 	}
 	if !r.perm.HasPermission(ctx, starter, workspaceID, permissions.PlaysRun, resourceTypePlay, play.ID) {
 		return fmt.Errorf("%w: %s required on play %q", apperrs.ErrForbidden, permissions.PlaysRun, play.Label)
-	}
-	if play.Type == TypeTicket && (play.ShowWhenStage == nil || *play.ShowWhenStage != stage) {
-		return fmt.Errorf("%w: play %q runs on tickets in the %s stage; this ticket is in %s", apperrs.ErrInvalid, play.Label, stageName(play.ShowWhenStage), stage)
 	}
 	return nil
 }

@@ -4600,6 +4600,308 @@
       "workspace_id"
     ]
   },
+  "play.queue_resumed": {
+    "type": "object",
+    "properties": {
+      "workspace_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "target_type": {
+        "type": "string",
+        "enum": [
+          "ticket",
+          "doc"
+        ]
+      },
+      "target_id": {
+        "type": "string"
+      },
+      "resumed_by": {
+        "type": "string"
+      },
+      "resumed_at": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "Someone resumed auto plays on a ticket or doc the daily cap had paused; its count of automatic runs starts again.",
+    "required": [
+      "workspace_id",
+      "project_id",
+      "target_type",
+      "target_id",
+      "resumed_by",
+      "resumed_at"
+    ]
+  },
+  "play.queue_updated": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "target_type": {
+        "type": "string",
+        "enum": [
+          "ticket",
+          "doc"
+        ]
+      },
+      "target_id": {
+        "type": "string"
+      },
+      "play_id": {
+        "type": "string"
+      },
+      "play_label": {
+        "type": "string"
+      },
+      "auto_play_id": {
+        "type": "string",
+        "description": "The auto play whose moment matched."
+      },
+      "person_id": {
+        "type": "string",
+        "description": "Whose computer the run lands on; empty when there was nobody to run it on."
+      },
+      "run_on": {
+        "type": "string",
+        "enum": [
+          "developer",
+          "tester",
+          "causer"
+        ]
+      },
+      "moment": {
+        "type": "string",
+        "enum": [
+          "ticket.unblocked",
+          "ticket.entered_stage",
+          "ticket.created",
+          "ticket.developer_set",
+          "ticket.tester_set",
+          "ticket.test_failed",
+          "doc.created",
+          "doc.changed"
+        ]
+      },
+      "priority": {
+        "type": "string",
+        "enum": [
+          "high",
+          "normal",
+          "low"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "dispatching",
+          "started",
+          "skipped",
+          "didnt_run",
+          "cancelled"
+        ]
+      },
+      "reason": {
+        "type": "string",
+        "description": "While queued: offline, ticket busy, paused, or empty while it waits for a free slot. Once skipped or didn't run: why."
+      },
+      "trail_id": {
+        "type": "string",
+        "description": "The run's trail once started, or the failed trail of a run that didn't run."
+      },
+      "via": {
+        "type": "string",
+        "enum": [
+          "web",
+          "mcp"
+        ]
+      },
+      "queued_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "decided_at": {
+        "type": [
+          "null",
+          "string"
+        ],
+        "format": "date-time"
+      },
+      "not_before": {
+        "type": "string",
+        "description": "The item is not tried before this; an offline computer is tried again a minute later.",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A queued auto run changed: it waits for another reason, started, was skipped because it no longer matched, did not run, or was cancelled.",
+    "required": [
+      "id",
+      "workspace_id",
+      "project_id",
+      "target_type",
+      "target_id",
+      "play_id",
+      "play_label",
+      "auto_play_id",
+      "person_id",
+      "run_on",
+      "moment",
+      "priority",
+      "status",
+      "reason",
+      "trail_id",
+      "via",
+      "queued_at",
+      "decided_at",
+      "not_before"
+    ]
+  },
+  "play.queued": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "target_type": {
+        "type": "string",
+        "enum": [
+          "ticket",
+          "doc"
+        ]
+      },
+      "target_id": {
+        "type": "string"
+      },
+      "play_id": {
+        "type": "string"
+      },
+      "play_label": {
+        "type": "string"
+      },
+      "auto_play_id": {
+        "type": "string",
+        "description": "The auto play whose moment matched."
+      },
+      "person_id": {
+        "type": "string",
+        "description": "Whose computer the run lands on; empty when there was nobody to run it on."
+      },
+      "run_on": {
+        "type": "string",
+        "enum": [
+          "developer",
+          "tester",
+          "causer"
+        ]
+      },
+      "moment": {
+        "type": "string",
+        "enum": [
+          "ticket.unblocked",
+          "ticket.entered_stage",
+          "ticket.created",
+          "ticket.developer_set",
+          "ticket.tester_set",
+          "ticket.test_failed",
+          "doc.created",
+          "doc.changed"
+        ]
+      },
+      "priority": {
+        "type": "string",
+        "enum": [
+          "high",
+          "normal",
+          "low"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "dispatching",
+          "started",
+          "skipped",
+          "didnt_run",
+          "cancelled"
+        ]
+      },
+      "reason": {
+        "type": "string",
+        "description": "While queued: offline, ticket busy, paused, or empty while it waits for a free slot. Once skipped or didn't run: why."
+      },
+      "trail_id": {
+        "type": "string",
+        "description": "The run's trail once started, or the failed trail of a run that didn't run."
+      },
+      "via": {
+        "type": "string",
+        "enum": [
+          "web",
+          "mcp"
+        ]
+      },
+      "queued_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "decided_at": {
+        "type": [
+          "null",
+          "string"
+        ],
+        "format": "date-time"
+      },
+      "not_before": {
+        "type": "string",
+        "description": "The item is not tried before this; an offline computer is tried again a minute later.",
+        "format": "date-time"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "An auto play's moment matched a ticket or doc: the run waits in its person's queue, or did not run when there was nobody to run it on or they may not run the play.",
+    "required": [
+      "id",
+      "workspace_id",
+      "project_id",
+      "target_type",
+      "target_id",
+      "play_id",
+      "play_label",
+      "auto_play_id",
+      "person_id",
+      "run_on",
+      "moment",
+      "priority",
+      "status",
+      "reason",
+      "trail_id",
+      "via",
+      "queued_at",
+      "decided_at",
+      "not_before"
+    ]
+  },
   "play.run_finished": {
     "type": "object",
     "properties": {
@@ -6054,6 +6356,40 @@
       },
       "to": {
         "type": "string"
+      },
+      "actor": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "user:mcp",
+              "automation",
+              "play",
+              "play:mcp"
+            ]
+          },
+          "automation_id": {
+            "type": "string"
+          },
+          "automation_name": {
+            "type": "string"
+          },
+          "play_label": {
+            "type": "string"
+          },
+          "trail_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "description": "Who changed the person: a member, or an automation.",
+        "required": [
+          "kind"
+        ]
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -6783,6 +7119,40 @@
       },
       "to": {
         "type": "string"
+      },
+      "actor": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "user:mcp",
+              "automation",
+              "play",
+              "play:mcp"
+            ]
+          },
+          "automation_id": {
+            "type": "string"
+          },
+          "automation_name": {
+            "type": "string"
+          },
+          "play_label": {
+            "type": "string"
+          },
+          "trail_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "description": "Who changed the person: a member, or an automation.",
+        "required": [
+          "kind"
+        ]
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",

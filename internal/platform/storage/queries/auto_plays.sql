@@ -20,3 +20,6 @@ SELECT auto_play_daily_cap FROM workspaces WHERE id = ?;
 
 -- name: SetAutoPlayDailyCap :execrows
 UPDATE workspaces SET auto_play_daily_cap = ? WHERE id = ?;
+
+-- name: ListEnabledAutoPlaysByMoment :many
+SELECT * FROM auto_plays WHERE workspace_id = ? AND moment = ? AND enabled = 1 ORDER BY created_at, id;

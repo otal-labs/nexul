@@ -3,15 +3,19 @@ package main
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/eventcatalog"
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/memories"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	storagetest "github.com/otal-labs/nexul/internal/platform/storage/testutil"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -99,4 +103,44 @@ func TestProjectTargets_ListsWhatTheCallerReads(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 	_, err = p.TargetIDs(as(uReader), plays.TargetInterview, "project-general")
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
+}
+
+// TestPlaysMomentTopics_ArePublished keeps the auto play matcher subscribed to topics that exist; plays names them
+// as strings, since it never imports tickets or docs.
+func TestPlaysMomentTopics_ArePublished(t *testing.T) {
+	assert.Subset(t, eventcatalog.AllTopics(), plays.MomentTopics)
+}
+
+// TestIntegration_PlaysFacts_ReadsWhatConditionsCompare names a ticket's type, stage, people by user id, and its links.
+func TestIntegration_PlaysFacts_ReadsWhatConditionsCompare(t *testing.T) {
+	ctx := context.Background()
+	s := storage.New(mentionsTestDB(t), []byte("0123456789abcdef0123456789abcdef"))
+	seedMentionsUser(t, s, "alice")
+	now := time.Now().UTC()
+	blocker := &tickets.Ticket{ID: "t-blocker", ProjectID: "project-general", Number: 1, Title: "first", Status: "open", TypeID: "ticket-type-task", CreatedAt: now, UpdatedAt: now}
+	bug := &tickets.Ticket{
+		ID: "t-bug", ProjectID: "project-general", Number: 2, Title: "breaks", Status: "in_progress", TypeID: "ticket-type-bug",
+		Developer: "alice", Tester: "gone-login", DocID: "d-1", CreatedAt: now, UpdatedAt: now,
+	}
+	require.NoError(t, s.Docs.Create(ctx, &docs.Doc{ID: "d-1", Title: "Spec", ProjectID: "project-general", FolderID: storagetest.GeneralMainFolderID, Version: 1, CreatedAt: now, UpdatedAt: now}))
+	require.NoError(t, s.Tickets.Create(ctx, blocker))
+	require.NoError(t, s.Tickets.Create(ctx, bug))
+	require.NoError(t, s.Tickets.AddLabel(ctx, "t-bug", "urgent"))
+	require.NoError(t, s.Tickets.LinkPR(ctx, "t-bug", tickets.PRRef{Owner: "acme", Repo: "app", Number: 7}, tickets.PRStateOpen))
+	require.NoError(t, s.Tickets.PutLink(ctx, tickets.TicketLink{TicketID: "t-bug", Kind: tickets.LinkBlockedBy, TargetID: "t-blocker", CreatedAt: now}))
+
+	got, err := playsFacts{store: s}.Facts(ctx, plays.TargetTicket, "t-bug")
+	require.NoError(t, err)
+	assert.Equal(t, plays.Facts{
+		ProjectID: "project-general", Type: "bug", Stage: plays.StageProgress, Status: "in_progress", Labels: []string{"urgent"},
+		Developer: "alice", SourceDoc: true, LinkedPR: true, Blocked: true,
+	}, got, "a tester login no account holds is nobody")
+
+	_, err = playsFacts{store: s}.Facts(ctx, plays.TargetTicket, "missing")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	_, err = playsFacts{store: s}.Facts(ctx, plays.TargetDoc, "missing")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	doc, err := playsFacts{store: s}.Facts(ctx, plays.TargetDoc, "d-1")
+	require.NoError(t, err)
+	assert.Equal(t, plays.Facts{ProjectID: "project-general", FolderID: storagetest.GeneralMainFolderID}, doc)
 }

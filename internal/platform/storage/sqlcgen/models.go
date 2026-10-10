@@ -809,6 +809,35 @@ type Play struct {
 	BuiltinKey         string
 }
 
+type PlayQueue struct {
+	ID          string
+	WorkspaceID string
+	ProjectID   string
+	TargetType  string
+	TargetID    string
+	PlayID      string
+	PlayLabel   string
+	AutoPlayID  string
+	PersonID    string
+	RunOn       string
+	Moment      string
+	Via         string
+	Priority    int64
+	Status      string
+	Reason      string
+	TrailID     string
+	QueuedAt    int64
+	DecidedAt   sql.NullInt64
+	NotBefore   int64
+}
+
+type PlayQueueResume struct {
+	TargetType string
+	TargetID   string
+	ResumedBy  string
+	ResumedAt  int64
+}
+
 type PlayTrail struct {
 	ID                 string
 	WorkspaceID        string

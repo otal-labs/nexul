@@ -328,6 +328,9 @@ var livePushTopics = []string{
 	plays.TopicAutoPlayUpdated,
 	plays.TopicAutoPlayDeleted,
 	plays.TopicAutoPlayLimitsUpdated,
+	plays.TopicQueued,
+	plays.TopicQueueUpdated,
+	plays.TopicQueueResumed,
 }
 
 func fail(err error) {

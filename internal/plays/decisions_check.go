@@ -117,7 +117,11 @@ func (r *Runner) startDecisionsCheck(ctx context.Context, ticketID, starter stri
 		}
 		return nil, err
 	}
-	return r.launch(ctx, play, trail, tgt, HarnessChoice{}, record)
+	mode := launchPress
+	if record {
+		mode = launchRecorded
+	}
+	return r.launch(ctx, play, trail, tgt, HarnessChoice{}, mode)
 }
 
 func (r *Runner) checkDecisionsStarter(ctx context.Context, starter, workspaceID string) error {

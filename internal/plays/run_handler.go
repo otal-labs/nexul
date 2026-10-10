@@ -50,7 +50,49 @@ func (h *RunHandler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/plays/runs/{trailID}/continue", h.continueRun)
 	mux.HandleFunc("GET /api/plays/latest-choices", h.latestChoices)
 	mux.HandleFunc("POST /api/plays/decisions-check", h.retryDecisionsCheck)
+	mux.HandleFunc("GET /api/plays/queue", h.queue)
+	mux.HandleFunc("POST /api/plays/queue/resume", h.resumeQueue)
+	mux.HandleFunc("POST /api/plays/queue/{itemID}/cancel", h.cancelQueued)
 	return mux
+}
+
+// queue answers a ticket's or doc's auto runs: queued, started, skipped, didn't run, cancelled, and whether it is paused.
+func (h *RunHandler) queue(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	queue, err := h.runner.GetQueue(r.Context(), TargetType(q.Get("target_type")), q.Get("target_id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, queue)
+}
+
+type targetRequest struct {
+	TargetType TargetType `json:"target_type"`
+	TargetID   string     `json:"target_id"`
+}
+
+func (h *RunHandler) resumeQueue(w http.ResponseWriter, r *http.Request) {
+	var req targetRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	queue, err := h.runner.ResumeAutoPlays(r.Context(), req.TargetType, req.TargetID)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, queue)
+}
+
+func (h *RunHandler) cancelQueued(w http.ResponseWriter, r *http.Request) {
+	item, err := h.runner.CancelQueued(r.Context(), r.PathValue("itemID"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, item)
 }
 
 type decisionsCheckRequest struct {

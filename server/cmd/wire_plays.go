@@ -11,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -258,4 +259,73 @@ func (a playsLinkReader) TicketLinks(ctx context.Context, id string) (plays.Tick
 
 func playsLinkedTicket(t tickets.LinkedTicket) plays.LinkedTicket {
 	return plays.LinkedTicket{Key: ticketKey(t.Prefix, t.Number, t.ID), Title: t.Title, Done: t.Done}
+}
+
+// playsFacts reads a ticket's or doc's fields for auto play conditions straight from storage: matching runs in the
+// background as nobody, and the queue checks the person a run lands on itself.
+type playsFacts struct {
+	store *storage.Store
+}
+
+func (a playsFacts) Facts(ctx context.Context, targetType plays.TargetType, id string) (plays.Facts, error) {
+	if targetType == plays.TargetDoc {
+		d, err := a.store.Docs.GetByID(ctx, id)
+		if err != nil {
+			return plays.Facts{}, err
+		}
+		return plays.Facts{ProjectID: d.ProjectID, FolderID: d.FolderID, Archived: d.Archived}, nil
+	}
+	t, err := a.store.Tickets.GetByID(ctx, id)
+	if err != nil {
+		return plays.Facts{}, err
+	}
+	f := plays.Facts{ProjectID: t.ProjectID, Status: string(t.Status), Labels: t.Labels, SourceDoc: t.DocID != ""}
+	if f.Type, err = optional(a.store.TicketTypes.TypeName(ctx, t.TypeID)); err != nil {
+		return plays.Facts{}, err
+	}
+	if st, err := a.store.Statuses.Get(ctx, string(t.Status)); err == nil {
+		f.Stage = plays.Stage(st.Kind)
+	}
+	if c, err := a.store.Categories.Get(ctx, t.CategoryID); t.CategoryID != "" && err == nil {
+		f.Category = c.Name
+	}
+	if f.Developer, err = a.userID(ctx, t.Developer); err != nil {
+		return plays.Facts{}, err
+	}
+	if f.Tester, err = a.userID(ctx, t.Tester); err != nil {
+		return plays.Facts{}, err
+	}
+	prs, err := a.store.Tickets.ListPRLinks(ctx, id)
+	if err != nil {
+		return plays.Facts{}, err
+	}
+	blockers, err := a.store.Tickets.UnclearedBlockersOf(ctx, []string{id})
+	if err != nil {
+		return plays.Facts{}, err
+	}
+	f.LinkedPR, f.Blocked = len(prs) > 0, len(blockers[id]) > 0
+	return f, nil
+}
+
+// userID resolves a member login to its user id; a login no account holds any more is nobody.
+func (a playsFacts) userID(ctx context.Context, login string) (string, error) {
+	if login == "" {
+		return "", nil
+	}
+	u, err := a.store.Users.GetUserByLogin(ctx, login)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return u.ID, nil
+}
+
+// optional reads a lookup whose row may be gone as empty.
+func optional(v string, err error) (string, error) {
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return "", nil
+	}
+	return v, err
 }
