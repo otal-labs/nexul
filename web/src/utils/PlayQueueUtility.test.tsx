@@ -5,7 +5,8 @@ import { outcomeText } from "@/utils/PlayQueueUtility";
 describe("outcomeText", () => {
   it.each([
     ["nobody to run it on: the ticket has no developer", "nobody is the ticket's developer"],
-    ["nobody to run it on: the doc has no causer", "nobody to run it on"],
+    ["nobody to run it on: no person caused it and the ticket has no developer", "nobody caused it and the ticket has no developer"],
+    ["nobody to run it on: the doc has no causer", "nobody caused it"],
     ['invalid: play "Fix with AI" is disabled', "the play is switched off"],
     ['invalid: play "Fix with AI" is excluded from this project', "the play is excluded from this project"],
     ['forbidden: plays:run required on play "Fix with AI"', "its person may not run the play"],

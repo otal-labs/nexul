@@ -108,7 +108,7 @@ describe("a play's auto plays", () => {
     const { user, dialog } = await openAutoPlays();
     const row = await within(dialog).findByRole("button", { name: /becomes unblocked/ });
     await waitFor(() =>
-      expect(row).toHaveTextContent("When a ticket becomes unblocked, if Type is Bug → High, else Normal, runs on Developer"),
+      expect(row).toHaveTextContent("When a ticket becomes unblocked, if Type is Bug → High if Type is Bug, else Normal, runs on Developer"),
     );
 
     let refuse: (error: Error) => void = () => {};
@@ -126,6 +126,15 @@ describe("a play's auto plays", () => {
     mocks.patch.mockResolvedValue({ data: { daily_cap_per_ticket: 7 } });
     await pickOption(user, "Auto plays per ticket a day", "7");
     expect(mocks.patch).toHaveBeenLastCalledWith("/api/workspaces/ws-1/plays/auto-play-limits", { daily_cap_per_ticket: 7 });
+    await close(user, dialog);
+  });
+
+  it("names the priority rule's first condition and how many more it has", async () => {
+    const when = { match: "any" as const, rules: [{ field: "type" as const, op: "is" as const, values: ["Bug"] }, { field: "label" as const, op: "is" as const, values: ["urgent"] }] };
+    autoPlays = [autoPlay({ priority: { rules: [{ level: "high", when }], otherwise: "low" } })];
+    const { user, dialog } = await openAutoPlays();
+    const row = await within(dialog).findByRole("button", { name: /becomes unblocked/ });
+    await waitFor(() => expect(row).toHaveTextContent("→ High if Type is Bug or 1 more, else Low, runs on Developer"));
     await close(user, dialog);
   });
 

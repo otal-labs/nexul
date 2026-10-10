@@ -79,7 +79,7 @@ export const PlaySettingsSection = ({ canWrite, canDelete }: PlaySettingsSection
     <SettingsCard
       id="plays"
       title="Plays"
-      description="Agent turns members start with one button on a ticket, a doc, or an Interview page. Every workspace starts with seven, which you can edit or delete."
+      description="Agent turns members start with one button on a ticket, a doc, or an Interview page. Every workspace starts with a set you can edit or delete."
       footer={
         canWrite && (
           <Button type="button" onClick={() => void openCreate()}>

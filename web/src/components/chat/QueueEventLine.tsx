@@ -8,18 +8,17 @@ import type { ThreadQueueEvent } from "@/utils/PlayQueueUtility";
 import { outcomeText } from "@/utils/PlayQueueUtility";
 import { formatClockTime, formatFullTime } from "@/utils/TimeUtility";
 
-interface QueueEventLineProps {
+interface QueueEventRowProps {
   event: ThreadQueueEvent;
-  // Decided after the thread opened: it rises in like any message that arrives.
-  arrived: boolean;
   newDay: boolean;
 }
 
-export const QueueEventLine = ({ event: { item, retry }, arrived, newDay }: QueueEventLineProps) => {
+// One skipped or didn't-run line, inside a thread's scroller or on its own while the target has no thread.
+export const QueueEventRow = ({ event: { item, retry }, newDay }: QueueEventRowProps) => {
   const didntRun = item.status === "didnt_run";
 
   return (
-    <MessageScrollerItem messageId={`queue-${item.id}`} className={cn("pt-1.5 [content-visibility:visible]", arrived && "arrive")}>
+    <>
       {newDay && <ChatDayDivider createdAt={item.decided_at} />}
       <div className="flex items-center gap-2 px-3 py-1">
         <span className="flex w-8 shrink-0 justify-center">
@@ -36,6 +35,19 @@ export const QueueEventLine = ({ event: { item, retry }, arrived, newDay }: Queu
         </p>
         {retry && <RunItButton item={item} />}
       </div>
-    </MessageScrollerItem>
+    </>
   );
 };
+
+interface QueueEventLineProps {
+  event: ThreadQueueEvent;
+  // Decided after the thread opened: it rises in like any message that arrives.
+  arrived: boolean;
+  newDay: boolean;
+}
+
+export const QueueEventLine = ({ event, arrived, newDay }: QueueEventLineProps) => (
+  <MessageScrollerItem messageId={`queue-${event.item.id}`} className={cn("pt-1.5 [content-visibility:visible]", arrived && "arrive")}>
+    <QueueEventRow event={event} newDay={newDay} />
+  </MessageScrollerItem>
+);

@@ -2,6 +2,7 @@ import { MessageSquare } from "lucide-react";
 import { useState } from "react";
 
 import { ConversationThread } from "@/components/chat/ConversationThread";
+import { QueueEventList } from "@/components/chat/QueueEventList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { RowActions } from "@/components/listpane/RowActions";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -44,6 +45,7 @@ export const TicketThreadSection = ({ workspaceId, ticketId, pane = false }: Tic
         )}
       </div>
       {statusPending && <LoadingDisplay label="Loading thread…" />}
+      {showStart && <QueueEventList targetType="ticket" targetId={ticketId} />}
       {showStart && pane && <p className="text-sm text-muted-foreground">No messages yet.</p>}
       {showStart && (
         <Button variant="outline" size="sm" className={cn(pane && "w-full")} onClick={() => setStarting(true)}>

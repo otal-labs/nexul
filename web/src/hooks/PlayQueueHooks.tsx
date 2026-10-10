@@ -35,10 +35,14 @@ export const useFetchPlayQueued = (playId: string) =>
     enabled: playId !== "",
   });
 
+export const useQueueEvents = (targetType: PlayType, targetId: string): ThreadQueueEvent[] => {
+  const { data } = useFetchPlayQueue(targetType, targetId);
+  return useMemo(() => threadQueueEvents(data), [data]);
+};
+
 export const useThreadQueueEvents = (conversation: Conversation): ThreadQueueEvent[] => {
   const target = conversationPlayTarget(conversation);
-  const { data } = useFetchPlayQueue(target?.type ?? "ticket", target?.id ?? "");
-  return useMemo(() => threadQueueEvents(data), [data]);
+  return useQueueEvents(target?.type ?? "ticket", target?.id ?? "");
 };
 
 const refreshQueues = (client: ReturnType<typeof useQueryClient>, item: PlayQueueItem) =>

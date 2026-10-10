@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { TicketThreadSection } from "@/components/chat/TicketThreadSection";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { playQueue, queueItem } from "@/test/playQueueItem";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn() },
@@ -45,6 +47,7 @@ const mockGetByUrl = (routes: Record<string, unknown>) => {
 };
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
 });
@@ -55,6 +58,26 @@ describe("TicketThreadSection", () => {
     renderSection();
     expect(await screen.findByRole("button", { name: /start thread/i })).toBeInTheDocument();
     expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it("shows what auto plays skipped or didn't run above Start thread while the ticket has no thread", async () => {
+    mockGetByUrl({
+      "/api/chat/tickets/thread-status": { t1: false },
+      "/api/workspaces/ws-1/me": { role_name: "Member", permissions: ["plays:run"] },
+      "/api/workspaces/ws-1/plays": [{ id: "play-1", workspace_id: "ws-1", label: "Fix with AI", type: "ticket", description: "", instructions: "", enabled: true, show_when_stage: "progress", excluded_project_ids: [] }],
+      "/api/plays/queue": playQueue({
+        items: [
+          queueItem({ target_id: "t1", person_id: "", status: "didnt_run", reason: "nobody to run it on: the ticket has no developer", decided_at: "2026-10-10T09:00:00Z" }),
+          queueItem({ id: "q-2", target_id: "t1", play_id: "play-2", play_label: "Review", status: "skipped", reason: "no longer unblocked", decided_at: "2026-10-10T08:00:00Z" }),
+        ],
+      }),
+    });
+    renderSection();
+
+    expect(await screen.findByText(/nobody is the ticket's developer/)).toHaveTextContent("Fix with AI didn't run: nobody is the ticket's developer");
+    expect(screen.getByText(/no longer unblocked/)).toHaveTextContent("Review skipped: no longer unblocked");
+    expect(await screen.findByRole("button", { name: "Run Fix with AI" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /start thread/i })).toBeInTheDocument();
   });
 
   it("creates the thread on Start thread and renders the conversation", async () => {
