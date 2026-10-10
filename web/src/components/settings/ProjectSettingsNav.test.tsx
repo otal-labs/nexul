@@ -8,7 +8,7 @@ import {
 } from "@/components/settings/ProjectSettingsNav";
 import type { Project } from "@/models/Project";
 
-const project: Project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, icon: "", tests_location: "same", created_at: "", updated_at: "" };
+const project: Project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, workspace_id: "ws-1", icon: "", tests_location: "same", setup: { finished: true, steps: {} }, created_at: "", updated_at: "" };
 
 describe("ProjectSettingsNav", () => {
   it("renders one link per section, each pointing at its section param", () => {

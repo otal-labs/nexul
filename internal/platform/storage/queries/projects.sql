@@ -1,5 +1,5 @@
 -- name: CreateProject :exec
-INSERT INTO projects (id, name, prefix, position, workspace_id, icon, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO projects (id, name, prefix, position, workspace_id, icon, setup_finished, setup_steps, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: SeedProjectStatus :exec
 INSERT INTO statuses (id, project_id, name, position, kind, icon, created_at, updated_at) VALUES (?, ?, ?, ?, ?, '', ?, ?);
@@ -15,6 +15,9 @@ SELECT * FROM projects WHERE workspace_id = ? ORDER BY position, id;
 
 -- name: UpdateProject :execrows
 UPDATE projects SET name = ?, prefix = ?, icon = ?, tests_location = ?, updated_at = ? WHERE id = ?;
+
+-- name: UpdateProjectSetup :execrows
+UPDATE projects SET setup_finished = ?, setup_steps = ?, updated_at = ? WHERE id = ?;
 
 -- name: DeleteProject :execrows
 DELETE FROM projects WHERE id = ?;

@@ -72,6 +72,7 @@ type fakeRepo struct {
 	countErr  error
 	repoErr   error
 	moveErr   error
+	saved     []eventbus.OutboxEvent
 }
 
 func newFakeRepo() *fakeRepo {
@@ -143,6 +144,21 @@ func (f *fakeRepo) Update(_ context.Context, p *Project) error {
 	cur.Prefix = p.Prefix
 	cur.TestsLocation = p.TestsLocation
 	cur.UpdatedAt = p.UpdatedAt
+	return nil
+}
+
+func (f *fakeRepo) SaveSetup(_ context.Context, p *Project, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.updateErr != nil {
+		return f.updateErr
+	}
+	cur, ok := f.projects[p.ID]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	cur.Setup = p.Setup
+	f.saved = append(f.saved, evts...)
 	return nil
 }
 

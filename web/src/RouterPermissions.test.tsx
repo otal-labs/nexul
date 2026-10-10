@@ -149,7 +149,7 @@ describe("workspace URLs", () => {
 
 describe("tab URLs", () => {
   const readers = ["automations:read", "memories:read", "connectors:read"];
-  const project = { id: "p-1", name: "Web", prefix: "WEB", position: 0, icon: "", tests_location: "", created_at: "", updated_at: "" };
+  const project = { id: "p-1", name: "Web", prefix: "WEB", position: 0, icon: "", tests_location: "", setup: { finished: true, steps: {} }, created_at: "", updated_at: "" };
   const projectMemory = {
     id: "m-1", workspace_id: "ws-1", project_id: "p-1", kind: "", title: "House rules", when_to_use: "", body: "",
     always_included: false, version: 1, created_by: "", created_at: "", updated_at: "", updated_by: "",

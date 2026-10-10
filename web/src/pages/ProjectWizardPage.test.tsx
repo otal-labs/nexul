@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProjectWizardPage } from "@/pages/ProjectWizardPage";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
-import { useUnfinishedProjectStore } from "@/stores/unfinishedProjectStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const access = vi.hoisted(() => ({ areas: ["tickets"] as string[] }));
@@ -18,16 +17,27 @@ beforeEach(() => {
 
 // Step components are exercised in full by their own test files (WizardRepositoryStep.test.tsx,
 // WizardServiceStep.test.tsx, WizardEnvStep.test.tsx, WizardReachStep.test.tsx); this file only cares about the
-// stepper mechanics ProjectWizardPage and its progress row own themselves: which rung the URL opens, an
-// unknown step redirecting back to the start, and door 2's preselected-project rung.
-const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
+// stepper mechanics ProjectWizardPage owns: which rung the URL opens, what a skip records, what a step opened early
+// says it needs, and the doors that arrive with a project.
+const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn() }));
 
 vi.mock("@/api/client", () => ({
-  api: { get: mocks.get, post: mocks.post },
+  api: { get: mocks.get, post: mocks.post, put: mocks.put },
   errorMessage: vi.fn(() => ""),
 }));
 
-const project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" };
+const project = {
+  id: "p-1",
+  name: "Backend",
+  prefix: "BE",
+  position: 0,
+  workspace_id: "ws-1",
+  setup: { finished: true, steps: {} },
+  created_at: "",
+  updated_at: "",
+};
+
+const inSetup = (steps: Record<string, string>) => ({ ...project, setup: { finished: false, steps } });
 
 const stack = {
   id: "stack-1",
@@ -75,7 +85,6 @@ beforeEach(() => {
     return { data: [] };
   });
   useProjectWizardStore.getState().reset();
-  useUnfinishedProjectStore.getState().dismiss();
 });
 
 describe("ProjectWizardPage", () => {
@@ -117,60 +126,59 @@ describe("ProjectWizardPage", () => {
     await user.click(screen.getByRole("button", { name: "Back" }));
 
     expect(rung("Repository")).toHaveAttribute("data-state", "current");
-    expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
   });
 
-  it("offers no way back from the service rung once its stack exists", async () => {
+  it("shows the service a revisited Service step made, instead of making a second", async () => {
     const store = useProjectWizardStore.getState();
     store.setProjectId("p-1", "Backend");
     store.setCandidate({ kind: "compose", path: "compose.yml", name: "api", services: [] });
+    store.setName("api");
+    store.setMachine("prod");
     store.setStackId("stack-1");
     renderPage("/acme/wizard/project/service");
-    await screen.findByRole("heading", { name: "Service" });
 
-    expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
+    expect(await screen.findByText(/api runs on/)).toHaveTextContent("api runs on prod.");
+    expect(screen.queryByRole("button", { name: /Create/ })).not.toBeInTheDocument();
   });
 
-  it("keeps the project it just created when the rest is skipped, and lands on its board", async () => {
-    mocks.post.mockResolvedValueOnce({ data: project });
+  it("records a skipped step on the project and moves on to the next step, keeping the project it made", async () => {
+    mocks.post.mockResolvedValueOnce({ data: inSetup({ project: "done" }) });
+    mocks.put.mockResolvedValue({ data: inSetup({ project: "done", repository: "skipped" }) });
     const user = userEvent.setup();
     renderPage("/acme/wizard/project/project");
 
     await user.type(await screen.findByLabelText("Project name"), "Backend");
     await user.type(screen.getByLabelText("Prefix"), "BE");
     await user.click(screen.getByRole("button", { name: "Continue to Repository" }));
-    await screen.findByRole("heading", { name: "Repository" });
-    expect(within(rung("Info")).queryByRole("button")).not.toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: "Skip for now" }));
 
-    expect(await screen.findByText("project board")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Service" })).toBeInTheDocument();
+    expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", { finished: undefined, steps: { repository: "skipped" } });
     expect(mocks.post).toHaveBeenCalledTimes(1);
-    expect(useProjectWizardStore.getState().projectId).toBeNull();
-    expect(useUnfinishedProjectStore.getState().projectId).toBeNull();
   });
 
-  it("offers the way back to a project left before its repository was picked, the next time the wizard opens", async () => {
-    mocks.post.mockResolvedValueOnce({ data: project });
+  it("opens a step ahead of its groundwork and says what it needs, with a jump there", async () => {
+    const user = userEvent.setup();
+    renderPage("/acme/wizard/project/reach?project=p-1");
+
+    expect(await screen.findByText("Reach gives a service a hostname. There's no service yet.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Go to Service" }));
+
+    expect(await screen.findByText("A service builds from a repository. Pick one first.")).toBeInTheDocument();
+    expect(rung("Service")).toHaveAttribute("data-state", "current");
+  });
+
+  it("continues setup another device started, on the service that device made", async () => {
     mocks.get.mockImplementation(async (url: string) => {
-      if (url === "/api/projects") return { data: [project] };
-      if (url === "/api/projects/p-1") return { data: project };
-      if (url === "/api/repositories") return { data: { repositories: [] } };
+      if (url === "/api/projects/p-1") return { data: inSetup({ project: "done", repository: "done", service: "done" }) };
+      if (url === "/api/stacks") return { data: [stack] };
       return { data: [] };
     });
-    const user = userEvent.setup();
-    const first = renderPage("/acme/wizard/project/project");
-    await user.type(await screen.findByLabelText("Project name"), "Backend");
-    await user.type(screen.getByLabelText("Prefix"), "BE");
-    await user.click(screen.getByRole("button", { name: "Continue to Repository" }));
-    await screen.findByRole("heading", { name: "Repository" });
-    first.unmount();
+    renderPage("/acme/wizard/project/service?project=p-1");
 
-    renderPage("/acme/wizard/project/project");
-    await user.click(await screen.findByRole("link", { name: "Continue setup" }));
-
-    expect(await screen.findByRole("heading", { name: "Repository" })).toBeInTheDocument();
-    expect(rung("Info")).toHaveAttribute("data-state", "done");
-    expect(mocks.post).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(/api runs on/)).toHaveTextContent("api runs on prod.");
+    expect(screen.getByRole("heading", { name: "Continue setup" })).toBeInTheDocument();
+    expect(rung("Repository")).toHaveAttribute("data-state", "done");
   });
 
   it("redirects an unknown step back to the project step", async () => {
@@ -179,15 +187,13 @@ describe("ProjectWizardPage", () => {
     expect(rung("Info")).toHaveAttribute("data-state", "current");
   });
 
-  it("opens the project rung by default with everything after it upcoming", async () => {
+  it("opens the project rung by default with nothing after it visited", async () => {
     renderPage("/acme/wizard/project/project");
     await screen.findByRole("heading", { name: "Info" });
     expect(rung("Info")).toHaveAttribute("data-state", "current");
-    expect(rung("Repository")).toHaveAttribute("data-state", "future");
-    expect(rung("Service")).toHaveAttribute("data-state", "future");
-    expect(rung("Reach")).toHaveAttribute("data-state", "future");
-    expect(rung("Deploy branches")).toHaveAttribute("data-state", "future");
-    expect(rung("Done")).toHaveAttribute("data-state", "future");
+    for (const label of ["Repository", "Service", "Reach", "Deploy branches", "Done"]) {
+      expect(rung(label)).toHaveAttribute("data-state", "unvisited");
+    }
     expect(within(screen.getByRole("list", { name: "Project wizard steps" })).getAllByRole("listitem")).toHaveLength(6);
   });
 
@@ -207,25 +213,20 @@ describe("ProjectWizardPage", () => {
     expect(screen.queryByRole("heading", { name: /first project/i })).not.toBeInTheDocument();
   });
 
-  it("falls back to the furthest rung the store can render when a later step is opened cold", async () => {
-    renderPage("/acme/wizard/project/service");
-    expect(await screen.findByRole("heading", { name: "Info" })).toBeInTheDocument();
-    expect(rung("Info")).toHaveAttribute("data-state", "current");
-    expect(rung("Service")).toHaveAttribute("data-state", "future");
-  });
-
-  it("door 2: preselects the project from ?project= and opens the repository rung with the project already done", async () => {
+  it("door 2: preselects the project from ?project= and opens the repository rung with Info as the project records it", async () => {
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/projects/p-1") return { data: { ...project, setup: { finished: true, steps: { project: "done" } } } };
+      return { data: [] };
+    });
     renderPage("/acme/wizard/project/repository?project=p-1");
     expect(await screen.findByRole("heading", { name: "Repository" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /^add a service$/i })).toBeInTheDocument();
 
-    const projectRung = rung("Info");
-    expect(projectRung).toHaveAttribute("data-state", "done");
-    // Locked: the project already exists, so its node is not a control that could re-open the step.
-    expect(within(projectRung).queryByRole("button")).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(rung("Info")).toHaveAttribute("data-state", "done"));
     expect(rung("Repository")).toHaveAttribute("data-state", "current");
   });
 
-  it("door 3: preselects the project from ?stack= and opens the repository rung with the project already done", async () => {
+  it("door 3: preselects the project from ?stack= and opens the repository rung", async () => {
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/stacks/stack-1") return { data: stack };
       if (url === "/api/projects/p-1") return { data: project };
@@ -236,10 +237,6 @@ describe("ProjectWizardPage", () => {
     expect(await screen.findByRole("heading", { name: "Repository" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^attach a repository$/i })).toBeInTheDocument();
 
-    const projectRung = rung("Info");
-    expect(projectRung).toHaveAttribute("data-state", "done");
-    // Locked: door 3 seeded it too, so its node is not a control that could re-open the step.
-    expect(within(projectRung).queryByRole("button")).not.toBeInTheDocument();
     expect(rung("Repository")).toHaveAttribute("data-state", "current");
   });
 

@@ -19,10 +19,40 @@ type Project struct {
 	Icon        ProjectIcon `json:"icon"`
 	// TestsLocation is the project wizard's answer the interview starts from; "" means not answered yet.
 	TestsLocation TestsLocation `json:"tests_location"`
+	Setup         ProjectSetup  `json:"setup"`
 	CreatedAt     time.Time     `json:"created_at"`
 	UpdatedAt     time.Time     `json:"updated_at"`
 	// SeedTicketTypes are the types creating the project seeds; empty seeds DefaultTicketTypes.
 	SeedTicketTypes []TicketType `json:"-"`
+}
+
+// ProjectSetup is the project wizard's record of a project (ADR 0143): until Finished, the sidebar offers Continue setup.
+type ProjectSetup struct {
+	Finished bool                    `json:"finished" jsonschema:"Whether the project wizard's Finish was pressed; a project made any other way starts finished."`
+	Steps    map[SetupStep]SetupMark `json:"steps" jsonschema:"Each wizard step marked done or skipped, by step id; a step not listed was never visited."`
+}
+
+// SetupStep is one rung of the project wizard; Finish is the last, so it is never a step of its own.
+type SetupStep string
+
+// SetupSteps are the wizard's steps in order.
+var SetupSteps = []SetupStep{"project", "repository", "service", "env", "reach", "branches"}
+
+// SetupMark is what happened at a step.
+type SetupMark string
+
+const (
+	SetupDone    SetupMark = "done"
+	SetupSkipped SetupMark = "skipped"
+)
+
+// NewSetup is the record a project starts with: finished, unless the wizard made it, with its Info step done.
+func NewSetup(finished bool) ProjectSetup {
+	steps := map[SetupStep]SetupMark{}
+	if !finished {
+		steps["project"] = SetupDone
+	}
+	return ProjectSetup{Finished: finished, Steps: steps}
 }
 
 // TestsLocation says whether a project's tests live in its deployed repository or in a separate tests repository.

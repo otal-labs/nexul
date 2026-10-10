@@ -127,7 +127,7 @@ class is drift.
 
 | Role | Web app | Site | Phone |
 |---|---|---|---|
-| Primary action | the primary button | the home page's copy button, the 404's Open the docs | the send button, once there is text |
+| Primary action | the primary button, the sidebar's Continue setup row | the home page's copy button, the 404's Open the docs | the send button, once there is text |
 | Active nav | the sidebar's and section nav's 2px edge | the header's current page edge, the docs sidebar and phone menu edge | the active tab |
 | Selection | selected rows, canvas selection (`ring`), text selection | text selection (`brand` at 32%) | the drop target a held card is over |
 | Your own messages | the chat bubble | | the chat bubble |
@@ -695,18 +695,25 @@ horizontal progress row above the active step, not the vertical rail. The row
 is an `ol` up to `max-w-3xl` of 20px nodes evenly spaced on a 1px connector;
 segments up to the current step fill with `brand` (a `scaleX` growing from
 the left, see the Motion baseline),
-the rest stay `border`. A done node is a check in the `success` token and is a
-button back to that step only when revisiting has no side effect (never Info,
-and none once the stack exists); the current node is a filled ring with
-`aria-current="step"` in `brand`; future nodes are hollow, muted, and disabled. Labels are
+the rest stay `border`. A node shows what the project records for its step
+(ADR 0143): done is a check in the `success` token, skipped a dashed muted ring
+with a dash, never visited a hollow muted ring, and the current node a filled
+ring with `aria-current="step"` in `brand`. Every node but the current one is a
+button, so any step opens at any time; a step revisited after it made
+something (Info, a Service whose stack exists) shows what it made with a
+Continue, and a step opened before its groundwork says in one line what it
+needs, with a "Go to <step>" primary. Labels are
 `text-xs` mono under each node from a 42rem container up; narrower, one line
 under the row names the current step with its `n / total` counter. The step
 content sits in a `max-w-xl` column beneath the title and slides 8px in the
 direction of travel over 180ms. Every step ends with one footer: Back on the
-left (Info leaves the wizard, Service returns to Repository until its stack
-exists), then a ghost "Skip for now" where the step allows it, then the
-primary action; Info's reads "Continue to <next step>". No new stepper chrome
-beyond this row exists. The URL step is the whole navigation state.
+left (Info leaves the wizard, every other step returns to the one before it),
+then a ghost "Skip for now" where the step allows it, which records the step
+skipped and moves to the next, then the primary action; Info's reads
+"Continue to <next step>". Done lists what is left for later (skipped or never
+visited) as hairline rows with an Open each, and ends with Finish, which sets
+the project up and lands on its board. No new stepper chrome beyond this row
+exists. The URL step is the whole navigation state.
 
 Stack detail page. The header keeps the detail-page shape (breadcrumb of the
 workspace and project, title, the mono slug in the meta line, actions top
@@ -959,7 +966,9 @@ Questions while some wait. `DocQuestionsPanel` in
 Sidebar. Straight on the canvas, never a panel. Top to bottom: the logo row,
 the workspace switcher (a 32px initial tile), then one scroll: Search and
 Inbox, the project (its switcher leads with the project mark at 28px, then
-its pages), the foldable Workspace section, and last the conversations:
+its pages, or while its setup is open one `brand`-filled Continue setup row,
+the one primary action in the sidebar, and a muted Being set up line for
+whoever cannot change the project), the foldable Workspace section, and last the conversations:
 Channels, Voice channels, Direct messages and Threads. Places come before
 conversations because their length is fixed, so a long channel list never
 pushes Board or Runners below the fold. Section labels are microheaders with

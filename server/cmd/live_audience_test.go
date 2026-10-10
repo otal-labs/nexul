@@ -76,6 +76,7 @@ func TestLiveAudience_FramesFollowTheEntitysRead(t *testing.T) {
 		{memories.TopicAnswerSaved, memories.AnswerEvent{WorkspaceID: "workspace-default", ProjectID: "project-general", Question: "Testing"}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
 		{memories.TopicSourceAdded, memories.SourceEvent{WorkspaceID: "workspace-default", ProjectID: "project-general", SourceID: "s-1", Kind: memories.SourceDoc}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
 		{memories.TopicDraftSaved, memories.DraftEvent{WorkspaceID: "workspace-default", ProjectID: "project-general", DraftID: "d-1", Question: "Testing"}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
+		{workspace.TopicProjectSetupChanged, workspace.ProjectSetupChangedEvent{ProjectID: "project-general", WorkspaceID: "workspace-default", Setup: workspace.NewSetup(true)}, map[string]bool{uReader: true, uOwner: true, uOutsider: false}},
 		{docs.TopicWatchersChanged, docs.WatchersChangedEvent{Doc: docs.WatchedDoc{ID: f.doc, ProjectID: "project-general"}, UserID: uReader, Watching: true}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
 	}
 	for _, tc := range cases {

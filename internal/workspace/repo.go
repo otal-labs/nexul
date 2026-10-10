@@ -31,6 +31,8 @@ type Repo interface {
 	Get(ctx context.Context, id string) (*Project, error)
 	List(ctx context.Context, workspaceID string) ([]*Project, error)
 	Update(ctx context.Context, p *Project) error
+	// SaveSetup writes p's setup record alone, so a rename racing the wizard never undoes a step.
+	SaveSetup(ctx context.Context, p *Project, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, id string) error
 	Reorder(ctx context.Context, ids []string) error
 	CountTickets(ctx context.Context, projectID string) (int, error)

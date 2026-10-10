@@ -51,6 +51,7 @@ var scopeRules = map[string]scopeRule{
 
 	"workspace.member.added": workspaceScope, "workspace.member.removed": workspaceScope,
 	"workspace.member.updated": workspaceScope, "workspace.updated": workspaceScope, "role.updated": workspaceScope,
+	"project.setup_changed":      workspaceScope,
 	"interview_template.updated": workspaceScope, "memory.deleted": workspaceScope, "play.deleted": workspaceScope,
 	"interview_answer.saved": workspaceScope, "interview_answer.cleared": workspaceScope,
 	"interview_source.added": workspaceScope, "interview_source.changed": workspaceScope,

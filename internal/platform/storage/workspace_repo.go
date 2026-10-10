@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/docs"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -24,11 +26,16 @@ type ProjectsRepo struct {
 }
 
 func (r *ProjectsRepo) Create(ctx context.Context, p *workspace.Project) error {
+	steps, err := setupStepsJSON(p)
+	if err != nil {
+		return err
+	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		err := q.CreateProject(ctx, sqlcgen.CreateProjectParams{
 			ID: p.ID, Name: p.Name, Prefix: p.Prefix, Position: int64(p.Position),
-			WorkspaceID: p.WorkspaceID, Icon: string(p.Icon), CreatedAt: p.CreatedAt.Unix(), UpdatedAt: p.UpdatedAt.Unix(),
+			WorkspaceID: p.WorkspaceID, Icon: string(p.Icon), SetupFinished: boolToInt(p.Setup.Finished), SetupSteps: steps,
+			CreatedAt: p.CreatedAt.Unix(), UpdatedAt: p.UpdatedAt.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("insert project %s: %w", p.ID, classifyWriteErr(err))
@@ -108,7 +115,7 @@ func (r *ProjectsRepo) Get(ctx context.Context, id string) (*workspace.Project, 
 	if err != nil {
 		return nil, fmt.Errorf("get project %s: %w", id, notFoundIfNoRows(err))
 	}
-	return toProject(row), nil
+	return toProject(row)
 }
 
 // List returns a workspace's projects ordered by position; a project always nests under exactly one workspace.
@@ -117,7 +124,7 @@ func (r *ProjectsRepo) List(ctx context.Context, workspaceID string) ([]*workspa
 	if err != nil {
 		return nil, fmt.Errorf("list projects: %w", err)
 	}
-	return toProjects(rows), nil
+	return toProjects(rows)
 }
 
 func (r *ProjectsRepo) Update(ctx context.Context, p *workspace.Project) error {
@@ -133,6 +140,25 @@ func (r *ProjectsRepo) Update(ctx context.Context, p *workspace.Project) error {
 			return fmt.Errorf("update project %s: %w", p.ID, apperrs.ErrNotFound)
 		}
 		return nil
+	})
+}
+
+func (r *ProjectsRepo) SaveSetup(ctx context.Context, p *workspace.Project, evts ...eventbus.OutboxEvent) error {
+	steps, err := setupStepsJSON(p)
+	if err != nil {
+		return err
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).UpdateProjectSetup(ctx, sqlcgen.UpdateProjectSetupParams{
+			SetupFinished: boolToInt(p.Setup.Finished), SetupSteps: steps, UpdatedAt: p.UpdatedAt.Unix(), ID: p.ID,
+		})
+		if err != nil {
+			return fmt.Errorf("save setup of project %s: %w", p.ID, classifyWriteErr(err))
+		}
+		if n == 0 {
+			return fmt.Errorf("save setup of project %s: %w", p.ID, apperrs.ErrNotFound)
+		}
+		return insertOutboxRows(ctx, tx, evts)
 	})
 }
 
@@ -286,7 +312,23 @@ func (r *ProjectsRepo) MoveTicket(ctx context.Context, ticketID, projectID strin
 	})
 }
 
-func toProject(row sqlcgen.Project) *workspace.Project {
+// setupStepsJSON writes no steps as an empty object, never null, so every stored record decodes to a map.
+func setupStepsJSON(p *workspace.Project) (string, error) {
+	if len(p.Setup.Steps) == 0 {
+		return "{}", nil
+	}
+	steps, err := json.Marshal(p.Setup.Steps)
+	if err != nil {
+		return "", fmt.Errorf("encode setup of project %s: %w", p.ID, err)
+	}
+	return string(steps), nil
+}
+
+func toProject(row sqlcgen.Project) (*workspace.Project, error) {
+	steps := map[workspace.SetupStep]workspace.SetupMark{}
+	if err := json.Unmarshal([]byte(row.SetupSteps), &steps); err != nil {
+		return nil, fmt.Errorf("decode setup of project %s: %w", row.ID, err)
+	}
 	return &workspace.Project{
 		ID:            row.ID,
 		Name:          row.Name,
@@ -295,15 +337,20 @@ func toProject(row sqlcgen.Project) *workspace.Project {
 		WorkspaceID:   row.WorkspaceID,
 		Icon:          workspace.ProjectIcon(row.Icon),
 		TestsLocation: workspace.TestsLocation(row.TestsLocation),
+		Setup:         workspace.ProjectSetup{Finished: row.SetupFinished != 0, Steps: steps},
 		CreatedAt:     time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt:     time.Unix(row.UpdatedAt, 0).UTC(),
-	}
+	}, nil
 }
 
-func toProjects(rows []sqlcgen.Project) []*workspace.Project {
-	var out []*workspace.Project
+func toProjects(rows []sqlcgen.Project) ([]*workspace.Project, error) {
+	out := make([]*workspace.Project, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, toProject(row))
+		p, err := toProject(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, p)
 	}
-	return out
+	return out, nil
 }

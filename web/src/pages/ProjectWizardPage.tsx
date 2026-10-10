@@ -6,7 +6,9 @@ import { ProjectWizardStepContent } from "@/components/wizard/ProjectWizardStepC
 import { WizardProgress } from "@/components/wizard/WizardProgress";
 import { useFetchProject, useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchStack } from "@/hooks/StackHooks";
+import { useSeedSetupStack, useWizardProject } from "@/hooks/useWizardSetup";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { inSetup, type Project } from "@/models/Project";
 import { WizardSteps, type WizardStepId } from "@/models/ProjectWizard";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 
@@ -53,37 +55,29 @@ const useSeedAttachStack = () => {
   }, [project, projectId, setProjectId]);
 };
 
-// The store is not persisted, so a reload on a later rung lands with nothing to show; this names the furthest
-// rung the store can still render, and the page falls back to it. Door 2's ?project= and door 3's ?stack= both
-// count for the repository rung because their seed arrives asynchronously.
-const furthestStep = (hasProjectParam: boolean, hasStackParam: boolean): WizardStepId => {
-  const { projectId, candidate, stackId } = useProjectWizardStore.getState();
-  if (stackId) return "done";
-  if (candidate) return "service";
-  if (projectId || hasProjectParam || hasStackParam) return "repository";
-  return "project";
-};
+interface WizardFraming {
+  isAttach: boolean;
+  // The project the wizard arrived with (?project=, ?stack=); undefined for a new one.
+  project: Project | undefined;
+  revisit: boolean;
+  firstProject: boolean;
+}
 
-const wizardTitle = (isAttach: boolean, projectPreselected: boolean, firstProject: boolean): string => {
+const wizardTitle = ({ isAttach, project, revisit, firstProject }: WizardFraming): string => {
   if (isAttach) return "Attach a repository";
-  if (projectPreselected) return "Add a service";
+  if (project && inSetup(project)) return "Continue setup";
+  if (project && revisit) return "Project setup";
+  if (project) return "Add a service";
   if (firstProject) return "Create your first project";
   return "New project";
 };
 
-const wizardSubtitle = (isAttach: boolean, firstProject: boolean): string => {
+const wizardSubtitle = ({ isAttach, project, revisit, firstProject }: WizardFraming): string => {
   if (isAttach) return "Point this stack at a repository so Nexul can build and deploy it.";
+  if (project && inSetup(project)) return "Pick up where it stopped. Skip any step and come back to it, then Finish.";
+  if (project && revisit) return "Open any step to change it. The project stays set up.";
   if (firstProject) return "Tickets, docs, and deploys all live in a project. Name it, then point Nexul at its repository.";
   return "Name the project, then pick the repository to deploy.";
-};
-
-// An unknown step goes to the first one; a step past the furthest reachable one goes back to that one.
-const wizardRedirect = (step: string | undefined, searchParams: URLSearchParams, isAttach: boolean): string | null => {
-  if (!isWizardStep(step)) return "/wizard/project/project";
-  const allowed = furthestStep(searchParams.has("project"), isAttach);
-  if (WizardSteps.indexOf(step) <= WizardSteps.indexOf(allowed)) return null;
-  const query = searchParams.toString();
-  return `/wizard/project/${allowed}${query ? `?${query}` : ""}`;
 };
 
 export const ProjectWizardPage = () => {
@@ -93,22 +87,27 @@ export const ProjectWizardPage = () => {
   const wsPath = useWorkspacePath();
   useSeedAttachStack();
   const reset = useProjectWizardStore((s) => s.reset);
-  // Leaving ends the run, so the next visit starts clean; a project it already made resumes through its Continue setup banner.
+  // Leaving ends the run, so the next visit starts clean; a project it already made resumes through Continue setup.
   useEffect(() => reset, [reset]);
+  useSeedSetupStack();
   const projectPreselected = useProjectWizardStore((s) => s.projectPreselected);
+  const project = useWizardProject();
   const isAttach = searchParams.has("stack");
   const { data: projects } = useFetchProjects();
   const firstProject = step === "project" && projects?.length === 0;
 
-  const redirectTo = wizardRedirect(step, searchParams, isAttach);
-  const title = wizardTitle(isAttach, projectPreselected, firstProject);
-  const subtitle = wizardSubtitle(isAttach, firstProject);
+  const framing: WizardFraming = {
+    isAttach,
+    project: projectPreselected ? project : undefined,
+    revisit: searchParams.has("revisit"),
+    firstProject,
+  };
 
   return (
     <>
-      {redirectTo && <Navigate to={wsPath(redirectTo)} replace />}
-      {!redirectTo && isWizardStep(step) && (
-        <WizardLayout progress={<WizardProgress step={step} />} title={title} subtitle={subtitle}>
+      {!isWizardStep(step) && <Navigate to={wsPath("/wizard/project/project")} replace />}
+      {isWizardStep(step) && (
+        <WizardLayout progress={<WizardProgress step={step} />} title={wizardTitle(framing)} subtitle={wizardSubtitle(framing)}>
           <ProjectWizardStepContent step={step} />
         </WizardLayout>
       )}

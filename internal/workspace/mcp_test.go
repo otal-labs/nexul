@@ -85,6 +85,16 @@ func TestProjectCreateTool(t *testing.T) {
 			assert.Empty(t, repo.projects)
 		})
 	}
+	t.Run("an agent's project is finished unless it asks for setup", func(t *testing.T) {
+		s, _, _ := newOwnerRepo(t, true)
+		call := wsTool(t, s, "project_create").Call
+		got, err := call(asOwner(t.Context()), json.RawMessage(`{"workspace_id":"ws-1","name":"Backend","prefix":"BE"}`))
+		require.NoError(t, err)
+		assert.Equal(t, NewSetup(true), got.(*Project).Setup)
+		got, err = call(asOwner(t.Context()), json.RawMessage(`{"workspace_id":"ws-1","name":"Web","prefix":"WEB","setup_finished":false}`))
+		require.NoError(t, err)
+		assert.Equal(t, NewSetup(false), got.(*Project).Setup)
+	})
 	t.Run("creates a project with an icon", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
 		got, err := wsTool(t, s, "project_create").Call(asOwner(t.Context()),

@@ -1,9 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { RepoRole, TestsLocation } from "@/enums/Project";
-import type { DeleteImpact, Project, ProjectAccessEntry, RepoRef } from "@/models/Project";
+import type { DeleteImpact, Project, ProjectAccessEntry, ProjectSetup, RepoRef, SetupMark } from "@/models/Project";
 import type { Repo } from "@/models/Repository";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { LiveFollower } from "@/lib/live";
@@ -57,12 +57,44 @@ export const useCreateProject = () => {
           prefix,
           icon,
           workspace_id: useWorkspaceStore.getState().selectedWorkspaceId,
+          setup_finished: false,
         })
       ).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getProjectsKey] });
       toast.success("Project created");
     },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+interface SetupChangedPayload {
+  project_id: string;
+  workspace_id: string;
+  setup: ProjectSetup;
+}
+
+// Patches a project's setup into the list the sidebar reads and the project's own read, so its nav flips in place.
+const patchSetup = (client: QueryClient, { project_id, workspace_id, setup }: SetupChangedPayload) => {
+  client.setQueryData<Project[]>([getProjectsKey, workspace_id], (list) =>
+    list?.map((p) => (p.id === project_id ? { ...p, setup } : p)),
+  );
+  client.setQueryData<Project>([getProjectKey, project_id], (project) => project && { ...project, setup });
+};
+
+export interface SetupChangeInput {
+  projectId: string;
+  finished?: boolean;
+  steps?: Partial<Record<string, SetupMark>>;
+}
+
+export const useChangeProjectSetup = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ projectId, finished, steps }: SetupChangeInput) =>
+      (await api.put<Project>(`/api/projects/${projectId}/setup`, { finished, steps })).data,
+    onSuccess: (project) =>
+      patchSetup(client, { project_id: project.id, workspace_id: project.workspace_id, setup: project.setup }),
     onError: (error) => toast.error(errorMessage(error)),
   });
 };
@@ -172,6 +204,7 @@ export const useRemoveProjectRepo = () => {
 
 // Who a manager sees with access to a project follows someone else's Project access moving.
 export const projectFollower: LiveFollower = {
+  "project.setup_changed": (payload: SetupChangedPayload, { client }) => patchSetup(client, payload),
   "workspace.member.updated": ({ project_ids }: { project_ids?: string[] }, { client }) =>
     Promise.all((project_ids ?? []).map((id) => client.invalidateQueries({ queryKey: [getProjectAccessKey, id], exact: true }))),
   "access.grant.changed": ({ resource_type, resource_id }: { resource_type: string; resource_id: string }, { client }) =>

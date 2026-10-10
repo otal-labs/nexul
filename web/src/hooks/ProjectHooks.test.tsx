@@ -85,7 +85,7 @@ describe("useFetchProjectRepos", () => {
 });
 
 describe("useCreateProject", () => {
-  it("posts and returns the created project", async () => {
+  it("posts a project that starts in the wizard's setup and returns it", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: project });
     const { result } = renderHook(() => useCreateProject(), { wrapper });
     await result.current.mutateAsync({ name: "Backend", prefix: "BE" });
@@ -93,6 +93,7 @@ describe("useCreateProject", () => {
       name: "Backend",
       prefix: "BE",
       workspace_id: "ws-1",
+      setup_finished: false,
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });

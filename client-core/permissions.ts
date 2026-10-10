@@ -21,6 +21,7 @@ export const AREA_PERMISSION = {
   editAutoPlays: "autoplays:write",
   deleteAutoPlays: "autoplays:delete",
   newProject: "projects:write",
+  editProjects: "projects:write",
   newDoc: "docs:write",
   editNotes: "tickets:write",
   editTickets: "tickets:write",

@@ -2,18 +2,24 @@ import { useNavigate } from "react-router";
 import { useShallow } from "zustand/react/shallow";
 
 import { Button } from "@/components/ui/button";
+import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { WizardInterviewOffer } from "@/components/wizard/WizardInterviewOffer";
+import { WizardLeftoversSection } from "@/components/wizard/WizardLeftoversSection";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useInterviewOffer } from "@/hooks/useInterviewOffer";
-import { useFetchProjects } from "@/hooks/ProjectHooks";
+import { useChangeProjectSetup, useFetchProjects } from "@/hooks/ProjectHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { interviewPath, projectTokenById } from "@/models/Project";
 
-// Terminal rung: what the wizard built, the interview offer while the project has none, and links to the stack and canvas.
-export const WizardDoneStep = () => {
+interface WizardDoneStepProps {
+  onBack: () => void;
+}
+
+// The last step: what the wizard built, what was left for later, the interview offer, and Finish, which sets the project up.
+export const WizardDoneStep = ({ onBack }: WizardDoneStepProps) => {
   const navigate = useNavigate();
-const wsPath = useWorkspacePath();
+  const wsPath = useWorkspacePath();
   const can = useAreaAccess();
   const { name, machine, exposureHostname, stackId, projectId, projectName } = useProjectWizardStore(
     useShallow((s) => ({
@@ -27,6 +33,8 @@ const wsPath = useWorkspacePath();
   );
   const { data: projects } = useFetchProjects();
   const offer = useInterviewOffer(projectId, projectName ?? name);
+  const changeSetup = useChangeProjectSetup();
+  const token = projectId ? projectTokenById(projects ?? [], projectId) : "";
 
   const go = (to: string) => {
     navigate(wsPath(to));
@@ -35,41 +43,52 @@ const wsPath = useWorkspacePath();
   const leave = async (to: string) => {
     if (await offer.confirmSkip()) go(to);
   };
+  const finish = async () => {
+    if (!projectId || !(await offer.confirmSkip())) return;
+    try {
+      await changeSetup.mutateAsync({ projectId, finished: true });
+      go(can?.("tickets") ? `/board/${token}` : "/");
+    } catch {
+      // The hook toasts the failure; the step stays so Finish can be pressed again.
+    }
+  };
 
   return (
     <div className="space-y-5">
-      <div>
-        <p className="text-sm">
-          {name} is deploying on {machine}.
-        </p>
-        {exposureHostname && (
-          <p className="mt-1 font-mono text-xs text-muted-foreground">{exposureHostname}</p>
-        )}
-      </div>
+      {stackId && (
+        <div>
+          <p className="text-sm">
+            {name} is deploying on {machine}.
+          </p>
+          {exposureHostname && <p className="mt-1 font-mono text-xs text-muted-foreground">{exposureHostname}</p>}
+        </div>
+      )}
+      <WizardLeftoversSection />
       {offer.pending && projectId && (
         <WizardInterviewOffer
           projectName={projectName ?? name}
-          onStart={() => go(interviewPath(projectTokenById(projects ?? [], projectId)))}
+          onStart={() => go(interviewPath(token))}
           onSkip={() => void offer.confirmSkip()}
         />
       )}
       {offer.skipped && (
-        <p className="text-sm text-muted-foreground">
-          Interview skipped. A banner on the project reminds you until it exists.
-        </p>
+        <p className="text-sm text-muted-foreground">Interview skipped. A banner on the project reminds you until it exists.</p>
       )}
-      <div className="flex flex-wrap gap-3">
+      <WizardFooter onBack={onBack}>
         {stackId && can?.("stacks") && (
           <Button variant="outline" onClick={() => void leave(`/stacks/${stackId}`)}>
             View stack
           </Button>
         )}
-        {can?.("topology") && (
-          <Button variant={offer.pending ? "outline" : "default"} onClick={() => void leave("/topology")}>
+        {stackId && can?.("topology") && (
+          <Button variant="outline" onClick={() => void leave("/topology")}>
             View on the canvas
           </Button>
         )}
-      </div>
+        <Button variant={offer.pending ? "outline" : "default"} onClick={() => void finish()} loading={changeSetup.isPending}>
+          Finish
+        </Button>
+      </WizardFooter>
     </div>
   );
 };

@@ -1173,7 +1173,8 @@ export const AppRouter = () => {
   button, and the collapse toggle (instant width swap, no layout animation,
   see the motion rules). Below it: the workspace switcher; one scrolling nav
   with Search (the command palette) and Inbox, then one project at a time
-  behind a project switcher, its pages listed once, then the foldable
+  behind a project switcher, its pages listed once (or Continue setup while
+  the project's setup is open, ADR 0143), then the foldable
   workspace section (Runners, Topology, Automations, Configuration), then the
   conversations (channels, voice channels, direct messages, threads); the
   account menu (Support, Sign out) and the Your settings gear at the bottom.

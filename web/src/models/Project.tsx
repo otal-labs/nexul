@@ -26,13 +26,25 @@ export interface Project {
   /** Immutable 2-5 character uppercase tag (a letter, then letters or digits), unique per workspace, for the human-readable ticket id (PREFIX-N). */
   prefix: string;
   position: number;
+  workspace_id: string;
   /** Owner-configured lucide-react icon name, "" when unset — falls back to prefix-only rendering. */
   icon: string;
   /** Where the project's tests live, as answered in the project wizard; the interview starts from it. */
   tests_location: TestsLocation;
+  setup: ProjectSetup;
   created_at: string;
   updated_at: string;
 }
+
+export type SetupMark = "done" | "skipped";
+
+// The project wizard's record of a project (ADR 0143): until finished, the sidebar offers Continue setup.
+export interface ProjectSetup {
+  finished: boolean;
+  steps: Partial<Record<string, SetupMark>>;
+}
+
+export const inSetup = (project: Project): boolean => !project.setup.finished;
 
 // The letters a project shows on its tile: the prefix, or the name's first letter before one was backfilled.
 export const projectTile = (project: Project): string => project.prefix || project.name[0]?.toUpperCase() || "";

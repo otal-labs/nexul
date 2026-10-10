@@ -262,7 +262,7 @@ describe("Layout", () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     authUser = user;
     meResponse = { role_name: "Member", permissions };
-    projects = [{ id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" }];
+    projects = [{ id: "p-1", name: "Backend", prefix: "BE", position: 0, setup: { finished: true, steps: {} }, created_at: "", updated_at: "" }];
     renderLayout();
 
     await waitFor(() => {

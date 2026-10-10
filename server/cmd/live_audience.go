@@ -91,15 +91,16 @@ var liveRules = map[string]liveRule{
 	tickets.TopicLinkDeleted:             ticketLinkFrame,
 	workspace.TopicTicketCategoryChanged: ticketIDFrame,
 
-	workspace.TopicCategoryCreated:   boardFrame("category"),
-	workspace.TopicCategoryUpdated:   boardFrame("category"),
-	workspace.TopicCategoryDeleted:   boardFrame("category"),
-	workspace.TopicTicketTypeCreated: boardFrame("ticket_type"),
-	workspace.TopicTicketTypeUpdated: boardFrame("ticket_type"),
-	workspace.TopicTicketTypeDeleted: boardFrame("ticket_type"),
-	workspace.TopicStatusCreated:     boardFrame("status"),
-	workspace.TopicStatusUpdated:     boardFrame("status"),
-	workspace.TopicStatusDeleted:     boardFrame("status"),
+	workspace.TopicCategoryCreated:     boardFrame("category"),
+	workspace.TopicCategoryUpdated:     boardFrame("category"),
+	workspace.TopicCategoryDeleted:     boardFrame("category"),
+	workspace.TopicTicketTypeCreated:   boardFrame("ticket_type"),
+	workspace.TopicTicketTypeUpdated:   boardFrame("ticket_type"),
+	workspace.TopicTicketTypeDeleted:   boardFrame("ticket_type"),
+	workspace.TopicStatusCreated:       boardFrame("status"),
+	workspace.TopicStatusUpdated:       boardFrame("status"),
+	workspace.TopicStatusDeleted:       boardFrame("status"),
+	workspace.TopicProjectSetupChanged: projectFrame,
 
 	docs.TopicCreated:                        docFrame,
 	docs.TopicUpdated:                        docFrame,
@@ -311,6 +312,14 @@ func boardFrame(key string) liveRule {
 		projectID := p[key].ProjectID
 		return projectID == "" || a.access.RequireProject(ctx, projectID, permissions.Member) == nil
 	}
+}
+
+// projectFrame reaches whoever may open the project, the people whose sidebar lists it.
+func projectFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		ProjectID string `json:"project_id"`
+	}
+	return decode(raw, &p) && p.ProjectID != "" && a.access.RequireProject(ctx, p.ProjectID, permissions.Member) == nil
 }
 
 func docFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {

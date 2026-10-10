@@ -39,6 +39,13 @@ status columns, ticket types, and a starter memory. Nothing seeds one: a new
 workspace, the owner's first included, has none until the wizard runs.
 _Avoid_: Board, app, default project
 
+**Project setup**:
+The project wizard's record of a project: whether Finish was pressed, and each
+wizard step done or skipped. A project the wizard makes stays in setup until
+Finish, and its sidebar offers Continue setup instead of its pages; one made any
+other way starts set up. A signal, never a lock: every page still opens.
+_Avoid_: Onboarding, draft project, unfinished project
+
 **Prefix**:
 A project's 2-5 character tag, a letter then letters or digits, set once and
 unique within its workspace; it starts the project's ticket keys.

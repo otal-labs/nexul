@@ -563,6 +563,10 @@ func (r projectRepo) Update(_ context.Context, p *workspace.Project) error {
 	return r.w.projects.put(p)
 }
 
+func (r projectRepo) SaveSetup(_ context.Context, p *workspace.Project, _ ...eventbus.OutboxEvent) error {
+	return r.w.projects.put(p)
+}
+
 func (r projectRepo) Reorder(_ context.Context, ids []string) error { return r.w.projects.reorder(ids) }
 
 func (r projectRepo) CountTickets(_ context.Context, projectID string) (int, error) {

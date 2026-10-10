@@ -3,12 +3,13 @@ import { useNavigate } from "react-router";
 
 import { navLinkClass, sectionLabelClass } from "@/components/SidebarNav";
 import { ProjectNav } from "@/components/sidebar/ProjectNav";
+import { ProjectSetupNav } from "@/components/sidebar/ProjectSetupNav";
 import { ProjectSwitcher } from "@/components/sidebar/ProjectSwitcher";
 import { RailTooltip } from "@/components/sidebar/RailTooltip";
 import { useAnyProjectAreaAccess } from "@/hooks/AccessHooks";
 import { useSidebarProject } from "@/hooks/useSidebarProject";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { NEW_PROJECT_PATH } from "@/models/Project";
+import { inSetup, NEW_PROJECT_PATH } from "@/models/Project";
 import { cn } from "@/lib/utils";
 
 interface ProjectSectionProps {
@@ -50,7 +51,8 @@ export const ProjectSection = ({ collapsed }: ProjectSectionProps) => {
       {projects && current && showSwitcher && (
         <ProjectSwitcher projects={projects} current={current} collapsed={collapsed} />
       )}
-      {current && showSwitcher && <ProjectNav project={current} collapsed={collapsed} />}
+      {current && showSwitcher && !inSetup(current) && <ProjectNav project={current} collapsed={collapsed} />}
+      {current && showSwitcher && inSetup(current) && <ProjectSetupNav project={current} collapsed={collapsed} />}
     </div>
   );
 };
