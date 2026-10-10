@@ -93,7 +93,7 @@ export const ProjectWizardPage = () => {
   const wsPath = useWorkspacePath();
   useSeedAttachStack();
   const reset = useProjectWizardStore((s) => s.reset);
-  // Leaving ends the run, so the next visit starts clean; a project it already made resumes through Add a service.
+  // Leaving ends the run, so the next visit starts clean; a project it already made resumes through its Continue setup banner.
   useEffect(() => reset, [reset]);
   const projectPreselected = useProjectWizardStore((s) => s.projectPreselected);
   const isAttach = searchParams.has("stack");
