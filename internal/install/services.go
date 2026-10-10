@@ -122,9 +122,17 @@ type launchd struct{ h *Host }
 
 func (l launchd) label(u Unit) string   { return "io.nexul." + u.Name }
 func (l launchd) path(u Unit) string    { return filepath.Join(l.h.Paths.Services, l.label(u)+".plist") }
-func (l launchd) domain() string        { return fmt.Sprintf("gui/%d", l.h.Getuid()) }
-func (l launchd) target(u Unit) string  { return l.domain() + "/" + l.label(u) }
+func (l launchd) target(u Unit) string  { return l.domain(u) + "/" + l.label(u) }
 func (l launchd) logPath(u Unit) string { return filepath.Join(l.h.Paths.Logs, u.Name+".log") }
+
+// domain is where the unit's job loads: a unit that runs as a named person is a LaunchDaemon, started at boot and
+// kept past logout; every other unit is a LaunchAgent of the installing user.
+func (l launchd) domain(u Unit) string {
+	if u.User != "" {
+		return "system"
+	}
+	return fmt.Sprintf("gui/%d", l.h.Getuid())
+}
 
 func (l launchd) install(ctx context.Context, u Unit) error {
 	for _, dir := range []string{l.h.Paths.Services, l.h.Paths.Logs} {
@@ -140,7 +148,7 @@ func (l launchd) install(ctx context.Context, u Unit) error {
 	if _, err := l.h.Exec.Run(ctx, "launchctl", "enable", l.target(u)); err != nil {
 		return err
 	}
-	_, err := l.h.Exec.Run(ctx, "launchctl", "bootstrap", l.domain(), l.path(u))
+	_, err := l.h.Exec.Run(ctx, "launchctl", "bootstrap", l.domain(u), l.path(u))
 	return err
 }
 
@@ -193,7 +201,16 @@ func launchdPlist(label string, u Unit, logPath string) string {
 	}
 	b.WriteString("  </dict>\n")
 	fmt.Fprintf(&b, "  <key>WorkingDirectory</key>\n  <string>%s</string>\n", xmlText(u.WorkDir))
-	b.WriteString("  <key>RunAtLoad</key>\n  <true/>\n  <key>KeepAlive</key>\n  <true/>\n")
+	if u.User != "" {
+		fmt.Fprintf(&b, "  <key>UserName</key>\n  <string>%s</string>\n", xmlText(u.User))
+	}
+	b.WriteString("  <key>RunAtLoad</key>\n  <true/>\n")
+	if u.Kind == kindComputer { // a removed runner exits 0; its person cannot remove the daemon, and a restart is refused again
+		b.WriteString("  <key>KeepAlive</key>\n  <dict>\n    <key>SuccessfulExit</key>\n    <false/>\n  </dict>\n")
+	}
+	if u.Kind != kindComputer {
+		b.WriteString("  <key>KeepAlive</key>\n  <true/>\n")
+	}
 	fmt.Fprintf(&b, "  <key>StandardOutPath</key>\n  <string>%s</string>\n", xmlText(logPath))
 	fmt.Fprintf(&b, "  <key>StandardErrorPath</key>\n  <string>%s</string>\n", xmlText(logPath))
 	b.WriteString("</dict>\n</plist>\n")

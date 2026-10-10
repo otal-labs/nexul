@@ -247,7 +247,7 @@ func newTestHost(t *testing.T) *testHost {
 	oo := newFakeOpenObserve(t, "v1.0.4")
 
 	systemd := filepath.Join(root, "run-systemd")
-	for _, dir := range []string{systemd, filepath.Join(root, "bin"), filepath.Join(root, "systemd"), filepath.Join(root, "sudoers.d")} {
+	for _, dir := range []string{systemd, filepath.Join(root, "bin"), filepath.Join(root, "systemd"), filepath.Join(root, "sudoers.d"), filepath.Join(root, "LaunchDaemons")} {
 		require.NoError(t, os.MkdirAll(dir, 0o755))
 	}
 	self := filepath.Join(root, "downloads", "nexul")
@@ -271,6 +271,7 @@ func newTestHost(t *testing.T) *testHost {
 			BinDir:       filepath.Join(root, "bin"),
 			UnitRoot:     filepath.Join(root, "opt"),
 			Services:     filepath.Join(root, "systemd"),
+			Daemons:      filepath.Join(root, "LaunchDaemons"),
 			Sudoers:      filepath.Join(root, "sudoers.d"),
 			Logs:         filepath.Join(root, "home", "Library", "Logs", "nexul"),
 			ComposePlugs: filepath.Join(root, "cli-plugins"),

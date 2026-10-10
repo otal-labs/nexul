@@ -26,9 +26,9 @@ For a machine the server can already reach, such as a VPS or a computer on the s
 
 **Not installed yet** shows how to install T3 Code by hand. T3 Code's background service listens on `127.0.0.1` only, so on Linux the command writes a systemd override that sets `T3CODE_HOST=0.0.0.0` before `t3 service install`, and `t3 pair` then prints a link with the machine's first network address. That opens T3 Code's port on every interface, so keep it behind a firewall or a private network such as Tailscale. T3 Code's macOS service has no such setting: run `t3 serve --host <address>` there, or use a tunnel.
 
-### Add a Linux computer with its runner
+### Add a Linux computer or a Mac with its runner
 
-A Linux computer can also join through a runner of its own, which needs no Cloudflare. [`computer_create`](/docs/guide/mcp-server/) gives the command; run it on that computer from your own account:
+A Linux computer or a Mac can also join through a runner of its own, which needs no Cloudflare. [`computer_create`](/docs/guide/mcp-server/) gives the command; run it in a terminal on that computer from your own account:
 
 ```sh
 curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- <token>
@@ -36,11 +36,11 @@ curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- <token>
 
 `sudo` is there only to place a system service. Everything else is installed for you, the person who typed `sudo`:
 
-- the `nexul` command in your `~/.local/bin`, and the runner with its credential in `~/.local/share/nexul`, all owned by you, with the credential readable only by you;
-- `nexul-computer`, a system service that runs the runner as you, never as root. It starts at boot and keeps running after you log out.
+- the `nexul` command in your `~/.local/bin`, and the runner with its credential in `~/.local/share/nexul` (`~/Library/Application Support/nexul` on a Mac), all owned by you, with the credential readable only by you;
+- `nexul-computer`, a system service that runs the runner as you, never as root: a systemd service on Linux, a LaunchDaemon in `/Library/LaunchDaemons` on a Mac. It starts at boot and keeps running after you log out.
 - T3 Code, when it's missing; see [What the command installs](#what-the-command-installs).
 
-Logged in as root, the command refuses: run it from your own account. On a computer without `sudo`, the shell says `sudo` is not found; as root, install sudo and add your account to the `sudo` group (`usermod -aG sudo <you>` on Debian and Ubuntu, the `wheel` group elsewhere), log in again, and rerun the command. Its logs are in `journalctl -u nexul-computer`. To remove it, run `nexul uninstall computer` from the same account: it tells Nexul, and a small root service the install left, which can only remove this runner, takes the service and its files away; no sudo rule is involved. With sudo it removes them at once (`sudo ~/.local/bin/nexul uninstall computer`, since sudo does not search `~/.local/bin`).
+Logged in as root, the command refuses: run it from your own account. On a computer without `sudo`, the shell says `sudo` is not found; as root, install sudo and add your account to the `sudo` group (`usermod -aG sudo <you>` on Debian and Ubuntu, the `wheel` group elsewhere), log in again, and rerun the command. Its logs are in `journalctl -u nexul-computer`, or `~/Library/Logs/nexul/nexul-computer.log` on a Mac. To remove it, run `nexul uninstall computer` from the same account: it tells Nexul, and a small root service the install left (a root LaunchDaemon on a Mac), which can only remove this runner, takes the service and its files away; no sudo rule is involved. With sudo it removes them at once (`sudo ~/.local/bin/nexul uninstall computer`, since sudo does not search `~/.local/bin`).
 
 ### What the command installs
 
@@ -58,9 +58,11 @@ If T3 Code can't be installed or started, the command stops before the runner an
 curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- <token> --no-t3
 ```
 
-For T3 Code's service on another port, add `--t3-port <port>`.
+For T3 Code's service on another port, add `--t3-port <port>` (Linux only: T3 Code's Mac service always uses 3773).
 
-Once installed, the runner checks T3 Code every 30 seconds. When T3 Code's background service stops answering for two checks in a row, the runner restarts it (`t3 service restart`), at most once every 5 minutes, and tells Nexul it did. If your user service manager isn't running, so the service can't be restarted, the runner reports that instead; `sudo loginctl enable-linger <you>` turns it on. The desktop app is never restarted: when it's closed, open T3 Code.
+On a Mac, T3 Code's background service is one of your login items rather than a system service, so macOS runs it only while you are logged in at the Mac's screen; logging in over SSH does not start it. The runner keeps the computer connected from boot, but until you log in Nexul can't reach T3 Code there, and runs aimed at that computer fail. With FileVault on, a Mac that restarts runs nothing at all, the runner included, until someone logs in. A Mac that should take runs while nobody sits at it needs automatic login, which macOS allows only with FileVault off.
+
+Once installed, the runner checks T3 Code every 30 seconds. When T3 Code's background service stops answering for two checks in a row, the runner restarts it (`t3 service restart`), at most once every 5 minutes, and tells Nexul it did. If your user service manager isn't running, so the service can't be restarted, the runner reports that instead; `sudo loginctl enable-linger <you>` turns it on. On a Mac the restart works while you're logged in; logged out, there is nothing to restart into until you log in again. The desktop app is never restarted: when it's closed, open T3 Code.
 
 ## Keep it paired
 

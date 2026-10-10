@@ -104,16 +104,23 @@ func (h *Host) InstallComputer(ctx context.Context, o ComputerOptions) error {
 	if err := h.step("Runner", func() (string, error) { return h.installComputerRunner(ctx, ho, tag, p) }); err != nil {
 		return err
 	}
-	h.printf("\nThis computer's runner runs as %s under the %s system service, from boot and after you log out; Nexul shows the computer connected once it reaches %s.\n", p.name, computerUnit, ho.Server)
-	h.printf("  Remove it      nexul uninstall computer\n  Logs           journalctl -u %s\n", computerUnit)
+	service, logs := computerUnit+" system service", "journalctl -u "+computerUnit
+	if h.GOOS == "darwin" {
+		service, logs = computerUnit+" LaunchDaemon", launchd{h}.logPath(Unit{Name: computerUnit})
+	}
+	h.printf("\nThis computer's runner runs as %s under the %s, from boot and after you log out; Nexul shows the computer connected once it reaches %s.\n", p.name, service, ho.Server)
+	h.printf("  Remove it      nexul uninstall computer\n  Logs           %s\n", logs)
+	if h.GOOS == "darwin" && !o.NoT3 {
+		h.printf("  T3 Code        runs only while %s is logged in at this Mac, as T3 Code's macOS service does; until then the computer shows connected but its agents cannot run\n", p.name)
+	}
 	return nil
 }
 
 // computerPerson is the person a computer's runner is for. The install runs as root under sudo only to place the
 // service; a direct root login names nobody, and the runner must never run as root.
 func (h *Host) computerPerson() (person, error) {
-	if h.GOOS != "linux" {
-		return person{}, fmt.Errorf("nexul install computer runs on Linux for now, not %s", h.GOOS)
+	if h.GOOS != "linux" && h.GOOS != "darwin" {
+		return person{}, fmt.Errorf("nexul install computer runs on Linux and macOS for now, not %s", h.GOOS)
 	}
 	if h.Getuid() != 0 {
 		return person{}, errors.New("run this with sudo: it installs a system service that runs the computer's runner as you")
@@ -139,12 +146,33 @@ func (h *Host) lookupPerson(name string) (person, error) {
 }
 
 // computerPaths keeps everything but the service in the person's home: the command in ~/.local/bin and the runner
-// under ~/.local/share/nexul. The service itself is a system unit, root's.
+// under ~/.local/share/nexul, or ~/Library/Application Support/nexul on macOS. The service itself is root's.
 func (h *Host) computerPaths(p person) Paths {
 	paths := h.Paths
 	paths.BinDir = filepath.Join(p.home, ".local", "bin")
 	paths.UnitRoot = filepath.Join(p.home, ".local", "share", "nexul")
+	if h.GOOS == "darwin" {
+		paths.UnitRoot = filepath.Join(p.home, "Library", "Application Support", "nexul")
+		paths.Services = paths.Daemons
+		paths.Logs = filepath.Join(p.home, "Library", "Logs", "nexul")
+	}
 	return paths
+}
+
+// computerService is the computer runner's service definition: a systemd unit, or a LaunchDaemon on macOS.
+func (h *Host) computerService() string {
+	if h.GOOS == "darwin" {
+		return launchd{h}.path(Unit{Name: computerUnit})
+	}
+	return systemd{h}.path(Unit{Name: computerUnit})
+}
+
+// asPersonArgs is a command run by root as the person: runuser on Linux, sudo on macOS, which has no runuser.
+func (h *Host) asPersonArgs(p person, args ...string) (string, []string) {
+	if h.GOOS == "darwin" {
+		return "sudo", append([]string{"-u", p.name}, args...)
+	}
+	return "runuser", append([]string{"-u", p.name, "--"}, args...)
 }
 
 // installComputerRunner downloads the runner, trades the code for its credential and starts it as a system service
@@ -160,7 +188,7 @@ func (h *Host) installComputerRunner(ctx context.Context, o HostOptions, tag str
 	if existing != nil {
 		return "", errors.New("this computer already has its runner; remove it first with: nexul uninstall computer")
 	}
-	if fileExists(systemd{h}.path(Unit{Name: computerUnit})) {
+	if fileExists(h.computerService()) {
 		return "", errors.New("this computer's runner is installed for another account; that account removes it with: nexul uninstall computer")
 	}
 	dir := h.unitDir(computerUnit)
@@ -194,6 +222,12 @@ func (h *Host) setUpComputer(ctx context.Context, u *Unit, o HostOptions, tag st
 		"NEXUL_RUNNER_NAME":     enrolled.Name,
 		"NEXUL_RUNNER_MODE":     "personal",
 	}
+	if h.GOOS == "darwin" {
+		u.Env["HOME"] = p.home // launchd gives a daemon no HOME, and the runner finds T3 Code under it
+		if err := h.daemonLog(p, *u); err != nil {
+			return err
+		}
+	}
 	if err := h.saveUnit(*u); err != nil {
 		return err
 	}
@@ -203,7 +237,23 @@ func (h *Host) setUpComputer(ctx context.Context, u *Unit, o HostOptions, tag st
 	if err := h.installCleanup(ctx, p); err != nil {
 		return err
 	}
-	return systemd{h}.install(ctx, *u)
+	return h.services().install(ctx, *u)
+}
+
+// daemonLog makes the LaunchDaemon's log file the person's before launchd, as root, opens it.
+func (h *Host) daemonLog(p person, u Unit) error {
+	if err := os.MkdirAll(h.Paths.Logs, 0o755); err != nil {
+		return fmt.Errorf("create %s: %w", h.Paths.Logs, err)
+	}
+	path := launchd{h}.logPath(u)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", path, err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("create %s: %w", path, err)
+	}
+	return h.giveTo(p, h.Paths.Logs)
 }
 
 // moveToSystemService takes over a runner an earlier release installed as the person's own user service: its
@@ -222,7 +272,7 @@ func (h *Host) moveToSystemService(ctx context.Context, u Unit, p person) (strin
 	if err := h.installCleanup(ctx, p); err != nil {
 		return "", err
 	}
-	if err := (systemd{h}).install(ctx, u); err != nil {
+	if err := h.services().install(ctx, u); err != nil {
 		return "", err
 	}
 	return u.Name + ", " + u.Host + ", moved from your user service", nil
@@ -277,7 +327,8 @@ func fileExists(path string) bool {
 }
 
 // installCleanup lets the runner remove itself without sudo: root's own copy of nexul, a request folder only the
-// person may write in, and a path unit that runs the copy's fixed removal once a request appears there.
+// person may write in, and a path unit (a LaunchDaemon watching the folder on macOS) that runs the copy's fixed
+// removal once a request appears there.
 func (h *Host) installCleanup(ctx context.Context, p person) error {
 	exe, err := h.executable()
 	if err != nil {
@@ -298,6 +349,9 @@ func (h *Host) installCleanup(ctx context.Context, p person) error {
 	if err := h.Chown(h.Paths.Requests, p.uid, p.gid); err != nil {
 		return fmt.Errorf("give %s to %s: %w", h.Paths.Requests, p.name, err)
 	}
+	if h.GOOS == "darwin" {
+		return h.loadCleanupDaemon(ctx, p)
+	}
 	files := map[string]string{
 		h.cleanupPath(".path"):    cleanupPathUnit(filepath.Join(h.Paths.Requests, removeRequest)),
 		h.cleanupPath(".service"): cleanupServiceUnit(h.cleanupExe(), p.name),
@@ -315,16 +369,41 @@ func (h *Host) installCleanup(ctx context.Context, p person) error {
 	return nil
 }
 
-// removeCleanup takes the cleanup away again; any piece already gone is not an error.
+// loadCleanupDaemon is macOS's cleanup: a root LaunchDaemon that runs the copy's removal when the folder changes.
+func (h *Host) loadCleanupDaemon(ctx context.Context, p person) error {
+	path := launchd{h}.path(Unit{Name: cleanupUnit})
+	if err := os.WriteFile(path, []byte(cleanupPlist(h.cleanupExe(), p.name, h.Paths.Requests)), 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+	_, _ = h.Exec.Run(ctx, "launchctl", "bootout", cleanupTarget) // fails when it is not loaded yet, the first install
+	_, err := h.Exec.Run(ctx, "launchctl", "bootstrap", "system", path)
+	return err
+}
+
+// cleanupTarget is macOS's cleanup daemon in launchd's system domain.
+const cleanupTarget = "system/io.nexul." + cleanupUnit
+
+// removeCleanup takes the cleanup away again; any piece already gone is not an error. On macOS the daemon is unloaded
+// last, because when the cleanup itself runs this, unloading it ends the process.
 func (h *Host) removeCleanup(ctx context.Context) error {
-	_, _ = h.Exec.Run(ctx, "systemctl", "disable", "--now", cleanupUnit+".path") // fails once the unit is gone
-	for _, path := range []string{h.cleanupPath(".path"), h.cleanupPath(".service"), h.cleanupExe()} {
+	if h.GOOS != "darwin" {
+		_, _ = h.Exec.Run(ctx, "systemctl", "disable", "--now", cleanupUnit+".path") // fails once the unit is gone
+	}
+	paths := []string{h.cleanupPath(".path"), h.cleanupPath(".service"), h.cleanupExe()}
+	if h.GOOS == "darwin" {
+		paths = []string{launchd{h}.path(Unit{Name: cleanupUnit}), h.cleanupExe()}
+	}
+	for _, path := range paths {
 		if err := removeIfPresent(path); err != nil {
 			return fmt.Errorf("remove %s: %w", path, err)
 		}
 	}
 	if err := os.RemoveAll(h.Paths.Requests); err != nil {
 		return fmt.Errorf("remove %s: %w", h.Paths.Requests, err)
+	}
+	if h.GOOS == "darwin" {
+		_, _ = h.Exec.Run(ctx, "launchctl", "bootout", cleanupTarget) // fails once it is unloaded
+		return nil
 	}
 	_, err := h.Exec.Run(ctx, "systemctl", "daemon-reload")
 	return err
@@ -350,6 +429,26 @@ func cleanupPathUnit(request string) string {
 		"WantedBy=multi-user.target",
 		"",
 	}, "\n")
+}
+
+// cleanupPlist is macOS's cleanup daemon: root's copy for the person named at install, run when the request folder
+// changes; the removal itself checks that a request is there.
+func cleanupPlist(exe, name, requests string) string {
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+`)
+	fmt.Fprintf(&b, "  <key>Label</key>\n  <string>io.nexul.%s</string>\n", cleanupUnit)
+	b.WriteString("  <key>ProgramArguments</key>\n  <array>\n")
+	for _, arg := range []string{exe, "uninstall", "computer", "--cleanup-for", name} {
+		fmt.Fprintf(&b, "    <string>%s</string>\n", xmlText(arg))
+	}
+	b.WriteString("  </array>\n")
+	fmt.Fprintf(&b, "  <key>WatchPaths</key>\n  <array>\n    <string>%s</string>\n  </array>\n", xmlText(requests))
+	b.WriteString("</dict>\n</plist>\n")
+	return b.String()
 }
 
 // cleanupServiceUnit runs root's copy for the person named at install, so nothing the person can change steers it.
@@ -403,8 +502,8 @@ func (h *Host) requestRemoval() error {
 // UninstallComputer removes this computer's runner and tells the instance. Under sudo it removes it at once; as the
 // person, it asks root's cleanup to, as a removed runner does.
 func (h *Host) UninstallComputer(ctx context.Context, yes bool) error {
-	if h.GOOS != "linux" {
-		return fmt.Errorf("nexul uninstall computer runs on Linux for now, not %s", h.GOOS)
+	if h.GOOS != "linux" && h.GOOS != "darwin" {
+		return fmt.Errorf("nexul uninstall computer runs on Linux and macOS for now, not %s", h.GOOS)
 	}
 	p := person{name: "your account", home: h.Home}
 	if h.Getuid() == 0 {
@@ -445,7 +544,8 @@ func (h *Host) UninstallComputer(ctx context.Context, yes bool) error {
 }
 
 // cleanUpComputer is the cleanup service's removal, run as root because the runner asked. It reads nothing the
-// person can write, neither the request nor the runner's own record, so asking can only ever remove the runner.
+// person can write, neither the request's contents nor the runner's own record, so asking can only ever remove the
+// runner; with no request there, as when macOS's folder watch fires for anything else, it does nothing.
 func (h *Host) cleanUpComputer(ctx context.Context, name string) error {
 	if h.Getuid() != 0 {
 		return errors.New("--cleanup-for is the cleanup service's, which runs as root")
@@ -454,22 +554,29 @@ func (h *Host) cleanUpComputer(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
+	if !fileExists(filepath.Join(h.Paths.Requests, removeRequest)) {
+		return nil
+	}
 	h.Paths = h.computerPaths(p)
 	return h.removeComputer(ctx, p)
 }
 
-// removeComputer removes everything the install made: the service, the cleanup, a user service an earlier release
-// left, and, as the person, so a link in their home leads nowhere else, the runner's folder and the nexul command.
+// removeComputer removes everything the install made: the service, a user service an earlier release left, as the
+// person, so a link in their home leads nowhere else, the runner's folder and the nexul command, then the cleanup.
 func (h *Host) removeComputer(ctx context.Context, p person) error {
-	if err := (systemd{h}).remove(ctx, Unit{Name: computerUnit}); err != nil {
-		return err
-	}
-	if err := h.removeCleanup(ctx); err != nil {
+	if err := h.services().remove(ctx, Unit{Name: computerUnit, User: p.name}); err != nil {
 		return err
 	}
 	if err := h.dropUserUnit(ctx, p); err != nil {
 		return err
 	}
-	_, err := h.Exec.Run(ctx, "runuser", "-u", p.name, "--", "rm", "-rf", h.unitDir(computerUnit), filepath.Join(h.Paths.BinDir, "nexul"))
-	return err
+	files := []string{"rm", "-rf", h.unitDir(computerUnit), filepath.Join(h.Paths.BinDir, "nexul")}
+	if h.GOOS == "darwin" {
+		files = append(files, launchd{h}.logPath(Unit{Name: computerUnit}))
+	}
+	name, args := h.asPersonArgs(p, files...)
+	if _, err := h.Exec.Run(ctx, name, args...); err != nil {
+		return err
+	}
+	return h.removeCleanup(ctx)
 }

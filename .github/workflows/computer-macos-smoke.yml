@@ -1,0 +1,158 @@
+# Adds and removes a Mac as a computer end to end; start by hand: gh workflow run computer-macos-smoke.yml --ref <branch>.
+name: Computer on macOS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      TAG: v0.0.1-macos-smoke
+      SITE: http://127.0.0.1:8371
+      API: http://127.0.0.1:8370
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Build the release and serve it with the install scripts
+        run: |
+          arch=$(go env GOARCH)
+          rel="$RUNNER_TEMP/site"
+          mkdir -p "$rel/$TAG"
+          for bin in nexul:./cmd/nexul nexul-server:./server/cmd nexul-runner:./runner/cmd; do
+            CGO_ENABLED=0 go build -trimpath -ldflags "-X github.com/otal-labs/nexul/internal/platform/version.Version=$TAG" \
+              -o "$rel/$TAG/${bin%%:*}-darwin-$arch" "${bin#*:}"
+          done
+          (cd "$rel/$TAG" && shasum -a 256 nexul* > checksums.txt)
+          cp website/public/*.sh "$rel/"
+          python3 -m http.server 8371 --bind 127.0.0.1 --directory "$rel" > "$RUNNER_TEMP/site.log" 2>&1 &
+          echo "SERVER_BIN=$rel/$TAG/nexul-server-darwin-$arch" >> "$GITHUB_ENV"
+
+      - name: Start a throwaway instance and add a computer
+        run: |
+          data="$RUNNER_TEMP/instance"
+          mkdir -p "$data"
+          NEXUL_HTTP_ADDR=127.0.0.1:8370 NEXUL_DB_PATH="$data/nexul.db" NEXUL_DEV_LOGIN=true \
+            NEXUL_SITE_URL="$SITE" NEXUL_RELEASE_URL="$SITE" "$SERVER_BIN" > "$RUNNER_TEMP/server.log" 2>&1 &
+          for _ in $(seq 60); do [ "$(curl -s -o /dev/null -w '%{http_code}' "$API/auth/dev-login")" = 302 ] && break; sleep 1; done
+          session=$(curl -s -o /dev/null -w '%{redirect_url}' "$API/auth/dev-login" | sed 's/.*token=//')
+          echo "::add-mask::$session"
+          echo "SESSION=$session" >> "$GITHUB_ENV"
+          curl -fsS -H "Authorization: Bearer $session" -H 'Content-Type: application/json' \
+            -d "{\"instance_url\":\"$API\"}" "$API/api/auth/onboarding/owner" > /dev/null
+          curl -fsS -H "Authorization: Bearer $session" -H 'Content-Type: application/json' \
+            -d '{"name":"smoke-mac"}' "$API/api/pairing/computers/enrollments" > "$RUNNER_TEMP/enrollment.json"
+          echo "COMPUTER=$(jq -r .computer.id "$RUNNER_TEMP/enrollment.json")" >> "$GITHUB_ENV"
+          jq -r .commands.unix "$RUNNER_TEMP/enrollment.json" | sed 's/sh -s -- .*/sh -s -- <token>/'
+
+      - name: A root login with no SUDO_USER is refused and installs nothing
+        run: |
+          token=$(jq -r .token "$RUNNER_TEMP/enrollment.json")
+          if curl -fsSL "$SITE/computer.sh" | sudo env -u SUDO_USER sh -s -- "$token" 2> refused.txt; then
+            echo "a root login was not refused"; exit 1
+          fi
+          cat refused.txt
+          grep -q 'from your own account with sudo, not logged in as root' refused.txt
+          test ! -e /Library/LaunchDaemons/io.nexul.nexul-computer.plist
+
+      # T3 Code's installer looks its release up on GitHub's API, which refuses the shared runners' addresses unsigned in;
+      # with the version pinned it never asks, and the command below then starts this command line's background service.
+      - name: Put T3 Code's command line on the account, not started
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(gh release view -R pingdotgg/t3code --json tagName -q .tagName)
+          curl -fsSL https://t3.codes/install.sh | T3CODE_VERSION="${version#v}" sh
+          ~/.local/bin/t3 --version
+
+      - name: Run Add a computer's command as the runner's account
+        run: |
+          echo "account: $(id -un) ($(id -u)); GUI session: $(launchctl print gui/$(id -u) >/dev/null 2>&1 && echo yes || echo no)"
+          bash -c "$(jq -r .commands.unix "$RUNNER_TEMP/enrollment.json")"
+
+      - name: The runner is a LaunchDaemon running as that account
+        run: |
+          plist=/Library/LaunchDaemons/io.nexul.nexul-computer.plist
+          ls -l "$plist" /Library/LaunchDaemons/io.nexul.nexul-computer-cleanup.plist
+          test "$(sudo plutil -extract UserName raw "$plist")" = "$(id -un)"
+          test "$(sudo plutil -extract KeepAlive.SuccessfulExit raw "$plist")" = false
+          test "$(stat -f %Su "$plist")" = root
+          test "$(stat -f %Su "$HOME/Library/Application Support/nexul/computer/credential")" = "$(id -un)"
+          test "$(stat -f %Lp "$HOME/Library/Application Support/nexul/computer/credential")" = 600
+          sudo launchctl print system/io.nexul.nexul-computer | grep -E '^[[:space:]]*(state|pid|domain|username) ='
+          pid=$(sudo launchctl print system/io.nexul.nexul-computer | awk '/^\tpid = /{print $3}')
+          ps -o user=,ppid=,command= -p "$pid"
+          test "$(ps -o user= -p "$pid" | tr -d ' ')" = "$(id -un)"
+          sudo kill -KILL "$pid"
+          for _ in $(seq 30); do
+            again=$(sudo launchctl print system/io.nexul.nexul-computer | awk '/^\tpid = /{print $3}')
+            [ -n "$again" ] && [ "$again" != "$pid" ] && break
+            sleep 1
+          done
+          echo "killed $pid; launchd started it again as $again"
+          test -n "$again" && test "$again" != "$pid"
+
+      - name: The computer shows connected and paired through its runner
+        run: |
+          for _ in $(seq 120); do
+            row=$(curl -fsS -H "Authorization: Bearer $SESSION" "$API/api/pairing/computers" | jq ".computers[] | select(.id == \"$COMPUTER\")")
+            [ "$(echo "$row" | jq -r '.runner.connected')" = true ] && [ -n "$(echo "$row" | jq -r '.harness_version // empty')" ] && break
+            sleep 2
+          done
+          echo "$row" | jq '{name, runner, harness_version, token_expires_at, pair_error}'
+          test "$(echo "$row" | jq -r '.runner.connected')" = true
+          test -n "$(echo "$row" | jq -r '.harness_version // empty')"
+
+      - name: A relayed request reaches T3 Code
+        run: |
+          curl -fsS -H "Authorization: Bearer $SESSION" "$API/api/pairing/computers/$COMPUTER/providers" > providers.json
+          head -c 800 providers.json; echo
+          jq -e '.providers | type == "array"' providers.json
+
+      - name: The runner restarts T3 Code's service when it stops
+        timeout-minutes: 5
+        run: |
+          launchctl bootout "gui/$(id -u)/com.t3tools.t3code.service"
+          stopped=$(date +%s)
+          for _ in $(seq 75); do
+            curl -fsS --max-time 5 -o /dev/null http://127.0.0.1:3773/.well-known/t3/environment 2>/dev/null && break
+            sleep 2
+          done
+          grep -E "T3 Code's background service" "$HOME/Library/Logs/nexul/nexul-computer.log" || true
+          curl -fsS --max-time 5 http://127.0.0.1:3773/.well-known/t3/environment > /dev/null
+          echo "T3 Code answered again $(( $(date +%s) - stopped ))s after it was stopped"
+
+      - name: Removing the computer removes the install through the cleanup
+        run: |
+          cp "$HOME/Library/Logs/nexul/nexul-computer.log" "$RUNNER_TEMP/runner.log"
+          curl -fsS -X DELETE -H "Authorization: Bearer $SESSION" "$API/api/pairing/computers/$COMPUTER"
+          echo
+          left() {
+            for path in /Library/LaunchDaemons/io.nexul.nexul-computer.plist /Library/LaunchDaemons/io.nexul.nexul-computer-cleanup.plist \
+              /usr/local/libexec/nexul-computer-uninstall "/Library/Application Support/nexul-computer" \
+              "$HOME/Library/Application Support/nexul/computer" "$HOME/.local/bin/nexul" "$HOME/Library/Logs/nexul/nexul-computer.log"; do
+              [ -e "$path" ] && echo "$path"
+            done
+            sudo launchctl print system/io.nexul.nexul-computer > /dev/null 2>&1 && echo "system/io.nexul.nexul-computer loaded"
+            sudo launchctl print system/io.nexul.nexul-computer-cleanup > /dev/null 2>&1 && echo "system/io.nexul.nexul-computer-cleanup loaded"
+            true
+          }
+          for _ in $(seq 60); do [ -z "$(left)" ] && break; sleep 2; done
+          remaining=$(left)
+          [ -z "$remaining" ] || { echo "still installed:"; echo "$remaining"; exit 1; }
+          echo "nothing of the install is left"
+
+      - name: Logs
+        if: always()
+        run: |
+          for f in "$RUNNER_TEMP/server.log" "$RUNNER_TEMP/runner.log" "$HOME/Library/Logs/nexul/nexul-computer.log" $(find "$HOME/.t3" -name '*.log' 2>/dev/null); do
+            [ -f "$f" ] && { echo "== $f"; tail -n 40 "$f"; }
+          done
+          sudo log show --last 30m --style compact --predicate 'eventMessage CONTAINS "nexul"' | tail -n 60 || true

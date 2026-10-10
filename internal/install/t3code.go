@@ -147,6 +147,9 @@ func (h *Host) startT3(ctx context.Context, p person, t3 string, port int) (stri
 	if err := h.waitForT3(ctx, port); err != nil {
 		return "", fmt.Errorf("%w; run %s service status to see why", err, t3)
 	}
+	if h.GOOS == "darwin" { // T3 Code's macOS service is a LaunchAgent, which launchd runs only in a login at the screen
+		return fmt.Sprintf("running on port %d as %s's background service while %s is logged in", port, p.name, p.name), nil
+	}
 	return fmt.Sprintf("running on port %d as %s's background service, also after you log out", port, p.name), nil
 }
 
@@ -192,15 +195,15 @@ func (h *Host) installT3Desktop(ctx context.Context) (string, error) {
 
 // asPerson runs a command as the person, with their home, never as root; on Linux it reaches their user manager.
 func (h *Host) asPerson(ctx context.Context, p person, name string, args ...string) (string, error) {
+	if h.GOOS == "windows" {
+		return h.Exec.Run(ctx, name, args...)
+	}
 	env := []string{"env", "HOME=" + p.home}
 	if h.GOOS == "linux" {
 		env = append(env, "XDG_RUNTIME_DIR=/run/user/"+strconv.Itoa(p.uid))
-		return h.Exec.Run(ctx, "runuser", append(append([]string{"-u", p.name, "--"}, env...), append([]string{name}, args...)...)...)
 	}
-	if h.GOOS == "darwin" {
-		return h.Exec.Run(ctx, "sudo", append(append([]string{"-u", p.name}, env...), append([]string{name}, args...)...)...)
-	}
-	return h.Exec.Run(ctx, name, args...)
+	cmd, cmdArgs := h.asPersonArgs(p, append(append(env, name), args...)...)
+	return h.Exec.Run(ctx, cmd, cmdArgs...)
 }
 
 // t3Answers reports whether T3 Code's unauthenticated descriptor answers on the loopback port.
