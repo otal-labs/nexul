@@ -36,7 +36,7 @@ func AccountTools(a AccountStatusSetter, t Team) []mcptool.Tool {
 	return []mcptool.Tool{accountListTool(t), accountUpdateTool(a, t)}
 }
 
-// accountResult is one person on the Team: the account without its sign-in identities, plus its workspace access.
+// accountResult is one person on the Team: the account with the providers it signs in through but none of their identities, plus its workspace access.
 type accountResult struct {
 	ID          string             `json:"id"`
 	Login       string             `json:"login"`
@@ -47,6 +47,7 @@ type accountResult struct {
 	CreatedAt   time.Time          `json:"created_at"`
 	Online      bool               `json:"online"`
 	LastSeenAt  *time.Time         `json:"last_seen_at"`
+	Providers   []string           `json:"providers"`
 	Workspaces  []membershipResult `json:"workspaces"`
 }
 
@@ -96,7 +97,8 @@ type accountUpdateResult struct {
 func accountListTool(t Team) mcptool.Tool {
 	return mcptool.New("account_list", "List accounts",
 		"Lists the Team: accounts with their status (active, disabled, or removed), whether they are online now, "+
-			"when they were last seen (to the hour, null once signed out everywhere), and their workspace access, one "+
+			"when they were last seen (to the hour, null once signed out everywhere), providers (the sign-in accounts "+
+			"linked, github, google or discord, in the order they were linked), and their workspace access, one "+
 			"entry per workspace with the role, whether that is the Owner role, the workspace-wide allow and deny "+
 			"overrides, can_manage_members, whether you hold members:write there and so may change that access, and "+
 			"every_project: role, where the role's project areas reach every project, or none, a Restricted member "+
@@ -237,7 +239,7 @@ func toAccountResult(p *tenancy.TeamPerson, canManage map[string]bool) accountRe
 	r := accountResult{
 		ID: p.ID, Login: p.Login, Name: p.Name, DisplayName: p.DisplayName, AvatarURL: p.AvatarURL,
 		Status: p.Status, CreatedAt: p.CreatedAt,
-		Online: p.Online, LastSeenAt: p.LastSeenAt,
+		Online: p.Online, LastSeenAt: p.LastSeenAt, Providers: p.Providers,
 		Workspaces: make([]membershipResult, 0, len(p.Workspaces)),
 	}
 	for _, m := range p.Workspaces {

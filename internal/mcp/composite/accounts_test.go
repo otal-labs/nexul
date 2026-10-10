@@ -95,12 +95,12 @@ func callAccountTool(t *testing.T, tools []mcptool.Tool, name, args string) (any
 	return nil, nil
 }
 
-func TestAccountList_CarriesPresenceAndEachMembershipWithTheViewersManageFlag(t *testing.T) {
+func TestAccountList_CarriesPresenceProvidersAndEachMembershipWithTheViewersManageFlag(t *testing.T) {
 	seen := time.Date(2026, 9, 29, 10, 0, 0, 0, time.UTC)
 	web := []*tenancy.ProjectAccess{{ProjectID: "p-web", ProjectName: "Web", Allow: permissions.SetOf(permissions.TicketsRead)}}
 	team := &fakeTeam{team: &tenancy.Team{
 		People: []*tenancy.TeamPerson{{
-			TeamAccount: tenancy.TeamAccount{ID: "bob", Login: "bob", Status: "active", Online: true, LastSeenAt: &seen},
+			TeamAccount: tenancy.TeamAccount{ID: "bob", Login: "bob", Status: "active", Online: true, LastSeenAt: &seen, Providers: []string{"github", "discord"}},
 			Workspaces: []*tenancy.TeamMembership{
 				{WorkspaceID: "ws-nexul", RoleName: "Editor", EveryProject: tenancy.EveryProjectRole, Projects: web},
 				{WorkspaceID: "ws-acme", RoleName: "Viewer", EveryProject: tenancy.EveryProjectNone, Projects: web},
@@ -115,6 +115,7 @@ func TestAccountList_CarriesPresenceAndEachMembershipWithTheViewersManageFlag(t 
 	require.Len(t, page.Items, 1)
 	assert.True(t, page.Items[0].Online)
 	assert.Equal(t, &seen, page.Items[0].LastSeenAt)
+	assert.Equal(t, []string{"github", "discord"}, page.Items[0].Providers)
 	require.Len(t, page.Items[0].Workspaces, 2)
 	assert.True(t, page.Items[0].Workspaces[0].CanManageMembers)
 	assert.False(t, page.Items[0].Workspaces[1].CanManageMembers)
