@@ -32,8 +32,10 @@ func repositoryListTool(s Scanner, l InstallationLister, g Gate) mcptool.Tool {
 		"Lists the repositories the connected git provider installation can read, with owner, name, and default "+
 			"branch. Use it to pick a repository for repository_scan or pull_request_list. Returns at most 100 per page; "+
 			"pass q to search by owner/name text. "+
-			"Only accounts with Nexul's GitHub App installed are listed; a missing repository means the App is not "+
-			"installed on its owner, which installs it at https://github.com/apps/<app slug>/installations/new. "+
+			"Nexul reads GitHub as the account connected in Settings → Connectors, so only repositories that account can "+
+			"open, in accounts with Nexul's GitHub App installed, are listed. A missing repository means the App is not "+
+			"installed on its owner, which installs it at https://github.com/apps/<app slug>/installations/new, or the "+
+			"connected account has no access to it, which the repository's owner grants. "+
 			"Pass installations to also see those accounts and organisations, whether each grants all or selected "+
 			"repositories, and the GitHub page where its access is managed.",
 		mcptool.Hints{ReadOnly: true},

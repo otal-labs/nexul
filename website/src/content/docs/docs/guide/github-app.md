@@ -50,7 +50,12 @@ To change the client ID or secret later, open **Settings → Connectors → GitH
 
 **Settings → Connectors → GitHub App** lists every account the App is installed on under **Installations**, with whether it grants all repositories or a selection. Click **Add account or organisation** to install it somewhere else; the list updates when you come back to the tab.
 
-Repositories you only collaborate on belong to someone else's account, so the owner of that account installs the App there, from `https://github.com/apps/<slug>/installations/new`. Agents see the same list through `repository_list` with `installations` set.
+Nexul reads GitHub as the account that clicked **Connect**, not as each person signed in. So it lists a repository only when the App is installed on the account that owns it and the connected account can open it. For a repository in someone else's account, such as a client's, its owner does both:
+
+1. Installs the App there, from `https://github.com/apps/<slug>/installations/new`, with that repository selected.
+2. Gives the connected account access to the repository: a collaborator with admin rights, or an organisation member with admin rights on it. Admin is what lets Nexul add its webhook; with less, the repository lists and deploys but pull request changes don't arrive as they happen.
+
+Installing the App alone is not enough: the repository stays out of the list until the connected account can open it. Agents see the same list through `repository_list` with `installations` set.
 
 ## Changing permissions later
 

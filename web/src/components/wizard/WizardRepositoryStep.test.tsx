@@ -120,7 +120,7 @@ describe("WizardRepositoryStep", () => {
     const link = await screen.findByRole("link", { name: "Install it on another account or organisation" });
     expect(link).toHaveAttribute("href", "https://github.com/apps/nexul-otal/installations/new");
     expect(link).toHaveAttribute("target", "_blank");
-    expect(screen.getByText(/Repositories you only collaborate on appear once their owner installs it/)).toBeInTheDocument();
+    expect(screen.getByText(/installs the App there and gives the connected account access to it/)).toBeInTheDocument();
   });
 
   it("explains where repositories come from without a broken link when no App slug is configured", async () => {
@@ -129,7 +129,7 @@ describe("WizardRepositoryStep", () => {
     }));
     renderStep();
 
-    expect(await screen.findByText(/Nexul only sees accounts where its GitHub App is installed/)).toBeInTheDocument();
+    expect(await screen.findByText(/Nexul reads GitHub as the account connected in Settings → Connectors/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Install it on another account/ })).not.toBeInTheDocument();
   });
 
