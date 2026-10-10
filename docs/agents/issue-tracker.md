@@ -105,6 +105,10 @@ git history, and anything durable it decided is an ADR.
   tunnel and URL pairing retired after existing computers move; later shell
   jobs, container logs and sharing a computer. Spec and tickets 01–20
   written 2026-10-10.
+- `.scratch/permission-overrides/` — rules on a project, doc or play for
+  everyone, a role or one person, each permission Allow, Fallback or Deny over
+  the role, and a source for every answer (ADR 0148). Spec and tickets 01–11
+  written 2026-10-10.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.

@@ -2,7 +2,7 @@
 
 **Status:** ready-for-agent
 
-**Blocked by:** 15
+**Blocked by:** 15, permission-overrides 01
 
 Read first: `practices/go.md`, `practices/mcp.md`, ADRs 0057, 0087, 0088, the spec (Later: shell jobs).
 
