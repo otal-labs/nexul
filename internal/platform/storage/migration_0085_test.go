@@ -9,14 +9,17 @@ import (
 	"github.com/otal-labs/nexul/internal/plays"
 )
 
-// TestMigration0085_TheDecisionsCheckBecomesASeededPlay upgrades a workspace with the check switched on, one play
-// already labelled "Decisions check" and one failed check on a ticket, beside the default workspace with it off.
+// TestMigration0085_TheDecisionsCheckBecomesASeededPlay upgrades a workspace with the check switched on, plays already
+// holding its label and its " (2)" in other cases, and one failed check on a ticket, beside the default workspace with
+// it off; labels are already unique per workspace without case, as on an instance that ran that migration first.
 func TestMigration0085_TheDecisionsCheckBecomesASeededPlay(t *testing.T) {
 	db := migrateBefore(t, "0085")
 	_, err := db.Exec(`
 INSERT INTO workspaces (id, name, slug, created_at, updated_at, decisions_check_enabled) VALUES ('ws-on', 'On', 'on', 1, 1, 1);
-INSERT INTO plays (id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, builtin_key, created_by, created_at, updated_at)
-    VALUES ('play-mine', 'ws-on', 'Decisions check', 'ticket', '', 'Mine.', 1, 'review', '[]', '', 'u-1', 1, 1);
+CREATE UNIQUE INDEX unique_play_labels ON plays(workspace_id, label COLLATE NOCASE);
+INSERT INTO plays (id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, builtin_key, created_by, created_at, updated_at) VALUES
+    ('play-mine', 'ws-on', 'decisions check', 'ticket', '', 'Mine.', 1, 'review', '[]', '', 'u-1', 1, 1),
+    ('play-mine-2', 'ws-on', 'DECISIONS CHECK (2)', 'ticket', '', 'Mine too.', 1, 'review', '[]', '', 'u-1', 1, 1);
 INSERT INTO play_trails (id, workspace_id, play_id, play_label, target_type, target_id, project_id, starter_id, via, state, started_at, last_error)
     VALUES ('trail-old', 'ws-on', 'decisions-check', 'Decisions check', 'ticket', 't-1', 'p-1', 'u-1', 'web', 'failed', 1, 'offline');
 `)
@@ -41,7 +44,7 @@ INSERT INTO play_trails (id, workspace_id, play_id, play_label, target_type, tar
 		enabled   bool
 	}{
 		{"workspace-default", "Decisions check", false},
-		{"ws-on", "Decisions check (2)", true},
+		{"ws-on", "Decisions check (3)", true},
 	} {
 		list, err := s.Plays.List(ctx, tt.ws)
 		require.NoError(t, err)
@@ -73,7 +76,7 @@ INSERT INTO play_trails (id, workspace_id, play_id, play_label, target_type, tar
 
 	mine, err := s.Plays.Get(ctx, "play-mine")
 	require.NoError(t, err)
-	assert.Equal(t, "Decisions check", mine.Label, "a play that held the label keeps it")
+	assert.Equal(t, "decisions check", mine.Label, "a play that held the label keeps it")
 
 	rows, err := db.Query(`PRAGMA foreign_key_check`)
 	require.NoError(t, err)
