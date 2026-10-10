@@ -60,6 +60,8 @@ curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- <token> --no-t3
 
 For T3 Code's service on another port, add `--t3-port <port>`.
 
+Once installed, the runner checks T3 Code every 30 seconds. When T3 Code's background service stops answering for two checks in a row, the runner restarts it (`t3 service restart`), at most once every 5 minutes, and tells Nexul it did. If your user service manager isn't running, so the service can't be restarted, the runner reports that instead; `sudo loginctl enable-linger <you>` turns it on. The desktop app is never restarted: when it's closed, open T3 Code.
+
 ## Keep it paired
 
 Each computer is one row: its name, whether it's **Connected**, **Trying to connect**, or **Not connected**, and its setup state. A row shows a button only when something needs doing (**Pair**, **Re-pair**, **Set up**, **Update skills**); everything else is in its **…** menu. Click the name to unfold the details: the address, the T3 Code version, the date the pairing lasts until, each provider's setup, and the MCP token.

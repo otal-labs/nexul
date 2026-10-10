@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/coder/websocket"
@@ -236,4 +239,145 @@ func TestFacts_ReachPairingOnlyFromAPersonalRunner(t *testing.T) {
 	require.NoError(t, json.Unmarshal(f.bus.topicEvents(TopicFactsReported)[0].Payload, &got))
 	assert.Equal(t, FactsReportedEvent{RunnerID: "r-alice", ComputerID: "c-laptop", UserID: "u-alice", Facts: *facts, MembersOnly: true}, got)
 	assert.True(t, eventbus.MembersOnly(f.bus.topicEvents(TopicFactsReported)[0].Payload), "integrations and automations skip it")
+}
+
+// TestT3Keeper_RestartsAStoppedServiceAtMostOncePer5Minutes: T3 Code answers once, then stops for good. Probes run
+// every 30 seconds, so the second miss lands at 60s and the next restart is due at 360s; the misses between restart nothing.
+func TestT3Keeper_RestartsAStoppedServiceAtMostOncePer5Minutes(t *testing.T) {
+	managerDown := errors.New("this account's user service manager isn't running")
+	tests := []struct {
+		name           string
+		serviceManaged bool
+		restartErr     error
+		wantRestarts   []time.Duration
+		wantReports    []time.Duration
+		wantLast       func(start time.Time) T3Facts
+	}{
+		{
+			name: "its background service", serviceManaged: true,
+			wantRestarts: []time.Duration{time.Minute, 6 * time.Minute},
+			wantReports:  []time.Duration{30 * time.Second, time.Minute, 6 * time.Minute},
+			wantLast: func(start time.Time) T3Facts {
+				at := start.Add(6 * time.Minute)
+				return T3Facts{State: T3NotRunning, RestartedAt: &at}
+			},
+		},
+		{
+			name: "its background service, user manager down", serviceManaged: true, restartErr: managerDown,
+			wantRestarts: []time.Duration{time.Minute, 6 * time.Minute},
+			wantReports:  []time.Duration{30 * time.Second, time.Minute},
+			wantLast:     func(time.Time) T3Facts { return T3Facts{State: T3NotRunning, RestartError: managerDown.Error()} },
+		},
+		{
+			name:        "the desktop app",
+			wantReports: []time.Duration{30 * time.Second},
+			wantLast:    func(time.Time) T3Facts { return T3Facts{State: T3NotRunning} },
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				start := time.Now()
+				probes := 0
+				var restarts, reports []time.Duration
+				k := newT3Keeper(func(context.Context) t3Probed {
+					probes++
+					if probes == 1 {
+						return t3Probed{facts: T3Facts{State: T3Answering, Port: 3773, Version: "0.0.45"}, serviceManaged: tt.serviceManaged}
+					}
+					return t3Probed{facts: T3Facts{State: T3NotRunning}}
+				}, func(context.Context) error {
+					restarts = append(restarts, time.Since(start))
+					return tt.restartErr
+				}, testLogger())
+
+				ctx, cancel := context.WithCancel(t.Context())
+				done := make(chan struct{})
+				go func() {
+					defer close(done)
+					k.run(ctx)
+				}()
+				go func() {
+					for {
+						select {
+						case <-ctx.Done():
+							return
+						case <-k.changed:
+							reports = append(reports, time.Since(start))
+						}
+					}
+				}()
+				time.Sleep(6*time.Minute + 29*time.Second)
+				synctest.Wait()
+				cancel()
+				<-done
+				synctest.Wait()
+
+				assert.Equal(t, tt.wantRestarts, restarts)
+				assert.Equal(t, tt.wantReports, reports, "a change is reported at once, an unchanged probe is not")
+				assert.Equal(t, tt.wantLast(start), k.withRestart(T3Facts{State: T3NotRunning}))
+			})
+		})
+	}
+}
+
+// fakeT3Service writes a t3 command that records the environment it was asked to restart its service in, then
+// prints out.
+func fakeT3Service(t *testing.T, home, out string) (t3, record string) {
+	t.Helper()
+	dir := t.TempDir()
+	t3, record = filepath.Join(dir, "t3"), filepath.Join(dir, "record")
+	script := "#!/bin/sh\n" +
+		`[ "$*" = "service restart" ] || { echo "unexpected args: $*" >&2; exit 3; }` + "\n" +
+		`[ "$T3CODE_HOME" = "` + home + `" ] || { echo "unexpected home: $T3CODE_HOME" >&2; exit 3; }` + "\n" +
+		`echo "$XDG_RUNTIME_DIR $DBUS_SESSION_BUS_ADDRESS" >` + record + "\n" +
+		"echo '" + out + "'\n"
+	require.NoError(t, os.WriteFile(t3, []byte(script), 0o700))
+	return t3, record
+}
+
+func TestRestartT3_ReachesThePersonsUserManager(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("the user manager's runtime directory is Linux's")
+	}
+	home := t.TempDir()
+	tests := []struct {
+		name       string
+		bus        bool
+		out        string
+		wantErr    string
+		wantRecord bool
+	}{
+		{name: "restarted", bus: true, out: "Restarted the T3 Code service on t3@0.0.45.", wantRecord: true},
+		{name: "no service for this home", bus: true, out: "T3 Code service is not installed.", wantErr: "T3 Code service is not installed.", wantRecord: true},
+		{name: "user manager not running", wantErr: "user service manager isn't running"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runDir := t.TempDir()
+			if tt.bus {
+				require.NoError(t, os.WriteFile(filepath.Join(runDir, "bus"), nil, 0o600))
+			}
+			t.Setenv("XDG_RUNTIME_DIR", runDir)
+			t3, record := fakeT3Service(t, home, tt.out)
+			c := newTestClient("ws://server:8081/ws/runner", &fakeExecutor{})
+			c.cfg.Personal, c.cfg.T3Home = true, home
+			c.findT3 = func(string) string { return t3 }
+
+			err := c.restartT3(t.Context())
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			}
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+			}
+			got, readErr := os.ReadFile(record)
+			if !tt.wantRecord {
+				require.ErrorIs(t, readErr, os.ErrNotExist, "t3 is never run without the user manager")
+				return
+			}
+			require.NoError(t, readErr)
+			assert.Equal(t, runDir+" unix:path="+filepath.Join(runDir, "bus")+"\n", string(got))
+		})
+	}
 }

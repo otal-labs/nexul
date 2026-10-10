@@ -331,31 +331,38 @@ func refusal(f Frame) (Frame, bool) {
 
 // t3Address reads T3 Code's port from home's runtime file; only the default home may fall back to the default port.
 func t3Address(home, defaultHome string) (string, error) {
+	addr, _, err := t3Runtime(home, defaultHome)
+	return addr, err
+}
+
+// t3Runtime is t3Address plus whether T3 Code's own background service runs the server the runtime file names.
+func t3Runtime(home, defaultHome string) (addr string, serviceManaged bool, err error) {
 	data, err := os.ReadFile(filepath.Join(home, "userdata", "server-runtime.json"))
 	if errors.Is(err, fs.ErrNotExist) && home != "" && filepath.Clean(home) == filepath.Clean(defaultHome) {
-		return net.JoinHostPort("127.0.0.1", strconv.Itoa(defaultT3Port)), nil
+		return net.JoinHostPort("127.0.0.1", strconv.Itoa(defaultT3Port)), false, nil
 	}
 	if errors.Is(err, fs.ErrNotExist) {
-		return "", fmt.Errorf("T3 Code isn't running in %s", home)
+		return "", false, fmt.Errorf("T3 Code isn't running in %s", home)
 	}
 	if err != nil {
-		return "", fmt.Errorf("read T3 Code's runtime file: %w", err)
+		return "", false, fmt.Errorf("read T3 Code's runtime file: %w", err)
 	}
 	var rt struct {
-		Host string `json:"host"`
-		Port int    `json:"port"`
+		Host           string `json:"host"`
+		Port           int    `json:"port"`
+		ServiceManaged bool   `json:"serviceManaged"`
 	}
 	if err := json.Unmarshal(data, &rt); err != nil {
-		return "", fmt.Errorf("decode T3 Code's runtime file: %w", err)
+		return "", false, fmt.Errorf("decode T3 Code's runtime file: %w", err)
 	}
 	if rt.Port < 1 || rt.Port > 65535 {
-		return "", fmt.Errorf("T3 Code's runtime file names port %d", rt.Port)
+		return "", false, fmt.Errorf("T3 Code's runtime file names port %d", rt.Port)
 	}
 	host, err := loopbackHost(rt.Host)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
-	return net.JoinHostPort(host, strconv.Itoa(rt.Port)), nil
+	return net.JoinHostPort(host, strconv.Itoa(rt.Port)), rt.ServiceManaged, nil
 }
 
 // loopbackHost maps the address T3 Code bound to the loopback address that reaches it, and refuses any other.
