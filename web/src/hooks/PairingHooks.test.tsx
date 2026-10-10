@@ -158,4 +158,15 @@ describe("the pairing follower", () => {
     await followFrame(pairingFollower, "runner.personal_changed", { computer_id: "c1", user_id: "u1", state: "connected" }, client);
     expect(isStale(client, ["getComputers"])).toBe(true);
   });
+
+  it("refetches the computer rows and that computer's providers when its facts change", async () => {
+    const client = seeded([
+      [["getComputers"], []],
+      [["getHarnessProviders", "c1"], []],
+      [["getHarnessProviders", "c2"], []],
+    ]);
+    await followFrame(pairingFollower, "computer.facts_changed", { computer_id: "c1", user_id: "u1", facts_at: "2026-10-10T12:00:00Z" }, client);
+    const keys = [["getComputers"], ["getHarnessProviders", "c1"], ["getHarnessProviders", "c2"]];
+    expect(keys.map((key) => isStale(client, key))).toEqual([true, true, false]);
+  });
 });

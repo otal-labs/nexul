@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
-
+import { ComputerFact as Fact } from "@/components/settings/ComputerFact";
+import { ComputerFactRows } from "@/components/settings/ComputerFactRows";
 import { ComputerMCPToken } from "@/components/settings/ComputerMCPToken";
+import { SettingsStatus } from "@/components/settings/SettingsStatus";
+import { reachedThroughRunner, t3Status } from "@/models/ComputerFacts";
 import {
   harnessLabel,
   providerSetupLines,
@@ -47,33 +49,38 @@ const ProviderLine = ({ line }: ProviderLineProps) => (
   </li>
 );
 
-interface FactProps {
-  label: string;
-  children: ReactNode;
-}
-
-const Fact = ({ label, children }: FactProps) => (
-  <div className="grid gap-x-4 gap-y-1 @md:grid-cols-[7rem_minmax(0,1fr)]">
-    <dt className="text-xs text-muted-foreground">{label}</dt>
-    <dd className="min-w-0 text-xs">{children}</dd>
-  </div>
-);
-
 interface ComputerDetailsProps {
   computer: Computer;
   setup: ComputerSetup | undefined;
 }
 
-// Everything a computer row folds away: where it is, what runs there, each provider's confirmation, and its MCP token.
+// Everything a computer row folds away: where it is, what runs there, each provider's confirmation, its facts, and its
+// MCP token. A computer reached through its runner shows its T3 Code instead of the relay address.
 export const ComputerDetails = ({ computer, setup }: ComputerDetailsProps) => {
   const lines = setup ? providerSetupLines(setup) : [];
   const pairing = stillPairing(computer);
+  const t3 = computer.facts && t3Status(computer.facts.t3);
+  const { restart_error: restartError, restarted_at: restartedAt } = computer.facts?.t3 ?? {};
   return (
     <dl className="@container space-y-3 rounded-md bg-surface-2 p-3">
-      <Fact label="Address">
-        <span className="font-mono break-all">{computer.server_url}</span>
-      </Fact>
-      {computer.harness_version && (
+      {computer.server_url && !reachedThroughRunner(computer.server_url) && (
+        <Fact label="Address">
+          <span className="font-mono break-all">{computer.server_url}</span>
+        </Fact>
+      )}
+      {t3 && (
+        <Fact label="T3 Code">
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+            <SettingsStatus tone={t3.tone}>{t3.text}</SettingsStatus>
+            {t3.detail && <span className="min-w-0 font-mono break-all text-muted-foreground tabular-nums">{t3.detail}</span>}
+          </span>
+          {restartError && <span className="mt-1 block break-words text-destructive">Restart failed: {restartError}</span>}
+          {!restartError && restartedAt && (
+            <span className="mt-1 block font-mono text-muted-foreground tabular-nums">restarted {formatRelativeTime(restartedAt)}</span>
+          )}
+        </Fact>
+      )}
+      {!t3 && computer.harness_version && (
         <Fact label={harnessLabel(computer.kind)}>
           <span className="font-mono">{computer.harness_version}</span>
         </Fact>
@@ -92,6 +99,7 @@ export const ComputerDetails = ({ computer, setup }: ComputerDetailsProps) => {
           </ul>
         </Fact>
       )}
+      {computer.facts && <ComputerFactRows facts={computer.facts} factsAt={computer.facts_at} />}
       <Fact label="MCP token">
         <ComputerMCPToken computerId={computer.id} />
       </Fact>

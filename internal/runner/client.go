@@ -152,13 +152,15 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 	c.log.Info("runner connected", "runner", c.cfg.Name)
 
 	streamCtx := ctx
+	var loops sync.WaitGroup
+	defer loops.Wait() // after cancel: a facts report still reading the computer must not outlive its connection
 	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
 	defer c.cancelJob("")
 
-	go c.heartbeatLoop(ctx, conn)
+	loops.Go(func() { c.heartbeatLoop(ctx, conn) })
 	if c.cfg.Personal {
-		go c.factsLoop(ctx, conn)
+		loops.Go(func() { c.factsLoop(ctx, conn) })
 	}
 
 	for {

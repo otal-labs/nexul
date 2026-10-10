@@ -87,10 +87,12 @@ type computerResult struct {
 	MCPToken          *MCPToken         `json:"mcp_token,omitempty"`
 	T3Projects        []harness.Project `json:"t3_projects,omitempty"`
 	T3ProjectsError   string            `json:"t3_projects_error,omitempty"`
+	Facts             *Facts            `json:"facts,omitempty"`
+	FactsAt           *time.Time        `json:"facts_at,omitempty"`
 }
 
 func toComputerResult(c Computer) computerResult {
-	r := computerResult{ID: c.ID, Name: c.Name, Kind: c.Kind, ServerURL: c.ServerURL, Paired: c.Paired(), HarnessVersion: c.HarnessVersion, Tunnel: c.Tunnel, Runner: c.Runner, PairError: c.PairError}
+	r := computerResult{ID: c.ID, Name: c.Name, Kind: c.Kind, ServerURL: c.ServerURL, Paired: c.Paired(), HarnessVersion: c.HarnessVersion, Tunnel: c.Tunnel, Runner: c.Runner, PairError: c.PairError, Facts: c.Facts, FactsAt: c.FactsAt}
 	if r.Paired {
 		r.SessionExpiresAt = &c.TokenExpiresAt
 	}
@@ -106,7 +108,9 @@ func computerListTool(s *Service) mcptool.Tool {
 			"continue with computer_pair once both pass. One computer also lists its T3 projects as T3 Code reports them, "+
 			"the t3_project_id play_run takes. A computer with paired false has no harness session yet, and pair_error "+
 			"says why its last pairing through its Nexul app failed; one without setup.confirmed_at needs computer_setup_run "+
-			"before agent work can use it.",
+			"before agent work can use it. A computer with a runner carries its facts, which only you can read: its system, git "+
+			"name and email, free disk, T3 Code's state, install and port, and the providers (version, models, signed in or "+
+			"not) and projects T3 Code last listed; facts_at is when they last changed.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in computerListIn) (any, error) {
 			userID := mcpActorID(ctx)

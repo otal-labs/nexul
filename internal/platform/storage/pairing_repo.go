@@ -12,6 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/jsonx"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -85,6 +86,25 @@ func (r *PairingRepo) DeleteComputer(ctx context.Context, userID, id string, evt
 			return fmt.Errorf("delete computer %s: %w", id, apperrs.ErrNotFound)
 		}
 		return insertOutboxRows(ctx, tx, evts)
+	})
+}
+
+func (r *PairingRepo) SetFacts(ctx context.Context, userID, computerID string, facts pairing.Facts, at time.Time, evt eventbus.OutboxEvent) error {
+	raw, err := jsonx.Marshal(facts)
+	if err != nil {
+		return fmt.Errorf("encode facts of computer %s: %w", computerID, err)
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetPairingComputerFacts(ctx, sqlcgen.SetPairingComputerFactsParams{
+			Facts: string(raw), FactsAt: sql.NullInt64{Int64: at.Unix(), Valid: true}, ID: computerID, UserID: userID,
+		})
+		if err != nil {
+			return fmt.Errorf("set facts of computer %s: %w", computerID, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set facts of computer %s: %w", computerID, apperrs.ErrNotFound)
+		}
+		return insertOutboxRows(ctx, tx, []eventbus.OutboxEvent{evt})
 	})
 }
 
@@ -347,8 +367,17 @@ func toPairingComputer(row sqlcgen.PairingComputer) pairing.Computer {
 			ModelOptions: decodeJSON(row.SetupModelOptions, map[string][]harness.OptionSetting{}), Folder: row.SetupFolder,
 		},
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
-		Tunnel: toComputerTunnel(row),
+		Tunnel: toComputerTunnel(row), Facts: toFacts(row), FactsAt: unixPtrFromNull(row.FactsAt),
 	}
+}
+
+// toFacts is nil until the computer's runner first reported.
+func toFacts(row sqlcgen.PairingComputer) *pairing.Facts {
+	if !row.FactsAt.Valid {
+		return nil
+	}
+	f := decodeJSON(row.Facts, pairing.Facts{})
+	return &f
 }
 
 // decodeJSON reads a value this repo wrote; an unreadable one is empty, so setup opens on its own preselection.

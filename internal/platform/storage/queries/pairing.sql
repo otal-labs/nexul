@@ -85,3 +85,6 @@ ORDER BY t.provider;
 
 -- name: SetPairingComputerSetupChoices :execrows
 UPDATE pairing_computers SET setup_skipped_providers = ?, setup_models = ?, setup_model_options = ?, setup_folder = ? WHERE id = ? AND user_id = ?;
+
+-- name: SetPairingComputerFacts :execrows
+UPDATE pairing_computers SET facts = ?, facts_at = ? WHERE id = ? AND user_id = ?;

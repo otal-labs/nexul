@@ -25,6 +25,7 @@ type fakeRepo struct {
 	setups       map[string][]ProviderSetup
 	turns        map[string]SetupTurn
 	outbox       []eventbus.OutboxEvent
+	factWrites   int
 	saveErr      error
 	getErr       error
 	listSetupErr error
@@ -46,6 +47,23 @@ func (f *fakeRepo) SaveComputer(_ context.Context, c Computer, evts ...eventbus.
 	}
 	f.computers[c.ID] = c
 	f.outbox = append(f.outbox, evts...)
+	return nil
+}
+
+func (f *fakeRepo) SetFacts(_ context.Context, userID, computerID string, facts Facts, at time.Time, evt eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.saveErr != nil {
+		return f.saveErr
+	}
+	c, ok := f.computers[computerID]
+	if !ok || c.UserID != userID {
+		return apperrs.ErrNotFound
+	}
+	c.Facts, c.FactsAt = &facts, &at
+	f.computers[computerID] = c
+	f.factWrites++
+	f.outbox = append(f.outbox, evt)
 	return nil
 }
 

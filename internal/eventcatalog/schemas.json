@@ -1673,6 +1673,34 @@
       "message"
     ]
   },
+  "computer.facts_changed": {
+    "type": "object",
+    "properties": {
+      "computer_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string",
+        "description": "The computer's owner, the only person who reads its facts."
+      },
+      "facts_at": {
+        "type": "string",
+        "description": "When the facts changed.",
+        "format": "date-time"
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Always true: a person's computer is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "computer_id",
+      "user_id",
+      "facts_at",
+      "members_only"
+    ]
+  },
   "computer.harness_switched": {
     "type": "object",
     "properties": {
@@ -5424,6 +5452,18 @@
             "type": "string",
             "description": "The computer's hostname."
           },
+          "os": {
+            "type": "string",
+            "description": "The computer's operating system as Go names it, for example linux, darwin or windows."
+          },
+          "arch": {
+            "type": "string",
+            "description": "The computer's architecture as Go names it, for example amd64 or arm64."
+          },
+          "runner_version": {
+            "type": "string",
+            "description": "The personal runner's own version."
+          },
           "t3": {
             "type": "object",
             "properties": {
@@ -5435,6 +5475,15 @@
                   "not_running",
                   "missing",
                   "not_loopback"
+                ]
+              },
+              "install": {
+                "type": "string",
+                "description": "How T3 Code is installed: its background service, the command line, or the desktop app; absent when unknown.",
+                "enum": [
+                  "service",
+                  "command_line",
+                  "desktop_app"
                 ]
               },
               "port": {
@@ -5458,6 +5507,22 @@
             "required": [
               "state"
             ]
+          },
+          "cloudflared": {
+            "type": "string",
+            "description": "The version of cloudflared, sent only when it is installed."
+          },
+          "git_name": {
+            "type": "string",
+            "description": "git's global user.name for the person the runner runs as."
+          },
+          "git_email": {
+            "type": "string",
+            "description": "git's global user.email for the person the runner runs as."
+          },
+          "free_disk_bytes": {
+            "type": "integer",
+            "description": "Free disk space in the person's home folder, in bytes."
           }
         },
         "required": [

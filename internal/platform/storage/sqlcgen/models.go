@@ -747,6 +747,8 @@ type PairingComputer struct {
 	SetupModels           string
 	SetupModelOptions     string
 	SetupFolder           string
+	Facts                 string
+	FactsAt               sql.NullInt64
 }
 
 type PairingProjectLink struct {
