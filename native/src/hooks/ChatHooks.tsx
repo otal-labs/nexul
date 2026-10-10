@@ -26,7 +26,8 @@ const conversationsQuery = defineQuery({
   fetch: (workspaceId: string | undefined) =>
     api.get<Conversation[]>(`/api/chat/conversations?workspace_id=${encodeURIComponent(workspaceId ?? "")}`),
   refreshes: {
-    "chat.conversation.created": { key: (p) => p.conversation.workspace_id },
+    // A DM shows in every workspace all its people share (ADR 0141), so a new one refreshes every workspace's list.
+    "chat.conversation.created": { key: (p) => (p.conversation.kind === "dm" ? undefined : p.conversation.workspace_id) },
     "chat.conversation.updated": { key: (p) => p.workspace_id },
     "chat.conversation.deleted": { key: (p) => p.workspace_id },
     // A private channel the viewer lost drops from the list.

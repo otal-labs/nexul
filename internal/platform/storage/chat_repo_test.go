@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -204,6 +205,47 @@ func TestChatRepo_ListConversationsForUser_ChannelsPlusOwnParticipation(t *testi
 	assert.Contains(t, ids, "channel-1")
 	assert.Contains(t, ids, "dm-mine")
 	assert.NotContains(t, ids, "dm-other")
+}
+
+func TestChatRepo_ListConversationsForUser_ShowsADMInEveryWorkspaceAllItsPeopleShare(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	seedChatUser(t, s, "u-1")
+	seedChatUser(t, s, "u-2")
+	makeOwner(t, s, "u-1", "ws-shared")
+	makeOwner(t, s, "u-2", "ws-shared")
+	makeOwner(t, s, "u-1", "ws-solo")
+	require.NoError(t, s.Chat.CreateConversation(t.Context(), newTestConversation("dm-1", chat.KindDM, "", "", "u-1"), []string{"u-1", "u-2"}))
+	require.NoError(t, s.Chat.CreateMessage(t.Context(), &chat.Message{ID: "msg-1", ConversationID: "dm-1", AuthorID: "u-2", Body: "hi", CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow}))
+
+	tests := []struct {
+		name        string
+		workspaceID string
+		listed      bool
+	}{
+		{"the workspace it started in", "workspace-default", true},
+		{"another workspace both people belong to", "ws-shared", true},
+		{"a workspace the other person is not in", "ws-solo", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := s.Chat.ListConversationsForUser(t.Context(), tt.workspaceID, "u-1")
+			require.NoError(t, err)
+			ids := make([]string, 0, len(got))
+			for _, c := range got {
+				ids = append(ids, c.ID)
+			}
+			assert.Equal(t, tt.listed, slices.Contains(ids, "dm-1"))
+
+			counts, err := s.Chat.UnreadCounts(t.Context(), tt.workspaceID, "u-1")
+			require.NoError(t, err)
+			unread, counted := unreadCountsMap(counts)["dm-1"]
+			assert.Equal(t, tt.listed, counted)
+			if tt.listed {
+				assert.Equal(t, 1, unread)
+			}
+		})
+	}
 }
 
 func TestChatRepo_ListConversationsForUser_VoiceChannelsArePublicLikeChannels(t *testing.T) {

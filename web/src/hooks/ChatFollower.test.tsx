@@ -94,6 +94,17 @@ describe("the chat follower", () => {
     expect(isStale(client, ["getChatThreadIndicators", "p-1"])).toBe(false);
   });
 
+  it("refreshes every workspace's list for a new DM, which shows wherever all its people belong", async () => {
+    const client = seeded([
+      [["getChatConversations", "ws-1"], []],
+      [["getChatConversations", "ws-2"], []],
+    ]);
+    const dm = { ...channel, id: "dm-1", kind: "dm", name: "", participant_ids: ["u-1", "u-2"] };
+    await followFrame(chatFollower, "chat.conversation.created", { conversation: dm }, client);
+    expect(isStale(client, ["getChatConversations", "ws-1"])).toBe(true);
+    expect(isStale(client, ["getChatConversations", "ws-2"])).toBe(true);
+  });
+
   it("shows a ticket's thread as started once a run on it starts", async () => {
     const client = seeded([[["getChatTicketThreadStatus", "t-9"], {}]]);
     const run = { trail_id: "tr-1", play_id: "pl-1", target_type: "ticket", target_id: "t-9", activity: null, ended_at: null, last_error: "" };

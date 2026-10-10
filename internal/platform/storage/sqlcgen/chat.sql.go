@@ -457,9 +457,19 @@ func (q *Queries) IsNoteFile(ctx context.Context, arg IsNoteFileParams) (bool, e
 }
 
 const listConversationsForUser = `-- name: ListConversationsForUser :many
-SELECT DISTINCT c.id, c.workspace_id, c.kind, c.name, c.ticket_id, c.parent_message_id, c.created_by, c.created_at, c.updated_at, c.agent_thread_id, c.agent_synced_at, c.doc_id, c.project_id, c.is_general, c.private, c.agent_seen FROM conversations c
-LEFT JOIN conversation_participants p ON p.conversation_id = c.id AND p.user_id = ?
-WHERE c.workspace_id = ? AND (c.kind IN ('channel', 'voice_channel', 'doc_thread') OR p.user_id IS NOT NULL)
+WITH listed AS (
+    SELECT c.id FROM conversations c
+    LEFT JOIN conversation_participants p ON p.conversation_id = c.id AND p.user_id = ?1
+    WHERE c.workspace_id = ?2 AND (c.kind IN ('channel', 'voice_channel', 'doc_thread') OR p.user_id IS NOT NULL)
+    UNION
+    SELECT c.id FROM conversation_participants p
+    JOIN conversations c ON c.id = p.conversation_id
+    WHERE p.user_id = ?1 AND c.kind = 'dm' AND NOT EXISTS (
+        SELECT 1 FROM conversation_participants o
+        WHERE o.conversation_id = c.id AND NOT EXISTS (
+            SELECT 1 FROM workspace_members w WHERE w.user_id = o.user_id AND w.workspace_id = ?2))
+)
+SELECT c.id, c.workspace_id, c.kind, c.name, c.ticket_id, c.parent_message_id, c.created_by, c.created_at, c.updated_at, c.agent_thread_id, c.agent_synced_at, c.doc_id, c.project_id, c.is_general, c.private, c.agent_seen FROM conversations c JOIN listed l ON l.id = c.id
 ORDER BY c.created_at
 `
 
@@ -961,12 +971,22 @@ func (q *Queries) TouchNoteMessage(ctx context.Context, arg TouchNoteMessagePara
 }
 
 const unreadCounts = `-- name: UnreadCounts :many
-SELECT c.id, COUNT(m.id) AS count FROM conversations c
-LEFT JOIN conversation_participants p ON p.conversation_id = c.id AND p.user_id = ?1
-LEFT JOIN conversation_unread_state u ON u.conversation_id = c.id AND u.user_id = ?1
-LEFT JOIN messages m ON m.conversation_id = c.id AND m.deleted_at IS NULL AND m.author_id != ?1 AND m.created_at > COALESCE(u.last_read_at, 0)
-WHERE c.workspace_id = ?2 AND (c.kind IN ('channel', 'voice_channel', 'doc_thread') OR p.user_id IS NOT NULL)
-GROUP BY c.id
+WITH listed AS (
+    SELECT c.id FROM conversations c
+    LEFT JOIN conversation_participants p ON p.conversation_id = c.id AND p.user_id = ?1
+    WHERE c.workspace_id = ?2 AND (c.kind IN ('channel', 'voice_channel', 'doc_thread') OR p.user_id IS NOT NULL)
+    UNION
+    SELECT c.id FROM conversation_participants p
+    JOIN conversations c ON c.id = p.conversation_id
+    WHERE p.user_id = ?1 AND c.kind = 'dm' AND NOT EXISTS (
+        SELECT 1 FROM conversation_participants o
+        WHERE o.conversation_id = c.id AND NOT EXISTS (
+            SELECT 1 FROM workspace_members w WHERE w.user_id = o.user_id AND w.workspace_id = ?2))
+)
+SELECT l.id, COUNT(m.id) AS count FROM listed l
+LEFT JOIN conversation_unread_state u ON u.conversation_id = l.id AND u.user_id = ?1
+LEFT JOIN messages m ON m.conversation_id = l.id AND m.deleted_at IS NULL AND m.author_id != ?1 AND m.created_at > COALESCE(u.last_read_at, 0)
+GROUP BY l.id
 `
 
 type UnreadCountsParams struct {

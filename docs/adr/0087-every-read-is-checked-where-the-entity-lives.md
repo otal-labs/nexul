@@ -65,3 +65,6 @@ membership counts for no instance-level area. Amended by ADR 0098: a private cha
 Amended by ADR 0099: a memory, its frames included, is checked in its project, and a deleted memory's frame carries
 the project. Amended by ADR 0135: access reads are memoised until the next commit, so a live frame no longer costs a
 full check per socket.
+
+Amended 2026-10-10 by ADR 0141: a DM's participants must be members of its workspace when it is started, and
+reading one takes being its participant alone; it shows in every workspace all its people share.

@@ -98,6 +98,9 @@ func (s *Service) requireGate(ctx context.Context, c *Conversation) error {
 			return s.require(ctx, c.WorkspaceID, permissions.MemoriesRead)
 		}
 		return s.threads.RequireProject(ctx, c.ProjectID, permissions.MemoriesRead)
+	case KindDM:
+		// A DM is read by its participants from any workspace they share, not only the one it started in (ADR 0141).
+		return nil
 	}
 	return s.require(ctx, c.WorkspaceID, permissions.Member)
 }

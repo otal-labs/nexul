@@ -165,6 +165,20 @@ describe("dispatch", () => {
     expect(client.getQueryState([key, other])?.isInvalidated).toBe(false);
   });
 
+  test.each([
+    ["a channel refetches only its workspace's list", "channel", false],
+    ["a DM refetches every workspace's list, since it shows wherever all its people belong", "dm", true],
+  ])("a new conversation: %s", (_, kind, everyList) => {
+    const client = new QueryClient();
+    client.setQueryData([getChatConversationsKey, "ws-1"], []);
+    client.setQueryData([getChatConversationsKey, "ws-2"], []);
+
+    dispatch(client)({ topic: "chat.conversation.created", type: "event", payload: { conversation: { id: "c1", workspace_id: "ws-1", kind } } });
+
+    expect(client.getQueryState([getChatConversationsKey, "ws-1"])?.isInvalidated).toBe(true);
+    expect(client.getQueryState([getChatConversationsKey, "ws-2"])?.isInvalidated).toBe(everyList);
+  });
+
   test("a frame that names no record refetches every cached one, rather than none", () => {
     const client = new QueryClient();
     client.setQueryData([getTicketKey, "t-1", ""], { id: "t-1" });
