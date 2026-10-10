@@ -109,6 +109,24 @@ describe("requests a live frame sends", () => {
     ]);
   });
 
+  it("refetches the unread counts of every workspace whose list holds a DM, and no list", async () => {
+    const dm = { id: "dm-1", workspace_id: "ws-1", kind: "dm", name: "", participant_ids: ["u-me", "u-2"], created_by: "u-me", created_at: "", updated_at: "" };
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useFetchConversations("ws-1");
+        useFetchChatUnread("ws-1");
+        useFetchConversations("ws-2");
+        useFetchChatUnread("ws-2");
+      }),
+      (url) => (url === "/api/chat/conversations" ? [dm] : respond(url)),
+    );
+    const message = { id: "m-9", conversation_id: "dm-1", author_id: "u-2", author_kind: "user", body: "hi", mentions: null, created_at: "", updated_at: "" };
+    expect((await requestsAfter("chat.message.created", { message, workspace_id: "ws-1" })).sort()).toEqual([
+      "/api/chat/unread?workspace_id=ws-1",
+      "/api/chat/unread?workspace_id=ws-2",
+    ]);
+  });
+
   it("refetches only the unread counts of a deleted message's workspace", async () => {
     const { requestsAfter } = await mountLive(
       view(() => {

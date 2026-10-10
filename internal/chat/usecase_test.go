@@ -1334,6 +1334,36 @@ func TestGetConversation(t *testing.T) {
 	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 }
 
+func TestGetConversation_DMOutsideItsWorkspace_IsReadByItsParticipantsAlone(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	dm, err := s.CreateDM(context.Background(), "w-1", "u-1", []string{"u-2"})
+	require.NoError(t, err)
+	s.SetGate(refuseGate{"u-2": {permissions.Member}, "u-3": {permissions.Member}})
+
+	tests := []struct {
+		name    string
+		userID  string
+		wantErr error
+	}{
+		{"a participant who left the workspace it started in", "u-2", nil},
+		{"someone outside the DM", "u-3", apperrs.ErrNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := identity.WithActor(context.Background(), identity.Actor{ID: tt.userID})
+			_, err := s.GetConversation(ctx, dm.ID)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			_, err = s.PostMessage(ctx, dm.ID, tt.userID, "still here")
+			require.NoError(t, err)
+		})
+	}
+}
+
 func TestListMessagesSince(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)

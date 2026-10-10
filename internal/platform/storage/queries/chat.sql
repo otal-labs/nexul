@@ -39,9 +39,19 @@ SELECT * FROM conversations WHERE project_id = ?;
 SELECT ticket_id FROM conversations WHERE ticket_id IN (sqlc.slice('ids'));
 
 -- name: ListConversationsForUser :many
-SELECT DISTINCT c.* FROM conversations c
-LEFT JOIN conversation_participants p ON p.conversation_id = c.id AND p.user_id = ?
-WHERE c.workspace_id = ? AND (c.kind IN ('channel', 'voice_channel', 'doc_thread') OR p.user_id IS NOT NULL)
+WITH listed AS (
+    SELECT c.id FROM conversations c
+    LEFT JOIN conversation_participants p ON p.conversation_id = c.id AND p.user_id = sqlc.arg(user_id)
+    WHERE c.workspace_id = sqlc.arg(workspace_id) AND (c.kind IN ('channel', 'voice_channel', 'doc_thread') OR p.user_id IS NOT NULL)
+    UNION
+    SELECT c.id FROM conversation_participants p
+    JOIN conversations c ON c.id = p.conversation_id
+    WHERE p.user_id = sqlc.arg(user_id) AND c.kind = 'dm' AND NOT EXISTS (
+        SELECT 1 FROM conversation_participants o
+        WHERE o.conversation_id = c.id AND NOT EXISTS (
+            SELECT 1 FROM workspace_members w WHERE w.user_id = o.user_id AND w.workspace_id = sqlc.arg(workspace_id)))
+)
+SELECT c.* FROM conversations c JOIN listed l ON l.id = c.id
 ORDER BY c.created_at;
 
 -- name: ListParticipantsByConversationIDs :many
@@ -103,12 +113,22 @@ INSERT INTO conversation_unread_state (user_id, conversation_id, last_read_at) V
     ON CONFLICT(user_id, conversation_id) DO UPDATE SET last_read_at = excluded.last_read_at;
 
 -- name: UnreadCounts :many
-SELECT c.id, COUNT(m.id) AS count FROM conversations c
-LEFT JOIN conversation_participants p ON p.conversation_id = c.id AND p.user_id = sqlc.arg(user_id)
-LEFT JOIN conversation_unread_state u ON u.conversation_id = c.id AND u.user_id = sqlc.arg(user_id)
-LEFT JOIN messages m ON m.conversation_id = c.id AND m.deleted_at IS NULL AND m.author_id != sqlc.arg(user_id) AND m.created_at > COALESCE(u.last_read_at, 0)
-WHERE c.workspace_id = sqlc.arg(workspace_id) AND (c.kind IN ('channel', 'voice_channel', 'doc_thread') OR p.user_id IS NOT NULL)
-GROUP BY c.id;
+WITH listed AS (
+    SELECT c.id FROM conversations c
+    LEFT JOIN conversation_participants p ON p.conversation_id = c.id AND p.user_id = sqlc.arg(user_id)
+    WHERE c.workspace_id = sqlc.arg(workspace_id) AND (c.kind IN ('channel', 'voice_channel', 'doc_thread') OR p.user_id IS NOT NULL)
+    UNION
+    SELECT c.id FROM conversation_participants p
+    JOIN conversations c ON c.id = p.conversation_id
+    WHERE p.user_id = sqlc.arg(user_id) AND c.kind = 'dm' AND NOT EXISTS (
+        SELECT 1 FROM conversation_participants o
+        WHERE o.conversation_id = c.id AND NOT EXISTS (
+            SELECT 1 FROM workspace_members w WHERE w.user_id = o.user_id AND w.workspace_id = sqlc.arg(workspace_id)))
+)
+SELECT l.id, COUNT(m.id) AS count FROM listed l
+LEFT JOIN conversation_unread_state u ON u.conversation_id = l.id AND u.user_id = sqlc.arg(user_id)
+LEFT JOIN messages m ON m.conversation_id = l.id AND m.deleted_at IS NULL AND m.author_id != sqlc.arg(user_id) AND m.created_at > COALESCE(u.last_read_at, 0)
+GROUP BY l.id;
 
 -- name: InsertMessageReaction :execrows
 INSERT INTO message_reactions (message_id, emoji, user_id, created_at) VALUES (?, ?, ?, ?)

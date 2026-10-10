@@ -123,7 +123,8 @@ func MCPTools(s *Service) []mcptool.Tool {
 
 func conversationListTool(s *Service) mcptool.Tool {
 	return mcptool.New("conversation_list", "List conversations",
-		"Lists your conversations in a workspace: every public channel and the private channels you are in, plus the direct messages and threads you take part in. "+
+		"Lists your conversations in a workspace: every public channel and the private channels you are in, the threads you take part in, "+
+			"and your direct messages, each shown in every workspace all its people belong to. "+
 			"Use it to find a conversation's id for message_list or message_post; a doc's, ticket's, or project interview's thread "+
 			"can also be reached there by the doc_id, ticket_id, or project_id alone. "+
 			"Each item has its kind (channel, dm, ticket_thread, doc_thread, interview_thread, voice_channel), what it belongs to, "+

@@ -386,6 +386,12 @@ Chat's fifth conversation kind — a Discord-style voice room with screen
 share and camera, backed by your own LiveKit server. Carries its own text
 chat like any channel.
 
+**Direct message** (DM):
+A conversation between named people, read by them alone. It starts in a
+workspace, between members of it, and shows in that workspace and in every
+other one all its people belong to. Never renamed or deleted.
+_Avoid_: Private message, PM
+
 **Bot**:
 A named poster inside one conversation that outside systems drive through
 a webhook URL: the URL is the credential and the binding, the payload is
@@ -886,8 +892,9 @@ route, limits, lifecycle, and the media proxy their messages' images load
 through. Posts reach chat through one use-case chat exposes; chat never
 learns what a webhook is.
 
-**Chat** — conversations inside a workspace: channels, direct messages,
-threads, and ticket threads, with the mentionable Agent and its memories.
+**Chat** — conversations inside a workspace: channels, direct messages
+(shown in every workspace their people share), threads, and ticket threads,
+with the mentionable Agent and its memories.
 
 **Code review** — a mirror of the provider's review state, one record per PR.
 Nexul does not host review threads.

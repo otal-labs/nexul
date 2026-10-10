@@ -59,6 +59,16 @@ const refetch = (client: QueryClient, queryKey: unknown[]) => client.invalidateQ
 const refetchWorkspace = (client: QueryClient, workspaceId: string) =>
   Promise.all([refetch(client, [getChatConversationsKey, workspaceId]), refetch(client, [getChatUnreadKey, workspaceId])]);
 
+// A DM shows in every workspace all its people share (ADR 0141), so its frames reach each cached list holding it.
+const holdingWorkspaces = (client: QueryClient, conversationId: string) =>
+  client
+    .getQueriesData<Conversation[]>({ queryKey: [getChatConversationsKey] })
+    .filter(([, list]) => list?.some((c) => c.id === conversationId))
+    .map(([queryKey]) => queryKey[1]);
+
+const refetchUnread = (client: QueryClient, workspaceIds: unknown[]) =>
+  Promise.all([...new Set(workspaceIds)].map((workspaceId) => refetch(client, [getChatUnreadKey, workspaceId])));
+
 // A question mid-turn takes the bubble's text, not the hand-offs still working, so their pills stay until the reply.
 const yieldStream = (message: Message) => {
   const store = useAgentStreamStore.getState();
@@ -88,6 +98,7 @@ const followMessage = ({ message }: MessagePayload, { client }: { client: QueryC
 export const chatFollower: LiveFollower = {
   "chat.conversation.created": ({ conversation }: { conversation: Conversation }, { client }) => {
     if (conversation.ticket_id) ticketThreadStarted(client, conversation.ticket_id, conversation.project_id);
+    if (conversation.kind === "dm") return client.invalidateQueries({ queryKey: [getChatConversationsKey] });
     return refetch(client, [getChatConversationsKey, conversation.workspace_id]);
   },
   "chat.conversation.updated": ({ workspace_id }: ConversationPlace, { client }) => refetch(client, [getChatConversationsKey, workspace_id]),
@@ -97,17 +108,17 @@ export const chatFollower: LiveFollower = {
     client.setQueryData<Conversation[]>([getChatConversationsKey, deleted.workspace_id], (list) => list?.filter((c) => c.id !== deleted.conversation_id));
     return refetch(client, [getChatUnreadKey, deleted.workspace_id]);
   },
-  // A message in a conversation its workspace's list does not hold yet is the viewer's first sight of it, so that list refetches too.
+  // A message in a conversation no cached list holds yet is the viewer's first sight of it, so its workspace's list refetches too.
   "chat.message.created": (payload: MessageCreatedPayload, live) => {
     followMessage(payload, live);
-    const listed = live.client.getQueryData<Conversation[]>([getChatConversationsKey, payload.workspace_id])?.some((c) => c.id === payload.message.conversation_id);
-    if (listed) return refetch(live.client, [getChatUnreadKey, payload.workspace_id]);
-    return refetchWorkspace(live.client, payload.workspace_id);
+    const holders = holdingWorkspaces(live.client, payload.message.conversation_id);
+    if (holders.length === 0) return refetchWorkspace(live.client, payload.workspace_id);
+    return refetchUnread(live.client, [payload.workspace_id, ...holders]);
   },
   "chat.message.updated": followMessage,
   "chat.message.deleted": ({ conversation_id: conversationId, message_id: messageId, deleted_at: deletedAt, workspace_id: workspaceId }: MessageDeletedPayload, { client }) => {
     markCachedMessageDeleted(client, conversationId, messageId, deletedAt);
-    return refetch(client, [getChatUnreadKey, workspaceId]);
+    return refetchUnread(client, [workspaceId, ...holdingWorkspaces(client, conversationId)]);
   },
   "chat.agent.stream": (p: AgentStreamPayload) => {
     // An empty non-streaming frame is the pipeline's clear signal, or the bubble spins forever.
