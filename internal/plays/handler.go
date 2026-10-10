@@ -40,6 +40,12 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/plays/{playID}", h.get)
 	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}/plays/{playID}", h.update)
 	mux.HandleFunc("DELETE /api/workspaces/{workspaceID}/plays/{playID}", h.delete)
+	mux.HandleFunc("GET /api/workspaces/{workspaceID}/plays/auto-play-limits", h.getAutoPlayLimits)
+	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}/plays/auto-play-limits", h.setAutoPlayLimits)
+	mux.HandleFunc("GET /api/workspaces/{workspaceID}/plays/{playID}/auto-plays", h.listAutoPlays)
+	mux.HandleFunc("POST /api/workspaces/{workspaceID}/plays/{playID}/auto-plays", h.createAutoPlay)
+	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}/plays/{playID}/auto-plays/{autoPlayID}", h.updateAutoPlay)
+	mux.HandleFunc("DELETE /api/workspaces/{workspaceID}/plays/{playID}/auto-plays/{autoPlayID}", h.deleteAutoPlay)
 	return mux
 }
 

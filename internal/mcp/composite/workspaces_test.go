@@ -49,6 +49,24 @@ type renameCall struct {
 	name, slug *string
 }
 
+// fakeLimits holds each workspace's auto play daily cap; err is what both calls return.
+type fakeLimits struct {
+	caps map[string]int
+	err  error
+}
+
+func (f *fakeLimits) AutoPlayDailyCap(_ context.Context, workspaceID string) (int, error) {
+	return f.caps[workspaceID], f.err
+}
+
+func (f *fakeLimits) SetAutoPlayDailyCap(_ context.Context, workspaceID string, limit int) (int, error) {
+	if f.err != nil {
+		return 0, f.err
+	}
+	f.caps[workspaceID] = limit
+	return limit, nil
+}
+
 type fakeRoles struct {
 	byWorkspace map[string][]*roles.Role
 	err         error
@@ -71,7 +89,7 @@ func newWorkspaceListCall(rolesErr error) func(context.Context, json.RawMessage)
 			{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors", Permissions: permissions.SetOf(permissions.DocsRead, permissions.RolesClone)},
 		},
 	}}
-	return WorkspaceTools(&ws, rs)[0].Call
+	return WorkspaceTools(&ws, rs, &fakeLimits{err: apperrs.ErrForbidden})[0].Call
 }
 
 func actorCtx(id string) context.Context {
@@ -130,13 +148,59 @@ func TestWorkspaceList_WithIDReturnsPeopleRolesAndCatalog(t *testing.T) {
 
 func TestWorkspaceList_ListFailurePropagates(t *testing.T) {
 	boom := errors.New("db down")
-	call := WorkspaceTools(&fakeWorkspaces{listErr: boom}, fakeRoles{})[0].Call
+	call := WorkspaceTools(&fakeWorkspaces{listErr: boom}, fakeRoles{}, &fakeLimits{})[0].Call
 	_, err := call(actorCtx("u-1"), json.RawMessage(`{}`))
 	require.ErrorIs(t, err, boom)
 }
 
 func newWorkspaceUpdateCall(ws *fakeWorkspaces) func(context.Context, json.RawMessage) (any, error) {
-	return WorkspaceTools(ws, fakeRoles{})[1].Call
+	return WorkspaceTools(ws, fakeRoles{}, &fakeLimits{caps: map[string]int{}})[1].Call
+}
+
+func TestWorkspaceList_WithIDShowsTheDailyCapToItsReaders(t *testing.T) {
+	ws := &fakeWorkspaces{byUser: map[string][]*tenancy.Workspace{"u-1": {{ID: "ws-1", Name: "Acme"}}}}
+	call := WorkspaceTools(ws, fakeRoles{}, &fakeLimits{caps: map[string]int{"ws-1": 7}})[0].Call
+	out, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1"}`))
+	require.NoError(t, err)
+	got := out.(mcptool.Page[workspaceResult]).Items[0]
+	require.NotNil(t, got.AutoPlayDailyCap)
+	assert.Equal(t, 7, *got.AutoPlayDailyCap)
+
+	call = WorkspaceTools(ws, fakeRoles{}, &fakeLimits{err: errors.New("db down")})[0].Call
+	_, err = call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1"}`))
+	require.Error(t, err, "a failure other than forbidden is not hidden")
+}
+
+func TestWorkspaceUpdate_DailyCap(t *testing.T) {
+	member := map[string][]*tenancy.Workspace{"u-1": {{ID: "ws-1", Name: "Acme", Slug: "acme"}}}
+	t.Run("alone it changes the cap and reports the workspace as it stands", func(t *testing.T) {
+		ws := &fakeWorkspaces{byUser: member}
+		out, err := newWorkspaceUpdateCall(ws)(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","auto_play_daily_cap":9}`))
+		require.NoError(t, err)
+		nine := 9
+		assert.Equal(t, workspaceUpdateResult{ID: "ws-1", Name: "Acme", Slug: "acme", AutoPlayDailyCap: &nine}, out)
+		assert.Nil(t, ws.renamed, "no name or slug passed, so nothing is renamed")
+	})
+	t.Run("in a workspace the caller is not in it is not found", func(t *testing.T) {
+		_, err := newWorkspaceUpdateCall(&fakeWorkspaces{byUser: member})(actorCtx("u-2"), json.RawMessage(`{"id":"ws-1","auto_play_daily_cap":9}`))
+		require.ErrorIs(t, err, apperrs.ErrNotFound)
+	})
+	t.Run("a refused cap after a rename says the rename took effect", func(t *testing.T) {
+		ws := &fakeWorkspaces{byUser: member}
+		call := WorkspaceTools(ws, fakeRoles{}, &fakeLimits{err: apperrs.ErrForbidden})[1].Call
+		_, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","name":"Acme Labs","auto_play_daily_cap":9}`))
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+		var partial *mcptool.PartialError
+		require.ErrorAs(t, err, &partial)
+		assert.Equal(t, []string{"name and slug"}, partial.Applied)
+	})
+	t.Run("a refused cap alone is the refusal", func(t *testing.T) {
+		call := WorkspaceTools(&fakeWorkspaces{byUser: member}, fakeRoles{}, &fakeLimits{err: apperrs.ErrInvalid})[1].Call
+		_, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","auto_play_daily_cap":0}`))
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+		var partial *mcptool.PartialError
+		assert.False(t, errors.As(err, &partial))
+	})
 }
 
 func TestWorkspaceUpdate_PatchesAsTheCaller(t *testing.T) {

@@ -36,6 +36,22 @@ type AuditLog struct {
 	CreatedAt int64
 }
 
+type AutoPlay struct {
+	ID                string
+	PlayID            string
+	WorkspaceID       string
+	Enabled           int64
+	Moment            string
+	MomentStage       sql.NullString
+	Conditions        string
+	Priority          string
+	OnceWithinMinutes int64
+	RunOn             string
+	CreatedBy         string
+	CreatedAt         int64
+	UpdatedAt         int64
+}
+
 type Automation struct {
 	ID             string
 	Name           string
@@ -1067,6 +1083,7 @@ type Workspace struct {
 	MentionChipTemplate   string
 	Slug                  string
 	DecisionsCheckEnabled int64
+	AutoPlayDailyCap      int64
 }
 
 type WorkspaceInvite struct {
