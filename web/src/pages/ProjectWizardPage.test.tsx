@@ -40,6 +40,14 @@ const project = {
 
 const inSetup = (steps: Record<string, string>) => ({ ...project, setup: { finished: false, steps } });
 
+// The server's answer for a project the wizard made and has not finished.
+const mockProjectInSetup = (steps: Record<string, string> = { project: "done" }) =>
+  mocks.get.mockImplementation(async (url: string) => {
+    if (url === "/api/projects/p-1") return { data: inSetup(steps) };
+    if (url === "/api/repositories") return { data: { repositories: [] } };
+    return { data: [] };
+  });
+
 const stack = {
   id: "stack-1",
   project_id: "p-1",
@@ -136,9 +144,12 @@ describe("ProjectWizardPage", () => {
     const store = useProjectWizardStore.getState();
     store.setProjectId("p-1", "Backend");
     store.setCandidate({ kind: "compose", path: "compose.yml", name: "api", services: [] });
-    store.setName("api");
-    store.setMachine("prod");
     store.setStackId("stack-1");
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/projects/p-1") return { data: project };
+      if (url === "/api/stacks/stack-1") return { data: stack };
+      return { data: [] };
+    });
     renderPage("/acme/wizard/project/service");
 
     expect(await screen.findByText(/api runs on/)).toHaveTextContent("api runs on prod.");
@@ -146,6 +157,7 @@ describe("ProjectWizardPage", () => {
   });
 
   it("records a skipped step on the project and moves on to the next step, keeping the project it made", async () => {
+    mockProjectInSetup();
     mocks.post.mockResolvedValueOnce({ data: inSetup({ project: "done" }) });
     mocks.put.mockResolvedValue({ data: inSetup({ project: "done", repository: "skipped" }) });
     const user = userEvent.setup();
@@ -173,6 +185,7 @@ describe("ProjectWizardPage", () => {
   });
 
   it("keeps the step open when its skip cannot be saved", async () => {
+    mockProjectInSetup();
     mocks.put.mockRejectedValue(new Error("offline"));
     useProjectWizardStore.getState().setProjectId("p-1", "Backend");
     const user = userEvent.setup();
@@ -185,6 +198,7 @@ describe("ProjectWizardPage", () => {
   });
 
   it("can skip Environment before a service exists and advances to Reach", async () => {
+    mockProjectInSetup();
     mocks.put.mockResolvedValue({ data: inSetup({ project: "done", env: "skipped" }) });
     const store = useProjectWizardStore.getState();
     store.setProjectId("p-1", "Backend");
@@ -216,12 +230,54 @@ describe("ProjectWizardPage", () => {
     expect(rung("Repository")).toHaveAttribute("data-state", "done");
   });
 
+  it.each([
+    { name: "a project still in setup", finished: false },
+    { name: "a finished project", finished: true },
+  ])("the Add a service door on $name makes a new service beside the recorded one and leaves setup alone", async ({ finished }) => {
+    const store = useProjectWizardStore.getState();
+    store.setProjectId("p-1", "Backend");
+    store.setCandidate({ kind: "compose", path: "compose.yml", name: "api", services: [] });
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/projects/p-1")
+        return { data: { ...project, setup: { finished, stack_id: "stack-old", env_keys: ["PORT"], steps: { project: "done", repository: "done", service: "done" } } } };
+      if (url === "/api/stacks/stack-old") return { data: { ...stack, id: "stack-old", name: "old" } };
+      if (url === "/api/stacks/stack-1") return { data: stack };
+      if (url === "/api/machines") return { data: [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "" }] };
+      return { data: [] };
+    });
+    mocks.post.mockResolvedValueOnce({ data: stack });
+    const user = userEvent.setup();
+    renderPage("/acme/wizard/project/service?project=p-1&add=1");
+
+    await pickOption(user, "Machine", "prod");
+    await user.click(screen.getByRole("button", { name: "Create & deploy" }));
+
+    expect(await screen.findByRole("heading", { name: "Reach" })).toBeInTheDocument();
+    expect(mocks.post).toHaveBeenCalledTimes(1);
+    expect(mocks.put).not.toHaveBeenCalled();
+  });
+
+  it("says the repository needs scanning again when setup recorded it but this browser holds no scan, and jumps there without undoing it", async () => {
+    mockProjectInSetup({ project: "done", repository: "done" });
+    const user = userEvent.setup();
+    renderPage("/acme/wizard/project/service?project=p-1");
+
+    expect(await screen.findByText(/scan isn't loaded on this device/)).toBeInTheDocument();
+    expect(screen.queryByText(/Pick one first/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Go to Repository" }));
+
+    expect(await screen.findByRole("heading", { name: "Repository" })).toBeInTheDocument();
+    expect(rung("Repository")).toHaveAttribute("data-state", "current");
+    expect(mocks.put).not.toHaveBeenCalled();
+  });
+
   it("retries a failed Service mark from the summary before advancing, without creating again", async () => {
     const store = useProjectWizardStore.getState();
     store.setProjectId("p-1", "Backend");
     store.setCandidate({ kind: "compose", path: "compose.yml", name: "api", services: [] });
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/projects/p-1") return { data: inSetup({ project: "done" }) };
+      if (url === "/api/stacks/stack-1") return { data: stack };
       if (url === "/api/machines") return { data: [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "" }] };
       return { data: [] };
     });
@@ -312,6 +368,7 @@ describe("ProjectWizardPage", () => {
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/projects/p-1") return { data: inSetup({ project: "done" }) };
       if (url === "/api/projects") return { data: [project] };
+      if (url === "/api/stacks/stack-1") return { data: stack };
       if (url === "/api/memories") return { data: [{ id: "m-1", project_id: "p-1", kind: "interview", body: "## Stack" }] };
       if (url === "/api/machines") return { data: [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "" }] };
       return { data: [] };

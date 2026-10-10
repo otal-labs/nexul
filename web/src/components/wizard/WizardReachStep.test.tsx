@@ -28,7 +28,7 @@ const renderStep = (onDone = vi.fn(), onSkip = vi.fn()) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <WizardReachStep onDone={onDone} onSkip={onSkip} />
+      <WizardReachStep stackId="stack-1" onDone={onDone} onSkip={onSkip} />
     </QueryClientProvider>,
   );
   return { onDone, onSkip };
@@ -38,7 +38,6 @@ beforeEach(() => {
   mocks.get.mockReset();
   mocks.post.mockReset();
   useProjectWizardStore.getState().reset();
-  useProjectWizardStore.getState().setStackId("stack-1");
   useProjectWizardStore.getState().setCandidate({
     kind: "compose",
     path: "docker-compose.yml",

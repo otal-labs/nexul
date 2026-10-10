@@ -6,7 +6,7 @@ import { RepoRole, TestsLocation } from "@/enums/Project";
 import type { DeleteImpact, Project, ProjectAccessEntry, ProjectSetup, RepoRef, SetupMark } from "@/models/Project";
 import type { Repo } from "@/models/Repository";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import type { LiveFollower } from "@/lib/live";
+import { refetchHolding, type LiveFollower } from "@/lib/live";
 
 export const getProjectsKey = "getProjects";
 export const getProjectKey = "getProject";
@@ -74,12 +74,22 @@ interface SetupChangedPayload {
   setup: ProjectSetup;
 }
 
-// Patches a project's setup into the list the sidebar reads and the project's own read, so its nav flips in place.
-const patchSetup = (client: QueryClient, { project_id, workspace_id, setup }: SetupChangedPayload) => {
+// Writes a project's setup into the list the sidebar reads and the project's own read, so its nav flips in place.
+const writeSetup = (client: QueryClient, { project_id, workspace_id }: SetupChangedPayload, next: (current: ProjectSetup) => ProjectSetup) => {
   client.setQueryData<Project[]>([getProjectsKey, workspace_id], (list) =>
-    list?.map((p) => (p.id === project_id ? { ...p, setup } : p)),
+    list?.map((p) => (p.id === project_id ? { ...p, setup: next(p.setup) } : p)),
   );
-  client.setQueryData<Project>([getProjectKey, project_id], (project) => project && { ...project, setup });
+  client.setQueryData<Project>([getProjectKey, project_id], (project) => project && { ...project, setup: next(project.setup) });
+};
+
+// A frame has one audience, so it carries the finished flag and the marks but not the service, which needs stacks:read:
+// those patch in at once and the reads that hold the project refetch for the rest (ADR 0143).
+const followSetup = (client: QueryClient, payload: SetupChangedPayload) => {
+  writeSetup(client, payload, (current) => ({ ...current, finished: payload.setup.finished, steps: payload.setup.steps }));
+  return Promise.all([
+    client.invalidateQueries({ queryKey: [getProjectKey, payload.project_id], exact: true }),
+    refetchHolding(client, [getProjectsKey, payload.workspace_id], (list: Project[]) => list.some((p) => p.id === payload.project_id)),
+  ]);
 };
 
 export interface SetupChangeInput {
@@ -96,7 +106,7 @@ export const useChangeProjectSetup = () => {
     mutationFn: async ({ projectId, ...change }: SetupChangeInput) =>
       (await api.put<Project>(`/api/projects/${projectId}/setup`, change)).data,
     onSuccess: (project) =>
-      patchSetup(client, { project_id: project.id, workspace_id: project.workspace_id, setup: project.setup }),
+      writeSetup(client, { project_id: project.id, workspace_id: project.workspace_id, setup: project.setup }, () => project.setup),
     onError: (error) => toast.error(errorMessage(error)),
   });
 };
@@ -206,7 +216,7 @@ export const useRemoveProjectRepo = () => {
 
 // Who a manager sees with access to a project follows someone else's Project access moving.
 export const projectFollower: LiveFollower = {
-  "project.setup_changed": (payload: SetupChangedPayload, { client }) => patchSetup(client, payload),
+  "project.setup_changed": (payload: SetupChangedPayload, { client }) => followSetup(client, payload),
   "workspace.member.updated": ({ project_ids }: { project_ids?: string[] }, { client }) =>
     Promise.all((project_ids ?? []).map((id) => client.invalidateQueries({ queryKey: [getProjectAccessKey, id], exact: true }))),
   "access.grant.changed": ({ resource_type, resource_id }: { resource_type: string; resource_id: string }, { client }) =>

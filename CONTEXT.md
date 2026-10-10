@@ -43,7 +43,10 @@ _Avoid_: Board, app, default project
 The project wizard's record of a project: whether Finish was pressed, and each
 wizard step done or skipped. A project the wizard makes stays in setup until
 Finish, and its sidebar offers Continue setup instead of its pages; one made any
-other way starts set up. A signal, never a lock: every page still opens.
+other way starts set up. A signal, never a lock: every page still opens. It also
+names the service the wizard made and the environment keys it detected, shown only
+to someone who may read the project's stacks. Adding a service from the project's
+page is not part of setup and never changes it.
 _Avoid_: Onboarding, draft project, unfinished project
 
 **Prefix**:

@@ -184,4 +184,29 @@ describe("the project follower", () => {
     await followFrame(projectFollower, "workspace.member.updated", { user_id: "u-2", workspace_id: "ws-1", project_ids: ["p-2"] }, client);
     expect(stale()).toEqual([true, true, false]);
   });
+
+  it("patches the finished flag and marks of a setup frame, keeps the service it cannot carry, and refetches the reads that hold the project", async () => {
+    const project = (id: string) => ({ id, workspace_id: "ws-1", setup: { finished: false, stack_id: "stack-1", env_keys: ["PORT"], steps: { project: "done" } } });
+    const client = seeded([
+      [["getProjects", "ws-1"], [project("p-1"), project("p-2")]],
+      [["getProjects", "ws-2"], [project("p-3")]],
+      [["getProject", "p-1"], project("p-1")],
+      [["getProject", "p-2"], project("p-2")],
+    ]);
+
+    await followFrame(
+      projectFollower,
+      "project.setup_changed",
+      { project_id: "p-1", workspace_id: "ws-1", setup: { finished: true, steps: { project: "done", service: "skipped" } } },
+      client,
+    );
+
+    const detail = client.getQueryData<ReturnType<typeof project>>(["getProject", "p-1"]);
+    expect(detail?.setup).toEqual({ finished: true, stack_id: "stack-1", env_keys: ["PORT"], steps: { project: "done", service: "skipped" } });
+    expect(client.getQueryData<ReturnType<typeof project>[]>(["getProjects", "ws-1"])?.[1]?.setup.finished).toBe(false);
+    expect(isStale(client, ["getProject", "p-1"])).toBe(true);
+    expect(isStale(client, ["getProjects", "ws-1"])).toBe(true);
+    expect(isStale(client, ["getProject", "p-2"])).toBe(false);
+    expect(isStale(client, ["getProjects", "ws-2"])).toBe(false);
+  });
 });

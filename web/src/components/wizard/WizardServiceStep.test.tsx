@@ -160,9 +160,6 @@ describe("WizardServiceStep", () => {
     );
     expect(mocks.post).toHaveBeenCalledWith("/api/deploys", expect.objectContaining({ stack_id: "stack-9", ref: "main" }));
     expect(useProjectWizardStore.getState().stackId).toBe("stack-9");
-    // The done rung reads name and machine from the store, so attach seeds them from the stack it patched.
-    expect(useProjectWizardStore.getState().name).toBe("api");
-    expect(useProjectWizardStore.getState().machine).toBe("prod");
   });
 
   it("attach mode: a Dockerfile candidate turns the adopted compose stack into a run stack with a network", async () => {

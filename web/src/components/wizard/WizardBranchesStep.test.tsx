@@ -35,7 +35,7 @@ const renderStep = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <WizardBranchesStep onDone={onDone} onSkip={onSkip} />
+      <WizardBranchesStep stackId="stack-1" onDone={onDone} onSkip={onSkip} />
     </QueryClientProvider>,
   );
   return { onDone, onSkip, user: userEvent.setup() };
@@ -48,7 +48,6 @@ beforeEach(() => {
   mocks.patch.mockReset();
   mocks.patch.mockImplementation(async (_url: string, body: unknown) => ({ data: body }));
   useProjectWizardStore.getState().reset();
-  useProjectWizardStore.getState().setStackId("stack-1");
   mocks.get.mockImplementation(async (url: string) => {
     if (url === "/api/stacks/stack-1") return { data: web };
     if (url === "/api/stacks") return { data: [web, qa] };

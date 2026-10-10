@@ -108,6 +108,7 @@ describe("ProjectSection", () => {
   it("lists the project's pages once someone else finishes its setup", async () => {
     const { client } = renderSection({ list: [inSetup] });
     await screen.findByRole("link", { name: "Continue setup" });
+    mockApi();
 
     await act(() =>
       followFrame(projectFollower, "project.setup_changed", { project_id: "p-1", workspace_id: "ws-1", setup: setUp }, client),
