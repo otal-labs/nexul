@@ -111,6 +111,10 @@ resolved.
 - 03, the run queue: one auto run per person by default; auto runs ignore
   the play's show-when stage, which only places the button.
 - 04, `runPlay`: play names become unique per workspace.
+- 05, the composer look: tabs in the play dialog, sentence rows, drill in.
+- 06, the ticket signals: queued and paused in the rail, the rest in the
+  Thread.
+- 07, the ADR: ADR 0132, amending 0055 and 0066.
 
 ## Not yet specified
 
