@@ -80,7 +80,7 @@ func toTrailDetail(t *Trail, steps int) trailDetail {
 
 type playRunIn struct {
 	PlayID             string                  `json:"play_id,omitempty" jsonschema:"The play's id, from play_list. Required unless decisions_check is true."`
-	DecisionsCheck     bool                    `json:"decisions_check,omitempty" jsonschema:"true runs the built-in decisions check again on a done ticket, instead of a play: pass it with target_type ticket and target_id, and no play_id or other run choices."`
+	DecisionsCheck     bool                    `json:"decisions_check,omitempty" jsonschema:"true runs the workspace's Decisions check play on a done ticket without looking up its play_id: pass it with target_type ticket and target_id, and no play_id or other run choices."`
 	ResumeAutoPlays    bool                    `json:"resume_auto_plays,omitempty" jsonschema:"true resumes auto plays on a ticket or doc the daily cap paused, instead of running a play: pass it with target_type and target_id only. Its count of automatic runs starts again and its queued runs go ahead."`
 	TargetType         TargetType              `json:"target_type" jsonschema:"What to run it on, matching the play's type: ticket, doc, or interview."`
 	TargetID           string                  `json:"target_id" jsonschema:"The ticket's or doc's id (a UUID, not a ticket key such as REF-102), or for an interview the project's id."`
@@ -135,7 +135,7 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				"Clarify via AI is the exception, its run opens the doc's next clarification round and unlocks the doc again "+
 				"when it ends, unless the doc was locked before. "+
 				"With decisions_check true instead "+
-				"of a play_id it reruns the built-in decisions check on a done ticket, which reads the ticket, its pull "+
+				"of a play_id it runs the workspace's Decisions check play on a done ticket, which reads the ticket, its pull "+
 				"requests, and the project's decisions log, then adds an entry, marks a reversed one superseded, or "+
 				"leaves the log alone; use that when the ticket shows the decisions check didn't run. With "+
 				"resume_auto_plays true it resumes auto plays on a ticket or doc the daily cap paused, so its queued runs go "+
@@ -242,7 +242,7 @@ func resumeAutoPlays(ctx context.Context, r *Runner, in playRunIn) (any, error) 
 	return toQueuePage(q, mcptool.PageArgs{}), nil
 }
 
-// runPlay starts the named play, or with decisions_check the built-in decisions check (ADR 0066: it is a play).
+// runPlay starts the named play, or with decisions_check the workspace's seeded decisions check.
 func runPlay(ctx context.Context, r *Runner, in playRunIn) (*Trail, error) {
 	if !in.DecisionsCheck {
 		if in.PlayID == "" {

@@ -132,12 +132,12 @@ export const useDocBuiltinPlays = (projectId: string) => {
   };
 };
 
-// A ticket's stage is its current column's kind; the rail and the bottom bar both read this one query.
-export const useApplicableTicketPlays = (ticket: Ticket) => {
+// A ticket's stage is its current column's kind; the rail, the bottom bar and the decisions check notice read this one query.
+export const useApplicableTicketPlays = (ticket: Ticket | undefined) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  const { data: statuses } = useFetchProjectStatuses(ticket.project_id);
-  const stage = statuses?.find((s) => s.id === ticket.status)?.kind;
-  return useFetchApplicablePlays(workspaceId, ticket.project_id, "ticket", stage);
+  const { data: statuses } = useFetchProjectStatuses(ticket?.project_id);
+  const stage = statuses?.find((s) => s.id === ticket?.status)?.kind;
+  return useFetchApplicablePlays(workspaceId, ticket?.project_id ?? "", "ticket", stage);
 };
 
 // A taken label comes back keyed under the label field; the play dialog shows it there rather than in a toast.
@@ -181,32 +181,6 @@ export const useDeletePlay = (workspaceId: string) => {
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getWorkspacePlaysKey, workspaceId] });
       toast.success("Play deleted");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
-export const getDecisionsCheckKey = "getDecisionsCheck";
-
-// The built-in decisions check, listed among the default automations with its per-workspace switch.
-export const useFetchDecisionsCheck = () => {
-  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  return useQuery({
-    queryKey: [getDecisionsCheckKey, workspaceId],
-    queryFn: async () => (await api.get<Play>(`/api/workspaces/${workspaceId}/plays/decisions-check`)).data,
-    enabled: workspaceId !== "",
-  });
-};
-
-export const useSetDecisionsCheckEnabled = () => {
-  const client = useQueryClient();
-  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  return useMutation({
-    mutationFn: async (enabled: boolean) =>
-      (await api.patch<Play>(`/api/workspaces/${workspaceId}/plays/decisions-check`, { enabled })).data,
-    onSuccess: async (check) => {
-      await client.invalidateQueries({ queryKey: [getDecisionsCheckKey] });
-      toast.success(check.enabled ? "Decisions check enabled" : "Decisions check disabled");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

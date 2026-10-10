@@ -36,8 +36,6 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/plays", h.list)
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/plays/applicable", h.listApplicable)
 	mux.HandleFunc("POST /api/workspaces/{workspaceID}/plays", h.create)
-	mux.HandleFunc("GET /api/workspaces/{workspaceID}/plays/decisions-check", h.getDecisionsCheck)
-	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}/plays/decisions-check", h.setDecisionsCheck)
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/plays/{playID}", h.get)
 	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}/plays/{playID}", h.update)
 	mux.HandleFunc("DELETE /api/workspaces/{workspaceID}/plays/{playID}", h.delete)
@@ -141,33 +139,6 @@ func updateInputFrom(req playRequest) UpdateInput {
 		Label: req.Label, Description: req.Description, Instructions: req.Instructions,
 		Enabled: req.Enabled, ShowWhenStage: req.ShowWhenStage, ExcludedProjectIDs: req.ExcludedProjectIDs,
 	}
-}
-
-func (h *Handler) getDecisionsCheck(w http.ResponseWriter, r *http.Request) {
-	p, err := h.svc.DecisionsCheck(r.Context(), r.PathValue("workspaceID"))
-	if err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, p)
-}
-
-type decisionsCheckSwitchRequest struct {
-	Enabled bool `json:"enabled"`
-}
-
-func (h *Handler) setDecisionsCheck(w http.ResponseWriter, r *http.Request) {
-	var req decisionsCheckSwitchRequest
-	if err := httpx.DecodeJSON(r, &req); err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	p, err := h.svc.SetDecisionsCheckEnabled(r.Context(), r.PathValue("workspaceID"), req.Enabled)
-	if err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, p)
 }
 
 // writePlayError keys a taken label under the label field, the only conflict a play's create or update meets.

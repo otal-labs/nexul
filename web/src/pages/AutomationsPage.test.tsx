@@ -75,24 +75,6 @@ describe("AutomationsPage", () => {
     expect(await screen.findByText("No automations hosts yet. Add one to run automations on another machine.")).toBeInTheDocument();
   });
 
-  it("lists the decisions check among the defaults, off, and switches it for the workspace", async () => {
-    const user = userEvent.setup();
-    const check = {
-      id: "decisions-check", workspace_id: "ws-1", label: "Decisions check", description: "Records decisions",
-      enabled: false,
-    };
-    mocks.get.mockImplementation(async (url: string) =>
-      url === "/api/workspaces/ws-1/plays/decisions-check" ? { data: check } : { data: [automation()] },
-    );
-    mocks.patch.mockResolvedValue({ data: { ...check, enabled: true } });
-    renderPage();
-
-    const toggle = await screen.findByRole("switch", { name: "Enable Decisions check" });
-    expect(toggle).not.toBeChecked();
-    await user.click(toggle);
-    expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/decisions-check", { enabled: true });
-  });
-
   it("offers New automation in the header on every tab", async () => {
     mocks.get.mockResolvedValue({ data: [] });
     renderPage("/automations/secrets");

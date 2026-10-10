@@ -196,7 +196,7 @@ type LivePublisher interface {
 	Publish(ctx context.Context, topic string, payload any) error
 }
 
-// UserReader resolves a stopper's login for the trail's note, and a developer's login to the user the decisions check runs as.
+// UserReader resolves a stopper's login for the trail's note, and the login a moment names to the user who caused it.
 type UserReader interface {
 	Login(ctx context.Context, userID string) (string, error)
 	UserID(ctx context.Context, login string) (string, error)

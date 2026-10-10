@@ -571,7 +571,7 @@ func (r *Runner) memoriesToRead(ctx context.Context, projectID string, selected 
 // answerContext is a resumed run's play part for a session the harness may have lost: the play and the trail's
 // recorded memories, read as its starter. A failed read leaves that part out, so the answer still goes through.
 func (r *Runner) answerContext(ctx context.Context, trail *Trail) *agent.PlayContext {
-	play, err := r.playOf(ctx, trail)
+	play, err := r.plays.Get(ctx, trail.PlayID)
 	if err != nil {
 		r.log.Warn("plays: answer could not read the run's play", "trail", trail.ID, "error", err)
 		play = &Play{}
@@ -585,14 +585,6 @@ func (r *Runner) answerContext(ctx context.Context, trail *Trail) *agent.PlayCon
 	ms, _ := orderMemories(all, trail.SelectedMemoryIDs)
 	pc.Memories, pc.Conclude = ms.read, ms.conclude
 	return pc
-}
-
-// playOf reads a trail's play; the decisions check has no stored row.
-func (r *Runner) playOf(ctx context.Context, trail *Trail) (*Play, error) {
-	if trail.PlayID == DecisionsCheckPlayID {
-		return decisionsCheckPlay(trail.WorkspaceID, true), nil
-	}
-	return r.plays.Get(ctx, trail.PlayID)
 }
 
 // runMemories are a run's memories as the agent reads them: first, and the footer ones it concludes with (ADR 0112).

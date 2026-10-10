@@ -1,6 +1,6 @@
 # The decisions check is a play nobody presses
 
-Amended by ADR 0132: the decisions check becomes an ordinary play with a seeded auto play, and its switch leaves the Automations page.
+Amended by ADR 0132: the decisions check becomes an ordinary play with a seeded auto play, and its switch leaves the Automations page. The `decisions-check` id on `PATCH /api/workspaces/{id}/plays/decisions-check` and in `play_update` goes with the switch; `play_run` with `decisions_check: true` and `POST /api/plays/decisions-check` run the workspace's seeded play.
 
 Amended: the check has an on/off switch per workspace, listed among the default automations on the Automations page and switched with `automations:write` (HTTP `PATCH /api/workspaces/{id}/plays/decisions-check`, MCP `play_update` with id `decisions-check`). Off, a ticket entering done starts no check; a person can still run it on a done ticket. It starts off in every workspace, existing and new, because a run nobody asked for spends someone's agent time and reads as an automation running while every switch on the page is off.
 

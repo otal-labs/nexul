@@ -391,8 +391,6 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	agentSvc.SetFollower(svc.playsRunner)
 	svc.presenceKeeper.SetOnSession(agentSvc.OnSessionUpdate)
 
-	// A ticket entering done fires the built-in decisions check on the mover's or the developer's harness.
-	mustSubscribe(ctx, bus, "plays.decisions_check", tickets.TopicStatusChanged, "", svc.playsRunner.HandleTicketStatusChanged)
 	// A moment an auto play waits for queues its run; a run ending frees a slot in someone's queue (ADR 0132).
 	for _, topic := range plays.MomentTopics {
 		mustSubscribe(ctx, bus, "plays.auto_match", topic, " for auto plays", svc.playsRunner.HandleAutoPlayMoment)

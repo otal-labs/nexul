@@ -700,3 +700,77 @@ func TestQueueSurfaces_HTTP(t *testing.T) {
 	assert.Equal(t, http.StatusOK, call(http.MethodPost, "/api/plays/queue/"+q.Items[0].ID+"/cancel", "").Code)
 	assert.Equal(t, http.StatusNotFound, call(http.MethodPost, "/api/plays/queue/missing/cancel", "").Code)
 }
+
+// decisionsCheck is the migrated workspace's seeded decisions check, its auto play switched on.
+func (r *rig) decisionsCheck(t *testing.T) *plays.Play {
+	t.Helper()
+	list, err := r.store.Plays.List(t.Context(), ws)
+	require.NoError(t, err)
+	var check *plays.Play
+	for _, p := range list {
+		if p.BuiltinKey == plays.DecisionsCheckKey {
+			check = p
+		}
+	}
+	require.NotNil(t, check)
+	autoPlays, err := r.store.Plays.ListAutoPlays(t.Context(), []string{check.ID})
+	require.NoError(t, err)
+	require.Len(t, autoPlays, 1)
+	autoPlays[0].Enabled = true
+	require.NoError(t, r.store.Plays.UpdateAutoPlay(t.Context(), autoPlays[0]))
+	return check
+}
+
+func TestDecisionsCheck_TicketEnteringDone_QueuesOneCheckForTheCauser(t *testing.T) {
+	tests := []struct {
+		name  string
+		actor map[string]any
+		want  string
+	}{
+		{"a person moves it", map[string]any{"kind": "user", "user_id": tester}, tester},
+		{"an automation moves it, so its developer runs it", map[string]any{"kind": "automation"}, dev},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newRig(t, openStore(t))
+			r.SetStatus("st-progress", plays.StageProgress)
+			r.SetStatus("st-done", plays.StageDone)
+			r.SetStatus("st-shipped", plays.StageDone)
+			check := r.decisionsCheck(t)
+			r.ticket("t-1", func(f *plays.Facts) { f.Stage = plays.StageDone })
+			move := func(from, to string) eventbus.Event {
+				raw, err := json.Marshal(map[string]any{"ticket": map[string]any{"id": "t-1", "project_id": project}, "from": from, "to": to, "actor": tt.actor})
+				require.NoError(t, err)
+				return eventbus.Event{ID: ids.New(), Topic: "ticket.status_changed", Payload: raw}
+			}
+			entered := move("st-progress", "st-done")
+
+			require.NoError(t, r.Runner.HandleAutoPlayMoment(t.Context(), entered))
+			require.NoError(t, r.Runner.HandleAutoPlayMoment(t.Context(), entered), "a redelivery while it waits")
+			r.dispatch(t)
+			require.NoError(t, r.Runner.HandleAutoPlayMoment(t.Context(), entered), "a redelivery after it started")
+			require.NoError(t, r.Runner.HandleAutoPlayMoment(t.Context(), move("st-done", "st-shipped")), "a move between two done columns")
+
+			it := r.only(t, "t-1")
+			assert.Equal(t, []any{check.ID, tt.want, plays.QueueStarted}, []any{it.PlayID, it.PersonID, it.Status})
+		})
+	}
+}
+
+func TestDecisionsCheck_AutomationMoveWithoutADeveloper_DidntRunWithAFailedTrail(t *testing.T) {
+	r := newRig(t, openStore(t))
+	r.SetStatus("st-progress", plays.StageProgress)
+	r.SetStatus("st-done", plays.StageDone)
+	check := r.decisionsCheck(t)
+	r.ticket("t-1", func(f *plays.Facts) { f.Stage, f.Developer = plays.StageDone, "" })
+
+	r.moment(t, "ticket.status_changed", map[string]any{
+		"ticket": map[string]any{"id": "t-1", "project_id": project}, "from": "st-progress", "to": "st-done", "actor": map[string]any{"kind": "automation"},
+	})
+
+	it := r.only(t, "t-1")
+	assert.Equal(t, []any{plays.QueueDidntRun, "nobody to run it on: no person caused it and the ticket has no developer"}, []any{it.Status, it.Reason})
+	trail, err := r.store.PlayTrails.GetTrail(t.Context(), it.TrailID)
+	require.NoError(t, err)
+	assert.Equal(t, []any{check.ID, plays.TrailFailed}, []any{trail.PlayID, trail.State}, "the ticket's notice offers to run it again")
+}

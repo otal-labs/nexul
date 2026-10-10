@@ -13,25 +13,23 @@ import (
 
 // fakeRepo is a hand-written in-memory stand-in for Repo (practices/testing.md §6).
 type fakeRepo struct {
-	mu        sync.Mutex
-	byID      map[string]*Play
-	published []eventbus.OutboxEvent
-	createErr error
-	getErr    error
-	listErr   error
-	updateErr error
-	deleteErr error
-	// decisionsCheck holds each workspace's decisions check switch; absent is off, as a new workspace starts.
-	decisionsCheck map[string]bool
-	autoPlays      []*AutoPlay
-	autoPlayErr    error
+	mu          sync.Mutex
+	byID        map[string]*Play
+	published   []eventbus.OutboxEvent
+	createErr   error
+	getErr      error
+	listErr     error
+	updateErr   error
+	deleteErr   error
+	autoPlays   []*AutoPlay
+	autoPlayErr error
 	// autoPlayLists counts ListAutoPlays calls, so a list proves it reads once per page.
 	autoPlayLists int
 	dailyCap      map[string]int
 }
 
 func newFakeRepo() *fakeRepo {
-	return &fakeRepo{byID: map[string]*Play{}, decisionsCheck: map[string]bool{}, dailyCap: map[string]int{}}
+	return &fakeRepo{byID: map[string]*Play{}, dailyCap: map[string]int{}}
 }
 
 func (f *fakeRepo) CreateAutoPlay(_ context.Context, a *AutoPlay, evts ...eventbus.OutboxEvent) error {
@@ -144,19 +142,6 @@ func (f *fakeRepo) SetAutoPlayDailyCap(_ context.Context, workspaceID string, li
 	}
 	f.dailyCap[workspaceID] = limit
 	f.published = append(f.published, evts...)
-	return nil
-}
-
-func (f *fakeRepo) DecisionsCheckEnabled(_ context.Context, workspaceID string) (bool, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.decisionsCheck[workspaceID], nil
-}
-
-func (f *fakeRepo) SetDecisionsCheckEnabled(_ context.Context, workspaceID string, enabled bool) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.decisionsCheck[workspaceID] = enabled
 	return nil
 }
 

@@ -86,8 +86,8 @@ INSERT INTO automation_cursors (automation_id, last_created_at, last_event_id, u
 	assert.Empty(t, other)
 
 	for _, ws := range []string{"workspace-default", "ws-b"} {
-		on, err := s.Plays.DecisionsCheckEnabled(ctx, ws)
-		require.NoError(t, err)
+		var on bool
+		require.NoError(t, db.QueryRow(`SELECT decisions_check_enabled FROM workspaces WHERE id = ?`, ws).Scan(&on))
 		assert.False(t, on, "the decisions check starts off in %s", ws)
 	}
 }

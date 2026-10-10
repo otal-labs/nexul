@@ -277,11 +277,13 @@ type Builtin struct {
 	Description   string
 	Instructions  string
 	ShowWhenStage *Stage
+	// AutoPlay is seeded on the play switched off, so a workspace turns it on rather than composing it.
+	AutoPlay *AutoPlayInput
 }
 
 // Builtins lists the seeded plays in seeding order; their instructions are the instance templates' code defaults.
 func Builtins() []Builtin {
-	progress, testingStage := StageProgress, StageTesting
+	progress, testingStage, done := StageProgress, StageTesting, StageDone
 	return []Builtin{
 		{Key: "fix-with-ai", Label: "Fix with AI", Type: TypeTicket, ShowWhenStage: &progress,
 			Description:  "Reads the ticket, implements a fix on its own branch, and opens a pull request.",
@@ -304,6 +306,8 @@ func Builtins() []Builtin {
 		{Key: AuditKey, Label: "Audit via AI", Type: TypeInterview,
 			Description:  "Audits a predecessor's code, or this project's own, against the interview memory and writes the findings as a doc.",
 			Instructions: auditInstructions},
+		{Key: DecisionsCheckKey, Label: decisionsCheckLabel, Type: TypeTicket, ShowWhenStage: &done,
+			Description: decisionsCheckDescription, Instructions: decisionsCheckInstructions, AutoPlay: decisionsCheckAutoPlay()},
 	}
 }
 
@@ -337,6 +341,21 @@ func (s *Service) SeedDefaults(ctx context.Context, workspaceID string) error {
 		if err := s.repo.Create(ctx, p, s.event(TopicCreated, CreatedEvent{Play: *p})); err != nil {
 			return fmt.Errorf("seed default play %q for workspace %s: %w", p.Label, workspaceID, err)
 		}
+		if err := s.seedAutoPlay(ctx, p, b.AutoPlay); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) seedAutoPlay(ctx context.Context, p *Play, in *AutoPlayInput) error {
+	if in == nil {
+		return nil
+	}
+	a := &AutoPlay{ID: ids.New(), PlayID: p.ID, WorkspaceID: p.WorkspaceID, CreatedAt: p.CreatedAt, UpdatedAt: p.CreatedAt}
+	a.apply(*in)
+	if err := s.repo.CreateAutoPlay(ctx, a, s.event(TopicAutoPlayCreated, AutoPlayEvent{AutoPlay: *a})); err != nil {
+		return fmt.Errorf("seed the auto play of play %q for workspace %s: %w", p.Label, p.WorkspaceID, err)
 	}
 	return nil
 }
@@ -382,13 +401,25 @@ func (s *Service) builtin(ctx context.Context, workspaceID, key string) (*Play, 
 	if err != nil {
 		return nil, fmt.Errorf("list plays for workspace %s: %w", workspaceID, err)
 	}
+	if p := findBuiltin(list, key); p != nil {
+		return p, nil
+	}
+	keys := make([]string, 0, len(Builtins()))
+	for _, b := range Builtins() {
+		keys = append(keys, b.Key)
+	}
+	return nil, fmt.Errorf("%w: workspace %s has no built-in play %q; it was deleted, or the key is not one of %s", apperrs.ErrNotFound, workspaceID, key, strings.Join(keys, ", "))
+}
+
+// findBuiltin is the play in list seeded as key, nil when it was deleted.
+func findBuiltin(list []*Play, key string) *Play {
 	key = strings.TrimSpace(key)
 	for _, p := range list {
 		if p.BuiltinKey != "" && strings.EqualFold(p.BuiltinKey, key) {
-			return p, nil
+			return p
 		}
 	}
-	return nil, fmt.Errorf("%w: workspace %s has no built-in play %q; it was deleted, or the key is not one of fix-with-ai, to-tickets-via-ai, interview, test-with-ai, interview-draft, clarify, audit", apperrs.ErrNotFound, workspaceID, key)
+	return nil
 }
 
 func (s *Service) getInWorkspace(ctx context.Context, workspaceID, id string) (*Play, error) {

@@ -2,6 +2,7 @@ package plays
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -194,7 +195,7 @@ func TestDelete_WithoutPlaysDelete_ReturnsForbidden(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 }
 
-func TestSeedDefaults_CreatesTheSevenDefaultPlays(t *testing.T) {
+func TestSeedDefaults_CreatesTheEightDefaultPlays(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, newFakePerm(nil)) // no permission gate needed; SeedDefaults bypasses it
 
@@ -203,12 +204,12 @@ func TestSeedDefaults_CreatesTheSevenDefaultPlays(t *testing.T) {
 
 	list, err := repo.List(context.Background(), workspaceID)
 	require.NoError(t, err)
-	require.Len(t, list, 7)
+	require.Len(t, list, 8)
 	byLabel := map[string]*Play{}
 	for _, p := range list {
 		byLabel[p.Label] = p
 	}
-	progress, testingStage := StageProgress, StageTesting
+	progress, testingStage, done := StageProgress, StageTesting, StageDone
 	tests := []struct {
 		label    string
 		wantType Type
@@ -222,6 +223,7 @@ func TestSeedDefaults_CreatesTheSevenDefaultPlays(t *testing.T) {
 		{"Draft interview", TypeInterview, nil, []string{"`kind` `interview`", "stance is follow", "`trail_id`", "500 characters", "Never ask"}},
 		{"Clarify via AI", TypeDoc, nil, []string{"doc_get", "`questions`", "`anything_else_reply`", "`no_gaps`", "Never use your question tool"}},
 		{"Audit via AI", TypeInterview, nil, []string{"`kind` `interview`", "known breaks", "doc_create", "Main folder", "Carry over", "Keeps", "Never ask"}},
+		{"Decisions check", TypeTicket, &done, []string{"`decisions_log`", "memory_update", "superseded by"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.label, func(t *testing.T) {
@@ -431,5 +433,29 @@ func TestSeedDefaults_AlreadySeeded_IsANoOp(t *testing.T) {
 
 	list, err := repo.List(context.Background(), workspaceID)
 	require.NoError(t, err)
-	assert.Len(t, list, 7)
+	assert.Len(t, list, 8)
+	assert.Len(t, repo.autoPlays, 1, "the decisions check's auto play is seeded once")
+}
+
+func TestSeedDefaults_DecisionsCheckGetsItsAutoPlaySwitchedOff(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo, newFakePerm(nil))
+	require.NoError(t, s.SeedDefaults(context.Background(), workspaceID))
+
+	check, err := s.builtin(context.Background(), workspaceID, DecisionsCheckKey)
+	require.NoError(t, err)
+	require.Len(t, repo.autoPlays, 1)
+	a := repo.autoPlays[0]
+	done := StageDone
+	assert.Equal(t, []any{check.ID, workspaceID, false, MomentTicketEnteredStage, &done, RunOnCauser, LevelNormal, 0},
+		[]any{a.PlayID, a.WorkspaceID, a.Enabled, a.Moment, a.MomentStage, a.RunOn, a.Priority.Otherwise, a.OnceWithinMinutes})
+	assert.NoError(t, a.Validate(TypeTicket))
+	assert.Empty(t, a.Conditions.Groups, "no conditions: every ticket entering done")
+}
+
+func TestSeedDefaults_AutoPlayFails_ReturnsTheError(t *testing.T) {
+	repo := newFakeRepo()
+	repo.autoPlayErr = errors.New("disk full")
+	s := newTestService(repo, newFakePerm(nil))
+	require.ErrorContains(t, s.SeedDefaults(context.Background(), workspaceID), "disk full")
 }

@@ -1,5 +1,7 @@
 # Templates have an instance layer
 
+Amended by ADR 0132: the decisions check is a seeded play now, so its instructions are a template like the other built-in plays'.
+
 Four texts start every workspace or project off: the Interview template, the mention chip template, the built-in
 plays' instructions, and each default ticket type's body template. Each had a default in code and nothing between that
 default and the workspace or project holding a copy, so an owner who wanted every workspace to ask the same interview

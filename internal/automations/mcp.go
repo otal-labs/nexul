@@ -81,8 +81,8 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"can read without workspace_id. Every automation belongs to one workspace and each workspace has its own "+
 				"copy of each default, each with its own switch. Each result carries its workspace_id, subscriptions, config "+
 				"schema and values, scopes, enabled switch, and whether its token is revoked. With id it returns that one "+
-				"automation instead of a list. The built-in decisions check is not listed here: play_list shows it and "+
-				"play_update switches it. Tokens never appear here; automation_token_create mints a new one. Paged, 50 per "+
+				"automation instead of a list. The decisions check is a play, not an automation: play_list shows it with "+
+				"its auto play. Tokens never appear here; automation_token_create mints a new one. Paged, 50 per "+
 				"page by default. Needs automations:read in the automation's workspace.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in automationListIn) (any, error) {
@@ -122,8 +122,8 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"revokes its token. It acts on the one workspace the automation belongs to: switching a default off in "+
 				"one workspace leaves the other workspaces' copies as they are. Only the fields you pass change, applied in "+
 				"the order config_values, enabled, host_id, revoke_token; it stops at the first failure and the error says "+
-				"which fields already took effect. Returns the updated automation. To switch the built-in decisions check, "+
-				"use play_update with id decisions-check. To rotate the token use automation_token_create, and to remove "+
+				"which fields already took effect. Returns the updated automation. The decisions check is switched on its "+
+				"play's auto play with play_update. To rotate the token use automation_token_create, and to remove "+
 				"the automation automation_delete. Needs automations:write in the automation's workspace.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in automationUpdateIn) (any, error) {
