@@ -2,7 +2,7 @@
 
 **Status:** ready-for-agent
 
-**Blocked by:** 06
+**Blocked by:** 06, permission-overrides 01
 
 Read first: `practices/go.md`, `practices/architecture.md`, `practices/mcp.md` (sections 3, 4, 6 to 8),
 `practices/react-guide.md`, `practices/design-language.md`, `practices/testing.md`, ADRs 0087, 0088, 0091, 0138,
