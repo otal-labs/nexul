@@ -590,10 +590,13 @@ One account or organisation Nexul's GitHub App is installed on, granting all
 of its repositories or a selection, and assigned to the workspaces whose
 repository lists show them. Once the App's private key is set, Nexul reads
 every installation as the App and a workspace lists only the installations
-assigned to it; an installation made from a workspace's install link joins
-that workspace, any other stays unassigned until someone holding
-`connectors:write` assigns it. Without a key Nexul reads as the GitHub
-connector's user, and every workspace lists what that user can open.
+assigned to it, by the account's GitHub id, which survives a rename. An
+installation made from a workspace's install link by the account itself or
+an organisation admin joins that workspace; any other stays unassigned until
+someone holding `connectors:write` assigns it. One the App no longer lists
+is gone: uninstalled, and waiting for its workspaces to be cleared. Without a
+key Nexul reads as the GitHub connector's user, and every workspace lists
+what that user can open.
 _Avoid_: Install (that is the `nexul install` command), connection, grant
 
 **Pending version**:

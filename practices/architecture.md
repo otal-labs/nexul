@@ -73,14 +73,14 @@ service's unexported state, and never splits by layer.
 Which domains this covers, as the tree stands:
 
 - Full five-file shape: `access`, `botwebhook`, `chat`, `codereview`, `deploy`, `dns`,
-  `docs`, `memories`, `pairing`, `plays`, `roles`, `runner`, `templates`,
-  `tenancy`, `tickets`, `topology`, `workspace`.
+  `docs`, `memories`, `pairing`, `plays`, `repository`, `roles`, `runner`,
+  `templates`, `tenancy`, `tickets`, `topology`, `workspace`.
 - No `events.go` yet: `attachments`, `automations`, `connectors`,
   `integrations`. The file is added with the
   domain's first published event, never before, because an empty catalog entry
   is a contract nobody asked for.
-- Thin variants: `mentions` and `repository` have no `repo.go` (they read
-  through other domains or the git provider); `auth` has no `usecase.go`;
+- Thin variants: `mentions` has no `repo.go` (it reads through other
+  domains); `auth` has no `usecase.go`;
   `gitprovider` and `voice` have no `repo.go` but do publish events. Each
   follows the layers it has and grows into the full shape when it needs one.
 - Protocol and infrastructure packages: `agent`, `collab`, `eventcatalog`,
