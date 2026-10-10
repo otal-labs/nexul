@@ -104,7 +104,7 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
         <div className="hidden w-48 shrink-0 @3xl:has-[section]:block">
           <div className="sticky top-6 -mx-2 flex max-h-[calc(100vh-3rem)] flex-col gap-8 overflow-y-auto px-2">
             <DocToc headings={view === "doc" ? headings : []} />
-            {canThread && <DocAutoPlaysSection docId={doc.id} className="-mx-2" />}
+            {canThread && <DocAutoPlaysSection workspaceId={workspaceId} docId={doc.id} className="-mx-2" />}
             {canThread && (
               <TrailSection
                 workspaceId={workspaceId}
@@ -141,7 +141,7 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
           {/* The rail holds the trail from @3xl; both read the same query, so there is one request. */}
           {canThread && (
             <div className="space-y-4 @3xl:hidden">
-              <DocAutoPlaysSection docId={doc.id} className="-mx-2" />
+              <DocAutoPlaysSection workspaceId={workspaceId} docId={doc.id} className="-mx-2" />
               <TrailSection workspaceId={workspaceId} targetType="doc" targetId={doc.id} />
             </div>
           )}

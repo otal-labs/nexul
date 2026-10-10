@@ -22,7 +22,8 @@ export const waitingWhy = (item: PlayQueueItem): string => {
 };
 
 const outcomes: [RegExp, (m: RegExpMatchArray) => string][] = [
-  [/^nobody to run it on: the (ticket|doc) has no causer$/, () => "nobody to run it on"],
+  [/^nobody to run it on: no person caused it and the (ticket|doc) has no developer$/, (m) => `nobody caused it and the ${m[1]} has no developer`],
+  [/^nobody to run it on: the (ticket|doc) has no causer$/, () => "nobody caused it"],
   [/^nobody to run it on: the (ticket|doc) has no (developer|tester)$/, (m) => `nobody is the ${m[1]}'s ${m[2]}`],
   [/^invalid: play ".*" is disabled$/, () => "the play is switched off"],
   [/^invalid: play ".*" is excluded from this project$/, () => "the play is excluded from this project"],
@@ -31,13 +32,16 @@ const outcomes: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^get (ticket|doc) \S+: not found$/, (m) => `the ${m[1]} is gone`],
 ];
 
+// A server error's message without the sentinel's prefix, so a sentence reads as one.
+export const withoutErrorPrefix = (message: string): string => message.replace(/^(invalid|forbidden|conflict|not found): /, "");
+
 // A decided run's reason in plain words; the server's sentences pass through without their error prefix.
 export const outcomeText = (reason: string): string => {
   for (const [pattern, say] of outcomes) {
     const m = reason.match(pattern);
     if (m) return say(m);
   }
-  return reason.replace(/^(invalid|forbidden|conflict|not found): /, "");
+  return withoutErrorPrefix(reason);
 };
 
 export interface ThreadQueueEvent {

@@ -162,7 +162,7 @@ describe("PlayForm", () => {
     vi.mocked(api.post).mockRejectedValue({
       response: {
         status: 409,
-        data: { message: "taken", code: "CONFLICT", errors: { label: ['a play named "Fix with AI" already exists in this workspace'] } },
+        data: { message: "taken", code: "CONFLICT", errors: { label: ['conflict: a play named "Fix with AI" already exists in this workspace'] } },
       },
     });
     renderHarness();
@@ -171,7 +171,7 @@ describe("PlayForm", () => {
     await user.type(screen.getByLabelText("Label"), "Fix with AI");
     await user.click(screen.getByRole("button", { name: "Create play" }));
 
-    expect(await screen.findByText(/already exists in this workspace/)).toBeInTheDocument();
+    expect(await screen.findByText('a play named "Fix with AI" already exists in this workspace')).toBeInTheDocument();
     expect(screen.getByLabelText("Label")).toHaveAttribute("aria-invalid", "true");
     expect(toast.error).not.toHaveBeenCalled();
     expect(screen.getByText("pending")).toBeInTheDocument();
