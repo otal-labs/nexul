@@ -83,6 +83,27 @@ func (f *fakeRunnerRepo) GetByName(_ context.Context, name string) (*Runner, err
 	return nil, apperrs.ErrNotFound
 }
 
+func (f *fakeRunnerRepo) GetByComputer(_ context.Context, computerID string) (*Runner, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, r := range f.runners {
+		if computerID != "" && r.ComputerID == computerID {
+			cp := *r
+			return &cp, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
+// personal adds a personal runner for computerID owned by userID and returns its raw credential.
+func (f *fakeRunnerRepo) personal(id, userID, computerID string) string {
+	raw := f.enrolled(id, "computer-"+id, "")
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.runners[id].OwnerUserID, f.runners[id].ComputerID = userID, computerID
+	return raw
+}
+
 func (f *fakeRunnerRepo) CreateEnrollment(_ context.Context, e *EnrollmentCode) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

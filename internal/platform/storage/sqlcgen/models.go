@@ -933,13 +933,15 @@ type Role struct {
 }
 
 type Runner struct {
-	ID        string
-	Name      string
-	LastSeen  int64
-	Connected int64
-	CreatedAt int64
-	Version   string
-	MachineID string
+	ID          string
+	Name        string
+	LastSeen    int64
+	Connected   int64
+	CreatedAt   int64
+	Version     string
+	MachineID   string
+	OwnerUserID string
+	ComputerID  string
 }
 
 type RunnerCredential struct {

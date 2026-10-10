@@ -223,6 +223,8 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("GET /ws/stacks/{id}/services/{name}/logs", svc.authSvc.RequireWS(withIdentity(http.HandlerFunc(deploy.NewHandler(svc.deploySvc).LogsSocket))))
 	httpMux.Handle("/ws/automations", automationsDialin)
 	httpMux.Handle("/ws/runner", wsHandler)
+	// A computer's stream authenticates with the runner's own credential, like /ws/runner.
+	httpMux.HandleFunc("GET /api/runners/streams/{id}", wsHandler.ServeStream)
 	httpMux.Handle("/mcp", svc.authSvc.RequireAuth(withIdentity(mcpServer)))
 	// No OAuth authorization server: a client probing OAuth discovery gets a clean 404, not the web app's HTML.
 	httpMux.Handle("/.well-known/", http.NotFoundHandler())

@@ -318,9 +318,15 @@ server never dials the runner, so a runner behind NAT works. Frames are JSON
 with a `type` discriminator, declared in `internal/runner/protocol.go`:
 
 - Server to runner: `assign_build`, `assign_deploy`, `cancel`,
-  `logs_request`, `logs_cancel`.
+  `logs_request`, `logs_cancel`, `harness_dial`.
 - Runner to server: `heartbeat`, `build_progress`, `build_result`,
-  `deploy_log`, `deploy_progress`, `deploy_result`, `logs_chunk`, `logs_end`.
+  `deploy_log`, `deploy_progress`, `deploy_result`, `logs_chunk`, `logs_end`,
+  `harness_dial_refused`.
+
+A personal runner answers `harness_dial {id}` by opening a WebSocket of its
+own to `/api/runners/streams/{id}` and copying bytes between it and T3 Code
+on loopback (ADR 0146). The harness's bytes never ride the control
+connection, so a stream cannot delay a heartbeat or another stream.
 
 The server-side handler translates runner frames into bus events. It is a
 producer on the bus, not the bus.

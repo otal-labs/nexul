@@ -89,6 +89,11 @@ type Handler struct {
 	logsMu  sync.Mutex
 	logSubs map[string]logSub
 
+	// streamsMu guards the stream ids waiting for their runner and each runner's open streams (streams.go).
+	streamsMu     sync.Mutex
+	streamWaiters map[string]*streamWaiter
+	openStreams   map[string]map[string]context.CancelFunc
+
 	// updateMu guards updateSettings/updateRelease: set once by SetUpdateSource after runnerSvc (and its release
 	// client) exist, since that happens after the handler is constructed in server/cmd/workers.go.
 	updateMu       sync.Mutex
@@ -100,8 +105,10 @@ type runnerConn struct {
 	id   string
 	name string
 	// machine is the name of the machine the runner was enrolled on; dispatch pools on it.
-	machine       string
-	machineID     string
+	machine   string
+	machineID string
+	// personal marks a person's computer runner (ADR 0146): dispatch and machine lookups never pick it.
+	personal      bool
 	ws            *websocket.Conn
 	ctx           context.Context
 	cancel        context.CancelFunc
@@ -140,6 +147,8 @@ func NewHandler(cfg HandlerConfig) *Handler {
 		conns:           make(map[string]*runnerConn),
 		discoverWaiters: make(map[string]chan Frame),
 		logSubs:         make(map[string]logSub),
+		streamWaiters:   make(map[string]*streamWaiter),
+		openStreams:     make(map[string]map[string]context.CancelFunc),
 	}
 }
 
@@ -182,7 +191,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	conn.SetReadLimit(h.cfg.ReadLimit)
 	q := r.URL.Query()
-	c := &runnerConn{id: rn.ID, name: rn.Name, machine: machine, machineID: rn.MachineID, ws: conn}
+	c := &runnerConn{id: rn.ID, name: rn.Name, machine: machine, machineID: rn.MachineID, personal: rn.Personal(), ws: conn}
 	h.handleConn(r.Context(), c, connectInfo{version: q.Get("version"), os: q.Get("os"), arch: q.Get("arch")})
 }
 
@@ -565,11 +574,8 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		return h.bus.Publish(ctx, TopicDeployStatusChanged, DeployStatusChangedEvent{
 			ID: f.ID, Status: f.Status, Error: f.Error, Address: f.Address, Services: f.Services,
 		})
-	case FrameDiscoverResult:
-		h.deliverDiscoverResult(f)
-		return nil
-	case FrameLogsChunk, FrameLogsEnd:
-		h.deliverLogs(f)
+	case FrameDiscoverResult, FrameLogsChunk, FrameLogsEnd, FrameHarnessDialRefused:
+		h.deliverReply(c, f)
 		return nil
 	case FrameJoinNetworksResult:
 		if f.Status == BuildStatusFailed {
@@ -583,6 +589,18 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		return h.handleUpgradeResult(ctx, c, f)
 	default:
 		return nil
+	}
+}
+
+// deliverReply routes a frame answering a server request to whoever waits on its id.
+func (h *Handler) deliverReply(c *runnerConn, f Frame) {
+	switch f.Type {
+	case FrameDiscoverResult:
+		h.deliverDiscoverResult(f)
+	case FrameLogsChunk, FrameLogsEnd:
+		h.deliverLogs(f)
+	case FrameHarnessDialRefused:
+		h.deliverRefusal(c, f)
 	}
 }
 
@@ -692,6 +710,7 @@ func (h *Handler) closeAll(reason string) {
 		c.cancel()
 		_ = c.ws.Close(websocket.StatusGoingAway, reason)
 	}
+	h.closeStreams("")
 }
 
 func (h *Handler) removeConn(c *runnerConn) {
@@ -779,24 +798,24 @@ func (h *Handler) JoinNetworks(ctx context.Context, machine, gatewayContainer st
 	return h.sendFrame(ctx, c, Frame{Type: FrameJoinNetworks, GatewayContainer: gatewayContainer, JoinNetworks: networks})
 }
 
-// connOnMachine returns any connected runner on machine, busy or not, or nil.
+// connOnMachine returns any connected deploy runner on machine, busy or not, or nil.
 func (h *Handler) connOnMachine(machine string) *runnerConn {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for _, c := range h.conns {
-		if c.machine == machine {
+		if !c.personal && c.machine == machine {
 			return c
 		}
 	}
 	return nil
 }
 
-// connNamed returns the connected runner named name, or nil.
+// connNamed returns the connected deploy runner named name, or nil.
 func (h *Handler) connNamed(name string) *runnerConn {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for _, c := range h.conns {
-		if c.name == name {
+		if !c.personal && c.name == name {
 			return c
 		}
 	}
@@ -806,6 +825,7 @@ func (h *Handler) connNamed(name string) *runnerConn {
 // Uninstall tells a connected runner it was removed and drops it from dispatch at once; the runner uninstalls
 // itself and exits, and the close completes in the background so removal never waits on it.
 func (h *Handler) Uninstall(ctx context.Context, runnerID string) {
+	h.closeStreams(runnerID)
 	h.mu.Lock()
 	c := h.conns[runnerID]
 	if c != nil {

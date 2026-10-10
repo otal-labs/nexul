@@ -87,6 +87,7 @@ type coreServices struct {
 
 	pairingSvc     *pairing.Service
 	harnesses      harness.Registry
+	computers      *runnerComputers
 	presenceKeeper *presence.Keeper
 	pairingHandler *pairing.Handler
 
@@ -227,9 +228,8 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	deploySvc.SetGatewayJoin(deployGatewayJoinAdapter{dns: dnsSvc})
 	deploySvc.SetGatewayAdopter(deployGatewayAdopterAdapter{dns: dnsSvc})
 	// One client per harness kind; the real ones talk to the user's own machines, never reachable in tests.
-	harnessHTTP := &http.Client{Transport: &cloudflare.AccessTransport{
-		Credentials: computerTunnelAccess{hosts: store.Pairing, dns: dnsSvc}.Credentials,
-	}}
+	computers := &runnerComputers{}
+	harnessHTTP := harnessHTTPClient(computers, computerTunnelAccess{hosts: store.Pairing, dns: dnsSvc}.Credentials)
 	var pairingSvc *pairing.Service // constructed below; a harness only moves a computer once requests start flowing
 	harnesses := harnessRegistry(t3rpc.Options{Logger: logger, HTTPClient: harnessHTTP}, func(ctx context.Context, s harness.Session, to harness.Kind) error {
 		return pairingSvc.SwitchHarness(ctx, s, to)
@@ -385,6 +385,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 
 		pairingSvc:     pairingSvc,
 		harnesses:      harnesses,
+		computers:      computers,
 		presenceKeeper: presenceKeeper,
 		pairingHandler: pairingHandler,
 

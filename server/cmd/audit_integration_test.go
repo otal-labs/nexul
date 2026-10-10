@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -43,8 +44,13 @@ var readOnlyRoutes = []string{
 // newRouter wires the server the way serve does, over a fresh database, and returns its real handler.
 func newRouter(t *testing.T) (http.Handler, *storage.Store, *coreServices) {
 	t.Helper()
+	return routerOver(t, mentionsTestDB(t))
+}
+
+// routerOver is newRouter over db, for a test that writes rows no use-case writes yet.
+func routerOver(t *testing.T, db *sql.DB) (http.Handler, *storage.Store, *coreServices) {
+	t.Helper()
 	ctx := t.Context()
-	db := mentionsTestDB(t)
 	key := []byte("0123456789abcdef0123456789abcdef")
 	store := storage.New(db, key)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))

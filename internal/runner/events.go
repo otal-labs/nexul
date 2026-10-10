@@ -135,10 +135,10 @@ func (r DeployRequestedEvent) Queued() QueuedJob {
 	return QueuedJob{ID: r.ID, Kind: r.Kind, Service: r.Service, Target: r.Target}
 }
 
-// fits reports whether r may run on c: a job fits any idle connected runner whose machine name equals the
-// stack's machine (Target); an empty machine still fits any runner.
+// fits reports whether r may run on c: a job fits any idle connected deploy runner whose machine name equals the
+// stack's machine (Target); an empty machine still fits any deploy runner, and never a personal one.
 func (r DeployRequestedEvent) fits(c *runnerConn) bool {
-	return r.Target == "" || r.Target == c.machine
+	return !c.personal && (r.Target == "" || r.Target == c.machine)
 }
 
 // toFrame converts the request into an assign frame; env is real values from EnvLookup, never the redacted r.Env.

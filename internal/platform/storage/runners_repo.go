@@ -45,6 +45,14 @@ func (r *RunnersRepo) GetByName(ctx context.Context, name string) (*runner.Runne
 	return toRunner(row), nil
 }
 
+func (r *RunnersRepo) GetByComputer(ctx context.Context, computerID string) (*runner.Runner, error) {
+	row, err := r.q.GetRunnerByComputer(ctx, computerID)
+	if err != nil {
+		return nil, fmt.Errorf("get runner of computer %s: %w", computerID, notFoundIfNoRows(err))
+	}
+	return toRunner(row), nil
+}
+
 func (r *RunnersRepo) GetByID(ctx context.Context, id string) (*runner.Runner, error) {
 	row, err := r.q.GetRunner(ctx, id)
 	if err != nil {
@@ -195,12 +203,14 @@ func boolInt(b bool) int {
 
 func toRunner(row sqlcgen.Runner) *runner.Runner {
 	return &runner.Runner{
-		ID:        row.ID,
-		Name:      row.Name,
-		Version:   row.Version,
-		LastSeen:  time.Unix(row.LastSeen, 0).UTC(),
-		Connected: row.Connected == 1,
-		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
-		MachineID: row.MachineID,
+		ID:          row.ID,
+		Name:        row.Name,
+		Version:     row.Version,
+		LastSeen:    time.Unix(row.LastSeen, 0).UTC(),
+		Connected:   row.Connected == 1,
+		CreatedAt:   time.Unix(row.CreatedAt, 0).UTC(),
+		MachineID:   row.MachineID,
+		OwnerUserID: row.OwnerUserID,
+		ComputerID:  row.ComputerID,
 	}
 }

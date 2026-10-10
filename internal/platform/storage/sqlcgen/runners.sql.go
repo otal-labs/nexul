@@ -185,7 +185,7 @@ func (q *Queries) GetLatestInstanceUpgrade(ctx context.Context) (InstanceUpgrade
 }
 
 const getRunner = `-- name: GetRunner :one
-SELECT id, name, last_seen, connected, created_at, version, machine_id FROM runners WHERE id = ?
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id FROM runners WHERE id = ?
 `
 
 func (q *Queries) GetRunner(ctx context.Context, id string) (Runner, error) {
@@ -199,12 +199,35 @@ func (q *Queries) GetRunner(ctx context.Context, id string) (Runner, error) {
 		&i.CreatedAt,
 		&i.Version,
 		&i.MachineID,
+		&i.OwnerUserID,
+		&i.ComputerID,
+	)
+	return i, err
+}
+
+const getRunnerByComputer = `-- name: GetRunnerByComputer :one
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id FROM runners WHERE computer_id = ? AND computer_id != '' LIMIT 1
+`
+
+func (q *Queries) GetRunnerByComputer(ctx context.Context, computerID string) (Runner, error) {
+	row := q.db.QueryRowContext(ctx, getRunnerByComputer, computerID)
+	var i Runner
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.LastSeen,
+		&i.Connected,
+		&i.CreatedAt,
+		&i.Version,
+		&i.MachineID,
+		&i.OwnerUserID,
+		&i.ComputerID,
 	)
 	return i, err
 }
 
 const getRunnerByName = `-- name: GetRunnerByName :one
-SELECT id, name, last_seen, connected, created_at, version, machine_id FROM runners WHERE name = ?
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id FROM runners WHERE name = ?
 `
 
 func (q *Queries) GetRunnerByName(ctx context.Context, name string) (Runner, error) {
@@ -218,6 +241,8 @@ func (q *Queries) GetRunnerByName(ctx context.Context, name string) (Runner, err
 		&i.CreatedAt,
 		&i.Version,
 		&i.MachineID,
+		&i.OwnerUserID,
+		&i.ComputerID,
 	)
 	return i, err
 }
@@ -262,7 +287,7 @@ func (q *Queries) GetRunnerEnrollmentCode(ctx context.Context, arg GetRunnerEnro
 }
 
 const listRunners = `-- name: ListRunners :many
-SELECT id, name, last_seen, connected, created_at, version, machine_id FROM runners ORDER BY created_at
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id FROM runners ORDER BY created_at
 `
 
 func (q *Queries) ListRunners(ctx context.Context) ([]Runner, error) {
@@ -282,6 +307,8 @@ func (q *Queries) ListRunners(ctx context.Context) ([]Runner, error) {
 			&i.CreatedAt,
 			&i.Version,
 			&i.MachineID,
+			&i.OwnerUserID,
+			&i.ComputerID,
 		); err != nil {
 			return nil, err
 		}

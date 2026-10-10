@@ -69,8 +69,15 @@ Single-tenant by design.
 A named service on a machine that executes builds and deploys, connected to
 the server over a WebSocket with its own host credential. A machine can run
 several; the one `nexul install` puts on the instance's own server is named
-`instance`.
+`instance`. A runner that is not a personal runner builds and deploys, on a
+machine.
 _Avoid_: Agent, worker, executor
+
+**Personal runner**:
+The runner on a person's own computer, enrolled by that person for that
+computer. It reaches the computer's harness for Nexul and reports the
+computer's facts; it never builds or deploys.
+_Avoid_: agent, relay, daemon, helper, connector
 
 **Agent**:
 The LLM participant in chat, mentioned as `@Agent`. Runs on the mentioning
