@@ -259,6 +259,9 @@ loops. Automations can start a play in code with `runPlay`. The map is in
 Turn the integration contract into a platform and widen the surface area
 without changing the core architecture.
 
+- **Add a computer in one command** — a personal runner installs, pairs and
+  keeps T3 Code paired through its own connection, so pairing needs no
+  Cloudflare tunnel or domain (`.scratch/personal-runners/`, ADR 0146).
 - **DNS extensions** — TLS automation (Let's Encrypt) for direct-to-server
   paths, additional registrars behind the provider interface, managed subdomain
   routing for deployed services.
