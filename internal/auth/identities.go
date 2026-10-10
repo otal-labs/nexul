@@ -67,7 +67,7 @@ func (s *Service) verifyLinkState(state string, provider Provider) (string, erro
 }
 
 // SignInProviders is the composition root's read for the Team list, which checks who may see each account itself.
-func (s *Service) SignInProviders(ctx context.Context) (map[string][]Provider, error) {
+func (s *Service) SignInProviders(ctx context.Context) (map[string][]Identity, error) {
 	providers, err := s.cfg.Users.ListIdentityProviders(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("sign-in providers: %w", err)

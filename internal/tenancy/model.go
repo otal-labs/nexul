@@ -138,6 +138,8 @@ type TeamAccount struct {
 	CreatedAt   time.Time `json:"created_at"`
 	// Providers are the sign-in accounts linked to this account, in the order they were linked.
 	Providers []string `json:"providers"`
+	// Usernames are the names others know those accounts by, keyed by provider; a provider without one is absent.
+	Usernames map[string]string `json:"usernames,omitempty"`
 	// Online is a live browser socket open right now; LastSeenAt is their latest session activity, nil once signed out everywhere.
 	Online     bool       `json:"online"`
 	LastSeenAt *time.Time `json:"last_seen_at"`

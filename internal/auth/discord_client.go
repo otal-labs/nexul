@@ -89,6 +89,7 @@ func (c *HTTPDiscordClient) FetchUser(ctx context.Context, accessToken string) (
 		ID:        body.ID,
 		Login:     strings.ToLower(body.Email),
 		Name:      name,
+		Username:  body.Username,
 		AvatarURL: avatar,
 	}, nil
 }

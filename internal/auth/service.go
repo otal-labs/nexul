@@ -434,7 +434,7 @@ func (s *Service) LoginWith(ctx context.Context, provider Provider, code string)
 }
 
 func providerIdentity(userID string, provider Provider, pu *ProviderUser) *Identity {
-	return &Identity{UserID: userID, Provider: provider, ProviderUserID: pu.ID, Login: pu.Login, Name: pu.Name, AvatarURL: pu.AvatarURL}
+	return &Identity{UserID: userID, Provider: provider, ProviderUserID: pu.ID, Login: pu.Login, Name: pu.Name, Username: pu.Username, AvatarURL: pu.AvatarURL}
 }
 
 func (s *Service) findOrCreateLoginUser(ctx context.Context, identity *Identity) (*User, error) {

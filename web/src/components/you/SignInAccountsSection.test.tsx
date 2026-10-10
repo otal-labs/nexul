@@ -25,8 +25,9 @@ vi.mock("@/hooks/AccessHooks", () => ({ useCanOpenSection: (section: string) => 
 
 vi.mock("sonner", () => ({ toast: { success: mocks.toastSuccess, error: mocks.toastError } }));
 
-const github = { provider: "github", login: "onik97", name: "Onik", avatar_url: "", created_at: "2026-01-01T00:00:00Z" };
-const google = { provider: "google", login: "onik@example.com", name: "Onik", avatar_url: "", created_at: "2026-02-01T00:00:00Z" };
+const github = { provider: "github", login: "onik97", name: "Onik", username: "onik97", avatar_url: "", created_at: "2026-01-01T00:00:00Z" };
+const google = { provider: "google", login: "onik@example.com", name: "Onik", username: "", avatar_url: "", created_at: "2026-02-01T00:00:00Z" };
+const discord = { provider: "discord", login: "lena@example.com", name: "Lena", username: "lena_d", avatar_url: "", created_at: "2026-03-01T00:00:00Z" };
 
 const mockGet = (identities: unknown[], status: Record<string, boolean>, appSlug = "") =>
   mocks.get.mockImplementation((url: string) => {
@@ -65,6 +66,13 @@ describe("SignInAccountsSection", () => {
     expect(screen.queryByRole("button", { name: "Unlink GitHub" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Link Google" })).toBeInTheDocument();
     expect(screen.queryByText("Discord")).not.toBeInTheDocument();
+  });
+
+  it("shows a Discord account by its username, not the email it signs in with", async () => {
+    mockGet([github, discord], { discord_configured: true });
+    renderSection();
+    expect(await screen.findByText("lena_d")).toBeInTheDocument();
+    expect(screen.queryByText("lena@example.com")).not.toBeInTheDocument();
   });
 
   it("starts a link by sending the browser to the provider", async () => {

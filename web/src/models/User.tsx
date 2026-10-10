@@ -28,9 +28,17 @@ export interface Identity {
   provider: Provider;
   login: string;
   name: string;
+  // The name others know the account by; empty for Google, whose login is an email.
+  username: string;
   avatar_url: string;
   created_at: string;
 }
+
+// A Discord login is the email the allowlist matches, so the username shows instead.
+export const identityAccount = (identity: Identity): string => {
+  if (identity.provider === "github") return `@${identity.username || identity.login}`;
+  return identity.username || identity.login;
+};
 
 export const providerLabel: Record<Provider, string> = { github: "GitHub", google: "Google", discord: "Discord" };
 

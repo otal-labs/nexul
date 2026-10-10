@@ -91,14 +91,17 @@ describe("TeamSection", () => {
     expect(dotOf(eve)).toHaveClass("bg-muted-foreground");
   });
 
-  it("marks each person's linked sign-in accounts on their row", async () => {
+  it("shows each linked sign-in account on the row with its username, never the email Discord signs in with", async () => {
     renderSection("/settings/team", {
       ...team,
-      people: [{ ...team.people[0]!, providers: ["github", "discord"] }],
+      people: [{ ...team.people[0]!, providers: ["github", "discord"], usernames: { github: "bob", discord: "bob_d" } }],
     });
 
     const bob = await screen.findByRole("button", { name: "Open Bob" });
-    expect(within(bob).getByRole("img", { name: "Signs in with GitHub and Discord" })).toBeInTheDocument();
+    expect(within(bob).getByRole("img", { name: "GitHub" })).toBeInTheDocument();
+    expect(within(bob).getByRole("img", { name: "Discord" })).toBeInTheDocument();
+    expect(within(bob).getByText("@bob")).toBeInTheDocument();
+    expect(within(bob).getByText("bob_d")).toBeInTheDocument();
   });
 
   it("opens the Invitations tab with the new link on top once a link is created, and copies it", async () => {

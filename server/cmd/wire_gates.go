@@ -78,8 +78,15 @@ func (g accountGate) ListAccounts(ctx context.Context) ([]*tenancy.TeamAccount, 
 	out := make([]*tenancy.TeamAccount, 0, len(users))
 	for _, u := range users {
 		a := toTeamAccount(u)
-		for _, p := range providers[u.ID] {
-			a.Providers = append(a.Providers, string(p))
+		for _, identity := range providers[u.ID] {
+			a.Providers = append(a.Providers, string(identity.Provider))
+			if identity.Username == "" {
+				continue
+			}
+			if a.Usernames == nil {
+				a.Usernames = map[string]string{}
+			}
+			a.Usernames[string(identity.Provider)] = identity.Username
 		}
 		out = append(out, a)
 	}

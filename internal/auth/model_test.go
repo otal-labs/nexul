@@ -37,3 +37,23 @@ func TestSettingsStore_SetGitHubOAuth_RoundTrips(t *testing.T) {
 	assert.Equal(t, "client-secret-abc", after.GitHubOAuthClientSecret)
 	assert.True(t, after.Configured())
 }
+
+func TestPublicUsername(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		provider Provider
+		username string
+		want     string
+	}{
+		{"GitHub is its login", ProviderGitHub, "", "lena"},
+		{"Discord is its username, never the email login", ProviderDiscord, "lena_d", "lena_d"},
+		{"Discord without a stored username is its name", ProviderDiscord, "", "Lena"},
+		{"Google has none", ProviderGoogle, "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, PublicUsername(tt.provider, "lena", "Lena", tt.username))
+		})
+	}
+}

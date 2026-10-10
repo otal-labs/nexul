@@ -13,7 +13,7 @@ export const SignInAccountRow = ({ identity, first }: SignInAccountRowProps) => 
   <View className={cn("min-h-12 flex-row items-center justify-between gap-2 px-4 py-3", !first && "border-t border-border")}>
     <Text className="text-[15px]">{providerLabel[identity.provider] ?? identity.provider}</Text>
     <Text numberOfLines={1} className="font-mono text-xs text-muted-foreground">
-      {identity.login || identity.name}
+      {identity.username || identity.login || identity.name}
     </Text>
   </View>
 );

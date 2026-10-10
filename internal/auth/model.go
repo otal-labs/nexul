@@ -47,8 +47,23 @@ type Identity struct {
 	ProviderUserID string    `json:"-"`
 	Login          string    `json:"login"`
 	Name           string    `json:"name"`
+	Username       string    `json:"username"`
 	AvatarURL      string    `json:"avatar_url"`
 	CreatedAt      time.Time `json:"created_at"`
+}
+
+// PublicUsername is GitHub's login or Discord's username, else its name until a Discord sign-in stores one; Google has none.
+func PublicUsername(provider Provider, login, name, username string) string {
+	if provider == ProviderGitHub {
+		return login
+	}
+	if provider != ProviderDiscord {
+		return ""
+	}
+	if username != "" {
+		return username
+	}
+	return name
 }
 
 // InvitationAcceptance is the non-secret invitation detail shown after preview or OAuth authentication.
@@ -86,6 +101,7 @@ type ProviderUser struct {
 	ID        string
 	Login     string
 	Name      string
+	Username  string
 	AvatarURL string
 }
 
