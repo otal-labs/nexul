@@ -170,8 +170,6 @@ func TestRun_Refusals_LeaveNoTrail(t *testing.T) {
 	}
 }
 
-// TestRun_PersonRun_AsksWhereRatherThanFallingBack guards ADR 0145: a person's run in a project they never linked comes back
-// as the question of where to run, keeping no failed trail, and the answer goes to pairing with the run.
 func TestRun_PersonRun_AsksWhereRatherThanFallingBack(t *testing.T) {
 	f := newRunnerFixture()
 	f.harness.unlinked = true
@@ -190,6 +188,8 @@ func TestRun_PersonRun_AsksWhereRatherThanFallingBack(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "t3-nexul", f.harness.lastChoice.HarnessProjectID)
 	assert.Equal(t, "c-1", trail.ComputerID)
+	<-f.turns.done
+	assert.True(t, f.turns.last().NewThread, "a picked location cannot reuse a thread in another checkout")
 }
 
 func TestRun_SetupNotConfirmed_FailsOnPressWithTheChatRefusal(t *testing.T) {

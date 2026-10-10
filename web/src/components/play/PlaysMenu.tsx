@@ -10,12 +10,12 @@ import { useHarnessReadiness } from "@/hooks/PairingHooks";
 import { useFetchApplicablePlays } from "@/hooks/PlayHooks";
 import { useActiveTrail, useStopTrail } from "@/hooks/TrailHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
-import type { HarnessReadiness } from "@/models/Pairing";
+import { canChooseRunLocation, type HarnessReadiness } from "@/models/Pairing";
 import type { Play } from "@/models/Play";
 
 const disabledReason = (running: boolean, readiness: HarnessReadiness | undefined): string => {
   if (running) return "a run is in progress";
-  if (readiness && readiness.state !== "ready") return readiness.message;
+  if (readiness && readiness.state !== "ready" && !canChooseRunLocation(readiness)) return readiness.message;
   return "";
 };
 

@@ -16,7 +16,7 @@ A play is a button that starts an agent on a piece of work, such as **Fix with A
 5. Check the provider and model on the pill under it. They come from your project link; change them here for this run only.
 6. Start the run.
 
-If the play can't run, the dialog says why instead: no computer paired, a pairing that expired, the computer offline, no T3 project for this project, or several computers and no default. Each message names the setting that fixes it. A play on a blocked ticket asks you to confirm first.
+If no computer or T3 project is set as your default, pick them in the run dialog. If the play can't run, the dialog says why instead: no computer paired, a pairing that expired, the computer offline, or setup still needed. A play on a blocked ticket asks you to confirm first.
 
 The agent decides where the ticket goes when it finishes. It reads your footer memories for that, so a footer memory that says "move the card to Review when the pull request is open" is how you get cards to move.
 
@@ -113,4 +113,4 @@ If it can't start, the ticket shows **Decisions check didn't run** with the reas
 
 Agents run plays with `play_run` and read trails with `trail_list`. See [MCP server](/docs/guide/mcp-server/). Like the dialog, `play_run` asks where the first time: in a project you haven't linked it needs `computer_id` and `t3_project_id`, and saves them as your link. `computer_list` with a computer's id lists its T3 projects.
 
-Runs nobody presses, such as auto plays and the decisions check, ask nobody. In a project you haven't linked they run on your defaults.
+Auto plays, automation `runPlay` requests, and the automatic decisions check use your project link or, without one, your defaults. The decisions check's **Run again** keeps the same fallback. These paths have no location dialog.

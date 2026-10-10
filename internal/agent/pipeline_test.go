@@ -865,7 +865,7 @@ func TestRunTurn_DocThread_NoDocReader_RunsWithoutDocContext(t *testing.T) {
 // --- RunTurn as a use-case ---------------------------------------------------
 
 func TestRunTurn_TargetOverride_ResolvedThroughTheOverrideSeam(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1"})
+	conv := newFakeConversations(Conversation{ID: "conv-1", ThreadID: "thread-old-checkout"})
 	var gotTarget harness.Target
 	client := &harnesstest.Client{StartTurnFn: func(_ context.Context, target harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
 		gotTarget = target
@@ -881,11 +881,13 @@ func TestRunTurn_TargetOverride_ResolvedThroughTheOverrideSeam(t *testing.T) {
 	override := TargetOverride{ComputerID: "c-2", Provider: "claude", Model: "sonnet-5", ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}}}
 	svc.RunTurn(context.Background(), TurnRequest{
 		ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "run it",
-		Target: &override,
+		Target: &override, NewThread: true,
 	})
 
 	require.NotNil(t, targets.override)
 	assert.Equal(t, override, *targets.override)
+	assert.Empty(t, gotTarget.SessionID, "an explicit location starts a fresh thread instead of reusing the old checkout")
+	assert.Equal(t, "proj-1", gotTarget.ProjectID)
 	assert.Equal(t, "claude", gotTarget.Provider)
 	assert.Equal(t, "sonnet-5", gotTarget.Model)
 	assert.Equal(t, []harness.OptionSetting{{ID: "effort", Value: "high"}}, gotTarget.ModelOptions, "the resolved options reach the harness turn")

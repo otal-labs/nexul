@@ -272,7 +272,7 @@ export const SETUP_REQUIRED_REASON = "setup_required";
 export const computerSetupPath = (computerId: string) =>
   `/settings/pairing?setup=${encodeURIComponent(computerId)}`;
 
-// Mirrors pairing.ReasonNeedsLocation: a person's run in a project they never linked asks where to run (ADR 0143).
+// Mirrors pairing.ReasonNeedsLocation: a person's run in a project they never linked asks where to run (ADR 0145).
 export const NEEDS_LOCATION_REASON = "needs_location";
 
 export const isNeedsLocationRefusal = (error: unknown) =>
@@ -462,6 +462,10 @@ export const EXPIRY_WARNING_DAYS = 5;
 export type HarnessReadiness =
   | { state: "ready"; computerId: string; harnessProjectId: string; provider: string; model: string; modelOptions: OptionSetting[] }
   | { state: "unpaired" | "expired" | "no_harness_project" | "no_default_computer" | "offline"; message: string };
+
+export const canChooseRunLocation = (readiness: HarnessReadiness | undefined): boolean =>
+  readiness?.state === "no_harness_project" || readiness?.state === "no_default_computer" ||
+  readiness?.state === "offline" || readiness?.state === "expired";
 
 // Copy for every non-ready state; shared by the hook's join and the settings readiness line.
 export const HARNESS_READINESS_COPY: Record<Exclude<HarnessReadiness["state"], "ready">, string> = {

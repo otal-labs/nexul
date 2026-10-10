@@ -20,6 +20,10 @@ import (
 // Run checks the play, the target, the caller, and the harness, then starts the turn in the background and
 // returns the trail in state starting; the trail's later states are the observer's to record.
 func (r *Runner) Run(ctx context.Context, in RunInput) (*Trail, error) {
+	return r.startRun(ctx, in, launchPerson)
+}
+
+func (r *Runner) startRun(ctx context.Context, in RunInput, mode launchMode) (*Trail, error) {
 	starter := actorID(ctx)
 	if starter == "" {
 		return nil, fmt.Errorf("%w: an authenticated user is required", apperrs.ErrUnauthorized)
@@ -40,7 +44,7 @@ func (r *Runner) Run(ctx context.Context, in RunInput) (*Trail, error) {
 		return nil, err
 	}
 	pick := HarnessChoice{ComputerID: in.ComputerID, HarnessProjectID: in.HarnessProjectID, Provider: in.Provider, Model: in.Model, ModelOptions: options}
-	return r.launch(ctx, play, trail, tgt, pick, launchPerson)
+	return r.launch(ctx, play, trail, tgt, pick, mode)
 }
 
 // launchMode says which refusals launch keeps as a failed trail on the target.
@@ -109,7 +113,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	// Copied before the turn starts: from here on the observer's goroutine owns trail.
 	snapshot := *trail
 	r.startTurn(ctx, trail, targetTitle, agent.TurnRequest{
-		ConversationID: conversationID, ViaUserID: trail.StarterID,
+		ConversationID: conversationID, ViaUserID: trail.StarterID, NewThread: pick.HarnessProjectID != "",
 		Play:   &agent.PlayContext{Label: play.Label, Instructions: play.Instructions, Blocks: links, Memories: memories.read, Custom: trail.CustomInstructions, Conclude: memories.conclude},
 		Target: &agent.TargetOverride{ComputerID: choice.ComputerID, Provider: choice.Provider, Model: choice.Model, ModelOptions: choice.ModelOptions},
 	}, false)
@@ -124,8 +128,7 @@ func (m launchMode) keeps(err error) bool {
 	return m == launchRecorded
 }
 
-// resolveHarness asks the starter's computer to take the turn; its refusal is kept as a failed trail, so the person sees
-// the fix, unless a queued run waits on an offline computer instead or the person is only asked where to run.
+// resolveHarness keeps a refusal as a failed trail unless the run needs a location or waits for its computer.
 func (r *Runner) resolveHarness(ctx context.Context, trail *Trail, targetTitle string, pick HarnessChoice, mode launchMode) (HarnessChoice, error) {
 	resolve := r.harness.ResolveTarget
 	if mode == launchPerson {

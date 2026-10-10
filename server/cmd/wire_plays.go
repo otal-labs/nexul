@@ -106,8 +106,7 @@ func (a playsProjectLookup) GetProject(ctx context.Context, projectID string) (p
 	return plays.ProjectTarget{Name: p.Name, TestsLocation: string(p.TestsLocation)}, nil
 }
 
-// playsHarnessResolver adapts pairing's resolution to the runner's seam: an unattended run's empty choice resolves the
-// starter's own project link or pairing defaults, same as a chat mention; a person's run asks where instead (ADR 0145).
+// playsHarnessResolver preserves fallback for unattended runs and requires location for a person's run (ADR 0145).
 type playsHarnessResolver struct {
 	svc *pairing.Service
 }

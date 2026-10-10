@@ -2,6 +2,9 @@ import { useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { microheaderClass } from "@/components/Microheader";
 import { HarnessComputerField } from "@/components/settings/HarnessComputerField";
 import { HarnessProjectField } from "@/components/settings/HarnessProjectField";
@@ -25,9 +28,9 @@ interface RunWhereSectionProps {
 
 type RunWhereFormProps = Pick<RunWhereSectionProps, "value" | "onChange">;
 
-// A subscription (allowed under F5) hands every pick to the run form, so what is shown is what the run sends.
+// Subscribe so the run payload always matches the fields displayed in this form.
 const RunWhereForm = ({ value, onChange }: RunWhereFormProps) => {
-  const { data: computers } = useListComputers();
+  const { data: computers, isPending, error } = useListComputers();
   const { data: presence } = useFetchPresence();
   const form = useForm<RunWhere>({ defaultValues: value });
   const computerId = useWatch({ control: form.control, name: "computer_id" });
@@ -36,7 +39,9 @@ const RunWhereForm = ({ value, onChange }: RunWhereFormProps) => {
 
   return (
     <div className="space-y-3">
-      {computers && computers.length === 0 && <p className="text-xs text-muted-foreground">Pair a computer in Settings to run plays.</p>}
+      {isPending && <LoadingDisplay label="Loading computers" className="justify-start p-0" />}
+      {error && <ErrorDisplay error={error} title="Couldn't load your computers." />}
+      {computers && computers.length === 0 && <NoDataDisplay message="Pair a computer in Settings to run plays." size="compact" />}
       {computers && computers.length > 0 && (
         <HarnessComputerField
           control={form.control}
@@ -51,7 +56,6 @@ const RunWhereForm = ({ value, onChange }: RunWhereFormProps) => {
   );
 };
 
-// "Onik's PC · nexul" with Change once linked; the two pickers, pre-filled with the person's defaults, until then.
 export const RunWhereSection = ({ value, asking, firstRun, onChange, onChangeRequested }: RunWhereSectionProps) => {
   const { data: computers } = useListComputers();
   const { data: projects } = useFetchHarnessProjects(value.computer_id);

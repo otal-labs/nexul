@@ -9,7 +9,7 @@ import { useHarnessReadiness } from "@/hooks/PairingHooks";
 import { useActiveTrail, useStopTrail } from "@/hooks/TrailHooks";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
-import type { HarnessReadiness } from "@/models/Pairing";
+import { canChooseRunLocation, type HarnessReadiness } from "@/models/Pairing";
 import type { Play, PlayType } from "@/models/Play";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +29,7 @@ interface PlayButtonProps {
 const disabledReason = (running: boolean, waiting: boolean, readiness: HarnessReadiness | undefined): string => {
   if (waiting) return "a run is waiting for an answer";
   if (running) return "a run is in progress";
-  if (readiness && readiness.state !== "ready") return readiness.message;
+  if (readiness && readiness.state !== "ready" && !canChooseRunLocation(readiness)) return readiness.message;
   return "";
 };
 

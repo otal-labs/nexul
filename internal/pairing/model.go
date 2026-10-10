@@ -335,7 +335,7 @@ const (
 	ReasonSetupRequired NotConfiguredReason = "setup_required"
 	// ReasonOffline: the resolved computer's harness did not answer, so the setup gate could not check its providers.
 	ReasonOffline NotConfiguredReason = "offline"
-	// ReasonNeedsLocation: a person's run in a project they never linked asks where to run instead of using their defaults (ADR 0143).
+	// ReasonNeedsLocation: a person's run in a project they never linked asks where to run instead of using their defaults (ADR 0145).
 	ReasonNeedsLocation NotConfiguredReason = "needs_location"
 )
 

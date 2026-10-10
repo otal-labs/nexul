@@ -97,6 +97,23 @@ beforeEach(() => {
 });
 
 describe("PlayButton", () => {
+  it.each(["no_default", "no_default_computer", "offline", "expired_token"])("opens the location question when its suggestion needs attention (%s)", async (reason) => {
+    const user = userEvent.setup();
+    mockApi({ resolve: reason === "offline" ? { ok: true, computer_id: "c-1" } : { ok: false, reason }, presence: {} });
+    const base = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation(async (...args: Parameters<typeof api.get>) => {
+      if (args[0] === "/api/pairing/projects") return { data: { links: [] } };
+      if (args[0] === "/api/memories") return { data: [] };
+      return base(...args);
+    });
+    renderButton();
+    const run = await screen.findByRole("button", { name: "Fix with AI" });
+    await waitFor(() => expect(run).toBeEnabled());
+    await user.click(run);
+    expect(await screen.findByText(/Your first run in this project/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run Fix with AI" })).toBeDisabled();
+  });
+
   it("is hidden without plays:run", async () => {
     mockApi({ permissions: ["plays:read"] });
     renderButton();
@@ -111,12 +128,6 @@ describe("PlayButton", () => {
     expect(screen.getByRole("button", { name: "Fix with AI" })).toBeDisabled();
   });
 
-  it("is disabled with the offline reason when the resolved harness is not connected", async () => {
-    mockApi({ presence: {} });
-    renderButton();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription("T3 Code on your computer is offline."));
-    expect(screen.getByRole("button", { name: "Fix with AI" })).toBeDisabled();
-  });
 
   it("is disabled with 'a run is in progress' when someone else's trail is active", async () => {
     mockApi({ trails: [runningTrail("u-other")] });

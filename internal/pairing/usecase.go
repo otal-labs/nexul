@@ -538,8 +538,7 @@ func (s *Service) ResolveTargetOverride(ctx context.Context, userID, projectID, 
 	return s.requireSetup(ctx, target)
 }
 
-// ResolvePersonRun resolves a run a person started, behind the setup gate (ADR 0145): a picked T3 project is saved with its
-// computer as their project link first, and with no link the run asks where instead of using their pairing defaults.
+// ResolvePersonRun requires a project link or saves the caller's explicit location before checking setup (ADR 0145).
 func (s *Service) ResolvePersonRun(ctx context.Context, userID, projectID, computerID, harnessProjectID, provider, model string, options []harness.OptionSetting) (*ResolvedTarget, error) {
 	target, err := s.resolvePersonRun(ctx, userID, projectID, computerID, harnessProjectID, modelPick{provider: provider, model: model, options: options})
 	if err != nil {
@@ -548,7 +547,6 @@ func (s *Service) ResolvePersonRun(ctx context.Context, userID, projectID, compu
 	return s.requireSetup(ctx, target)
 }
 
-// resolvePersonRun is ResolvePersonRun with no setup gate; a computer other than the linked one needs its T3 project picked too.
 func (s *Service) resolvePersonRun(ctx context.Context, userID, projectID, computerID, harnessProjectID string, pick modelPick) (*ResolvedTarget, error) {
 	projectID, computerID, harnessProjectID = strings.TrimSpace(projectID), strings.TrimSpace(computerID), strings.TrimSpace(harnessProjectID)
 	if harnessProjectID != "" {
@@ -567,8 +565,7 @@ func (s *Service) resolvePersonRun(ctx context.Context, userID, projectID, compu
 	return s.resolveTargetOverride(ctx, userID, projectID, computerID, pick)
 }
 
-// saveRunLocation saves a run's computer and T3 project as the person's link with the run's model, filled from their
-// defaults on their default computer; the link's start-in stays.
+// Changing location keeps start-in because it controls how new threads are isolated.
 func (s *Service) saveRunLocation(ctx context.Context, userID, projectID, computerID, harnessProjectID string, pick modelPick) error {
 	if computerID == "" {
 		return fmt.Errorf("%w: a T3 project needs the computer it is on", apperrs.ErrInvalid)

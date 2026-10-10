@@ -45,8 +45,6 @@ const HarnessPickerForm = ({ value, onChange }: HarnessPickerPillProps) => {
   );
 };
 
-// The dialog footer's model picker: a mono pill naming the provider and model on the run's computer, opening a
-// popover with the same fields the pairing settings use to change either for this run only.
 export const HarnessPickerPill = ({ value, onChange }: HarnessPickerPillProps) => {
   const { data: providers } = useFetchHarnessProviders(value.computer_id);
   const [open, setOpen] = useState(false);

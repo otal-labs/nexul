@@ -101,8 +101,7 @@ type HarnessChoice struct {
 type HarnessResolver interface {
 	// ResolveTarget resolves a run nobody is there to ask, falling back to the starter's pairing defaults.
 	ResolveTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error)
-	// ResolvePersonTarget resolves a run a person started: it saves a picked T3 project as their project link, and
-	// without a link it refuses with RefusalNeedsLocation rather than fall back (ADR 0143).
+	// ResolvePersonTarget requires an explicit location or the caller's project link (ADR 0145).
 	ResolvePersonTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error)
 }
 

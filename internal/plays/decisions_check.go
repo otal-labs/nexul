@@ -65,7 +65,7 @@ func (r *Runner) RetryDecisionsCheck(ctx context.Context, ticketID string, via V
 	if play == nil {
 		return nil, fmt.Errorf("%w: this workspace's decisions check play was deleted", apperrs.ErrNotFound)
 	}
-	return r.Run(ctx, RunInput{PlayID: play.ID, TargetType: TargetTicket, TargetID: ticketID, Via: via})
+	return r.startRun(ctx, RunInput{PlayID: play.ID, TargetType: TargetTicket, TargetID: ticketID, Via: via}, launchPress)
 }
 
 // DefaultInstructions returns every built-in instruction text a run hands the agent, the seeded plays' and the origin
