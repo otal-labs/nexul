@@ -147,6 +147,41 @@ describe("a play's auto plays", () => {
     await close(user, dialog);
   });
 
+  it("keeps the composer's edits when switching to Play is cancelled", async () => {
+    const { user, dialog } = await openAutoPlays();
+    await user.click(await within(dialog).findByRole("button", { name: /becomes unblocked/ }));
+    await pickOption(user, "Moment", "Ticket is created");
+
+    await user.click(within(dialog).getByRole("tab", { name: "Play" }));
+    const prompt = await screen.findByRole("dialog", { name: "Discard changes?" });
+    await user.click(within(prompt).getByRole("button", { name: "Cancel" }));
+
+    expect(within(dialog).getByRole("tab", { name: "Auto plays" })).toHaveAttribute("aria-selected", "true");
+    expect(within(dialog).getByRole("combobox", { name: "Moment" })).toHaveTextContent("Ticket is created");
+    await user.click(within(dialog).getByRole("button", { name: "Auto plays" }));
+    await user.click(within(await screen.findByRole("dialog", { name: "Discard changes?" })).getByRole("button", { name: "Discard changes" }));
+    await close(user, dialog);
+  });
+
+  it("drops the composer's edits and shows Play when switching is confirmed, and asks nothing when clean", async () => {
+    const { user, dialog } = await openAutoPlays();
+    await user.click(await within(dialog).findByRole("button", { name: /becomes unblocked/ }));
+    await pickOption(user, "Moment", "Ticket is created");
+
+    await user.click(within(dialog).getByRole("tab", { name: "Play" }));
+    await user.click(within(await screen.findByRole("dialog", { name: "Discard changes?" })).getByRole("button", { name: "Discard changes" }));
+    await waitFor(() => expect(within(dialog).getByRole("tab", { name: "Play" })).toHaveAttribute("aria-selected", "true"));
+    expect(within(dialog).queryByRole("combobox", { name: "Moment" })).not.toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("tab", { name: "Auto plays" }));
+    await user.click(await within(dialog).findByRole("button", { name: /becomes unblocked/ }));
+    await user.click(within(dialog).getByRole("tab", { name: "Play" }));
+    expect(within(dialog).getByRole("tab", { name: "Play" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("dialog", { name: "Discard changes?" })).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("tab", { name: "Auto plays" }));
+    await close(user, dialog);
+  });
+
   it("builds a condition and a nested group, and Save creates the auto play and goes back to the list", async () => {
     autoPlays = [];
     const { user, dialog } = await openAutoPlays();

@@ -13,6 +13,7 @@ import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { useCreateAutoPlay, useUpdateAutoPlay } from "@/hooks/PlayHooks";
+import { usePlayDialogStore } from "@/stores/playDialogStore";
 import { newDraft, toDraft, toSaveRequest, type AutoPlay, type AutoPlayDraft, type AutoPlaySubject } from "@/models/AutoPlay";
 import type { Play } from "@/models/Play";
 
@@ -38,16 +39,20 @@ export const AutoPlayComposer = ({ play, autoPlay, onClose }: AutoPlayComposerPr
   const create = useCreateAutoPlay(play.workspace_id, play.id);
   const update = useUpdateAutoPlay(play.workspace_id, play.id);
 
+  const setLeaveGuard = usePlayDialogStore((s) => s.setLeaveGuard);
+
+  // Whether leaving the composer may drop its edits: at once when clean, else once the person confirms.
+  const mayLeave = useLatestCallback(async () => {
+    if (!isDirty) return true;
+    return confirm({
+      title: "Discard changes?",
+      message: "Your changes to this auto play will be lost.",
+      confirmLabel: "Discard changes",
+    });
+  });
+
   const back = useLatestCallback(async () => {
-    if (isDirty) {
-      const discard = await confirm({
-        title: "Discard changes?",
-        message: "Your changes to this auto play will be lost.",
-        confirmLabel: "Discard changes",
-      });
-      if (!discard) return;
-    }
-    onClose();
+    if (await mayLeave()) onClose();
   });
 
   const save = useLatestCallback(async () => {
@@ -69,6 +74,11 @@ export const AutoPlayComposer = ({ play, autoPlay, onClose }: AutoPlayComposerPr
     intercept({ submit: save, cancel: () => void back() });
     return () => intercept(null);
   }, [intercept, save, back]);
+
+  useEffect(() => {
+    setLeaveGuard(mayLeave);
+    return () => setLeaveGuard(null);
+  }, [setLeaveGuard, mayLeave]);
 
   return (
     <FormProvider {...form}>

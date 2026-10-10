@@ -10,11 +10,17 @@ interface PlayDialogHeaderProps {
 export const PlayDialogHeader = ({ title }: PlayDialogHeaderProps) => {
   const tab = usePlayDialogStore((s) => s.tab);
   const setTab = usePlayDialogStore((s) => s.setTab);
+  const leaveGuard = usePlayDialogStore((s) => s.leaveGuard);
+
+  const select = async (next: PlayDialogTab) => {
+    if (next !== tab && leaveGuard && !(await leaveGuard())) return;
+    setTab(next);
+  };
 
   return (
     <div className="space-y-3">
       <p className="text-base leading-snug font-semibold [overflow-wrap:anywhere]">{title}</p>
-      <Tabs value={tab} onValueChange={(value) => setTab(value as PlayDialogTab)}>
+      <Tabs value={tab} onValueChange={(value) => void select(value as PlayDialogTab)}>
         <TabsList
           variant="line"
           aria-label="Play settings"
