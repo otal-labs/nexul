@@ -329,7 +329,9 @@ func writeRuntimeFile(t *testing.T, body string) string {
 	return home
 }
 
-func TestPersonalRunner_NeverDialsAnAddressThatIsNotLoopback(t *testing.T) {
+// refusedDial asks a personal runner whose T3 Code home is home for one stream and returns its refusal and dials.
+func refusedDial(t *testing.T, home string) (Frame, []string) {
+	t.Helper()
 	refused := make(chan Frame, 1)
 	srv := wsTestServer(t, func(ctx context.Context, conn *websocket.Conn) {
 		_ = wsjson.Write(ctx, conn, Frame{Type: FrameHarnessDial, ID: "s1"})
@@ -346,27 +348,41 @@ func TestPersonalRunner_NeverDialsAnAddressThatIsNotLoopback(t *testing.T) {
 	})
 	c := newTestClient(wsURL(srv), &fakeExecutor{})
 	c.cfg.Personal = true
-	c.cfg.T3Home = writeRuntimeFile(t, `{"version":1,"pid":4242,"host":"192.168.1.20","port":47180,"origin":"http://192.168.1.20:47180"}`)
+	c.cfg.T3Home = home
 	rec := &dialRecorder{}
 	c.dial = rec.dial
 	cancel, done := runClient(t, c)
-
 	got := <-refused
 	cancel()
 	<-done
+	return got, rec.dialed()
+}
+
+func TestPersonalRunner_NeverDialsAnAddressThatIsNotLoopback(t *testing.T) {
+	got, dialed := refusedDial(t, writeRuntimeFile(t, `{"version":1,"pid":4242,"host":"192.168.1.20","port":47180,"origin":"http://192.168.1.20:47180"}`))
 	assert.Equal(t, "s1", got.ID)
 	assert.Equal(t, "T3 Code listens on 192.168.1.20, which is not a loopback address", got.Error)
-	assert.Empty(t, rec.dialed(), "no connection was attempted")
+	assert.Empty(t, dialed, "no connection was attempted")
+}
+
+// A T3 Code home other than the default never falls back to 3773, where another T3 Code may be listening.
+func TestPersonalRunner_CustomHomeWithoutARuntimeFileIsRefused(t *testing.T) {
+	home := t.TempDir()
+	got, dialed := refusedDial(t, home)
+	assert.Equal(t, "T3 Code isn't running in "+home, got.Error)
+	assert.Empty(t, dialed, "no connection was attempted")
 }
 
 func TestT3Address(t *testing.T) {
 	tests := []struct {
-		name    string
-		runtime string
-		want    string
-		wantErr string
+		name        string
+		runtime     string
+		defaultHome bool
+		want        string
+		wantErr     string
 	}{
-		{name: "no runtime file is the default port", want: "127.0.0.1:3773"},
+		{name: "the default home without a runtime file is the default port", defaultHome: true, want: "127.0.0.1:3773"},
+		{name: "another home without a runtime file is refused", wantErr: "T3 Code isn't running in"},
 		{name: "loopback", runtime: `{"host":"127.0.0.1","port":47180}`, want: "127.0.0.1:47180"},
 		{name: "no host", runtime: `{"port":47180}`, want: "127.0.0.1:47180"},
 		{name: "ipv4 wildcard", runtime: `{"host":"0.0.0.0","port":47180}`, want: "127.0.0.1:47180"},
@@ -384,7 +400,11 @@ func TestT3Address(t *testing.T) {
 			if tt.runtime != "" {
 				home = writeRuntimeFile(t, tt.runtime)
 			}
-			got, err := t3Address(home)
+			defaultHome := filepath.Join(t.TempDir(), ".t3")
+			if tt.defaultHome {
+				defaultHome = home + "/"
+			}
+			got, err := t3Address(home, defaultHome)
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 				return
@@ -416,6 +436,7 @@ func TestRunner_APanicInOneStreamLeavesTheOthersRunning(t *testing.T) {
 	c := NewClient(ClientConfig{
 		URL: wsURL(f.srv) + "/ws/runner", StreamURL: wsURL(f.srv) + "/api/runners/streams", Credential: alice, Name: "computer-r-alice",
 		Logger: testLogger(), Executor: &fakeExecutor{}, HeartbeatInterval: 50 * time.Millisecond, Personal: true,
+		T3Home: writeRuntimeFile(t, `{"host":"127.0.0.1","port":47180}`),
 	})
 	panicky := func() (net.Conn, error) {
 		a, b := net.Pipe()

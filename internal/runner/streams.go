@@ -29,7 +29,7 @@ const (
 	maxStreams = 32
 	// streamTTL is how long a stream id waits for its runner; after it the id is gone and refused.
 	streamTTL = 10 * time.Second
-	// defaultT3Port is where T3 Code listens when it left no runtime file.
+	// defaultT3Port is where T3 Code in its default home listens when it left no runtime file.
 	defaultT3Port = 3773
 )
 
@@ -255,7 +255,7 @@ func (c *Client) startStream(streamCtx, ctx context.Context, control *websocket.
 
 // dialT3 connects to T3 Code on loopback, at the port its runtime file names; it never dials anything else.
 func (c *Client) dialT3(ctx context.Context) (net.Conn, error) {
-	addr, err := t3Address(c.cfg.T3Home)
+	addr, err := t3Address(c.cfg.T3Home, defaultT3Home())
 	if err != nil {
 		return nil, err
 	}
@@ -329,11 +329,14 @@ func refusal(f Frame) (Frame, bool) {
 	return Frame{}, false
 }
 
-// t3Address reads where T3 Code listens from the runtime file it keeps under home, falling back to its default port.
-func t3Address(home string) (string, error) {
+// t3Address reads T3 Code's port from home's runtime file; only the default home may fall back to the default port.
+func t3Address(home, defaultHome string) (string, error) {
 	data, err := os.ReadFile(filepath.Join(home, "userdata", "server-runtime.json"))
-	if errors.Is(err, fs.ErrNotExist) {
+	if errors.Is(err, fs.ErrNotExist) && home != "" && filepath.Clean(home) == filepath.Clean(defaultHome) {
 		return net.JoinHostPort("127.0.0.1", strconv.Itoa(defaultT3Port)), nil
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", fmt.Errorf("T3 Code isn't running in %s", home)
 	}
 	if err != nil {
 		return "", fmt.Errorf("read T3 Code's runtime file: %w", err)

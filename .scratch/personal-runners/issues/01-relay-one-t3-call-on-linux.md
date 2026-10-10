@@ -63,10 +63,9 @@ Built: migration 0091 (`runners.owner_user_id`, `runners.computer_id`, partial i
   in-memory pipes through the real stream endpoint, `websocket.NetConn` on both ends and `http.Transport`.
 - Go pools an upgrade request apart from plain requests, so a `t3rpc.Connect` takes its own stream; plain calls
   share one (counted in `TestIntegration_PersonalRunnerReachesT3Code`).
-- For 02 and later: T3 Code deletes `server-runtime.json` when it stops, so the runner falls back to 3773 and
-  reaches whatever T3 Code listens there. On a person's computer that is their own default T3 Code, but a dev or
-  E2E recipe with `T3CODE_HOME` pointed at a throwaway reaches the developer's real one once the throwaway stops;
-  the recipe in 03 should say so, or the fallback should apply only to the default home.
+- T3 Code deletes `server-runtime.json` when it stops. Only the default home (`~/.t3`) falls back to 3773; a
+  custom `T3CODE_HOME` with no file refuses the dial (`TestPersonalRunner_CustomHomeWithoutARuntimeFileIsRefused`),
+  so a recipe pointed at a throwaway never reaches the developer's own T3 Code.
 - For 02: `POST /api/runners/enroll` still makes a machine row for every runner; a personal runner skips it.
   Personal runners still show in `GET /api/runners` and still publish `runner.connected`/`disconnected`.
 - The relayed request's `Host` is `127.0.0.1` without a port, since only the runner knows the port.

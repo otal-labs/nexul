@@ -258,8 +258,11 @@ The runner, as the person's OS user:
 - finds the command: `t3` on `PATH`, else `$T3CODE_HOME/bin/t3` (default `~/.t3/bin/t3`, the desktop app's
   launcher; `t3.cmd` on Windows), else `~/.local/bin/t3` (the command-line install), the same order as
   `website/public/tunnel.sh:72`;
-- finds the port from `~/.t3/userdata/server-runtime.json` (`port`, `host`, `pid`, `serviceManaged`; T3
-  Code's `apps/server/src/serverRuntimeState.ts:11`), falling back to 3773;
+- finds the port from `$T3CODE_HOME/userdata/server-runtime.json` (default `~/.t3`; `port`, `host`, `pid`,
+  `serviceManaged`; T3 Code's `apps/server/src/serverRuntimeState.ts:11`). Only the default home falls back
+  to 3773 when the file is missing. With any other `T3CODE_HOME` and no file, the runner refuses the dial
+  ("T3 Code isn't running in <home>"), because T3 Code deletes the file when it stops and 3773 may be
+  another T3 Code, such as a developer's own beside a throwaway one;
 - confirms it with `GET http://127.0.0.1:<port>/.well-known/t3/environment`;
 - reports one of `answering`, `not_running` (installed, nothing answers), `missing`, or `not_loopback`
   (T3 Code bound to an address that is not loopback or a wildcard, which the runner refuses to reach).
