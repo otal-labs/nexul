@@ -101,7 +101,7 @@ git history, and anything durable it decided is an ADR.
   build. Research findings in `research/`.
 - `.scratch/personal-runners/` — a personal runner on each person's own
   computer: one command adds the computer, Nexul reaches T3 Code through the
-  runner's connection instead of a Cloudflare tunnel (ADR 0143), the old
+  runner's connection instead of a Cloudflare tunnel (ADR 0146), the old
   tunnel and URL pairing retired after existing computers move; later shell
   jobs, container logs and sharing a computer. Spec and tickets 01–19
   written 2026-10-10.

@@ -5,7 +5,7 @@
 **Blocked by:** 12, 13, and the owner's answer to the spec's open question 1 (when)
 
 Read first: `practices/go.md`, `practices/architecture.md`, `practices/mcp.md` (section 11),
-`practices/react-guide.md`, ADRs 0062, 0082, 0142, 0143, the deprecation-and-migration approach, the spec
+`practices/react-guide.md`, ADRs 0062, 0082, 0142, 0146, the deprecation-and-migration approach, the spec
 (Moving existing computers, removal list).
 
 ## What to build
@@ -21,7 +21,7 @@ Read first: `practices/go.md`, `practices/architecture.md`, `practices/mcp.md` (
 - Keep the retired routes mounted, answering 410 with "Pairing through a tunnel was retired; add the
   computer with the Nexul app" (ADR 0082).
 - Old computers' rows stay with their links and setup, showing "Add this computer with the Nexul app".
-- `CONTEXT.md`: delete Computer tunnel, update Paired computer; ADRs 0062 and 0142 marked superseded by 0143.
+- `CONTEXT.md`: delete Computer tunnel, update Paired computer; ADRs 0062 and 0142 marked superseded by 0146.
 
 ## Acceptance criteria
 

@@ -626,7 +626,7 @@ What sharing really hands over, which the grant dialog must say plainly:
 - Reverse states: remove a computer revokes its runner; account removal revokes; adoption is the way back
   for a computer that lost its runner.
 - Docs: `paired-computers.md`, `setup-wizard.md`, `mcp-server.md`, `runners.md`; `CONTEXT.md` per Naming;
-  ADR 0143.
+  ADR 0146.
 
 ## Out of scope
 
