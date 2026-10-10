@@ -73,7 +73,7 @@ const reachPairStep = async (user: ReturnType<typeof userEvent.setup>, client: Q
   await screen.findByText(/waiting for connection/i);
   await act(() => followFrame(pairingFollower, "computer.tunnel_status_changed", { computer_id: "c1", tunnel: "healthy", harness_reachable: true }, client));
   await user.click(await screen.findByRole("button", { name: /^next$/i }));
-  await screen.findByLabelText(/one-time pairing token/i);
+  await screen.findByLabelText(/pairing link/i);
 };
 
 describe("PairComputerDialog", () => {
@@ -114,7 +114,7 @@ describe("PairComputerDialog", () => {
     expect(screen.getByText("T3 Code 0.0.40")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /^next$/i }));
-    expect(await screen.findByLabelText(/one-time pairing token/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/pairing link/i)).toBeInTheDocument();
   });
 
   it("pairs T3 Code over the verified hostname with only the token typed, then moves on to Set up", async () => {
@@ -128,7 +128,7 @@ describe("PairComputerDialog", () => {
     expect(screen.getByLabelText(/t3 server url/i)).toHaveAttribute("readonly");
 
     mocks.post.mockResolvedValueOnce({ data: { ...created, token_expires_at: "2026-10-24T00:00:00Z", harness_version: "0.0.40" } });
-    await user.type(screen.getByLabelText(/one-time pairing token/i), "t3-pair-token");
+    await user.type(screen.getByLabelText(/pairing link/i), "t3-pair-token");
     await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
 
     await waitFor(() => expect(mocks.post).toHaveBeenLastCalledWith("/api/pairing/computers/c1/pair", { token: "t3-pair-token" }));
@@ -139,13 +139,14 @@ describe("PairComputerDialog", () => {
     expect(screen.getByRole("button", { name: /^done$/i })).toBeInTheDocument();
   });
 
-  it("shows the pairing command for how T3 Code is installed and the system, starting from the desktop app whose t3 is off PATH", async () => {
+  it("tells the desktop app to create a link in T3 Code, and shows the command for the other installs and systems", async () => {
     const user = userEvent.setup();
     const client = renderDialog();
     await reachPairStep(user, client);
 
-    expect(screen.getByText("~/.t3/bin/t3 pair")).toBeInTheDocument();
-    expect(screen.queryByText("t3 pair")).not.toBeInTheDocument();
+    expect(screen.getByText(/authorized clients/i)).toBeInTheDocument();
+    expect(screen.queryByText(/network access/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("~/.t3/bin/t3 pair")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("radio", { name: "Command line" }));
     expect(screen.getByText("t3 pair")).toBeInTheDocument();
@@ -153,10 +154,37 @@ describe("PairComputerDialog", () => {
     await user.click(screen.getByRole("radio", { name: "Not installed yet" }));
     expect(screen.getByText("~/.local/bin/t3 pair")).toBeInTheDocument();
     expect(screen.queryByText(/t3\.codes\/install\.sh/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/T3CODE_HOST/)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("radio", { name: "Desktop app" }));
     await user.click(screen.getByRole("radio", { name: "Windows" }));
     expect(screen.getByText('& "$HOME\\.t3\\bin\\t3.cmd" pair')).toBeInTheDocument();
+  });
+
+  it("pairs over the hostname with a pasted pairing link, sending only its token and never its LAN address", async () => {
+    const user = userEvent.setup();
+    const client = renderDialog();
+    await reachPairStep(user, client);
+
+    mocks.post.mockResolvedValueOnce({ data: { ...created, token_expires_at: "2026-10-24T00:00:00Z" } });
+    await user.click(screen.getByLabelText(/pairing link/i));
+    await user.paste("http://192.168.1.107:3773/pair#token=2WY3GB2XL8SU");
+    expect(screen.getByLabelText(/t3 server url/i)).toHaveValue("https://work-laptop-ab12cd34.example.com");
+    await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
+
+    await waitFor(() => expect(mocks.post).toHaveBeenLastCalledWith("/api/pairing/computers/c1/pair", { token: "2WY3GB2XL8SU" }));
+  });
+
+  it("refuses a link that carries no token, naming what to do", async () => {
+    const user = userEvent.setup();
+    const client = renderDialog();
+    await reachPairStep(user, client);
+
+    await user.click(screen.getByLabelText(/pairing link/i));
+    await user.paste("http://192.168.1.107:3773/pair");
+    await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
+
+    expect(await screen.findByText(/that link has no token/i)).toBeInTheDocument();
+    expect(mocks.post).toHaveBeenCalledTimes(1);
   });
 
   it("shows a refused token on the token field and an unreachable harness on the URL field", async () => {
@@ -166,10 +194,10 @@ describe("PairComputerDialog", () => {
 
     const refused = "the harness refused this token, get a fresh one from T3 Code on the computer";
     mocks.post.mockRejectedValueOnce(apiError({ message: refused, code: "INVALID" }, { token: [refused] }));
-    await user.type(screen.getByLabelText(/one-time pairing token/i), "stale");
+    await user.type(screen.getByLabelText(/pairing link/i), "stale");
     await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
     expect(await screen.findByText(refused)).toBeInTheDocument();
-    expect(screen.getByLabelText(/one-time pairing token/i)).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText(/pairing link/i)).toHaveAttribute("aria-invalid", "true");
 
     const unreachable = "couldn't reach the harness";
     mocks.post.mockRejectedValueOnce(apiError({ message: unreachable, code: "RETRYABLE" }, { server_url: [unreachable] }));
@@ -197,7 +225,7 @@ describe("PairComputerDialog", () => {
 
     await user.type(screen.getByLabelText(/^name$/i), "VPS");
     await user.type(screen.getByLabelText(/t3 server url/i), "https://vps.example.com");
-    await user.type(screen.getByLabelText(/one-time pairing token/i), "t3-pair-token");
+    await user.type(screen.getByLabelText(/pairing link/i), "t3-pair-token");
     mocks.post.mockResolvedValueOnce({ data: { ...created, id: "c2", name: "VPS", tunnel: undefined } });
     await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
 
@@ -211,6 +239,37 @@ describe("PairComputerDialog", () => {
     expect(await screen.findByText(/each provider on vps takes one short turn/i)).toBeInTheDocument();
   });
 
+  it("fills the T3 server URL from a pasted pairing link when pairing by URL, and warns about a loopback address", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("button", { name: /pair a computer/i }));
+    await user.click(await screen.findByRole("button", { name: /pair by url/i }));
+    await user.click(screen.getByRole("radio", { name: "Not installed yet" }));
+    expect(screen.getByText(/T3CODE_HOST=0\.0\.0\.0/)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/^name$/i), "NAS");
+    await user.click(screen.getByLabelText(/pairing link/i));
+    await user.paste("http://127.0.0.1:3773/pair#token=abc123");
+    expect(screen.getByLabelText(/t3 server url/i)).toHaveValue("http://127.0.0.1:3773");
+    expect(screen.getByText(/can't reach a loopback address/i)).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText(/pairing link/i));
+    await user.paste("http://192.168.1.107:3773/pair#token=2WY3GB2XL8SU");
+    expect(screen.getByLabelText(/t3 server url/i)).toHaveValue("http://192.168.1.107:3773");
+    expect(screen.queryByText(/can't reach a loopback address/i)).not.toBeInTheDocument();
+
+    mocks.post.mockResolvedValueOnce({ data: { ...created, id: "c2", name: "NAS", tunnel: undefined } });
+    await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
+    await waitFor(() =>
+      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers", {
+        name: "NAS",
+        server_url: "http://192.168.1.107:3773",
+        token: "2WY3GB2XL8SU",
+      }),
+    );
+  });
+
   it("shows a failure with no field under the form", async () => {
     const user = userEvent.setup();
     renderDialog();
@@ -219,7 +278,7 @@ describe("PairComputerDialog", () => {
     await user.click(await screen.findByRole("button", { name: /pair by url/i }));
     await user.type(screen.getByLabelText(/^name$/i), "VPS");
     await user.type(screen.getByLabelText(/t3 server url/i), "https://vps.example.com");
-    await user.type(screen.getByLabelText(/one-time pairing token/i), "t3-pair-token");
+    await user.type(screen.getByLabelText(/pairing link/i), "t3-pair-token");
     mocks.post.mockRejectedValueOnce(apiError({ message: "internal error", code: "INTERNAL" }));
     await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
 
@@ -295,7 +354,7 @@ describe("PairComputerDialog", () => {
 
     await act(() => followFrame(pairingFollower, "computer.tunnel_status_changed", { computer_id: "c1", tunnel: "healthy", harness_reachable: true }, client));
     await user.click(await screen.findByRole("button", { name: /^next$/i }));
-    expect(await screen.findByLabelText(/one-time pairing token/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/pairing link/i)).toBeInTheDocument();
     expect(mocks.post).not.toHaveBeenCalled();
   });
   it("explains a missing Cloudflare connection without a Settings link to a viewer who can't open Connectors", async () => {

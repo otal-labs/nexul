@@ -378,10 +378,45 @@ export interface HarnessProvider {
   needs_setup: boolean;
 }
 
+export interface PairingLink {
+  token: string;
+  // The T3 server the link was made for; absent for a bare token.
+  origin?: string;
+}
+
+const httpOrigin = (value: string | null): string | undefined => {
+  if (!value || !URL.canParse(value)) return undefined;
+  const url = new URL(value);
+  return /^https?:$/.test(url.protocol) ? url.origin : undefined;
+};
+
+// A pairing link (`<origin>/pair#token=<token>`, from T3 Code's Share panel or `t3 pair`) or a bare token; undefined for a link with no token.
+// T3 Code's hosted-app link names the server in its `host` parameter instead of its own origin.
+export const parsePairingLink = (input: string): PairingLink | undefined => {
+  const value = input.trim();
+  if (!value) return undefined;
+  const linkOrigin = httpOrigin(value);
+  if (!linkOrigin) return { token: value };
+  const url = new URL(value);
+  const token = new URLSearchParams(url.hash.slice(1)).get("token")?.trim();
+  if (!token) return undefined;
+  return { token, origin: httpOrigin(url.searchParams.get("host")) ?? linkOrigin };
+};
+
+export const pairingToken = (input: string) => parsePairingLink(input)?.token ?? input.trim();
+
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+export const isLoopbackOrigin = (origin: string) => LOOPBACK_HOSTS.has(new URL(origin).hostname);
+
 export const PairComputerFormSchema = z.object({
   name: z.string().trim().min(1, "Computer name is required"),
   server_url: z.string().trim().url("Enter a valid URL, e.g. https://your-t3-host:port"),
-  token: z.string().trim().min(1, "Paste the one-time pairing token"),
+  token: z
+    .string()
+    .trim()
+    .min(1, "Paste the pairing link from T3 Code")
+    .refine((value) => parsePairingLink(value) !== undefined, "That link has no token. Create a new link in T3 Code and paste it whole."),
 });
 
 export type PairComputerFormData = z.infer<typeof PairComputerFormSchema>;

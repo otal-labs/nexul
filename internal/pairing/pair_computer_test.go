@@ -192,3 +192,33 @@ func TestHandler_PairErrors_KeyTheMessageUnderTheField(t *testing.T) {
 		})
 	}
 }
+
+func TestService_Pair_TakesTheTokenFromAPastedPairingLink(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name, pasted, token string
+	}{
+		{"pairing link", "http://192.168.1.107:3773/pair#token=2WY3GB2XL8SU", "2WY3GB2XL8SU"},
+		{"hosted link", "https://app.example.com/pair?host=https%3A%2F%2Fvps.example.com&label=VPS#token=hosted-tok", "hosted-tok"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			exch := pairedExchanger()
+			svc := newTestService(newFakeRepo(), exch)
+			_, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "VPS", "https://vps.example.com", tt.pasted)
+			require.NoError(t, err)
+			assert.Equal(t, tt.token, exch.pairedToken)
+			assert.Equal(t, "https://vps.example.com", exch.pairedURL, "the link's own address is never the server URL")
+		})
+	}
+}
+
+func TestService_Pair_ALinkWithoutATokenIsRefusedOnTheTokenField(t *testing.T) {
+	t.Parallel()
+	svc := newTestService(newFakeRepo(), pairedExchanger())
+	_, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "VPS", "https://vps.example.com", "http://192.168.1.107:3773/pair")
+	var fieldErr *FieldError
+	require.ErrorAs(t, err, &fieldErr)
+	assert.Equal(t, "token", fieldErr.Field)
+}

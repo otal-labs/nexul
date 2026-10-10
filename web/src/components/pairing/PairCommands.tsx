@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { CommandSnippet } from "@/components/pairing/CommandSnippet";
+import { DesktopPairSteps } from "@/components/pairing/DesktopPairSteps";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { pairPlan, T3_INSTALL_LABELS, T3Install } from "@/utils/PairCommands";
 import { PAIRING_GUIDE } from "@/utils/TunnelInstallCommands";
@@ -10,10 +11,10 @@ interface PairCommandsProps {
   viaTunnel: boolean;
 }
 
-// The command that prints a pairing token depends on how T3 Code got onto the computer: the desktop app's `t3` is off PATH.
+// How the pairing link is made depends on how T3 Code got onto the computer: the desktop app makes it in its Settings, the others in a terminal.
 export const PairCommands = ({ viaTunnel }: PairCommandsProps) => {
   const [install, setInstall] = useState<T3Install>(T3Install.Desktop);
-  const plan = pairPlan(install, viaTunnel);
+  const plan = install === T3Install.Desktop ? undefined : pairPlan(install, viaTunnel);
   return (
     <div className="space-y-3">
       <ToggleGroup
@@ -30,8 +31,9 @@ export const PairCommands = ({ viaTunnel }: PairCommandsProps) => {
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
-      <p className="text-sm text-muted-foreground">{plan.lead}</p>
-      <CommandSnippet key={install} commands={plan.commands} label="Pairing command" guide={PAIRING_GUIDE} />
+      {!plan && <DesktopPairSteps viaTunnel={viaTunnel} />}
+      {plan && <p className="text-sm text-muted-foreground">{plan.lead}</p>}
+      {plan && <CommandSnippet key={install} commands={plan.commands} label="Pairing command" guide={PAIRING_GUIDE} />}
     </div>
   );
 };

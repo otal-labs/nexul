@@ -1,3 +1,4 @@
+import { PairingLinkField } from "@/components/pairing/PairingLinkField";
 import { PairCommands } from "@/components/pairing/PairCommands";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { FormInput } from "@/components/FormInput";
@@ -10,7 +11,7 @@ interface PairComputerFormProps {
 
 // Re-pairs a computer in place; a computer tunnel keeps its hostname, so only the URL of a computer paired by URL can change.
 export const PairComputerForm = ({ computer }: PairComputerFormProps) => {
-  const { control, onSubmit } = useFormDialogContext<PairComputerFormData>();
+  const { control, setValue, onSubmit } = useFormDialogContext<PairComputerFormData>();
   const repair = useRepairComputer(computer);
 
   onSubmit(async (input) => {
@@ -30,13 +31,7 @@ export const PairComputerForm = ({ computer }: PairComputerFormProps) => {
         readOnly={!!computer.tunnel}
         className="font-mono text-xs"
       />
-      <FormInput
-        control={control}
-        name="token"
-        label="One-time pairing token"
-        placeholder="Paste the token the command printed"
-        autoComplete="off"
-      />
+      <PairingLinkField control={control} setValue={setValue} viaTunnel={!!computer.tunnel} />
     </div>
   );
 };

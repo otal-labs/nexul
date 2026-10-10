@@ -134,7 +134,7 @@ describe("ComputersSection", () => {
 
     await user.click(screen.getByRole("button", { name: /^pair$/i }));
     expect(await screen.findByRole("dialog", { name: /pair home/i })).toBeInTheDocument();
-    expect(screen.queryByLabelText(/one-time pairing token/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/pairing link/i)).not.toBeInTheDocument();
   });
 
   it("badges an unconfirmed computer and opens the dialog straight at Set up for it", async () => {
@@ -264,7 +264,7 @@ describe("ComputersSection", () => {
     expect(nameInput.value).toBe("Home");
     expect(urlInput.value).toBe("https://home.example.com");
 
-    await user.type(screen.getByLabelText(/one-time pairing token/i), "fresh-tok");
+    await user.type(screen.getByLabelText(/pairing link/i), "fresh-tok");
     await user.click(screen.getByRole("button", { name: /^re-pair$/i }));
 
     await waitFor(() =>
@@ -279,6 +279,27 @@ describe("ComputersSection", () => {
         "Computer re-paired",
         expect.objectContaining({ description: expect.stringMatching(/previous session on this computer stays valid/) }),
       ),
+    );
+  });
+
+  it("re-pairs with a pasted pairing link, sending its token and its address", async () => {
+    serveComputers([computer()]);
+    mocks.post.mockResolvedValue({ data: computer() });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
+    await user.click(screen.getByRole("button", { name: /re-pair/i }));
+    await user.click(screen.getByLabelText(/pairing link/i));
+    await user.paste("http://192.168.1.107:3773/pair#token=fresh-tok");
+    await user.click(screen.getByRole("button", { name: /^re-pair$/i }));
+
+    await waitFor(() =>
+      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/repair", {
+        name: "Home",
+        server_url: "http://192.168.1.107:3773",
+        token: "fresh-tok",
+      }),
     );
   });
 
