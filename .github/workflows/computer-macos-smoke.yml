@@ -85,8 +85,8 @@ jobs:
         run: |
           plist=/Library/LaunchDaemons/io.nexul.nexul-computer.plist
           ls -l "$plist" /Library/LaunchDaemons/io.nexul.nexul-computer-cleanup.plist
-          test "$(plutil -extract UserName raw "$plist")" = "$(id -un)"
-          test "$(plutil -extract KeepAlive.SuccessfulExit raw "$plist")" = false
+          test "$(sudo plutil -extract UserName raw "$plist")" = "$(id -un)"
+          test "$(sudo plutil -extract KeepAlive.SuccessfulExit raw "$plist")" = false
           test "$(stat -f %Su "$plist")" = root
           test "$(stat -f %Su "$HOME/Library/Application Support/nexul/computer/credential")" = "$(id -un)"
           test "$(stat -f %Lp "$HOME/Library/Application Support/nexul/computer/credential")" = 600
@@ -157,6 +157,6 @@ jobs:
         if: always()
         run: |
           for f in "$RUNNER_TEMP/server.log" "$RUNNER_TEMP/runner.log" "$HOME/Library/Logs/nexul/nexul-computer.log" $(find "$HOME/.t3" -name '*.log' 2>/dev/null); do
-            [ -f "$f" ] && { echo "== $f"; tail -n 80 "$f"; }
+            [ -f "$f" ] && { echo "== $f"; tail -n 40 "$f"; }
           done
           sudo log show --last 30m --style compact --predicate 'eventMessage CONTAINS "nexul"' | tail -n 60 || true
