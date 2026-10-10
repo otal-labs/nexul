@@ -443,13 +443,6 @@ type EventSchema struct {
 	CreatedAt int64
 }
 
-type GithubInstallState struct {
-	StateHash   string
-	WorkspaceID string
-	UserID      string
-	ExpiresAt   int64
-}
-
 type GithubInstallationWorkspace struct {
 	AccountID    sql.NullInt64
 	AccountLogin string
@@ -462,6 +455,16 @@ type GithubManifestRequest struct {
 	StateHash     string
 	InitiatorHash string
 	ExpiresAt     int64
+}
+
+type GithubUserLink struct {
+	UserID           string
+	AccessToken      string
+	RefreshToken     string
+	ExpiresAt        int64
+	RefreshExpiresAt int64
+	NeedsReconnect   int64
+	ConnectedAt      int64
 }
 
 type InstanceSetting struct {

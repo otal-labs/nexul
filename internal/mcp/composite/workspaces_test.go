@@ -67,15 +67,10 @@ func (f *fakeLimits) SetAutoPlayDailyCap(_ context.Context, workspaceID string, 
 	return limit, nil
 }
 
-// fakeAccounts records which accounts were assigned to or removed from which workspace; err refuses every change.
+// fakeAccounts records which accounts were detached from which workspace; err refuses every change.
 type fakeAccounts struct {
 	changes []string
 	err     error
-}
-
-func (f *fakeAccounts) AssignInstallation(_ context.Context, account, workspaceID string) error {
-	f.changes = append(f.changes, "+"+account+"@"+workspaceID)
-	return f.err
 }
 
 func (f *fakeAccounts) UnassignInstallation(_ context.Context, account, workspaceID string) error {
@@ -254,17 +249,24 @@ func TestWorkspaceUpdate_Errors(t *testing.T) {
 
 func TestWorkspaceUpdate_GitHubAccounts(t *testing.T) {
 	member := map[string][]*tenancy.Workspace{"u-1": {{ID: "ws-1", Name: "Acme", Slug: "acme"}}}
-	t.Run("adds and removes accounts on the workspace", func(t *testing.T) {
+	t.Run("detaches accounts from the workspace", func(t *testing.T) {
 		accounts := &fakeAccounts{}
 		call := WorkspaceTools(&fakeWorkspaces{byUser: member}, fakeRoles{}, &fakeLimits{}, accounts)[1].Call
-		out, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","add_github_accounts":["globex"],"remove_github_accounts":["initech"]}`))
+		out, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","remove_github_accounts":["initech"]}`))
 		require.NoError(t, err)
-		assert.Equal(t, []string{"+globex@ws-1", "-initech@ws-1"}, accounts.changes)
-		assert.Equal(t, workspaceUpdateResult{ID: "ws-1", Name: "Acme", Slug: "acme", GitHubAccountsChanged: []string{"globex", "initech"}}, out)
+		assert.Equal(t, []string{"-initech@ws-1"}, accounts.changes)
+		assert.Equal(t, workspaceUpdateResult{ID: "ws-1", Name: "Acme", Slug: "acme", GitHubAccountsChanged: []string{"initech"}}, out)
+	})
+	t.Run("an account cannot be linked by hand", func(t *testing.T) {
+		accounts := &fakeAccounts{}
+		call := WorkspaceTools(&fakeWorkspaces{byUser: member}, fakeRoles{}, &fakeLimits{}, accounts)[1].Call
+		_, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","add_github_accounts":["bob"]}`))
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+		assert.Empty(t, accounts.changes)
 	})
 	t.Run("a refused account after a rename says the rename took effect", func(t *testing.T) {
 		call := WorkspaceTools(&fakeWorkspaces{byUser: member}, fakeRoles{}, &fakeLimits{}, &fakeAccounts{err: apperrs.ErrForbidden})[1].Call
-		_, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","name":"Acme Labs","add_github_accounts":["globex"]}`))
+		_, err := call(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1","name":"Acme Labs","remove_github_accounts":["globex"]}`))
 		require.ErrorIs(t, err, apperrs.ErrForbidden)
 		var partial *mcptool.PartialError
 		require.ErrorAs(t, err, &partial)

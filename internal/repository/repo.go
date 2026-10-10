@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
@@ -35,11 +34,4 @@ type AssignmentWriter interface {
 type InstallationStore interface {
 	AssignmentReader
 	AssignmentWriter
-}
-
-// InstallStateStore keeps each install link's state, by hash, until it is claimed or expires.
-type InstallStateStore interface {
-	SaveInstallState(ctx context.Context, stateHash string, st InstallState, now time.Time) error
-	// ConsumeInstallState deletes and returns the state, ErrNotFound when unknown or already used.
-	ConsumeInstallState(ctx context.Context, stateHash string) (InstallState, error)
 }

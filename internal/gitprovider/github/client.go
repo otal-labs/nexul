@@ -175,8 +175,7 @@ func (c *Client) DeleteWebhook(ctx context.Context, owner, name, hookID string) 
 	return nil
 }
 
-// ListInstallationRepos implements gitprovider.GitProvider: every repository across every App installation the
-// connected user's token grants, fetched a page of installations at a time, a page of repos at a time.
+// ListInstallationRepos lists every repository across every App installation the user's token grants, fetched a page of installations at a time, a page of repos at a time.
 func (c *Client) ListInstallationRepos(ctx context.Context) ([]*gitprovider.Repo, error) {
 	var out []*gitprovider.Repo
 	err := c.eachInstallation(ctx, func(inst *githubapi.Installation) error {
@@ -196,7 +195,7 @@ func (c *Client) ListInstallationRepos(ctx context.Context) ([]*gitprovider.Repo
 	return out, nil
 }
 
-// ListInstallations implements gitprovider.GitProvider; only a "selected" installation costs a second request,
+// ListInstallations lists the App installations the user's token sees; only a "selected" installation costs a second request,
 // a one-item page read for its total_count.
 func (c *Client) ListInstallations(ctx context.Context) ([]*gitprovider.Installation, error) {
 	var out []*gitprovider.Installation
@@ -399,26 +398,4 @@ func mapErr(err error) error {
 		return apperrors.Retryable(err)
 	}
 	return err
-}
-
-// AdministersAccount reports whether the token's user is inst's account, for a user installation, or an active admin
-// of it, for an organisation. GitHub answers the membership read only when the App holds the organisation's Members
-// permission; a refusal reads as not shown to be an admin.
-func (c *Client) AdministersAccount(ctx context.Context, inst *gitprovider.Installation) (bool, error) {
-	if inst.AccountType == "organization" {
-		m, _, err := c.gh.Organizations.GetOrgMembership(ctx, "", inst.AccountLogin)
-		mapped := mapErr(err)
-		if err != nil && (errors.Is(mapped, apperrors.ErrNotFound) || errors.Is(mapped, apperrors.ErrUnauthorized)) {
-			return false, nil
-		}
-		if err != nil {
-			return false, fmt.Errorf("read membership of %s: %w", inst.AccountLogin, mapped)
-		}
-		return m.GetRole() == "admin" && m.GetState() == "active", nil
-	}
-	u, _, err := c.gh.Users.Get(ctx, "")
-	if err != nil {
-		return false, fmt.Errorf("read the installer: %w", mapErr(err))
-	}
-	return u.GetID() != 0 && u.GetID() == inst.AccountID, nil
 }

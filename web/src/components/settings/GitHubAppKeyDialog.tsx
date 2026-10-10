@@ -23,7 +23,7 @@ const KEY_CHECKS: CredentialCheck[] = [
   {
     key: "key",
     label: "GitHub accepts the key as this App",
-    why: "Nexul signs as the App with it to read every account the App is installed on, whoever connected GitHub.",
+    why: "Nexul signs as the App with it to clone, scan and watch the repositories attached to projects; nobody's repository list comes from it.",
   },
 ];
 

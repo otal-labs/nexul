@@ -1,39 +1,38 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GitHubInstallationsSection } from "@/components/settings/GitHubInstallationsSection";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), delete: vi.fn(), confirm: vi.fn() }));
 
-vi.mock("@/api/client", () => ({ api: { get: mocks.get }, errorMessage: vi.fn() }));
+vi.mock("@/api/client", () => ({ api: { get: mocks.get, delete: mocks.delete }, errorMessage: vi.fn() }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/hooks/useConfirmationDialog", () => ({ useConfirmationDialog: () => ({ open: mocks.confirm }) }));
 
-const app = { configured: true, client_id: "Iv1.abc123", base_url: "", app_slug: "nexul-otal" };
+const app = { configured: true, client_id: "Iv1.abc123", base_url: "", app_slug: "nexul-acme" };
 const unregisteredApp = { configured: false };
-
-const githubConnector = (configured: boolean) => [
-  {
-    connector: { id: "github", name: "GitHub", description: "", category: "source", icon: "github" },
-    status: { configured },
-    available: true,
-    app_configured: true,
-  },
-];
 
 const installations = [
   {
     id: 1,
-    account_login: "otal-labs",
+    account_id: 11,
+    account_login: "acme",
     account_type: "organization",
     account_avatar_url: "",
     repository_selection: "all",
-    html_url: "https://github.com/organizations/otal-labs/settings/installations/1",
-    workspaces: [{ id: "ws-1", name: "Acme" }],
+    html_url: "https://github.com/organizations/acme/settings/installations/1",
+    workspaces: [
+      { id: "ws-1", name: "Acme", can_detach: true },
+      { id: "ws-2", name: "Globex", can_detach: false },
+    ],
   },
   {
     id: 2,
-    account_login: "onik",
+    account_id: 12,
+    account_login: "alice",
     account_type: "user",
     account_avatar_url: "",
     repository_selection: "selected",
@@ -43,15 +42,15 @@ const installations = [
   },
 ];
 
-const stubApi = (appConfig: object, connected: boolean, accounts: object[] = installations, permissions: string[] = []) =>
+const stubApi = (appConfig: object, link: object, accounts: object[] = installations) =>
   mocks.get.mockImplementation(async (url: string) => {
     if (url === "/api/connectors/github/app-config") return { data: appConfig };
-    if (url === "/api/auth/me") return { data: { instance_permissions: permissions } };
-    if (url === "/api/workspaces") return { data: [{ id: "ws-1", name: "Acme" }, { id: "ws-2", name: "Globex" }] };
-    if (url === "/api/connectors") return { data: githubConnector(connected) };
+    if (url === "/api/auth/github-link") return { data: link };
     if (url === "/api/repositories/installations") return { data: { installations: accounts } };
     throw new Error(`unexpected GET ${url}`);
   });
+
+const connected = { state: "connected", login: "alice" };
 
 const renderSection = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -71,81 +70,77 @@ const addLink = () => screen.findByRole("link", { name: /add account or organisa
 describe("GitHubInstallationsSection", () => {
   beforeEach(() => {
     mocks.get.mockReset();
+    mocks.delete.mockReset();
+    mocks.confirm.mockReset();
   });
 
-  it("lists each installation with its access and a Manage link when GitHub is connected", async () => {
-    stubApi(app, true);
+  it("lists each installation the viewer's GitHub sees, with its access and a Manage link", async () => {
+    stubApi(app, connected);
     renderSection();
 
-    expect(await screen.findByText("otal-labs")).toBeInTheDocument();
+    expect(await screen.findByText("acme")).toBeInTheDocument();
     expect(screen.getByText("All repositories")).toBeInTheDocument();
     expect(screen.getByText("2 selected repositories")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Manage onik on GitHub" })).toHaveAttribute(
-      "href",
-      "https://github.com/settings/installations/2",
-    );
-    expect(await addLink()).toHaveAttribute("href", "https://github.com/apps/nexul-otal/installations/new");
+    expect(screen.getByRole("link", { name: "Manage alice on GitHub" })).toHaveAttribute("href", "https://github.com/settings/installations/2");
+    expect(await addLink()).toHaveAttribute("href", "https://github.com/apps/nexul-acme/installations/new");
+    expect(screen.getByText(/A workspace uses one once someone who can open one of its repositories attaches it/)).toBeInTheDocument();
   });
 
-  it("shows which workspaces list each installation, and an unassigned one as such", async () => {
-    stubApi(app, true);
+  it("shows the workspaces that use each account and no way to assign one by hand", async () => {
+    stubApi(app, connected);
     renderSection();
 
-    expect(await screen.findByText("Acme")).toBeInTheDocument();
-    expect(screen.getByText("Unassigned")).toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: /assign onik/i })).not.toBeInTheDocument();
+    expect(await screen.findByText("Globex")).toBeInTheDocument();
+    expect(screen.getAllByText("Used by")).toHaveLength(2);
+    expect(screen.getByText("Not used by a workspace yet")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Detach acme from Globex" })).not.toBeInTheDocument();
   });
 
-  it("lets a connector manager assign an installation and take a workspace off it", async () => {
-    stubApi(app, true, installations, ["connectors:write"]);
+  it("detaches an account from a workspace the viewer manages only once they confirm", async () => {
+    stubApi(app, connected);
+    mocks.delete.mockResolvedValue({});
     renderSection();
+    const user = userEvent.setup();
+    const detach = await screen.findByRole("button", { name: "Detach acme from Acme" });
 
-    expect(await screen.findByRole("combobox", { name: "Assign onik to a workspace" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Stop Acme listing otal-labs's repositories" })).toBeInTheDocument();
+    mocks.confirm.mockResolvedValueOnce(false);
+    await user.click(detach);
+    expect(mocks.delete).not.toHaveBeenCalled();
+
+    mocks.confirm.mockResolvedValueOnce(true);
+    await user.click(detach);
+    await vi.waitFor(() => expect(mocks.delete).toHaveBeenCalledWith("/api/repositories/installations/acme/workspaces/ws-1"));
   });
 
-  it("shows a refused installation's problem beside the others, and an uninstalled one only as workspaces to clear", async () => {
+  it("shows a refused installation's problem beside the others", async () => {
     const refused = { ...installations[1], problem: "GitHub refused the App access to it; check the installation on GitHub" };
-    const gone = { id: 0, account_id: 13, account_login: "initech", gone: true, workspaces: [{ id: "ws-2", name: "Globex" }] };
-    stubApi(app, true, [installations[0]!, refused, gone], ["connectors:write"]);
+    stubApi(app, connected, [installations[0]!, refused]);
     renderSection();
 
     expect(await screen.findByText(/GitHub refused the App access to it/)).toBeInTheDocument();
-    expect(screen.getByText("otal-labs")).toBeInTheDocument();
-    expect(screen.getByText("Uninstalled")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Stop Globex listing initech's repositories" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Manage initech on GitHub" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: "Assign initech to a workspace" })).not.toBeInTheDocument();
+    expect(screen.getByText("acme")).toBeInTheDocument();
   });
 
-  it("reads the installations as the App once its private key is set, with GitHub not connected", async () => {
-    stubApi({ ...app, private_key_set: true }, false);
+  it("says so when the App is installed nowhere the viewer's GitHub can open, still offering to add one", async () => {
+    stubApi(app, connected, []);
     renderSection();
 
-    expect(await screen.findByText("otal-labs")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Connectors tab" })).not.toBeInTheDocument();
-  });
-
-  it("says so when the App is installed nowhere the connector can see, still offering to add one", async () => {
-    stubApi(app, true, []);
-    renderSection();
-
-    expect(await screen.findByText(/isn't installed on any account you can see yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/isn't installed on any account your GitHub can open yet/i)).toBeInTheDocument();
     expect(await addLink()).toBeInTheDocument();
   });
 
-  it("points at the Connectors tab and keeps Add, without reading installations, when GitHub is not connected", async () => {
-    stubApi(app, false);
+  it("asks a viewer without a GitHub link to connect it, without reading installations, and keeps Add", async () => {
+    stubApi(app, { state: "none" });
     renderSection();
 
-    expect(await screen.findByRole("link", { name: "Connectors tab" })).toHaveAttribute("href", "/settings/connectors");
-    expect(screen.getByText(/to see where the App is installed/)).toBeInTheDocument();
-    expect(await addLink()).toHaveAttribute("href", "https://github.com/apps/nexul-otal/installations/new");
+    expect(await screen.findByText("Connect GitHub to see your repositories")).toBeInTheDocument();
+    expect(await addLink()).toHaveAttribute("href", "https://github.com/apps/nexul-acme/installations/new");
     expect(mocks.get).not.toHaveBeenCalledWith("/api/repositories/installations");
   });
 
   it("renders nothing until the App is registered", async () => {
-    stubApi(unregisteredApp, true);
+    stubApi(unregisteredApp, connected);
     renderSection();
 
     await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/api/connectors/github/app-config"));

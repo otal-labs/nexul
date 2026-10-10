@@ -72,3 +72,7 @@ reading one takes being its participant alone; it shows in every workspace all i
 Amended 2026-10-10 by ADR 0144: the wizard's repository list takes `projects:write` in the workspace it lists for, and
 lists only the installations assigned to it once Nexul reads GitHub as its App; the installations list takes
 `connectors:read`.
+
+Amended 2026-10-10 by ADR 0147: the wizard's repository list still takes `projects:write`, but lists what the caller's
+own GitHub sign-in can open; the installations list takes no permission and shows the caller's own installations;
+detaching an account from a workspace takes `projects:write` there.

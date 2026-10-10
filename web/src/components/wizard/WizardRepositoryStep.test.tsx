@@ -9,10 +9,22 @@ import { WizardRepositoryStep } from "@/components/wizard/WizardRepositoryStep";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), errorMessage: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
+  put: vi.fn(),
+  errorMessage: vi.fn(),
+  link: { state: "connected" } as { state: string },
+}));
 
+// The person's GitHub link answers on its own, so each test's GET mock stays about repositories.
 vi.mock("@/api/client", () => ({
-  api: { get: mocks.get, post: mocks.post, put: mocks.put },
+  api: {
+    get: (url: string, ...rest: unknown[]) =>
+      url === "/api/auth/github-link" ? Promise.resolve({ data: mocks.link }) : mocks.get(url, ...rest),
+    post: mocks.post,
+    put: mocks.put,
+  },
   errorMessage: mocks.errorMessage,
 }));
 
@@ -27,7 +39,7 @@ const repositoryRequests = () => mocks.get.mock.calls.filter(([url]) => url === 
 
 // Types into the deploy search and waits out its debounce for the results.
 const search = async (user: ReturnType<typeof userEvent.setup>, text = "onik97") => {
-  await user.type(screen.getByLabelText("Search repositories"), text);
+  await user.type(await screen.findByLabelText("Search repositories"), text);
   await screen.findByText("onik97/api");
 };
 
@@ -55,6 +67,7 @@ beforeEach(() => {
   useProjectWizardStore.getState().reset();
   useWorkspaceStore.getState().selectWorkspace("", "");
   mocks.get.mockResolvedValue({ data: { repositories: repos } });
+  mocks.link = { state: "connected" };
 });
 
 describe("WizardRepositoryStep", () => {
@@ -62,7 +75,7 @@ describe("WizardRepositoryStep", () => {
     useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
     renderStep();
     const user = userEvent.setup();
-    const input = screen.getByLabelText("Search repositories");
+    const input = await screen.findByLabelText("Search repositories");
 
     await user.type(input, "on");
     expect(screen.getByText("Type at least 3 letters to search your repositories.")).toBeInTheDocument();
@@ -92,7 +105,7 @@ describe("WizardRepositoryStep", () => {
     renderStep();
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText("Search repositories"), "zzz");
+    await user.type(await screen.findByLabelText("Search repositories"), "zzz");
     expect(await screen.findByText("No repositories match")).toBeInTheDocument();
   });
 
@@ -115,62 +128,53 @@ describe("WizardRepositoryStep", () => {
     expect(useProjectWizardStore.getState().candidate?.name).toBe("api");
   });
 
-  it("points at GitHub's install page for the configured App so repositories from other accounts can appear", async () => {
+  it("says the list is the person's own GitHub view and links the App's install page", async () => {
     mocks.get.mockImplementation(async (url: string) => ({
-      data: url === "/api/connectors/github/app-config" ? { configured: true, app_slug: "nexul-otal" } : { repositories: repos },
+      data: url === "/api/connectors/github/app-config" ? { configured: true, app_slug: "nexul-acme" } : { repositories: repos },
     }));
     renderStep();
 
-    const link = await screen.findByRole("link", { name: "Install it on another account or organisation" });
-    expect(link).toHaveAttribute("href", "https://github.com/apps/nexul-otal/installations/new");
+    const link = await screen.findByRole("link", { name: "Install it on an account or organisation you manage" });
+    expect(link).toHaveAttribute("href", "https://github.com/apps/nexul-acme/installations/new");
     expect(link).toHaveAttribute("target", "_blank");
-    expect(screen.getByText(/installs the App there and gives the connected account access to it/)).toBeInTheDocument();
-    expect(screen.getByText(/Only the connected account's repositories are visible until the App's private key is added/)).toBeInTheDocument();
+    expect(screen.getByText(/lists what your own GitHub account can open/)).toBeInTheDocument();
   });
 
-  it("once Nexul reads GitHub as the App, links an install that lands in this workspace and drops the connected-account signal", async () => {
-    useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
-    const stateURL = "https://github.com/apps/nexul-otal/installations/new?state=install.N0NCE";
-    mocks.get.mockImplementation(async (url: string) => {
-      if (url === "/api/connectors/github/app-config") return { data: { configured: true, app_slug: "nexul-otal", private_key_set: true } };
-      if (url === "/api/repositories/install-url") return { data: { url: stateURL } };
-      return { data: { repositories: repos } };
-    });
-    renderStep();
-
-    expect(await screen.findByText(/lists the repositories of the GitHub accounts assigned to it/)).toBeInTheDocument();
-    await vi.waitFor(() =>
-      expect(screen.getByRole("link", { name: "Install it on another account or organisation" })).toHaveAttribute("href", stateURL),
-    );
-    expect(screen.queryByText(/Only the connected account's repositories are visible/)).not.toBeInTheDocument();
-    expect(screen.getByText(/adds the account to this workspace when the installer owns it/)).toBeInTheDocument();
-  });
-
-  it("as the App but with no install link of this workspace's, says an install from the plain link waits unassigned", async () => {
-    useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
-    mocks.get.mockImplementation(async (url: string) => {
-      if (url === "/api/connectors/github/app-config") return { data: { configured: true, app_slug: "nexul-otal", private_key_set: true } };
-      if (url === "/api/repositories/install-url") throw new Error("forbidden");
-      return { data: { repositories: repos } };
-    });
-    renderStep();
-
-    expect(await screen.findByText(/waits unassigned until someone who manages connectors assigns it/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Install it on another account or organisation" })).toHaveAttribute(
-      "href",
-      "https://github.com/apps/nexul-otal/installations/new",
-    );
-    expect(screen.queryByText(/adds the account to this workspace/)).not.toBeInTheDocument();
-  });
-
-  it("explains where repositories come from without a broken link when no App slug is configured", async () => {
+  it("has no install link when no App slug is configured", async () => {
     mocks.get.mockImplementation(async (url: string) => ({
       data: url === "/api/connectors/github/app-config" ? { configured: false } : { repositories: repos },
     }));
     renderStep();
 
-    expect(await screen.findByText(/Nexul reads GitHub as the account connected in Settings → Connectors/)).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Install it on another account/ })).not.toBeInTheDocument();
+    expect(await screen.findByText(/lists what your own GitHub account can open/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Install it on/ })).not.toBeInTheDocument();
+  });
+
+  it("asks someone without a GitHub link to connect it instead of searching, and lists nothing", async () => {
+    mocks.link = { state: "none" };
+    mocks.post.mockResolvedValue({ data: { url: "https://github.com/login/oauth/authorize?state=link.x" } });
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    renderStep();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText("Connect GitHub to see your repositories")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Search repositories")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Connect GitHub" }));
+    expect(mocks.post).toHaveBeenCalledWith("/api/auth/identities/link", { provider: "github" });
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith("https://github.com/login/oauth/authorize?state=link.x"));
+    expect(repositoryRequests()).toHaveLength(0);
+    vi.unstubAllGlobals();
+  });
+
+  it("asks for a reconnect when GitHub stops refreshing the person's sign-in mid-search", async () => {
+    mocks.get.mockRejectedValue({ response: { status: 403, data: { code: "github_reconnect", message: "reconnect GitHub" } } });
+    renderStep();
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText("Search repositories"), "onik97");
+    expect(await screen.findByText("Reconnect GitHub to see your repositories")).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't load repositories.")).not.toBeInTheDocument();
   });
 
   it("shows an install link when the App isn't installed on the picked repository", async () => {
@@ -247,7 +251,7 @@ describe("WizardRepositoryStep tests question", () => {
     scanFinds();
 
     await user.click(await screen.findByRole("radio", { name: /in a separate repository/i }));
-    await user.type(screen.getByLabelText("Search tests repositories"), "onik97");
+    await user.type(await screen.findByLabelText("Search tests repositories"), "onik97");
     await user.click(await screen.findByRole("button", { name: /onik97\/worker/ }));
     await user.clear(screen.getByLabelText("Search tests repositories"));
 
@@ -294,7 +298,7 @@ describe("WizardRepositoryStep tests question", () => {
     useProjectWizardStore.getState().setAttachStackId("s-1");
     renderStep();
 
-    expect(screen.getByLabelText("Search repositories")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Search repositories")).toBeInTheDocument();
     expect(screen.queryByText("Where do this project's tests live?")).not.toBeInTheDocument();
   });
 });

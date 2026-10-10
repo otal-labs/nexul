@@ -22,8 +22,15 @@ beforeEach(() => {
 // says it needs, and the doors that arrive with a project.
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn() }));
 
+// The person's GitHub link is connected throughout, so each test's GET mock stays about the wizard.
 vi.mock("@/api/client", () => ({
-  api: { get: mocks.get, post: mocks.post, put: mocks.put, patch: mocks.patch },
+  api: {
+    get: (url: string, ...rest: unknown[]) =>
+      url === "/api/auth/github-link" ? Promise.resolve({ data: { state: "connected" } }) : mocks.get(url, ...rest),
+    post: mocks.post,
+    put: mocks.put,
+    patch: mocks.patch,
+  },
   errorMessage: vi.fn(() => ""),
 }));
 
@@ -348,7 +355,7 @@ describe("ProjectWizardPage", () => {
     renderPage("/acme/wizard/project/service?project=p-1");
     await screen.findByText(/api runs on/);
     await user.click(within(rung("Repository")).getByRole("button"));
-    await user.type(screen.getByPlaceholderText("Search repositories…"), "other");
+    await user.type(await screen.findByPlaceholderText("Search repositories…"), "other");
     await user.click(await screen.findByRole("button", { name: /acme.*other/ }));
     await screen.findByRole("heading", { name: "Service" });
     await user.click(screen.getByRole("button", { name: "Continue to Environment" }));

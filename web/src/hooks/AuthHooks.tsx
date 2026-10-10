@@ -23,6 +23,7 @@ import type {
   User,
 } from "@/models/User";
 import { followEach, type LiveFollower } from "@/lib/live";
+import { getGitHubLinkKey } from "@/hooks/GitHubLinkHooks";
 
 export const getMeKey = "getMe";
 const getSettingsKey = "getSettings";
@@ -207,7 +208,9 @@ export const useUnlinkIdentity = () => {
   return useMutation({
     mutationFn: async (provider: Provider) => api.delete(`/api/auth/identities/${provider}`),
     onSuccess: async (_, provider) => {
+      // Unlinking GitHub forgets its token too, so the GitHub row goes stale with the identities.
       await client.invalidateQueries({ queryKey: [getIdentitiesKey] });
+      await client.invalidateQueries({ queryKey: [getGitHubLinkKey] });
       toast.success(`${providerLabel[provider]} unlinked`);
     },
     onError: (error) => toast.error(errorMessage(error)),

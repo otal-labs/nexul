@@ -307,3 +307,40 @@ type Device struct {
 	Label    string
 	IP       string
 }
+
+// GitHubGrant is what GitHub's token endpoint answers: a user token, and its refresh token when the App's tokens expire.
+type GitHubGrant struct {
+	AccessToken      string
+	RefreshToken     string
+	ExpiresIn        time.Duration
+	RefreshExpiresIn time.Duration
+}
+
+// GitHubLink is a person's own GitHub user token (ADR 0147): what lists the repositories they can open where the App
+// is installed. A zero ExpiresAt never expires; NeedsReconnect is a refresh GitHub refused, its tokens already gone.
+type GitHubLink struct {
+	UserID           string
+	AccessToken      string
+	RefreshToken     string
+	ExpiresAt        time.Time
+	RefreshExpiresAt time.Time
+	NeedsReconnect   bool
+	ConnectedAt      time.Time
+}
+
+// GitHubLinkState is how a person's GitHub link stands, what Settings and the project wizard show.
+type GitHubLinkState string
+
+const (
+	GitHubLinkConnected GitHubLinkState = "connected"
+	GitHubLinkReconnect GitHubLinkState = "reconnect"
+	GitHubLinkNone      GitHubLinkState = "none"
+)
+
+// GitHubLinkStatus is a person's GitHub link without its tokens.
+type GitHubLinkStatus struct {
+	State GitHubLinkState `json:"state"`
+	// Login is the GitHub account the link reads as, from the person's GitHub sign-in identity.
+	Login       string     `json:"login,omitempty"`
+	ConnectedAt *time.Time `json:"connected_at,omitempty"`
+}

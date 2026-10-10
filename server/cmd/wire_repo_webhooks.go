@@ -144,7 +144,7 @@ func (p hookedProjects) AddRepo(ctx context.Context, projectID string, r workspa
 		}
 	}
 	if p.scope != nil {
-		if err := p.scope.Require(ctx, projectID, r.Owner, r.Name, r.ConnectorID); err != nil {
+		if err := p.scope.RequireAttach(ctx, projectID, r.Owner, r.Name, r.ConnectorID); err != nil {
 			return err
 		}
 	}

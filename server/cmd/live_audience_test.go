@@ -203,14 +203,14 @@ func TestLiveAudience_InstanceAndDeletedTicketFrames(t *testing.T) {
 	}
 }
 
-// TestLiveAudience_InstallationFramesReachWhoSeesTheWorkspacesInstallations: an assignment change reaches who reads
-// the workspace's installations and who lists its repositories in the wizard, and nobody outside the workspace.
+// TestLiveAudience_InstallationFramesReachWhoSeesTheWorkspacesInstallations: a link or detach reaches who reads the
+// workspace's projects, whose installations card names it, and nobody outside the workspace.
 func TestLiveAudience_InstallationFramesReachWhoSeesTheWorkspacesInstallations(t *testing.T) {
 	f := newPermFixture(t)
 	ctx := t.Context()
 	now := time.Now()
-	const uConnectors, uWizard, uTickets = "u-connectors", "u-wizard", "u-tickets"
-	for user, perm := range map[string]string{uConnectors: "connectors:read", uWizard: "projects:write", uTickets: "tickets:read"} {
+	const uConnectors, uProjects, uTickets = "u-connectors", "u-projects", "u-tickets"
+	for user, perm := range map[string]string{uConnectors: "connectors:read", uProjects: "projects:read", uTickets: "tickets:read"} {
 		_, _, err := f.store.Users.UpsertUser(ctx, &auth.Identity{UserID: user, Provider: auth.ProviderGitHub, ProviderUserID: user, Login: user})
 		require.NoError(t, err)
 		require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-" + user, WorkspaceID: "workspace-default", Name: user, Permissions: grant(perm), CreatedAt: now, UpdatedAt: now}))
@@ -220,7 +220,7 @@ func TestLiveAudience_InstallationFramesReachWhoSeesTheWorkspacesInstallations(t
 	for _, topic := range []string{repository.TopicInstallationAssigned, repository.TopicInstallationUnassigned} {
 		raw, err := json.Marshal(repository.InstallationEvent{AccountID: 11, AccountLogin: "acme", WorkspaceID: "workspace-default"})
 		require.NoError(t, err)
-		for user, want := range map[string]bool{uOwner: true, uConnectors: true, uWizard: true, uTickets: false, uOutsider: false} {
+		for user, want := range map[string]bool{uOwner: true, uProjects: true, uConnectors: false, uTickets: false, uOutsider: false} {
 			assert.Equal(t, want, a.allows(as(user), topic, json.RawMessage(raw)), "%s as %s", topic, user)
 		}
 		raw, err = json.Marshal(repository.InstallationEvent{AccountID: 11, AccountLogin: "acme"})

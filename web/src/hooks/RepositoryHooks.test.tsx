@@ -26,7 +26,7 @@ describe("useSearchRepositories", () => {
 });
 
 describe("repositoryFollower", () => {
-  it("refreshes the installations and only the named workspace's repository lists", async () => {
+  it("refreshes the installations card and leaves the repository lists, which are each person's own GitHub view", async () => {
     const client = seeded([
       [["repository-installations"], []],
       [["repositories", "ws-acme", "api"], []],
@@ -34,7 +34,7 @@ describe("repositoryFollower", () => {
     ]);
     await followFrame(repositoryFollower, "repository.installation.unassigned", { account_id: 11, account_login: "acme", workspace_id: "ws-acme" }, client);
     expect(isStale(client, ["repository-installations"])).toBe(true);
-    expect(isStale(client, ["repositories", "ws-acme", "api"])).toBe(true);
+    expect(isStale(client, ["repositories", "ws-acme", "api"])).toBe(false);
     expect(isStale(client, ["repositories", "ws-globex", "api"])).toBe(false);
   });
 });

@@ -6,6 +6,9 @@ database-backed provider configuration remain unchanged.
 Amended: a user holds one or more sign-in identities instead of being keyed
 by a single provider (the amendment at the end).
 
+Amended by ADR 0147: a GitHub sign-in or link keeps its user token, encrypted,
+to list that person's repositories.
+
 Nexul has no username/password and stores no passwords: a person signs
 in through GitHub, or through the optional Google/Discord providers an owner
 turns on later. Nothing to hash, nothing to reset, no credential store to

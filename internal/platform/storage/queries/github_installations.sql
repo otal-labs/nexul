@@ -5,7 +5,11 @@ JOIN workspaces w ON w.id = a.workspace_id
 ORDER BY a.account_login, w.name, w.id;
 
 -- name: ListGitHubInstallationAssignmentsIn :many
-SELECT a.account_id, a.account_login, a.workspace_id, w.name AS workspace_name, a.gone_at
+SELECT a.account_id, a.account_login, a.workspace_id, w.name AS workspace_name, a.gone_at,
+    EXISTS (
+        SELECT 1 FROM project_repos r JOIN projects p ON p.id = r.project_id
+        WHERE p.workspace_id = a.workspace_id AND r.connector_id = 'github' AND lower(r.owner) = a.account_login
+    ) AS attached
 FROM github_installation_workspaces a
 JOIN workspaces w ON w.id = a.workspace_id
 WHERE a.workspace_id IN (SELECT value FROM json_each(?))
@@ -48,15 +52,6 @@ WHERE gone_at IS NULL AND workspace_id = sqlc.arg(workspace_id)
 
 -- name: DropGoneGitHubInstallation :exec
 DELETE FROM github_installation_workspaces WHERE account_id = ? AND gone_at IS NOT NULL;
-
--- name: DeleteExpiredGitHubInstallStates :exec
-DELETE FROM github_install_states WHERE expires_at <= ?;
-
--- name: SaveGitHubInstallState :exec
-INSERT INTO github_install_states (state_hash, workspace_id, user_id, expires_at) VALUES (?, ?, ?, ?);
-
--- name: ConsumeGitHubInstallState :one
-DELETE FROM github_install_states WHERE state_hash = ? RETURNING workspace_id, user_id, expires_at;
 
 -- name: ListGitHubAssignedAccounts :many
 SELECT DISTINCT account_id FROM github_installation_workspaces

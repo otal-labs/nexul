@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -79,28 +80,46 @@ func NewHTTPGitHubClient(clientID, clientSecret string, hc *http.Client) *HTTPGi
 
 // Exchange trades an authorization code for an access token.
 func (c *HTTPGitHubClient) Exchange(ctx context.Context, code string) (string, error) {
+	grant, err := c.ExchangeGrant(ctx, code)
+	return grant.AccessToken, err
+}
+
+// ExchangeGrant trades an authorization code for the user token and, when the App's tokens expire, its refresh token.
+func (c *HTTPGitHubClient) ExchangeGrant(ctx context.Context, code string) (GitHubGrant, error) {
+	return c.grant(ctx, url.Values{"code": {code}})
+}
+
+// RefreshGrant trades a refresh token for a fresh user token; GitHub answers a spent or revoked one as unauthorized.
+func (c *HTTPGitHubClient) RefreshGrant(ctx context.Context, refreshToken string) (GitHubGrant, error) {
+	return c.grant(ctx, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refreshToken}})
+}
+
+func (c *HTTPGitHubClient) grant(ctx context.Context, form url.Values) (GitHubGrant, error) {
 	if c.clientID == "" || c.clientSecret == "" {
-		return "", oauthNotConfigured("GitHub")
+		return GitHubGrant{}, oauthNotConfigured("GitHub")
 	}
-	form := url.Values{
-		"client_id":     {c.clientID},
-		"client_secret": {c.clientSecret},
-		"code":          {code},
-	}
+	form.Set("client_id", c.clientID)
+	form.Set("client_secret", c.clientSecret)
 	var body struct {
-		AccessToken string `json:"access_token"`
-		Error       string `json:"error"`
+		AccessToken           string `json:"access_token"`
+		RefreshToken          string `json:"refresh_token"`
+		ExpiresIn             int64  `json:"expires_in"`
+		RefreshTokenExpiresIn int64  `json:"refresh_token_expires_in"`
+		Error                 string `json:"error"`
 	}
 	if _, err := oauthx.PostForm(ctx, c.client, c.tokenURL, form, "", "", "application/json", &body); err != nil {
-		return "", fmt.Errorf("exchange code: %w", apperrs.Retryable(err))
+		return GitHubGrant{}, fmt.Errorf("github token: %w", apperrs.Retryable(err))
 	}
 	if body.Error != "" {
-		return "", fmt.Errorf("%w: github: %s", apperrs.ErrUnauthorized, body.Error)
+		return GitHubGrant{}, fmt.Errorf("%w: github: %s", apperrs.ErrUnauthorized, body.Error)
 	}
 	if body.AccessToken == "" {
-		return "", fmt.Errorf("%w: github returned no access token", apperrs.ErrUnauthorized)
+		return GitHubGrant{}, fmt.Errorf("%w: github returned no access token", apperrs.ErrUnauthorized)
 	}
-	return body.AccessToken, nil
+	return GitHubGrant{
+		AccessToken: body.AccessToken, RefreshToken: body.RefreshToken,
+		ExpiresIn: time.Duration(body.ExpiresIn) * time.Second, RefreshExpiresIn: time.Duration(body.RefreshTokenExpiresIn) * time.Second,
+	}, nil
 }
 
 // FetchUser fetches the user's identity; the numeric ID is the stable key, login/name/avatar sync every sign-in.
@@ -178,15 +197,8 @@ type Config struct {
 	PublicAddress PublicAddressLookup
 	// Permissions answers the instance-level checks; nil refuses every one of them.
 	Permissions PermissionGate
-	// Installations claims an App installation returned to the sign-in callback; nil sends it to the connectors page.
-	Installations InstallationClaimer
-}
-
-// InstallationClaimer assigns the installation an install link led to when GitHub returns its installer (ADR 0144).
-type InstallationClaimer interface {
-	ClaimsState(state string) bool
-	// ClaimInstallation returns the app path the browser lands on.
-	ClaimInstallation(ctx context.Context, state, code, installationID string) (string, error)
+	// GitHubLinks keeps each person's GitHub user token (ADR 0147); nil keeps none, so nobody can list repositories.
+	GitHubLinks GitHubLinkStore
 }
 
 // PermissionGate is the access domain's instance-level answer (ADR 0087): what a user holds in any workspace they belong to.
@@ -206,6 +218,9 @@ type Service struct {
 	searchURL string
 	unlocks   *failureLimiter
 	exchanges *failureLimiter
+	// githubRefresh serialises GitHub token refreshes: a refresh token works once, so two at a time would spend it twice.
+	// ponytail: one lock for every person; per-person locks if refreshes ever queue behind each other.
+	githubRefresh sync.Mutex
 }
 
 // NewService wires the auth use-cases.
@@ -290,11 +305,6 @@ func (s *Service) providerSettings(ctx context.Context, provider Provider) (Sett
 // SetDefaultWorkspace wires tenancy's default-workspace binder, since the root builds auth before tenancy.
 func (s *Service) SetDefaultWorkspace(b DefaultWorkspaceBinder) {
 	s.cfg.DefaultWorkspace = b
-}
-
-// SetInstallationClaimer wires the repository domain's claim of an installation an install link led to.
-func (s *Service) SetInstallationClaimer(c InstallationClaimer) {
-	s.cfg.Installations = c
 }
 
 // SetPendingInviteResolver wires tenancy's pending-invite resolver, same reason as SetDefaultWorkspace.
@@ -418,17 +428,23 @@ func (s *Service) LoginWith(ctx context.Context, provider Provider, code string)
 	if err != nil {
 		return "", err
 	}
-	accessToken, err := client.Exchange(ctx, code)
+	grant, err := exchange(ctx, client, code)
 	if err != nil {
 		return "", err
 	}
-	pu, err := client.FetchUser(ctx, accessToken)
+	pu, err := client.FetchUser(ctx, grant.AccessToken)
 	if err != nil {
 		return "", err
 	}
 	user, err := s.findOrCreateLoginUser(ctx, providerIdentity(newUserID(), provider, pu))
 	if err != nil {
 		return "", err
+	}
+	if provider == ProviderGitHub {
+		// A failed save leaves the person signed in and asked to connect GitHub, rather than refusing the sign-in.
+		if err := s.keepGitHubLink(ctx, user.ID, grant); err != nil {
+			logging.FromCtx(ctx).Warn("keep github link", "user_id", user.ID, "error", err)
+		}
 	}
 	return s.CreateSession(ctx, user.ID)
 }

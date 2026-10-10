@@ -6,9 +6,9 @@ import (
 )
 
 const (
-	// TopicInstallationAssigned is published when a workspace starts listing an installation's repositories.
+	// TopicInstallationAssigned is published when attaching a repository links its installation's account to a workspace.
 	TopicInstallationAssigned = "repository.installation.assigned"
-	// TopicInstallationUnassigned is published when a workspace stops listing them, by hand or because it was uninstalled.
+	// TopicInstallationUnassigned is published when the account is detached from it, by hand or because it was uninstalled.
 	TopicInstallationUnassigned = "repository.installation.unassigned"
 )
 
@@ -24,9 +24,9 @@ func Topics() []eventbus.Topic {
 type InstallationEvent struct {
 	AccountID    int64  `json:"account_id" jsonschema:"GitHub's numeric id of the account or organisation the App is installed on; 0 for an assignment made before ids were kept."`
 	AccountLogin string `json:"account_login" jsonschema:"The account's login, lowercase, as GitHub last named it."`
-	WorkspaceID  string `json:"workspace_id" jsonschema:"The workspace whose repository list changed."`
-	ActorID      string `json:"actor_id,omitempty" jsonschema:"The person who assigned or unassigned it, or who made the install link it was claimed through."`
-	Uninstalled  bool   `json:"uninstalled,omitempty" jsonschema:"On repository.installation.unassigned, true when GitHub stopped listing the installation rather than someone unassigning it."`
+	WorkspaceID  string `json:"workspace_id" jsonschema:"The workspace the account was linked to or detached from."`
+	ActorID      string `json:"actor_id,omitempty" jsonschema:"The person who attached a repository from the account, or who detached it; earlier events name who assigned it or made the install link it was claimed through."`
+	Uninstalled  bool   `json:"uninstalled,omitempty" jsonschema:"On repository.installation.unassigned, true when GitHub stopped listing the installation rather than someone detaching it."`
 }
 
 func installationEvent(topic string, a Assignment, actorID string) eventbus.OutboxEvent {

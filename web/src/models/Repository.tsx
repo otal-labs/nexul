@@ -14,11 +14,10 @@ export interface Repo {
 // Fewer characters match too much of an installation; the server refuses a shorter q.
 export const REPOSITORY_SEARCH_MIN_LENGTH = 3;
 
-// One account or organisation the GitHub App is installed on; together they decide which repositories Nexul sees.
+// One account or organisation the GitHub App is installed on that the person's own GitHub account can see.
 export interface Installation {
-  // 0 for an uninstalled account still assigned somewhere (gone).
   id: number;
-  // GitHub's id for the account, which survives a rename; 0 for an assignment made before ids were kept.
+  // GitHub's id for the account, which survives a rename.
   account_id: number;
   account_login: string;
   account_type: "user" | "organization";
@@ -28,17 +27,17 @@ export interface Installation {
   repository_count?: number;
   // The installation's settings page on GitHub, where its repository access is changed.
   html_url: string;
-  // The workspaces that list its repositories; none means it is unassigned.
+  // The person's workspaces that use it: a project there attaches one of its repositories.
   workspaces: InstallationWorkspace[];
   // Why GitHub refused to read it, a suspension for one; the other installations still list.
   problem?: string;
-  // GitHub no longer lists it: the App was uninstalled from the account, and its workspaces wait to be cleared.
-  gone?: boolean;
 }
 
 export interface InstallationWorkspace {
   id: string;
   name: string;
+  // The person holds projects:write there, what detaching the account takes.
+  can_detach: boolean;
 }
 
 export const CandidateKinds = ["compose", "dockerfile"] as const;

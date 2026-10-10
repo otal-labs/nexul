@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
@@ -28,9 +27,9 @@ type AutoPlayLimits interface {
 	SetAutoPlayDailyCap(ctx context.Context, workspaceID string, limit int) (int, error)
 }
 
-// GitHubAccounts is the slice of the repository use-cases that decides which workspaces see an installation (ADR 0144).
+// GitHubAccounts is the slice of the repository use-cases that detaches an installation's account from a workspace;
+// attaching a repository is what links one (ADR 0147).
 type GitHubAccounts interface {
-	AssignInstallation(ctx context.Context, account, workspaceID string) error
 	UnassignInstallation(ctx context.Context, account, workspaceID string) error
 }
 
@@ -61,8 +60,7 @@ type workspaceUpdateIn struct {
 	Name                 *string  `json:"name,omitempty" jsonschema:"The workspace's new display name, for example Norwood Labs. Omit to keep it."`
 	Slug                 *string  `json:"slug,omitempty" jsonschema:"The workspace's new name in web links, for example norwood: lowercase letters and digits joined by single dashes, at most 48 characters, not a reserved path such as settings, and not taken by another workspace. Omit to keep it."`
 	AutoPlayDailyCap     *int     `json:"auto_play_daily_cap,omitempty" jsonschema:"How many automatic runs auto plays may start on one ticket per rolling day, across every auto play, 1 to 50; a ticket past it pauses its auto plays. Omit to keep it."`
-	AddGitHubAccounts    []string `json:"add_github_accounts,omitempty" jsonschema:"GitHub accounts or organisations, by login such as acme, whose GitHub App installation this workspace starts seeing the repositories of. repository_list with installations lists them. Needs connectors:write in this workspace, and also in a workspace already holding the installation when one does."`
-	RemoveGitHubAccounts []string `json:"remove_github_accounts,omitempty" jsonschema:"GitHub accounts or organisations, by login, whose installation's repositories this workspace stops seeing. Needs connectors:write in this workspace."`
+	RemoveGitHubAccounts []string `json:"remove_github_accounts,omitempty" jsonschema:"GitHub accounts or organisations, by login such as acme, to detach from this workspace: background work there stops reading their repositories as the GitHub App until someone attaches one again with project_update. Needs projects:write in this workspace."`
 }
 
 type workspaceUpdateResult struct {
@@ -81,10 +79,10 @@ func WorkspaceTools(w WorkspaceService, r RoleReader, limits AutoPlayLimits, acc
 
 func workspaceUpdateTool(w WorkspaceService, limits AutoPlayLimits, accounts GitHubAccounts) mcptool.Tool {
 	return mcptool.New("workspace_update", "Rename workspace or change its settings",
-		"Changes a workspace's display name, its slug, its daily cap on automatic runs per ticket, which GitHub accounts' repositories it sees, or several; a field you omit keeps its value. "+
+		"Changes a workspace's display name, its slug, its daily cap on automatic runs per ticket, detaches GitHub accounts from it, or several; a field you omit keeps its value. "+
 			"Changing the slug moves every web link into the workspace, so links using the old slug stop working and are not redirected; "+
 			"a rename that keeps the slug leaves every link working. "+
-			"The name and slug need workspaces:write in that workspace and apply first; auto_play_daily_cap needs autoplays:write; the GitHub accounts need connectors:write and apply last. "+
+			"The name and slug need workspaces:write in that workspace and apply first; auto_play_daily_cap needs autoplays:write; remove_github_accounts needs projects:write and applies last. "+
 			"Returns the workspace's id, name, and slug as they now stand, with the cap and the GitHub accounts when they changed; workspace_list finds the id.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in workspaceUpdateIn) (any, error) {
@@ -92,8 +90,8 @@ func workspaceUpdateTool(w WorkspaceService, limits AutoPlayLimits, accounts Git
 			if !ok || a.ID == "" {
 				return nil, fmt.Errorf("%w: changing a workspace needs a signed-in user", apperrs.ErrUnauthorized)
 			}
-			if in.Name == nil && in.Slug == nil && in.AutoPlayDailyCap == nil && len(in.AddGitHubAccounts) == 0 && len(in.RemoveGitHubAccounts) == 0 {
-				return nil, fmt.Errorf("%w: send name, slug, auto_play_daily_cap, add_github_accounts, remove_github_accounts, or several", apperrs.ErrInvalid)
+			if in.Name == nil && in.Slug == nil && in.AutoPlayDailyCap == nil && len(in.RemoveGitHubAccounts) == 0 {
+				return nil, fmt.Errorf("%w: send name, slug, auto_play_daily_cap, remove_github_accounts, or several", apperrs.ErrInvalid)
 			}
 			out, applied, err := updateWorkspace(ctx, w, limits, a.ID, in)
 			if err != nil {
@@ -103,9 +101,9 @@ func workspaceUpdateTool(w WorkspaceService, limits AutoPlayLimits, accounts Git
 		})
 }
 
-// changeGitHubAccounts assigns and unassigns installations last, saying which earlier parts applied when one fails.
+// changeGitHubAccounts detaches accounts last, saying which earlier parts applied when one fails.
 func changeGitHubAccounts(ctx context.Context, w WorkspaceService, accounts GitHubAccounts, userID string, in workspaceUpdateIn, out workspaceUpdateResult, applied []string) (any, error) {
-	if len(in.AddGitHubAccounts) == 0 && len(in.RemoveGitHubAccounts) == 0 {
+	if len(in.RemoveGitHubAccounts) == 0 {
 		return out, nil
 	}
 	fail := func(err error) (any, error) {
@@ -121,19 +119,13 @@ func changeGitHubAccounts(ctx context.Context, w WorkspaceService, accounts GitH
 		}
 		out = workspaceUpdateResult{ID: ws.ID, Name: ws.Name, Slug: ws.Slug}
 	}
-	for _, account := range in.AddGitHubAccounts {
-		if err := accounts.AssignInstallation(ctx, account, in.ID); err != nil {
-			return fail(fmt.Errorf("add_github_accounts %s: %w", account, err))
-		}
-		applied = append(applied, "add "+account)
-	}
 	for _, account := range in.RemoveGitHubAccounts {
 		if err := accounts.UnassignInstallation(ctx, account, in.ID); err != nil {
 			return fail(fmt.Errorf("remove_github_accounts %s: %w", account, err))
 		}
 		applied = append(applied, "remove "+account)
 	}
-	out.GitHubAccountsChanged = slices.Concat(in.AddGitHubAccounts, in.RemoveGitHubAccounts)
+	out.GitHubAccountsChanged = in.RemoveGitHubAccounts
 	return out, nil
 }
 

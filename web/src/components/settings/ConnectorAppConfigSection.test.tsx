@@ -201,25 +201,21 @@ describe("ConnectorAppConfigSection", () => {
       const key = "-----BEGIN RSA PRIVATE KEY-----";
       mocks.post.mockResolvedValue({ data: undefined });
       mocks.put.mockResolvedValue({ data: { ...registered, private_key_set: true } });
-      let asApp = false;
       const installation = (account: string) => ({ id: 1, account_login: account, account_type: "Organization", account_avatar_url: "", repository_selection: "all", html_url: "https://github.example.com/installations/1", workspaces: [] });
       mocks.get.mockImplementation(async (url: string) => {
         if (url === "/api/connectors/github/app-config") return { data: registered };
         if (url === "/api/connectors") return { data: [{ connector: { id: "github" }, status: { configured: true } }] };
         if (url === "/api/auth/me") return { data: { instance_permissions: [] } };
-        if (url === "/api/repositories/installations") return { data: { installations: [installation(asApp ? "globex" : "acme")] } };
+        if (url === "/api/auth/github-link") return { data: { state: "connected" } };
+        if (url === "/api/repositories/installations") return { data: { installations: [installation("acme")] } };
         throw new Error(`unexpected GET ${url}`);
-      });
-      mocks.put.mockImplementation(async () => {
-        asApp = true;
-        return { data: { ...registered, private_key_set: true } };
       });
       const user = userEvent.setup();
       const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
       render(<QueryClientProvider client={client}><MemoryRouter><ConnectorAppConfigSection /><GitHubInstallationsSection /></MemoryRouter></QueryClientProvider>);
       expect(await screen.findByText("acme")).toBeInTheDocument();
 
-      expect(await screen.findByText("only the connected account's repositories are visible", { exact: false })).toBeInTheDocument();
+      expect(await screen.findByText("deploys read attached repositories as the connected account", { exact: false })).toBeInTheDocument();
       await user.click(screen.getByRole("button", { name: "Add private key" }));
       const dialog = await screen.findByRole("dialog");
       await user.type(within(dialog).getByLabelText("Private key"), key);
@@ -229,9 +225,7 @@ describe("ConnectorAppConfigSection", () => {
       expect(mocks.put).not.toHaveBeenCalled();
       await user.click(await within(dialog).findByRole("button", { name: "Save" }));
       expect(mocks.put).toHaveBeenCalledWith("/api/connectors/github/private-key", { private_key: key });
-      expect(await screen.findByText("Nexul reads every installation as the App", { exact: false })).toBeInTheDocument();
-      expect(await screen.findByText("globex")).toBeInTheDocument();
-      expect(screen.queryByText("acme")).not.toBeInTheDocument();
+      expect(await screen.findByText("deploys read attached repositories as the App", { exact: false })).toBeInTheDocument();
     });
   });
 });

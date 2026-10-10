@@ -231,6 +231,8 @@ func (h *Handler) ProtectedRoutes() http.Handler {
 	mux.HandleFunc("GET /api/auth/identities", h.listIdentities)
 	mux.HandleFunc("POST /api/auth/identities/link", h.startIdentityLink)
 	mux.HandleFunc("DELETE /api/auth/identities/{provider}", h.unlinkIdentity)
+	mux.HandleFunc("GET /api/auth/github-link", h.githubLink)
+	mux.HandleFunc("DELETE /api/auth/github-link", h.disconnectGitHub)
 	mux.HandleFunc("GET /api/auth/members", h.listMembers)
 	mux.HandleFunc("GET /api/auth/members/lookup", h.lookupMembers)
 	mux.HandleFunc("POST /api/auth/members", h.addMember)
@@ -378,17 +380,6 @@ func (h *Handler) stateless(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, h.spaOrigin(r)+"/login", http.StatusFound)
 }
 
-// installationCallback claims the installation an install link led to; a failure leaves it unassigned.
-func (h *Handler) installationCallback(w http.ResponseWriter, r *http.Request, claims InstallationClaimer) {
-	q := r.URL.Query()
-	landing, err := claims.ClaimInstallation(r.Context(), q.Get("state"), q.Get("code"), q.Get("installation_id"))
-	if err != nil {
-		logging.FromCtx(r.Context()).Warn("github installation left unassigned", "installation_id", q.Get("installation_id"), "error", err)
-		landing = "/"
-	}
-	http.Redirect(w, r, h.spaOrigin(r)+landing, http.StatusFound)
-}
-
 func (h *Handler) callbackGET(provider Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
@@ -399,8 +390,8 @@ func (h *Handler) callbackGET(provider Provider) http.HandlerFunc {
 			h.stateless(w, r)
 			return
 		}
-		if claims := h.svc.cfg.Installations; claims != nil && r.URL.Query().Get("installation_id") != "" && claims.ClaimsState(state) {
-			h.installationCallback(w, r, claims)
+		if r.URL.Query().Get("installation_id") != "" {
+			h.stateless(w, r)
 			return
 		}
 		if cookie, cookieErr := r.Cookie(invitationStateCookie(hashCredential(state))); cookieErr == nil && cookie.Value == state {
@@ -844,6 +835,28 @@ func (h *Handler) startIdentityLink(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: h.svc.secureCookie(r.Context(), r.TLS != nil),
 	})
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"url": authorizeURL})
+}
+
+func (h *Handler) githubLink(w http.ResponseWriter, r *http.Request) {
+	st, err := h.svc.GitHubLinkStatus(r.Context(), currentUserID(r))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, st)
+}
+
+// disconnectGitHub needs a signed-in device, like unlinking a sign-in: an agent's token never cuts its person off.
+func (h *Handler) disconnectGitHub(w http.ResponseWriter, r *http.Request) {
+	if _, err := requireSession(r); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.DisconnectGitHub(r.Context(), currentUserID(r)); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) unlinkIdentity(w http.ResponseWriter, r *http.Request) {

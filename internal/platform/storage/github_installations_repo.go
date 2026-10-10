@@ -3,23 +3,18 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/repository"
 )
 
-var (
-	_ repository.InstallationStore = (*GitHubInstallationsRepo)(nil)
-	_ repository.InstallStateStore = (*GitHubInstallationsRepo)(nil)
-)
+var _ repository.InstallationStore = (*GitHubInstallationsRepo)(nil)
 
-// GitHubInstallationsRepo stores which workspaces see each GitHub App installation, and the install links' states.
+// GitHubInstallationsRepo stores which workspaces each GitHub App installation is linked to.
 type GitHubInstallationsRepo struct {
 	db *sql.DB
 	w  *Serializer
@@ -53,7 +48,9 @@ func (r *GitHubInstallationsRepo) AssignmentsIn(ctx context.Context, workspaceID
 	}
 	out := make([]repository.Assignment, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, toAssignment(row.AccountID, row.AccountLogin, row.WorkspaceID, row.WorkspaceName, row.GoneAt))
+		a := toAssignment(row.AccountID, row.AccountLogin, row.WorkspaceID, row.WorkspaceName, row.GoneAt)
+		a.Attached = row.Attached
+		out = append(out, a)
 	}
 	return out, nil
 }
@@ -167,38 +164,4 @@ func (r *GitHubInstallationsRepo) SyncAccounts(ctx context.Context, s repository
 		}
 		return enqueueWorkspaceOutbox(ctx, tx, events)
 	})
-}
-
-// SaveInstallState stores an install link's state hash, clearing expired ones.
-func (r *GitHubInstallationsRepo) SaveInstallState(ctx context.Context, stateHash string, st repository.InstallState, now time.Time) error {
-	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		q := r.q.WithTx(tx)
-		if err := q.DeleteExpiredGitHubInstallStates(ctx, now.Unix()); err != nil {
-			return fmt.Errorf("clear expired install states: %w", err)
-		}
-		err := q.SaveGitHubInstallState(ctx, sqlcgen.SaveGitHubInstallStateParams{
-			StateHash: stateHash, WorkspaceID: st.WorkspaceID, UserID: st.UserID, ExpiresAt: st.ExpiresAt.Unix(),
-		})
-		if err != nil {
-			return fmt.Errorf("save install state: %w", classifyWriteErr(err))
-		}
-		return nil
-	})
-}
-
-// ConsumeInstallState deletes the state and returns what it stood for, ErrNotFound when unknown or already used.
-func (r *GitHubInstallationsRepo) ConsumeInstallState(ctx context.Context, stateHash string) (repository.InstallState, error) {
-	var st repository.InstallState
-	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		row, err := r.q.WithTx(tx).ConsumeGitHubInstallState(ctx, stateHash)
-		if errors.Is(err, sql.ErrNoRows) {
-			return apperrs.ErrNotFound
-		}
-		if err != nil {
-			return fmt.Errorf("consume install state: %w", err)
-		}
-		st = repository.InstallState{WorkspaceID: row.WorkspaceID, UserID: row.UserID, ExpiresAt: time.Unix(row.ExpiresAt, 0)}
-		return nil
-	})
-	return st, err
 }

@@ -12,10 +12,6 @@ type GitProvider interface {
 	CreateWebhook(ctx context.Context, owner, name string, cfg WebhookConfig) (string, error)
 	ListWebhooks(ctx context.Context, owner, name string) ([]Webhook, error)
 	DeleteWebhook(ctx context.Context, owner, name, hookID string) error
-	// ListInstallationRepos lists every repository the connected user's App installations grant.
-	ListInstallationRepos(ctx context.Context) ([]*Repo, error)
-	// ListInstallations lists the App installations the connected user can see: which accounts Nexul reads.
-	ListInstallations(ctx context.Context) ([]*Installation, error)
 	// GetTree returns the recursive git tree at ref; an empty ref resolves to the repo's default branch.
 	GetTree(ctx context.Context, owner, name, ref string) ([]TreeEntry, error)
 	// GetFile returns a file's decoded content at ref; an empty ref resolves to the repo's default branch.

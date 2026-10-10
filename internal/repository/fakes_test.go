@@ -2,15 +2,17 @@ package repository
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"slices"
 	"strings"
-	"time"
 
 	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
-// fakeScanner is an in-memory Scanner: tree entries and file contents are set up per test, keyed by path.
+// fakeScanner is an in-memory GitHubView and InstallationLister: tree entries and file contents are set up per test,
+// keyed by path.
 type fakeScanner struct {
 	tree        []TreeEntry
 	files       map[string][]byte
@@ -28,7 +30,7 @@ type fakeScanner struct {
 	fileErr    error
 }
 
-func (f *fakeScanner) ListInstallationRepos(_ context.Context, refresh bool) ([]Repo, error) {
+func (f *fakeScanner) Repos(_ context.Context, refresh bool) ([]Repo, error) {
 	f.listCalls++
 	f.lastRefresh = refresh
 	if f.listErr != nil {
@@ -37,7 +39,7 @@ func (f *fakeScanner) ListInstallationRepos(_ context.Context, refresh bool) ([]
 	return f.repos, nil
 }
 
-func (f *fakeScanner) ListInstallations(context.Context) ([]Installation, error) {
+func (f *fakeScanner) Installations(context.Context) ([]Installation, error) {
 	if f.installErr != nil {
 		return nil, f.installErr
 	}
@@ -73,11 +75,12 @@ func (f *fakeScanner) GetFile(_ context.Context, _, _, _, path string) ([]byte, 
 	return b, nil
 }
 
-// fakeStore is an in-memory InstallationStore and InstallStateStore; events records what each write published.
+// fakeStore is an in-memory InstallationStore; events records what each write published, and attached names the
+// workspaces whose projects attach a repository of each account login.
 type fakeStore struct {
-	rows   []Assignment
-	events []eventbus.OutboxEvent
-	states map[string]InstallState
+	rows     []Assignment
+	events   []eventbus.OutboxEvent
+	attached map[string][]string
 }
 
 func (f *fakeStore) ListAssignments(context.Context) ([]Assignment, error) {
@@ -88,6 +91,7 @@ func (f *fakeStore) AssignmentsIn(_ context.Context, workspaceIDs []string) ([]A
 	var out []Assignment
 	for _, r := range f.rows {
 		if slices.Contains(workspaceIDs, r.WorkspaceID) {
+			r.Attached = slices.Contains(f.attached[r.AccountLogin], r.WorkspaceID)
 			out = append(out, r)
 		}
 	}
@@ -164,23 +168,6 @@ func (f *fakeStore) SyncAccounts(_ context.Context, s AccountSync, events ...eve
 	return nil
 }
 
-func (f *fakeStore) SaveInstallState(_ context.Context, hash string, st InstallState, _ time.Time) error {
-	if f.states == nil {
-		f.states = map[string]InstallState{}
-	}
-	f.states[hash] = st
-	return nil
-}
-
-func (f *fakeStore) ConsumeInstallState(_ context.Context, hash string) (InstallState, error) {
-	st, ok := f.states[hash]
-	if !ok {
-		return InstallState{}, apperrors.ErrNotFound
-	}
-	delete(f.states, hash)
-	return st, nil
-}
-
 // fakeAccounts is the App's installations as AccountResolver: InstallationAccounts lists them, AccountOf finds the
 // one on a repository's owner by login, and lists counts how often GitHub was asked.
 type fakeAccounts struct {
@@ -202,20 +189,28 @@ func (f *fakeAccounts) AccountOf(_ context.Context, owner, _ string) (int64, err
 	return 0, apperrors.ErrNotFound
 }
 
-// fakeInstallers answers for the one code it accepts with its installer.
-type fakeInstallers map[int64]Installer
-
-func (f fakeInstallers) Installer(_ context.Context, code string, id int64) (Installer, error) {
-	inst, ok := f[id]
-	if code != "good-code" || !ok {
-		return Installer{}, apperrors.ErrForbidden
-	}
-	return inst, nil
+// fakePeople opens each person's GitHub view; a person missing from it has not connected GitHub, and asked records
+// whose view was opened.
+type fakePeople struct {
+	views map[string]*fakeScanner
+	asked []string
 }
 
+var errNotConnected = errors.New("not connected")
+
+func (f *fakePeople) GitHubView(_ context.Context, userID string) (GitHubView, error) {
+	f.asked = append(f.asked, userID)
+	v, ok := f.views[userID]
+	if !ok {
+		return nil, fmt.Errorf("%w: %w", apperrors.ErrForbidden, errNotConnected)
+	}
+	return v, nil
+}
+
+// newTestService serves s as the view of every caller, a signed-in one or the server itself.
 func newTestService(s *fakeScanner, store *fakeStore) *Service {
 	if store == nil {
 		store = &fakeStore{}
 	}
-	return NewService(Config{Scanner: s, Installations: s, Accounts: &fakeAccounts{}, Store: store, States: store})
+	return NewService(Config{People: &fakePeople{views: map[string]*fakeScanner{"": s}}, Installations: s, Accounts: &fakeAccounts{}, Store: store})
 }

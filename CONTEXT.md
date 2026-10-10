@@ -594,16 +594,15 @@ _Avoid_: Integration (the other direction), OAuth app, provider
 
 **Installation**:
 One account or organisation Nexul's GitHub App is installed on, granting all
-of its repositories or a selection, and assigned to the workspaces whose
-repository lists show them. Once the App's private key is set, Nexul reads
-every installation as the App and a workspace lists only the installations
-assigned to it, by the account's GitHub id, which survives a rename. An
-installation made from a workspace's install link by the account itself or
-an organisation admin joins that workspace; any other stays unassigned until
-someone holding `connectors:write` assigns it. One the App no longer lists
-is gone: uninstalled, and waiting for its workspaces to be cleared. Without a
-key Nexul reads as the GitHub connector's user, and every workspace lists
-what that user can open.
+of its repositories or a selection. A person sees the installations their own
+GitHub link sees, never anyone else's. Attaching one of its repositories to a
+project links the account to that project's workspace, by the account's
+GitHub id, which survives a rename; that link is what lets background work
+there (clones, webhooks, pull request reads) read the attached repositories as
+the App once its private key is set, and detaching it is the way back. Nobody
+links an installation by hand. One the App no longer lists is gone:
+uninstalled, and its links grant nothing. Without a key, background work on
+attached repositories reads as the GitHub connector's user.
 _Avoid_: Install (that is the `nexul install` command), connection, grant
 
 **Pending version**:
@@ -834,6 +833,16 @@ the one their login, name and picture follow. Linked from Profile while
 signed in, unlinked from there too, never down to none.
 _Avoid_: Account (that is the user), login method, connected account (a
 Connector is the instance's credential, not a person's)
+
+**GitHub link**:
+A person's own GitHub App user token, kept encrypted from their GitHub sign-in
+or from Connect GitHub (which links the GitHub sign-in to their existing
+account), and refreshed as it lapses. Every repository list, search and scan
+reads with it, so it shows exactly what that person can open where the App is
+installed. Without one, or after GitHub refuses a refresh, nothing lists until
+they connect again; Disconnect forgets it.
+_Avoid_: GitHub connector (the instance's credential), personal access token
+(a Nexul token)
 
 **Session**:
 One signed-in device (`ses_`): a browser, the desktop app, or a phone. Stored

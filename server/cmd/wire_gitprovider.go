@@ -75,21 +75,6 @@ func (g gitProviderRouter) githubForRepo(ctx context.Context, owner, name string
 	return app.ForRepo(ctx, owner, name)
 }
 
-// installationReader is what the App and a connector-token client both answer: the installations and their repos.
-type installationReader interface {
-	ListInstallations(ctx context.Context) ([]*gitprovider.Installation, error)
-	ListInstallationRepos(ctx context.Context) ([]*gitprovider.Repo, error)
-}
-
-// installations reads every installation as the App once a key is set, else those the connected account sees.
-func (g gitProviderRouter) installations(ctx context.Context) (installationReader, error) {
-	app, err := g.githubApp(ctx)
-	if err != nil || app != nil {
-		return app, err
-	}
-	return g.resolveConnector(ctx, githubConnectorID)
-}
-
 // RepoToken is the token a runner clones fullName ("owner/name") with: once a key is set, one minted for that
 // repository alone with contents:read, and only while its installation is assigned to the project's workspace.
 func (g gitProviderRouter) RepoToken(ctx context.Context, fullName string) (runner.CloneCredentials, error) {
@@ -162,8 +147,7 @@ func (g gitProviderRouter) resolve(ctx context.Context, owner, name string) (git
 	return p, nil
 }
 
-// resolveConnector builds a fresh GitProvider for connectorID directly, skipping the per-repo workspace lookup;
-// used for installation-wide operations that have no linked repo yet (ListInstallationRepos).
+// resolveConnector builds a fresh GitProvider for connectorID directly, skipping the per-repo workspace lookup.
 func (g gitProviderRouter) resolveConnector(ctx context.Context, connectorID string) (gitprovider.GitProvider, error) {
 	token, err := g.connectors.AccessToken(ctx, connectorID)
 	if err != nil {
@@ -243,22 +227,6 @@ func (g gitProviderRouter) DeleteWebhook(ctx context.Context, owner, name, hookI
 		return err
 	}
 	return p.DeleteWebhook(ctx, owner, name, hookID)
-}
-
-func (g gitProviderRouter) ListInstallationRepos(ctx context.Context) ([]*gitprovider.Repo, error) {
-	p, err := g.installations(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return p.ListInstallationRepos(ctx)
-}
-
-func (g gitProviderRouter) ListInstallations(ctx context.Context) ([]*gitprovider.Installation, error) {
-	p, err := g.installations(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return p.ListInstallations(ctx)
 }
 
 func (g gitProviderRouter) GetTree(ctx context.Context, owner, name, ref string) ([]gitprovider.TreeEntry, error) {

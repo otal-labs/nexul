@@ -9,7 +9,6 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 export const getRepositoriesKey = "repositories";
 export const getInstallationsKey = "repository-installations";
-const getInstallURLKey = "repository-install-url";
 
 const searchDebounceMs = 250;
 
@@ -41,60 +40,29 @@ export const useFetchInstallations = () =>
       (await api.get<{ installations: Installation[] }>("/api/repositories/installations")).data.installations,
   });
 
-// GitHub's install page carrying the workspace, so an installation made from it lists here (signed by the server).
-export const useFetchInstallURL = () => {
-  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  return useQuery({
-    queryKey: [getInstallURLKey, workspaceId],
-    enabled: !!workspaceId,
-    queryFn: async () =>
-      (await api.get<{ url: string }>("/api/repositories/install-url", { params: { workspace_id: workspaceId } })).data.url,
-  });
-};
-
 const installationWorkspacePath = (account: string, workspaceId: string) =>
   `/api/repositories/installations/${encodeURIComponent(account)}/workspaces/${encodeURIComponent(workspaceId)}`;
 
-export const useAssignInstallation = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ account, workspaceId }: { account: string; workspaceId: string }) => {
-      await api.put(installationWorkspacePath(account, workspaceId));
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [getInstallationsKey] });
-      void queryClient.invalidateQueries({ queryKey: [getRepositoriesKey] });
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
-export const useUnassignInstallation = () => {
+// Detaching stops background work in that workspace reading the account's repositories as the App.
+export const useDetachInstallation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ account, workspaceId }: { account: string; workspaceId: string }) => {
       await api.delete(installationWorkspacePath(account, workspaceId));
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [getInstallationsKey] });
-      void queryClient.invalidateQueries({ queryKey: [getRepositoriesKey] });
+    onSuccess: async (_, { account }) => {
+      await queryClient.invalidateQueries({ queryKey: [getInstallationsKey] });
+      toast.success(`${account} detached`);
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
 };
 
-interface InstallationPayload {
-  workspace_id: string;
-}
-
-// An assignment changes the installations list and the one workspace's repository lists; nothing else refetches.
+// Attaching or detaching an account changes which workspaces the installations card says use it; the repository
+// lists are each person's own GitHub view, which no link changes.
 export const repositoryFollower: LiveFollower = followEach(
   ["repository.installation.assigned", "repository.installation.unassigned"],
-  ({ workspace_id }: InstallationPayload, { client }) =>
-    Promise.all([
-      client.invalidateQueries({ queryKey: [getInstallationsKey] }),
-      client.invalidateQueries({ queryKey: [getRepositoriesKey, workspace_id] }),
-    ]),
+  (_payload: unknown, { client }) => client.invalidateQueries({ queryKey: [getInstallationsKey] }),
 );
 
 // No onSuccess/onError toasting: the repository step renders the scan's loading/error/empty states inline

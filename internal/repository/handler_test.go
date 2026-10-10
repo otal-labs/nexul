@@ -111,6 +111,14 @@ func TestHandler_Installations(t *testing.T) {
 	})
 }
 
+func TestHandler_AssigningByHandIsRefused(t *testing.T) {
+	store := &fakeStore{}
+	rec := httptest.NewRecorder()
+	NewHandler(newTestService(&fakeScanner{}, store)).Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/api/repositories/installations/bob/workspaces/ws-a", nil))
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Empty(t, store.rows)
+}
+
 type assertError struct{}
 
 func (assertError) Error() string { return "boom" }

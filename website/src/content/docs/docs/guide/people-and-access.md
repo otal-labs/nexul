@@ -70,6 +70,12 @@ A project's **Settings → General** lists, under **People with access**, everyo
 
 Every member of a workspace sees its people's login, display name, and picture, and nothing about their roles. Set your own name and picture in **Settings → Profile**; a change reaches everyone's open screens without a refresh.
 
+## Sign-in accounts and GitHub
+
+**Settings → Profile** lists the accounts you sign in with under **Sign-in accounts**. **Link** adds another provider to the same profile, and **Unlink** removes one, never your last.
+
+Under **GitHub**, the same page shows whether your own GitHub account lists your repositories: **Connected** with your GitHub login, **Reconnect needed** after GitHub refused to refresh it, or **Not connected**. Signing in with GitHub connects it. If you sign in with Google or Discord, **Connect GitHub** runs GitHub's sign-in and links it to this profile; a GitHub account already linked to someone else is refused. **Disconnect** forgets the token, and unlinking your GitHub sign-in does too. Nexul lists repositories only with your own GitHub, never with someone else's or the instance's; see [GitHub App](/docs/guide/github-app/).
+
 ## Over MCP
 
 Agents manage people with `account_list`, `account_update`, `invitation_create`, `invitation_list`, `invitation_delete`, `role_update`, `role_delete`, and the `permission_overwrite_*` tools. `account_update` and `invitation_create` take `every_project` (`role` or `none`) and `project_access` per workspace. See [MCP server](/docs/guide/mcp-server/).

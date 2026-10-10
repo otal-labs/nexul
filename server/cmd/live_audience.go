@@ -259,7 +259,8 @@ func topologyCanvasFrame(ctx context.Context, a liveAudience, raw json.RawMessag
 	return decode(raw, &p) && p.WorkspaceID != "" && a.access.Require(ctx, p.WorkspaceID, permissions.TopologyRead) == nil
 }
 
-// installationFrame reaches who reads the workspace's installations or lists its repositories in the project wizard.
+// installationFrame reaches who reads projects in the workspace: the installations card names the workspaces they read
+// as using an account.
 func installationFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	var p struct {
 		WorkspaceID string `json:"workspace_id"`
@@ -267,8 +268,7 @@ func installationFrame(ctx context.Context, a liveAudience, raw json.RawMessage)
 	if !decode(raw, &p) || p.WorkspaceID == "" {
 		return false
 	}
-	return a.access.Require(ctx, p.WorkspaceID, permissions.ConnectorsRead) == nil ||
-		a.access.Require(ctx, p.WorkspaceID, permissions.ProjectsWrite) == nil
+	return a.access.Require(ctx, p.WorkspaceID, permissions.ProjectsRead) == nil
 }
 
 func anywhere(action permissions.Action) liveRule {
