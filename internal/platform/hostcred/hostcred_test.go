@@ -78,8 +78,13 @@ func TestToken_OnlyItsOwnKeyAndAnUntouchedPayloadPass(t *testing.T) {
 	assert.ErrorIs(t, ParseToken(token, []byte("another instance's key"), &got), ErrBadToken)
 }
 
-func TestComputerCommand_CarriesAnotherSiteAndReleaseOnlyWhenSet(t *testing.T) {
-	assert.Equal(t, "curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- eyJ.x.y", ComputerCommand(DefaultSite, "", "eyJ.x.y"))
-	assert.Equal(t, "curl -fsSL http://10.0.0.5:8000/computer.sh | sudo NEXUL_INSTALL_URL=http://10.0.0.5:8000/install.sh NEXUL_RELEASE_URL=http://10.0.0.5:8000 sh -s -- eyJ.x.y",
-		ComputerCommand("http://10.0.0.5:8000", "http://10.0.0.5:8000", "eyJ.x.y"))
+func TestComputerCommands_CarryAnotherSiteAndReleaseOnlyWhenSet(t *testing.T) {
+	unix, windows := ComputerCommands(DefaultSite, "", "eyJ.x.y")
+	assert.Equal(t, "curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- eyJ.x.y", unix)
+	assert.Equal(t, "& ([scriptblock]::Create((irm https://nexul.io/computer.ps1))) eyJ.x.y", windows)
+
+	unix, windows = ComputerCommands("http://10.0.0.5:8000", "http://10.0.0.5:8000", "eyJ.x.y")
+	assert.Equal(t, "curl -fsSL http://10.0.0.5:8000/computer.sh | sudo NEXUL_INSTALL_URL=http://10.0.0.5:8000/install.sh NEXUL_RELEASE_URL=http://10.0.0.5:8000 sh -s -- eyJ.x.y", unix)
+	assert.Equal(t, "$env:NEXUL_INSTALL_URL='http://10.0.0.5:8000/install.ps1'; $env:NEXUL_RELEASE_URL='http://10.0.0.5:8000'; "+
+		"& ([scriptblock]::Create((irm http://10.0.0.5:8000/computer.ps1))) eyJ.x.y", windows)
 }

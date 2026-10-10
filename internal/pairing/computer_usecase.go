@@ -48,7 +48,7 @@ type Enrollment struct {
 	Commands  InstallCommands `json:"commands"`
 }
 
-// InstallCommands are the installer one-liners per shell; Windows stays empty until computers install there.
+// InstallCommands are the installer one-liners per shell.
 type InstallCommands struct {
 	Unix    string `json:"unix"`
 	Windows string `json:"windows"`

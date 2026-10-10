@@ -17,8 +17,10 @@ Decision: a person adds a computer by installing a **personal runner** on it wit
 mode: enrolled with a one-time code bound to that person and that computer, with no Docker. The script installs for
 `$SUDO_USER`, the person who typed `sudo`, never for root, and refuses a root login with no `SUDO_USER`. Because
 sudo is always there, the runner is a system service whose user is that person (a systemd system unit with
-`User=`, a LaunchDaemon with `UserName`, on Windows a service under their account or the closest equivalent), so
-it starts at boot and survives logout with no lingering, and the process itself never runs as root. It holds the
+`User=`, a LaunchDaemon with `UserName`), so it starts at boot and survives logout with no lingering, and the
+process itself never runs as root. On Windows the line is `computer.ps1`, run in the person's own PowerShell with no
+administrator, and the runner is a Task Scheduler task of the person's own, started at their log on, so it runs from
+log on to log off (why a task, below). It holds the
 runner's usual outbound WebSocket, and the server reaches T3 Code through it:
 
 - **Each relayed connection is its own WebSocket, opened by the runner.** The server asks over the control
@@ -58,6 +60,15 @@ runner's usual outbound WebSocket, and the server reaches T3 Code through it:
   grants no use. Each computer's page tells its owner so. The command line, who ran it, when and the exit code
   are kept forever; command output is deleted after 30 days.
 
+Why a logon task on Windows, not a service: a Windows service under a named account needs that person's password,
+or the log-on-as-service right granted to them, and the install never asks for either; a service as SYSTEM would run
+the runner as nobody's account. T3 Code on Windows is the desktop app, which runs only while its person is logged on,
+so a runner that outlived the log on would reach nothing. The task (`InteractiveToken`, `LeastPrivilege`, no time
+limit) runs `nexul service-host nexul-computer`, which keeps the runner in a job that closes with it, starts it
+again 5 s after a failure, since Task Scheduler's own restart covers only a failed start, and ends with the runner's
+clean exit. The person owns the task, so a revoked runner removes it with no root cleanup: it starts
+`nexul uninstall computer` outside the task, which ends and deletes the task and then deletes `%LOCALAPPDATA%\Nexul`.
+
 Why one WebSocket per relayed connection: each relayed connection keeps TCP's own flow control end to end, a
 large transcript never delays another stream or the control connection's heartbeats, and a control reconnect
 does not cut running turns. Multiplexing streams over the control socket would need a new dependency or
@@ -79,6 +90,8 @@ enrolled connection; the pasted command only installs.
   pairing path; automatic re-pairing already makes the 30 days invisible.
 - **A second binary for computers.** Rejected: enrollment, credentials, self-update and self-removal are the
   runner's already.
+- **A Windows service under the person's account, or as SYSTEM.** Rejected: the first needs their password or the
+  log-on-as-service right, which a piped install never asks for, and the second runs the runner as nobody's account.
 - **A systemd user unit with lingering, installed without sudo.** Rejected: lingering needs root on some
   distributions, so the runner would stop at logout on exactly those. With sudo always present, a system service
   that runs as the person starts at boot with nothing to configure.
@@ -89,10 +102,11 @@ enrolled connection; the pasted command only installs.
   aimed at an offline computer fails saying so rather than moving to another of the person's computers.
 - T3 Code's macOS service is a LaunchAgent, which launchd runs only while its person is logged in at the screen. A
   Mac's runner is connected from boot, but its T3 Code, and so its runs, wait for that login.
-- `internal/install` gains an install on three OSes that puts a system service under the person's own user: a
-  systemd unit, a LaunchDaemon, and on Windows a service or, if a service under a named account is not workable,
-  a per-user logon task. A revoked runner removes itself through a small root-owned helper that only undoes the
-  install, because a process running as the person cannot delete a root-owned unit.
+- `internal/install` gains an install on three OSes that runs the runner as the person: a systemd unit, a
+  LaunchDaemon, and on Windows a per-user logon task. A revoked runner on Linux or macOS removes itself through a
+  small root-owned helper that only undoes the install, because a process running as the person cannot delete a
+  root-owned unit; on Windows everything is the person's, and the runner removes it itself.
+- A Windows computer is offline while its person is logged off, where Linux and macOS keep it connected from boot.
 - The retired tunnel routes stay mounted and answer 410, because ADR 0082 never removes a route.
 - ADR 0074's enrollment codes gain a personal kind that any signed-in person may mint for their own computer,
   with no `runners:write`. ADR 0073's "runners run as root" holds for deploy runners only. ADR 0031's connection

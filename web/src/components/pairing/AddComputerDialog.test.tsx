@@ -32,8 +32,9 @@ const waiting: Computer = {
 };
 
 const command = "curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- eyJ.token.sig";
+const windowsCommand = "& ([scriptblock]::Create((irm https://nexul.io/computer.ps1))) eyJ.token.sig";
 
-const enrollment = { computer: waiting, token: "eyJ.token.sig", expires_at: "2026-10-10T13:00:00Z", commands: { unix: command, windows: "" } };
+const enrollment = { computer: waiting, token: "eyJ.token.sig", expires_at: "2026-10-10T13:00:00Z", commands: { unix: command, windows: windowsCommand } };
 
 const connected = { connected: true, last_seen: "2026-10-10T12:00:00Z" };
 
@@ -83,7 +84,7 @@ describe("AddComputerDialog", () => {
     });
   });
 
-  it("makes a one-time command on open, says it needs sudo and who it installs for, and keeps Windows for later", async () => {
+  it("makes a one-time command on open, says it needs sudo and who it installs for, and gives Windows its PowerShell command", async () => {
     const user = userEvent.setup();
     renderDialog();
 
@@ -96,8 +97,9 @@ describe("AddComputerDialog", () => {
     expect(screen.getByRole("button", { name: "Set up" })).toBeDisabled();
 
     await user.click(screen.getByRole("radio", { name: "Windows" }));
-    expect(screen.getByText("Coming soon")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /copy install command/i })).not.toBeInTheDocument();
+    expect(screen.getByText(windowsCommand)).toBeInTheDocument();
+    expect(screen.getByText(/no admin; runs while you're logged on/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /copy install command/i })).toBeInTheDocument();
   });
 
   it("turns each check green as the computer's frames arrive, then opens Set up once paired", async () => {

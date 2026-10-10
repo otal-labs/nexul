@@ -13,7 +13,8 @@ import (
 )
 
 // startDetached starts name outside this console, process group and job, so stopping the service that asked for
-// it does not stop it too.
+// it does not stop it too. It gets a console of its own with no window, which the commands it runs share, and starts in
+// the log's folder rather than one it may delete.
 func startDetached(name string, args []string, logPath string) error {
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
 		return fmt.Errorf("create %s: %w", filepath.Dir(logPath), err)
@@ -23,7 +24,7 @@ func startDetached(name string, args []string, logPath string) error {
 		return fmt.Errorf("open %s: %w", logPath, err)
 	}
 	defer func() { _ = log.Close() }() // the child holds its own handle
-	flags := uint32(windows.DETACHED_PROCESS | windows.CREATE_NEW_PROCESS_GROUP)
+	flags := uint32(windows.CREATE_NO_WINDOW | windows.CREATE_NEW_PROCESS_GROUP)
 	err = start(name, args, log, flags|windows.CREATE_BREAKAWAY_FROM_JOB)
 	if err == nil {
 		return nil
@@ -34,6 +35,7 @@ func startDetached(name string, args []string, logPath string) error {
 
 func start(name string, args []string, log *os.File, flags uint32) error {
 	cmd := exec.Command(name, args...)
+	cmd.Dir = filepath.Dir(log.Name())
 	cmd.Stdout, cmd.Stderr = log, log
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: flags}
 	if err := cmd.Start(); err != nil {

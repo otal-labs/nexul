@@ -93,6 +93,8 @@ type Host struct {
 	// LookupUser and Chown let a computer's install, run as root under sudo, hand its files to the person.
 	LookupUser func(name string) (*user.User, error)
 	Chown      func(path string, uid, gid int) error
+	// CurrentUser is who runs a Windows computer install, which needs no administrator and installs for that person.
+	CurrentUser func() (*user.User, error)
 	// LocalPort returns a port free on localhost, for OpenObserve's listeners.
 	LocalPort func() (int, error)
 	// StartDetached starts a process that outlives this one and the service that started it (macOS, Windows).
@@ -142,6 +144,7 @@ func NewHost() *Host {
 		GOARCH:        runtime.GOARCH,
 		Getuid:        os.Getuid,
 		LookupUser:    user.Lookup,
+		CurrentUser:   user.Current,
 		Chown:         os.Lchown,
 		Hostname:      os.Hostname,
 		PortFree:      portFree,

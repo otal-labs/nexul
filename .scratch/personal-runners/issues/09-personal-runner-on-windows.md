@@ -1,6 +1,6 @@
 # 09 — Personal runner on Windows
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 03, 07, 08
 
@@ -22,7 +22,28 @@ in the PR; the spec's Windows row follows it.
 
 ## Acceptance criteria
 
-- [ ] Unit tests for the service or task definition and paths.
-- [ ] A run on a GitHub Windows runner: install, connect, relay a descriptor request, uninstall; reported in
+- [x] Unit tests for the service or task definition and paths.
+- [x] A run on a GitHub Windows runner: install, connect, relay a descriptor request, uninstall; reported in
       the PR.
-- [ ] The dialog's Windows tab is live.
+- [x] The dialog's Windows tab is live.
+
+## Comments
+
+Built as a per-user Task Scheduler task at log on (`InteractiveToken`, `LeastPrivilege`, no administrator), not a
+service: a service under the person's account needs their password, which the install never asks for, and T3 Code's
+desktop app only runs while they are logged on anyway (ADR 0146; ADR 0052 for the update path).
+
+- The task runs `nexul service-host nexul-computer`, which keeps the runner in a kill-on-close job, starts it again
+  5 s after a failure, ends with its clean exit, and sets `NEXUL_SUPERVISED` so a self-update exits for the host to
+  start the new binary.
+- Everything lives in `%LOCALAPPDATA%\Nexul` and is the person's, so removal needs no root cleanup: a removed runner
+  starts `nexul uninstall computer --yes` outside its task, which ends and deletes the task and deletes the folder and
+  its user Path entry once it exits.
+- `computer.ps1` hands over to `install.ps1`, which never elevates for a computer. `hostcred.ComputerCommands` renders
+  `commands.windows`; the Add a computer dialog shows it under Windows.
+- `.github/workflows/computer-windows-smoke.yml` (start by hand) installs on `windows-latest` through `computer.ps1`,
+  checks the task and the runner's account, kills the runner and sees the host start it again, waits for connected
+  and paired, relays a providers request to T3 Code, then removes the computer and checks the task, the folder, its
+  Path entry and the runner process are gone; it passed on `windows-latest`. T3 Code there is its command line, since a
+  runner without a screen cannot open the desktop app, so the install and the runner also find the command line's
+  `~\.local\bin\t3.cmd` on Windows.

@@ -299,11 +299,11 @@ test('computer.sh on a Mac installs the darwin build into the home Directory Ser
   expect(await exists(directory, 'sudo')).toBe(false);
 });
 
-test('computer.sh on neither Linux nor a Mac says it is coming soon and downloads nothing', async () => {
-  const { directory, env } = setup({ os: 'FreeBSD', uid: 0 });
+test('computer.sh on neither Linux nor a Mac points Windows at its own command and downloads nothing', async () => {
+  const { directory, env } = setup({ os: 'MINGW64_NT-10.0', uid: 0 });
   const result = spawnSync('/bin/sh', [computerScript, token], { env: asAlice(env), input: '', encoding: 'utf8' });
   expect(result.status).not.toBe(0);
-  expect(result.stderr).toContain('coming soon');
+  expect(result.stderr).toContain("on Windows, run Add a computer's Windows command in PowerShell");
   expect(await exists(directory, 'urls')).toBe(false);
 });
 

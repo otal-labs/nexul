@@ -3,7 +3,9 @@
 #   & ([scriptblock]::Create((irm https://nexul.io/install.ps1))) runner --server <url> --name <name> --code <code>
 # Set $env:NEXUL_VERSION = "v0.2.1" first to pin a release; unset, it takes the newest stable release, or the
 # newest beta before one exists. Without administrator rights it re-runs itself elevated, carrying the NEXUL_*
-# variables and the arguments. Everything runs in a script block so nothing leaks into the calling session.
+# variables and the arguments. A computer (`computer --token <token>`) is the one exception: it installs for whoever
+# runs it, into their own %LOCALAPPDATA%\Nexul, and never elevates, since elevating may switch to another account.
+# Everything runs in a script block so nothing leaks into the calling session.
 & {
   $install = {
     $ErrorActionPreference = 'Stop'
@@ -14,7 +16,9 @@
     $repo = 'otal-labs/nexul'
     $releases = if ($env:NEXUL_RELEASE_URL) { $env:NEXUL_RELEASE_URL } else { "https://github.com/$repo/releases/download" }
     $api = if ($env:NEXUL_API_URL) { $env:NEXUL_API_URL } else { 'https://api.github.com' }
-    $binDir = if ($env:NEXUL_BIN_DIR) { $env:NEXUL_BIN_DIR } else { Join-Path $env:ProgramFiles 'Nexul' }
+    $personal = $args[0] -eq 'computer'
+    $binDir = if ($env:NEXUL_BIN_DIR) { $env:NEXUL_BIN_DIR } elseif ($personal) { Join-Path $env:LOCALAPPDATA 'Nexul' } else { Join-Path $env:ProgramFiles 'Nexul' }
+    $pathScope = if ($personal) { 'User' } else { 'Machine' }
 
     $tag = $env:NEXUL_VERSION
     if (-not $tag) {
@@ -52,11 +56,12 @@
       Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
     }
 
-    # Put nexul on the machine PATH for new terminals, and on this session's for the install below.
-    $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
-    if (-not (($machinePath -split ';') -contains $binDir)) {
-      $newPath = if ($machinePath) { "$machinePath;$binDir" } else { $binDir }
-      [Environment]::SetEnvironmentVariable('Path', $newPath, 'Machine')
+    # Put nexul on the machine PATH (a computer's: the person's own) for new terminals, and on this session's for the
+    # install below.
+    $scopePath = [Environment]::GetEnvironmentVariable('Path', $pathScope)
+    if (-not (($scopePath -split ';') -contains $binDir)) {
+      $newPath = if ($scopePath) { "$scopePath;$binDir" } else { $binDir }
+      [Environment]::SetEnvironmentVariable('Path', $newPath, $pathScope)
     }
     if (-not (($env:Path -split [IO.Path]::PathSeparator) -contains $binDir)) {
       $env:Path = "$env:Path$([IO.Path]::PathSeparator)$binDir"
@@ -68,7 +73,7 @@
 
   $ErrorActionPreference = 'Stop'
   $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
-  if ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+  if ($args[0] -eq 'computer' -or $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     & $install @args
     return
   }

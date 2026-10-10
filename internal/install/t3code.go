@@ -75,19 +75,20 @@ func (h *Host) findT3(ctx context.Context, p person, port int) t3Found {
 	if h.GOOS == "windows" {
 		launcher = "t3.cmd"
 	}
-	found.desktop = isExecutable(filepath.Join(t3Home, "bin", launcher))
+	found.desktop = h.isExecutable(filepath.Join(t3Home, "bin", launcher))
 	if path, err := h.LookPath("t3"); err == nil {
 		found.command = path
 	}
-	if cli := filepath.Join(p.home, ".local", "bin", "t3"); found.command == "" && isExecutable(cli) {
+	if cli := filepath.Join(p.home, ".local", "bin", launcher); found.command == "" && h.isExecutable(cli) {
 		found.command = cli
 	}
 	return found
 }
 
-func isExecutable(path string) bool {
+// isExecutable reports a program file; Windows has no execute bit, so there any file is one.
+func (h *Host) isExecutable(path string) bool {
 	info, err := os.Stat(path)
-	return err == nil && !info.IsDir() && info.Mode()&0o111 != 0
+	return err == nil && !info.IsDir() && (h.GOOS == "windows" || info.Mode()&0o111 != 0)
 }
 
 // keepT3 reuses a T3 Code that answers; T3 Code's Linux service is a user service, which needs lingering past logout.

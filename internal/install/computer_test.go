@@ -1,14 +1,17 @@
 package install
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf16"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -192,7 +195,7 @@ func TestInstallComputer_Failures(t *testing.T) {
 		args    []string
 		wantErr string
 	}{
-		{"neither Linux nor macOS", func(th *testHost) { th.GOOS = "windows" }, nil, "runs on Linux and macOS for now"},
+		{"neither Linux, macOS nor Windows", func(th *testHost) { th.GOOS = "freebsd" }, nil, "runs on Linux, macOS and Windows, not freebsd"},
 		{"no token", func(*testHost) {}, []string{"computer"}, "not a computer token"},
 		{"a token that is no JWT", func(*testHost) {}, []string{"computer", "--token", "nxe_code"}, "not a computer token"},
 		{"a token naming no address", func(*testHost) {}, []string{"computer", "--token", computerToken(t, "nexul.example.com")}, "names no instance address"},
@@ -544,4 +547,140 @@ func TestUninstallComputer_OnAMac_TheCleanupRemovesEverythingOnlyOnceAsked(t *te
 	assert.Equal(t, []string{"launchctl bootout system/io.nexul.nexul-computer", "launchctl bootout system/io.nexul.nexul-computer-cleanup"}, launchctl,
 		"the cleanup unloads itself last, since that ends its own process")
 	assert.Empty(t, th.instance.calls("/api/runners/self/remove"))
+}
+
+// onWindows makes the test host a Windows PC where alice runs the install in her own PowerShell, with no administrator.
+func (th *testHost) onWindows(t *testing.T) {
+	t.Helper()
+	th.sudoFromAlice(t)
+	th.exec.onRun = nil
+	th.GOOS = "windows"
+	th.Getuid = func() int { return -1 }
+	t.Setenv("SUDO_USER", "")
+	t.Setenv("LOCALAPPDATA", filepath.Join(th.Home, "AppData", "Local"))
+	th.CurrentUser = func() (*user.User, error) {
+		return &user.User{Username: `PC\alice`, Uid: "S-1-5-21-1-2-3-1001", HomeDir: th.Home}, nil
+	}
+}
+
+// readUTF16 reads a file written as Task Scheduler reads one: UTF-16LE behind a byte order mark.
+func readUTF16(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, []byte{0xff, 0xfe}, data[:2], "a byte order mark")
+	units := make([]uint16, 0, len(data)/2-1)
+	for i := 2; i+1 < len(data); i += 2 {
+		units = append(units, binary.LittleEndian.Uint16(data[i:]))
+	}
+	return string(utf16.Decode(units))
+}
+
+func TestInstallComputer_OnWindows_RunsTheRunnerAsThePersonsOwnLogonTask(t *testing.T) {
+	th := newTestHost(t)
+	th.onWindows(t)
+
+	require.NoError(t, th.installComputer(t))
+
+	root := filepath.Join(th.Home, "AppData", "Local", "Nexul")
+	dir := filepath.Join(root, "computer")
+	ctl := filepath.Join(root, "nexul.exe")
+	assert.Equal(t, "this-binary", readFile(t, ctl), "the nexul command lands in alice's %LOCALAPPDATA%\\Nexul")
+	assert.Equal(t, "nexul-runner-binary", readFile(t, filepath.Join(dir, "nexul-runner.exe")))
+	assert.Equal(t, "cred-laptop\n", readFile(t, filepath.Join(dir, "credential")))
+	assert.Equal(t, "windows", th.instance.calls("/api/runners/enroll")[0].body["os"])
+	task := filepath.Join(dir, "task.xml")
+	assert.Equal(t, `<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>Nexul computer runner</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <LogonTrigger>
+      <UserId>PC\alice</UserId>
+    </LogonTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <UserId>PC\alice</UserId>
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <RestartOnFailure>
+      <Interval>PT1M</Interval>
+      <Count>3</Count>
+    </RestartOnFailure>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>&#34;`+ctl+`&#34;</Command>
+      <Arguments>service-host nexul-computer</Arguments>
+      <WorkingDirectory>`+dir+`</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>
+`, readUTF16(t, task), "alice's own task, started at her log on in her session without elevation, never stopped for time or battery")
+	assert.Equal(t, []string{"schtasks.exe /create /tn nexul-computer /xml " + task + " /f", "schtasks.exe /run /tn nexul-computer"}, th.exec.calls,
+		"no service, no cleanup, nothing run as anyone else")
+	for path := range th.chowned {
+		assert.NotContains(t, path, root, "what alice's own install makes is hers already")
+	}
+	assert.NoDirExists(t, filepath.Join(th.root, "var-lib-nexul-computer"))
+	assert.Contains(t, th.out.String(), `runs as PC\alice under the nexul-computer task, from when you log on until you log off`)
+	assert.Contains(t, th.out.String(), "Logs           "+filepath.Join(dir, "service.log"))
+}
+
+func TestInstallComputer_OnWindows_RefusesTheSystemAccount(t *testing.T) {
+	th := newTestHost(t)
+	th.onWindows(t)
+	th.CurrentUser = func() (*user.User, error) {
+		return &user.User{Username: `NT AUTHORITY\SYSTEM`, Uid: "S-1-5-18", HomeDir: th.Home}, nil
+	}
+
+	require.ErrorContains(t, th.installComputer(t), "not as SYSTEM")
+
+	assert.Empty(t, th.exec.calls)
+	assert.Empty(t, th.instance.calls("/api/runners/enroll"), "the code is not spent")
+}
+
+func TestUninstallComputer_OnWindows_ThePersonRemovesItThemselves(t *testing.T) {
+	root := func(th *testHost) string { return filepath.Join(th.Home, "AppData", "Local", "Nexul") }
+	t.Run("nexul uninstall computer ends and deletes the task, tells the instance and deletes the folder once it exits", func(t *testing.T) {
+		th := newTestHost(t)
+		th.onWindows(t)
+		require.NoError(t, th.installComputer(t))
+		th.exec.calls = nil
+
+		require.NoError(t, th.runUninstall(t.Context(), []string{"computer", "--yes"}))
+
+		assert.Equal(t, []string{"schtasks.exe /query /tn nexul-computer", "schtasks.exe /end /tn nexul-computer", "schtasks.exe /delete /tn nexul-computer /f"}, th.exec.calls)
+		assert.Len(t, th.instance.calls("/api/runners/self/remove"), 1)
+		require.Len(t, th.detached, 1)
+		removal := th.detached[0]
+		assert.Equal(t, []string{"powershell.exe", removalLog(), "-NoProfile", "-NonInteractive", "-Command"}, removal[:5])
+		assert.Contains(t, removal[5], "$d = '"+root(th)+"';", "the folder, the running nexul command in it included, goes once this exits")
+		assert.Contains(t, removal[5], "SetEnvironmentVariable('Path'", "and off alice's Path")
+		assert.Contains(t, th.out.String(), root(th)+" goes once this command ends")
+	})
+	t.Run("a removed runner's --detach starts that removal outside its task and touches nothing", func(t *testing.T) {
+		th := newTestHost(t)
+		th.onWindows(t)
+		require.NoError(t, th.installComputer(t))
+		th.exec.calls = nil
+
+		require.NoError(t, th.runUninstall(t.Context(), []string{"computer", "--detach"}))
+
+		self, err := th.Executable()
+		require.NoError(t, err)
+		assert.Equal(t, [][]string{{self, removalLog(), "uninstall", "computer", "--yes"}}, th.detached)
+		assert.Empty(t, th.exec.calls)
+		assert.Empty(t, th.instance.calls("/api/runners/self/remove"))
+		assert.FileExists(t, filepath.Join(root(th), "computer", "unit.json"))
+	})
 }

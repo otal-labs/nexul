@@ -17,9 +17,10 @@ export const AddComputerStep = ({ enrollment, computer }: AddComputerStepProps) 
     <div className="grid grid-cols-1 gap-5 @2xl:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="min-w-0 space-y-3">
         <p className="text-sm text-muted-foreground">
-          Run this in a terminal on the computer you're adding, from your own account. It asks for your password once, for{" "}
+          Run this in a terminal on the computer you're adding, from your own account. On Linux and macOS it asks for your password once, for{" "}
           <code className="font-mono text-xs text-foreground">sudo</code>, to install a background service, and installs everything for the
-          account that typed <code className="font-mono text-xs text-foreground">sudo</code>, never for root.
+          account that typed <code className="font-mono text-xs text-foreground">sudo</code>, never for root. On Windows it needs no
+          administrator and installs for you alone.
         </p>
         <CommandSnippet commands={computerCommands(enrollment.commands)} label="Install command" guide={PAIRING_GUIDE} />
         <p className="text-xs text-muted-foreground">

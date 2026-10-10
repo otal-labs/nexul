@@ -64,18 +64,23 @@ func InstallCommands(script, instanceURL, name, code string) (unix, windows stri
 	return unixCommand(script, args), windows
 }
 
-// ComputerCommand renders the one-liner that adds a computer through computer.sh, run with sudo from the person's own
-// account; a site or release other than nexul.io's travels in the command, for an instance tested against its own
-// build, as variables sudo sets for the script.
-func ComputerCommand(site, release, token string) string {
-	env := "sudo "
+// ComputerCommands render the one-liners that add a computer: computer.sh, run with sudo from the person's own
+// account, and computer.ps1, run in the person's own PowerShell. A site or release other than nexul.io's travels in
+// the command, for an instance tested against its own build, as variables set for the script.
+func ComputerCommands(site, release, token string) (unix, windows string) {
+	env, pwsh := "sudo ", ""
 	if site != DefaultSite {
 		env += "NEXUL_INSTALL_URL=" + site + "/install.sh "
+		pwsh += "$env:NEXUL_INSTALL_URL='" + site + "/install.ps1'; "
 	}
 	if release != "" {
 		env += "NEXUL_RELEASE_URL=" + release + " "
+		pwsh += "$env:NEXUL_RELEASE_URL='" + release + "'; "
 	}
-	return unixCommandFrom(site, "computer", env, token)
+	if version.IsRelease() {
+		pwsh += "$env:NEXUL_VERSION='" + version.Version + "'; "
+	}
+	return unixCommandFrom(site, "computer", env, token), pwsh + "& ([scriptblock]::Create((irm " + site + "/computer.ps1))) " + token
 }
 
 func unixCommand(script, args string) string {

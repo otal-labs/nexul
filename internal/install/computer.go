@@ -14,7 +14,8 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 )
 
-// A person's own computer runs one personal runner, as a system service that runs as that person (ADR 0146).
+// A person's own computer runs one personal runner, as a system service that runs as that person, or on Windows as
+// that person's own logon task (ADR 0146).
 const (
 	kindComputer = "computer"
 	computerUnit = "nexul-computer"
@@ -23,6 +24,8 @@ const (
 	cleanupUnit = "nexul-computer-cleanup"
 	// removeRequest is the file whose existence asks for the removal; its contents are never read.
 	removeRequest = "remove-requested"
+	// localSystem is Windows' SYSTEM account, which is nobody's: a computer's runner runs as its person.
+	localSystem = "S-1-5-18"
 )
 
 // ComputerOptions are the choices `nexul install computer` takes.
@@ -104,11 +107,14 @@ func (h *Host) InstallComputer(ctx context.Context, o ComputerOptions) error {
 	if err := h.step("Runner", func() (string, error) { return h.installComputerRunner(ctx, ho, tag, p) }); err != nil {
 		return err
 	}
-	service, logs := computerUnit+" system service", "journalctl -u "+computerUnit
+	service, logs, when := computerUnit+" system service", "journalctl -u "+computerUnit, "from boot and after you log out"
 	if h.GOOS == "darwin" {
 		service, logs = computerUnit+" LaunchDaemon", launchd{h}.logPath(Unit{Name: computerUnit})
 	}
-	h.printf("\nThis computer's runner runs as %s under the %s, from boot and after you log out; Nexul shows the computer connected once it reaches %s.\n", p.name, service, ho.Server)
+	if h.GOOS == "windows" {
+		service, logs, when = computerUnit+" task", filepath.Join(h.unitDir(computerUnit), "service.log"), "from when you log on until you log off"
+	}
+	h.printf("\nThis computer's runner runs as %s under the %s, %s; Nexul shows the computer connected once it reaches %s.\n", p.name, service, when, ho.Server)
 	h.printf("  Remove it      nexul uninstall computer\n  Logs           %s\n", logs)
 	if h.GOOS == "darwin" && !o.NoT3 {
 		h.printf("  T3 Code        runs only while %s is logged in at this Mac, as T3 Code's macOS service does; until then the computer shows connected but its agents cannot run\n", p.name)
@@ -119,8 +125,11 @@ func (h *Host) InstallComputer(ctx context.Context, o ComputerOptions) error {
 // computerPerson is the person a computer's runner is for. The install runs as root under sudo only to place the
 // service; a direct root login names nobody, and the runner must never run as root.
 func (h *Host) computerPerson() (person, error) {
+	if h.GOOS == "windows" {
+		return h.windowsPerson()
+	}
 	if h.GOOS != "linux" && h.GOOS != "darwin" {
-		return person{}, fmt.Errorf("nexul install computer runs on Linux and macOS for now, not %s", h.GOOS)
+		return person{}, fmt.Errorf("nexul install computer runs on Linux, macOS and Windows, not %s", h.GOOS)
 	}
 	if h.Getuid() != 0 {
 		return person{}, errors.New("run this with sudo: it installs a system service that runs the computer's runner as you")
@@ -130,6 +139,18 @@ func (h *Host) computerPerson() (person, error) {
 		return person{}, errors.New("run this from your own account with sudo, not as root: the computer's runner runs as the person who typed sudo")
 	}
 	return h.lookupPerson(name)
+}
+
+// windowsPerson is whoever runs the install: on Windows it needs no administrator, so it runs as the person.
+func (h *Host) windowsPerson() (person, error) {
+	account, err := h.CurrentUser()
+	if err != nil {
+		return person{}, fmt.Errorf("look up this account: %w", err)
+	}
+	if account.Uid == localSystem {
+		return person{}, errors.New("run this from your own account, not as SYSTEM: the computer's runner runs as the person who runs this")
+	}
+	return person{name: account.Username, home: account.HomeDir}, nil
 }
 
 func (h *Host) lookupPerson(name string) (person, error) {
@@ -146,9 +167,15 @@ func (h *Host) lookupPerson(name string) (person, error) {
 }
 
 // computerPaths keeps everything but the service in the person's home: the command in ~/.local/bin and the runner
-// under ~/.local/share/nexul, or ~/Library/Application Support/nexul on macOS. The service itself is root's.
+// under ~/.local/share/nexul, or ~/Library/Application Support/nexul on macOS. The service itself is root's. On Windows
+// both live in %LOCALAPPDATA%\Nexul, and the task is the person's too.
 func (h *Host) computerPaths(p person) Paths {
 	paths := h.Paths
+	if h.GOOS == "windows" {
+		root := filepath.Join(envOr(os.Getenv, "LOCALAPPDATA", filepath.Join(p.home, "AppData", "Local")), "Nexul")
+		paths.BinDir, paths.UnitRoot = root, root
+		return paths
+	}
 	paths.BinDir = filepath.Join(p.home, ".local", "bin")
 	paths.UnitRoot = filepath.Join(p.home, ".local", "share", "nexul")
 	if h.GOOS == "darwin" {
@@ -157,6 +184,20 @@ func (h *Host) computerPaths(p person) Paths {
 		paths.Logs = filepath.Join(p.home, "Library", "Logs", "nexul")
 	}
 	return paths
+}
+
+// computerHost starts and removes a computer's runner.
+type computerHost interface {
+	install(ctx context.Context, u Unit) error
+	remove(ctx context.Context, u Unit) error
+}
+
+// computerHost is the OS service manager, or on Windows the person's logon task.
+func (h *Host) computerHost() computerHost {
+	if h.GOOS == "windows" {
+		return logonTask{h}
+	}
+	return h.services()
 }
 
 // computerService is the computer runner's service definition: a systemd unit, or a LaunchDaemon on macOS.
@@ -188,7 +229,7 @@ func (h *Host) installComputerRunner(ctx context.Context, o HostOptions, tag str
 	if existing != nil {
 		return "", errors.New("this computer already has its runner; remove it first with: nexul uninstall computer")
 	}
-	if fileExists(h.computerService()) {
+	if h.GOOS != "windows" && fileExists(h.computerService()) {
 		return "", errors.New("this computer's runner is installed for another account; that account removes it with: nexul uninstall computer")
 	}
 	dir := h.unitDir(computerUnit)
@@ -237,7 +278,7 @@ func (h *Host) setUpComputer(ctx context.Context, u *Unit, o HostOptions, tag st
 	if err := h.installCleanup(ctx, p); err != nil {
 		return err
 	}
-	return h.services().install(ctx, *u)
+	return h.computerHost().install(ctx, *u)
 }
 
 // daemonLog makes the LaunchDaemon's log file the person's before launchd, as root, opens it.
@@ -299,6 +340,9 @@ func (h *Host) dropUserUnit(ctx context.Context, p person) error {
 // giveTo hands what root made under the person's home to them: each path, everything in it, and the folders above
 // it up to their home, which the install may have created.
 func (h *Host) giveTo(p person, paths ...string) error {
+	if h.GOOS == "windows" { // the person runs a Windows install, so what it makes is theirs already
+		return nil
+	}
 	for _, path := range paths {
 		if !strings.HasPrefix(path, p.home+string(filepath.Separator)) {
 			continue
@@ -330,6 +374,9 @@ func fileExists(path string) bool {
 // person may write in, and a path unit (a LaunchDaemon watching the folder on macOS) that runs the copy's fixed
 // removal once a request appears there.
 func (h *Host) installCleanup(ctx context.Context, p person) error {
+	if h.GOOS == "windows" { // the runner's task is the person's own, so the runner removes it itself
+		return nil
+	}
 	exe, err := h.executable()
 	if err != nil {
 		return err
@@ -386,6 +433,9 @@ const cleanupTarget = "system/io.nexul." + cleanupUnit
 // removeCleanup takes the cleanup away again; any piece already gone is not an error. On macOS the daemon is unloaded
 // last, because when the cleanup itself runs this, unloading it ends the process.
 func (h *Host) removeCleanup(ctx context.Context) error {
+	if h.GOOS == "windows" {
+		return nil
+	}
 	if h.GOOS != "darwin" {
 		_, _ = h.Exec.Run(ctx, "systemctl", "disable", "--now", cleanupUnit+".path") // fails once the unit is gone
 	}
@@ -479,6 +529,9 @@ func (h *Host) runUninstallComputer(ctx context.Context, args []string) error {
 	if *cleanupFor != "" {
 		return h.cleanUpComputer(ctx, *cleanupFor)
 	}
+	if *detach && h.GOOS == "windows" {
+		return h.detachRemoval()
+	}
 	if *detach {
 		if err := h.requestRemoval(); err != nil {
 			return err
@@ -499,14 +552,33 @@ func (h *Host) requestRemoval() error {
 	return nil
 }
 
-// UninstallComputer removes this computer's runner and tells the instance. Under sudo it removes it at once; as the
-// person, it asks root's cleanup to, as a removed runner does.
-func (h *Host) UninstallComputer(ctx context.Context, yes bool) error {
-	if h.GOOS != "linux" && h.GOOS != "darwin" {
-		return fmt.Errorf("nexul uninstall computer runs on Linux and macOS for now, not %s", h.GOOS)
+// detachRemoval starts this computer's removal outside the runner's task, which the removal ends, and returns at once:
+// it is what a removed runner calls on Windows (`nexul uninstall computer --detach`).
+func (h *Host) detachRemoval() error {
+	exe, err := h.executable()
+	if err != nil {
+		return err
 	}
+	log := removalLog()
+	if err := h.StartDetached(exe, []string{"uninstall", kindComputer, "--yes"}, log); err != nil {
+		return fmt.Errorf("start this computer's removal: %w", err)
+	}
+	h.printf("Started this computer's removal; %s shows its progress.\n", log)
+	return nil
+}
+
+// removalLog is outside the folder the removal deletes.
+func removalLog() string { return filepath.Join(os.TempDir(), "nexul-uninstall-computer.log") }
+
+// UninstallComputer removes this computer's runner and tells the instance. Under sudo, or on Windows where the install
+// is the person's own, it removes it at once; as the person elsewhere, it asks root's cleanup to, as a removed runner does.
+func (h *Host) UninstallComputer(ctx context.Context, yes bool) error {
+	if h.GOOS != "linux" && h.GOOS != "darwin" && h.GOOS != "windows" {
+		return fmt.Errorf("nexul uninstall computer runs on Linux, macOS and Windows, not %s", h.GOOS)
+	}
+	direct := h.GOOS == "windows" || h.Getuid() == 0
 	p := person{name: "your account", home: h.Home}
-	if h.Getuid() == 0 {
+	if direct {
 		var err error
 		if p, err = h.computerPerson(); err != nil {
 			return err
@@ -527,7 +599,7 @@ func (h *Host) UninstallComputer(ctx context.Context, yes bool) error {
 	h.printf("\n")
 	err = h.step(u.Name, func() (string, error) {
 		told := h.tellInstance(ctx, *u)
-		if h.Getuid() != 0 {
+		if !direct {
 			return "removal asked for" + told, h.requestRemoval()
 		}
 		return "removed" + told, h.removeComputer(ctx, p)
@@ -535,8 +607,12 @@ func (h *Host) UninstallComputer(ctx context.Context, yes bool) error {
 	if err != nil {
 		return err
 	}
-	if h.Getuid() != 0 {
+	if !direct {
 		h.printf("\nThis computer's cleanup service removes the runner in a moment; journalctl -u %s shows it.\n", cleanupUnit)
+		return nil
+	}
+	if h.GOOS == "windows" {
+		h.printf("\nThis computer's runner is uninstalled; %s goes once this command ends.\n", h.Paths.UnitRoot)
 		return nil
 	}
 	h.printf("\nThis computer's runner is uninstalled.\n")
@@ -564,8 +640,11 @@ func (h *Host) cleanUpComputer(ctx context.Context, name string) error {
 // removeComputer removes everything the install made: the service, a user service an earlier release left, as the
 // person, so a link in their home leads nowhere else, the runner's folder and the nexul command, then the cleanup.
 func (h *Host) removeComputer(ctx context.Context, p person) error {
-	if err := h.services().remove(ctx, Unit{Name: computerUnit, User: p.name}); err != nil {
+	if err := h.computerHost().remove(ctx, Unit{Name: computerUnit, User: p.name}); err != nil {
 		return err
+	}
+	if h.GOOS == "windows" {
+		return h.removeFolderAfterExit()
 	}
 	if err := h.dropUserUnit(ctx, p); err != nil {
 		return err
@@ -579,4 +658,16 @@ func (h *Host) removeComputer(ctx context.Context, p person) error {
 		return err
 	}
 	return h.removeCleanup(ctx)
+}
+
+// removeFolderAfterExit deletes the install's folder, the running nexul command in it included, from a PowerShell that
+// outlives this process, since Windows keeps a running program's file, then takes the folder off the person's Path.
+func (h *Host) removeFolderAfterExit() error {
+	dir := "'" + strings.ReplaceAll(h.Paths.UnitRoot, "'", "''") + "'"
+	script := "$d = " + dir + "; for ($i = 0; $i -lt 60 -and (Test-Path -LiteralPath $d); $i++) { Start-Sleep 1; Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue }; " +
+		"$p = [Environment]::GetEnvironmentVariable('Path', 'User'); if ($p) { [Environment]::SetEnvironmentVariable('Path', ((($p -split ';') | Where-Object { $_ -and $_ -ne $d }) -join ';'), 'User') }"
+	if err := h.StartDetached("powershell.exe", []string{"-NoProfile", "-NonInteractive", "-Command", script}, removalLog()); err != nil {
+		return fmt.Errorf("start deleting %s: %w", h.Paths.UnitRoot, err)
+	}
+	return nil
 }

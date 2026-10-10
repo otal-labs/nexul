@@ -2,6 +2,7 @@ package install
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf16"
 )
 
 // serviceManager puts a unit under the OS service manager: systemd on Linux, launchd on macOS, the SCM on Windows.
@@ -285,6 +287,84 @@ func (s scm) state(ctx context.Context, u Unit) string {
 		}
 	}
 	return "unknown"
+}
+
+// logonTask runs a computer's runner on Windows as a Task Scheduler task of the person's own, started when they log on.
+// A service under their account would need their password, which the install never asks for (ADR 0146).
+type logonTask struct{ h *Host }
+
+func (l logonTask) path(u Unit) string { return filepath.Join(u.Dir, "task.xml") }
+
+func (l logonTask) install(ctx context.Context, u Unit) error {
+	if err := os.WriteFile(l.path(u), utf16File(taskXML(u, l.h.ctlPath())), 0o600); err != nil {
+		return fmt.Errorf("write %s: %w", l.path(u), err)
+	}
+	if _, err := l.h.Exec.Run(ctx, "schtasks.exe", "/create", "/tn", u.Name, "/xml", l.path(u), "/f"); err != nil {
+		return err
+	}
+	_, err := l.h.Exec.Run(ctx, "schtasks.exe", "/run", "/tn", u.Name)
+	return err
+}
+
+func (l logonTask) remove(ctx context.Context, u Unit) error {
+	if _, err := l.h.Exec.Run(ctx, "schtasks.exe", "/query", "/tn", u.Name); err != nil {
+		return nil
+	}
+	_, _ = l.h.Exec.Run(ctx, "schtasks.exe", "/end", "/tn", u.Name) // fails when it is not running
+	_, err := l.h.Exec.Run(ctx, "schtasks.exe", "/delete", "/tn", u.Name, "/f")
+	return err
+}
+
+// taskXML is the person's logon task: run in their session without elevation, for as long as they stay logged on and
+// on battery too, by the service host, which keeps the runner running inside it.
+func taskXML(u Unit, ctl string) string {
+	user := xmlText(u.User)
+	return `<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>` + xmlText(u.describe()) + `</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <LogonTrigger>
+      <UserId>` + user + `</UserId>
+    </LogonTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <UserId>` + user + `</UserId>
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <RestartOnFailure>
+      <Interval>PT1M</Interval>
+      <Count>3</Count>
+    </RestartOnFailure>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>` + xmlText(`"`+ctl+`"`) + `</Command>
+      <Arguments>service-host ` + xmlText(u.Name) + `</Arguments>
+      <WorkingDirectory>` + xmlText(u.WorkDir) + `</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>
+`
+}
+
+// utf16File is text as Task Scheduler reads a task file: UTF-16, little-endian, with its byte order mark.
+func utf16File(text string) []byte {
+	units := utf16.Encode([]rune("\ufeff" + text))
+	out := make([]byte, 0, 2*len(units))
+	for _, u := range units {
+		out = binary.LittleEndian.AppendUint16(out, u)
+	}
+	return out
 }
 
 func firstLine(s, fallback string) string {

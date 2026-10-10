@@ -9,13 +9,19 @@ Agent work in Nexul runs on your own computer, through T3 Code, with your permis
 
 ## Add a computer
 
-Adding a computer needs no Cloudflare and no domain: one command installs the Nexul app on the computer, and Nexul reaches T3 Code through it. The computer needs Linux or macOS, an account that can use `sudo`, and a way out to the internet; Windows is coming. On a Mac, T3 Code answers only while you are logged in at it (see [What the command installs](#what-the-command-installs)).
+Adding a computer needs no Cloudflare and no domain: one command installs the Nexul app on the computer, and Nexul reaches T3 Code through it. The computer needs Linux or macOS with an account that can use `sudo`, or Windows, and a way out to the internet. On a Mac, T3 Code answers only while you are logged in at it, and on Windows the Nexul app itself runs only while you are logged on (see [What the command does on the computer](#what-the-command-does-on-the-computer)).
 
 1. Open your settings, **Computers**, and press **Add a computer**.
-2. Copy the command under **macOS / Linux** (**Windows** says Coming soon) and run it in a terminal on that computer, from your own account (not as root):
+2. Copy the command under **macOS / Linux** and run it in a terminal on that computer, from your own account (not as root):
 
    ```sh
    curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- <token>
+   ```
+
+   On Windows, copy the command under **Windows** and run it in PowerShell from your own account; it needs no administrator:
+
+   ```powershell
+   & ([scriptblock]::Create((irm https://nexul.io/computer.ps1))) <token>
    ```
 
    The token in it is for this computer only and works once, within the hour the dialog names. `sudo` asks for your password once, to install a background service; everything else is installed for you, the account that typed `sudo`, and runs as you, never as root.
@@ -33,6 +39,14 @@ The computer is named after its hostname; **Rename** in its row's **…** menu c
 - T3 Code, when it's missing; see [What the command installs](#what-the-command-installs).
 
 Logged in as root, the command refuses: run it from your own account. On a computer without `sudo`, the shell says `sudo` is not found; as root, install sudo and add your account to the `sudo` group (`usermod -aG sudo <you>` on Debian and Ubuntu, the `wheel` group elsewhere), log in again, and rerun the command. Its logs are in `journalctl -u nexul-computer`, or `~/Library/Logs/nexul/nexul-computer.log` on a Mac. To remove it, remove the computer in Nexul, or run `nexul uninstall computer` from the same account: it tells Nexul, and a small root service the install left (a root LaunchDaemon on a Mac), which can only remove this app, takes the service and its files away; no sudo rule is involved. With sudo it removes them at once (`sudo ~/.local/bin/nexul uninstall computer`, since sudo does not search `~/.local/bin`). An agent can add a computer too, with [`computer_create`](/docs/guide/mcp-server/), which returns the same command.
+
+On Windows the command needs no administrator, because everything it installs is yours:
+
+- the `nexul` command and the Nexul app with its credential in `%LOCALAPPDATA%\Nexul`, with that folder added to your own Path;
+- `nexul-computer`, a scheduled task of your own that starts the app when you log on and runs it as you, without administrator rights, until you log off. Windows runs a service under your account only with your password, which the command never asks for, and T3 Code's desktop app runs only while you are logged on anyway. The task starts the app again 5 seconds after it fails.
+- T3 Code's desktop app through `winget` when no T3 Code is found; open it once, and Nexul pairs it.
+
+Its log is `%LOCALAPPDATA%\Nexul\computer\service.log`. To remove it, remove the computer in Nexul, or run `nexul uninstall computer`: it tells Nexul, ends and deletes the task, and deletes `%LOCALAPPDATA%\Nexul` and its Path entry once the command ends.
 
 ### What the command installs
 

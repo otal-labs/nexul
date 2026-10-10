@@ -23,14 +23,25 @@ var (
 	}
 	t3Desktop t3State = func(t *testing.T, th *testHost) {
 		t3Nothing(t, th)
-		th.aliceHas(t, ".t3/bin/"+desktopLauncher(th), "", 0o755)
+		th.aliceHas(t, ".t3/bin/"+desktopLauncher(th), "", launcherMode(th))
 	}
-	t3CommandLine t3State = func(t *testing.T, th *testHost) { t3Nothing(t, th); th.aliceHas(t, ".local/bin/t3", "", 0o755) }
-	t3Nothing     t3State = func(t *testing.T, th *testHost) {
+	t3CommandLine t3State = func(t *testing.T, th *testHost) {
+		t3Nothing(t, th)
+		th.aliceHas(t, ".local/bin/"+desktopLauncher(th), "", launcherMode(th))
+	}
+	t3Nothing t3State = func(t *testing.T, th *testHost) {
 		th.t3.up.Store(false)
 		require.NoError(t, os.Remove(filepath.Join(th.Home, ".t3", "userdata", "server-runtime.json")))
 	}
 )
+
+// launcherMode is the desktop launcher's mode: Windows has no execute bit.
+func launcherMode(th *testHost) os.FileMode {
+	if th.GOOS == "windows" {
+		return 0o644
+	}
+	return 0o755
+}
 
 func desktopLauncher(th *testHost) string {
 	if th.GOOS == "windows" {
