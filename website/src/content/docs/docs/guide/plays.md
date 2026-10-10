@@ -5,7 +5,7 @@ sidebar:
   order: 10
 ---
 
-A play is a button that starts an agent on a piece of work, such as **Fix with AI** on a ticket. The agent runs on your own paired computer, with your permissions, and its conversation lands in the ticket's or doc's thread. Before your first run, [pair a computer](/docs/guide/paired-computers/) and [set it up](/docs/guide/computer-setup/).
+A play is a button that starts an agent on a piece of work, such as **Fix with AI** on a ticket. The agent runs on your own paired computer, with your permissions, and its conversation lands in the ticket's or doc's thread. Before your first run, [add a computer](/docs/guide/paired-computers/) and [set it up](/docs/guide/computer-setup/).
 
 ## Run a play
 

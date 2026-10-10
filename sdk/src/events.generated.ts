@@ -31,6 +31,7 @@ export interface EventPayloads {
   "chat.message.updated": { "message": { "id": string; "conversation_id": string; "author_id": string; "author_kind": string; "body": string; "mentions": { "kind": string; "handle": string; }[]; "attachment_id"?: string; "edited_at"?: string; "deleted_at"?: string; "created_at": string; "updated_at": string; "reactions"?: { "emoji": string; "user_ids": string[]; }[]; "handoffs"?: { "id": string; "driver": string; "model": string; "title": string; "prompt": string; "state": string; "reply": string; "steps": { "kind": string; "call_id"?: string; "tool"?: string; "summary": string; "detail"?: string; "at": string; }[]; }[]; "via"?: string; "author_name"?: string; "author_avatar_url"?: string; "embeds"?: unknown; }; "members_only"?: boolean; };
   "computer.facts_changed": { "computer_id": string; "user_id": string; "facts_at": string; "members_only": boolean; };
   "computer.harness_switched": { "computer_id": string; "user_id": string; "from_kind": string; "to_kind": string; "harness_version": string; "members_only": boolean; };
+  "computer.pair_failed": { "computer_id": string; "user_id": string; "members_only": boolean; };
   "computer.paired": { "computer_id": string; "user_id": string; "server_url": string; "harness_version"?: string; "token_expires_at": string; "members_only": boolean; };
   "computer.setup_confirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; "members_only": boolean; };
   "computer.setup_finished": { "computer_id": string; "user_id": string; "run_id": string; "confirmed": boolean; "providers": ({ "provider": string; "state": "running" | "confirmed" | "failed"; "status": string; })[]; "members_only": boolean; };
@@ -185,6 +186,7 @@ export const TOPICS: Topic[] = [
   "chat.message.updated",
   "computer.facts_changed",
   "computer.harness_switched",
+  "computer.pair_failed",
   "computer.paired",
   "computer.setup_confirmed",
   "computer.setup_finished",
@@ -337,6 +339,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "chat.message.updated": {"message":{"id":"fixture-id","conversation_id":"fixture-conversation_id","author_id":"fixture-author_id","author_kind":"fixture-author_kind","body":"fixture-body","mentions":[{"kind":"fixture-kind","handle":"fixture-handle"}],"attachment_id":"fixture-attachment_id","edited_at":"2026-01-01T00:00:00Z","deleted_at":"2026-01-01T00:00:00Z","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","reactions":[{"emoji":"fixture-emoji","user_ids":["fixture-user_ids"]}],"handoffs":[{"id":"fixture-id","driver":"fixture-driver","model":"fixture-model","title":"fixture-title","prompt":"fixture-prompt","state":"fixture-state","reply":"fixture-reply","steps":[{"kind":"fixture-kind","call_id":"fixture-call_id","tool":"fixture-tool","summary":"fixture-summary","detail":"fixture-detail","at":"2026-01-01T00:00:00Z"}]}],"via":"fixture-via","author_name":"fixture-author_name","author_avatar_url":"fixture-author_avatar_url","embeds":null},"members_only":false},
   "computer.facts_changed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","facts_at":"2026-01-01T00:00:00Z","members_only":false},
   "computer.harness_switched": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","from_kind":"fixture-from_kind","to_kind":"fixture-to_kind","harness_version":"fixture-harness_version","members_only":false},
+  "computer.pair_failed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","members_only":false},
   "computer.paired": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","server_url":"fixture-server_url","harness_version":"fixture-harness_version","token_expires_at":"2026-01-01T00:00:00Z","members_only":false},
   "computer.setup_confirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"],"members_only":false},
   "computer.setup_finished": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","run_id":"fixture-run_id","confirmed":false,"providers":[{"provider":"fixture-provider","state":"running","status":"fixture-status"}],"members_only":false},

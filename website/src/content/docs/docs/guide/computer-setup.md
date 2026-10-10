@@ -9,7 +9,7 @@ A paired computer can't run a play or an `@Agent` mention until each provider on
 
 ## Run setup
 
-1. Open your settings, **T3 Code Setup → Computers**, and press **Set up** on the computer's row (or **Re-run setup** in its **…** menu). The last step of **Pair a computer** opens the same screen.
+1. Open your settings, **Computers**, and press **Set up** on the computer's row (or **Re-run setup** in its **…** menu). **Set up**, the last step of **Add a computer**, opens the same screen.
 2. Before the first run, **Options** is open. Switch off any provider you don't want set up.
 3. Under **Models**, pick the model each provider's setup turn runs on, or leave **Provider default**.
 4. Under **Folder**, pick which of T3 Code's projects the turns run in. Setup only writes files in your home folder, so any of them works; change it if the preselected folder no longer exists.
@@ -30,7 +30,7 @@ Press **Re-run setup**, in the row's **…** menu or on the setup screen, after 
 
 ## Keep the skills current
 
-A Nexul release sometimes brings a newer nexul-memory skill. A provider set up with an older one shows **skills out of date**, and a yellow dot appears on the settings gear and on **T3 Code Setup**. Nothing stops working; the agent just follows the rules in its prompt until the skill is refreshed.
+A Nexul release sometimes brings a newer nexul-memory skill. A provider set up with an older one shows **skills out of date**, and a yellow dot appears on the settings gear and on **Computers**. Nothing stops working; the agent just follows the rules in its prompt until the skill is refreshed.
 
 The row reads **Skills out of date**; press **Update skills** on it. One short turn rewrites the skills for every provider on the computer. Agents also check the skill's version once per session and refresh it themselves when it's behind.
 

@@ -128,6 +128,38 @@ func TestEnrollComputer_GivesAFreshCodeUntilTheRunnerEnrolls(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrConflict, "one runner per computer")
 }
 
+// TestEnrollComputer_ForgetsTheSessionOnlyOfAComputerReachedThroughItsRunner: a computer whose runner is gone lost its
+// Nexul sessions in T3 Code with it, so a fresh command drops the stored one and the new runner pairs it again; a
+// computer reached through its tunnel keeps its working session while its owner moves it.
+func TestEnrollComputer_ForgetsTheSessionOnlyOfAComputerReachedThroughItsRunner(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		serverURL  string
+		wantPaired bool
+	}{
+		{"reached through its runner", runnerAddress("c-laptop"), false},
+		{"reached through its tunnel", "https://laptop-ab12cd34.example.com", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc, repo, _ := newComputerService()
+			repo.computers["c-laptop"] = Computer{ID: "c-laptop", UserID: "u-alice", Name: "Laptop", ServerURL: tt.serverURL,
+				TokenExpiresAt: testNow.Add(20 * 24 * time.Hour), BearerToken: "sealed"}
+
+			again, err := svc.EnrollComputer(t.Context(), "u-alice", "c-laptop")
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantPaired, again.Computer.Paired())
+			stored, err := repo.GetComputer(t.Context(), "u-alice", "c-laptop")
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantPaired, stored.Paired())
+			assert.Equal(t, tt.wantPaired, stored.BearerToken != "")
+		})
+	}
+}
+
 func TestDeleteComputer_RunnerNotRetired_KeepsTheComputer(t *testing.T) {
 	t.Parallel()
 	svc, repo, runners := newComputerService()

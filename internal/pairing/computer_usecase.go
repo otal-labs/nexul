@@ -107,8 +107,25 @@ func (s *Service) EnrollComputer(ctx context.Context, userID, computerID string)
 	if err != nil {
 		return nil, err
 	}
+	if err := s.forgetRunnerSession(ctx, computer); err != nil {
+		return nil, err
+	}
 	computer.BearerToken = ""
 	return &ComputerEnrollment{Computer: *computer, Enrollment: enrollment}, nil
+}
+
+// forgetRunnerSession drops the session of a computer reached through a runner that is gone: its runner ended every
+// Nexul session in T3 Code on the way out, so the new runner pairs it afresh. A tunnel computer keeps its session.
+func (s *Service) forgetRunnerSession(ctx context.Context, c *Computer) error {
+	if !c.Paired() || c.ServerURL != runnerAddress(c.ID) {
+		return nil
+	}
+	c.BearerToken, c.TokenExpiresAt, c.UpdatedAt = "", time.Time{}, s.now().UTC()
+	if err := s.repo.SaveComputer(ctx, *c); err != nil {
+		return fmt.Errorf("forget the session of computer %s: %w", c.ID, err)
+	}
+	s.notifyComputersChanged(c.UserID)
+	return nil
 }
 
 // RenameComputer renames one of the caller's computers.
@@ -291,13 +308,26 @@ func (s *Service) readT3Snapshot(ctx context.Context, userID, computerID string,
 func (s *Service) pairThroughRunner(ctx context.Context, c Computer) (*Computer, error) {
 	paired, err := s.mintAndPair(ctx, c)
 	s.pairMu.Lock()
-	defer s.pairMu.Unlock()
 	if err != nil {
 		s.pairFailures[c.ID] = err.Error()
+		s.pairMu.Unlock()
+		s.publishPairFailed(ctx, c)
 		return nil, err
 	}
 	delete(s.pairFailures, c.ID)
+	s.pairMu.Unlock()
 	return paired, nil
+}
+
+// publishPairFailed tells the owner's open views to read the computer's new pair_error.
+func (s *Service) publishPairFailed(ctx context.Context, c Computer) {
+	if s.bus == nil {
+		return
+	}
+	err := s.bus.Publish(ctx, TopicPairFailed, PairFailedEvent{ComputerID: c.ID, UserID: c.UserID, MembersOnly: true})
+	if err != nil {
+		logging.FromCtx(ctx).Warn("publish computer pair failure", "computer_id", c.ID, "error", err)
+	}
 }
 
 func (s *Service) mintAndPair(ctx context.Context, c Computer) (*Computer, error) {

@@ -17,12 +17,17 @@ import (
 type fakeBus struct {
 	mu     sync.Mutex
 	events []TunnelStatusChangedEvent
-	err    error
+	// pairFailed is every computer.pair_failed payload.
+	pairFailed []PairFailedEvent
+	err        error
 }
 
 func (b *fakeBus) Publish(_ context.Context, topic string, payload any) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if topic == TopicPairFailed {
+		b.pairFailed = append(b.pairFailed, payload.(PairFailedEvent))
+	}
 	if topic == TopicTunnelStatusChanged {
 		b.events = append(b.events, payload.(TunnelStatusChangedEvent))
 	}

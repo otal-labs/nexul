@@ -165,7 +165,7 @@ describe("PlaysMenu", () => {
     renderMenu();
 
     await user.click(await screen.findByRole("button", { name: /Plays/ }));
-    expect(await screen.findAllByText("Pair a computer in Settings to run plays.")).toHaveLength(1);
+    expect(await screen.findAllByText("Add a computer in Settings to run plays.")).toHaveLength(1);
     expect(screen.getByRole("button", { name: /To tickets via AI/ })).toBeDisabled();
   });
 

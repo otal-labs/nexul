@@ -436,7 +436,7 @@ type NotConfiguredError struct {
 // Error is the user-facing refusal for the gate's reasons, so chat, the play run dialog, and MCP all read the same line.
 func (e *NotConfiguredError) Error() string {
 	if e.Reason == ReasonSetupRequired {
-		return fmt.Sprintf("@Agent can't use %s on %s until its setup is done — run setup for %s in Settings → T3 Code Setup.", e.Provider, e.Computer, e.Computer)
+		return fmt.Sprintf("@Agent can't use %s on %s until its setup is done — run setup for %s in Settings → Computers.", e.Provider, e.Computer, e.Computer)
 	}
 	if e.Reason == ReasonOffline {
 		why := e.Why
@@ -447,7 +447,7 @@ func (e *NotConfiguredError) Error() string {
 	}
 	if e.Reason == ReasonNeedsLocation {
 		return "Pick where plays run in this project: a computer and its T3 project. It's saved as your link for this project, " +
-			"which Settings → T3 Code Setup → Projects can change."
+			"which Settings → Computers → Projects can change."
 	}
 	if text, ok := notConfiguredText[e.Reason]; ok {
 		return text
@@ -457,10 +457,10 @@ func (e *NotConfiguredError) Error() string {
 
 // notConfiguredText reads after "didn't run:" on a ticket and alone in the run dialog alike, so it names no person.
 var notConfiguredText = map[NotConfiguredReason]string{
-	ReasonUnpaired:          "no computer is paired to run it on; pair one in Settings → T3 Code Setup",
-	ReasonExpiredToken:      "the paired computer's session expired; pair it again in Settings → T3 Code Setup",
-	ReasonNoDefault:         "no T3 project is picked for this project on the paired computer; link one in Settings → T3 Code Setup → Projects, or set a fallback under Defaults",
-	ReasonNoDefaultComputer: "several computers are paired and none is the default; pick one under Defaults in Settings → T3 Code Setup",
+	ReasonUnpaired:          "no computer is paired to run it on; add one in Settings → Computers",
+	ReasonExpiredToken:      "the paired computer's session expired; pair it again in Settings → Computers",
+	ReasonNoDefault:         "no T3 project is picked for this project on the paired computer; link one in Settings → Computers → Projects, or set a fallback under Defaults",
+	ReasonNoDefaultComputer: "several computers are paired and none is the default; pick one under Defaults in Settings → Computers",
 }
 
 // RefusalDetails is a NotConfiguredError's machine-readable side, carried beside the message in the error envelope.

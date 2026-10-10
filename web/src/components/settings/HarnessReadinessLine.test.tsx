@@ -40,10 +40,10 @@ describe("HarnessReadinessLine", () => {
   it("shows the reason message when not ready", () => {
     mocks.useHarnessReadiness.mockReturnValue({
       state: "unpaired",
-      message: "Pair a computer in Settings to run plays.",
+      message: "Add a computer in Settings to run plays.",
     });
     mocks.useListComputers.mockReturnValue({ data: [] });
     render(<HarnessReadinessLine />);
-    expect(screen.getByText("Pair a computer in Settings to run plays.")).toBeInTheDocument();
+    expect(screen.getByText("Add a computer in Settings to run plays.")).toBeInTheDocument();
   });
 });

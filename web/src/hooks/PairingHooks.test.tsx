@@ -70,7 +70,7 @@ describe("useHarnessReadiness", () => {
     mockRoutes({ resolve: { ok: false, reason: "unpaired" }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toEqual({ state: "unpaired", message: "Pair a computer in Settings to run plays." }),
+      expect(result.current).toEqual({ state: "unpaired", message: "Add a computer in Settings to run plays." }),
     );
   });
 
@@ -91,7 +91,7 @@ describe("useHarnessReadiness", () => {
     await waitFor(() =>
       expect(result.current).toEqual({
         state: "no_harness_project",
-        message: "Link this project in Settings → T3 Code Setup → Projects, or set a fallback under Defaults.",
+        message: "Link this project in Settings → Computers → Projects, or set a fallback under Defaults.",
       }),
     );
   });

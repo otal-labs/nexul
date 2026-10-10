@@ -120,8 +120,10 @@ git-excluded folder such as `.verify/`.
    `ELECTRON_RUN_AS_NODE=1 squashfs-root/t3code squashfs-root/resources/app.asar/apps/server/dist/bin.mjs`.
    Put a small `t3` script that runs that command first on `PATH`, because
    the runner mints its pairing token with the first `t3` it finds.
-2. Add a computer as yourself: `POST /api/pairing/computers/enrollments`
-   with `{}` returns the computer and its `token`.
+2. Add a computer as yourself: press **Add a computer** in Your settings →
+   Computers and keep the dialog open to watch its checks (the token is the
+   command's last word), or `POST /api/pairing/computers/enrollments` with
+   `{}`, which returns the computer and its `token`.
 3. Trade the token for the runner's credential and save it to a file:
 
    ```sh

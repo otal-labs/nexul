@@ -126,7 +126,7 @@ describe("PlayButton", () => {
   it("is disabled with the readiness reason when no harness is paired", async () => {
     mockApi({ resolve: { ok: false, reason: "unpaired" } });
     renderButton();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription("Pair a computer in Settings to run plays."));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription("Add a computer in Settings to run plays."));
     expect(screen.getByRole("button", { name: "Fix with AI" })).toBeDisabled();
   });
 

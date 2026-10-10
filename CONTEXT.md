@@ -136,7 +136,7 @@ _Avoid_: inventory, telemetry, specs
 **Project link**:
 One person's choice of paired computer, T3 project, provider, model, model
 options, and start-in for one project they can open, set in Your settings →
-T3 Code Setup → Projects. Each person has their own; nobody else's turns use it.
+Computers → Projects. Each person has their own; nobody else's turns use it.
 A play a person starts in a project they have not linked asks where to run,
 their defaults filled in, and saves the answer as their link (ADR 0145);
 `@Agent` and runs nobody presses use their own pairing defaults there (ADR 0102).

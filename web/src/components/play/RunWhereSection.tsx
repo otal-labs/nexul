@@ -41,7 +41,7 @@ const RunWhereForm = ({ value, onChange }: RunWhereFormProps) => {
     <div className="space-y-3">
       {isPending && <LoadingDisplay label="Loading computers" className="justify-start p-0" />}
       {error && <ErrorDisplay error={error} title="Couldn't load your computers." />}
-      {computers && computers.length === 0 && <NoDataDisplay message="Pair a computer in Settings to run plays." size="compact" />}
+      {computers && computers.length === 0 && <NoDataDisplay message="Add a computer in Settings to run plays." size="compact" />}
       {computers && computers.length > 0 && (
         <HarnessComputerField
           control={form.control}

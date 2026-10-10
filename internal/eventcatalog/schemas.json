@@ -1737,6 +1737,28 @@
       "members_only"
     ]
   },
+  "computer.pair_failed": {
+    "type": "object",
+    "properties": {
+      "computer_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string",
+        "description": "The computer's owner."
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Always true: a person's computer is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "computer_id",
+      "user_id",
+      "members_only"
+    ]
+  },
   "computer.paired": {
     "type": "object",
     "properties": {

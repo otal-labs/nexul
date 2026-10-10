@@ -7,21 +7,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
 import { Button } from "@/components/ui/button";
 import { pairingFollower } from "@/hooks/PairingHooks";
-import { useOwnerWizardStore } from "@/stores/ownerWizardStore";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { useSetupDraftStore } from "@/stores/setupDraftStore";
 import type { Computer, ComputerSetup, HarnessProject, HarnessProvider, PairingDefaults, SetupTurnKind, SetupTurnState } from "@/models/Pairing";
 import type { ActivityKind } from "@/models/Trail";
 import { followFrame } from "@/test/followFrame";
 import { pickOption } from "@/test/pickOption";
-
-const access = vi.hoisted(() => ({ sections: ["connectors"] as string[] }));
-vi.mock("@/hooks/AccessHooks", () => ({ useCanOpenSection: (section: string) => access.sections.includes(section) }));
-
-beforeEach(() => {
-  access.sections = ["connectors"];
-  useOwnerWizardStore.getState().reset();
-});
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn() }));
 
@@ -49,34 +40,27 @@ const apiError = (body: Record<string, string>, errors?: Record<string, string[]
 
 const emptySetup: ComputerSetup = { computer_id: "c1", confirmed_at: null, providers: [], skipped_providers: [], models: {}, model_options: {}, folder: "", turns: [] };
 
-const renderDialog = (existing?: Computer) => {
+const renderDialog = (existing: Computer) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <PairComputerDialog existing={existing} trigger={<Button type="button">{existing ? "Open" : "Pair a computer"}</Button>} />
+        <PairComputerDialog existing={existing} trigger={<Button type="button">Open</Button>} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
   return client;
 };
 
-const nameTheComputer = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(screen.getByRole("button", { name: /pair a computer/i }));
-  await user.type(await screen.findByLabelText(/computer name/i), "Work laptop");
-  await user.click(screen.getByRole("button", { name: /create tunnel/i }));
-};
-
 const reachPairStep = async (user: ReturnType<typeof userEvent.setup>, client: QueryClient) => {
-  mocks.post.mockResolvedValueOnce({ data: created });
-  await nameTheComputer(user);
+  await user.click(screen.getByRole("button", { name: /^open$/i }));
   await screen.findByText(/waiting for connection/i);
   await act(() => followFrame(pairingFollower, "computer.tunnel_status_changed", { computer_id: "c1", tunnel: "healthy", harness_reachable: true }, client));
   await user.click(await screen.findByRole("button", { name: /^next$/i }));
   await screen.findByLabelText(/pairing link/i);
 };
 
-describe("PairComputerDialog", () => {
+describe("PairComputerDialog for a computer still pairing through its tunnel", () => {
   beforeEach(() => {
     mocks.get.mockReset();
     mocks.post.mockReset();
@@ -88,14 +72,12 @@ describe("PairComputerDialog", () => {
     });
   });
 
-  it("creates the tunnel, shows the commands, and unlocks Next once both checks pass", async () => {
-    mocks.post.mockResolvedValue({ data: created });
+  it("resumes at its tunnel with the commands, and unlocks Next once both checks pass", async () => {
     const user = userEvent.setup();
-    const client = renderDialog();
+    const client = renderDialog(created);
 
-    await nameTheComputer(user);
-    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/tunnel", { name: "Work laptop", port: 3773 }));
-
+    await user.click(screen.getByRole("button", { name: /^open$/i }));
+    expect(await screen.findByRole("heading", { name: /pair work laptop/i })).toBeInTheDocument();
     expect(await screen.findByText(/tunnel\.sh \| sh -s -- eyJ-connector-token/)).toBeInTheDocument();
     expect(screen.getByText(/waiting for connection/i)).toBeInTheDocument();
     expect(screen.getByText("work-laptop-ab12cd34.example.com")).toBeInTheDocument();
@@ -115,11 +97,12 @@ describe("PairComputerDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /^next$/i }));
     expect(await screen.findByLabelText(/pairing link/i)).toBeInTheDocument();
+    expect(mocks.post).not.toHaveBeenCalled();
   });
 
   it("pairs T3 Code over the verified hostname with only the token typed, then moves on to Set up", async () => {
     const user = userEvent.setup();
-    const client = renderDialog();
+    const client = renderDialog(created);
     await reachPairStep(user, client);
 
     expect(screen.getByLabelText(/^name$/i)).toHaveValue("Work laptop");
@@ -141,7 +124,7 @@ describe("PairComputerDialog", () => {
 
   it("tells the desktop app to create a link in T3 Code, and shows the command for the other installs and systems", async () => {
     const user = userEvent.setup();
-    const client = renderDialog();
+    const client = renderDialog(created);
     await reachPairStep(user, client);
 
     expect(screen.getByText(/authorized clients/i)).toBeInTheDocument();
@@ -162,7 +145,7 @@ describe("PairComputerDialog", () => {
 
   it("pairs over the hostname with a pasted pairing link, sending only its token and never its LAN address", async () => {
     const user = userEvent.setup();
-    const client = renderDialog();
+    const client = renderDialog(created);
     await reachPairStep(user, client);
 
     mocks.post.mockResolvedValueOnce({ data: { ...created, token_expires_at: "2026-10-24T00:00:00Z" } });
@@ -176,7 +159,7 @@ describe("PairComputerDialog", () => {
 
   it("refuses a link that carries no token, naming what to do", async () => {
     const user = userEvent.setup();
-    const client = renderDialog();
+    const client = renderDialog(created);
     await reachPairStep(user, client);
 
     await user.click(screen.getByLabelText(/pairing link/i));
@@ -184,12 +167,12 @@ describe("PairComputerDialog", () => {
     await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
 
     expect(await screen.findByText(/that link has no token/i)).toBeInTheDocument();
-    expect(mocks.post).toHaveBeenCalledTimes(1);
+    expect(mocks.post).not.toHaveBeenCalled();
   });
 
   it("shows a refused token on the token field and an unreachable harness on the URL field", async () => {
     const user = userEvent.setup();
-    const client = renderDialog();
+    const client = renderDialog(created);
     await reachPairStep(user, client);
 
     const refused = "the harness refused this token, get a fresh one from T3 Code on the computer";
@@ -207,179 +190,16 @@ describe("PairComputerDialog", () => {
     expect(screen.queryByText(/is paired/i)).not.toBeInTheDocument();
   });
 
-  it("offers Create tunnel as the Tunnel step's one action, and pairs a machine the server can already reach by URL beside it", async () => {
-    const user = userEvent.setup();
-    renderDialog();
-
-    await user.click(screen.getByRole("button", { name: /pair a computer/i }));
-    expect(await screen.findByRole("button", { name: /create tunnel/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^next$/i })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /pair by url/i }));
-
-    await user.click(screen.getByRole("radio", { name: "Not installed yet" }));
-    expect(screen.getByText(/t3\.codes\/install\.sh/)).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
-    expect(await screen.findByText(/computer name is required/i)).toBeInTheDocument();
-    expect(mocks.post).not.toHaveBeenCalled();
-
-    await user.type(screen.getByLabelText(/^name$/i), "VPS");
-    await user.type(screen.getByLabelText(/t3 server url/i), "https://vps.example.com");
-    await user.type(screen.getByLabelText(/pairing link/i), "t3-pair-token");
-    mocks.post.mockResolvedValueOnce({ data: { ...created, id: "c2", name: "VPS", tunnel: undefined } });
-    await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
-
-    await waitFor(() =>
-      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers", {
-        name: "VPS",
-        server_url: "https://vps.example.com",
-        token: "t3-pair-token",
-      }),
-    );
-    expect(await screen.findByText(/each provider on vps takes one short turn/i)).toBeInTheDocument();
-  });
-
-  it("fills the T3 server URL from a pasted pairing link when pairing by URL, and warns about a loopback address", async () => {
-    const user = userEvent.setup();
-    renderDialog();
-
-    await user.click(screen.getByRole("button", { name: /pair a computer/i }));
-    await user.click(await screen.findByRole("button", { name: /pair by url/i }));
-    await user.click(screen.getByRole("radio", { name: "Not installed yet" }));
-    expect(screen.getByText(/T3CODE_HOST=0\.0\.0\.0/)).toBeInTheDocument();
-
-    await user.type(screen.getByLabelText(/^name$/i), "NAS");
-    await user.click(screen.getByLabelText(/pairing link/i));
-    await user.paste("http://127.0.0.1:3773/pair#token=abc123");
-    expect(screen.getByLabelText(/t3 server url/i)).toHaveValue("http://127.0.0.1:3773");
-    expect(screen.getByText(/can't reach a loopback address/i)).toBeInTheDocument();
-
-    await user.clear(screen.getByLabelText(/pairing link/i));
-    await user.paste("http://192.168.1.107:3773/pair#token=2WY3GB2XL8SU");
-    expect(screen.getByLabelText(/t3 server url/i)).toHaveValue("http://192.168.1.107:3773");
-    expect(screen.queryByText(/can't reach a loopback address/i)).not.toBeInTheDocument();
-
-    mocks.post.mockResolvedValueOnce({ data: { ...created, id: "c2", name: "NAS", tunnel: undefined } });
-    await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
-    await waitFor(() =>
-      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers", {
-        name: "NAS",
-        server_url: "http://192.168.1.107:3773",
-        token: "2WY3GB2XL8SU",
-      }),
-    );
-  });
-
   it("shows a failure with no field under the form", async () => {
     const user = userEvent.setup();
-    renderDialog();
+    const client = renderDialog(created);
+    await reachPairStep(user, client);
 
-    await user.click(screen.getByRole("button", { name: /pair a computer/i }));
-    await user.click(await screen.findByRole("button", { name: /pair by url/i }));
-    await user.type(screen.getByLabelText(/^name$/i), "VPS");
-    await user.type(screen.getByLabelText(/t3 server url/i), "https://vps.example.com");
-    await user.type(screen.getByLabelText(/pairing link/i), "t3-pair-token");
     mocks.post.mockRejectedValueOnce(apiError({ message: "internal error", code: "INTERNAL" }));
+    await user.type(screen.getByLabelText(/pairing link/i), "t3-pair-token");
     await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("internal error");
-  });
-
-  it.each([
-    ["zero_trust_disabled", /zero trust isn't enabled/i, /open zero trust/i],
-    ["cloudflare_not_connected", /cloudflare isn't connected/i, /connect cloudflare/i],
-  ])("puts a missing %s prerequisite in the form's place with its fix, and retries with the name typed", async (reason, title, fix) => {
-    mocks.post.mockRejectedValueOnce(apiError({ message: "missing", code: "INVALID", reason })).mockResolvedValueOnce({ data: created });
-    const user = userEvent.setup();
-    renderDialog();
-
-    await nameTheComputer(user);
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(title);
-    expect(screen.getByRole("link", { name: fix })).toBeInTheDocument();
-    expect(screen.queryByLabelText(/computer name/i)).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /try again/i }));
-    expect(await screen.findByText(/waiting for connection/i)).toBeInTheDocument();
-    expect(mocks.post).toHaveBeenCalledTimes(2);
-    expect(mocks.post).toHaveBeenLastCalledWith("/api/pairing/computers/tunnel", { name: "Work laptop", port: 3773 });
-  });
-
-  it("shows any other failure inline under the form", async () => {
-    mocks.post.mockRejectedValue(apiError({ message: "the instance's host is in no Cloudflare zone", code: "INVALID" }));
-    const user = userEvent.setup();
-    renderDialog();
-
-    await nameTheComputer(user);
-    expect(await screen.findByRole("alert")).toHaveTextContent(/no cloudflare zone/i);
-    expect(screen.queryByRole("button", { name: /try again/i })).not.toBeInTheDocument();
-  });
-
-  it("asks for a name and a valid port before creating anything", async () => {
-    const user = userEvent.setup();
-    renderDialog();
-
-    await user.click(screen.getByRole("button", { name: /pair a computer/i }));
-    await user.click(await screen.findByRole("button", { name: /advanced options/i }));
-    const port = screen.getByLabelText(/t3 code port/i);
-    await user.clear(port);
-    await user.type(port, "70000");
-    await user.click(screen.getByRole("button", { name: /create tunnel/i }));
-
-    expect(await screen.findByText(/name this computer/i)).toBeInTheDocument();
-    expect(screen.getByText(/port between 1 and 65535/i)).toBeInTheDocument();
-    expect(mocks.post).not.toHaveBeenCalled();
-  });
-
-  it("starts over at the name step after closing", async () => {
-    mocks.post.mockResolvedValue({ data: created });
-    const user = userEvent.setup();
-    renderDialog();
-
-    await nameTheComputer(user);
-    await screen.findByText(/waiting for connection/i);
-    await user.click(screen.getByRole("button", { name: /close/i }));
-    await user.click(screen.getByRole("button", { name: /pair a computer/i }));
-    expect(await screen.findByLabelText(/computer name/i)).toBeInTheDocument();
-  });
-
-  it("resumes a computer still pairing at its tunnel, without naming it again", async () => {
-    const user = userEvent.setup();
-    const client = renderDialog(created);
-
-    await user.click(screen.getByRole("button", { name: /^open$/i }));
-    expect(await screen.findByRole("heading", { name: /pair work laptop/i })).toBeInTheDocument();
-    expect(await screen.findByText(/waiting for connection/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/computer name/i)).not.toBeInTheDocument();
-
-    await act(() => followFrame(pairingFollower, "computer.tunnel_status_changed", { computer_id: "c1", tunnel: "healthy", harness_reachable: true }, client));
-    await user.click(await screen.findByRole("button", { name: /^next$/i }));
-    expect(await screen.findByLabelText(/pairing link/i)).toBeInTheDocument();
-    expect(mocks.post).not.toHaveBeenCalled();
-  });
-  it("explains a missing Cloudflare connection without a Settings link to a viewer who can't open Connectors", async () => {
-    access.sections = [];
-    mocks.post.mockRejectedValueOnce(apiError({ message: "missing", code: "INVALID", reason: "cloudflare_not_connected" }));
-    const user = userEvent.setup();
-    renderDialog();
-
-    await nameTheComputer(user);
-    expect(await screen.findByRole("alert")).toHaveTextContent(/cloudflare isn't connected/i);
-    expect(screen.queryByRole("link", { name: /connect cloudflare/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
-  });
-
-  it("sends the owner wizard back to its tools step to connect Cloudflare, since Settings is out of reach there", async () => {
-    useOwnerWizardStore.getState().setStep(4);
-    mocks.post.mockRejectedValueOnce(apiError({ message: "missing", code: "INVALID", reason: "cloudflare_not_connected" }));
-    const user = userEvent.setup();
-    renderDialog();
-
-    await nameTheComputer(user);
-    await user.click(await screen.findByRole("button", { name: /connect cloudflare/i }));
-
-    expect(useOwnerWizardStore.getState().step).toBe(3);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
 

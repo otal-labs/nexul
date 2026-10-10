@@ -5,14 +5,14 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
-import { ComputerRow } from "@/components/settings/ComputerRow";
+import { AddComputerDialog } from "@/components/pairing/AddComputerDialog";
+import { ComputerItem } from "@/components/settings/ComputerItem";
 import { HarnessReadinessLine } from "@/components/settings/HarnessReadinessLine";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { useFetchPresence, useListComputers } from "@/hooks/PairingHooks";
 
 interface ComputersSectionProps {
-  // The owner wizard frames the title itself and is where pairing happens, so it drops the card and the readiness line.
+  // The owner wizard frames the title itself and is where the first computer is added, so it drops the card and the readiness line.
   bare?: boolean;
 }
 
@@ -20,12 +20,12 @@ export const ComputersSection = ({ bare = false }: ComputersSectionProps = {}) =
   const { data: computers, isPending, error } = useListComputers();
   const presence = useFetchPresence();
 
-  const pairButton = (
-    <PairComputerDialog
+  const addButton = (
+    <AddComputerDialog
       trigger={
         <Button type="button" size={bare ? "default" : "sm"}>
           <PlusIcon className="size-4" aria-hidden />
-          Pair a computer
+          Add a computer
         </Button>
       }
     />
@@ -34,11 +34,11 @@ export const ComputersSection = ({ bare = false }: ComputersSectionProps = {}) =
     <>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {computers && computers.length === 0 && <EmptyRow flush>No computers paired yet</EmptyRow>}
+      {computers && computers.length === 0 && <EmptyRow flush>No computers yet</EmptyRow>}
       {computers && computers.length > 0 && (
         <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
           {computers.map((computer) => (
-            <ComputerRow key={computer.id} computer={computer} presence={presence.data?.[computer.id]} />
+            <ComputerItem key={computer.id} computer={computer} presence={presence.data?.[computer.id]} />
           ))}
         </EnterList>
       )}
@@ -49,16 +49,16 @@ export const ComputersSection = ({ bare = false }: ComputersSectionProps = {}) =
     <>
       {bare && (
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">{pairButton}</div>
+          <div className="flex flex-wrap gap-2">{addButton}</div>
           {list}
         </div>
       )}
       {!bare && (
         <SettingsCard
           id="pairing-computers"
-          title="Paired computers"
-          description="Computers running T3 Code that @Agent works through. A pairing lasts 30 days; re-pair before it runs out."
-          footer={pairButton}
+          title="Your computers"
+          description="The computers @Agent works through, each running T3 Code and the Nexul app. Nexul keeps them paired."
+          footer={addButton}
         >
           <div className="space-y-4">
             <HarnessReadinessLine />

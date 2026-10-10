@@ -11,10 +11,10 @@ func TestNotConfiguredError_ReadsAsAPlainSentenceAndKeepsItsReason(t *testing.T)
 		reason NotConfiguredReason
 		want   string
 	}{
-		{ReasonUnpaired, "no computer is paired to run it on; pair one in Settings → T3 Code Setup"},
-		{ReasonExpiredToken, "the paired computer's session expired; pair it again in Settings → T3 Code Setup"},
-		{ReasonNoDefault, "no T3 project is picked for this project on the paired computer; link one in Settings → T3 Code Setup → Projects, or set a fallback under Defaults"},
-		{ReasonNoDefaultComputer, "several computers are paired and none is the default; pick one under Defaults in Settings → T3 Code Setup"},
+		{ReasonUnpaired, "no computer is paired to run it on; add one in Settings → Computers"},
+		{ReasonExpiredToken, "the paired computer's session expired; pair it again in Settings → Computers"},
+		{ReasonNoDefault, "no T3 project is picked for this project on the paired computer; link one in Settings → Computers → Projects, or set a fallback under Defaults"},
+		{ReasonNoDefaultComputer, "several computers are paired and none is the default; pick one under Defaults in Settings → Computers"},
 		{NotConfiguredReason("future_reason"), "pairing not configured: future_reason"},
 	}
 	for _, tt := range tests {

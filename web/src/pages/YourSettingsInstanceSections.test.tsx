@@ -96,7 +96,7 @@ describe("Settings page instance sections", () => {
 
     const nav = within(await screen.findByRole("navigation", { name: "Settings sections" }));
     expect(await screen.findByText("profile card")).toBeInTheDocument();
-    expect(nav.getAllByRole("link").map((link) => link.textContent)).toEqual(["Profile", "Appearance", "Security", "T3 Code Setup"]);
+    expect(nav.getAllByRole("link").map((link) => link.textContent)).toEqual(["Profile", "Appearance", "Security", "Computers"]);
     expect(nav.queryByText("Instance settings")).not.toBeInTheDocument();
     expect(nav.queryByText("You")).not.toBeInTheDocument();
   });

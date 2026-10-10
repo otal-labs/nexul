@@ -10,7 +10,7 @@ export const PairingPanel = () => {
   const skillsOutdated = useSkillsOutdated();
   return (
     <PageTabs
-      label="T3 Code Setup settings"
+      label="Computers settings"
       tabs={[
         { value: "computers", label: "Computers", dot: skillsOutdated ? SKILLS_OUTDATED : undefined },
         { value: "projects", label: "Projects" },

@@ -81,7 +81,7 @@ describe("ComputersSection", () => {
 
   it("shows an empty state when there are no computers", async () => {
     renderSection();
-    expect(await screen.findByText(/no computers paired yet/i)).toBeInTheDocument();
+    expect(await screen.findByText("No computers yet")).toBeInTheDocument();
   });
 
   it("lists paired computers folded, with their address and version one click away", async () => {
@@ -294,19 +294,69 @@ describe("ComputersSection", () => {
     expect(screen.queryByRole("button", { name: /update skills/i })).not.toBeInTheDocument();
   });
 
-  it("has no separate Pair by URL button; URL pairing lives in the dialog", async () => {
-    renderSection();
-    await screen.findByText(/no computers paired yet/i);
-    expect(screen.queryByRole("button", { name: /pair by url/i })).not.toBeInTheDocument();
-  });
+  describe("a computer added with its app", () => {
+    const relay = "http://c1.nexul-computer.invalid";
+    const answering = { t3: { state: "answering", install: "service", port: 3773 }, providers: [], projects: [] };
+    const online = { connected: true, last_seen: "2026-10-10T12:00:00Z" };
 
-  it("opens the pair-a-computer dialog on its Connect step", async () => {
-    const user = userEvent.setup();
-    renderSection();
+    it.each([
+      ["online and answering", { runner: online, facts: answering }, "connected", ["Online", "T3 Code answering"]],
+      ["online with its desktop app closed", { runner: online, facts: { ...answering, t3: { state: "not_running", install: "desktop_app" } } }, undefined, ["Online", "Open T3 Code"]],
+      ["online but refused pairing", { runner: online, facts: answering, pair_error: "T3 Code made no pairing token" }, undefined, ["Online", "Pairing failed"]],
+      ["offline", { runner: { connected: false, last_seen: "2026-10-10T12:00:00Z" } }, undefined, ["Offline"]],
+    ])("reads each lane on its own when %s", async (_, state, presence, lanes) => {
+      serveComputers([computer({ server_url: relay, ...state })]);
+      mocks.get.mockImplementation(async (url: string) => {
+        if (url.endsWith("/setup")) return { data: setup };
+        if (url.endsWith("/presence")) return { data: { computers: presence ? { c1: presence } : {} } };
+        return { data: computerList([computer({ server_url: relay, ...state })]) };
+      });
+      renderSection();
 
-    await user.click(await screen.findByRole("button", { name: /pair a computer/i }));
-    expect(await screen.findByRole("dialog", { name: /pair a computer/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/computer name/i)).toBeInTheDocument();
+      for (const lane of lanes) expect(await screen.findByText(lane)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /add this computer again/i })).not.toBeInTheDocument();
+    });
+
+    it("offers Add this computer again once its app is gone, with a fresh command for the same row", async () => {
+      serveComputers([computer({ server_url: relay, token_expires_at: "0001-01-01T00:00:00Z" })]);
+      const command = "curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- eyJ.fresh";
+      mocks.post.mockResolvedValue({ data: { computer: computer({ server_url: relay }), token: "eyJ.fresh", expires_at: "2026-10-10T13:00:00Z", commands: { unix: command, windows: "" } } });
+      const user = userEvent.setup();
+      renderSection();
+
+      expect(await screen.findByText("Nexul app not installed")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /add this computer again/i }));
+      expect(await screen.findByRole("heading", { name: "Add Home again" })).toBeInTheDocument();
+      expect(await screen.findByText(command)).toBeInTheDocument();
+      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/enrollments", { id: "c1" });
+    });
+
+    it("re-pairs now through its app instead of asking for a link", async () => {
+      serveComputers([computer({ server_url: relay, runner: online, facts: answering })]);
+      mocks.post.mockResolvedValue({ data: computer({ server_url: relay }) });
+      const user = userEvent.setup();
+      renderSection();
+
+      await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
+      await user.click(screen.getByRole("button", { name: "Re-pair now" }));
+      await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/pair"));
+      expect(screen.queryByLabelText(/pairing link/i)).not.toBeInTheDocument();
+    });
+
+    it("renames it from its menu", async () => {
+      serveComputers([computer({ server_url: relay, runner: online })]);
+      mocks.patch.mockResolvedValue({ data: computer({ name: "Work laptop", server_url: relay }) });
+      const user = userEvent.setup();
+      renderSection();
+
+      await user.click(await screen.findByRole("button", { name: "Actions for Home" }));
+      await user.click(screen.getByRole("button", { name: "Rename" }));
+      const name = await screen.findByLabelText(/^name$/i);
+      await user.clear(name);
+      await user.type(name, "Work laptop");
+      await user.click(screen.getByRole("button", { name: /^rename$/i }));
+      await waitFor(() => expect(mocks.patch).toHaveBeenCalledWith("/api/pairing/computers/c1", { name: "Work laptop" }));
+    });
   });
 
   it("re-pairs an existing computer from its menu, pre-filled with its name and URL", async () => {

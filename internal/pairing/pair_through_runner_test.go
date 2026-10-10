@@ -26,6 +26,7 @@ type runnerFixture struct {
 	repo    *fakeRepo
 	exch    *fakeExchanger
 	runners *fakeRunners
+	bus     *fakeBus
 }
 
 func newRunnerFixture(t *testing.T, laptop Computer) *runnerFixture {
@@ -35,9 +36,10 @@ func newRunnerFixture(t *testing.T, laptop Computer) *runnerFixture {
 	repo.computers[laptop.ID] = laptop
 	exch := &fakeExchanger{result: harness.PairResult{BearerToken: "bearer", ExpiresIn: 30 * day}, version: "0.0.34"}
 	runners := &fakeRunners{runners: map[string]ComputerRunner{laptop.ID: {Connected: true}}, token: "pair-tok"}
+	bus := &fakeBus{}
 	svc := NewService(Config{Repo: repo, Harnesses: registry(exch), EncryptionKey: testEncKey, Tokens: newFakeTokens(), Runners: runners,
-		Now: func() time.Time { return testNow }})
-	return &runnerFixture{svc: svc, repo: repo, exch: exch, runners: runners}
+		Bus: bus, Now: func() time.Time { return testNow }})
+	return &runnerFixture{svc: svc, repo: repo, exch: exch, runners: runners, bus: bus}
 }
 
 func factsEvent(t *testing.T, state string) eventbus.Event {
@@ -127,6 +129,8 @@ func TestPairComputer_ThroughTheRunner_FailureLeavesTheComputerAndShowsWhy(t *te
 			listed, err := f.svc.ListComputers(t.Context(), "u-alice")
 			require.NoError(t, err)
 			assert.Contains(t, listed[0].PairError, tt.why, "the row shows the reason")
+			assert.Equal(t, []PairFailedEvent{{ComputerID: "c-laptop", UserID: "u-alice", MembersOnly: true}}, f.bus.pairFailed,
+				"its owner's open views hear to read the reason")
 
 			*f = *newRunnerFixture(t, before)
 			f.svc.pairFailures["c-laptop"] = "an older failure"
@@ -135,6 +139,7 @@ func TestPairComputer_ThroughTheRunner_FailureLeavesTheComputerAndShowsWhy(t *te
 			listed, err = f.svc.ListComputers(t.Context(), "u-alice")
 			require.NoError(t, err)
 			assert.Empty(t, listed[0].PairError, "a pairing that works clears it")
+			assert.Empty(t, f.bus.pairFailed)
 		})
 	}
 }

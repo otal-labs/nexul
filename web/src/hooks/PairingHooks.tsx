@@ -10,7 +10,6 @@ import {
   leftoverSessionNote,
   pairingToken,
   type Computer,
-  type CreateComputerTunnelFormData,
   type HarnessProject,
   type HarnessProvider,
   type HarnessReadiness,
@@ -21,7 +20,6 @@ import {
   type PairField,
   type PairingDefaults,
   type PairingDefaultsFormData,
-  type TunnelPrerequisite,
   type TunnelStatus,
 } from "@/models/Pairing";
 import { followEach, type LiveFollower } from "@/lib/live";
@@ -61,8 +59,8 @@ export const useListComputers = () =>
   });
 
 interface PairComputerInput {
-  // Set for a computer that already has a row (a computer tunnel): pairs at its own address.
-  computerId?: string | undefined;
+  // A computer tunnel, paired at its own address.
+  computerId: string;
   form: PairComputerFormData;
 }
 
@@ -72,8 +70,7 @@ export const usePairComputer = () => {
   return useMutation({
     mutationFn: async ({ computerId, form }: PairComputerInput) => {
       const token = pairingToken(form.token);
-      if (computerId) return (await api.post<Computer>(`/api/pairing/computers/${computerId}/pair`, { token })).data;
-      return (await api.post<Computer>("/api/pairing/computers", { ...form, token })).data;
+      return (await api.post<Computer>(`/api/pairing/computers/${computerId}/pair`, { token })).data;
     },
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
@@ -88,18 +85,6 @@ export const pairFieldErrors = (error: unknown): [PairField, string][] => {
   return PAIR_FIELDS.flatMap((field): [PairField, string][] => {
     const message = errors[field]?.[0];
     return message ? [[field, message]] : [];
-  });
-};
-
-// No error toast: a missing prerequisite renders as the step's own alert card, anything else inline under the form.
-export const useCreateComputerTunnel = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: CreateComputerTunnelFormData) =>
-      (await api.post<Computer>("/api/pairing/computers/tunnel", input)).data,
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getComputersKey] });
-    },
   });
 };
 
@@ -118,14 +103,6 @@ export const useFetchTunnelToken = (computerId: string) =>
     enabled: !!computerId,
     staleTime: Infinity,
   });
-
-// The tunnel routes add a reason to the error envelope when an instance prerequisite is missing.
-export const tunnelPrerequisite = (error: unknown): TunnelPrerequisite | undefined => {
-  const reason = (error as AxiosError<{ reason?: string }> | null)?.response?.data?.reason;
-  if (reason === "cloudflare_not_connected" || reason === "zero_trust_disabled") return reason;
-  return undefined;
-};
-
 
 // The note carries commands to copy, so it stays until closed.
 const sessionNoteToast = (note?: string) => (note ? { description: note, duration: Infinity, closeButton: true } : undefined);
@@ -287,8 +264,8 @@ export const pairingFollower: LiveFollower = {
   // A computer row goes from pairing to paired, gains or loses its tunnel, or shows its T3 Code's new version.
   ...followEach(["computer.paired", "computer.harness_switched", "computer.tunnel_removed"], (_p: unknown, { client }) => refetchComputers(client, true)),
   "computer.tunnel_created": (_p: unknown, { client }) => refetchComputers(client, false),
-  // A computer row follows its personal runner enrolling, connecting and going away.
-  "runner.personal_changed": (_p: unknown, { client }) => refetchComputers(client, false),
+  // A computer row follows its personal runner enrolling, connecting and going away, and a failed pairing's reason.
+  ...followEach(["runner.personal_changed", "computer.pair_failed"], (_p: unknown, { client }) => refetchComputers(client, false)),
   // A computer row's details follow its facts, which the frame never carries; its pickers follow what T3 Code lists.
   "computer.facts_changed": ({ computer_id }: ComputerPayload, { client }) =>
     Promise.all([
