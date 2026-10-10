@@ -6,17 +6,15 @@ import { PlayRunDialog } from "@/components/play/PlayRunDialog";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useFetchMe } from "@/hooks/AuthHooks";
-import { useHarnessReadiness } from "@/hooks/PairingHooks";
 import { useFetchApplicablePlays } from "@/hooks/PlayHooks";
 import { useActiveTrail, useStopTrail } from "@/hooks/TrailHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
-import { canChooseRunLocation, type HarnessReadiness } from "@/models/Pairing";
+import { useRunBlockedReason } from "@/hooks/PairingProjectHooks";
 import type { Play } from "@/models/Play";
 
-const disabledReason = (running: boolean, readiness: HarnessReadiness | undefined): string => {
+const disabledReason = (running: boolean, blocked: string | undefined): string => {
   if (running) return "a run is in progress";
-  if (readiness && readiness.state !== "ready" && !canChooseRunLocation(readiness)) return readiness.message;
-  return "";
+  return blocked ?? "";
 };
 
 interface PlaysMenuProps {
@@ -33,7 +31,7 @@ export const PlaysMenu = ({ workspaceId, projectId, docId }: PlaysMenuProps) => 
   const canWrite = useHasPermission("plays:write");
   const { data: me } = useFetchMe();
   const { data: plays } = useFetchApplicablePlays(workspaceId, projectId, "doc", undefined);
-  const readiness = useHarnessReadiness(projectId);
+  const blocked = useRunBlockedReason(projectId);
   const activeTrail = useActiveTrail("doc", docId);
   const stopTrail = useStopTrail();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -44,8 +42,8 @@ export const PlaysMenu = ({ workspaceId, projectId, docId }: PlaysMenuProps) => 
 
   const running = activeTrail !== undefined;
   const canStop = running && (activeTrail.starter_id === me?.user.id || canWrite);
-  const reason = disabledReason(running, readiness);
-  const rowsDisabled = reason !== "" || readiness === undefined;
+  const reason = disabledReason(running, blocked);
+  const rowsDisabled = reason !== "" || blocked === undefined;
 
   const choose = (play: Play) => {
     setMenuOpen(false);

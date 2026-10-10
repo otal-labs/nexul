@@ -135,6 +135,21 @@ func TestStartTurn_AnswerToPendingLiveRequest_SendsOnlyRespond(t *testing.T) {
 		drainUpdates(t, s.result.Updates), "the turn is the run the answer resumed")
 }
 
+func TestStartTurn_AnswerToAThreadInAnotherProject_StillGoesToThatThread(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	target := harness.Target{Session: laptop(f), ProjectID: "pr-2", Provider: "claudeAgent", SessionID: "th-1"}
+	done := beginAs(t, h, target, answering(harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"Which DB?": {Text: "sqlite"}}}))
+	subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread")
+	f.Write(t3rpctest.Chunk(subID, askedSnapshot(t, pendingRequest("live"), runAt(1, "msg-0", "running"))))
+
+	first := t3rpctest.WaitFor(t, f.Dispatched, "the first command")
+	require.Equal(t, "runtime-request.respond", first["type"], "no new thread for an answer")
+	s := t3rpctest.WaitFor(t, done, "StartTurn")
+	require.NoError(t, s.err)
+	assert.Equal(t, "th-1", s.result.SessionID, "the question's own thread, wherever it lives")
+}
+
 func TestStartTurn_AnswerByMessage_FollowsTheRunT3TakesItIn(t *testing.T) {
 	t.Parallel()
 	steered := map[string]any{"id": "turn-item:message:async-answer:rq-1", "threadId": "th-1", "runId": runTwo,

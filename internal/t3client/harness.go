@@ -185,11 +185,7 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 		return answeredTurn(threadID), nil
 	}
 
-	projectID := ""
-	if usedStored && !target.KeepSession {
-		projectID = target.ProjectID
-	}
-	sub, err := h.subscribeAndStart(ctx, client, threadID, projectID, prompt, attachments)
+	sub, err := h.subscribeAndStart(ctx, client, threadID, checkedProject(target, usedStored, prompts), prompt, attachments)
 	if err != nil && usedStored {
 		// A stored thread id may be stale server-side; any failure on reuse gets exactly one retry with a fresh thread.
 		logger(h.Options).Info("t3client: reused thread failed, creating a new one", "thread", threadID, "error", err)
@@ -212,6 +208,14 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 	}
 	go h.pump(ctx, target.Session, client, threadID, sub, updates)
 	return harness.StartResult{SessionID: threadID, Updates: updates, PromptSent: true}, nil
+}
+
+// checkedProject is the T3 project a reused thread must be in, "" for none: a kept thread, or an answer, which goes to the thread that asked it.
+func checkedProject(target harness.Target, usedStored bool, prompts harness.TurnPrompts) string {
+	if !usedStored || target.KeepSession || prompts.Answer != nil {
+		return ""
+	}
+	return target.ProjectID
 }
 
 func (h *Harness) createThread(ctx context.Context, client rpcConn, target harness.Target, title string) (string, error) {

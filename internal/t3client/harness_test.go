@@ -234,23 +234,28 @@ func TestHarness_StartTurn_PendingAnswer(t *testing.T) {
 		dismissErr    error
 		wantDismissed []string
 		wantPrompts   []string
+		// threadProject is the T3 project the thread lives in, when the target names another one.
+		threadProject string
 	}{
-		{"clears the question, then sends the answer turn", "thread-existing", nil, []string{"req-1"}, []string{"incremental-prompt"}},
-		{"a native question T3 refuses to dismiss still gets the turn", "thread-existing", fmt.Errorf("%w: needs an answer", apperrs.ErrInvalid), []string{"req-1"}, []string{"incremental-prompt"}},
-		{"already answered in T3 starts no second turn", "thread-existing", apperrs.ErrConflict, []string{"req-1"}, nil},
-		{"a fresh thread has no question to clear", "", nil, nil, []string{"full-prompt"}},
+		{"clears the question, then sends the answer turn", "thread-existing", nil, []string{"req-1"}, []string{"incremental-prompt"}, ""},
+		{"a native question T3 refuses to dismiss still gets the turn", "thread-existing", fmt.Errorf("%w: needs an answer", apperrs.ErrInvalid), []string{"req-1"}, []string{"incremental-prompt"}, ""},
+		{"already answered in T3 starts no second turn", "thread-existing", apperrs.ErrConflict, []string{"req-1"}, nil, ""},
+		{"a fresh thread has no question to clear", "", nil, nil, []string{"full-prompt"}, ""},
+		{"the thread that asked takes the answer from another T3 project too", "thread-existing", nil, []string{"req-1"}, []string{"incremental-prompt"}, "checkout-a"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fake := &fakeT3Client{
-				nextThreadID: "thread-new",
-				dismissErr:   tt.dismissErr,
-				subscription: newFakeSubscription(Update{Terminal: &TurnResult{State: TurnDone}}),
-			}
+			sub := newFakeSubscription(Update{Terminal: &TurnResult{State: TurnDone}})
+			sub.projectID = tt.threadProject
+			fake := &fakeT3Client{nextThreadID: "thread-new", dismissErr: tt.dismissErr, subscription: sub}
 			prompts := testPrompts()
 			prompts.Answer = &harness.PendingAnswer{RequestID: "req-1"}
+			target := harness.Target{SessionID: tt.sessionID}
+			if tt.threadProject != "" {
+				target.ProjectID = "checkout-b"
+			}
 
-			result, err := harnessWithFake(fake).StartTurn(t.Context(), harness.Target{SessionID: tt.sessionID}, "title", prompts)
+			result, err := harnessWithFake(fake).StartTurn(t.Context(), target, "title", prompts)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantDismissed, fake.dismissed)
 			assert.Equal(t, tt.wantPrompts, fake.sentPrompts)

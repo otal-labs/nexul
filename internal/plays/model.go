@@ -161,8 +161,11 @@ type Trail struct {
 	SelectedMemoryIDs  []string   `json:"selected_memory_ids"`
 	CustomInstructions string     `json:"custom_instructions"`
 	ComputerID         string     `json:"computer_id"`
-	Provider           string     `json:"provider"`
-	Model              string     `json:"model"`
+	// HarnessProjectID and Worktree are where the run started, which its follow-up turns keep; empty on older runs.
+	HarnessProjectID string `json:"-"`
+	Worktree         bool   `json:"-"`
+	Provider         string `json:"provider"`
+	Model            string `json:"model"`
 	// ModelOptions are the options Model ran with; unset ones were the harness's defaults.
 	ModelOptions     []harness.OptionSetting `json:"model_options"`
 	HarnessSessionID string                  `json:"harness_session_id"`

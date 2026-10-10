@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -29,15 +30,16 @@ type pausedPlayTurn struct {
 	done   chan struct{}
 }
 
+// RunTurn waits for resume on every turn; once resume is closed, later turns run straight through.
 func (p *pausedPlayTurn) RunTurn(ctx context.Context, req agent.TurnRequest) {
-	close(p.ready)
+	p.ready <- struct{}{}
 	select {
 	case <-p.resume:
 	case <-ctx.Done():
 		return
 	}
 	p.Service.RunTurn(ctx, req)
-	close(p.done)
+	p.done <- struct{}{}
 }
 
 func TestIntegration_PlayLocation_SettingsChangedBeforeRunTurn_UsesConfirmedTarget(t *testing.T) {
@@ -89,6 +91,9 @@ func newPlayLocationFixture(t *testing.T, client *harnesstest.Client, session ha
 	f := newPermFixture(t)
 	ctx := as(uOwner)
 	now := time.Now().UTC()
+	client.ListProjectsFn = func(context.Context, harness.Session) ([]harness.Project, error) {
+		return []harness.Project{{ID: "checkout-a", Title: "A"}, {ID: "checkout-b", Title: "B"}}, nil
+	}
 	registry := harnesstest.Registry(client)
 	sealed, err := crypto.Encrypt(switchTestKey, []byte(session.BearerToken))
 	require.NoError(t, err)
@@ -100,7 +105,7 @@ func newPlayLocationFixture(t *testing.T, client *harnesstest.Client, session ha
 	require.NoError(t, err)
 	_, err = svc.SetProjectLink(ctx, uOwner, f.ticket.ProjectID, pairing.ProjectLink{ComputerID: "computer", HarnessProjectID: "checkout-a", Provider: "provider", Model: "model-a", ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}}, StartIn: pairing.StartInWorktree})
 	require.NoError(t, err)
-	turn := &pausedPlayTurn{Service: agent.NewService(agent.Config{Live: noopPublisher{}, Conversations: agentConversations{svc: f.svc.chatSvc}, Targets: svc, Harnesses: registry, Tickets: agentTicketReader{svc: f.svc.ticketsSvc, projects: f.store.Projects, statuses: f.store.Statuses}}), ready: make(chan struct{}), resume: make(chan struct{}), done: make(chan struct{})}
+	turn := &pausedPlayTurn{Service: agent.NewService(agent.Config{Live: noopPublisher{}, Conversations: agentConversations{svc: f.svc.chatSvc}, Targets: svc, Harnesses: registry, Tickets: agentTicketReader{svc: f.svc.ticketsSvc, projects: f.store.Projects, statuses: f.store.Statuses}}), ready: make(chan struct{}, 4), resume: make(chan struct{}), done: make(chan struct{}, 4)}
 	stage := plays.StageBacklog
 	play := &plays.Play{ShowWhenStage: &stage, ID: "play-location", WorkspaceID: wsDefault, Label: "Run", Type: plays.TypeTicket, Instructions: "Complete the ticket", Enabled: true, CreatedAt: now, UpdatedAt: now}
 	require.NoError(t, f.store.Plays.Create(ctx, play))
@@ -158,4 +163,76 @@ func TestIntegration_PlayLocation_FailedChangeReopened_RetryLeavesTheOldThread(t
 	saved, err := f.svc.chatSvc.GetConversation(ctx, conv.ID)
 	require.NoError(t, err)
 	assert.Equal(t, create["threadId"], saved.AgentThreadID)
+}
+
+// recordingTurns answers every turn on threadID, the first with a question when ask is set, and keeps each target.
+type recordingTurns struct {
+	mu       sync.Mutex
+	threadID string
+	ask      bool
+	targets  []harness.Target
+}
+
+func (r *recordingTurns) client() *harnesstest.Client {
+	return &harnesstest.Client{ListProvidersFn: func(context.Context, harness.Session) ([]harness.Provider, error) {
+		return []harness.Provider{{ID: "provider", Driver: "provider", Name: "Provider"}}, nil
+	}, StartTurnFn: func(_ context.Context, target harness.Target, _ string, _ harness.TurnPrompts) (harness.StartResult, error) {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		r.targets = append(r.targets, target)
+		updates := make(chan harness.Update, 2)
+		if r.ask && len(r.targets) == 1 {
+			updates <- harness.Update{Question: &harness.Question{RequestID: "req-1", Questions: []harness.QuestionItem{{ID: "q1", Text: "Keep going?"}}}}
+		}
+		updates <- harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}
+		close(updates)
+		return harness.StartResult{SessionID: r.threadID, Updates: updates}, nil
+	}}
+}
+
+func (r *recordingTurns) last() harness.Target {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.targets[len(r.targets)-1]
+}
+
+func TestIntegration_PlayLocation_LinkChangedWhileARunWaits_TheAnswerGoesToTheRunsThread(t *testing.T) {
+	ctx := as(uOwner)
+	turns := &recordingTurns{threadID: "thread-checkout-a", ask: true}
+	f, svc, runner, turn := newPlayLocationFixture(t, turns.client(), harness.Session{ServerURL: "https://example.com", BearerToken: "test-token"})
+	close(turn.resume)
+
+	trail, err := runner.Run(ctx, plays.RunInput{PlayID: "play-location", TargetType: plays.TargetTicket, TargetID: f.ticket.ID, Via: plays.ViaWeb})
+	require.NoError(t, err)
+	<-turn.done
+	waiting, err := f.store.PlayTrails.GetTrail(ctx, trail.ID)
+	require.NoError(t, err)
+	require.Equal(t, plays.TrailWaiting, waiting.State)
+
+	_, err = svc.SetProjectLink(ctx, uOwner, f.ticket.ProjectID, pairing.ProjectLink{ComputerID: "computer", HarnessProjectID: "checkout-b", Provider: "provider", Model: "model-b", StartIn: pairing.StartInFolder})
+	require.NoError(t, err)
+	_, err = runner.Answer(ctx, trail.ID, harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q1": {Text: "Yes"}}})
+	require.NoError(t, err)
+	<-turn.done
+
+	answered := turns.last()
+	assert.Equal(t, "thread-checkout-a", answered.SessionID, "the answer goes to the thread that asked")
+	assert.Equal(t, "checkout-a", answered.ProjectID, "the run stays where it was started, whatever the link says now")
+	assert.True(t, answered.Worktree)
+}
+
+func TestIntegration_PlayLocation_ChangeBackToTheSameLocation_KeepsTheThread(t *testing.T) {
+	ctx := as(uOwner)
+	turns := &recordingTurns{threadID: "thread-checkout-a"}
+	f, _, runner, turn := newPlayLocationFixture(t, turns.client(), harness.Session{ServerURL: "https://example.com", BearerToken: "test-token"})
+	close(turn.resume)
+	conv, err := f.svc.chatSvc.GetOrCreateTicketThread(ctx, wsDefault, f.ticket.ID, uOwner)
+	require.NoError(t, err)
+	require.NoError(t, f.svc.chatSvc.SetAgentThread(ctx, conv.ID, "thread-checkout-a"))
+
+	_, err = runner.Run(ctx, plays.RunInput{PlayID: "play-location", TargetType: plays.TargetTicket, TargetID: f.ticket.ID, Via: plays.ViaWeb, ComputerID: "computer", HarnessProjectID: "checkout-a"})
+	require.NoError(t, err)
+	<-turn.done
+
+	assert.Equal(t, "thread-checkout-a", turns.last().SessionID, "picking the linked location again is no reason for a new thread")
 }

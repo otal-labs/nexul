@@ -878,6 +878,8 @@ type PlayTrail struct {
 	Question           sql.NullString
 	FailureReason      string
 	ModelOptions       string
+	HarnessProjectID   string
+	Worktree           int64
 }
 
 type ProcessedEvent struct {

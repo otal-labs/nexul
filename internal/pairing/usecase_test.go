@@ -405,6 +405,7 @@ func TestService_ResolvePersonRun_AsksWhereOnceThenUsesTheLink(t *testing.T) {
 	exch.ListProvidersFn = func(context.Context, harness.Session) ([]harness.Provider, error) {
 		return []harness.Provider{{ID: "claude", Driver: "claude", Name: "Provider"}}, nil
 	}
+	exch.ListProjectsFn = listsT3Projects("t3-app", "t3-web")
 	svc := newTestService(newFakeRepo(), exch)
 	ctx := t.Context()
 	home, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
@@ -422,19 +423,27 @@ func TestService_ResolvePersonRun_AsksWhereOnceThenUsesTheLink(t *testing.T) {
 	assert.Equal(t, ReasonNeedsLocation, nc.Reason)
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
 
-	target, err := svc.ResolvePersonRun(ctx, "u1", "proj-1", home.ID, "t3-app", "", "", nil)
+	target, err := svc.ResolvePersonRun(ctx, "u1", "proj-1", home.ID, "t3-app", "claude", "opus", nil)
 	require.NoError(t, err)
 	assert.Equal(t, "t3-app", target.HarnessProjectID)
+	assert.Equal(t, "opus", target.Model, "the run takes the model picked for it")
 	link, err := svc.GetProjectLink(ctx, "u1", "proj-1")
 	require.NoError(t, err)
 	assert.Equal(t, home.ID, link.ComputerID, "the answer is saved as their link")
 	assert.Equal(t, "t3-app", link.HarnessProjectID)
-	assert.Equal(t, "claude/sonnet", link.Provider+"/"+link.Model, "on their default computer the link takes their default model")
+	assert.Equal(t, "claude/sonnet", link.Provider+"/"+link.Model, "the model was for this run only; the link takes their default")
+
+	_, err = svc.ResolvePersonRun(ctx, "u1", "proj-1", home.ID, "t3-web", "claude", "haiku", nil)
+	require.NoError(t, err)
+	link, err = svc.GetProjectLink(ctx, "u1", "proj-1")
+	require.NoError(t, err)
+	assert.Equal(t, "t3-web", link.HarnessProjectID, "Change saves where")
+	assert.Equal(t, "claude/sonnet", link.Provider+"/"+link.Model, "and keeps the link's model")
 
 	target, err = svc.ResolvePersonRun(ctx, "u1", "proj-1", "", "", "", "", nil)
 	require.NoError(t, err, "a linked project runs without asking")
 	assert.Equal(t, home.ID, target.Computer.ID)
-	assert.Equal(t, "t3-app", target.HarnessProjectID)
+	assert.Equal(t, "t3-web", target.HarnessProjectID)
 
 	require.NoError(t, svc.ClearProjectLink(ctx, "u1", "proj-1"))
 	_, err = svc.ResolvePersonRun(ctx, "u1", "proj-1", "", "", "", "", nil)
@@ -466,6 +475,7 @@ func TestService_ResolvePersonRun_Where(t *testing.T) {
 			exch.ListProvidersFn = func(context.Context, harness.Session) ([]harness.Provider, error) {
 				return []harness.Provider{{ID: "claude", Driver: "claude", Name: "Provider"}}, nil
 			}
+			exch.ListProjectsFn = listsT3Projects("t3-other")
 			svc := newTestService(newFakeRepo(), exch)
 			ctx := t.Context()
 			home, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
@@ -813,4 +823,51 @@ func (r replacedRunLocationRepo) SaveProjectLink(ctx context.Context, link Proje
 	}
 	link.HarnessProjectID, link.Model, link.StartIn = "t3-replaced", "other-model", StartInFolder
 	return r.Repo.SaveProjectLink(ctx, link)
+}
+
+func listsT3Projects(ids ...string) func(context.Context, harness.Session) ([]harness.Project, error) {
+	return func(context.Context, harness.Session) ([]harness.Project, error) {
+		projects := make([]harness.Project, 0, len(ids))
+		for _, id := range ids {
+			projects = append(projects, harness.Project{ID: id, Title: id})
+		}
+		return projects, nil
+	}
+}
+
+func TestService_ResolvePersonRun_AT3ProjectTheComputerDoesNotList_IsRefusedAndNotSaved(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		list       func(context.Context, harness.Session) ([]harness.Project, error)
+		wantReason NotConfiguredReason
+	}{
+		{name: "not one of the computer's T3 projects", list: listsT3Projects("t3-app")},
+		{name: "the computer cannot say", list: func(context.Context, harness.Session) ([]harness.Project, error) {
+			return nil, errBoom
+		}, wantReason: ReasonOffline},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			exch := &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"}
+			exch.ListProjectsFn = tt.list
+			svc := newTestService(newFakeRepo(), exch)
+			ctx := t.Context()
+			home, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+			require.NoError(t, err)
+
+			_, err = svc.ResolvePersonRun(ctx, "u1", "proj-1", home.ID, "t3-typo", "", "", nil)
+
+			require.ErrorIs(t, err, apperrs.ErrInvalid)
+			var nc *NotConfiguredError
+			if tt.wantReason != "" {
+				require.ErrorAs(t, err, &nc)
+				assert.Equal(t, tt.wantReason, nc.Reason)
+			}
+			link, err := svc.GetProjectLink(ctx, "u1", "proj-1")
+			require.NoError(t, err)
+			assert.Empty(t, link.ComputerID, "an unchecked T3 project is never saved as the link")
+		})
+	}
 }

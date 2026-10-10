@@ -396,6 +396,8 @@ type fakeHarnessResolver struct {
 	// lastChoice records the caller's requested choice, for asserting an override reached the seam.
 	lastChoice HarnessChoice
 	unlinked   bool
+	// recorded is set once a run resolved through ResolveRecordedTarget, which reads no link.
+	recorded bool
 }
 
 func (f *fakeHarnessResolver) ResolvePersonTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error) {
@@ -403,6 +405,11 @@ func (f *fakeHarnessResolver) ResolvePersonTarget(ctx context.Context, userID, p
 		f.lastChoice = choice
 		return HarnessChoice{}, &HarnessRefusal{Reason: RefusalNeedsLocation, Err: &pairing.NotConfiguredError{Reason: pairing.ReasonNeedsLocation}}
 	}
+	return f.ResolveTarget(ctx, userID, projectID, choice)
+}
+
+func (f *fakeHarnessResolver) ResolveRecordedTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error) {
+	f.recorded = true
 	return f.ResolveTarget(ctx, userID, projectID, choice)
 }
 

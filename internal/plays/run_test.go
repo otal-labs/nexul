@@ -189,7 +189,7 @@ func TestRun_PersonRun_AsksWhereRatherThanFallingBack(t *testing.T) {
 	assert.Equal(t, "t3-nexul", f.harness.lastChoice.HarnessProjectID)
 	assert.Equal(t, "c-1", trail.ComputerID)
 	<-f.turns.done
-	assert.True(t, f.turns.last().NewThread, "a picked location cannot reuse a thread in another checkout")
+	assert.Equal(t, "t3-nexul", f.turns.last().Target.HarnessProjectID, "the turn goes where the person picked")
 }
 
 func TestRun_SetupNotConfirmed_FailsOnPressWithTheChatRefusal(t *testing.T) {

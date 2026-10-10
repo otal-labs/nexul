@@ -9,24 +9,39 @@ computer and a T3 project, with their defaults filled in as the suggestion), and
 link for that project. Later runs use the link without asking. Runs nobody presses keep the fallback, because nobody
 is there to answer.
 
-- **Who asks.** `Runner.Run` (the run dialog, `play_run`, and Continue on a run whose thread is gone) resolves
-  through `pairing.ResolvePersonRun`. Without a link and without a picked T3 project it refuses with
+- **Who asks.** `Runner.Run` (the run dialog, `play_run`, and Continue on a gone thread's run that recorded no
+  location) resolves through `pairing.ResolvePersonRun`. Without a link and without a picked T3 project it refuses with
   `needs_location`, an `ErrInvalid` whose details carry the reason, and keeps no failed trail: being asked is not a
   failed run. A picked computer that is not the linked one needs its T3 project too, so a pick can never land in a
   fallback project either.
 - **Who falls back.** Auto plays from the queue, the decisions check when a card enters done, and the decisions
   check's Run again resolve through the starter's link, else their defaults, as before. The decisions check works
   through MCP, not in a checkout, and its Run again has no dialog to ask in.
-- **What is saved.** The computer and T3 project, the run's provider and model (filled from the defaults on the
-  default computer), and the link's existing start-in. The run dialog's **Change** saves the same way, so a wrong
-  link is fixed from the run. The Projects tab still edits and clears links; clearing one brings the question back.
-- **Launch.** The validated computer, T3 project, provider, model, options and start-in travel with the turn. Editing or clearing settings after validation cannot redirect that run.
-- **Thread.** An explicit location starts a fresh T3 thread. A later linked run checks the stored thread's T3 project before sending and starts fresh when it differs, including after a failed Change. Runs in the same project and Continue reuse their thread.
+- **What is saved.** The computer and T3 project, once that computer lists the T3 project; one it does not list is
+  refused, and one it cannot be asked about (offline) is refused rather than saved unchecked. The link keeps its own
+  model on the same computer, or takes the person's default model on their default computer; the model picked in the
+  dialog is for that run only, as its pill says. The link's start-in is kept. The run dialog's **Change** saves the
+  same way, so a wrong link is fixed from the run. The Projects tab still edits and clears links; clearing one brings
+  the question back.
+- **Launch.** The validated computer, T3 project, provider, model, options and start-in travel with the turn, and the
+  trail records them (migration 0089). Editing or clearing settings after validation cannot redirect that run, nor
+  its follow-up turns: an answer, Continue, and following it again after a restart or on news in T3 Code all go where
+  the run started, never where the link points now. A trail from before the migration has no recorded T3 project and
+  follows the link as before.
+- **Thread.** A new run reuses the target's thread unless that thread is in another T3 project, which starts a fresh
+  one, after a Change or a failed one alike; picking the same location again keeps the thread. An answer always goes
+  to the thread that asked, whichever T3 project it is in, so a pending question is never left behind.
+- **Started again.** Continue on a run whose thread is gone starts the play again where that run ran, rechecking that
+  computer and its setup without reading or saving the link. A run with no recorded location asks where, like a
+  press, and the web opens the run dialog on **Where to run** with the message filled in. The old trail says the
+  play started again only once it has, and otherwise why it did not.
 - **Web.** The run dialog shows **Where to run**: two pickers on a first run, one line with **Change** after. The
-  harness pill keeps provider and model for the one run (ADR 0058); the computer moved into **Where to run**.
-- **MCP.** `play_run` takes `t3_project_id` beside `computer_id` and saves both as the caller's link, and its
-  refusal says to ask the user and which tool lists the choices. `computer_list` with one computer's id lists that
-  computer's T3 projects. No new tool.
+  harness pill keeps provider and model for the one run (ADR 0058); the computer moved into **Where to run**. Only an
+  unlinked project turns an offline or expired computer into the question; a linked one keeps the play disabled
+  with that reason.
+- **MCP.** `play_run` takes `t3_project_id` beside `computer_id` and saves both as the caller's link, checked as
+  above, and its refusal says to ask the user and which tool lists the choices; so does `trail_update`'s continue.
+  `computer_list` with one computer's id lists that computer's T3 projects. No new tool.
 - **Events.** None. A link is one person's own setting, changed only by them, and their own client refetches it after
   the run that saved it (ADR 0102).
 
