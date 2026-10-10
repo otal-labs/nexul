@@ -1,3 +1,4 @@
+import { PairCommands } from "@/components/pairing/PairCommands";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { FormInput } from "@/components/FormInput";
 import { useRepairComputer } from "@/hooks/PairingHooks";
@@ -19,6 +20,7 @@ export const PairComputerForm = ({ computer }: PairComputerFormProps) => {
 
   return (
     <div className="space-y-4">
+      <PairCommands />
       <FormInput control={control} name="name" label="Name" placeholder="e.g. Home, VPS" autoFocus />
       <FormInput
         control={control}
@@ -32,7 +34,7 @@ export const PairComputerForm = ({ computer }: PairComputerFormProps) => {
         control={control}
         name="token"
         label="One-time pairing token"
-        placeholder="Paste the token printed by `t3 pair`"
+        placeholder="Paste the token the command printed"
         autoComplete="off"
       />
     </div>

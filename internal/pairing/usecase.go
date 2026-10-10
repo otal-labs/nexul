@@ -288,7 +288,7 @@ func pairFailure(serverURL string, err error) error {
 	if errors.Is(err, apperrs.ErrRetryable) {
 		return &FieldError{Field: "server_url", Err: fmt.Errorf("couldn't reach the harness at %s: %w", serverURL, err)}
 	}
-	return &FieldError{Field: "token", Err: fmt.Errorf("the harness refused this token, run t3 pair for a fresh one: %w", err)}
+	return &FieldError{Field: "token", Err: fmt.Errorf("the harness refused this token, get a fresh one from T3 Code on the computer: %w", err)}
 }
 
 // kindOrder is the order a computer's kind moves in, one step at a time and never back (ADR 0113).
