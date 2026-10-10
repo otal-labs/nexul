@@ -1,18 +1,64 @@
--- name: ListGitHubInstallationWorkspaces :many
-SELECT a.account_login, w.id AS workspace_id, w.name AS workspace_name
+-- name: ListGitHubInstallationAssignments :many
+SELECT a.account_id, a.account_login, a.workspace_id, w.name AS workspace_name, a.gone_at
 FROM github_installation_workspaces a
 JOIN workspaces w ON w.id = a.workspace_id
 ORDER BY a.account_login, w.name, w.id;
 
--- name: ListGitHubInstallationAccountsIn :many
-SELECT DISTINCT account_login FROM github_installation_workspaces
-WHERE workspace_id IN (SELECT value FROM json_each(?))
-ORDER BY account_login;
+-- name: ListGitHubInstallationAssignmentsIn :many
+SELECT a.account_id, a.account_login, a.workspace_id, w.name AS workspace_name, a.gone_at
+FROM github_installation_workspaces a
+JOIN workspaces w ON w.id = a.workspace_id
+WHERE a.workspace_id IN (SELECT value FROM json_each(?))
+ORDER BY a.account_login, w.name, w.id;
 
--- name: AssignGitHubInstallation :exec
-INSERT INTO github_installation_workspaces (account_login, workspace_id, assigned_at)
-VALUES (?, ?, ?)
-ON CONFLICT(account_login, workspace_id) DO NOTHING;
+-- name: ListGitHubAssignedAccountsIn :many
+SELECT DISTINCT account_id FROM github_installation_workspaces
+WHERE workspace_id IN (SELECT value FROM json_each(?)) AND account_id IS NOT NULL AND gone_at IS NULL
+ORDER BY account_id;
 
--- name: UnassignGitHubInstallation :exec
-DELETE FROM github_installation_workspaces WHERE account_login = ? AND workspace_id = ?;
+-- name: CountGitHubUnresolvedAssignments :one
+SELECT COUNT(*) FROM github_installation_workspaces WHERE account_id IS NULL AND gone_at IS NULL;
+
+-- name: AssignGitHubInstallation :execrows
+INSERT INTO github_installation_workspaces (account_id, account_login, workspace_id, assigned_at)
+VALUES (?, ?, ?, ?)
+ON CONFLICT (account_id, workspace_id) WHERE account_id IS NOT NULL
+DO UPDATE SET gone_at = NULL, account_login = excluded.account_login, assigned_at = excluded.assigned_at
+WHERE github_installation_workspaces.gone_at IS NOT NULL;
+
+-- name: UnassignGitHubInstallation :execrows
+DELETE FROM github_installation_workspaces
+WHERE workspace_id = sqlc.arg(workspace_id)
+  AND (account_id = sqlc.arg(account_id) OR (account_id IS NULL AND account_login = sqlc.arg(account_login)));
+
+-- name: ResolveGitHubInstallationAccount :exec
+UPDATE OR IGNORE github_installation_workspaces SET account_id = ?
+WHERE account_id IS NULL AND account_login = ?;
+
+-- name: DropGitHubUnresolvedDuplicates :exec
+DELETE FROM github_installation_workspaces WHERE account_id IS NULL AND account_login = ?;
+
+-- name: RenameGitHubInstallationAccount :exec
+UPDATE github_installation_workspaces SET account_login = ? WHERE account_id = ?;
+
+-- name: MarkGitHubInstallationGone :exec
+UPDATE github_installation_workspaces SET gone_at = sqlc.arg(gone_at)
+WHERE gone_at IS NULL AND workspace_id = sqlc.arg(workspace_id)
+  AND (account_id = sqlc.arg(account_id) OR (account_id IS NULL AND account_login = sqlc.arg(account_login)));
+
+-- name: DropGoneGitHubInstallation :exec
+DELETE FROM github_installation_workspaces WHERE account_id = ? AND gone_at IS NOT NULL;
+
+-- name: DeleteExpiredGitHubInstallStates :exec
+DELETE FROM github_install_states WHERE expires_at <= ?;
+
+-- name: SaveGitHubInstallState :exec
+INSERT INTO github_install_states (state_hash, workspace_id, user_id, expires_at) VALUES (?, ?, ?, ?);
+
+-- name: ConsumeGitHubInstallState :one
+DELETE FROM github_install_states WHERE state_hash = ? RETURNING workspace_id, user_id, expires_at;
+
+-- name: ListGitHubAssignedAccounts :many
+SELECT DISTINCT account_id FROM github_installation_workspaces
+WHERE account_id IS NOT NULL AND gone_at IS NULL
+ORDER BY account_id;

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { REPOSITORY_SEARCH_MIN_LENGTH, type Installation, type Repo, type ScanResult } from "@/models/Repository";
+import { followEach, type LiveFollower } from "@/lib/live";
 import { pause } from "@/lib/pause";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -81,6 +82,20 @@ export const useUnassignInstallation = () => {
     onError: (error) => toast.error(errorMessage(error)),
   });
 };
+
+interface InstallationPayload {
+  workspace_id: string;
+}
+
+// An assignment changes the installations list and the one workspace's repository lists; nothing else refetches.
+export const repositoryFollower: LiveFollower = followEach(
+  ["repository.installation.assigned", "repository.installation.unassigned"],
+  ({ workspace_id }: InstallationPayload, { client }) =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: [getInstallationsKey] }),
+      client.invalidateQueries({ queryKey: [getRepositoriesKey, workspace_id] }),
+    ]),
+);
 
 // No onSuccess/onError toasting: the repository step renders the scan's loading/error/empty states inline
 // rather than as a toast, since "not installed" and "nothing found" are real UI states, not failures to dismiss.

@@ -18,6 +18,7 @@ import (
 	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/plays"
+	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/templates"
@@ -67,6 +68,7 @@ func declared() []eventbus.Topic {
 		roles.Topics(),
 		access.Topics(),
 		templates.Topics(),
+		repository.Topics(),
 	} {
 		all = append(all, topics...)
 	}

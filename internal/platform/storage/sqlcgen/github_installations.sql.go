@@ -7,44 +7,111 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 )
 
-const assignGitHubInstallation = `-- name: AssignGitHubInstallation :exec
-INSERT INTO github_installation_workspaces (account_login, workspace_id, assigned_at)
-VALUES (?, ?, ?)
-ON CONFLICT(account_login, workspace_id) DO NOTHING
+const assignGitHubInstallation = `-- name: AssignGitHubInstallation :execrows
+INSERT INTO github_installation_workspaces (account_id, account_login, workspace_id, assigned_at)
+VALUES (?, ?, ?, ?)
+ON CONFLICT (account_id, workspace_id) WHERE account_id IS NOT NULL
+DO UPDATE SET gone_at = NULL, account_login = excluded.account_login, assigned_at = excluded.assigned_at
+WHERE github_installation_workspaces.gone_at IS NOT NULL
 `
 
 type AssignGitHubInstallationParams struct {
+	AccountID    sql.NullInt64
 	AccountLogin string
 	WorkspaceID  string
 	AssignedAt   int64
 }
 
-func (q *Queries) AssignGitHubInstallation(ctx context.Context, arg AssignGitHubInstallationParams) error {
-	_, err := q.db.ExecContext(ctx, assignGitHubInstallation, arg.AccountLogin, arg.WorkspaceID, arg.AssignedAt)
+func (q *Queries) AssignGitHubInstallation(ctx context.Context, arg AssignGitHubInstallationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, assignGitHubInstallation,
+		arg.AccountID,
+		arg.AccountLogin,
+		arg.WorkspaceID,
+		arg.AssignedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const consumeGitHubInstallState = `-- name: ConsumeGitHubInstallState :one
+DELETE FROM github_install_states WHERE state_hash = ? RETURNING workspace_id, user_id, expires_at
+`
+
+type ConsumeGitHubInstallStateRow struct {
+	WorkspaceID string
+	UserID      string
+	ExpiresAt   int64
+}
+
+func (q *Queries) ConsumeGitHubInstallState(ctx context.Context, stateHash string) (ConsumeGitHubInstallStateRow, error) {
+	row := q.db.QueryRowContext(ctx, consumeGitHubInstallState, stateHash)
+	var i ConsumeGitHubInstallStateRow
+	err := row.Scan(&i.WorkspaceID, &i.UserID, &i.ExpiresAt)
+	return i, err
+}
+
+const countGitHubUnresolvedAssignments = `-- name: CountGitHubUnresolvedAssignments :one
+SELECT COUNT(*) FROM github_installation_workspaces WHERE account_id IS NULL AND gone_at IS NULL
+`
+
+func (q *Queries) CountGitHubUnresolvedAssignments(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countGitHubUnresolvedAssignments)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const deleteExpiredGitHubInstallStates = `-- name: DeleteExpiredGitHubInstallStates :exec
+DELETE FROM github_install_states WHERE expires_at <= ?
+`
+
+func (q *Queries) DeleteExpiredGitHubInstallStates(ctx context.Context, expiresAt int64) error {
+	_, err := q.db.ExecContext(ctx, deleteExpiredGitHubInstallStates, expiresAt)
 	return err
 }
 
-const listGitHubInstallationAccountsIn = `-- name: ListGitHubInstallationAccountsIn :many
-SELECT DISTINCT account_login FROM github_installation_workspaces
-WHERE workspace_id IN (SELECT value FROM json_each(?))
-ORDER BY account_login
+const dropGitHubUnresolvedDuplicates = `-- name: DropGitHubUnresolvedDuplicates :exec
+DELETE FROM github_installation_workspaces WHERE account_id IS NULL AND account_login = ?
 `
 
-func (q *Queries) ListGitHubInstallationAccountsIn(ctx context.Context, jsonEach interface{}) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listGitHubInstallationAccountsIn, jsonEach)
+func (q *Queries) DropGitHubUnresolvedDuplicates(ctx context.Context, accountLogin string) error {
+	_, err := q.db.ExecContext(ctx, dropGitHubUnresolvedDuplicates, accountLogin)
+	return err
+}
+
+const dropGoneGitHubInstallation = `-- name: DropGoneGitHubInstallation :exec
+DELETE FROM github_installation_workspaces WHERE account_id = ? AND gone_at IS NOT NULL
+`
+
+func (q *Queries) DropGoneGitHubInstallation(ctx context.Context, accountID sql.NullInt64) error {
+	_, err := q.db.ExecContext(ctx, dropGoneGitHubInstallation, accountID)
+	return err
+}
+
+const listGitHubAssignedAccounts = `-- name: ListGitHubAssignedAccounts :many
+SELECT DISTINCT account_id FROM github_installation_workspaces
+WHERE account_id IS NOT NULL AND gone_at IS NULL
+ORDER BY account_id
+`
+
+func (q *Queries) ListGitHubAssignedAccounts(ctx context.Context) ([]sql.NullInt64, error) {
+	rows, err := q.db.QueryContext(ctx, listGitHubAssignedAccounts)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []string
+	var items []sql.NullInt64
 	for rows.Next() {
-		var account_login string
-		if err := rows.Scan(&account_login); err != nil {
+		var account_id sql.NullInt64
+		if err := rows.Scan(&account_id); err != nil {
 			return nil, err
 		}
-		items = append(items, account_login)
+		items = append(items, account_id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -55,29 +122,66 @@ func (q *Queries) ListGitHubInstallationAccountsIn(ctx context.Context, jsonEach
 	return items, nil
 }
 
-const listGitHubInstallationWorkspaces = `-- name: ListGitHubInstallationWorkspaces :many
-SELECT a.account_login, w.id AS workspace_id, w.name AS workspace_name
+const listGitHubAssignedAccountsIn = `-- name: ListGitHubAssignedAccountsIn :many
+SELECT DISTINCT account_id FROM github_installation_workspaces
+WHERE workspace_id IN (SELECT value FROM json_each(?)) AND account_id IS NOT NULL AND gone_at IS NULL
+ORDER BY account_id
+`
+
+func (q *Queries) ListGitHubAssignedAccountsIn(ctx context.Context, jsonEach interface{}) ([]sql.NullInt64, error) {
+	rows, err := q.db.QueryContext(ctx, listGitHubAssignedAccountsIn, jsonEach)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []sql.NullInt64
+	for rows.Next() {
+		var account_id sql.NullInt64
+		if err := rows.Scan(&account_id); err != nil {
+			return nil, err
+		}
+		items = append(items, account_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listGitHubInstallationAssignments = `-- name: ListGitHubInstallationAssignments :many
+SELECT a.account_id, a.account_login, a.workspace_id, w.name AS workspace_name, a.gone_at
 FROM github_installation_workspaces a
 JOIN workspaces w ON w.id = a.workspace_id
 ORDER BY a.account_login, w.name, w.id
 `
 
-type ListGitHubInstallationWorkspacesRow struct {
+type ListGitHubInstallationAssignmentsRow struct {
+	AccountID     sql.NullInt64
 	AccountLogin  string
 	WorkspaceID   string
 	WorkspaceName string
+	GoneAt        sql.NullInt64
 }
 
-func (q *Queries) ListGitHubInstallationWorkspaces(ctx context.Context) ([]ListGitHubInstallationWorkspacesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listGitHubInstallationWorkspaces)
+func (q *Queries) ListGitHubInstallationAssignments(ctx context.Context) ([]ListGitHubInstallationAssignmentsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listGitHubInstallationAssignments)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListGitHubInstallationWorkspacesRow
+	var items []ListGitHubInstallationAssignmentsRow
 	for rows.Next() {
-		var i ListGitHubInstallationWorkspacesRow
-		if err := rows.Scan(&i.AccountLogin, &i.WorkspaceID, &i.WorkspaceName); err != nil {
+		var i ListGitHubInstallationAssignmentsRow
+		if err := rows.Scan(
+			&i.AccountID,
+			&i.AccountLogin,
+			&i.WorkspaceID,
+			&i.WorkspaceName,
+			&i.GoneAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -91,16 +195,140 @@ func (q *Queries) ListGitHubInstallationWorkspaces(ctx context.Context) ([]ListG
 	return items, nil
 }
 
-const unassignGitHubInstallation = `-- name: UnassignGitHubInstallation :exec
-DELETE FROM github_installation_workspaces WHERE account_login = ? AND workspace_id = ?
+const listGitHubInstallationAssignmentsIn = `-- name: ListGitHubInstallationAssignmentsIn :many
+SELECT a.account_id, a.account_login, a.workspace_id, w.name AS workspace_name, a.gone_at
+FROM github_installation_workspaces a
+JOIN workspaces w ON w.id = a.workspace_id
+WHERE a.workspace_id IN (SELECT value FROM json_each(?))
+ORDER BY a.account_login, w.name, w.id
+`
+
+type ListGitHubInstallationAssignmentsInRow struct {
+	AccountID     sql.NullInt64
+	AccountLogin  string
+	WorkspaceID   string
+	WorkspaceName string
+	GoneAt        sql.NullInt64
+}
+
+func (q *Queries) ListGitHubInstallationAssignmentsIn(ctx context.Context, jsonEach interface{}) ([]ListGitHubInstallationAssignmentsInRow, error) {
+	rows, err := q.db.QueryContext(ctx, listGitHubInstallationAssignmentsIn, jsonEach)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListGitHubInstallationAssignmentsInRow
+	for rows.Next() {
+		var i ListGitHubInstallationAssignmentsInRow
+		if err := rows.Scan(
+			&i.AccountID,
+			&i.AccountLogin,
+			&i.WorkspaceID,
+			&i.WorkspaceName,
+			&i.GoneAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markGitHubInstallationGone = `-- name: MarkGitHubInstallationGone :exec
+UPDATE github_installation_workspaces SET gone_at = ?1
+WHERE gone_at IS NULL AND workspace_id = ?2
+  AND (account_id = ?3 OR (account_id IS NULL AND account_login = ?4))
+`
+
+type MarkGitHubInstallationGoneParams struct {
+	GoneAt       sql.NullInt64
+	WorkspaceID  string
+	AccountID    sql.NullInt64
+	AccountLogin string
+}
+
+func (q *Queries) MarkGitHubInstallationGone(ctx context.Context, arg MarkGitHubInstallationGoneParams) error {
+	_, err := q.db.ExecContext(ctx, markGitHubInstallationGone,
+		arg.GoneAt,
+		arg.WorkspaceID,
+		arg.AccountID,
+		arg.AccountLogin,
+	)
+	return err
+}
+
+const renameGitHubInstallationAccount = `-- name: RenameGitHubInstallationAccount :exec
+UPDATE github_installation_workspaces SET account_login = ? WHERE account_id = ?
+`
+
+type RenameGitHubInstallationAccountParams struct {
+	AccountLogin string
+	AccountID    sql.NullInt64
+}
+
+func (q *Queries) RenameGitHubInstallationAccount(ctx context.Context, arg RenameGitHubInstallationAccountParams) error {
+	_, err := q.db.ExecContext(ctx, renameGitHubInstallationAccount, arg.AccountLogin, arg.AccountID)
+	return err
+}
+
+const resolveGitHubInstallationAccount = `-- name: ResolveGitHubInstallationAccount :exec
+UPDATE OR IGNORE github_installation_workspaces SET account_id = ?
+WHERE account_id IS NULL AND account_login = ?
+`
+
+type ResolveGitHubInstallationAccountParams struct {
+	AccountID    sql.NullInt64
+	AccountLogin string
+}
+
+func (q *Queries) ResolveGitHubInstallationAccount(ctx context.Context, arg ResolveGitHubInstallationAccountParams) error {
+	_, err := q.db.ExecContext(ctx, resolveGitHubInstallationAccount, arg.AccountID, arg.AccountLogin)
+	return err
+}
+
+const saveGitHubInstallState = `-- name: SaveGitHubInstallState :exec
+INSERT INTO github_install_states (state_hash, workspace_id, user_id, expires_at) VALUES (?, ?, ?, ?)
+`
+
+type SaveGitHubInstallStateParams struct {
+	StateHash   string
+	WorkspaceID string
+	UserID      string
+	ExpiresAt   int64
+}
+
+func (q *Queries) SaveGitHubInstallState(ctx context.Context, arg SaveGitHubInstallStateParams) error {
+	_, err := q.db.ExecContext(ctx, saveGitHubInstallState,
+		arg.StateHash,
+		arg.WorkspaceID,
+		arg.UserID,
+		arg.ExpiresAt,
+	)
+	return err
+}
+
+const unassignGitHubInstallation = `-- name: UnassignGitHubInstallation :execrows
+DELETE FROM github_installation_workspaces
+WHERE workspace_id = ?1
+  AND (account_id = ?2 OR (account_id IS NULL AND account_login = ?3))
 `
 
 type UnassignGitHubInstallationParams struct {
-	AccountLogin string
 	WorkspaceID  string
+	AccountID    sql.NullInt64
+	AccountLogin string
 }
 
-func (q *Queries) UnassignGitHubInstallation(ctx context.Context, arg UnassignGitHubInstallationParams) error {
-	_, err := q.db.ExecContext(ctx, unassignGitHubInstallation, arg.AccountLogin, arg.WorkspaceID)
-	return err
+func (q *Queries) UnassignGitHubInstallation(ctx context.Context, arg UnassignGitHubInstallationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, unassignGitHubInstallation, arg.WorkspaceID, arg.AccountID, arg.AccountLogin)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

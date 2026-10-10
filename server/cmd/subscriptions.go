@@ -22,12 +22,34 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 	"github.com/otal-labs/nexul/internal/platform/live"
+	"github.com/otal-labs/nexul/internal/platform/logging"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
+
+// pushesRunnersMayClone drops a push to a repository a runner could not clone (no project links it, its installation
+// is not assigned to the project's workspace, or GitHub refuses it), so it queues no build that fails at dispatch.
+func pushesRunnersMayClone(git gitProviderRouter, next eventbus.Handler) eventbus.Handler {
+	return func(ctx context.Context, ev eventbus.Event) error {
+		var p gitprovider.PushEvent
+		if err := json.Unmarshal(ev.Payload, &p); err != nil {
+			return next(ctx, ev)
+		}
+		_, err := git.cloneScope(ctx, p.Owner, p.Repo)
+		if permissions.Refused(err) || errors.Is(err, apperrs.ErrInvalid) || errors.Is(err, apperrs.ErrUnauthorized) {
+			logging.FromCtx(ctx).Debug("push ignored: no runner may clone the repository", "repo", p.Owner+"/"+p.Repo, "reason", err)
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		return next(ctx, ev)
+	}
+}
 
 // mustSubscribe registers a fan-out handler, exiting on failure like every other startup wiring step.
 func mustSubscribe(ctx context.Context, bus *inprocess.Bus, consumer, topic, note string, h eventbus.Handler) {
@@ -249,7 +271,7 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	})
 
 	// deploy owns these directly: branch deploy rules are service config, not automation code.
-	mustSubscribe(ctx, bus, "deploy.branch_push", gitprovider.TopicPush, "", svc.deploySvc.HandlePush)
+	mustSubscribe(ctx, bus, "deploy.branch_push", gitprovider.TopicPush, "", pushesRunnersMayClone(svc.gitRouter, svc.deploySvc.HandlePush))
 	mustSubscribe(ctx, bus, "deploy.branch_teardown", gitprovider.TopicBranchDeleted, "", svc.deploySvc.HandleBranchDeleted)
 
 	// Stack lifecycle events drive the auto-managed nodes; consumers are idempotent (see the handlers' own docs above).

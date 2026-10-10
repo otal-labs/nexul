@@ -30,6 +30,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/version"
 	"github.com/otal-labs/nexul/internal/plays"
+	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/templates"
@@ -249,6 +250,8 @@ var livePushTopics = []string{
 	dns.TopicTunnelChanged,
 	dns.TopicGatewayChanged,
 	dns.TopicExposureChanged,
+	repository.TopicInstallationAssigned,
+	repository.TopicInstallationUnassigned,
 	workspace.TopicNotificationCreated,
 	workspace.TopicCategoryCreated,
 	workspace.TopicCategoryUpdated,

@@ -66,7 +66,7 @@ func (s *Service) StartGitHubManifest(ctx context.Context, callerID, pass string
 			"callback_urls":   []string{base + "/auth/callback", base + "/auth/connectors/github/callback"},
 			"hook_attributes": map[string]any{"url": base + "/hooks/github", "active": false},
 			"public":          true, "request_oauth_on_install": true,
-			"default_permissions": map[string]string{"contents": "read", "pull_requests": "write", "repository_hooks": "write"},
+			"default_permissions": map[string]string{"contents": "read", "pull_requests": "write", "repository_hooks": "write", "members": "read"},
 		},
 	}, nil
 }

@@ -137,6 +137,12 @@ func (noRepos) ReadsAsApp(context.Context) (bool, error) { return true, nil }
 
 func (noRepos) InstallURL(context.Context) (string, error) { return "", nil }
 
+func (noRepos) InstallationAccounts(context.Context) ([]repository.Installation, error) {
+	return []repository.Installation{{ID: 1, AccountID: 11, AccountLogin: "acme"}}, nil
+}
+
+func (noRepos) AccountOf(context.Context, string, string) (int64, error) { return 11, nil }
+
 func grant(actions ...string) permissions.Set {
 	out := make([]permissions.Action, len(actions))
 	for i, a := range actions {
@@ -248,7 +254,7 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		WithInstall(runner.InstallConfig{Release: release.New(release.Config{APIBase: fakeReleaseServer(t, "v0.2.1").URL})}).
 		WithUpgrades(newMemUpgradeRepo()).WithBus(noopPublisher{}).WithGate(s.accessSvc)
 	entities := projectEntityGate{access: s.accessSvc, projects: f.store.Projects, tickets: f.store.Tickets}
-	repos := repository.NewService(repository.Config{Gate: s.accessSvc, Scanner: noRepos{}, Installations: noRepos{}, Store: f.store.GitHubInstallations})
+	repos := repository.NewService(repository.Config{Gate: s.accessSvc, Scanner: noRepos{}, Installations: noRepos{}, Accounts: noRepos{}, Store: f.store.GitHubInstallations})
 	instance := map[string]string{uOwner: ok, uSteward: ok, uPlain: forbidden, uManager: forbidden, uOutsider: forbidden}
 	cases := []struct {
 		name string
@@ -411,7 +417,7 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		}, map[string]string{uOwner: ok, uReader: ok, uWriter: forbidden, uOutsider: forbidden}},
 		{"repositories: assign an installation to a workspace", func(ctx context.Context) error {
 			return repos.AssignInstallation(ctx, "acme", "workspace-default")
-		}, map[string]string{uOwner: ok, uSteward: ok, uWriter: forbidden, uOutsider: forbidden}},
+		}, map[string]string{uOwner: ok, uSteward: ok, uWriter: forbidden, uOutsider: notFound}},
 		{"pull requests: list a project repository's", func(ctx context.Context) error {
 			_, err := gitprovider.ListPRs(ctx, entities, noPRs{}, "acme", "app", gitprovider.PROpts{})
 			return err

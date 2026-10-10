@@ -102,6 +102,7 @@ var scopeRules = map[string]scopeRule{
 	"git.branch_deleted": repoScope, "git.provider_event": providerEventScope, "review.status_changed": reviewScope,
 
 	"notification.push_requested": pushScope, "access.grant.changed": grantScope,
+	"repository.installation.assigned": workspaceScope, "repository.installation.unassigned": workspaceScope,
 }
 
 func decodeScope(raw json.RawMessage, v any) error {

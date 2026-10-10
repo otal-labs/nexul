@@ -130,7 +130,7 @@ describe("WizardRepositoryStep", () => {
 
   it("once Nexul reads GitHub as the App, links an install that lands in this workspace and drops the connected-account signal", async () => {
     useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
-    const stateURL = "https://github.com/apps/nexul-otal/installations/new?state=install.ws-1.1.sig";
+    const stateURL = "https://github.com/apps/nexul-otal/installations/new?state=install.N0NCE";
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/connectors/github/app-config") return { data: { configured: true, app_slug: "nexul-otal", private_key_set: true } };
       if (url === "/api/repositories/install-url") return { data: { url: stateURL } };
@@ -143,6 +143,24 @@ describe("WizardRepositoryStep", () => {
       expect(screen.getByRole("link", { name: "Install it on another account or organisation" })).toHaveAttribute("href", stateURL),
     );
     expect(screen.queryByText(/Only the connected account's repositories are visible/)).not.toBeInTheDocument();
+    expect(screen.getByText(/adds the account to this workspace when the installer owns it/)).toBeInTheDocument();
+  });
+
+  it("as the App but with no install link of this workspace's, says an install from the plain link waits unassigned", async () => {
+    useWorkspaceStore.getState().selectWorkspace("ws-1", "acme");
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/connectors/github/app-config") return { data: { configured: true, app_slug: "nexul-otal", private_key_set: true } };
+      if (url === "/api/repositories/install-url") throw new Error("forbidden");
+      return { data: { repositories: repos } };
+    });
+    renderStep();
+
+    expect(await screen.findByText(/waits unassigned until someone who manages connectors assigns it/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Install it on another account or organisation" })).toHaveAttribute(
+      "href",
+      "https://github.com/apps/nexul-otal/installations/new",
+    );
+    expect(screen.queryByText(/adds the account to this workspace/)).not.toBeInTheDocument();
   });
 
   it("explains where repositories come from without a broken link when no App slug is configured", async () => {

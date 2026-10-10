@@ -32,11 +32,12 @@ INSERT INTO connector_app_config (connector_id, client_id, client_secret, app_sl
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 	ctx := t.Context()
 
-	assigned, err := s.GitHubInstallations.ListInstallationWorkspaces(ctx)
+	assigned, err := s.GitHubInstallations.ListAssignments(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, map[string][]repository.InstallationWorkspace{
-		"acme":   {{ID: "ws-acme", Name: "Acme"}, {ID: "ws-globex", Name: "Globex"}},
-		"globex": {{ID: "ws-globex", Name: "Globex"}},
+	assert.Equal(t, []repository.Assignment{
+		{AccountLogin: "acme", WorkspaceID: "ws-acme", WorkspaceName: "Acme"},
+		{AccountLogin: "acme", WorkspaceID: "ws-globex", WorkspaceName: "Globex"},
+		{AccountLogin: "globex", WorkspaceID: "ws-globex", WorkspaceName: "Globex"},
 	}, assigned, "one row per account and workspace, lowercase, and none from another git host")
 
 	cfg, err := s.ConnectorAppConfig.GetAppConfig(ctx, "github")

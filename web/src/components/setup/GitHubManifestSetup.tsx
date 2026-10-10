@@ -13,13 +13,22 @@ export const GitHubManifestSetup = () => {
   const start = useStartGitHubManifest();
   const complete = useCompleteGitHubManifest();
   const form = useRef<HTMLFormElement>(null);
+  const manifest = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (callback) window.history.replaceState(null, "", "/setup");
   }, [callback]);
-  useEffect(() => {
-    if (start.data) form.current?.submit();
-  }, [start.data]);
+
+  // GitHub takes the manifest as a form post, so the reply fills the hidden form and sends it straight on.
+  const createApp = () =>
+    start.mutate(undefined, {
+      onSuccess: (started) => {
+        if (!form.current || !manifest.current) return;
+        form.current.action = started.url;
+        manifest.current.value = JSON.stringify(started.manifest);
+        form.current.submit();
+      },
+    });
 
   return (
     <div className="space-y-3">
@@ -33,11 +42,11 @@ export const GitHubManifestSetup = () => {
       )}
       {complete.error && <ErrorDisplay error={complete.error} />}
       {start.error && <ErrorDisplay error={start.error} />}
-      <Button type="button" variant="outline" className="w-full" loading={start.isPending} onClick={() => start.mutate()}>
+      <Button type="button" variant="outline" className="w-full" loading={start.isPending} onClick={createApp}>
         Create App on GitHub
       </Button>
-      <form ref={form} action={start.data?.url} method="post" hidden>
-        <input type="hidden" name="manifest" value={JSON.stringify(start.data?.manifest ?? {})} readOnly />
+      <form ref={form} method="post" hidden>
+        <input ref={manifest} type="hidden" name="manifest" />
       </form>
     </div>
   );

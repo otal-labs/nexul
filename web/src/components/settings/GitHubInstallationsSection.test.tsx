@@ -104,6 +104,20 @@ describe("GitHubInstallationsSection", () => {
     expect(screen.getByRole("button", { name: "Stop Acme listing otal-labs's repositories" })).toBeInTheDocument();
   });
 
+  it("shows a refused installation's problem beside the others, and an uninstalled one only as workspaces to clear", async () => {
+    const refused = { ...installations[1], problem: "GitHub refused the App access to it; check the installation on GitHub" };
+    const gone = { id: 0, account_id: 13, account_login: "initech", gone: true, workspaces: [{ id: "ws-2", name: "Globex" }] };
+    stubApi(app, true, [installations[0]!, refused, gone], ["connectors:write"]);
+    renderSection();
+
+    expect(await screen.findByText(/GitHub refused the App access to it/)).toBeInTheDocument();
+    expect(screen.getByText("otal-labs")).toBeInTheDocument();
+    expect(screen.getByText("Uninstalled")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Stop Globex listing initech's repositories" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Manage initech on GitHub" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Assign initech to a workspace" })).not.toBeInTheDocument();
+  });
+
   it("reads the installations as the App once its private key is set, with GitHub not connected", async () => {
     stubApi({ ...app, private_key_set: true }, false);
     renderSection();

@@ -10,6 +10,7 @@ export const RepositoryInstallHint = () => {
   const { data: workspaceInstallURL } = useFetchInstallURL();
   const asApp = !!app?.private_key_set;
   const installURL = workspaceInstallURL ?? (app?.app_slug ? githubAppInstallURL(app) : undefined);
+  const claims = asApp && !!workspaceInstallURL;
 
   return (
     <div className="space-y-1 text-xs text-muted-foreground">
@@ -26,10 +27,17 @@ export const RepositoryInstallHint = () => {
           </>
         )}
       </p>
-      {asApp && (
+      {claims && (
         <p>
-          Installing from this link adds the account to this workspace. An installation added from Settings is assigned to
-          a workspace there by someone who manages connectors.
+          Installing from this link adds the account to this workspace when the installer owns it or is an admin of the
+          organisation, and the account is in no other workspace yet. Otherwise someone who manages connectors assigns it
+          in Settings.
+        </p>
+      )}
+      {asApp && !claims && installURL && (
+        <p>
+          An account installed from this link waits unassigned until someone who manages connectors assigns it to this
+          workspace in Settings.
         </p>
       )}
       {!asApp && (

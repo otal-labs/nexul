@@ -4,8 +4,9 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
-import { useSearchRepositories } from "@/hooks/RepositoryHooks";
+import { repositoryFollower, useSearchRepositories } from "@/hooks/RepositoryHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { followFrame, isStale, seeded } from "@/test/followFrame";
 
 vi.mock("@/api/client", () => ({ api: { get: vi.fn() } }));
 
@@ -21,5 +22,19 @@ describe("useSearchRepositories", () => {
 
     await client.refetchQueries({ queryKey: ["repositories"] });
     expect(vi.mocked(api.get).mock.calls[1]![1]).toEqual(expect.objectContaining({ params: { workspace_id: "ws-1", q: "onik", refresh: 1 } }));
+  });
+});
+
+describe("repositoryFollower", () => {
+  it("refreshes the installations and only the named workspace's repository lists", async () => {
+    const client = seeded([
+      [["repository-installations"], []],
+      [["repositories", "ws-acme", "api"], []],
+      [["repositories", "ws-globex", "api"], []],
+    ]);
+    await followFrame(repositoryFollower, "repository.installation.unassigned", { account_id: 11, account_login: "acme", workspace_id: "ws-acme" }, client);
+    expect(isStale(client, ["repository-installations"])).toBe(true);
+    expect(isStale(client, ["repositories", "ws-acme", "api"])).toBe(true);
+    expect(isStale(client, ["repositories", "ws-globex", "api"])).toBe(false);
   });
 });

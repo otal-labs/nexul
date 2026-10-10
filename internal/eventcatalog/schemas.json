@@ -5215,6 +5215,68 @@
       "setup"
     ]
   },
+  "repository.installation.assigned": {
+    "type": "object",
+    "properties": {
+      "account_id": {
+        "type": "integer",
+        "description": "GitHub's numeric id of the account or organisation the App is installed on; 0 for an assignment made before ids were kept."
+      },
+      "account_login": {
+        "type": "string",
+        "description": "The account's login, lowercase, as GitHub last named it."
+      },
+      "workspace_id": {
+        "type": "string",
+        "description": "The workspace whose repository list changed."
+      },
+      "actor_id": {
+        "type": "string",
+        "description": "The person who assigned or unassigned it, or who made the install link it was claimed through."
+      },
+      "uninstalled": {
+        "type": "boolean",
+        "description": "On repository.installation.unassigned, true when GitHub stopped listing the installation rather than someone unassigning it."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "account_id",
+      "account_login",
+      "workspace_id"
+    ]
+  },
+  "repository.installation.unassigned": {
+    "type": "object",
+    "properties": {
+      "account_id": {
+        "type": "integer",
+        "description": "GitHub's numeric id of the account or organisation the App is installed on; 0 for an assignment made before ids were kept."
+      },
+      "account_login": {
+        "type": "string",
+        "description": "The account's login, lowercase, as GitHub last named it."
+      },
+      "workspace_id": {
+        "type": "string",
+        "description": "The workspace whose repository list changed."
+      },
+      "actor_id": {
+        "type": "string",
+        "description": "The person who assigned or unassigned it, or who made the install link it was claimed through."
+      },
+      "uninstalled": {
+        "type": "boolean",
+        "description": "On repository.installation.unassigned, true when GitHub stopped listing the installation rather than someone unassigning it."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "account_id",
+      "account_login",
+      "workspace_id"
+    ]
+  },
   "review.status_changed": {
     "type": "object",
     "properties": {

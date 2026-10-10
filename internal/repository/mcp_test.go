@@ -78,14 +78,14 @@ func TestRepositoryList_SearchesByQ(t *testing.T) {
 func TestRepositoryList_Installations(t *testing.T) {
 	s := &fakeScanner{
 		repos:    []Repo{{ID: 1, FullName: "acme/api", Provider: "github"}},
-		installs: []Installation{{ID: 9, AccountLogin: "acme", AccountType: "organization", RepositorySelection: "all"}},
+		installs: []Installation{{ID: 9, AccountID: 19, AccountLogin: "acme", AccountType: "organization", RepositorySelection: "all"}},
 	}
 	got, err := callTool(t, s, "repository_list", `{"installations":true}`)
 	require.NoError(t, err)
 	b, err := jsonx.Marshal(got)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"items":[{"id":1,"owner":"","name":"","full_name":"acme/api","default_branch":"","html_url":"","provider":"github"}],"total":1,"has_more":false,
-		"installations":[{"id":9,"account_login":"acme","account_type":"organization","account_avatar_url":"","repository_selection":"all","html_url":"","workspaces":[]}]}`, string(b))
+		"installations":[{"id":9,"account_id":19,"account_login":"acme","account_type":"organization","account_avatar_url":"","repository_selection":"all","html_url":"","workspaces":[]}]}`, string(b))
 }
 
 func TestRepositoryScan(t *testing.T) {

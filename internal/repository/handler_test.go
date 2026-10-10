@@ -94,14 +94,14 @@ func TestHandler_Installations(t *testing.T) {
 	t.Run("lists installations with the selected count only where GitHub gives one", func(t *testing.T) {
 		three := 3
 		s := &fakeScanner{installs: []Installation{
-			{ID: 1, AccountLogin: "octo-org", AccountType: "organization", RepositorySelection: "selected", RepositoryCount: &three},
-			{ID: 2, AccountLogin: "octocat", AccountType: "user", RepositorySelection: "all"},
+			{ID: 1, AccountID: 10, AccountLogin: "octo-org", AccountType: "organization", RepositorySelection: "selected", RepositoryCount: &three},
+			{ID: 2, AccountID: 20, AccountLogin: "octocat", AccountType: "user", RepositorySelection: "all"},
 		}}
 		rec := serve(t, s, http.MethodGet, "/api/repositories/installations", "")
 		require.Equal(t, http.StatusOK, rec.Code)
 		assert.JSONEq(t, `{"installations":[
-			{"id":1,"account_login":"octo-org","account_type":"organization","account_avatar_url":"","repository_selection":"selected","repository_count":3,"html_url":"","workspaces":[]},
-			{"id":2,"account_login":"octocat","account_type":"user","account_avatar_url":"","repository_selection":"all","html_url":"","workspaces":[]}]}`,
+			{"id":1,"account_id":10,"account_login":"octo-org","account_type":"organization","account_avatar_url":"","repository_selection":"selected","repository_count":3,"html_url":"","workspaces":[]},
+			{"id":2,"account_id":20,"account_login":"octocat","account_type":"user","account_avatar_url":"","repository_selection":"all","html_url":"","workspaces":[]}]}`,
 			rec.Body.String())
 	})
 	t.Run("no installations is an empty list, not null", func(t *testing.T) {

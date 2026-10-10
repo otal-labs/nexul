@@ -114,14 +114,48 @@ func (s repositoryScanner) ListInstallations(ctx context.Context) ([]repository.
 	if err != nil {
 		return nil, fmt.Errorf("list installations: %w", refused(err, asApp))
 	}
+	return toRepositoryInstallations(installs), nil
+}
+
+// InstallationAccounts implements repository.AccountResolver: as the App, only the installations list; before a key,
+// what the connected account sees.
+func (s repositoryScanner) InstallationAccounts(ctx context.Context) ([]repository.Installation, error) {
+	app, err := s.git.githubApp(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list installations: %w", err)
+	}
+	if app == nil {
+		return s.ListInstallations(ctx)
+	}
+	installs, err := app.InstallationAccounts(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list installations: %w", refused(err, true))
+	}
+	return toRepositoryInstallations(installs), nil
+}
+
+// AccountOf implements repository.AccountResolver; only the App answers it, being the only reader that needs it.
+func (s repositoryScanner) AccountOf(ctx context.Context, owner, name string) (int64, error) {
+	app, err := s.git.githubApp(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if app == nil {
+		return 0, fmt.Errorf("%w: GitHub is read as the connected account", apperrs.ErrNotFound)
+	}
+	return app.AccountOf(ctx, owner, name)
+}
+
+func toRepositoryInstallations(installs []*gitprovider.Installation) []repository.Installation {
 	out := make([]repository.Installation, 0, len(installs))
 	for _, i := range installs {
 		out = append(out, repository.Installation{
-			ID: i.ID, AccountLogin: i.AccountLogin, AccountType: i.AccountType, AccountAvatarURL: i.AccountAvatarURL,
-			RepositorySelection: i.RepositorySelection, RepositoryCount: i.RepositoryCount, HTMLURL: i.HTMLURL,
+			ID: i.ID, AccountID: i.AccountID, AccountLogin: i.AccountLogin, AccountType: i.AccountType,
+			AccountAvatarURL: i.AccountAvatarURL, RepositorySelection: i.RepositorySelection,
+			RepositoryCount: i.RepositoryCount, HTMLURL: i.HTMLURL, Problem: i.Problem,
 		})
 	}
-	return out, nil
+	return out
 }
 
 func (s repositoryScanner) GetTree(ctx context.Context, owner, name, ref string) (string, []repository.TreeEntry, error) {
@@ -198,5 +232,6 @@ func toRepositoryRepo(r *gitprovider.Repo) repository.Repo {
 		DefaultBranch: r.DefaultBranch,
 		HTMLURL:       r.HTMLURL,
 		Provider:      githubConnectorID,
+		AccountID:     r.AccountID,
 	}
 }

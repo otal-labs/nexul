@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { errorMessage } from "@/api/client";
 import { FormInput } from "@/components/FormInput";
@@ -34,6 +34,9 @@ export const ConnectorAppConfigForm = ({ connectorId, onSaved, current }: Connec
     resolver: zodResolver(connectorAppConfigFormSchema(githubApp, !editing)),
   });
 
+  const clientId = useWatch({ control: form.control, name: "client_id" });
+  const dropsKey = !!current?.private_key_set && clientId.trim() !== current.client_id;
+
   const onSubmit = async (data: ConnectorAppConfigFormData) => {
     try {
       await setAppConfig.mutateAsync({ id: connectorId, ...data });
@@ -53,6 +56,12 @@ export const ConnectorAppConfigForm = ({ connectorId, onSaved, current }: Connec
         label="Client ID"
         placeholder={githubApp ? "Iv1.abc123" : ""}
       />
+      {dropsKey && (
+        <p role="status" className="text-xs text-muted-foreground">
+          Another client ID is another App: saving removes the stored private key, and Nexul reads GitHub as the connected
+          account until you add the new App's key.
+        </p>
+      )}
       <FormInput
         control={form.control}
         name="client_secret"

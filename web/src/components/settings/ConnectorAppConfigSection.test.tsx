@@ -184,6 +184,19 @@ describe("ConnectorAppConfigSection", () => {
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     });
 
+    it("says a new client ID removes the stored private key, and only for another client ID", async () => {
+      mocks.get.mockResolvedValue({ data: { ...registered, private_key_set: true } });
+      const user = userEvent.setup();
+      renderSection();
+
+      await user.click(await screen.findByRole("button", { name: /^edit$/i }));
+      const dialog = await screen.findByRole("dialog");
+      expect(within(dialog).queryByText(/saving removes the stored private key/)).not.toBeInTheDocument();
+      await user.clear(within(dialog).getByLabelText(/client id/i));
+      await user.type(within(dialog).getByLabelText(/client id/i), "Iv1.globex");
+      expect(within(dialog).getByText(/saving removes the stored private key/)).toBeInTheDocument();
+    });
+
     it("signals the missing private key and stores one only after GitHub accepts it", async () => {
       const key = "-----BEGIN RSA PRIVATE KEY-----";
       mocks.post.mockResolvedValue({ data: undefined });

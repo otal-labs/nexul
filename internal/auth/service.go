@@ -292,12 +292,12 @@ func (s *Service) SetDefaultWorkspace(b DefaultWorkspaceBinder) {
 	s.cfg.DefaultWorkspace = b
 }
 
-// SetPendingInviteResolver wires tenancy's pending-invite resolver, same reason as SetDefaultWorkspace.
-// SetInstallationClaimer wires the claim of an installation an install link led to.
+// SetInstallationClaimer wires the repository domain's claim of an installation an install link led to.
 func (s *Service) SetInstallationClaimer(c InstallationClaimer) {
 	s.cfg.Installations = c
 }
 
+// SetPendingInviteResolver wires tenancy's pending-invite resolver, same reason as SetDefaultWorkspace.
 func (s *Service) SetPendingInviteResolver(r PendingInviteResolver) {
 	s.cfg.PendingInvites = r
 }

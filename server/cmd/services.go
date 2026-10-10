@@ -151,7 +151,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	connectorsHandler := connectors.NewHandler(connectorsSvc)
 	// One App for both routers, so an installation token minted for a webhook serves the next scan too.
 	githubApps := &github.AppCache{}
-	githubScope := &githubInstallationScope{appConfigs: store.ConnectorAppConfig, projects: store.Projects, assignments: store.GitHubInstallations}
+	githubScope := &githubInstallationScope{appConfigs: store.ConnectorAppConfig, projects: store.Projects}
 	repoHooks := repoWebhooks{
 		git:         gitProviderRouter{workspace: store.Projects, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig, apps: githubApps, scope: githubScope},
 		instanceURL: dnsSettingsAdapter{store.Settings}.GetInstanceURL,
@@ -315,10 +315,12 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Gate:          accessSvc,
 		Scanner:       repoScanner,
 		Installations: repoScanner,
+		Accounts:      repoScanner,
 		Store:         store.GitHubInstallations,
+		States:        store.GitHubInstallations,
 		Installers:    githubInstallers{oauth: githubOAuth(connectorsRegistry), appConfigs: store.ConnectorAppConfig},
-		StateKey:      crypto.DeriveKey("nexul github install state:" + cfg.AuthSecret),
 	})
+	githubScope.assigned = repositorySvc
 	authSvc.SetInstallationClaimer(installationClaimer{svc: repositorySvc, workspaces: store.Workspaces})
 	integrationsSvc := integrations.NewService(integrations.Config{
 		Installs:   store.IntegrationInstalls,

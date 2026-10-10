@@ -24,3 +24,17 @@ type InstallationLister interface {
 	// InstallURL is GitHub's page for installing the App on another account, or "" while no App slug is registered.
 	InstallURL(ctx context.Context) (string, error)
 }
+
+// AccountResolver names the GitHub account behind an installation or a repository by its numeric id.
+type AccountResolver interface {
+	// InstallationAccounts lists every installation with its account, without the reads ListInstallations adds.
+	InstallationAccounts(ctx context.Context) ([]Installation, error)
+	// AccountOf is the id of the account whose installation covers owner/name, ErrNotFound when none does.
+	AccountOf(ctx context.Context, owner, name string) (int64, error)
+}
+
+// InstallerChecker confirms who GitHub returned from an install link, with the code GitHub sent along.
+type InstallerChecker interface {
+	// Installer is installationID's account as the installer's own token sees it, ErrForbidden if unseen.
+	Installer(ctx context.Context, code string, installationID int64) (Installer, error)
+}
