@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/automations"
+	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/platform/config"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
@@ -84,6 +85,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	go automations.RunCleanupLoop(ctx, svc.automationRunsSvc, 30*24*time.Hour, time.Hour, logger)
 	go svc.notifSvc.RunCleanupLoop(ctx, logger)
 	go svc.integrationsSvc.RunAuditRetention(ctx, logger)
+	go docs.RunSettleLoop(ctx, store.Docs, store.Commits().Next, logger)
 
 	return wsHandler, runnerSvc, runnerHTTP, automationsDialin
 }

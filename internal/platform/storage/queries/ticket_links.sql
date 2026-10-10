@@ -48,3 +48,21 @@ ORDER BY l.ticket_id, l.created_at, t.id;
 
 -- name: CountProjectWorkspaces :one
 SELECT COUNT(DISTINCT workspace_id) FROM projects WHERE id IN (sqlc.arg(project_a), sqlc.arg(project_b));
+
+-- name: GetTicketStage :one
+SELECT s.kind AS stage FROM tickets t LEFT JOIN statuses s ON s.id = t.status WHERE t.id = ?;
+
+-- name: ListTicketsWaitingOnlyOn :many
+SELECT l.ticket_id, t.project_id
+FROM ticket_links l
+JOIN tickets t ON t.id = l.ticket_id
+LEFT JOIN statuses ts ON ts.id = t.status
+WHERE l.kind = 'blocked_by' AND l.target_id = sqlc.arg(blocker_id) AND COALESCE(ts.kind, '') != 'done'
+  AND NOT EXISTS (
+    SELECT 1 FROM ticket_links o
+    JOIN tickets b ON b.id = o.target_id
+    LEFT JOIN statuses s ON s.id = b.status
+    WHERE o.ticket_id = l.ticket_id AND o.kind = 'blocked_by' AND o.target_id != sqlc.arg(blocker_id)
+      AND COALESCE(s.kind, '') != 'done'
+  )
+ORDER BY l.ticket_id;

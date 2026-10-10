@@ -48,6 +48,9 @@ func (r *DocsRepo) Create(ctx context.Context, d *docs.Doc, evts ...eventbus.Out
 		if err := addAutoWatcher(ctx, q, d.ID, d.CreatedBy, d.CreatedAt); err != nil {
 			return err
 		}
+		if err := openSettle(ctx, q, d, true); err != nil {
+			return err
+		}
 		return enqueueDocsOutbox(ctx, tx, evts)
 	})
 }
@@ -118,6 +121,9 @@ func (r *DocsRepo) Update(ctx context.Context, d *docs.Doc, editorID string, evt
 		if err := addAutoWatcher(ctx, q, d.ID, editorID, d.UpdatedAt); err != nil {
 			return err
 		}
+		if err := openSettle(ctx, q, d, false); err != nil {
+			return err
+		}
 		return enqueueDocsOutbox(ctx, tx, evts)
 	})
 }
@@ -167,6 +173,9 @@ func (r *DocsRepo) CommitBody(ctx context.Context, d *docs.Doc, editorID string,
 			return fmt.Errorf("commit body doc %s: %w", d.ID, apperrs.ErrNotFound)
 		}
 		if err := addAutoWatcher(ctx, q, d.ID, editorID, d.UpdatedAt); err != nil {
+			return err
+		}
+		if err := openSettle(ctx, q, d, false); err != nil {
 			return err
 		}
 		return enqueueDocsOutbox(ctx, tx, evts)
@@ -348,5 +357,54 @@ func (r *DocsRepo) SetWatching(ctx context.Context, docID, userID string, watchi
 			return fmt.Errorf("set %s watching doc %s: %w", userID, docID, classifyWriteErr(err))
 		}
 		return enqueueDocsOutbox(ctx, tx, evts)
+	})
+}
+
+// openSettle opens or moves d's settle window for its settler; first sticks once set, so a create stays a create.
+func openSettle(ctx context.Context, q *sqlcgen.Queries, d *docs.Doc, first bool) error {
+	if d.Settler == "" {
+		return nil
+	}
+	err := q.UpsertDocSettle(ctx, sqlcgen.UpsertDocSettleParams{
+		DocID: d.ID, DueAt: d.UpdatedAt.Add(docs.SettleWindow).Unix(), ActorID: d.Settler, First: int64(boolInt(first)),
+	})
+	if err != nil {
+		return fmt.Errorf("open settle window for doc %s: %w", d.ID, err)
+	}
+	return nil
+}
+
+// NextSettleDue is when the earliest open settle window closes; false when none is open.
+func (r *DocsRepo) NextSettleDue(ctx context.Context) (time.Time, bool, error) {
+	v, err := r.q.NextDocSettleDue(ctx)
+	if err != nil {
+		return time.Time{}, false, fmt.Errorf("next doc settle: %w", err)
+	}
+	due, ok, err := optionalInt(v)
+	if err != nil || !ok {
+		return time.Time{}, false, err
+	}
+	return time.Unix(due, 0), true, nil
+}
+
+// SettleDue closes every window due by now and writes build's events for those whose doc is not archived.
+func (r *DocsRepo) SettleDue(ctx context.Context, now time.Time, build func([]docs.SettledEvent) []eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		rows, err := q.ListDueDocSettles(ctx, now.Unix())
+		if err != nil {
+			return fmt.Errorf("list due doc settles: %w", err)
+		}
+		if err := q.DeleteDueDocSettles(ctx, now.Unix()); err != nil {
+			return fmt.Errorf("delete due doc settles: %w", err)
+		}
+		settled := make([]docs.SettledEvent, 0, len(rows))
+		for _, row := range rows {
+			settled = append(settled, docs.SettledEvent{
+				Doc:   docs.WatchedDoc{ID: row.DocID, ProjectID: row.ProjectID.String, Title: row.Title},
+				First: row.First == 1, ActorID: row.ActorID,
+			})
+		}
+		return enqueueDocsOutbox(ctx, tx, build(settled))
 	})
 }

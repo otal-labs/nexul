@@ -104,7 +104,7 @@ func TestAttachmentsRepo_DeleteAndCascade(t *testing.T) {
 	_, err = s.Attachments.GetByID(ctx, "a-doc")
 	require.ErrorIs(t, err, apperrs.ErrNotFound, "doc delete cascades to its attachments")
 
-	require.NoError(t, s.Tickets.Delete(ctx, "t-1"))
+	require.NoError(t, s.Tickets.Delete(ctx, "t-1", nil))
 	_, err = s.Attachments.GetByID(ctx, "a-ticket")
 	require.ErrorIs(t, err, apperrs.ErrNotFound, "ticket delete cascades to its attachments")
 }

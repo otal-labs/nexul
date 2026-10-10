@@ -56,6 +56,17 @@ func (q *Queries) DeleteTicketFoundIn(ctx context.Context, ticketID string) (int
 	return result.RowsAffected()
 }
 
+const getTicketStage = `-- name: GetTicketStage :one
+SELECT s.kind AS stage FROM tickets t LEFT JOIN statuses s ON s.id = t.status WHERE t.id = ?
+`
+
+func (q *Queries) GetTicketStage(ctx context.Context, id string) (sql.NullString, error) {
+	row := q.db.QueryRowContext(ctx, getTicketStage, id)
+	var stage sql.NullString
+	err := row.Scan(&stage)
+	return stage, err
+}
+
 const insertTicketLink = `-- name: InsertTicketLink :exec
 INSERT INTO ticket_links (ticket_id, kind, target_id, created_at) VALUES (?, ?, ?, ?)
 `
@@ -197,6 +208,50 @@ func (q *Queries) ListTicketLinksTo(ctx context.Context, targetID sql.NullString
 			&i.Prefix,
 			&i.Stage,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTicketsWaitingOnlyOn = `-- name: ListTicketsWaitingOnlyOn :many
+SELECT l.ticket_id, t.project_id
+FROM ticket_links l
+JOIN tickets t ON t.id = l.ticket_id
+LEFT JOIN statuses ts ON ts.id = t.status
+WHERE l.kind = 'blocked_by' AND l.target_id = ?1 AND COALESCE(ts.kind, '') != 'done'
+  AND NOT EXISTS (
+    SELECT 1 FROM ticket_links o
+    JOIN tickets b ON b.id = o.target_id
+    LEFT JOIN statuses s ON s.id = b.status
+    WHERE o.ticket_id = l.ticket_id AND o.kind = 'blocked_by' AND o.target_id != ?1
+      AND COALESCE(s.kind, '') != 'done'
+  )
+ORDER BY l.ticket_id
+`
+
+type ListTicketsWaitingOnlyOnRow struct {
+	TicketID  string
+	ProjectID sql.NullString
+}
+
+func (q *Queries) ListTicketsWaitingOnlyOn(ctx context.Context, blockerID sql.NullString) ([]ListTicketsWaitingOnlyOnRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTicketsWaitingOnlyOn, blockerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTicketsWaitingOnlyOnRow
+	for rows.Next() {
+		var i ListTicketsWaitingOnlyOnRow
+		if err := rows.Scan(&i.TicketID, &i.ProjectID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

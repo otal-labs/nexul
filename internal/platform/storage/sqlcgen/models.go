@@ -388,6 +388,13 @@ type DocFolder struct {
 	UpdatedAt int64
 }
 
+type DocSettle struct {
+	DocID   string
+	DueAt   int64
+	ActorID string
+	First   int64
+}
+
 type DocVersion struct {
 	DocID     string
 	Version   int64

@@ -141,7 +141,7 @@ func (s *Service) RemoveFoundIn(ctx context.Context, id string) (*LinkSet, error
 		return s.Links(ctx, id)
 	}
 	link := TicketLink{TicketID: id, Kind: LinkFoundIn, TargetID: current, CreatedAt: s.now().UTC()}
-	if _, err := s.repo.DeleteLink(ctx, link, linkEvent(TopicLinkDeleted, link)); err != nil {
+	if _, err := s.repo.DeleteLink(ctx, link, nil, linkEvent(TopicLinkDeleted, link)); err != nil {
 		return nil, fmt.Errorf("remove found-in from ticket %s: %w", id, err)
 	}
 	return s.Links(ctx, id)
@@ -248,7 +248,8 @@ func (s *Service) RemoveBlocker(ctx context.Context, id, blockerID string) (*Lin
 		return nil, fmt.Errorf("remove blocker from ticket %s: %w", id, err)
 	}
 	link := TicketLink{TicketID: id, Kind: LinkBlockedBy, TargetID: blockerID, CreatedAt: s.now().UTC()}
-	if _, err := s.repo.DeleteLink(ctx, link, linkEvent(TopicLinkDeleted, link)); err != nil {
+	unblocked := unblockedEvents(blockerID, UnblockedByLinkDeleted, statusActor(ctx))
+	if _, err := s.repo.DeleteLink(ctx, link, unblocked, linkEvent(TopicLinkDeleted, link)); err != nil {
 		return nil, fmt.Errorf("remove blocker from ticket %s: %w", id, err)
 	}
 	return s.Links(ctx, id)

@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -84,17 +85,18 @@ func (r *TicketsRepo) PutLink(ctx context.Context, link tickets.TicketLink, evts
 }
 
 // DeleteLink enqueues evts only when a row went away, so removing a missing link publishes nothing.
-func (r *TicketsRepo) DeleteLink(ctx context.Context, link tickets.TicketLink, evts ...eventbus.OutboxEvent) (bool, error) {
+func (r *TicketsRepo) DeleteLink(ctx context.Context, link tickets.TicketLink, unblocked tickets.UnblockedEvents, evts ...eventbus.OutboxEvent) (bool, error) {
 	var removed bool
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		var n int64
+		var freed []eventbus.OutboxEvent
 		var err error
 		if link.Kind == tickets.LinkFoundIn {
 			n, err = q.DeleteTicketFoundIn(ctx, link.TicketID)
 		}
 		if link.Kind == tickets.LinkBlockedBy {
-			n, err = q.DeleteTicketBlocker(ctx, sqlcgen.DeleteTicketBlockerParams{TicketID: link.TicketID, TargetID: nullString(link.TargetID)})
+			n, freed, err = deleteBlocker(ctx, q, link, unblocked)
 		}
 		if err != nil {
 			return fmt.Errorf("delete %s link on ticket %s: %w", link.Kind, link.TicketID, err)
@@ -103,9 +105,63 @@ func (r *TicketsRepo) DeleteLink(ctx context.Context, link tickets.TicketLink, e
 		if !removed {
 			return nil
 		}
-		return enqueueTicketsOutbox(ctx, tx, evts)
+		return enqueueTicketsOutbox(ctx, tx, append(evts, freed...))
 	})
 	return removed, err
+}
+
+// deleteBlocker removes a blocked-by link, with unblocked's events when it was the ticket's last open blocker.
+func deleteBlocker(ctx context.Context, q *sqlcgen.Queries, link tickets.TicketLink, unblocked tickets.UnblockedEvents) (int64, []eventbus.OutboxEvent, error) {
+	freed, err := freedBy(ctx, q, link.TargetID, link.TicketID, unblocked)
+	if err != nil {
+		return 0, nil, err
+	}
+	n, err := q.DeleteTicketBlocker(ctx, sqlcgen.DeleteTicketBlockerParams{TicketID: link.TicketID, TargetID: nullString(link.TargetID)})
+	return n, freed, err
+}
+
+// freedByDone builds unblocked's events when moving blocker id into status takes it from an open stage to done.
+func freedByDone(ctx context.Context, q *sqlcgen.Queries, id, status string, unblocked tickets.UnblockedEvents) ([]eventbus.OutboxEvent, error) {
+	if unblocked == nil {
+		return nil, nil
+	}
+	to, err := q.GetStatus(ctx, status)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("read status %s: %w", status, err)
+	}
+	if to.Kind != string(workspace.StatusKindDone) {
+		return nil, nil
+	}
+	return freedBy(ctx, q, id, "", unblocked)
+}
+
+// freedBy builds unblocked's events for the open tickets an open blockerID is the last open blocker of, or only for only.
+func freedBy(ctx context.Context, q *sqlcgen.Queries, blockerID, only string, unblocked tickets.UnblockedEvents) ([]eventbus.OutboxEvent, error) {
+	if unblocked == nil {
+		return nil, nil
+	}
+	stage, err := q.GetTicketStage(ctx, blockerID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("read stage of ticket %s: %w", blockerID, err)
+	}
+	if isDoneStage(stage) {
+		return nil, nil
+	}
+	rows, err := q.ListTicketsWaitingOnlyOn(ctx, nullString(blockerID))
+	if err != nil {
+		return nil, fmt.Errorf("list tickets waiting only on %s: %w", blockerID, err)
+	}
+	var freed []tickets.Unblocked
+	for _, row := range rows {
+		if only != "" && row.TicketID != only {
+			continue
+		}
+		freed = append(freed, tickets.Unblocked{TicketID: row.TicketID, ProjectID: row.ProjectID.String})
+	}
+	if len(freed) == 0 {
+		return nil, nil
+	}
+	return unblocked(freed), nil
 }
 
 // UnclearedBlockers maps each blocked ticket id to its blockers whose status is not in the done stage.

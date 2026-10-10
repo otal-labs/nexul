@@ -2585,6 +2585,45 @@
       "from_folder_id"
     ]
   },
+  "doc.settled": {
+    "type": "object",
+    "properties": {
+      "doc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "title"
+        ]
+      },
+      "first": {
+        "type": "boolean",
+        "description": "true when the doc was created inside the window: a create, not a change."
+      },
+      "actor_id": {
+        "type": "string",
+        "description": "The person whose save last moved the window."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A signed-in person's edits to a doc stopped for ten minutes; an agent's edits over MCP and an automation's never open the window. first is true when the doc was created inside it, so a doc created and then edited settles once, as created. An archived doc never settles.",
+    "required": [
+      "doc",
+      "first",
+      "actor_id"
+    ]
+  },
   "doc.updated": {
     "type": "object",
     "properties": {
@@ -6152,6 +6191,72 @@
       "ticket",
       "from",
       "to"
+    ]
+  },
+  "ticket.unblocked": {
+    "type": "object",
+    "properties": {
+      "ticket_id": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "blocker_id": {
+        "type": "string",
+        "description": "The blocker whose change cleared the last open one; after blocker_deleted it no longer exists."
+      },
+      "cause": {
+        "type": "string",
+        "enum": [
+          "blocker_done",
+          "link_deleted",
+          "blocker_deleted"
+        ]
+      },
+      "actor": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "user:mcp",
+              "automation",
+              "play",
+              "play:mcp"
+            ]
+          },
+          "automation_id": {
+            "type": "string"
+          },
+          "automation_name": {
+            "type": "string"
+          },
+          "play_label": {
+            "type": "string"
+          },
+          "trail_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        },
+        "description": "Who moved the blocker, removed the link, or deleted the blocker.",
+        "required": [
+          "kind"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "A ticket not in a done stage lost its last open blocked-by ticket: the blocker entered a done-stage column, its link was removed, or it was deleted. Each entry into done is a new unblock; a column redefined as done publishes nothing.",
+    "required": [
+      "ticket_id",
+      "project_id",
+      "blocker_id",
+      "cause",
+      "actor"
     ]
   },
   "ticket.updated": {

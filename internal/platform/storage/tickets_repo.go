@@ -202,7 +202,7 @@ func (r *TicketsRepo) ListByProject(ctx context.Context, projectID string) ([]*t
 }
 
 // UpdateStatus moves a ticket to a new status, appending it rather than carrying the old position over.
-func (r *TicketsRepo) UpdateStatus(ctx context.Context, id string, status tickets.Status, evts ...eventbus.OutboxEvent) error {
+func (r *TicketsRepo) UpdateStatus(ctx context.Context, id string, status tickets.Status, unblocked tickets.UnblockedEvents, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		row, err := q.GetTicketStatusAndCategory(ctx, id)
@@ -210,6 +210,10 @@ func (r *TicketsRepo) UpdateStatus(ctx context.Context, id string, status ticket
 			if errors.Is(err, sql.ErrNoRows) {
 				return fmt.Errorf("update ticket %s status: %w", id, apperrs.ErrNotFound)
 			}
+			return fmt.Errorf("update ticket %s status: %w", id, err)
+		}
+		freed, err := freedByDone(ctx, q, id, string(status), unblocked)
+		if err != nil {
 			return fmt.Errorf("update ticket %s status: %w", id, err)
 		}
 		pos, err := nextTicketPosition(ctx, tx, string(status), row.CategoryID.String)
@@ -221,7 +225,7 @@ func (r *TicketsRepo) UpdateStatus(ctx context.Context, id string, status ticket
 		}); err != nil {
 			return fmt.Errorf("update ticket %s status: %w", id, err)
 		}
-		return enqueueTicketsOutbox(ctx, tx, evts)
+		return enqueueTicketsOutbox(ctx, tx, append(evts, freed...))
 	})
 }
 
@@ -276,16 +280,22 @@ func nextTicketNumber(ctx context.Context, tx *sql.Tx, projectID string) (int, e
 	return int(n) + 1, nil
 }
 
-func (r *TicketsRepo) Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error {
+func (r *TicketsRepo) Delete(ctx context.Context, id string, unblocked tickets.UnblockedEvents, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).DeleteTicket(ctx, id)
+		q := r.q.WithTx(tx)
+		// Read before the delete: the cascade removes the links that say whom it blocked.
+		freed, err := freedBy(ctx, q, id, "", unblocked)
+		if err != nil {
+			return fmt.Errorf("delete ticket %s: %w", id, err)
+		}
+		n, err := q.DeleteTicket(ctx, id)
 		if err != nil {
 			return fmt.Errorf("delete ticket %s: %w", id, err)
 		}
 		if n == 0 {
 			return fmt.Errorf("delete ticket %s: %w", id, apperrs.ErrNotFound)
 		}
-		return enqueueTicketsOutbox(ctx, tx, evts)
+		return enqueueTicketsOutbox(ctx, tx, append(evts, freed...))
 	})
 }
 

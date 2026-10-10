@@ -1,6 +1,9 @@
 package tickets
 
-import "github.com/otal-labs/nexul/internal/platform/eventbus"
+import (
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/ids"
+)
 
 // Topics published by the tickets domain.
 const (
@@ -16,6 +19,7 @@ const (
 	TopicLinkDeleted      = "ticket.link_deleted"
 	TopicTestPassed       = "ticket.test_passed"
 	TopicTestFailed       = "ticket.test_failed"
+	TopicUnblocked        = "ticket.unblocked"
 )
 
 // Topics returns every topic the tickets domain publishes.
@@ -33,6 +37,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicLinkDeleted, Payload: LinkEvent{}, Description: "A found-in or blocked-by link was removed, or replaced by a new found-in."},
 		{Name: TopicTestPassed, Payload: TestedEvent{}, Description: "A ticket passed testing and moved to a done-stage column; tester is the login of whoever passed it."},
 		{Name: TopicTestFailed, Payload: TestedEvent{}, Description: "A ticket failed testing and moved back to a progress-stage column; report is the bug report posted to its thread."},
+		{Name: TopicUnblocked, Payload: UnblockedEvent{}, Description: "A ticket not in a done stage lost its last open blocked-by ticket: the blocker entered a done-stage column, its link was removed, or it was deleted. Each entry into done is a new unblock; a column redefined as done publishes nothing."},
 	}
 }
 
@@ -101,6 +106,35 @@ type DeletedEvent struct {
 // LinkEvent is the payload for ticket.link_created and ticket.link_deleted.
 type LinkEvent struct {
 	Link TicketLink `json:"link"`
+}
+
+// Causes of an unblock, the change that cleared a ticket's last open blocker.
+const (
+	UnblockedByBlockerDone    = "blocker_done"
+	UnblockedByLinkDeleted    = "link_deleted"
+	UnblockedByBlockerDeleted = "blocker_deleted"
+)
+
+// UnblockedEvent is the payload for ticket.unblocked; it names the ticket, and consumers load it for anything more.
+type UnblockedEvent struct {
+	TicketID  string `json:"ticket_id"`
+	ProjectID string `json:"project_id"`
+	BlockerID string `json:"blocker_id" jsonschema:"The blocker whose change cleared the last open one; after blocker_deleted it no longer exists."`
+	Cause     string `json:"cause" enum:"blocker_done,link_deleted,blocker_deleted"`
+	Actor     Actor  `json:"actor" jsonschema:"Who moved the blocker, removed the link, or deleted the blocker."`
+}
+
+// unblockedEvents publishes ticket.unblocked for each ticket the change to blockerID unblocks.
+func unblockedEvents(blockerID, cause string, actor Actor) UnblockedEvents {
+	return func(us []Unblocked) []eventbus.OutboxEvent {
+		out := make([]eventbus.OutboxEvent, 0, len(us))
+		for _, u := range us {
+			out = append(out, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUnblocked, Payload: UnblockedEvent{
+				TicketID: u.TicketID, ProjectID: u.ProjectID, BlockerID: blockerID, Cause: cause, Actor: actor,
+			}})
+		}
+		return out
+	}
 }
 
 // TestedEvent is the payload for ticket.test_passed and ticket.test_failed; Report is a failure's thread message.

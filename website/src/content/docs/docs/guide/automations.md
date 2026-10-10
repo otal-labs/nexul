@@ -52,6 +52,8 @@ The **Decisions check** is listed with them. It's a [play](/docs/guide/plays/#th
 
 For unit tests, `createMockContext` from `@nexul/sdk/testing` gives you the same recording context `nexul dev` uses.
 
+Two events mark a moment rather than one change. `ticket.unblocked` fires when a ticket's last open blocker reaches a done column, its blocked-by link is removed, or it's deleted, with `cause` saying which. `doc.settled` fires once a person's edits to a doc have stopped for ten minutes, with `first` true for a doc created inside that window; edits an agent makes through MCP, or an automation makes, never start the wait.
+
 ## Versions
 
 Every push is kept as a version with its author, time, and message, and lands pending: a push never changes running code by itself. **Rollback** on an older version makes it active again.
