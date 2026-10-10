@@ -5,13 +5,13 @@ interface GitHubAppKeyFactProps {
   set: boolean;
 }
 
-// Whether Nexul reads GitHub as the App or, without a key, only as the account connected under Connectors.
+// How background work on attached repositories reads GitHub: as the App, or without a key as the connected account.
 export const GitHubAppKeyFact = ({ set }: GitHubAppKeyFactProps) => (
   <div className="sm:col-span-3">
     <Fact label="Private key">
-      {set && <SettingsStatus tone="success" detail="Nexul reads every installation as the App">Set</SettingsStatus>}
+      {set && <SettingsStatus tone="success" detail="deploys read attached repositories as the App">Set</SettingsStatus>}
       {!set && (
-        <SettingsStatus tone="warning" detail="only the connected account's repositories are visible">
+        <SettingsStatus tone="warning" detail="deploys read attached repositories as the connected account">
           Not set
         </SettingsStatus>
       )}
