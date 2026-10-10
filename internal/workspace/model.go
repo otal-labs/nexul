@@ -28,10 +28,17 @@ type Project struct {
 
 // ProjectSetup is the project wizard's record of a project (ADR 0143): until Finished, the sidebar offers Continue setup.
 type ProjectSetup struct {
-	StackID  string                  `json:"stack_id,omitempty" jsonschema:"The exact stack created or adopted by the project wizard."`
-	EnvKeys  []string                `json:"env_keys,omitempty" jsonschema:"Detected environment variable names; values remain on the stack."`
+	StackID  string                  `json:"stack_id,omitempty" jsonschema:"The exact stack created or adopted by the project wizard; left out for a caller without stacks:read, and never in a project.setup_changed frame."`
+	EnvKeys  []string                `json:"env_keys,omitempty" jsonschema:"Detected environment variable names; values remain on the stack. Left out for a caller without stacks:read, and never in a project.setup_changed frame."`
 	Finished bool                    `json:"finished" jsonschema:"Whether the project wizard's Finish was pressed; a project made any other way starts finished."`
 	Steps    map[SetupStep]SetupMark `json:"steps" jsonschema:"Each wizard step marked done or skipped, by step id; a step not listed was never visited."`
+}
+
+// withoutService drops the stack id and environment key names, which only a reader of the project's stacks may see.
+func (setup ProjectSetup) withoutService() ProjectSetup {
+	setup.StackID = ""
+	setup.EnvKeys = nil
+	return setup
 }
 
 // SetupStep is one rung of the project wizard; Finish is the last, so it is never a step of its own.

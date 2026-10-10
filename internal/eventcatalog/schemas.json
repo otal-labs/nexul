@@ -5181,14 +5181,14 @@
         "properties": {
           "stack_id": {
             "type": "string",
-            "description": "The exact stack created or adopted by the project wizard."
+            "description": "The exact stack created or adopted by the project wizard; left out for a caller without stacks:read, and never in a project.setup_changed frame."
           },
           "env_keys": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Detected environment variable names; values remain on the stack."
+            "description": "Detected environment variable names; values remain on the stack. Left out for a caller without stacks:read, and never in a project.setup_changed frame."
           },
           "finished": {
             "type": "boolean",

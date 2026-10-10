@@ -80,7 +80,9 @@ type StatusEvent struct {
 	PreviousKind StatusKind `json:"previous_kind,omitempty" jsonschema:"On status.updated, the column's stage before the change."`
 }
 
-// ProjectSetupChangedEvent is the payload for project.setup_changed: the project's whole setup record after the change.
+// ProjectSetupChangedEvent is the payload for project.setup_changed: the project's finished flag and step marks after the
+// change. The frame reaches every member who may open the project, so the service id and environment key names (which
+// need stacks:read) are left out and a client reads them from the project.
 type ProjectSetupChangedEvent struct {
 	ProjectID   string       `json:"project_id"`
 	WorkspaceID string       `json:"workspace_id"`

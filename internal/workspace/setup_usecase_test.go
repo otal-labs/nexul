@@ -1,6 +1,8 @@
 package workspace
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -8,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 func TestChangeSetup(t *testing.T) {
@@ -101,5 +104,68 @@ func TestChangeSetup_ServiceContextSurvivesLaterMarks(t *testing.T) {
 	want := ProjectSetup{Finished: true, StackID: "stack-1", EnvKeys: []string{"PORT"}, Steps: map[SetupStep]SetupMark{"project": SetupDone, "env": SetupSkipped}}
 	assert.Equal(t, want, got.Setup)
 	require.Len(t, repo.saved, 2)
-	assert.Equal(t, ProjectSetupChangedEvent{ProjectID: "p-1", WorkspaceID: "ws-1", Setup: want}, repo.saved[1].Payload)
+	assert.Equal(t, ProjectSetupChangedEvent{ProjectID: "p-1", WorkspaceID: "ws-1", Setup: ProjectSetup{Finished: true, Steps: want.Steps}}, repo.saved[1].Payload,
+		"the frame reaches members without stacks:read, so it names no service")
+}
+
+// writerWithoutStacksRead holds every permission on a project except reading its stacks.
+type writerWithoutStacksRead struct{ fakeGate }
+
+func (g *writerWithoutStacksRead) Require(ctx context.Context, id string, action permissions.Action) error {
+	if action == permissions.StacksRead {
+		return apperrs.ErrForbidden
+	}
+	return g.fakeGate.Require(ctx, id, action)
+}
+
+func (g *writerWithoutStacksRead) RequireProject(ctx context.Context, id string, action permissions.Action) error {
+	return g.Require(ctx, id, action)
+}
+
+func projectWithService() *Project {
+	return &Project{ID: "p-1", WorkspaceID: "ws-1", Prefix: "ACM", Setup: ProjectSetup{
+		StackID: "stack-1", EnvKeys: []string{"STRIPE_SECRET_KEY"}, Steps: map[SetupStep]SetupMark{"service": SetupDone},
+	}}
+}
+
+func TestProjectReads_WithoutStacksRead_HideTheSetupService(t *testing.T) {
+	reads := map[string]func(*Service) (*Project, error){
+		"get": func(s *Service) (*Project, error) { return s.Get(t.Context(), "p-1") },
+		"list": func(s *Service) (*Project, error) {
+			projects, err := s.List(t.Context(), "ws-1")
+			if err != nil || len(projects) != 1 {
+				return nil, errors.Join(err, errors.New("want one project"))
+			}
+			return projects[0], nil
+		},
+		"change setup": func(s *Service) (*Project, error) {
+			return s.ChangeSetup(t.Context(), "p-1", SetupChange{Steps: map[SetupStep]SetupMark{"reach": SetupSkipped}})
+		},
+		"rename": func(s *Service) (*Project, error) { return s.Rename(t.Context(), "p-1", "Acme", nil) },
+		"tests location": func(s *Service) (*Project, error) {
+			return s.SetTestsLocation(t.Context(), "p-1", TestsLocationSame)
+		},
+		"same prefix": func(s *Service) (*Project, error) { return s.SetPrefix(t.Context(), "p-1", "ACM") },
+	}
+	for name, read := range reads {
+		t.Run(name, func(t *testing.T) {
+			blindRepo := newFakeRepo()
+			blindRepo.projects["p-1"] = projectWithService()
+			blind := newTestService(blindRepo, &writerWithoutStacksRead{fakeGate{allow: true}})
+			got, err := read(blind)
+			require.NoError(t, err)
+			raw, err := json.Marshal(got)
+			require.NoError(t, err)
+			assert.NotContains(t, string(raw), "stack-1")
+			assert.NotContains(t, string(raw), "STRIPE_SECRET_KEY")
+			assert.Equal(t, SetupDone, got.Setup.Steps["service"], "the step marks still show")
+
+			sighted, repo, _ := newOwnerRepo(t, true)
+			repo.projects["p-1"] = projectWithService()
+			got, err = read(sighted)
+			require.NoError(t, err)
+			assert.Equal(t, "stack-1", got.Setup.StackID)
+			assert.Equal(t, []string{"STRIPE_SECRET_KEY"}, got.Setup.EnvKeys)
+		})
+	}
 }

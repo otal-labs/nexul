@@ -83,11 +83,11 @@ func (s *Service) ChangeSetup(ctx context.Context, projectID string, change Setu
 		current.Setup = setup
 		current.UpdatedAt = s.now().UTC()
 		return []eventbus.OutboxEvent{{ID: ids.New(), Topic: TopicProjectSetupChanged, Payload: ProjectSetupChangedEvent{
-			ProjectID: current.ID, WorkspaceID: current.WorkspaceID, Setup: setup,
+			ProjectID: current.ID, WorkspaceID: current.WorkspaceID, Setup: setup.withoutService(),
 		}}}
 	})
 	if err != nil {
 		return nil, fmt.Errorf("change setup of project %s: %w", projectID, err)
 	}
-	return updated, nil
+	return s.forViewer(ctx, updated), nil
 }

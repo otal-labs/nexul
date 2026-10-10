@@ -31,8 +31,14 @@ a muted "Being set up" line. Continue setup opens the wizard at the first step n
 - **An exact service belongs to the project.** Both adapters reject a missing or another-project stack before writing
   setup or its event. An empty stack id clears the selection.
 - **A skip never undoes a done step**, so revisiting a step and skipping it keeps what it made.
-- **Live.** `project.setup_changed` carries the whole record and reaches whoever may open the project, so another
-  member's sidebar flips the moment someone presses Finish.
+- **Setup state belongs to the setup run.** The wizard reads and writes the recorded service only while the project is
+  in setup or Settings reopened it to revisit. The Add a service door (`?add=1`) makes a new service and leaves the
+  record, its step marks and its event alone, on a finished project and on one still in setup.
+- **The service is for readers of stacks.** The service id and the environment key names reach HTTP and MCP callers who
+  hold `stacks:read` on the project; anyone else gets the step marks and the finished flag.
+- **Live.** `project.setup_changed` carries the finished flag and the step marks, and reaches whoever may open the
+  project, so another member's sidebar flips the moment someone presses Finish. It names no service (a frame has one
+  audience), so a client refetches the project to learn the service.
 
 Rejected: keeping the browser-local reminder, which only the device that named the project ever saw. Also rejected:
 deriving setup from what the project holds (a repository, a stack), because a project for docs only would then never
