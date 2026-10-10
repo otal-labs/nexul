@@ -288,6 +288,41 @@ func (s *Service) RemoveRunner(ctx context.Context, id string) error {
 	return s.remove(ctx, r)
 }
 
+// RetireComputerRunner removes the personal runner that reaches computerID, which uninstalls itself now or on its
+// next connect, and voids any code still waiting to enroll one. It takes no permission: the pairing domain calls it
+// only for the caller's own computer, as it removes it. A computer with no runner has nothing to retire.
+func (s *Service) RetireComputerRunner(ctx context.Context, computerID string) error {
+	if err := s.repo.DeleteComputerEnrollments(ctx, computerID); err != nil {
+		return err
+	}
+	r, err := s.repo.GetByComputer(ctx, computerID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("get runner of computer %s: %w", computerID, err)
+	}
+	return s.remove(ctx, r)
+}
+
+// RevokePersonalRunners removes every personal runner userID enrolled and voids their unused codes, for an account
+// that was disabled or removed. It returns nothing about them, so whoever closed the account learns no computer.
+func (s *Service) RevokePersonalRunners(ctx context.Context, userID string) error {
+	if err := s.repo.DeleteOwnerEnrollments(ctx, userID); err != nil {
+		return err
+	}
+	runners, err := s.repo.ListByOwner(ctx, userID)
+	if err != nil {
+		return err
+	}
+	for _, r := range runners {
+		if err := s.remove(ctx, r); err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+			return err
+		}
+	}
+	return nil
+}
+
 // RemoveSelf is removal asked for by the runner itself, authenticated by its own credential; a runner that was
 // already removed has nothing left to remove.
 func (s *Service) RemoveSelf(ctx context.Context, credential string) error {

@@ -150,6 +150,24 @@ func (q *Queries) DeleteRunner(ctx context.Context, id string) (int64, error) {
 	return result.RowsAffected()
 }
 
+const deleteRunnerEnrollmentCodesByComputer = `-- name: DeleteRunnerEnrollmentCodesByComputer :exec
+DELETE FROM runner_enrollment_codes WHERE computer_id = ? AND computer_id != ''
+`
+
+func (q *Queries) DeleteRunnerEnrollmentCodesByComputer(ctx context.Context, computerID string) error {
+	_, err := q.db.ExecContext(ctx, deleteRunnerEnrollmentCodesByComputer, computerID)
+	return err
+}
+
+const deleteRunnerEnrollmentCodesByOwner = `-- name: DeleteRunnerEnrollmentCodesByOwner :exec
+DELETE FROM runner_enrollment_codes WHERE owner_user_id = ? AND owner_user_id != ''
+`
+
+func (q *Queries) DeleteRunnerEnrollmentCodesByOwner(ctx context.Context, ownerUserID string) error {
+	_, err := q.db.ExecContext(ctx, deleteRunnerEnrollmentCodesByOwner, ownerUserID)
+	return err
+}
+
 const getInstanceUpgrade = `-- name: GetInstanceUpgrade :one
 SELECT id, from_version, to_version, status, error, requested_by, runner_id, created_at, updated_at FROM instance_upgrades WHERE id = ?
 `
@@ -302,6 +320,43 @@ SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_us
 
 func (q *Queries) ListRunners(ctx context.Context) ([]Runner, error) {
 	rows, err := q.db.QueryContext(ctx, listRunners)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Runner
+	for rows.Next() {
+		var i Runner
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.LastSeen,
+			&i.Connected,
+			&i.CreatedAt,
+			&i.Version,
+			&i.MachineID,
+			&i.OwnerUserID,
+			&i.ComputerID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRunnersByOwner = `-- name: ListRunnersByOwner :many
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id FROM runners WHERE owner_user_id = ? AND owner_user_id != '' ORDER BY created_at
+`
+
+func (q *Queries) ListRunnersByOwner(ctx context.Context, ownerUserID string) ([]Runner, error) {
+	rows, err := q.db.QueryContext(ctx, listRunnersByOwner, ownerUserID)
 	if err != nil {
 		return nil, err
 	}

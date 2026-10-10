@@ -12,6 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/dns/cloudflare"
 	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/runner"
 )
 
@@ -68,6 +69,24 @@ func (r *runnerComputers) PairingToken(ctx context.Context, computerID string) (
 		return "", apperrs.Retryable(errors.New("the runner handler has not started"))
 	}
 	return h.PairingToken(ctx, computerID)
+}
+
+// RetireComputerRunner is pairing's seam for revoking a removed computer's runner.
+func (r *runnerComputers) RetireComputerRunner(ctx context.Context, computerID string) error {
+	s, err := r.service()
+	if err != nil {
+		return err
+	}
+	return s.RetireComputerRunner(ctx, computerID)
+}
+
+// HandleAccountClosed revokes a closed account's personal runners, once the runner service has started.
+func (r *runnerComputers) HandleAccountClosed(ctx context.Context, ev eventbus.Event) error {
+	s, err := r.service()
+	if err != nil {
+		return err
+	}
+	return s.HandleAccountClosed(ctx, ev)
 }
 
 func (r *runnerComputers) DialComputer(ctx context.Context, computerID string) (net.Conn, error) {

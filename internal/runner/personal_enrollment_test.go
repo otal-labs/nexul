@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"net/http/httptest"
 	"regexp"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 )
 
@@ -200,5 +202,52 @@ func TestHandler_PersonalRunnerChangesGoOnlyToItsOwnersTopic(t *testing.T) {
 	assert.Equal(t, []string{PersonalConnected, PersonalDisconnected}, states)
 	for _, topic := range []string{TopicRunnerConnected, TopicRunnerHeartbeat, TopicRunnerDisconnected} {
 		assert.Empty(t, bus.topicEvents(topic), topic)
+	}
+}
+
+// TestService_HandleAccountClosed_RevokesOnlyThatPersonsRunners: closing alice's account removes both her computers'
+// runners and her unused code, and leaves bob's runner and the deploy runner enrolled. A payload naming nobody is
+// dropped, and a failed read is returned so the bus retries it.
+func TestService_HandleAccountClosed_RevokesOnlyThatPersonsRunners(t *testing.T) {
+	event := func(payload string) eventbus.Event {
+		return eventbus.Event{Topic: "account.disabled", Payload: []byte(payload)}
+	}
+	t.Run("alice's runners and code go, nobody else's", func(t *testing.T) {
+		repo := newFakeRunnerRepo()
+		laptop, desk := repo.personal("r-laptop", "u-alice", "c-laptop"), repo.personal("r-desk", "u-alice", "c-desk")
+		bob := repo.personal("r-bob", "u-bob", "c-bob")
+		repo.enrolled("r-edge", "edge", "m1")
+		repo.codes["h-alice"] = &EnrollmentCode{CodeHash: "h-alice", OwnerUserID: "u-alice", ComputerID: "c-new", ExpiresAt: enrollNow.Add(time.Hour)}
+		repo.codes["h-bob"] = &EnrollmentCode{CodeHash: "h-bob", OwnerUserID: "u-bob", ComputerID: "c-bob2", ExpiresAt: enrollNow.Add(time.Hour)}
+		dispatch := &fakeDispatch{}
+
+		require.NoError(t, newEnrollService(repo, dispatch).HandleAccountClosed(t.Context(), event(`{"account_id":"u-alice","actor_id":"u-owner"}`)))
+
+		assert.ElementsMatch(t, []string{"r-laptop", "r-desk"}, dispatch.uninstalled)
+		for raw, revoked := range map[string]bool{laptop: true, desk: true, bob: false} {
+			cred, err := repo.GetCredential(t.Context(), hostcred.Hash(raw))
+			require.NoError(t, err)
+			assert.Equal(t, revoked, cred.Revoked, raw)
+		}
+		assert.NotContains(t, repo.codes, "h-alice")
+		assert.Contains(t, repo.codes, "h-bob")
+		assert.Contains(t, repo.runners, "r-edge")
+	})
+	for name, tt := range map[string]struct {
+		payload string
+		listErr error
+		fatal   bool
+	}{
+		"a payload that is not json": {payload: `{`, fatal: true},
+		"no account named":           {payload: `{"actor_id":"u-owner"}`, fatal: true},
+		"the runners cannot be read": {payload: `{"account_id":"u-alice"}`, listErr: assert.AnError},
+	} {
+		t.Run(name, func(t *testing.T) {
+			repo := newFakeRunnerRepo()
+			repo.listErr = tt.listErr
+			err := newEnrollService(repo, &fakeDispatch{}).HandleAccountClosed(t.Context(), event(tt.payload))
+			require.Error(t, err)
+			assert.Equal(t, tt.fatal, errors.Is(err, apperrs.ErrFatal))
+		})
 	}
 }

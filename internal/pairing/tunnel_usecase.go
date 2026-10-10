@@ -126,11 +126,18 @@ func (s *Service) tunnelStatus(ctx context.Context, userID, computerID string) (
 	return out, nil
 }
 
-// DeleteComputer revokes a paired computer's MCP token, tears down its tunnel, then removes it; a mismatched id is ErrNotFound.
+// DeleteComputer retires a computer's runner, revokes its MCP token, tears down its tunnel, then removes it; a
+// mismatched id is ErrNotFound.
 func (s *Service) DeleteComputer(ctx context.Context, userID, id string) error {
 	computer, err := s.ownComputer(ctx, userID, id)
 	if err != nil {
 		return err
+	}
+	// The runner goes first: a failed retire keeps the row, so removing the computer again retries it.
+	if s.runners != nil {
+		if err := s.runners.RetireComputerRunner(ctx, computer.ID); err != nil {
+			return fmt.Errorf("retire runner of computer %s: %w", computer.ID, err)
+		}
 	}
 	if err := s.revokeMCPToken(ctx, *computer); err != nil {
 		return err

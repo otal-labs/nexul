@@ -27,7 +27,7 @@ export const TeamAccountActions = ({ person }: { person: TeamPerson }) => {
     const workspaces = person.workspaces.length;
     const ok = await confirm({
       title: "Remove account?",
-      message: `${name} loses sign-in, their credentials, and access to ${workspaces} workspace${workspaces === 1 ? "" : "s"}. What they wrote stays. Restoring the account later doesn't bring the access back.`,
+      message: `${name} loses sign-in, their credentials, and access to ${workspaces} workspace${workspaces === 1 ? "" : "s"}. Their computers are disconnected. What they wrote stays. Restoring the account later doesn't bring the access or the computers back.`,
       confirmLabel: "Remove account",
     });
     if (ok) remove.mutate(person.id);
@@ -36,7 +36,7 @@ export const TeamAccountActions = ({ person }: { person: TeamPerson }) => {
   return (
     <div className="flex flex-wrap items-center gap-1">
       {canChange && person.status === "active" && (
-        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" loading={update.isPending} disabled={busy} onClick={() => void setStatus("disabled", "Disable", "lose sign-in but keep their workspace access")}>
+        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" loading={update.isPending} disabled={busy} onClick={() => void setStatus("disabled", "Disable", "lose sign-in but keep their workspace access, and their computers are disconnected")}>
           <UserRoundX className="size-4" />Disable
         </Button>
       )}

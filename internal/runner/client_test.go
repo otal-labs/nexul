@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"runtime"
 	"sync/atomic"
 	"testing"
@@ -472,19 +474,53 @@ func TestClient_RemovedRunner_UninstallsItselfAndStops(t *testing.T) {
 		assert.Equal(t, "Bearer nxr_tok", gotAuth.Load())
 	})
 
-	t.Run("a personal runner removes its computer's unit", func(t *testing.T) {
+	t.Run("a personal runner revokes Nexul's T3 Code sessions, then removes its computer's unit", func(t *testing.T) {
+		t3, calls := sessionsT3(t, `[{"sessionId":"s-nexul","client":{"label":"Nexul"}},{"sessionId":"s-phone","client":{"label":"Phone"}},{"sessionId":"s-cli","client":{}}]`)
 		srv := wsTestServer(t, func(ctx context.Context, conn *websocket.Conn) {
 			_ = wsjson.Write(ctx, conn, Frame{Type: FrameUninstall}) // the client's exit is what the test waits on
 			_, _, _ = conn.Read(ctx)
 		})
 		exec := &fakeExecutor{}
 		c := newTestClient(wsURL(srv), exec)
-		c.cfg.Personal = true
+		c.cfg.Personal, c.cfg.T3Home = true, "/home/alice/.t3"
+		c.findT3 = func(string) string { return t3 }
+		_, done := runClient(t, c)
+
+		require.NoError(t, <-done)
+		assert.Equal(t, []string{"computer"}, exec.uninstalled())
+		got, err := os.ReadFile(calls)
+		require.NoError(t, err)
+		assert.Equal(t, "/home/alice/.t3 auth session list --json\n/home/alice/.t3 auth session revoke s-nexul\n", string(got), "only the session Nexul paired")
+	})
+
+	t.Run("a personal runner without T3 Code still removes its unit", func(t *testing.T) {
+		srv := wsTestServer(t, func(ctx context.Context, conn *websocket.Conn) {
+			_ = wsjson.Write(ctx, conn, Frame{Type: FrameUninstall}) // the client's exit is what the test waits on
+			_, _, _ = conn.Read(ctx)
+		})
+		exec := &fakeExecutor{}
+		c := newTestClient(wsURL(srv), exec)
+		c.cfg.Personal, c.cfg.T3Home = true, t.TempDir()
+		c.findT3 = func(string) string { return "" }
 		_, done := runClient(t, c)
 
 		require.NoError(t, <-done)
 		assert.Equal(t, []string{"computer"}, exec.uninstalled())
 	})
+}
+
+// sessionsT3 writes a t3 command that answers `auth session list --json` with sessions and records every call, with
+// the T3 Code home it ran in, in the returned calls file.
+func sessionsT3(t *testing.T, sessions string) (t3, calls string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("the fake t3 is a shell script")
+	}
+	dir := t.TempDir()
+	t3, calls = filepath.Join(dir, "t3"), filepath.Join(dir, "calls")
+	script := "#!/bin/sh\necho \"$T3CODE_HOME $*\" >> " + calls + "\nif [ \"$3\" = list ]; then echo '" + sessions + "'; fi\n"
+	require.NoError(t, os.WriteFile(t3, []byte(script), 0o700))
+	return t3, calls
 }
 
 func TestClient_UnknownCredential_KeepsRetryingWithoutUninstalling(t *testing.T) {

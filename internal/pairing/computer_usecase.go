@@ -24,6 +24,9 @@ type Runners interface {
 	ComputerRunner(ctx context.Context, computerID string) (ComputerRunner, error)
 	// PairingToken asks computerID's connected runner for a one-time T3 Code pairing token minted on the computer.
 	PairingToken(ctx context.Context, computerID string) (string, error)
+	// RetireComputerRunner revokes the runner that reaches computerID, which then uninstalls itself, and voids any
+	// unused code for it; a computer with no runner has nothing to retire.
+	RetireComputerRunner(ctx context.Context, computerID string) error
 }
 
 const (

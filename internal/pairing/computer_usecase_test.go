@@ -16,10 +16,11 @@ import (
 
 // fakeRunners is the runner domain's side of a computer: the codes it minted and the runners enrolled per computer.
 type fakeRunners struct {
-	mu      sync.Mutex
-	minted  []string
-	runners map[string]ComputerRunner
-	err     error
+	mu        sync.Mutex
+	minted    []string
+	runners   map[string]ComputerRunner
+	err       error
+	retireErr error
 	// token is what PairingToken hands out, or tokenErr its failure; tokens counts the asks.
 	token    string
 	tokenErr error
@@ -54,6 +55,16 @@ func (f *fakeRunners) ComputerRunner(_ context.Context, computerID string) (Comp
 		return r, nil
 	}
 	return ComputerRunner{}, apperrs.ErrNotFound
+}
+
+func (f *fakeRunners) RetireComputerRunner(_ context.Context, computerID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.retireErr != nil {
+		return f.retireErr
+	}
+	delete(f.runners, computerID)
+	return nil
 }
 
 func newComputerService() (*Service, *fakeRepo, *fakeRunners) {
@@ -115,6 +126,25 @@ func TestEnrollComputer_GivesAFreshCodeUntilTheRunnerEnrolls(t *testing.T) {
 	runners.runners[added.Computer.ID] = ComputerRunner{Connected: true}
 	_, err = svc.EnrollComputer(t.Context(), "u-alice", added.Computer.ID)
 	require.ErrorIs(t, err, apperrs.ErrConflict, "one runner per computer")
+}
+
+func TestDeleteComputer_RunnerNotRetired_KeepsTheComputer(t *testing.T) {
+	t.Parallel()
+	svc, repo, runners := newComputerService()
+	added, err := svc.AddComputer(t.Context(), "u-alice", "Laptop")
+	require.NoError(t, err)
+	runners.runners[added.Computer.ID] = ComputerRunner{Connected: true}
+
+	runners.retireErr = errBoom
+	require.ErrorIs(t, svc.DeleteComputer(t.Context(), "u-alice", added.Computer.ID), errBoom)
+	_, err = repo.GetComputer(t.Context(), "u-alice", added.Computer.ID)
+	require.NoError(t, err, "a runner still enrolled keeps its computer, so removing it again retries")
+
+	runners.retireErr = nil
+	require.NoError(t, svc.DeleteComputer(t.Context(), "u-alice", added.Computer.ID))
+	assert.NotContains(t, runners.runners, added.Computer.ID)
+	_, err = repo.GetComputer(t.Context(), "u-alice", added.Computer.ID)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestRenameComputer(t *testing.T) {

@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -115,6 +116,21 @@ type FactsReportedEvent struct {
 
 func personalChanged(r *Runner, state, hostname string) PersonalChangedEvent {
 	return PersonalChangedEvent{RunnerID: r.ID, ComputerID: r.ComputerID, UserID: r.OwnerUserID, State: state, Hostname: hostname, MembersOnly: true}
+}
+
+// HandleAccountClosed is the account.disabled and account.removed consumer: the account's personal runners are
+// revoked, and reactivating the account later brings none back.
+func (s *Service) HandleAccountClosed(ctx context.Context, ev eventbus.Event) error {
+	var p struct {
+		AccountID string `json:"account_id"`
+	}
+	if err := json.Unmarshal(ev.Payload, &p); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse %s: %w", ev.Topic, err))
+	}
+	if p.AccountID == "" {
+		return apperrs.Fatal(fmt.Errorf("%w: %s names no account", apperrs.ErrInvalid, ev.Topic))
+	}
+	return s.RevokePersonalRunners(ctx, p.AccountID)
 }
 
 // RunnerHeartbeatEvent carries a runner's liveness pulse.
