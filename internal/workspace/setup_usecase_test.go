@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -74,7 +73,7 @@ func TestChangeSetup_NothingNew_WritesNothing(t *testing.T) {
 			s, repo, _ := newOwnerRepo(t, true)
 			repo.projects["p-1"] = &Project{ID: "p-1", WorkspaceID: "ws-1", Setup: NewSetup(false)}
 
-			got, err := s.ChangeSetup(context.Background(), "p-1", SetupChange{Steps: map[SetupStep]SetupMark{"project": mark}})
+			got, err := s.ChangeSetup(t.Context(), "p-1", SetupChange{Steps: map[SetupStep]SetupMark{"project": mark}})
 
 			require.NoError(t, err)
 			assert.Equal(t, SetupDone, got.Setup.Steps["project"])

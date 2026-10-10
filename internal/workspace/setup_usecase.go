@@ -56,22 +56,19 @@ func (s *Service) ChangeSetup(ctx context.Context, projectID string, change Setu
 	if err := change.validate(); err != nil {
 		return nil, err
 	}
-	current, err := s.repo.Get(ctx, projectID)
+	updated, err := s.repo.SaveSetup(ctx, projectID, func(current *Project) []eventbus.OutboxEvent {
+		setup := current.Setup.apply(change)
+		if setup.Finished == current.Setup.Finished && maps.Equal(setup.Steps, current.Setup.Steps) {
+			return nil
+		}
+		current.Setup = setup
+		current.UpdatedAt = s.now().UTC()
+		return []eventbus.OutboxEvent{{ID: ids.New(), Topic: TopicProjectSetupChanged, Payload: ProjectSetupChangedEvent{
+			ProjectID: current.ID, WorkspaceID: current.WorkspaceID, Setup: setup,
+		}}}
+	})
 	if err != nil {
 		return nil, fmt.Errorf("change setup of project %s: %w", projectID, err)
 	}
-	setup := current.Setup.apply(change)
-	if setup.Finished == current.Setup.Finished && maps.Equal(setup.Steps, current.Setup.Steps) {
-		return current, nil
-	}
-	updated := *current
-	updated.Setup = setup
-	updated.UpdatedAt = s.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicProjectSetupChanged, Payload: ProjectSetupChangedEvent{
-		ProjectID: updated.ID, WorkspaceID: updated.WorkspaceID, Setup: setup,
-	}}
-	if err := s.repo.SaveSetup(ctx, &updated, evt); err != nil {
-		return nil, fmt.Errorf("change setup of project %s: %w", projectID, err)
-	}
-	return &updated, nil
+	return updated, nil
 }

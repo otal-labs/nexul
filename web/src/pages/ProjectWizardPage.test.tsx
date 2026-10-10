@@ -168,16 +168,46 @@ describe("ProjectWizardPage", () => {
     expect(rung("Service")).toHaveAttribute("data-state", "current");
   });
 
-  it("continues setup another device started, on the service that device made", async () => {
+  it("keeps the step open when its skip cannot be saved", async () => {
+    mocks.put.mockRejectedValue(new Error("offline"));
+    useProjectWizardStore.getState().setProjectId("p-1", "Backend");
+    const user = userEvent.setup();
+    renderPage("/acme/wizard/project/repository?project=p-1");
+
+    await user.click(await screen.findByRole("button", { name: "Skip for now" }));
+
+    expect(screen.getByRole("heading", { name: "Repository" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Service" })).not.toBeInTheDocument();
+  });
+
+  it("can skip Environment before a service exists and advances to Reach", async () => {
+    mocks.put.mockResolvedValue({ data: inSetup({ project: "done", env: "skipped" }) });
+    const store = useProjectWizardStore.getState();
+    store.setProjectId("p-1", "Backend");
+    store.setScanResult({ default_branch: "main", candidates: [], env_keys: ["PORT"] });
+    const user = userEvent.setup();
+    renderPage("/acme/wizard/project/env?project=p-1");
+
+    await user.click(await screen.findByRole("button", { name: "Skip for now" }));
+
+    expect(await screen.findByRole("heading", { name: "Reach" })).toBeInTheDocument();
+    expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", { finished: undefined, steps: { env: "skipped" } });
+  });
+
+  it.each([
+    { finished: false, query: "", title: "Continue setup" },
+    { finished: true, query: "&revisit=1", title: "Project setup" },
+  ])("opens a recorded service from another device with setup finished=$finished", async ({ finished, query, title }) => {
     mocks.get.mockImplementation(async (url: string) => {
-      if (url === "/api/projects/p-1") return { data: inSetup({ project: "done", repository: "done", service: "done" }) };
+      if (url === "/api/projects/p-1")
+        return { data: { ...project, setup: { finished, steps: { project: "done", repository: "done", service: "done" } } } };
       if (url === "/api/stacks") return { data: [stack] };
       return { data: [] };
     });
-    renderPage("/acme/wizard/project/service?project=p-1");
+    renderPage(`/acme/wizard/project/service?project=p-1${query}`);
 
     expect(await screen.findByText(/api runs on/)).toHaveTextContent("api runs on prod.");
-    expect(screen.getByRole("heading", { name: "Continue setup" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
     expect(rung("Repository")).toHaveAttribute("data-state", "done");
   });
 

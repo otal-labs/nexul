@@ -109,9 +109,9 @@ func TestHandler_Create(t *testing.T) {
 	t.Run("only setup_finished false starts the project in setup", func(t *testing.T) {
 		h, _ := newTestHandler(t, true)
 		for body, want := range map[string]ProjectSetup{
-			`{"workspace_id":"ws-1","name":"Backend","prefix":"BE"}`:                        NewSetup(true),
-			`{"workspace_id":"ws-1","name":"Backend","prefix":"BF","setup_finished":true}`:  NewSetup(true),
-			`{"workspace_id":"ws-1","name":"Backend","prefix":"BG","setup_finished":false}`: NewSetup(false),
+			`{"workspace_id":"ws-1","name":"Backend","prefix":"BE"}`:                        {Finished: true, Steps: map[SetupStep]SetupMark{}},
+			`{"workspace_id":"ws-1","name":"Backend","prefix":"BF","setup_finished":true}`:  {Finished: true, Steps: map[SetupStep]SetupMark{}},
+			`{"workspace_id":"ws-1","name":"Backend","prefix":"BG","setup_finished":false}`: {Steps: map[SetupStep]SetupMark{"project": SetupDone}},
 		} {
 			rec := do(t, h.Routes(), http.MethodPost, "/api/projects", body, "u-1")
 			require.Equal(t, http.StatusCreated, rec.Code, body)

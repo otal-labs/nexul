@@ -143,23 +143,38 @@ func (r *ProjectsRepo) Update(ctx context.Context, p *workspace.Project) error {
 	})
 }
 
-func (r *ProjectsRepo) SaveSetup(ctx context.Context, p *workspace.Project, evts ...eventbus.OutboxEvent) error {
-	steps, err := setupStepsJSON(p)
-	if err != nil {
-		return err
-	}
-	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).UpdateProjectSetup(ctx, sqlcgen.UpdateProjectSetupParams{
+func (r *ProjectsRepo) SaveSetup(ctx context.Context, id string, apply func(*workspace.Project) []eventbus.OutboxEvent) (*workspace.Project, error) {
+	var p *workspace.Project
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		row, err := q.GetProject(ctx, id)
+		if err != nil {
+			return fmt.Errorf("get setup of project %s: %w", id, notFoundIfNoRows(err))
+		}
+		p, err = toProject(row)
+		if err != nil {
+			return err
+		}
+		evts := apply(p)
+		if len(evts) == 0 {
+			return nil
+		}
+		steps, err := setupStepsJSON(p)
+		if err != nil {
+			return err
+		}
+		_, err = q.UpdateProjectSetup(ctx, sqlcgen.UpdateProjectSetupParams{
 			SetupFinished: boolToInt(p.Setup.Finished), SetupSteps: steps, UpdatedAt: p.UpdatedAt.Unix(), ID: p.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("save setup of project %s: %w", p.ID, classifyWriteErr(err))
 		}
-		if n == 0 {
-			return fmt.Errorf("save setup of project %s: %w", p.ID, apperrs.ErrNotFound)
-		}
 		return insertOutboxRows(ctx, tx, evts)
 	})
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 func (r *ProjectsRepo) Delete(ctx context.Context, id string) error {

@@ -47,13 +47,21 @@ export const ProjectWizardStepContent = ({ step }: ProjectWizardStepContentProps
   // Attach mode skips the Reach rung (the stack already has hostnames), so service and env land on "branches".
   const afterEnv = isAttach ? "branches" : "reach";
   const afterService = showEnv ? "env" : afterEnv;
-  const complete = (to: WizardStepId) => {
-    markStep(step, "done");
-    goTo(to);
+  const complete = async (to: WizardStepId) => {
+    try {
+      await markStep(step, "done");
+      goTo(to);
+    } catch {
+      // The mutation hook shows the error; keep the step open for retry.
+    }
   };
-  const skip = () => {
-    markStep(step, "skipped");
-    if (next) goTo(next);
+  const skip = async () => {
+    try {
+      await markStep(step, "skipped");
+      if (next) goTo(next);
+    } catch {
+      // The mutation hook shows the error; keep the step open for retry.
+    }
   };
 
   return (
@@ -84,9 +92,9 @@ export const ProjectWizardStepContent = ({ step }: ProjectWizardStepContentProps
         <WizardServiceStep onDone={() => complete(afterService)} onBack={onBack} onSkip={isAttach ? undefined : skip} />
       )}
       {step === "env" && !stackId && (
-        <WizardStepNeeds needs="service" message={`Environment values go to a service. ${noService}`} onBack={onBack} />
+        <WizardStepNeeds needs="service" message={`Environment values go to a service. ${noService}`} onBack={onBack} onSkip={skip} />
       )}
-      {step === "env" && stackId && <WizardEnvStep onDone={() => complete(afterEnv)} />}
+      {step === "env" && stackId && <WizardEnvStep onDone={() => complete(afterEnv)} onBack={onBack} onSkip={skip} />}
       {step === "reach" && !stackId && (
         <WizardStepNeeds needs="service" message={`Reach gives a service a hostname. ${noService}`} onBack={onBack} onSkip={skip} />
       )}

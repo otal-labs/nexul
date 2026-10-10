@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -46,7 +47,11 @@ func TestProjectsRepo_SaveSetup_WritesTheRecordAndItsEvent(t *testing.T) {
 	p.Name = "Renamed"
 	p.Setup = workspace.ProjectSetup{Finished: true, Steps: map[workspace.SetupStep]workspace.SetupMark{"project": workspace.SetupDone, "reach": workspace.SetupSkipped}}
 	evt := eventbus.OutboxEvent{ID: "evt-1", Topic: workspace.TopicProjectSetupChanged, Payload: workspace.ProjectSetupChangedEvent{ProjectID: "p-1"}}
-	require.NoError(t, s.Projects.SaveSetup(ctx, p, evt))
+	_, err = s.Projects.SaveSetup(ctx, p.ID, func(current *workspace.Project) []eventbus.OutboxEvent {
+		current.Setup = p.Setup
+		return []eventbus.OutboxEvent{evt}
+	})
+	require.NoError(t, err)
 
 	got, err = s.Projects.Get(ctx, "p-1")
 	require.NoError(t, err)
@@ -54,8 +59,43 @@ func TestProjectsRepo_SaveSetup_WritesTheRecordAndItsEvent(t *testing.T) {
 	assert.Equal(t, "Backend", got.Name, "saving the setup writes nothing else")
 	assert.Equal(t, 1, count(t, s.db, `SELECT COUNT(*) FROM outbox WHERE id = 'evt-1' AND topic = 'project.setup_changed'`))
 
-	err = s.Projects.SaveSetup(ctx, newTestProject("p-missing", "Gone", 0))
+	_, err = s.Projects.SaveSetup(ctx, "p-missing", nil)
 	assert.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+type concurrentSetupRepo struct {
+	workspace.Repo
+	writes sync.WaitGroup
+}
+
+func (r *concurrentSetupRepo) SaveSetup(ctx context.Context, id string, apply func(*workspace.Project) []eventbus.OutboxEvent) (*workspace.Project, error) {
+	r.writes.Done()
+	r.writes.Wait()
+	return r.Repo.SaveSetup(ctx, id, apply)
+}
+
+func TestProjectSetup_ConcurrentStepsPreserveBothMarks(t *testing.T) {
+	s := newTestStore(t)
+	p := newTestProject("p-1", "Backend", 0)
+	p.Setup = workspace.NewSetup(false)
+	require.NoError(t, s.Projects.Create(t.Context(), p))
+	repo := &concurrentSetupRepo{Repo: s.Projects}
+	repo.writes.Add(2)
+	svc := workspace.NewService(repo, nil, nil, nil, nil, nil)
+	errs := make(chan error, 2)
+	for _, step := range []workspace.SetupStep{"repository", "service"} {
+		go func() {
+			_, err := svc.ChangeSetup(t.Context(), p.ID, workspace.SetupChange{Steps: map[workspace.SetupStep]workspace.SetupMark{step: workspace.SetupSkipped}})
+			errs <- err
+		}()
+	}
+	require.NoError(t, <-errs)
+	require.NoError(t, <-errs)
+	got, err := s.Projects.Get(t.Context(), p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, workspace.ProjectSetup{Steps: map[workspace.SetupStep]workspace.SetupMark{
+		"project": workspace.SetupDone, "repository": workspace.SetupSkipped, "service": workspace.SetupSkipped,
+	}}, got.Setup)
 }
 
 func TestProjectsRepo_IconRoundTrip(t *testing.T) {

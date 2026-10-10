@@ -563,8 +563,13 @@ func (r projectRepo) Update(_ context.Context, p *workspace.Project) error {
 	return r.w.projects.put(p)
 }
 
-func (r projectRepo) SaveSetup(_ context.Context, p *workspace.Project, _ ...eventbus.OutboxEvent) error {
-	return r.w.projects.put(p)
+func (r projectRepo) SaveSetup(_ context.Context, id string, apply func(*workspace.Project) []eventbus.OutboxEvent) (*workspace.Project, error) {
+	p, err := r.w.projects.get(id)
+	if err != nil {
+		return nil, err
+	}
+	apply(p)
+	return p, r.w.projects.put(p)
 }
 
 func (r projectRepo) Reorder(_ context.Context, ids []string) error { return r.w.projects.reorder(ids) }

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useSearchParams } from "react-router";
 import { useShallow } from "zustand/react/shallow";
 
 import { useChangeProjectSetup, useFetchProject } from "@/hooks/ProjectHooks";
@@ -14,18 +15,19 @@ export const useWizardProject = () => {
   return useFetchProject(projectId ?? undefined).data;
 };
 
-// Records what happened at a step on the project; a failed write toasts and the wizard still moves on.
+// Navigation waits for the project to remember the step; a failed write leaves it open for retry.
 export const useMarkStep = () => {
   const projectId = useProjectWizardStore((s) => s.projectId);
   const change = useChangeProjectSetup();
   return (step: WizardStepId, mark: SetupMark) => {
-    if (projectId && step !== "done") change.mutate({ projectId, steps: { [step]: mark } });
+    if (projectId && step !== "done") return change.mutateAsync({ projectId, steps: { [step]: mark } });
   };
 };
 
 // Setup continued on another device: the service it made there is the one Reach and Deploy branches work on here.
 export const useSeedSetupStack = () => {
   const project = useWizardProject();
+  const [searchParams] = useSearchParams();
   const { stackId, attachStackId, setStackId, setName, setMachine } = useProjectWizardStore(
     useShallow((s) => ({
       stackId: s.stackId,
@@ -35,7 +37,12 @@ export const useSeedSetupStack = () => {
       setMachine: s.setMachine,
     })),
   );
-  const wanted = !!project && inSetup(project) && project.setup.steps.service === "done" && !stackId && !attachStackId;
+  const wanted =
+    !!project &&
+    (inSetup(project) || searchParams.has("revisit")) &&
+    project.setup.steps.service === "done" &&
+    !stackId &&
+    !attachStackId;
   const { data: stacks } = useFetchStacks(project?.id, wanted);
   const newest = stacks
     ?.filter((s) => !s.derived_from)

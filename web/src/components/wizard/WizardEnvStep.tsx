@@ -9,18 +9,21 @@ import { Button } from "@/components/ui/button";
 import { EnvModeToggle, type EnvMode } from "@/components/wizard/EnvModeToggle";
 import { EnvPasteField } from "@/components/wizard/EnvPasteField";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
+import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
 import { useDeployStack, useFetchStack, useUpdateStackEnv } from "@/hooks/StackHooks";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { formatEnvFile, parseEnvFile } from "@/models/EnvFile";
 
 interface WizardEnvStepProps {
   onDone: () => void;
+  onBack?: (() => void) | undefined;
+  onSkip?: (() => void) | undefined;
 }
 
 // Only rendered when the scan found .env.example keys (spec §5/§7); values are optional, so an empty key is
 // simply not written into the stack's env map. The service step held the first deploy back for this rung, so
 // saving is what starts it: the values have to exist before compose reads `env_file: .env` or `${VAR}`.
-export const WizardEnvStep = ({ onDone }: WizardEnvStepProps) => {
+export const WizardEnvStep = ({ onDone, onBack, onSkip }: WizardEnvStepProps) => {
   const { stackId, scanResult, envValues } = useProjectWizardStore(
     useShallow((s) => ({ stackId: s.stackId, scanResult: s.scanResult, envValues: s.envValues })),
   );
@@ -84,7 +87,7 @@ export const WizardEnvStep = ({ onDone }: WizardEnvStepProps) => {
         <p className="text-xs text-muted-foreground">Also saving: {Object.keys(extras).join(", ")}</p>
       )}
       {mode === "paste" && <EnvPasteField text={text} onText={setText} parsed={parsed} />}
-      <WizardFooter>
+      <WizardFooter onBack={onBack} skip={onSkip && <WizardSkipLink onClick={onSkip} />}>
         <Button type="submit" disabled={pasteBlocked} loading={updateEnv.isPending || deployStack.isPending}>
           Save & deploy
         </Button>

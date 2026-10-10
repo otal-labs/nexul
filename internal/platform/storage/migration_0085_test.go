@@ -16,7 +16,16 @@ func TestMigration0085_ExistingProjectsCountAsSetUp(t *testing.T) {
 VALUES ('p-old', 'Backend', 'BE', 0, 'workspace-default', '', 1, 1);`)
 	require.NoError(t, err)
 
-	require.NoError(t, Migrate(db), "0085 and every later migration apply on top, as an upgrade would")
+	for _, version := range []string{"0086_unique_play_labels", "0087_decisions_check_play"} {
+		script, err := migrationFS.ReadFile("migrations/" + version + ".sql")
+		require.NoError(t, err)
+		require.NoError(t, applyMigration(db, version, string(script)))
+	}
+	pending, err := Pending(db)
+	require.NoError(t, err)
+	assert.Contains(t, pending, "0085_project_setup")
+	require.NoError(t, MigrateWithBackup(db, t.TempDir(), "test"))
+	require.NoError(t, MigrateWithBackup(db, t.TempDir(), "test"))
 
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 	got, err := s.Projects.Get(t.Context(), "p-old")

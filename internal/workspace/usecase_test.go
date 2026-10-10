@@ -147,19 +147,18 @@ func (f *fakeRepo) Update(_ context.Context, p *Project) error {
 	return nil
 }
 
-func (f *fakeRepo) SaveSetup(_ context.Context, p *Project, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) SaveSetup(_ context.Context, id string, apply func(*Project) []eventbus.OutboxEvent) (*Project, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.updateErr != nil {
-		return f.updateErr
+		return nil, f.updateErr
 	}
-	cur, ok := f.projects[p.ID]
+	cur, ok := f.projects[id]
 	if !ok {
-		return apperrs.ErrNotFound
+		return nil, apperrs.ErrNotFound
 	}
-	cur.Setup = p.Setup
-	f.saved = append(f.saved, evts...)
-	return nil
+	f.saved = append(f.saved, apply(cur)...)
+	return cur, nil
 }
 
 func (f *fakeRepo) Delete(_ context.Context, id string) error {
