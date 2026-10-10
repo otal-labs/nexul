@@ -364,7 +364,18 @@ func (e *NotConfiguredError) Error() string {
 		return "Pick where plays run in this project: a computer and its T3 project. It's saved as your link for this project, " +
 			"which Settings → T3 Code Setup → Projects can change."
 	}
+	if text, ok := notConfiguredText[e.Reason]; ok {
+		return text
+	}
 	return fmt.Sprintf("pairing not configured: %s", e.Reason)
+}
+
+// notConfiguredText reads after "didn't run:" on a ticket and alone in the run dialog alike, so it names no person.
+var notConfiguredText = map[NotConfiguredReason]string{
+	ReasonUnpaired:          "no computer is paired to run it on; pair one in Settings → T3 Code Setup",
+	ReasonExpiredToken:      "the paired computer's session expired; pair it again in Settings → T3 Code Setup",
+	ReasonNoDefault:         "no T3 project is picked for this project on the paired computer; link one in Settings → T3 Code Setup → Projects, or set a fallback under Defaults",
+	ReasonNoDefaultComputer: "several computers are paired and none is the default; pick one under Defaults in Settings → T3 Code Setup",
 }
 
 // RefusalDetails is a NotConfiguredError's machine-readable side, carried beside the message in the error envelope.

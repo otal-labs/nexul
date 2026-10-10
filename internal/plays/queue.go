@@ -143,7 +143,7 @@ func (r *Runner) CancelQueued(ctx context.Context, id string) (*QueueItem, error
 	}
 	actor := actorID(ctx)
 	if actor != it.PersonID && !r.perm.HasPermission(ctx, actor, it.WorkspaceID, permissions.AutoplaysWrite, "", "") {
-		return nil, fmt.Errorf("%w: only the person it runs on or a %s holder can cancel a queued run", apperrs.ErrForbidden, permissions.AutoplaysWrite)
+		return nil, fmt.Errorf("%w: only the person it runs on or an %s holder can cancel a queued run", apperrs.ErrForbidden, permissions.AutoplaysWrite)
 	}
 	if it.Status != QueueQueued {
 		return nil, fmt.Errorf("%w: the run is %s, not queued", apperrs.ErrConflict, it.Status)
@@ -165,7 +165,7 @@ func (r *Runner) ResumeAutoPlays(ctx context.Context, targetType TargetType, tar
 	targetID = strings.TrimSpace(targetID)
 	actor := actorID(ctx)
 	if (actor == "" || actor != f.Developer) && !r.perm.HasPermission(ctx, actor, workspaceID, permissions.AutoplaysWrite, "", "") {
-		return nil, fmt.Errorf("%w: only the ticket's developer or a %s holder can resume auto plays", apperrs.ErrForbidden, permissions.AutoplaysWrite)
+		return nil, fmt.Errorf("%w: only the ticket's developer or an %s holder can resume auto plays", apperrs.ErrForbidden, permissions.AutoplaysWrite)
 	}
 	count, limit, _, err := r.autoRunsToday(ctx, workspaceID, targetType, targetID)
 	if err != nil {

@@ -272,7 +272,7 @@ func TestRun_HarnessNotReady_ReturnsReasonAndLeavesFailedTrail(t *testing.T) {
 			require.Len(t, trails, 1)
 			tr := trails[0]
 			assert.Equal(t, TrailFailed, tr.State)
-			assert.Equal(t, "pairing not configured: "+string(reason), tr.LastError)
+			assert.Equal(t, nc.Error(), tr.LastError)
 			assert.Equal(t, []string{pickedMem}, tr.SelectedMemoryIDs)
 			assert.Equal(t, "careful", tr.CustomInstructions)
 			assert.Equal(t, "Fix with AI", tr.PlayLabel)
