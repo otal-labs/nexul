@@ -122,15 +122,16 @@ jobs:
           jq -e '.providers | type == "array"' providers.json
 
       - name: The runner restarts T3 Code's service when it stops
+        timeout-minutes: 5
         run: |
           launchctl bootout "gui/$(id -u)/com.t3tools.t3code.service"
           stopped=$(date +%s)
           for _ in $(seq 75); do
-            curl -fsS -o /dev/null http://127.0.0.1:3773/.well-known/t3/environment 2>/dev/null && break
+            curl -fsS --max-time 5 -o /dev/null http://127.0.0.1:3773/.well-known/t3/environment 2>/dev/null && break
             sleep 2
           done
           grep -E "T3 Code's background service" "$HOME/Library/Logs/nexul/nexul-computer.log" || true
-          curl -fsS http://127.0.0.1:3773/.well-known/t3/environment > /dev/null
+          curl -fsS --max-time 5 http://127.0.0.1:3773/.well-known/t3/environment > /dev/null
           echo "T3 Code answered again $(( $(date +%s) - stopped ))s after it was stopped"
 
       - name: Removing the computer removes the install through the cleanup
