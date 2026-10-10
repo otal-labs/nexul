@@ -16,7 +16,7 @@ export const PairT3CodeStep = ({ computer, onPaired }: PairT3CodeStepProps) => {
     <div className="max-w-xl space-y-5">
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">{lead}</p>
-        <PairCommands />
+        <PairCommands viaTunnel={!!computer} />
       </div>
       <PairT3CodeForm key={computer?.id ?? "url"} computer={computer} onPaired={onPaired} />
     </div>
