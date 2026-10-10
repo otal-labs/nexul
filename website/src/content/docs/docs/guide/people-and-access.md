@@ -14,14 +14,14 @@ Your instance is private: nobody signs in without an invitation. Each person the
 3. Under **Workspace access**, choose a workspace and a role. **Add workspace** adds another.
 4. To hold them to some projects, set **Every project** to **Chosen projects** and give each project a level. See [Hold someone to chosen projects](#hold-someone-to-chosen-projects).
 5. Optionally open **Optional permission overrides** to allow or deny single permissions on top of the role.
-6. Press **Create link**, then **Copy link**. It's shown once.
+6. Press **Create link**. Team switches to its **Invitations** tab with the new link on top; press **Copy link**. It's shown once.
 7. Send the link however you like. The person opens it, signs in with one of the instance's sign-in providers, reviews what they're being given, and accepts.
 
-A link works once. The Owner role is never offered; ownership doesn't move through an invitation. **Active invitation links** lists the links not used yet; **Revoke invitation** kills one.
+A link works once. The Owner role is never offered; ownership doesn't move through an invitation. The **Invitations** tab lists the links not used yet under **Active invitation links**; **Revoke invitation** kills one.
 
 ## Manage people
 
-**Settings → Team** lists everyone on the instance: a dot on each picture for who is online, when the others were last seen, the GitHub, Google or Discord marks of the accounts they sign in with, their role or how many workspaces they are in, and **Disabled** or **Removed** for an account that can't sign in. Open a person to see one tab per workspace they're in. Each tab holds their **Role**, **Edit overrides**, their projects, and **Remove from workspace**; the **+** after the last tab adds them to another workspace.
+**Settings → Team** has two tabs. **People** lists everyone on the instance: a dot on each picture for who is online, when the others were last seen, the GitHub, Google or Discord marks of the accounts they sign in with, their role or how many workspaces they are in, and **Disabled** or **Removed** for an account that can't sign in. Open a person to see one tab per workspace they're in. Each tab holds their **Role**, **Edit overrides**, their projects, and **Remove from workspace**; the **+** after the last tab adds them to another workspace.
 
 Nothing applies as you edit. A tab with changes shows a dot, **Confirm** applies them all, and **Cancel** asks before throwing them away. If one change is refused, the dialog says which and keeps the rest waiting for the next **Confirm**.
 

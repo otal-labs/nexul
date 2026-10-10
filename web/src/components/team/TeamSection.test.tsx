@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TeamSection } from "@/components/team/TeamSection";
@@ -10,6 +10,8 @@ import type { Team, TeamPerson } from "@/models/Team";
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() }));
 vi.mock("@/api/client", () => ({ api: mocks, errorMessage: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+const dialog = vi.hoisted(() => ({ open: vi.fn() }));
+vi.mock("@/hooks/useFormDialog", () => ({ useFormDialog: () => ({ open: dialog.open }) }));
 
 const team: Team = {
   can_manage_accounts: true,
@@ -43,7 +45,9 @@ const renderSection = (route = "/settings/team", data: Team = team, anywhere: st
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[route]}>
-        <TeamSection />
+        <Routes>
+          <Route path="/settings/:section?/:tab?" element={<TeamSection />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -95,6 +99,26 @@ describe("TeamSection", () => {
 
     const bob = await screen.findByRole("button", { name: "Open Bob" });
     expect(within(bob).getByRole("img", { name: "Signs in with GitHub and Discord" })).toBeInTheDocument();
+  });
+
+  it("opens the Invitations tab with the new link on top once a link is created, and copies it", async () => {
+    dialog.open.mockImplementation(async (options: { form: { props: { onCreated: (value: unknown) => void } } }) => {
+      options.form.props.onCreated({ id: "inv-1", invited_by: "owner", created_at: "2026-09-20T00:00:00Z", expires_at: "2026-09-27T00:00:00Z", grants: [], url: "https://nexul.example.com/invite#secret" });
+      return { success: true, data: null };
+    });
+    const user = userEvent.setup();
+    renderSection();
+    expect(await screen.findByRole("tab", { name: "People", selected: true })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Invite" }));
+
+    expect(await screen.findByRole("tab", { name: "Invitations", selected: true })).toBeInTheDocument();
+    const panel = screen.getByRole("tabpanel");
+    const link = panel.firstElementChild as HTMLElement;
+    expect(link).toHaveAttribute("role", "status");
+    expect(link).toHaveTextContent("https://nexul.example.com/invite#secret");
+    await user.click(within(link).getByRole("button", { name: "Copy link" }));
+    expect(await within(link).findByRole("button", { name: "Copied" })).toBeInTheDocument();
   });
 
   it("gives each workspace the person is in a tab, read-only with the reason where the viewer can't manage members", async () => {

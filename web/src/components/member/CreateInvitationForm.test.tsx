@@ -35,7 +35,7 @@ describe("CreateInvitationForm", () => {
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
         <ContextAwareConfirmation.ConfirmationRoot />
-        <CreateInvitationDialog />
+        <CreateInvitationDialog onCreated={vi.fn()} />
       </QueryClientProvider>,
     );
 
