@@ -1,29 +1,35 @@
 import { microheaderClass } from "@/components/Microheader";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { AutoPlaySignals } from "@/components/play/AutoPlaySignals";
 import { HarnessReadinessNote } from "@/components/play/HarnessReadinessNote";
 import { PlayButton } from "@/components/play/PlayButton";
 import { useApplicableTicketPlays } from "@/hooks/PlayHooks";
+import { useFetchPlayQueue } from "@/hooks/PlayQueueHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import type { Ticket } from "@/models/Ticket";
 import { cn } from "@/lib/utils";
+import { hasAutoPlaySignals } from "@/utils/PlayQueueUtility";
 
 interface PlaysRailSectionProps {
   ticket: Ticket;
 }
 
-// Plays are stage-bound, so the section only appears when a play applies or the load failed.
+// Plays are stage-bound, so the section appears when a play applies, the load failed, or an auto play waits or is paused.
 export const PlaysRailSection = ({ ticket }: PlaysRailSectionProps) => {
   const canRun = useHasPermission("plays:run");
   const { data: plays = [], error } = useApplicableTicketPlays(ticket);
-  const hasPlays = plays.length > 0;
+  const { data: queue } = useFetchPlayQueue("ticket", ticket.id);
+  const hasPlays = canRun && plays.length > 0;
+  const failed = canRun && Boolean(error);
+  const signals = hasAutoPlaySignals(queue);
 
   return (
-    canRun &&
-    (hasPlays || Boolean(error)) && (
+    (hasPlays || failed || signals) && (
       <section className="space-y-0.5">
         <h2 className={cn(microheaderClass, "px-2 pb-1")}>Plays</h2>
-        {error && <ErrorDisplay error={error} title="Couldn't load plays." />}
+        {failed && <ErrorDisplay error={error} title="Couldn't load plays." />}
         {hasPlays && <HarnessReadinessNote projectId={ticket.project_id} className="px-2 pb-1" />}
+        {signals && <AutoPlaySignals targetType="ticket" targetId={ticket.id} developer={ticket.developer} />}
         {hasPlays && (
           <div className="flex flex-col">
             {plays.map((play) => (

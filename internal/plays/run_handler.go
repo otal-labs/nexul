@@ -51,6 +51,7 @@ func (h *RunHandler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/plays/latest-choices", h.latestChoices)
 	mux.HandleFunc("POST /api/plays/decisions-check", h.retryDecisionsCheck)
 	mux.HandleFunc("GET /api/plays/queue", h.queue)
+	mux.HandleFunc("GET /api/plays/queued", h.queued)
 	mux.HandleFunc("POST /api/plays/queue/resume", h.resumeQueue)
 	mux.HandleFunc("POST /api/plays/queue/{itemID}/cancel", h.cancelQueued)
 	return mux
@@ -65,6 +66,16 @@ func (h *RunHandler) queue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, queue)
+}
+
+// queued answers what waits in the queue for one play, for its settings page.
+func (h *RunHandler) queued(w http.ResponseWriter, r *http.Request) {
+	items, err := h.runner.QueuedForPlay(r.Context(), r.URL.Query().Get("play_id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, items)
 }
 
 type targetRequest struct {

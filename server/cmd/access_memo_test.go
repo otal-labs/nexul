@@ -19,9 +19,11 @@ import (
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
+	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/tickets"
 )
 
@@ -240,6 +242,27 @@ func grow(t *testing.T, f permFixture, n int) []string {
 	return ticketIDs
 }
 
+// guardPlay is the play queueRuns queues a run of on every ticket, for the play's queued-runs path.
+const guardPlay = "play-guard"
+
+// queueRuns queues a run of guardPlay on each ticket and lets the reader read auto plays, so the path has rows to filter.
+func queueRuns(t *testing.T, f permFixture, ticketIDs []string) {
+	t.Helper()
+	ctx := context.Background()
+	now := time.Now().UTC()
+	stage := plays.StageProgress
+	require.NoError(t, f.store.Plays.Create(ctx, &plays.Play{ID: guardPlay, WorkspaceID: wsDefault, Label: "Fix it", Type: plays.TypeTicket,
+		Instructions: "Do it.", Enabled: true, ShowWhenStage: &stage, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}))
+	for _, ticketID := range ticketIDs {
+		_, err := f.store.PlayQueue.EnqueueRun(ctx, &plays.QueueItem{ID: ids.New(), WorkspaceID: wsDefault, ProjectID: pGeneral,
+			TargetType: plays.TargetTicket, TargetID: ticketID, PlayID: guardPlay, PlayLabel: "Fix it", AutoPlayID: "ap-guard",
+			PersonID: uWriter, RunOn: plays.RunOnDeveloper, Moment: plays.MomentTicketUnblocked, Priority: plays.LevelNormal,
+			Status: plays.QueueQueued, Via: plays.ViaWeb, QueuedAt: now, NotBefore: now})
+		require.NoError(t, err)
+	}
+	require.NoError(t, f.store.Access.Set(ctx, "workspace", wsDefault, uReader, grant("autoplays:read"), nil))
+}
+
 // TestStatements_ListsCostTheSameAtAnyLength pins each list path's statements as independent of how many rows it
 // checks: the same count with a few rows as with many, where checking each row used to read the access layers again.
 func TestStatements_ListsCostTheSameAtAnyLength(t *testing.T) {
@@ -260,10 +283,19 @@ func TestStatements_ListsCostTheSameAtAnyLength(t *testing.T) {
 			_, err := f.svc.chatSvc.HasTicketThreads(ctx, ticketIDs)
 			return err
 		},
+		"a play's queued runs": func(ctx context.Context, f permFixture, ticketIDs []string) error {
+			runner := plays.NewRunner(plays.RunnerConfig{Plays: f.store.Plays, Trails: f.store.PlayTrails, Queue: f.store.PlayQueue, Perm: f.svc.accessSvc})
+			items, err := runner.QueuedForPlay(ctx, guardPlay)
+			if err == nil && len(items) != len(ticketIDs) {
+				err = fmt.Errorf("listed %d queued runs, want %d", len(items), len(ticketIDs))
+			}
+			return err
+		},
 	}
 	cost := func(n int) map[string]int64 {
 		f, st := newCountedFixture(t)
 		ticketIDs := grow(t, f, n)
+		queueRuns(t, f, ticketIDs)
 		out := map[string]int64{}
 		for name, run := range paths {
 			ctx := access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: uReader}), f.svc.accessSvc.NewMemo())

@@ -35,6 +35,7 @@ import { ticketFollower } from "@/hooks/TicketHooks";
 import { ticketLinkFollower } from "@/hooks/TicketLinkHooks";
 import { ticketTypeFollower } from "@/hooks/TicketTypeHooks";
 import { topologyFollower } from "@/hooks/TopologyHooks";
+import { playQueueFollower } from "@/hooks/PlayQueueHooks";
 import { trailFollower } from "@/hooks/TrailHooks";
 import { notifyIfServerUpdated } from "@/hooks/VersionHooks";
 import { voiceFollower } from "@/hooks/VoiceHooks";
@@ -95,6 +96,7 @@ const followers: LiveFollower[] = [
   ticketTypeFollower,
   topologyFollower,
   trailFollower,
+  playQueueFollower,
   voiceFollower,
   workspaceFollower,
 ];

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Person } from "@nexul/client-core/person";
 import { isContinuation, isNote, type Conversation } from "@nexul/client-core/chat";
@@ -17,12 +17,14 @@ import {
 import { AgentStreamBubble } from "@/components/chat/AgentStreamBubble";
 import { ChatPaneState } from "@/components/chat/ChatPaneState";
 import { MessageListItem, type Entrance } from "@/components/chat/MessageListItem";
+import { QueueEventLine } from "@/components/chat/QueueEventLine";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { useThreadQueueEvents } from "@/hooks/PlayQueueHooks";
 import { useThreadTrailBlocks } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/models/Chat";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
-import { startsDay } from "@/utils/ChatDayUtility";
+import { placeQueueEvents } from "@/utils/PlayQueueUtility";
 import { trailBlockFor } from "@/utils/ThreadTrailUtility";
 
 interface MessageListProps {
@@ -89,10 +91,13 @@ export const MessageList = ({
 }: MessageListProps) => {
   const stream = useAgentStreamStore((s) => s.streams[conversation.id]);
   const blocks = useThreadTrailBlocks(conversation);
+  const queueEvents = useThreadQueueEvents(conversation);
+  const placed = useMemo(() => placeQueueEvents(messages, queueEvents), [messages, queueEvents]);
 
   const [seen] = useState(() => new Set(messages.map(rowKey)));
+  const [openedAt] = useState(() => Date.now());
   const [streamAtOpen] = useState(() => stream !== undefined);
-  const empty = messages.length === 0 && !stream;
+  const empty = messages.length === 0 && !stream && queueEvents.length === 0;
 
   return (
     <>
@@ -110,25 +115,32 @@ export const MessageList = ({
                   const own = message.author_id === currentUserId;
                   const newest = i === messages.length - 1;
                   return (
-                    <MessageListItem
-                      key={rowKey(message)}
-                      message={message}
-                      author={resolveAuthor(message.author_id)}
-                      isOwn={own}
-                      continuation={isContinuation(messages[i - 1], message)}
-                      newDay={startsDay(messages[i - 1], message)}
-                      newest={newest}
-                      entrance={entranceOf(message, seen, own)}
-                      // Only the newest message, when it is an @Agent turn, anchors: the scroller jumps to any older anchor on a same-count swap (pending row confirmed, stream bubble replaced).
-                      scrollAnchor={newest && message.author_kind === "user" && (message.mentions ?? []).some((m) => m.kind === "agent")}
-                      questionAnswered={message.author_kind === "agent" && answeredAfter(messages, i)}
-                      trailBlock={trailBlockFor(message, blocks)}
-                      ticketId={conversation.ticket_id}
-                      onEdit={onEdit}
-                      onDelete={onDelete}
-                    />
+                    <Fragment key={rowKey(message)}>
+                      {placed.before.get(message.id)?.map((event) => (
+                        <QueueEventLine key={event.item.id} event={event} arrived={Date.parse(event.item.decided_at) > openedAt} newDay={placed.opensDay.has(event.item.id)} />
+                      ))}
+                      <MessageListItem
+                        message={message}
+                        author={resolveAuthor(message.author_id)}
+                        isOwn={own}
+                        continuation={isContinuation(messages[i - 1], message)}
+                        newDay={placed.opensDay.has(message.id)}
+                        newest={newest}
+                        entrance={entranceOf(message, seen, own)}
+                        // Only the newest message, when it is an @Agent turn, anchors: the scroller jumps to any older anchor on a same-count swap (pending row confirmed, stream bubble replaced).
+                        scrollAnchor={newest && message.author_kind === "user" && (message.mentions ?? []).some((m) => m.kind === "agent")}
+                        questionAnswered={message.author_kind === "agent" && answeredAfter(messages, i)}
+                        trailBlock={trailBlockFor(message, blocks)}
+                        ticketId={conversation.ticket_id}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                      />
+                    </Fragment>
                   );
                 })}
+                {placed.after.map((event) => (
+                  <QueueEventLine key={event.item.id} event={event} arrived={Date.parse(event.item.decided_at) > openedAt} newDay={placed.opensDay.has(event.item.id)} />
+                ))}
                 {stream && (
                   <MessageScrollerItem messageId={`stream-${conversation.id}`} className={cn("pt-5 [content-visibility:visible]", !streamAtOpen && "arrive")}>
                     <AgentStreamBubble frame={stream} onInterrupt={onInterruptAgent} live={blocks.live} />

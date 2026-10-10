@@ -32,4 +32,6 @@ export interface PlayQueue {
   paused: boolean;
   auto_runs: number;
   daily_cap: number;
+  // When the oldest counted run leaves the rolling day; null unless paused.
+  paused_until: string | null;
 }

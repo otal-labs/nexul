@@ -238,6 +238,8 @@ func (f *fakeRepo) Delete(_ context.Context, id string, evts ...eventbus.OutboxE
 type fakePerm struct {
 	grants map[string][]permissions.Action
 	denied map[string]map[string]bool
+	// projects are the ones CallerProjects knows of; the caller sees each it is not kept out of.
+	projects []string
 }
 
 func newFakePerm(grants map[string][]permissions.Action) *fakePerm {
@@ -262,6 +264,16 @@ func (f *fakePerm) HasPermission(_ context.Context, userID, _ string, action per
 		return false
 	}
 	return true
+}
+
+func (f *fakePerm) CallerProjects(ctx context.Context, _ permissions.Action) ([]string, bool, error) {
+	open := []string{}
+	for _, p := range f.projects {
+		if !f.denied[actorID(ctx)][resourceTypeProject+":"+p] {
+			open = append(open, p)
+		}
+	}
+	return open, false, nil
 }
 
 // hideProject makes projectID one userID may not open, as a Restricted member holding no access there.

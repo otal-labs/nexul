@@ -85,6 +85,10 @@ The play's **Show when** stage does not apply to an auto play; add a **Stage is*
 
 **Each ticket runs at most 5 auto plays a day** across every play, so two auto plays can't keep starting each other. Change the number under the list of any ticket play's auto plays; it applies to the whole workspace.
 
+Under the list, "Right now" says how many runs of the play are queued and whom they wait on, such as "1 waiting on Alice (computer offline)".
+
+On the ticket, the rail's **Plays** section shows what is waiting: each queued run with its person and why it waits (computer offline, no free slot, ticket busy, or paused), and **Cancel** for that person or anyone with `autoplays:write`. Once a ticket reaches the daily cap, it shows **Auto plays paused** with the runs today; the ticket's developer or anyone with `autoplays:write` can press **Resume**, or it resumes by itself as the day rolls on. What already happened sits in the ticket's thread at the time it happened: "Fix with AI skipped: no longer unblocked" when the ticket stopped matching before the run's turn came, or "Fix with AI didn't run" with the reason when there was nobody to run it on. **Run it** on the latest one runs the play on your own computer. A doc shows the same: queued and paused beside its trail, skipped and didn't run in its thread.
+
 ## The decisions check
 
 The decisions check is a play nobody presses. When a ticket enters a Done column, the agent reads the ticket and its pull requests and updates the project's [decisions log](/docs/guide/memories/#the-decisions-log): it adds an entry, marks an older one superseded, or leaves the log alone.

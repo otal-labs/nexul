@@ -24,7 +24,7 @@ type QueueRig struct {
 func NewQueueRig(playsRepo Repo, trails TrailRepo, queue QueueRepo, workspaceID, projectID string, now func() time.Time) *QueueRig {
 	q := &QueueRig{
 		harness: &switchableHarness{},
-		perm:    newFakePerm(map[string][]permissions.Action{}),
+		perm:    &fakePerm{grants: map[string][]permissions.Action{}, denied: map[string]map[string]bool{}, projects: []string{projectID}},
 		facts:   &fakeFacts{byID: map[string]Facts{}},
 		targets: &fakeTargets{tickets: map[string]TicketTarget{}, docs: map[string]DocTarget{}, statuses: map[string]StatusTarget{}},
 	}
@@ -58,6 +58,14 @@ func (q *QueueRig) Grant(userID string) {
 func (q *QueueRig) GrantWrite(userID string) {
 	q.perm.grants[userID] = append(q.perm.grants[userID], permissions.AutoplaysWrite)
 }
+
+// GrantRead adds autoplays:read to userID's grants.
+func (q *QueueRig) GrantRead(userID string) {
+	q.perm.grants[userID] = append(q.perm.grants[userID], permissions.AutoplaysRead)
+}
+
+// HideProject makes projectID one userID may not open.
+func (q *QueueRig) HideProject(userID, projectID string) { q.perm.hideProject(userID, projectID) }
 
 // Exclude denies userID plays:run on playID, as a play's own settings exclude a person.
 func (q *QueueRig) Exclude(userID, playID string) { q.perm.deny(userID, playID) }

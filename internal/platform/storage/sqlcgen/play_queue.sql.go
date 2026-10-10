@@ -265,6 +265,62 @@ func (q *Queries) ListPlayQueuePeople(ctx context.Context, notBefore int64) ([]s
 	return items, nil
 }
 
+const listQueuedPlayQueueByPlay = `-- name: ListQueuedPlayQueueByPlay :many
+SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before FROM play_queue
+WHERE status = 'queued' AND play_id = ?1
+  AND (?2 OR project_id IN (SELECT value FROM json_each(?3)))
+ORDER BY priority DESC, queued_at, id
+`
+
+type ListQueuedPlayQueueByPlayParams struct {
+	PlayID      string
+	AllProjects interface{}
+	ProjectIds  interface{}
+}
+
+func (q *Queries) ListQueuedPlayQueueByPlay(ctx context.Context, arg ListQueuedPlayQueueByPlayParams) ([]PlayQueue, error) {
+	rows, err := q.db.QueryContext(ctx, listQueuedPlayQueueByPlay, arg.PlayID, arg.AllProjects, arg.ProjectIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlayQueue
+	for rows.Next() {
+		var i PlayQueue
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ProjectID,
+			&i.TargetType,
+			&i.TargetID,
+			&i.PlayID,
+			&i.PlayLabel,
+			&i.AutoPlayID,
+			&i.PersonID,
+			&i.RunOn,
+			&i.Moment,
+			&i.Via,
+			&i.Priority,
+			&i.Status,
+			&i.Reason,
+			&i.TrailID,
+			&i.QueuedAt,
+			&i.DecidedAt,
+			&i.NotBefore,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const nextPlayQueueNotBefore = `-- name: NextPlayQueueNotBefore :one
 SELECT MIN(not_before) FROM play_queue WHERE status = 'queued' AND not_before > ?
 `

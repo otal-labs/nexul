@@ -4,6 +4,7 @@ import type { LiveSocket } from "@nexul/client-core/liveSocket";
 
 import { DocThreadButton } from "@/components/chat/DocThreadButton";
 import { DocActionsMenu } from "@/components/doc/DocActionsMenu";
+import { DocAutoPlaysSection } from "@/components/doc/DocAutoPlaysSection";
 import { DocBodySection } from "@/components/doc/DocBodySection";
 import { DocLockedSignal } from "@/components/doc/DocLockedSignal";
 import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
@@ -103,6 +104,7 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
         <div className="hidden w-48 shrink-0 @3xl:has-[section]:block">
           <div className="sticky top-6 -mx-2 flex max-h-[calc(100vh-3rem)] flex-col gap-8 overflow-y-auto px-2">
             <DocToc headings={view === "doc" ? headings : []} />
+            {canThread && <DocAutoPlaysSection docId={doc.id} className="-mx-2" />}
             {canThread && (
               <TrailSection
                 workspaceId={workspaceId}
@@ -138,7 +140,8 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
 
           {/* The rail holds the trail from @3xl; both read the same query, so there is one request. */}
           {canThread && (
-            <div className="@3xl:hidden">
+            <div className="space-y-4 @3xl:hidden">
+              <DocAutoPlaysSection docId={doc.id} className="-mx-2" />
               <TrailSection workspaceId={workspaceId} targetType="doc" targetId={doc.id} />
             </div>
           )}
