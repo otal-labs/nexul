@@ -38,7 +38,7 @@ main() {
   sudo=""
   if [ "${1:-}" = computer ]; then
     home=""
-    [ "${SUDO_USER:-root}" = root ] || home=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+    [ "${SUDO_USER:-root}" = root ] || home=$(home_of "$SUDO_USER")
     [ -n "$home" ] || fail "run this from your own account with sudo, not logged in as root: the computer's runner runs as the person who typed sudo"
     BIN_DIR=${NEXUL_BIN_DIR:-$home/.local/bin}
   elif [ "$(id -u)" -ne 0 ]; then
@@ -76,6 +76,15 @@ main() {
     return
   fi
   $run_as "$BIN_DIR/nexul" install "$@"
+}
+
+# home_of prints an account's home folder: from the passwd database on Linux, from Directory Services on macOS.
+home_of() {
+  if [ "$os" = darwin ]; then
+    dscl . -read "/Users/$1" NFSHomeDirectory 2>/dev/null | sed -n 's/^NFSHomeDirectory: //p'
+    return
+  fi
+  getent passwd "$1" | cut -d: -f6
 }
 
 # sha256 prints a file's digest with whichever tool the system has: sha256sum on Linux, shasum on macOS.

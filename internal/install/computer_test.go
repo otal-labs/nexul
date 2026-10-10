@@ -192,7 +192,7 @@ func TestInstallComputer_Failures(t *testing.T) {
 		args    []string
 		wantErr string
 	}{
-		{"not Linux yet", func(th *testHost) { th.GOOS = "darwin" }, nil, "runs on Linux for now"},
+		{"neither Linux nor macOS", func(th *testHost) { th.GOOS = "windows" }, nil, "runs on Linux and macOS for now"},
 		{"no token", func(*testHost) {}, []string{"computer"}, "not a computer token"},
 		{"a token that is no JWT", func(*testHost) {}, []string{"computer", "--token", "nxe_code"}, "not a computer token"},
 		{"a token naming no address", func(*testHost) {}, []string{"computer", "--token", computerToken(t, "nexul.example.com")}, "names no instance address"},
@@ -391,4 +391,157 @@ func TestInstallHost_AComputersCodeIsRefusedInTheInstancesWords(t *testing.T) {
 	err := th.InstallHost(t.Context(), HostOptions{Kind: kindRunner, Server: th.web.URL, Name: "edge", Code: "nxe_code"})
 
 	require.ErrorContains(t, err, "this code adds a computer; run it with nexul install computer")
+}
+
+// onAMac makes the test host a Mac under sudo from alice. What root deletes as alice through sudo is really deleted.
+func (th *testHost) onAMac(t *testing.T) {
+	t.Helper()
+	th.GOOS, th.GOARCH = "darwin", "arm64"
+	th.sudoFromAlice(t)
+	mine := []string{
+		filepath.Join(th.Home, "Library", "Application Support", "nexul", "computer"),
+		filepath.Join(th.Home, ".local", "bin", "nexul"),
+		filepath.Join(th.Home, "Library", "Logs", "nexul", "nexul-computer.log"),
+	}
+	th.exec.onRun = func(line string) {
+		if line == "sudo -u alice rm -rf "+strings.Join(mine, " ") {
+			for _, path := range mine {
+				require.NoError(t, os.RemoveAll(path))
+			}
+		}
+	}
+}
+
+func TestInstallComputer_OnAMac_RunsTheRunnerAsALaunchDaemonOfThePersonWhoTypedSudo(t *testing.T) {
+	th := newTestHost(t)
+	th.onAMac(t)
+
+	require.NoError(t, th.installComputer(t))
+
+	dir := filepath.Join(th.Home, "Library", "Application Support", "nexul", "computer")
+	ctl := filepath.Join(th.Home, ".local", "bin", "nexul")
+	log := filepath.Join(th.Home, "Library", "Logs", "nexul", "nexul-computer.log")
+	assert.Equal(t, "this-binary", readFile(t, ctl))
+	assert.Equal(t, "nexul-runner-binary", readFile(t, filepath.Join(dir, "nexul-runner")))
+	daemon := filepath.Join(th.Paths.Daemons, "io.nexul.nexul-computer.plist")
+	assert.Equal(t, `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>io.nexul.nexul-computer</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>`+filepath.Join(dir, "nexul-runner")+`</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>`+th.Home+`</string>
+    <key>NEXUL_CREDENTIAL_FILE</key>
+    <string>`+filepath.Join(dir, "credential")+`</string>
+    <key>NEXUL_CTL</key>
+    <string>`+ctl+`</string>
+    <key>NEXUL_RUNNER_MODE</key>
+    <string>personal</string>
+    <key>NEXUL_RUNNER_NAME</key>
+    <string>computer-ab12cd34</string>
+    <key>NEXUL_SERVER_URL</key>
+    <string>`+th.web.URL+`</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>WorkingDirectory</key>
+  <string>`+dir+`</string>
+  <key>UserName</key>
+  <string>alice</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>`+log+`</string>
+  <key>StandardErrorPath</key>
+  <string>`+log+`</string>
+</dict>
+</plist>
+`, readFile(t, daemon), "a daemon starts at boot and runs as alice; a removed runner's clean exit is not restarted")
+	requests := filepath.Join(th.root, "var-lib-nexul-computer")
+	cleanup := filepath.Join(th.Paths.Daemons, "io.nexul.nexul-computer-cleanup.plist")
+	cleanupExe := filepath.Join(th.root, "libexec", "nexul-computer-uninstall")
+	assert.Equal(t, `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>io.nexul.nexul-computer-cleanup</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>`+cleanupExe+`</string>
+    <string>uninstall</string>
+    <string>computer</string>
+    <string>--cleanup-for</string>
+    <string>alice</string>
+  </array>
+  <key>WatchPaths</key>
+  <array>
+    <string>`+requests+`</string>
+  </array>
+</dict>
+</plist>
+`, readFile(t, cleanup), "the cleanup runs as root, for the person named here, when alice's request folder changes")
+	assert.Equal(t, []string{
+		"launchctl bootout system/io.nexul.nexul-computer-cleanup", "launchctl bootstrap system " + cleanup,
+		"launchctl bootout system/io.nexul.nexul-computer", "launchctl enable system/io.nexul.nexul-computer", "launchctl bootstrap system " + daemon,
+	}, th.exec.callsTo("launchctl"))
+	assertHomeIsAlices(t, th)
+	assert.Equal(t, "1000:1000", th.chowned[log], "launchd, as root, appends to a log that is already alice's")
+	assert.Equal(t, "1000:1000", th.chowned[requests])
+	for _, rootOnly := range []string{daemon, cleanup, cleanupExe} {
+		assert.NotContains(t, th.chowned, rootOnly)
+	}
+	assert.False(t, th.exec.ran("systemctl"))
+	assert.False(t, th.exec.ran("docker"), "a computer needs no Docker")
+	assert.Contains(t, th.out.String(), "Logs           "+log)
+	assert.Contains(t, th.out.String(), "T3 Code        runs only while alice is logged in at this Mac")
+}
+
+func TestUninstallComputer_OnAMac_TheCleanupRemovesEverythingOnlyOnceAsked(t *testing.T) {
+	th := newTestHost(t)
+	th.onAMac(t)
+	require.NoError(t, th.installComputer(t))
+	t.Setenv("SUDO_USER", "")
+	installed := []string{
+		filepath.Join(th.Paths.Daemons, "io.nexul.nexul-computer.plist"),
+		filepath.Join(th.Paths.Daemons, "io.nexul.nexul-computer-cleanup.plist"),
+		filepath.Join(th.root, "libexec", "nexul-computer-uninstall"),
+		filepath.Join(th.root, "var-lib-nexul-computer"),
+		filepath.Join(th.Home, "Library", "Application Support", "nexul", "computer"),
+		filepath.Join(th.Home, ".local", "bin", "nexul"),
+		filepath.Join(th.Home, "Library", "Logs", "nexul", "nexul-computer.log"),
+	}
+
+	require.NoError(t, th.runUninstall(t.Context(), []string{"computer", "--cleanup-for", "alice"}))
+	for _, path := range installed {
+		_, err := os.Stat(path)
+		assert.NoError(t, err, "the folder watch fires for any change; without a request nothing is removed")
+	}
+
+	th.Getuid = func() int { return 1000 }
+	require.NoError(t, th.runUninstall(t.Context(), []string{"computer", "--detach"}))
+	th.Getuid = func() int { return 0 }
+	th.exec.calls = nil
+	require.NoError(t, th.runUninstall(t.Context(), []string{"computer", "--cleanup-for", "alice"}))
+
+	for _, path := range installed {
+		assert.NoFileExists(t, path)
+		assert.NoDirExists(t, path)
+	}
+	launchctl := th.exec.callsTo("launchctl")
+	assert.Equal(t, []string{"launchctl bootout system/io.nexul.nexul-computer", "launchctl bootout system/io.nexul.nexul-computer-cleanup"}, launchctl,
+		"the cleanup unloads itself last, since that ends its own process")
+	assert.Empty(t, th.instance.calls("/api/runners/self/remove"))
 }

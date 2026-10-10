@@ -189,7 +189,7 @@ type computerCreateResult struct {
 func computerCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_create", "Create computer",
 		"Adds one of your computers: creates it, waiting for its runner, and returns the one command that installs "+
-			"the runner there (commands.unix, for Linux), ending in one signed token valid for an hour. Give the command "+
+			"the runner there (commands.unix, for Linux and macOS), ending in one signed token valid for an hour. Give the command "+
 			"to the computer's owner to run in a terminal on that computer from their own account; it uses sudo and "+
 			"installs a service that runs as them, never as root. Once the "+
 			"runner connects, computer_list shows runner.connected on the computer. Pass id instead of name for a "+

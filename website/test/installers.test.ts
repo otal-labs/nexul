@@ -285,8 +285,22 @@ test('computer.sh on a machine with no sudo says how to get it', async () => {
   expect(await exists(directory, 'urls')).toBe(false);
 });
 
-test('computer.sh on a Mac says it is coming soon and downloads nothing', async () => {
+test('computer.sh on a Mac installs the darwin build into the home Directory Services names, with no sudo inside', async () => {
   const { directory, env } = setup({ os: 'Darwin', machine: 'arm64', uid: 0 });
+  const dscl = join(directory, 'fake-bin', 'dscl');
+  writeFileSync(dscl, '#!/bin/sh\n[ "$3" = /Users/alice ] && printf \'NFSHomeDirectory: %s\\n\' "$NEXUL_TEST_DIR/mac home"\n');
+  chmodSync(dscl, 0o755);
+  rmSync(join(directory, 'fake-bin', 'getent'));
+  const result = spawnSync('/bin/sh', [computerScript, token], { env: asAlice(env), input: '', encoding: 'utf8' });
+  expect(result.status).toBe(0);
+  expect(await read(directory, 'urls')).toContain('/nexul-darwin-arm64');
+  expect(await exists(directory, 'mac home/.local/bin/nexul')).toBe(true);
+  expect(await read(directory, 'argv')).toBe(['install', 'computer', '--token', token].join('\n') + '\n');
+  expect(await exists(directory, 'sudo')).toBe(false);
+});
+
+test('computer.sh on neither Linux nor a Mac says it is coming soon and downloads nothing', async () => {
+  const { directory, env } = setup({ os: 'FreeBSD', uid: 0 });
   const result = spawnSync('/bin/sh', [computerScript, token], { env: asAlice(env), input: '', encoding: 'utf8' });
   expect(result.status).not.toBe(0);
   expect(result.stderr).toContain('coming soon');

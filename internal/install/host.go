@@ -37,6 +37,8 @@ type Paths struct {
 	UnitRoot string
 	// Services holds the service definitions: systemd units on Linux, LaunchAgents on macOS.
 	Services string
+	// Daemons holds macOS's LaunchDaemons, where a computer's runner is defined so it starts at boot.
+	Daemons string
 	// Sudoers is the sudoers drop-in directory, for the automations hosts' self-removal on Linux.
 	Sudoers string
 	// Logs is where launchd writes each unit's output on macOS.
@@ -169,8 +171,10 @@ func pathsFor(goos, home string, getenv func(string) string) Paths {
 		DockerApp:    "/Applications/Docker.app",
 		Libexec:      "/usr/local/libexec",
 		Requests:     "/var/lib/nexul-computer",
+		Daemons:      "/Library/LaunchDaemons",
 	}
 	if goos == "darwin" {
+		p.Requests = "/Library/Application Support/nexul-computer"
 		p.UnitRoot = filepath.Join(home, "Library", "Application Support", "nexul")
 		p.Config = filepath.Join(p.UnitRoot, "nexul.conf")
 		p.Services = filepath.Join(home, "Library", "LaunchAgents")

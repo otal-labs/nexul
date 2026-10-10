@@ -14,9 +14,8 @@ fail() {
 }
 
 case "$(uname -s)" in
-  Linux) ;;
-  Darwin) fail "adding a Mac is coming soon; for now, add a Linux computer" ;;
-  *) fail "adding this kind of computer is coming soon; for now, add a Linux computer" ;;
+  Linux | Darwin) ;;
+  *) fail "adding this kind of computer is coming soon; for now, add a Linux computer or a Mac" ;;
 esac
 
 if [ "$(id -u)" -ne 0 ]; then
