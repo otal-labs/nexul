@@ -530,6 +530,7 @@ func TestQueue_Cancel(t *testing.T) {
 
 	_, err := r.Runner.CancelQueued(as(t.Context(), tester), id)
 	require.ErrorIs(t, err, apperrs.ErrForbidden, "not the person it runs on, and no autoplays:write")
+	assert.EqualError(t, err, "forbidden: only the person it runs on or an autoplays:write holder can cancel a queued run")
 	r.GrantWrite(tester)
 	it, err := r.Runner.CancelQueued(as(t.Context(), tester), id)
 	require.NoError(t, err)

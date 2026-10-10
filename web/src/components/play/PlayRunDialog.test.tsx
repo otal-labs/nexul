@@ -224,12 +224,12 @@ describe("PlayRunDialog", () => {
     const user = userEvent.setup();
     mockApi(["plays:run", "tickets:write"]);
     vi.mocked(api.post).mockRejectedValue({
-      response: { status: 400, data: { message: "pairing not configured: unpaired", code: "INVALID", details: { reason: "unpaired" } } },
+      response: { status: 400, data: { message: "no computer is paired to run it on; pair one in Settings → T3 Code Setup", code: "INVALID", details: { reason: "unpaired" } } },
     });
     renderDialog();
 
     await user.click(await screen.findByRole("button", { name: "Run Fix with AI" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("pairing not configured");
+    expect(await screen.findByRole("alert")).toHaveTextContent("no computer is paired to run it on");
     expect(screen.queryByRole("link", { name: /Set up/ })).not.toBeInTheDocument();
   });
 
