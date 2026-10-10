@@ -42,6 +42,7 @@ function setup(options: Options = {}) {
     uname: `#!/bin/sh\n[ "$1" = -s ] && echo ${options.os ?? 'Linux'} || echo ${options.machine ?? 'x86_64'}\n`,
     id: `#!/bin/sh\necho ${options.uid ?? 0}\n`,
     sudo: '#!/bin/sh\nprintf \'%s\\n\' "$*" >> "$NEXUL_TEST_DIR/sudo"\nexec "$@"\n',
+    getent: '#!/bin/sh\n[ "$2" = alice ] && printf \'alice:x:1000:1000::%s:/bin/sh\\n\' "$NEXUL_TEST_DIR/home"\n',
     curl: `#!/bin/sh
 out=""; url=""
 while [ $# -gt 0 ]; do
@@ -214,13 +215,15 @@ const computerToken = (claims: object) =>
   ['{"alg":"HS256","typ":"JWT"}', JSON.stringify(claims)].map((part) => Buffer.from(part).toString('base64url')).join('.') + '.c2lnbmF0dXJl';
 const computerScript = new URL('../public/computer.sh', import.meta.url).pathname;
 
-test('computer.sh installs as the person, into ~/.local/bin without sudo, as `nexul install computer --token`', async () => {
-  const { directory, env } = setup({ uid: 1000 });
-  const home = join(directory, 'home');
+// asAlice is computer.sh run as `curl … | sudo sh -s -- <token>` from alice's account.
+const asAlice = (env: Record<string, string | undefined>) => ({ ...env, SUDO_USER: 'alice', NEXUL_BIN_DIR: undefined });
+
+test('computer.sh under sudo installs into the home of the person who typed it, as `nexul install computer --token`', async () => {
+  const { directory, env } = setup({ uid: 0 });
   // Each length leaves the payload needing a different padding, which the script must restore before decoding.
   for (const server of ['https://nexul.example.com', 'https://nexul.example.co', 'https://nexul.example.c']) {
     const token = computerToken({ server, code: 'nxe_a-b_c', computer: 'c-laptop', exp: 4102444800 });
-    const result = spawnSync('/bin/sh', [computerScript, token], { env: { ...env, HOME: home, NEXUL_BIN_DIR: undefined }, input: '', encoding: 'utf8' });
+    const result = spawnSync('/bin/sh', [computerScript, token], { env: asAlice(env), input: '', encoding: 'utf8' });
     expect(result.status).toBe(0);
     expect(result.stdout).toContain(`Adding this computer to ${server}`);
     expect(await read(directory, 'argv')).toBe(['install', 'computer', '--token', token].join('\n') + '\n');
@@ -236,27 +239,57 @@ for (const [name, args] of [
   ['a code where the token goes', ['nxe_abc']],
 ] as const) {
   test(`computer.sh stops before downloading anything given ${name}`, async () => {
-    const { directory, env } = setup({ uid: 1000 });
-    const result = spawnSync('/bin/sh', [computerScript, ...args], { env, input: '', encoding: 'utf8' });
+    const { directory, env } = setup({ uid: 0 });
+    const result = spawnSync('/bin/sh', [computerScript, ...args], { env: asAlice(env), input: '', encoding: 'utf8' });
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('Add a computer');
     expect(await exists(directory, 'urls')).toBe(false);
   });
 }
 
+const token = computerToken({ server: 'https://nexul.example.com' });
+
+for (const [name, sudoUser] of [['a root login, with no SUDO_USER', undefined], ['sudo from root', 'root']] as const) {
+  test(`computer.sh refuses ${name} before downloading anything`, async () => {
+    const { directory, env } = setup({ uid: 0 });
+    const result = spawnSync('/bin/sh', [computerScript, token], { env: { ...env, SUDO_USER: sudoUser }, input: '', encoding: 'utf8' });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('from your own account with sudo, not logged in as root');
+    expect(await exists(directory, 'urls')).toBe(false);
+  });
+}
+
+test('computer.sh without sudo says to put sudo in front of sh', async () => {
+  const { directory, env } = setup({ uid: 1000 });
+  const result = spawnSync('/bin/sh', [computerScript, token], { env, input: '', encoding: 'utf8' });
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toContain('| sudo sh -s -- <token>');
+  expect(await exists(directory, 'urls')).toBe(false);
+});
+
+test('computer.sh on a machine with no sudo says how to get it', async () => {
+  const { directory, env } = setup({ uid: 1000 });
+  rmSync(join(directory, 'fake-bin', 'sudo'));
+  const result = spawnSync('/bin/sh', [computerScript, token], { env: { ...env, PATH: join(directory, 'fake-bin') }, input: '', encoding: 'utf8' });
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toContain('has no sudo');
+  expect(result.stderr).toContain('add your account to the sudo group');
+  expect(await exists(directory, 'urls')).toBe(false);
+});
+
 test('computer.sh on a Mac says it is coming soon and downloads nothing', async () => {
-  const { directory, env } = setup({ os: 'Darwin', machine: 'arm64', uid: 501 });
-  const result = spawnSync('/bin/sh', [computerScript, computerToken({ server: 'https://nexul.example.com' })], { env, input: '', encoding: 'utf8' });
+  const { directory, env } = setup({ os: 'Darwin', machine: 'arm64', uid: 0 });
+  const result = spawnSync('/bin/sh', [computerScript, token], { env: asAlice(env), input: '', encoding: 'utf8' });
   expect(result.status).not.toBe(0);
   expect(result.stderr).toContain('coming soon');
   expect(await exists(directory, 'urls')).toBe(false);
 });
 
-test('a computer install as root stops before downloading or installing anything', async () => {
+test('a computer install as root with no person behind sudo stops before downloading or installing anything', async () => {
   const { directory, env } = setup({ uid: 0 });
-  const result = run({ ...env, HOME: join(directory, 'home') }, ['computer', '--token', 'eyJ.x.y']);
+  const result = run({ ...env, SUDO_USER: undefined }, ['computer', '--token', 'eyJ.x.y']);
   expect(result.status).not.toBe(0);
-  expect(result.stderr).toContain('not as root');
+  expect(result.stderr).toContain('not logged in as root');
   expect(await exists(directory, 'urls')).toBe(false);
   expect(await exists(directory, 'installed-bin/nexul')).toBe(false);
   expect(await exists(directory, 'args')).toBe(false);

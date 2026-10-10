@@ -33,7 +33,7 @@ func TestService_CreatePersonalEnrollment_SignsATokenBoundToItsPersonAndComputer
 	require.NoError(t, err, "adding a computer takes no permission bit")
 	assert.Equal(t, enrollNow.Add(time.Hour), e.ExpiresAt)
 	assert.Empty(t, e.Code, "the code travels only inside the token")
-	assert.Equal(t, "curl -fsSL https://nexul.io/computer.sh | NEXUL_VERSION=v0.3.0-beta-012 sh -s -- "+e.Token, e.Commands.Unix)
+	assert.Equal(t, "curl -fsSL https://nexul.io/computer.sh | sudo NEXUL_VERSION=v0.3.0-beta-012 sh -s -- "+e.Token, e.Commands.Unix)
 	claims := claimsOf(t, e.Token)
 	assert.Equal(t, ComputerClaims{Server: "https://nexul.example.com", Code: claims.Code, Computer: "c-laptop", Exp: enrollNow.Add(time.Hour).Unix()}, claims)
 	stored := repo.codes[hostcred.Hash(claims.Code)]
@@ -51,7 +51,7 @@ func TestService_CreatePersonalEnrollment_RendersAnotherSiteAndRelease(t *testin
 	e, err := svc.CreatePersonalEnrollment(asMember(), "u-alice", "c-laptop")
 
 	require.NoError(t, err)
-	assert.Equal(t, "curl -fsSL http://10.0.0.5:8000/computer.sh | NEXUL_INSTALL_URL=http://10.0.0.5:8000/install.sh NEXUL_RELEASE_URL=http://10.0.0.5:8000 sh -s -- "+e.Token, e.Commands.Unix)
+	assert.Equal(t, "curl -fsSL http://10.0.0.5:8000/computer.sh | sudo NEXUL_INSTALL_URL=http://10.0.0.5:8000/install.sh NEXUL_RELEASE_URL=http://10.0.0.5:8000 sh -s -- "+e.Token, e.Commands.Unix)
 }
 
 func TestService_CreatePersonalEnrollment_Refusals(t *testing.T) {

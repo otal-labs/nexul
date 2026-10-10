@@ -13,7 +13,7 @@ Read first: `practices/go.md`, `practices/testing.md`, ADR 0073, `internal/insta
 installs for `$SUDO_USER` and refuses a root login with no `SUDO_USER` (ticket 20's rules), into
 `~/Library/Application Support/nexul`, a LaunchDaemon `nexul-computer` in `/Library/LaunchDaemons` with
 `UserName` set to that user and `KeepAlive`, no Docker step, then T3 Code run as that user (ticket 07).
-`computer.sh` handles Darwin. The removal helper and its sudoers entry follow ticket 20's design.
+`computer.sh` handles Darwin. The removal follows ticket 20's design: a root-owned cleanup a request file triggers (a LaunchDaemon with `WatchPaths` on macOS), no sudo rule.
 
 ## Acceptance criteria
 

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -46,8 +47,10 @@ type Paths struct {
 	UserPlugins string
 	// DockerApp is Docker Desktop's app bundle on macOS, started when it is installed but not running.
 	DockerApp string
-	// UserRuntime holds each user's runtime directory, where their systemd user manager listens.
-	UserRuntime string
+	// Libexec holds root's own copy of nexul that removes a computer's runner when the runner asks.
+	Libexec string
+	// Requests is the folder a computer's runner, as its person, asks for its removal in.
+	Requests string
 }
 
 // Host is everything the installer touches on the machine, swappable in tests.
@@ -81,6 +84,9 @@ type Host struct {
 	LookPath    func(file string) (string, error)
 	Executable  func() (string, error)
 	Reexec      func(path string, args []string) error
+	// LookupUser and Chown let a computer's install, run as root under sudo, hand its files to the person.
+	LookupUser func(name string) (*user.User, error)
+	Chown      func(path string, uid, gid int) error
 	// LocalPort returns a port free on localhost, for OpenObserve's listeners.
 	LocalPort func() (int, error)
 	// StartDetached starts a process that outlives this one and the service that started it (macOS, Windows).
@@ -127,6 +133,8 @@ func NewHost() *Host {
 		GOOS:          runtime.GOOS,
 		GOARCH:        runtime.GOARCH,
 		Getuid:        os.Getuid,
+		LookupUser:    user.Lookup,
+		Chown:         os.Lchown,
 		Hostname:      os.Hostname,
 		PortFree:      portFree,
 		LookPath:      exec.LookPath,
@@ -153,7 +161,8 @@ func pathsFor(goos, home string, getenv func(string) string) Paths {
 		SystemdProbe: "/run/systemd/system",
 		UserPlugins:  filepath.Join(home, ".docker", "cli-plugins"),
 		DockerApp:    "/Applications/Docker.app",
-		UserRuntime:  "/run/user",
+		Libexec:      "/usr/local/libexec",
+		Requests:     "/var/lib/nexul-computer",
 	}
 	if goos == "darwin" {
 		p.UnitRoot = filepath.Join(home, "Library", "Application Support", "nexul")

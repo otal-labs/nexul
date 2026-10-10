@@ -79,7 +79,7 @@ func TestToken_OnlyItsOwnKeyAndAnUntouchedPayloadPass(t *testing.T) {
 }
 
 func TestComputerCommand_CarriesAnotherSiteAndReleaseOnlyWhenSet(t *testing.T) {
-	assert.Equal(t, "curl -fsSL https://nexul.io/computer.sh | sh -s -- eyJ.x.y", ComputerCommand(DefaultSite, "", "eyJ.x.y"))
-	assert.Equal(t, "curl -fsSL http://10.0.0.5:8000/computer.sh | NEXUL_INSTALL_URL=http://10.0.0.5:8000/install.sh NEXUL_RELEASE_URL=http://10.0.0.5:8000 sh -s -- eyJ.x.y",
+	assert.Equal(t, "curl -fsSL https://nexul.io/computer.sh | sudo sh -s -- eyJ.x.y", ComputerCommand(DefaultSite, "", "eyJ.x.y"))
+	assert.Equal(t, "curl -fsSL http://10.0.0.5:8000/computer.sh | sudo NEXUL_INSTALL_URL=http://10.0.0.5:8000/install.sh NEXUL_RELEASE_URL=http://10.0.0.5:8000 sh -s -- eyJ.x.y",
 		ComputerCommand("http://10.0.0.5:8000", "http://10.0.0.5:8000", "eyJ.x.y"))
 }
