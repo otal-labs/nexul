@@ -117,6 +117,8 @@ resolved.
 - 07, the ADR: ADR 0132, amending 0055 and 0066.
 - 08, the moments: built, PR #522.
 - 09, the record and surfaces: built, PR #524.
+- 10, matching and the queue: built, PR #530.
+- 11, the composer: built, PR #529.
 
 ## Not yet specified
 
