@@ -101,7 +101,7 @@ describe("PairComputerDialog", () => {
     expect(screen.getByText("work-laptop-ab12cd34.example.com")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^next$/i })).toBeDisabled();
 
-    await user.click(screen.getByRole("tab", { name: /windows/i }));
+    await user.click(screen.getByRole("radio", { name: "Windows" }));
     expect(screen.getByText(/tunnel\.ps1\)\)\) eyJ-connector-token/)).toBeInTheDocument();
 
     await act(() => followFrame(pairingFollower, "computer.tunnel_status_changed", { computer_id: "c1", tunnel: "healthy", harness_reachable: false }, client));
@@ -139,7 +139,7 @@ describe("PairComputerDialog", () => {
     expect(screen.getByRole("button", { name: /^done$/i })).toBeInTheDocument();
   });
 
-  it("shows the pairing command for how T3 Code is installed, starting from the desktop app whose t3 is off PATH", async () => {
+  it("shows the pairing command for how T3 Code is installed and the system, starting from the desktop app whose t3 is off PATH", async () => {
     const user = userEvent.setup();
     const client = renderDialog();
     await reachPairStep(user, client);
@@ -151,8 +151,12 @@ describe("PairComputerDialog", () => {
     expect(screen.getByText("t3 pair")).toBeInTheDocument();
 
     await user.click(screen.getByRole("radio", { name: "Not installed yet" }));
-    expect(screen.getByText(/t3\.codes\/install\.sh/)).toBeInTheDocument();
     expect(screen.getByText("~/.local/bin/t3 pair")).toBeInTheDocument();
+    expect(screen.queryByText(/t3\.codes\/install\.sh/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("radio", { name: "Desktop app" }));
+    await user.click(screen.getByRole("radio", { name: "Windows" }));
+    expect(screen.getByText('& "$HOME\\.t3\\bin\\t3.cmd" pair')).toBeInTheDocument();
   });
 
   it("shows a refused token on the token field and an unreachable harness on the URL field", async () => {
@@ -183,6 +187,9 @@ describe("PairComputerDialog", () => {
     expect(await screen.findByRole("button", { name: /create tunnel/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^next$/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /pair by url/i }));
+
+    await user.click(screen.getByRole("radio", { name: "Not installed yet" }));
+    expect(screen.getByText(/t3\.codes\/install\.sh/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
     expect(await screen.findByText(/computer name is required/i)).toBeInTheDocument();

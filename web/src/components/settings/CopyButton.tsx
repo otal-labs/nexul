@@ -10,7 +10,7 @@ interface CopyButtonProps {
   /** Names what is copied: the visible label, or the accessible name of an icon-only button. */
   label: string;
   iconOnly?: boolean;
-  variant?: "outline" | "ghost";
+  variant?: "outline" | "ghost" | "default";
   loading?: boolean;
   className?: string;
 }
@@ -43,7 +43,7 @@ export const CopyButton = ({ value, label, iconOnly = false, variant = "outline"
       >
         <span className="swap" data-icon="">
           <Copy className="size-3.5" aria-hidden {...(copied ? { "data-off": "" } : {})} />
-          <Check className="size-3.5 text-success" aria-hidden {...(copied ? {} : { "data-off": "" })} />
+          <Check className={cn("size-3.5", variant !== "default" && "text-success")} aria-hidden {...(copied ? {} : { "data-off": "" })} />
         </span>
         {!iconOnly && label}
       </Button>

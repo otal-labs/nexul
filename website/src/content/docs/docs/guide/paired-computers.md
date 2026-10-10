@@ -9,20 +9,37 @@ Agent work in Nexul runs on your own computer, through T3 Code, with your permis
 
 ## Pair a computer
 
-You need T3 Code running on the computer, and the instance needs Cloudflare connected with Zero Trust enabled. If either is missing, the **Tunnel** step shows that in place of the form, with the one button that fixes it and **Try again**.
+The instance needs Cloudflare connected with Zero Trust enabled. T3 Code on the computer is optional: the tunnel command installs it when it's missing. If either is missing, the **Tunnel** step shows that in place of the form, with the one button that fixes it and **Try again**.
 
 1. Open your settings, **T3 Code Setup → Computers**, and press **Pair a computer**.
 2. On the **Tunnel** step, enter a **Computer name** and press **Create tunnel**. Change **T3 Code port** under **Advanced options** only if T3 Code doesn't run on its default port.
-3. Run the command shown for your system on that computer. It installs `cloudflared` if needed and keeps a tunnel open to the instance's Cloudflare account as a background service. The token in it is secret, so keep it to that computer.
+3. Pick **macOS / Linux** or **Windows** and run the command shown on that computer. It installs `cloudflared` if needed and keeps a tunnel open to the instance's Cloudflare account as a background service. The token in it is secret, so keep it to that computer. It then makes sure T3 Code answers on the tunnel's port; see [What the tunnel command installs](#what-the-tunnel-command-installs).
 4. Wait for both checks, **Tunnel online** and **T3 Code answering**, then press **Next**.
-5. Pick how T3 Code is installed on the computer and run the command shown. **Desktop app** (the default) runs the launcher the app keeps in `~/.t3/bin` (`t3.cmd` on Windows), because the app's `t3` isn't on your `PATH` until you press **Install** next to **t3 command** under T3 Code's **Settings → General → About**. **Command line** runs plain `t3 pair`. **Not installed yet** installs T3 Code first. Paste the one-time token it prints. A refused token shows on the token field: run the command again for a fresh one.
+5. Pick how T3 Code is installed on the computer and run the command shown. **Desktop app** (the default) runs the launcher the app keeps in `~/.t3/bin` (`t3.cmd` on Windows), because the app's `t3` isn't on your `PATH` until you press **Install** next to **t3 command** under T3 Code's **Settings → General → About**. **Command line** runs plain `t3 pair`. **Not installed yet** shows the command for the T3 Code the tunnel command installed. Paste the one-time token it prints. A refused token shows on the token field: run the command again for a fresh one.
 6. On the last step, [set up the computer](/docs/guide/computer-setup/).
 
 The computer gets a hostname made from its name plus eight random characters, and only the Nexul server can reach it. If you close the dialog early, the row reads **Pairing in progress**; press **Pair** on it to carry on.
 
+### What the tunnel command installs
+
+After the tunnel, the command looks for T3 Code: a server already answering on the tunnel's port, the desktop app, or the `t3` command line. It installs nothing when it finds one; a closed desktop app gets "Open T3 Code, then continue in Nexul". When it finds none, it says what it's about to install and then:
+
+- On macOS and Linux, installs T3 Code's command line with T3 Code's own installer into `~/.local/bin`, and runs it as a background service for your user (`t3 service install`). On Linux it turns on lingering so the service starts at boot and keeps running after you log out, and installs `libatomic1`, which T3 Code needs and minimal server images leave out. It waits until T3 Code answers, then prints the exact pairing command, such as `~/.local/bin/t3 pair`.
+- On Windows, T3 Code has no background service, so it installs the desktop app with `winget install T3Tools.T3Code`. Open T3 Code once, then run the pairing command it prints.
+
+It never pairs for you: the token still goes through the **Pair T3 Code** step.
+
+To install T3 Code yourself, add `--no-t3` to the command (`-NoT3` on Windows):
+
+```sh
+curl -fsSL https://nexul.io/tunnel.sh | sh -s -- <token> --no-t3
+```
+
+If you changed **T3 Code port** under **Advanced options**, add `--port <port>` (`-Port <port>` on Windows) so it looks for T3 Code there; on Linux the service it installs then listens on that port. On macOS T3 Code's service always starts on 3773, so with another port, install T3 Code yourself and run `t3 serve --port <port>`.
+
 ### Pair by URL
 
-For a machine the server can already reach, such as a VPS or a computer on the same network, skip the tunnel. On the **Tunnel** step choose **Pair by URL** under the form, and enter a **Name**, the **T3 server URL** the server reaches it at, and the **One-time pairing token** the same command prints.
+For a machine the server can already reach, such as a VPS or a computer on the same network, skip the tunnel. On the **Tunnel** step choose **Pair by URL** under the form, and enter a **Name**, the **T3 server URL** the server reaches it at, and the **One-time pairing token** the same command prints. Here **Not installed yet** shows how to install T3 Code by hand.
 
 ## Keep it paired
 

@@ -20,7 +20,7 @@ export const PairComputerForm = ({ computer }: PairComputerFormProps) => {
 
   return (
     <div className="space-y-4">
-      <PairCommands />
+      <PairCommands viaTunnel={!!computer.tunnel} />
       <FormInput control={control} name="name" label="Name" placeholder="e.g. Home, VPS" autoFocus />
       <FormInput
         control={control}
