@@ -88,3 +88,9 @@ export const toSavePlayRequest = (data: SavePlayFormData): SavePlayRequest => ({
   ...data,
   show_when_stage: data.show_when_stage === "" ? null : (data.show_when_stage as PlayStage),
 });
+
+// The automations whose code still calls a play by its current label with runPlay; names only for someone who reads automations.
+export interface PlayRenameImpact {
+  count: number;
+  automations: string[];
+}

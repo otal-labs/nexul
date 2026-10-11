@@ -39,6 +39,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/plays/{playID}", h.get)
 	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}/plays/{playID}", h.update)
 	mux.HandleFunc("DELETE /api/workspaces/{workspaceID}/plays/{playID}", h.delete)
+	mux.HandleFunc("GET /api/workspaces/{workspaceID}/plays/{playID}/rename-impact", h.renameImpact)
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/plays/auto-play-limits", h.getAutoPlayLimits)
 	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}/plays/auto-play-limits", h.setAutoPlayLimits)
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/plays/{playID}/auto-plays", h.listAutoPlays)
@@ -113,6 +114,16 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, p)
+}
+
+// renameImpact answers the play dialog before a rename: which automations would still call the old label.
+func (h *Handler) renameImpact(w http.ResponseWriter, r *http.Request) {
+	impact, err := h.svc.RenameImpact(r.Context(), r.PathValue("workspaceID"), r.PathValue("playID"), r.URL.Query().Get("label"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, impact)
 }
 
 func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {

@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { playLabelError, useCreatePlay, useUpdatePlay } from "@/hooks/PlayHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
+import { useConfirmPlayRename } from "@/hooks/useConfirmPlayRename";
 import { PLAY_STAGE_LABELS, PLAY_STAGES, PLAY_TYPE_LABELS, PLAY_TYPES, type Play, type SavePlayFormData } from "@/models/Play";
 
 const TYPE_OPTIONS = PLAY_TYPES.map((type) => ({ value: type, label: PLAY_TYPE_LABELS[type] }));
@@ -21,14 +22,21 @@ interface PlayFormProps {
 }
 
 export const PlayForm = ({ workspaceId, editing }: PlayFormProps) => {
-  const { control, watch, setValue, setError, onSubmit } = useFormDialogContext<SavePlayFormData>();
+  const { control, watch, setValue, setError, onSubmit, setStayOpen } = useFormDialogContext<SavePlayFormData>();
   const { data: projects } = useFetchProjects();
   const createPlay = useCreatePlay(workspaceId);
   const updatePlay = useUpdatePlay(workspaceId);
+  const confirmRename = useConfirmPlayRename(workspaceId);
   const type = watch("type");
   const excludedProjectIds = watch("excluded_project_ids");
 
   onSubmit(async (input) => {
+    setStayOpen(false);
+    if (editing && !(await confirmRename(editing, input.label))) {
+      setValue("label", editing.label);
+      setStayOpen(true);
+      return input;
+    }
     const save = editing ? updatePlay.mutateAsync({ playId: editing.id, input }) : createPlay.mutateAsync(input);
     const play = await save.catch((error: unknown) => {
       const taken = playLabelError(error);

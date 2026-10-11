@@ -43,7 +43,7 @@ func TestJSONParity_HTTPBodiesMatchTheCopyEverythingEncoder(t *testing.T) {
 		chat.Conversation{}, chat.Message{}, chat.UnreadCount{}, chat.Handoff{},
 		workspace.Project{}, workspace.Status{}, workspace.Notification{}, workspace.UnreadGroup{}, workspace.DeleteImpact{},
 		deploy.Deploy{}, deploy.Stack{}, deploy.LogLine{}, deploy.Container{}, deploy.DiscoveredContainer{},
-		plays.Play{}, plays.Trail{}, plays.Choices{},
+		plays.Play{}, plays.Trail{}, plays.Choices{}, plays.RenameImpact{},
 		memories.Memory{}, memories.MemoryItem{}, memories.InterviewTemplate{}, memories.InterviewDraft{},
 		tenancy.Workspace{}, tenancy.TeamPerson{}, tenancy.Team{}, tenancy.MembersList{}, tenancy.Invitation{}, tenancy.People{},
 		roles.Role{}, roles.RoleResult{}, access.Overwrite{}, access.Explanation{},

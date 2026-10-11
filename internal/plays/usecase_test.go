@@ -459,3 +459,31 @@ func TestSeedDefaults_AutoPlayFails_ReturnsTheError(t *testing.T) {
 	s := newTestService(repo, newFakePerm(nil))
 	require.ErrorContains(t, s.SeedDefaults(context.Background(), workspaceID), "disk full")
 }
+
+func TestRenameImpact_ErrorPaths(t *testing.T) {
+	tests := []struct {
+		name      string
+		actor     string
+		workspace string
+		namesErr  error
+		want      error
+	}{
+		{"without plays:read it is forbidden", "stranger", workspaceID, nil, apperrs.ErrForbidden},
+		{"a play of another workspace is not found", "owner", "ws-other", nil, apperrs.ErrNotFound},
+		{"a failed read of the automations is returned", "owner", workspaceID, errors.New("disk"), nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			repo.namesErr = tt.namesErr
+			s := newTestService(repo, allowAll("owner"))
+			p, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Fix with AI", Type: TypeDoc})
+			require.NoError(t, err)
+			_, err = s.RenameImpact(ctxAs(tt.actor), tt.workspace, p.ID, "Fix it")
+			require.Error(t, err)
+			if tt.want != nil {
+				require.ErrorIs(t, err, tt.want)
+			}
+		})
+	}
+}

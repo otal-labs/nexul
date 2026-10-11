@@ -117,6 +117,47 @@ func (q *Queries) GetPlayByLabel(ctx context.Context, arg GetPlayByLabelParams) 
 	return i, err
 }
 
+const listAutomationNamesByPlayLabel = `-- name: ListAutomationNamesByPlayLabel :many
+SELECT a.name FROM automations a
+WHERE a.workspace_id = ?1 AND EXISTS (
+    SELECT 1 FROM automation_versions v
+    WHERE v.automation_id = a.id AND (v.status = 'active' OR v.status = 'pending')
+      AND (instr(lower(CAST(v.code AS TEXT)), '"' || lower(CAST(?2 AS TEXT)) || '"') > 0
+        OR instr(lower(CAST(v.code AS TEXT)), '''' || lower(CAST(?2 AS TEXT)) || '''') > 0
+        OR instr(lower(CAST(v.code AS TEXT)), '` + "`" + `' || lower(CAST(?2 AS TEXT)) || '` + "`" + `') > 0)
+)
+ORDER BY a.name, a.id
+`
+
+type ListAutomationNamesByPlayLabelParams struct {
+	WorkspaceID string
+	Label       string
+}
+
+// Equalities on status, not IN, so each automation reads only its active and pending versions through their partial indexes.
+func (q *Queries) ListAutomationNamesByPlayLabel(ctx context.Context, arg ListAutomationNamesByPlayLabelParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listAutomationNamesByPlayLabel, arg.WorkspaceID, arg.Label)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		items = append(items, name)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlays = `-- name: ListPlays :many
 SELECT id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key FROM plays WHERE workspace_id = ? ORDER BY label
 `

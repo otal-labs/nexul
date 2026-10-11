@@ -72,7 +72,7 @@ automation.on("ticket.test_failed", async (payload, ctx) => {
 
 Play names are checked as you type. Run `nexul types <automation-id>` and it writes `src/plays.generated.d.ts` with the workspace's play names, so a typo, a doc play, or a play renamed since then is a type error in your editor. `nexul push` refreshes the file every time. A project made by `nexul init` already points `src/index.ts` at it; in an older project, add `/// <reference path="./plays.generated.d.ts" />` as the first line of `src/index.ts`. Labels are unique in a workspace, so a name is always one play.
 
-Code you already pushed keeps the name it was written with. If someone renames or deletes that play later, `ctx.runPlay` throws, nothing is queued, and the run fails with the server's reason on the **Runs** tab, such as `no play named "Fix with AI" in this workspace`. Rename the play back, or update the name, push, and merge.
+Code you already pushed keeps the name it was written with. Renaming a play warns first: the play dialog lists the automations whose active or pending code still has the old label in quotes and asks before it saves, and `play_update` over MCP renames it and names them in its `warnings`. If someone renames or deletes that play anyway, `ctx.runPlay` throws, nothing is queued, and the run fails with the server's reason on the **Runs** tab, such as `no play named "Fix with AI" in this workspace`. Rename the play back, or update the name, push, and merge.
 
 ## Versions
 

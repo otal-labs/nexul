@@ -60,6 +60,15 @@ func (r *PlaysRepo) GetByLabel(ctx context.Context, workspaceID, label string) (
 	return toPlay(row)
 }
 
+// AutomationNamesByLabel reads the automations a rename would break, for the play dialog's warning (ADR 0132).
+func (r *PlaysRepo) AutomationNamesByLabel(ctx context.Context, workspaceID, label string) ([]string, error) {
+	names, err := r.q.ListAutomationNamesByPlayLabel(ctx, sqlcgen.ListAutomationNamesByPlayLabelParams{WorkspaceID: workspaceID, Label: label})
+	if err != nil {
+		return nil, fmt.Errorf("list automations naming play %q in workspace %s: %w", label, workspaceID, err)
+	}
+	return names, nil
+}
+
 func (r *PlaysRepo) List(ctx context.Context, workspaceID string) ([]*plays.Play, error) {
 	rows, err := r.q.ListPlays(ctx, workspaceID)
 	if err != nil {

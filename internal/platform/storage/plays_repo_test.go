@@ -2,12 +2,14 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/automations"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/plays"
 )
@@ -206,4 +208,44 @@ func TestPlaysRepo_GetByLabel_IgnoresCaseWithinTheWorkspace(t *testing.T) {
 	assert.Equal(t, "play-1", got.ID)
 	_, err = s.Plays.GetByLabel(ctx, "ws-2", "Doc play")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+func TestPlaysRepo_AutomationNamesByLabel_ReadsOnlyQuotedLabelsInActiveOrPendingCode(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	automation := func(id, name, workspaceID string, codes ...string) {
+		require.NoError(t, s.Automations.Create(ctx, &automations.Automation{
+			ID: id, Name: name, WorkspaceID: workspaceID, Kind: automations.KindCustom, Scopes: []string{"x"},
+			TokenHash: "h-" + id, CreatedAt: now, UpdatedAt: now,
+		}))
+		for i, code := range codes {
+			v := &automations.Version{ID: fmt.Sprintf("%s-v%d", id, i+1), AutomationID: id, Code: code, PusherID: "u", CreatedAt: now}
+			if i == 0 {
+				v.Status = automations.VersionActive
+				require.NoError(t, s.AutomationVersions.InsertActive(ctx, v))
+				continue
+			}
+			v.Status = automations.VersionPending
+			require.NoError(t, s.AutomationVersions.ReplacePending(ctx, v))
+		}
+	}
+	automation("a-double", "Deploy notifier", "ws-1", `await runPlay("Fix with AI", t); await runPlay('Fix with AI', t)`)
+	automation("a-single", "Nightly triage", "ws-1", `runPlay('fix WITH ai', ticket)`)
+	automation("a-backtick", "Pending caller", "ws-1", `log("nothing yet")`, "runPlay(`FIX WITH AI`, ticket)")
+	automation("a-old", "Old caller", "ws-1", `runPlay("Fix with AI", t)`, `runPlay("Test with AI", t)`)
+	_, err := s.AutomationVersions.Activate(ctx, "a-old", "a-old-v2")
+	require.NoError(t, err)
+	automation("a-prose", "Mentions it in prose", "ws-1", `log("Fix with AI later")`)
+	automation("a-elsewhere", "Other workspace", "ws-2", `runPlay("Fix with AI", t)`)
+
+	names, err := s.Plays.AutomationNamesByLabel(ctx, "ws-1", "Fix with AI")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"Deploy notifier", "Nightly triage", "Pending caller"}, names,
+		"each quote style and case counts once per automation; an inactive version, a longer string, and another workspace do not")
+
+	names, err = s.Plays.AutomationNamesByLabel(ctx, "ws-1", "Write release note")
+	require.NoError(t, err)
+	assert.Empty(t, names)
 }

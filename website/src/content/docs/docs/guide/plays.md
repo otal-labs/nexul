@@ -60,7 +60,7 @@ On a bug, a ticket play tells the agent which ticket the bug was found in, so it
 
 Open **Configuration → Plays**. A play has:
 
-- **Label**, the button text. Each play in a workspace has its own label, ignoring case, since an automation names a play by it; a label already in use is refused at the field.
+- **Label**, the button text. Each play in a workspace has its own label, ignoring case, since an automation names a play by it; a label already in use is refused at the field. Renaming a play that automations still call by its old label with `runPlay` asks first and names them, since they fail until their code uses the new label; **Rename anyway** saves it.
 - **Type**: ticket, doc, or interview. It can't change later.
 - **Show when**, the one board stage a ticket play shows in.
 - **Description**, shown as the button's tooltip.
