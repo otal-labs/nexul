@@ -46,7 +46,7 @@
     "livekit-client": "^2.22.3",
     "lowlight": "^3.3.0",
     "lucide-react": "1.49.0",
-    "motion": "^13.4.6",
+    "motion": "^14.0.0",
     "radix-ui": "^1.6.7",
     "react": "^19.3.0",
     "react-confirm": "^0.5.0",
