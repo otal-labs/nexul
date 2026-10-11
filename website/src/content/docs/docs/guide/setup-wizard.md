@@ -15,7 +15,7 @@ The code proves you installed the server, so a stranger who finds the port canno
 
 ## 2. Give Nexul a domain
 
-Pick how traffic reaches Nexul. There is no skip, because GitHub sign-in needs the domain.
+Pick how traffic reaches Nexul. There is no skip, because GitHub sign-in needs the domain. The three ways are equals: Cloudflare is one way in, not a requirement, and computers for your agents pair without it (see step 4 of the owner wizard).
 
 - **Cloudflare tunnel**: no open ports. Paste a Cloudflare API token (see [the permissions it needs](/docs/guide/topology-and-dns/#cloudflare-api-token-permissions)), pick the account that owns your domain, deploy the tunnel, then choose the subdomain and zone. Cloudflare issues the certificate.
 - **Reverse proxy**: type the domain. The page shows the A (and AAAA) record to create at your DNS provider and waits until the domain resolves to this server. Nexul then runs Traefik on ports 80 and 443 with a Let's Encrypt certificate. Both ports must be reachable from the internet.
@@ -46,7 +46,7 @@ The first person to sign in becomes the workspace owner and walks through four s
 
 1. **Introduce yourself**: the name and avatar others see. The GitHub ones are the default.
 2. **Set up your workspace**: name it. A new workspace has no projects yet.
-3. **Connect your tools**: the same list as **Settings → Connectors**. Cloudflare already shows as connected if you used the tunnel.
+3. **Connect your tools**: the same list as **Settings → Connectors**. Cloudflare is optional here: connect it only if you want Nexul to manage your domain, exposures and DNS records. It already shows as connected if you used the tunnel.
 4. **Set up T3 Code**: press **Add a computer** and run its one command on the computer your agents run on, the same dialog as **Settings → Computers**. It needs no Cloudflare and no domain. The three checks, **Computer connected**, **T3 Code found** and **Paired**, turn green, then **Set up** sets up the computer. This step is required: **Finish setup** unlocks once one computer is paired. See [paired computers](/docs/guide/paired-computers/).
 
 Then the [project wizard](/docs/guide/projects-and-repositories/#creating-a-project) opens to create your first project.

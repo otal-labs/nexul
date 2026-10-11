@@ -105,6 +105,7 @@ describe("OwnerWizardPage", () => {
     await user.click(screen.getByRole("button", { name: "Step2 continue" }));
 
     expect(await screen.findByText("Connect your tools")).toBeInTheDocument();
+    expect(screen.getByText(/cloudflare is optional/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(screen.getByText("Set up T3 Code")).toBeInTheDocument();

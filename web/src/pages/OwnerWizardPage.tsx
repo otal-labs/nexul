@@ -25,7 +25,7 @@ const STEP_COPY = [
   },
   {
     title: "Connect your tools",
-    subtitle: "Hook up the services Nexul manages for you.",
+    subtitle: "Hook up the services Nexul manages for you. Cloudflare is optional: it is only for your domain, exposures and DNS.",
   },
   {
     title: "Set up T3 Code",
