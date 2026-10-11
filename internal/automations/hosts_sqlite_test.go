@@ -404,6 +404,21 @@ func TestHostToken_AcceptedOnlyWhilePlacementAndCredentialHold(t *testing.T) {
 		assert.Equal(t, http.StatusOK, f.selfRead(t, id, f.tokenFor(t, instanceCred, id)), "it falls back to the instance host")
 	})
 
+	t.Run("switching the automation off refuses its host token until it is switched on", func(t *testing.T) {
+		token := f.tokenFor(t, instanceCred, id)
+		_, err := f.svc.SetEnabled(adminCtx(), "admin", id, false)
+		require.NoError(t, err)
+		status, body := f.do(t, http.MethodGet, "/api/automations/"+id, token, nil)
+		assert.Equal(t, http.StatusUnauthorized, status)
+		assert.Equal(t, "automation_switched_off", errorCode(t, body))
+		assert.Equal(t, http.StatusUnauthorized, f.dialStatus(t, token), "a host never runs a switched-off automation")
+
+		_, err = f.svc.SetEnabled(adminCtx(), "admin", id, true)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, f.selfRead(t, id, token))
+		assert.Equal(t, http.StatusSwitchingProtocols, f.dialStatus(t, token))
+	})
+
 	t.Run("rotating or revoking the automation's token invalidates it", func(t *testing.T) {
 		token := f.tokenFor(t, instanceCred, id)
 		_, _, err := f.svc.MintToken(adminCtx(), "admin", id)

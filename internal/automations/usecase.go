@@ -51,8 +51,23 @@ func (s *Service) SetHosts(h *HostsService) {
 	s.hosts = h
 }
 
-// AuthenticateToken resolves the automation dialing in with raw (ADR 0046); revocation kills access immediately.
+// errSwitchedOff refuses a switched-off automation's token the way a revoked one is refused, saying why.
+var errSwitchedOff = apperrs.WithCode("automation_switched_off", fmt.Errorf("%w: automation is switched off", apperrs.ErrUnauthorized))
+
+// AuthenticateToken resolves the automation a token acts for; revocation and switching off both refuse it at once.
 func (s *Service) AuthenticateToken(ctx context.Context, raw string) (*Automation, error) {
+	a, err := s.AuthenticateDialin(ctx, raw)
+	if err != nil {
+		return nil, err
+	}
+	if !a.Enabled {
+		return nil, errSwitchedOff
+	}
+	return a, nil
+}
+
+// AuthenticateDialin is AuthenticateToken for the dial-in (ADR 0046): a switched-off automation's own token may still announce its code.
+func (s *Service) AuthenticateDialin(ctx context.Context, raw string) (*Automation, error) {
 	if strings.TrimSpace(raw) == "" {
 		return nil, fmt.Errorf("%w: token is required", apperrs.ErrUnauthorized)
 	}
@@ -151,7 +166,7 @@ func (s *Service) Get(ctx context.Context, actorID, id string) (*Automation, err
 	return s.getChecked(ctx, actorID, id, permissions.AutomationsRead)
 }
 
-// SetEnabled toggles an automation; disabled means no event delivery and no worker.
+// SetEnabled toggles an automation; disabled means no event delivery, no worker, and a refused token.
 func (s *Service) SetEnabled(ctx context.Context, actorID, id string, enabled bool) (*Automation, error) {
 	a, err := s.getChecked(ctx, actorID, id, permissions.AutomationsWrite)
 	if err != nil {
@@ -170,6 +185,10 @@ func (s *Service) SetEnabled(ctx context.Context, actorID, id string, enabled bo
 	a.UpdatedAt = s.now().UTC()
 	if err := s.repo.Update(ctx, a); err != nil {
 		return nil, fmt.Errorf("set automation %s enabled: %w", id, err)
+	}
+	// A live connection was handed what the old switch allowed (secrets, events); it reconnects under the new one.
+	if s.conns != nil {
+		s.conns.Disconnect(id, "switched on or off")
 	}
 	return a, nil
 }

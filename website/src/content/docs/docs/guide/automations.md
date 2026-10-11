@@ -97,3 +97,5 @@ Move an automation by picking another host on its page. It stops on the old host
 ## Switching off
 
 Switch an automation off and it receives nothing until you switch it on again. Events in between are skipped, not replayed. A host that loses its connection is different: it picks up where it left off when it reconnects.
+
+Its token stops working too: every API call with it is refused with `automation is switched off`. The one thing a switched-off automation's code can still do is connect and announce itself, so a new automation, which starts off, can register before you switch it on. It gets its configuration but no secrets and no events. Switch it back on and the same token works again; there's nothing to mint.
