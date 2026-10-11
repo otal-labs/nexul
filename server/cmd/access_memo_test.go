@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -16,15 +17,19 @@ import (
 
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/agent"
+	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/mcp/composite"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
 	"github.com/otal-labs/nexul/internal/plays"
+	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
+	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 const (
@@ -214,21 +219,28 @@ func newCountedFixtureDB(t *testing.T) (permFixture, *testutil.Statements, *sql.
 	db, st := testutil.OpenCounted(inner)
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
 	svc, store := wiredOver(t, db)
-	return seedPermFixture(t, svc, store), st, db
+	return seedPermFixture(t, db, svc, store), st, db
 }
 
 // grow adds n of every listed thing to the fixture's project: docs shared with the reader, tickets with threads the
-// reader is in, doc threads, and public and private channels.
+// reader is in, doc threads, and public and private channels; and n projects every role is listed in, and n readers.
 func grow(t *testing.T, f permFixture, n int) []string {
 	t.Helper()
 	ctx := context.Background()
 	now := time.Now()
 	ticketIDs := []string{f.ticket.ID}
 	for i := range n {
+		projectID := fmt.Sprintf("project-%d-%d", n, i)
+		require.NoError(t, f.store.Projects.Create(ctx, &workspace.Project{ID: projectID, Name: "Mobile", Prefix: fmt.Sprintf("M%d%d", n, i), WorkspaceID: wsDefault, CreatedAt: now, UpdatedAt: now}))
+		listRolesIn(t, f.db, projectID)
+		member := fmt.Sprintf("u-reader-%d-%d", n, i)
+		_, _, err := f.store.Users.UpsertUser(ctx, &auth.Identity{UserID: member, Provider: auth.ProviderGitHub, ProviderUserID: member, Login: member})
+		require.NoError(t, err)
+		require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: member, WorkspaceID: wsDefault, RoleID: "role-reader", CreatedAt: now}))
 		docID := fmt.Sprintf("doc-%d-%d", n, i)
 		require.NoError(t, f.store.Docs.Create(ctx, &docs.Doc{ID: docID, ProjectID: pGeneral, Title: "Spec", Body: `{"type":"doc","content":[]}`, Version: 1, CreatedAt: now, UpdatedAt: now}))
 		require.NoError(t, f.store.Access.Set(ctx, "doc", docID, uReader, grant("docs:read", "docs:thread"), nil))
-		_, err := f.svc.chatSvc.GetOrCreateDocThread(ctx, wsDefault, docID, uOwner)
+		_, err = f.svc.chatSvc.GetOrCreateDocThread(ctx, wsDefault, docID, uOwner)
 		require.NoError(t, err)
 		ticket, err := f.svc.ticketsSvc.Create(ctx, pGeneral, fmt.Sprintf("Login times out %d", i), "", "", "")
 		require.NoError(t, err)
@@ -282,6 +294,21 @@ func TestStatements_ListsCostTheSameAtAnyLength(t *testing.T) {
 		},
 		"board thread markers": func(ctx context.Context, f permFixture, ticketIDs []string) error {
 			_, err := f.svc.chatSvc.HasTicketThreads(ctx, ticketIDs)
+			return err
+		},
+		"project list": func(ctx context.Context, f permFixture, ticketIDs []string) error {
+			projects, err := f.svc.workspaceSvc.List(ctx, wsDefault)
+			if err == nil && len(projects) != len(ticketIDs) {
+				err = fmt.Errorf("listed %d projects, want %d", len(projects), len(ticketIDs))
+			}
+			return err
+		},
+		"project people": func(ctx context.Context, f permFixture, ticketIDs []string) error {
+			listed, err := f.svc.tenancySvc.ListProjectPeople(ctx, uReader, pGeneral)
+			// Every member but the outsider, and the readers grow added.
+			if want := len(people) - 1 + len(ticketIDs) - 1; err == nil && len(listed) != want {
+				err = fmt.Errorf("listed %d people, want %d", len(listed), want)
+			}
 			return err
 		},
 		"a play's queued runs": func(ctx context.Context, f permFixture, ticketIDs []string) error {
@@ -439,6 +466,106 @@ SELECT 'doc', d.id, 'role', r.id, '["docs:write"]', '["docs:delete"]', 1, 1 FROM
 	none := cost(12, false)
 	assert.Equal(t, none, cost(2, true), "a few docs, each with rules")
 	assert.Equal(t, none, cost(12, true), "many docs, each with rules")
+}
+
+// TestStatements_ProjectRulesCostTheSameAtAnyLength: rules for every role and every member on every project cost the
+// project list, its people, ticket_list, doc_list, a ticket's read and a live frame no statement more than the fixture's
+// listing alone, at a few projects or many, since every member's project rules come in one read with the workspace's.
+func TestStatements_ProjectRulesCostTheSameAtAnyLength(t *testing.T) {
+	paths := map[string]func(ctx context.Context, f permFixture) error{
+		"project list": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.workspaceSvc.List(ctx, wsDefault)
+			return err
+		},
+		"project people": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.tenancySvc.ListProjectPeople(ctx, uReader, pGeneral)
+			return err
+		},
+		"ticket_list": func(ctx context.Context, f permFixture) error {
+			_, err := tool(t, composite.TicketTools(f.svc.ticketsSvc, f.svc.workspaceSvc, f.svc.reviewSvc), "ticket_list").Call(ctx, json.RawMessage(`{}`))
+			return err
+		},
+		"doc_list": func(ctx context.Context, f permFixture) error {
+			_, err := tool(t, docs.MCPTools(f.svc.docsSvc), "doc_list").Call(ctx, json.RawMessage(`{}`))
+			return err
+		},
+		"a ticket's read": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.ticketsSvc.Get(ctx, f.ticket.ID)
+			return err
+		},
+		"a live frame": func(ctx context.Context, f permFixture) error {
+			frame, err := json.Marshal(tickets.UpdatedEvent{Ticket: *f.ticket})
+			if err == nil && !memoizedAudience(f.svc)(ctx, tickets.TopicUpdated, json.RawMessage(frame)) {
+				err = errors.New("the reader's frame was dropped")
+			}
+			return err
+		},
+	}
+	cost := func(n int, rules bool) map[string]int64 {
+		f, st, db := newCountedFixtureDB(t)
+		grow(t, f, n)
+		if rules {
+			_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, allow, deny, created_at, updated_at)
+SELECT 'project', p.id, 'role', r.id, '["projects:open","tickets:write"]', '["projects:delete"]', 1, 1 FROM projects p, roles r
+WHERE r.workspace_id = 'workspace-default' AND r.is_owner_role = 0
+ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO UPDATE SET allow = excluded.allow, deny = excluded.deny`)
+			require.NoError(t, err)
+			_, err = db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
+SELECT 'project', p.id, 'person', m.user_id, '["projects:open"]', '["tickets:delete"]', 1, 1 FROM projects p, workspace_members m
+WHERE m.user_id != 'u-owner'`)
+			require.NoError(t, err)
+		}
+		out := map[string]int64{}
+		for name, run := range paths {
+			ctx := access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: uReader}), f.svc.accessSvc.NewMemo())
+			st.Reset()
+			require.NoError(t, run(ctx, f), name)
+			out[name] = st.Count()
+		}
+		return out
+	}
+	none := cost(12, false)
+	assert.Equal(t, none, cost(2, true), "a few projects, each with rules")
+	assert.Equal(t, none, cost(12, true), "many projects, each with rules")
+}
+
+// TestRows_ASingleCheckReadsOnlyItsProjectsRules: a check, a ticket's read and a live frame, each naming one project,
+// read that project's rules for the person and their roles and no other's, so rules naming them on every project cost
+// the same rows and statements at a few projects as at many.
+func TestRows_ASingleCheckReadsOnlyItsProjectsRules(t *testing.T) {
+	paths := map[string]func(ctx context.Context, f permFixture) error{
+		"a project check": func(ctx context.Context, f permFixture) error {
+			return f.svc.accessSvc.RequireProject(ctx, pGeneral, permissions.TicketsRead)
+		},
+		"a ticket's read": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.ticketsSvc.Get(ctx, f.ticket.ID)
+			return err
+		},
+		"a live frame": func(ctx context.Context, f permFixture) error {
+			frame, err := json.Marshal(tickets.UpdatedEvent{Ticket: *f.ticket})
+			if err == nil && !memoizedAudience(f.svc)(ctx, tickets.TopicUpdated, json.RawMessage(frame)) {
+				err = errors.New("the reader's frame was dropped")
+			}
+			return err
+		},
+	}
+	type cost struct{ statements, rows int64 }
+	costs := func(n int) map[string]cost {
+		f, st, db := newCountedFixtureDB(t)
+		grow(t, f, n)
+		_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
+SELECT 'project', p.id, 'person', m.user_id, '["projects:open"]', '[]', 1, 1 FROM projects p, workspace_members m WHERE m.user_id != 'u-owner'`)
+		require.NoError(t, err)
+		out := map[string]cost{}
+		for name, run := range paths {
+			ctx := access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: uReader}), f.svc.accessSvc.NewMemo())
+			st.Reset()
+			require.NoError(t, run(ctx, f), name)
+			out[name] = cost{st.Count(), st.Rows()}
+		}
+		return out
+	}
+	assert.Equal(t, costs(2), costs(12))
 }
 
 // TestStatements_RoleSetCostsOneReadAtAnySize: one role or three cost one statement, and a check the same either way.

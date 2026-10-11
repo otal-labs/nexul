@@ -154,6 +154,7 @@ func grant(actions ...string) permissions.Set {
 type permFixture struct {
 	svc     *coreServices
 	store   *storage.Store
+	db      *sql.DB
 	ticket  *tickets.Ticket
 	doc     string
 	channel *chat.Conversation
@@ -188,11 +189,12 @@ func wiredOver(t *testing.T, db *sql.DB) (*coreServices, *storage.Store) {
 
 func newPermFixture(t *testing.T) permFixture {
 	t.Helper()
-	svc, store := newWired(t)
-	return seedPermFixture(t, svc, store)
+	db := mentionsTestDB(t)
+	svc, store := wiredOver(t, db)
+	return seedPermFixture(t, db, svc, store)
 }
 
-func seedPermFixture(t *testing.T, svc *coreServices, store *storage.Store) permFixture {
+func seedPermFixture(t *testing.T, db *sql.DB, svc *coreServices, store *storage.Store) permFixture {
 	t.Helper()
 	ctx := context.Background()
 
@@ -224,7 +226,9 @@ func seedPermFixture(t *testing.T, svc *coreServices, store *storage.Store) perm
 	}
 	require.NoError(t, store.Access.Set(ctx, "workspace", "workspace-default", uOverwrite, grant(reads...), nil))
 
-	f := permFixture{svc: svc, store: store, doc: "doc-1", stack: "stack-1", infra: "stack-gateway", deploy: "deploy-1", review: "review-1"}
+	listRolesIn(t, db, pGeneral)
+
+	f := permFixture{svc: svc, store: store, db: db, doc: "doc-1", stack: "stack-1", infra: "stack-gateway", deploy: "deploy-1", review: "review-1"}
 	var err error
 	f.ticket, err = svc.ticketsSvc.Create(ctx, "project-general", "Login times out", "", "", "")
 	require.NoError(t, err)
@@ -242,6 +246,17 @@ func seedPermFixture(t *testing.T, svc *coreServices, store *storage.Store) perm
 	_, err = svc.chatSvc.GetOrCreateTicketThread(ctx, "workspace-default", f.ticket.ID, uOwner)
 	require.NoError(t, err)
 	return f
+}
+
+// listRolesIn lists every non-Owner role of the default workspace in projectID with a rule allowing In this project,
+// as the access grid will, so no check passes for having found nobody once projects are opt-in. Written in SQL since
+// no writer names a role on a project yet; nothing reads it before the switch.
+func listRolesIn(t *testing.T, db *sql.DB, projectID string) {
+	t.Helper()
+	_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, allow, deny, created_at, updated_at)
+SELECT 'project', ?, 'role', id, '["projects:open"]', '[]', 1, 1 FROM roles WHERE workspace_id = ? AND is_owner_role = 0
+ON CONFLICT DO NOTHING`, projectID, wsDefault)
+	require.NoError(t, err)
 }
 
 // TestIntegration_PermissionTable walks each domain's reads, lists, and creates as every kind of caller, through the

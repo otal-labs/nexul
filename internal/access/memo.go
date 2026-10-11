@@ -3,6 +3,9 @@ package access
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
+	"strings"
 	"sync"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -137,7 +140,9 @@ func rememberEach[V any](ctx context.Context, ids []string, key func(id string) 
 // The memo's keys, one type per kind of read, so two kinds never share an entry.
 type (
 	memberKey     struct{ workspaceID, userID string }
+	layersKey     struct{ userID, workspaceID, projectID string }
 	overwriteKey  struct{ resourceType, resourceID, userID string }
+	roleRulesKey  struct{ resourceType, resourceID, roleIDs string }
 	rulesKey      struct{ resourceType, resourceID, userID string }
 	typeRulesKey  struct{ resourceType, userID string }
 	projectKey    struct{ projectID string }
@@ -152,10 +157,52 @@ func (s *Service) memberRole(ctx context.Context, workspaceID, userID string) (R
 	})
 }
 
-func (s *Service) overwrite(ctx context.Context, resourceType, resourceID, userID string) (*Overwrite, error) {
-	return remember(ctx, overwriteKey{resourceType, resourceID, userID}, func() (*Overwrite, error) {
-		return s.repo.Get(ctx, resourceType, resourceID, userID)
+// layerRules is the rule naming userID on workspaceID and the rules reaching them on each of projectIDs, by name or
+// through roleIDs, read only for the projects asked about: one for a single check, the workspace's for a list. What the
+// request has not read yet comes in one statement for the person and one for the role set, which everyone holding the
+// same roles shares.
+func (s *Service) layerRules(ctx context.Context, userID, workspaceID string, roleIDs, projectIDs []string) (*Overwrite, map[string]*Rules, error) {
+	ownKey := func(id string) any {
+		if id == workspaceID {
+			return overwriteKey{resourceTypeWorkspace, id, userID}
+		}
+		return overwriteKey{resourceTypeProject, id, userID}
+	}
+	own, err := rememberEach(ctx, append([]string{workspaceID}, projectIDs...), ownKey, func(missing []string) (map[string]*Overwrite, error) {
+		return s.repo.OwnRules(ctx, userID, workspaceID, slices.DeleteFunc(slices.Clone(missing), func(id string) bool { return id == workspaceID }))
 	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("rules of %s in workspace %s: %w", userID, workspaceID, err)
+	}
+	roles := map[string][]*Overwrite{}
+	if len(roleIDs) > 0 && len(projectIDs) > 0 {
+		held := strings.Join(roleIDs, "\x00")
+		roles, err = rememberEach(ctx, projectIDs, func(id string) any { return roleRulesKey{resourceTypeProject, id, held} }, func(missing []string) (map[string][]*Overwrite, error) {
+			return s.repo.RoleRules(ctx, resourceTypeProject, missing, roleIDs)
+		})
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("rules for the roles of %s in workspace %s: %w", userID, workspaceID, err)
+	}
+	projects := make(map[string]*Rules, len(projectIDs))
+	for _, id := range projectIDs {
+		if own[id] != nil || len(roles[id]) > 0 {
+			projects[id] = &Rules{Person: own[id], Roles: roles[id]}
+		}
+	}
+	return own[workspaceID], projects, nil
+}
+
+// roleIDsIn is every role userID holds in workspaceID; none when the membership can't be read.
+func (s *Service) roleIDsIn(ctx context.Context, userID, workspaceID string) []string {
+	if s.roles == nil {
+		return nil
+	}
+	info, err := s.memberRole(ctx, workspaceID, userID)
+	if err != nil {
+		return nil
+	}
+	return info.roleIDs()
 }
 
 // rules is the rules on one entity reaching userID; a failed read counts as none, as a check's always has.

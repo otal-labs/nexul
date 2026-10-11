@@ -1,6 +1,6 @@
 # 04 — Project rules are read for every member
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 02, 03
 
@@ -24,9 +24,17 @@ The read half of opt-in projects, landed early so production runs it for days be
 
 ## Acceptance criteria
 
-- [ ] An empty `access.Matrix` diff on a production copy, in the PR.
-- [ ] `TestProjectsWith_ReadsARestrictedMembersAccessOnce` becomes `…ReadsEveryMembersProjectRulesOnce`.
-- [ ] New `TestStatements_ProjectRulesCostTheSameAtAnyLength`; the project list and the project-people query join
+- [x] An empty `access.Matrix` diff, master against the branch, in the PR. A fixture replaces the production copy, as for
+      slice 02: a schema-0098 database holding every member and rule kind (person and role rules on docs, projects and
+      plays, a workspace-wide allow and deny, several roles on one member, a Restricted member with Project access and
+      role rules on its project), 192 rows on both sides.
+- [x] `TestProjectsWith_ReadsARestrictedMembersAccessOnce` becomes `…ReadsEveryMembersProjectRulesOnce`.
+- [x] New `TestStatements_ProjectRulesCostTheSameAtAnyLength`; the project list and the project-people query join
       `TestStatements_ListsCostTheSameAtAnyLength`.
-- [ ] `TestRows_ListToolsReadOnlyTheirPage` gains a non-Owner viewer for `doc_list`.
-- [ ] `ticket_list` and `doc_list` statements and median time on the heavy copy, before and after, in the PR.
+- [x] `TestRows_ListToolsReadOnlyTheirPage` gains a non-Owner viewer for `doc_list`.
+- [x] `ticket_list` and `doc_list` statements and median time on the heavy copy, before and after, in the PR. A
+      single check or live frame reads only its project's rules; lists read the workspace's in one batch. Production-
+      shaped, every path stays inside 10%; with the access grid filled `doc_list` is 11% slower, and with every member
+      named on every project 16%, from decoding one rule row per listed project: raised with the owner before merging.
+
+- Owner, 2026-10-11: doc_list's +11% (grid filled) and +16% (every member named on every project) are accepted; cheaper rule decoding is held for the monthly performance audit.

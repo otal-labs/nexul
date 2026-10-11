@@ -13,6 +13,9 @@ import (
 type Gate interface {
 	Require(ctx context.Context, workspaceID string, action permissions.Action) error
 	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
+	// CallerProjectsIn lists the projects of workspaceID RequireProject lets the caller act in with action, in one
+	// batch; all is true for any project.
+	CallerProjectsIn(ctx context.Context, workspaceID string, action permissions.Action) (projectIDs []string, all bool, err error)
 }
 
 // TicketProjects names the project a ticket sits in, so moving it is checked there too (ADR 0017).

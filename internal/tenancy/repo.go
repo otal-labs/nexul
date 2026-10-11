@@ -54,6 +54,8 @@ type ProjectAccessRepo interface {
 	SetProjectAccess(ctx context.Context, projectID, userID string, allow permissions.Set, events ...eventbus.OutboxEvent) error
 	// ListAllProjectAccess lists every Project access row on the instance, in project order.
 	ListAllProjectAccess(ctx context.Context) ([]*ProjectAccess, error)
+	// ProjectMemberIDs lists the members of workspaceID who may open projectID, in membership order, in one read.
+	ProjectMemberIDs(ctx context.Context, workspaceID, projectID string) ([]string, error)
 }
 
 // InviteRepo is the consumer-side persistence contract for pending workspace invites.

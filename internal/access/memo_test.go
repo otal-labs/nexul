@@ -61,15 +61,23 @@ func TestProjectsWith_AnswersAsEachProjectsCheck(t *testing.T) {
 	}
 }
 
-func TestProjectsWith_ReadsARestrictedMembersAccessOnce(t *testing.T) {
+func TestProjectsWith_ReadsEveryMembersProjectRulesOnce(t *testing.T) {
 	s, repo := restrictedFixture(t)
-	repo.resetReads()
+	roles := newFakeRoles()
+	roles.set("ws", "client", RoleInfo{RoleID: "role-client", Permissions: permissions.SetOf(permissions.TicketsRead), Restricted: true})
+	roles.set("ws", "team", RoleInfo{RoleID: "role-team", Permissions: permissions.SetOf(permissions.TicketsRead)})
+	s.SetRoles(roles)
+	setOverwrite(repo, "project", "p-hidden", "team", permissions.SetOf(permissions.ProjectsDelete))
+	want := map[string][]string{"client": {"p-open"}, "team": {"p-hidden", "p-open"}}
 
-	got, err := s.ProjectsWith(t.Context(), "client", "ws", permissions.TicketsRead)
+	for user, projects := range want {
+		repo.resetReads()
+		got, err := s.ProjectsWith(t.Context(), user, "ws", permissions.TicketsRead)
 
-	require.NoError(t, err)
-	assert.Equal(t, []string{"p-open"}, got)
-	assert.Equal(t, 2, repo.readCounts(), "the workspace's rules, then every project's access at once")
+		require.NoError(t, err)
+		assert.ElementsMatch(t, projects, got, user)
+		assert.Equal(t, 2, repo.readCounts(), "%s: their rules on the workspace and every project, then every role's, once", user)
+	}
 }
 
 // TestCallerProjects_AnswersAsRequireProject: the set a list filters by in SQL is exactly the projects RequireProject
@@ -102,6 +110,15 @@ func TestCallerProjects_AnswersAsRequireProject(t *testing.T) {
 					want = append(want, projectID)
 				}
 			}
+			inWorkspace, allInWorkspace, err := s.CallerProjectsIn(ctx, "ws", action)
+			require.NoError(t, err)
+			wantInWorkspace := slices.DeleteFunc(slices.Clone(want), func(id string) bool { return id == "p-other" })
+			if allInWorkspace {
+				assert.Len(t, wantInWorkspace, 2, "%s %q in ws", name, action)
+			}
+			if !allInWorkspace {
+				assert.ElementsMatch(t, wantInWorkspace, inWorkspace, "%s %q in ws", name, action)
+			}
 			if all {
 				assert.Len(t, want, 3, "%s %q", name, action)
 				continue
@@ -109,6 +126,13 @@ func TestCallerProjects_AnswersAsRequireProject(t *testing.T) {
 			assert.ElementsMatch(t, want, got, "%s %q", name, action)
 		}
 	}
+	t.Run("a default automation outside the workspace lists none of it", func(t *testing.T) {
+		ctx := identity.WithActor(context.Background(), identity.Actor{Automation: &identity.AutomationRef{ID: "a-1", WorkspaceID: "ws-2"}})
+		got, all, err := s.CallerProjectsIn(ctx, "ws", permissions.Member)
+		require.NoError(t, err)
+		assert.False(t, all)
+		assert.Empty(t, got)
+	})
 }
 
 // TestDocsWith_AnswersAsCanDocs: the project set and its exceptions a doc list filters by in SQL pass exactly the docs

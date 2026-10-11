@@ -209,14 +209,11 @@ func (s *Service) ListProjectPeople(ctx context.Context, actorID, projectID stri
 	if _, opens := s.projects.ProjectPermissions(ctx, actorID, projectID); !opens {
 		return nil, fmt.Errorf("%w: project %s", apperrs.ErrNotFound, projectID)
 	}
-	people, err := s.ListPeople(ctx, actorID, workspaceID)
+	userIDs, err := s.members.ProjectMemberIDs(ctx, workspaceID, projectID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list the people of project %s: %w", projectID, err)
 	}
-	return slices.DeleteFunc(people, func(p Person) bool {
-		_, opens := s.projects.ProjectPermissions(ctx, p.UserID, projectID)
-		return !opens
-	}), nil
+	return s.peopleNamed(ctx, userIDs)
 }
 
 // teamProjects fills each membership's Every project and the Project access the viewer may see: only projects

@@ -15,7 +15,7 @@ import (
 func TestRoleSet_EveryEvaluatorAgrees(t *testing.T) {
 	db := mentionsTestDB(t)
 	svc, store := wiredOver(t, db)
-	seedPermFixture(t, svc, store)
+	seedPermFixture(t, db, svc, store)
 	// In SQL, since every writer still gives one role.
 	_, err := db.Exec(`INSERT INTO member_roles (user_id, workspace_id, role_id, created_at) VALUES
     ('u-plain', 'workspace-default', 'role-manager', 2),

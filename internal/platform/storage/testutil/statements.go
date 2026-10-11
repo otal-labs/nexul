@@ -102,6 +102,35 @@ func (c countingConn) BeginTx(ctx context.Context, o driver.TxOptions) (driver.T
 	return c.Conn.(driver.ConnBeginTx).BeginTx(ctx, o)
 }
 
+func (c countingConn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error) {
+	stmt, err := c.Conn.(driver.ConnPrepareContext).PrepareContext(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	return countingStmt{stmt, q, c.st}, nil
+}
+
+// countingStmt records a prepared statement each time it runs, as a statement run directly is.
+type countingStmt struct {
+	driver.Stmt
+	q  string
+	st *Statements
+}
+
+func (s countingStmt) QueryContext(ctx context.Context, a []driver.NamedValue) (driver.Rows, error) {
+	s.st.record(s.q, a)
+	rows, err := s.Stmt.(driver.StmtQueryContext).QueryContext(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+	return countingRows{rows, s.st}, nil
+}
+
+func (s countingStmt) ExecContext(ctx context.Context, a []driver.NamedValue) (driver.Result, error) {
+	s.st.record(s.q, a)
+	return s.Stmt.(driver.StmtExecContext).ExecContext(ctx, a)
+}
+
 type countingRows struct {
 	driver.Rows
 	st *Statements

@@ -80,6 +80,33 @@ func (f *fakeRepo) RulesOfType(_ context.Context, resourceType, userID string) (
 	return out, nil
 }
 
+func (f *fakeRepo) OwnRules(_ context.Context, userID, workspaceID string, projectIDs []string) (map[string]*Overwrite, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reads++
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	out := map[string]*Overwrite{}
+	if ow, ok := f.overwrites[key(resourceTypeWorkspace, workspaceID, userID)]; ok {
+		out[workspaceID] = ow
+	}
+	for _, id := range projectIDs {
+		if ow, ok := f.overwrites[key(resourceTypeProject, id, userID)]; ok {
+			out[id] = ow
+		}
+	}
+	return out, nil
+}
+
+// RoleRules finds none: the fake keeps rules for people only.
+func (f *fakeRepo) RoleRules(context.Context, string, []string, []string) (map[string][]*Overwrite, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reads++
+	return map[string][]*Overwrite{}, nil
+}
+
 func (f *fakeRepo) Rules(_ context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*Rules, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -52,4 +52,5 @@ ADR 0042: a project layer sits between the workspace and the resource, and for a
 role and workspace-wide layers on project areas. Amends ADR 0085, whose Team dialog sets Every project and Project
 access, and ADR 0061, whose invitation package carries them. Decided 2026-10-01. Amended by ADR 0135: a restricted member's
 Project access is read once per request, not once per row. Amended by ADR 0140: a list that pages filters by
-Project access in SQL.
+Project access in SQL. Amended by ADR 0148: every member's project rules, and their roles', are read on each project
+check, and only a Restricted member's own row applies until projects are opt-in.

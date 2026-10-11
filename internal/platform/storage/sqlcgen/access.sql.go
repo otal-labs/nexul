@@ -239,6 +239,179 @@ func (q *Queries) ListOverwritesByResource(ctx context.Context, arg ListOverwrit
 	return items, nil
 }
 
+const listOwnOverwrites = `-- name: ListOwnOverwrites :many
+SELECT resource_type, resource_id, target, user_id, role_id, allow, deny, created_at, updated_at FROM permission_overwrites WHERE user_id = ? AND resource_type IN ('workspace', 'project')
+`
+
+func (q *Queries) ListOwnOverwrites(ctx context.Context, userID sql.NullString) ([]PermissionOverwrite, error) {
+	rows, err := q.db.QueryContext(ctx, listOwnOverwrites, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PermissionOverwrite
+	for rows.Next() {
+		var i PermissionOverwrite
+		if err := rows.Scan(
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.Target,
+			&i.UserID,
+			&i.RoleID,
+			&i.Allow,
+			&i.Deny,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOwnOverwritesInProject = `-- name: ListOwnOverwritesInProject :many
+SELECT po.resource_type, po.resource_id, po.target, po.user_id, po.role_id, po.allow, po.deny, po.created_at, po.updated_at FROM permission_overwrites po
+WHERE po.user_id = ?1 AND po.resource_type = 'workspace' AND po.resource_id = ?2
+UNION ALL
+SELECT pp.resource_type, pp.resource_id, pp.target, pp.user_id, pp.role_id, pp.allow, pp.deny, pp.created_at, pp.updated_at FROM permission_overwrites pp
+WHERE pp.user_id = ?1 AND pp.resource_type = 'project' AND pp.resource_id = ?3
+`
+
+type ListOwnOverwritesInProjectParams struct {
+	UserID      sql.NullString
+	WorkspaceID string
+	ProjectID   string
+}
+
+func (q *Queries) ListOwnOverwritesInProject(ctx context.Context, arg ListOwnOverwritesInProjectParams) ([]PermissionOverwrite, error) {
+	rows, err := q.db.QueryContext(ctx, listOwnOverwritesInProject, arg.UserID, arg.WorkspaceID, arg.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PermissionOverwrite
+	for rows.Next() {
+		var i PermissionOverwrite
+		if err := rows.Scan(
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.Target,
+			&i.UserID,
+			&i.RoleID,
+			&i.Allow,
+			&i.Deny,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRoleOverwrites = `-- name: ListRoleOverwrites :many
+SELECT resource_type, resource_id, target, user_id, role_id, allow, deny, created_at, updated_at FROM permission_overwrites
+WHERE role_id IN (SELECT value FROM json_each(?1)) AND resource_type = ?2
+`
+
+type ListRoleOverwritesParams struct {
+	RoleIds      interface{}
+	ResourceType string
+}
+
+func (q *Queries) ListRoleOverwrites(ctx context.Context, arg ListRoleOverwritesParams) ([]PermissionOverwrite, error) {
+	rows, err := q.db.QueryContext(ctx, listRoleOverwrites, arg.RoleIds, arg.ResourceType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PermissionOverwrite
+	for rows.Next() {
+		var i PermissionOverwrite
+		if err := rows.Scan(
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.Target,
+			&i.UserID,
+			&i.RoleID,
+			&i.Allow,
+			&i.Deny,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRoleOverwritesInResource = `-- name: ListRoleOverwritesInResource :many
+SELECT resource_type, resource_id, target, user_id, role_id, allow, deny, created_at, updated_at FROM permission_overwrites
+WHERE resource_type = ?1 AND resource_id = ?2 AND target = 'role'
+  AND role_id IN (SELECT value FROM json_each(?3))
+ORDER BY role_id
+`
+
+type ListRoleOverwritesInResourceParams struct {
+	ResourceType string
+	ResourceID   string
+	RoleIds      interface{}
+}
+
+func (q *Queries) ListRoleOverwritesInResource(ctx context.Context, arg ListRoleOverwritesInResourceParams) ([]PermissionOverwrite, error) {
+	rows, err := q.db.QueryContext(ctx, listRoleOverwritesInResource, arg.ResourceType, arg.ResourceID, arg.RoleIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PermissionOverwrite
+	for rows.Next() {
+		var i PermissionOverwrite
+		if err := rows.Scan(
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.Target,
+			&i.UserID,
+			&i.RoleID,
+			&i.Allow,
+			&i.Deny,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertOverwrite = `-- name: UpsertOverwrite :execrows
 INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
 VALUES (?1, ?2, 'person', ?3, ?4, ?5, ?6, ?6)

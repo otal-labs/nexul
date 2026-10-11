@@ -22,6 +22,15 @@ func (s *Service) ListPeople(ctx context.Context, actorID, workspaceID string) (
 	if err != nil {
 		return nil, fmt.Errorf("list members for workspace %s: %w", workspaceID, err)
 	}
+	userIDs := make([]string, len(members))
+	for i, m := range members {
+		userIDs[i] = m.UserID
+	}
+	return s.peopleNamed(ctx, userIDs)
+}
+
+// peopleNamed is the Person of each of userIDs with an account, in their order.
+func (s *Service) peopleNamed(ctx context.Context, userIDs []string) ([]Person, error) {
 	accounts, err := s.accounts.ListAccounts(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list accounts: %w", err)
@@ -30,9 +39,9 @@ func (s *Service) ListPeople(ctx context.Context, actorID, workspaceID string) (
 	for _, a := range accounts {
 		byID[a.ID] = a
 	}
-	people := make([]Person, 0, len(members))
-	for _, m := range members {
-		a, ok := byID[m.UserID]
+	people := make([]Person, 0, len(userIDs))
+	for _, id := range userIDs {
+		a, ok := byID[id]
 		if !ok {
 			continue
 		}

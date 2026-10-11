@@ -41,6 +41,14 @@ func (f *fakeGate) RequireProject(ctx context.Context, _ string, action permissi
 	return f.Require(ctx, "", action)
 }
 
+func (f *fakeGate) CallerProjectsIn(ctx context.Context, _ string, action permissions.Action) ([]string, bool, error) {
+	err := f.Require(ctx, "", action)
+	if permissions.Refused(err) {
+		return []string{}, false, nil
+	}
+	return nil, err == nil, err
+}
+
 type fakeWorkspaceGate struct {
 	mu     sync.Mutex
 	exists bool
@@ -825,6 +833,34 @@ func TestList(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, projects, 2)
 	})
+	t.Run("leaves out the projects the caller can't open", func(t *testing.T) {
+		repo := newFakeRepo()
+		repo.projects["p-1"] = &Project{ID: "p-1", Name: "Backend", WorkspaceID: "ws-1"}
+		repo.projects["p-2"] = &Project{ID: "p-2", Name: "Frontend", WorkspaceID: "ws-1"}
+		s := newTestService(repo, &projectsGate{open: []string{"p-2"}})
+		projects, err := s.List(context.Background(), "ws-1")
+		require.NoError(t, err)
+		require.Len(t, projects, 1)
+		assert.Equal(t, "p-2", projects[0].ID)
+	})
+	t.Run("a failed access read propagates", func(t *testing.T) {
+		repo := newFakeRepo()
+		repo.projects["p-1"] = &Project{ID: "p-1", Name: "Backend", WorkspaceID: "ws-1"}
+		gate := &projectsGate{err: errors.New("database is locked")}
+		_, err := newTestService(repo, gate).List(context.Background(), "ws-1")
+		assert.ErrorIs(t, err, gate.err)
+	})
+}
+
+// projectsGate lets the caller open only the projects in open, or fails to list them with err.
+type projectsGate struct {
+	fakeGate
+	open []string
+	err  error
+}
+
+func (g *projectsGate) CallerProjectsIn(context.Context, string, permissions.Action) ([]string, bool, error) {
+	return g.open, false, g.err
 }
 
 func TestRename(t *testing.T) {

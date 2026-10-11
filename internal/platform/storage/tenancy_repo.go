@@ -280,6 +280,16 @@ func (r *WorkspaceMembersRepo) SetRestricted(ctx context.Context, workspaceID, u
 	})
 }
 
+// ProjectMemberIDs lists the members of workspaceID who may open projectID, in one read: the Owner, every member who
+// is not Restricted, and a Restricted one holding Project access there (ADR 0097).
+func (r *WorkspaceMembersRepo) ProjectMemberIDs(ctx context.Context, workspaceID, projectID string) ([]string, error) {
+	ids, err := r.q.ListProjectMemberIDs(ctx, sqlcgen.ListProjectMemberIDsParams{WorkspaceID: workspaceID, ProjectID: projectID})
+	if err != nil {
+		return nil, fmt.Errorf("list the members of workspace %s in project %s: %w", workspaceID, projectID, err)
+	}
+	return ids, nil
+}
+
 func (r *WorkspaceMembersRepo) ProjectAccess(ctx context.Context, workspaceID, userID string) ([]*tenancy.ProjectAccess, error) {
 	rows, err := r.q.ListMemberProjectAccess(ctx, sqlcgen.ListMemberProjectAccessParams{UserID: nullString(userID), WorkspaceID: workspaceID})
 	if err != nil {

@@ -193,6 +193,51 @@ VALUES ('doc', 'doc-9', 'role', 'bob', 'role-front', '[]', '[]', 1, 1)`)
 	require.Error(t, err, "a rule names a person or a role, never both")
 }
 
+func TestAccessRepo_OwnAndRoleRules_ReadOnlyWhatIsAsked(t *testing.T) {
+	ctx := context.Background()
+	s, db := roleRulesStore(t)
+	require.NoError(t, s.Access.Set(ctx, "workspace", "workspace-default", "bob", permissions.SetOf(permissions.ChatWrite), nil))
+	require.NoError(t, s.Access.Set(ctx, "workspace", "workspace-default", "sam", permissions.SetOf(permissions.DocsRead), nil))
+	require.NoError(t, s.Access.Set(ctx, "project", "p-web", "bob", permissions.SetOf(permissions.TicketsRead), nil))
+	require.NoError(t, s.Access.Set(ctx, "project", "p-api", "sam", permissions.SetOf(permissions.TicketsRead), nil))
+	_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, allow, deny, created_at, updated_at) VALUES
+    ('project', 'p-web', 'role', 'role-front', '["projects:open"]', '[]', 1, 1),
+    ('project', 'p-api', 'role', 'role-front', '[]', '["tickets:write"]', 1, 1),
+    ('project', 'p-api', 'role', 'role-client', '["projects:open"]', '[]', 1, 1),
+    ('project', 'p-old', 'role', 'role-client', '["projects:open"]', '[]', 1, 1)`)
+	require.NoError(t, err)
+
+	require.NoError(t, s.Access.Set(ctx, "project", "p-old", "bob", permissions.SetOf(permissions.TicketsRead), nil))
+	own, err := s.Access.OwnRules(ctx, "bob", "workspace-default", []string{"p-web", "p-api"})
+	require.NoError(t, err)
+	require.Len(t, own, 2, "theirs on the workspace and p-web; p-old was not asked, and a doc's, a role's and sam's never come")
+	assert.Equal(t, permissions.SetOf(permissions.ChatWrite), own["workspace-default"].Allow)
+	assert.Equal(t, permissions.SetOf(permissions.TicketsRead), own["p-web"].Allow)
+	own, err = s.Access.OwnRules(ctx, "bob", "workspace-default", []string{"p-web"})
+	require.NoError(t, err)
+	assert.Len(t, own, 2, "one project asked: the workspace's and that project's, by index lookup")
+	own, err = s.Access.OwnRules(ctx, "bob", "workspace-default", []string{"p-api"})
+	require.NoError(t, err)
+	assert.Len(t, own, 1, "p-web was not asked")
+	own, err = s.Access.OwnRules(ctx, "bob", "workspace-default", nil)
+	require.NoError(t, err)
+	assert.Len(t, own, 1, "the workspace's alone with no project asked")
+	own, err = s.Access.OwnRules(ctx, "bob", "ws-other", nil)
+	require.NoError(t, err)
+	assert.Empty(t, own)
+
+	roles, err := s.Access.RoleRules(ctx, "project", []string{"p-web", "p-api", "p-none"}, []string{"role-front", "role-client"})
+	require.NoError(t, err)
+	require.Len(t, roles, 2, "a project without rules for roles is left out, and p-old was not asked")
+	front, err := s.Access.RoleRules(ctx, "project", []string{"p-api"}, []string{"role-front"})
+	require.NoError(t, err)
+	require.Len(t, front["p-api"], 1, "only the roles asked about")
+	require.Len(t, roles["p-api"], 2)
+	assert.Equal(t, []string{"role-client", "role-front"}, []string{roles["p-api"][0].RoleID, roles["p-api"][1].RoleID}, "in role order")
+	assert.Equal(t, permissions.SetOf(permissions.TicketsWrite), roles["p-api"][1].Deny)
+	assert.Equal(t, "role-front", roles["p-web"][0].RoleID)
+}
+
 func TestAccessRepo_DeletingARoleOrAnAccountDeletesItsRules(t *testing.T) {
 	ctx := context.Background()
 	s, db := roleRulesStore(t)
