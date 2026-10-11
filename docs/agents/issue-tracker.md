@@ -100,15 +100,16 @@ git history, and anything durable it decided is an ADR.
   tunnel and URL pairing retired after existing computers move; later shell
   jobs, container logs and sharing a computer. Spec and tickets 01–20
   written 2026-10-10.
-- `.scratch/permission-overrides/` — rules on any entity (project, doc, play,
-  then doc folders, stacks, channels, a person's computers and the instance's
-  areas) for everyone, a role or one person, each permission Allow, Fallback or
-  Deny over the role, and a source for every answer (ADR 0148); computer rules
-  are how a computer is shared. Spec and tickets 01–14 written 2026-10-10.
-- `.scratch/permission-rework/` — wayfinder map charted 2026-10-11: roles only
-  (no Everyone), several roles per person, opt-in projects and a wiped start on
-  upgrade. It plans the rewrite of `.scratch/permission-overrides/`, which waits
-  for it.
+- `.scratch/permission-overrides/` — permissions on roles (ADR 0148): several
+  roles per person or none, opt-in projects, rules for a role or a person on
+  each entity (project, doc, play, channel, then doc folders, stacks, a
+  person's computers and the instance's areas), each permission Allow, Fallback
+  or Deny, and a source for every answer; the upgrade wipes per-person access
+  and an Owner sets who's in each project once. Spec and slices 01–24 rewritten
+  2026-10-11; 09–17 land together from the `permission-switch` branch.
+- `.scratch/permission-rework/` — wayfinder map charted 2026-10-11, complete:
+  it decided the model the spec above builds. Kept until slices 06, 07, 08 and
+  12–15 merge, because its tickets 03, 04, 05 and 08 hold their locked looks.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.

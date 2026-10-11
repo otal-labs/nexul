@@ -1,5 +1,8 @@
 # Per-user permission overwrites are one table for every resource type, and the workspace Owner bypasses all of them
 
+Superseded in part by ADR 0148 (proposed): rules name a role or a person, with no workspace-wide override; between
+role rules on one thing Allow wins and a rule naming the person beats them. The one table and the Owner bypass stand.
+
 Amended by ADR 0097: a project layer, Project access, sits between the workspace and the resource; for a Restricted member it is the whole answer on project areas.
 
 Per-user grants live in a single `permission_overwrites(resource_type,

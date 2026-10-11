@@ -55,6 +55,9 @@ instance administrator is now whoever holds `accounts:read` in any workspace
 (seeing everyone) and `accounts:write` or `accounts:delete` (changing or
 removing an account).
 
+Amended by ADR 0148 (proposed): a person's workspace entry holds a set of roles, or none, and nothing per person;
+which projects they are in is set on each project and on the Access page.
+
 The instance sections moved from Configuration to the Settings page on
 2026-09-30, where the group is called Instance settings and each entry shows
 only to a holder of its permission; Team's scoped variant stayed in

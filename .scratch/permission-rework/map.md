@@ -54,14 +54,17 @@ asking the owner anything. This map plans; it builds nothing.
   pinned Save; Workspace and In projects sections each lead with their own bulk row, Create projects and Manage this
   project's access are switches, plays' first rung reads See, extra verbs sit as checkboxes under their area, and
   leaving with changes asks first.
+- [Rewrite the spec and tickets](issues/07-rewrite-the-spec.md): `.scratch/permission-overrides/` rewritten to
+  these decisions as 24 slices, with ADR 0148, the ADRs it supersedes and `CONTEXT.md` to match. The map is complete;
+  keep this directory until the slices that build its locked looks merge.
 
 ## Not yet specified
 
 - How the phone app shows a project or play that disappeared, and the new pill states. It probably follows the
   web, once the web looks are locked.
 - Whether "Request access" on a locked doc pill (turned down for now) comes back as its own effort.
-- Statement counts and timings for the opt-in project check on a production copy. The rewrite sets the guard
-  numbers once the change list is known.
+- Statement counts and timings for the opt-in project check on a production copy: the spec's Performance plan sets
+  the targets, and slices 02, 04 and 09 report the numbers.
 
 ## Out of scope
 
