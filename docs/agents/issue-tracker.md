@@ -94,11 +94,6 @@ git history, and anything durable it decided is an ADR.
   "No repository yet" and "Attach without deploying" on the wizard's
   Repository step, the early Done screens, and the way back to deploying.
   Wayfinder map charted 2026-10-05; carries the build.
-- `.scratch/auto-plays/` — plays that start by themselves: auto plays
-  composed on a play's settings page (when, if, priority, limits, run on),
-  a per-person run queue, the decisions check as an ordinary play, and
-  `runPlay` in the SDK. Wayfinder map charted 2026-10-08; carries the
-  build. Research findings in `research/`.
 - `.scratch/personal-runners/` — a personal runner on each person's own
   computer: one command adds the computer, Nexul reaches T3 Code through the
   runner's connection instead of a Cloudflare tunnel (ADR 0146), the old

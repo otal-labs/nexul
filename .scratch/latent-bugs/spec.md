@@ -158,3 +158,23 @@ its token, or a host token minted before it was switched off, still calls
 Refuse a switched-off automation's token on every path and close its open
 connections when it is switched off; switching it back on lets the same token
 work again.
+
+## A picked computer for a waiting auto run can't be changed, and a pick can be lost
+
+When an auto run waits because several computers are paired and none is the
+default, its person picks a computer and T3 project from the rail. Once
+picked, the "Pick a computer" button is gone, even if that computer then
+goes offline, so the only way out is to cancel the run. A pick that lands in
+the moment the dispatcher is starting the run can also be lost (the button
+just shows again). Let the person re-pick while the run still waits, and
+make the pick and the dispatcher's start agree on one row state.
+
+## A renamed play doesn't warn about automations calling it by its old name
+
+`runPlay` names a play by its label, so renaming a play breaks every
+automation that still uses the old label; the run fails with a 404 only when
+the automation runs, and `nexul push` doesn't type-check, so the generated
+`PlayNames` union catches it only in the author's editor. Warn on rename
+when an automation's last pushed code names the old label, or have
+`nexul push` type-check when the project has TypeScript set up.
+

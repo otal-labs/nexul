@@ -194,6 +194,18 @@ connections warm, answers permission checks once per request, and reads
 agent lists one page at a time with totals that count every match. Live
 updates refetch only what a change names.
 
+### Auto plays
+
+A play starts by itself when something happens: a ticket becomes unblocked,
+enters a stage, is created, gets a developer or tester, or fails a test, or a
+doc is created or settles after edits. Each auto play is set up on the play's
+Auto plays tab from dropdowns (when, if, priority, limits, whose computer).
+Runs wait in each person's queue, highest priority first, are checked again
+before they start, and a daily cap per ticket pauses loops until someone
+resumes. A ticket shows what is queued, paused, skipped or didn't run. The
+decisions check is now an ordinary play with its own auto play, and
+automations start a play by name with `runPlay`.
+
 ---
 
 ## Now — improving what's built
@@ -254,14 +266,6 @@ repository yet" and "Attach without deploying" as plain choices instead of a
 muted skip, both end on a Done screen that says what was made, and a project
 with a repository waiting to deploy shows the way back to deploying it. The
 map is in `.scratch/project-paths/`.
-
-Planned: **auto plays**. A play starts by itself when something happens:
-a ticket becomes unblocked, enters a stage, fails a test, or a doc settles
-after edits. Each auto play is composed on the play's settings page from
-dropdowns (when, if, priority, limits, whose computer), runs queue per
-person with bugs first if you say so, and a daily cap per ticket stops
-loops. Automations can start a play in code with `runPlay`. The map is in
-`.scratch/auto-plays/`.
 
 ---
 

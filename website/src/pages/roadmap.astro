@@ -6,6 +6,7 @@ type Status = 'in-progress' | 'planned' | 'shipped';
 
 // Newest first within a status; ROADMAP.md holds the same items and statuses.
 const items: { name: string; status: Status; summary: string }[] = [
+	{ name: 'Auto plays', status: 'shipped', summary: 'Plays that start by themselves when a ticket becomes unblocked, changes stage or fails a test, set up from dropdowns on the play, queued per person with bugs first if you say so, and paused by a daily cap.' },
 	{ name: 'Faster everywhere', status: 'shipped', summary: 'The web app starts on less than half the code, the phone stops refetching while you scroll chat, and live updates and agent lists fetch only what changed.' },
 	{ name: 'A new look', status: 'shipped', summary: 'Frosted panels over a soft light field, one ember accent, breadcrumbs and one header on every page, and motion that makes the app feel quick, carried to nexul.io and the phone app.' },
 	{ name: 'Add a computer in one command', status: 'in-progress', summary: 'Install Nexul on your own computer with one command and it sets up T3 Code, pairs it and keeps it paired, with no Cloudflare or domain needed, so your agents run there. On Linux, macOS and Windows.' },
@@ -21,7 +22,6 @@ const items: { name: string; status: Status; summary: string }[] = [
 	{ name: 'Permissions per project, doc and play', status: 'planned', summary: 'Allow, fall back to the role, or deny any permission on a project, doc or play for everyone, a role or one person, and see which rule decided what someone can do.' },
 	{ name: 'Clarify a doc', status: 'planned', summary: 'A client writes what they need, then answers questions about the gaps on the doc page or their phone until nothing is left, and the answers land in the doc.' },
 	{ name: 'Projects before code', status: 'planned', summary: 'Start a project with no repository for a client\'s docs, or attach a repository that isn\'t ready to deploy, as plain choices in the wizard, and deploy it later from the project.' },
-	{ name: 'Auto plays', status: 'planned', summary: 'Plays that start by themselves when a ticket becomes unblocked, changes stage or fails a test, set up from dropdowns on the play, queued per person with bugs first if you say so.' },
 	{ name: 'Call notes', status: 'planned', summary: 'A voice call becomes notes and a summary in the doc, without anyone typing them.' },
 	{ name: 'Semantic search', status: 'planned', summary: 'Find docs and tickets by what they mean, not only by the words they share.' },
 	{ name: 'Runner labels', status: 'planned', summary: 'Route a job to the runners that carry the right labels, not just the right machine.' },
