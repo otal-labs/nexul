@@ -33,6 +33,10 @@ asking the owner anything. This map plans; it builds nothing.
   can hold several roles or none. Projects are opt-in by role or person, and channels and plays stay
   workspace-wide with rules. Per-person rows are wiped on upgrade (a beta, on every install), except a doc
   creator's own rights. Owners fill a one-time "who's in each project" grid.
+- [What the rework touches in the code](issues/02-what-the-rework-touches.md): every member gets the project read
+  that only Restricted members had. One role is assumed across schema, queries, invitations, `/me` and MCP, with
+  no tool headroom. Restricted also hides public channels. On production the wipe deletes 2 rows and keeps the 32
+  creator rows.
 
 ## Not yet specified
 
