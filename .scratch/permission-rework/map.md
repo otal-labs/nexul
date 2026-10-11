@@ -46,6 +46,10 @@ asking the owner anything. This map plans; it builds nothing.
 - [The one-time "who's in each project" setup](issues/05-the-one-time-project-setup.md): one page with a projects ×
   roles tick grid ("Every project" lead row, People column), then a public channels grid ticked "can see", and one
   Finish. A non-Owner gets an empty state until then. Afterwards it is the workspace's Access page, `/:workspace/access`.
+- [Build order and the release that wipes](issues/06-build-order-and-release.md): access-neutral prep (sources,
+  role targets, role sets, batched project and channel reads, the doc and play panel, the row menu) lands on master
+  first; everything that changes access is built on a short `permission-switch` branch and lands as one squash PR
+  after a box upgrade test; folders, stacks, channel rules, play See, computers and instance areas follow.
 
 ## Not yet specified
 
