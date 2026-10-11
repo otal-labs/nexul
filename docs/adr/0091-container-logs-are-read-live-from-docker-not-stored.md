@@ -31,4 +31,8 @@ the values Nexul holds, so a secret the app derives or fetches itself is shown.
 Searchable history, shipping container output into the install's OpenObserve, is built when someone needs to search
 across restarts or redeploys, or an automation needs to react to a log line.
 
+A paired computer's personal runner (ADR 0146) answers the same frames under the same limits for its owner's own
+containers once its facts report Docker: found by computer instead of machine, checked by ownership instead of
+`stacks:logs`, and unmasked, since Nexul holds no env for them.
+
 Decided 2026-09-30.

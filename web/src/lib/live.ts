@@ -9,8 +9,8 @@ export const buildLiveURL = (token: string) => {
 };
 
 // Same session-token query auth as the events socket; the tail is how many past lines arrive before the follow.
-export const buildLogsURL = (token: string, stackId: string, service: string, tail: number) =>
-  `${resolveWSBase()}/ws/stacks/${stackId}/services/${encodeURIComponent(service)}/logs?tail=${tail}&token=${encodeURIComponent(token)}`;
+export const buildLogsURL = (token: string, path: string, tail: number) =>
+  `${resolveWSBase()}/ws${path}?tail=${tail}&token=${encodeURIComponent(token)}`;
 
 // What a follower gets beside each frame: the query cache, and the router as it stands when the frame lands.
 export interface Live {

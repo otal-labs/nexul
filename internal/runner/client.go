@@ -72,6 +72,9 @@ type Client struct {
 	findT3 func(home string) string
 	// t3 keeps a personal runner's T3 Code background service running.
 	t3 *t3Keeper
+	// dockerFacts reads Docker on the computer; dockerAvailable is what the last facts report said.
+	dockerFacts     func(ctx context.Context) *DockerFacts
+	dockerAvailable atomic.Bool
 }
 
 // NewClient wires the runner client with sane defaults for unset durations.
@@ -94,7 +97,7 @@ func NewClient(cfg ClientConfig) *Client {
 	if cfg.BackoffMax <= 0 {
 		cfg.BackoffMax = 30 * time.Second
 	}
-	c := &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext, findT3: findT3}
+	c := &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}, dial: (&net.Dialer{}).DialContext, findT3: findT3, dockerFacts: dockerFacts}
 	c.t3 = newT3Keeper(c.t3Probe, c.restartT3, cfg.Logger)
 	return c
 }
@@ -182,7 +185,7 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 
 // handleFrame acts on one server frame; streamCtx outlives this connection, ctx does not.
 func (c *Client) handleFrame(streamCtx, ctx context.Context, conn *websocket.Conn, frame Frame) {
-	if reply, refused := refusal(frame); refused && c.cfg.Personal {
+	if reply, refused := refusal(frame); refused && c.cfg.Personal && !c.servesDocker(frame) {
 		c.log.Warn("personal runner refused a frame", "runner", c.cfg.Name, "type", frame.Type)
 		c.sendFrame(ctx, conn, reply)
 		return

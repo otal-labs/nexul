@@ -61,15 +61,22 @@ const (
 
 // Facts is what a personal runner reports about its computer.
 type Facts struct {
-	Hostname      string  `json:"hostname,omitempty" jsonschema:"The computer's hostname."`
-	OS            string  `json:"os,omitempty" jsonschema:"The computer's operating system as Go names it, for example linux, darwin or windows."`
-	Arch          string  `json:"arch,omitempty" jsonschema:"The computer's architecture as Go names it, for example amd64 or arm64."`
-	RunnerVersion string  `json:"runner_version,omitempty" jsonschema:"The personal runner's own version."`
-	T3            T3Facts `json:"t3"`
-	Cloudflared   string  `json:"cloudflared,omitempty" jsonschema:"The version of cloudflared, sent only when it is installed."`
-	GitName       string  `json:"git_name,omitempty" jsonschema:"git's global user.name for the person the runner runs as."`
-	GitEmail      string  `json:"git_email,omitempty" jsonschema:"git's global user.email for the person the runner runs as."`
-	FreeDiskBytes int64   `json:"free_disk_bytes,omitempty" jsonschema:"Free disk space in the person's home folder, in bytes."`
+	Hostname      string       `json:"hostname,omitempty" jsonschema:"The computer's hostname."`
+	OS            string       `json:"os,omitempty" jsonschema:"The computer's operating system as Go names it, for example linux, darwin or windows."`
+	Arch          string       `json:"arch,omitempty" jsonschema:"The computer's architecture as Go names it, for example amd64 or arm64."`
+	RunnerVersion string       `json:"runner_version,omitempty" jsonschema:"The personal runner's own version."`
+	T3            T3Facts      `json:"t3"`
+	Cloudflared   string       `json:"cloudflared,omitempty" jsonschema:"The version of cloudflared, sent only when it is installed."`
+	GitName       string       `json:"git_name,omitempty" jsonschema:"git's global user.name for the person the runner runs as."`
+	GitEmail      string       `json:"git_email,omitempty" jsonschema:"git's global user.email for the person the runner runs as."`
+	FreeDiskBytes int64        `json:"free_disk_bytes,omitempty" jsonschema:"Free disk space in the person's home folder, in bytes."`
+	Docker        *DockerFacts `json:"docker,omitempty" jsonschema:"Docker as the person the runner runs as reaches it; absent from runners older than container logs."`
+}
+
+// DockerFacts is Docker on the computer as its runner found it.
+type DockerFacts struct {
+	Available bool   `json:"available" jsonschema:"Whether docker version reached a Docker daemon as the person the runner runs as."`
+	Version   string `json:"version,omitempty" jsonschema:"The Docker daemon's version; sent while available."`
 }
 
 // T3Facts is T3 Code on the computer as its runner found it.
@@ -182,7 +189,9 @@ func (c *Client) facts(ctx context.Context) *Facts {
 		Cloudflared: cloudflaredVersion(commandLine(ctx, "cloudflared", "--version")),
 		GitName:     commandLine(ctx, "git", "config", "--global", "user.name"),
 		GitEmail:    commandLine(ctx, "git", "config", "--global", "user.email"),
+		Docker:      c.dockerFacts(ctx),
 	}
+	c.dockerAvailable.Store(f.Docker.Available)
 	if home, err := os.UserHomeDir(); err == nil {
 		f.FreeDiskBytes, err = freeDisk(home)
 		if err != nil {
@@ -190,6 +199,12 @@ func (c *Client) facts(ctx context.Context) *Facts {
 		}
 	}
 	return f
+}
+
+// dockerFacts asks the Docker daemon its version; a computer whose daemon does not answer has no Docker to offer.
+func dockerFacts(ctx context.Context) *DockerFacts {
+	v := commandLine(ctx, "docker", "version", "--format", "{{.Server.Version}}")
+	return &DockerFacts{Available: v != "", Version: v}
 }
 
 // t3Install is how T3 Code is installed: run by its background service, the desktop app's launcher in home, or the

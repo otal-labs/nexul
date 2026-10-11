@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { buildLiveURL, buildLogsURL } from "@/lib/live";
+import { stackLogSource } from "@/models/ContainerLog";
 
 const originalWS = import.meta.env.VITE_WS_URL;
 
@@ -26,8 +27,8 @@ describe("buildLiveURL", () => {
 });
 
 describe("buildLogsURL", () => {
-  it("addresses the service's logs socket with the tail and the token", () => {
-    expect(buildLogsURL("tok/ens", "s-1", "web app", 20)).toBe(
+  it("addresses the source's logs socket with the tail and the token", () => {
+    expect(buildLogsURL("tok/ens", stackLogSource("s-1", "web app").path, 20)).toBe(
       "ws://localhost:8080/ws/stacks/s-1/services/web%20app/logs?tail=20&token=tok%2Fens",
     );
   });

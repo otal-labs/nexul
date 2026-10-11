@@ -5,17 +5,16 @@ import { LogBlock } from "@/components/logs/LogBlock";
 import { LogToolbar } from "@/components/logs/LogToolbar";
 import { MessageScrollerProvider } from "@/components/ui/message-scroller";
 import { useContainerLogs } from "@/hooks/ContainerLogHooks";
-import type { ContainerLogLine, LogFilter } from "@/models/ContainerLog";
+import type { ContainerLogLine, ContainerLogSource, LogFilter } from "@/models/ContainerLog";
 import { containerLogToText, emptyLogMessage, filterLogLines, saveTextFile } from "@/utils/ContainerLogUtility";
 
 interface LogsViewProps {
-  stackId: string;
-  service: string;
+  source: ContainerLogSource;
 }
 
 // Pause freezes what is on screen while the stream keeps buffering; resuming shows everything that arrived.
-export const LogsView = ({ stackId, service }: LogsViewProps) => {
-  const logs = useContainerLogs(stackId, service);
+export const LogsView = ({ source }: LogsViewProps) => {
+  const logs = useContainerLogs(source.path);
   const [frozen, setFrozen] = useState<ContainerLogLine[] | null>(null);
   const [filter, setFilter] = useState<LogFilter>("all");
 
@@ -37,10 +36,10 @@ export const LogsView = ({ stackId, service }: LogsViewProps) => {
           paused={frozen !== null}
           onPausedChange={(paused) => setFrozen(paused ? logs.lines : null)}
           onCopy={() => void copy()}
-          onDownload={() => saveTextFile(`${service}.log`, containerLogToText(shown))}
+          onDownload={() => saveTextFile(`${source.name}.log`, containerLogToText(shown))}
           empty={shown.length === 0}
         />
-        <LogBlock lines={shown} empty={emptyLogMessage(logs, filter)} onCopy={() => void copy()} />
+        <LogBlock lines={shown} empty={emptyLogMessage(logs, filter, source.forbidden)} onCopy={() => void copy()} />
       </div>
     </MessageScrollerProvider>
   );

@@ -55,6 +55,7 @@ type Facts struct {
 	GitName       string            `json:"git_name,omitempty"`
 	GitEmail      string            `json:"git_email,omitempty"`
 	FreeDiskBytes int64             `json:"free_disk_bytes,omitempty"`
+	Docker        *DockerFacts      `json:"docker,omitempty"`
 	Providers     []ProviderFacts   `json:"providers"`
 	Projects      []harness.Project `json:"projects"`
 }
@@ -70,6 +71,12 @@ type T3Facts struct {
 	// RestartedAt is when the runner last restarted T3 Code's background service; RestartError why it could not.
 	RestartedAt  *time.Time `json:"restarted_at,omitempty"`
 	RestartError string     `json:"restart_error,omitempty"`
+}
+
+// DockerFacts is Docker on the computer as its runner found it; nil from a runner older than container logs.
+type DockerFacts struct {
+	Available bool   `json:"available"`
+	Version   string `json:"version,omitempty"`
 }
 
 // t3Answering is the T3Facts state of a T3 Code answering on the computer's loopback.

@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strconv"
 	"time"
-	"unicode/utf8"
 
+	"github.com/otal-labs/nexul/internal/platform/containerlog"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
@@ -20,9 +20,6 @@ const (
 	defaultLogLines = 200
 	maxLogLines     = 1000
 )
-
-// maxLogLineChars cuts a longer container log line, so one runaway line never floods the context.
-const maxLogLineChars = 2000
 
 // recentDeploys is how many of a stack's newest deploys stack_get carries.
 const recentDeploys = 10
@@ -204,17 +201,8 @@ func serviceLogsFor(ctx context.Context, s *Service, stack *Stack, in stackLogsI
 	if err != nil {
 		return nil, err
 	}
-	for i := range got {
-		got[i].Line = cutLine(got[i].Line)
-	}
+	containerlog.CutForAgent(got)
 	return &serviceLogs{Service: in.Service, Lines: got}, nil
-}
-
-func cutLine(line string) string {
-	if utf8.RuneCountInString(line) <= maxLogLineChars {
-		return line
-	}
-	return string([]rune(line)[:maxLogLineChars]) + "…"
 }
 
 func stackDetailFor(ctx context.Context, s *Service, stack *Stack) (stackDetail, error) {

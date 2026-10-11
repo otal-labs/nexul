@@ -127,8 +127,8 @@ _Avoid_: Device, host, runner (a runner builds and deploys)
 
 **Computer facts**:
 What a paired computer's personal runner and harness last reported about it:
-OS, T3 Code's state, port and version, provider versions, models and sign-in,
-T3 projects, git identity, free disk. A snapshot, stored only when it changes,
+OS, T3 Code's state, port and version, Docker, provider versions, models and
+sign-in, T3 projects, git identity, free disk. A snapshot, stored only when it changes,
 and its owner's alone: no workspace Owner and no one the computer is shared
 with reads it.
 _Avoid_: inventory, telemetry, specs
@@ -525,7 +525,9 @@ What a service's container prints on stdout and stderr, each line with its
 timestamp and stream, read live from Docker through the machine's runner and
 never stored in Nexul: a snapshot of the last lines, or a live tail that
 follows new ones. The stack's own env values are masked before a line leaves
-the server. Gated by `stacks:logs`.
+the server. Gated by `stacks:logs`. A paired computer with Docker offers the
+same for its own containers through its personal runner, to its owner only
+and unmasked; those containers are not services.
 _Avoid_: Deploy log (the build and start output Nexul stores per deploy),
 service logs (Nexul's own, which OpenObserve holds)
 

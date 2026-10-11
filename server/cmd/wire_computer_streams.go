@@ -11,6 +11,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/dns/cloudflare"
 	"github.com/otal-labs/nexul/internal/pairing"
+	"github.com/otal-labs/nexul/internal/platform/containerlog"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/runner"
@@ -95,6 +96,36 @@ func (r *runnerComputers) DialComputer(ctx context.Context, computerID string) (
 		return nil, apperrs.Retryable(errors.New("the runner handler has not started"))
 	}
 	return h.DialComputer(ctx, computerID)
+}
+
+// ComputerContainers is pairing's seam for the containers on a computer, listed by its runner.
+func (r *runnerComputers) ComputerContainers(ctx context.Context, computerID string) ([]pairing.Container, error) {
+	h := r.handler.Load()
+	if h == nil {
+		return nil, apperrs.Retryable(errors.New("the runner handler has not started"))
+	}
+	found, err := h.ComputerContainers(ctx, computerID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]pairing.Container, 0, len(found))
+	for _, c := range found {
+		out = append(out, pairing.Container{Name: c.Name, Image: c.Image, Status: c.Status})
+	}
+	return out, nil
+}
+
+// OpenComputerLogs is pairing's seam for one container's logs on a computer, streamed by its runner.
+func (r *runnerComputers) OpenComputerLogs(ctx context.Context, computerID, container string, tail int, follow bool) (containerlog.Feed, error) {
+	h := r.handler.Load()
+	if h == nil {
+		return nil, apperrs.Retryable(errors.New("the runner handler has not started"))
+	}
+	feed, err := h.OpenComputerLogs(ctx, computerID, container, tail, follow)
+	if err != nil {
+		return nil, err
+	}
+	return runnerLogFeed{feed: feed}, nil
 }
 
 // harnessHTTPClient is both T3 clients' client: a computer's address dials through its runner, the rest as before.

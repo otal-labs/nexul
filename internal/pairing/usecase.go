@@ -48,26 +48,29 @@ type Config struct {
 	Projects ProjectGate
 	// Runners mints a computer's personal runner code and reads its runner; nil leaves only the old pairing paths.
 	Runners Runners
+	// Containers reads a computer's Docker containers and their logs through its runner; nil serves none.
+	Containers Containers
 }
 
 // Service is the pairing use-case layer (ADR 0019); bearer tokens never leave it except encrypted at rest.
 type Service struct {
-	repo      Repo
-	harnesses harness.Registry
-	key       []byte
-	now       func() time.Time
-	changed   func(userID string)
-	tunnels   Tunnels
-	bus       Publisher
-	tokens    MCPTokens
-	instance  InstanceSettings
-	projects  ProjectGate
-	runners   Runners
-	watchMu   sync.Mutex
-	watching  map[string]tunnelWatch
-	setupMu   sync.Mutex
-	settingUp map[string]bool
-	setupRuns sync.WaitGroup
+	repo       Repo
+	harnesses  harness.Registry
+	key        []byte
+	now        func() time.Time
+	changed    func(userID string)
+	tunnels    Tunnels
+	bus        Publisher
+	tokens     MCPTokens
+	instance   InstanceSettings
+	projects   ProjectGate
+	runners    Runners
+	containers Containers
+	watchMu    sync.Mutex
+	watching   map[string]tunnelWatch
+	setupMu    sync.Mutex
+	settingUp  map[string]bool
+	setupRuns  sync.WaitGroup
 	// pairMu guards pairFailures: why each computer's last pairing through its runner failed.
 	pairMu       sync.Mutex
 	pairFailures map[string]string
@@ -80,7 +83,7 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
-		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, watching: map[string]tunnelWatch{}, settingUp: map[string]bool{},
+		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, projects: cfg.Projects, runners: cfg.Runners, containers: cfg.Containers, watching: map[string]tunnelWatch{}, settingUp: map[string]bool{},
 		pairFailures: map[string]string{},
 	}
 }

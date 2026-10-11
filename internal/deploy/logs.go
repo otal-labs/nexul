@@ -2,39 +2,29 @@ package deploy
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"slices"
 	"strings"
-	"time"
 	"unicode/utf8"
 
+	"github.com/otal-labs/nexul/internal/platform/containerlog"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // DefaultLogTail is how many lines a container log read starts from when the caller names none.
-const DefaultLogTail = 200
+const DefaultLogTail = containerlog.DefaultTail
 
 const (
-	logMask            = "••••"
-	logMaskMinLen      = 6
-	logSnapshotTimeout = 30 * time.Second
+	logMask       = "••••"
+	logMaskMinLen = 6
 )
 
-// ContainerLogLine is one line a service's container printed; mirrors the runner's so deploy never imports it (ADR 0017).
-type ContainerLogLine struct {
-	TS     string `json:"ts"`
-	Stream string `json:"stream"`
-	Line   string `json:"line"`
-}
+// ContainerLogLine is one line a service's container printed.
+type ContainerLogLine = containerlog.Line
 
 // LogFeed is one open container log stream: Next returns the lines since the last call, io.EOF once it ended.
-type LogFeed interface {
-	Next(ctx context.Context) ([]ContainerLogLine, error)
-	Close()
-}
+type LogFeed = containerlog.Feed
 
 // LogSource is the runner seam that streams a container's logs from its machine (ADR 0091).
 type LogSource interface {
@@ -69,26 +59,12 @@ func (s *Service) ServiceLogs(ctx context.Context, stackID, service string, tail
 
 // ServiceLogSnapshot reads the last tail lines of a service's container without following them.
 func (s *Service) ServiceLogSnapshot(ctx context.Context, stackID, service string, tail int) ([]ContainerLogLine, error) {
-	ctx, cancel := context.WithTimeout(ctx, logSnapshotTimeout)
-	defer cancel()
-	feed, err := s.ServiceLogs(ctx, stackID, service, tail, false)
-	if err != nil {
-		return nil, err
-	}
-	defer feed.Close()
-	out := []ContainerLogLine{}
-	for {
-		lines, err := feed.Next(ctx)
-		if errors.Is(err, io.EOF) {
-			return out, nil
-		}
-		if errors.Is(err, context.DeadlineExceeded) {
-			return nil, fmt.Errorf("%w: the runner did not send the logs of %s in time", apperrs.ErrRetryable, service)
-		}
-		if err != nil {
-			return nil, fmt.Errorf("logs of %s: %w", service, err)
-		}
-		out = append(out, lines...)
+	return containerlog.Snapshot(ctx, s.serviceLogOpener(stackID, service), tail, service)
+}
+
+func (s *Service) serviceLogOpener(stackID, service string) containerlog.Open {
+	return func(ctx context.Context, tail int, follow bool) (containerlog.Feed, error) {
+		return s.ServiceLogs(ctx, stackID, service, tail, follow)
 	}
 }
 

@@ -247,6 +247,7 @@ func TestDispatch_NeverPicksAPersonalRunner(t *testing.T) {
 	assert.Equal(t, FrameAssignBuild, nextFrame(t, frames).Type, "a deploy runner takes the same job")
 }
 
+// TestPersonalRunner_RefusesDeployFrames: on a computer without Docker, the container frames are refused too.
 func TestPersonalRunner_RefusesDeployFrames(t *testing.T) {
 	sent := []Frame{
 		{Type: FrameAssignBuild, ID: "b1", Repo: "org/app", Ref: "main"},
@@ -262,8 +263,8 @@ func TestPersonalRunner_RefusesDeployFrames(t *testing.T) {
 		{Type: FrameDeployResult, ID: "d1", Status: DeployStatusFailed, Error: reason},
 		{Type: FrameUpgradeResult, ID: "u1", Status: UpgradeStatusFailed, Error: reason},
 		{Type: FrameJoinNetworksResult, GatewayContainer: "gw", Status: BuildStatusFailed, Error: reason},
-		{Type: FrameDiscoverResult, ID: "x1", Error: reason},
-		{Type: FrameLogsEnd, ID: "l1", Error: reason},
+		{Type: FrameDiscoverResult, ID: "x1", Error: noDocker},
+		{Type: FrameLogsEnd, ID: "l1", Error: noDocker},
 	}
 	answers := make(chan []Frame, 1)
 	srv := wsTestServer(t, func(ctx context.Context, conn *websocket.Conn) {

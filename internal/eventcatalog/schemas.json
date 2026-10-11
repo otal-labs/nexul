@@ -5568,6 +5568,23 @@
           "free_disk_bytes": {
             "type": "integer",
             "description": "Free disk space in the person's home folder, in bytes."
+          },
+          "docker": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean",
+                "description": "Whether docker version reached a Docker daemon as the person the runner runs as."
+              },
+              "version": {
+                "type": "string",
+                "description": "The Docker daemon's version; sent while available."
+              }
+            },
+            "description": "Docker as the person the runner runs as reaches it; absent from runners older than container logs.",
+            "required": [
+              "available"
+            ]
           }
         },
         "required": [

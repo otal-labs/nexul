@@ -247,6 +247,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Instance:           dnsSettingsAdapter{store.Settings},
 		Projects:           accessSvc,
 		Runners:            computers,
+		Containers:         computers,
 	})
 	presenceKeeper = presence.New(presence.Config{
 		Sessions:  pairingSvc.ActiveSessions,

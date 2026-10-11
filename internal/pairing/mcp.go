@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/harness"
+	"github.com/otal-labs/nexul/internal/platform/containerlog"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/logging"
@@ -25,8 +26,20 @@ func MCPTools(s *Service) []mcptool.Tool {
 }
 
 type computerListIn struct {
-	ID string `json:"id,omitempty" jsonschema:"One computer's id, to read it alone with its tunnel's live status. Omit to list every computer you own."`
+	ID            string                   `json:"id,omitempty" jsonschema:"One computer's id, to read it alone with its tunnel's live status. Omit to list every computer you own."`
+	ContainerLogs *computerContainerLogsIn `json:"container_logs,omitzero" jsonschema:"With id only: also return the last lines one Docker container on that computer printed. Omit it for the computer alone."`
 	mcptool.PageArgs
+}
+
+type computerContainerLogsIn struct {
+	Container string `json:"container" jsonschema:"The container's name, from this computer's containers, for example shop-web-1."`
+	Tail      int    `json:"tail,omitzero" jsonschema:"How many of the last lines to return, 1 to 1000. Defaults to 200."`
+}
+
+// computerContainerLogs is the last lines one container on the computer printed.
+type computerContainerLogs struct {
+	Container string              `json:"container"`
+	Lines     []containerlog.Line `json:"lines"`
 }
 
 type computerCreateIn struct {
@@ -71,24 +84,27 @@ type computerSetupUpdateIn struct {
 
 // computerResult is a computer as an agent reads it: no bearer token, and its setup and MCP token only on a list.
 type computerResult struct {
-	ID                string            `json:"id"`
-	Name              string            `json:"name"`
-	Kind              harness.Kind      `json:"kind"`
-	ServerURL         string            `json:"server_url"`
-	Paired            bool              `json:"paired"`
-	SessionExpiresAt  *time.Time        `json:"session_expires_at,omitempty"`
-	HarnessVersion    string            `json:"harness_version,omitempty"`
-	Tunnel            *ComputerTunnel   `json:"tunnel,omitempty"`
-	TunnelStatus      *TunnelStatus     `json:"tunnel_status,omitempty"`
-	Runner            *ComputerRunner   `json:"runner,omitempty"`
-	PairError         string            `json:"pair_error,omitempty"`
-	TunnelStatusError string            `json:"tunnel_status_error,omitempty"`
-	Setup             *Setup            `json:"setup,omitempty"`
-	MCPToken          *MCPToken         `json:"mcp_token,omitempty"`
-	T3Projects        []harness.Project `json:"t3_projects,omitempty"`
-	T3ProjectsError   string            `json:"t3_projects_error,omitempty"`
-	Facts             *Facts            `json:"facts,omitempty"`
-	FactsAt           *time.Time        `json:"facts_at,omitempty"`
+	ID                string                 `json:"id"`
+	Name              string                 `json:"name"`
+	Kind              harness.Kind           `json:"kind"`
+	ServerURL         string                 `json:"server_url"`
+	Paired            bool                   `json:"paired"`
+	SessionExpiresAt  *time.Time             `json:"session_expires_at,omitempty"`
+	HarnessVersion    string                 `json:"harness_version,omitempty"`
+	Tunnel            *ComputerTunnel        `json:"tunnel,omitempty"`
+	TunnelStatus      *TunnelStatus          `json:"tunnel_status,omitempty"`
+	Runner            *ComputerRunner        `json:"runner,omitempty"`
+	PairError         string                 `json:"pair_error,omitempty"`
+	TunnelStatusError string                 `json:"tunnel_status_error,omitempty"`
+	Setup             *Setup                 `json:"setup,omitempty"`
+	MCPToken          *MCPToken              `json:"mcp_token,omitempty"`
+	T3Projects        []harness.Project      `json:"t3_projects,omitempty"`
+	T3ProjectsError   string                 `json:"t3_projects_error,omitempty"`
+	Facts             *Facts                 `json:"facts,omitempty"`
+	FactsAt           *time.Time             `json:"facts_at,omitempty"`
+	Containers        []Container            `json:"containers,omitempty"`
+	ContainersError   string                 `json:"containers_error,omitempty"`
+	ContainerLogs     *computerContainerLogs `json:"container_logs,omitempty"`
 }
 
 func toComputerResult(c Computer) computerResult {
@@ -110,7 +126,10 @@ func computerListTool(s *Service) mcptool.Tool {
 			"says why its last pairing through its Nexul app failed; one without setup.confirmed_at needs computer_setup_run "+
 			"before agent work can use it. A computer with a runner carries its facts, which only you can read: its system, git "+
 			"name and email, free disk, T3 Code's state, install and port, and the providers (version, models, signed in or "+
-			"not) and projects T3 Code last listed; facts_at is when they last changed.",
+			"not) and projects T3 Code last listed; facts_at is when they last changed. One computer whose facts show docker "+
+			"available also lists its Docker containers (name, image, status); pass container_logs with a container's name "+
+			"to read its last lines (200 by default, at most 1000, each cut at 2000 characters), which needs the computer's "+
+			"Nexul app connected.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in computerListIn) (any, error) {
 			userID := mcpActorID(ctx)
@@ -124,6 +143,9 @@ func computerListTool(s *Service) mcptool.Tool {
 			if in.ID != "" && len(computers) == 0 {
 				return nil, fmt.Errorf("%w: computer %s is not one of yours; computer_list without id lists them", apperrs.ErrNotFound, in.ID)
 			}
+			if in.ID == "" && in.ContainerLogs != nil {
+				return nil, fmt.Errorf("%w: container_logs needs the computer's id", apperrs.ErrInvalid)
+			}
 			out := make([]computerResult, 0, len(computers))
 			for _, c := range computers {
 				r, err := listedComputer(ctx, s, userID, c, in.ID != "")
@@ -131,6 +153,11 @@ func computerListTool(s *Service) mcptool.Tool {
 					return nil, err
 				}
 				out = append(out, r)
+			}
+			if in.ContainerLogs != nil {
+				if out[0].ContainerLogs, err = containerLogsFor(ctx, s, userID, computers[0], *in.ContainerLogs); err != nil {
+					return nil, err
+				}
 			}
 			return mcptool.Paginate(out, in.PageArgs), nil
 		})
@@ -152,6 +179,9 @@ func listedComputer(ctx context.Context, s *Service, userID string, c Computer, 
 	}
 	if r.Paired {
 		r.T3Projects, r.T3ProjectsError = listedT3Projects(ctx, s, userID, c.ID)
+	}
+	if c.Facts != nil && c.Facts.Docker != nil && c.Facts.Docker.Available {
+		r.Containers, r.ContainersError = listedContainers(ctx, s, userID, c)
 	}
 	if c.Tunnel == nil {
 		return r, nil
@@ -178,6 +208,34 @@ func listedT3Projects(ctx context.Context, s *Service, userID, computerID string
 		return nil, "T3 Code on this computer didn't list its projects; check it is running, then ask again."
 	}
 	return projects, ""
+}
+
+// listedContainers asks the computer's runner for its containers; like the T3 projects, a failure is a line, not the call's.
+func listedContainers(ctx context.Context, s *Service, userID string, c Computer) ([]Container, string) {
+	containers, err := s.ListContainers(ctx, userID, c.ID)
+	if err != nil {
+		logging.FromCtx(ctx).Warn("computer containers unavailable", "computer_id", c.ID, "err", err)
+		return nil, fmt.Sprintf("%s didn't list its containers; check its Nexul app is connected, then ask again.", c.Name)
+	}
+	return containers, ""
+}
+
+func containerLogsFor(ctx context.Context, s *Service, userID string, c Computer, in computerContainerLogsIn) (*computerContainerLogs, error) {
+	tail := in.Tail
+	if tail < 1 {
+		tail = containerlog.DefaultTail
+	}
+	lines, err := s.ContainerLogSnapshot(ctx, userID, c.ID, in.Container, tail)
+	if errors.Is(err, apperrs.ErrRetryable) {
+		// Retryable is hidden from the model as an internal error; the offline case is the one it can act on.
+		return nil, fmt.Errorf("%w: the logs of %s are unavailable, %s's Nexul app is offline or did not answer; retry once it reconnects",
+			apperrs.ErrConflict, in.Container, c.Name)
+	}
+	if err != nil {
+		return nil, err
+	}
+	containerlog.CutForAgent(lines)
+	return &computerContainerLogs{Container: in.Container, Lines: lines}, nil
 }
 
 // computerCreateResult is a computer waiting for its runner, with the command that installs the runner there.

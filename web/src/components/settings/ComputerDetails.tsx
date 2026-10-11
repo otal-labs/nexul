@@ -1,4 +1,5 @@
 import { ComputerFact as Fact } from "@/components/settings/ComputerFact";
+import { ComputerContainers } from "@/components/settings/ComputerContainers";
 import { ComputerFactRows } from "@/components/settings/ComputerFactRows";
 import { ComputerMCPToken } from "@/components/settings/ComputerMCPToken";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
@@ -100,6 +101,7 @@ export const ComputerDetails = ({ computer, setup }: ComputerDetailsProps) => {
         </Fact>
       )}
       {computer.facts && <ComputerFactRows facts={computer.facts} factsAt={computer.facts_at} />}
+      {computer.facts?.docker?.available && <ComputerContainers computerId={computer.id} dockerVersion={computer.facts.docker.version} />}
       <Fact label="MCP token">
         <ComputerMCPToken computerId={computer.id} />
       </Fact>
