@@ -45,8 +45,9 @@ vuln:
 	go tool govulncheck ./...
 
 # The storage package skips -race: it instruments the pure-Go SQLite engine (24s becomes ~10min); server/cmd races storage.
+# ponytail: server/cmd under -race outgrew 20m; split that package before raising this again.
 coverage:
-	go test -race -timeout 20m -coverprofile=coverage.race.out -covermode=atomic $$(go list ./... | sed '/\/internal\/platform\/storage$$/d')
+	go test -race -timeout 40m -coverprofile=coverage.race.out -covermode=atomic $$(go list ./... | sed '/\/internal\/platform\/storage$$/d')
 	go test -coverprofile=coverage.storage.out -covermode=atomic ./internal/platform/storage/
 	cat coverage.race.out coverage.storage.out > coverage.out
 	LC_ALL=C awk 'BEGIN { print "mode: atomic" } /^mode:/ { next } $$1 ~ /\/cmd\/|\/testutil\/|\/sqlcgen\/|\/t3rpctest\// { next } { print }' coverage.out > coverage.filtered.out
