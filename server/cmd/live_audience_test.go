@@ -70,7 +70,7 @@ func TestLiveAudience_FramesFollowTheEntitysRead(t *testing.T) {
 		{deploy.TopicStackUpdated, deploy.StackEvent{Stack: *stack}, map[string]bool{uReader: true, uPlain: false}},
 		{auth.TopicSessionCreated, auth.SessionChangedEvent{UserID: uPlain}, map[string]bool{uPlain: true, uOwner: false}},
 		{tenancy.TopicWorkspaceUpdated, tenancy.WorkspaceEvent{WorkspaceID: "workspace-default", Name: "Acme", Slug: "acme"}, map[string]bool{uOwner: true, uPlain: true, uOutsider: false}},
-		{access.TopicGrantChanged, access.GrantEvent{ResourceType: "doc", ResourceID: "doc-1", UserID: uPlain}, map[string]bool{uPlain: true, uOwner: false, uOutsider: false}},
+		{access.TopicGrantChanged, access.GrantEvent{ResourceType: "doc", ResourceID: "doc-gone", UserID: uPlain}, map[string]bool{uPlain: true, uOwner: false, uOutsider: false}},
 		{roles.TopicUpdated, roles.RoleEvent{RoleID: "role-1", WorkspaceID: "workspace-default"}, map[string]bool{uOwner: true, uPlain: true, uOutsider: false}},
 		{docs.TopicFolderCreated, docs.FolderEvent{Folder: docs.Folder{ID: "f-1", ProjectID: "project-general", Name: "GetSource"}}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
 		{memories.TopicUpdated, memories.UpdatedEvent{Memory: memories.MemoryRef{ID: "memory-1", WorkspaceID: "workspace-default", ProjectID: "project-general"}}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
@@ -85,6 +85,33 @@ func TestLiveAudience_FramesFollowTheEntitysRead(t *testing.T) {
 		require.NoError(t, err)
 		for user, want := range tc.want {
 			assert.Equal(t, want, a.allows(as(user), tc.topic, json.RawMessage(raw)), "%s as %s", tc.topic, user)
+		}
+	}
+}
+
+// TestLiveAudience_GrantFramesReachWhoManagesTheRules: a rule change on a doc or play reaches the person it names and
+// whoever may change that entity's rules, so an open permissions panel follows it, and nobody else.
+func TestLiveAudience_GrantFramesReachWhoManagesTheRules(t *testing.T) {
+	f := newPermFixture(t)
+	ctx := t.Context()
+	now := time.Now()
+	require.NoError(t, f.store.Plays.Create(ctx, &plays.Play{ID: "play-rules", WorkspaceID: "workspace-default", Label: "Ship it", Type: plays.TypeDoc,
+		Instructions: "Do it.", Enabled: true, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}))
+	require.NoError(t, f.store.Access.Set(ctx, "doc", f.doc, uReader, grant("permissions:write"), nil))
+	require.NoError(t, f.store.Access.Set(ctx, "play", "play-rules", uWriter, grant("plays:write"), nil))
+	a := liveAudience{access: f.svc.accessSvc}
+	cases := []struct {
+		payload access.GrantEvent
+		want    map[string]bool
+	}{
+		{access.GrantEvent{ResourceType: "doc", ResourceID: f.doc, UserID: uPlain}, map[string]bool{uPlain: true, uOwner: true, uReader: true, uWriter: false, uOutsider: false}},
+		{access.GrantEvent{ResourceType: "play", ResourceID: "play-rules", UserID: uPlain}, map[string]bool{uPlain: true, uOwner: true, uWriter: true, uReader: false, uOutsider: false}},
+	}
+	for _, tc := range cases {
+		raw, err := json.Marshal(tc.payload)
+		require.NoError(t, err)
+		for user, want := range tc.want {
+			assert.Equal(t, want, a.allows(as(user), access.TopicGrantChanged, json.RawMessage(raw)), "%s %s as %s", tc.payload.ResourceType, tc.payload.ResourceID, user)
 		}
 	}
 }

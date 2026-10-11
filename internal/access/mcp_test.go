@@ -15,11 +15,11 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// newGrantsHarness gives "owner" the manage bit on doc-1 and play-1, and nothing to "alice".
+// newGrantsHarness gives "owner" a creator's rule on doc-1 and the manage bit on play-1, and nothing to "alice".
 func newGrantsHarness(t *testing.T) (*Service, *fakeRepo) {
 	t.Helper()
 	svc, repo, _ := newAccessHarness()
-	setOverwrite(repo, resourceTypeDoc, "doc-1", "owner", permissions.SetOf(permissions.PermissionsWrite))
+	setOverwrite(repo, resourceTypeDoc, "doc-1", "owner", permissions.CreatorGrant)
 	setOverwrite(repo, resourceTypePlay, "play-1", "owner", permissions.SetOf(permissions.PlaysWrite))
 	return svc, repo
 }
@@ -104,6 +104,26 @@ func TestGrantUpdate_OnlyTheNamedActionsChange(t *testing.T) {
 	assert.Equal(t, permissions.SetOf(permissions.DocsRead, permissions.DocsDelete), g.Allow, "revoking one action keeps the rest")
 }
 
+func TestGrantUpdate_SetsAState(t *testing.T) {
+	t.Parallel()
+	svc, repo := newGrantsHarness(t)
+	set := func(state string) {
+		t.Helper()
+		args := fmt.Sprintf(`{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["docs:write"], "state": %q}`, state)
+		_, err := callGrantTool(t, svc, "owner", "permission_overwrite_update", args)
+		require.NoError(t, err)
+	}
+
+	set(StateDeny)
+	g, err := repo.Get(t.Context(), resourceTypeDoc, "doc-1", "alice")
+	require.NoError(t, err)
+	assert.Equal(t, permissions.SetOf(permissions.DocsWrite), g.Deny)
+
+	set(StateFallback)
+	_, err = repo.Get(t.Context(), resourceTypeDoc, "doc-1", "alice")
+	assert.ErrorIs(t, err, apperrs.ErrNotFound, "fallback on the only action leaves no rule")
+}
+
 func TestGrantList_ShowsEachUsersOverwrite(t *testing.T) {
 	t.Parallel()
 	svc, repo := newGrantsHarness(t)
@@ -113,7 +133,7 @@ func TestGrantList_ShowsEachUsersOverwrite(t *testing.T) {
 	require.NoError(t, err)
 	page := got.(mcptool.Page[grantResult])
 	assert.ElementsMatch(t, []grantResult{
-		{UserID: "owner", Login: "owner", Allow: permissions.SetOf(permissions.PermissionsWrite)},
+		{UserID: "owner", Login: "owner", Allow: permissions.CreatorGrant},
 		{UserID: "alice", Login: "alice", Allow: permissions.SetOf(permissions.DocsRead)},
 	}, page.Items)
 }

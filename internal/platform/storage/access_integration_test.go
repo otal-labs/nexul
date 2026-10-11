@@ -134,7 +134,7 @@ func TestIntegration_AccessEndToEnd(t *testing.T) {
 	require.Len(t, results, 1)
 
 	// Owner bulk-grants read to bob.
-	require.NoError(t, accessSvc.SetGrants(ctx, "owner", []string{doc.ID}, []string{"bob"}, []permissions.Action{permissions.DocsRead}, true))
+	require.NoError(t, accessSvc.SetGrants(ctx, "owner", []string{doc.ID}, []string{"bob"}, []permissions.Action{permissions.DocsRead}, access.StateAllow))
 	_, err = docsSvc.Get(actor("bob"), doc.ID)
 	require.NoError(t, err)
 	results, err = docsSvc.Search(actor("bob"), "sqlite", 10)
@@ -142,12 +142,12 @@ func TestIntegration_AccessEndToEnd(t *testing.T) {
 	require.Len(t, results, 1)
 
 	// Revoking read locks bob out again.
-	require.NoError(t, accessSvc.SetGrants(ctx, "owner", []string{doc.ID}, []string{"bob"}, []permissions.Action{permissions.DocsRead}, false))
+	require.NoError(t, accessSvc.SetGrants(ctx, "owner", []string{doc.ID}, []string{"bob"}, []permissions.Action{permissions.DocsRead}, access.StateFallback))
 	_, err = docsSvc.Get(actor("bob"), doc.ID)
 	require.Error(t, err)
 
 	// permission_overwrites has no FK to docs, so cleanup is explicit in docs.Service.Delete, not an automatic DB cascade.
-	require.NoError(t, accessSvc.SetGrants(ctx, "owner", []string{doc.ID}, []string{"bob"}, []permissions.Action{permissions.DocsRead}, true))
+	require.NoError(t, accessSvc.SetGrants(ctx, "owner", []string{doc.ID}, []string{"bob"}, []permissions.Action{permissions.DocsRead}, access.StateAllow))
 	require.NoError(t, docsSvc.Delete(actor("owner"), doc.ID))
 	_, err = s.Access.Get(ctx, "doc", doc.ID, "bob")
 	assert.True(t, errors.Is(err, apperrs.ErrNotFound), "overwrites must be removed with the doc")

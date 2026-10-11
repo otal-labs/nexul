@@ -45,10 +45,11 @@ const (
 
 // The states a Source sets, and the targets a rule names.
 const (
-	StateAllow   = "allow"
-	StateDeny    = "deny"
-	TargetRole   = "role"
-	TargetPerson = "person"
+	StateAllow    = "allow"
+	StateFallback = "fallback"
+	StateDeny     = "deny"
+	TargetRole    = "role"
+	TargetPerson  = "person"
 )
 
 // Source is what decided an access answer, as ids (ADR 0148): the Owner role, membership, the person's role, a rule

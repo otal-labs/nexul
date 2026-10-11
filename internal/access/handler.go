@@ -99,6 +99,15 @@ type setGrantsRequest struct {
 	UserIDs      []string `json:"user_ids"`
 	Actions      []string `json:"actions"`
 	Grant        bool     `json:"grant"`
+	// State is allow, fallback, or deny; without it grant keeps its older meaning.
+	State string `json:"state"`
+}
+
+func (r setGrantsRequest) state(resourceType string) string {
+	if r.State != "" {
+		return r.State
+	}
+	return GrantState(resourceType, r.Grant)
 }
 
 func (h *Handler) setGrants(w http.ResponseWriter, r *http.Request) {
@@ -113,14 +122,14 @@ func (h *Handler) setGrants(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.ResourceType == resourceTypePlay {
-		if err := h.svc.SetPlayGrants(r.Context(), actorID(r), req.ResourceIDs, req.UserIDs, actions, req.Grant); err != nil {
+		if err := h.svc.SetPlayGrants(r.Context(), actorID(r), req.ResourceIDs, req.UserIDs, actions, req.state(resourceTypePlay)); err != nil {
 			httpx.WriteError(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	if err := h.svc.SetGrants(r.Context(), actorID(r), req.DocIDs, req.UserIDs, actions, req.Grant); err != nil {
+	if err := h.svc.SetGrants(r.Context(), actorID(r), req.DocIDs, req.UserIDs, actions, req.state(resourceTypeDoc)); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

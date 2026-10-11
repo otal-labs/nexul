@@ -26,8 +26,20 @@ type accessGrantUpdateIn struct {
 	ResourceType string   `json:"resource_type" jsonschema:"doc or play."`
 	ResourceIDs  []string `json:"resource_ids" jsonschema:"The docs' or plays' ids; every one gets the same change."`
 	UserIDs      []string `json:"user_ids" jsonschema:"The account ids the change applies to, as permission_overwrite_list or account_list shows them."`
-	Actions      []string `json:"actions" jsonschema:"Permissions to grant or revoke, each <domain>:<action>, for example [\"docs:read\", \"docs:write\"]. On a play only plays:run."`
-	Grant        bool     `json:"grant" jsonschema:"true grants the actions (on a play, lifts the users' exclusion); false revokes them (on a play, excludes the users from running it)."`
+	Actions      []string `json:"actions" jsonschema:"Permissions to set, each <domain>:<action>, for example [\"docs:read\", \"docs:write\"]. On a play only plays:run."`
+	State        string   `json:"state,omitempty" jsonschema:"allow, fallback, or deny: allow and deny hold the actions here whatever the role says, fallback removes this rule's say so the role decides. Takes precedence over grant."`
+	Grant        *bool    `json:"grant,omitempty" jsonschema:"Without state: true grants the actions (on a play, lifts a deny); false revokes a grant (on a play, denies running it)."`
+}
+
+// state is in.State, else what grant means; neither is invalid.
+func (in accessGrantUpdateIn) state() (string, error) {
+	if in.State != "" {
+		return in.State, nil
+	}
+	if in.Grant == nil {
+		return "", fmt.Errorf("%w: state or grant is required", apperrs.ErrInvalid)
+	}
+	return GrantState(in.ResourceType, *in.Grant), nil
 }
 
 // grantResult is one user's overwrite on the resource that was asked for.
@@ -41,8 +53,8 @@ type grantResult struct {
 
 func accessGrantListTool(s *Service) mcptool.Tool {
 	return mcptool.New("permission_overwrite_list", "List permission overwrites",
-		"Lists the per-user permission overwrites on one doc or play: on a doc, who was granted which docs "+
-			"actions; on a play, which users are excluded from running it (plays:run in deny). Needs "+
+		"Lists the per-user permission overwrites on one doc or play: on a doc, who is allowed or denied which "+
+			"docs actions; on a play, whose plays:run is allowed or denied. Needs "+
 			"permissions:write on the doc, or plays:write on the play. Returns each user's id, login, and name with "+
 			"their allow and deny sets; change them with permission_overwrite_update. With user_id it returns instead "+
 			"that person's effective answer for each action the doc's, play's, or project's rules may set, with "+
@@ -93,10 +105,11 @@ func listGrants(ctx context.Context, s *Service, in accessGrantListIn) ([]*Overw
 
 func accessGrantUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("permission_overwrite_update", "Update permission overwrites",
-		"Grants or revokes permission actions for every listed user on every listed doc, or excludes users from "+
-			"running plays and lifts that exclusion, in one operation. Only the named actions change: every other "+
-			"action a user already holds on the resource stays. Needs permissions:write on each doc, or plays:write "+
-			"on each play, and changes nothing unless all of them pass; permission_overwrite_list shows the result.",
+		"Sets permission actions to allow, fallback, or deny for every listed user on every listed doc or play, in "+
+			"one operation: allow and deny hold here whatever the user's role says, fallback leaves it to the role. "+
+			"Only the named actions change. Needs permissions:write on each doc, or plays:write on each play, and "+
+			"you can't allow, or lift a deny on, an action you don't hold there; adding a deny is never limited. "+
+			"Changes nothing unless every check passes; permission_overwrite_list shows the result.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in accessGrantUpdateIn) (any, error) {
 			if err := setGrants(ctx, s, in); err != nil {
@@ -111,11 +124,15 @@ func setGrants(ctx context.Context, s *Service, in accessGrantUpdateIn) error {
 	if err != nil {
 		return fmt.Errorf("%w; a permission is <domain>:<action>, for example docs:read", err)
 	}
+	state, err := in.state()
+	if err != nil {
+		return err
+	}
 	if in.ResourceType == resourceTypeDoc {
-		return s.SetGrants(ctx, actorIDFromCtx(ctx), in.ResourceIDs, in.UserIDs, actions, in.Grant)
+		return s.SetGrants(ctx, actorIDFromCtx(ctx), in.ResourceIDs, in.UserIDs, actions, state)
 	}
 	if in.ResourceType == resourceTypePlay {
-		return s.SetPlayGrants(ctx, actorIDFromCtx(ctx), in.ResourceIDs, in.UserIDs, actions, in.Grant)
+		return s.SetPlayGrants(ctx, actorIDFromCtx(ctx), in.ResourceIDs, in.UserIDs, actions, state)
 	}
 	return unknownResourceType(in.ResourceType)
 }

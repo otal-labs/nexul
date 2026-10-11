@@ -39,6 +39,8 @@ export interface FormDialogProps<TFormValues extends FieldValues = FieldValues> 
   formOptions?: Omit<UseFormProps<TFormValues>, "resolver">;
   // Scopes a token override to one caller's DialogContent without touching every other FormDialog.
   dialogClassName?: string;
+  // Opens with nothing focused, for a dialog that leads with a view switch rather than a field.
+  skipAutoFocus?: boolean;
 }
 
 export const FormDialog = ({
@@ -54,6 +56,7 @@ export const FormDialog = ({
   cancelLabel = "Cancel",
   formOptions,
   dialogClassName,
+  skipAutoFocus = false,
 }: ReactConfirmDialogProps<FormDialogProps, FormDialogResult>) => {
   const [isLoading, setIsLoading] = useState(false);
   const submitHandlerRef = useRef<((data: FieldValues) => Promise<FieldValues>) | null>(null);
@@ -142,6 +145,7 @@ export const FormDialog = ({
         className={cn(dialogClassName)}
         // A stray click beside the dialog must not throw typed input away; Cancel and Esc close it on purpose.
         onInteractOutside={(e) => e.preventDefault()}
+        onOpenAutoFocus={(e) => skipAutoFocus && e.preventDefault()}
       >
         <FormProvider {...methods}>
           <FormDialogContext.Provider value={contextValue}>

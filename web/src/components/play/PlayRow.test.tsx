@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,7 +37,12 @@ const mockGet = (grants: unknown[] = []) => (url: string) => {
   if (url === "/api/permissions?resource_type=play&resource_id=play-1") {
     return Promise.resolve({ data: { grants } });
   }
-  if (url === "/api/permissions/users") return Promise.resolve({ data: { users: [] } });
+  if (url === "/api/permissions/explain") {
+    const source = { kind: "role", entity_type: "workspace", entity_id: "ws-1", target_type: "role", target_id: "r-1", state: "allow", entity_name: "Acme", target_name: "Developer", sentence: "Allowed by role Developer" };
+    const verdict = { allowed: true, source };
+    return Promise.resolve({ data: { resource_type: "play", resource_id: "play-1", user_id: "", effective: [{ action: "plays:run", ...verdict, fallback: verdict }] } });
+  }
+  if (url === "/api/workspaces/ws-1/people") return Promise.resolve({ data: { people: [{ user_id: "u1", login: "bob", display_name: "", avatar_url: "https://example.com/b.png" }] } });
   if (url === "/api/permissions/catalog") return Promise.resolve({ data: { permissions: catalog } });
   return Promise.reject(new Error(`unexpected GET ${url}`));
 };
@@ -79,17 +84,19 @@ describe("PlayRow", () => {
     expect(await screen.findByText("1 excluded")).toBeInTheDocument();
   });
 
-  it("opens the exclusion dialog titled Exclude users, scoped to this play", async () => {
+  it("opens the permissions panel on the play, today's exclusions as Deny on Run", async () => {
     const user = userEvent.setup();
-    vi.mocked(api.get).mockImplementation(mockGet());
+    vi.mocked(api.get).mockImplementation(
+      mockGet([{ resource_type: "play", resource_id: "play-1", user_id: "u1", allow: [], deny: ["plays:run"], created_at: "", updated_at: "" }]),
+    );
     renderRow();
 
     await user.click(await screen.findByRole("button", { name: "Actions for Fix with AI" }));
-    await user.click(await screen.findByRole("button", { name: "Exclude users…" }));
-    expect(await screen.findByRole("heading", { name: "Exclude users" })).toBeInTheDocument();
-    expect(await screen.findByText("Run plays")).toBeInTheDocument();
-    await waitFor(() =>
-      expect(api.get).toHaveBeenCalledWith("/api/permissions?resource_type=play&resource_id=play-1"),
-    );
+    await user.click(await screen.findByRole("button", { name: "Permissions…" }));
+    await user.click(await screen.findByRole("button", { name: /bob/ }));
+    const run = await screen.findByRole("radiogroup", { name: "Run" });
+    expect(within(run).getByRole("radio", { name: "Deny" })).toBeChecked();
+    expect(screen.getByRole("button", { name: "Remove from this play" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
   });
 });

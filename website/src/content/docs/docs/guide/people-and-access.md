@@ -66,6 +66,22 @@ Their tokens and agents see exactly what they see. A change reaches their open b
 
 A project's **Settings → General** lists, under **People with access**, everyone on chosen projects who can open it. Deleting a project names who loses it before you confirm.
 
+## Permissions on a doc or a play
+
+A doc's settings menu and a play's row menu in **Configuration → Plays** open **Permissions**. The list on the left holds everyone with a rule here; **Add person** lists someone else. A doc refuses someone who can't open its project and says so.
+
+Pick a person to set their rule, one row per permission, each with three buttons:
+
+- **Allow** (check): they have it here, whatever their role says.
+- **Fallback** (slash): this rule says nothing, so their role decides. The line under the row says what they get then, and from where.
+- **Deny** (cross): they don't have it here, whatever their role says.
+
+A doc carries the docs permissions and **Manage this doc's access**; a play carries **Run**. **Remove from this doc** sets every row back to Fallback. Nothing changes until you press **Save**, and anyone else with the panel open sees the change without a refresh.
+
+You can't allow a permission you don't hold on that doc or play, or lift a Deny on one: its button shows a lock and says why. Adding a Deny is never limited. **Check access** shows what one person can do here, each answer with the rule or role that decided it.
+
+Changing a doc's rules takes **Manage this doc's access** on it, which its creator has; a play's takes `plays:write`.
+
 ## Why someone can or can't
 
 Every answer has a source: the Owner role, the person's role, an override on the workspace, a doc or a play, or their access to a project. When Nexul refuses something you can see, the message names it, such as `docs:write required (Denied on doc Pricing for bob)` or `tickets:write required (Not allowed: role Client doesn't grant it)`. Something you can't see is not found and says nothing more, so it never confirms it exists.
@@ -90,4 +106,4 @@ Under **GitHub**, the same page shows whether your own GitHub account lists your
 
 ## Over MCP
 
-Agents manage people with `account_list`, `account_update`, `invitation_create`, `invitation_list`, `invitation_delete`, `role_update`, `role_delete`, and the `permission_overwrite_*` tools. `account_update` and `invitation_create` take `every_project` (`role` or `none`) and `project_access` per workspace. See [MCP server](/docs/guide/mcp-server/).
+Agents manage people with `account_list`, `account_update`, `invitation_create`, `invitation_list`, `invitation_delete`, `role_update`, `role_delete`, and the `permission_overwrite_*` tools; `permission_overwrite_update` takes a `state` of `allow`, `fallback`, or `deny`. `account_update` and `invitation_create` take `every_project` (`role` or `none`) and `project_access` per workspace. See [MCP server](/docs/guide/mcp-server/).
