@@ -122,11 +122,15 @@ resolved.
 - 12, the ticket signals: built, PR #536.
 - 13, the decisions check: built, PR #540.
 - 14, `runPlay` and unique play labels: built, PRs #537 and #538.
+- The phone app shows no auto play signals for now: auto plays are set up
+  and watched from the web, and the phone already gets a run's finished
+  and waiting notifications (owner, 2026-10-11).
+- A run held up by its person's computer setup waits instead of failing;
+  when several computers are paired and none is the default, the waiting
+  run asks its person which computer to run on (owner, 2026-10-11; 16).
 
 ## Not yet specified
 
-- Whether the phone app shows the queued, skipped, and paused signals on a
-  ticket, or only what the web already sends it; settled in the walkthrough.
 
 ## Out of scope
 
