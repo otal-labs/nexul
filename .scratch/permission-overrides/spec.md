@@ -1,6 +1,6 @@
 # Permission overwrites per entity, with a source for every answer
 
-**Status:** ready-for-agent (tickets 01 to 14, built in order: 01 to 07, then 08, then 09 to 14)
+**Status:** being reworked: don't build from this. `.scratch/permission-rework/map.md` decides the new model, and its last ticket rewrites this spec.
 
 ADR 0148 (proposed) records the model. The glossary term stays **Permission overwrite**. The UI calls the three
 states Allow, Fallback and Deny.

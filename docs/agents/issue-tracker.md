@@ -110,6 +110,10 @@ git history, and anything durable it decided is an ADR.
   areas) for everyone, a role or one person, each permission Allow, Fallback or
   Deny over the role, and a source for every answer (ADR 0148); computer rules
   are how a computer is shared. Spec and tickets 01–14 written 2026-10-10.
+- `.scratch/permission-rework/` — wayfinder map charted 2026-10-11: roles only
+  (no Everyone), several roles per person, opt-in projects and a wiped start on
+  upgrade. It plans the rewrite of `.scratch/permission-overrides/`, which waits
+  for it.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
