@@ -13,9 +13,12 @@ export interface Check {
   label: string;
 }
 
-// Added with Add a computer: no tunnel, and reached through a runner once it pairs.
+// Added with Add a computer, or moved to its app: reached through a runner, or with no tunnel and no address yet.
 export const addedWithRunner = (computer: Computer) =>
-  !computer.tunnel && (!!computer.runner || computer.server_url === "" || reachedThroughRunner(computer.server_url));
+  reachedThroughRunner(computer.server_url) || (!computer.tunnel && computer.server_url === "");
+
+// Paired through the computer's own app; a tunnel computer being moved still holds its tunnel session until then.
+export const pairedThroughRunner = (computer: Computer) => reachedThroughRunner(computer.server_url) && !stillPairing(computer);
 
 const runnerConnected = (computer: Computer) => computer.runner?.connected === true;
 
@@ -47,7 +50,7 @@ const t3Check = (computer: Computer): Check => {
 
 const pairedCheck = (computer: Computer): Check => {
   const base = { name: "Paired" };
-  if (!stillPairing(computer)) return { ...base, detail: `Session until ${formatShortDate(computer.token_expires_at)}`, state: "passed", label: "Paired" };
+  if (pairedThroughRunner(computer)) return { ...base, detail: `Session until ${formatShortDate(computer.token_expires_at)}`, state: "passed", label: "Paired" };
   if (computer.pair_error) return { ...base, detail: computer.pair_error, state: "failed", label: "Failed" };
   if (t3Answering(computer)) return { ...base, detail: "Pairing through the computer's connection", state: "waiting", label: "Pairing" };
   return { ...base, detail: "Pairs once T3 Code is found", state: "waiting", label: "Waiting" };

@@ -108,6 +108,10 @@ enrolled connection; the pasted command only installs.
   root-owned unit; on Windows everything is the person's, and the runner removes it itself.
 - A Windows computer is offline while its person is logged off, where Linux and macOS keep it connected from boot.
 - The retired tunnel routes stay mounted and answer 410, because ADR 0082 never removes a route.
+- The move notice is one inbox notification per owner, placed in the first workspace they joined because a computer
+  belongs to no workspace. Each boot sends it to any owner of a tunnel or URL computer who has none yet, and its stored
+  receipt is when that owner's 30 days start. A tunnel whose teardown Cloudflare refuses after the move is retried on
+  the runner's next report.
 - ADR 0074's enrollment codes gain a personal kind that any signed-in person may mint for their own computer,
   with no `runners:write`. ADR 0073's "runners run as root" holds for deploy runners only. ADR 0031's connection
   carries harness dial requests, while the bytes ride their own sockets. ADR 0102's "always one of their own"

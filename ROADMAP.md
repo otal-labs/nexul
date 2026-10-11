@@ -239,8 +239,10 @@ installs the Nexul app there (a personal runner) and T3 Code when it is
 missing, and the dialog shows the computer connect, T3 Code found and the
 pairing done through the app's own connection, then setup. No Cloudflare
 tunnel or domain is involved, and the app keeps T3 Code paired and running.
-Linux, macOS and Windows work today; moving computers paired through a
-tunnel comes next. Tracked in `.scratch/personal-runners/` (ADR 0146).
+Linux, macOS and Windows work today, and a computer paired through a tunnel
+or by URL moves to the app from its row, keeping its links, setup and
+history; the tunnel is deleted once the app has paired it. Tracked in
+`.scratch/personal-runners/` (ADR 0146).
 
 Planned: **clarifying a doc**. A client writes what they need in a doc;
 "Clarify via AI" asks the gaps as rounds of question cards on the doc

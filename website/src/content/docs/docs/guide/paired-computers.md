@@ -82,13 +82,32 @@ A computer added with **Add a computer** reads each part on its own: **Online** 
 
 A computer paired through a Cloudflare tunnel or by URL before **Add a computer** existed keeps working and keeps its old row: whether it's **Connected**, **Trying to connect**, or **Not connected**, its setup state, and **Pair**, **Re-pair**, **Set up** or **Update skills**. Its details show the address, the T3 Code version and the date the pairing lasts until. A pairing lasts 30 days, because T3 Code's session can't be refreshed: the row warns in its last days and shows **Re-pair**, which takes a fresh pairing link from T3 Code (in the desktop app, **Settings → Connections → Authorized clients → Create link**, then **Share** and **Copy link**; on the command line, `t3 pair`); once it has expired the row says it acts as unpaired. The tunnel keeps its hostname. New computers are only added with **Add a computer**.
 
+Pairing through a tunnel or by URL is going away, so its row also reads **Move this computer to the Nexul app**, and your inbox says so once.
+
+### Move a computer to the Nexul app
+
+1. On the computer's row, press **Move**. The dialog makes the same one-time command as **Add a computer**, made for this computer.
+2. Run it on that computer from your own account, as in [Add a computer](#add-a-computer). It installs the Nexul app, and T3 Code only when it's missing.
+3. Watch the three checks. **Paired** passes once Nexul has paired T3 Code through the app; until then the computer keeps working through its tunnel or address.
+4. Once it's paired, Nexul deletes the computer's Cloudflare tunnel, DNS record and Access app, and the dialog shows the command that removes `cloudflared` from the computer, which needs your `sudo`:
+
+   ```sh
+   sudo cloudflared service uninstall
+   ```
+
+   On Windows, run `cloudflared service uninstall` in an administrator PowerShell. A computer paired by URL has no tunnel and nothing to remove.
+
+The computer keeps its row, name, project links, defaults, setup, MCP token and trails; from then on it reads like any computer added with **Add a computer**. If pairing through the app fails, the computer stays on its tunnel or address and works as before: the row says **Not moved yet** with the reason, and **Show progress** opens the checks with **Pair now** to try again. Nexul also tries again whenever the app reports, when it connects and every 6 hours.
+
+An agent can move a computer too: [`computer_create`](/docs/guide/mcp-server/) with the computer's `id` returns the command.
+
 ### The computer's facts
 
 A computer's Nexul app reports on it when it connects and every 6 hours: its hostname, OS and architecture, the app's version, T3 Code's state, port, version and how it is installed, `cloudflared`'s version when it is there, your git name and email, and the free disk space in your home folder. Nexul adds what T3 Code lists through the app: each provider's CLI version, whether it is signed in, its models, and T3 Code's projects with their folders. They are stored only when something changed, and **Facts changed** says when that was.
 
 Facts are yours alone. Nobody else sees them, a workspace Owner included, and an agent reads them through `computer_list` only when it acts for you.
 
-**Remove**, in the **…** menu, asks first, then deletes the pairing and revokes the computer's MCP token. On a computer added with **Add a computer**, it also revokes the Nexul app's credential: the app removes its `nexul-computer` service and files within a heartbeat, or the next time the computer comes online, and on the way out ends every T3 Code session labelled `Nexul`, so Nexul keeps no way into T3 Code there. A command made for the computer and never run stops working too. On a computer paired through a tunnel, Remove deletes the tunnel and hostname instead, which already makes it unreachable; Nexul's session inside T3 Code stays until it expires, or until you run `t3 auth session list` on the computer and `t3 auth session revoke <id>` on the `Nexul` entry. Re-pair never ends a session.
+**Remove**, in the **…** menu, asks first, then deletes the pairing and revokes the computer's MCP token. On a computer added with **Add a computer**, it also revokes the Nexul app's credential: the app removes its `nexul-computer` service and files within a heartbeat, or the next time the computer comes online, and on the way out ends every T3 Code session labelled `Nexul`, so Nexul keeps no way into T3 Code there. A command made for the computer and never run stops working too. On a computer still paired through a tunnel, Remove deletes the tunnel and hostname instead, which already makes it unreachable; Nexul's session inside T3 Code stays until it expires, or until you run `t3 auth session list` on the computer and `t3 auth session revoke <id>` on the `Nexul` entry. Re-pair never ends a session.
 
 ### The computer's MCP token
 

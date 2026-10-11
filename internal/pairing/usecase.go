@@ -201,13 +201,14 @@ func (s *Service) Pair(ctx context.Context, userID string, kind harness.Kind, na
 	return s.pair(ctx, Computer{UserID: userID, Kind: kind, Name: name}, serverURL, secret)
 }
 
-// PairComputer pairs a computer now: through its runner with no secret, else (a tunnel computer always) at its address.
+// PairComputer pairs a computer now: through its runner with no secret, which moves one paired by URL, or by tunnel once
+// a runner is enrolled for it, onto that runner; else at its address.
 func (s *Service) PairComputer(ctx context.Context, userID, computerID, secret string) (*Computer, error) {
 	existing, err := s.ownComputer(ctx, userID, computerID)
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(secret) == "" && existing.Tunnel == nil {
+	if strings.TrimSpace(secret) == "" && (existing.Tunnel == nil || s.hasRunner(ctx, existing.ID)) {
 		paired, err := s.pairThroughRunner(ctx, *existing)
 		if err != nil {
 			return nil, err

@@ -31,6 +31,10 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	go svc.repoHooks.ensureAll(ctx, store.Projects.ListAllRepos, logger)
 	// Cloudflare never pushes connector status, so a computer mid-pairing is polled and each change pushed live.
 	go svc.pairingSvc.RunTunnelWatch(ctx)
+	// Each owner of a computer still on a tunnel or an address is told once to move it; its receipt keeps restarts quiet.
+	if err := svc.pairingSvc.AnnounceMoves(ctx); err != nil {
+		logger.Warn("move notices not sent", "error", err)
+	}
 
 	wsHandler = runner.NewHandler(runner.HandlerConfig{
 		Bus:       bus,

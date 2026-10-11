@@ -108,6 +108,47 @@ func (r *PairingRepo) SetFacts(ctx context.Context, userID, computerID string, f
 	})
 }
 
+func (r *PairingRepo) ClearTunnel(ctx context.Context, userID, computerID string, at time.Time, evt eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).ClearPairingComputerTunnel(ctx, sqlcgen.ClearPairingComputerTunnelParams{UpdatedAt: at.Unix(), ID: computerID, UserID: userID})
+		if err != nil {
+			return fmt.Errorf("clear tunnel of computer %s: %w", computerID, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("clear tunnel of computer %s: %w", computerID, apperrs.ErrNotFound)
+		}
+		return insertOutboxRows(ctx, tx, []eventbus.OutboxEvent{evt})
+	})
+}
+
+func (r *PairingRepo) ComputersToMove(ctx context.Context) ([]pairing.Computer, error) {
+	rows, err := r.q.ListPairingComputersToMove(ctx, "%"+pairing.ComputerHostSuffix)
+	if err != nil {
+		return nil, fmt.Errorf("list computers to move: %w", err)
+	}
+	var out []pairing.Computer
+	for _, row := range rows {
+		if len(out) > 0 && out[len(out)-1].UserID == row.UserID {
+			continue
+		}
+		out = append(out, pairing.Computer{ID: row.ID, UserID: row.UserID})
+	}
+	return out, nil
+}
+
+func (r *PairingRepo) RecordMoveNotice(ctx context.Context, userID string, at time.Time, evt eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).InsertPairingMoveNotice(ctx, sqlcgen.InsertPairingMoveNoticeParams{UserID: userID, NotifiedAt: at.Unix()})
+		if err != nil {
+			return fmt.Errorf("record move notice of %s: %w", userID, err)
+		}
+		if n == 0 {
+			return nil
+		}
+		return insertOutboxRows(ctx, tx, []eventbus.OutboxEvent{evt})
+	})
+}
+
 func (r *PairingRepo) SwitchComputerKind(ctx context.Context, id string, from, to harness.Kind, harnessVersion string, at time.Time, evt func(userID string) eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		userID, err := r.q.WithTx(tx).SwitchPairingComputerKind(ctx, sqlcgen.SwitchPairingComputerKindParams{

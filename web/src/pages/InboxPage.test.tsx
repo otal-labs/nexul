@@ -130,6 +130,17 @@ describe("InboxPage", () => {
     expect(screen.queryByRole("heading", { name: "Write migrations" })).not.toBeInTheDocument();
   });
 
+  it("opens the move notice on what to do, with the way to Computers", async () => {
+    const moveNotice = { ...ticketNotification, id: "n3", kind: "computer.move_requested", subject_type: "computer", subject_id: "c-laptop", subject_title: "Move your computers to the Nexul app" };
+    vi.mocked(api.get).mockImplementation((url: string) => (url === "/api/notifications" ? Promise.resolve({ data: [moveNotice] }) : mockApiResponse(url)));
+    renderPage("/acme/inbox/n:n3");
+
+    const list = await screen.findByRole("navigation", { name: "Notifications" });
+    expect(await within(list).findByRole("button", { name: /Move your computers to the Nexul app.*move to the Nexul app/ })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Move your computers to the Nexul app" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Computers" })).toHaveAttribute("href", "/settings/pairing");
+  });
+
   it("falls back to the list when the path names a row that is gone", async () => {
     mockApi();
     renderPage("/acme/inbox/n:gone");

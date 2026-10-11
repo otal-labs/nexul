@@ -27,6 +27,7 @@ type runnerFixture struct {
 	exch    *fakeExchanger
 	runners *fakeRunners
 	bus     *fakeBus
+	tunnels *fakeTunnels
 }
 
 func newRunnerFixture(t *testing.T, laptop Computer) *runnerFixture {
@@ -37,9 +38,10 @@ func newRunnerFixture(t *testing.T, laptop Computer) *runnerFixture {
 	exch := &fakeExchanger{result: harness.PairResult{BearerToken: "bearer", ExpiresIn: 30 * day}, version: "0.0.34"}
 	runners := &fakeRunners{runners: map[string]ComputerRunner{laptop.ID: {Connected: true}}, token: "pair-tok"}
 	bus := &fakeBus{}
+	tunnels := &fakeTunnels{}
 	svc := NewService(Config{Repo: repo, Harnesses: registry(exch), EncryptionKey: testEncKey, Tokens: newFakeTokens(), Runners: runners,
-		Bus: bus, Now: func() time.Time { return testNow }})
-	return &runnerFixture{svc: svc, repo: repo, exch: exch, runners: runners, bus: bus}
+		Bus: bus, Tunnels: tunnels, Now: func() time.Time { return testNow }})
+	return &runnerFixture{svc: svc, repo: repo, exch: exch, runners: runners, bus: bus, tunnels: tunnels}
 }
 
 func factsEvent(t *testing.T, state string) eventbus.Event {
@@ -71,7 +73,7 @@ func TestHandleFactsReported_PairsThroughTheRunnerWhenTheSessionEndsWithinSevenD
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			f := newRunnerFixture(t, Computer{TokenExpiresAt: tt.expires})
+			f := newRunnerFixture(t, Computer{ServerURL: runnerAddress("c-laptop"), TokenExpiresAt: tt.expires})
 
 			require.NoError(t, f.svc.HandleFactsReported(t.Context(), factsEvent(t, tt.state)))
 

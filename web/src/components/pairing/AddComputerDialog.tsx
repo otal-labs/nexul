@@ -11,7 +11,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useEnrollComputer } from "@/hooks/ComputerHooks";
 import { useListComputers } from "@/hooks/PairingHooks";
 import { useSetupDraftStore } from "@/stores/setupDraftStore";
-import { stillPairing } from "@/models/Pairing";
+import { pairedThroughRunner } from "@/models/ComputerChecks";
 import { cn } from "@/lib/utils";
 
 type Step = "add" | "setup";
@@ -40,7 +40,7 @@ export const AddComputerDialog = ({ trigger, again }: AddComputerDialogProps) =>
   const { data: computers } = useListComputers();
   const added = enroll.data?.computer;
   const computer = computers?.find((c) => c.id === added?.id) ?? added;
-  const paired = !!computer && !stillPairing(computer);
+  const paired = !!computer && pairedThroughRunner(computer);
 
   // Opening mints the command; every way out but Done drops the Set up step's unsaved edits.
   const onOpenChange = (next: boolean) => {

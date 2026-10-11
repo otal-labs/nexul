@@ -232,6 +232,21 @@ func HandlePlayRunWaiting(ctx context.Context, svc *NotificationService, ev even
 	return svc.onPlayRunWaiting(CtxWithEventKey(ctx, ev.ID), e)
 }
 
+// HandleComputerMoveRequested tells a computer's owner, once, to move their computers to the Nexul app.
+func HandleComputerMoveRequested(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
+	var e struct {
+		ComputerID string `json:"computer_id"`
+		UserID     string `json:"user_id"`
+	}
+	if err := json.Unmarshal(ev.Payload, &e); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse computer.move_requested: %w", err))
+	}
+	if e.ComputerID == "" || e.UserID == "" {
+		return apperrs.Fatal(fmt.Errorf("computer.move_requested missing computer or owner"))
+	}
+	return svc.onComputerMoveRequested(CtxWithEventKey(ctx, ev.ID), e.UserID, e.ComputerID)
+}
+
 // HandleTicketCreated notifies the developer, the tester, and every user @-mentioned in the title or body.
 func HandleTicketCreated(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
 	var e ticketCreatedEvent

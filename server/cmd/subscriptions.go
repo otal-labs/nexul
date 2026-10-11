@@ -19,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	"github.com/otal-labs/nexul/internal/integrations"
 	"github.com/otal-labs/nexul/internal/memories"
+	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
@@ -317,6 +318,9 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	})
 	mustSubscribe(ctx, bus, "notifications", plays.TopicRunWaiting, "", func(ctx context.Context, ev eventbus.Event) error {
 		return workspace.HandlePlayRunWaiting(ctx, svc.notifSvc, ev)
+	})
+	mustSubscribe(ctx, bus, "notifications", pairing.TopicMoveRequested, "", func(ctx context.Context, ev eventbus.Event) error {
+		return workspace.HandleComputerMoveRequested(ctx, svc.notifSvc, ev)
 	})
 
 	mustSubscribe(ctx, bus, "voice.close_room", chat.TopicConversationDeleted, "", voiceRoomCloseHandler(svc.voiceSvc))

@@ -751,6 +751,11 @@ type PairingComputer struct {
 	FactsAt               sql.NullInt64
 }
 
+type PairingMoveNotice struct {
+	UserID     string
+	NotifiedAt int64
+}
+
 type PairingProjectLink struct {
 	UserID           string
 	ProjectID        string

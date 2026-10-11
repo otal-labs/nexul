@@ -421,6 +421,25 @@ func (s *NotificationService) notifyPlayStarter(ctx context.Context, e playRunFi
 	return s.fanOutByUserID(ctx, evtKey(ctx), n, kind, []string{e.StarterID})
 }
 
+// moveNoticeTitle is the inbox line that asks an owner to move their computers off a tunnel or an address.
+const moveNoticeTitle = "Move your computers to the Nexul app"
+
+// onComputerMoveRequested puts the move notice in the first workspace its owner joined: a computer belongs to no
+// workspace, and the notice is one per owner.
+func (s *NotificationService) onComputerMoveRequested(ctx context.Context, userID, computerID string) error {
+	n := notice{subjectType: SubjectComputer, subjectID: computerID, subjectTitle: moveNoticeTitle}
+	if s.access != nil {
+		workspaceIDs, _, err := s.access.ProjectsAnywhere(ctx, userID, permissions.Member)
+		if err != nil {
+			return fmt.Errorf("workspaces of %s: %w", userID, err)
+		}
+		if len(workspaceIDs) > 0 {
+			n.workspaceID = workspaceIDs[0]
+		}
+	}
+	return s.fanOutByUserID(ctx, evtKey(ctx), n, KindComputerMove, []string{userID})
+}
+
 // notice is what one source event is about: its subject, the subject's workspace, and whose action it was.
 type notice struct {
 	subjectType  SubjectType
