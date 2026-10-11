@@ -110,6 +110,10 @@ git history, and anything durable it decided is an ADR.
 - `.scratch/permission-rework/` — wayfinder map charted 2026-10-11, complete:
   it decided the model the spec above builds. Kept until slices 06, 07, 08 and
   12–15 merge, because its tickets 03, 04, 05 and 08 hold their locked looks.
+- `.scratch/onboarding/` — wayfinder map charted 2026-10-11: the Welcome
+  wizard, the steps each Role ticks, Template roles, the account menu dot and
+  progress on Team. Builds after the permission rework. The five persona walks
+  are in `research/persona-gaps.md`.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.

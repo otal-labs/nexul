@@ -576,6 +576,23 @@ A guided multi-step flow that ends in something working, reached under
 `/wizard/<context>/<step-owner>` (for example `/wizard/onboarding/owner`,
 `/wizard/project/service`). Dialogs are not wizards.
 
+**Welcome wizard**:
+The wizard where a person sets up what is theirs to set up, such as their
+GitHub link and their computer. The steps it shows are the ones ticked on any
+Role they hold, in any workspace. It is one wizard per person, so a step done
+once counts everywhere. Every step can be skipped, and a step counts as done when the
+thing it sets up exists, not when someone clicked through it. It opens at
+first sign-in. After that it stays at the top of the account menu, which shows
+a dot while any step is left.
+_Avoid_: Onboarding, getting started, first-login wizard
+
+**Template role**:
+A Role kept as an Instance template. A new workspace starts with a copy of
+each one beside its Owner role, including the Welcome wizard steps it ticks.
+The copy is never rewritten afterwards, so editing a template role changes
+only workspaces created after the edit.
+_Avoid_: Default role, preset, starter role
+
 **Automation**:
 First-party event-driven code: when an event happens, a function runs.
 Written in TS/JS against the SDK — **Default automations** ship with the
@@ -712,7 +729,8 @@ _Avoid_: Ticket template, form, checklist
 **Instance template**:
 The instance's own version of a template that every workspace or project
 starts from: the Interview template, the mention chip template, each built-in
-play's instructions, and each default ticket type's body template. The Intro
+play's instructions, each default ticket type's body template, and each
+Template role. The Intro
 and Footer every full Agent prompt opens and closes with are instance
 templates too, but live only at the instance, with nothing below. A template
 resolves code default, then instance template, then workspace or project; one

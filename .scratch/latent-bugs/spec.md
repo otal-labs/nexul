@@ -144,3 +144,11 @@ threads open the Bots section from their menu. Channel threads cannot be
 created yet (no use-case sets `parent_message_id`) and the web has no screen
 for one, so they have no menu to carry it. When channel threads get a screen,
 give its menu the same "Bots" item (`useBotsDialog`).
+
+## Running a play without reading memories breaks the run dialog
+
+`PlayRunDialogBody` (`web/src/components/play/PlayRunDialog.tsx`) renders the
+form only once the project's memories load, and that read needs
+`memories:read`. A role with `plays:run` and no `memories:read` gets "Couldn't
+load the run choices" and can run nothing. Make the memory section optional
+when it can't be read.
