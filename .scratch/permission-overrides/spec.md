@@ -499,12 +499,10 @@ The looks are locked in the rework map's tickets. A slice builds against them, n
   Screenshots: `~/Code/Images/permission-rework/05-setup/`.
 - **The role editor as a dialog**: `.scratch/permission-rework/issues/08-the-role-editor-dialog.md`. Edit and New role
   open a 40rem dialog whose body scrolls under a footer with Save always in view, and leaving with changes asks
-  "Discard changes?". A new role can start from a copy of another. Two sections, **Workspace** and **In projects**
-  (replacing "Every project"), each lead with their own bulk row; Create projects and Manage this project's access are
-  switches; plays' first rung reads **See**; extra verbs sit as checkboxes under their area. The instance areas stay in
-  the Workspace section for now (an open point below). Screenshots: `~/Code/Images/permission-rework/08-role-dialog/`.
-- **People in this project**: a `SettingsCard` in the project's settings, roles then people, then "Kept out"; each
-  row opens the panel on that target (ticket 03 of the rework).
+  "Discard changes?". A new role can start from a copy of another. Three tabs, **Instance**, **Workspace** and **In
+  projects** (replacing "Every project"), each leading with its own bulk row and showing its allowed count; Create
+  projects and Manage this project's access are switches; plays' first rung reads **See**; extra verbs sit as
+  checkboxes under their area. Screenshots: `~/Code/Images/permission-rework/08-role-dialog/` and `build/08/`.
 - **Computers**: the computer row's sharing dialog (personal runners ticket 18) is the panel limited to named people
   and the three computer permissions, with the warning that a grantee's agents and commands run as the owner's own OS
   user.
@@ -592,11 +590,9 @@ anyone's access across the upgrade.
     doc's project, offering to add them to the project first.
 16. The permissions control is three icon buttons side by side, not a dropdown (rework ticket 03).
 17. The role editor opens as a dialog with a Save button; the roles list stays as it is (rework ticket 08).
-
-**Open for the owner**
-
-- Where the instance areas sit in the role editor. For now they stay inside the Workspace section, after the
-  workspace areas (slices 08 and 15); a section of their own is the alternative. Nothing else waits on the answer.
+18. The role editor has three sections, Instance, Workspace and In projects, in that order, each with its own bulk row
+    and count; Instance holds the instance-area domains, from the catalog's area. They are tabs inside the dialog, so
+    it doesn't grow too tall (2026-10-11).
 
 **Technical calls the owner delegated (2026-10-11)**
 

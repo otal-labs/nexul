@@ -28,6 +28,11 @@ Locked on 2026-10-11 from a live prototype with mock data (workspace Acme; roles
 Frontend, Client and a 60-character worst case), judged from screenshots at 768, 1024 and 1440px in both modes. The
 owner delegated the pick.
 
+**Owner change, 2026-10-11.** Three sections, Instance (the instance areas, "Applies across every workspace on this
+install."), Workspace and In projects, each with its own bulk row and count, and they are tabs inside the dialog, not
+stacked: browser-style tabs under the name with an "allowed/total" count and an unsaved dot, the open tab's list the
+only part that scrolls (slice 08 build; runner-up a segmented control).
+
 **Where it opens.** The roles list stays as it is. The row menu's Edit and the card footer's New role open the same
 dialog; the inline `RoleEditForm` and `CreateRoleForm` go. Duplicate, Clone to workspace and Delete are unchanged.
 

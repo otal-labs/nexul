@@ -12,7 +12,7 @@ Read first: `practices/react-guide.md` (F1 to F7, the self-review), `practices/d
 ## What to build
 
 - The dialog from slice 08, per rework ticket 08's answer:
-  - "Every project" becomes **In projects**, "Only inside the projects a holder is in. Each project lists who's in
+  - the "Every project" tab becomes **In projects**, "Only inside the projects a holder is in. Each project lists who's in
     it.", with its bulk row "All areas in projects"; Workspace reads "Across Acme, whatever project someone is in."
     with "All workspace areas";
   - **Create projects** leads the Workspace list and **Manage this project's access** leads In projects, each an
@@ -21,8 +21,7 @@ Read first: `practices/react-guide.md` (F1 to F7, the self-review), `practices/d
     count switches that are on;
   - plays' first rung reads **See**, and its extras read "Needs See first" at None;
   - In this project never appears in the editor.
-- The instance areas stay in the Workspace section, as slice 08 left them, until the owner answers the open point in
-  the spec's owner decisions.
+- The Instance tab stays as slice 08 built it (owner decision 18).
 - `useNewConversationDialogs` and `ChannelSettingsCard` stop reading `restricted`.
 - `RoleSettingsSection.test.tsx` and `ChannelSettings.test.tsx` are rewritten.
 

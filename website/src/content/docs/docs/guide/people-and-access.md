@@ -33,8 +33,11 @@ Seeing everyone takes `accounts:read`. Changing someone in a workspace takes `me
 
 Every workspace has an **Owner** role. It can't be renamed, deleted, or limited: the Owner holds every permission and bypasses overrides. Every other role is yours to define in **Configuration → Roles**.
 
-A role sets one level per area: **None**, **Read**, **Write**, or **Delete**, each level including the ones before it. Some areas carry extra switches, such as docs' **Thread**, **Clone**, and **Lock**. The role editor has two parts:
+**New role** and a role's **Edit** open the role editor, a dialog with the name at the top and Save at the bottom. A new role can **Start from** a copy of another role; the copy is yours to change and the other role stays as it is. Nothing is saved until **Create role** or **Save**, and closing with changes asks before it throws them away.
 
+A role sets one level per area: **None**, **Read**, **Write**, or **Delete**, each level including the ones before it. Some areas carry extra checkboxes under their name, such as docs' **Threads**, **Clone**, and **Lock**, which need **Read** first. The editor has three tabs, each with the number of areas it allows, a dot while it holds unsaved changes, and a top row that sets every area in it at once:
+
+- **Instance**: areas that apply across every workspace on this install, such as runners, machines, DNS and gateways, connectors, accounts, and the audit log.
 - **Workspace**: areas such as chat, channels, plays, members, and roles.
 - **Every project**: a project's areas, such as tickets, docs, memories, and stacks, applied on every project.
 

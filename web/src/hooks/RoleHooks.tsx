@@ -22,9 +22,9 @@ export const useCreateWorkspaceRole = (workspaceId: string) => {
   return useMutation({
     mutationFn: async ({ name, actions }: { name: string; actions: string[] }) =>
       (await api.post<Role>(`/api/workspaces/${workspaceId}/roles`, { name, actions })).data,
-    onSuccess: async () => {
+    onSuccess: async (role) => {
       await client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, workspaceId] });
-      toast.success("Role created");
+      toast.success(`${role.name} created`);
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -35,9 +35,9 @@ export const useUpdateWorkspaceRole = (workspaceId: string) => {
   return useMutation({
     mutationFn: async ({ roleId, name, actions }: { roleId: string; name: string; actions: string[] }) =>
       (await api.patch<Role>(`/api/workspaces/${workspaceId}/roles/${roleId}`, { name, actions })).data,
-    onSuccess: async () => {
+    onSuccess: async (role) => {
       await client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, workspaceId] });
-      toast.success("Role updated");
+      toast.success(`${role.name} saved`);
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
