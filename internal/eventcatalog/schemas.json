@@ -13,17 +13,30 @@
       "resource_id": {
         "type": "string"
       },
+      "target": {
+        "type": "string",
+        "description": "Whom the rule names: a person, as user_id, or a role, as role_id.",
+        "enum": [
+          "person",
+          "role"
+        ]
+      },
       "user_id": {
         "type": "string"
       },
       "actor_id": {
         "type": "string"
+      },
+      "role_id": {
+        "type": "string",
+        "description": "The role a rule for a role names; user_id is then empty."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "required": [
       "resource_type",
       "resource_id",
+      "target",
       "user_id"
     ]
   },

@@ -136,6 +136,78 @@ func TestDecide_Source(t *testing.T) {
 	})
 }
 
+// roleRule is a rule on target's role or person: allow and deny name the action, "" is Fallback.
+func roleRule(entityType, entityID, target, id, state string, action permissions.Action) *Overwrite {
+	ow := &Overwrite{ResourceType: entityType, ResourceID: entityID, Target: target}
+	if target == TargetRole {
+		ow.RoleID = id
+	}
+	if target == TargetPerson {
+		ow.UserID = id
+	}
+	if state == StateAllow {
+		ow.Allow = permissions.SetOf(action)
+	}
+	if state == StateDeny {
+		ow.Deny = permissions.SetOf(action)
+	}
+	return ow
+}
+
+// TestDecide_RoleRules: between the rules for the roles held Allow wins, the rule naming the person beats them, and the
+// nearer entity beats the farther one, each answer naming the rule that set it.
+func TestDecide_RoleRules(t *testing.T) {
+	const action = permissions.DocsWrite
+	doc := func(target, id, state string) *Overwrite {
+		return roleRule("doc", "d-price", target, id, state, action)
+	}
+	onDoc := func(target, id, state string) Source { return src(SourceRule, "doc", "d-price", target, id, state) }
+	notHeld := src(SourceRole, "workspace", "ws", TargetRole, "role-dev", StateDeny)
+	held := src(SourceRole, "workspace", "ws", TargetRole, "role-dev", StateAllow)
+	tests := []struct {
+		name       string
+		base       bool
+		workspace  *Overwrite
+		dev, front string
+		person     string
+		allowed    bool
+		source     Source
+	}{
+		{name: "allow, allow", dev: StateAllow, front: StateAllow, allowed: true, source: onDoc(TargetRole, "role-dev", StateAllow)},
+		{name: "allow, fallback", dev: StateAllow, allowed: true, source: onDoc(TargetRole, "role-dev", StateAllow)},
+		{name: "allow, deny", dev: StateAllow, front: StateDeny, allowed: true, source: onDoc(TargetRole, "role-dev", StateAllow)},
+		{name: "fallback, allow", front: StateAllow, allowed: true, source: onDoc(TargetRole, "role-front", StateAllow)},
+		{name: "fallback, fallback", source: notHeld},
+		{name: "fallback, fallback over a role that grants it", base: true, allowed: true, source: held},
+		{name: "fallback, deny", base: true, front: StateDeny, source: onDoc(TargetRole, "role-front", StateDeny)},
+		{name: "deny, allow", dev: StateDeny, front: StateAllow, allowed: true, source: onDoc(TargetRole, "role-front", StateAllow)},
+		{name: "deny, fallback", base: true, dev: StateDeny, source: onDoc(TargetRole, "role-dev", StateDeny)},
+		{name: "deny, deny", base: true, dev: StateDeny, front: StateDeny, source: onDoc(TargetRole, "role-dev", StateDeny)},
+		{name: "the person denied over a role's allow", dev: StateAllow, person: StateDeny, source: onDoc(TargetPerson, "bob", StateDeny)},
+		{name: "the person allowed over a role's deny", dev: StateDeny, front: StateDeny, person: StateAllow, allowed: true, source: onDoc(TargetPerson, "bob", StateAllow)},
+		{name: "the person at fallback leaves the roles' answer", front: StateAllow, allowed: true, source: onDoc(TargetRole, "role-front", StateAllow)},
+		{name: "the doc's role rule over the workspace's rule for the person", dev: StateAllow,
+			workspace: roleRule("workspace", "ws", TargetPerson, "bob", StateDeny, action), allowed: true, source: onDoc(TargetRole, "role-dev", StateAllow)},
+		{name: "the workspace's rule for the person where the doc's rules fall back", base: true,
+			workspace: roleRule("workspace", "ws", TargetPerson, "bob", StateDeny, action), source: src(SourceRule, "workspace", "ws", TargetPerson, "bob", StateDeny)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ws := workspaceLayers{userID: "bob", workspaceID: "ws", roleID: "role-dev", roleIDs: []string{"role-dev", "role-front"}, member: true, overwrite: tt.workspace}
+			if tt.base {
+				ws.role = permissions.SetOf(action)
+			}
+			rules := &Rules{Roles: []*Overwrite{doc(TargetRole, "role-dev", tt.dev), doc(TargetRole, "role-front", tt.front), doc(TargetRole, "role-client", StateDeny)}}
+			if tt.person != "" {
+				rules.Person = doc(TargetPerson, "bob", tt.person)
+			}
+			allowed, got := decide(ws, action, func() *Rules { return rules })
+			assert.Equal(t, tt.allowed, allowed)
+			assert.Equal(t, tt.source, got)
+		})
+	}
+}
+
 func TestSentence_NamesWhatItCan(t *testing.T) {
 	s, _ := explainFixture(t)
 	n := s.namer(context.Background())

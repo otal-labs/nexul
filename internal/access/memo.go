@@ -138,6 +138,7 @@ func rememberEach[V any](ctx context.Context, ids []string, key func(id string) 
 type (
 	memberKey     struct{ workspaceID, userID string }
 	overwriteKey  struct{ resourceType, resourceID, userID string }
+	rulesKey      struct{ resourceType, resourceID, userID string }
 	projectKey    struct{ projectID string }
 	docKey        struct{ docID string }
 	workspacesKey struct{ userID string }
@@ -156,9 +157,19 @@ func (s *Service) overwrite(ctx context.Context, resourceType, resourceID, userI
 	})
 }
 
-func (s *Service) overwrites(ctx context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*Overwrite, error) {
-	key := func(id string) any { return overwriteKey{resourceType, id, userID} }
-	return rememberEach(ctx, resourceIDs, key, func(missing []string) (map[string]*Overwrite, error) {
-		return s.repo.GetMany(ctx, resourceType, missing, userID)
+// rules is the rules on one entity reaching userID; a failed read counts as none, as a check's always has.
+func (s *Service) rules(ctx context.Context, resourceType, resourceID, userID string) *Rules {
+	got, err := s.rulesOn(ctx, resourceType, []string{resourceID}, userID)
+	if err != nil {
+		return nil
+	}
+	return got[resourceID]
+}
+
+// rulesOn is the rules reaching userID on each of resourceIDs that has any: theirs and their roles', in one read.
+func (s *Service) rulesOn(ctx context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*Rules, error) {
+	key := func(id string) any { return rulesKey{resourceType, id, userID} }
+	return rememberEach(ctx, resourceIDs, key, func(missing []string) (map[string]*Rules, error) {
+		return s.repo.Rules(ctx, resourceType, missing, userID)
 	})
 }

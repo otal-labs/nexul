@@ -205,10 +205,10 @@ func (r *ProjectsRepo) ListRestrictedAccess(ctx context.Context, projectID strin
 	for _, row := range rows {
 		allow, err := parseSet(row.Allow)
 		if err != nil {
-			return nil, fmt.Errorf("decode access of %s to project %s: %w", row.UserID, projectID, err)
+			return nil, fmt.Errorf("decode access of %s to project %s: %w", row.UserID.String, projectID, err)
 		}
 		name := cmp.Or(row.DisplayName, row.Name, row.Login)
-		out = append(out, workspace.ProjectAccessEntry{RestrictedMember: workspace.RestrictedMember{UserID: row.UserID, Name: name}, Actions: allow})
+		out = append(out, workspace.ProjectAccessEntry{RestrictedMember: workspace.RestrictedMember{UserID: row.UserID.String, Name: name}, Actions: allow})
 	}
 	return out, nil
 }

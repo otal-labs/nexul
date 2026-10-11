@@ -107,7 +107,7 @@ func TestSetProjectAccess(t *testing.T) {
 			assert.Equal(t, tt.allow, rows[0].Allow)
 			require.Len(t, f.repo.events, 1)
 			assert.Equal(t, TopicProjectAccessChanged, f.repo.events[0].Topic)
-			assert.Equal(t, ProjectAccessEvent{ResourceType: "project", ResourceID: tt.proj, UserID: tt.user, ActorID: tt.actor}, f.repo.events[0].Payload)
+			assert.Equal(t, ProjectAccessEvent{ResourceType: "project", ResourceID: tt.proj, Target: "person", UserID: tt.user, ActorID: tt.actor}, f.repo.events[0].Payload)
 		})
 	}
 

@@ -110,14 +110,14 @@ SELECT id, workspace_id, name FROM projects WHERE id = ?;
 SELECT allow FROM permission_overwrites WHERE resource_type = 'project' AND resource_id = ? AND user_id = ?;
 
 -- name: AddInvitationProjectAccess :exec
-INSERT INTO permission_overwrites (resource_type, resource_id, user_id, allow, deny, created_at, updated_at)
-VALUES ('project', ?, ?, ?, '[]', ?, ?)
-ON CONFLICT(resource_type, resource_id, user_id) DO NOTHING;
+INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
+VALUES ('project', ?, 'person', ?, ?, '[]', ?, ?)
+ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO NOTHING;
 
 -- name: AddInvitationOverwrite :exec
-INSERT INTO permission_overwrites (resource_type, resource_id, user_id, allow, deny, created_at, updated_at)
-VALUES ('workspace', ?, ?, ?, ?, ?, ?)
-ON CONFLICT(resource_type, resource_id, user_id) DO NOTHING;
+INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
+VALUES ('workspace', ?, 'person', ?, ?, ?, ?, ?)
+ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO NOTHING;
 
 -- name: DeleteInvitationBeforeRedeem :execrows
 DELETE FROM invitations

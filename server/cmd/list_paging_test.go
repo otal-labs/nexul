@@ -170,11 +170,28 @@ func pageThrough(t *testing.T, a *access.Service, tl mcptool.Tool, user, filter 
 }
 
 // listParityFixture is the permission fixture with uClient restricted to p-client, a ticket, stack, and deploy in each
-// project, blockers across them, a doc each in a private and a shared state, an instance stack and a deleted stack's
-// deploy, and notices in every state an inbox filters.
+// project, blockers across them, a doc each in a private and a shared state, rules for roles on the docs, an instance
+// stack and a deleted stack's deploy, and notices in every state an inbox filters.
 func listParityFixture(t *testing.T) permFixture {
 	t.Helper()
-	return withListParityRows(t, newPermFixture(t))
+	db := mentionsTestDB(t)
+	svc, store := wiredOver(t, db)
+	f := withListParityRows(t, seedPermFixture(t, svc, store))
+	withRoleRulesOnDocs(t, db)
+	return f
+}
+
+// withRoleRulesOnDocs gives the docs rules for roles, written in SQL since no writer names a role yet: one opening a
+// doc to a role outside its project's answer, one closing a shared doc to a role, and one a person's own rule beats.
+func withRoleRulesOnDocs(t *testing.T, db *sql.DB) {
+	t.Helper()
+	_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, allow, deny, created_at, updated_at) VALUES
+    ('doc', 'doc-1', 'role', 'role-plain', '["docs:read","docs:thread"]', '[]', 1, 1),
+    ('doc', 'doc-client', 'role', 'role-writer', '["docs:read"]', '[]', 1, 1),
+    ('doc', 'doc-client', 'role', 'role-client', '[]', '["docs:write"]', 1, 1),
+    ('doc', 'doc-shared', 'role', 'role-reader', '[]', '["docs:read"]', 1, 1),
+    ('doc', 'doc-private', 'role', 'role-reader', '["docs:read"]', '[]', 1, 1)`)
+	require.NoError(t, err)
 }
 
 // withListParityRows adds listParityFixture's rows to a permission fixture.

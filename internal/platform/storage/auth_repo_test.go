@@ -159,7 +159,7 @@ func TestUsersRepo_SetAccountStatus_RemovedCleansAccessAndWritesEvent(t *testing
 		_, err = s.db.ExecContext(ctx, `INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at) VALUES ('u2', 'ws-remove', 'role-remove', 1)`)
 		require.NoError(t, err)
 	}
-	_, err = s.db.ExecContext(ctx, `INSERT INTO permission_overwrites (resource_type, resource_id, user_id, allow, deny, created_at, updated_at) VALUES ('workspace', 'ws-remove', 'u2', '[]', '[]', 1, 1)`)
+	_, err = s.db.ExecContext(ctx, `INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at) VALUES ('workspace', 'ws-remove', 'person', 'u2', '[]', '[]', 1, 1)`)
 	require.NoError(t, err)
 	_, err = s.db.ExecContext(ctx, `INSERT INTO personal_access_tokens (id, user_id, name, token_hash, prefix, created_at) VALUES ('pat-remove', 'u2', 'x', 'hash-remove', 'dep_x', 1)`)
 	require.NoError(t, err)

@@ -181,7 +181,7 @@ func (r *WorkspaceMembersRepo) RemoveMember(ctx context.Context, workspaceID, us
 		if n == 0 {
 			return fmt.Errorf("remove member %s from workspace %s: %w", userID, workspaceID, apperrs.ErrNotFound)
 		}
-		if err := q.DeleteMemberProjectAccess(ctx, sqlcgen.DeleteMemberProjectAccessParams{UserID: userID, WorkspaceID: workspaceID}); err != nil {
+		if err := q.DeleteMemberProjectAccess(ctx, sqlcgen.DeleteMemberProjectAccessParams{UserID: nullString(userID), WorkspaceID: workspaceID}); err != nil {
 			return fmt.Errorf("remove project access of %s in workspace %s: %w", userID, workspaceID, err)
 		}
 		return insertOutboxRows(ctx, tx, events)
@@ -231,7 +231,7 @@ func (r *WorkspaceMembersRepo) SetRestricted(ctx context.Context, workspaceID, u
 }
 
 func (r *WorkspaceMembersRepo) ProjectAccess(ctx context.Context, workspaceID, userID string) ([]*tenancy.ProjectAccess, error) {
-	rows, err := r.q.ListMemberProjectAccess(ctx, sqlcgen.ListMemberProjectAccessParams{UserID: userID, WorkspaceID: workspaceID})
+	rows, err := r.q.ListMemberProjectAccess(ctx, sqlcgen.ListMemberProjectAccessParams{UserID: nullString(userID), WorkspaceID: workspaceID})
 	if err != nil {
 		return nil, fmt.Errorf("list project access of %s in workspace %s: %w", userID, workspaceID, err)
 	}
@@ -250,13 +250,13 @@ func (r *WorkspaceMembersRepo) SetProjectAccess(ctx context.Context, projectID, 
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		if len(allow) == 0 {
-			if _, err := q.DeleteOverwrite(ctx, sqlcgen.DeleteOverwriteParams{ResourceType: projectResourceType, ResourceID: projectID, UserID: userID}); err != nil {
+			if _, err := q.DeleteOverwrite(ctx, sqlcgen.DeleteOverwriteParams{ResourceType: projectResourceType, ResourceID: projectID, UserID: nullString(userID)}); err != nil {
 				return fmt.Errorf("remove project access of %s on %s: %w", userID, projectID, err)
 			}
 			return insertOutboxRows(ctx, tx, events)
 		}
 		_, err := q.UpsertOverwrite(ctx, sqlcgen.UpsertOverwriteParams{
-			ResourceType: projectResourceType, ResourceID: projectID, UserID: userID,
+			ResourceType: projectResourceType, ResourceID: projectID, UserID: nullString(userID),
 			Allow: setJSON(allow), Deny: setJSON(nil), Now: time.Now().Unix(),
 		})
 		if err != nil {
@@ -275,9 +275,9 @@ func (r *WorkspaceMembersRepo) ListAllProjectAccess(ctx context.Context) ([]*ten
 	for _, row := range rows {
 		allow, err := parseSet(row.Allow)
 		if err != nil {
-			return nil, fmt.Errorf("decode project access of %s on %s: %w", row.UserID, row.ProjectID, err)
+			return nil, fmt.Errorf("decode project access of %s on %s: %w", row.UserID.String, row.ProjectID, err)
 		}
-		out = append(out, &tenancy.ProjectAccess{ProjectID: row.ProjectID, ProjectName: row.ProjectName, Allow: allow, UserID: row.UserID, WorkspaceID: row.WorkspaceID})
+		out = append(out, &tenancy.ProjectAccess{ProjectID: row.ProjectID, ProjectName: row.ProjectName, Allow: allow, UserID: row.UserID.String, WorkspaceID: row.WorkspaceID})
 	}
 	return out, nil
 }
@@ -298,7 +298,7 @@ func (r *WorkspaceMembersRepo) SetRole(ctx context.Context, workspaceID, userID,
 }
 
 func (r *WorkspaceMembersRepo) Overrides(ctx context.Context, workspaceID, userID string) (permissions.Set, permissions.Set, error) {
-	row, err := r.q.GetOverwrite(ctx, sqlcgen.GetOverwriteParams{ResourceType: workspaceResourceType, ResourceID: workspaceID, UserID: userID})
+	row, err := r.q.GetOverwrite(ctx, sqlcgen.GetOverwriteParams{ResourceType: workspaceResourceType, ResourceID: workspaceID, UserID: nullString(userID)})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil, nil
 	}
@@ -316,14 +316,14 @@ func (r *WorkspaceMembersRepo) SetOverrides(ctx context.Context, workspaceID, us
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		if len(allow) == 0 && len(deny) == 0 {
-			_, err := q.DeleteOverwrite(ctx, sqlcgen.DeleteOverwriteParams{ResourceType: workspaceResourceType, ResourceID: workspaceID, UserID: userID})
+			_, err := q.DeleteOverwrite(ctx, sqlcgen.DeleteOverwriteParams{ResourceType: workspaceResourceType, ResourceID: workspaceID, UserID: nullString(userID)})
 			if err != nil {
 				return fmt.Errorf("clear overrides for %s in workspace %s: %w", userID, workspaceID, err)
 			}
 			return insertOutboxRows(ctx, tx, events)
 		}
 		_, err := q.UpsertOverwrite(ctx, sqlcgen.UpsertOverwriteParams{
-			ResourceType: workspaceResourceType, ResourceID: workspaceID, UserID: userID,
+			ResourceType: workspaceResourceType, ResourceID: workspaceID, UserID: nullString(userID),
 			Allow: setJSON(allow), Deny: setJSON(deny), Now: time.Now().Unix(),
 		})
 		if err != nil {

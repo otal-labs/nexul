@@ -33,7 +33,7 @@ func (s *Service) require(ctx context.Context, workspaceID, projectID string, ac
 	if !ws.owner && ws.hidden() {
 		return apperrs.ErrNotFound
 	}
-	allowed, src := decide(ws, action, noOverwrite)
+	allowed, src := decide(ws, action, noRules)
 	if userID != "" && allowed {
 		return nil
 	}
@@ -241,6 +241,29 @@ func (s *Service) IsOwner(ctx context.Context, userID, workspaceID string) (bool
 	return info.IsOwnerRole, err
 }
 
+// HoldsRole reports whether userID holds roleID in a workspace they belong to: who a rule for that role reaches.
+func (s *Service) HoldsRole(ctx context.Context, userID, roleID string) (bool, error) {
+	if userID == "" || roleID == "" || s.scopes == nil {
+		return false, nil
+	}
+	workspaceIDs, err := remember(ctx, membershipKey{userID}, func() ([]string, error) {
+		return s.scopes.WorkspaceIDsForUser(ctx, userID)
+	})
+	if err != nil {
+		return false, fmt.Errorf("list workspaces of %s: %w", userID, err)
+	}
+	for _, workspaceID := range workspaceIDs {
+		info, err := s.standing(ctx, userID, workspaceID)
+		if err != nil {
+			return false, err
+		}
+		if info.RoleID == roleID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // IsRestricted reports whether userID is a Restricted member of workspaceID (ADR 0097); the Owner never is.
 func (s *Service) IsRestricted(ctx context.Context, userID, workspaceID string) (bool, error) {
 	info, err := s.standing(ctx, userID, workspaceID)
@@ -273,7 +296,7 @@ func (s *Service) ProjectsWith(ctx context.Context, userID, workspaceID string, 
 	}
 	ctx = s.memoized(ctx)
 	if s.workspaceLayers(ctx, userID, workspaceID).restricted {
-		if _, err := s.overwrites(ctx, resourceTypeProject, projectIDs, userID); err != nil {
+		if _, err := s.rulesOn(ctx, resourceTypeProject, projectIDs, userID); err != nil {
 			return nil, fmt.Errorf("project access of %s: %w", userID, err)
 		}
 	}

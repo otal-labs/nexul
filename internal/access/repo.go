@@ -9,19 +9,22 @@ import (
 
 // Repo is the consumer-side persistence contract for permission overwrites.
 type Repo interface {
-	// Get returns the overwrite row for (resourceType, resourceID, userID), or ErrNotFound when absent.
+	// Get returns the rule naming userID on (resourceType, resourceID), or ErrNotFound when absent.
 	Get(ctx context.Context, resourceType, resourceID, userID string) (*Overwrite, error)
-	// GetMany returns userID's overwrite on each of resourceIDs that has one, keyed by resource id, in one read.
-	GetMany(ctx context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*Overwrite, error)
-	// ListByUser returns every overwrite userID holds on a resourceType, keyed by resource id, in one read.
-	ListByUser(ctx context.Context, resourceType, userID string) (map[string]*Overwrite, error)
-	// ListByResource returns every overwrite on one resource instance (e.g. every per-user grant on a document).
+	// Rules returns the rules naming userID or a role they hold on each of resourceIDs that has any, keyed by
+	// resource id, in one read.
+	Rules(ctx context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*Rules, error)
+	// RulesOfType returns every rule on a resourceType naming userID or a role they hold, keyed by resource id, in one
+	// read.
+	RulesOfType(ctx context.Context, resourceType, userID string) (map[string]*Rules, error)
+	// ListByResource returns every rule on one resource instance, people's and roles'.
 	ListByResource(ctx context.Context, resourceType, resourceID string) ([]*Overwrite, error)
-	// Set upserts the allow/deny sets for (resourceType, resourceID, userID); both empty deletes the row.
+	// Set upserts the allow/deny sets of userID's rule on (resourceType, resourceID); both empty deletes the row.
 	Set(ctx context.Context, resourceType, resourceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error
 	// DeleteByResource removes every overwrite on one resource instance (doc delete/restore path).
 	DeleteByResource(ctx context.Context, resourceType, resourceID string) error
-	// HasAllowAny gates the user directory for permissions:write holders.
+	// HasAllowAny reports whether a rule on a resourceType naming userID or a role they hold allows action; it gates
+	// the user directory for permissions:write holders.
 	HasAllowAny(ctx context.Context, resourceType, userID string, action permissions.Action) (bool, error)
 }
 

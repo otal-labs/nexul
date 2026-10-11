@@ -79,7 +79,7 @@ const deleteAccountOverwrites = `-- name: DeleteAccountOverwrites :exec
 DELETE FROM permission_overwrites WHERE user_id = ?
 `
 
-func (q *Queries) DeleteAccountOverwrites(ctx context.Context, userID string) error {
+func (q *Queries) DeleteAccountOverwrites(ctx context.Context, userID sql.NullString) error {
 	_, err := q.db.ExecContext(ctx, deleteAccountOverwrites, userID)
 	return err
 }

@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/access"
@@ -16,7 +18,7 @@ import (
 
 var _ access.Repo = (*AccessRepo)(nil)
 
-// AccessRepo persists permission_overwrites: one reusable per-user override row shared across every resource type.
+// AccessRepo persists permission_overwrites: the rules for a person or a role on an entity of any resource type.
 type AccessRepo struct {
 	db *sql.DB
 	w  *Serializer
@@ -25,7 +27,7 @@ type AccessRepo struct {
 
 func (r *AccessRepo) Get(ctx context.Context, resourceType, resourceID, userID string) (*access.Overwrite, error) {
 	row, err := r.q.GetOverwrite(ctx, sqlcgen.GetOverwriteParams{
-		ResourceType: resourceType, ResourceID: resourceID, UserID: userID,
+		ResourceType: resourceType, ResourceID: resourceID, UserID: nullString(userID),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("get overwrite %s/%s/%s: %w", resourceType, resourceID, userID, notFoundIfNoRows(err))
@@ -33,41 +35,50 @@ func (r *AccessRepo) Get(ctx context.Context, resourceType, resourceID, userID s
 	return toOverwrite(row)
 }
 
-// GetMany returns userID's overwrite on each of resourceIDs that has one, keyed by resource id, in one read.
-// ListByUser returns every overwrite userID holds on a resourceType, keyed by resource id, in one read.
-func (r *AccessRepo) ListByUser(ctx context.Context, resourceType, userID string) (map[string]*access.Overwrite, error) {
-	rows, err := r.q.ListUserOverwritesOfType(ctx, sqlcgen.ListUserOverwritesOfTypeParams{ResourceType: resourceType, UserID: userID})
-	if err != nil {
-		return nil, fmt.Errorf("list %s overwrites of %s: %w", resourceType, userID, err)
-	}
-	out := make(map[string]*access.Overwrite, len(rows))
-	for _, row := range rows {
-		ow, err := toOverwrite(row)
-		if err != nil {
-			return nil, err
-		}
-		out[ow.ResourceID] = ow
-	}
-	return out, nil
-}
-
-func (r *AccessRepo) GetMany(ctx context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*access.Overwrite, error) {
-	out := make(map[string]*access.Overwrite, len(resourceIDs))
+// Rules returns the rules naming userID or a role they hold on each of resourceIDs that has any, in one read.
+func (r *AccessRepo) Rules(ctx context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*access.Rules, error) {
 	if len(resourceIDs) == 0 {
-		return out, nil
+		return map[string]*access.Rules{}, nil
 	}
-	rows, err := r.q.ListOverwritesForUser(ctx, sqlcgen.ListOverwritesForUserParams{
-		ResourceType: resourceType, UserID: userID, ResourceIds: resourceIDs,
+	rows, err := r.q.ListOverwriteRules(ctx, sqlcgen.ListOverwriteRulesParams{
+		ResourceType: resourceType, UserID: nullString(userID), ResourceIds: resourceIDs,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get overwrites %s for %s: %w", resourceType, userID, err)
+		return nil, fmt.Errorf("get %s rules for %s: %w", resourceType, userID, err)
 	}
+	return toRules(rows)
+}
+
+// RulesOfType returns every rule on a resourceType naming userID or a role they hold, in one read.
+func (r *AccessRepo) RulesOfType(ctx context.Context, resourceType, userID string) (map[string]*access.Rules, error) {
+	rows, err := r.q.ListOverwriteRulesOfType(ctx, sqlcgen.ListOverwriteRulesOfTypeParams{ResourceType: resourceType, UserID: nullString(userID)})
+	if err != nil {
+		return nil, fmt.Errorf("list %s rules of %s: %w", resourceType, userID, err)
+	}
+	return toRules(rows)
+}
+
+// toRules groups rows by resource, each entity's role rules in their target order.
+func toRules(rows []sqlcgen.PermissionOverwrite) (map[string]*access.Rules, error) {
+	out := map[string]*access.Rules{}
 	for _, row := range rows {
 		ow, err := toOverwrite(row)
 		if err != nil {
 			return nil, err
 		}
-		out[ow.ResourceID] = ow
+		rules := out[ow.ResourceID]
+		if rules == nil {
+			rules = &access.Rules{}
+			out[ow.ResourceID] = rules
+		}
+		if ow.Target == access.TargetRole {
+			rules.Roles = append(rules.Roles, ow)
+			continue
+		}
+		rules.Person = ow
+	}
+	for _, rules := range out {
+		slices.SortFunc(rules.Roles, func(a, b *access.Overwrite) int { return strings.Compare(a.RoleID, b.RoleID) })
 	}
 	return out, nil
 }
@@ -87,7 +98,7 @@ func (r *AccessRepo) Set(ctx context.Context, resourceType, resourceID, userID s
 		q := r.q.WithTx(tx)
 		if len(allow) == 0 && len(deny) == 0 {
 			n, err := q.DeleteOverwrite(ctx, sqlcgen.DeleteOverwriteParams{
-				ResourceType: resourceType, ResourceID: resourceID, UserID: userID,
+				ResourceType: resourceType, ResourceID: resourceID, UserID: nullString(userID),
 			})
 			if err != nil {
 				return fmt.Errorf("delete overwrite %s/%s/%s: %w", resourceType, resourceID, userID, err)
@@ -98,7 +109,7 @@ func (r *AccessRepo) Set(ctx context.Context, resourceType, resourceID, userID s
 			return insertOutboxRows(ctx, tx, events)
 		}
 		n, err := q.UpsertOverwrite(ctx, sqlcgen.UpsertOverwriteParams{
-			ResourceType: resourceType, ResourceID: resourceID, UserID: userID,
+			ResourceType: resourceType, ResourceID: resourceID, UserID: nullString(userID),
 			Allow: setJSON(allow), Deny: setJSON(deny), Now: time.Now().Unix(),
 		})
 		if err != nil {
@@ -125,7 +136,7 @@ func (r *AccessRepo) DeleteByResource(ctx context.Context, resourceType, resourc
 func (r *AccessRepo) HasAllowAny(ctx context.Context, resourceType, userID string, action permissions.Action) (bool, error) {
 	// The quotes make the substring match exact: "docs:read" never matches inside "docs:readx".
 	n, err := r.q.CountOverwriteAllowAny(ctx, sqlcgen.CountOverwriteAllowAnyParams{
-		ResourceType: resourceType, UserID: userID, QuotedAction: `"` + string(action) + `"`,
+		ResourceType: resourceType, UserID: nullString(userID), QuotedAction: `"` + string(action) + `"`,
 	})
 	if err != nil {
 		return false, fmt.Errorf("has allow %s for %s/%s: %w", action, resourceType, userID, err)
@@ -136,16 +147,18 @@ func (r *AccessRepo) HasAllowAny(ctx context.Context, resourceType, userID strin
 func toOverwrite(row sqlcgen.PermissionOverwrite) (*access.Overwrite, error) {
 	allow, err := parseSet(row.Allow)
 	if err != nil {
-		return nil, fmt.Errorf("decode allow for %s/%s/%s: %w", row.ResourceType, row.ResourceID, row.UserID, err)
+		return nil, fmt.Errorf("decode allow for %s/%s/%s: %w", row.ResourceType, row.ResourceID, row.Target, err)
 	}
 	deny, err := parseSet(row.Deny)
 	if err != nil {
-		return nil, fmt.Errorf("decode deny for %s/%s/%s: %w", row.ResourceType, row.ResourceID, row.UserID, err)
+		return nil, fmt.Errorf("decode deny for %s/%s/%s: %w", row.ResourceType, row.ResourceID, row.Target, err)
 	}
 	return &access.Overwrite{
 		ResourceType: row.ResourceType,
 		ResourceID:   row.ResourceID,
-		UserID:       row.UserID,
+		Target:       row.Target,
+		UserID:       row.UserID.String,
+		RoleID:       row.RoleID.String,
 		Allow:        allow,
 		Deny:         deny,
 		CreatedAt:    time.Unix(row.CreatedAt, 0).UTC(),

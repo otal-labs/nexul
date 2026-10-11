@@ -357,3 +357,42 @@ func TestStatements_LiveFramesCostOneReadPerPersonOnceWarm(t *testing.T) {
 
 	assert.Equal(t, 5*int64(len(members))*perConversation, st.Count())
 }
+
+// TestStatements_RoleRulesCostTheSameAtAnyLength: rules for roles on every doc cost a doc list, a doc_list page and a
+// doc's read no statement more than no rules at all, at a few docs or many, since they come back with the person's own.
+func TestStatements_RoleRulesCostTheSameAtAnyLength(t *testing.T) {
+	paths := map[string]func(ctx context.Context, f permFixture) error{
+		"docs list": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.docsSvc.ListByProject(ctx, pGeneral)
+			return err
+		},
+		"doc_list": func(ctx context.Context, f permFixture) error {
+			_, err := tool(t, docs.MCPTools(f.svc.docsSvc), "doc_list").Call(ctx, json.RawMessage(`{}`))
+			return err
+		},
+		"a doc's read": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.docsSvc.Get(ctx, f.doc)
+			return err
+		},
+	}
+	cost := func(n int, rules bool) map[string]int64 {
+		f, st, db := newCountedFixtureDB(t)
+		grow(t, f, n)
+		if rules {
+			_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, allow, deny, created_at, updated_at)
+SELECT 'doc', d.id, 'role', r.id, '["docs:write"]', '["docs:delete"]', 1, 1 FROM docs d, roles r WHERE r.id IN ('role-reader', 'role-writer')`)
+			require.NoError(t, err)
+		}
+		out := map[string]int64{}
+		for name, run := range paths {
+			ctx := access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: uReader}), f.svc.accessSvc.NewMemo())
+			st.Reset()
+			require.NoError(t, run(ctx, f), name)
+			out[name] = st.Count()
+		}
+		return out
+	}
+	none := cost(12, false)
+	assert.Equal(t, none, cost(2, true), "a few docs, each with rules")
+	assert.Equal(t, none, cost(12, true), "many docs, each with rules")
+}

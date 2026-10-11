@@ -1,6 +1,6 @@
 # 02 — Rules can name a role
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 01
 
@@ -28,13 +28,13 @@ the research (sections 1.1, 1.3, 3 and 5).
 
 ## Acceptance criteria
 
-- [ ] An empty `access.Matrix` diff on a production copy, master against the branch, with row counts, in the PR.
-- [ ] Table-driven `TestDecide_RoleRules`: two roles on one entity in every combination of states, a person rule over
+- [x] An empty `access.Matrix` diff, master against the branch, with row counts, in the PR. The owner chose a prod-shaped fixture over a production copy (2026-10-11): a schema-0096 database holding every rule kind.
+- [x] Table-driven `TestDecide_RoleRules`: two roles on one entity in every combination of states, a person rule over
       them, and a nearer entity over a farther one, each with its source.
-- [ ] Deleting a role deletes its rows; deleting an account deletes its rows.
-- [ ] `list_paging_test.go` gains role rows on docs and stays green; new
+- [x] Deleting a role deletes its rows; deleting an account deletes its rows.
+- [x] `list_paging_test.go` gains role rows on docs and stays green; new
       `TestStatements_RoleRulesCostTheSameAtAnyLength`, rules on every row against none.
-- [ ] `liveRequests.test.tsx` and the phone's `requestCounts.test.tsx` gain a grant frame that names no person.
-- [ ] `make event-schemas` and `make live-topics` are clean, and the published contract only grows.
-- [ ] `doc_list`, `ticket_list` and one live frame: statements and median time on the heavy copy, production build,
+- [x] `liveRequests.test.tsx` and the phone's `requestCounts.test.tsx` gain a grant frame that names no person.
+- [x] `make event-schemas` and `make live-topics` are clean, and the published contract only grows.
+- [x] `doc_list`, `ticket_list` and one live frame: statements and median time on the heavy copy, production build,
       before and after, in the PR.

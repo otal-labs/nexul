@@ -7,22 +7,29 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 )
 
 const countOverwriteAllowAny = `-- name: CountOverwriteAllowAny :one
-SELECT COUNT(*) FROM permission_overwrites
-WHERE resource_type = ? AND user_id = ? AND instr(allow, ?3) > 0
+SELECT COUNT(*) FROM (
+  SELECT 1 FROM permission_overwrites po
+  WHERE po.user_id = ?1 AND po.resource_type = ?2 AND instr(po.allow, ?3) > 0
+  UNION ALL
+  SELECT 1 FROM permission_overwrites pr
+  WHERE pr.role_id IN (SELECT m.role_id FROM workspace_members m WHERE m.user_id = ?1)
+    AND pr.resource_type = ?2 AND instr(pr.allow, ?3) > 0
+)
 `
 
 type CountOverwriteAllowAnyParams struct {
+	UserID       sql.NullString
 	ResourceType string
-	UserID       string
 	QuotedAction string
 }
 
 func (q *Queries) CountOverwriteAllowAny(ctx context.Context, arg CountOverwriteAllowAnyParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countOverwriteAllowAny, arg.ResourceType, arg.UserID, arg.QuotedAction)
+	row := q.db.QueryRowContext(ctx, countOverwriteAllowAny, arg.UserID, arg.ResourceType, arg.QuotedAction)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -35,7 +42,7 @@ DELETE FROM permission_overwrites WHERE resource_type = ? AND resource_id = ? AN
 type DeleteOverwriteParams struct {
 	ResourceType string
 	ResourceID   string
-	UserID       string
+	UserID       sql.NullString
 }
 
 func (q *Queries) DeleteOverwrite(ctx context.Context, arg DeleteOverwriteParams) (int64, error) {
@@ -61,13 +68,13 @@ func (q *Queries) DeleteOverwritesByResource(ctx context.Context, arg DeleteOver
 }
 
 const getOverwrite = `-- name: GetOverwrite :one
-SELECT resource_type, resource_id, user_id, allow, deny, created_at, updated_at FROM permission_overwrites WHERE resource_type = ? AND resource_id = ? AND user_id = ?
+SELECT resource_type, resource_id, target, user_id, role_id, allow, deny, created_at, updated_at FROM permission_overwrites WHERE resource_type = ? AND resource_id = ? AND user_id = ?
 `
 
 type GetOverwriteParams struct {
 	ResourceType string
 	ResourceID   string
-	UserID       string
+	UserID       sql.NullString
 }
 
 func (q *Queries) GetOverwrite(ctx context.Context, arg GetOverwriteParams) (PermissionOverwrite, error) {
@@ -76,7 +83,9 @@ func (q *Queries) GetOverwrite(ctx context.Context, arg GetOverwriteParams) (Per
 	err := row.Scan(
 		&i.ResourceType,
 		&i.ResourceID,
+		&i.Target,
 		&i.UserID,
+		&i.RoleID,
 		&i.Allow,
 		&i.Deny,
 		&i.CreatedAt,
@@ -85,59 +94,21 @@ func (q *Queries) GetOverwrite(ctx context.Context, arg GetOverwriteParams) (Per
 	return i, err
 }
 
-const listOverwritesByResource = `-- name: ListOverwritesByResource :many
-SELECT resource_type, resource_id, user_id, allow, deny, created_at, updated_at FROM permission_overwrites WHERE resource_type = ? AND resource_id = ? ORDER BY user_id
+const listOverwriteRules = `-- name: ListOverwriteRules :many
+SELECT po.resource_type, po.resource_id, po.target, po.user_id, po.role_id, po.allow, po.deny, po.created_at, po.updated_at FROM permission_overwrites po
+WHERE po.resource_type = ?1
+  AND (po.user_id = ?2 OR po.role_id IN (SELECT m.role_id FROM workspace_members m WHERE m.user_id = ?2))
+  AND po.resource_id IN (/*SLICE:resource_ids*/?)
 `
 
-type ListOverwritesByResourceParams struct {
+type ListOverwriteRulesParams struct {
 	ResourceType string
-	ResourceID   string
-}
-
-func (q *Queries) ListOverwritesByResource(ctx context.Context, arg ListOverwritesByResourceParams) ([]PermissionOverwrite, error) {
-	rows, err := q.db.QueryContext(ctx, listOverwritesByResource, arg.ResourceType, arg.ResourceID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []PermissionOverwrite
-	for rows.Next() {
-		var i PermissionOverwrite
-		if err := rows.Scan(
-			&i.ResourceType,
-			&i.ResourceID,
-			&i.UserID,
-			&i.Allow,
-			&i.Deny,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listOverwritesForUser = `-- name: ListOverwritesForUser :many
-SELECT resource_type, resource_id, user_id, allow, deny, created_at, updated_at FROM permission_overwrites
-WHERE resource_type = ?1 AND user_id = ?2 AND resource_id IN (/*SLICE:resource_ids*/?)
-`
-
-type ListOverwritesForUserParams struct {
-	ResourceType string
-	UserID       string
+	UserID       sql.NullString
 	ResourceIds  []string
 }
 
-func (q *Queries) ListOverwritesForUser(ctx context.Context, arg ListOverwritesForUserParams) ([]PermissionOverwrite, error) {
-	query := listOverwritesForUser
+func (q *Queries) ListOverwriteRules(ctx context.Context, arg ListOverwriteRulesParams) ([]PermissionOverwrite, error) {
+	query := listOverwriteRules
 	var queryParams []interface{}
 	queryParams = append(queryParams, arg.ResourceType)
 	queryParams = append(queryParams, arg.UserID)
@@ -160,7 +131,9 @@ func (q *Queries) ListOverwritesForUser(ctx context.Context, arg ListOverwritesF
 		if err := rows.Scan(
 			&i.ResourceType,
 			&i.ResourceID,
+			&i.Target,
 			&i.UserID,
+			&i.RoleID,
 			&i.Allow,
 			&i.Deny,
 			&i.CreatedAt,
@@ -179,17 +152,20 @@ func (q *Queries) ListOverwritesForUser(ctx context.Context, arg ListOverwritesF
 	return items, nil
 }
 
-const listUserOverwritesOfType = `-- name: ListUserOverwritesOfType :many
-SELECT resource_type, resource_id, user_id, allow, deny, created_at, updated_at FROM permission_overwrites WHERE resource_type = ? AND user_id = ?
+const listOverwriteRulesOfType = `-- name: ListOverwriteRulesOfType :many
+SELECT po.resource_type, po.resource_id, po.target, po.user_id, po.role_id, po.allow, po.deny, po.created_at, po.updated_at FROM permission_overwrites po WHERE po.user_id = ?1 AND po.resource_type = ?2
+UNION ALL
+SELECT pr.resource_type, pr.resource_id, pr.target, pr.user_id, pr.role_id, pr.allow, pr.deny, pr.created_at, pr.updated_at FROM permission_overwrites pr
+WHERE pr.role_id IN (SELECT m.role_id FROM workspace_members m WHERE m.user_id = ?1) AND pr.resource_type = ?2
 `
 
-type ListUserOverwritesOfTypeParams struct {
+type ListOverwriteRulesOfTypeParams struct {
+	UserID       sql.NullString
 	ResourceType string
-	UserID       string
 }
 
-func (q *Queries) ListUserOverwritesOfType(ctx context.Context, arg ListUserOverwritesOfTypeParams) ([]PermissionOverwrite, error) {
-	rows, err := q.db.QueryContext(ctx, listUserOverwritesOfType, arg.ResourceType, arg.UserID)
+func (q *Queries) ListOverwriteRulesOfType(ctx context.Context, arg ListOverwriteRulesOfTypeParams) ([]PermissionOverwrite, error) {
+	rows, err := q.db.QueryContext(ctx, listOverwriteRulesOfType, arg.UserID, arg.ResourceType)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +176,51 @@ func (q *Queries) ListUserOverwritesOfType(ctx context.Context, arg ListUserOver
 		if err := rows.Scan(
 			&i.ResourceType,
 			&i.ResourceID,
+			&i.Target,
 			&i.UserID,
+			&i.RoleID,
+			&i.Allow,
+			&i.Deny,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOverwritesByResource = `-- name: ListOverwritesByResource :many
+SELECT resource_type, resource_id, target, user_id, role_id, allow, deny, created_at, updated_at FROM permission_overwrites WHERE resource_type = ? AND resource_id = ? ORDER BY target, coalesce(user_id, role_id)
+`
+
+type ListOverwritesByResourceParams struct {
+	ResourceType string
+	ResourceID   string
+}
+
+func (q *Queries) ListOverwritesByResource(ctx context.Context, arg ListOverwritesByResourceParams) ([]PermissionOverwrite, error) {
+	rows, err := q.db.QueryContext(ctx, listOverwritesByResource, arg.ResourceType, arg.ResourceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PermissionOverwrite
+	for rows.Next() {
+		var i PermissionOverwrite
+		if err := rows.Scan(
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.Target,
+			&i.UserID,
+			&i.RoleID,
 			&i.Allow,
 			&i.Deny,
 			&i.CreatedAt,
@@ -220,16 +240,16 @@ func (q *Queries) ListUserOverwritesOfType(ctx context.Context, arg ListUserOver
 }
 
 const upsertOverwrite = `-- name: UpsertOverwrite :execrows
-INSERT INTO permission_overwrites (resource_type, resource_id, user_id, allow, deny, created_at, updated_at)
-VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)
-ON CONFLICT(resource_type, resource_id, user_id) DO UPDATE SET
+INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
+VALUES (?1, ?2, 'person', ?3, ?4, ?5, ?6, ?6)
+ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO UPDATE SET
   allow = excluded.allow, deny = excluded.deny, updated_at = excluded.updated_at
 `
 
 type UpsertOverwriteParams struct {
 	ResourceType string
 	ResourceID   string
-	UserID       string
+	UserID       sql.NullString
 	Allow        string
 	Deny         string
 	Now          int64

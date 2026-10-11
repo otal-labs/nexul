@@ -241,4 +241,14 @@ describe("requests a session sends", () => {
 
     expect(gets.sort()).toEqual(["/api/tickets/t-2", "/api/tickets?project_id=p-1"]);
   });
+
+  // It reached the viewer as a holder of the role it names, so only their own permissions refetch.
+  test("a grant frame that names no person refetches the viewer's permissions, nothing else", async () => {
+    const client = await renderSession();
+    const frame = { topic: "access.grant.changed", type: "event", payload: { resource_type: "doc", resource_id: "d1", target: "role", user_id: "", role_id: "r-9" } };
+
+    const gets = await requestsDuring(client, () => dispatch(client)(frame));
+
+    expect(gets).toEqual(["/api/workspaces/ws-1/me"]);
+  });
 });

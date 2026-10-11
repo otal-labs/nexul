@@ -94,7 +94,7 @@ func (s *Service) SetProjectAccess(ctx context.Context, actorID, workspaceID, us
 	if err := permissions.RequireHeld(next.Except(current), held); err != nil {
 		return err
 	}
-	event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicProjectAccessChanged, Payload: ProjectAccessEvent{ResourceType: "project", ResourceID: projectID, UserID: userID, ActorID: actorID}}
+	event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicProjectAccessChanged, Payload: ProjectAccessEvent{ResourceType: "project", ResourceID: projectID, Target: "person", UserID: userID, ActorID: actorID}}
 	if err := s.members.SetProjectAccess(ctx, projectID, userID, next, event); err != nil {
 		return fmt.Errorf("set project access for %s on %s: %w", userID, projectID, err)
 	}

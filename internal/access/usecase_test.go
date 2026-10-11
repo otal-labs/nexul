@@ -22,13 +22,11 @@ type fakeRepo struct {
 	deleteErr  error
 	setErr     error
 	events     []eventbus.OutboxEvent
-	reads      readCounts
+	reads      int
 }
 
-// readCounts is how many single and batch overwrite reads reached the fake, so a test can pin what a check costs.
-type readCounts struct{ get, getMany int }
-
-func (f *fakeRepo) readCounts() readCounts {
+// readCounts is how many overwrite and rule reads reached the fake, so a test can pin what a check costs.
+func (f *fakeRepo) readCounts() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.reads
@@ -37,7 +35,7 @@ func (f *fakeRepo) readCounts() readCounts {
 func (f *fakeRepo) resetReads() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.reads = readCounts{}
+	f.reads = 0
 }
 
 func newFakeRepo() *fakeRepo {
@@ -51,7 +49,7 @@ func key(resourceType, resourceID, userID string) string {
 func (f *fakeRepo) Get(_ context.Context, resourceType, resourceID, userID string) (*Overwrite, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.reads.get++
+	f.reads++
 	return f.get(resourceType, resourceID, userID)
 }
 
@@ -66,26 +64,26 @@ func (f *fakeRepo) get(resourceType, resourceID, userID string) (*Overwrite, err
 	return ow, nil
 }
 
-func (f *fakeRepo) ListByUser(_ context.Context, resourceType, userID string) (map[string]*Overwrite, error) {
+func (f *fakeRepo) RulesOfType(_ context.Context, resourceType, userID string) (map[string]*Rules, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.getErr != nil {
 		return nil, f.getErr
 	}
-	out := map[string]*Overwrite{}
+	out := map[string]*Rules{}
 	for _, ow := range f.overwrites {
 		if ow.ResourceType == resourceType && ow.UserID == userID {
-			out[ow.ResourceID] = ow
+			out[ow.ResourceID] = &Rules{Person: ow}
 		}
 	}
 	return out, nil
 }
 
-func (f *fakeRepo) GetMany(_ context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*Overwrite, error) {
+func (f *fakeRepo) Rules(_ context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*Rules, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.reads.getMany++
-	out := map[string]*Overwrite{}
+	f.reads++
+	out := map[string]*Rules{}
 	for _, id := range resourceIDs {
 		ow, err := f.get(resourceType, id, userID)
 		if errors.Is(err, apperrs.ErrNotFound) {
@@ -94,7 +92,7 @@ func (f *fakeRepo) GetMany(_ context.Context, resourceType string, resourceIDs [
 		if err != nil {
 			return nil, err
 		}
-		out[id] = ow
+		out[id] = &Rules{Person: ow}
 	}
 	return out, nil
 }
@@ -582,7 +580,7 @@ func TestSetGrants(t *testing.T) {
 		}
 		require.Len(t, repo.events, 2)
 		assert.Equal(t, TopicGrantChanged, repo.events[0].Topic)
-		assert.Equal(t, GrantEvent{ResourceType: resourceTypeDoc, ResourceID: "doc-2", UserID: "alice", ActorID: "manager"}, repo.events[1].Payload)
+		assert.Equal(t, GrantEvent{ResourceType: resourceTypeDoc, ResourceID: "doc-2", Target: TargetPerson, UserID: "alice", ActorID: "manager"}, repo.events[1].Payload)
 	})
 	t.Run("permissions:write holder can grant on their doc", func(t *testing.T) {
 		repo := newFakeRepo()

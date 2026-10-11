@@ -36,14 +36,14 @@ func (q *Queries) AddInvitationMember(ctx context.Context, arg AddInvitationMemb
 }
 
 const addInvitationOverwrite = `-- name: AddInvitationOverwrite :exec
-INSERT INTO permission_overwrites (resource_type, resource_id, user_id, allow, deny, created_at, updated_at)
-VALUES ('workspace', ?, ?, ?, ?, ?, ?)
-ON CONFLICT(resource_type, resource_id, user_id) DO NOTHING
+INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
+VALUES ('workspace', ?, 'person', ?, ?, ?, ?, ?)
+ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO NOTHING
 `
 
 type AddInvitationOverwriteParams struct {
 	ResourceID string
-	UserID     string
+	UserID     sql.NullString
 	Allow      string
 	Deny       string
 	CreatedAt  int64
@@ -63,14 +63,14 @@ func (q *Queries) AddInvitationOverwrite(ctx context.Context, arg AddInvitationO
 }
 
 const addInvitationProjectAccess = `-- name: AddInvitationProjectAccess :exec
-INSERT INTO permission_overwrites (resource_type, resource_id, user_id, allow, deny, created_at, updated_at)
-VALUES ('project', ?, ?, ?, '[]', ?, ?)
-ON CONFLICT(resource_type, resource_id, user_id) DO NOTHING
+INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
+VALUES ('project', ?, 'person', ?, ?, '[]', ?, ?)
+ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO NOTHING
 `
 
 type AddInvitationProjectAccessParams struct {
 	ResourceID string
-	UserID     string
+	UserID     sql.NullString
 	Allow      string
 	CreatedAt  int64
 	UpdatedAt  int64
@@ -322,7 +322,7 @@ SELECT allow FROM permission_overwrites WHERE resource_type = 'project' AND reso
 
 type GetInvitationCreatorProjectAccessParams struct {
 	ResourceID string
-	UserID     string
+	UserID     sql.NullString
 }
 
 func (q *Queries) GetInvitationCreatorProjectAccess(ctx context.Context, arg GetInvitationCreatorProjectAccessParams) (string, error) {
