@@ -17,7 +17,7 @@ var registry = map[string]Connector{
 	"cloudflare": {
 		ID:          "cloudflare",
 		Name:        "Cloudflare",
-		Description: "Manages DNS records and tunnels for your deployed services",
+		Description: "Your domain, DNS records and exposures for deployed services",
 		Category:    "infrastructure",
 		Icon:        "cloudflare",
 		DocsURL:     "https://dash.cloudflare.com/profile/api-tokens",

@@ -51,13 +51,4 @@ Create the token in the Cloudflare dashboard with:
 | Zone → DNS: Edit | Creating the records that point hostnames at Nexul |
 | Account → Cloudflare Tunnel: Edit | Creating tunnels |
 
-Pairing computers by tunnel needs two more:
-
-| Permission | What Nexul uses it for |
-| --- | --- |
-| Account → Access: Apps and Policies: Edit | Letting only this instance reach each paired computer |
-| Account → Access: Service Tokens: Edit | The token this instance presents to get through |
-
-These two also need Zero Trust turned on for the account. In the Cloudflare dashboard, pick a team name and the Free plan. Cloudflare asks for payment details but doesn't charge for Free.
-
-When you connect the token, Nexul checks each permission and names any that are missing. It also lists the domains the token can edit; make sure yours is among them. A missing pairing permission is only a warning.
+When you connect the token, Nexul checks each permission and names any that are missing. It also lists the domains the token can edit; make sure yours is among them. The dialog may also list two Account → Access permissions. They only served computers paired through a tunnel in the past, so you can leave them off.

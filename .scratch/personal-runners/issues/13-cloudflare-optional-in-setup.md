@@ -1,6 +1,6 @@
 # 13 — Cloudflare is optional in setup and onboarding
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 06
 
@@ -21,5 +21,5 @@ Read first: `practices/react-guide.md`, `practices/design-language.md`, the spec
 
 ## Acceptance criteria
 
-- [ ] `rg -i 'zero trust'` over `web/src` and the guide finds only DNS and exposure contexts.
-- [ ] Screenshots of the changed wizard steps at 768, 1024 and 1440px.
+- [x] `rg -i 'zero trust'` over `web/src` and the guide finds only DNS and exposure contexts.
+- [x] Screenshots of the changed wizard steps at 768, 1024 and 1440px.
