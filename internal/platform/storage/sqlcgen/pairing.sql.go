@@ -10,6 +10,26 @@ import (
 	"database/sql"
 )
 
+const clearPairingComputerTunnel = `-- name: ClearPairingComputerTunnel :execrows
+UPDATE pairing_computers SET tunnel_id = '', tunnel_hostname = '', tunnel_zone_id = '', tunnel_record_id = '', tunnel_access_app_id = '',
+  updated_at = ?
+WHERE id = ? AND user_id = ?
+`
+
+type ClearPairingComputerTunnelParams struct {
+	UpdatedAt int64
+	ID        string
+	UserID    string
+}
+
+func (q *Queries) ClearPairingComputerTunnel(ctx context.Context, arg ClearPairingComputerTunnelParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, clearPairingComputerTunnel, arg.UpdatedAt, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deletePairingComputer = `-- name: DeletePairingComputer :execrows
 DELETE FROM pairing_computers WHERE id = ? AND user_id = ?
 `
@@ -134,6 +154,23 @@ func (q *Queries) GetPairingProjectLink(ctx context.Context, arg GetPairingProje
 	return i, err
 }
 
+const insertPairingMoveNotice = `-- name: InsertPairingMoveNotice :execrows
+INSERT INTO pairing_move_notices (user_id, notified_at) VALUES (?, ?) ON CONFLICT(user_id) DO NOTHING
+`
+
+type InsertPairingMoveNoticeParams struct {
+	UserID     string
+	NotifiedAt int64
+}
+
+func (q *Queries) InsertPairingMoveNotice(ctx context.Context, arg InsertPairingMoveNoticeParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertPairingMoveNotice, arg.UserID, arg.NotifiedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const listPairingComputers = `-- name: ListPairingComputers :many
 SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder, facts, facts_at FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC
 `
@@ -172,6 +209,42 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 			&i.Facts,
 			&i.FactsAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPairingComputersToMove = `-- name: ListPairingComputersToMove :many
+SELECT c.id, c.user_id FROM pairing_computers c
+WHERE (c.tunnel_id != '' OR (c.server_url != '' AND c.server_url NOT LIKE ?1))
+  AND NOT EXISTS (SELECT 1 FROM pairing_move_notices n WHERE n.user_id = c.user_id)
+ORDER BY c.user_id, c.created_at, c.id
+`
+
+type ListPairingComputersToMoveRow struct {
+	ID     string
+	UserID string
+}
+
+// Every computer still on a tunnel or an address whose owner has no move notice yet, oldest first per owner.
+func (q *Queries) ListPairingComputersToMove(ctx context.Context, runnerAddressPattern string) ([]ListPairingComputersToMoveRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPairingComputersToMove, runnerAddressPattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPairingComputersToMoveRow
+	for rows.Next() {
+		var i ListPairingComputersToMoveRow
+		if err := rows.Scan(&i.ID, &i.UserID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

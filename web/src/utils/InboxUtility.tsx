@@ -12,6 +12,7 @@ const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.MemoryUpdated]: "memory updated",
   [NotificationKind.PlayRunFinished]: "play run ended",
   [NotificationKind.PlayRunWaiting]: "needs your answer",
+  [NotificationKind.ComputerMoveRequested]: "move to the Nexul app",
 };
 
 /** One inbox row: a doc with every notification about it, or any other notification on its own. */

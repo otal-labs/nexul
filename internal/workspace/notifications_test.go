@@ -1050,3 +1050,30 @@ func TestHandleDocClarificationNotices(t *testing.T) {
 		assert.Empty(t, repo.notifsFor("u1"))
 	})
 }
+
+// TestHandleComputerMoveRequested_TellsTheOwnerOnceInTheirFirstWorkspace: the move notice is one notification for the
+// computer's owner alone, in the first workspace they joined, opening Computers; a redelivery adds none.
+func TestHandleComputerMoveRequested_TellsTheOwnerOnceInTheirFirstWorkspace(t *testing.T) {
+	repo := newFakeNotifRepo()
+	s := newTestNotifService(repo, newFakeNotifUsers(notifUser("u1", "alice"), notifUser("u2", "bob")))
+	ev := notifEvFor(t, "computer.move_requested", map[string]any{"computer_id": "c-laptop", "user_id": "u1", "members_only": true})
+
+	require.NoError(t, HandleComputerMoveRequested(context.Background(), s, ev))
+	require.NoError(t, HandleComputerMoveRequested(context.Background(), s, ev))
+
+	require.Len(t, repo.notifsFor("u1"), 1)
+	n := repo.notifsFor("u1")[0]
+	assert.Equal(t, KindComputerMove, n.Kind)
+	assert.Equal(t, SubjectComputer, n.SubjectType)
+	assert.Equal(t, "c-laptop", n.SubjectID)
+	assert.Equal(t, "Move your computers to the Nexul app", n.SubjectTitle)
+	assert.Equal(t, "ws-1", n.WorkspaceID)
+	assert.Empty(t, repo.notifsFor("u2"))
+
+	err := HandleComputerMoveRequested(context.Background(), s, notifEvFor(t, "computer.move_requested", map[string]any{"computer_id": "c-laptop"}))
+	require.ErrorIs(t, err, apperrs.ErrFatal)
+	err = HandleComputerMoveRequested(context.Background(), s, eventbus.Event{ID: "e2", Payload: []byte(`{`)})
+	require.ErrorIs(t, err, apperrs.ErrFatal)
+	s = newTestNotifServiceWith(newFakeNotifRepo(), newFakeNotifUsers(), nil, &failingAccess{})
+	require.Error(t, HandleComputerMoveRequested(context.Background(), s, ev), "a workspace that cannot be read is retried")
+}

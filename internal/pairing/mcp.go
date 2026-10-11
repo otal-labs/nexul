@@ -31,7 +31,7 @@ type computerListIn struct {
 
 type computerCreateIn struct {
 	Name string `json:"name,omitempty" jsonschema:"The computer's name, for example Alice Laptop. Omit it to name the computer after the hostname it reports when its runner enrolls."`
-	ID   string `json:"id,omitempty" jsonschema:"One of your computers that has no runner yet, to get a fresh command for it after the last one expired. Omit it to add a new computer."`
+	ID   string `json:"id,omitempty" jsonschema:"One of your computers that has no runner yet, to get a fresh command for it after the last one expired, or to move a computer paired through a tunnel or by URL to the Nexul app. Omit it to add a new computer."`
 	Port int    `json:"port,omitzero" jsonschema:"Ignored: the runner finds the port T3 Code serves on by itself."`
 }
 
@@ -194,8 +194,11 @@ func computerCreateTool(s *Service) mcptool.Tool {
 			"on Linux and macOS it uses sudo and installs a service that runs as them, never as root, and on Windows it needs no "+
 			"administrator and installs a task that runs as them while they are logged in. Once the "+
 			"runner connects, computer_list shows runner.connected on the computer. Pass id instead of name for a "+
-			"fresh command when a computer of yours has no runner yet and its last code expired. Only you can see "+
-			"or use the computer.",
+			"fresh command when a computer of yours has no runner yet and its last code expired, or to move a computer "+
+			"paired through a tunnel or by URL to the Nexul app: once its runner connects it pairs through it, keeping its "+
+			"links, setup, MCP token and trails, and only then are its tunnel, DNS record and Access app deleted, after which "+
+			"sudo cloudflared service uninstall (cloudflared service uninstall in an administrator PowerShell on Windows) "+
+			"removes cloudflared from it. A failed move leaves the computer working as it was. Only you can see or use the computer.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in computerCreateIn) (any, error) {
 			e, err := createComputer(ctx, s, in)
@@ -218,7 +221,8 @@ func computerPairTool(s *Service) mcptool.Tool {
 		"Pairs T3 Code on one of your computers now, giving Nexul a harness session on it. A computer added with "+
 			"computer_create pairs, and re-pairs before its session ends, on its own once its Nexul app connects; pass only "+
 			"its id to pair it again now, which mints a one-time token on the computer and exchanges it there, and a failure "+
-			"says why and leaves the computer as it was. A computer added before the Nexul app takes the token t3 pair prints "+
+			"says why and leaves the computer as it was. The same call moves a computer paired through a tunnel or by URL "+
+			"whose Nexul app computer_create with its id installed. A computer added before the Nexul app takes the token t3 pair prints "+
 			"there: with id, over its tunnel hostname or its address, where name renames it and server_url moves one paired "+
 			"by URL; without id, name and server_url pair a new machine this server can already reach. With id and name "+
 			"alone it only renames the computer. Returns the paired computer; run computer_setup_run next so agent work can use it.",

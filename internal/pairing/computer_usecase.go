@@ -200,10 +200,26 @@ func (s *Service) HandleFactsReported(ctx context.Context, ev eventbus.Event) er
 	}
 	// Whole GiB only: free space moves by a few bytes between reports, and a report that changes nothing writes nothing.
 	p.Facts.FreeDiskBytes -= p.Facts.FreeDiskBytes % diskGranule
-	if p.Facts.T3.State == t3Answering && (!computer.Paired() || !computer.TokenExpiresAt.After(s.now().Add(repairWindow))) {
-		s.pairOnReport(ctx, *computer, p.Facts.Hostname)
-	}
+	s.pairOrRetireTunnel(ctx, *computer, p.Facts)
 	return s.recordFacts(ctx, p.UserID, p.ComputerID, &p.Facts)
+}
+
+// pairOrRetireTunnel pairs c through its runner when it needs a session there, or retires the tunnel of a computer that
+// moved to its runner while its last removal failed.
+func (s *Service) pairOrRetireTunnel(ctx context.Context, c Computer, facts Facts) {
+	if facts.T3.State == t3Answering && s.needsPairing(c) {
+		s.pairOnReport(ctx, c, facts.Hostname)
+		return
+	}
+	if c.Tunnel != nil && onRunner(c) {
+		s.retireTunnel(ctx, c)
+	}
+}
+
+// needsPairing reports a computer with no session through its runner: never paired, still on a tunnel or an address,
+// or with a session ending within repairWindow.
+func (s *Service) needsPairing(c Computer) bool {
+	return !c.Paired() || !onRunner(c) || !c.TokenExpiresAt.After(s.now().Add(repairWindow))
 }
 
 // pairOnReport pairs c through its runner; a failure is the row's pair_error, never the report's.
@@ -316,6 +332,9 @@ func (s *Service) pairThroughRunner(ctx context.Context, c Computer) (*Computer,
 	}
 	delete(s.pairFailures, c.ID)
 	s.pairMu.Unlock()
+	if paired.Tunnel != nil && s.retireTunnel(ctx, *paired) {
+		paired.Tunnel = nil
+	}
 	return paired, nil
 }
 

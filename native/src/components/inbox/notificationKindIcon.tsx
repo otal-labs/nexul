@@ -4,6 +4,7 @@ import Brain from "lucide-react-native/icons/brain";
 import CircleHelp from "lucide-react-native/icons/circle-question-mark";
 import FilePenLine from "lucide-react-native/icons/file-pen-line";
 import FilePlus from "lucide-react-native/icons/file-plus";
+import Laptop from "lucide-react-native/icons/laptop";
 import MessageCircleQuestion from "lucide-react-native/icons/message-circle-question-mark";
 import MessageSquareReply from "lucide-react-native/icons/message-square-reply";
 import Sparkles from "lucide-react-native/icons/sparkles";
@@ -25,4 +26,5 @@ export const notificationKindIcon: Record<NotificationKind, LucideIcon> = {
   [NotificationKind.MemoryUpdated]: Brain,
   [NotificationKind.PlayRunFinished]: Sparkles,
   [NotificationKind.PlayRunWaiting]: CircleHelp,
+  [NotificationKind.ComputerMoveRequested]: Laptop,
 };

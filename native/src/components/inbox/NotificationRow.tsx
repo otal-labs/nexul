@@ -25,6 +25,7 @@ const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.MemoryUpdated]: "Memory updated",
   [NotificationKind.PlayRunFinished]: "Play run ended",
   [NotificationKind.PlayRunWaiting]: "Needs your answer",
+  [NotificationKind.ComputerMoveRequested]: "Move to the Nexul app",
 };
 
 interface NotificationRowProps {

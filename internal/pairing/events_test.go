@@ -71,6 +71,13 @@ func TestComputerEvents_AreMembersOnly(t *testing.T) {
 		check(TopicPairFailed, failed)
 	}
 
+	moving := newRunnerFixture(t, Computer{Name: "Laptop"})
+	moving.repo.toMove = []Computer{{ID: "c-laptop", UserID: "u-alice"}}
+	require.NoError(t, moving.svc.AnnounceMoves(ctx))
+	for _, e := range moving.repo.outbox {
+		check(e.Topic, e.Payload)
+	}
+
 	for _, topic := range Topics() {
 		assert.True(t, seen[topic.Name], "no flow here publishes %s; add one", topic.Name)
 	}

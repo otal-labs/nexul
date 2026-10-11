@@ -25,6 +25,8 @@ type fakeRepo struct {
 	setups       map[string][]ProviderSetup
 	turns        map[string]SetupTurn
 	outbox       []eventbus.OutboxEvent
+	toMove       []Computer
+	moveNotices  map[string]time.Time
 	factWrites   int
 	saveErr      error
 	getErr       error
@@ -102,6 +104,45 @@ func (f *fakeRepo) DeleteComputer(_ context.Context, userID, id string, evts ...
 	}
 	delete(f.computers, id)
 	f.outbox = append(f.outbox, evts...)
+	return nil
+}
+
+func (f *fakeRepo) ClearTunnel(_ context.Context, userID, computerID string, at time.Time, evt eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.saveErr != nil {
+		return f.saveErr
+	}
+	c, ok := f.computers[computerID]
+	if !ok || c.UserID != userID {
+		return apperrs.ErrNotFound
+	}
+	c.Tunnel, c.UpdatedAt = nil, at
+	f.computers[computerID] = c
+	f.outbox = append(f.outbox, evt)
+	return nil
+}
+
+func (f *fakeRepo) ComputersToMove(context.Context) ([]Computer, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.toMove, nil
+}
+
+func (f *fakeRepo) RecordMoveNotice(_ context.Context, userID string, at time.Time, evt eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.saveErr != nil {
+		return f.saveErr
+	}
+	if f.moveNotices == nil {
+		f.moveNotices = map[string]time.Time{}
+	}
+	if _, ok := f.moveNotices[userID]; ok {
+		return nil
+	}
+	f.moveNotices[userID] = at
+	f.outbox = append(f.outbox, evt)
 	return nil
 }
 

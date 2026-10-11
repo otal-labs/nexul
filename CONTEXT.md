@@ -155,8 +155,9 @@ _Avoid_: Workspace (that is the tenant boundary), env mode
 The outbound connection a paired computer keeps open to the instance's own
 Cloudflare account, giving it a hostname made from the computer's name plus
 eight random characters, which only the Nexul server may reach. The old way to
-reach a paired computer, kept until its owner adds the computer with a personal
-runner.
+reach a paired computer, kept until its owner moves the computer to a personal
+runner: once pairing through the runner works, the tunnel, its DNS record and
+its Access app are deleted.
 _Avoid_: Relay, VPN, proxy
 
 **Setup confirmation**:

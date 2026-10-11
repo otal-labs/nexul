@@ -598,3 +598,33 @@ func TestPairingRepo_SetFacts_RoundTripsOwnerOnlyAndSurvivesRePair(t *testing.T)
 	require.Len(t, entries, 1)
 	assert.Equal(t, pairing.TopicFactsChanged, entries[0].Topic)
 }
+
+// TestPairingRepo_ClearTunnel_ForgetsTheTunnelAndKeepsTheComputer: clearing a moved computer's tunnel empties the tunnel
+// columns with its event, keeps the row's session and setup, and frees the hostname; another owner's computer is not
+// found.
+func TestPairingRepo_ClearTunnel_ForgetsTheTunnelAndKeepsTheComputer(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "alice"))
+	require.NoError(t, err)
+	c := newTestComputer("c1", "u1", "laptop")
+	c.Tunnel = &pairing.ComputerTunnel{TunnelID: "tun-1", Hostname: "laptop-ab12cd34.example.com", ZoneID: "z1", RecordID: "rec-1", AccessAppID: "app-1"}
+	require.NoError(t, s.Pairing.SaveComputer(ctx, c))
+	at := time.Unix(1_900_000_000, 0).UTC()
+
+	err = s.Pairing.ClearTunnel(ctx, "u-other", "c1", at, eventbus.OutboxEvent{ID: "evt-0", Topic: pairing.TopicTunnelRemoved, Payload: map[string]string{}})
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	require.NoError(t, s.Pairing.ClearTunnel(ctx, "u1", "c1", at, eventbus.OutboxEvent{ID: "evt-1", Topic: pairing.TopicTunnelRemoved, Payload: map[string]string{}}))
+
+	got, err := s.Pairing.GetComputer(ctx, "u1", "c1")
+	require.NoError(t, err)
+	assert.Nil(t, got.Tunnel)
+	assert.Equal(t, c.BearerToken, got.BearerToken)
+	assert.Equal(t, at, got.UpdatedAt)
+	exists, err := s.Pairing.ComputerTunnelHostnameExists(ctx, "laptop-ab12cd34.example.com")
+	require.NoError(t, err)
+	assert.False(t, exists, "Access headers no longer go to the old hostname")
+	assert.Equal(t, 1, count(t, s.db, `SELECT COUNT(*) FROM outbox WHERE id = 'evt-1'`))
+	assert.Zero(t, count(t, s.db, `SELECT COUNT(*) FROM outbox WHERE id = 'evt-0'`))
+}

@@ -10,6 +10,7 @@ export const NotificationKind = {
   MemoryUpdated: "memory.updated",
   PlayRunFinished: "play.run_finished",
   PlayRunWaiting: "play.run_waiting",
+  ComputerMoveRequested: "computer.move_requested",
 } as const;
 
 export type NotificationKind = (typeof NotificationKind)[keyof typeof NotificationKind];
@@ -18,6 +19,8 @@ export const SubjectType = {
   Ticket: "ticket",
   Doc: "doc",
   Memory: "memory",
+  // Opens Your settings → Computers; the notice never shows the computer itself.
+  Computer: "computer",
 } as const;
 
 export type SubjectType = (typeof SubjectType)[keyof typeof SubjectType];

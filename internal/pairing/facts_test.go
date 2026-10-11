@@ -23,7 +23,7 @@ func newFactsFixture(t *testing.T) *factsFixture {
 	t.Helper()
 	sealed, err := crypto.Encrypt(testEncKey, []byte("bearer"))
 	require.NoError(t, err)
-	f := &factsFixture{runnerFixture: newRunnerFixture(t, Computer{Name: "Laptop", BearerToken: sealed, TokenExpiresAt: testNow.Add(20 * day)})}
+	f := &factsFixture{runnerFixture: newRunnerFixture(t, Computer{Name: "Laptop", ServerURL: runnerAddress("c-laptop"), BearerToken: sealed, TokenExpiresAt: testNow.Add(20 * day)})}
 	f.exch.ListProvidersFn = func(_ context.Context, s harness.Session) ([]harness.Provider, error) {
 		f.reads++
 		assert.Equal(t, "http://c-laptop.nexul-computer.invalid", s.ServerURL, "read through the runner")

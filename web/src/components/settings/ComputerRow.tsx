@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router";
 
 import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
 import { ComputerDetails } from "@/components/settings/ComputerDetails";
+import { MoveNotice } from "@/components/settings/MoveNotice";
 import { PairComputerForm } from "@/components/settings/PairComputerForm";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
 import { SettingsStatus, type SettingsStatusTone } from "@/components/settings/SettingsStatus";
@@ -28,6 +29,7 @@ interface ComputerRowProps {
   computer: Computer;
   // Keeper-held session state ("connected" | "connecting"), absent = none held.
   presence?: string | undefined;
+  onMove: () => void;
 }
 
 // The keeper reports "connecting" while it retries an unreachable computer too, so only connected earns a color.
@@ -40,7 +42,7 @@ const connectionOf = (presence: string | undefined): { tone: SettingsStatusTone;
 type Primary = "pair" | "repair" | "update" | "setup" | undefined;
 
 // One computer: its name and state on two lines, at most one action for what needs doing, the rest in its menu and under its fold.
-export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
+export const ComputerRow = ({ computer, presence, onMove }: ComputerRowProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const pairing = stillPairing(computer);
   const { data: setup } = useFetchComputerSetup(pairing ? "" : computer.id);
@@ -165,6 +167,7 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
           </SettingsStatus>
         )}
       </p>
+      <MoveNotice computer={computer} onMove={onMove} />
       <div inert={folded} aria-hidden={folded} data-closed={folded || undefined} className="disclosure">
         <div>
           <div className="pt-3 pl-6">

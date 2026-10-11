@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { ComputerMoveDetail } from "@/components/notifications/ComputerMoveDetail";
 import { SubjectType } from "@/models/Notification";
 import type { Notification } from "@/models/Notification";
 import { TicketPage } from "@/pages/TicketPage";
@@ -27,5 +28,6 @@ export const NotificationDetailPanel = ({ selected }: NotificationDetailPanelPro
         <MemoryPage memoryId={selected.subject_id} />
       </Suspense>
     )}
+    {selected && selected.subject_type === SubjectType.Computer && <ComputerMoveDetail />}
   </div>
 );

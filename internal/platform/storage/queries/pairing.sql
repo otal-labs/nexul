@@ -88,3 +88,18 @@ UPDATE pairing_computers SET setup_skipped_providers = ?, setup_models = ?, setu
 
 -- name: SetPairingComputerFacts :execrows
 UPDATE pairing_computers SET facts = ?, facts_at = ? WHERE id = ? AND user_id = ?;
+
+-- name: ClearPairingComputerTunnel :execrows
+UPDATE pairing_computers SET tunnel_id = '', tunnel_hostname = '', tunnel_zone_id = '', tunnel_record_id = '', tunnel_access_app_id = '',
+  updated_at = ?
+WHERE id = ? AND user_id = ?;
+
+-- name: ListPairingComputersToMove :many
+-- Every computer still on a tunnel or an address whose owner has no move notice yet, oldest first per owner.
+SELECT c.id, c.user_id FROM pairing_computers c
+WHERE (c.tunnel_id != '' OR (c.server_url != '' AND c.server_url NOT LIKE sqlc.arg(runner_address_pattern)))
+  AND NOT EXISTS (SELECT 1 FROM pairing_move_notices n WHERE n.user_id = c.user_id)
+ORDER BY c.user_id, c.created_at, c.id;
+
+-- name: InsertPairingMoveNotice :execrows
+INSERT INTO pairing_move_notices (user_id, notified_at) VALUES (?, ?) ON CONFLICT(user_id) DO NOTHING;
