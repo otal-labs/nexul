@@ -67,11 +67,15 @@ export async function setup(): Promise<void> {
     [DEFAULT_OWNER_ROLE_ID, DEFAULT_WORKSPACE_ID, now, now, DEFAULT_WORKSPACE_ID],
   );
   db.run(
-    `INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at)
-     VALUES (?, ?, (SELECT id FROM roles WHERE workspace_id = ? AND is_owner_role = 1), ?)
-     ON CONFLICT(user_id, workspace_id)
-     DO UPDATE SET role_id = excluded.role_id`,
-    [E2E_UID, DEFAULT_WORKSPACE_ID, DEFAULT_WORKSPACE_ID, now],
+    `INSERT INTO workspace_members (user_id, workspace_id, created_at) VALUES (?, ?, ?)
+     ON CONFLICT(user_id, workspace_id) DO NOTHING`,
+    [E2E_UID, DEFAULT_WORKSPACE_ID, now],
+  );
+  db.run(`DELETE FROM member_roles WHERE user_id = ? AND workspace_id = ?`, [E2E_UID, DEFAULT_WORKSPACE_ID]);
+  db.run(
+    `INSERT INTO member_roles (user_id, workspace_id, role_id, created_at)
+     SELECT ?, ?, id, ? FROM roles WHERE workspace_id = ? AND is_owner_role = 1`,
+    [E2E_UID, DEFAULT_WORKSPACE_ID, now, DEFAULT_WORKSPACE_ID],
   );
   db.close();
   console.log("e2e seed: user + project + workspace membership ready");

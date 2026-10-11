@@ -13,3 +13,6 @@ UPDATE roles SET name = ?, permissions = ?, updated_at = ? WHERE id = ?;
 
 -- name: DeleteRole :execrows
 DELETE FROM roles WHERE id = ?;
+
+-- name: CountRoleHolders :one
+SELECT COUNT(*) FROM member_roles WHERE role_id = ?;

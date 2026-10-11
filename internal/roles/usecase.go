@@ -31,7 +31,7 @@ func (s *Service) SetMemberGate(g MemberGate) {
 	s.members = g
 }
 
-// SetPermissionGate wires the access domain's per-workspace grid; unset, a role can carry no permission at all.
+// SetPermissionGate wires the access domain's per-workspace grid; unset, nobody holds anything here.
 func (s *Service) SetPermissionGate(g PermissionGate) {
 	s.perms = g
 }
@@ -131,7 +131,7 @@ func (s *Service) requireMember(ctx context.Context, workspaceID, actorUserID st
 	if strings.TrimSpace(actorUserID) == "" {
 		return fmt.Errorf("%w: actor user id is required", apperrs.ErrInvalid)
 	}
-	if _, err := s.members.MemberRoleID(ctx, workspaceID, actorUserID); err != nil {
+	if err := s.members.RequireMember(ctx, workspaceID, actorUserID); err != nil {
 		if errors.Is(err, apperrs.ErrNotFound) || errors.Is(err, apperrs.ErrForbidden) {
 			return fmt.Errorf("%w: workspace %s", apperrs.ErrNotFound, workspaceID)
 		}
@@ -170,7 +170,7 @@ func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, 
 	return r, nil
 }
 
-// Delete removes a custom role; the Owner role can't be deleted.
+// Delete removes a custom role nobody holds; the Owner role can't be deleted.
 func (s *Service) Delete(ctx context.Context, workspaceID, roleID, actorUserID string) error {
 	r, err := s.getInWorkspace(ctx, workspaceID, roleID)
 	if err != nil {
@@ -181,6 +181,13 @@ func (s *Service) Delete(ctx context.Context, workspaceID, roleID, actorUserID s
 	}
 	if err := s.requireManageRoles(ctx, workspaceID, actorUserID); err != nil {
 		return err
+	}
+	holders, err := s.repo.CountHolders(ctx, roleID)
+	if err != nil {
+		return fmt.Errorf("count holders of role %s: %w", roleID, err)
+	}
+	if holders > 0 {
+		return fmt.Errorf("%w: %s is held by %d member(s); give them another role first", apperrs.ErrConflict, r.Name, holders)
 	}
 	if err := s.repo.Delete(ctx, roleID); err != nil {
 		return fmt.Errorf("delete role %s: %w", roleID, err)
@@ -287,11 +294,15 @@ func (s *Service) getInWorkspace(ctx context.Context, workspaceID, roleID string
 
 // requireHolds refuses a role carrying an action actorUserID does not hold in workspaceID (ADR 0088).
 func (s *Service) requireHolds(ctx context.Context, workspaceID, actorUserID string, grant permissions.Set) error {
-	var held permissions.Set
-	if s.perms != nil {
-		held = permissions.SetOfStrings(s.perms.WorkspacePermissions(ctx, actorUserID, workspaceID))
+	return permissions.RequireHeld(grant, s.held(ctx, workspaceID, actorUserID))
+}
+
+// held is everything actorUserID holds in workspaceID, the union of their roles as the access domain answers it.
+func (s *Service) held(ctx context.Context, workspaceID, actorUserID string) permissions.Set {
+	if s.perms == nil {
+		return nil
 	}
-	return permissions.RequireHeld(grant, held)
+	return permissions.SetOfStrings(s.perms.WorkspacePermissions(ctx, actorUserID, workspaceID))
 }
 
 // requireManageRoles checks the Owner bypass, then roles:write, gating Create/Update/Delete on custom roles.
@@ -299,24 +310,16 @@ func (s *Service) requireManageRoles(ctx context.Context, workspaceID, actorUser
 	return s.requireAction(ctx, workspaceID, actorUserID, permissions.RolesWrite)
 }
 
-// requireAction checks the Owner bypass, then action on the actor's role in workspaceID.
+// requireAction checks the actor is a member of workspaceID holding action there, through the access domain's answer.
 func (s *Service) requireAction(ctx context.Context, workspaceID, actorUserID string, action permissions.Action) error {
 	actorUserID = strings.TrimSpace(actorUserID)
 	if actorUserID == "" {
 		return fmt.Errorf("%w: actor user id is required", apperrs.ErrInvalid)
 	}
-	actorRoleID, err := s.members.MemberRoleID(ctx, workspaceID, actorUserID)
-	if err != nil {
-		return fmt.Errorf("resolve actor role in workspace %s: %w", workspaceID, err)
+	if err := s.members.RequireMember(ctx, workspaceID, actorUserID); err != nil {
+		return fmt.Errorf("resolve membership in workspace %s: %w", workspaceID, err)
 	}
-	actorRole, err := s.repo.Get(ctx, actorRoleID)
-	if err != nil {
-		return fmt.Errorf("load actor role %s: %w", actorRoleID, err)
-	}
-	if actorRole.IsOwnerRole {
-		return nil
-	}
-	if !actorRole.Permissions.Has(action) {
+	if !s.held(ctx, workspaceID, actorUserID).Has(action) {
 		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
 	}
 	return nil

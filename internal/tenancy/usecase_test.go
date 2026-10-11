@@ -206,7 +206,7 @@ func (f *fakeRepo) Member(_ context.Context, workspaceID, userID string) (*Membe
 	if !ok {
 		return nil, apperrs.ErrNotFound
 	}
-	return &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: roleID, Restricted: f.restricted[workspaceID+"/"+userID]}, nil
+	return &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: roleID, RoleIDs: []string{roleID}, Restricted: f.restricted[workspaceID+"/"+userID]}, nil
 }
 
 func (f *fakeRepo) SetRestricted(_ context.Context, workspaceID, userID string, restricted bool, events ...eventbus.OutboxEvent) error {

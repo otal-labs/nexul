@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
@@ -235,7 +236,7 @@ func (s *Service) projectWorkspace(ctx context.Context, projectID string) (strin
 	return workspaceID, nil
 }
 
-// IsOwner reports whether userID holds workspaceID's Owner role; someone outside the workspace does not.
+// IsOwner reports whether userID holds workspaceID's Owner role among their roles; someone outside it does not.
 func (s *Service) IsOwner(ctx context.Context, userID, workspaceID string) (bool, error) {
 	info, err := s.standing(ctx, userID, workspaceID)
 	return info.IsOwnerRole, err
@@ -257,7 +258,7 @@ func (s *Service) HoldsRole(ctx context.Context, userID, roleID string) (bool, e
 		if err != nil {
 			return false, err
 		}
-		if info.RoleID == roleID {
+		if slices.Contains(info.roleIDs(), roleID) {
 			return true, nil
 		}
 	}

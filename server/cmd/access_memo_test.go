@@ -396,3 +396,26 @@ SELECT 'doc', d.id, 'role', r.id, '["docs:write"]', '["docs:delete"]', 1, 1 FROM
 	assert.Equal(t, none, cost(2, true), "a few docs, each with rules")
 	assert.Equal(t, none, cost(12, true), "many docs, each with rules")
 }
+
+// TestStatements_RoleSetCostsOneReadAtAnySize: one role or three cost one statement, and a check the same either way.
+func TestStatements_RoleSetCostsOneReadAtAnySize(t *testing.T) {
+	f, st, db := newCountedFixtureDB(t)
+	cost := func() (roles, check int64) {
+		st.Reset()
+		_, err := f.store.WorkspaceMembers.MemberRole(context.Background(), wsDefault, uPlain)
+		require.NoError(t, err)
+		roles = st.Count()
+		st.Reset()
+		f.svc.accessSvc.WorkspacePermissions(access.WithMemo(context.Background(), f.svc.accessSvc.NewMemo()), uPlain, wsDefault)
+		return roles, st.Count()
+	}
+	oneRoles, oneCheck := cost()
+	_, err := db.Exec(`INSERT INTO member_roles (user_id, workspace_id, role_id, created_at) VALUES
+    ('u-plain', 'workspace-default', 'role-reader', 2), ('u-plain', 'workspace-default', 'role-manager', 3)`)
+	require.NoError(t, err)
+	manyRoles, manyCheck := cost()
+
+	assert.Equal(t, int64(1), oneRoles)
+	assert.Equal(t, oneRoles, manyRoles)
+	assert.Equal(t, oneCheck, manyCheck)
+}

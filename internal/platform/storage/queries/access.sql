@@ -22,18 +22,18 @@ SELECT COUNT(*) FROM (
   WHERE po.user_id = sqlc.arg(user_id) AND po.resource_type = sqlc.arg(resource_type) AND instr(po.allow, sqlc.arg(quoted_action)) > 0
   UNION ALL
   SELECT 1 FROM permission_overwrites pr
-  WHERE pr.role_id IN (SELECT m.role_id FROM workspace_members m WHERE m.user_id = sqlc.arg(user_id))
+  WHERE pr.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = sqlc.arg(user_id))
     AND pr.resource_type = sqlc.arg(resource_type) AND instr(pr.allow, sqlc.arg(quoted_action)) > 0
 );
 
 -- name: ListOverwriteRules :many
 SELECT po.* FROM permission_overwrites po
 WHERE po.resource_type = sqlc.arg(resource_type)
-  AND (po.user_id = sqlc.arg(user_id) OR po.role_id IN (SELECT m.role_id FROM workspace_members m WHERE m.user_id = sqlc.arg(user_id)))
+  AND (po.user_id = sqlc.arg(user_id) OR po.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = sqlc.arg(user_id)))
   AND po.resource_id IN (sqlc.slice('resource_ids'));
 
 -- name: ListOverwriteRulesOfType :many
 SELECT po.* FROM permission_overwrites po WHERE po.user_id = sqlc.arg(user_id) AND po.resource_type = sqlc.arg(resource_type)
 UNION ALL
 SELECT pr.* FROM permission_overwrites pr
-WHERE pr.role_id IN (SELECT m.role_id FROM workspace_members m WHERE m.user_id = sqlc.arg(user_id)) AND pr.resource_type = sqlc.arg(resource_type);
+WHERE pr.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = sqlc.arg(user_id)) AND pr.resource_type = sqlc.arg(resource_type);

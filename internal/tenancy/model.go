@@ -31,11 +31,21 @@ type Workspace struct {
 
 // Member is one person's place in a workspace; Restricted is their Every project row set to None (ADR 0097).
 type Member struct {
-	UserID      string    `json:"user_id"`
-	WorkspaceID string    `json:"workspace_id"`
-	RoleID      string    `json:"role_id"`
-	CreatedAt   time.Time `json:"created_at"`
-	Restricted  bool      `json:"restricted"`
+	UserID      string `json:"user_id"`
+	WorkspaceID string `json:"workspace_id"`
+	// RoleID is the first of RoleIDs, the roles they hold in the order given (ADR 0148).
+	RoleID     string    `json:"role_id"`
+	RoleIDs    []string  `json:"role_ids"`
+	CreatedAt  time.Time `json:"created_at"`
+	Restricted bool      `json:"restricted"`
+}
+
+// Held is the roles the membership holds: RoleIDs, or RoleID alone where a writer gave just that one.
+func (m *Member) Held() []string {
+	if len(m.RoleIDs) == 0 && m.RoleID != "" {
+		return []string{m.RoleID}
+	}
+	return m.RoleIDs
 }
 
 // Every project values: From role (the role's project areas on every project) or None (a Restricted member).
@@ -160,14 +170,15 @@ type People struct {
 	People []Person `json:"people"`
 }
 
-// TeamMembership is one person's place in one workspace: its role, their workspace-wide overrides, their Every
-// project row, and the projects they hold access to that the viewer may open.
+// TeamMembership is one person's place in one workspace: their roles (RoleID and RoleName name the first), their
+// workspace-wide overrides, their Every project row, and the projects they hold access to that the viewer may open.
 type TeamMembership struct {
 	UserID        string           `json:"-"`
 	WorkspaceID   string           `json:"workspace_id"`
 	WorkspaceName string           `json:"workspace_name"`
 	RoleID        string           `json:"role_id"`
 	RoleName      string           `json:"role_name"`
+	Roles         []*TeamRole      `json:"roles"`
 	IsOwner       bool             `json:"is_owner"`
 	Allow         permissions.Set  `json:"allow"`
 	Deny          permissions.Set  `json:"deny"`

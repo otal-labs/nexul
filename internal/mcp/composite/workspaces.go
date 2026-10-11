@@ -16,7 +16,7 @@ import (
 // WorkspaceService is the slice of the tenancy use-cases workspace_list and workspace_update call.
 type WorkspaceService interface {
 	ListForUser(ctx context.Context, userID string) ([]*tenancy.Workspace, error)
-	MemberRoleName(ctx context.Context, workspaceID, userID string) (string, error)
+	MemberRoles(ctx context.Context, workspaceID, userID string) ([]*tenancy.TeamRole, error)
 	ListPeople(ctx context.Context, actorID, workspaceID string) ([]tenancy.Person, error)
 	Rename(ctx context.Context, userID, id string, name, slug *string) (*tenancy.Workspace, error)
 }
@@ -45,14 +45,15 @@ type workspaceListIn struct {
 
 // workspaceResult carries roles and the catalog only when one workspace is asked for by id.
 type workspaceResult struct {
-	ID                string             `json:"id"`
-	Name              string             `json:"name"`
-	Slug              string             `json:"slug"`
-	Role              string             `json:"role"`
-	People            []tenancy.Person   `json:"people,omitempty"`
-	Roles             []roles.RoleResult `json:"roles,omitempty"`
-	PermissionCatalog []permissions.Info `json:"permission_catalog,omitempty"`
-	AutoPlayDailyCap  *int               `json:"auto_play_daily_cap,omitempty"`
+	ID                string              `json:"id"`
+	Name              string              `json:"name"`
+	Slug              string              `json:"slug"`
+	Role              string              `json:"role"`
+	YourRoles         []*tenancy.TeamRole `json:"your_roles"`
+	People            []tenancy.Person    `json:"people,omitempty"`
+	Roles             []roles.RoleResult  `json:"roles,omitempty"`
+	PermissionCatalog []permissions.Info  `json:"permission_catalog,omitempty"`
+	AutoPlayDailyCap  *int                `json:"auto_play_daily_cap,omitempty"`
 }
 
 type workspaceUpdateIn struct {
@@ -177,7 +178,8 @@ func memberWorkspace(ctx context.Context, w WorkspaceService, userID, id string)
 func workspaceListTool(w WorkspaceService, r RoleReader, limits AutoPlayLimits) mcptool.Tool {
 	return mcptool.New("workspace_list", "List workspaces",
 		"Lists the workspaces you belong to, with each one's id, name, slug (its name in web links and the workspace "+
-			"a ticket tool takes to tell apart keys two workspaces share), and your role in it. Start here when a tool "+
+			"a ticket tool takes to tell apart keys two workspaces share), your role in it, and your_roles, every role "+
+			"you hold there (id, name, whether it is the Owner role), role naming the first. Start here when a tool "+
 			"needs a workspace_id: project_list, play_list, and the memory, role, and invitation tools are scoped by "+
 			"workspace. With an id it returns only that workspace, with its people (user_id, login, display_name, avatar_url: "+
 			"how to name a chat message's author_id, and the login an @mention takes), its roles (id, name, whether it is "+
@@ -199,11 +201,11 @@ func workspaceListTool(w WorkspaceService, r RoleReader, limits AutoPlayLimits) 
 			}
 			out := make([]workspaceResult, 0, len(ws))
 			for _, one := range ws {
-				role, err := w.MemberRoleName(ctx, one.ID, a.ID)
+				held, err := w.MemberRoles(ctx, one.ID, a.ID)
 				if err != nil {
 					return nil, err
 				}
-				out = append(out, workspaceResult{ID: one.ID, Name: one.Name, Slug: one.Slug, Role: role})
+				out = append(out, workspaceResult{ID: one.ID, Name: one.Name, Slug: one.Slug, Role: firstRoleName(held), YourRoles: held})
 			}
 			return mcptool.Paginate(out, in.PageArgs), nil
 		})
@@ -214,7 +216,7 @@ func workspaceWithRoles(ctx context.Context, w WorkspaceService, r RoleReader, l
 		if one.ID != in.ID {
 			continue
 		}
-		role, err := w.MemberRoleName(ctx, one.ID, userID)
+		held, err := w.MemberRoles(ctx, one.ID, userID)
 		if err != nil {
 			return nil, err
 		}
@@ -230,7 +232,7 @@ func workspaceWithRoles(ctx context.Context, w WorkspaceService, r RoleReader, l
 		for _, x := range rs {
 			shaped = append(shaped, roles.ToRoleResult(x))
 		}
-		res := workspaceResult{ID: one.ID, Name: one.Name, Slug: one.Slug, Role: role, People: people, Roles: shaped, PermissionCatalog: permissions.Catalog()}
+		res := workspaceResult{ID: one.ID, Name: one.Name, Slug: one.Slug, Role: firstRoleName(held), YourRoles: held, People: people, Roles: shaped, PermissionCatalog: permissions.Catalog()}
 		limit, err := limits.AutoPlayDailyCap(ctx, one.ID)
 		if err != nil && !errors.Is(err, apperrs.ErrForbidden) {
 			return nil, err
@@ -241,4 +243,12 @@ func workspaceWithRoles(ctx context.Context, w WorkspaceService, r RoleReader, l
 		return mcptool.Paginate([]workspaceResult{res}, in.PageArgs), nil
 	}
 	return nil, fmt.Errorf("%w: workspace %s is not one you belong to; workspace_list without an id lists yours", apperrs.ErrNotFound, in.ID)
+}
+
+// firstRoleName is the name the single role field carries: the first role held.
+func firstRoleName(held []*tenancy.TeamRole) string {
+	if len(held) == 0 {
+		return ""
+	}
+	return held[0].Name
 }

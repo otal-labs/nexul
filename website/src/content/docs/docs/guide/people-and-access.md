@@ -109,4 +109,4 @@ Under **GitHub**, the same page shows whether your own GitHub account lists your
 
 ## Over MCP
 
-Agents manage people with `account_list`, `account_update`, `invitation_create`, `invitation_list`, `invitation_delete`, `role_update`, `role_delete`, and the `permission_overwrite_*` tools; `permission_overwrite_update` takes a `state` of `allow`, `fallback`, or `deny`. `account_update` and `invitation_create` take `every_project` (`role` or `none`) and `project_access` per workspace. See [MCP server](/docs/guide/mcp-server/).
+Agents manage people with `account_list` (each person's `roles` per workspace), `account_update`, `invitation_create`, `invitation_list`, `invitation_delete`, `role_update`, `role_delete`, and the `permission_overwrite_*` tools; `permission_overwrite_update` takes a `state` of `allow`, `fallback`, or `deny`. `account_update` and `invitation_create` take `every_project` (`role` or `none`) and `project_access` per workspace. See [MCP server](/docs/guide/mcp-server/).

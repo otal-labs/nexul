@@ -265,7 +265,7 @@ func (s *Service) BindDefaultWorkspaceOwner(ctx context.Context, userID string) 
 	return nil
 }
 
-// MemberRoleID exposes role lookup for the roles domain's ActionManageRoles gate.
+// MemberRoleID is the first role userID holds in workspaceID, "" for none; apperrs.ErrNotFound for a non-member.
 func (s *Service) MemberRoleID(ctx context.Context, workspaceID, userID string) (string, error) {
 	roleID, err := s.members.RoleIDFor(ctx, workspaceID, userID)
 	if err != nil {
@@ -283,7 +283,33 @@ func (s *Service) Member(ctx context.Context, workspaceID, userID string) (*Memb
 	return m, nil
 }
 
-// MemberRoleName resolves the role id via MemberRoleID, then its name via RoleNameGate.
+// MemberRoles is every role userID holds in workspaceID, in the order given; apperrs.ErrNotFound for a non-member.
+func (s *Service) MemberRoles(ctx context.Context, workspaceID, userID string) ([]*TeamRole, error) {
+	workspaceID = strings.TrimSpace(workspaceID)
+	userID = strings.TrimSpace(userID)
+	if workspaceID == "" || userID == "" {
+		return nil, fmt.Errorf("%w: workspace id and user id are required", apperrs.ErrInvalid)
+	}
+	m, err := s.Member(ctx, workspaceID, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*TeamRole, 0, len(m.RoleIDs))
+	for _, roleID := range m.RoleIDs {
+		name, err := s.roleNames.RoleName(ctx, workspaceID, roleID)
+		if err != nil {
+			return nil, fmt.Errorf("resolve role name %s: %w", roleID, err)
+		}
+		owner, err := s.roleNames.IsOwnerRole(ctx, workspaceID, roleID)
+		if err != nil {
+			return nil, fmt.Errorf("check owner role %s: %w", roleID, err)
+		}
+		out = append(out, &TeamRole{ID: roleID, Name: name, IsOwner: owner})
+	}
+	return out, nil
+}
+
+// MemberRoleName is the name of MemberRoleID's role.
 func (s *Service) MemberRoleName(ctx context.Context, workspaceID, userID string) (string, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	userID = strings.TrimSpace(userID)
@@ -294,7 +320,7 @@ func (s *Service) MemberRoleName(ctx context.Context, workspaceID, userID string
 		return "", fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
 	}
 	roleID, err := s.MemberRoleID(ctx, workspaceID, userID)
-	if err != nil {
+	if err != nil || roleID == "" {
 		return "", err
 	}
 	name, err := s.roleNames.RoleName(ctx, workspaceID, roleID)
@@ -433,13 +459,9 @@ func (s *Service) RemoveMember(ctx context.Context, actorID, workspaceID, userID
 	if err := s.requireManageWorkspaceMembers(ctx, actorID, workspaceID); err != nil {
 		return err
 	}
-	roleID, err := s.members.RoleIDFor(ctx, workspaceID, userID)
+	isOwner, err := s.holdsOwnerRole(ctx, workspaceID, userID)
 	if err != nil {
-		return fmt.Errorf("resolve role for %s in workspace %s: %w", userID, workspaceID, err)
-	}
-	isOwner, err := s.roleNames.IsOwnerRole(ctx, workspaceID, roleID)
-	if err != nil {
-		return fmt.Errorf("check owner role %s: %w", roleID, err)
+		return err
 	}
 	if isOwner {
 		return fmt.Errorf("%w: the workspace Owner cannot be removed", apperrs.ErrInvalid)
@@ -450,7 +472,7 @@ func (s *Service) RemoveMember(ctx context.Context, actorID, workspaceID, userID
 	return nil
 }
 
-// ChangeMemberRole refuses to demote or promote into the Owner role.
+// ChangeMemberRole replaces a member's roles with roleID; it refuses to demote or promote into the Owner role.
 func (s *Service) ChangeMemberRole(ctx context.Context, actorID, workspaceID, userID, roleID string) error {
 	workspaceID = strings.TrimSpace(workspaceID)
 	userID = strings.TrimSpace(userID)
@@ -461,13 +483,9 @@ func (s *Service) ChangeMemberRole(ctx context.Context, actorID, workspaceID, us
 	if err := s.requireManageWorkspaceMembers(ctx, actorID, workspaceID); err != nil {
 		return err
 	}
-	currentRoleID, err := s.members.RoleIDFor(ctx, workspaceID, userID)
+	isCurrentlyOwner, err := s.holdsOwnerRole(ctx, workspaceID, userID)
 	if err != nil {
-		return fmt.Errorf("resolve role for %s in workspace %s: %w", userID, workspaceID, err)
-	}
-	isCurrentlyOwner, err := s.roleNames.IsOwnerRole(ctx, workspaceID, currentRoleID)
-	if err != nil {
-		return fmt.Errorf("check owner role %s: %w", currentRoleID, err)
+		return err
 	}
 	if isCurrentlyOwner {
 		return fmt.Errorf("%w: the workspace Owner's role cannot be changed", apperrs.ErrInvalid)
@@ -642,13 +660,9 @@ func (s *Service) SetMemberOverrides(ctx context.Context, actorID, workspaceID, 
 	if err := s.requireManageWorkspaceMembers(ctx, actorID, workspaceID); err != nil {
 		return err
 	}
-	roleID, err := s.members.RoleIDFor(ctx, workspaceID, userID)
+	isOwner, err := s.holdsOwnerRole(ctx, workspaceID, userID)
 	if err != nil {
-		return fmt.Errorf("resolve role for %s in workspace %s: %w", userID, workspaceID, err)
-	}
-	isOwner, err := s.roleNames.IsOwnerRole(ctx, workspaceID, roleID)
-	if err != nil {
-		return fmt.Errorf("check owner role %s: %w", roleID, err)
+		return err
 	}
 	if isOwner {
 		return fmt.Errorf("%w: the workspace Owner bypasses permission overrides, so none can be set", apperrs.ErrInvalid)
@@ -680,6 +694,29 @@ func (s *Service) SetMemberOverrides(ctx context.Context, actorID, workspaceID, 
 		return fmt.Errorf("set overrides for %s in workspace %s: %w", userID, workspaceID, err)
 	}
 	return nil
+}
+
+// holdsOwnerRole reads userID's membership of workspaceID and whether the Owner role is among their roles.
+func (s *Service) holdsOwnerRole(ctx context.Context, workspaceID, userID string) (bool, error) {
+	m, err := s.members.Member(ctx, workspaceID, userID)
+	if err != nil {
+		return false, fmt.Errorf("resolve membership of %s in workspace %s: %w", userID, workspaceID, err)
+	}
+	return s.ownerRoleAmong(ctx, workspaceID, m.RoleIDs)
+}
+
+// ownerRoleAmong reports whether one of roleIDs is workspaceID's Owner role.
+func (s *Service) ownerRoleAmong(ctx context.Context, workspaceID string, roleIDs []string) (bool, error) {
+	for _, roleID := range roleIDs {
+		owner, err := s.roleNames.IsOwnerRole(ctx, workspaceID, roleID)
+		if err != nil {
+			return false, fmt.Errorf("check owner role %s: %w", roleID, err)
+		}
+		if owner {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func validateOverrides(allow, deny permissions.Set) error {

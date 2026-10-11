@@ -189,7 +189,9 @@ func (h *Handler) setMentionChipTemplate(w http.ResponseWriter, r *http.Request)
 // meResponse is the /me wire shape the frontend's hasPermission(action) helper reads directly; a Restricted member
 // also gets the projects they may open, since permissions then carries no project area.
 type meResponse struct {
+	// RoleName is the first of Roles' names.
 	RoleName    string      `json:"role_name"`
+	Roles       []*TeamRole `json:"roles"`
 	Permissions []string    `json:"permissions"`
 	Restricted  bool        `json:"restricted"`
 	Projects    []MeProject `json:"projects,omitempty"`
@@ -199,7 +201,7 @@ type meResponse struct {
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	workspaceID := r.PathValue("workspaceID")
 	userID := UserIDFromCtx(r.Context())
-	roleName, err := h.svc.MemberRoleName(r.Context(), workspaceID, userID)
+	roles, err := h.svc.MemberRoles(r.Context(), workspaceID, userID)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -210,7 +212,11 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, meResponse{RoleName: roleName, Permissions: permissions, Restricted: restricted, Projects: projects})
+	me := meResponse{Roles: roles, Permissions: permissions, Restricted: restricted, Projects: projects}
+	if len(roles) > 0 {
+		me.RoleName = roles[0].Name
+	}
+	httpx.WriteJSON(w, http.StatusOK, me)
 }
 
 type inviteMemberRequest struct {

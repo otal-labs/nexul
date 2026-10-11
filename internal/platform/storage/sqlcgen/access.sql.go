@@ -17,7 +17,7 @@ SELECT COUNT(*) FROM (
   WHERE po.user_id = ?1 AND po.resource_type = ?2 AND instr(po.allow, ?3) > 0
   UNION ALL
   SELECT 1 FROM permission_overwrites pr
-  WHERE pr.role_id IN (SELECT m.role_id FROM workspace_members m WHERE m.user_id = ?1)
+  WHERE pr.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = ?1)
     AND pr.resource_type = ?2 AND instr(pr.allow, ?3) > 0
 )
 `
@@ -97,7 +97,7 @@ func (q *Queries) GetOverwrite(ctx context.Context, arg GetOverwriteParams) (Per
 const listOverwriteRules = `-- name: ListOverwriteRules :many
 SELECT po.resource_type, po.resource_id, po.target, po.user_id, po.role_id, po.allow, po.deny, po.created_at, po.updated_at FROM permission_overwrites po
 WHERE po.resource_type = ?1
-  AND (po.user_id = ?2 OR po.role_id IN (SELECT m.role_id FROM workspace_members m WHERE m.user_id = ?2))
+  AND (po.user_id = ?2 OR po.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = ?2))
   AND po.resource_id IN (/*SLICE:resource_ids*/?)
 `
 
@@ -156,7 +156,7 @@ const listOverwriteRulesOfType = `-- name: ListOverwriteRulesOfType :many
 SELECT po.resource_type, po.resource_id, po.target, po.user_id, po.role_id, po.allow, po.deny, po.created_at, po.updated_at FROM permission_overwrites po WHERE po.user_id = ?1 AND po.resource_type = ?2
 UNION ALL
 SELECT pr.resource_type, pr.resource_id, pr.target, pr.user_id, pr.role_id, pr.allow, pr.deny, pr.created_at, pr.updated_at FROM permission_overwrites pr
-WHERE pr.role_id IN (SELECT m.role_id FROM workspace_members m WHERE m.user_id = ?1) AND pr.resource_type = ?2
+WHERE pr.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = ?1) AND pr.resource_type = ?2
 `
 
 type ListOverwriteRulesOfTypeParams struct {

@@ -37,10 +37,10 @@ DELETE FROM user_identities WHERE user_id = ? AND provider = ?;
 UPDATE users SET account_status = ?, updated_at = ? WHERE id = ?;
 
 -- name: ListActiveOwnerIDs :many
-SELECT DISTINCT m.user_id FROM workspace_members m
-JOIN roles r ON r.id = m.role_id AND r.is_owner_role = 1
-JOIN users u ON u.id = m.user_id AND u.account_status = 'active'
-ORDER BY m.user_id;
+SELECT DISTINCT mr.user_id FROM member_roles mr
+JOIN roles r ON r.id = mr.role_id AND r.is_owner_role = 1
+JOIN users u ON u.id = mr.user_id AND u.account_status = 'active'
+ORDER BY mr.user_id;
 
 -- name: DeleteAccountMemberships :exec
 DELETE FROM workspace_members WHERE user_id = ?;

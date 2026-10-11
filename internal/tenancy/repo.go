@@ -23,18 +23,20 @@ type Repo interface {
 
 // MemberRepo is the consumer-side persistence contract for workspace membership.
 type MemberRepo interface {
+	// AddMember adds the membership and the roles it holds.
 	AddMember(ctx context.Context, m *Member, events ...eventbus.OutboxEvent) error
-	// RoleIDFor returns the role id userID holds in workspaceID, or apperrs.ErrNotFound if userID isn't a member.
+	// RoleIDFor reads the membership and returns its first role, "" for none; apperrs.ErrNotFound for a non-member.
 	RoleIDFor(ctx context.Context, workspaceID, userID string) (string, error)
-	// ListByWorkspace returns every member of workspaceID (Membership invites' roster).
+	// ListByWorkspace returns every member of workspaceID with their roles (Membership invites' roster).
 	ListByWorkspace(ctx context.Context, workspaceID string) ([]*Member, error)
 	RemoveMember(ctx context.Context, workspaceID, userID string, events ...eventbus.OutboxEvent) error
+	// SetRole replaces the roles userID holds in workspaceID with roleID alone.
 	SetRole(ctx context.Context, workspaceID, userID, roleID string, events ...eventbus.OutboxEvent) error
 	// Overrides returns userID's workspace-wide overwrite in workspaceID; both sets are empty when there is none.
 	Overrides(ctx context.Context, workspaceID, userID string) (allow, deny permissions.Set, err error)
 	// SetOverrides replaces userID's workspace-wide overwrite in workspaceID; two empty sets delete it.
 	SetOverrides(ctx context.Context, workspaceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error
-	// ListAllMemberships returns every membership on the instance with its workspace, role, and overrides.
+	// ListAllMemberships returns every membership on the instance with its workspace, roles, and overrides.
 	ListAllMemberships(ctx context.Context) ([]*TeamMembership, error)
 	ProjectAccessRepo
 }
@@ -42,7 +44,7 @@ type MemberRepo interface {
 // ProjectAccessRepo persists Every project and Project access (ADR 0097); Project access rows are permission
 // overwrites with resource_type "project" (ADR 0042).
 type ProjectAccessRepo interface {
-	// Member returns userID's membership of workspaceID, or apperrs.ErrNotFound.
+	// Member returns userID's membership of workspaceID with their roles, or apperrs.ErrNotFound.
 	Member(ctx context.Context, workspaceID, userID string) (*Member, error)
 	// SetRestricted switches userID's Every project row; their Project access rows are kept either way.
 	SetRestricted(ctx context.Context, workspaceID, userID string, restricted bool, events ...eventbus.OutboxEvent) error

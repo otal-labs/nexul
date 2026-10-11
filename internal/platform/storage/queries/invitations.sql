@@ -39,7 +39,8 @@ WHERE i.redeemed_at IS NULL
         AND NOT EXISTS (
             SELECT 1
             FROM workspace_members m
-            JOIN roles r ON r.id = m.role_id
+            LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
+            LEFT JOIN roles r ON r.id = mr.role_id
             LEFT JOIN permission_overwrites po
               ON po.resource_type = 'workspace'
              AND po.resource_id = g.workspace_id
@@ -47,11 +48,11 @@ WHERE i.redeemed_at IS NULL
             WHERE m.workspace_id = g.workspace_id
               AND m.user_id = ?
               AND (
-                  r.is_owner_role = 1
+                  COALESCE(r.is_owner_role, 0) = 1
                   OR (
                       instr(COALESCE(po.deny, '[]'), '"members:write"') = 0
                       AND (
-                          instr(r.permissions, '"members:write"') > 0
+                          instr(COALESCE(r.permissions, '[]'), '"members:write"') > 0
                           OR instr(COALESCE(po.allow, '[]'), '"members:write"') > 0
                       )
                   )
@@ -83,10 +84,11 @@ SELECT id, workspace_id, name, is_owner_role, created_at, updated_at, permission
 FROM roles
 WHERE id = ? AND workspace_id = ?;
 
--- name: GetInvitationCreatorWorkspaceAccess :one
-SELECT r.is_owner_role, r.permissions, po.allow, po.deny, m.restricted
+-- name: ListInvitationCreatorWorkspaceAccess :many
+SELECT COALESCE(r.is_owner_role, 0) AS is_owner_role, COALESCE(r.permissions, '[]') AS permissions, po.allow, po.deny, m.restricted
 FROM workspace_members m
-JOIN roles r ON r.id = m.role_id
+LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
+LEFT JOIN roles r ON r.id = mr.role_id
 LEFT JOIN permission_overwrites po
   ON po.resource_type = 'workspace'
  AND po.resource_id = m.workspace_id
@@ -94,13 +96,13 @@ LEFT JOIN permission_overwrites po
 WHERE m.workspace_id = ? AND m.user_id = ?;
 
 -- name: GetInvitationMember :one
-SELECT role_id
+SELECT user_id
 FROM workspace_members
 WHERE workspace_id = ? AND user_id = ?;
 
 -- name: AddInvitationMember :exec
-INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at, restricted)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO workspace_members (user_id, workspace_id, created_at, restricted)
+VALUES (?, ?, ?, ?)
 ON CONFLICT(user_id, workspace_id) DO NOTHING;
 
 -- name: GetProjectForInvitationGrant :one

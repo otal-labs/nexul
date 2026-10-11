@@ -84,7 +84,9 @@ func makeOwner(t *testing.T, s *Store, userID, workspaceID string) {
 	require.NoError(t, err)
 	_, err = s.db.ExecContext(t.Context(), `INSERT OR IGNORE INTO roles (id, workspace_id, name, is_owner_role, created_at, updated_at, permissions) VALUES (?, ?, 'Owner', 1, 1, 1, '[]')`, "owner-"+workspaceID, workspaceID)
 	require.NoError(t, err)
-	_, err = s.db.ExecContext(t.Context(), `INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at) VALUES (?, ?, ?, 1)`, userID, workspaceID, "owner-"+workspaceID)
+	_, err = s.db.ExecContext(t.Context(), `INSERT INTO workspace_members (user_id, workspace_id, created_at) VALUES (?, ?, 1)`, userID, workspaceID)
+	require.NoError(t, err)
+	_, err = s.db.ExecContext(t.Context(), `INSERT INTO member_roles (user_id, workspace_id, role_id, created_at) VALUES (?, ?, ?, 1)`, userID, workspaceID, "owner-"+workspaceID)
 	require.NoError(t, err)
 }
 
@@ -149,16 +151,11 @@ func TestUsersRepo_SetAccountStatus_RemovedCleansAccessAndWritesEvent(t *testing
 	require.NoError(t, err)
 	_, _, err = s.Users.UpsertUser(ctx, newTestUser("u2", "2", "member"))
 	require.NoError(t, err)
-	_, err = s.db.ExecContext(ctx, `INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at) VALUES ('u2', 'workspace-default', 'role-missing', 1)`)
-	// The seeded schema may not have a role for the default workspace; use the user-independent cleanup assertions below.
-	if err != nil {
-		_, err = s.db.ExecContext(ctx, `INSERT INTO workspaces (id, name, created_at, updated_at) VALUES ('ws-remove', 'Remove', 1, 1)`)
-		require.NoError(t, err)
-		_, err = s.db.ExecContext(ctx, `INSERT INTO roles (id, workspace_id, name, is_owner_role, created_at, updated_at, permissions) VALUES ('role-remove', 'ws-remove', 'Member', 0, 1, 1, '[]')`)
-		require.NoError(t, err)
-		_, err = s.db.ExecContext(ctx, `INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at) VALUES ('u2', 'ws-remove', 'role-remove', 1)`)
-		require.NoError(t, err)
-	}
+	_, err = s.db.ExecContext(ctx, `INSERT INTO workspaces (id, name, created_at, updated_at) VALUES ('ws-remove', 'Remove', 1, 1);
+INSERT INTO roles (id, workspace_id, name, is_owner_role, created_at, updated_at, permissions) VALUES ('role-remove', 'ws-remove', 'Member', 0, 1, 1, '[]');
+INSERT INTO workspace_members (user_id, workspace_id, created_at) VALUES ('u2', 'ws-remove', 1);
+INSERT INTO member_roles (user_id, workspace_id, role_id, created_at) VALUES ('u2', 'ws-remove', 'role-remove', 1)`)
+	require.NoError(t, err)
 	_, err = s.db.ExecContext(ctx, `INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at) VALUES ('workspace', 'ws-remove', 'person', 'u2', '[]', '[]', 1, 1)`)
 	require.NoError(t, err)
 	_, err = s.db.ExecContext(ctx, `INSERT INTO personal_access_tokens (id, user_id, name, token_hash, prefix, created_at) VALUES ('pat-remove', 'u2', 'x', 'hash-remove', 'dep_x', 1)`)
@@ -167,6 +164,8 @@ func TestUsersRepo_SetAccountStatus_RemovedCleansAccessAndWritesEvent(t *testing
 	var n int
 	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM workspace_members WHERE user_id = 'u2'`).Scan(&n))
 	assert.Zero(t, n)
+	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM member_roles WHERE user_id = 'u2'`).Scan(&n))
+	assert.Zero(t, n, "their roles go with their memberships")
 	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM permission_overwrites WHERE user_id = 'u2'`).Scan(&n))
 	assert.Zero(t, n)
 	var revoked sql.NullInt64

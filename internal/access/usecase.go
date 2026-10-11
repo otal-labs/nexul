@@ -92,7 +92,7 @@ func (s *Service) check(ctx context.Context, userID, workspaceID, projectID stri
 // is read only when the layers leave the answer open.
 func decide(ws workspaceLayers, action permissions.Action, resource func() *Rules) (bool, Source) {
 	if ws.owner {
-		return true, sourceOf(SourceOwner, resourceTypeWorkspace, ws.workspaceID, TargetRole, ws.roleID, true)
+		return true, sourceOf(SourceOwner, resourceTypeWorkspace, ws.workspaceID, TargetRole, ws.roles.sourceRole(""), true)
 	}
 	if ws.hidden() {
 		return false, sourceOf(SourceNotInProject, resourceTypeProject, ws.projectID, TargetPerson, ws.userID, false)
@@ -101,7 +101,7 @@ func decide(ws workspaceLayers, action permissions.Action, resource func() *Rule
 		return ws.member, sourceOf(SourceMember, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, ws.member)
 	}
 	allowed, src := ws.has(action)
-	return applyRules(allowed, src, resource(), ws.roleIDs, action)
+	return applyRules(allowed, src, resource(), ws.roles.roleIDs(), action)
 }
 
 // workspaceLayers is the role set, the workspace-wide overwrite, and for a Restricted member the Project access of the
@@ -110,12 +110,10 @@ type workspaceLayers struct {
 	userID      string
 	workspaceID string
 	projectID   string
-	roleID      string
-	roleIDs     []string
+	roles       RoleInfo
 	member      bool
 	owner       bool
 	restricted  bool
-	role        permissions.Set
 	overwrite   *Overwrite
 	inProject   bool
 	project     permissions.Set
@@ -131,9 +129,7 @@ func (s *Service) workspaceLayers(ctx context.Context, userID, workspaceID strin
 			ws.member = true
 			ws.owner = info.IsOwnerRole
 			ws.restricted = info.Restricted && !info.IsOwnerRole
-			ws.role = info.Permissions
-			ws.roleID = info.RoleID
-			ws.roleIDs = []string{info.RoleID}
+			ws.roles = info
 		}
 	}
 	// The workspace itself carries no rule for a role (ADR 0148), so its person's row is read alone.
@@ -184,8 +180,8 @@ func (ws workspaceLayers) has(action permissions.Action) (bool, Source) {
 			return held, sourceOf(SourceRestricted, resourceTypeProject, ws.projectID, TargetPerson, ws.userID, held)
 		}
 	}
-	allowed := ws.role.Has(action)
-	src := sourceOf(SourceRole, resourceTypeWorkspace, ws.workspaceID, TargetRole, ws.roleID, allowed)
+	allowed := ws.roles.Permissions.Has(action)
+	src := sourceOf(SourceRole, resourceTypeWorkspace, ws.workspaceID, TargetRole, ws.roles.sourceRole(action), allowed)
 	if !ws.member {
 		src = sourceOf(SourceMember, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, false)
 	}

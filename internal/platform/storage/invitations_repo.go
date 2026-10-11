@@ -351,8 +351,11 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 			if !errors.Is(err, sql.ErrNoRows) {
 				return fmt.Errorf("check existing membership: %w", err)
 			}
-			if err := q.AddInvitationMember(ctx, sqlcgen.AddInvitationMemberParams{UserID: userID, WorkspaceID: grant.WorkspaceID, RoleID: grant.RoleID, CreatedAt: now.Unix(), Restricted: boolToInt(grant.Restricted())}); err != nil {
+			if err := q.AddInvitationMember(ctx, sqlcgen.AddInvitationMemberParams{UserID: userID, WorkspaceID: grant.WorkspaceID, CreatedAt: now.Unix(), Restricted: boolToInt(grant.Restricted())}); err != nil {
 				return fmt.Errorf("add invitation membership: %w", classifyWriteErr(err))
+			}
+			if err := addMemberRole(ctx, q, grant.WorkspaceID, userID, grant.RoleID, now); err != nil {
+				return err
 			}
 			if err := addInvitationProjectAccess(ctx, q, userID, grant, now); err != nil {
 				return err
@@ -639,23 +642,28 @@ type workspaceAccess struct {
 	held       permissions.Set
 }
 
-// creatorAccess resolves actorID's grid in workspaceID as the access domain does: the role's set, then the
-// workspace-wide override, deny beating allow.
+// creatorAccess resolves actorID's grid in workspaceID as the access domain does: the union of their roles' sets, then
+// the workspace-wide override, deny beating allow.
 func creatorAccess(ctx context.Context, q *sqlcgen.Queries, actorID, workspaceID string) (workspaceAccess, error) {
-	row, err := q.GetInvitationCreatorWorkspaceAccess(ctx, sqlcgen.GetInvitationCreatorWorkspaceAccessParams{WorkspaceID: workspaceID, UserID: actorID})
-	if errors.Is(err, sql.ErrNoRows) {
-		return workspaceAccess{}, nil
-	}
+	rows, err := q.ListInvitationCreatorWorkspaceAccess(ctx, sqlcgen.ListInvitationCreatorWorkspaceAccessParams{WorkspaceID: workspaceID, UserID: actorID})
 	if err != nil {
 		return workspaceAccess{}, fmt.Errorf("check workspace authority: %w", err)
 	}
-	if row.IsOwnerRole != 0 {
-		return workspaceAccess{member: true, owner: true}, nil
+	if len(rows) == 0 {
+		return workspaceAccess{}, nil
 	}
-	held, err := parseSet(row.Permissions)
-	if err != nil {
-		return workspaceAccess{}, fmt.Errorf("decode role permissions: %w", err)
+	var held permissions.Set
+	for _, role := range rows {
+		if role.IsOwnerRole != 0 {
+			return workspaceAccess{member: true, owner: true}, nil
+		}
+		perms, err := parseSet(role.Permissions)
+		if err != nil {
+			return workspaceAccess{}, fmt.Errorf("decode role permissions: %w", err)
+		}
+		held = permissions.SetOf(append(held, perms...)...)
 	}
+	row := rows[0]
 	if row.Allow.Valid {
 		allow, err := parseSet(row.Allow.String)
 		if err != nil {

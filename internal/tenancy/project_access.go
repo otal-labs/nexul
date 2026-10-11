@@ -36,7 +36,7 @@ func (s *Service) SetEveryProject(ctx context.Context, actorID, workspaceID, use
 		return nil
 	}
 	if !restricted {
-		if err := s.requireHoldsEveryProject(ctx, actorID, workspaceID, userID, m.RoleID); err != nil {
+		if err := s.requireHoldsEveryProject(ctx, actorID, workspaceID, userID, m.RoleIDs); err != nil {
 			return err
 		}
 	}
@@ -51,17 +51,21 @@ func (s *Service) SetEveryProject(ctx context.Context, actorID, workspaceID, use
 }
 
 // requireHoldsEveryProject refuses From role unless the giver holds, with no project, every project area the
-// member's role and allow overrides would hand out on every project.
-func (s *Service) requireHoldsEveryProject(ctx context.Context, actorID, workspaceID, userID, roleID string) error {
-	role, err := s.roleNames.RolePermissions(ctx, workspaceID, roleID)
-	if err != nil {
-		return fmt.Errorf("read role %s: %w", roleID, err)
-	}
+// member's roles and allow overrides would hand out on every project.
+func (s *Service) requireHoldsEveryProject(ctx context.Context, actorID, workspaceID, userID string, roleIDs []string) error {
 	allow, _, err := s.members.Overrides(ctx, workspaceID, userID)
 	if err != nil {
 		return fmt.Errorf("read overrides for %s in workspace %s: %w", userID, workspaceID, err)
 	}
-	return s.requireHolds(ctx, actorID, workspaceID, projectAreas(slices.Concat(role, allow)))
+	given := slices.Clone(allow)
+	for _, roleID := range roleIDs {
+		role, err := s.roleNames.RolePermissions(ctx, workspaceID, roleID)
+		if err != nil {
+			return fmt.Errorf("read role %s: %w", roleID, err)
+		}
+		given = append(given, role...)
+	}
+	return s.requireHolds(ctx, actorID, workspaceID, projectAreas(given))
 }
 
 // SetProjectAccess replaces a member's levels on one project of workspaceID; an empty allow takes the project away.
@@ -136,9 +140,9 @@ func (s *Service) nonOwnerMember(ctx context.Context, workspaceID, userID, owner
 	if err != nil {
 		return nil, fmt.Errorf("resolve membership of %s in workspace %s: %w", userID, workspaceID, err)
 	}
-	isOwner, err := s.roleNames.IsOwnerRole(ctx, workspaceID, m.RoleID)
+	isOwner, err := s.ownerRoleAmong(ctx, workspaceID, m.RoleIDs)
 	if err != nil {
-		return nil, fmt.Errorf("check owner role %s: %w", m.RoleID, err)
+		return nil, err
 	}
 	if isOwner {
 		return nil, fmt.Errorf("%w: %s", apperrs.ErrInvalid, ownerReason)

@@ -1,6 +1,6 @@
 # 03 — A member holds a set of roles (still one each)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 02
 
@@ -27,10 +27,21 @@ Read first: `practices/go.md` (sections 14, 17), `practices/architecture.md` (se
 
 ## Acceptance criteria
 
-- [ ] An empty `access.Matrix` diff on a production copy, in the PR.
-- [ ] `TestRoleSet_EveryEvaluatorAgrees`: a member given two roles in a test gets the same union from
+- [x] An empty `access.Matrix` diff on a production copy, in the PR. Replaced by a fixture: no production copy was
+      read. A schema-0097 database built from the list parity fixture plus a second workspace with its own Owner, a
+      member of both, workspace allows and denies, play exclusions, and rules for roles on docs, plays and a project
+      gives the same `TestAccessMatrix_OfACopy` output on master and on this branch, 222 rows, byte for byte.
+- [x] `TestRoleSet_EveryEvaluatorAgrees`: a member given two roles in a test gets the same union from
       `WorkspacePermissions`, `requireAction`, the invitation SQL and the owner list.
-- [ ] `TestStatements_LiveFramesCostOneReadPerPersonOnceWarm` keeps its count; a member's roles cost 2 statements or
-      fewer, joined.
-- [ ] The tenancy and invitation suites stay green with only their fixtures changed.
-- [ ] The tool count is unchanged.
+- [x] `TestStatements_LiveFramesCostOneReadPerPersonOnceWarm` keeps its count; a member's roles cost 2 statements or
+      fewer, joined: one statement now, pinned by `TestStatements_RoleSetCostsOneReadAtAnySize`.
+- [x] The tenancy and invitation suites stay green with only their fixtures changed; `/me`'s expected body gains
+      `roles`.
+- [x] The tool count is unchanged.
+
+## Notes for later slices
+
+- `workspace_list` carries the caller's set as `your_roles`, because its `roles` already lists the workspace's roles
+  when an `id` is given. Slice 11 decides whether that name stays.
+- `roles.requireAction` now answers through `access.WorkspacePermissions`, so a Team allow or deny of `roles:write` or
+  `roles:clone` counts there as it already did everywhere else.

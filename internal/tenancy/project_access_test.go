@@ -236,7 +236,7 @@ func TestHandler_ProjectAccess(t *testing.T) {
 
 		rec = do(t, NewHandler(f.svc).Routes(), http.MethodGet, "/api/workspaces/ws-1/me", "", "bob")
 		require.Equal(t, http.StatusOK, rec.Code)
-		assert.JSONEq(t, `{"role_name":"role-name-role-editor","permissions":[],"restricted":true,"projects":[{"project_id":"p-web","actions":["tickets:read","tickets:write"]}]}`, rec.Body.String())
+		assert.JSONEq(t, `{"role_name":"role-name-role-editor","roles":[{"id":"role-editor","name":"role-name-role-editor","is_owner":false}],"permissions":[],"restricted":true,"projects":[{"project_id":"p-web","actions":["tickets:read","tickets:write"]}]}`, rec.Body.String())
 	})
 	t.Run("a PATCH stops at the first refusal", func(t *testing.T) {
 		f := newAccessFixture(t)

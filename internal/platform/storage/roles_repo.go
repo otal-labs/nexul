@@ -87,6 +87,14 @@ func (r *RolesRepo) Delete(ctx context.Context, id string) error {
 	})
 }
 
+func (r *RolesRepo) CountHolders(ctx context.Context, id string) (int, error) {
+	n, err := r.q.CountRoleHolders(ctx, id)
+	if err != nil {
+		return 0, fmt.Errorf("count holders of role %s: %w", id, err)
+	}
+	return int(n), nil
+}
+
 func toRole(row sqlcgen.Role) (*roles.Role, error) {
 	perms, err := parseSet(row.Permissions)
 	if err != nil {
