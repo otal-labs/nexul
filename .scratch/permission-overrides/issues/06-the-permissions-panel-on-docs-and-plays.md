@@ -1,6 +1,6 @@
 # 06 — The permissions panel on docs and plays
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 01
 
@@ -30,8 +30,8 @@ Rules saved here before the switch are person rules, and the wipe deletes them l
 
 ## Acceptance criteria
 
-- [ ] A person set to Deny and another to Allow on one doc works end to end, and Check access shows both sources.
-- [ ] Another open page updates without a refresh when a rule changes.
-- [ ] `TestGrants_NobodyAllowsWhatTheyLack` for docs and plays; a Deny is always accepted.
-- [ ] `PermissionsForm.test.tsx` is replaced by the panel's tests.
-- [ ] Verified at 768, 1024 and 1440px with before and after screenshots, and the react-guide self-review passes.
+- [x] A person set to Deny and another to Allow on one doc works end to end, and Check access shows both sources.
+- [x] Another open page updates without a refresh when a rule changes.
+- [x] `TestGrants_NobodyAllowsWhatTheyLack` for docs and plays; a Deny is always accepted.
+- [x] `PermissionsForm.test.tsx` is replaced by the panel's tests.
+- [x] Verified at 768, 1024 and 1440px with before and after screenshots, and the react-guide self-review passes.

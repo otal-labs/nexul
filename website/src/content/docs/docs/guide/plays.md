@@ -69,7 +69,7 @@ Open **Configuration → Plays**. A play has:
 
 A built-in play says whether its instructions match the instance's template, with **Reset to instance template** when they don't. See [Templates](/docs/guide/memories/#templates).
 
-To stop one person from running one play, press **Exclude users** on its row.
+To choose who may run one play, press **Permissions…** on its row and set **Run** to **Allow** or **Deny** for a person; see [Permissions on a doc or a play](/docs/guide/people-and-access/#permissions-on-a-doc-or-a-play).
 
 ## Auto plays
 
@@ -107,7 +107,7 @@ If it can't start, the ticket shows **Decisions check didn't run** with the reas
 |---|---|
 | `plays:run` | see and press plays |
 | `plays:read` | open **Configuration → Plays** |
-| `plays:write` | create and edit plays, exclude people, stop anyone's run |
+| `plays:write` | create and edit plays, set who may run each one, stop anyone's run |
 | `plays:delete` | delete plays |
 | `autoplays:read` | see a play's auto plays and the daily cap |
 | `autoplays:write` | add, change, and switch auto plays, and set the daily cap |

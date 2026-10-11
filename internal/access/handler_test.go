@@ -151,7 +151,7 @@ func TestHandler_Catalog_ReturnsTheWholeGridInOrder(t *testing.T) {
 func TestHandler_SetGrants(t *testing.T) {
 	// Ticket 11: same reasoning as TestHandler_ListGrants — no instance-wide bypass, "owner" proves access through a real permissions:write overwrite on the doc it's granting on.
 	svc, repo, _ := newAccessHarness()
-	setOverwrite(repo, resourceTypeDoc, "doc-1", "owner", permissions.SetOf(permissions.PermissionsWrite))
+	setOverwrite(repo, resourceTypeDoc, "doc-1", "owner", permissions.CreatorGrant)
 	h := NewHandler(svc).Routes()
 
 	t.Run("owner bulk applies", func(t *testing.T) {
@@ -161,6 +161,20 @@ func TestHandler_SetGrants(t *testing.T) {
 		g, err := repo.Get(context.Background(), resourceTypeDoc, "doc-1", "alice")
 		require.NoError(t, err)
 		assert.Equal(t, permissions.SetOf(permissions.DocsRead, permissions.DocsWrite), g.Allow)
+	})
+	t.Run("a state wins over grant", func(t *testing.T) {
+		rec := serveAccess(t, h, identity.Actor{ID: "owner"}, http.MethodPut, "/api/permissions",
+			`{"doc_ids":["doc-1"],"user_ids":["alice"],"actions":["docs:write"],"grant":true,"state":"deny"}`)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+		g, err := repo.Get(context.Background(), resourceTypeDoc, "doc-1", "alice")
+		require.NoError(t, err)
+		assert.Equal(t, permissions.SetOf(permissions.DocsRead), g.Allow)
+		assert.Equal(t, permissions.SetOf(permissions.DocsWrite), g.Deny)
+	})
+	t.Run("an unknown state is 400", func(t *testing.T) {
+		rec := serveAccess(t, h, identity.Actor{ID: "owner"}, http.MethodPut, "/api/permissions",
+			`{"doc_ids":["doc-1"],"user_ids":["alice"],"actions":["docs:read"],"state":"maybe"}`)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 	t.Run("unknown action is 400", func(t *testing.T) {
 		rec := serveAccess(t, h, identity.Actor{ID: "owner"}, http.MethodPut, "/api/permissions",

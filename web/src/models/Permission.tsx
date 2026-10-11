@@ -32,33 +32,56 @@ export interface PermissionGrant {
   updated_at: string;
 }
 
-export interface PermissionUser {
-  id: string;
-  login: string;
-  name: string;
+// What a rule holds for one permission (ADR 0148): Fallback says nothing, so the answer comes from further out.
+export const RuleState = {
+  Allow: "allow",
+  Fallback: "fallback",
+  Deny: "deny",
+} as const;
+
+export type RuleState = (typeof RuleState)[keyof typeof RuleState];
+
+// What decided an answer, with its names resolved and the sentence a person reads (GET /api/permissions/explain).
+export interface PermissionSource {
+  kind: string;
+  entity_type: string;
+  entity_id: string;
+  target_type: string;
+  target_id: string;
+  state: string;
+  entity_name: string;
+  target_name: string;
+  sentence: string;
 }
 
-// Two shapes on the wire: a doc grant (doc_ids, unchanged since before ticket 21) and a play exclusion
-// (resource_type: "play", resource_ids) — kept apart so a doc submission never carries an extra field.
-export const SetPermissionsSchema = z.union([
-  z.object({
-    doc_ids: z.array(z.string().min(1)).min(1, "Select at least one document"),
-    user_ids: z.array(z.string().min(1)).min(1, "Select at least one user"),
-    actions: z.array(z.string().min(1)).min(1, "Select at least one action"),
-    grant: z.boolean(),
-  }),
-  z.object({
-    resource_type: z.literal("play"),
-    resource_ids: z.array(z.string().min(1)).min(1, "Select at least one play"),
-    user_ids: z.array(z.string().min(1)).min(1, "Select at least one user"),
-    actions: z.array(z.string().min(1)).min(1, "Select at least one action"),
-    grant: z.boolean(),
-  }),
-]);
+export interface PermissionVerdict {
+  allowed: boolean;
+  source: PermissionSource;
+}
 
-export type SetPermissionsInput = z.infer<typeof SetPermissionsSchema>;
+// One permission's answer, and the answer the entity would give with its own rule for the person at Fallback.
+export interface PermissionAnswer extends PermissionVerdict {
+  action: string;
+  fallback: PermissionVerdict;
+}
 
-// The sharing dialog's fields live outside the form (its own pickers), so the schema validates nothing.
-export const PermissionsFormSchema = z.object({});
+export interface PermissionExplanation {
+  resource_type: string;
+  resource_id: string;
+  user_id: string;
+  effective: PermissionAnswer[];
+}
 
-export type PermissionsFormData = z.infer<typeof PermissionsFormSchema>;
+// One PUT /api/permissions: one person's actions moved to one state on one doc or play.
+export interface RuleChange {
+  userId: string;
+  state: RuleState;
+  actions: string[];
+}
+
+// The panel's held rules, keyed by ruleKey(person, action); a key absent keeps what is saved.
+export const PermissionRulesFormSchema = z.object({
+  rules: z.record(z.string(), z.enum([RuleState.Allow, RuleState.Fallback, RuleState.Deny])),
+});
+
+export type PermissionRulesFormData = z.infer<typeof PermissionRulesFormSchema>;

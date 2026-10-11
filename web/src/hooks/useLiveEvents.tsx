@@ -21,6 +21,7 @@ import { noteFollower } from "@/hooks/NoteHooks";
 import { notificationFollower } from "@/hooks/NotificationHooks";
 import { pairingFollower } from "@/hooks/PairingHooks";
 import { peopleFollower } from "@/hooks/PeopleHooks";
+import { permissionRulesFollower } from "@/hooks/PermissionHooks";
 import { playFollower } from "@/hooks/PlayHooks";
 import { projectFollower } from "@/hooks/ProjectHooks";
 import { reactionFollower } from "@/hooks/ReactionHooks";
@@ -81,6 +82,7 @@ const followers: LiveFollower[] = [
   notificationFollower,
   pairingFollower,
   peopleFollower,
+  permissionRulesFollower,
   permissionFollower,
   playFollower,
   projectFollower,

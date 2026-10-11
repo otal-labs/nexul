@@ -570,10 +570,10 @@ func TestSetGrants(t *testing.T) {
 	)
 	t.Run("permissions:write holder grants read to alice across two docs", func(t *testing.T) {
 		repo := newFakeRepo()
-		setOverwrite(repo, resourceTypeDoc, "doc-1", "manager", permissions.SetOf(permissions.PermissionsWrite))
-		setOverwrite(repo, resourceTypeDoc, "doc-2", "manager", permissions.SetOf(permissions.PermissionsWrite))
+		setOverwrite(repo, resourceTypeDoc, "doc-1", "manager", permissions.SetOf(permissions.PermissionsWrite, permissions.DocsRead))
+		setOverwrite(repo, resourceTypeDoc, "doc-2", "manager", permissions.SetOf(permissions.PermissionsWrite, permissions.DocsRead))
 		s := newService(repo, users)
-		err := s.SetGrants(context.Background(), "manager", []string{"doc-1", "doc-2"}, []string{"alice"}, []permissions.Action{permissions.DocsRead}, true)
+		err := s.SetGrants(context.Background(), "manager", []string{"doc-1", "doc-2"}, []string{"alice"}, []permissions.Action{permissions.DocsRead}, StateAllow)
 		require.NoError(t, err)
 		for _, docID := range []string{"doc-1", "doc-2"} {
 			ow, err := repo.Get(context.Background(), resourceTypeDoc, docID, "alice")
@@ -586,9 +586,9 @@ func TestSetGrants(t *testing.T) {
 	})
 	t.Run("permissions:write holder can grant on their doc", func(t *testing.T) {
 		repo := newFakeRepo()
-		setOverwrite(repo, resourceTypeDoc, "doc-1", "alice", permissions.SetOf(permissions.PermissionsWrite))
+		setOverwrite(repo, resourceTypeDoc, "doc-1", "alice", permissions.SetOf(permissions.PermissionsWrite, permissions.DocsWrite))
 		s := newService(repo, users)
-		err := s.SetGrants(context.Background(), "alice", []string{"doc-1"}, []string{"bob"}, []permissions.Action{permissions.DocsWrite}, true)
+		err := s.SetGrants(context.Background(), "alice", []string{"doc-1"}, []string{"bob"}, []permissions.Action{permissions.DocsWrite}, StateAllow)
 		require.NoError(t, err)
 		ow, err := repo.Get(context.Background(), resourceTypeDoc, "doc-1", "bob")
 		require.NoError(t, err)
@@ -597,7 +597,7 @@ func TestSetGrants(t *testing.T) {
 	t.Run("non-manager cannot grant", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newService(repo, users)
-		err := s.SetGrants(context.Background(), "alice", []string{"doc-1"}, []string{"bob"}, []permissions.Action{permissions.DocsRead}, true)
+		err := s.SetGrants(context.Background(), "alice", []string{"doc-1"}, []string{"bob"}, []permissions.Action{permissions.DocsRead}, StateAllow)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 	})
 	t.Run("revoke clears bits and deletes empty overwrite", func(t *testing.T) {
@@ -605,17 +605,17 @@ func TestSetGrants(t *testing.T) {
 		setOverwrite(repo, resourceTypeDoc, "doc-1", "manager", permissions.SetOf(permissions.PermissionsWrite))
 		setOverwrite(repo, resourceTypeDoc, "doc-1", "alice", permissions.SetOf(permissions.DocsRead, permissions.DocsWrite))
 		s := newService(repo, users)
-		err := s.SetGrants(context.Background(), "manager", []string{"doc-1"}, []string{"alice"}, []permissions.Action{permissions.DocsRead, permissions.DocsWrite}, false)
+		err := s.SetGrants(context.Background(), "manager", []string{"doc-1"}, []string{"alice"}, []permissions.Action{permissions.DocsRead, permissions.DocsWrite}, stateRevoke)
 		require.NoError(t, err)
 		_, err = repo.Get(context.Background(), resourceTypeDoc, "doc-1", "alice")
 		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 	})
-	t.Run("revoke clears a stale deny bit for the same action", func(t *testing.T) {
+	t.Run("an allow clears a deny bit for the same action", func(t *testing.T) {
 		repo := newFakeRepo()
-		setOverwrite(repo, resourceTypeDoc, "doc-1", "manager", permissions.SetOf(permissions.PermissionsWrite))
+		setOverwrite(repo, resourceTypeDoc, "doc-1", "manager", permissions.SetOf(permissions.PermissionsWrite, permissions.DocsRead))
 		require.NoError(t, repo.Set(context.Background(), resourceTypeDoc, "doc-1", "alice", nil, permissions.SetOf(permissions.DocsRead)))
 		s := newService(repo, users)
-		err := s.SetGrants(context.Background(), "manager", []string{"doc-1"}, []string{"alice"}, []permissions.Action{permissions.DocsRead}, true)
+		err := s.SetGrants(context.Background(), "manager", []string{"doc-1"}, []string{"alice"}, []permissions.Action{permissions.DocsRead}, StateAllow)
 		require.NoError(t, err)
 		ow, err := repo.Get(context.Background(), resourceTypeDoc, "doc-1", "alice")
 		require.NoError(t, err)
@@ -624,14 +624,132 @@ func TestSetGrants(t *testing.T) {
 	})
 	t.Run("no actor is unauthorized", func(t *testing.T) {
 		s := newService(newFakeRepo(), users)
-		err := s.SetGrants(context.Background(), "", []string{"doc-1"}, []string{"alice"}, []permissions.Action{permissions.DocsRead}, true)
+		err := s.SetGrants(context.Background(), "", []string{"doc-1"}, []string{"alice"}, []permissions.Action{permissions.DocsRead}, StateAllow)
 		assert.True(t, errors.Is(err, apperrs.ErrUnauthorized))
 	})
 	t.Run("empty inputs are invalid", func(t *testing.T) {
 		s := newService(newFakeRepo(), users)
-		err := s.SetGrants(context.Background(), "manager", []string{}, []string{"alice"}, []permissions.Action{permissions.DocsRead}, true)
+		err := s.SetGrants(context.Background(), "manager", []string{}, []string{"alice"}, []permissions.Action{permissions.DocsRead}, StateAllow)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
+}
+
+func TestSetGrants_States(t *testing.T) {
+	users := newFakeUsers(&User{ID: "manager"}, &User{ID: "alice"})
+	manager := permissions.SetOf(permissions.PermissionsWrite, permissions.DocsRead, permissions.DocsWrite)
+	cases := []struct {
+		name               string
+		allow, deny        permissions.Set
+		state              string
+		wantAllow, wantDny permissions.Set
+	}{
+		{"deny moves an allow to deny", permissions.SetOf(permissions.DocsRead), nil, StateDeny, nil, permissions.SetOf(permissions.DocsRead)},
+		{"fallback clears an allow", permissions.SetOf(permissions.DocsRead), nil, StateFallback, nil, nil},
+		{"fallback lifts a deny", nil, permissions.SetOf(permissions.DocsRead), StateFallback, nil, nil},
+		{"revoke keeps a deny", nil, permissions.SetOf(permissions.DocsRead), stateRevoke, nil, permissions.SetOf(permissions.DocsRead)},
+		{"lift keeps an allow", permissions.SetOf(permissions.DocsRead), nil, stateLift, permissions.SetOf(permissions.DocsRead), nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			setOverwrite(repo, resourceTypeDoc, "doc-1", "manager", manager)
+			require.NoError(t, repo.Set(context.Background(), resourceTypeDoc, "doc-1", "alice", tc.allow, tc.deny))
+			s := newService(repo, users)
+			require.NoError(t, s.SetGrants(context.Background(), "manager", []string{"doc-1"}, []string{"alice"}, []permissions.Action{permissions.DocsRead}, tc.state))
+			ow, err := repo.Get(context.Background(), resourceTypeDoc, "doc-1", "alice")
+			if tc.wantAllow == nil && tc.wantDny == nil {
+				assert.ErrorIs(t, err, apperrs.ErrNotFound, "a rule left at Fallback everywhere is deleted")
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantAllow, ow.Allow)
+			assert.Equal(t, tc.wantDny, ow.Deny)
+		})
+	}
+	t.Run("an unknown state is invalid", func(t *testing.T) {
+		repo := newFakeRepo()
+		setOverwrite(repo, resourceTypeDoc, "doc-1", "manager", manager)
+		err := newService(repo, users).SetGrants(context.Background(), "manager", []string{"doc-1"}, []string{"alice"}, []permissions.Action{permissions.DocsRead}, "maybe")
+		assert.ErrorIs(t, err, apperrs.ErrInvalid)
+	})
+}
+
+func TestGrantState_KeepsWhatGrantMeant(t *testing.T) {
+	assert.Equal(t, StateAllow, GrantState(resourceTypeDoc, true))
+	assert.Equal(t, stateRevoke, GrantState(resourceTypeDoc, false))
+	assert.Equal(t, stateLift, GrantState(resourceTypePlay, true))
+	assert.Equal(t, StateDeny, GrantState(resourceTypePlay, false))
+}
+
+func TestGrants_NobodyAllowsWhatTheyLack(t *testing.T) {
+	const ws = "ws-1"
+	users := newFakeUsers(&User{ID: "manager"}, &User{ID: "bob"})
+	newDocService := func(repo *fakeRepo) *Service {
+		setOverwrite(repo, resourceTypeDoc, "doc-1", "manager", permissions.SetOf(permissions.PermissionsWrite, permissions.DocsRead))
+		setOverwrite(repo, resourceTypeDoc, "doc-2", "manager", permissions.SetOf(permissions.PermissionsWrite, permissions.DocsRead, permissions.DocsDelete))
+		return newService(repo, users)
+	}
+	newPlayService := func(repo *fakeRepo, held permissions.Set) *Service {
+		roles := newFakeRoles()
+		roles.set(ws, "manager", RoleInfo{Permissions: held})
+		s := newService(repo, users)
+		s.SetRoles(roles)
+		s.SetPlayWorkspaces(&fakePlayWorkspace{byPlay: map[string]string{"play-1": ws}})
+		return s
+	}
+	cases := []struct {
+		name     string
+		build    func(*fakeRepo) *Service
+		resource string
+		ids      []string
+		action   permissions.Action
+		bobDeny  bool
+		state    string
+		wantErr  error
+	}{
+		{"a doc allow of what the giver lacks", newDocService, resourceTypeDoc, []string{"doc-1"}, permissions.DocsDelete, false, StateAllow, apperrs.ErrForbidden},
+		{"a doc allow through grant of what the giver lacks", newDocService, resourceTypeDoc, []string{"doc-1"}, permissions.DocsDelete, false, GrantState(resourceTypeDoc, true), apperrs.ErrForbidden},
+		{"a doc fallback lifting a deny the giver lacks", newDocService, resourceTypeDoc, []string{"doc-1"}, permissions.DocsDelete, true, StateFallback, apperrs.ErrForbidden},
+		{"one doc of two where the giver lacks it", newDocService, resourceTypeDoc, []string{"doc-2", "doc-1"}, permissions.DocsDelete, false, StateAllow, apperrs.ErrForbidden},
+		{"a doc deny of what the giver lacks", newDocService, resourceTypeDoc, []string{"doc-1"}, permissions.DocsDelete, false, StateDeny, nil},
+		{"a doc allow of what the giver holds", newDocService, resourceTypeDoc, []string{"doc-2"}, permissions.DocsDelete, false, StateAllow, nil},
+		{"a play allow of a run the giver lacks", func(r *fakeRepo) *Service { return newPlayService(r, permissions.SetOf(permissions.PlaysWrite)) }, resourceTypePlay, []string{"play-1"}, permissions.PlaysRun, false, StateAllow, apperrs.ErrForbidden},
+		{"a play lift of a run the giver lacks", func(r *fakeRepo) *Service { return newPlayService(r, permissions.SetOf(permissions.PlaysWrite)) }, resourceTypePlay, []string{"play-1"}, permissions.PlaysRun, true, GrantState(resourceTypePlay, true), apperrs.ErrForbidden},
+		{"a play deny of a run the giver lacks", func(r *fakeRepo) *Service { return newPlayService(r, permissions.SetOf(permissions.PlaysWrite)) }, resourceTypePlay, []string{"play-1"}, permissions.PlaysRun, false, StateDeny, nil},
+		{"a play allow of a run the giver holds", func(r *fakeRepo) *Service {
+			return newPlayService(r, permissions.SetOf(permissions.PlaysWrite, permissions.PlaysRun))
+		}, resourceTypePlay, []string{"play-1"}, permissions.PlaysRun, false, StateAllow, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			s := tc.build(repo)
+			for _, id := range tc.ids {
+				if tc.bobDeny {
+					require.NoError(t, repo.Set(context.Background(), tc.resource, id, "bob", nil, permissions.SetOf(tc.action)))
+				}
+			}
+			set := s.SetGrants
+			if tc.resource == resourceTypePlay {
+				set = s.SetPlayGrants
+			}
+			err := set(context.Background(), "manager", tc.ids, []string{"bob"}, []permissions.Action{tc.action}, tc.state)
+			if tc.wantErr == nil {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorIs(t, err, tc.wantErr)
+			for _, id := range tc.ids {
+				ow, getErr := repo.Get(context.Background(), tc.resource, id, "bob")
+				if !tc.bobDeny {
+					assert.ErrorIs(t, getErr, apperrs.ErrNotFound, "a refused write stores nothing on %s", id)
+					continue
+				}
+				require.NoError(t, getErr)
+				assert.Equal(t, permissions.SetOf(tc.action), ow.Deny, "a refused lift keeps the deny on %s", id)
+			}
+		})
+	}
 }
 
 func TestListGrants(t *testing.T) {
@@ -692,7 +810,7 @@ func TestSetPlayGrants(t *testing.T) {
 	t.Run("plays:write holder denies a user's plays:run", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newPlaysService(repo, permissions.SetOf(permissions.PlaysWrite))
-		err := s.SetPlayGrants(context.Background(), "manager", []string{"play-1"}, []string{"alice"}, []permissions.Action{permissions.PlaysRun}, false)
+		err := s.SetPlayGrants(context.Background(), "manager", []string{"play-1"}, []string{"alice"}, []permissions.Action{permissions.PlaysRun}, StateDeny)
 		require.NoError(t, err)
 		ow, err := repo.Get(context.Background(), resourceTypePlay, "play-1", "alice")
 		require.NoError(t, err)
@@ -700,11 +818,11 @@ func TestSetPlayGrants(t *testing.T) {
 		assert.Equal(t, permissions.Set(nil), ow.Allow)
 	})
 
-	t.Run("grant=true clears an existing deny instead of adding an allow", func(t *testing.T) {
+	t.Run("lifting clears an existing deny instead of adding an allow", func(t *testing.T) {
 		repo := newFakeRepo()
 		require.NoError(t, repo.Set(context.Background(), resourceTypePlay, "play-1", "alice", nil, permissions.SetOf(permissions.PlaysRun)))
-		s := newPlaysService(repo, permissions.SetOf(permissions.PlaysWrite))
-		err := s.SetPlayGrants(context.Background(), "manager", []string{"play-1"}, []string{"alice"}, []permissions.Action{permissions.PlaysRun}, true)
+		s := newPlaysService(repo, permissions.SetOf(permissions.PlaysWrite, permissions.PlaysRun))
+		err := s.SetPlayGrants(context.Background(), "manager", []string{"play-1"}, []string{"alice"}, []permissions.Action{permissions.PlaysRun}, stateLift)
 		require.NoError(t, err)
 		_, err = repo.Get(context.Background(), resourceTypePlay, "play-1", "alice")
 		assert.True(t, errors.Is(err, apperrs.ErrNotFound), "clearing the only bit deletes the empty overwrite")
@@ -713,14 +831,14 @@ func TestSetPlayGrants(t *testing.T) {
 	t.Run("rejects an action other than plays:run", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newPlaysService(repo, permissions.SetOf(permissions.PlaysWrite))
-		err := s.SetPlayGrants(context.Background(), "manager", []string{"play-1"}, []string{"alice"}, []permissions.Action{permissions.PlaysWrite}, false)
+		err := s.SetPlayGrants(context.Background(), "manager", []string{"play-1"}, []string{"alice"}, []permissions.Action{permissions.PlaysWrite}, StateDeny)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 
 	t.Run("without plays:write is forbidden", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newPlaysService(repo, nil)
-		err := s.SetPlayGrants(context.Background(), "manager", []string{"play-1"}, []string{"alice"}, []permissions.Action{permissions.PlaysRun}, false)
+		err := s.SetPlayGrants(context.Background(), "manager", []string{"play-1"}, []string{"alice"}, []permissions.Action{permissions.PlaysRun}, StateDeny)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 	})
 }

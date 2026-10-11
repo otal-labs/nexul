@@ -140,9 +140,9 @@ func TestIntegration_LiveAudienceMemo_FollowsEveryChange(t *testing.T) {
 	assert.False(t, reaches(uClient, ticketFrame), "Project access taken")
 
 	assert.False(t, reaches(uWriter, docFrame))
-	require.NoError(t, s.accessSvc.SetGrants(as(uOwner), uOwner, []string{f.doc}, []string{uWriter}, []permissions.Action{permissions.DocsRead}, true))
+	require.NoError(t, s.accessSvc.SetGrants(as(uOwner), uOwner, []string{f.doc}, []string{uWriter}, []permissions.Action{permissions.DocsRead}, access.StateAllow))
 	assert.True(t, reaches(uWriter, docFrame), "the doc shared")
-	require.NoError(t, s.accessSvc.SetGrants(as(uOwner), uOwner, []string{f.doc}, []string{uWriter}, []permissions.Action{permissions.DocsRead}, false))
+	require.NoError(t, s.accessSvc.SetGrants(as(uOwner), uOwner, []string{f.doc}, []string{uWriter}, []permissions.Action{permissions.DocsRead}, access.StateFallback))
 	assert.False(t, reaches(uWriter, docFrame), "the doc unshared")
 }
 

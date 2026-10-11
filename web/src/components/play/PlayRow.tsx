@@ -1,14 +1,12 @@
 import { useState } from "react";
 
-import { PermissionsForm } from "@/components/access/PermissionsForm";
-import { PermissionsFormSchema, type PermissionsFormData } from "@/models/Permission";
 import { PlayTemplateLine } from "@/components/play/PlayTemplateLine";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
 import { useCloneTemplateDialog } from "@/hooks/useCloneTemplateDialog";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
-import { useFormDialog } from "@/hooks/useFormDialog";
 import { useDeletePlay } from "@/hooks/PlayHooks";
 import { useFetchGrants } from "@/hooks/PermissionHooks";
+import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { leavingRowClass } from "@/hooks/useRowGlide";
 import { cn } from "@/lib/utils";
 import { PLAY_STAGE_LABELS, PLAY_TYPE_LABELS, type Play } from "@/models/Play";
@@ -23,24 +21,15 @@ interface PlayRowProps {
   onEdit: (play: Play) => void;
 }
 
-// canWrite gates "Exclude users" too: managing a play's plays:run exclusions takes the same plays:write
-// bit as editing the play itself (ticket 21), so no separate permission wire is needed.
+// canWrite gates Permissions too: a play's rules are written with the same plays:write bit as the play itself.
 export const PlayRow = ({ onLeave, play, workspaceId, canWrite, canDelete, onEdit }: PlayRowProps) => {
   const deletePlay = useDeletePlay(workspaceId);
   const [leaving, setLeaving] = useState(false);
-  const { open: openExclusions } = useFormDialog();
+  const openPermissions = usePermissionsDialog();
   const { open: confirm } = useConfirmationDialog();
   const openClone = useCloneTemplateDialog();
   const { data: grants } = useFetchGrants("play", play.id, canWrite);
   const excludedCount = (grants ?? []).filter((g) => g.deny.includes("plays:run")).length;
-
-  const openExclusionsDialog = () =>
-    openExclusions<PermissionsFormData>({
-      title: "Exclude users",
-      schema: PermissionsFormSchema,
-      okLabel: "Apply",
-      form: <PermissionsForm resourceType="play" resourceIds={[play.id]} />,
-    });
 
   const remove = async () => {
     const ok = await confirm({
@@ -57,7 +46,9 @@ export const PlayRow = ({ onLeave, play, workspaceId, canWrite, canDelete, onEdi
   const at = { scope: "workspace" as const, workspace_id: play.workspace_id };
   const actions: RowAction[] = [
     ...(canWrite ? [{ label: "Edit", onSelect: () => onEdit(play) }] : []),
-    ...(canWrite ? [{ label: "Exclude users…", onSelect: () => void openExclusionsDialog() }] : []),
+    ...(canWrite
+      ? [{ label: "Permissions…", onSelect: () => void openPermissions({ type: "play", id: play.id, name: play.label, workspaceId: play.workspace_id, projectId: "", folderId: "" }) }]
+      : []),
     ...(play.builtin_key
       ? [{ label: "Clone to…", onSelect: () => void openClone({ kind: "play_instructions", key: play.builtin_key, name: play.label, from: at }) }]
       : []),

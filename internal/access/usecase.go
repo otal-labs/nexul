@@ -402,29 +402,62 @@ func (s *Service) DeleteByDoc(ctx context.Context, docID string) error {
 	return nil
 }
 
-// SetGrants applies actions to every (docID, userID) pair in one bulk operation (the permissions modal).
-func (s *Service) SetGrants(ctx context.Context, actorID string, docIDs, userIDs []string, actions []permissions.Action, grant bool) error {
-	return s.setGrants(ctx, actorID, resourceTypeDoc, docIDs, userIDs, actions, grant)
+// The two older writes `grant` still means beside the three states.
+const (
+	// stateRevoke is a doc's grant=false: the allow goes and a Deny stays.
+	stateRevoke = "revoke"
+	// stateLift is a play's grant=true: the Deny goes and an Allow stays.
+	stateLift = "lift"
+)
+
+// GrantState is the state an older write's grant means on resourceType, for a caller that sends no state.
+func GrantState(resourceType string, grant bool) string {
+	if resourceType == resourceTypePlay && grant {
+		return stateLift
+	}
+	if resourceType == resourceTypePlay {
+		return StateDeny
+	}
+	if grant {
+		return StateAllow
+	}
+	return stateRevoke
 }
 
-// SetPlayGrants denies or un-denies plays:run for users on plays — the exclusion dialog (ticket 21). Only
-// plays:run is a meaningful entry on a play; any other action is rejected.
-func (s *Service) SetPlayGrants(ctx context.Context, actorID string, playIDs, userIDs []string, actions []permissions.Action, grant bool) error {
+// SetGrants sets actions to state for every (docID, userID) pair in one bulk operation (the permissions panel).
+func (s *Service) SetGrants(ctx context.Context, actorID string, docIDs, userIDs []string, actions []permissions.Action, state string) error {
+	return s.setGrants(ctx, actorID, resourceTypeDoc, docIDs, userIDs, actions, state)
+}
+
+// SetPlayGrants sets plays:run to state for users on plays; it is the only action a play rule sets until See per play.
+func (s *Service) SetPlayGrants(ctx context.Context, actorID string, playIDs, userIDs []string, actions []permissions.Action, state string) error {
 	for _, a := range actions {
 		if a != permissions.PlaysRun {
 			return fmt.Errorf("%w: only plays:run may be set on a play", apperrs.ErrInvalid)
 		}
 	}
-	return s.setGrants(ctx, actorID, resourceTypePlay, playIDs, userIDs, actions, grant)
+	return s.setGrants(ctx, actorID, resourceTypePlay, playIDs, userIDs, actions, state)
 }
 
-func (s *Service) setGrants(ctx context.Context, actorID, resourceType string, resourceIDs, userIDs []string, actions []permissions.Action, grant bool) error {
+// ruleWrite is one person's rule on one resource as it will be stored.
+type ruleWrite struct {
+	resourceID, userID string
+	allow, deny        permissions.Set
+}
+
+// setGrants checks every write before storing any: the actor manages each resource, and holds there each action the
+// write allows or lifts a Deny on (ADR 0088).
+func (s *Service) setGrants(ctx context.Context, actorID, resourceType string, resourceIDs, userIDs []string, actions []permissions.Action, state string) error {
 	if actorID == "" {
 		return fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
 	}
 	if len(resourceIDs) == 0 || len(userIDs) == 0 || len(actions) == 0 {
 		return fmt.Errorf("%w: at least one resource, one user, and one action are required", apperrs.ErrInvalid)
 	}
+	if !slices.Contains([]string{StateAllow, StateFallback, StateDeny, stateRevoke, stateLift}, state) {
+		return fmt.Errorf("%w: state %q is not allow, fallback, or deny", apperrs.ErrInvalid, state)
+	}
+	writes := make([]ruleWrite, 0, len(resourceIDs)*len(userIDs))
 	for _, id := range resourceIDs {
 		ok, err := s.canManage(ctx, actorID, resourceType, id)
 		if err != nil {
@@ -433,15 +466,66 @@ func (s *Service) setGrants(ctx context.Context, actorID, resourceType string, r
 		if !ok {
 			return fmt.Errorf("%w: manage permission required on %s %s", apperrs.ErrForbidden, resourceType, id)
 		}
-	}
-	for _, id := range resourceIDs {
 		for _, userID := range userIDs {
-			if err := s.applyGrant(ctx, actorID, resourceType, id, userID, actions, grant); err != nil {
+			w, err := s.nextRule(ctx, actorID, resourceType, id, userID, actions, state)
+			if err != nil {
 				return err
 			}
+			writes = append(writes, w)
+		}
+	}
+	for _, w := range writes {
+		event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicGrantChanged, Payload: GrantEvent{ResourceType: resourceType, ResourceID: w.resourceID, UserID: w.userID, ActorID: actorID}}
+		if err := s.repo.Set(ctx, resourceType, w.resourceID, w.userID, w.allow, w.deny, event); err != nil {
+			return fmt.Errorf("set overwrite %s/%s/%s: %w", resourceType, w.resourceID, w.userID, err)
 		}
 	}
 	return nil
+}
+
+// nextRule is userID's rule on the resource with actions moved to state, refused when it allows or lifts a Deny on an
+// action the actor doesn't hold there.
+func (s *Service) nextRule(ctx context.Context, actorID, resourceType, resourceID, userID string, actions []permissions.Action, state string) (ruleWrite, error) {
+	w := ruleWrite{resourceID: resourceID, userID: userID}
+	existing, err := s.repo.Get(ctx, resourceType, resourceID, userID)
+	if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+		return w, fmt.Errorf("get overwrite %s/%s/%s: %w", resourceType, resourceID, userID, err)
+	}
+	if err == nil {
+		w.allow, w.deny = existing.Allow, existing.Deny
+	}
+	for _, a := range actions {
+		allow, deny := moveTo(w.allow, w.deny, a, state)
+		gives := (allow.Has(a) && !w.allow.Has(a)) || (w.deny.Has(a) && !deny.Has(a))
+		if gives && !s.holds(ctx, actorID, resourceType, resourceID, a) {
+			return w, fmt.Errorf("%w: you can't allow, or lift a Deny on, %s: you don't hold it on this %s", apperrs.ErrForbidden, a, resourceType)
+		}
+		w.allow, w.deny = allow, deny
+	}
+	return w, nil
+}
+
+func moveTo(allow, deny permissions.Set, a permissions.Action, state string) (permissions.Set, permissions.Set) {
+	switch state {
+	case StateAllow:
+		return allow.With(a), deny.Without(a)
+	case StateDeny:
+		return allow.Without(a), deny.With(a)
+	case stateRevoke:
+		return allow.Without(a), deny
+	case stateLift:
+		return allow, deny.Without(a)
+	}
+	return allow.Without(a), deny.Without(a)
+}
+
+// holds is whether actorID holds action on the doc or play, its own rule for them included.
+func (s *Service) holds(ctx context.Context, actorID, resourceType, resourceID string, action permissions.Action) bool {
+	if resourceType == resourceTypePlay {
+		return s.HasPermission(ctx, actorID, s.resolvePlayWorkspace(ctx, resourceID), action, resourceTypePlay, resourceID)
+	}
+	can, _ := s.Can(ctx, actorID, resourceID, action)
+	return can
 }
 
 // ListGrants returns the overwrites on a doc, owner- or permissions:write-gated.
@@ -519,35 +603,4 @@ func (s *Service) canManage(ctx context.Context, actorID, resourceType, resource
 		return s.HasPermission(ctx, actorID, workspaceID, permissions.PlaysWrite, resourceTypePlay, resourceID), nil
 	}
 	return s.Can(ctx, actorID, resourceID, permissions.PermissionsWrite)
-}
-
-// applyGrant maintains allow for a doc (default-deny: an explicit allow is what grants access) and deny for
-// a play (default-allow via the role grid: an explicit deny is the exclusion; grant=true clears it).
-func (s *Service) applyGrant(ctx context.Context, actorID, resourceType, resourceID, userID string, actions []permissions.Action, grant bool) error {
-	var allow, deny permissions.Set
-	existing, err := s.repo.Get(ctx, resourceType, resourceID, userID)
-	if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
-		return fmt.Errorf("get overwrite %s/%s/%s: %w", resourceType, resourceID, userID, err)
-	}
-	if err == nil {
-		allow, deny = existing.Allow, existing.Deny
-	}
-	for _, a := range actions {
-		if resourceType == resourceTypePlay {
-			if grant {
-				deny = deny.Without(a)
-				continue
-			}
-			deny = deny.With(a)
-			continue
-		}
-		if grant {
-			allow = allow.With(a)
-			deny = deny.Without(a)
-			continue
-		}
-		allow = allow.Without(a)
-	}
-	event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicGrantChanged, Payload: GrantEvent{ResourceType: resourceType, ResourceID: resourceID, UserID: userID, ActorID: actorID}}
-	return s.repo.Set(ctx, resourceType, resourceID, userID, allow, deny, event)
 }

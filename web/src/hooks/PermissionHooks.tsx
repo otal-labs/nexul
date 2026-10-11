@@ -1,21 +1,28 @@
 import { useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { getDocsKey } from "@/hooks/DocHooks";
-import { PermissionArea, type PermissionGrant, type PermissionInfo, type PermissionUser, type SetPermissionsInput } from "@/models/Permission";
+import {
+  PermissionArea,
+  type PermissionExplanation,
+  type PermissionGrant,
+  type PermissionInfo,
+  type RuleChange,
+} from "@/models/Permission";
 import { domainsIn, type PermissionDomain } from "@/models/PermissionLevel";
+import type { LiveFollower } from "@/lib/live";
 
-const getGrantsKey = (resourceType: string, resourceId: string) => ["getGrants", resourceType, resourceId];
-const getPermissionUsersKey = "getPermissionUsers";
+export const getGrantsKey = "getGrants";
+export const getExplanationKey = "getExplanation";
 const getPermissionCatalogKey = "getPermissionCatalog";
 
-// Backs a play's excluded-users count (ticket 21). enabled defaults on; a caller without permissions:write
-// (which the endpoint requires) passes false so the row never fires a request it knows will 403.
+// A doc's or play's rules, one row per person. A caller without the manage permission (which the endpoint requires)
+// passes enabled false so it never fires a request it knows will 403.
 export const useFetchGrants = (resourceType: string, resourceId: string, enabled = true) =>
   useQuery({
-    queryKey: getGrantsKey(resourceType, resourceId),
+    queryKey: [getGrantsKey, resourceType, resourceId],
     queryFn: async () =>
       (
         await api.get<{ grants: PermissionGrant[] }>(
@@ -25,10 +32,17 @@ export const useFetchGrants = (resourceType: string, resourceId: string, enabled
     enabled: enabled && resourceId !== "",
   });
 
-export const useFetchPermissionUsers = () =>
+// A person's answer for every permission the entity's rules may set, with its source; userId empty is the viewer.
+export const useFetchExplanation = (resourceType: string, resourceId: string, userId = "", enabled = true) =>
   useQuery({
-    queryKey: [getPermissionUsersKey],
-    queryFn: async () => (await api.get<{ users: PermissionUser[] }>("/api/permissions/users")).data.users,
+    queryKey: [getExplanationKey, resourceType, resourceId, userId],
+    queryFn: async () =>
+      (
+        await api.get<PermissionExplanation>("/api/permissions/explain", {
+          params: { resource_type: resourceType, resource_id: resourceId, ...(userId ? { user_id: userId } : {}) },
+        })
+      ).data,
+    enabled: enabled && resourceId !== "",
   });
 
 // The one source of the permission vocabulary — every grid/checklist in the app renders this, never a hardcoded list.
@@ -46,32 +60,44 @@ export const useProjectAreas = (): PermissionDomain[] => {
   return useMemo(() => domainsIn(catalog ?? [], [PermissionArea.Project]), [catalog]);
 };
 
-type PlayPermissionsInput = Extract<SetPermissionsInput, { resource_type: "play" }>;
+interface SaveRulesInput {
+  resourceType: "doc" | "play";
+  resourceId: string;
+  changes: RuleChange[];
+}
 
-const isPlayInput = (input: SetPermissionsInput): input is PlayPermissionsInput =>
-  "resource_type" in input && input.resource_type === "play";
+const ruleBody = (resourceType: string, resourceId: string, { userId, state, actions }: RuleChange) => {
+  if (resourceType === "play") return { resource_type: "play", resource_ids: [resourceId], user_ids: [userId], actions, state };
+  return { doc_ids: [resourceId], user_ids: [userId], actions, state };
+};
 
-export const useSetPermissions = () => {
+const refreshRules = (client: QueryClient, resourceType: string, resourceId: string) =>
+  Promise.all([
+    client.invalidateQueries({ queryKey: [getGrantsKey, resourceType, resourceId] }),
+    client.invalidateQueries({ queryKey: [getExplanationKey, resourceType, resourceId] }),
+  ]);
+
+export const useSaveRules = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: SetPermissionsInput) => {
-      await api.put("/api/permissions", input);
-      return input;
+    mutationFn: async ({ resourceType, resourceId, changes }: SaveRulesInput) => {
+      for (const change of changes) await api.put("/api/permissions", ruleBody(resourceType, resourceId, change));
     },
-    onSuccess: async (input) => {
-      if (isPlayInput(input)) {
-        for (const id of input.resource_ids) {
-          await client.invalidateQueries({ queryKey: getGrantsKey("play", id) });
-        }
-        toast.success(input.grant ? "User un-excluded" : "User excluded");
-        return;
-      }
-      for (const id of input.doc_ids) {
-        await client.invalidateQueries({ queryKey: getGrantsKey("doc", id) });
-      }
-      await client.invalidateQueries({ queryKey: [getDocsKey] });
-      toast.success(input.grant ? "Permissions granted" : "Permissions revoked");
+    onSuccess: async (_, { resourceType, resourceId, changes }) => {
+      await refreshRules(client, resourceType, resourceId);
+      if (resourceType === "doc") await client.invalidateQueries({ queryKey: [getDocsKey] });
+      if (changes.length > 0) toast.success("Permissions saved");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
+};
+
+interface GrantPayload {
+  resource_type: string;
+  resource_id: string;
+}
+
+// A rule changed on a doc or play: an open panel on it rereads its rules and answers.
+export const permissionRulesFollower: LiveFollower = {
+  "access.grant.changed": ({ resource_type, resource_id }: GrantPayload, { client }) => refreshRules(client, resource_type, resource_id),
 };

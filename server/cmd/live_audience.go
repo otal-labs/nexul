@@ -224,7 +224,8 @@ func recipientFrame(ctx context.Context, _ liveAudience, raw json.RawMessage) bo
 	return decode(raw, &p) && slices.Contains(p.UserIDs, actorID(ctx))
 }
 
-// grantFrame reaches the person whose grant changed and, for Project access, whoever manages the project's workspace.
+// grantFrame reaches the person whose grant changed and whoever manages the rules it changed: a doc's or a play's, or
+// for Project access the project's workspace.
 func grantFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	var p struct {
 		ResourceType string `json:"resource_type"`
@@ -233,7 +234,20 @@ func grantFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	if ownFrame(ctx, a, raw) {
 		return true
 	}
-	return decode(raw, &p) && p.ResourceType == "project" && a.access.RequireProject(ctx, p.ResourceID, permissions.MembersWrite) == nil
+	if !decode(raw, &p) {
+		return false
+	}
+	switch p.ResourceType {
+	case "project":
+		return a.access.RequireProject(ctx, p.ResourceID, permissions.MembersWrite) == nil
+	case "doc":
+		manages, _, err := a.access.Decide(ctx, actorID(ctx), p.ResourceType, p.ResourceID, permissions.PermissionsWrite)
+		return err == nil && manages
+	case "play":
+		manages, _, err := a.access.Decide(ctx, actorID(ctx), p.ResourceType, p.ResourceID, permissions.PlaysWrite)
+		return err == nil && manages
+	}
+	return false
 }
 
 func memberFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
