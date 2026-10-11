@@ -175,11 +175,13 @@ type InterviewAnswers interface {
 	ClearSuggestions(ctx context.Context, projectID string) error
 }
 
-// Checkouts is the runner's seam onto pairing for where another project's checkout is on a computer.
+// Checkouts is the runner's seam onto pairing for where a project's checkout is on a computer.
 type Checkouts interface {
 	// LinkedProject is userID's project link for projectID: its computer and T3 project, empty when unset.
 	LinkedProject(ctx context.Context, userID, projectID string) (computerID, harnessProjectID string, err error)
 	ListProjects(ctx context.Context, userID, computerID string) ([]harness.Project, error)
+	// SaveLink saves a computer and T3 project as userID's link for projectID, as their first run there does (ADR 0145).
+	SaveLink(ctx context.Context, userID, projectID, computerID, harnessProjectID string) error
 }
 
 // Threads is the runner's seam onto chat: the target's thread, the starter's request in it, and the run's notes.

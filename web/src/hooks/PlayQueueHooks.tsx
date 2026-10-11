@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import type { Conversation } from "@nexul/client-core/chat";
 
 import { api, errorMessage } from "@/api/client";
+import { invalidateProjectLinks } from "@/hooks/PairingProjectHooks";
 import { conversationPlayTarget } from "@/models/Chat";
 import type { PlayType } from "@/models/Play";
 import type { PlayQueue, PlayQueueItem } from "@/models/PlayQueue";
@@ -69,7 +70,7 @@ interface PickComputerInput {
   harnessProjectId: string;
 }
 
-// Runs a queued run on one of its person's computers and a T3 project there; their defaults stay as they are.
+// Runs a queued run on one of its person's computers and a T3 project there, saved as their link for its project.
 export const usePickQueuedComputer = () => {
   const client = useQueryClient();
   return useMutation({
@@ -81,8 +82,8 @@ export const usePickQueuedComputer = () => {
         })
       ).data,
     onSuccess: async (item) => {
-      await refreshQueues(client, item);
-      toast.success(`${item.play_label} starts on the picked computer`);
+      await Promise.all([refreshQueues(client, item), invalidateProjectLinks(client)]);
+      toast.success(`${item.play_label} starts on the picked computer, now linked for this project`);
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

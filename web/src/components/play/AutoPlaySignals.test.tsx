@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { PlaysRailSection } from "@/components/play/PlaysRailSection";
+import { getProjectLinksKey } from "@/hooks/PairingProjectHooks";
 import { playQueueFollower } from "@/hooks/PlayQueueHooks";
 import type { PlayQueue } from "@/models/PlayQueue";
 import type { Ticket } from "@/models/Ticket";
@@ -157,14 +158,16 @@ describe("PlaysRailSection auto play signals", () => {
     expect(screen.queryByRole("button", { name: "Pick a computer" })).not.toBeInTheDocument();
   });
 
-  it("runs the queued run on the computer and T3 project its person picks", async () => {
+  it("runs the queued run on the computer and T3 project its person picks, and refreshes their links", async () => {
     mockComputers(() => playQueue({ items: [noDefault] }), "u-alice");
     vi.mocked(api.post).mockResolvedValue({ data: { ...noDefault, reason: "", computer_id: "c-desk" } });
-    renderSection();
+    const client = renderSection();
+    client.setQueryData([getProjectLinksKey], []);
     await userEvent.click(await screen.findByRole("button", { name: "Pick a computer" }));
     expect(await screen.findByText("Laptop")).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Offline" })).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(await screen.findByRole("menuitem", { name: "web" }));
     expect(api.post).toHaveBeenCalledWith("/api/plays/queue/q-1/computer", { computer_id: "c-desk", harness_project_id: "t3-web" });
+    await waitFor(() => expect(client.getQueryState([getProjectLinksKey])?.isInvalidated).toBe(true));
   });
 });

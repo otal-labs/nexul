@@ -451,6 +451,28 @@ func TestService_ResolvePersonRun_AsksWhereOnceThenUsesTheLink(t *testing.T) {
 	assert.Equal(t, ReasonNeedsLocation, nc.Reason)
 }
 
+func TestService_SaveRunLocation_SavesTheLinkARunsFirstPickWould(t *testing.T) {
+	t.Parallel()
+	exch := &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"}
+	exch.ListProjectsFn = listsT3Projects("t3-app")
+	svc := newTestService(newFakeRepo(), exch)
+	ctx := t.Context()
+	home, err := svc.Pair(ctx, "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	require.NoError(t, err)
+	_, err = svc.SetDefaults(ctx, "u1", Defaults{DefaultComputerID: home.ID, Provider: "claude", Model: "sonnet"})
+	require.NoError(t, err)
+
+	_, err = svc.SaveRunLocation(ctx, "u1", "proj-1", home.ID, "t3-typo")
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "a T3 project the computer does not list is refused")
+
+	link, err := svc.SaveRunLocation(ctx, "u1", "proj-1", home.ID, "t3-app")
+	require.NoError(t, err)
+	saved, err := svc.GetProjectLink(ctx, "u1", "proj-1")
+	require.NoError(t, err)
+	assert.Equal(t, link, saved)
+	assert.Equal(t, []string{home.ID, "t3-app", "claude/sonnet"}, []string{saved.ComputerID, saved.HarnessProjectID, saved.Provider + "/" + saved.Model})
+}
+
 func TestService_ResolvePersonRun_Where(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

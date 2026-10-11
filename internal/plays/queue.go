@@ -162,8 +162,8 @@ func (r *Runner) CancelQueued(ctx context.Context, id string) (*QueueItem, error
 	return it, nil
 }
 
-// PickComputer runs a queued item on computerID and the T3 project on it, for the person it lands on only; their
-// defaults and links stay as they are.
+// PickComputer runs a queued item on computerID and the T3 project on it, for the person it lands on only, and saves
+// the pick as their link for its project, so their later runs there need no pick; their defaults stay as they are.
 func (r *Runner) PickComputer(ctx context.Context, id, computerID, harnessProjectID string) (*QueueItem, error) {
 	id, computerID, harnessProjectID = strings.TrimSpace(id), strings.TrimSpace(computerID), strings.TrimSpace(harnessProjectID)
 	if id == "" || computerID == "" || harnessProjectID == "" {
@@ -186,8 +186,24 @@ func (r *Runner) PickComputer(ctx context.Context, id, computerID, harnessProjec
 	if err := r.decide(ctx, it, QueueQueued, QueueQueued, ""); err != nil {
 		return nil, err
 	}
+	r.rememberPick(ctx, it)
 	r.Kick()
 	return it, nil
+}
+
+// rememberPick saves a picked item's location as its person's project link and makes their held runs due, so those
+// resolve through it; a failed save leaves the pick on this item alone.
+func (r *Runner) rememberPick(ctx context.Context, it *QueueItem) {
+	if r.checkouts == nil {
+		return
+	}
+	if err := r.checkouts.SaveLink(ctx, it.PersonID, it.ProjectID, it.ComputerID, it.HarnessProjectID); err != nil {
+		r.log.Warn("plays: save a picked computer as the project link failed", "queue_item", it.ID, "project", it.ProjectID, "error", err)
+		return
+	}
+	if err := r.queue.WakePerson(ctx, it.PersonID, r.now().UTC()); err != nil {
+		r.log.Warn("plays: wake the queue after a pick failed", "queue_item", it.ID, "person", it.PersonID, "error", err)
+	}
 }
 
 // ResumeAutoPlays restarts a paused target's daily count of automatic runs from now; an autoplays:write holder or the

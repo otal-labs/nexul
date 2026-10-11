@@ -26,7 +26,7 @@ const setupGaps: Record<string, { why: string; sentence: string }> = {
   },
   no_default_computer: {
     why: "no default computer",
-    sentence: "several computers are paired and none is the default; pick one to run it on",
+    sentence: "several computers are paired and none is the default; pick one, and this project's runs use it from now on",
   },
   setup_required: { why: "computer setup not done", sentence: "the computer's setup isn't done; run it in Settings → Computers" },
 };

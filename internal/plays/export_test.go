@@ -23,7 +23,7 @@ type QueueRig struct {
 // NewQueueRig wires a runner whose plays, trails, and queue are the given stores; projectID is in workspaceID.
 func NewQueueRig(playsRepo Repo, trails TrailRepo, queue QueueRepo, workspaceID, projectID string, now func() time.Time) *QueueRig {
 	q := &QueueRig{
-		harness: &switchableHarness{},
+		harness: &switchableHarness{links: map[string][2]string{}},
 		perm:    &fakePerm{grants: map[string][]permissions.Action{}, denied: map[string]map[string]bool{}, projects: []string{projectID}},
 		facts:   &fakeFacts{byID: map[string]Facts{}},
 		targets: &fakeTargets{tickets: map[string]TicketTarget{}, docs: map[string]DocTarget{}, statuses: map[string]StatusTarget{}},
@@ -31,7 +31,7 @@ func NewQueueRig(playsRepo Repo, trails TrailRepo, queue QueueRepo, workspaceID,
 	q.Runner = NewRunner(RunnerConfig{
 		Plays: playsRepo, Trails: trails, Queue: queue, Facts: q.facts, Perm: q.perm, Targets: q.targets,
 		Projects: &fakeProjects{workspaces: map[string]string{projectID: workspaceID}},
-		Harness:  q.harness, Memories: &fakeMemories{}, Threads: &fakeThreads{}, Turns: idleTurns{}, Users: fakeUsers{}, Now: now,
+		Harness:  q.harness, Checkouts: q.harness, Memories: &fakeMemories{}, Threads: &fakeThreads{}, Turns: idleTurns{}, Users: fakeUsers{}, Now: now,
 	})
 	return q
 }
@@ -82,6 +82,16 @@ func (q *QueueRig) Offline(offline bool) {
 // Refuse makes every computer refuse with reason, such as setup_required; "" answers again.
 func (q *QueueRig) Refuse(reason string) { q.harness.refuse(reason) }
 
+// FailLinkSave makes saving a project link fail with err; nil saves again.
+func (q *QueueRig) FailLinkSave(err error) {
+	q.harness.mu.Lock()
+	defer q.harness.mu.Unlock()
+	q.harness.saveErr = err
+}
+
+// Link is userID's saved link for projectID: its computer and T3 project, empty when unset.
+func (q *QueueRig) Link(userID, projectID string) [2]string { return q.harness.Link(userID, projectID) }
+
 // Resolves counts the harness readiness checks, one per start tried.
 func (q *QueueRig) Resolves() int { return q.harness.count() }
 
@@ -121,11 +131,14 @@ func (f *fakeFacts) Facts(_ context.Context, _ TargetType, id string) (Facts, er
 	return facts, nil
 }
 
-// switchableHarness answers every start, or refuses each with a reason.
+// switchableHarness answers every start, or refuses each with a reason. It also keeps project links, which answer
+// for their person and project without a default computer, as pairing reads a link before the defaults.
 type switchableHarness struct {
 	mu       sync.Mutex
 	reason   string
 	resolves int
+	links    map[string][2]string // user id + "/" + project id -> computer id, T3 project id
+	saveErr  error
 }
 
 func (h *switchableHarness) refuse(reason string) {
@@ -140,10 +153,13 @@ func (h *switchableHarness) count() int {
 	return h.resolves
 }
 
-func (h *switchableHarness) ResolveTarget(context.Context, string, string, HarnessChoice) (HarnessChoice, error) {
+func (h *switchableHarness) ResolveTarget(_ context.Context, userID, projectID string, _ HarnessChoice) (HarnessChoice, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.resolves++
+	if link, ok := h.links[userID+"/"+projectID]; ok && h.reason == RefusalNoDefaultComputer {
+		return HarnessChoice{ComputerID: link[0], HarnessProjectID: link[1], Provider: "codex"}, nil
+	}
 	if h.reason != "" {
 		return HarnessChoice{}, &HarnessRefusal{Reason: h.reason, ComputerID: "c-1", Err: apperrs.ErrInvalid}
 	}
@@ -163,6 +179,31 @@ func (h *switchableHarness) ResolveRecordedTarget(_ context.Context, _, _ string
 		return HarnessChoice{}, &HarnessRefusal{Reason: h.reason, ComputerID: choice.ComputerID, Err: apperrs.ErrInvalid}
 	}
 	return choice, nil
+}
+
+func (h *switchableHarness) LinkedProject(_ context.Context, userID, projectID string) (string, string, error) {
+	link := h.Link(userID, projectID)
+	return link[0], link[1], nil
+}
+
+func (h *switchableHarness) ListProjects(context.Context, string, string) ([]harness.Project, error) {
+	return nil, nil
+}
+
+func (h *switchableHarness) SaveLink(_ context.Context, userID, projectID, computerID, harnessProjectID string) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.saveErr != nil {
+		return h.saveErr
+	}
+	h.links[userID+"/"+projectID] = [2]string{computerID, harnessProjectID}
+	return nil
+}
+
+func (h *switchableHarness) Link(userID, projectID string) [2]string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.links[userID+"/"+projectID]
 }
 
 // idleTurns accepts a turn and never reports on it, so its trail stays starting and holds its slot until a test ends it.

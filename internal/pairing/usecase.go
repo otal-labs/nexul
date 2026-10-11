@@ -632,6 +632,19 @@ func (s *Service) resolvePersonRun(ctx context.Context, userID, projectID, compu
 	})
 }
 
+// SaveRunLocation saves a computer and T3 project picked for a run as the caller's link, as their first run there does.
+func (s *Service) SaveRunLocation(ctx context.Context, userID, projectID, computerID, harnessProjectID string) (ProjectLink, error) {
+	link, err := s.repo.GetProjectLink(ctx, userID, projectID)
+	if err != nil {
+		return ProjectLink{}, fmt.Errorf("get project link %s: %w", projectID, err)
+	}
+	defaults, err := s.repo.GetDefaults(ctx, userID)
+	if err != nil {
+		return ProjectLink{}, fmt.Errorf("get defaults: %w", err)
+	}
+	return s.savePickedLocation(ctx, userID, projectID, computerID, harnessProjectID, link, defaults)
+}
+
 // savePickedLocation saves a picked location the computer lists as the link, never the run's own model (ADR 0145).
 func (s *Service) savePickedLocation(ctx context.Context, userID, projectID, computerID, harnessProjectID string, link ProjectLink, defaults Defaults) (ProjectLink, error) {
 	if err := s.requireListedProject(ctx, userID, computerID, harnessProjectID); err != nil {

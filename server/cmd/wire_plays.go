@@ -207,6 +207,11 @@ func (a playsCheckouts) ListProjects(ctx context.Context, userID, computerID str
 	return a.svc.ListProjects(ctx, userID, computerID)
 }
 
+func (a playsCheckouts) SaveLink(ctx context.Context, userID, projectID, computerID, harnessProjectID string) error {
+	_, err := a.svc.SaveRunLocation(ctx, userID, projectID, computerID, harnessProjectID)
+	return err
+}
+
 // playsThreads adapts chat to the runner's Threads seam (ADR 0017: plays never imports chat).
 type playsThreads struct {
 	svc *chat.Service

@@ -40,3 +40,7 @@ Amended 2026-10-11: a run held up by its person's computer setup (nothing paired
 linked, setup not done, or several computers and none the default) waits in the queue like an offline computer instead
 of failing as "didn't run", and starts once the gap is fixed. With several computers and no default, the waiting run
 asks its person to pick a computer and T3 project for it, which leaves their default alone.
+
+Amended 2026-10-11: the pick is also saved as the person's project link, the way a first run through the run dialog or
+`play_run` saves one (ADR 0145), so their other runs waiting in that project go ahead through it and later ones never
+ask. A link that fails to save leaves the pick on that one run.
