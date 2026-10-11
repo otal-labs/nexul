@@ -184,7 +184,7 @@ func TestCanDocs_AnswersAsASingleCheckDoes(t *testing.T) {
 func TestCanDocs_ReadsEachLayerOnceForTheLot(t *testing.T) {
 	s, repo := restrictedFixture(t)
 	roles := &countingRoles{fakeRoles: newFakeRoles()}
-	roles.set("ws", "team", RoleInfo{Permissions: permissions.SetOf(permissions.DocsWrite)})
+	roles.set("ws", "team", RoleInfo{RoleID: "role-team", Permissions: permissions.SetOf(permissions.DocsWrite)})
 	s.SetRoles(roles)
 	docIDs := make([]string, 50)
 	byDoc, projectOf := map[string]string{}, map[string]string{}
@@ -202,5 +202,5 @@ func TestCanDocs_ReadsEachLayerOnceForTheLot(t *testing.T) {
 	assert.True(t, got["d-49"])
 	assert.False(t, got["d-48"])
 	assert.Equal(t, 1, roles.calls, "membership once for the lot")
-	assert.Equal(t, 2, repo.readCounts(), "the workspace's rules, then every doc's in one read")
+	assert.Equal(t, 3, repo.readCounts(), "their rules on the workspace and both projects, the roles' there, then every doc's")
 }

@@ -122,36 +122,57 @@ type workspaceLayers struct {
 	project     permissions.Set
 }
 
-func (s *Service) workspaceLayers(ctx context.Context, userID, workspaceID string) workspaceLayers {
-	ws := workspaceLayers{userID: userID, workspaceID: workspaceID}
+// layers reads userID's roles in workspaceID, their rule on it, and projectID's rules for them and their roles, built
+// once per request so a list's per-row checks cost one memo lookup. Every member's project rules are read; until
+// projects are opt-in only a Restricted member's own row applies (ADR 0148).
+func (s *Service) layers(ctx context.Context, userID, workspaceID, projectID string) workspaceLayers {
+	// A failed read counts as no rule, as a check's always has, and the memo keeps nothing built on one.
+	ws, _ := remember(ctx, layersKey{userID, workspaceID, projectID}, func() (workspaceLayers, error) {
+		return s.readLayers(ctx, userID, workspaceID, projectID)
+	})
+	return ws
+}
+
+func (s *Service) readLayers(ctx context.Context, userID, workspaceID, projectID string) (workspaceLayers, error) {
+	ws := workspaceLayers{userID: userID, workspaceID: workspaceID, projectID: projectID}
 	if workspaceID == "" {
-		return ws
+		return ws, nil
 	}
+	var failed error
 	if s.roles != nil {
-		if info, err := s.memberRole(ctx, workspaceID, userID); err == nil {
+		info, err := s.memberRole(ctx, workspaceID, userID)
+		if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+			failed = err
+		}
+		if err == nil {
 			ws.member = true
 			ws.owner = info.IsOwnerRole
 			ws.restricted = info.Restricted && !info.IsOwnerRole
 			ws.roles = info
 		}
 	}
-	// The workspace itself carries no rule for a role (ADR 0148), so its person's row is read alone.
-	if ow, err := s.overwrite(ctx, resourceTypeWorkspace, workspaceID, userID); err == nil {
-		ws.overwrite = ow
+	var projectIDs []string
+	if projectID != "" {
+		projectIDs = []string{projectID}
 	}
-	return ws
+	ow, projects, err := s.layerRules(ctx, userID, workspaceID, ws.roles.roleIDs(), projectIDs)
+	if err != nil {
+		failed = err
+	}
+	ws.overwrite = ow
+	return ws.in(projectID, projects[projectID]), failed
 }
 
-// layers adds projectID's Project access to a Restricted member's workspace layers; the rows are read only while the
-// member is restricted, so a From role member's stored rows change nothing.
-func (s *Service) layers(ctx context.Context, userID, workspaceID, projectID string) workspaceLayers {
-	ws := s.workspaceLayers(ctx, userID, workspaceID)
+// in is ws inside projectID, whose rules reaching the person are r; until projects are opt-in only a Restricted
+// member's own row applies.
+func (ws workspaceLayers) in(projectID string, r *Rules) workspaceLayers {
 	ws.projectID = projectID
+	ws.inProject, ws.project = false, nil
 	if !ws.restricted || projectID == "" {
 		return ws
 	}
 	ws.inProject = true
-	if r := s.rules(ctx, resourceTypeProject, projectID, userID); r != nil && r.Person != nil {
+	if r != nil && r.Person != nil {
 		ws.project = r.Person.Allow
 	}
 	return ws
@@ -208,7 +229,7 @@ func (s *Service) WorkspacePermissions(ctx context.Context, userID, workspaceID 
 	if userID == "" {
 		return []string{}
 	}
-	return s.workspaceLayers(ctx, userID, workspaceID).actions()
+	return s.layers(ctx, userID, workspaceID, "").actions()
 }
 
 // ProjectPermissions returns every grid action userID holds inside projectID; opens is false when the project is
@@ -319,6 +340,10 @@ func (s *Service) CanDocs(ctx context.Context, userID, projectID string, docIDs 
 	}
 	ctx = s.memoized(ctx)
 	scopes := s.docScopesIn(ctx, projectID, docIDs)
+	for workspaceID, projectIDs := range projectsByWorkspace(scopes) {
+		// Read up front so the docs' projects cost one read per workspace, not one each; a failure reads again per check.
+		_, _, _ = s.layerRules(ctx, userID, workspaceID, s.roleIDsIn(ctx, userID, workspaceID), projectIDs)
+	}
 	var own map[string]*Rules
 	for _, id := range docIDs {
 		scope := scopes[id]
@@ -328,6 +353,18 @@ func (s *Service) CanDocs(ctx context.Context, userID, projectID string, docIDs 
 			}
 			return own[id]
 		})
+	}
+	return out
+}
+
+// projectsByWorkspace is the projects scopes name, by workspace.
+func projectsByWorkspace(scopes map[string]DocScope) map[string][]string {
+	out := map[string][]string{}
+	for _, scope := range scopes {
+		if scope.WorkspaceID == "" || scope.ProjectID == "" || slices.Contains(out[scope.WorkspaceID], scope.ProjectID) {
+			continue
+		}
+		out[scope.WorkspaceID] = append(out[scope.WorkspaceID], scope.ProjectID)
 	}
 	return out
 }

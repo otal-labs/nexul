@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -153,9 +154,7 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]*Project, err
 	if err != nil {
 		return nil, fmt.Errorf("list projects: %w", err)
 	}
-	visible, err := permissions.Filter(projects, func(p *Project) string { return p.ID }, func(projectID string) error {
-		return s.requireOn(ctx, projectID, permissions.Member)
-	})
+	visible, err := s.openable(ctx, workspaceID, projects)
 	if err != nil {
 		return nil, err
 	}
@@ -163,6 +162,21 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]*Project, err
 		visible[i] = s.forViewer(ctx, p)
 	}
 	return visible, nil
+}
+
+// openable is the projects of workspaceID the caller may open, from one batch of their access.
+func (s *Service) openable(ctx context.Context, workspaceID string, projects []*Project) ([]*Project, error) {
+	if s.gate == nil {
+		return projects, nil
+	}
+	ids, all, err := s.gate.CallerProjectsIn(ctx, workspaceID, permissions.Member)
+	if err != nil {
+		return nil, fmt.Errorf("list the projects the caller opens: %w", err)
+	}
+	if all {
+		return projects, nil
+	}
+	return slices.DeleteFunc(projects, func(p *Project) bool { return !slices.Contains(ids, p.ID) }), nil
 }
 
 // ProjectAccess lists the Restricted members who may open projectID and what they hold there; it takes

@@ -44,6 +44,7 @@ func restrictedClient(t *testing.T, f permFixture) {
 	require.NoError(t, f.store.Projects.Create(ctx, &workspace.Project{ID: pClient, Name: "Client portal", Prefix: "CLI", WorkspaceID: wsDefault, CreatedAt: now, UpdatedAt: now}))
 	require.NoError(t, f.svc.tenancySvc.SetEveryProject(ctx, uOwner, wsDefault, uClient, tenancy.EveryProjectNone))
 	require.NoError(t, f.svc.tenancySvc.SetProjectAccess(ctx, uOwner, wsDefault, uClient, pClient, grant("tickets:read", "tickets:write", "docs:read")))
+	listRolesIn(t, f.db, pClient)
 }
 
 // giveGeneral hands uClient Project access to the fixture's project, or takes it away with no actions.

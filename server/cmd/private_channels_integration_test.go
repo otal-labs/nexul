@@ -187,7 +187,7 @@ func TestIntegration_RemovalFromPrivateVoiceChannelEndsTheirCall(t *testing.T) {
 func TestIntegration_ChannelRules(t *testing.T) {
 	db := mentionsTestDB(t)
 	svc, store := wiredOver(t, db)
-	f := seedPermFixture(t, svc, store)
+	f := seedPermFixture(t, db, svc, store)
 	s := f.svc
 	call, err := s.chatSvc.CreateVoiceChannel(as(uWriter), wsDefault, uWriter, "standup")
 	require.NoError(t, err)

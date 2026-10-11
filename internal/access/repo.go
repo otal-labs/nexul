@@ -17,6 +17,12 @@ type Repo interface {
 	// RulesOfType returns every rule on a resourceType naming userID or a role they hold, keyed by resource id, in one
 	// read.
 	RulesOfType(ctx context.Context, resourceType, userID string) (map[string]*Rules, error)
+	// OwnRules returns the rules naming userID on workspaceID and on each of projectIDs that has one, keyed by resource
+	// id, in one read.
+	OwnRules(ctx context.Context, userID, workspaceID string, projectIDs []string) (map[string]*Overwrite, error)
+	// RoleRules returns the rules for roleIDs on each of resourceIDs that has any, keyed by resource id in role order,
+	// in one read.
+	RoleRules(ctx context.Context, resourceType string, resourceIDs, roleIDs []string) (map[string][]*Overwrite, error)
 	// ListByResource returns every rule on one resource instance, people's and roles'.
 	ListByResource(ctx context.Context, resourceType, resourceID string) ([]*Overwrite, error)
 	// Set upserts the allow/deny sets of userID's rule on (resourceType, resourceID); both empty deletes the row.

@@ -214,15 +214,23 @@ func TestListProjectPeople(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound, "a project hidden from the caller")
 	_, err = f.svc.ListProjectPeople(t.Context(), "bob", "p-gone")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
-	f.repo.members["ws-1"] = append(f.repo.members["ws-1"], "actor")
+	f.repo.members["ws-1"] = append(f.repo.members["ws-1"], "actor", "lena")
 	f.repo.roleIDs["ws-1"]["actor"] = "role-editor"
+	f.repo.roleIDs["ws-1"]["lena"] = "role-editor"
+	f.accounts.accounts["lena"] = &TeamAccount{ID: "lena", Login: "lena", Status: "active"}
+	f.repo.restricted["ws-1/bob"], f.repo.restricted["ws-1/lena"] = true, true
+	f.repo.access["ws-1/bob"] = map[string]permissions.Set{"p-web": permissions.SetOf(permissions.TicketsRead)}
 	people, err := f.svc.ListProjectPeople(t.Context(), "bob", "p-web")
 	require.NoError(t, err)
 	ids := []string{}
 	for _, p := range people {
 		ids = append(ids, p.UserID)
 	}
-	assert.ElementsMatch(t, []string{"bob", "actor"}, ids, "olga is in the workspace but the fake hides p-web from her")
+	assert.Equal(t, []string{"bob", "olga", "actor"}, ids, "lena is Restricted with no access to p-web")
+
+	f.repo.projectMembersErr = errors.New("database is locked")
+	_, err = f.svc.ListProjectPeople(t.Context(), "bob", "p-web")
+	require.ErrorIs(t, err, f.repo.projectMembersErr)
 }
 
 func TestHandler_ProjectAccess(t *testing.T) {
@@ -251,6 +259,6 @@ func TestHandler_ProjectAccess(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 		rec = do(t, NewHandler(f.svc).ProjectPeopleRoutes(), http.MethodGet, "/api/projects/p-web/people", "", "bob")
 		require.Equal(t, http.StatusOK, rec.Code)
-		assert.JSONEq(t, `{"people":[{"user_id":"bob","login":"bob","display_name":"","avatar_url":""}]}`, rec.Body.String())
+		assert.JSONEq(t, `{"people":[{"user_id":"bob","login":"bob","display_name":"","avatar_url":""},{"user_id":"olga","login":"olga","display_name":"","avatar_url":""}]}`, rec.Body.String())
 	})
 }

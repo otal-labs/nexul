@@ -129,7 +129,7 @@ func marshalMatrix(t *testing.T, rows []matrixRow) []byte {
 func TestAccessMatrix_OfTheListParityFixture(t *testing.T) {
 	db := mentionsTestDB(t)
 	svc, store := wiredOver(t, db)
-	withListParityRows(t, seedPermFixture(t, svc, store))
+	withListParityRows(t, seedPermFixture(t, db, svc, store))
 	rows := accessMatrix(t, svc, db)
 	names := map[string]string{}
 	// Channels and some seeded plays take random ids, so the golden file names them.

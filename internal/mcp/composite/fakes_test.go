@@ -782,6 +782,10 @@ func (g ownerGate) RequireProject(ctx context.Context, _ string, action permissi
 	return g.Require(ctx, "", action)
 }
 
+func (g ownerGate) CallerProjectsIn(ctx context.Context, _ string, action permissions.Action) ([]string, bool, error) {
+	return []string{}, g.Require(ctx, "", action) == nil, nil
+}
+
 type workspaceGate struct{}
 
 func (workspaceGate) WorkspaceExists(context.Context, string) (bool, error) { return true, nil }

@@ -120,6 +120,20 @@ func (s *Service) CallerProjects(ctx context.Context, action permissions.Action)
 	return projectIDs, false, nil
 }
 
+// CallerProjectsIn is CallerProjects inside workspaceID alone, from one ProjectsWith batch: what a workspace's own
+// project list filters by.
+func (s *Service) CallerProjectsIn(ctx context.Context, workspaceID string, action permissions.Action) (projectIDs []string, all bool, err error) {
+	userID, checked := caller(ctx)
+	if checked {
+		projectIDs, err = s.ProjectsWith(ctx, userID, workspaceID, action)
+		return projectIDs, false, err
+	}
+	if defaultAutomationInside(ctx, workspaceID) != nil {
+		return []string{}, false, nil
+	}
+	return nil, true, nil
+}
+
 // WorkspacesWith lists the workspaces in which the caller on ctx holds action; none for the server's own calls.
 func (s *Service) WorkspacesWith(ctx context.Context, action permissions.Action) ([]string, error) {
 	userID, checked := caller(ctx)
@@ -325,14 +339,14 @@ func (s *Service) ProjectsWith(ctx context.Context, userID, workspaceID string, 
 		return nil, fmt.Errorf("list projects of workspace %s: %w", workspaceID, err)
 	}
 	ctx = s.memoized(ctx)
-	if s.workspaceLayers(ctx, userID, workspaceID).restricted {
-		if _, err := s.rulesOn(ctx, resourceTypeProject, projectIDs, userID); err != nil {
-			return nil, fmt.Errorf("project access of %s: %w", userID, err)
-		}
+	_, projects, err := s.layerRules(ctx, userID, workspaceID, s.roleIDsIn(ctx, userID, workspaceID), projectIDs)
+	if err != nil {
+		return nil, err
 	}
+	ws := s.layers(ctx, userID, workspaceID, "")
 	out := make([]string, 0, len(projectIDs))
 	for _, projectID := range projectIDs {
-		if held, _ := s.check(ctx, userID, workspaceID, projectID, action, "", ""); held {
+		if held, _ := decide(ws.in(projectID, projects[projectID]), action, noRules); held {
 			out = append(out, projectID)
 		}
 	}

@@ -31,6 +31,8 @@ type fakeRepo struct {
 	createErr      error
 	getErr         error
 	listErr        error
+	// projectMembersErr fails ProjectMemberIDs.
+	projectMembersErr error
 }
 
 func newFakeRepo() *fakeRepo {
@@ -243,6 +245,22 @@ func (f *fakeRepo) SetProjectAccess(_ context.Context, projectID, userID string,
 	}
 	f.events = append(f.events, events...)
 	return nil
+}
+
+func (f *fakeRepo) ProjectMemberIDs(_ context.Context, workspaceID, projectID string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.projectMembersErr != nil {
+		return nil, f.projectMembersErr
+	}
+	var out []string
+	for _, userID := range f.members[workspaceID] {
+		key := workspaceID + "/" + userID
+		if !f.restricted[key] || len(f.access[key][projectID]) > 0 {
+			out = append(out, userID)
+		}
+	}
+	return out, nil
 }
 
 func (f *fakeRepo) ListAllProjectAccess(context.Context) ([]*ProjectAccess, error) {

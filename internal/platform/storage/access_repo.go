@@ -23,6 +23,8 @@ type AccessRepo struct {
 	db *sql.DB
 	w  *Serializer
 	q  *sqlcgen.Queries
+	// hot runs the one-project reads every single check and live frame makes as prepared statements.
+	hot *sqlcgen.Queries
 }
 
 func (r *AccessRepo) Get(ctx context.Context, resourceType, resourceID, userID string) (*access.Overwrite, error) {
@@ -56,6 +58,71 @@ func (r *AccessRepo) RulesOfType(ctx context.Context, resourceType, userID strin
 		return nil, fmt.Errorf("list %s rules of %s: %w", resourceType, userID, err)
 	}
 	return toRules(rows)
+}
+
+// OwnRules returns the rules naming userID on workspaceID and on each of projectIDs that has one, keyed by resource
+// id, in one read: two index lookups for one project, the person's rules on every workspace and project for a list.
+func (r *AccessRepo) OwnRules(ctx context.Context, userID, workspaceID string, projectIDs []string) (map[string]*access.Overwrite, error) {
+	var rows []sqlcgen.PermissionOverwrite
+	var err error
+	if len(projectIDs) <= 1 {
+		rows, err = r.hot.ListOwnOverwritesInProject(ctx, sqlcgen.ListOwnOverwritesInProjectParams{UserID: nullString(userID), WorkspaceID: workspaceID, ProjectID: firstOf(projectIDs)})
+	}
+	if len(projectIDs) > 1 {
+		rows, err = r.q.ListOwnOverwrites(ctx, nullString(userID))
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get the rules of %s in workspace %s: %w", userID, workspaceID, err)
+	}
+	asked := append([]string{workspaceID}, projectIDs...)
+	out := make(map[string]*access.Overwrite, len(rows))
+	for _, row := range rows {
+		ow, err := toOverwrite(row)
+		if err != nil {
+			return nil, err
+		}
+		if slices.Contains(asked, ow.ResourceID) {
+			out[ow.ResourceID] = ow
+		}
+	}
+	return out, nil
+}
+
+// RoleRules returns the rules for roleIDs on each of resourceIDs that has any, keyed by resource id in role order, in
+// one read: by the resource for one, by the roles for a list.
+func (r *AccessRepo) RoleRules(ctx context.Context, resourceType string, resourceIDs, roleIDs []string) (map[string][]*access.Overwrite, error) {
+	var rows []sqlcgen.PermissionOverwrite
+	var err error
+	if len(resourceIDs) == 1 {
+		rows, err = r.hot.ListRoleOverwritesInResource(ctx, sqlcgen.ListRoleOverwritesInResourceParams{ResourceType: resourceType, ResourceID: resourceIDs[0], RoleIds: idsJSON(roleIDs)})
+	}
+	if len(resourceIDs) > 1 {
+		rows, err = r.q.ListRoleOverwrites(ctx, sqlcgen.ListRoleOverwritesParams{RoleIds: idsJSON(roleIDs), ResourceType: resourceType})
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get the %s rules for roles: %w", resourceType, err)
+	}
+	out := map[string][]*access.Overwrite{}
+	for _, row := range rows {
+		ow, err := toOverwrite(row)
+		if err != nil {
+			return nil, err
+		}
+		if ow.Target == access.TargetRole && slices.Contains(resourceIDs, ow.ResourceID) {
+			out[ow.ResourceID] = append(out[ow.ResourceID], ow)
+		}
+	}
+	for _, rules := range out {
+		slices.SortFunc(rules, func(a, b *access.Overwrite) int { return strings.Compare(a.RoleID, b.RoleID) })
+	}
+	return out, nil
+}
+
+func firstOf(ids []string) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	return ids[0]
 }
 
 // toRules groups rows by resource, each entity's role rules in their target order.

@@ -302,6 +302,46 @@ func (q *Queries) ListMemberRoleIDs(ctx context.Context, arg ListMemberRoleIDsPa
 	return items, nil
 }
 
+const listProjectMemberIDs = `-- name: ListProjectMemberIDs :many
+SELECT m.user_id FROM workspace_members m
+WHERE m.workspace_id = ?1
+  AND (m.restricted = 0
+    OR EXISTS (SELECT 1 FROM member_roles mr JOIN roles r ON r.id = mr.role_id
+               WHERE mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id AND r.is_owner_role = 1)
+    OR EXISTS (SELECT 1 FROM permission_overwrites po
+               WHERE po.resource_type = 'project' AND po.resource_id = ?2 AND po.target = 'person'
+                 AND po.user_id = m.user_id AND po.allow != '[]'))
+ORDER BY m.created_at, m.user_id
+`
+
+type ListProjectMemberIDsParams struct {
+	WorkspaceID string
+	ProjectID   string
+}
+
+func (q *Queries) ListProjectMemberIDs(ctx context.Context, arg ListProjectMemberIDsParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listProjectMemberIDs, arg.WorkspaceID, arg.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTeamMemberships = `-- name: ListTeamMemberships :many
 SELECT m.user_id, m.workspace_id, w.name AS workspace_name, r.id AS role_id, r.name AS role_name, r.is_owner_role, m.restricted,
        COALESCE(po.allow, '[]') AS allow, COALESCE(po.deny, '[]') AS deny
@@ -365,7 +405,7 @@ const listTeamProjectAccess = `-- name: ListTeamProjectAccess :many
 SELECT po.user_id, p.workspace_id, po.resource_id AS project_id, p.name AS project_name, po.allow
 FROM permission_overwrites po
 JOIN projects p ON p.id = po.resource_id
-WHERE po.resource_type = 'project' AND po.allow != '[]'
+WHERE po.resource_type = 'project' AND po.target = 'person' AND po.allow != '[]'
 ORDER BY p.position, p.id
 `
 

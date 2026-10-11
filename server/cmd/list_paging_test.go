@@ -83,7 +83,8 @@ func TestRows_MessageListReadsOnlyItsPage(t *testing.T) {
 }
 
 // TestRows_ListToolsReadOnlyTheirPage: over 3,000 tickets, docs, deploys, notifications, and memories, a page of 50
-// hands back about its own rows and a count, where paging in memory read every row or the first thousand.
+// hands back about its own rows and a count, where paging in memory read every row or the first thousand; a reader's
+// doc_list filters by their access in the same query.
 func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
 	f, st, db := newCountedFixtureDB(t)
 	for _, stmt := range []string{
@@ -108,18 +109,19 @@ func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
 	tools = append(tools, deploy.MCPTools(s.deploySvc)...)
 	tools = append(tools, workspace.NotificationMCPTools(s.notifSvc)...)
 	tools = append(tools, memories.MCPTools(s.memoriesSvc)...)
-	for _, tc := range []struct{ tool, args string }{
-		{"ticket_list", `{}`},
-		{"ticket_list", `{"query":"login"}`},
-		{"doc_list", `{}`},
-		{"doc_list", `{"query":"rollback"}`},
-		{"deploy_list", `{}`},
-		{"notification_list", `{"offset":1500}`},
-		{"memory_list", `{"project_id":"project-general"}`},
+	for _, tc := range []struct{ tool, args, viewer string }{
+		{"ticket_list", `{}`, uOwner},
+		{"ticket_list", `{"query":"login"}`, uOwner},
+		{"doc_list", `{}`, uOwner},
+		{"doc_list", `{}`, uReader},
+		{"doc_list", `{"query":"rollback"}`, uOwner},
+		{"deploy_list", `{}`, uOwner},
+		{"notification_list", `{"offset":1500}`, uOwner},
+		{"memory_list", `{"project_id":"project-general"}`, uOwner},
 	} {
-		t.Run(tc.tool+" "+tc.args, func(t *testing.T) {
+		t.Run(tc.tool+" "+tc.args+" as "+tc.viewer, func(t *testing.T) {
 			st.Reset()
-			ids, page := callPage(t, s.accessSvc, tool(t, tools, tc.tool), uOwner, tc.args)
+			ids, page := callPage(t, s.accessSvc, tool(t, tools, tc.tool), tc.viewer, tc.args)
 
 			assert.Len(t, ids, 50)
 			assert.GreaterOrEqual(t, page.Total, 3000)
@@ -176,7 +178,7 @@ func listParityFixture(t *testing.T) permFixture {
 	t.Helper()
 	db := mentionsTestDB(t)
 	svc, store := wiredOver(t, db)
-	f := withListParityRows(t, seedPermFixture(t, svc, store))
+	f := withListParityRows(t, seedPermFixture(t, db, svc, store))
 	withRoleRulesOnDocs(t, db)
 	return f
 }
