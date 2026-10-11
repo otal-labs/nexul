@@ -108,7 +108,7 @@ describe("PlaySettingsSection", () => {
     mockPlaysAndProjects([play()]);
     renderSection({ canWrite: false, canDelete: false });
     await screen.findByText("Fix with AI");
-    expect(screen.queryByRole("button", { name: "Actions for Fix with AI" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "More actions for Fix with AI" })).not.toBeInTheDocument();
   });
 
   it("deletes a play after confirming", async () => {
@@ -117,8 +117,8 @@ describe("PlaySettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: "Actions for Fix with AI" }));
-    await user.click(await screen.findByRole("button", { name: "Delete" }));
+    await user.click(await screen.findByRole("button", { name: "More actions for Fix with AI" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     await user.click(await screen.findByRole("button", { name: "Delete play" }));
 
     expect(mocks.delete).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/play-fix");

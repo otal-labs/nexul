@@ -57,6 +57,7 @@ const renderPage = (path: string, permissions: string[], overrides: Record<strin
     "/api/workspaces/ws-1/me": { role_name: "Member", permissions },
     "/api/docs": docs,
     "/api/docs/folders": [main, getSource],
+    "/api/permissions/explain": { effective: [] },
     ...overrides,
   };
   vi.mocked(api.get).mockImplementation(async (url: string) => {
@@ -155,6 +156,27 @@ describe("DocsPage", () => {
     await user.click(screen.getByRole("button", { name: "More actions for Storage Spine" }));
     await user.click(await screen.findByRole("menuitem", { name: "Unlock" }));
     await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/unlock"));
+  });
+
+  it("opens the row menu at the pointer on a right-click, with Permissions… for whoever may manage the doc's access", async () => {
+    const user = userEvent.setup();
+    renderPage("/acme/docs", ["docs:read", "docs:delete"], {
+      "/api/permissions/explain": { effective: [{ action: "permissions:write", allowed: true }] },
+    });
+
+    await user.pointer({ keys: "[MouseRight]", target: await screen.findByRole("link", { name: /Rollback plan/ }) });
+    expect(await screen.findByRole("menuitem", { name: "Permissions…" })).toBeInTheDocument();
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Pin", "Permissions…", "Delete"]);
+  });
+
+  it("leaves Permissions… out for someone who can't manage the doc's access", async () => {
+    const user = userEvent.setup();
+    renderPage("/acme/docs", ["docs:read", "docs:delete"]);
+
+    await user.click(await screen.findByRole("button", { name: "More actions for Rollback plan" }));
+    await vi.waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/permissions/explain", expect.anything()));
+    expect(await screen.findByRole("menuitem", { name: "Delete" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Permissions…" })).not.toBeInTheDocument();
   });
 
   it("moves a doc into Pinned from its row menu and back out on Unpin", async () => {

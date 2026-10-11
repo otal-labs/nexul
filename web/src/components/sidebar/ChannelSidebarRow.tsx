@@ -2,7 +2,6 @@ import { Hash } from "lucide-react";
 
 import type { Conversation } from "@nexul/client-core/chat";
 
-import { RowActions } from "@/components/listpane/RowActions";
 import { ChatSidebarRow } from "@/components/sidebar/ChatSidebarRow";
 import { useChannelRowActions } from "@/hooks/useChannelRowActions";
 import { channelMention } from "@/models/Chat";
@@ -22,11 +21,8 @@ export const ChannelSidebarRow = ({ conversation, unreadCount }: ChannelSidebarR
         icon={Hash}
         isPrivate={conversation.private}
         unreadCount={unreadCount}
-        actions={
-          (onSettings || onRename || onDelete) && (
-            <RowActions itemLabel={channelMention(conversation)} onSettings={onSettings} onRename={onRename} onDelete={onDelete} />
-          )
-        }
+        menu={{ onSettings, onRename, onDelete }}
+        menuLabel={channelMention(conversation)}
       />
       {settingsDialog}
     </>

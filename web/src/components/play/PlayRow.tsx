@@ -1,7 +1,9 @@
 import { useState } from "react";
 
 import { PlayTemplateLine } from "@/components/play/PlayTemplateLine";
-import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
+import { RowActions } from "@/components/listpane/RowActions";
+import { offersMenu, type RowMenu } from "@/components/listpane/rowMenu";
+import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import { useCloneTemplateDialog } from "@/hooks/useCloneTemplateDialog";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useDeletePlay } from "@/hooks/PlayHooks";
@@ -44,51 +46,50 @@ export const PlayRow = ({ onLeave, play, workspaceId, canWrite, canDelete, onEdi
   };
 
   const at = { scope: "workspace" as const, workspace_id: play.workspace_id };
-  const actions: RowAction[] = [
-    ...(canWrite ? [{ label: "Edit", onSelect: () => onEdit(play) }] : []),
-    ...(canWrite
-      ? [{ label: "Permissions…", onSelect: () => void openPermissions({ type: "play", id: play.id, name: play.label, workspaceId: play.workspace_id, projectId: "", folderId: "" }) }]
-      : []),
-    ...(play.builtin_key
-      ? [{ label: "Clone to…", onSelect: () => void openClone({ kind: "play_instructions", key: play.builtin_key, name: play.label, from: at }) }]
-      : []),
-    ...(canDelete ? [{ label: "Delete", destructive: true, onSelect: () => void remove() }] : []),
-  ];
+  const entity = { type: "play" as const, id: play.id, name: play.label, workspaceId: play.workspace_id, projectId: "", folderId: "" };
+  const menu: RowMenu = {
+    onEdit: canWrite ? () => onEdit(play) : undefined,
+    onClone: play.builtin_key ? () => void openClone({ kind: "play_instructions", key: play.builtin_key, name: play.label, from: at }) : undefined,
+    permissions: canWrite ? { entity, onOpen: () => void openPermissions(entity) } : undefined,
+    onDelete: canDelete ? () => void remove() : undefined,
+  };
 
   return (
-    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "flex items-start gap-3 bg-card px-4 py-3")}>
-      <div className="min-w-0 flex-1 space-y-1">
-        <p className="line-clamp-2 text-sm font-medium break-words" title={play.label}>
-          {play.label}
-        </p>
-        <p className="flex flex-wrap items-center gap-x-1.5 font-mono text-xs text-muted-foreground">
-          <span>{PLAY_TYPE_LABELS[play.type]}</span>
-          {play.type === "ticket" && play.show_when_stage && (
-            <>
-              <span aria-hidden>·</span>
-              <span>{PLAY_STAGE_LABELS[play.show_when_stage]}</span>
-            </>
-          )}
-          {excludedCount > 0 && (
-            <>
-              <span aria-hidden>·</span>
-              <span>{excludedCount} excluded</span>
-            </>
-          )}
-          {!play.enabled && (
-            <>
-              <span aria-hidden>·</span>
-              <span className="inline-flex items-center gap-1 text-foreground/80">
-                <span className="size-1.5 rounded-full bg-muted-foreground" aria-hidden />
-                Disabled
-              </span>
-            </>
-          )}
-        </p>
-        {play.description && <p className="line-clamp-2 text-xs text-muted-foreground">{play.description}</p>}
-        {play.builtin_key && <PlayTemplateLine play={play} canWrite={canWrite} />}
-      </div>
-      {actions.length > 0 && <RowActionsMenu subject={play.label} actions={actions} />}
-    </li>
+    <RowContextMenu menu={menu}>
+      <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "flex items-start gap-3 bg-card px-4 py-3")}>
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="line-clamp-2 text-sm font-medium break-words" title={play.label}>
+            {play.label}
+          </p>
+          <p className="flex flex-wrap items-center gap-x-1.5 font-mono text-xs text-muted-foreground">
+            <span>{PLAY_TYPE_LABELS[play.type]}</span>
+            {play.type === "ticket" && play.show_when_stage && (
+              <>
+                <span aria-hidden>·</span>
+                <span>{PLAY_STAGE_LABELS[play.show_when_stage]}</span>
+              </>
+            )}
+            {excludedCount > 0 && (
+              <>
+                <span aria-hidden>·</span>
+                <span>{excludedCount} excluded</span>
+              </>
+            )}
+            {!play.enabled && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="inline-flex items-center gap-1 text-foreground/80">
+                  <span className="size-1.5 rounded-full bg-muted-foreground" aria-hidden />
+                  Disabled
+                </span>
+              </>
+            )}
+          </p>
+          {play.description && <p className="line-clamp-2 text-xs text-muted-foreground">{play.description}</p>}
+          {play.builtin_key && <PlayTemplateLine play={play} canWrite={canWrite} />}
+        </div>
+        {offersMenu(menu) && <RowActions itemLabel={play.label} {...menu} />}
+      </li>
+    </RowContextMenu>
   );
 };

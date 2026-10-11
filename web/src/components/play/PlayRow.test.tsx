@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { PlayRow } from "@/components/play/PlayRow";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { Play } from "@/models/Play";
 
 vi.mock("@/api/client", () => ({
@@ -44,6 +45,7 @@ const mockGet = (grants: unknown[] = []) => (url: string) => {
   }
   if (url === "/api/workspaces/ws-1/people") return Promise.resolve({ data: { people: [{ user_id: "u1", login: "bob", display_name: "", avatar_url: "https://example.com/b.png" }] } });
   if (url === "/api/permissions/catalog") return Promise.resolve({ data: { permissions: catalog } });
+  if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Member", permissions: ["plays:write", "plays:delete"] } });
   return Promise.reject(new Error(`unexpected GET ${url}`));
 };
 
@@ -67,13 +69,24 @@ const renderRow = (props: Partial<{ canWrite: boolean; canDelete: boolean }> = {
 
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
 describe("PlayRow", () => {
-  it("hides Exclude users without plays:write", () => {
+  it("offers no menu without plays:write or plays:delete", () => {
     vi.mocked(api.get).mockImplementation(mockGet());
     renderRow({ canWrite: false, canDelete: false });
-    expect(screen.queryByRole("button", { name: "Actions for Fix with AI" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "More actions for Fix with AI" })).not.toBeInTheDocument();
+  });
+
+  it("opens the ⋯ items at the pointer on a right-click, Permissions… between Edit and Delete", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.get).mockImplementation(mockGet());
+    renderRow();
+
+    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("Fix with AI") });
+    expect(await screen.findByRole("menuitem", { name: "Permissions…" })).toBeInTheDocument();
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Edit", "Permissions…", "Delete"]);
   });
 
   it("shows the excluded count from the grants query", async () => {
@@ -91,8 +104,8 @@ describe("PlayRow", () => {
     );
     renderRow();
 
-    await user.click(await screen.findByRole("button", { name: "Actions for Fix with AI" }));
-    await user.click(await screen.findByRole("button", { name: "Permissions…" }));
+    await user.click(await screen.findByRole("button", { name: "More actions for Fix with AI" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Permissions…" }));
     await user.click(await screen.findByRole("button", { name: /bob/ }));
     const run = await screen.findByRole("radiogroup", { name: "Run" });
     expect(within(run).getByRole("radio", { name: "Deny" })).toBeChecked();

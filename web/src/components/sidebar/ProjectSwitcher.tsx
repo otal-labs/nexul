@@ -2,13 +2,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 
 import { Popover } from "@/components/ui/popover";
+import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import { ProjectMark } from "@/components/project/ProjectMark";
 import { ProjectSwitcherMenu } from "@/components/sidebar/ProjectSwitcherMenu";
 import { SwitcherTrigger } from "@/components/SwitcherTrigger";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useWorkspacePath, useWorkspacePathname } from "@/hooks/useWorkspacePath";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { NEW_PROJECT_PATH, projectTile, switchProjectPath, type Project } from "@/models/Project";
+import { NEW_PROJECT_PATH, projectSettingsPath, projectTile, projectToken, switchProjectPath, type Project } from "@/models/Project";
 
 interface ProjectSwitcherProps {
   projects: Project[];
@@ -23,11 +24,18 @@ export const ProjectSwitcher = ({ projects, current, collapsed }: ProjectSwitche
   const pathname = useWorkspacePathname();
   const selectProject = useWorkspaceStore((s) => s.selectProject);
   const can = useAreaAccess();
+  const canOpenCurrent = useAreaAccess(current.id);
 
   const handleSelect = (project: Project) => {
     setOpen(false);
     selectProject(project.id);
     void navigate(wsPath(switchProjectPath(pathname, project)));
+  };
+
+  const handleSettings = (project: Project) => {
+    setOpen(false);
+    selectProject(project.id);
+    void navigate(wsPath(projectSettingsPath(projectToken(project))));
   };
 
   // The project wizard's project step covers name + prefix; no dialog needed here.
@@ -38,16 +46,23 @@ export const ProjectSwitcher = ({ projects, current, collapsed }: ProjectSwitche
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <SwitcherTrigger
-        tile={projectTile(current)}
-        name={current.name}
-        collapsed={collapsed}
-        mark={<ProjectMark project={current} className="h-7 w-auto min-w-8 rounded-md px-1 text-[11px] shadow-none" />}
-      />
+      <RowContextMenu
+        menu={{ onSettings: canOpenCurrent?.("projects") ? () => handleSettings(current) : undefined, settingsLabel: "Project settings" }}
+      >
+        <div className="rounded-md">
+          <SwitcherTrigger
+            tile={projectTile(current)}
+            name={current.name}
+            collapsed={collapsed}
+            mark={<ProjectMark project={current} className="h-7 w-auto min-w-8 rounded-md px-1 text-[11px] shadow-none" />}
+          />
+        </div>
+      </RowContextMenu>
       <ProjectSwitcherMenu
         projects={projects}
         currentId={current.id}
         onSelect={handleSelect}
+        onSettings={handleSettings}
         onCreate={can?.("newProject") ? handleCreate : undefined}
       />
     </Popover>

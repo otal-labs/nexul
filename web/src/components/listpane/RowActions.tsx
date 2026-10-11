@@ -1,53 +1,17 @@
-import {
-  BotIcon,
-  CopyIcon,
-  EyeIcon,
-  EyeOffIcon,
-  FolderInputIcon,
-  LockIcon,
-  LockOpenIcon,
-  MoreHorizontalIcon,
-  PencilIcon,
-  PinIcon,
-  PinOffIcon,
-  Settings2Icon,
-  Trash2Icon,
-} from "lucide-react";
+import { MoreHorizontalIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { RowActionItems } from "@/components/listpane/RowActionItems";
+import { dropdownParts, type RowMenu } from "@/components/listpane/rowMenu";
 
-interface RowActionsProps {
+interface RowActionsProps extends RowMenu {
   itemLabel: string;
-  /** Each action is hidden when its handler is omitted (the viewer lacks the permission). */
-  /** Pin and Unpin are a personal view setting, so nothing gates them; hidden when omitted. */
-  pin?: { pinned: boolean; onToggle: () => void } | undefined;
-  lock?: { locked: boolean; onToggle: () => void } | undefined;
-  /** Removing from the sidebar is personal too: the item stays, only the viewer's sidebar drops it. */
-  sidebar?: { hidden: boolean; onToggle: () => void } | undefined;
-  /** The places the item can move to, the current one checked. */
-  moveTo?: { label: string; options: { id: string; name: string }[]; currentId: string; onMove: (id: string) => void } | undefined;
-  onSettings?: (() => void) | undefined;
-  /** A DM's or thread's bots, which have no settings page to live on. */
-  onBots?: (() => void) | undefined;
-  onRename?: (() => void) | undefined;
-  onClone?: (() => void) | undefined;
-  onDelete?: (() => void) | undefined;
 }
 
-export const RowActions = ({ itemLabel, pin, lock, sidebar, moveTo, onSettings, onBots, onRename, onClone, onDelete }: RowActionsProps) => (
+// The row's ⋯, for the keyboard and touch: the same items its right-click menu holds.
+export const RowActions = ({ itemLabel, ...menu }: RowActionsProps) => (
   <DropdownMenu>
     {/* The menu trigger wraps the tooltip's, so the button's data-state is the menu's. */}
     <Tooltip>
@@ -61,84 +25,7 @@ export const RowActions = ({ itemLabel, pin, lock, sidebar, moveTo, onSettings, 
       <TooltipContent>More actions</TooltipContent>
     </Tooltip>
     <DropdownMenuContent align="end" className="min-w-36">
-      {onSettings && (
-        <DropdownMenuItem onSelect={onSettings}>
-          <Settings2Icon aria-hidden />
-          Settings
-        </DropdownMenuItem>
-      )}
-      {onBots && (
-        <DropdownMenuItem onSelect={onBots}>
-          <BotIcon aria-hidden />
-          Bots
-        </DropdownMenuItem>
-      )}
-      {pin && (
-        <DropdownMenuItem onSelect={pin.onToggle}>
-          {pin.pinned ? <PinOffIcon aria-hidden /> : <PinIcon aria-hidden />}
-          {pin.pinned ? "Unpin" : "Pin"}
-        </DropdownMenuItem>
-      )}
-      {sidebar && !sidebar.hidden && (
-        <DropdownMenuItem onSelect={sidebar.onToggle}>
-          <EyeOffIcon aria-hidden />
-          Remove from sidebar
-        </DropdownMenuItem>
-      )}
-      {sidebar?.hidden && (
-        <DropdownMenuItem onSelect={sidebar.onToggle}>
-          <EyeIcon aria-hidden />
-          Show in sidebar
-        </DropdownMenuItem>
-      )}
-      {lock && !lock.locked && (
-        <DropdownMenuItem onSelect={lock.onToggle}>
-          <LockIcon aria-hidden />
-          Lock
-        </DropdownMenuItem>
-      )}
-      {lock?.locked && (
-        <DropdownMenuItem onSelect={lock.onToggle}>
-          <LockOpenIcon aria-hidden />
-          Unlock
-        </DropdownMenuItem>
-      )}
-      {moveTo && (
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <FolderInputIcon aria-hidden />
-            {moveTo.label}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="min-w-36">
-            <DropdownMenuRadioGroup value={moveTo.currentId} onValueChange={moveTo.onMove}>
-              {moveTo.options.map((option) => (
-                <DropdownMenuRadioItem key={option.id} value={option.id}>
-                  {option.name}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-      )}
-      {onRename && (
-        <DropdownMenuItem onSelect={onRename}>
-          <PencilIcon aria-hidden />
-          Rename
-        </DropdownMenuItem>
-      )}
-      {onClone && (
-        <DropdownMenuItem onSelect={onClone}>
-          <CopyIcon aria-hidden />
-          Clone
-        </DropdownMenuItem>
-      )}
-      {onDelete && (!!onSettings || !!onBots || !!pin || !!sidebar || !!lock || !!moveTo || !!onRename || !!onClone) && <DropdownMenuSeparator />}
-      {onDelete && (
-        <DropdownMenuItem variant="destructive" onSelect={onDelete}>
-          <Trash2Icon aria-hidden />
-          Delete
-        </DropdownMenuItem>
-      )}
+      <RowActionItems ui={dropdownParts} {...menu} />
     </DropdownMenuContent>
   </DropdownMenu>
 );

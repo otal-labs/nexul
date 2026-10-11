@@ -443,8 +443,10 @@ row whose record already shows its details when open (Docs) is the title alone
 at about 40px, with a muted state icon after it (a lock) and no meta. The
 selected row is `bg-accent` with a 2px `brand` left edge, a hover
 `bg-accent/40`, never a boxed border. A row's actions are one `…` menu (Lock,
-Clone, then Delete in destructive after a separator), each item hidden without
-its permission and the `…` gone when none is left; Docs adds Pin first, which
+Clone, then Permissions… with a shield between two separators for whoever may
+manage the record's access, then Delete in destructive), each item hidden without
+its permission and the `…` gone when none is left, and a right-click on the row
+opens the same items at the pointer while the row holds `bg-accent`; Docs adds Pin first, which
 needs no permission and lifts the doc into a leading Pinned group kept in the
 browser, and Move to folder after Lock, a submenu of the project's folders with
 the current one checked. The menu takes the meta's place on hover and focus and
@@ -460,8 +462,8 @@ a folder row is a chevron, a muted lucide `Folder` (`FolderOpen` while open),
 the name in the group-label style, and a muted mono count, and it toggles on
 click, collapsed folders kept per browser and project. On hover and focus a
 `+` (new doc in that folder, never on the default folder, which the header's
-`+` already fills) and a `…` (Rename, then Delete, never on the default
-folder) take the count's place. Doc rows lead with a muted `FileText`
+`+` already fills) and a `…` (New doc, Rename, then Delete, never on the default
+folder; a right-click opens it too) take the count's place. Doc rows lead with a muted `FileText`
 icon aligned under the folder icon, and an empty open folder says "No docs" in
 one muted line. A search shows matching docs inside their folders, hides the
 folders without a match, and opens collapsed ones while it runs. The header
@@ -545,7 +547,7 @@ Microheader. The one small uppercase label is `microheaderClass`
 text-muted-foreground`): facts, group labels, rail sections, column heads.
 No other size, weight, or tracking for an uppercase label.
 
-Menu. Every menu, custom on a popover or a dropdown, is one anatomy: a
+Menu. Every menu, custom on a popover, a dropdown or a right-click, is one anatomy: a
 `glass-menu` panel (the frosted recipe on `popover` at 88%, the elevated
 shadow) at 9px with 4px padding; rows of at least 32px in `text-sm` with
 `px-2 gap-2.5` on a 5px corner, concentric in the panel's 9px, a muted 16px

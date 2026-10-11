@@ -13,7 +13,7 @@ Press **+** beside Channels, Voice channels, or Direct messages. Every workspace
 
 A direct message shows in every workspace you and the other people all belong to, not only the one you started it in, so it stays in the sidebar when you switch.
 
-A channel's **…** menu in the sidebar renames it, opens its **Settings**, or deletes it. Deleting removes every message for good and ends a voice channel's call for everyone in it. Creating and renaming take `channels:write`, deleting takes `channels:delete`, and the items are hidden without them.
+A channel's **…** menu in the sidebar, or a right-click on it, renames it, opens its **Settings**, or deletes it. Deleting removes every message for good and ends a voice channel's call for everyone in it. Creating and renaming take `channels:write`, deleting takes `channels:delete`, and the items are hidden without them.
 
 ## Write messages
 

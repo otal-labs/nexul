@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -93,6 +94,19 @@ describe("MentionChip", () => {
     const inert = await screen.findByTestId("mention-chip");
     expect(inert).toHaveAttribute("data-can-open", "false");
     expect(inert).toHaveTextContent("Secret vault");
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("locks a ticket chip the viewer can't open, showing its template text and saying why on hover", async () => {
+    const user = userEvent.setup();
+    const chip: MentionChipData = { type: "ticket", id: "t-9", title: "Rotate keys", status: "in_progress", status_label: "In progress", can_open: false };
+    render(wrap(<MentionChip type="ticket" id="t-9" label="old" chip={chip} />));
+
+    const inert = await screen.findByTestId("mention-chip");
+    expect(inert).toHaveTextContent("Rotate keys In progress");
+    expect(screen.getByRole("img", { name: "You don't have access" })).toBeInTheDocument();
+    await user.hover(inert);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("You don't have access");
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
