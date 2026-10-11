@@ -393,7 +393,9 @@ owner, the instance Owner). An entity the caller can't open is not found.
 **`access.Matrix`**: every member × every catalog action × the workspace, every project, doc, play and channel of a
 database, as sorted JSON, run on a copy named by `NEXUL_ACCESS_MATRIX_DB`. Before the switch, every PR that touches the
 evaluator or a permission table shows an empty diff on a production copy. At the switch it is the box test's before
-and after picture.
+and after picture. It lives at the composition root, since storage imports `access` and a channel's read is chat's:
+`NEXUL_ACCESS_MATRIX_DB=<copy> go test ./server/cmd -run TestAccessMatrix_OfACopy` writes `<copy>.matrix.json`
+(`NEXUL_ACCESS_MATRIX_OUT` names another file), and `TestAccessMatrix_OfTheListParityFixture` pins the fixture's.
 
 ## Performance plan
 

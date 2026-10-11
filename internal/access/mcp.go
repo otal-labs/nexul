@@ -16,8 +16,9 @@ func MCPTools(s *Service) []mcptool.Tool {
 }
 
 type accessGrantListIn struct {
-	ResourceType string `json:"resource_type" jsonschema:"doc or play."`
-	ResourceID   string `json:"resource_id" jsonschema:"The doc's or play's id."`
+	ResourceType string `json:"resource_type" jsonschema:"doc or play; project too when user_id is given."`
+	ResourceID   string `json:"resource_id" jsonschema:"The doc's, play's, or project's id."`
+	UserID       string `json:"user_id,omitempty" jsonschema:"An account id, yours or another's, as account_list shows them; returns that person's effective answers instead of the overwrites."`
 	mcptool.PageArgs
 }
 
@@ -43,9 +44,15 @@ func accessGrantListTool(s *Service) mcptool.Tool {
 		"Lists the per-user permission overwrites on one doc or play: on a doc, who was granted which docs "+
 			"actions; on a play, which users are excluded from running it (plays:run in deny). Needs "+
 			"permissions:write on the doc, or plays:write on the play. Returns each user's id, login, and name with "+
-			"their allow and deny sets; change them with permission_overwrite_update.",
+			"their allow and deny sets; change them with permission_overwrite_update. With user_id it returns instead "+
+			"that person's effective answer for each action the doc's, play's, or project's rules may set, with "+
+			"allowed and a source naming the rule or role that decided it; your own needs only opening the entity, "+
+			"anyone else's its manage permission (members:write for a project).",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in accessGrantListIn) (any, error) {
+			if in.UserID != "" {
+				return explain(ctx, s, in)
+			}
 			grants, err := listGrants(ctx, s, in)
 			if err != nil {
 				return nil, err
@@ -64,6 +71,14 @@ func accessGrantListTool(s *Service) mcptool.Tool {
 			}
 			return mcptool.Paginate(out, in.PageArgs), nil
 		})
+}
+
+func explain(ctx context.Context, s *Service, in accessGrantListIn) (any, error) {
+	out, err := s.Explain(ctx, actorIDFromCtx(ctx), in.ResourceType, in.ResourceID, in.UserID)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func listGrants(ctx context.Context, s *Service, in accessGrantListIn) ([]*Overwrite, error) {

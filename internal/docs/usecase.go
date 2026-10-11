@@ -31,6 +31,8 @@ type AccessChecker interface {
 	CallerProjects(ctx context.Context, action permissions.Action) (projectIDs []string, all bool, err error)
 	// DocsWith is the docs userID may act on with action: a project set, and the docs whose own overwrite turns it.
 	DocsWith(ctx context.Context, userID string, action permissions.Action) (projectIDs, allowed, denied []string, err error)
+	// RefuseDoc is the forbidden answer to userID's action on docID, naming the rule or role that refused it.
+	RefuseDoc(ctx context.Context, userID, docID string, action permissions.Action) error
 }
 
 // AttachmentsCopier duplicates a doc's attachments under a clone's id; docs never imports attachments (ADR 0017).
@@ -660,7 +662,11 @@ func (s *Service) require(ctx context.Context, docID string, action permissions.
 			return memberErr
 		}
 	}
-	return fmt.Errorf("%w: no %s permission on doc %s", apperrs.ErrForbidden, action, docID)
+	actor, _ := identity.ActorFromCtx(ctx)
+	if s.access == nil || actor.ID == "" {
+		return fmt.Errorf("%w: no %s permission on doc %s", apperrs.ErrForbidden, action, docID)
+	}
+	return s.access.RefuseDoc(ctx, actor.ID, docID, action)
 }
 
 // canEach is can for every doc in ds, one check per project rather than one per doc.

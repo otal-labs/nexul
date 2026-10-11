@@ -25,6 +25,7 @@ func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/permissions", h.listGrants)
 	mux.HandleFunc("GET /api/permissions/catalog", h.catalog)
+	mux.HandleFunc("GET /api/permissions/explain", h.explain)
 	mux.HandleFunc("GET /api/permissions/users", h.listUsers)
 	mux.HandleFunc("PUT /api/permissions", h.setGrants)
 	return mux
@@ -65,6 +66,21 @@ func (h *Handler) listGrants(w http.ResponseWriter, r *http.Request) {
 // catalog is the full grid in display order; roles, tokens, and doc grants all pick from it.
 func (h *Handler) catalog(w http.ResponseWriter, _ *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"permissions": permissions.Catalog()})
+}
+
+// explain is a person's answers on a doc, play, or project and where each came from; user_id defaults to the caller.
+func (h *Handler) explain(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	if q.Get("resource_id") == "" {
+		httpx.WriteError(w, fmt.Errorf("%w: resource_id is required", apperrs.ErrInvalid))
+		return
+	}
+	out, err := h.svc.Explain(r.Context(), actorID(r), q.Get("resource_type"), q.Get("resource_id"), q.Get("user_id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
 func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {

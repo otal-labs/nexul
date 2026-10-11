@@ -368,6 +368,10 @@ func (f fakeAccess) CanDocs(ctx context.Context, userID, _ string, docIDs []stri
 	return out
 }
 
+func (f fakeAccess) RefuseDoc(context.Context, string, string, permissions.Action) error {
+	return apperrs.ErrForbidden
+}
+
 func (f fakeAccess) GrantCreator(_ context.Context, _, _ string) error {
 	return f.grant
 }

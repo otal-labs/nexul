@@ -1,6 +1,6 @@
 # 01 — Every answer names its source
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** None — can start immediately
 
@@ -36,13 +36,13 @@ No schema change. The answer carries its reason, and the explain path reads it o
 
 ## Acceptance criteria
 
-- [ ] `TestExplain_AnswersWhatTheCheckAnswers`: over the `list_paging_test.go` fixture's viewers, every catalog action
+- [x] `TestExplain_AnswersWhatTheCheckAnswers`: over the `list_paging_test.go` fixture's viewers, every catalog action
       and every doc, play and project, explain's answer equals the check's.
-- [ ] Table-driven `TestDecide_Source`: Owner, role, role missing, workspace allow and deny, Restricted with and
+- [x] Table-driven `TestDecide_Source`: Owner, role, role missing, workspace allow and deny, Restricted with and
       without Project access, doc allow and deny, play deny, each with its source.
-- [ ] Explaining another person's access without the manage permission is refused over HTTP and MCP, and an
+- [x] Explaining another person's access without the manage permission is refused over HTTP and MCP, and an
       unreadable doc is not found.
-- [ ] A forbidden doc edit over HTTP and MCP names the rule that denied it; a not-found answer says nothing more.
-- [ ] Every `TestStatements_*` guard in `server/cmd/access_memo_test.go` keeps its count.
-- [ ] `access.Matrix` on the fixture matches a golden file committed here.
-- [ ] The tool count is unchanged.
+- [x] A forbidden doc edit over HTTP and MCP names the rule that denied it; a not-found answer says nothing more.
+- [x] Every `TestStatements_*` guard in `server/cmd/access_memo_test.go` keeps its count.
+- [x] `access.Matrix` on the fixture matches a golden file committed here.
+- [x] The tool count is unchanged.

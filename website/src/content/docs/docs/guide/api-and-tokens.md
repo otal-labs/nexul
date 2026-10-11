@@ -38,7 +38,7 @@ Each domain in the catalog has an area: `project`, `workspace` or `instance`.
 - A member set to **Chosen projects** sees only the projects you give them on **Team**, each at the level you set there. Their role still covers the workspace areas but opens no instance area.
 - Instance areas, such as runners, DNS and connectors, are checked against every workspace you belong to (except where you are on chosen projects only). Holding one in any of them is enough.
 
-`GET /api/workspaces/{workspaceID}/me` tells a client whether the caller is on chosen projects and, if so, which projects with which actions.
+`GET /api/workspaces/{workspaceID}/me` tells a client whether the caller is on chosen projects and, if so, which projects with which actions. `GET /api/permissions/explain` says what decided each of a person's permissions on a doc, play, or project; see [Why someone can or can't](/docs/guide/people-and-access/#why-someone-can-or-cant).
 
 To copy a custom role into another workspace, choose **Clone to workspace…** in its **…** menu in **Configuration → Roles**. That takes `roles:clone` in this workspace and `roles:write` in the other. A clashing name gets a suffix, so `Editors` arrives as `Editors (copy)`. Over the API it is `POST /api/workspaces/{workspaceID}/roles/{roleID}/clone` with `{"workspace_id": "<target>"}`; over MCP, `role_update` with `clone_from_id`.
 

@@ -43,7 +43,55 @@ func (a accessRoleResolver) MemberRole(ctx context.Context, workspaceID, userID 
 	if err != nil {
 		return access.RoleInfo{}, err
 	}
-	return access.RoleInfo{IsOwnerRole: r.IsOwnerRole, Permissions: r.Permissions, Restricted: m.Restricted}, nil
+	return access.RoleInfo{RoleID: r.ID, IsOwnerRole: r.IsOwnerRole, Permissions: r.Permissions, Restricted: m.Restricted}, nil
+}
+
+// accessNames reads what a source sentence names from storage, past every permission check: the sentence is about
+// an answer already given.
+type accessNames struct {
+	store *storage.Store
+}
+
+func (a accessNames) Name(ctx context.Context, entityType, id string) (string, error) {
+	switch entityType {
+	case "workspace":
+		w, err := a.store.Workspaces.Get(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		return w.Name, nil
+	case "project":
+		p, err := a.store.Projects.Get(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		return p.Name, nil
+	case "doc":
+		d, err := a.store.Docs.GetByID(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		return d.Title, nil
+	case "play":
+		p, err := a.store.Plays.Get(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		return p.Label, nil
+	case access.TargetRole:
+		r, err := a.store.Roles.Get(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		return r.Name, nil
+	case access.TargetPerson:
+		u, err := a.store.Users.GetUserByID(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		return u.Login, nil
+	}
+	return "", nil
 }
 
 // accessDocWorkspaceResolver reads from the repo directly to avoid recursing into a permission check.
