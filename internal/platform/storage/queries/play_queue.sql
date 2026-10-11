@@ -1,13 +1,13 @@
 -- name: InsertPlayQueueItem :execrows
-INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, automation_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, automation_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, computer_id, harness_project_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT DO NOTHING;
 
 -- name: GetPlayQueueItem :one
 SELECT * FROM play_queue WHERE id = ?;
 
 -- name: UpdatePlayQueueItem :execrows
-UPDATE play_queue SET status = ?, reason = ?, trail_id = ?, decided_at = ?, not_before = ?
+UPDATE play_queue SET status = ?, reason = ?, trail_id = ?, decided_at = ?, not_before = ?, computer_id = ?, harness_project_id = ?
 WHERE id = ? AND status = sqlc.arg(from_status);
 
 -- name: ListPlayQueueByTarget :many
@@ -25,6 +25,10 @@ SELECT DISTINCT person_id FROM play_queue WHERE status = 'queued' AND not_before
 -- name: ListDuePlayQueue :many
 SELECT * FROM play_queue WHERE status = 'queued' AND person_id = ? AND not_before <= ?
 ORDER BY priority DESC, queued_at, id;
+
+-- name: WakePlayQueuePerson :exec
+UPDATE play_queue SET not_before = sqlc.arg(now)
+WHERE status = 'queued' AND person_id = sqlc.arg(person_id) AND not_before > sqlc.arg(now);
 
 -- name: NextPlayQueueNotBefore :one
 SELECT MIN(not_before) FROM play_queue WHERE status = 'queued' AND not_before > ?;

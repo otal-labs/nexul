@@ -24,11 +24,15 @@ const (
 	QueueCancelled   QueueStatus = "cancelled"
 )
 
-// Why a queued item waits; a decided item's reason is a sentence for the ticket instead.
+// Why a queued item waits; a decided item's reason is a sentence for the ticket instead. A gap in its person's computer
+// setup waits under the harness refusal's own reason (unpaired, expired_token, no_default, no_default_computer,
+// setup_required) until it is fixed.
 const (
 	ReasonOffline    = "offline"
 	ReasonTicketBusy = "ticket busy"
 	ReasonPaused     = "paused"
+	// ReasonNoFreeSlot: its person already has as many runs going as their queue lets go at once.
+	ReasonNoFreeSlot = "no free slot"
 )
 
 // QueueItem is one match of an auto play's moment on a ticket or doc, or an automation's runPlay call (ADR 0132),
@@ -48,12 +52,15 @@ type QueueItem struct {
 	Moment       Moment      `json:"moment" enum:"ticket.unblocked,ticket.entered_stage,ticket.created,ticket.developer_set,ticket.tester_set,ticket.test_failed,doc.created,doc.changed,automation"`
 	Priority     Level       `json:"priority" enum:"high,normal,low"`
 	Status       QueueStatus `json:"status" enum:"queued,dispatching,started,skipped,didnt_run,cancelled"`
-	Reason       string      `json:"reason" jsonschema:"While queued: offline, ticket busy, paused, or empty while it waits for a free slot. Once skipped or didn't run: why."`
+	Reason       string      `json:"reason" jsonschema:"While queued: offline, ticket busy, paused, no free slot, a gap in its person's computer setup (unpaired, expired_token, no_default, no_default_computer, setup_required), or empty until first tried. Once skipped or didn't run: why."`
 	TrailID      string      `json:"trail_id" jsonschema:"The run's trail once started, or the failed trail of a run that didn't run."`
 	Via          Via         `json:"via" enum:"web,mcp,automation"`
 	QueuedAt     time.Time   `json:"queued_at"`
 	DecidedAt    *time.Time  `json:"decided_at"`
-	NotBefore    time.Time   `json:"not_before" jsonschema:"The item is not tried before this; an offline computer is tried again a minute later."`
+	NotBefore    time.Time   `json:"not_before" jsonschema:"The item is not tried before this; an offline computer or a setup gap is tried again a minute later."`
+	ComputerID   string      `json:"computer_id" jsonschema:"The computer its person picked for it to run on, when several are paired and none is the default; empty until picked."`
+	// HarnessProjectID is the T3 project picked with ComputerID; like a trail's, it stays off the wire.
+	HarnessProjectID string `json:"-"`
 }
 
 // Queue is a target's auto runs as its page shows them: every item newest first, and whether the daily cap paused it.
@@ -149,6 +156,34 @@ func (r *Runner) CancelQueued(ctx context.Context, id string) (*QueueItem, error
 		return nil, fmt.Errorf("%w: the run is %s, not queued", apperrs.ErrConflict, it.Status)
 	}
 	if err := r.decide(ctx, it, QueueQueued, QueueCancelled, "cancelled by "+r.login(ctx, actor)); err != nil {
+		return nil, err
+	}
+	r.Kick()
+	return it, nil
+}
+
+// PickComputer runs a queued item on computerID and the T3 project on it, for the person it lands on only; their
+// defaults and links stay as they are.
+func (r *Runner) PickComputer(ctx context.Context, id, computerID, harnessProjectID string) (*QueueItem, error) {
+	id, computerID, harnessProjectID = strings.TrimSpace(id), strings.TrimSpace(computerID), strings.TrimSpace(harnessProjectID)
+	if id == "" || computerID == "" || harnessProjectID == "" {
+		return nil, fmt.Errorf("%w: a queued run's id, a computer, and a T3 project on it are required", apperrs.ErrInvalid)
+	}
+	it, err := r.queue.GetQueueItem(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get queue item %s: %w", id, err)
+	}
+	if _, _, err := r.queueTarget(ctx, it.TargetType, it.TargetID); err != nil {
+		return nil, err
+	}
+	if actorID(ctx) != it.PersonID {
+		return nil, fmt.Errorf("%w: only the person a queued run lands on can pick its computer", apperrs.ErrForbidden)
+	}
+	if it.Status != QueueQueued {
+		return nil, fmt.Errorf("%w: the run is %s, not queued", apperrs.ErrConflict, it.Status)
+	}
+	it.ComputerID, it.HarnessProjectID, it.NotBefore = computerID, harnessProjectID, r.now().UTC()
+	if err := r.decide(ctx, it, QueueQueued, QueueQueued, ""); err != nil {
 		return nil, err
 	}
 	r.Kick()

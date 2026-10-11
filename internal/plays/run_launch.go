@@ -55,7 +55,7 @@ const (
 	launchPress launchMode = iota
 	// launchRecorded keeps every refusal, as nobody watches the run start.
 	launchRecorded
-	// launchQueued keeps every refusal but an offline computer and a busy target, which wait in the queue instead.
+	// launchQueued keeps every refusal but the harness's and a busy target, which wait in the queue instead.
 	launchQueued
 	// launchPerson is a press through the run dialog or play_run: as launchPress, but it asks where rather than fall back.
 	launchPerson
@@ -131,13 +131,14 @@ func (m launchMode) keeps(err error) bool {
 	return m == launchRecorded
 }
 
-// resolveHarness keeps a refusal as a failed trail unless the run needs a location or waits for its computer.
+// resolveHarness keeps a refusal as a failed trail unless the run needs a location or waits for its computer. A queued
+// run its person picked a computer and T3 project for runs exactly there, as a run started again does.
 func (r *Runner) resolveHarness(ctx context.Context, trail *Trail, targetTitle string, pick HarnessChoice, mode launchMode) (HarnessChoice, error) {
 	resolve := r.harness.ResolveTarget
 	if mode == launchPerson {
 		resolve = r.harness.ResolvePersonTarget
 	}
-	if mode == launchAgain {
+	if mode == launchAgain || (mode == launchQueued && pick.HarnessProjectID != "") {
 		resolve = r.harness.ResolveRecordedTarget
 	}
 	choice, err := resolve(ctx, trail.StarterID, trail.ProjectID, pick)
@@ -151,7 +152,7 @@ func (r *Runner) resolveHarness(ctx context.Context, trail *Trail, targetTitle s
 	if refusal != nil {
 		trail.FailureReason, trail.ComputerID, trail.Provider = refusal.Reason, refusal.ComputerID, refusal.Provider
 	}
-	if mode != launchQueued || trail.FailureReason != RefusalOffline {
+	if mode != launchQueued || refusal == nil {
 		r.createFailed(ctx, trail, targetTitle, err.Error())
 	}
 	return HarnessChoice{}, err

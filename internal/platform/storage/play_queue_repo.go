@@ -32,7 +32,7 @@ func (r *PlayQueueRepo) EnqueueRun(ctx context.Context, it *plays.QueueItem, evt
 			PlayID: it.PlayID, PlayLabel: it.PlayLabel, AutoPlayID: it.AutoPlayID, AutomationID: it.AutomationID, PersonID: it.PersonID, RunOn: string(it.RunOn),
 			Moment: string(it.Moment), Via: string(it.Via), Priority: levelPriority[it.Priority], Status: string(it.Status),
 			Reason: it.Reason, TrailID: it.TrailID, QueuedAt: it.QueuedAt.Unix(), DecidedAt: nullUnixPtr(it.DecidedAt),
-			NotBefore: it.NotBefore.Unix(),
+			NotBefore: it.NotBefore.Unix(), ComputerID: it.ComputerID, HarnessProjectID: it.HarnessProjectID,
 		})
 		if err != nil {
 			return fmt.Errorf("insert queue item %s: %w", it.ID, classifyWriteErr(err))
@@ -58,7 +58,7 @@ func (r *PlayQueueRepo) MoveQueueItem(ctx context.Context, it *plays.QueueItem, 
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdatePlayQueueItem(ctx, sqlcgen.UpdatePlayQueueItemParams{
 			Status: string(it.Status), Reason: it.Reason, TrailID: it.TrailID, DecidedAt: nullUnixPtr(it.DecidedAt),
-			NotBefore: it.NotBefore.Unix(), ID: it.ID, FromStatus: string(from),
+			NotBefore: it.NotBefore.Unix(), ComputerID: it.ComputerID, HarnessProjectID: it.HarnessProjectID, ID: it.ID, FromStatus: string(from),
 		})
 		if err != nil {
 			return fmt.Errorf("update queue item %s: %w", it.ID, classifyWriteErr(err))
@@ -147,6 +147,12 @@ func (r *PlayQueueRepo) QueuedSince(ctx context.Context, autoPlayID string, targ
 	})
 }
 
+func (r *PlayQueueRepo) WakePerson(ctx context.Context, personID string, now time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		return r.q.WithTx(tx).WakePlayQueuePerson(ctx, sqlcgen.WakePlayQueuePersonParams{Now: now.Unix(), PersonID: personID})
+	})
+}
+
 func (r *PlayQueueRepo) RecoverDispatching(ctx context.Context) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		return r.q.WithTx(tx).RecoverDispatchingPlayQueue(ctx)
@@ -174,5 +180,6 @@ func toQueueItem(row sqlcgen.PlayQueue) *plays.QueueItem {
 		RunOn: plays.RunOn(row.RunOn), Moment: plays.Moment(row.Moment), Priority: level, Status: plays.QueueStatus(row.Status),
 		Reason: row.Reason, TrailID: row.TrailID, Via: plays.Via(row.Via), QueuedAt: time.Unix(row.QueuedAt, 0).UTC(),
 		DecidedAt: unixPtrFromNull(row.DecidedAt), NotBefore: time.Unix(row.NotBefore, 0).UTC(),
+		ComputerID: row.ComputerID, HarnessProjectID: row.HarnessProjectID,
 	}
 }

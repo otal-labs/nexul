@@ -295,7 +295,8 @@ or whoever caused the moment (a doc play always runs on whoever caused it,
 since a doc has no developer). The play's show-when stage does not apply; a
 "Stage is" condition does that. A match waits in that person's queue, highest
 priority then oldest first, until they have a free slot and their computer
-is online, and is checked again before it starts. A ticket past the daily
+is online and set up, and is checked again before it starts; with several
+computers and none the default, the waiting run asks them to pick one. A ticket past the daily
 cap on automatic runs shows "Auto plays paused" until resumed. Managed with
 `autoplays:read`, `autoplays:write`, `autoplays:delete`; the person it runs
 on needs `plays:run`. An automation starts one in code with `runPlay`.
