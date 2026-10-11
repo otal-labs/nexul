@@ -29,6 +29,9 @@ const resourceTypeWorkspace = "workspace"
 // resourceTypeProject keys a Restricted member's Project access by resource_id = the project id (ADR 0097).
 const resourceTypeProject = "project"
 
+// resourceTypeChannel keys a channel's rules by resource_id = the conversation id (ADR 0148).
+const resourceTypeChannel = "channel"
+
 // Service is the access use-case layer (ADR 0019): permission overwrites and the HasPermission/Can checks.
 type Service struct {
 	repo          Repo

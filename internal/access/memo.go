@@ -139,6 +139,7 @@ type (
 	memberKey     struct{ workspaceID, userID string }
 	overwriteKey  struct{ resourceType, resourceID, userID string }
 	rulesKey      struct{ resourceType, resourceID, userID string }
+	typeRulesKey  struct{ resourceType, userID string }
 	projectKey    struct{ projectID string }
 	docKey        struct{ docID string }
 	workspacesKey struct{ userID string }

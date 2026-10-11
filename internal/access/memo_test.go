@@ -174,3 +174,29 @@ func TestProjectsWith_FailsWhenTheProjectsCannotBeListed(t *testing.T) {
 
 	assert.ErrorIs(t, err, apperrs.ErrConflict)
 }
+
+func TestChannelsDenied_ARuleDeniesAnyoneButTheOwnerInOneRead(t *testing.T) {
+	s, repo := restrictedFixture(t)
+	read := permissions.SetOf(permissions.ChannelsRead)
+	for _, user := range []string{"team", "owner"} {
+		require.NoError(t, repo.Set(t.Context(), "channel", "c-hidden", user, nil, read))
+	}
+	require.NoError(t, repo.Set(t.Context(), "channel", "c-open", "team", read, nil))
+	channels := []string{"c-hidden", "c-open", "c-unruled"}
+	repo.resetReads()
+
+	got, err := s.ChannelsDenied(t.Context(), "team", "ws", channels)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]bool{"c-hidden": true}, got)
+	assert.Equal(t, 1, repo.readCounts(), "every channel's rules at once")
+	got, err = s.ChannelsDenied(t.Context(), "team", "ws", []string{"c-hidden"})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]bool{"c-hidden": true}, got, "one channel, read by its id")
+	got, err = s.ChannelsDenied(t.Context(), "owner", "ws", channels)
+	require.NoError(t, err)
+	assert.Empty(t, got, "the Owner is never denied")
+
+	repo.getErr = errors.New("database is locked")
+	_, err = s.ChannelsDenied(t.Context(), "team", "ws", channels)
+	require.Error(t, err, "a failed rule read is no answer")
+}

@@ -271,6 +271,35 @@ func (s *Service) IsRestricted(ctx context.Context, userID, workspaceID string) 
 	return info.Restricted && !info.IsOwnerRole, err
 }
 
+// ChannelsDenied is which of channelIDs in workspaceID deny userID channels:read, in one read; never the Owner (ADR 0148).
+func (s *Service) ChannelsDenied(ctx context.Context, userID, workspaceID string, channelIDs []string) (map[string]bool, error) {
+	out := map[string]bool{}
+	info, err := s.standing(ctx, userID, workspaceID)
+	if err != nil || info.IsOwnerRole {
+		return out, err
+	}
+	rules, err := s.channelRules(ctx, userID, channelIDs)
+	if err != nil {
+		return nil, fmt.Errorf("channel rules of %s: %w", userID, err)
+	}
+	for _, id := range channelIDs {
+		if held, _ := applyRules(true, Source{}, rules[id], info.roleIDs(), permissions.ChannelsRead); !held {
+			out[id] = true
+		}
+	}
+	return out, nil
+}
+
+// channelRules reads a list's rules by type, which costs what the rules do rather than what naming each channel does.
+func (s *Service) channelRules(ctx context.Context, userID string, channelIDs []string) (map[string]*Rules, error) {
+	if len(channelIDs) == 1 {
+		return s.rulesOn(ctx, resourceTypeChannel, channelIDs, userID)
+	}
+	return remember(ctx, typeRulesKey{resourceTypeChannel, userID}, func() (map[string]*Rules, error) {
+		return s.repo.RulesOfType(ctx, resourceTypeChannel, userID)
+	})
+}
+
 func (s *Service) standing(ctx context.Context, userID, workspaceID string) (RoleInfo, error) {
 	if s.roles == nil {
 		return RoleInfo{}, nil

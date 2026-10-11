@@ -67,6 +67,7 @@ func (f *fakeRepo) get(resourceType, resourceID, userID string) (*Overwrite, err
 func (f *fakeRepo) RulesOfType(_ context.Context, resourceType, userID string) (map[string]*Rules, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.reads++
 	if f.getErr != nil {
 		return nil, f.getErr
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -52,13 +53,14 @@ type ThreadGate interface {
 // SetThreadGate wires the per-project thread check; unset, a thread is checked in its workspace instead.
 func (s *Service) SetThreadGate(g ThreadGate) { s.threads = g }
 
-// Standing: the Owner reads every private channel (ADR 0098), a Restricted member no public one (ADR 0097).
+// Standing: the Owner reads every channel, a Restricted member no public one, and a channel's rules may deny the rest.
 type Standing interface {
 	IsOwner(ctx context.Context, userID, workspaceID string) (bool, error)
 	IsRestricted(ctx context.Context, userID, workspaceID string) (bool, error)
+	ChannelsDenied(ctx context.Context, userID, workspaceID string, channelIDs []string) (map[string]bool, error)
 }
 
-// SetStanding wires the Owner and Restricted member lookups; unset, nobody is either.
+// SetStanding wires the Owner, Restricted member and channel rule lookups; unset, nobody is any of them.
 func (s *Service) SetStanding(st Standing) { s.standing = st }
 
 // SetMembership wires the membership lookup; unset, only the server's own calls may start a DM.
@@ -141,16 +143,47 @@ func (s *Service) reads(ctx context.Context, userID string, c *Conversation) err
 	return nil
 }
 
-// readsChannel: a private channel is read by its members and the Owner, a public one by everyone but a Restricted member.
+// readsChannel: a channel is read by its members (everyone but a Restricted member if public) unless its rules deny them.
 func (s *Service) readsChannel(ctx context.Context, userID string, c *Conversation) (bool, error) {
+	denied, err := s.deniedChannels(ctx, userID, []*Conversation{c})
+	if err != nil {
+		return false, err
+	}
+	return s.readsChannelUnless(ctx, userID, c, denied[c.ID])
+}
+
+// readsChannelUnless is readsChannel with the channel's rules already read, so a list reads them once for every row.
+func (s *Service) readsChannelUnless(ctx context.Context, userID string, c *Conversation, denied bool) (bool, error) {
 	if !c.Private {
 		restricted, err := s.standingOf(ctx, Standing.IsRestricted, userID, c.WorkspaceID)
-		return !restricted, err
+		return !restricted && !denied, err
 	}
-	if slices.Contains(c.ParticipantIDs, userID) {
+	if slices.Contains(c.ParticipantIDs, userID) && !denied {
 		return true, nil
 	}
 	return s.standingOf(ctx, Standing.IsOwner, userID, c.WorkspaceID)
+}
+
+// deniedChannels is which channels of cs a rule denies userID, read in one statement per workspace.
+func (s *Service) deniedChannels(ctx context.Context, userID string, cs []*Conversation) (map[string]bool, error) {
+	out := map[string]bool{}
+	if s.standing == nil || userID == "" {
+		return out, nil
+	}
+	byWorkspace := map[string][]string{}
+	for _, c := range cs {
+		if c.Kind == KindChannel || c.Kind == KindVoiceChannel {
+			byWorkspace[c.WorkspaceID] = append(byWorkspace[c.WorkspaceID], c.ID)
+		}
+	}
+	for workspaceID, ids := range byWorkspace {
+		denied, err := s.standing.ChannelsDenied(ctx, userID, workspaceID, ids)
+		if err != nil {
+			return nil, fmt.Errorf("channel rules of %s in workspace %s: %w", userID, workspaceID, err)
+		}
+		maps.Copy(out, denied)
+	}
+	return out, nil
 }
 
 func (s *Service) standingOf(ctx context.Context, ask func(Standing, context.Context, string, string) (bool, error), userID, workspaceID string) (bool, error) {

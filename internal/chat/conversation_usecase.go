@@ -218,10 +218,13 @@ func (s *Service) ExistingThread(ctx context.Context, kind Kind, targetID, calle
 	return c, nil
 }
 
-// listed keeps the conversations the caller reads; membership was checked once, and the doc and ticket threads are
-// asked about in one batch each.
+// listed keeps the conversations the caller reads, asking about threads and channels' rules in one batch each.
 func (s *Service) listed(ctx context.Context, userID string, cs []*Conversation) ([]*Conversation, error) {
 	threads, err := s.readableThreads(ctx, userID, cs)
+	if err != nil {
+		return nil, err
+	}
+	denied, err := s.deniedChannels(ctx, userID, cs)
 	if err != nil {
 		return nil, err
 	}
@@ -229,6 +232,16 @@ func (s *Service) listed(ctx context.Context, userID string, cs []*Conversation)
 	for _, c := range cs {
 		if readable, thread := threads[c.ID]; thread {
 			if readable {
+				out = append(out, c)
+			}
+			continue
+		}
+		if c.Kind == KindChannel || c.Kind == KindVoiceChannel {
+			visible, err := s.readsChannelUnless(ctx, userID, c, denied[c.ID])
+			if err != nil {
+				return nil, err
+			}
+			if visible {
 				out = append(out, c)
 			}
 			continue

@@ -38,6 +38,19 @@ func (m fakeMembers) MemberIDs(context.Context, string) ([]string, error) {
 
 type fakeStanding struct {
 	owners, restricted []string
+	// denied is the channels a rule denies each person, and failRules fails every rule read.
+	denied    map[string][]string
+	failRules error
+}
+
+func (f fakeStanding) ChannelsDenied(_ context.Context, userID, _ string, channelIDs []string) (map[string]bool, error) {
+	out := map[string]bool{}
+	for _, id := range channelIDs {
+		if slices.Contains(f.denied[userID], id) {
+			out[id] = true
+		}
+	}
+	return out, f.failRules
 }
 
 func (f fakeStanding) IsOwner(_ context.Context, userID, _ string) (bool, error) {
@@ -344,6 +357,28 @@ func TestPrivateChannel_ANonMemberReadsNothingAndTheOwnerReadsAll(t *testing.T) 
 	counts, err = f.s.UnreadCounts(as("u-owner"), "w-1", "u-owner")
 	require.NoError(t, err)
 	assert.Contains(t, counts, f.secret.ID)
+}
+
+func TestChannelRules_ADeniedChannelIsNotFoundAndAFailedReadFails(t *testing.T) {
+	f := newPrivateFixture(t)
+	f.s.SetStanding(fakeStanding{owners: []string{"u-owner"}, denied: map[string][]string{"u-2": {f.eng.ID, f.secret.ID}, "u-3": {f.secret.ID}}})
+
+	for _, id := range []string{f.eng.ID, f.secret.ID} {
+		_, err := f.s.GetConversation(as("u-2"), id)
+		require.ErrorIs(t, err, apperrs.ErrNotFound, "denied to a member, public or private")
+	}
+	assert.NotContains(t, listedIDs(t, f.s, "u-2"), f.eng.ID)
+	counts, err := f.s.UnreadCounts(as("u-2"), "w-1", "u-2")
+	require.NoError(t, err)
+	assert.NotContains(t, counts, f.eng.ID)
+	assert.Contains(t, listedIDs(t, f.s, "u-3"), f.eng.ID, "a rule elsewhere changes nothing")
+	_, err = f.s.GetConversation(as("u-1"), f.secret.ID)
+	require.NoError(t, err)
+
+	f.s.SetStanding(fakeStanding{failRules: errors.New("disk I/O error")})
+	_, err = f.s.ListConversations(as("u-1"), "w-1", "u-1")
+	require.Error(t, err)
+	assert.False(t, permissions.Refused(err), "a failed read is not an answer")
 }
 
 func TestReadsDeleted_APrivateChannelReachesItsMembersAndTheOwner(t *testing.T) {
