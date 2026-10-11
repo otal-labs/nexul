@@ -240,7 +240,7 @@ type DeleteImpact struct {
 	Tickets  int `json:"tickets"`
 	Repos    int `json:"repos"`
 	Services int `json:"services"`
-	// RestrictedMembers lose access with the project; a signal for the confirmation, not a gate.
+	// RestrictedMembers reads as empty: no member is Restricted since ADR 0148.
 	RestrictedMembers []RestrictedMember `json:"restricted_members"`
 }
 

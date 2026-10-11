@@ -818,8 +818,9 @@ _Avoid_: Banned, blocked, excluded, Restricted member
 A workspace's page of who is In each project and which roles see each public
 channel, as tick grids of projects and channels by roles. An Owner's first
 visit after the upgrade that rebuilt permissions opens it as the one-time setup
-"Who's in each project". Shown to anyone who may manage a project's access;
-only an Owner sees the channels grid.
+"Who's in each project"; a workspace with no projects at that upgrade, and
+every one made later, starts set up. Shown to anyone who may manage a project's
+access; only an Owner sees the channels grid.
 _Avoid_: Permissions page, project access, setup wizard (that is the instance's)
 
 **Private channel**:
@@ -852,7 +853,8 @@ members in a workspace finds it in Configuration and sees only the workspaces
 they manage. A change
 inside a workspace always needs `members:write` there, and the Owner role is
 never given or taken through it. Nobody gives a role holding more than they
-hold, or takes away one they couldn't give.
+hold, or takes away one they couldn't give. Deleting a role takes it from
+everyone holding it, who may be left with none.
 _Avoid_: Members (one workspace's roster), registered accounts, users
 
 **Instance settings**:

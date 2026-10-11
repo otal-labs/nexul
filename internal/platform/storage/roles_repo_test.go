@@ -12,6 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/roles"
+	"github.com/otal-labs/nexul/internal/tenancy"
 )
 
 func newTestRole(id, workspaceID string) *roles.Role {
@@ -131,6 +132,32 @@ func TestRolesRepo_Delete(t *testing.T) {
 	require.NoError(t, s.Roles.Delete(context.Background(), "role-1"))
 	_, err := s.Roles.Get(context.Background(), "role-1")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+// TestRolesRepo_Delete_AHeldRoleLeavesItsHolderWithNone: the holding and every rule naming the role go with it, and the
+// membership stays, with zero roles (ADR 0148).
+func TestRolesRepo_Delete_AHeldRoleLeavesItsHolderWithNone(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-1", "Acme")))
+	require.NoError(t, s.Roles.Create(ctx, newTestRole("role-1", "ws-1")))
+	mustCreateUser(t, s, "sam", "sam")
+	require.NoError(t, s.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: "sam", WorkspaceID: "ws-1", RoleID: "role-1", CreatedAt: time.Now()}))
+	require.NoError(t, s.Access.SetRole(ctx, "play", "play-1", "role-1", nil, permissions.SetOf(permissions.PlaysRun)))
+
+	require.NoError(t, s.Roles.Delete(ctx, "role-1", eventbus.OutboxEvent{ID: "evt-role", Topic: roles.TopicUpdated, Payload: roles.RoleEvent{RoleID: "role-1", WorkspaceID: "ws-1"}}))
+
+	sam, err := s.WorkspaceMembers.Member(ctx, "ws-1", "sam")
+	require.NoError(t, err, "the membership stays")
+	assert.Empty(t, sam.RoleIDs)
+	held, err := s.WorkspaceMembers.MemberRole(ctx, "ws-1", "sam")
+	require.NoError(t, err)
+	assert.Empty(t, held.Permissions, "zero roles hold nothing")
+	rules, err := s.Access.ListByResource(ctx, "play", "play-1")
+	require.NoError(t, err)
+	assert.Empty(t, rules, "a rule naming the role goes with it")
+	assert.Equal(t, 1, count(t, s.db, `SELECT COUNT(*) FROM outbox WHERE id = 'evt-role'`))
 }
 
 func TestRolesRepo_Delete_NotFound(t *testing.T) {

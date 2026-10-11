@@ -3,6 +3,7 @@ package tenancy
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -21,11 +22,9 @@ var fixedNow = time.Date(2026, 8, 19, 9, 0, 0, 0, time.UTC)
 type fakeRepo struct {
 	mu             sync.Mutex
 	workspaces     map[string]*Workspace
-	members        map[string][]string                   // workspaceID -> userIDs
-	roleIDs        map[string]map[string]string          // workspaceID -> userID -> roleID
-	overrides      map[string][2]permissions.Set         // workspaceID/userID -> allow, deny
-	restricted     map[string]bool                       // workspaceID/userID
-	access         map[string]map[string]permissions.Set // workspaceID/userID -> projectID -> allow
+	members        map[string][]string          // workspaceID -> userIDs
+	roleIDs        map[string]map[string]string // workspaceID -> userID -> roleID
+	listed         map[string][]string          // projectID -> the userIDs in it
 	teamWorkspaces []*TeamWorkspace
 	events         []eventbus.OutboxEvent
 	createErr      error
@@ -40,9 +39,7 @@ func newFakeRepo() *fakeRepo {
 		workspaces: map[string]*Workspace{},
 		members:    map[string][]string{},
 		roleIDs:    map[string]map[string]string{},
-		overrides:  map[string][2]permissions.Set{},
-		restricted: map[string]bool{},
-		access:     map[string]map[string]permissions.Set{},
+		listed:     map[string][]string{},
 	}
 }
 
@@ -156,7 +153,6 @@ func (f *fakeRepo) RemoveMember(_ context.Context, workspaceID, userID string, e
 		if u == userID {
 			f.members[workspaceID] = append(users[:i], users[i+1:]...)
 			delete(f.roleIDs[workspaceID], userID)
-			delete(f.access, workspaceID+"/"+userID)
 			return nil
 		}
 	}
@@ -174,28 +170,13 @@ func (f *fakeRepo) SetRole(_ context.Context, workspaceID, userID, roleID string
 	return nil
 }
 
-func (f *fakeRepo) Overrides(_ context.Context, workspaceID, userID string) (permissions.Set, permissions.Set, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	o := f.overrides[workspaceID+"/"+userID]
-	return o[0], o[1], nil
-}
-
-func (f *fakeRepo) SetOverrides(_ context.Context, workspaceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.overrides[workspaceID+"/"+userID] = [2]permissions.Set{allow, deny}
-	f.events = append(f.events, events...)
-	return nil
-}
-
 func (f *fakeRepo) ListAllMemberships(context.Context) ([]*TeamMembership, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var out []*TeamMembership
 	for workspaceID, users := range f.members {
 		for _, userID := range users {
-			out = append(out, &TeamMembership{UserID: userID, WorkspaceID: workspaceID, RoleID: f.roleIDs[workspaceID][userID], Restricted: f.restricted[workspaceID+"/"+userID]})
+			out = append(out, &TeamMembership{UserID: userID, WorkspaceID: workspaceID, RoleID: f.roleIDs[workspaceID][userID]})
 		}
 	}
 	return out, nil
@@ -208,44 +189,11 @@ func (f *fakeRepo) Member(_ context.Context, workspaceID, userID string) (*Membe
 	if !ok {
 		return nil, apperrs.ErrNotFound
 	}
-	return &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: roleID, RoleIDs: []string{roleID}, Restricted: f.restricted[workspaceID+"/"+userID]}, nil
-}
-
-func (f *fakeRepo) SetRestricted(_ context.Context, workspaceID, userID string, restricted bool, events ...eventbus.OutboxEvent) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.restricted[workspaceID+"/"+userID] = restricted
-	f.events = append(f.events, events...)
-	return nil
+	return &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: roleID, RoleIDs: []string{roleID}}, nil
 }
 
 // projectWorkspace is the fixture's one project-to-workspace mapping, shared with fakeProjects.
 var projectWorkspace = map[string]string{"p-web": "ws-1", "p-api": "ws-1", "p-other": "ws-2"}
-
-func (f *fakeRepo) ProjectAccess(_ context.Context, workspaceID, userID string) ([]*ProjectAccess, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	var out []*ProjectAccess
-	for projectID, allow := range f.access[workspaceID+"/"+userID] {
-		out = append(out, &ProjectAccess{ProjectID: projectID, Allow: allow, UserID: userID, WorkspaceID: workspaceID})
-	}
-	return out, nil
-}
-
-func (f *fakeRepo) SetProjectAccess(_ context.Context, projectID, userID string, allow permissions.Set, events ...eventbus.OutboxEvent) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	key := projectWorkspace[projectID] + "/" + userID
-	if f.access[key] == nil {
-		f.access[key] = map[string]permissions.Set{}
-	}
-	f.access[key][projectID] = allow
-	if len(allow) == 0 {
-		delete(f.access[key], projectID)
-	}
-	f.events = append(f.events, events...)
-	return nil
-}
 
 func (f *fakeRepo) ProjectMemberIDs(_ context.Context, workspaceID, projectID string) ([]string, error) {
 	f.mu.Lock()
@@ -255,22 +203,8 @@ func (f *fakeRepo) ProjectMemberIDs(_ context.Context, workspaceID, projectID st
 	}
 	var out []string
 	for _, userID := range f.members[workspaceID] {
-		key := workspaceID + "/" + userID
-		if !f.restricted[key] || len(f.access[key][projectID]) > 0 {
+		if slices.Contains(f.listed[projectID], userID) {
 			out = append(out, userID)
-		}
-	}
-	return out, nil
-}
-
-func (f *fakeRepo) ListAllProjectAccess(context.Context) ([]*ProjectAccess, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	var out []*ProjectAccess
-	for key, projects := range f.access {
-		workspaceID, userID, _ := strings.Cut(key, "/")
-		for projectID, allow := range projects {
-			out = append(out, &ProjectAccess{ProjectID: projectID, Allow: allow, UserID: userID, WorkspaceID: workspaceID})
 		}
 	}
 	return out, nil
@@ -1150,6 +1084,28 @@ func TestChangeMemberRole(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "role-admin", roleID)
 	})
+	t.Run("taking away a role the actor couldn't have given is refused", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		f.nameGate.perms["role-lead"] = permissions.SetOf(permissions.MembersWrite, permissions.RolesWrite)
+		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-lead"}))
+
+		err := f.svc.ChangeMemberRole(context.Background(), "actor", "ws-1", "u-bob", "role-editor")
+
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+		assert.ErrorContains(t, err, "take away a role you couldn't give")
+		roleID, err := f.svc.MemberRoleID(context.Background(), "ws-1", "u-bob")
+		require.NoError(t, err)
+		assert.Equal(t, "role-lead", roleID, "nothing changed")
+		assert.Empty(t, f.repo.events)
+	})
+	t.Run("keeping the role being given needs no more than giving it", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
+
+		require.NoError(t, f.svc.ChangeMemberRole(context.Background(), "actor", "ws-1", "u-bob", "role-editor"))
+	})
 }
 
 func TestResolvePendingInvites(t *testing.T) {
@@ -1278,60 +1234,5 @@ func TestAddMember(t *testing.T) {
 		require.Len(t, f.repo.events, 1)
 		assert.Equal(t, TopicWorkspaceMemberAdded, f.repo.events[0].Topic)
 		assert.Equal(t, MemberEvent{UserID: "bob", WorkspaceID: "ws-1", ActorID: "actor"}, f.repo.events[0].Payload)
-	})
-}
-
-func TestSetMemberOverrides(t *testing.T) {
-	set := func(actions ...permissions.Action) *permissions.Set {
-		s := permissions.SetOf(actions...)
-		return &s
-	}
-	newMemberFixture := func(t *testing.T) *inviteTestFixture {
-		f := newInviteFixture()
-		f.grantManageMembers("actor")
-		require.NoError(t, f.repo.AddMember(t.Context(), &Member{UserID: "bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
-		return f
-	}
-	tests := []struct {
-		name        string
-		allow, deny *permissions.Set
-	}{
-		{"neither set is invalid", nil, nil},
-		{"an unknown permission is invalid", set("docs:fly"), nil},
-		{"allowing and denying one permission is invalid", set(permissions.DocsWrite), set(permissions.DocsWrite)},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			f := newMemberFixture(t)
-			err := f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", tt.allow, tt.deny)
-			require.ErrorIs(t, err, apperrs.ErrInvalid)
-		})
-	}
-	t.Run("an allow the actor does not hold is refused", func(t *testing.T) {
-		f := newMemberFixture(t)
-		err := f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.InstanceWrite), nil)
-		require.ErrorIs(t, err, apperrs.ErrForbidden)
-	})
-	t.Run("an allow the member already had stays without the actor holding it", func(t *testing.T) {
-		f := newMemberFixture(t)
-		require.NoError(t, f.repo.SetOverrides(t.Context(), "ws-1", "bob", permissions.SetOf(permissions.InstanceWrite), nil))
-		require.NoError(t, f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.InstanceWrite), set(permissions.DocsDelete)))
-	})
-	t.Run("lifting a deny the actor does not hold is refused, since it hands back what the role gives", func(t *testing.T) {
-		f := newMemberFixture(t)
-		require.NoError(t, f.repo.SetOverrides(t.Context(), "ws-1", "bob", nil, permissions.SetOf(permissions.InstanceWrite)))
-		err := f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", nil, set())
-		require.ErrorIs(t, err, apperrs.ErrForbidden)
-	})
-	t.Run("an omitted set keeps its current value", func(t *testing.T) {
-		f := newMemberFixture(t)
-		f.wsPerms.perms["actor"] = []string{"members:write", "docs:write", "projects:write"}
-		require.NoError(t, f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.DocsWrite), set(permissions.DocsDelete)))
-		require.NoError(t, f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.ProjectsWrite), nil))
-		allow, deny, err := f.repo.Overrides(t.Context(), "ws-1", "bob")
-		require.NoError(t, err)
-		assert.Equal(t, permissions.SetOf(permissions.ProjectsWrite), allow)
-		assert.Equal(t, permissions.SetOf(permissions.DocsDelete), deny)
-		assert.Equal(t, TopicWorkspaceMemberUpdated, f.repo.events[len(f.repo.events)-1].Topic)
 	})
 }

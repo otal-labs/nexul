@@ -133,11 +133,10 @@ func TestIntegration_LiveAudienceMemo_FollowsEveryChange(t *testing.T) {
 	assert.False(t, reaches(uReader, ticketFrame), "removed from the workspace")
 
 	assert.False(t, reaches(uPlain, ticketFrame))
-	allow := grant("tickets:read")
-	require.NoError(t, s.tenancySvc.SetMemberOverrides(as(uOwner), uOwner, wsDefault, uPlain, &allow, nil))
-	assert.True(t, reaches(uPlain, ticketFrame), "a workspace-wide allow")
-	require.NoError(t, s.tenancySvc.SetMemberOverrides(as(uOwner), uOwner, wsDefault, uPlain, &permissions.Set{}, &allow))
-	assert.False(t, reaches(uPlain, ticketFrame), "a workspace-wide deny")
+	require.NoError(t, s.tenancySvc.ChangeMemberRole(as(uOwner), uOwner, wsDefault, uPlain, "role-writer"))
+	assert.True(t, reaches(uPlain, ticketFrame), "given a role that reads tickets")
+	require.NoError(t, s.tenancySvc.ChangeMemberRole(as(uOwner), uOwner, wsDefault, uPlain, "role-plain"))
+	assert.False(t, reaches(uPlain, ticketFrame), "the role taken back")
 
 	assert.False(t, reaches(uClient, ticketFrame))
 	listClientInGeneral(t, f, true)
@@ -273,7 +272,10 @@ func queueRuns(t *testing.T, f permFixture, ticketIDs []string) {
 			Status: plays.QueueQueued, Via: plays.ViaWeb, QueuedAt: now, NotBefore: now})
 		require.NoError(t, err)
 	}
-	require.NoError(t, f.store.Access.Set(ctx, "workspace", wsDefault, uReader, grant("autoplays:read"), nil))
+	reader, err := f.store.Roles.Get(ctx, "role-reader")
+	require.NoError(t, err)
+	reader.Permissions = reader.Permissions.With(permissions.AutoplaysRead)
+	require.NoError(t, f.store.Roles.Update(ctx, reader))
 }
 
 // TestStatements_ListsCostTheSameAtAnyLength pins each list path's statements as independent of how many rows it
@@ -512,7 +514,8 @@ ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO U
 			require.NoError(t, err)
 			_, err = db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
 SELECT 'project', p.id, 'person', m.user_id, '["projects:open"]', '["tickets:delete"]', 1, 1 FROM projects p, workspace_members m
-WHERE m.user_id != 'u-owner'`)
+WHERE m.user_id != 'u-owner'
+ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO UPDATE SET allow = excluded.allow, deny = excluded.deny`)
 			require.NoError(t, err)
 		}
 		out := map[string]int64{}
@@ -554,7 +557,8 @@ func TestRows_ASingleCheckReadsOnlyItsProjectsRules(t *testing.T) {
 		f, st, db := newCountedFixtureDB(t)
 		grow(t, f, n)
 		_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
-SELECT 'project', p.id, 'person', m.user_id, '["projects:open"]', '[]', 1, 1 FROM projects p, workspace_members m WHERE m.user_id != 'u-owner'`)
+SELECT 'project', p.id, 'person', m.user_id, '["projects:open"]', '[]', 1, 1 FROM projects p, workspace_members m WHERE m.user_id != 'u-owner'
+ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO UPDATE SET allow = excluded.allow`)
 		require.NoError(t, err)
 		out := map[string]cost{}
 		for name, run := range paths {

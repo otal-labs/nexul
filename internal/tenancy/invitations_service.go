@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
-	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 type InstanceURLGate interface {
@@ -30,14 +30,15 @@ type CreatedInvitation struct {
 	URL        string      `json:"url"`
 }
 
+// InvitationGrantPreview is one workspace an invitation admits to and its role; EveryProject and Projects are removed
+// fields that read as empty (ADR 0148).
 type InvitationGrantPreview struct {
-	WorkspaceID   string `json:"workspace_id"`
-	WorkspaceName string `json:"workspace_name"`
-	RoleID        string `json:"role_id"`
-	RoleName      string `json:"role_name"`
-	EveryProject  string `json:"every_project"`
-	// Projects names the projects a restricted grant opens, by name only: their levels are the inviter's business.
-	Projects []InvitationProjectPreview `json:"projects"`
+	WorkspaceID   string                     `json:"workspace_id"`
+	WorkspaceName string                     `json:"workspace_name"`
+	RoleID        string                     `json:"role_id"`
+	RoleName      string                     `json:"role_name"`
+	EveryProject  string                     `json:"every_project"`
+	Projects      []InvitationProjectPreview `json:"projects"`
 }
 
 type InvitationProjectPreview struct {
@@ -72,6 +73,14 @@ func (s *InvitationService) Create(ctx context.Context, actorID string, input Cr
 	}
 	if len(input.Grants) == 0 {
 		return nil, fmt.Errorf("%w: at least one workspace grant is required", apperrs.ErrInvalid)
+	}
+	for _, g := range input.Grants {
+		if g == nil {
+			continue
+		}
+		if err := RefusePerPersonAccess(g.Allow, g.Deny, g.EveryProject, len(g.ProjectAccess)); err != nil {
+			return nil, err
+		}
 	}
 	duration, err := invitationDuration(input.ExpiresInDays)
 	if err != nil {
@@ -159,11 +168,7 @@ func (s *InvitationService) Redeem(ctx context.Context, acceptanceHash string, i
 func (s *InvitationService) preview(ctx context.Context, invitation *Invitation) *InvitationPreview {
 	preview := &InvitationPreview{InstanceURL: strings.TrimRight(strings.TrimSpace(s.instanceURL.InstanceURL(ctx)), "/"), ExpiresAt: invitation.ExpiresAt, Grants: make([]*InvitationGrantPreview, 0, len(invitation.Grants))}
 	for _, grant := range invitation.Grants {
-		projects := make([]InvitationProjectPreview, len(grant.ProjectAccess))
-		for i, pa := range grant.ProjectAccess {
-			projects[i] = InvitationProjectPreview{ProjectID: pa.ProjectID, ProjectName: pa.ProjectName}
-		}
-		preview.Grants = append(preview.Grants, &InvitationGrantPreview{WorkspaceID: grant.WorkspaceID, WorkspaceName: grant.WorkspaceName, RoleID: grant.RoleID, RoleName: grant.RoleName, EveryProject: everyProject(grant.Restricted()), Projects: projects})
+		preview.Grants = append(preview.Grants, &InvitationGrantPreview{WorkspaceID: grant.WorkspaceID, WorkspaceName: grant.WorkspaceName, RoleID: grant.RoleID, RoleName: grant.RoleName, Projects: []InvitationProjectPreview{}})
 	}
 	return preview
 }
@@ -175,18 +180,7 @@ func cloneInvitationGrants(grants []*InvitationGrant) []*InvitationGrant {
 			out = append(out, nil)
 			continue
 		}
-		copy := *grant
-		copy.Allow = grant.Allow.Actions()
-		copy.Deny = grant.Deny.Actions()
-		copy.ProjectAccess = make([]*ProjectAccess, 0, len(grant.ProjectAccess))
-		for _, pa := range grant.ProjectAccess {
-			if pa == nil {
-				copy.ProjectAccess = append(copy.ProjectAccess, nil)
-				continue
-			}
-			copy.ProjectAccess = append(copy.ProjectAccess, &ProjectAccess{ProjectID: pa.ProjectID, Allow: permissions.SetOf(pa.Allow...)})
-		}
-		out = append(out, &copy)
+		out = append(out, &InvitationGrant{WorkspaceID: grant.WorkspaceID, RoleID: grant.RoleID, RoleIDs: slices.Clone(grant.RoleIDs)})
 	}
 	return out
 }

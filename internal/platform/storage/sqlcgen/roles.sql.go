@@ -9,17 +9,6 @@ import (
 	"context"
 )
 
-const countRoleHolders = `-- name: CountRoleHolders :one
-SELECT COUNT(*) FROM member_roles WHERE role_id = ?
-`
-
-func (q *Queries) CountRoleHolders(ctx context.Context, roleID string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countRoleHolders, roleID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const createRole = `-- name: CreateRole :exec
 INSERT INTO roles (id, workspace_id, name, permissions, is_owner_role, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?)

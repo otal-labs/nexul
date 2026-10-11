@@ -6,7 +6,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// Overwrite is a rule on one entity for a person or a role (Target); workspace-wide when ResourceType is "workspace".
+// Overwrite is a rule on one entity for a person or a role (Target).
 type Overwrite struct {
 	ResourceType string          `json:"resource_type"`
 	ResourceID   string          `json:"resource_id"`

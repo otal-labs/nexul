@@ -1,14 +1,11 @@
 package storage
 
 import (
-	"cmp"
 	"context"
 	"database/sql"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/auth"
@@ -34,9 +31,6 @@ func (r *InvitationsRepo) Create(ctx context.Context, invitation *tenancy.Invita
 	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
-		if err := requireInvitationProjects(ctx, q, invitation); err != nil {
-			return err
-		}
 		if err := validateInvitationPackage(ctx, q, invitation, invitation.InvitedBy); err != nil {
 			return err
 		}
@@ -44,20 +38,10 @@ func (r *InvitationsRepo) Create(ctx context.Context, invitation *tenancy.Invita
 			return fmt.Errorf("create invitation %s: %w", invitation.ID, classifyWriteErr(err))
 		}
 		for _, grant := range invitation.Grants {
-			projectAccess, err := projectAccessJSON(grant.ProjectAccess)
-			if err != nil {
-				return err
-			}
-			if err := q.CreateInvitationGrant(ctx, sqlcgen.CreateInvitationGrantParams{
-				InvitationID:      invitation.ID,
-				WorkspaceID:       grant.WorkspaceID,
-				RoleID:            grant.RoleID,
-				AllowJson:         setJSON(grant.Allow),
-				DenyJson:          setJSON(grant.Deny),
-				Restricted:        boolToInt(grant.Restricted()),
-				ProjectAccessJson: projectAccess,
-			}); err != nil {
-				return fmt.Errorf("create invitation grant %s/%s: %w", invitation.ID, grant.WorkspaceID, classifyWriteErr(err))
+			for _, roleID := range grant.Held() {
+				if err := q.CreateInvitationGrant(ctx, sqlcgen.CreateInvitationGrantParams{InvitationID: invitation.ID, WorkspaceID: grant.WorkspaceID, RoleID: roleID}); err != nil {
+					return fmt.Errorf("create invitation grant %s/%s: %w", invitation.ID, grant.WorkspaceID, classifyWriteErr(err))
+				}
 			}
 		}
 		return enqueueInvitationEvents(ctx, tx, events)
@@ -351,22 +335,15 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 			if !errors.Is(err, sql.ErrNoRows) {
 				return fmt.Errorf("check existing membership: %w", err)
 			}
-			if err := q.AddInvitationMember(ctx, sqlcgen.AddInvitationMemberParams{UserID: userID, WorkspaceID: grant.WorkspaceID, CreatedAt: now.Unix(), Restricted: boolToInt(grant.Restricted())}); err != nil {
+			if err := q.AddInvitationMember(ctx, sqlcgen.AddInvitationMemberParams{UserID: userID, WorkspaceID: grant.WorkspaceID, CreatedAt: now.Unix()}); err != nil {
 				return fmt.Errorf("add invitation membership: %w", classifyWriteErr(err))
 			}
-			if err := addMemberRole(ctx, q, grant.WorkspaceID, userID, grant.RoleID, now); err != nil {
-				return err
-			}
-			if err := addInvitationProjectAccess(ctx, q, userID, grant, now); err != nil {
-				return err
+			for _, roleID := range grant.Held() {
+				if err := addMemberRole(ctx, q, grant.WorkspaceID, userID, roleID, now); err != nil {
+					return err
+				}
 			}
 			redemptionEvents = append(redemptionEvents, eventbus.OutboxEvent{ID: ids.New(), Topic: tenancy.TopicWorkspaceMemberAdded, Payload: tenancy.InvitationEvent{InvitationID: invitation.ID, UserID: userID, WorkspaceID: grant.WorkspaceID}})
-			if len(grant.Allow) == 0 && len(grant.Deny) == 0 {
-				continue
-			}
-			if err := q.AddInvitationOverwrite(ctx, sqlcgen.AddInvitationOverwriteParams{ResourceID: grant.WorkspaceID, UserID: nullString(userID), Allow: setJSON(grant.Allow), Deny: setJSON(grant.Deny), CreatedAt: now.Unix(), UpdatedAt: now.Unix()}); err != nil {
-				return fmt.Errorf("add invitation overwrite: %w", err)
-			}
 		}
 		if !existing {
 			if _, err := q.SetInvitationRedeemedBy(ctx, sqlcgen.SetInvitationRedeemedByParams{RedeemedBy: sql.NullString{String: userID, Valid: true}, ID: invitation.ID}); err != nil {
@@ -424,7 +401,7 @@ func validateInvitationPackage(ctx context.Context, q *sqlcgen.Queries, invitati
 	seen := make(map[string]struct{}, len(invitation.Grants))
 	granted := make(map[string]permissions.Set, len(invitation.Grants))
 	for _, grant := range invitation.Grants {
-		if grant == nil || grant.WorkspaceID == "" || grant.RoleID == "" {
+		if grant == nil || grant.WorkspaceID == "" || len(grant.Held()) == 0 {
 			return fmt.Errorf("%w: invitation grant is incomplete", apperrs.ErrInvalid)
 		}
 		if _, ok := seen[grant.WorkspaceID]; ok {
@@ -444,8 +421,7 @@ func validateInvitationPackage(ctx context.Context, q *sqlcgen.Queries, invitati
 	if !allowed {
 		return fmt.Errorf("%w: members:write required in every invited workspace", apperrs.ErrForbidden)
 	}
-	// The package's role and allow overrides may carry only what its creator holds in that workspace (ADR 0088), and
-	// each project's levels only what they hold on that project (ADR 0097).
+	// The package's roles may carry only what its creator holds in that workspace (ADR 0088).
 	for _, grant := range invitation.Grants {
 		access, err := creatorAccess(ctx, q, actorID, grant.WorkspaceID)
 		if err != nil {
@@ -457,168 +433,31 @@ func validateInvitationPackage(ctx context.Context, q *sqlcgen.Queries, invitati
 		if err := permissions.RequireHeld(granted[grant.WorkspaceID], access.held); err != nil {
 			return err
 		}
-		if err := requireCreatorHoldsProjects(ctx, q, actorID, access, grant); err != nil {
-			return err
-		}
 	}
 	return nil
 }
 
-// requireCreatorHoldsProjects refuses a project level its creator does not hold on that project; a project deleted
-// since the invitation was made is skipped, since redeeming skips it too.
-func requireCreatorHoldsProjects(ctx context.Context, q *sqlcgen.Queries, actorID string, access workspaceAccess, grant *tenancy.InvitationGrant) error {
-	for _, pa := range grant.ProjectAccess {
-		held := access.held
-		if access.restricted {
-			allow, err := q.GetInvitationCreatorProjectAccess(ctx, sqlcgen.GetInvitationCreatorProjectAccessParams{ResourceID: pa.ProjectID, UserID: nullString(actorID)})
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				return fmt.Errorf("check project authority: %w", err)
-			}
-			held, err = parseSet(cmp.Or(allow, "[]"))
-			if err != nil {
-				return fmt.Errorf("decode project access: %w", err)
-			}
-			if len(held) == 0 {
-				return fmt.Errorf("%w: project %s is not one you can open", apperrs.ErrForbidden, pa.ProjectID)
-			}
-		}
-		if err := permissions.RequireHeld(pa.Allow, held); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// requireInvitationProjects refuses, when an invitation is made, a project that does not exist.
-func requireInvitationProjects(ctx context.Context, q *sqlcgen.Queries, invitation *tenancy.Invitation) error {
-	for _, grant := range invitation.Grants {
-		if grant == nil {
-			continue
-		}
-		for _, pa := range grant.ProjectAccess {
-			if _, err := q.GetProjectForInvitationGrant(ctx, pa.ProjectID); err != nil {
-				return fmt.Errorf("%w: project %s is unavailable", apperrs.ErrInvalid, pa.ProjectID)
-			}
-		}
-	}
-	return nil
-}
-
-// addInvitationProjectAccess writes a restricted grant's Project access for the member it just admitted.
-func addInvitationProjectAccess(ctx context.Context, q *sqlcgen.Queries, userID string, grant *tenancy.InvitationGrant, now time.Time) error {
-	if !grant.Restricted() {
-		return nil
-	}
-	for _, pa := range grant.ProjectAccess {
-		if err := q.AddInvitationProjectAccess(ctx, sqlcgen.AddInvitationProjectAccessParams{ResourceID: pa.ProjectID, UserID: nullString(userID), Allow: setJSON(pa.Allow), CreatedAt: now.Unix(), UpdatedAt: now.Unix()}); err != nil {
-			return fmt.Errorf("add invitation project access: %w", err)
-		}
-	}
-	return nil
-}
-
-func projectAccessJSON(access []*tenancy.ProjectAccess) (string, error) {
-	type entry struct {
-		ProjectID string          `json:"project_id"`
-		Allow     permissions.Set `json:"allow"`
-	}
-	out := make([]entry, 0, len(access))
-	for _, pa := range access {
-		out = append(out, entry{ProjectID: pa.ProjectID, Allow: pa.Allow})
-	}
-	b, err := json.Marshal(out)
-	if err != nil {
-		return "", fmt.Errorf("encode invitation project access: %w", err)
-	}
-	return string(b), nil
-}
-
-// invitationGrantActions checks one workspace's part of a package and returns every action it hands out: its role's
-// set plus its allow overrides.
+// invitationGrantActions checks one workspace's part of a package and returns every action its roles hand out.
 func invitationGrantActions(ctx context.Context, q *sqlcgen.Queries, grant *tenancy.InvitationGrant) (permissions.Set, error) {
 	if _, err := q.GetWorkspaceForInvitationGrant(ctx, grant.WorkspaceID); err != nil {
 		return nil, fmt.Errorf("%w: workspace is unavailable", apperrs.ErrInvalid)
 	}
-	role, err := q.GetRoleForInvitationGrant(ctx, sqlcgen.GetRoleForInvitationGrantParams{ID: grant.RoleID, WorkspaceID: grant.WorkspaceID})
-	if err != nil {
-		return nil, fmt.Errorf("%w: role is unavailable", apperrs.ErrInvalid)
-	}
-	if role.IsOwnerRole != 0 {
-		return nil, fmt.Errorf("%w: Owner cannot be granted by invitation", apperrs.ErrInvalid)
-	}
-	if err := validateInvitationSets(grant.Allow, grant.Deny); err != nil {
-		return nil, err
-	}
-	if err := validateInvitationProjects(ctx, q, grant); err != nil {
-		return nil, err
-	}
-	rolePermissions, err := parseSet(role.Permissions)
-	if err != nil {
-		return nil, fmt.Errorf("decode role permissions: %w", err)
-	}
-	return permissions.SetOf(append(rolePermissions, grant.Allow...)...), nil
-}
-
-func validateInvitationSets(allow, deny permissions.Set) error {
-	denied := make(map[permissions.Action]struct{}, len(deny))
-	for _, action := range deny {
-		if _, ok := permissions.ParseAction(string(action)); !ok {
-			return fmt.Errorf("%w: invitation permission set is invalid", apperrs.ErrInvalid)
+	var actions permissions.Set
+	for _, roleID := range grant.Held() {
+		role, err := q.GetRoleForInvitationGrant(ctx, sqlcgen.GetRoleForInvitationGrantParams{ID: roleID, WorkspaceID: grant.WorkspaceID})
+		if err != nil {
+			return nil, fmt.Errorf("%w: role is unavailable", apperrs.ErrInvalid)
 		}
-		denied[action] = struct{}{}
-	}
-	for _, action := range allow {
-		if _, ok := permissions.ParseAction(string(action)); !ok {
-			return fmt.Errorf("%w: invitation permission set is invalid", apperrs.ErrInvalid)
+		if role.IsOwnerRole != 0 {
+			return nil, fmt.Errorf("%w: Owner cannot be granted by invitation", apperrs.ErrInvalid)
 		}
-		if _, ok := denied[action]; ok {
-			return fmt.Errorf("%w: invitation permission set is invalid", apperrs.ErrInvalid)
+		rolePermissions, err := parseSet(role.Permissions)
+		if err != nil {
+			return nil, fmt.Errorf("decode role permissions: %w", err)
 		}
+		actions = permissions.SetOf(append(actions, rolePermissions...)...)
 	}
-	return nil
-}
-
-// validateInvitationProjects checks Every project and each project's levels: project areas only, under None only,
-// on projects of the grant's own workspace.
-func validateInvitationProjects(ctx context.Context, q *sqlcgen.Queries, grant *tenancy.InvitationGrant) error {
-	if grant.EveryProject != "" && grant.EveryProject != tenancy.EveryProjectRole && grant.EveryProject != tenancy.EveryProjectNone {
-		return fmt.Errorf("%w: every_project must be role or none", apperrs.ErrInvalid)
-	}
-	if len(grant.ProjectAccess) > 0 && !grant.Restricted() {
-		return fmt.Errorf("%w: project_access needs every_project none", apperrs.ErrInvalid)
-	}
-	seen := map[string]bool{}
-	for _, pa := range grant.ProjectAccess {
-		if pa == nil || pa.ProjectID == "" || len(pa.Allow) == 0 || seen[pa.ProjectID] {
-			return fmt.Errorf("%w: each project_access entry names one project once, with its levels", apperrs.ErrInvalid)
-		}
-		seen[pa.ProjectID] = true
-		if err := validateInvitationProject(ctx, q, grant.WorkspaceID, pa); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// validateInvitationProject checks one project's levels are project areas on a project of workspaceID; a project
-// deleted since is skipped, as redeeming skips it.
-func validateInvitationProject(ctx context.Context, q *sqlcgen.Queries, workspaceID string, pa *tenancy.ProjectAccess) error {
-	for _, action := range pa.Allow {
-		if _, ok := permissions.ParseAction(string(action)); !ok || permissions.AreaOf(action) != permissions.AreaProject {
-			return fmt.Errorf("%w: %s is not a project area, so Project access cannot carry it", apperrs.ErrInvalid, action)
-		}
-	}
-	project, err := q.GetProjectForInvitationGrant(ctx, pa.ProjectID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("read invitation project: %w", err)
-	}
-	if project.WorkspaceID != workspaceID {
-		return fmt.Errorf("%w: project %s is not in the invited workspace", apperrs.ErrInvalid, pa.ProjectID)
-	}
-	return nil
+	return actions, nil
 }
 
 func actorCanManage(ctx context.Context, q *sqlcgen.Queries, actorID string, grants []*tenancy.InvitationGrant) (bool, error) {
@@ -636,14 +475,12 @@ func actorCanManage(ctx context.Context, q *sqlcgen.Queries, actorID string, gra
 
 // workspaceAccess is what someone holds in one workspace: membership, the Owner bypass, and their grid there.
 type workspaceAccess struct {
-	member     bool
-	owner      bool
-	restricted bool
-	held       permissions.Set
+	member bool
+	owner  bool
+	held   permissions.Set
 }
 
-// creatorAccess resolves actorID's grid in workspaceID as the access domain does: the union of their roles' sets, then
-// the workspace-wide override, deny beating allow.
+// creatorAccess resolves actorID's grid in workspaceID as the access domain does: the union of their roles' sets.
 func creatorAccess(ctx context.Context, q *sqlcgen.Queries, actorID, workspaceID string) (workspaceAccess, error) {
 	rows, err := q.ListInvitationCreatorWorkspaceAccess(ctx, sqlcgen.ListInvitationCreatorWorkspaceAccessParams{WorkspaceID: workspaceID, UserID: actorID})
 	if err != nil {
@@ -663,34 +500,10 @@ func creatorAccess(ctx context.Context, q *sqlcgen.Queries, actorID, workspaceID
 		}
 		held = permissions.SetOf(append(held, perms...)...)
 	}
-	row := rows[0]
-	if row.Allow.Valid {
-		allow, err := parseSet(row.Allow.String)
-		if err != nil {
-			return workspaceAccess{}, fmt.Errorf("decode workspace allow: %w", err)
-		}
-		held = permissions.SetOf(append(held, allow...)...)
-	}
-	if row.Deny.Valid {
-		deny, err := parseSet(row.Deny.String)
-		if err != nil {
-			return workspaceAccess{}, fmt.Errorf("decode workspace deny: %w", err)
-		}
-		held = held.Except(deny)
-	}
-	if row.Restricted != 0 {
-		return workspaceAccess{member: true, restricted: true, held: workspaceAreas(held)}, nil
-	}
 	return workspaceAccess{member: true, held: held}, nil
 }
 
-// workspaceAreas is what a Restricted member holds with no project named: no project and no instance area (ADR 0097).
-func workspaceAreas(held permissions.Set) permissions.Set {
-	return permissions.SetOf(slices.DeleteFunc(slices.Clone(held), func(a permissions.Action) bool {
-		return permissions.AreaOf(a) != permissions.AreaWorkspace
-	})...)
-}
-
+// readInvitation reads an invitation with one grant per workspace, holding every role it gives there.
 func readInvitation(ctx context.Context, q *sqlcgen.Queries, row sqlcgen.Invitation) (*tenancy.Invitation, error) {
 	grantRows, err := q.ListInvitationGrantsByInvitation(ctx, row.ID)
 	if err != nil {
@@ -704,14 +517,11 @@ func readInvitation(ctx context.Context, q *sqlcgen.Queries, row sqlcgen.Invitat
 	if row.RedeemedBy.Valid {
 		invitation.RedeemedBy = row.RedeemedBy.String
 	}
+	var grant *tenancy.InvitationGrant
 	for _, grantRow := range grantRows {
-		allow, err := parseSet(grantRow.AllowJson)
-		if err != nil {
-			return nil, fmt.Errorf("decode invitation allow: %w", err)
-		}
-		deny, err := parseSet(grantRow.DenyJson)
-		if err != nil {
-			return nil, fmt.Errorf("decode invitation deny: %w", err)
+		if grant != nil && grant.WorkspaceID == grantRow.WorkspaceID {
+			grant.RoleIDs = append(grant.RoleIDs, grantRow.RoleID)
+			continue
 		}
 		workspace, err := q.GetWorkspaceForInvitationGrant(ctx, grantRow.WorkspaceID)
 		if err != nil {
@@ -727,39 +537,10 @@ func readInvitation(ctx context.Context, q *sqlcgen.Queries, row sqlcgen.Invitat
 			}
 			return nil, fmt.Errorf("read invitation role: %w", err)
 		}
-		grant := &tenancy.InvitationGrant{WorkspaceID: grantRow.WorkspaceID, WorkspaceName: workspace.Name, RoleID: grantRow.RoleID, RoleName: role.Name, Allow: allow, Deny: deny}
-		if grantRow.Restricted != 0 {
-			grant.EveryProject = tenancy.EveryProjectNone
-			if grant.ProjectAccess, err = readInvitationProjects(ctx, q, grantRow.ProjectAccessJson); err != nil {
-				return nil, err
-			}
-		}
+		grant = &tenancy.InvitationGrant{WorkspaceID: grantRow.WorkspaceID, WorkspaceName: workspace.Name, RoleID: grantRow.RoleID, RoleName: role.Name, RoleIDs: []string{grantRow.RoleID}}
 		invitation.Grants = append(invitation.Grants, grant)
 	}
 	return invitation, nil
-}
-
-// readInvitationProjects names each project of a restricted grant, leaving out projects deleted since it was made.
-func readInvitationProjects(ctx context.Context, q *sqlcgen.Queries, raw string) ([]*tenancy.ProjectAccess, error) {
-	var entries []struct {
-		ProjectID string          `json:"project_id"`
-		Allow     permissions.Set `json:"allow"`
-	}
-	if err := json.Unmarshal([]byte(raw), &entries); err != nil {
-		return nil, fmt.Errorf("%w: invitation project access is invalid", apperrs.ErrInvalid)
-	}
-	out := make([]*tenancy.ProjectAccess, 0, len(entries))
-	for _, e := range entries {
-		project, err := q.GetProjectForInvitationGrant(ctx, e.ProjectID)
-		if errors.Is(err, sql.ErrNoRows) {
-			continue
-		}
-		if err != nil {
-			return nil, fmt.Errorf("read invitation project: %w", err)
-		}
-		out = append(out, &tenancy.ProjectAccess{ProjectID: e.ProjectID, ProjectName: project.Name, Allow: e.Allow})
-	}
-	return out, nil
 }
 
 func insertInvitation(ctx context.Context, q *sqlcgen.Queries, invitation *tenancy.Invitation, tokenHash string) error {

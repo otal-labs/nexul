@@ -84,26 +84,16 @@ func TestProjectGet_SetupServiceIsFilledOnlyForAReaderOfStacks(t *testing.T) {
 	}
 }
 
-func TestProjectGet_AccessIsFilledOnlyForAHolderOfMembersWrite(t *testing.T) {
-	sam := workspace.ProjectAccessEntry{RestrictedMember: workspace.RestrictedMember{UserID: "u-sam", Name: "Sam"}, Actions: permissions.SetOf(permissions.TicketsRead)}
-	for name, tt := range map[string]struct {
-		denied permissions.Action
-		want   []workspace.ProjectAccessEntry
-	}{
-		"without members:write it is empty and the rest still answers": {permissions.MembersWrite, []workspace.ProjectAccessEntry{}},
-		"with members:write it lists the Restricted members":           {"", []workspace.ProjectAccessEntry{sam}},
-	} {
-		t.Run(name, func(t *testing.T) {
-			f := newFixture(t)
-			f.w.access = []workspace.ProjectAccessEntry{sam}
-			f.w.denied = tt.denied
+func TestProjectGet_AccessReadsAsEmptyWithOrWithoutMembersWrite(t *testing.T) {
+	for _, denied := range []permissions.Action{permissions.MembersWrite, ""} {
+		f := newFixture(t)
+		f.w.denied = denied
 
-			got, err := call(t, t.Context(), f.projectTools(), "project_get", `{"id":"p-1"}`)
-			require.NoError(t, err)
-			d := got.(projectDetail)
-			assert.Equal(t, tt.want, d.Access)
-			assert.Equal(t, []workspace.RestrictedMember{sam.RestrictedMember}, d.DeleteImpact.RestrictedMembers)
-		})
+		got, err := call(t, t.Context(), f.projectTools(), "project_get", `{"id":"p-1"}`)
+		require.NoError(t, err)
+		d := got.(projectDetail)
+		assert.Equal(t, []workspace.ProjectAccessEntry{}, d.Access, "no member is Restricted any more")
+		assert.Equal(t, []workspace.RestrictedMember{}, d.DeleteImpact.RestrictedMembers)
 	}
 }
 

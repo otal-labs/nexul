@@ -1,6 +1,6 @@
 # 10 — The wipe migration, and the tenancy and invitation removals
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 09
 
@@ -28,9 +28,9 @@ Read first: `practices/go.md` (sections 14, 10), `practices/testing.md` (section
 
 ## Acceptance criteria
 
-- [ ] `TestMigration_TheWipe`: a fixture at the previous schema with every row kind (Owner, Team allow and deny,
+- [x] `TestMigration_TheWipe`: a fixture at the previous schema with every row kind (Owner, Team allow and deny,
       Restricted with Project access, dormant project rows, creator and non-creator doc rows, a doc row of a deleted
       doc, play exclusions, and the four shapes of open invitation), upgraded, asserting exactly which rows survive.
-- [ ] Running the migrations twice changes nothing the second time.
-- [ ] The tenancy and invitation tests in research section 10 are deleted or rewritten.
-- [ ] Removing a role you couldn't give is refused; deleting a held role leaves its holders without it.
+- [x] Running the migrations twice changes nothing the second time.
+- [x] The tenancy and invitation tests in research section 10 are deleted or rewritten.
+- [x] Removing a role you couldn't give is refused; deleting a held role leaves its holders without it.

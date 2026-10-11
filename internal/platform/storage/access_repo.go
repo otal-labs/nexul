@@ -60,28 +60,27 @@ func (r *AccessRepo) RulesOfType(ctx context.Context, resourceType, userID strin
 	return toRules(rows)
 }
 
-// OwnRules returns the rules naming userID on workspaceID and on each of projectIDs that has one, keyed by resource
-// id, in one read: two index lookups for one project, the person's rules on every workspace and project for a list.
-func (r *AccessRepo) OwnRules(ctx context.Context, userID, workspaceID string, projectIDs []string) (map[string]*access.Overwrite, error) {
+// OwnRules returns the rules naming userID on each of projectIDs that has one, keyed by project id, in one read: an
+// index lookup for one project, the person's rules on every project for a list.
+func (r *AccessRepo) OwnRules(ctx context.Context, userID string, projectIDs []string) (map[string]*access.Overwrite, error) {
 	var rows []sqlcgen.PermissionOverwrite
 	var err error
-	if len(projectIDs) <= 1 {
-		rows, err = r.hot.ListOwnOverwritesInProject(ctx, sqlcgen.ListOwnOverwritesInProjectParams{UserID: nullString(userID), WorkspaceID: workspaceID, ProjectID: firstOf(projectIDs)})
+	if len(projectIDs) == 1 {
+		rows, err = r.hot.ListOwnOverwritesInProject(ctx, sqlcgen.ListOwnOverwritesInProjectParams{UserID: nullString(userID), ResourceID: projectIDs[0]})
 	}
 	if len(projectIDs) > 1 {
 		rows, err = r.q.ListOwnOverwrites(ctx, nullString(userID))
 	}
 	if err != nil {
-		return nil, fmt.Errorf("get the rules of %s in workspace %s: %w", userID, workspaceID, err)
+		return nil, fmt.Errorf("get the project rules of %s: %w", userID, err)
 	}
-	asked := append([]string{workspaceID}, projectIDs...)
 	out := make(map[string]*access.Overwrite, len(rows))
 	for _, row := range rows {
 		ow, err := toOverwrite(row)
 		if err != nil {
 			return nil, err
 		}
-		if slices.Contains(asked, ow.ResourceID) {
+		if slices.Contains(projectIDs, ow.ResourceID) {
 			out[ow.ResourceID] = ow
 		}
 	}
@@ -136,13 +135,6 @@ func (r *AccessRepo) DocRuleTurns(ctx context.Context, userID string, action per
 		denied = append(denied, row.ResourceID)
 	}
 	return allowed, denied, nil
-}
-
-func firstOf(ids []string) string {
-	if len(ids) == 0 {
-		return ""
-	}
-	return ids[0]
 }
 
 // toRules groups rows by resource, each entity's role rules in their target order.

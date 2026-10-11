@@ -182,8 +182,8 @@ func (s *Service) openable(ctx context.Context, workspaceID string, projects []*
 	return slices.DeleteFunc(projects, func(p *Project) bool { return !slices.Contains(ids, p.ID) }), nil
 }
 
-// ProjectAccess lists the Restricted members who may open projectID and what they hold there; it takes
-// members:write in the project's workspace, since it shows the people a manager sets access for.
+// ProjectAccess answers the route that listed a project's Restricted members, none of whom remain (ADR 0148); it
+// takes members:write in the project's workspace, as it did.
 func (s *Service) ProjectAccess(ctx context.Context, projectID string) ([]ProjectAccessEntry, error) {
 	p, err := s.Get(ctx, projectID)
 	if err != nil {
@@ -192,11 +192,7 @@ func (s *Service) ProjectAccess(ctx context.Context, projectID string) ([]Projec
 	if err := s.requireIn(ctx, p.WorkspaceID, permissions.MembersWrite); err != nil {
 		return nil, err
 	}
-	entries, err := s.repo.ListRestrictedAccess(ctx, projectID)
-	if err != nil {
-		return nil, fmt.Errorf("list access to project %s: %w", projectID, err)
-	}
-	return entries, nil
+	return []ProjectAccessEntry{}, nil
 }
 
 // Rename updates a project's name and/or icon (projects:write); icon nil keeps current, "" clears it.
@@ -340,15 +336,7 @@ func (s *Service) deleteImpact(ctx context.Context, id string) (DeleteImpact, er
 	if err != nil {
 		return DeleteImpact{}, fmt.Errorf("impact of deleting project %s: %w", id, err)
 	}
-	access, err := s.repo.ListRestrictedAccess(ctx, id)
-	if err != nil {
-		return DeleteImpact{}, fmt.Errorf("impact of deleting project %s: %w", id, err)
-	}
-	losing := make([]RestrictedMember, len(access))
-	for i, a := range access {
-		losing[i] = a.RestrictedMember
-	}
-	return DeleteImpact{Tickets: tickets, Repos: repos, Services: services, RestrictedMembers: losing}, nil
+	return DeleteImpact{Tickets: tickets, Repos: repos, Services: services, RestrictedMembers: []RestrictedMember{}}, nil
 }
 
 // Delete removes a project (projects:delete); refused while it has tickets, repos, or services, to avoid orphans.

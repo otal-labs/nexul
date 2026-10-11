@@ -25,10 +25,7 @@ type Team interface {
 	MemberRoleID(ctx context.Context, workspaceID, userID string) (string, error)
 	AddMember(ctx context.Context, actorID, workspaceID, userID, roleID string) error
 	ChangeMemberRole(ctx context.Context, actorID, workspaceID, userID, roleID string) error
-	SetMemberOverrides(ctx context.Context, actorID, workspaceID, userID string, allow, deny *permissions.Set) error
 	RemoveMember(ctx context.Context, actorID, workspaceID, userID string) error
-	SetEveryProject(ctx context.Context, actorID, workspaceID, userID, every string) error
-	SetProjectAccess(ctx context.Context, actorID, workspaceID, userID, projectID string, allow permissions.Set) error
 }
 
 // AccountTools are the account tools that carry workspace access, which the tenancy domain owns.
@@ -169,29 +166,18 @@ func accountUpdateSteps(a AccountStatusSetter, t Team, actor string, in accountU
 	return steps
 }
 
-// workspaceSteps sets one workspace entry: membership and overrides, then Every project, then each project's levels.
+// workspaceSteps sets one workspace entry's membership and role; the removed per-person fields refuse a value.
 func workspaceSteps(t Team, actor, userID string, w accountWorkspaceIn) []step {
 	field := "workspaces[" + w.WorkspaceID + "]"
-	var steps []step
-	if w.RoleID != "" || w.Allow != nil || w.Deny != nil || (w.EveryProject == "" && w.ProjectAccess == nil) {
-		steps = append(steps, step{field: field, hint: "workspace_list with the workspace's id lists its roles", run: func(ctx context.Context) error {
-			return setWorkspaceAccess(ctx, t, actor, userID, w)
-		}})
-	}
-	if w.EveryProject != "" {
-		steps = append(steps, step{field: field + ".every_project", run: func(ctx context.Context) error {
-			return t.SetEveryProject(ctx, actor, w.WorkspaceID, userID, w.EveryProject)
-		}})
-	}
-	for _, p := range w.ProjectAccess {
-		steps = append(steps, step{field: field + ".project_access[" + p.ProjectID + "]", hint: "project_list lists the workspace's projects", run: func(ctx context.Context) error {
-			return t.SetProjectAccess(ctx, actor, w.WorkspaceID, userID, p.ProjectID, p.Allow)
-		}})
-	}
-	return steps
+	return []step{{field: field, hint: "workspace_list with the workspace's id lists its roles", run: func(ctx context.Context) error {
+		if err := tenancy.RefusePerPersonAccess(deref(w.Allow), deref(w.Deny), w.EveryProject, len(w.ProjectAccess)); err != nil {
+			return err
+		}
+		return setWorkspaceAccess(ctx, t, actor, userID, w)
+	}}}
 }
 
-// setWorkspaceAccess adds the account where it is not a member yet, else changes its role; then sets any overrides.
+// setWorkspaceAccess adds the account where it is not a member yet, else changes its role when one is sent.
 func setWorkspaceAccess(ctx context.Context, t Team, actor, userID string, w accountWorkspaceIn) error {
 	_, err := t.MemberRoleID(ctx, w.WorkspaceID, userID)
 	member := err == nil
@@ -199,19 +185,19 @@ func setWorkspaceAccess(ctx context.Context, t Team, actor, userID string, w acc
 		return err
 	}
 	if !member {
-		if err := t.AddMember(ctx, actor, w.WorkspaceID, userID, w.RoleID); err != nil {
-			return err
-		}
+		return t.AddMember(ctx, actor, w.WorkspaceID, userID, w.RoleID)
 	}
-	if member && w.RoleID != "" {
-		if err := t.ChangeMemberRole(ctx, actor, w.WorkspaceID, userID, w.RoleID); err != nil {
-			return err
-		}
-	}
-	if w.Allow == nil && w.Deny == nil {
+	if w.RoleID == "" {
 		return nil
 	}
-	return t.SetMemberOverrides(ctx, actor, w.WorkspaceID, userID, w.Allow, w.Deny)
+	return t.ChangeMemberRole(ctx, actor, w.WorkspaceID, userID, w.RoleID)
+}
+
+func deref(set *permissions.Set) permissions.Set {
+	if set == nil {
+		return nil
+	}
+	return *set
 }
 
 // readAccount is nil when the account falls outside the caller's view of the Team.
@@ -248,7 +234,7 @@ func toAccountResult(p *tenancy.TeamPerson, canManage map[string]bool) accountRe
 		r.Workspaces = append(r.Workspaces, membershipResult{
 			WorkspaceID: m.WorkspaceID, WorkspaceName: m.WorkspaceName, RoleID: m.RoleID, RoleName: m.RoleName, Roles: m.Roles,
 			IsOwner: m.IsOwner, Allow: m.Allow, Deny: m.Deny, CanManageMembers: canManage[m.WorkspaceID],
-			EveryProject: m.EveryProject, Projects: restrictedProjects(m),
+			EveryProject: m.EveryProject, Projects: m.Projects,
 		})
 	}
 	return r
@@ -259,12 +245,4 @@ func accountActor(ctx context.Context) string {
 		return a.ID
 	}
 	return ""
-}
-
-// restrictedProjects hides the rows a From role member keeps for a later switch back, since they grant nothing now.
-func restrictedProjects(m *tenancy.TeamMembership) []*tenancy.ProjectAccess {
-	if m.EveryProject != tenancy.EveryProjectNone {
-		return nil
-	}
-	return m.Projects
 }

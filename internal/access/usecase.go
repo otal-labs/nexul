@@ -22,7 +22,7 @@ const resourceTypeDoc = "doc"
 // overwrite of plays:run, managed from the play's settings page with the doc sharing dialog generalised.
 const resourceTypePlay = "play"
 
-// resourceTypeWorkspace keys a workspace-wide override by resource_id = the workspace id.
+// resourceTypeWorkspace names the workspace a source comes from; no rule sits on a workspace itself (ADR 0148).
 const resourceTypeWorkspace = "workspace"
 
 // resourceTypeProject keys a project's rules by resource_id = the project id (ADR 0148).
@@ -71,7 +71,7 @@ func (s *Service) SetPlayWorkspaces(r PlayWorkspaceResolver) {
 }
 
 // HasPermission checks the Owner bypass, then for anything in a project whether userID is in it, then the role set,
-// the workspace overwrite, the project's rules and the resource's own, in order (ADR 0148).
+// the project's rules and the resource's own, in order (ADR 0148).
 func (s *Service) HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action, resourceType, resourceID string) bool {
 	if userID == "" {
 		return false
@@ -112,8 +112,7 @@ func decide(ws workspaceLayers, action permissions.Action, resource func() *Rule
 	return applyRules(allowed, src, resource(), ws.roles.roleIDs(), action)
 }
 
-// workspaceLayers is the role set, the workspace-wide overwrite, and the rules of the project asked about reaching the
-// person, fetched once so a whole-grid answer costs the same lookups as a single check.
+// workspaceLayers is the role set and the rules of the project asked about reaching the person, fetched once so a whole-grid answer costs the same lookups as a single check.
 type workspaceLayers struct {
 	userID      string
 	workspaceID string
@@ -121,13 +120,12 @@ type workspaceLayers struct {
 	roles       RoleInfo
 	member      bool
 	owner       bool
-	overwrite   *Overwrite
 	project     *Rules
 	// listed is whether the project's rules let the person in: Allow of In this project, for a role or for them.
 	listed bool
 }
 
-// layers reads userID's roles in workspaceID, their rule on it, and projectID's rules for them and their roles, built
+// layers reads userID's roles in workspaceID and projectID's rules for them and their roles, built
 // once per request so a list's per-row checks cost one memo lookup.
 func (s *Service) layers(ctx context.Context, userID, workspaceID, projectID string) workspaceLayers {
 	// A failed read counts as no rule, as a check's always has, and the memo keeps nothing built on one.
@@ -158,11 +156,10 @@ func (s *Service) readLayers(ctx context.Context, userID, workspaceID, projectID
 	if projectID != "" {
 		projectIDs = []string{projectID}
 	}
-	ow, projects, err := s.layerRules(ctx, userID, workspaceID, ws.roles.roleIDs(), projectIDs)
+	projects, err := s.layerRules(ctx, userID, workspaceID, ws.roles.roleIDs(), projectIDs)
 	if err != nil {
 		failed = err
 	}
-	ws.overwrite = ow
 	return ws.in(projectID, projects[projectID]), failed
 }
 
@@ -201,7 +198,7 @@ func (ws workspaceLayers) has(action permissions.Action) (bool, Source) {
 	return applyRules(allowed, src, ws.project, ws.roles.roleIDs(), action)
 }
 
-// granted is action from the roles held and the workspace-wide overwrite alone, whatever the project.
+// granted is action from the roles held alone, whatever the project.
 func (ws workspaceLayers) granted(action permissions.Action) (bool, Source) {
 	allowed := ws.roles.Permissions.Has(action)
 	src := sourceOf(SourceRole, resourceTypeWorkspace, ws.workspaceID, TargetRole, ws.roles.sourceRole(action), allowed)
@@ -211,7 +208,7 @@ func (ws workspaceLayers) granted(action permissions.Action) (bool, Source) {
 	if !ws.member {
 		src = sourceOf(SourceMember, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, false)
 	}
-	return applyPersonRule(allowed, src, ws.overwrite, action)
+	return allowed, src
 }
 
 // actions is every grid action held: in the project asked about, or from the roles alone when byRole.
@@ -230,7 +227,7 @@ func (ws workspaceLayers) actions(byRole bool) []string {
 	return out
 }
 
-// WorkspacePermissions returns every grid action userID's roles grant in workspaceID, with the workspace overwrite: what
+// WorkspacePermissions returns every grid action userID's roles grant in workspaceID: what
 // they may give, what an instance area answers to, and what holds in each project they are in before its rules, though
 // Require on the workspace itself holds no project-area action (feeds /api/workspaces/{id}/me).
 func (s *Service) WorkspacePermissions(ctx context.Context, userID, workspaceID string) []string {
@@ -350,7 +347,7 @@ func (s *Service) CanDocs(ctx context.Context, userID, projectID string, docIDs 
 	scopes := s.docScopesIn(ctx, projectID, docIDs)
 	for workspaceID, projectIDs := range projectsByWorkspace(scopes) {
 		// Read up front so the docs' projects cost one read per workspace, not one each; a failure reads again per check.
-		_, _, _ = s.layerRules(ctx, userID, workspaceID, s.roleIDsIn(ctx, userID, workspaceID), projectIDs)
+		_, _ = s.layerRules(ctx, userID, workspaceID, s.roleIDsIn(ctx, userID, workspaceID), projectIDs)
 	}
 	var own map[string]*Rules
 	for _, id := range docIDs {

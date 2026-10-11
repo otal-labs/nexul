@@ -71,8 +71,6 @@ type fakeRepo struct {
 	types     map[string]*TicketType
 	statuses  map[string]*Status
 	labels    map[string][]string
-	access    map[string][]ProjectAccessEntry
-	accessErr error
 	createErr error
 	getErr    error
 	listErr   error
@@ -292,12 +290,6 @@ func (f *fakeRepo) ListRepos(_ context.Context, projectID string) ([]RepoRef, er
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]RepoRef(nil), f.repos[projectID]...), nil
-}
-
-func (f *fakeRepo) ListRestrictedAccess(_ context.Context, projectID string) ([]ProjectAccessEntry, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.access[projectID], f.accessErr
 }
 
 func (f *fakeRepo) MoveTicket(_ context.Context, ticketID, projectID string) error {

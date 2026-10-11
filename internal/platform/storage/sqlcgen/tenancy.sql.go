@@ -116,7 +116,7 @@ func (q *Queries) DeleteWorkspaceInvite(ctx context.Context, arg DeleteWorkspace
 }
 
 const getWorkspace = `-- name: GetWorkspace :one
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap FROM workspaces WHERE id = ?
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished FROM workspaces WHERE id = ?
 `
 
 func (q *Queries) GetWorkspace(ctx context.Context, id string) (Workspace, error) {
@@ -131,12 +131,13 @@ func (q *Queries) GetWorkspace(ctx context.Context, id string) (Workspace, error
 		&i.Slug,
 		&i.DecisionsCheckEnabled,
 		&i.AutoPlayDailyCap,
+		&i.AccessSetupFinished,
 	)
 	return i, err
 }
 
 const getWorkspaceBySlug = `-- name: GetWorkspaceBySlug :one
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap FROM workspaces WHERE slug = ?
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished FROM workspaces WHERE slug = ?
 `
 
 func (q *Queries) GetWorkspaceBySlug(ctx context.Context, slug string) (Workspace, error) {
@@ -151,12 +152,13 @@ func (q *Queries) GetWorkspaceBySlug(ctx context.Context, slug string) (Workspac
 		&i.Slug,
 		&i.DecisionsCheckEnabled,
 		&i.AutoPlayDailyCap,
+		&i.AccessSetupFinished,
 	)
 	return i, err
 }
 
 const getWorkspaceMember = `-- name: GetWorkspaceMember :one
-SELECT user_id, workspace_id, created_at, restricted FROM workspace_members WHERE workspace_id = ? AND user_id = ?
+SELECT user_id, workspace_id, created_at FROM workspace_members WHERE workspace_id = ? AND user_id = ?
 `
 
 type GetWorkspaceMemberParams struct {
@@ -167,59 +169,12 @@ type GetWorkspaceMemberParams struct {
 func (q *Queries) GetWorkspaceMember(ctx context.Context, arg GetWorkspaceMemberParams) (WorkspaceMember, error) {
 	row := q.db.QueryRowContext(ctx, getWorkspaceMember, arg.WorkspaceID, arg.UserID)
 	var i WorkspaceMember
-	err := row.Scan(
-		&i.UserID,
-		&i.WorkspaceID,
-		&i.CreatedAt,
-		&i.Restricted,
-	)
+	err := row.Scan(&i.UserID, &i.WorkspaceID, &i.CreatedAt)
 	return i, err
 }
 
-const listMemberProjectAccess = `-- name: ListMemberProjectAccess :many
-SELECT po.resource_id AS project_id, p.name AS project_name, po.allow
-FROM permission_overwrites po
-JOIN projects p ON p.id = po.resource_id
-WHERE po.resource_type = 'project' AND po.user_id = ? AND p.workspace_id = ? AND po.allow != '[]'
-ORDER BY p.position, p.id
-`
-
-type ListMemberProjectAccessParams struct {
-	UserID      sql.NullString
-	WorkspaceID string
-}
-
-type ListMemberProjectAccessRow struct {
-	ProjectID   string
-	ProjectName string
-	Allow       string
-}
-
-func (q *Queries) ListMemberProjectAccess(ctx context.Context, arg ListMemberProjectAccessParams) ([]ListMemberProjectAccessRow, error) {
-	rows, err := q.db.QueryContext(ctx, listMemberProjectAccess, arg.UserID, arg.WorkspaceID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListMemberProjectAccessRow
-	for rows.Next() {
-		var i ListMemberProjectAccessRow
-		if err := rows.Scan(&i.ProjectID, &i.ProjectName, &i.Allow); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listMemberRoleGrants = `-- name: ListMemberRoleGrants :many
-SELECT m.restricted, r.id AS role_id, r.is_owner_role, r.permissions
+SELECT m.user_id, r.id AS role_id, r.is_owner_role, r.permissions
 FROM workspace_members m
 LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
 LEFT JOIN roles r ON r.id = mr.role_id
@@ -233,7 +188,7 @@ type ListMemberRoleGrantsParams struct {
 }
 
 type ListMemberRoleGrantsRow struct {
-	Restricted  int64
+	UserID      string
 	RoleID      sql.NullString
 	IsOwnerRole sql.NullInt64
 	Permissions sql.NullString
@@ -249,7 +204,7 @@ func (q *Queries) ListMemberRoleGrants(ctx context.Context, arg ListMemberRoleGr
 	for rows.Next() {
 		var i ListMemberRoleGrantsRow
 		if err := rows.Scan(
-			&i.Restricted,
+			&i.UserID,
 			&i.RoleID,
 			&i.IsOwnerRole,
 			&i.Permissions,
@@ -349,16 +304,11 @@ func (q *Queries) ListProjectMemberIDs(ctx context.Context, arg ListProjectMembe
 }
 
 const listTeamMemberships = `-- name: ListTeamMemberships :many
-SELECT m.user_id, m.workspace_id, w.name AS workspace_name, r.id AS role_id, r.name AS role_name, r.is_owner_role, m.restricted,
-       COALESCE(po.allow, '[]') AS allow, COALESCE(po.deny, '[]') AS deny
+SELECT m.user_id, m.workspace_id, w.name AS workspace_name, r.id AS role_id, r.name AS role_name, r.is_owner_role
 FROM workspace_members m
 JOIN workspaces w ON w.id = m.workspace_id
 LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
 LEFT JOIN roles r ON r.id = mr.role_id
-LEFT JOIN permission_overwrites po
-  ON po.resource_type = 'workspace'
- AND po.resource_id = m.workspace_id
- AND po.user_id = m.user_id
 ORDER BY w.created_at, w.id, m.user_id, mr.created_at, r.is_owner_role DESC, mr.role_id
 `
 
@@ -369,9 +319,6 @@ type ListTeamMembershipsRow struct {
 	RoleID        sql.NullString
 	RoleName      sql.NullString
 	IsOwnerRole   sql.NullInt64
-	Restricted    int64
-	Allow         string
-	Deny          string
 }
 
 func (q *Queries) ListTeamMemberships(ctx context.Context) ([]ListTeamMembershipsRow, error) {
@@ -390,54 +337,6 @@ func (q *Queries) ListTeamMemberships(ctx context.Context) ([]ListTeamMembership
 			&i.RoleID,
 			&i.RoleName,
 			&i.IsOwnerRole,
-			&i.Restricted,
-			&i.Allow,
-			&i.Deny,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listTeamProjectAccess = `-- name: ListTeamProjectAccess :many
-SELECT po.user_id, p.workspace_id, po.resource_id AS project_id, p.name AS project_name, po.allow
-FROM permission_overwrites po
-JOIN projects p ON p.id = po.resource_id
-WHERE po.resource_type = 'project' AND po.target = 'person' AND po.allow != '[]'
-ORDER BY p.position, p.id
-`
-
-type ListTeamProjectAccessRow struct {
-	UserID      sql.NullString
-	WorkspaceID string
-	ProjectID   string
-	ProjectName string
-	Allow       string
-}
-
-func (q *Queries) ListTeamProjectAccess(ctx context.Context) ([]ListTeamProjectAccessRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTeamProjectAccess)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListTeamProjectAccessRow
-	for rows.Next() {
-		var i ListTeamProjectAccessRow
-		if err := rows.Scan(
-			&i.UserID,
-			&i.WorkspaceID,
-			&i.ProjectID,
-			&i.ProjectName,
-			&i.Allow,
 		); err != nil {
 			return nil, err
 		}
@@ -513,33 +412,6 @@ func (q *Queries) ListTeamWorkspaces(ctx context.Context) ([]ListTeamWorkspacesR
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listUnrestrictedWorkspaceIDsForUser = `-- name: ListUnrestrictedWorkspaceIDsForUser :many
-SELECT workspace_id FROM workspace_members WHERE user_id = ? AND restricted = 0 ORDER BY created_at, workspace_id
-`
-
-func (q *Queries) ListUnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listUnrestrictedWorkspaceIDsForUser, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var workspace_id string
-		if err := rows.Scan(&workspace_id); err != nil {
-			return nil, err
-		}
-		items = append(items, workspace_id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -681,7 +553,7 @@ func (q *Queries) ListWorkspaceMemberRoles(ctx context.Context, workspaceID stri
 }
 
 const listWorkspaceMembers = `-- name: ListWorkspaceMembers :many
-SELECT user_id, workspace_id, created_at, restricted FROM workspace_members WHERE workspace_id = ? ORDER BY created_at, user_id
+SELECT user_id, workspace_id, created_at FROM workspace_members WHERE workspace_id = ? ORDER BY created_at, user_id
 `
 
 func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID string) ([]WorkspaceMember, error) {
@@ -693,12 +565,7 @@ func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID string) 
 	var items []WorkspaceMember
 	for rows.Next() {
 		var i WorkspaceMember
-		if err := rows.Scan(
-			&i.UserID,
-			&i.WorkspaceID,
-			&i.CreatedAt,
-			&i.Restricted,
-		); err != nil {
+		if err := rows.Scan(&i.UserID, &i.WorkspaceID, &i.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -713,7 +580,7 @@ func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID string) 
 }
 
 const listWorkspacesForUser = `-- name: ListWorkspacesForUser :many
-SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug, w.decisions_check_enabled, w.auto_play_daily_cap
+SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug, w.decisions_check_enabled, w.auto_play_daily_cap, w.access_setup_finished
 FROM workspaces w
 JOIN workspace_members m ON m.workspace_id = w.id
 WHERE m.user_id = ?
@@ -738,6 +605,7 @@ func (q *Queries) ListWorkspacesForUser(ctx context.Context, userID string) ([]W
 			&i.Slug,
 			&i.DecisionsCheckEnabled,
 			&i.AutoPlayDailyCap,
+			&i.AccessSetupFinished,
 		); err != nil {
 			return nil, err
 		}
@@ -763,24 +631,6 @@ type RemoveWorkspaceMemberParams struct {
 
 func (q *Queries) RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, removeWorkspaceMember, arg.WorkspaceID, arg.UserID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
-const setWorkspaceMemberRestricted = `-- name: SetWorkspaceMemberRestricted :execrows
-UPDATE workspace_members SET restricted = ? WHERE workspace_id = ? AND user_id = ?
-`
-
-type SetWorkspaceMemberRestrictedParams struct {
-	Restricted  int64
-	WorkspaceID string
-	UserID      string
-}
-
-func (q *Queries) SetWorkspaceMemberRestricted(ctx context.Context, arg SetWorkspaceMemberRestrictedParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, setWorkspaceMemberRestricted, arg.Restricted, arg.WorkspaceID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}

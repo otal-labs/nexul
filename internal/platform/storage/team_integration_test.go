@@ -148,8 +148,6 @@ func TestIntegration_ListTeam_ReturnsEachPersonsAccessAndTheViewersManageFlag(t 
 	ctx := t.Context()
 	f := newTeamFixture(t)
 	require.NoError(t, f.svc.AddMember(ctx, "admin", f.nexul.ID, "bob", f.editor.ID))
-	allow := permissions.SetOf(permissions.ProjectsWrite)
-	require.NoError(t, f.svc.SetMemberOverrides(ctx, "admin", f.nexul.ID, "bob", &allow, nil))
 
 	team, err := f.svc.ListTeam(ctx, "admin")
 	require.NoError(t, err)
@@ -168,7 +166,7 @@ func TestIntegration_ListTeam_ReturnsEachPersonsAccessAndTheViewersManageFlag(t 
 	assert.Equal(t, "Nexul", bob.Workspaces[0].WorkspaceName)
 	assert.Equal(t, "Editor", bob.Workspaces[0].RoleName)
 	assert.False(t, bob.Workspaces[0].IsOwner)
-	assert.Equal(t, allow, bob.Workspaces[0].Allow)
+	assert.Empty(t, bob.Workspaces[0].Allow, "the removed overrides read as empty")
 	assert.Empty(t, bob.Workspaces[0].Deny)
 
 	admin := personByLogin(t, team, "admin")
@@ -248,21 +246,18 @@ func TestIntegration_ListTeam_OnlineFirstThenLatestSessionActivity(t *testing.T)
 func TestIntegration_TeamEdits_WithoutMembersWriteInTheWorkspace_AreForbidden(t *testing.T) {
 	ctx := t.Context()
 	f := newTeamFixture(t)
-	allow := permissions.SetOf(permissions.DocsWrite)
 
 	require.ErrorIs(t, f.svc.ChangeMemberRole(ctx, "admin", f.acme.ID, "carol", f.viewer.ID), apperrs.ErrForbidden)
 	require.ErrorIs(t, f.svc.AddMember(ctx, "admin", f.acme.ID, "bob", f.viewer.ID), apperrs.ErrForbidden)
-	require.ErrorIs(t, f.svc.SetMemberOverrides(ctx, "admin", f.acme.ID, "carol", &allow, nil), apperrs.ErrForbidden)
 	require.ErrorIs(t, f.svc.RemoveMember(ctx, "admin", f.acme.ID, "carol"), apperrs.ErrForbidden)
 }
 
 func TestIntegration_TeamEdits_OwnerStaysProtected(t *testing.T) {
 	ctx := t.Context()
 	f := newTeamFixture(t)
-	deny := permissions.SetOf(permissions.DocsRead)
 
 	require.ErrorIs(t, f.svc.AddMember(ctx, "admin", f.nexul.ID, "carol", f.nexulOwnerID), apperrs.ErrInvalid)
-	require.ErrorIs(t, f.svc.SetMemberOverrides(ctx, "dana", f.acme.ID, "dana", nil, &deny), apperrs.ErrInvalid)
+	require.ErrorIs(t, f.svc.ChangeMemberRole(ctx, "dana", f.acme.ID, "dana", f.viewer.ID), apperrs.ErrInvalid)
 }
 
 // Carol holds only docs:read in Acme, so the members list refuses her; the people list must not.

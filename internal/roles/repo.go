@@ -12,9 +12,8 @@ type Repo interface {
 	Get(ctx context.Context, id string) (*Role, error)
 	List(ctx context.Context, workspaceID string) ([]*Role, error)
 	Update(ctx context.Context, r *Role, events ...eventbus.OutboxEvent) error
-	Delete(ctx context.Context, id string) error
-	// CountHolders is how many members hold role id.
-	CountHolders(ctx context.Context, id string) (int, error)
+	// Delete removes the role and, by cascade, every holding of it and every rule naming it.
+	Delete(ctx context.Context, id string, events ...eventbus.OutboxEvent) error
 }
 
 // MemberGate answers whether someone belongs to a workspace without roles importing tenancy (ADR 0017).

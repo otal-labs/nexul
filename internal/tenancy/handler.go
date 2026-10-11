@@ -186,8 +186,7 @@ func (h *Handler) setMentionChipTemplate(w http.ResponseWriter, r *http.Request)
 	httpx.WriteJSON(w, http.StatusOK, ws)
 }
 
-// meResponse is the /me wire shape the frontend's hasPermission(action) helper reads directly; a Restricted member
-// also gets the projects they may open, since permissions then carries no project area.
+// meResponse is the /me wire shape the frontend's hasPermission(action) helper reads directly.
 type meResponse struct {
 	// RoleName is the first of Roles' names.
 	RoleName    string      `json:"role_name"`
@@ -195,6 +194,12 @@ type meResponse struct {
 	Permissions []string    `json:"permissions"`
 	Restricted  bool        `json:"restricted"`
 	Projects    []MeProject `json:"projects,omitempty"`
+}
+
+// MeProject is one project a member is in and the project-area actions they hold there.
+type MeProject struct {
+	ProjectID string          `json:"project_id"`
+	Actions   permissions.Set `json:"actions"`
 }
 
 // me is re-fetched whenever useWorkspaceStore's selectedWorkspaceId changes.
@@ -206,13 +211,7 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	permissions := h.svc.MemberPermissions(r.Context(), workspaceID, userID)
-	restricted, projects, err := h.svc.MemberProjects(r.Context(), workspaceID, userID)
-	if err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	me := meResponse{Roles: roles, Permissions: permissions, Restricted: restricted, Projects: projects}
+	me := meResponse{Roles: roles, Permissions: h.svc.MemberPermissions(r.Context(), workspaceID, userID)}
 	if len(roles) > 0 {
 		me.RoleName = roles[0].Name
 	}
@@ -228,8 +227,8 @@ type addMemberRequest struct {
 	RoleID string `json:"role_id"`
 }
 
-// changeMemberRoleRequest is a patch: an omitted field keeps its value, allow or deny replace that set, and each
-// project_access entry replaces that project's levels, an empty allow taking the project away.
+// changeMemberRoleRequest changes a member's role; allow, deny, every_project and project_access are removed fields
+// that still parse, refused unless empty (ADR 0148).
 type changeMemberRoleRequest struct {
 	RoleID        string               `json:"role_id"`
 	Allow         *permissions.Set     `json:"allow"`
@@ -313,29 +312,22 @@ func (h *Handler) changeMemberRole(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// patchMember applies the fields a PATCH names in order: role, overrides, Every project, then each project's levels.
+// patchMember changes the role; a body carrying only empty removed fields changes nothing, as it did before.
 func (h *Handler) patchMember(ctx context.Context, actorID, workspaceID, userID string, req changeMemberRoleRequest) error {
-	overrides := req.Allow != nil || req.Deny != nil
-	access := req.EveryProject != nil || req.ProjectAccess != nil
-	if req.RoleID != "" || (!overrides && !access) {
-		if err := h.svc.ChangeMemberRole(ctx, actorID, workspaceID, userID, req.RoleID); err != nil {
-			return err
-		}
+	if err := RefusePerPersonAccess(deref(req.Allow), deref(req.Deny), deref(req.EveryProject), len(req.ProjectAccess)); err != nil {
+		return err
 	}
-	if overrides {
-		if err := h.svc.SetMemberOverrides(ctx, actorID, workspaceID, userID, req.Allow, req.Deny); err != nil {
-			return err
-		}
+	removedOnly := req.Allow != nil || req.Deny != nil || req.EveryProject != nil || req.ProjectAccess != nil
+	if req.RoleID == "" && removedOnly {
+		return nil
 	}
-	if req.EveryProject != nil {
-		if err := h.svc.SetEveryProject(ctx, actorID, workspaceID, userID, *req.EveryProject); err != nil {
-			return err
-		}
+	return h.svc.ChangeMemberRole(ctx, actorID, workspaceID, userID, req.RoleID)
+}
+
+func deref[T any](p *T) T {
+	var zero T
+	if p == nil {
+		return zero
 	}
-	for _, p := range req.ProjectAccess {
-		if err := h.svc.SetProjectAccess(ctx, actorID, workspaceID, userID, p.ProjectID, p.Allow); err != nil {
-			return err
-		}
-	}
-	return nil
+	return *p
 }

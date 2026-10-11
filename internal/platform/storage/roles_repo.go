@@ -74,7 +74,7 @@ func (r *RolesRepo) Update(ctx context.Context, role *roles.Role, events ...even
 	})
 }
 
-func (r *RolesRepo) Delete(ctx context.Context, id string) error {
+func (r *RolesRepo) Delete(ctx context.Context, id string, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).DeleteRole(ctx, id)
 		if err != nil {
@@ -83,16 +83,8 @@ func (r *RolesRepo) Delete(ctx context.Context, id string) error {
 		if n == 0 {
 			return fmt.Errorf("delete role %s: %w", id, apperrs.ErrNotFound)
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, events)
 	})
-}
-
-func (r *RolesRepo) CountHolders(ctx context.Context, id string) (int, error) {
-	n, err := r.q.CountRoleHolders(ctx, id)
-	if err != nil {
-		return 0, fmt.Errorf("count holders of role %s: %w", id, err)
-	}
-	return int(n), nil
 }
 
 func toRole(row sqlcgen.Role) (*roles.Role, error) {

@@ -29,6 +29,29 @@ func (s *Service) ListPeople(ctx context.Context, actorID, workspaceID string) (
 	return s.peopleNamed(ctx, userIDs)
 }
 
+// SetProjects wires the project lookups a project's people are read through.
+func (s *Service) SetProjects(g ProjectGate) { s.projects = g }
+
+// ListProjectPeople is the workspace's People who are in projectID, for a ticket's developer and tester pickers;
+// anyone in the project reads it.
+func (s *Service) ListProjectPeople(ctx context.Context, actorID, projectID string) ([]Person, error) {
+	if s.projects == nil {
+		return nil, fmt.Errorf("%w: no project lookup wired", apperrs.ErrForbidden)
+	}
+	workspaceID, err := s.projects.ProjectWorkspace(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve project %s: %w", projectID, err)
+	}
+	if _, opens := s.projects.ProjectPermissions(ctx, actorID, projectID); !opens {
+		return nil, fmt.Errorf("%w: project %s", apperrs.ErrNotFound, projectID)
+	}
+	userIDs, err := s.members.ProjectMemberIDs(ctx, workspaceID, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("list the people of project %s: %w", projectID, err)
+	}
+	return s.peopleNamed(ctx, userIDs)
+}
+
 // peopleNamed is the Person of each of userIDs with an account, in their order.
 func (s *Service) peopleNamed(ctx context.Context, userIDs []string) ([]Person, error) {
 	accounts, err := s.accounts.ListAccounts(ctx)

@@ -75,7 +75,6 @@ func TestInvitationsRepo_CreateAndGet_DoesNotExposeRawToken(t *testing.T) {
 		Grants: []*tenancy.InvitationGrant{{
 			WorkspaceID: "ws-1",
 			RoleID:      "role-editor",
-			Allow:       permissions.SetOf(permissions.DocsRead),
 		}},
 	}
 
@@ -90,7 +89,7 @@ func TestInvitationsRepo_CreateAndGet_DoesNotExposeRawToken(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, want.ID, got.ID)
 	assert.Equal(t, want.ExpiresAt, got.ExpiresAt)
-	assert.Equal(t, permissions.SetOf(permissions.DocsRead), got.Grants[0].Allow)
+	assert.Equal(t, []string{"role-editor"}, got.Grants[0].RoleIDs)
 
 	_, err = s.Invitations.GetByTokenHash(ctx, rawToken, now)
 	assert.ErrorIs(t, err, apperrs.ErrNotFound)
@@ -167,7 +166,6 @@ func TestInvitationsRepo_Redeem_NewUserIsAtomicAndWritesOutbox(t *testing.T) {
 	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
 	_, tokenHash := invitationToken(t, "12")
 	invitation := newInvitation("inv-1", "actor", "ws-1", "role-editor", now, 7*24*time.Hour)
-	invitation.Grants[0].Allow = permissions.SetOf(permissions.DocsRead)
 	require.NoError(t, s.Invitations.Create(ctx, invitation, tokenHash))
 
 	acceptanceHash := createAcceptanceHandoff(t, s, invitation.ID, now, tenancy.InvitationIdentity{ID: "user-new", Provider: "github", ProviderUserID: "provider-new", Login: "new-user"}, "18")
@@ -178,12 +176,12 @@ func TestInvitationsRepo_Redeem_NewUserIsAtomicAndWritesOutbox(t *testing.T) {
 	user, err := s.Users.GetUserByProvider(ctx, auth.ProviderGitHub, "provider-new")
 	require.NoError(t, err)
 	assert.Equal(t, "user-new", user.ID)
-	roleID, err := s.WorkspaceMembers.RoleIDFor(ctx, "ws-1", "user-new")
+	member, err := s.WorkspaceMembers.Member(ctx, "ws-1", "user-new")
 	require.NoError(t, err)
-	assert.Equal(t, "role-editor", roleID)
-	overwrite, err := s.Access.Get(ctx, "workspace", "ws-1", "user-new")
-	require.NoError(t, err)
-	assert.Equal(t, permissions.SetOf(permissions.DocsRead), overwrite.Allow)
+	assert.Equal(t, []string{"role-editor"}, member.RoleIDs, "the link's role, as a set of one")
+	var rules int
+	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM permission_overwrites WHERE user_id = ?`, "user-new").Scan(&rules))
+	assert.Zero(t, rules, "an invitation gives nothing per person")
 	_, err = s.Invitations.GetByTokenHash(ctx, tokenHash, now)
 	assert.ErrorIs(t, err, apperrs.ErrNotFound)
 
@@ -192,7 +190,7 @@ func TestInvitationsRepo_Redeem_NewUserIsAtomicAndWritesOutbox(t *testing.T) {
 	assert.Equal(t, 1, outboxCount)
 }
 
-func TestInvitationsRepo_Redeem_ExistingMembershipPreservesRoleAndOverwrite(t *testing.T) {
+func TestInvitationsRepo_Redeem_ExistingMembershipPreservesRole(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	ctx := t.Context()
@@ -203,23 +201,17 @@ func TestInvitationsRepo_Redeem_ExistingMembershipPreservesRoleAndOverwrite(t *t
 	role := &roles.Role{ID: "role-existing", WorkspaceID: "ws-1", Name: "Existing", Permissions: permissions.SetOf(permissions.ProjectsWrite), CreatedAt: now, UpdatedAt: now}
 	require.NoError(t, s.Roles.Create(ctx, role))
 	require.NoError(t, s.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: "user-existing", WorkspaceID: "ws-1", RoleID: role.ID, CreatedAt: now}))
-	require.NoError(t, s.Access.Set(ctx, "workspace", "ws-1", "user-existing", permissions.SetOf(permissions.ProjectsWrite), permissions.SetOf(permissions.DocsDelete)))
 	_, tokenHash := invitationToken(t, "13")
 	invitation := newInvitation("inv-1", "actor", "ws-1", "role-editor", now, 24*time.Hour)
-	invitation.Grants[0].Allow = permissions.SetOf(permissions.DocsRead)
 	require.NoError(t, s.Invitations.Create(ctx, invitation, tokenHash))
 
 	acceptanceHash := createAcceptanceHandoff(t, s, invitation.ID, now, tenancy.InvitationIdentity{ID: "ignored", Provider: "github", ProviderUserID: "provider-existing", Login: "existing"}, "19")
 	admission, err := s.Invitations.Redeem(ctx, acceptanceHash, tenancy.InvitationIdentity{ID: "ignored", Provider: "github", ProviderUserID: "provider-existing", Login: "existing"}, now)
 	require.NoError(t, err)
 	assert.False(t, admission.Created)
-	roleID, err := s.WorkspaceMembers.RoleIDFor(ctx, "ws-1", "user-existing")
+	member, err := s.WorkspaceMembers.Member(ctx, "ws-1", "user-existing")
 	require.NoError(t, err)
-	assert.Equal(t, "role-existing", roleID)
-	overwrite, err := s.Access.Get(ctx, "workspace", "ws-1", "user-existing")
-	require.NoError(t, err)
-	assert.Equal(t, permissions.SetOf(permissions.ProjectsWrite), overwrite.Allow)
-	assert.Equal(t, permissions.SetOf(permissions.DocsDelete), overwrite.Deny)
+	assert.Equal(t, []string{"role-existing"}, member.RoleIDs, "redeeming never changes an existing membership")
 }
 
 func TestInvitationsRepo_Redeem_InvalidGrantRollsBackNewUser(t *testing.T) {

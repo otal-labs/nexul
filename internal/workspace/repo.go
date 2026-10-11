@@ -48,8 +48,6 @@ type Repo interface {
 	// GetRepoByFullName looks up a RepoRef by owner/name regardless of project.
 	GetRepoByFullName(ctx context.Context, owner, name string) (RepoRef, error)
 	MoveTicket(ctx context.Context, ticketID, projectID string) error
-	// ListRestrictedAccess lists the Restricted members holding access to projectID (ADR 0097).
-	ListRestrictedAccess(ctx context.Context, projectID string) ([]ProjectAccessEntry, error)
 }
 
 // NotificationRepo is the consumer-side persistence contract for the workspace notifications capability.

@@ -274,7 +274,7 @@ func (s *Service) MemberRoleID(ctx context.Context, workspaceID, userID string) 
 	return roleID, nil
 }
 
-// Member returns userID's membership of workspaceID, Every project included; apperrs.ErrNotFound for a non-member.
+// Member returns userID's membership of workspaceID with their roles; apperrs.ErrNotFound for a non-member.
 func (s *Service) Member(ctx context.Context, workspaceID, userID string) (*Member, error) {
 	m, err := s.members.Member(ctx, workspaceID, userID)
 	if err != nil {
@@ -472,7 +472,8 @@ func (s *Service) RemoveMember(ctx context.Context, actorID, workspaceID, userID
 	return nil
 }
 
-// ChangeMemberRole replaces a member's roles with roleID; it refuses to demote or promote into the Owner role.
+// ChangeMemberRole replaces a member's roles with roleID; it refuses to demote or promote into the Owner role, to give a
+// role holding more than the actor holds, and to take away one the actor couldn't have given (ADR 0148).
 func (s *Service) ChangeMemberRole(ctx context.Context, actorID, workspaceID, userID, roleID string) error {
 	workspaceID = strings.TrimSpace(workspaceID)
 	userID = strings.TrimSpace(userID)
@@ -483,7 +484,11 @@ func (s *Service) ChangeMemberRole(ctx context.Context, actorID, workspaceID, us
 	if err := s.requireManageWorkspaceMembers(ctx, actorID, workspaceID); err != nil {
 		return err
 	}
-	isCurrentlyOwner, err := s.holdsOwnerRole(ctx, workspaceID, userID)
+	m, err := s.members.Member(ctx, workspaceID, userID)
+	if err != nil {
+		return fmt.Errorf("resolve membership of %s in workspace %s: %w", userID, workspaceID, err)
+	}
+	isCurrentlyOwner, err := s.ownerRoleAmong(ctx, workspaceID, m.RoleIDs)
 	if err != nil {
 		return err
 	}
@@ -499,6 +504,14 @@ func (s *Service) ChangeMemberRole(ctx context.Context, actorID, workspaceID, us
 	}
 	if err := s.requireHoldsRole(ctx, actorID, workspaceID, roleID); err != nil {
 		return err
+	}
+	for _, held := range m.RoleIDs {
+		if held == roleID {
+			continue
+		}
+		if err := s.requireHoldsRole(ctx, actorID, workspaceID, held); err != nil {
+			return fmt.Errorf("you can't take away a role you couldn't give: %w", err)
+		}
 	}
 	evt, err := s.memberUpdated(ctx, actorID, workspaceID, userID)
 	if err != nil {
@@ -543,9 +556,6 @@ func (s *Service) ListTeam(ctx context.Context, actorID string) (*Team, error) {
 	memberships, err := s.members.ListAllMemberships(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list memberships: %w", err)
-	}
-	if err := s.teamProjects(ctx, actorID, memberships); err != nil {
-		return nil, err
 	}
 	online, seen, err := s.accounts.Presence(ctx)
 	if err != nil {
@@ -650,52 +660,6 @@ func (s *Service) AddMember(ctx context.Context, actorID, workspaceID, userID, r
 	return nil
 }
 
-// SetMemberOverrides changes a member's workspace-wide allow and deny sets; a nil set keeps its current value.
-func (s *Service) SetMemberOverrides(ctx context.Context, actorID, workspaceID, userID string, allow, deny *permissions.Set) error {
-	workspaceID = strings.TrimSpace(workspaceID)
-	userID = strings.TrimSpace(userID)
-	if allow == nil && deny == nil {
-		return fmt.Errorf("%w: allow or deny is required", apperrs.ErrInvalid)
-	}
-	if err := s.requireManageWorkspaceMembers(ctx, actorID, workspaceID); err != nil {
-		return err
-	}
-	isOwner, err := s.holdsOwnerRole(ctx, workspaceID, userID)
-	if err != nil {
-		return err
-	}
-	if isOwner {
-		return fmt.Errorf("%w: the workspace Owner bypasses permission overrides, so none can be set", apperrs.ErrInvalid)
-	}
-	currentAllow, currentDeny, err := s.members.Overrides(ctx, workspaceID, userID)
-	if err != nil {
-		return fmt.Errorf("read overrides for %s in workspace %s: %w", userID, workspaceID, err)
-	}
-	nextAllow, nextDeny := currentAllow, currentDeny
-	if allow != nil {
-		nextAllow = permissions.SetOf(*allow...)
-	}
-	if deny != nil {
-		nextDeny = permissions.SetOf(*deny...)
-	}
-	if err := validateOverrides(nextAllow, nextDeny); err != nil {
-		return err
-	}
-	// Only what the change adds is a grant: a new allow, or a lifted deny, which hands back what the role gives.
-	added := permissions.SetOf(slices.Concat(nextAllow.Except(currentAllow), currentDeny.Except(nextDeny))...)
-	if err := s.requireHolds(ctx, actorID, workspaceID, added); err != nil {
-		return err
-	}
-	evt, err := s.memberUpdated(ctx, actorID, workspaceID, userID)
-	if err != nil {
-		return err
-	}
-	if err := s.members.SetOverrides(ctx, workspaceID, userID, nextAllow, nextDeny, evt); err != nil {
-		return fmt.Errorf("set overrides for %s in workspace %s: %w", userID, workspaceID, err)
-	}
-	return nil
-}
-
 // holdsOwnerRole reads userID's membership of workspaceID and whether the Owner role is among their roles.
 func (s *Service) holdsOwnerRole(ctx context.Context, workspaceID, userID string) (bool, error) {
 	m, err := s.members.Member(ctx, workspaceID, userID)
@@ -719,25 +683,11 @@ func (s *Service) ownerRoleAmong(ctx context.Context, workspaceID string, roleID
 	return false, nil
 }
 
-func validateOverrides(allow, deny permissions.Set) error {
-	for _, action := range slices.Concat(allow, deny) {
-		if _, ok := permissions.ParseAction(string(action)); !ok {
-			return fmt.Errorf("%w: %q is not a permission; the permission catalog lists them", apperrs.ErrInvalid, action)
-		}
-	}
-	for _, action := range allow {
-		if deny.Has(action) {
-			return fmt.Errorf("%w: %s cannot be allowed and denied at once", apperrs.ErrInvalid, action)
-		}
-	}
-	return nil
-}
-
 func memberEvent(topic, actorID, workspaceID, userID string) eventbus.OutboxEvent {
 	return eventbus.OutboxEvent{ID: ids.New(), Topic: topic, Payload: MemberEvent{UserID: userID, WorkspaceID: workspaceID, ActorID: actorID}}
 }
 
-// memberUpdated names the workspace's projects, since a role, override, or Every project change can open or close any of them.
+// memberUpdated names the workspace's projects, since a role change can open or close any of them.
 func (s *Service) memberUpdated(ctx context.Context, actorID, workspaceID, userID string) (eventbus.OutboxEvent, error) {
 	e := MemberEvent{UserID: userID, WorkspaceID: workspaceID, ActorID: actorID}
 	if s.projects != nil {

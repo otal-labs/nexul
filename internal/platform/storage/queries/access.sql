@@ -51,14 +51,10 @@ SELECT pr.* FROM permission_overwrites pr
 WHERE pr.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = sqlc.arg(user_id)) AND pr.resource_type = sqlc.arg(resource_type);
 
 -- name: ListOwnOverwrites :many
-SELECT * FROM permission_overwrites WHERE user_id = ? AND resource_type IN ('workspace', 'project');
+SELECT * FROM permission_overwrites WHERE user_id = ? AND resource_type = 'project';
 
 -- name: ListOwnOverwritesInProject :many
-SELECT po.* FROM permission_overwrites po
-WHERE po.user_id = sqlc.arg(user_id) AND po.resource_type = 'workspace' AND po.resource_id = sqlc.arg(workspace_id)
-UNION ALL
-SELECT pp.* FROM permission_overwrites pp
-WHERE pp.user_id = sqlc.arg(user_id) AND pp.resource_type = 'project' AND pp.resource_id = sqlc.arg(project_id);
+SELECT * FROM permission_overwrites WHERE user_id = ? AND resource_type = 'project' AND resource_id = ?;
 
 -- name: ListRoleOverwrites :many
 SELECT * FROM permission_overwrites

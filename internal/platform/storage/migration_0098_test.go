@@ -47,7 +47,7 @@ INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, 
 	before := rows(`SELECT user_id || '|' || workspace_id || '|' || role_id || '|' || created_at FROM workspace_members ORDER BY 1`)
 	memberships := rows(`SELECT user_id || '|' || workspace_id || '|' || created_at || '|' || restricted FROM workspace_members ORDER BY 1`)
 
-	require.NoError(t, Migrate(db), "0098 and every later migration apply on top, as an upgrade would")
+	migrateUpTo(t, db, "0100")
 
 	assert.Equal(t, before, rows(`SELECT user_id || '|' || workspace_id || '|' || role_id || '|' || created_at FROM member_roles ORDER BY 1`))
 	assert.Equal(t, memberships, rows(`SELECT user_id || '|' || workspace_id || '|' || created_at || '|' || restricted FROM workspace_members ORDER BY 1`))
@@ -65,15 +65,14 @@ INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, 
 		"a role's set, with what 0099 gives a members:write holder")
 	restricted, err := s.WorkspaceMembers.Member(ctx, "workspace-default", "sam")
 	require.NoError(t, err)
-	assert.True(t, restricted.Restricted, "a Restricted member")
-	assert.Equal(t, []string{"role-empty"}, restricted.RoleIDs)
+	assert.Equal(t, []string{"role-empty"}, restricted.RoleIDs, "a Restricted member")
 	owners, err := s.Users.ListActiveOwnerIDs(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"alice", "lena"}, owners, "an Owner of any workspace")
-	allow, deny, err := s.WorkspaceMembers.Overrides(ctx, "workspace-default", "bob")
+	override, err := s.Access.Get(ctx, "workspace", "workspace-default", "bob")
 	require.NoError(t, err)
-	assert.Empty(t, allow)
-	assert.Equal(t, permissions.SetOf(permissions.TicketsWrite), deny, "overrides are untouched")
+	assert.Empty(t, override.Allow)
+	assert.Equal(t, permissions.SetOf(permissions.TicketsWrite), override.Deny, "overrides are untouched")
 
 	require.NoError(t, s.WorkspaceMembers.RemoveMember(ctx, "ws-acme", "lena"))
 	assert.Equal(t, []string{"lena|role-dev"}, rows(`SELECT user_id || '|' || role_id FROM member_roles WHERE user_id = 'lena'`), "roles go with their membership")

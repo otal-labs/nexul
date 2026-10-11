@@ -43,7 +43,7 @@ func TestMemo_AFailedReadIsNotRemembered(t *testing.T) {
 
 func TestProjectsWith_AnswersAsEachProjectsCheck(t *testing.T) {
 	s, repo := projectsFixture(t)
-	require.NoError(t, repo.Set(t.Context(), "workspace", "ws", "team", nil, permissions.SetOf(permissions.TicketsWrite)))
+	require.NoError(t, repo.Set(t.Context(), "project", "p-open", "team", nil, permissions.SetOf(permissions.TicketsWrite)))
 	actions := []permissions.Action{permissions.Member, permissions.TicketsRead, permissions.TicketsWrite, permissions.RunnersRead, permissions.ChatWrite}
 
 	for _, user := range []string{"client", "team", "nobody", "owner", "stranger"} {
@@ -76,7 +76,7 @@ func TestProjectsWith_ReadsEveryMembersProjectRulesOnce(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.ElementsMatch(t, projects, got, user)
-		assert.Equal(t, 2, repo.readCounts(), "%s: their rules on the workspace and every project, then every role's, once", user)
+		assert.Equal(t, 2, repo.readCounts(), "%s: their rules on every project, then every role's, once", user)
 	}
 }
 
@@ -84,7 +84,7 @@ func TestProjectsWith_ReadsEveryMembersProjectRulesOnce(t *testing.T) {
 // lets each kind of caller through, so a list filtered by it shows what the row-by-row check showed (ADR 0140).
 func TestCallerProjects_AnswersAsRequireProject(t *testing.T) {
 	s, repo := projectsFixture(t)
-	require.NoError(t, repo.Set(t.Context(), "workspace", "ws", "team", nil, permissions.SetOf(permissions.TicketsWrite)))
+	require.NoError(t, repo.Set(t.Context(), "project", "p-open", "team", nil, permissions.SetOf(permissions.TicketsWrite)))
 	s.SetScopes(fakeScopes{
 		projects:   map[string]string{"p-open": "ws", "p-hidden": "ws", "p-other": "ws-2"},
 		workspaces: map[string][]string{"team": {"ws"}, "client": {"ws"}, "nobody": {"ws"}, "owner": {"ws"}},

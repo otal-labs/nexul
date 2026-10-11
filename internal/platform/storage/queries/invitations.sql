@@ -3,8 +3,7 @@ INSERT INTO invitations (id, token_hash, invited_by, created_at, expires_at)
 VALUES (?, ?, ?, ?, ?);
 
 -- name: CreateInvitationGrant :exec
-INSERT INTO invitation_grants (invitation_id, workspace_id, role_id, allow_json, deny_json, restricted, project_access_json)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO invitation_grants (invitation_id, workspace_id, role_id) VALUES (?, ?, ?);
 
 -- name: GetInvitationByTokenHash :one
 SELECT id, token_hash, invited_by, created_at, expires_at, redeemed_at, redeemed_by
@@ -38,25 +37,11 @@ WHERE i.redeemed_at IS NULL
       WHERE g.invitation_id = i.id
         AND NOT EXISTS (
             SELECT 1
-            FROM workspace_members m
-            LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
-            LEFT JOIN roles r ON r.id = mr.role_id
-            LEFT JOIN permission_overwrites po
-              ON po.resource_type = 'workspace'
-             AND po.resource_id = g.workspace_id
-             AND po.user_id = m.user_id
-            WHERE m.workspace_id = g.workspace_id
-              AND m.user_id = ?
-              AND (
-                  COALESCE(r.is_owner_role, 0) = 1
-                  OR (
-                      instr(COALESCE(po.deny, '[]'), '"members:write"') = 0
-                      AND (
-                          instr(COALESCE(r.permissions, '[]'), '"members:write"') > 0
-                          OR instr(COALESCE(po.allow, '[]'), '"members:write"') > 0
-                      )
-                  )
-              )
+            FROM member_roles mr
+            JOIN roles r ON r.id = mr.role_id
+            WHERE mr.workspace_id = g.workspace_id
+              AND mr.user_id = ?
+              AND (r.is_owner_role = 1 OR instr(r.permissions, '"members:write"') > 0)
         )
   )
 ORDER BY i.created_at, i.id
@@ -66,7 +51,7 @@ LIMIT ?;
 SELECT *
 FROM invitation_grants
 WHERE invitation_id = ?
-ORDER BY workspace_id;
+ORDER BY workspace_id, role_id;
 
 -- name: DeleteInvitation :execrows
 DELETE FROM invitations WHERE id = ?;
@@ -85,14 +70,10 @@ FROM roles
 WHERE id = ? AND workspace_id = ?;
 
 -- name: ListInvitationCreatorWorkspaceAccess :many
-SELECT COALESCE(r.is_owner_role, 0) AS is_owner_role, COALESCE(r.permissions, '[]') AS permissions, po.allow, po.deny, m.restricted
+SELECT COALESCE(r.is_owner_role, 0) AS is_owner_role, COALESCE(r.permissions, '[]') AS permissions
 FROM workspace_members m
 LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
 LEFT JOIN roles r ON r.id = mr.role_id
-LEFT JOIN permission_overwrites po
-  ON po.resource_type = 'workspace'
- AND po.resource_id = m.workspace_id
- AND po.user_id = m.user_id
 WHERE m.workspace_id = ? AND m.user_id = ?;
 
 -- name: GetInvitationMember :one
@@ -101,25 +82,9 @@ FROM workspace_members
 WHERE workspace_id = ? AND user_id = ?;
 
 -- name: AddInvitationMember :exec
-INSERT INTO workspace_members (user_id, workspace_id, created_at, restricted)
-VALUES (?, ?, ?, ?)
+INSERT INTO workspace_members (user_id, workspace_id, created_at)
+VALUES (?, ?, ?)
 ON CONFLICT(user_id, workspace_id) DO NOTHING;
-
--- name: GetProjectForInvitationGrant :one
-SELECT id, workspace_id, name FROM projects WHERE id = ?;
-
--- name: GetInvitationCreatorProjectAccess :one
-SELECT allow FROM permission_overwrites WHERE resource_type = 'project' AND resource_id = ? AND user_id = ?;
-
--- name: AddInvitationProjectAccess :exec
-INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
-VALUES ('project', ?, 'person', ?, ?, '[]', ?, ?)
-ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO NOTHING;
-
--- name: AddInvitationOverwrite :exec
-INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
-VALUES ('workspace', ?, 'person', ?, ?, ?, ?, ?)
-ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO NOTHING;
 
 -- name: DeleteInvitationBeforeRedeem :execrows
 DELETE FROM invitations

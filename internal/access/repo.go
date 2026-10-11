@@ -22,9 +22,8 @@ type Repo interface {
 	// DocRuleTurns returns the docs in ruled whose rules for userID or a role they hold there turn action: allowed
 	// where readable does not hold it, denied where it does. It decides them in one read and hands back only those.
 	DocRuleTurns(ctx context.Context, userID string, action permissions.Action, ruled, readable []string) (allowed, denied []string, err error)
-	// OwnRules returns the rules naming userID on workspaceID and on each of projectIDs that has one, keyed by resource
-	// id, in one read.
-	OwnRules(ctx context.Context, userID, workspaceID string, projectIDs []string) (map[string]*Overwrite, error)
+	// OwnRules returns the rules naming userID on each of projectIDs that has one, keyed by project id, in one read.
+	OwnRules(ctx context.Context, userID string, projectIDs []string) (map[string]*Overwrite, error)
 	// RoleRules returns the rules for roleIDs on each of resourceIDs that has any, keyed by resource id in role order,
 	// in one read.
 	RoleRules(ctx context.Context, resourceType string, resourceIDs, roleIDs []string) (map[string][]*Overwrite, error)

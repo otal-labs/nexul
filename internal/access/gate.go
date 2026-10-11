@@ -335,7 +335,7 @@ func (s *Service) ProjectsWith(ctx context.Context, userID, workspaceID string, 
 	if err != nil {
 		return nil, fmt.Errorf("list projects of workspace %s: %w", workspaceID, err)
 	}
-	_, projects, err := s.layerRules(ctx, userID, workspaceID, s.roleIDsIn(ctx, userID, workspaceID), projectIDs)
+	projects, err := s.layerRules(ctx, userID, workspaceID, s.roleIDsIn(ctx, userID, workspaceID), projectIDs)
 	if err != nil {
 		return nil, err
 	}

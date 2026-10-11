@@ -349,7 +349,7 @@ func (q *Queries) ListOverwritesByResource(ctx context.Context, arg ListOverwrit
 }
 
 const listOwnOverwrites = `-- name: ListOwnOverwrites :many
-SELECT resource_type, resource_id, target, user_id, role_id, allow, deny, created_at, updated_at FROM permission_overwrites WHERE user_id = ? AND resource_type IN ('workspace', 'project')
+SELECT resource_type, resource_id, target, user_id, role_id, allow, deny, created_at, updated_at FROM permission_overwrites WHERE user_id = ? AND resource_type = 'project'
 `
 
 func (q *Queries) ListOwnOverwrites(ctx context.Context, userID sql.NullString) ([]PermissionOverwrite, error) {
@@ -386,21 +386,16 @@ func (q *Queries) ListOwnOverwrites(ctx context.Context, userID sql.NullString) 
 }
 
 const listOwnOverwritesInProject = `-- name: ListOwnOverwritesInProject :many
-SELECT po.resource_type, po.resource_id, po.target, po.user_id, po.role_id, po.allow, po.deny, po.created_at, po.updated_at FROM permission_overwrites po
-WHERE po.user_id = ?1 AND po.resource_type = 'workspace' AND po.resource_id = ?2
-UNION ALL
-SELECT pp.resource_type, pp.resource_id, pp.target, pp.user_id, pp.role_id, pp.allow, pp.deny, pp.created_at, pp.updated_at FROM permission_overwrites pp
-WHERE pp.user_id = ?1 AND pp.resource_type = 'project' AND pp.resource_id = ?3
+SELECT resource_type, resource_id, target, user_id, role_id, allow, deny, created_at, updated_at FROM permission_overwrites WHERE user_id = ? AND resource_type = 'project' AND resource_id = ?
 `
 
 type ListOwnOverwritesInProjectParams struct {
-	UserID      sql.NullString
-	WorkspaceID string
-	ProjectID   string
+	UserID     sql.NullString
+	ResourceID string
 }
 
 func (q *Queries) ListOwnOverwritesInProject(ctx context.Context, arg ListOwnOverwritesInProjectParams) ([]PermissionOverwrite, error) {
-	rows, err := q.db.QueryContext(ctx, listOwnOverwritesInProject, arg.UserID, arg.WorkspaceID, arg.ProjectID)
+	rows, err := q.db.QueryContext(ctx, listOwnOverwritesInProject, arg.UserID, arg.ResourceID)
 	if err != nil {
 		return nil, err
 	}

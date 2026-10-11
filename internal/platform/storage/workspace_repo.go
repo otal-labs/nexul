@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"cmp"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -219,24 +218,6 @@ func (r *ProjectsRepo) Delete(ctx context.Context, id string) error {
 		}
 		return nil
 	})
-}
-
-// ListRestrictedAccess names each Restricted member by what People shows: display name, else account name, else login.
-func (r *ProjectsRepo) ListRestrictedAccess(ctx context.Context, projectID string) ([]workspace.ProjectAccessEntry, error) {
-	rows, err := r.q.ListProjectRestrictedAccess(ctx, projectID)
-	if err != nil {
-		return nil, fmt.Errorf("list access to project %s: %w", projectID, err)
-	}
-	out := make([]workspace.ProjectAccessEntry, 0, len(rows))
-	for _, row := range rows {
-		allow, err := parseSet(row.Allow)
-		if err != nil {
-			return nil, fmt.Errorf("decode access of %s to project %s: %w", row.UserID.String, projectID, err)
-		}
-		name := cmp.Or(row.DisplayName, row.Name, row.Login)
-		out = append(out, workspace.ProjectAccessEntry{RestrictedMember: workspace.RestrictedMember{UserID: row.UserID.String, Name: name}, Actions: allow})
-	}
-	return out, nil
 }
 
 // Reorder assigns each project's position by its index in ids, in one transaction so a reorder is atomic.

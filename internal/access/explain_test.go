@@ -102,10 +102,10 @@ func TestDecide_Source(t *testing.T) {
 			src(SourceRole, "workspace", "ws", TargetRole, "role-dev", StateAllow), "Allowed by role Developer"},
 		{"role missing", "bob", "p-store", permissions.StacksWrite, "", "", false,
 			src(SourceRole, "workspace", "ws", TargetRole, "role-dev", StateDeny), "Not allowed: role Developer doesn't grant it"},
-		{"workspace allow", "sam", "p-store", permissions.TicketsWrite, "", "", true,
-			src(SourceRule, "workspace", "ws", TargetPerson, "sam", StateAllow), "Allowed on workspace Acme for sam"},
-		{"workspace deny", "bob", "p-store", permissions.TicketsRead, "", "", false,
-			src(SourceRule, "workspace", "ws", TargetPerson, "bob", StateDeny), "Denied on workspace Acme for bob"},
+		{"a rule left on the workspace allows nothing", "sam", "p-store", permissions.TicketsWrite, "", "", false,
+			src(SourceRole, "workspace", "ws", TargetRole, "role-plain", StateDeny), "Not allowed: role Member doesn't grant it"},
+		{"a rule left on the workspace denies nothing", "bob", "p-store", permissions.TicketsRead, "", "", true,
+			src(SourceRole, "workspace", "ws", TargetRole, "role-dev", StateAllow), "Allowed by role Developer"},
 		{"in a project, the role answers", "lena", "p-store", permissions.TicketsRead, "", "", true,
 			src(SourceRole, "workspace", "ws", TargetRole, "role-client", StateAllow), "Allowed by role Client"},
 		{"in a project, its rule for the person", "lena", "p-store", permissions.TicketsWrite, "", "", true,
@@ -177,7 +177,6 @@ func TestDecide_RoleRules(t *testing.T) {
 	tests := []struct {
 		name       string
 		base       bool
-		workspace  *Overwrite
 		dev, front string
 		person     string
 		allowed    bool
@@ -196,10 +195,6 @@ func TestDecide_RoleRules(t *testing.T) {
 		{name: "the person denied over a role's allow", dev: StateAllow, person: StateDeny, source: onDoc(TargetPerson, "bob", StateDeny)},
 		{name: "the person allowed over a role's deny", dev: StateDeny, front: StateDeny, person: StateAllow, allowed: true, source: onDoc(TargetPerson, "bob", StateAllow)},
 		{name: "the person at fallback leaves the roles' answer", front: StateAllow, allowed: true, source: onDoc(TargetRole, "role-front", StateAllow)},
-		{name: "the doc's role rule over the workspace's rule for the person", dev: StateAllow,
-			workspace: roleRule("workspace", "ws", TargetPerson, "bob", StateDeny, action), allowed: true, source: onDoc(TargetRole, "role-dev", StateAllow)},
-		{name: "the workspace's rule for the person where the doc's rules fall back", base: true,
-			workspace: roleRule("workspace", "ws", TargetPerson, "bob", StateDeny, action), source: src(SourceRule, "workspace", "ws", TargetPerson, "bob", StateDeny)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -207,7 +202,7 @@ func TestDecide_RoleRules(t *testing.T) {
 			if tt.base {
 				dev.Permissions = permissions.SetOf(action)
 			}
-			ws := workspaceLayers{userID: "bob", workspaceID: "ws", projectID: "p-store", listed: true, roles: RolesHeld(dev, HeldRole{ID: "role-front"}), member: true, overwrite: tt.workspace}
+			ws := workspaceLayers{userID: "bob", workspaceID: "ws", projectID: "p-store", listed: true, roles: RolesHeld(dev, HeldRole{ID: "role-front"}), member: true}
 			rules := &Rules{Roles: []*Overwrite{doc(TargetRole, "role-dev", tt.dev), doc(TargetRole, "role-front", tt.front), doc(TargetRole, "role-client", StateDeny)}}
 			if tt.person != "" {
 				rules.Person = doc(TargetPerson, "bob", tt.person)

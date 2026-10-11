@@ -224,7 +224,9 @@ func seedPermFixture(t *testing.T, db *sql.DB, svc *coreServices, store *storage
 		uSteward: "role-steward", uClerk: "role-clerk", uManager: "role-manager", uCloner: "role-cloner", uEditor: "role-editor", uCopier: "role-copier"} {
 		require.NoError(t, store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: user, WorkspaceID: "workspace-default", RoleID: role, CreatedAt: now}))
 	}
-	require.NoError(t, store.Access.Set(ctx, "workspace", "workspace-default", uOverwrite, grant(reads...), nil))
+	// What once was Team's per-person allow is now a rule naming them on the project, which carries no instance area.
+	require.NoError(t, store.Access.Set(ctx, "project", "project-general", uOverwrite,
+		grant("tickets:read", "stacks:read", "deploys:read", "docs:read", "memories:read", "reviews:read", "repos:read"), nil))
 
 	listRolesIn(t, db, pGeneral)
 
@@ -385,7 +387,7 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		{"topology: get a workspace's canvas", func(ctx context.Context) error {
 			_, err := s.topoSvc.Get(ctx, "workspace-default")
 			return err
-		}, map[string]string{uOwner: ok, uReader: ok, uOverwrite: ok, uPlain: forbidden, uOutsider: notFound}},
+		}, map[string]string{uOwner: ok, uReader: ok, uOverwrite: forbidden, uPlain: forbidden, uOutsider: notFound}},
 		{"notifications: list a workspace's inbox", func(ctx context.Context) error {
 			actor, _ := identity.ActorFromCtx(ctx)
 			_, _, err := s.notifSvc.Page(ctx, actor.ID, workspace.InboxFilter{WorkspaceID: "workspace-default"}, paging.Window{Limit: 10})
@@ -394,7 +396,7 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		{"dns: list gateways", func(ctx context.Context) error {
 			_, err := s.dnsSvc.ListGateways(ctx)
 			return err
-		}, map[string]string{uOwner: ok, uReader: ok, uOverwrite: ok, uPlain: forbidden, uOutsider: forbidden}},
+		}, map[string]string{uOwner: ok, uReader: ok, uOverwrite: forbidden, uPlain: forbidden, uOutsider: forbidden}},
 		{"dns: delete an exposure (the owner passes the gate to a missing id)", func(ctx context.Context) error {
 			return s.dnsSvc.DeleteExposure(ctx, "exposure-missing")
 		}, map[string]string{uOwner: notFound, uReader: forbidden, uWriter: forbidden, uOutsider: forbidden}},
@@ -578,13 +580,8 @@ func TestIntegration_GrantsNeverExceedTheGiver(t *testing.T) {
 		{"a member given a role carrying instance:write", func(ctx context.Context) error {
 			return s.tenancySvc.ChangeMemberRole(ctx, actorID(ctx), "workspace-default", uPlain, "role-steward")
 		}},
-		{"an allow override of instance:write", func(ctx context.Context) error {
-			return s.tenancySvc.SetMemberOverrides(ctx, actorID(ctx), "workspace-default", uReader, &instanceWrite, nil)
-		}},
-		{"an invitation whose override allows instance:write", func(ctx context.Context) error {
-			_, err := s.invitationSvc.Create(ctx, actorID(ctx), tenancy.CreateInvitationInput{ExpiresInDays: 1,
-				Grants: []*tenancy.InvitationGrant{{WorkspaceID: "workspace-default", RoleID: "role-plain", Allow: instanceWrite}}})
-			return err
+		{"taking away a role carrying instance:write", func(ctx context.Context) error {
+			return s.tenancySvc.ChangeMemberRole(ctx, actorID(ctx), "workspace-default", uSteward, "role-plain")
 		}},
 		{"an invitation into a role carrying instance:write", func(ctx context.Context) error {
 			_, err := s.invitationSvc.Create(ctx, actorID(ctx), tenancy.CreateInvitationInput{ExpiresInDays: 1,

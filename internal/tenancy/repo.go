@@ -32,29 +32,11 @@ type MemberRepo interface {
 	RemoveMember(ctx context.Context, workspaceID, userID string, events ...eventbus.OutboxEvent) error
 	// SetRole replaces the roles userID holds in workspaceID with roleID alone.
 	SetRole(ctx context.Context, workspaceID, userID, roleID string, events ...eventbus.OutboxEvent) error
-	// Overrides returns userID's workspace-wide overwrite in workspaceID; both sets are empty when there is none.
-	Overrides(ctx context.Context, workspaceID, userID string) (allow, deny permissions.Set, err error)
-	// SetOverrides replaces userID's workspace-wide overwrite in workspaceID; two empty sets delete it.
-	SetOverrides(ctx context.Context, workspaceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error
-	// ListAllMemberships returns every membership on the instance with its workspace, roles, and overrides.
+	// ListAllMemberships returns every membership on the instance with its workspace and roles.
 	ListAllMemberships(ctx context.Context) ([]*TeamMembership, error)
-	ProjectAccessRepo
-}
-
-// ProjectAccessRepo persists Every project and Project access (ADR 0097); Project access rows are permission
-// overwrites with resource_type "project" (ADR 0042).
-type ProjectAccessRepo interface {
 	// Member returns userID's membership of workspaceID with their roles, or apperrs.ErrNotFound.
 	Member(ctx context.Context, workspaceID, userID string) (*Member, error)
-	// SetRestricted switches userID's Every project row; their Project access rows are kept either way.
-	SetRestricted(ctx context.Context, workspaceID, userID string, restricted bool, events ...eventbus.OutboxEvent) error
-	// ProjectAccess lists userID's Project access in workspaceID's projects, in project order.
-	ProjectAccess(ctx context.Context, workspaceID, userID string) ([]*ProjectAccess, error)
-	// SetProjectAccess replaces userID's levels on projectID; an empty allow deletes the row.
-	SetProjectAccess(ctx context.Context, projectID, userID string, allow permissions.Set, events ...eventbus.OutboxEvent) error
-	// ListAllProjectAccess lists every Project access row on the instance, in project order.
-	ListAllProjectAccess(ctx context.Context) ([]*ProjectAccess, error)
-	// ProjectMemberIDs lists the members of workspaceID who may open projectID, in membership order, in one read.
+	// ProjectMemberIDs lists the members of workspaceID who are in projectID, in membership order, in one read.
 	ProjectMemberIDs(ctx context.Context, workspaceID, projectID string) ([]string, error)
 }
 

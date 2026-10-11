@@ -30,6 +30,22 @@ func migrateBefore(t *testing.T, version string) *sql.DB {
 	return db
 }
 
+// migrateUpTo applies the pending embedded migrations older than version, so a test of an earlier step reads its rows
+// before a later migration rewrites them.
+func migrateUpTo(t *testing.T, db *sql.DB, version string) {
+	t.Helper()
+	pending, err := Pending(db)
+	require.NoError(t, err)
+	for _, v := range pending {
+		if v >= version {
+			return
+		}
+		script, err := migrationFS.ReadFile("migrations/" + v + ".sql")
+		require.NoError(t, err)
+		require.NoError(t, applyMigration(db, v, string(script)))
+	}
+}
+
 func apply0029(t *testing.T, db *sql.DB) {
 	t.Helper()
 	script, err := migrationFS.ReadFile("migrations/0029_instance_stacks.sql")

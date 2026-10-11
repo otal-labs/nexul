@@ -11,8 +11,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 func newTestHandler(t *testing.T) (*Handler, *fakeRepo) {
@@ -252,20 +250,31 @@ func TestHandler_ChangeMemberRole(t *testing.T) {
 		rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/ws-1/members/u-bob", `{"role_id":"owner-role-ws-1"}`, "actor")
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
-	t.Run("overrides alone change only the overrides", func(t *testing.T) {
+	t.Run("a removed field with a value is refused, naming what replaced it", func(t *testing.T) {
+		for _, body := range []string{`{"deny":["docs:delete"]}`, `{"role_id":"role-admin","allow":["docs:read"]}`, `{"every_project":"none"}`,
+			`{"project_access":[{"project_id":"p-web","allow":["tickets:read"]}]}`} {
+			f := newInviteFixture()
+			f.grantManageMembers("actor")
+			require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
+
+			rec := do(t, NewHandler(f.svc).Routes(), http.MethodPatch, "/api/workspaces/ws-1/members/u-bob", body, "actor")
+
+			assert.Equal(t, http.StatusBadRequest, rec.Code, body)
+			assert.Regexp(t, "a role|list the person", rec.Body.String(), body)
+			roleID, err := f.svc.MemberRoleID(context.Background(), "ws-1", "u-bob")
+			require.NoError(t, err)
+			assert.Equal(t, "role-editor", roleID, "nothing changed: %s", body)
+		}
+	})
+	t.Run("removed fields sent empty change nothing, as before", func(t *testing.T) {
 		f := newInviteFixture()
 		f.grantManageMembers("actor")
 		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
-		h := NewHandler(f.svc)
 
-		rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/ws-1/members/u-bob", `{"deny":["docs:delete"]}`, "actor")
-		require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
-		roleID, err := f.svc.MemberRoleID(context.Background(), "ws-1", "u-bob")
-		require.NoError(t, err)
-		assert.Equal(t, "role-editor", roleID)
-		_, deny, err := f.repo.Overrides(context.Background(), "ws-1", "u-bob")
-		require.NoError(t, err)
-		assert.Equal(t, permissions.SetOf(permissions.DocsDelete), deny)
+		rec := do(t, NewHandler(f.svc).Routes(), http.MethodPatch, "/api/workspaces/ws-1/members/u-bob", `{"allow":[],"deny":[],"project_access":[]}`, "actor")
+
+		assert.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
+		assert.Empty(t, f.repo.events)
 	})
 }
 

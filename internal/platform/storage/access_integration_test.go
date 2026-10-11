@@ -309,7 +309,7 @@ func (testDefaultsGate) SeedWorkspaceDefaults(context.Context, string) error {
 // workspace-wide overwrite can deny what a role allows, and a
 // resource-instance overwrite can allow what a workspace-wide overwrite
 // denies.
-func TestIntegration_HasPermission_WorkspacePrecedence(t *testing.T) {
+func TestIntegration_HasPermission_RoleThenResource(t *testing.T) {
 	ctx := context.Background()
 	s := storage.New(newDB(t), []byte("0123456789abcdef0123456789abcdef"))
 	accessSvc := access.NewService(s.Access, realUsers{s.Users})
@@ -340,17 +340,16 @@ func TestIntegration_HasPermission_WorkspacePrecedence(t *testing.T) {
 	assert.True(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.MembersWrite, "", ""),
 		"role mask alone grants the action")
 
-	// A workspace-wide deny overrides the role's allow.
+	// No rule sits on the workspace itself, so one left there by an older release changes nothing (ADR 0148).
 	require.NoError(t, s.Access.Set(ctx, "workspace", ws.ID, "alice", nil, permissions.SetOf(permissions.MembersWrite)))
-	assert.False(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.MembersWrite, "", ""),
-		"workspace-wide deny beats role allow")
+	assert.True(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.MembersWrite, "", ""),
+		"a rule left on the workspace is never read")
 
-	// A resource-instance allow overrides the workspace-wide deny —
-	// most-specific overwrite wins overall.
-	require.NoError(t, s.Access.Set(ctx, "doc", "doc-1", "alice", permissions.SetOf(permissions.MembersWrite), nil))
-	assert.True(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.MembersWrite, "doc", "doc-1"),
-		"resource-instance allow beats workspace-wide deny")
-	assert.False(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.MembersWrite, "", ""),
+	// A resource-instance deny overrides the role's allow, on that resource alone.
+	require.NoError(t, s.Access.Set(ctx, "doc", "doc-1", "alice", nil, permissions.SetOf(permissions.MembersWrite)))
+	assert.False(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.MembersWrite, "doc", "doc-1"),
+		"resource-instance deny beats the role")
+	assert.True(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.MembersWrite, "", ""),
 		"the resource-instance overwrite doesn't leak into a check with no resource")
 
 	// A user with no role and no overwrite in the workspace is denied.

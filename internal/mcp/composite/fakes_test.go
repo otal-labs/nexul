@@ -89,7 +89,6 @@ type world struct {
 	reviews    map[string][]*codereview.CodeReview
 	owner      bool
 	denied     permissions.Action
-	access     []workspace.ProjectAccessEntry
 	target     tickets.TestTarget
 	fail       string
 	gets       int // ticket reads by id, so a test can pin how often a tool loads each ticket
@@ -604,10 +603,6 @@ func (r projectRepo) ProjectForStack(_ context.Context, stackID string) (string,
 }
 
 func (r projectRepo) CountServices(context.Context, string) (int, error) { return 0, nil }
-
-func (r projectRepo) ListRestrictedAccess(context.Context, string) ([]workspace.ProjectAccessEntry, error) {
-	return r.w.access, nil
-}
 
 func (r projectRepo) AddRepo(_ context.Context, projectID string, ref workspace.RepoRef) error {
 	r.w.repos[projectID] = append(r.w.repos[projectID], ref)

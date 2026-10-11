@@ -3,7 +3,6 @@ package composite
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"testing"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/otal-labs/nexul/internal/auth"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
-	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/tenancy"
 )
 
@@ -61,20 +59,8 @@ func (f *fakeTeam) ChangeMemberRole(_ context.Context, _, workspaceID, _, roleID
 	return f.record("role " + workspaceID + " " + roleID)
 }
 
-func (f *fakeTeam) SetMemberOverrides(_ context.Context, _, workspaceID, _ string, allow, deny *permissions.Set) error {
-	return f.record("overrides " + workspaceID)
-}
-
 func (f *fakeTeam) RemoveMember(_ context.Context, _, workspaceID, _ string) error {
 	return f.record("remove " + workspaceID)
-}
-
-func (f *fakeTeam) SetEveryProject(_ context.Context, _, workspaceID, _, every string) error {
-	return f.record("every " + workspaceID + " " + every)
-}
-
-func (f *fakeTeam) SetProjectAccess(_ context.Context, _, workspaceID, _, projectID string, allow permissions.Set) error {
-	return f.record("access " + workspaceID + " " + projectID + " " + allow.String())
 }
 
 type fakeStatusSetter struct{ calls []auth.AccountStatus }
@@ -97,13 +83,12 @@ func callAccountTool(t *testing.T, tools []mcptool.Tool, name, args string) (any
 
 func TestAccountList_CarriesPresenceProvidersAndEachMembershipWithTheViewersManageFlag(t *testing.T) {
 	seen := time.Date(2026, 9, 29, 10, 0, 0, 0, time.UTC)
-	web := []*tenancy.ProjectAccess{{ProjectID: "p-web", ProjectName: "Web", Allow: permissions.SetOf(permissions.TicketsRead)}}
 	team := &fakeTeam{team: &tenancy.Team{
 		People: []*tenancy.TeamPerson{{
 			TeamAccount: tenancy.TeamAccount{ID: "bob", Login: "bob", Status: "active", Online: true, LastSeenAt: &seen, Providers: []string{"github", "discord"}},
 			Workspaces: []*tenancy.TeamMembership{
-				{WorkspaceID: "ws-nexul", RoleName: "Editor", EveryProject: tenancy.EveryProjectRole, Projects: web},
-				{WorkspaceID: "ws-acme", RoleName: "Viewer", EveryProject: tenancy.EveryProjectNone, Projects: web},
+				{WorkspaceID: "ws-nexul", RoleName: "Editor"},
+				{WorkspaceID: "ws-acme", RoleName: "Viewer"},
 			},
 		}},
 		Workspaces: []*tenancy.TeamWorkspace{{ID: "ws-nexul", CanManageMembers: true}, {ID: "ws-acme"}},
@@ -119,9 +104,11 @@ func TestAccountList_CarriesPresenceProvidersAndEachMembershipWithTheViewersMana
 	require.Len(t, page.Items[0].Workspaces, 2)
 	assert.True(t, page.Items[0].Workspaces[0].CanManageMembers)
 	assert.False(t, page.Items[0].Workspaces[1].CanManageMembers)
-	assert.Nil(t, page.Items[0].Workspaces[0].Projects, "rows kept for a From role member grant nothing, so they stay out")
-	assert.Equal(t, tenancy.EveryProjectNone, page.Items[0].Workspaces[1].EveryProject)
-	assert.Equal(t, web, page.Items[0].Workspaces[1].Projects)
+	for _, m := range page.Items[0].Workspaces {
+		assert.Empty(t, m.Allow, "the removed fields read as empty")
+		assert.Empty(t, m.EveryProject)
+		assert.Empty(t, m.Projects)
+	}
 }
 
 func TestAccountUpdate_RoutesEachWorkspaceToAddOrChangeAndStopsAtTheFirstFailure(t *testing.T) {
@@ -135,7 +122,7 @@ func TestAccountUpdate_RoutesEachWorkspaceToAddOrChangeAndStopsAtTheFirstFailure
 		{"nothing to change is invalid", `{"id":"bob"}`, "", nil, apperrs.ErrInvalid},
 		{"a workspace the account is not in is an add", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","role_id":"viewer"}]}`, "", []string{"add ws-acme viewer"}, nil},
 		{"a workspace the account is in is a role change", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","role_id":"editor"}]}`, "", []string{"role ws-nexul editor"}, nil},
-		{"overrides alone leave the role alone", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","deny":["docs:delete"]}]}`, "", []string{"overrides ws-nexul"}, nil},
+		{"removed fields sent empty leave the role alone", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","allow":[],"deny":[]}]}`, "", nil, nil},
 		{"removal comes after the workspaces", `{"id":"bob","remove_workspace_ids":["ws-nexul"],"workspaces":[{"workspace_id":"ws-acme","role_id":"viewer"}]}`, "", []string{"add ws-acme viewer", "remove ws-nexul"}, nil},
 		{"a refused workspace stops the rest", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","role_id":"viewer"}],"remove_workspace_ids":["ws-nexul"]}`, "add ws-acme viewer", []string{"add ws-acme viewer"}, apperrs.ErrForbidden},
 	}
@@ -154,42 +141,18 @@ func TestAccountUpdate_RoutesEachWorkspaceToAddOrChangeAndStopsAtTheFirstFailure
 	}
 }
 
-func TestAccountUpdate_ProjectAccessRunsAfterTheMembershipAndNamesTheFieldThatFailed(t *testing.T) {
-	notHeld := fmt.Errorf("%w: tickets:delete is not yours to give", apperrs.ErrForbidden)
-	tests := []struct {
-		name      string
-		args      string
-		failOn    string
-		failErr   error
-		wantCalls []string
-		wantErr   error
-		wantMsg   string
-	}{
-		{"an invalid every_project changes nothing", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","every_project":"some"}]}`, "every ws-nexul some", apperrs.ErrInvalid,
-			[]string{"every ws-nexul some"}, apperrs.ErrInvalid, "workspaces[ws-nexul].every_project: invalid; nothing was changed"},
-		{"an unknown project points at project_list", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","project_access":[{"project_id":"p-gone","allow":["tickets:read"]}]}]}`, "access ws-nexul p-gone tickets:read", apperrs.ErrNotFound,
-			[]string{"access ws-nexul p-gone tickets:read"}, apperrs.ErrNotFound, "project_list"},
-		{"a level the caller does not hold stops the rest and says what applied", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","every_project":"none","project_access":[{"project_id":"p-1","allow":["tickets:delete"]},{"project_id":"p-2","allow":["tickets:read"]}]}],"remove_workspace_ids":["ws-acme"]}`, "access ws-nexul p-1 tickets:delete", notHeld,
-			[]string{"every ws-nexul none", "access ws-nexul p-1 tickets:delete"}, apperrs.ErrForbidden, "already applied: workspaces[ws-nexul].every_project"},
-		{"role, overrides, every_project, then each project in order", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","role_id":"editor","deny":["docs:delete"],"every_project":"none","project_access":[{"project_id":"p-1","allow":["tickets:read"]},{"project_id":"p-2","allow":[]}]}]}`, "", nil,
-			[]string{"role ws-nexul editor", "overrides ws-nexul", "every ws-nexul none", "access ws-nexul p-1 tickets:read", "access ws-nexul p-2 "}, nil, ""},
-		{"access fields alone leave the role alone", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","project_access":[{"project_id":"p-1","allow":["tickets:read"]}]}]}`, "", nil,
-			[]string{"access ws-nexul p-1 tickets:read"}, nil, ""},
-		{"an omitted project_access keeps every project's levels", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","every_project":"role"}]}`, "", nil,
-			[]string{"every ws-nexul role"}, nil, ""},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			team := &fakeTeam{members: map[string][]string{"ws-nexul": {"bob"}}, failOn: tt.failOn, failErr: tt.failErr}
-			_, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team), "account_update", tt.args)
-			assert.Equal(t, tt.wantCalls, team.calls)
-			if tt.wantErr == nil {
-				require.NoError(t, err)
-				return
-			}
-			require.ErrorIs(t, err, tt.wantErr)
-			assert.Contains(t, err.Error(), tt.wantMsg)
-		})
+func TestAccountUpdate_RemovedFieldsAreRefusedBeforeAnythingChanges(t *testing.T) {
+	for _, entry := range []string{
+		`{"workspace_id":"ws-nexul","role_id":"editor","deny":["docs:delete"]}`,
+		`{"workspace_id":"ws-acme","role_id":"viewer","allow":["docs:read"]}`,
+		`{"workspace_id":"ws-nexul","every_project":"none"}`,
+		`{"workspace_id":"ws-nexul","project_access":[{"project_id":"p-1","allow":["tickets:read"]}]}`,
+	} {
+		team := &fakeTeam{members: map[string][]string{"ws-nexul": {"bob"}}}
+		_, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team), "account_update", `{"id":"bob","workspaces":[`+entry+`]}`)
+		require.ErrorIs(t, err, apperrs.ErrInvalid, entry)
+		assert.Regexp(t, "a role|list the person", err.Error(), entry)
+		assert.Empty(t, team.calls, entry)
 	}
 }
 
