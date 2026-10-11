@@ -448,6 +448,7 @@ func (h *Handler) deliverDiscoverResult(f Frame) {
 // handleDiscover runs the assigned discover job and reports its result; it never occupies the client's job
 // slot (see Handler.Discover), so it can run alongside a concurrently assigned build or deploy.
 func (c *Client) handleDiscover(ctx context.Context, conn *websocket.Conn, f Frame) {
+	defer c.contained(f, func(msg string) { c.sendFrame(ctx, conn, Frame{Type: FrameDiscoverResult, ID: f.ID, Error: msg}) })
 	report, err := c.cfg.Executor.Discover(ctx)
 	if err != nil {
 		c.log.Warn("discover failed", "runner", c.cfg.Name, "id", f.ID, "error", err)

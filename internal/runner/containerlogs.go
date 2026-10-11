@@ -249,6 +249,7 @@ func (c *Client) startLogs(ctx context.Context, conn *websocket.Conn, f Frame) {
 	c.logsMu.Unlock()
 	go func() {
 		defer c.stopLogs(f.ID)
+		defer c.contained(f, func(msg string) { send(Frame{Type: FrameLogsEnd, ID: f.ID, Error: msg}) })
 		c.cfg.Executor.Logs(streamCtx, f, send)
 	}()
 }
