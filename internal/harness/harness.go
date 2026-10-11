@@ -26,6 +26,9 @@ const (
 // ErrProtocol marks a harness speaking a protocol Nexul cannot follow; the refusal's text is the message to show.
 var ErrProtocol = errors.New("unsupported harness protocol")
 
+// ErrSessionRejected is a session the harness refuses; not ErrUnauthorized, whose HTTP 401 signs the browser out of Nexul.
+var ErrSessionRejected = fmt.Errorf("%w: T3 Code no longer accepts this computer's session, pair it again", apperrs.ErrInvalid)
+
 // ErrSessionGone marks a session the harness no longer has, deleted there or never kept.
 var ErrSessionGone = errors.New("the harness session is gone")
 

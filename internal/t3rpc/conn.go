@@ -295,7 +295,7 @@ func mintWSTicket(ctx context.Context, client *http.Client, serverURL, bearerTok
 		return "", fmt.Errorf("read websocket-ticket response: %w", err)
 	}
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return "", fmt.Errorf("%w: T3 rejected the bearer token (%d): %s", apperrs.ErrUnauthorized, resp.StatusCode, strings.TrimSpace(string(body)))
+		return "", fmt.Errorf("%w (%d): %s", harness.ErrSessionRejected, resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("%w: T3 websocket-ticket responded %d: %s", apperrs.ErrInvalid, resp.StatusCode, strings.TrimSpace(string(body)))

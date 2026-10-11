@@ -483,7 +483,7 @@ export const canChooseRunLocation = (readiness: HarnessReadiness, linked: boolea
 // Copy for every non-ready state; shared by the hook's join and the settings readiness line.
 export const HARNESS_READINESS_COPY: Record<Exclude<HarnessReadiness["state"], "ready">, string> = {
   unpaired: "Add a computer in Settings to run plays.",
-  expired: "Your computer's pairing has expired. Re-pair it in Settings.",
+  expired: "Your computer's pairing has expired or was revoked. Re-pair it in Settings.",
   no_harness_project: "Link this project in Settings → Computers → Projects, or set a fallback under Defaults.",
   no_default_computer: "Several computers are paired. Pick a default in Settings.",
   offline: "T3 Code on your computer is offline.",

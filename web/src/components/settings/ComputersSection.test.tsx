@@ -303,6 +303,7 @@ describe("ComputersSection", () => {
       ["online and answering", { runner: online, facts: answering }, "connected", ["Online", "T3 Code answering"]],
       ["online with its desktop app closed", { runner: online, facts: { ...answering, t3: { state: "not_running", install: "desktop_app" } } }, undefined, ["Online", "Open T3 Code"]],
       ["online but refused pairing", { runner: online, facts: answering, pair_error: "T3 Code made no pairing token" }, undefined, ["Online", "Pairing failed"]],
+      ["online with its session refused by T3 Code", { runner: online, facts: answering }, "rejected", ["Online", "T3 Code refused the session"]],
       ["offline", { runner: { connected: false, last_seen: "2026-10-10T12:00:00Z" } }, undefined, ["Offline"]],
     ])("reads each lane on its own when %s", async (_, state, presence, lanes) => {
       serveComputers([computer({ server_url: relay, ...state })]);

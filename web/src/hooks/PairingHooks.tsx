@@ -201,6 +201,9 @@ export const useHarnessReadiness = (projectId?: string): HarnessReadiness | unde
     return { state, message: HARNESS_READINESS_COPY[state] };
   }
   const computerId = resolve.data.computer_id ?? "";
+  if (presence.data?.[computerId] === "rejected") {
+    return { state: "expired", message: HARNESS_READINESS_COPY.expired };
+  }
   if (presence.data?.[computerId] !== "connected") {
     return { state: "offline", message: HARNESS_READINESS_COPY.offline };
   }

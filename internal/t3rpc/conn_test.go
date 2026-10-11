@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/t3rpc/t3rpctest"
 )
@@ -45,14 +46,15 @@ func TestConnect_AcceptsAlternateTicketFieldName(t *testing.T) {
 	assert.Equal(t, int32(1), f.ConfigCalls.Load())
 }
 
-func TestConnect_RejectedBearerIsUnauthorized(t *testing.T) {
+func TestConnect_RejectedBearer_IsARejectedSessionNotANexulSignOut(t *testing.T) {
 	t.Parallel()
 	f := t3rpctest.New(t)
 	computer := f.Session()
 	computer.BearerToken = "wrong"
 	_, err := Connect(testCtx(t), computer, Options{HTTPClient: f.Client()})
 	require.Error(t, err)
-	assert.ErrorIs(t, err, apperrs.ErrUnauthorized)
+	assert.ErrorIs(t, err, harness.ErrSessionRejected)
+	assert.NotErrorIs(t, err, apperrs.ErrUnauthorized, "a 401 from the gateway signs the browser out of Nexul")
 }
 
 func TestProtocol_DescriptorAndHandshakeAgree(t *testing.T) {

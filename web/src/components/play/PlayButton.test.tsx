@@ -133,7 +133,7 @@ describe("PlayButton", () => {
 
   it.each([
     ["offline", { ok: true, computer_id: "c-1" }, "T3 Code on your computer is offline."],
-    ["expired", { ok: false, reason: "expired_token" }, "Your computer's pairing has expired. Re-pair it in Settings."],
+    ["expired", { ok: false, reason: "expired_token" }, "Your computer's pairing has expired or was revoked. Re-pair it in Settings."],
   ])("is disabled with the reason when the project's linked computer is %s", async (_, resolve, reason) => {
     mockApi({ resolve, presence: {}, links: [{ project_id: "p-1", computer_id: "c-1", harness_project_id: "t3-app" }] });
     renderButton();
