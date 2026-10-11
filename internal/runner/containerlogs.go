@@ -230,6 +230,11 @@ func (w *lineSplitter) flush() {
 
 // ---- client-side: one goroutine per stream ----
 
+// servesDocker reports whether a personal runner takes a container frame: only while its last facts found Docker.
+func (c *Client) servesDocker(f Frame) bool {
+	return (f.Type == FrameDiscover || f.Type == FrameLogsRequest) && c.dockerAvailable.Load()
+}
+
 // startLogs serves one logs_request until it ends or is cancelled; past maxLogStreams it is refused at once.
 func (c *Client) startLogs(ctx context.Context, conn *websocket.Conn, f Frame) {
 	send := func(fr Frame) { c.sendFrame(ctx, conn, fr) }
@@ -350,6 +355,19 @@ func (h *Handler) OpenLogs(ctx context.Context, machine, container string, tail 
 	if c == nil {
 		return nil, fmt.Errorf("%w: no runner is connected on machine %q", apperrs.ErrRetryable, machine)
 	}
+	return h.openLogs(ctx, c, container, tail, follow)
+}
+
+// OpenComputerLogs asks computerID's personal runner to stream container's logs, under the same limits as a machine's.
+func (h *Handler) OpenComputerLogs(ctx context.Context, computerID, container string, tail int, follow bool) (*LogFeed, error) {
+	c, err := h.computerConn(ctx, computerID)
+	if err != nil {
+		return nil, err
+	}
+	return h.openLogs(ctx, c, container, tail, follow)
+}
+
+func (h *Handler) openLogs(ctx context.Context, c *runnerConn, container string, tail int, follow bool) (*LogFeed, error) {
 	id := ids.New()
 	feed := &LogFeed{ready: make(chan struct{}, 1)}
 	feed.stop = func() {

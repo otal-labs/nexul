@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TabUnderline } from "@/components/ActiveIndicator";
 import { useFetchStackServices } from "@/hooks/StackHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { stackLogSource } from "@/models/ContainerLog";
 
 interface StackLogsTabsProps {
   stackId: string;
@@ -42,7 +43,7 @@ export const StackLogsTabs = ({ stackId, service }: StackLogsTabsProps) => {
           </TabsList>
         </Tabs>
       )}
-      {active && <LogsView key={active.name} stackId={stackId} service={active.name} />}
+      {active && <LogsView key={active.name} source={stackLogSource(stackId, active.name)} />}
     </div>
   );
 };

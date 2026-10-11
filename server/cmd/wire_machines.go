@@ -6,6 +6,7 @@ import (
 	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
+	"github.com/otal-labs/nexul/internal/platform/containerlog"
 	"github.com/otal-labs/nexul/internal/runner"
 )
 
@@ -98,11 +99,11 @@ type runnerLogFeed struct {
 	feed *runner.LogFeed
 }
 
-func (f runnerLogFeed) Next(ctx context.Context) ([]deploy.ContainerLogLine, error) {
+func (f runnerLogFeed) Next(ctx context.Context) ([]containerlog.Line, error) {
 	lines, err := f.feed.Next(ctx)
-	out := make([]deploy.ContainerLogLine, len(lines))
+	out := make([]containerlog.Line, len(lines))
 	for i, l := range lines {
-		out[i] = deploy.ContainerLogLine(l)
+		out[i] = containerlog.Line(l)
 	}
 	return out, err
 }

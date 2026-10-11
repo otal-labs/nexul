@@ -1,6 +1,6 @@
 # 17 — Container logs on a computer with Docker
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 05, 06
 
@@ -17,6 +17,6 @@ spec (Later: container logs on a computer).
 
 ## Acceptance criteria
 
-- [ ] ADR 0091's limits hold unchanged (16 streams, 1000-line tail, 64 KB a second).
-- [ ] `TestComputerContainers_OnlyTheOwnerSeesThem` over HTTP, MCP and the logs socket.
-- [ ] A computer without Docker shows no Containers section and accepts no `logs_request`.
+- [x] ADR 0091's limits hold unchanged (16 streams, 1000-line tail, 64 KB a second).
+- [x] `TestComputerContainers_OnlyTheOwnerSeesThem` over HTTP, MCP and the logs socket.
+- [x] A computer without Docker shows no Containers section and accepts no `logs_request`.

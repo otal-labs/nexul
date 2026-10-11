@@ -91,6 +91,8 @@ type NetworkInfo struct {
 type DiscoverReport struct {
 	Containers []DiscoveredContainer `json:"containers,omitempty"`
 	Networks   []NetworkInfo         `json:"networks,omitempty"`
+	// Error is why the runner could not scan; a machine's import reads an empty report instead.
+	Error string `json:"-"`
 }
 
 // StackGroup is one compose project's containers within a grouped discovery response (spec §8).
@@ -384,6 +386,26 @@ func (h *Handler) Discover(ctx context.Context, machine string, timeout time.Dur
 	if c == nil {
 		return DiscoverReport{}, fmt.Errorf("%w: no idle runner connected on machine %q", apperrs.ErrConflict, machine)
 	}
+	return h.discover(ctx, c, timeout, fmt.Sprintf("runner on machine %q", machine))
+}
+
+// ComputerContainers lists the containers on computerID, read by its personal runner the way a machine's are.
+func (h *Handler) ComputerContainers(ctx context.Context, computerID string) ([]DiscoveredContainer, error) {
+	c, err := h.computerConn(ctx, computerID)
+	if err != nil {
+		return nil, err
+	}
+	report, err := h.discover(ctx, c, discoverTimeout, "runner of computer "+computerID)
+	if err != nil {
+		return nil, err
+	}
+	if report.Error != "" {
+		return nil, fmt.Errorf("%w: %s", apperrs.ErrConflict, report.Error)
+	}
+	return report.Containers, nil
+}
+
+func (h *Handler) discover(ctx context.Context, c *runnerConn, timeout time.Duration, who string) (DiscoverReport, error) {
 	id := ids.New()
 	ch := make(chan Frame, 1)
 	h.discoverMu.Lock()
@@ -401,9 +423,9 @@ func (h *Handler) Discover(ctx context.Context, machine string, timeout time.Dur
 	defer cancel()
 	select {
 	case f := <-ch:
-		return DiscoverReport{Containers: f.Containers, Networks: f.Networks}, nil
+		return DiscoverReport{Containers: f.Containers, Networks: f.Networks, Error: f.Error}, nil
 	case <-waitCtx.Done():
-		return DiscoverReport{}, fmt.Errorf("%w: discover timed out waiting for runner on machine %q", apperrs.ErrRetryable, machine)
+		return DiscoverReport{}, fmt.Errorf("%w: discover timed out waiting for %s", apperrs.ErrRetryable, who)
 	}
 }
 

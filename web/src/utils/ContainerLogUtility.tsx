@@ -43,8 +43,8 @@ const offlineMessage = (reason: string | undefined): EmptyLogMessage => {
 };
 
 // What the block says in place of lines: the connection's state while nothing has arrived, else why the filter shows none.
-export const emptyLogMessage = ({ lines, status, reason }: ContainerLogs, filter: LogFilter): EmptyLogMessage => {
-  if (status === "forbidden") return { text: "You can't read logs for this stack." };
+export const emptyLogMessage = ({ lines, status, reason }: ContainerLogs, filter: LogFilter, forbidden: string): EmptyLogMessage => {
+  if (status === "forbidden") return { text: forbidden };
   if (lines.length > 0 && filter === "errors") return { text: "No error output" };
   if (status === "connecting") return { text: "Connecting…" };
   if (status === "offline") return offlineMessage(reason);

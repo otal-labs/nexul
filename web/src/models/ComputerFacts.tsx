@@ -11,6 +11,8 @@ export interface ComputerFacts {
   git_name?: string;
   git_email?: string;
   free_disk_bytes?: number;
+  // Absent from a runner older than container logs.
+  docker?: { available: boolean; version?: string };
   providers: ProviderFacts[];
   projects: { id: string; title: string; path: string }[];
 }

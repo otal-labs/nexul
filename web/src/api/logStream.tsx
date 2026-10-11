@@ -17,7 +17,7 @@ export interface ContainerLogStreamHandlers {
   onStatus: (status: LogStatus, reason?: string) => void;
 }
 
-// One viewer's tail of one service: the socket's lifetime is the stream's, so close() stops it on the host.
+// One viewer's tail of one container: the socket's lifetime is the stream's, so close() stops it on the host.
 export class ContainerLogStream {
   private socket: WebSocket | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
@@ -26,8 +26,7 @@ export class ContainerLogStream {
   private newest = "";
 
   constructor(
-    private readonly stackId: string,
-    private readonly service: string,
+    private readonly path: string,
     private readonly token: string,
     private readonly handlers: ContainerLogStreamHandlers,
   ) {}
@@ -37,7 +36,7 @@ export class ContainerLogStream {
     // A reconnect replays a small tail; lines at or before the newest one already seen are the overlap.
     const seen = this.newest;
     let opened = false;
-    const ws = new WebSocket(buildLogsURL(this.token, this.stackId, this.service, seen ? RECONNECT_TAIL : FIRST_TAIL));
+    const ws = new WebSocket(buildLogsURL(this.token, this.path, seen ? RECONNECT_TAIL : FIRST_TAIL));
     this.socket = ws;
     ws.onopen = () => {
       opened = true;
@@ -81,14 +80,14 @@ export class ContainerLogStream {
       const fresh = seen ? lines.filter((l) => l.ts > seen) : lines;
       if (fresh.length > 0) this.handlers.onLines(fresh);
     } catch {
-      console.warn("logs dropped malformed frame", { stackId: this.stackId, service: this.service });
+      console.warn("logs dropped malformed frame", { path: this.path });
     }
   }
 
   // A refused handshake reaches the socket as a bare close, so the snapshot route says why.
   private async explainRefusal() {
     try {
-      await api.get(`/api/stacks/${this.stackId}/services/${encodeURIComponent(this.service)}/logs?tail=1`);
+      await api.get(`/api${this.path}?tail=1`);
     } catch (error) {
       if (this.closed) return;
       const status = (error as AxiosError).response?.status;

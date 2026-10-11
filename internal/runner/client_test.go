@@ -45,7 +45,7 @@ func TestClient_startJob_CopiesRunFields(t *testing.T) {
 }
 
 func newTestClient(srvURL string, exec Executor) *Client {
-	return NewClient(ClientConfig{
+	c := NewClient(ClientConfig{
 		URL:               srvURL,
 		Credential:        "nxr_tok",
 		Name:              "alpha",
@@ -57,6 +57,8 @@ func newTestClient(srvURL string, exec Executor) *Client {
 		BackoffBase:       5 * time.Millisecond,
 		BackoffMax:        50 * time.Millisecond,
 	})
+	c.dockerFacts = func(context.Context) *DockerFacts { return &DockerFacts{} }
+	return c
 }
 
 func runClient(t *testing.T, c *Client) (context.CancelFunc, <-chan error) {

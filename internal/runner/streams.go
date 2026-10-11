@@ -311,6 +311,9 @@ func (c *Client) recoverStream(id string) {
 	}
 }
 
+// noDocker refuses a container frame on a computer whose last facts found no Docker daemon.
+const noDocker = "Docker isn't available on this computer"
+
 // refusal is the terminal answer a personal runner gives a frame it never runs, so a waiting server fails fast.
 func refusal(f Frame) (Frame, bool) {
 	const reason = "a personal runner does not run this"
@@ -322,9 +325,9 @@ func refusal(f Frame) (Frame, bool) {
 	case FrameJoinNetworks:
 		return Frame{Type: FrameJoinNetworksResult, GatewayContainer: f.GatewayContainer, Status: BuildStatusFailed, Error: reason}, true
 	case FrameDiscover:
-		return Frame{Type: FrameDiscoverResult, ID: f.ID, Error: reason}, true
+		return Frame{Type: FrameDiscoverResult, ID: f.ID, Error: noDocker}, true
 	case FrameLogsRequest:
-		return Frame{Type: FrameLogsEnd, ID: f.ID, Error: reason}, true
+		return Frame{Type: FrameLogsEnd, ID: f.ID, Error: noDocker}, true
 	}
 	return Frame{}, false
 }

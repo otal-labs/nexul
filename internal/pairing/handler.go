@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/otal-labs/nexul/internal/harness"
+	"github.com/otal-labs/nexul/internal/platform/containerlog"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 )
@@ -37,6 +38,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("DELETE /api/pairing/computers/{id}/mcp-token", h.revokeMCPToken)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/projects", h.listProjects)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/providers", h.listProviders)
+	mux.HandleFunc("GET /api/pairing/computers/{id}/containers", h.listContainers)
+	mux.HandleFunc("GET /api/pairing/computers/{id}/containers/{name}/logs", h.containerLogs)
 	// Read-only on purpose: a setup confirmation is written only through MCP (ADR 0063).
 	mux.HandleFunc("GET /api/pairing/computers/{id}/setup", h.getSetup)
 	mux.HandleFunc("PUT /api/pairing/computers/{id}/setup/choices", h.saveSetupChoices)
@@ -78,6 +81,24 @@ func (h *Handler) listProviders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"providers": providers})
+}
+
+func (h *Handler) listContainers(w http.ResponseWriter, r *http.Request) {
+	containers, err := h.svc.ListContainers(r.Context(), actorID(r), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"containers": containers})
+}
+
+func (h *Handler) containerLogs(w http.ResponseWriter, r *http.Request) {
+	containerlog.ServeSnapshot(w, r, h.svc.containerLogOpener(actorID(r), r.PathValue("id"), r.PathValue("name")), r.PathValue("name"))
+}
+
+// ContainerLogsSocket serves one container's live tail to its computer's owner; closing it stops docker logs there.
+func (h *Handler) ContainerLogsSocket(w http.ResponseWriter, r *http.Request) {
+	containerlog.ServeSocket(w, r, h.svc.containerLogOpener(actorID(r), r.PathValue("id"), r.PathValue("name")))
 }
 
 func (h *Handler) getSetup(w http.ResponseWriter, r *http.Request) {
