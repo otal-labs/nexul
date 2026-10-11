@@ -6,9 +6,14 @@ ON CONFLICT DO NOTHING;
 -- name: GetPlayQueueItem :one
 SELECT * FROM play_queue WHERE id = ?;
 
--- name: UpdatePlayQueueItem :execrows
-UPDATE play_queue SET status = ?, reason = ?, trail_id = ?, decided_at = ?, not_before = ?, computer_id = ?, harness_project_id = ?
-WHERE id = ? AND status = sqlc.arg(from_status);
+-- name: UpdatePlayQueueItem :one
+UPDATE play_queue SET status = ?, reason = ?, trail_id = ?, decided_at = ?, not_before = ?
+WHERE id = ? AND status = sqlc.arg(from_status)
+RETURNING computer_id, harness_project_id;
+
+-- name: PickPlayQueueItem :execrows
+UPDATE play_queue SET computer_id = ?, harness_project_id = ?, reason = '', not_before = ?
+WHERE id = ? AND status = 'queued';
 
 -- name: ListPlayQueueByTarget :many
 SELECT * FROM play_queue WHERE target_type = ? AND target_id = ? ORDER BY queued_at DESC, id DESC;

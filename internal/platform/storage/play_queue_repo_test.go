@@ -54,6 +54,32 @@ func TestPlayQueueRepo_WaitingMatchIsANoOpAndPublishesNothing(t *testing.T) {
 	assert.True(t, inserted, "once started, the next match waits again")
 }
 
+func TestPlayQueueRepo_PickAndMove_NeverOverwriteEachOther(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	seedPlays(t, s)
+	ctx := t.Context()
+	at := time.Date(2026, 10, 10, 9, 0, 0, 0, time.UTC)
+	_, err := s.PlayQueue.EnqueueRun(ctx, newTestQueueItem("q-1", "ap-1", "t-1", "u-1", plays.LevelNormal, at))
+	require.NoError(t, err)
+	stale, err := s.PlayQueue.GetQueueItem(ctx, "q-1")
+	require.NoError(t, err)
+	picked := *stale
+	picked.ComputerID, picked.HarnessProjectID = "c-laptop", "t3-laptop"
+	require.NoError(t, s.PlayQueue.PickQueueItem(ctx, &picked))
+
+	stale.Status = plays.QueueDispatching
+	require.NoError(t, s.PlayQueue.MoveQueueItem(ctx, stale, plays.QueueQueued))
+
+	assert.Equal(t, []string{"c-laptop", "t3-laptop"}, []string{stale.ComputerID, stale.HarnessProjectID}, "the claim reads the pick it raced")
+	got, err := s.PlayQueue.GetQueueItem(ctx, "q-1")
+	require.NoError(t, err)
+	assert.Equal(t, "c-laptop", got.ComputerID, "a move never writes the pick")
+	picked.ComputerID = "c-desk"
+	require.ErrorIs(t, s.PlayQueue.PickQueueItem(ctx, &picked), apperrs.ErrConflict, "a claimed run takes no pick")
+	require.ErrorIs(t, s.PlayQueue.PickQueueItem(ctx, &plays.QueueItem{ID: "missing"}), apperrs.ErrConflict)
+}
+
 func TestPlayQueueRepo_DueByPriorityThenAge(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

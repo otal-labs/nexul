@@ -41,8 +41,10 @@ type QueueRepo interface {
 	// EnqueueRun inserts it with evts, or writes nothing and reports false while the same auto play already waits on the target.
 	EnqueueRun(ctx context.Context, it *QueueItem, evts ...eventbus.OutboxEvent) (bool, error)
 	GetQueueItem(ctx context.Context, id string) (*QueueItem, error)
-	// MoveQueueItem saves it's status, reason, trail, and times if the row is still in status from; ErrConflict otherwise.
+	// MoveQueueItem saves it's status, reason, trail, and times if the row is still in status from, reading its pick back.
 	MoveQueueItem(ctx context.Context, it *QueueItem, from QueueStatus, evts ...eventbus.OutboxEvent) error
+	// PickQueueItem saves it's computer and T3 project, due at its NotBefore, if the row is still queued; ErrConflict otherwise.
+	PickQueueItem(ctx context.Context, it *QueueItem, evts ...eventbus.OutboxEvent) error
 	// ListQueueByTarget returns a target's items, newest first.
 	ListQueueByTarget(ctx context.Context, targetType TargetType, targetID string) ([]*QueueItem, error)
 	// ListQueuedByPlay returns a play's queued items in the projects of scope, highest priority then oldest first.

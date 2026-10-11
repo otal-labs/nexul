@@ -632,6 +632,106 @@ func TestPickComputer_RunsTheHeldRunThereForItsPersonOnly(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrConflict, "a started run has no computer left to pick")
 }
 
+// heldForAPick queues a run on t-1 that waits for its person to pick a computer and is due again, and returns its id.
+func (r *rig) heldForAPick(t *testing.T) string {
+	t.Helper()
+	fix := r.play(t, "Fix it")
+	r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked)
+	r.ticket("t-1")
+	r.unblock(t, "t-1")
+	r.Refuse(plays.RefusalNoDefaultComputer)
+	r.dispatch(t)
+	r.clock = r.clock.Add(time.Minute)
+	return r.only(t, "t-1").ID
+}
+
+// ranOn is where the started run on ticketID ran: its computer and T3 project.
+func (r *rig) ranOn(t *testing.T, ticketID string) []any {
+	t.Helper()
+	it := r.only(t, ticketID)
+	require.Equal(t, plays.QueueStarted, it.Status)
+	trail, err := r.store.PlayTrails.GetTrail(t.Context(), it.TrailID)
+	require.NoError(t, err)
+	return []any{trail.ComputerID, trail.HarnessProjectID}
+}
+
+func TestPickComputer_AgainWhileItWaits_ReplacesThePickAndStartsThere(t *testing.T) {
+	r := newRig(t, openStore(t))
+	id := r.heldForAPick(t)
+	_, err := r.Runner.PickComputer(as(t.Context(), dev), id, "c-laptop", "t3-laptop")
+	require.NoError(t, err)
+	r.Offline(true)
+	r.dispatch(t)
+	held := r.only(t, "t-1")
+	require.Equal(t, []any{plays.QueueQueued, plays.ReasonOffline, "c-laptop"}, []any{held.Status, held.Reason, held.ComputerID},
+		"the picked computer went offline and the run waits on it")
+	r.Kicked()
+
+	it, err := r.Runner.PickComputer(as(t.Context(), dev), id, "c-desk", "t3-desk")
+
+	require.NoError(t, err)
+	assert.Equal(t, []any{plays.QueueQueued, "", "c-desk"}, []any{it.Status, it.Reason, it.ComputerID})
+	assert.Equal(t, [2]string{"c-desk", "t3-desk"}, r.Link(dev, project), "the link follows the new pick")
+	assert.True(t, r.Kicked())
+	r.Offline(false)
+	r.dispatch(t)
+	assert.Equal(t, []any{"c-desk", "t3-desk"}, r.ranOn(t, "t-1"), "runs where it was picked last, without waiting out the minute")
+	_, err = r.Runner.PickComputer(as(t.Context(), dev), id, "c-laptop", "t3-laptop")
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	assert.ErrorContains(t, err, "already started")
+}
+
+// The dispatcher claims a run by moving it to dispatching and reads its pick in that same statement, so a pick that
+// lands around the claim is either used by the start or refused to its person, never written and then ignored.
+func TestPickComputer_AroundTheClaim_IsUsedOrRefusedNeverLost(t *testing.T) {
+	t.Run("a pick before the claim is the one the run starts on", func(t *testing.T) {
+		r := newRig(t, openStore(t))
+		id := r.heldForAPick(t)
+		r.FailLinkSave(errors.New("link store down"))
+		r.OnNextFacts(func() {
+			_, err := r.Runner.PickComputer(as(t.Context(), dev), id, "c-laptop", "t3-laptop")
+			require.NoError(t, err)
+		})
+
+		r.dispatch(t)
+
+		assert.Equal(t, []any{"c-laptop", "t3-laptop"}, r.ranOn(t, "t-1"), "the pass read the run before the pick, and still ran it there")
+	})
+
+	t.Run("a pick after the claim is refused as starting", func(t *testing.T) {
+		r := newRig(t, openStore(t))
+		id := r.heldForAPick(t)
+		claimed, release, dispatched := make(chan struct{}), make(chan struct{}), make(chan struct{})
+		var dispatchErr error
+		r.OnNextResolve(func() {
+			close(claimed)
+			<-release
+		})
+		r.OnNextFacts(func() {
+			go func() {
+				defer close(dispatched)
+				_, dispatchErr = r.Dispatch(t.Context())
+			}()
+			select {
+			case <-claimed:
+			case <-dispatched:
+			}
+		})
+
+		_, err := r.Runner.PickComputer(as(t.Context(), dev), id, "c-laptop", "t3-laptop")
+		close(release)
+		<-dispatched
+		require.NoError(t, dispatchErr)
+
+		require.ErrorIs(t, err, apperrs.ErrConflict, "the pick read the run as queued, then the claim won")
+		assert.ErrorContains(t, err, "the run is already starting")
+		held := r.only(t, "t-1")
+		assert.Equal(t, []any{plays.QueueQueued, plays.RefusalNoDefaultComputer, ""}, []any{held.Status, held.Reason, held.ComputerID},
+			"the start went without a pick and the run waits for one again")
+		assert.Empty(t, r.Link(dev, project), "a refused pick saves no link")
+	})
+}
+
 func TestDispatch_DailyCap_PausesUntilResumed(t *testing.T) {
 	r := newRig(t, openStore(t))
 	require.NoError(t, r.store.Plays.SetAutoPlayDailyCap(t.Context(), ws, 2))
@@ -813,11 +913,16 @@ func TestQueueSurfaces_MCP(t *testing.T) {
 	out, err = tool(t, r, ctx, "trail_update", `{"id":"`+page.Items[0].ID+`","computer_id":"c-laptop","t3_project_id":"t3-project"}`)
 	require.NoError(t, err)
 	assert.Equal(t, "c-laptop", out.(*plays.QueueItem).ComputerID)
+	out, err = tool(t, r, ctx, "trail_update", `{"id":"`+page.Items[0].ID+`","computer_id":"c-desk","t3_project_id":"t3-desk"}`)
+	require.NoError(t, err)
+	assert.Equal(t, "c-desk", out.(*plays.QueueItem).ComputerID, "a waiting run takes a new pick")
 	_, err = tool(t, r, ctx, "trail_update", `{"id":"`+page.Items[0].ID+`","cancel":true,"stop":true}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "cancel takes no other steer")
 	out, err = tool(t, r, ctx, "trail_update", `{"id":"`+page.Items[0].ID+`","cancel":true}`)
 	require.NoError(t, err)
 	assert.Equal(t, plays.QueueCancelled, out.(*plays.QueueItem).Status)
+	_, err = tool(t, r, ctx, "trail_update", `{"id":"`+page.Items[0].ID+`","computer_id":"c-laptop","t3_project_id":"t3-project"}`)
+	require.ErrorIs(t, err, apperrs.ErrConflict, "a run that left the queue takes no pick")
 
 	_, err = tool(t, r, ctx, "play_run", `{"resume_auto_plays":true,"play_id":"`+fix.ID+`","target_type":"ticket","target_id":"t-1"}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "resume takes only the target")
@@ -864,6 +969,9 @@ func TestQueueSurfaces_HTTP(t *testing.T) {
 	assert.NotContains(t, rec.Body.String(), "t3-project", "the T3 project stays off the wire, as a trail's does")
 	assert.Equal(t, http.StatusOK, call(http.MethodPost, "/api/plays/queue/"+q.Items[0].ID+"/cancel", "").Code)
 	assert.Equal(t, http.StatusNotFound, call(http.MethodPost, "/api/plays/queue/missing/cancel", "").Code)
+	rec = call(http.MethodPost, "/api/plays/queue/"+q.Items[0].ID+"/computer", `{"computer_id":"c-desk","harness_project_id":"t3-desk"}`)
+	assert.Equal(t, http.StatusConflict, rec.Code, "a cancelled run takes no pick")
+	assert.Contains(t, rec.Body.String(), "the run is cancelled, not waiting")
 }
 
 // decisionsCheck is the migrated workspace's seeded decisions check, its auto play switched on.

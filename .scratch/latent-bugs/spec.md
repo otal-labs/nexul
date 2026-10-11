@@ -145,16 +145,6 @@ created yet (no use-case sets `parent_message_id`) and the web has no screen
 for one, so they have no menu to carry it. When channel threads get a screen,
 give its menu the same "Bots" item (`useBotsDialog`).
 
-## A picked computer for a waiting auto run can't be changed, and a pick can be lost
-
-When an auto run waits because several computers are paired and none is the
-default, its person picks a computer and T3 project from the rail. Once
-picked, the "Pick a computer" button is gone, even if that computer then
-goes offline, so the only way out is to cancel the run. A pick that lands in
-the moment the dispatcher is starting the run can also be lost (the button
-just shows again). Let the person re-pick while the run still waits, and
-make the pick and the dispatcher's start agree on one row state.
-
 ## A renamed play doesn't warn about automations calling it by its old name
 
 `runPlay` names a play by its label, so renaming a play breaks every

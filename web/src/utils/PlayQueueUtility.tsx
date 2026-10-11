@@ -31,8 +31,9 @@ const setupGaps: Record<string, { why: string; sentence: string }> = {
   setup_required: { why: "computer setup not done", sentence: "the computer's setup isn't done; run it in Settings → Computers" },
 };
 
-// Several computers and no default: the run's person picks where it runs.
-export const pickingComputer = (item: PlayQueueItem): boolean => item.status === "queued" && item.reason === "no_default_computer";
+// Several computers and no default: the run's person picks where it runs, and picks again while it still waits.
+export const pickingComputer = (item: PlayQueueItem): boolean =>
+  item.status === "queued" && (item.reason === "no_default_computer" || item.computer_id !== "");
 
 // Why a queued run waits, from the server's hold reasons (internal/plays/queue.go).
 export const waitingWhy = (item: PlayQueueItem): string => {
