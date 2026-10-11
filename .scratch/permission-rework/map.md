@@ -50,6 +50,10 @@ asking the owner anything. This map plans; it builds nothing.
   role targets, role sets, batched project and channel reads, the doc and play panel, the row menu) lands on master
   first; everything that changes access is built on a short `permission-switch` branch and lands as one squash PR
   after a box upgrade test; folders, stacks, channel rules, play See, computers and instance areas follow.
+- [The role editor as a dialog](issues/08-the-role-editor-dialog.md): Edit and New role open a 40rem dialog with a
+  pinned Save; Workspace and In projects sections each lead with their own bulk row, Create projects and Manage this
+  project's access are switches, plays' first rung reads See, extra verbs sit as checkboxes under their area, and
+  leaving with changes asks first.
 
 ## Not yet specified
 
