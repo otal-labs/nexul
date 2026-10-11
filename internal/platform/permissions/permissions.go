@@ -52,6 +52,7 @@ const (
 	ConnectorsRead     Action = "connectors:read"
 	ConnectorsWrite    Action = "connectors:write"
 	ChatWrite          Action = "chat:write"
+	ChannelsRead       Action = "channels:read"
 	ChannelsWrite      Action = "channels:write"
 	ChannelsDelete     Action = "channels:delete"
 	BotwebhookRead     Action = "botwebhook:read"
@@ -157,7 +158,7 @@ var domainTable = []domainInfo{
 	{"dns", "DNS and gateways", []string{read, write, delete}, AreaInstance},
 	{"notifications", "notifications", []string{read, write}, AreaWorkspace},
 	{"chat", "chat", []string{read, write, delete}, AreaWorkspace},
-	// channels:read rounds out the role editor's ladder; reading a channel takes only membership (ADR 0087).
+	// A channel's read starts held for whoever may see it, and only a rule on the channel denies channels:read (ADR 0148).
 	{"channels", "channels", []string{read, write, delete}, AreaWorkspace},
 	{"voice", "voice", []string{read, write}, AreaWorkspace},
 	// No implication between the three: read hides a bot's URL, write shows it, and only delete deletes.

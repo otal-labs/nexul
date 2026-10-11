@@ -72,6 +72,7 @@ func TestIntegration_PermissionSuitesAnswerTheSameWithAMemo(t *testing.T) {
 		"restricted live frames":            TestIntegration_RestrictedMember_LiveFramesFollowAccess,
 		"restricted granting and cleanup":   TestIntegration_RestrictedMember_GrantingAndCleanup,
 		"private channel":                   TestIntegration_PrivateChannel,
+		"channel rules":                     TestIntegration_ChannelRules,
 		"switching private":                 TestIntegration_SwitchingPrivateReachesEveryOpenSidebar,
 		"removal from a private voice call": TestIntegration_RemovalFromPrivateVoiceChannelEndsTheirCall,
 		"live frames follow the read":       TestLiveAudience_FramesFollowTheEntitysRead,
@@ -334,7 +335,8 @@ func TestStatements_TicketSearchFetchesOnlyEachResult(t *testing.T) {
 // TestStatements_LiveFramesCostOneReadPerPersonOnceWarm: after the first frame, an agent stream's frame costs each
 // connected person the conversation's own read and no access read, until something commits.
 func TestStatements_LiveFramesCostOneReadPerPersonOnceWarm(t *testing.T) {
-	f, st := newCountedFixture(t)
+	f, st, db := newCountedFixtureDB(t)
+	withRulesOnEveryChannel(t, db)
 	audience := memoizedAudience(f.svc)
 	frame, err := json.Marshal(agent.StreamFrame{ConversationID: f.channel.ID, Streaming: true, Text: "tok"})
 	require.NoError(t, err)
@@ -356,6 +358,48 @@ func TestStatements_LiveFramesCostOneReadPerPersonOnceWarm(t *testing.T) {
 	}
 
 	assert.Equal(t, 5*int64(len(members))*perConversation, st.Count())
+}
+
+// withRulesOnEveryChannel writes Allow rules on every channel in SQL, since no writer names a channel yet.
+func withRulesOnEveryChannel(t *testing.T, db *sql.DB) {
+	t.Helper()
+	_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, user_id, allow, deny, created_at, updated_at)
+SELECT 'channel', c.id, 'role', r.id, NULL, '["channels:read"]', '[]', 1, 1 FROM conversations c, roles r
+WHERE c.kind IN ('channel', 'voice_channel') AND r.id IN ('role-reader', 'role-writer')
+UNION ALL SELECT 'channel', c.id, 'person', NULL, 'u-reader', '["channels:read"]', '[]', 1, 1 FROM conversations c WHERE c.kind IN ('channel', 'voice_channel')`)
+	require.NoError(t, err)
+}
+
+// TestStatements_ChannelRulesCostTheSameAtAnyLength: rules on every channel cost a chat list no statement at any length.
+func TestStatements_ChannelRulesCostTheSameAtAnyLength(t *testing.T) {
+	paths := map[string]func(ctx context.Context, f permFixture) error{
+		"chat conversation list": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.chatSvc.ListConversations(ctx, wsDefault, uReader)
+			return err
+		},
+		"chat unread counts": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.chatSvc.UnreadCounts(ctx, wsDefault, uReader)
+			return err
+		},
+	}
+	cost := func(n int, rules bool) map[string]int64 {
+		f, st, db := newCountedFixtureDB(t)
+		grow(t, f, n)
+		if rules {
+			withRulesOnEveryChannel(t, db)
+		}
+		out := map[string]int64{}
+		for name, run := range paths {
+			ctx := access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: uReader}), f.svc.accessSvc.NewMemo())
+			st.Reset()
+			require.NoError(t, run(ctx, f), name)
+			out[name] = st.Count()
+		}
+		return out
+	}
+	none := cost(12, false)
+	assert.Equal(t, none, cost(2, true), "a few channels, each with rules")
+	assert.Equal(t, none, cost(12, true), "many channels, each with rules")
 }
 
 // TestStatements_RoleRulesCostTheSameAtAnyLength: rules for roles on every doc cost a doc list, a doc_list page and a

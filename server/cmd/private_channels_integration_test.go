@@ -182,3 +182,83 @@ func TestIntegration_RemovalFromPrivateVoiceChannelEndsTheirCall(t *testing.T) {
 	assert.Contains(t, got, uPlain, "switched private without them")
 	assert.NotContains(t, got, uReader, "kept")
 }
+
+// TestIntegration_ChannelRules: a role's Deny hides a channel from its holders everywhere, but not from the Owner.
+func TestIntegration_ChannelRules(t *testing.T) {
+	db := mentionsTestDB(t)
+	svc, store := wiredOver(t, db)
+	f := seedPermFixture(t, svc, store)
+	s := f.svc
+	call, err := s.chatSvc.CreateVoiceChannel(as(uWriter), wsDefault, uWriter, "standup")
+	require.NoError(t, err)
+	room, err := s.chatSvc.CreatePrivateChannel(as(uWriter), wsDefault, uWriter, "leads", chat.KindChannel, []string{uPlain, uOverwrite, uReader})
+	require.NoError(t, err)
+	for _, id := range []string{f.channel.ID, room.ID} {
+		_, err = s.chatSvc.PostMessage(as(uWriter), id, uWriter, "hello")
+		require.NoError(t, err)
+	}
+	_, err = db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, user_id, allow, deny, created_at, updated_at)
+SELECT 'channel', c.id, 'role', r.id, NULL, '[]', '["channels:read"]', 1, 1 FROM conversations c, roles r
+WHERE c.id IN (?, ?, ?) AND r.id IN ('role-plain', 'role-owner')
+UNION ALL SELECT 'channel', c.id, 'person', NULL, ?, '["channels:read"]', '[]', 1, 1 FROM conversations c WHERE c.id IN (?, ?, ?)`,
+		f.channel.ID, call.ID, room.ID, uOverwrite, f.channel.ID, call.ID, room.ID)
+	require.NoError(t, err)
+	frame := func(id string) json.RawMessage {
+		raw, err := json.Marshal(chat.MessageCreatedEvent{Message: chat.Message{ConversationID: id, Body: "hi"}})
+		require.NoError(t, err)
+		return raw
+	}
+	audience := liveAudience{access: s.accessSvc, tickets: s.ticketsSvc, chat: s.chatSvc, deploy: s.deploySvc}
+	conversationList := tool(t, chat.MCPTools(s.chatSvc), "conversation_list")
+
+	lists := map[string]string{uOwner: ok, uReader: ok, uOverwrite: ok, uPlain: hidden}
+	reads := map[string]string{uOwner: ok, uReader: ok, uOverwrite: ok, uPlain: notFound}
+	cases := []struct {
+		name string
+		call func(ctx context.Context, user, id string) error
+		want map[string]string
+	}{
+		{"list", func(ctx context.Context, user, id string) error {
+			cs, err := s.chatSvc.ListConversations(ctx, wsDefault, user)
+			return contains(cs, err, func(c *chat.Conversation) bool { return c.ID == id })
+		}, lists},
+		{"unread counts", func(ctx context.Context, user, id string) error {
+			counts, err := s.chatSvc.UnreadCounts(ctx, wsDefault, user)
+			return present(counts, err, id)
+		}, lists},
+		{"conversation_list", func(ctx context.Context, _, id string) error {
+			out, err := conversationList.Call(ctx, json.RawMessage(`{"workspace_id":"`+wsDefault+`"}`))
+			if err != nil {
+				return err
+			}
+			raw, err := json.Marshal(out)
+			require.NoError(t, err)
+			if !strings.Contains(string(raw), id) {
+				return errHidden
+			}
+			return nil
+		}, lists},
+		{"messages", func(ctx context.Context, user, id string) error {
+			_, err := s.chatSvc.ListMessages(ctx, id, user, 50)
+			return err
+		}, reads},
+		{"live frame", func(ctx context.Context, _, id string) error {
+			if !audience.allows(ctx, chat.TopicMessageCreated, frame(id)) {
+				return errHidden
+			}
+			return nil
+		}, lists},
+	}
+	for _, id := range []string{f.channel.ID, room.ID} {
+		for _, tc := range cases {
+			for user, want := range tc.want {
+				assert.Equal(t, want, outcome(tc.call(as(user), user, id)), "%s of %s as %s", tc.name, id, user)
+			}
+		}
+	}
+	// A reader's join passes the read and stops at the LiveKit connector this instance has not configured.
+	for user, want := range map[string]string{uOwner: invalid, uReader: invalid, uOverwrite: invalid, uPlain: notFound} {
+		_, err := s.voiceSvc.Join(as(user), call.ID, user)
+		assert.Equal(t, want, outcome(err), "voice join as %s", user)
+	}
+}
