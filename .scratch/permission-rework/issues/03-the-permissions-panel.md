@@ -135,3 +135,15 @@ and the runner-up are in `~/Code/Images/permission-rework/03-panel/`. The protot
 - A doc's Fallback for a role reads the folder, then the project. A role not listed on the project still gets a
   doc panel row, and its fallback sentence then says "Not listed on project Storefront". Should the panel refuse to
   add a role or person to a doc whose project they are not in?
+
+**The owner's changes (2026-10-11), these override the parts above they touch**
+- **The control is three buttons side by side**, the way Discord's permission rows used to be, not a dropdown. This
+  is the prototype's `?v=icons` variant: a small segmented group of three icon buttons, check (Allow), slash
+  (Fallback) and cross (Deny). The one that's on is filled: Allow `success`, Fallback neutral (`accent`), Deny
+  `destructive`. Each button has its label as a tooltip and an `aria-label`, and the group is a radio group for the
+  keyboard. A locked Allow is disabled with a lock and a tooltip carrying the menu's sentence ("You can't allow a
+  permission you don't hold"). The source line under each Fallback and every other part stay as locked above.
+- **Keeping someone out:** a person denied See on a project is shown on "People in this project" under their own
+  **"Kept out"** heading, below the people who are in.
+- **A doc's panel refuses** a role or person who isn't in the doc's project. The add popover lists them disabled,
+  with "Add <name> to <project> first" linking to the project's list.
