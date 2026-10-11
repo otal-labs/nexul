@@ -66,6 +66,14 @@ describe("useHarnessReadiness", () => {
     );
   });
 
+  it("asks for a re-pair when T3 Code refused the resolved computer's session", async () => {
+    mockRoutes({ resolve: { ok: true, computer_id: "c1" }, presence: { c1: "rejected" } });
+    const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
+    await waitFor(() =>
+      expect(result.current).toEqual({ state: "expired", message: "Your computer's pairing has expired or was revoked. Re-pair it in Settings." }),
+    );
+  });
+
   it("maps unpaired", async () => {
     mockRoutes({ resolve: { ok: false, reason: "unpaired" }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
@@ -80,7 +88,7 @@ describe("useHarnessReadiness", () => {
     await waitFor(() =>
       expect(result.current).toEqual({
         state: "expired",
-        message: "Your computer's pairing has expired. Re-pair it in Settings.",
+        message: "Your computer's pairing has expired or was revoked. Re-pair it in Settings.",
       }),
     );
   });

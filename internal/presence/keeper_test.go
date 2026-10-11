@@ -15,7 +15,6 @@ import (
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/harness/harnesstest"
 	"github.com/otal-labs/nexul/internal/pairing"
-	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
 type fakeConn struct {
@@ -259,25 +258,32 @@ func TestKeeper_RefreshAfterAMoveToTheRunner_HoldsTheComputerOnItsNewSession(t *
 	}
 }
 
-func TestKeeper_UnauthorizedStopsRedialUntilRefresh(t *testing.T) {
+func TestKeeper_RejectedSession_ReadsRejectedWithoutRedialingUntilRepaired(t *testing.T) {
 	t.Parallel()
 	sessions := &sessionsFunc{}
 	sessions.set(computer("c1"))
 	t3 := newFakeT3()
 	t3.mu.Lock()
-	t3.dialErrs["c1"] = apperrs.ErrUnauthorized
+	t3.dialErrs["c1"] = harness.ErrSessionRejected
 	t3.mu.Unlock()
 	k := newTestKeeper(sessions, t3)
 
 	k.Connected("u1")
 	waitDial(t, t3, "c1")
 	time.Sleep(80 * time.Millisecond)
-	assert.Equal(t, 1, t3.dialCount("c1"), "no redial after an unauthorized dial")
+	assert.Equal(t, 1, t3.dialCount("c1"), "no redial after a rejected session")
+	assert.Equal(t, map[string]string{"c1": StateRejected}, k.Status("u1"))
 
-	// Re-pair: token works now, Refresh restarts the loop.
+	k.Refresh("u1")
+	time.Sleep(80 * time.Millisecond)
+	assert.Equal(t, 1, t3.dialCount("c1"), "the same rejected session is not dialed again")
+
 	t3.mu.Lock()
 	delete(t3.dialErrs, "c1")
 	t3.mu.Unlock()
+	repaired := computer("c1")
+	repaired.BearerToken = "tok-repaired"
+	sessions.set(repaired)
 	k.Refresh("u1")
 	waitDial(t, t3, "c1")
 }

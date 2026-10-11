@@ -10,7 +10,6 @@ import (
 
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/pairing"
-	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
 // DefaultLinger keeps connections up briefly after the last browser socket closes, so a page refresh doesn't flap.
@@ -66,6 +65,8 @@ type loop struct {
 const (
 	StateConnected  = "connected"
 	StateConnecting = "connecting"
+	// StateRejected holds until the computer is paired again, since redialing a refused session can't fix it.
+	StateRejected = "rejected"
 )
 
 // Status reports userID's per-computer presence for the settings row's dot; a missing entry holds no session.
@@ -285,9 +286,10 @@ func (k *Keeper) maintain(ctx context.Context, userID string, p *presence, self 
 		k.setState(self, StateConnecting)
 		conn, err := k.hold(ctx, client, userID, computer)
 		if err != nil {
-			// Re-pairing fires OnComputersChanged -> Refresh; redialing a rejected session can't fix it.
-			if errors.Is(err, apperrs.ErrUnauthorized) {
+			if errors.Is(err, harness.ErrSessionRejected) {
 				k.log.Warn("presence: harness rejected session, giving up until re-pair", "user", userID, "computer", computer.Name)
+				k.setState(self, StateRejected)
+				<-ctx.Done()
 				return
 			}
 			refused = k.logDialFailure(ctx, userID, computer.Name, backoff, err, refused)

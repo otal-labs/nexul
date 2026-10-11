@@ -48,7 +48,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
   const setupLabel = setup?.confirmed_at ? "Re-run setup" : "Set up";
   const primary: Primary = (() => {
     if (!computer.runner) return "again";
-    if (connected && (computer.pair_error || (!pairing && daysUntil(computer.token_expires_at) <= 0))) return "repair";
+    if (connected && (computer.pair_error || presence === "rejected" || (!pairing && daysUntil(computer.token_expires_at) <= 0))) return "repair";
     if (setup && onlySkillsOutdated(setup)) return "update";
     if (summary?.state === "missing" || summary?.state === "failed") return "setup";
     return undefined;

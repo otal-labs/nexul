@@ -88,7 +88,7 @@ func TestSessionCalls_ServerItCannotFollow_RefusedWithTheMessageToShow(t *testin
 	}
 }
 
-func TestSessionCalls_RejectedBearer_IsUnauthorized(t *testing.T) {
+func TestSessionCalls_RejectedBearer_IsARejectedSession(t *testing.T) {
 	t.Parallel()
 	for _, sc := range sessionCalls {
 		t.Run(sc.name, func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestSessionCalls_RejectedBearer_IsUnauthorized(t *testing.T) {
 			f, h := newFake(t, 2)
 			s := laptop(f)
 			s.BearerToken = "revoked"
-			assert.ErrorIs(t, sc.call(t.Context(), h, s), apperrs.ErrUnauthorized)
+			assert.ErrorIs(t, sc.call(t.Context(), h, s), harness.ErrSessionRejected)
 		})
 	}
 }

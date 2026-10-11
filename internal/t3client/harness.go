@@ -336,7 +336,7 @@ func (h *Harness) reconnect(ctx context.Context, s harness.Session, threadID str
 			out <- giveUp(updatedMidTurn)
 			return nil, nil
 		}
-		if errors.Is(err, apperrs.ErrUnauthorized) {
+		if errors.Is(err, harness.ErrSessionRejected) {
 			out <- giveUp(fmt.Sprintf("Lost the connection to T3 Code and it refused to reconnect: %v", err))
 			return nil, nil
 		}

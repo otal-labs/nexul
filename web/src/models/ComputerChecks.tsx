@@ -68,6 +68,7 @@ export interface Lane {
 const t3Lane = (computer: Computer, presence: string | undefined): Lane => {
   const t3 = computer.facts?.t3;
   if (presence === "connected") return { tone: "success", text: "T3 Code answering" };
+  if (presence === "rejected") return { tone: "destructive", text: "T3 Code refused the session", detail: "re-pair to connect again" };
   if (computer.pair_error) return { tone: "destructive", text: "Pairing failed", detail: computer.pair_error };
   if (t3?.state === "not_running" && t3.install === "desktop_app") return { tone: "warning", text: "Open T3 Code" };
   if (t3?.state === "not_running") return { tone: "warning", text: "T3 Code not running" };

@@ -74,7 +74,7 @@ Once installed, the Nexul app checks T3 Code every 30 seconds. When T3 Code's ba
 
 Each computer is one row. A row shows a button only when something needs doing; everything else is in its **…** menu. Click the name to unfold the details.
 
-A computer added with **Add a computer** reads each part on its own: **Online** or **Offline** (with when it was last seen) for the computer itself, then **T3 Code answering**, **Open T3 Code** when the desktop app is closed, **T3 Code not running**, or **Pairing failed** with the reason. Nexul pairs it again on its own before the 30-day session ends, whenever the app is connected. Its buttons are **Add this computer again** when the app is gone from it, **Re-pair now** when a pairing failed or ran out, and **Set up** or **Update skills** for its setup; the **…** menu holds **Set up** or **Re-run setup**, **Re-pair now**, **Rename** and **Remove**. Its details show T3 Code's state (**Running** with its port and version, **Not running**, or **Not installed**), then its facts.
+A computer added with **Add a computer** reads each part on its own: **Online** or **Offline** (with when it was last seen) for the computer itself, then **T3 Code answering**, **Open T3 Code** when the desktop app is closed, **T3 Code not running**, **Pairing failed** with the reason, or **T3 Code refused the session** when Nexul's session was revoked inside T3 Code (its connected clients list, or `t3 auth session revoke`). Nexul pairs it again on its own before the 30-day session ends, whenever the app is connected. Its buttons are **Add this computer again** when the app is gone from it, **Re-pair now** when a pairing failed, ran out or was refused, and **Set up** or **Update skills** for its setup; the **…** menu holds **Set up** or **Re-run setup**, **Re-pair now**, **Rename** and **Remove**. Its details show T3 Code's state (**Running** with its port and version, **Not running**, or **Not installed**), then its facts.
 
 **Add this computer again** shows when the computer has no Nexul app: the command was never run, or the app was removed because its owner's account was disabled. It opens the same dialog with a fresh command for the same row, so the computer keeps its name, project links and setup, and Nexul pairs it again once the app connects.
 
@@ -141,7 +141,7 @@ The page says why once, above or beside its play buttons, and each button repeat
 | Message | Fix |
 |---|---|
 | Add a computer in Settings to run plays. | Add a computer, or finish adding one. |
-| Your computer's pairing has expired. Re-pair it in Settings. | Press **Re-pair now** (or **Re-pair** on a tunnel computer) on the computer's row. |
+| Your computer's pairing has expired or was revoked. Re-pair it in Settings. | Press **Re-pair now** (or **Re-pair** on a tunnel computer) on the computer's row. |
 | Link this project in Settings → Computers → Projects, or set a fallback under Defaults. | Link the project, or set a **Fallback T3 project**. |
 | Several computers are paired. Pick a default in Settings. | Set a **Default computer**. |
 | T3 Code on your computer is offline. | Check the computer is **Online** and T3 Code is running on it. |
