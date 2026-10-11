@@ -56,6 +56,7 @@ type membershipResult struct {
 	WorkspaceName    string                   `json:"workspace_name"`
 	RoleID           string                   `json:"role_id"`
 	RoleName         string                   `json:"role_name"`
+	Roles            []*tenancy.TeamRole      `json:"roles"`
 	IsOwner          bool                     `json:"is_owner"`
 	Allow            permissions.Set          `json:"allow"`
 	Deny             permissions.Set          `json:"deny"`
@@ -99,7 +100,8 @@ func accountListTool(t Team) mcptool.Tool {
 		"Lists the Team: accounts with their status (active, disabled, or removed), whether they are online now, "+
 			"when they were last seen (to the hour, null once signed out everywhere), providers (the sign-in accounts "+
 			"linked, github, google or discord, in the order they were linked), and their workspace access, one "+
-			"entry per workspace with the role, whether that is the Owner role, the workspace-wide allow and deny "+
+			"entry per workspace with roles, every role they hold there (id, name, whether it is the Owner role), "+
+			"role_id and role_name naming the first, is_owner, whether the Owner role is among them, the workspace-wide allow and deny "+
 			"overrides, can_manage_members, whether you hold members:write there and so may change that access, and "+
 			"every_project: role, where the role's project areas reach every project, or none, a Restricted member "+
 			"whose projects list the project access they hold on projects you can open yourself. "+
@@ -244,7 +246,7 @@ func toAccountResult(p *tenancy.TeamPerson, canManage map[string]bool) accountRe
 	}
 	for _, m := range p.Workspaces {
 		r.Workspaces = append(r.Workspaces, membershipResult{
-			WorkspaceID: m.WorkspaceID, WorkspaceName: m.WorkspaceName, RoleID: m.RoleID, RoleName: m.RoleName,
+			WorkspaceID: m.WorkspaceID, WorkspaceName: m.WorkspaceName, RoleID: m.RoleID, RoleName: m.RoleName, Roles: m.Roles,
 			IsOwner: m.IsOwner, Allow: m.Allow, Deny: m.Deny, CanManageMembers: canManage[m.WorkspaceID],
 			EveryProject: m.EveryProject, Projects: restrictedProjects(m),
 		})

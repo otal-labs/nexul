@@ -648,6 +648,13 @@ type Machine struct {
 	LastSeen         int64
 }
 
+type MemberRole struct {
+	UserID      string
+	WorkspaceID string
+	RoleID      string
+	CreatedAt   int64
+}
+
 type Memory struct {
 	ID             string
 	WorkspaceID    string
@@ -1174,7 +1181,6 @@ type WorkspaceInvite struct {
 type WorkspaceMember struct {
 	UserID      string
 	WorkspaceID string
-	RoleID      string
 	CreatedAt   int64
 	Restricted  int64
 }

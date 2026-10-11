@@ -29,10 +29,19 @@ export const AREA_PERMISSION = {
 
 export type Area = keyof typeof AREA_PERMISSION;
 
+// One role a member holds, as the server names it.
+export interface HeldRole {
+  id: string;
+  name: string;
+  is_owner: boolean;
+}
+
 // Mirrors internal/tenancy/handler.go's meResponse; a Restricted member's permissions carry no project area, so
 // projects lists what they hold in each project they may open.
 export interface MyWorkspaceInfo {
   role_name: string;
+  // Every role held, in the order given; role_name names the first.
+  roles?: HeldRole[];
   permissions: string[];
   restricted?: boolean;
   projects?: { project_id: string; actions: string[] }[];

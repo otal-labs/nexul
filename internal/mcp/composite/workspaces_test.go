@@ -31,8 +31,8 @@ func (f *fakeWorkspaces) ListForUser(_ context.Context, userID string) ([]*tenan
 	return f.byUser[userID], f.listErr
 }
 
-func (f *fakeWorkspaces) MemberRoleName(_ context.Context, _, _ string) (string, error) {
-	return "Owner", nil
+func (f *fakeWorkspaces) MemberRoles(_ context.Context, workspaceID, _ string) ([]*tenancy.TeamRole, error) {
+	return []*tenancy.TeamRole{{ID: "role-owner-" + workspaceID, Name: "Owner", IsOwner: true}}, nil
 }
 
 func (f *fakeWorkspaces) ListPeople(_ context.Context, _, workspaceID string) ([]tenancy.Person, error) {
@@ -137,7 +137,10 @@ func TestWorkspaceList_WithoutIDListsTheCallersWorkspacesOnly(t *testing.T) {
 	require.NoError(t, err)
 	page, ok := out.(mcptool.Page[workspaceResult])
 	require.True(t, ok)
-	assert.Equal(t, []workspaceResult{{ID: "ws-1", Name: "Acme", Role: "Owner"}, {ID: "ws-2", Name: "Beta", Role: "Owner"}}, page.Items)
+	assert.Equal(t, []workspaceResult{
+		{ID: "ws-1", Name: "Acme", Role: "Owner", YourRoles: []*tenancy.TeamRole{{ID: "role-owner-ws-1", Name: "Owner", IsOwner: true}}},
+		{ID: "ws-2", Name: "Beta", Role: "Owner", YourRoles: []*tenancy.TeamRole{{ID: "role-owner-ws-2", Name: "Owner", IsOwner: true}}},
+	}, page.Items)
 }
 
 func TestWorkspaceList_WithIDReturnsPeopleRolesAndCatalog(t *testing.T) {

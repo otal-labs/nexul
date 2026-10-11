@@ -97,7 +97,7 @@ func newTeamFixture(t *testing.T) teamFixture {
 	online := map[string]bool{}
 	svc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testCreatorGate{access: accessSvc}, testRoleNameGate{svc: rolesSvc}, accessSvc, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testDefaultsGate{}, testAccountGate{users: s.Users, sessions: s.Sessions, online: online})
 	rolesSvc.SetMemberGate(testMemberGate{svc: svc})
-	accessSvc.SetRoles(accessRoleResolver{tenancy: svc, roles: rolesSvc})
+	accessSvc.SetRoles(s.WorkspaceMembers)
 	accessSvc.SetScopes(testScopes{s: s})
 	rolesSvc.SetPermissionGate(accessSvc)
 

@@ -26,6 +26,7 @@ type fakeRepo struct {
 	listErr   error
 	updateErr error
 	deleteErr error
+	holders   map[string]int
 	events    []eventbus.OutboxEvent
 }
 
@@ -92,6 +93,12 @@ func (f *fakeRepo) Update(_ context.Context, r *Role, events ...eventbus.OutboxE
 	return nil
 }
 
+func (f *fakeRepo) CountHolders(_ context.Context, id string) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.holders[id], nil
+}
+
 func (f *fakeRepo) Delete(_ context.Context, id string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -117,6 +124,11 @@ func memberKey(workspaceID, userID string) string {
 
 func newFakeMemberGate() *fakeMemberGate {
 	return &fakeMemberGate{roleIDs: map[string]string{}}
+}
+
+func (g *fakeMemberGate) RequireMember(ctx context.Context, workspaceID, userID string) error {
+	_, err := g.MemberRoleID(ctx, workspaceID, userID)
+	return err
 }
 
 func (g *fakeMemberGate) MemberRoleID(_ context.Context, workspaceID, userID string) (string, error) {
@@ -412,6 +424,18 @@ func TestDelete(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 	})
+	t.Run("a role someone holds is kept", func(t *testing.T) {
+		repo, members := newFakeRepo(), newFakeMemberGate()
+		seedOwner(t, repo, members, "ws-1", "u-owner")
+		require.NoError(t, repo.Create(context.Background(), &Role{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors", CreatedAt: fixedNow, UpdatedAt: fixedNow}))
+		repo.holders = map[string]int{"role-editors": 2}
+		s := newTestService(repo, members)
+		err := s.Delete(context.Background(), "ws-1", "role-editors", "u-owner")
+		require.ErrorIs(t, err, apperrs.ErrConflict)
+		assert.ErrorContains(t, err, "held by 2")
+		_, err = repo.Get(context.Background(), "role-editors")
+		require.NoError(t, err)
+	})
 	t.Run("actor with roles:write deletes a custom role", func(t *testing.T) {
 		repo, members := newFakeRepo(), newFakeMemberGate()
 		seedOwner(t, repo, members, "ws-1", "u-owner")
@@ -432,6 +456,7 @@ func TestSetMemberGate(t *testing.T) {
 		s.now = func() time.Time { return fixedNow }
 		members := newFakeMemberGate()
 		s.SetMemberGate(members)
+		s.SetPermissionGate(fakeHeld{repo: repo, members: members})
 		seedOwner(t, repo, members, "ws-1", "u-owner")
 
 		r, err := s.Create(context.Background(), "ws-1", "u-owner", "Editors", nil)

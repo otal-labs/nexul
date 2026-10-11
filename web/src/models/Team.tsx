@@ -42,6 +42,8 @@ export interface TeamMembership {
   workspace_name: string;
   role_id: string;
   role_name: string;
+  // Every role held, in the order given; role_id and role_name name the first.
+  roles?: TeamRole[];
   is_owner: boolean;
   allow: string[];
   deny: string[];
@@ -93,5 +95,9 @@ export const roleHolders = (team: Team | undefined, workspaceId: string, roleId:
   (team?.people ?? []).filter(
     (person) =>
       person.status !== AccountStatus.Removed &&
-      person.workspaces.some((membership) => membership.workspace_id === workspaceId && membership.role_id === roleId),
+      person.workspaces.some(
+        (membership) =>
+          membership.workspace_id === workspaceId &&
+          (membership.roles ?? [{ id: membership.role_id }]).some((role) => role.id === roleId),
+      ),
   );

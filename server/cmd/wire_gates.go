@@ -302,13 +302,14 @@ func (g channelGate) CreateGeneralChannel(ctx context.Context, workspaceID, crea
 	return g.svc.EnsureGeneralChannel(ctx, workspaceID, creatorUserID)
 }
 
-// roleMemberGate adapts tenancy's MemberRoleID to roles' MemberGate seam (ADR 0017: roles never imports tenancy).
+// roleMemberGate adapts tenancy's membership read to roles' MemberGate seam (ADR 0017: roles never imports tenancy).
 type roleMemberGate struct {
 	svc *tenancy.Service
 }
 
-func (g roleMemberGate) MemberRoleID(ctx context.Context, workspaceID, userID string) (string, error) {
-	return g.svc.MemberRoleID(ctx, workspaceID, userID)
+func (g roleMemberGate) RequireMember(ctx context.Context, workspaceID, userID string) error {
+	_, err := g.svc.Member(ctx, workspaceID, userID)
+	return err
 }
 
 // workspaceDefaultsGate seeds a workspace's default plays and automations for tenancy's DefaultsGate seam (ADR 0017).
@@ -415,7 +416,7 @@ type membershipGate struct {
 }
 
 func (g membershipGate) IsMember(ctx context.Context, userID, workspaceID string) (bool, error) {
-	_, err := g.members.RoleIDFor(ctx, workspaceID, userID)
+	_, err := g.members.Member(ctx, workspaceID, userID)
 	if err != nil {
 		if errors.Is(err, apperrs.ErrNotFound) {
 			return false, nil

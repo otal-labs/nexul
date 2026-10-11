@@ -281,7 +281,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	memoriesSvc.SetDocLookup(memoriesDocLookup{docs: store.Docs, projects: store.Projects})
 	templatesSvc := wireTemplates(store, accessSvc, memoriesSvc, tenancySvc, playsSvc, workspaceSvc)
 	// HasPermission's role-mask layer needs both roles and tenancy, wired only after the cycle above closes.
-	accessSvc.SetRoles(accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc})
+	accessSvc.SetRoles(store.WorkspaceMembers)
 	accessSvc.SetDocWorkspaces(accessDocWorkspaceResolver{docs: store.Docs})
 	accessSvc.SetCommits(store.Commits())
 	accessSvc.SetScopes(accessScopes{projects: store.Projects, members: store.WorkspaceMembers})

@@ -11,15 +11,14 @@ import (
 )
 
 const addInvitationMember = `-- name: AddInvitationMember :exec
-INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at, restricted)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO workspace_members (user_id, workspace_id, created_at, restricted)
+VALUES (?, ?, ?, ?)
 ON CONFLICT(user_id, workspace_id) DO NOTHING
 `
 
 type AddInvitationMemberParams struct {
 	UserID      string
 	WorkspaceID string
-	RoleID      string
 	CreatedAt   int64
 	Restricted  int64
 }
@@ -28,7 +27,6 @@ func (q *Queries) AddInvitationMember(ctx context.Context, arg AddInvitationMemb
 	_, err := q.db.ExecContext(ctx, addInvitationMember,
 		arg.UserID,
 		arg.WorkspaceID,
-		arg.RoleID,
 		arg.CreatedAt,
 		arg.Restricted,
 	)
@@ -332,45 +330,8 @@ func (q *Queries) GetInvitationCreatorProjectAccess(ctx context.Context, arg Get
 	return allow, err
 }
 
-const getInvitationCreatorWorkspaceAccess = `-- name: GetInvitationCreatorWorkspaceAccess :one
-SELECT r.is_owner_role, r.permissions, po.allow, po.deny, m.restricted
-FROM workspace_members m
-JOIN roles r ON r.id = m.role_id
-LEFT JOIN permission_overwrites po
-  ON po.resource_type = 'workspace'
- AND po.resource_id = m.workspace_id
- AND po.user_id = m.user_id
-WHERE m.workspace_id = ? AND m.user_id = ?
-`
-
-type GetInvitationCreatorWorkspaceAccessParams struct {
-	WorkspaceID string
-	UserID      string
-}
-
-type GetInvitationCreatorWorkspaceAccessRow struct {
-	IsOwnerRole int64
-	Permissions string
-	Allow       sql.NullString
-	Deny        sql.NullString
-	Restricted  int64
-}
-
-func (q *Queries) GetInvitationCreatorWorkspaceAccess(ctx context.Context, arg GetInvitationCreatorWorkspaceAccessParams) (GetInvitationCreatorWorkspaceAccessRow, error) {
-	row := q.db.QueryRowContext(ctx, getInvitationCreatorWorkspaceAccess, arg.WorkspaceID, arg.UserID)
-	var i GetInvitationCreatorWorkspaceAccessRow
-	err := row.Scan(
-		&i.IsOwnerRole,
-		&i.Permissions,
-		&i.Allow,
-		&i.Deny,
-		&i.Restricted,
-	)
-	return i, err
-}
-
 const getInvitationMember = `-- name: GetInvitationMember :one
-SELECT role_id
+SELECT user_id
 FROM workspace_members
 WHERE workspace_id = ? AND user_id = ?
 `
@@ -382,9 +343,9 @@ type GetInvitationMemberParams struct {
 
 func (q *Queries) GetInvitationMember(ctx context.Context, arg GetInvitationMemberParams) (string, error) {
 	row := q.db.QueryRowContext(ctx, getInvitationMember, arg.WorkspaceID, arg.UserID)
-	var role_id string
-	err := row.Scan(&role_id)
-	return role_id, err
+	var user_id string
+	err := row.Scan(&user_id)
+	return user_id, err
 }
 
 const getOAuthHandoffByAcceptanceHash = `-- name: GetOAuthHandoffByAcceptanceHash :one
@@ -541,6 +502,60 @@ func (q *Queries) ListAllInvitations(ctx context.Context) ([]Invitation, error) 
 	return items, nil
 }
 
+const listInvitationCreatorWorkspaceAccess = `-- name: ListInvitationCreatorWorkspaceAccess :many
+SELECT COALESCE(r.is_owner_role, 0) AS is_owner_role, COALESCE(r.permissions, '[]') AS permissions, po.allow, po.deny, m.restricted
+FROM workspace_members m
+LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
+LEFT JOIN roles r ON r.id = mr.role_id
+LEFT JOIN permission_overwrites po
+  ON po.resource_type = 'workspace'
+ AND po.resource_id = m.workspace_id
+ AND po.user_id = m.user_id
+WHERE m.workspace_id = ? AND m.user_id = ?
+`
+
+type ListInvitationCreatorWorkspaceAccessParams struct {
+	WorkspaceID string
+	UserID      string
+}
+
+type ListInvitationCreatorWorkspaceAccessRow struct {
+	IsOwnerRole int64
+	Permissions string
+	Allow       sql.NullString
+	Deny        sql.NullString
+	Restricted  int64
+}
+
+func (q *Queries) ListInvitationCreatorWorkspaceAccess(ctx context.Context, arg ListInvitationCreatorWorkspaceAccessParams) ([]ListInvitationCreatorWorkspaceAccessRow, error) {
+	rows, err := q.db.QueryContext(ctx, listInvitationCreatorWorkspaceAccess, arg.WorkspaceID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListInvitationCreatorWorkspaceAccessRow
+	for rows.Next() {
+		var i ListInvitationCreatorWorkspaceAccessRow
+		if err := rows.Scan(
+			&i.IsOwnerRole,
+			&i.Permissions,
+			&i.Allow,
+			&i.Deny,
+			&i.Restricted,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listInvitationGrantsByInvitation = `-- name: ListInvitationGrantsByInvitation :many
 SELECT invitation_id, workspace_id, role_id, allow_json, deny_json, restricted, project_access_json
 FROM invitation_grants
@@ -629,7 +644,8 @@ WHERE i.redeemed_at IS NULL
         AND NOT EXISTS (
             SELECT 1
             FROM workspace_members m
-            JOIN roles r ON r.id = m.role_id
+            LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
+            LEFT JOIN roles r ON r.id = mr.role_id
             LEFT JOIN permission_overwrites po
               ON po.resource_type = 'workspace'
              AND po.resource_id = g.workspace_id
@@ -637,11 +653,11 @@ WHERE i.redeemed_at IS NULL
             WHERE m.workspace_id = g.workspace_id
               AND m.user_id = ?
               AND (
-                  r.is_owner_role = 1
+                  COALESCE(r.is_owner_role, 0) = 1
                   OR (
                       instr(COALESCE(po.deny, '[]'), '"members:write"') = 0
                       AND (
-                          instr(r.permissions, '"members:write"') > 0
+                          instr(COALESCE(r.permissions, '[]'), '"members:write"') > 0
                           OR instr(COALESCE(po.allow, '[]'), '"members:write"') > 0
                       )
                   )

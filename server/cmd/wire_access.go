@@ -10,8 +10,6 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
-	"github.com/otal-labs/nexul/internal/roles"
-	"github.com/otal-labs/nexul/internal/tenancy"
 )
 
 // accessPlayWorkspaceResolver reads from the repo directly to avoid recursing into a permission check;
@@ -26,24 +24,6 @@ func (a accessPlayWorkspaceResolver) WorkspaceIDForPlay(ctx context.Context, pla
 		return "", err
 	}
 	return p.WorkspaceID, nil
-}
-
-// accessRoleResolver adapts tenancy+roles for HasPermission's role-mask layer.
-type accessRoleResolver struct {
-	tenancy *tenancy.Service
-	roles   *roles.Service
-}
-
-func (a accessRoleResolver) MemberRole(ctx context.Context, workspaceID, userID string) (access.RoleInfo, error) {
-	m, err := a.tenancy.Member(ctx, workspaceID, userID)
-	if err != nil {
-		return access.RoleInfo{}, err
-	}
-	r, err := a.roles.Get(ctx, workspaceID, m.RoleID)
-	if err != nil {
-		return access.RoleInfo{}, err
-	}
-	return access.RoleInfo{RoleID: r.ID, IsOwnerRole: r.IsOwnerRole, Permissions: r.Permissions, Restricted: m.Restricted}, nil
 }
 
 // accessNames reads what a source sentence names from storage, past every permission check: the sentence is about

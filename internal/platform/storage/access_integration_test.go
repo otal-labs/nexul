@@ -83,7 +83,7 @@ func joinDefaultWorkspace(t *testing.T, s *storage.Store, accessSvc *access.Serv
 	rolesSvc := roles.NewService(s.Roles, nil)
 	tenancySvc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testPermissionGate{}, testRoleNameGate{svc: rolesSvc}, accessSvc, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testDefaultsGate{}, testAccountGate{users: s.Users})
 	rolesSvc.SetMemberGate(testMemberGate{svc: tenancySvc})
-	accessSvc.SetRoles(accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc})
+	accessSvc.SetRoles(s.WorkspaceMembers)
 	accessSvc.SetScopes(testScopes{s: s})
 	role := &roles.Role{ID: "role-writer", WorkspaceID: "workspace-default", Name: "Writer", Permissions: permissions.SetOf(permissions.DocsWrite), CreatedAt: time.Now(), UpdatedAt: time.Now()}
 	require.NoError(t, s.Roles.Create(ctx, role))
@@ -222,8 +222,9 @@ func (g testRoleGate) CreateOwnerRole(ctx context.Context, workspaceID string) (
 
 type testMemberGate struct{ svc *tenancy.Service }
 
-func (g testMemberGate) MemberRoleID(ctx context.Context, workspaceID, userID string) (string, error) {
-	return g.svc.MemberRoleID(ctx, workspaceID, userID)
+func (g testMemberGate) RequireMember(ctx context.Context, workspaceID, userID string) error {
+	_, err := g.svc.Member(ctx, workspaceID, userID)
+	return err
 }
 
 // testRoleNameGate mirrors main.go's roleNameGate adapter, needed to construct a real tenancy.Service for this test.
@@ -303,26 +304,6 @@ func (testDefaultsGate) SeedWorkspaceDefaults(context.Context, string) error {
 	return nil
 }
 
-// accessRoleResolver adapts tenancy.Service + roles.Service to
-// access.RoleResolver, mirroring the real composition-root wiring
-// (server/cmd/main.go).
-type accessRoleResolver struct {
-	tenancy *tenancy.Service
-	roles   *roles.Service
-}
-
-func (a accessRoleResolver) MemberRole(ctx context.Context, workspaceID, userID string) (access.RoleInfo, error) {
-	m, err := a.tenancy.Member(ctx, workspaceID, userID)
-	if err != nil {
-		return access.RoleInfo{}, err
-	}
-	r, err := a.roles.Get(ctx, workspaceID, m.RoleID)
-	if err != nil {
-		return access.RoleInfo{}, err
-	}
-	return access.RoleInfo{IsOwnerRole: r.IsOwnerRole, Permissions: r.Permissions, Restricted: m.Restricted}, nil
-}
-
 // TestIntegration_HasPermission_WorkspacePrecedence covers the Discord-order
 // precedence chain (ADR 0042) end to end over real SQLite-backed
 // roles + tenancy stores: the workspace Owner role bypasses everything, a
@@ -338,7 +319,7 @@ func TestIntegration_HasPermission_WorkspacePrecedence(t *testing.T) {
 	tenancySvc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testPermissionGate{}, testRoleNameGate{svc: rolesSvc}, accessSvc, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testDefaultsGate{}, testAccountGate{users: s.Users})
 	rolesSvc.SetMemberGate(testMemberGate{svc: tenancySvc})
 	rolesSvc.SetPermissionGate(accessSvc)
-	accessSvc.SetRoles(accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc})
+	accessSvc.SetRoles(s.WorkspaceMembers)
 
 	seedUser(t, s, "owner", "owner")
 	seedUser(t, s, "alice", "alice")

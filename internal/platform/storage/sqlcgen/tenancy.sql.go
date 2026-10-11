@@ -10,24 +10,39 @@ import (
 	"database/sql"
 )
 
-const addWorkspaceMember = `-- name: AddWorkspaceMember :exec
-INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at) VALUES (?, ?, ?, ?)
+const addMemberRole = `-- name: AddMemberRole :exec
+INSERT INTO member_roles (user_id, workspace_id, role_id, created_at) VALUES (?, ?, ?, ?)
 `
 
-type AddWorkspaceMemberParams struct {
+type AddMemberRoleParams struct {
 	UserID      string
 	WorkspaceID string
 	RoleID      string
 	CreatedAt   int64
 }
 
-func (q *Queries) AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) error {
-	_, err := q.db.ExecContext(ctx, addWorkspaceMember,
+func (q *Queries) AddMemberRole(ctx context.Context, arg AddMemberRoleParams) error {
+	_, err := q.db.ExecContext(ctx, addMemberRole,
 		arg.UserID,
 		arg.WorkspaceID,
 		arg.RoleID,
 		arg.CreatedAt,
 	)
+	return err
+}
+
+const addWorkspaceMember = `-- name: AddWorkspaceMember :exec
+INSERT INTO workspace_members (user_id, workspace_id, created_at) VALUES (?, ?, ?)
+`
+
+type AddWorkspaceMemberParams struct {
+	UserID      string
+	WorkspaceID string
+	CreatedAt   int64
+}
+
+func (q *Queries) AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) error {
+	_, err := q.db.ExecContext(ctx, addWorkspaceMember, arg.UserID, arg.WorkspaceID, arg.CreatedAt)
 	return err
 }
 
@@ -69,6 +84,20 @@ type DeleteMemberProjectAccessParams struct {
 
 func (q *Queries) DeleteMemberProjectAccess(ctx context.Context, arg DeleteMemberProjectAccessParams) error {
 	_, err := q.db.ExecContext(ctx, deleteMemberProjectAccess, arg.UserID, arg.WorkspaceID)
+	return err
+}
+
+const deleteMemberRoles = `-- name: DeleteMemberRoles :exec
+DELETE FROM member_roles WHERE workspace_id = ? AND user_id = ?
+`
+
+type DeleteMemberRolesParams struct {
+	WorkspaceID string
+	UserID      string
+}
+
+func (q *Queries) DeleteMemberRoles(ctx context.Context, arg DeleteMemberRolesParams) error {
+	_, err := q.db.ExecContext(ctx, deleteMemberRoles, arg.WorkspaceID, arg.UserID)
 	return err
 }
 
@@ -127,7 +156,7 @@ func (q *Queries) GetWorkspaceBySlug(ctx context.Context, slug string) (Workspac
 }
 
 const getWorkspaceMember = `-- name: GetWorkspaceMember :one
-SELECT user_id, workspace_id, role_id, created_at, restricted FROM workspace_members WHERE workspace_id = ? AND user_id = ?
+SELECT user_id, workspace_id, created_at, restricted FROM workspace_members WHERE workspace_id = ? AND user_id = ?
 `
 
 type GetWorkspaceMemberParams struct {
@@ -141,27 +170,10 @@ func (q *Queries) GetWorkspaceMember(ctx context.Context, arg GetWorkspaceMember
 	err := row.Scan(
 		&i.UserID,
 		&i.WorkspaceID,
-		&i.RoleID,
 		&i.CreatedAt,
 		&i.Restricted,
 	)
 	return i, err
-}
-
-const getWorkspaceMemberRole = `-- name: GetWorkspaceMemberRole :one
-SELECT role_id FROM workspace_members WHERE workspace_id = ? AND user_id = ?
-`
-
-type GetWorkspaceMemberRoleParams struct {
-	WorkspaceID string
-	UserID      string
-}
-
-func (q *Queries) GetWorkspaceMemberRole(ctx context.Context, arg GetWorkspaceMemberRoleParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getWorkspaceMemberRole, arg.WorkspaceID, arg.UserID)
-	var role_id string
-	err := row.Scan(&role_id)
-	return role_id, err
 }
 
 const listMemberProjectAccess = `-- name: ListMemberProjectAccess :many
@@ -206,26 +218,111 @@ func (q *Queries) ListMemberProjectAccess(ctx context.Context, arg ListMemberPro
 	return items, nil
 }
 
+const listMemberRoleGrants = `-- name: ListMemberRoleGrants :many
+SELECT m.restricted, r.id AS role_id, r.is_owner_role, r.permissions
+FROM workspace_members m
+LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
+LEFT JOIN roles r ON r.id = mr.role_id
+WHERE m.workspace_id = ? AND m.user_id = ?
+ORDER BY mr.created_at, r.is_owner_role DESC, mr.role_id
+`
+
+type ListMemberRoleGrantsParams struct {
+	WorkspaceID string
+	UserID      string
+}
+
+type ListMemberRoleGrantsRow struct {
+	Restricted  int64
+	RoleID      sql.NullString
+	IsOwnerRole sql.NullInt64
+	Permissions sql.NullString
+}
+
+func (q *Queries) ListMemberRoleGrants(ctx context.Context, arg ListMemberRoleGrantsParams) ([]ListMemberRoleGrantsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMemberRoleGrants, arg.WorkspaceID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMemberRoleGrantsRow
+	for rows.Next() {
+		var i ListMemberRoleGrantsRow
+		if err := rows.Scan(
+			&i.Restricted,
+			&i.RoleID,
+			&i.IsOwnerRole,
+			&i.Permissions,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMemberRoleIDs = `-- name: ListMemberRoleIDs :many
+SELECT mr.role_id FROM member_roles mr
+JOIN roles r ON r.id = mr.role_id
+WHERE mr.workspace_id = ? AND mr.user_id = ?
+ORDER BY mr.created_at, r.is_owner_role DESC, mr.role_id
+`
+
+type ListMemberRoleIDsParams struct {
+	WorkspaceID string
+	UserID      string
+}
+
+func (q *Queries) ListMemberRoleIDs(ctx context.Context, arg ListMemberRoleIDsParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listMemberRoleIDs, arg.WorkspaceID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var role_id string
+		if err := rows.Scan(&role_id); err != nil {
+			return nil, err
+		}
+		items = append(items, role_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTeamMemberships = `-- name: ListTeamMemberships :many
-SELECT m.user_id, m.workspace_id, w.name AS workspace_name, m.role_id, r.name AS role_name, r.is_owner_role, m.restricted,
+SELECT m.user_id, m.workspace_id, w.name AS workspace_name, r.id AS role_id, r.name AS role_name, r.is_owner_role, m.restricted,
        COALESCE(po.allow, '[]') AS allow, COALESCE(po.deny, '[]') AS deny
 FROM workspace_members m
 JOIN workspaces w ON w.id = m.workspace_id
-JOIN roles r ON r.id = m.role_id
+LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
+LEFT JOIN roles r ON r.id = mr.role_id
 LEFT JOIN permission_overwrites po
   ON po.resource_type = 'workspace'
  AND po.resource_id = m.workspace_id
  AND po.user_id = m.user_id
-ORDER BY w.created_at, w.id
+ORDER BY w.created_at, w.id, m.user_id, mr.created_at, r.is_owner_role DESC, mr.role_id
 `
 
 type ListTeamMembershipsRow struct {
 	UserID        string
 	WorkspaceID   string
 	WorkspaceName string
-	RoleID        string
-	RoleName      string
-	IsOwnerRole   int64
+	RoleID        sql.NullString
+	RoleName      sql.NullString
+	IsOwnerRole   sql.NullInt64
 	Restricted    int64
 	Allow         string
 	Deny          string
@@ -502,8 +599,43 @@ func (q *Queries) ListWorkspaceInvitesByWorkspace(ctx context.Context, workspace
 	return items, nil
 }
 
+const listWorkspaceMemberRoles = `-- name: ListWorkspaceMemberRoles :many
+SELECT mr.user_id, mr.role_id FROM member_roles mr
+JOIN roles r ON r.id = mr.role_id
+WHERE mr.workspace_id = ?
+ORDER BY mr.user_id, mr.created_at, r.is_owner_role DESC, mr.role_id
+`
+
+type ListWorkspaceMemberRolesRow struct {
+	UserID string
+	RoleID string
+}
+
+func (q *Queries) ListWorkspaceMemberRoles(ctx context.Context, workspaceID string) ([]ListWorkspaceMemberRolesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listWorkspaceMemberRoles, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWorkspaceMemberRolesRow
+	for rows.Next() {
+		var i ListWorkspaceMemberRolesRow
+		if err := rows.Scan(&i.UserID, &i.RoleID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkspaceMembers = `-- name: ListWorkspaceMembers :many
-SELECT user_id, workspace_id, role_id, created_at, restricted FROM workspace_members WHERE workspace_id = ? ORDER BY created_at, user_id
+SELECT user_id, workspace_id, created_at, restricted FROM workspace_members WHERE workspace_id = ? ORDER BY created_at, user_id
 `
 
 func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID string) ([]WorkspaceMember, error) {
@@ -518,7 +650,6 @@ func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID string) 
 		if err := rows.Scan(
 			&i.UserID,
 			&i.WorkspaceID,
-			&i.RoleID,
 			&i.CreatedAt,
 			&i.Restricted,
 		); err != nil {
@@ -604,24 +735,6 @@ type SetWorkspaceMemberRestrictedParams struct {
 
 func (q *Queries) SetWorkspaceMemberRestricted(ctx context.Context, arg SetWorkspaceMemberRestrictedParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, setWorkspaceMemberRestricted, arg.Restricted, arg.WorkspaceID, arg.UserID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
-const setWorkspaceMemberRole = `-- name: SetWorkspaceMemberRole :execrows
-UPDATE workspace_members SET role_id = ? WHERE workspace_id = ? AND user_id = ?
-`
-
-type SetWorkspaceMemberRoleParams struct {
-	RoleID      string
-	WorkspaceID string
-	UserID      string
-}
-
-func (q *Queries) SetWorkspaceMemberRole(ctx context.Context, arg SetWorkspaceMemberRoleParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, setWorkspaceMemberRole, arg.RoleID, arg.WorkspaceID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}

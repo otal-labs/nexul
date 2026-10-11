@@ -32,13 +32,60 @@ type User struct {
 	Name  string `json:"name"`
 }
 
-// RoleInfo is mirrored here so access never imports roles (ADR 0017).
+// RoleInfo is a member's roles in one workspace, mirrored here so access never imports roles (ADR 0017).
 type RoleInfo struct {
+	// RoleID is the first role given; IsOwnerRole and Permissions answer for every role held.
 	RoleID      string
 	IsOwnerRole bool
 	Permissions permissions.Set
 	// Restricted is a Restricted member's membership: project areas answer from Project access alone (ADR 0097).
 	Restricted bool
+	// Roles are every role held, in the order given; empty means RoleID alone.
+	Roles []HeldRole
+}
+
+// HeldRole is one role a member holds and what it allows.
+type HeldRole struct {
+	ID          string
+	IsOwner     bool
+	Permissions permissions.Set
+}
+
+// RolesHeld is the RoleInfo of a member holding roles, in the order given.
+func RolesHeld(restricted bool, roles ...HeldRole) RoleInfo {
+	info := RoleInfo{Restricted: restricted, Roles: roles}
+	var union []permissions.Action
+	for _, r := range roles {
+		info.IsOwnerRole = info.IsOwnerRole || r.IsOwner
+		union = append(union, r.Permissions...)
+	}
+	info.Permissions = permissions.SetOf(union...)
+	if len(roles) > 0 {
+		info.RoleID = roles[0].ID
+	}
+	return info
+}
+
+// roleIDs is every role held, in the order given.
+func (r RoleInfo) roleIDs() []string {
+	if len(r.Roles) == 0 && r.RoleID != "" {
+		return []string{r.RoleID}
+	}
+	out := make([]string, 0, len(r.Roles))
+	for _, h := range r.Roles {
+		out = append(out, h.ID)
+	}
+	return out
+}
+
+// sourceRole is the role a roles' answer names: the Owner role, else the first allowing action, else the first.
+func (r RoleInfo) sourceRole(action permissions.Action) string {
+	for _, h := range r.Roles {
+		if h.IsOwner || (!r.IsOwnerRole && h.Permissions.Has(action)) {
+			return h.ID
+		}
+	}
+	return r.RoleID
 }
 
 // The kinds of Source: what decided an answer.

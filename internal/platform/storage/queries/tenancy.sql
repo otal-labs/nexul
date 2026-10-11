@@ -18,10 +18,33 @@ WHERE m.user_id = ?
 ORDER BY w.created_at, w.id;
 
 -- name: AddWorkspaceMember :exec
-INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at) VALUES (?, ?, ?, ?);
+INSERT INTO workspace_members (user_id, workspace_id, created_at) VALUES (?, ?, ?);
 
--- name: GetWorkspaceMemberRole :one
-SELECT role_id FROM workspace_members WHERE workspace_id = ? AND user_id = ?;
+-- name: AddMemberRole :exec
+INSERT INTO member_roles (user_id, workspace_id, role_id, created_at) VALUES (?, ?, ?, ?);
+
+-- name: DeleteMemberRoles :exec
+DELETE FROM member_roles WHERE workspace_id = ? AND user_id = ?;
+
+-- name: ListMemberRoleIDs :many
+SELECT mr.role_id FROM member_roles mr
+JOIN roles r ON r.id = mr.role_id
+WHERE mr.workspace_id = ? AND mr.user_id = ?
+ORDER BY mr.created_at, r.is_owner_role DESC, mr.role_id;
+
+-- name: ListWorkspaceMemberRoles :many
+SELECT mr.user_id, mr.role_id FROM member_roles mr
+JOIN roles r ON r.id = mr.role_id
+WHERE mr.workspace_id = ?
+ORDER BY mr.user_id, mr.created_at, r.is_owner_role DESC, mr.role_id;
+
+-- name: ListMemberRoleGrants :many
+SELECT m.restricted, r.id AS role_id, r.is_owner_role, r.permissions
+FROM workspace_members m
+LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
+LEFT JOIN roles r ON r.id = mr.role_id
+WHERE m.workspace_id = ? AND m.user_id = ?
+ORDER BY mr.created_at, r.is_owner_role DESC, mr.role_id;
 
 -- name: ListWorkspaceMembers :many
 SELECT * FROM workspace_members WHERE workspace_id = ? ORDER BY created_at, user_id;
@@ -60,9 +83,6 @@ ORDER BY p.position, p.id;
 -- name: RemoveWorkspaceMember :execrows
 DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ?;
 
--- name: SetWorkspaceMemberRole :execrows
-UPDATE workspace_members SET role_id = ? WHERE workspace_id = ? AND user_id = ?;
-
 -- name: UpsertWorkspaceInvite :exec
 INSERT INTO workspace_invites (workspace_id, login, role_id, invited_by, created_at)
 VALUES (?, ?, ?, ?, ?)
@@ -83,16 +103,17 @@ SELECT workspace_id, login, role_id, invited_by, created_at
 FROM workspace_invites WHERE login = ? ORDER BY created_at, workspace_id;
 
 -- name: ListTeamMemberships :many
-SELECT m.user_id, m.workspace_id, w.name AS workspace_name, m.role_id, r.name AS role_name, r.is_owner_role, m.restricted,
+SELECT m.user_id, m.workspace_id, w.name AS workspace_name, r.id AS role_id, r.name AS role_name, r.is_owner_role, m.restricted,
        COALESCE(po.allow, '[]') AS allow, COALESCE(po.deny, '[]') AS deny
 FROM workspace_members m
 JOIN workspaces w ON w.id = m.workspace_id
-JOIN roles r ON r.id = m.role_id
+LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
+LEFT JOIN roles r ON r.id = mr.role_id
 LEFT JOIN permission_overwrites po
   ON po.resource_type = 'workspace'
  AND po.resource_id = m.workspace_id
  AND po.user_id = m.user_id
-ORDER BY w.created_at, w.id;
+ORDER BY w.created_at, w.id, m.user_id, mr.created_at, r.is_owner_role DESC, mr.role_id;
 
 -- name: ListTeamWorkspaces :many
 SELECT id, name FROM workspaces ORDER BY created_at, id;

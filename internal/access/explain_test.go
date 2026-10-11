@@ -193,10 +193,11 @@ func TestDecide_RoleRules(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ws := workspaceLayers{userID: "bob", workspaceID: "ws", roleID: "role-dev", roleIDs: []string{"role-dev", "role-front"}, member: true, overwrite: tt.workspace}
+			dev := HeldRole{ID: "role-dev"}
 			if tt.base {
-				ws.role = permissions.SetOf(action)
+				dev.Permissions = permissions.SetOf(action)
 			}
+			ws := workspaceLayers{userID: "bob", workspaceID: "ws", roles: RolesHeld(false, dev, HeldRole{ID: "role-front"}), member: true, overwrite: tt.workspace}
 			rules := &Rules{Roles: []*Overwrite{doc(TargetRole, "role-dev", tt.dev), doc(TargetRole, "role-front", tt.front), doc(TargetRole, "role-client", StateDeny)}}
 			if tt.person != "" {
 				rules.Person = doc(TargetPerson, "bob", tt.person)
