@@ -9,7 +9,7 @@ import { invalidateProjectLinks } from "@/hooks/PairingProjectHooks";
 import { conversationPlayTarget } from "@/models/Chat";
 import type { PlayType } from "@/models/Play";
 import type { PlayQueue, PlayQueueItem } from "@/models/PlayQueue";
-import { hasPlayQueue, threadQueueEvents, type ThreadQueueEvent } from "@/utils/PlayQueueUtility";
+import { hasPlayQueue, threadQueueEvents, withoutErrorPrefix, type ThreadQueueEvent } from "@/utils/PlayQueueUtility";
 import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getPlayQueueKey = "getPlayQueue";
@@ -85,7 +85,7 @@ export const usePickQueuedComputer = () => {
       await Promise.all([refreshQueues(client, item), invalidateProjectLinks(client)]);
       toast.success(`${item.play_label} starts on the picked computer, now linked for this project`);
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => toast.error(withoutErrorPrefix(errorMessage(error))),
   });
 };
 

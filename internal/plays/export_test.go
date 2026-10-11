@@ -100,6 +100,21 @@ func (q *QueueRig) Dispatch(ctx context.Context) (time.Duration, error) {
 	return q.Runner.dispatch(ctx)
 }
 
+// OnNextFacts runs fn once, at the next read of a target's facts: during a pass, after the queue was read and before
+// the dispatcher claims an item.
+func (q *QueueRig) OnNextFacts(fn func()) {
+	q.facts.mu.Lock()
+	defer q.facts.mu.Unlock()
+	q.facts.next = fn
+}
+
+// OnNextResolve runs fn once, when a start next asks where to run: after the dispatcher claimed its item.
+func (q *QueueRig) OnNextResolve(fn func()) {
+	q.harness.mu.Lock()
+	defer q.harness.mu.Unlock()
+	q.harness.next = fn
+}
+
 // Kicked drains the dispatcher's kick, reporting whether one was waiting.
 func (q *QueueRig) Kicked() bool {
 	select {
@@ -113,6 +128,7 @@ func (q *QueueRig) Kicked() bool {
 type fakeFacts struct {
 	mu   sync.Mutex
 	byID map[string]Facts
+	next func()
 }
 
 func (f *fakeFacts) set(id string, facts Facts) {
@@ -122,6 +138,13 @@ func (f *fakeFacts) set(id string, facts Facts) {
 }
 
 func (f *fakeFacts) Facts(_ context.Context, _ TargetType, id string) (Facts, error) {
+	f.mu.Lock()
+	next := f.next
+	f.next = nil
+	f.mu.Unlock()
+	if next != nil {
+		next()
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	facts, ok := f.byID[id]
@@ -139,6 +162,19 @@ type switchableHarness struct {
 	resolves int
 	links    map[string][2]string // user id + "/" + project id -> computer id, T3 project id
 	saveErr  error
+	next     func()
+}
+
+// takeNext returns the hook OnNextResolve set, once.
+func (h *switchableHarness) takeNext() func() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	next := h.next
+	h.next = nil
+	if next == nil {
+		return func() {}
+	}
+	return next
 }
 
 func (h *switchableHarness) refuse(reason string) {
@@ -154,6 +190,7 @@ func (h *switchableHarness) count() int {
 }
 
 func (h *switchableHarness) ResolveTarget(_ context.Context, userID, projectID string, _ HarnessChoice) (HarnessChoice, error) {
+	h.takeNext()()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.resolves++
@@ -172,6 +209,7 @@ func (h *switchableHarness) ResolvePersonTarget(ctx context.Context, userID, pro
 
 // ResolveRecordedTarget runs a picked computer and T3 project as given: a pinned location needs no default computer.
 func (h *switchableHarness) ResolveRecordedTarget(_ context.Context, _, _ string, choice HarnessChoice) (HarnessChoice, error) {
+	h.takeNext()()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.resolves++

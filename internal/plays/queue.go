@@ -2,6 +2,7 @@ package plays
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -162,8 +163,9 @@ func (r *Runner) CancelQueued(ctx context.Context, id string) (*QueueItem, error
 	return it, nil
 }
 
-// PickComputer runs a queued item on computerID and the T3 project on it, for the person it lands on only, and saves
-// the pick as their link for its project, so their later runs there need no pick; their defaults stay as they are.
+// PickComputer runs a waiting item on computerID and the T3 project on it, replacing an earlier pick, for the person it
+// lands on only, and saves the pick as their link for its project, so their later runs there need no pick; their
+// defaults stay as they are. Once the dispatcher has claimed the run, the pick is refused, never dropped.
 func (r *Runner) PickComputer(ctx context.Context, id, computerID, harnessProjectID string) (*QueueItem, error) {
 	id, computerID, harnessProjectID = strings.TrimSpace(id), strings.TrimSpace(computerID), strings.TrimSpace(harnessProjectID)
 	if id == "" || computerID == "" || harnessProjectID == "" {
@@ -180,15 +182,30 @@ func (r *Runner) PickComputer(ctx context.Context, id, computerID, harnessProjec
 		return nil, fmt.Errorf("%w: only the person a queued run lands on can pick its computer", apperrs.ErrForbidden)
 	}
 	if it.Status != QueueQueued {
-		return nil, fmt.Errorf("%w: the run is %s, not queued", apperrs.ErrConflict, it.Status)
+		return nil, pickRefused(it.Status)
 	}
-	it.ComputerID, it.HarnessProjectID, it.NotBefore = computerID, harnessProjectID, r.now().UTC()
-	if err := r.decide(ctx, it, QueueQueued, QueueQueued, ""); err != nil {
-		return nil, err
+	it.ComputerID, it.HarnessProjectID, it.Reason, it.NotBefore = computerID, harnessProjectID, "", r.now().UTC()
+	err = r.queue.PickQueueItem(ctx, it, r.queueEvent(TopicQueueUpdated, it))
+	if errors.Is(err, apperrs.ErrConflict) {
+		return nil, pickRefused(QueueDispatching)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("pick a computer for queue item %s: %w", id, err)
 	}
 	r.rememberPick(ctx, it)
 	r.Kick()
 	return it, nil
+}
+
+// pickRefused says why a run that left the queue takes no pick; a run that left it mid-pick was claimed to start.
+func pickRefused(status QueueStatus) error {
+	if status == QueueStarted {
+		return fmt.Errorf("%w: the run already started, so its computer can no longer change", apperrs.ErrConflict)
+	}
+	if status == QueueSkipped || status == QueueDidntRun || status == QueueCancelled {
+		return fmt.Errorf("%w: the run is %s, not waiting", apperrs.ErrConflict, status)
+	}
+	return fmt.Errorf("%w: the run is already starting, so its computer can no longer change", apperrs.ErrConflict)
 }
 
 // rememberPick saves a picked item's location as its person's project link and makes their held runs due, so those

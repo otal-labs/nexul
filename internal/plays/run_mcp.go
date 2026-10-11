@@ -203,7 +203,9 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				"With computer_id and t3_project_id instead, id names a queued auto run of the caller's, such as one "+
 				"waiting with reason no_default_computer, which then runs on that computer and T3 project; the pick is "+
 				"saved as the caller's link for its project, as a first play_run there saves one, so their other runs "+
-				"in that project start through it, and their defaults stay as they are; allowed for the person it runs on only.",
+				"in that project start through it, and their defaults stay as they are; allowed for the person it runs on only. "+
+				"A run that still waits after a pick, such as one whose picked computer went offline, takes a new pick in "+
+				"place of the old; once the run is starting, a pick is refused with a conflict.",
 			mcptool.Hints{},
 			func(ctx context.Context, in trailUpdateIn) (any, error) {
 				if in.Cancel {

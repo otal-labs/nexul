@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -56,15 +57,31 @@ func (r *PlayQueueRepo) GetQueueItem(ctx context.Context, id string) (*plays.Que
 
 func (r *PlayQueueRepo) MoveQueueItem(ctx context.Context, it *plays.QueueItem, from plays.QueueStatus, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).UpdatePlayQueueItem(ctx, sqlcgen.UpdatePlayQueueItemParams{
+		row, err := r.q.WithTx(tx).UpdatePlayQueueItem(ctx, sqlcgen.UpdatePlayQueueItemParams{
 			Status: string(it.Status), Reason: it.Reason, TrailID: it.TrailID, DecidedAt: nullUnixPtr(it.DecidedAt),
-			NotBefore: it.NotBefore.Unix(), ComputerID: it.ComputerID, HarnessProjectID: it.HarnessProjectID, ID: it.ID, FromStatus: string(from),
+			NotBefore: it.NotBefore.Unix(), ID: it.ID, FromStatus: string(from),
 		})
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("update queue item %s: no longer %s: %w", it.ID, from, apperrs.ErrConflict)
+		}
 		if err != nil {
 			return fmt.Errorf("update queue item %s: %w", it.ID, classifyWriteErr(err))
 		}
+		it.ComputerID, it.HarnessProjectID = row.ComputerID, row.HarnessProjectID
+		return enqueuePlaysOutbox(ctx, tx, evts)
+	})
+}
+
+func (r *PlayQueueRepo) PickQueueItem(ctx context.Context, it *plays.QueueItem, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).PickPlayQueueItem(ctx, sqlcgen.PickPlayQueueItemParams{
+			ComputerID: it.ComputerID, HarnessProjectID: it.HarnessProjectID, NotBefore: it.NotBefore.Unix(), ID: it.ID,
+		})
+		if err != nil {
+			return fmt.Errorf("pick a computer for queue item %s: %w", it.ID, classifyWriteErr(err))
+		}
 		if n == 0 {
-			return fmt.Errorf("update queue item %s: no longer %s: %w", it.ID, from, apperrs.ErrConflict)
+			return fmt.Errorf("pick a computer for queue item %s: no longer queued: %w", it.ID, apperrs.ErrConflict)
 		}
 		return enqueuePlaysOutbox(ctx, tx, evts)
 	})

@@ -158,6 +158,29 @@ describe("PlaysRailSection auto play signals", () => {
     expect(screen.queryByRole("button", { name: "Pick a computer" })).not.toBeInTheDocument();
   });
 
+  it("offers its person a change of computer while a picked run waits, and nobody else", async () => {
+    const picked = queueItem({ reason: "offline", computer_id: "c-laptop" });
+    mockComputers(() => playQueue({ items: [picked] }), "u-alice");
+    vi.mocked(api.post).mockResolvedValue({ data: { ...picked, reason: "", computer_id: "c-desk" } });
+    renderSection();
+    expect(await screen.findByText("Alice Moreau · computer offline")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pick a computer" })).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "Change computer" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "web" }));
+    expect(api.post).toHaveBeenCalledWith("/api/plays/queue/q-1/computer", { computer_id: "c-desk", harness_project_id: "t3-web" });
+  });
+
+  it.each([
+    ["another person", queueItem({ reason: "offline", computer_id: "c-laptop" }), "u-bob"],
+    ["a run already starting", queueItem({ status: "dispatching", computer_id: "c-laptop" }), "u-alice"],
+  ])("offers no change of computer to %s", async (_, item, viewer) => {
+    mockApi(() => playQueue({ items: [item] }), viewer, ["autoplays:write"]);
+    renderSection();
+    expect(await screen.findByText("Fix with AI queued")).toBeInTheDocument();
+    expect(await screen.findByText(/^Alice Moreau · /)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Change computer" })).not.toBeInTheDocument();
+  });
+
   it("runs the queued run on the computer and T3 project its person picks, and refreshes their links", async () => {
     mockComputers(() => playQueue({ items: [noDefault] }), "u-alice");
     vi.mocked(api.post).mockResolvedValue({ data: { ...noDefault, reason: "", computer_id: "c-desk" } });

@@ -350,6 +350,31 @@ func (q *Queries) NextPlayQueueNotBefore(ctx context.Context, notBefore int64) (
 	return min, err
 }
 
+const pickPlayQueueItem = `-- name: PickPlayQueueItem :execrows
+UPDATE play_queue SET computer_id = ?, harness_project_id = ?, reason = '', not_before = ?
+WHERE id = ? AND status = 'queued'
+`
+
+type PickPlayQueueItemParams struct {
+	ComputerID       string
+	HarnessProjectID string
+	NotBefore        int64
+	ID               string
+}
+
+func (q *Queries) PickPlayQueueItem(ctx context.Context, arg PickPlayQueueItemParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, pickPlayQueueItem,
+		arg.ComputerID,
+		arg.HarnessProjectID,
+		arg.NotBefore,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const playQueueQueuedSince = `-- name: PlayQueueQueuedSince :one
 SELECT EXISTS (
     SELECT 1 FROM play_queue
@@ -389,39 +414,40 @@ func (q *Queries) RecoverDispatchingPlayQueue(ctx context.Context) error {
 	return err
 }
 
-const updatePlayQueueItem = `-- name: UpdatePlayQueueItem :execrows
-UPDATE play_queue SET status = ?, reason = ?, trail_id = ?, decided_at = ?, not_before = ?, computer_id = ?, harness_project_id = ?
-WHERE id = ? AND status = ?9
+const updatePlayQueueItem = `-- name: UpdatePlayQueueItem :one
+UPDATE play_queue SET status = ?, reason = ?, trail_id = ?, decided_at = ?, not_before = ?
+WHERE id = ? AND status = ?7
+RETURNING computer_id, harness_project_id
 `
 
 type UpdatePlayQueueItemParams struct {
-	Status           string
-	Reason           string
-	TrailID          string
-	DecidedAt        sql.NullInt64
-	NotBefore        int64
-	ComputerID       string
-	HarnessProjectID string
-	ID               string
-	FromStatus       string
+	Status     string
+	Reason     string
+	TrailID    string
+	DecidedAt  sql.NullInt64
+	NotBefore  int64
+	ID         string
+	FromStatus string
 }
 
-func (q *Queries) UpdatePlayQueueItem(ctx context.Context, arg UpdatePlayQueueItemParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, updatePlayQueueItem,
+type UpdatePlayQueueItemRow struct {
+	ComputerID       string
+	HarnessProjectID string
+}
+
+func (q *Queries) UpdatePlayQueueItem(ctx context.Context, arg UpdatePlayQueueItemParams) (UpdatePlayQueueItemRow, error) {
+	row := q.db.QueryRowContext(ctx, updatePlayQueueItem,
 		arg.Status,
 		arg.Reason,
 		arg.TrailID,
 		arg.DecidedAt,
 		arg.NotBefore,
-		arg.ComputerID,
-		arg.HarnessProjectID,
 		arg.ID,
 		arg.FromStatus,
 	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
+	var i UpdatePlayQueueItemRow
+	err := row.Scan(&i.ComputerID, &i.HarnessProjectID)
+	return i, err
 }
 
 const upsertPlayQueueResume = `-- name: UpsertPlayQueueResume :exec

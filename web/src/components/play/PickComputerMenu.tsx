@@ -14,7 +14,7 @@ interface PickComputerMenuProps {
   item: PlayQueueItem;
 }
 
-// The run's person picks one of their computers and a T3 project on it; the run starts there and the project keeps it.
+// The run's person picks, or changes, the computer and T3 project it runs on; the run starts there and the project keeps it.
 export const PickComputerMenu = ({ item }: PickComputerMenuProps) => {
   const { data: computers, isPending, error } = useListComputers();
   const { data: presence } = useFetchPresence();
@@ -24,7 +24,7 @@ export const PickComputerMenu = ({ item }: PickComputerMenuProps) => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className={cn(signalActionClass, "-ml-1.5 mt-1")} loading={pick.isPending}>
-          Pick a computer
+          {item.computer_id === "" ? "Pick a computer" : "Change computer"}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">

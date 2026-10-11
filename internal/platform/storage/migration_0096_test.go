@@ -27,8 +27,8 @@ VALUES ('q-1', 'workspace-default', 'p-1', 'ticket', 't-1', 'play-1', 'Fix it', 
 	require.NoError(t, err)
 	assert.Equal(t, []any{plays.QueueQueued, "no_default_computer", "Fix it", "", ""}, []any{it.Status, it.Reason, it.PlayLabel, it.ComputerID, it.HarnessProjectID})
 
-	it.ComputerID, it.HarnessProjectID, it.Reason = "c-laptop", "t3-project", ""
-	require.NoError(t, s.PlayQueue.MoveQueueItem(t.Context(), it, plays.QueueQueued))
+	it.ComputerID, it.HarnessProjectID = "c-laptop", "t3-project"
+	require.NoError(t, s.PlayQueue.PickQueueItem(t.Context(), it))
 	it, err = s.PlayQueue.GetQueueItem(t.Context(), "q-1")
 	require.NoError(t, err)
 	assert.Equal(t, []any{"c-laptop", "t3-project"}, []any{it.ComputerID, it.HarnessProjectID})

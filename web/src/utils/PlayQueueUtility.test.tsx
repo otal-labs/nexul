@@ -36,9 +36,15 @@ describe("waitingWhy and waitingSentence", () => {
     expect([waitingWhy(item), waitingSentence(item)]).toEqual([why, sentence]);
   });
 
-  it("asks for a computer only while a run waits for no default computer", () => {
-    expect(pickingComputer(queueItem({ reason: "no_default_computer" }))).toBe(true);
-    expect(pickingComputer(queueItem({ reason: "no_default_computer", status: "dispatching" }))).toBe(false);
-    expect(pickingComputer(queueItem({ reason: "unpaired" }))).toBe(false);
+  it.each([
+    [{ reason: "no_default_computer" }, true],
+    [{ reason: "offline", computer_id: "c-laptop" }, true],
+    [{ reason: "ticket busy", computer_id: "c-laptop" }, true],
+    [{ reason: "no_default_computer", status: "dispatching" as const }, false],
+    [{ reason: "", computer_id: "c-laptop", status: "dispatching" as const }, false],
+    [{ reason: "unpaired" }, false],
+    [{ reason: "offline" }, false],
+  ])("asks for a computer while a run waits for no default computer or on its pick (%j)", (overrides, want) => {
+    expect(pickingComputer(queueItem(overrides))).toBe(want);
   });
 });

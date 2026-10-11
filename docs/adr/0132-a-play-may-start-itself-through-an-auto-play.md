@@ -44,3 +44,8 @@ asks its person to pick a computer and T3 project for it, which leaves their def
 Amended 2026-10-11: the pick is also saved as the person's project link, the way a first run through the run dialog or
 `play_run` saves one (ADR 0145), so their other runs waiting in that project go ahead through it and later ones never
 ask. A link that fails to save leaves the pick on that one run.
+
+Amended 2026-10-11: a run with a pick that still waits, such as one whose picked computer went offline, takes a new pick
+in place of the old one, and its link with it. The dispatcher reads the pick in the statement that claims the run, and a
+pick writes only while the run is queued, so a pick landing as the run starts is either the one it starts on or refused
+as "already starting", never saved and then ignored.
