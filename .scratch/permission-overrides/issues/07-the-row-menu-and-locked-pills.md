@@ -1,6 +1,6 @@
 # 07 — The row menu, and locked pills
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 06
 
@@ -26,8 +26,8 @@ Read first: `practices/react-guide.md` (F1 to F7, UI components, Accessibility, 
 
 ## Acceptance criteria
 
-- [ ] Right-click opens at the pointer, and the row keeps `bg-accent` while the menu is open.
-- [ ] ⋯ shows the same items, and the keyboard works.
-- [ ] "Permissions…" shows only to people who can manage the entity's access.
-- [ ] A locked pill shows the tooltip and stays inert.
-- [ ] Verified at 768, 1024 and 1440px, and the self-review passes.
+- [x] Right-click opens at the pointer, and the row keeps `bg-accent` while the menu is open.
+- [x] ⋯ shows the same items, and the keyboard works.
+- [x] "Permissions…" shows only to people who can manage the entity's access.
+- [x] A locked pill shows the tooltip and stays inert.
+- [x] Verified at 768, 1024 and 1440px, and the self-review passes.

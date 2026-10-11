@@ -83,6 +83,7 @@ describe("DocPage", () => {
       if (url === "/api/pairing/presence") return Promise.resolve({ data: { computers: {} } });
       if (url === "/api/docs/doc-1/watchers") return Promise.resolve({ data: { watchers: [], watching: false } });
       if (url === "/api/docs/doc-1/clarification") return Promise.resolve({ data: noClarification });
+      if (url === "/api/permissions/explain") return Promise.resolve({ data: { effective: [] } });
       return Promise.resolve({ data: [] });
     });
 
@@ -92,6 +93,7 @@ describe("DocPage", () => {
     await user.click(await screen.findByRole("button", { name: "Doc actions" }));
     expect(await screen.findByText("Write migrations")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create ticket from this doc" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Permissions…" })).not.toBeInTheDocument();
   });
 
   it("creates a ticket from the doc with the doc id pre-set", async () => {
@@ -105,6 +107,7 @@ describe("DocPage", () => {
       if (url === "/api/pairing/presence") return Promise.resolve({ data: { computers: {} } });
       if (url === "/api/docs/doc-1/watchers") return Promise.resolve({ data: { watchers: [], watching: false } });
       if (url === "/api/docs/doc-1/clarification") return Promise.resolve({ data: noClarification });
+      if (url === "/api/permissions/explain") return Promise.resolve({ data: { effective: [] } });
       return Promise.resolve({ data: [] });
     });
     vi.mocked(api.post).mockResolvedValue({ data: ticketData("t-1", "New task", "doc-1") });
@@ -125,6 +128,22 @@ describe("DocPage", () => {
       category_id: "",
       type_id: "ticket-type-task",
     });
+  });
+
+  it("offers Permissions… in the doc's settings only to whoever may manage its access", async () => {
+    const user = userEvent.setup();
+    const manages = { effective: [{ action: "permissions:write", allowed: true }] };
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === "/api/docs/doc-1") return Promise.resolve({ data: docData });
+      if (url === "/api/docs/doc-1/watchers") return Promise.resolve({ data: { watchers: [], watching: false } });
+      if (url === "/api/docs/doc-1/clarification") return Promise.resolve({ data: noClarification });
+      if (url === "/api/permissions/explain") return Promise.resolve({ data: manages });
+      return Promise.resolve({ data: [] });
+    });
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Doc actions" }));
+    expect(await screen.findByRole("button", { name: "Permissions…" })).toBeInTheDocument();
   });
 
   it("shows the shared error display", async () => {

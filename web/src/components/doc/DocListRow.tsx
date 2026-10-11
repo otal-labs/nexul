@@ -1,7 +1,6 @@
 import { CircleHelpIcon, FileTextIcon, LoaderCircleIcon, LockIcon } from "lucide-react";
 
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
-import { RowActions } from "@/components/listpane/RowActions";
 import { useDocRunState } from "@/hooks/TrailHooks";
 import { useDocRowActions } from "@/hooks/useDocRowActions";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -15,7 +14,7 @@ interface DocListRowProps {
 }
 
 export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => {
-  const { pin, lock, moveTo, onClone, onDelete } = useDocRowActions(doc, selected);
+  const menu = useDocRowActions(doc, selected);
   const wsPath = useWorkspacePath();
   const runState = useDocRunState(doc.project_id, doc.id);
   return (
@@ -35,7 +34,7 @@ export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => 
       }
       titleIcon={doc.locked && <LockIcon className="size-3 shrink-0 text-muted-foreground" aria-label="Locked" />}
       selected={selected}
-      actions={<RowActions itemLabel={doc.title} pin={pin} lock={lock} moveTo={moveTo} onClone={onClone} onDelete={onDelete} />}
+      menu={menu}
     />
   );
 };

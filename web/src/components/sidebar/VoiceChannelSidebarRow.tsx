@@ -3,7 +3,6 @@ import { Volume2 } from "lucide-react";
 import type { Conversation } from "@nexul/client-core/chat";
 
 import { VoiceOccupantList } from "@/components/chat/VoiceOccupantAvatars";
-import { RowActions } from "@/components/listpane/RowActions";
 import { ChatSidebarRow } from "@/components/sidebar/ChatSidebarRow";
 import { useChannelRowActions } from "@/hooks/useChannelRowActions";
 import { channelMention } from "@/models/Chat";
@@ -30,11 +29,7 @@ export const VoiceChannelSidebarRow = ({ conversation, occupants, unreadCount }:
         isPrivate={conversation.private}
         unreadCount={unreadCount}
         onClick={() => void joinCall(conversation.id, channelMention(conversation))}
-        actions={
-          (onSettings || onRename || onDelete) && (
-            <RowActions itemLabel={label} onSettings={onSettings} onRename={onRename} onDelete={onDelete} />
-          )
-        }
+        menu={{ onSettings, onRename, onDelete }}
       />
       <VoiceOccupantList occupants={occupants} />
       {settingsDialog}

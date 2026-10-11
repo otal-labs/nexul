@@ -1,20 +1,22 @@
 import { useNavigate } from "react-router";
 
 import { CloneDocForm } from "@/components/doc/CloneDocForm";
+import type { RowMenu } from "@/components/listpane/rowMenu";
 import { useFetchDocFolders, useMoveDoc } from "@/hooks/DocFolderHooks";
 import { useDeleteDoc, useSetDocLocked } from "@/hooks/DocHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useDocPins } from "@/hooks/useDocPins";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
+import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { CloneDocFormSchema, type CloneDocFormData, type DocListItem } from "@/models/Doc";
 import { docPath, projectTokenById } from "@/models/Project";
 
-// A row's Pin, plus Lock, Move to folder, Clone, and Delete, each of those undefined when the viewer's role lacks it; the
-// server still checks the doc itself.
-export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
+// A doc row's menu: each action is left out when the viewer lacks it, and the server still checks the doc itself.
+export const useDocRowActions = (doc: DocListItem, selected: boolean): RowMenu => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const { pinnedIds, toggle } = useDocPins();
@@ -29,6 +31,9 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
   const { data: projects } = useFetchProjects();
   const { data: folders } = useFetchDocFolders(doc.project_id);
   const moveDoc = useMoveDoc();
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  const openPermissions = usePermissionsDialog();
+  const entity = { type: "doc" as const, id: doc.id, name: doc.title, workspaceId, projectId: doc.project_id, folderId: doc.folder_id };
 
   // The dialog renders outside the router, so the move to the copy happens here once it resolves.
   const clone = async () => {
@@ -61,6 +66,7 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
         ? { label: "Move to folder", options: folders, currentId: doc.folder_id, onMove: (folderId: string) => moveDoc.mutate({ id: doc.id, folderId }) }
         : undefined,
     onClone: canClone ? () => void clone() : undefined,
+    permissions: { entity, onOpen: () => void openPermissions(entity) },
     onDelete: canDelete ? () => void remove() : undefined,
   };
 };

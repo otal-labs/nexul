@@ -1,5 +1,6 @@
 import { SettingsIcon } from "lucide-react";
 
+import { DocPermissionsButton } from "@/components/doc/DocPermissionsButton";
 import { DocTicketsSection } from "@/components/doc/DocTicketsSection";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -37,9 +38,7 @@ export const DocActionsMenu = ({
             Create ticket from this doc
           </Button>
         )}
-        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onPermissions}>
-          Permissions
-        </Button>
+        <DocPermissionsButton docId={doc.id} onOpen={onPermissions} />
         {canLock && !doc.locked && (
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setLocked.mutate({ id: doc.id, locked: true })}>
             Lock

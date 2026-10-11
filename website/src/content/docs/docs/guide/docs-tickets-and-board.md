@@ -13,17 +13,17 @@ Open **Docs** under the project. The list groups docs by folder, newest first; t
 
 Write in the editor with formatting, tables, and code blocks; type `/` for the block menu. Several people can edit at once: you see who's there and where their cursors are, and edits merge as you type. If an edit can't merge, a banner offers **Keep my version** or **Use server version**.
 
-- **Mention** with `@`: a person, a ticket, or another doc becomes a live chip. Pasting a link to a ticket or doc in the workspace does the same. Mentioning someone tells them in their inbox. A chip you can't open shows its title only.
+- **Mention** with `@`: a person, a ticket, or another doc becomes a live chip. Pasting a link to a ticket or doc in the workspace does the same. Mentioning someone tells them in their inbox. A chip you can't open still shows what it points at, with a lock; it doesn't open, and pointing at it says **You don't have access**.
 - **Attach** files by pasting, dropping, or `/` then **Image**. The doc's files are listed under the body.
 - **Watch** with the eye button in the doc's header. Watchers hear about edits. You start watching a doc when you create it or save an edit, and **Stop watching** sticks until you choose to watch again.
 
 ### Folders
 
-Every doc lives in one folder of its project. New docs land in **Main** unless you start them from another folder's **+**. **New folder** in the list header adds one, and a folder's **…** menu renames or deletes it. Deleting a folder moves its docs to Main; it never deletes a doc. Main can be renamed, not deleted. Move a doc with **Move to folder** in its row menu.
+Every doc lives in one folder of its project. New docs land in **Main** unless you start them from another folder's **+**. **New folder** in the list header adds one, and a folder's **…** menu, or a right-click on it, starts a doc in it, renames it, or deletes it. Deleting a folder moves its docs to Main; it never deletes a doc. Main can be renamed, not deleted. Move a doc with **Move to folder** in its row menu.
 
 ### Lock, clone, and delete
 
-The row menu also has **Lock**, **Clone**, and **Delete**.
+The row menu, on a doc's **…** or a right-click, also has **Lock**, **Clone**, **Permissions…** for whoever can change the doc's [rules](/docs/guide/people-and-access/#permissions-on-a-doc-or-a-play), and **Delete**.
 
 - **Lock** makes the doc read-only for everyone, people and agents alike, until someone presses **Unlock**. Locking needs `docs:lock`, granted apart from editing. Starting a doc play locks the doc too.
 - **Clone** copies the doc and its files into any project where you can write docs.
