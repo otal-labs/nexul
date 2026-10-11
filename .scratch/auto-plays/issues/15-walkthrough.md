@@ -2,7 +2,7 @@
 
 Type: task
 Status: open
-Blocked by: 11, 12, 13, 14
+Blocked by: 11, 12, 13, 14, 16
 
 ## Question
 
@@ -18,3 +18,12 @@ question in the map's "Not yet specified".
 - A person with `plays:read` + `autoplays:read` but no `plays:write`
   can't open the play dialog, so never sees the Auto plays tab; decide in
   the walkthrough whether a read-only way into a play is needed.
+
+## Comments
+
+- 2026-10-10: the harness-free part was walked on a copy of the demo
+  instance; its defects were fixed in #545 and #546, and a switched-off
+  automation's token still working is in `.scratch/latent-bugs/`.
+- 2026-10-11: the owner chose to walk the real runs on the live instance
+  with their paired computer, using a test play with one-line instructions;
+  the phone question is settled in the map (no signals for now).
