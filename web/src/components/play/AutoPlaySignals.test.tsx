@@ -36,6 +36,19 @@ const mockApi = (queue: () => PlayQueue, viewer = "u-bob", permissions: string[]
     return { data: [] };
   });
 
+const noDefault = queueItem({ reason: "no_default_computer" });
+
+// Alice's two computers: the workstation answers with its T3 projects, the laptop is offline.
+const mockComputers = (queue: () => PlayQueue, viewer: string, permissions: string[] = []) => {
+  const base = mockApi(queue, viewer, permissions).getMockImplementation()!;
+  vi.mocked(api.get).mockImplementation(async (url: string, config?: unknown) => {
+    if (url === "/api/pairing/computers") return { data: { computers: [{ id: "c-desk", name: "Workstation" }, { id: "c-laptop", name: "Laptop" }] } };
+    if (url === "/api/pairing/presence") return { data: { computers: { "c-desk": "connected", "c-laptop": "offline" } } };
+    if (url === "/api/pairing/computers/c-desk/projects") return { data: { projects: [{ id: "t3-web", title: "web", path: "/src/web" }] } };
+    return base(url, config as never);
+  });
+};
+
 const renderSection = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
@@ -120,5 +133,38 @@ describe("PlaysRailSection auto play signals", () => {
     queue = playQueue({ items: [offline] });
     await followFrame(playQueueFollower, "play.queued", offline, client);
     expect(await screen.findByText("Fix with AI queued")).toBeInTheDocument();
+  });
+
+  it("says how to fix a run waiting on its person's computer setup", async () => {
+    mockApi(() => playQueue({ items: [queueItem({ reason: "expired_token" })] }));
+    renderSection();
+    expect(
+      await screen.findByText("Alice Moreau · the paired computer's session expired; pair it again in Settings → Computers"),
+    ).toBeInTheDocument();
+  });
+
+  it("offers a pick of computer only to the person the run lands on, and only when no computer is the default", async () => {
+    mockApi(() => playQueue({ items: [noDefault] }), "u-bob", ["autoplays:write"]);
+    renderSection();
+    expect(await screen.findByRole("button", { name: "Cancel Fix with AI" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pick a computer" })).not.toBeInTheDocument();
+  });
+
+  it("offers no pick when the run waits on another gap", async () => {
+    mockApi(() => playQueue({ items: [queueItem({ reason: "unpaired" })] }), "u-alice");
+    renderSection();
+    expect(await screen.findByRole("button", { name: "Cancel Fix with AI" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pick a computer" })).not.toBeInTheDocument();
+  });
+
+  it("runs the queued run on the computer and T3 project its person picks", async () => {
+    mockComputers(() => playQueue({ items: [noDefault] }), "u-alice");
+    vi.mocked(api.post).mockResolvedValue({ data: { ...noDefault, reason: "", computer_id: "c-desk" } });
+    renderSection();
+    await userEvent.click(await screen.findByRole("button", { name: "Pick a computer" }));
+    expect(await screen.findByText("Laptop")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Offline" })).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(await screen.findByRole("menuitem", { name: "web" }));
+    expect(api.post).toHaveBeenCalledWith("/api/plays/queue/q-1/computer", { computer_id: "c-desk", harness_project_id: "t3-web" });
   });
 });

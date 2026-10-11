@@ -4,6 +4,7 @@ import { useState } from "react";
 import { personLabel } from "@nexul/client-core/person";
 
 import { Button } from "@/components/ui/button";
+import { PickComputerMenu } from "@/components/play/PickComputerMenu";
 import { signalActionClass, signalRowClass } from "@/components/play/signalRowClass";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
@@ -12,7 +13,7 @@ import { leavingRowClass } from "@/hooks/useRowGlide";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import type { PlayQueueItem } from "@/models/PlayQueue";
 import { cn } from "@/lib/utils";
-import { waitingWhy } from "@/utils/PlayQueueUtility";
+import { pickingComputer, waitingSentence } from "@/utils/PlayQueueUtility";
 
 interface QueuedRunRowProps {
   item: PlayQueueItem;
@@ -20,14 +21,16 @@ interface QueuedRunRowProps {
   onLeave: () => void;
 }
 
-// Cancel is for the person the run lands on or an autoplays:write holder, as the server checks.
+// Cancel is for the person the run lands on or an autoplays:write holder, as the server checks; picking its computer is
+// theirs alone.
 export const QueuedRunRow = ({ item, onLeave }: QueuedRunRowProps) => {
   const person = personLabel(usePerson(item.person_id));
   const { data: me } = useFetchMe();
   const canWrite = useHasPermission("autoplays:write");
   const cancel = useCancelQueuedRun();
   const [leaving, setLeaving] = useState(false);
-  const canCancel = item.status === "queued" && (me?.user.id === item.person_id || canWrite);
+  const mine = me?.user.id === item.person_id;
+  const canCancel = item.status === "queued" && (mine || canWrite);
 
   const onCancel = () => {
     setLeaving(true);
@@ -41,8 +44,9 @@ export const QueuedRunRow = ({ item, onLeave }: QueuedRunRowProps) => {
       <div className="min-w-0 flex-1">
         <p className="[overflow-wrap:anywhere]">{item.play_label} queued</p>
         <p className="text-muted-foreground [overflow-wrap:anywhere]">
-          {person} · {waitingWhy(item)}
+          {person} · {waitingSentence(item)}
         </p>
+        {mine && pickingComputer(item) && <PickComputerMenu item={item} />}
       </div>
       {canCancel && (
         <Button variant="ghost" size="sm" className={signalActionClass} aria-label={`Cancel ${item.play_label}`} disabled={leaving} onClick={onCancel}>

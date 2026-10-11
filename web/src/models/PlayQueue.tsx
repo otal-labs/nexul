@@ -19,13 +19,16 @@ export interface PlayQueueItem {
   moment: string;
   priority: "high" | "normal" | "low";
   status: PlayQueueStatus;
-  // While queued: offline, ticket busy, paused, or "" waiting for a free slot; once decided, why.
+  // While queued: offline, ticket busy, paused, no free slot, a computer setup gap (unpaired, expired_token, no_default,
+  // no_default_computer, setup_required), or "" until first tried; once decided, why.
   reason: string;
   trail_id: string;
   via: "web" | "mcp" | "automation";
   queued_at: string;
   decided_at: string | null;
   not_before: string;
+  // The computer its person picked for it when several are paired and none is the default; "" until picked.
+  computer_id: string;
 }
 
 // Mirrors internal/plays.Queue: a ticket's or doc's auto runs, newest first, and whether the daily cap paused them.

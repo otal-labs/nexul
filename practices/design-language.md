@@ -606,7 +606,8 @@ when empty ("No bugs reported."): Properties, Plays, Development, Reviews,
 Attachments, Links, Testing, Bugs, Trail. Plays is stage-bound, so it is
 absent, not empty, when no play applies to the ticket's stage, unless an auto play waits there or the daily cap paused
 it: a queued run is an `info` clock over "<person> · <why it waits>", a paused ticket a `warning` pause over its runs
-today, each with its one ghost action (Cancel, Resume). What an auto play already did is an event line in the Thread
+today, each with its one ghost action (Cancel, Resume); a run waiting for its person to pick a computer adds a ghost
+"Pick a computer" under the why, for that person only, opening a menu of their computers with each one's T3 projects. What an auto play already did is an event line in the Thread
 at its time: a small icon in a circle under the avatar column, the play's name in medium weight, the rest muted, a mono
 time, and an outline "Run it" on a didn't-run. Links leads with the Source group
 when the ticket has one: a muted file icon and the doc's title as a link. A linked ticket is its

@@ -154,8 +154,15 @@ func (h *switchableHarness) ResolvePersonTarget(ctx context.Context, userID, pro
 	return h.ResolveTarget(ctx, userID, projectID, choice)
 }
 
-func (h *switchableHarness) ResolveRecordedTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error) {
-	return h.ResolveTarget(ctx, userID, projectID, choice)
+// ResolveRecordedTarget runs a picked computer and T3 project as given: a pinned location needs no default computer.
+func (h *switchableHarness) ResolveRecordedTarget(_ context.Context, _, _ string, choice HarnessChoice) (HarnessChoice, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.resolves++
+	if h.reason != "" && h.reason != RefusalNoDefaultComputer {
+		return HarnessChoice{}, &HarnessRefusal{Reason: h.reason, ComputerID: choice.ComputerID, Err: apperrs.ErrInvalid}
+	}
+	return choice, nil
 }
 
 // idleTurns accepts a turn and never reports on it, so its trail stays starting and holds its slot until a test ends it.

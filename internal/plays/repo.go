@@ -66,6 +66,8 @@ type QueueDispatchRepo interface {
 	CountAutoRuns(ctx context.Context, targetType TargetType, targetID string, since time.Time) (int, time.Time, error)
 	// QueuedSince reports whether autoPlayID queued, or started, a run on the target at or after since.
 	QueuedSince(ctx context.Context, autoPlayID string, targetType TargetType, targetID string, since time.Time) (bool, error)
+	// WakePerson makes every queued item of personID due now, for a change to their computers that may close a setup gap.
+	WakePerson(ctx context.Context, personID string, now time.Time) error
 	// RecoverDispatching settles items a crash left dispatching: started when their trail exists, queued again otherwise.
 	RecoverDispatching(ctx context.Context) error
 }

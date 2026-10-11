@@ -47,7 +47,7 @@ func (q *Queries) CountPlayQueueStarted(ctx context.Context, arg CountPlayQueueS
 }
 
 const getPlayQueueItem = `-- name: GetPlayQueueItem :one
-SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id FROM play_queue WHERE id = ?
+SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id FROM play_queue WHERE id = ?
 `
 
 func (q *Queries) GetPlayQueueItem(ctx context.Context, id string) (PlayQueue, error) {
@@ -74,37 +74,41 @@ func (q *Queries) GetPlayQueueItem(ctx context.Context, id string) (PlayQueue, e
 		&i.DecidedAt,
 		&i.NotBefore,
 		&i.AutomationID,
+		&i.ComputerID,
+		&i.HarnessProjectID,
 	)
 	return i, err
 }
 
 const insertPlayQueueItem = `-- name: InsertPlayQueueItem :execrows
-INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, automation_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO play_queue (id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, automation_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, computer_id, harness_project_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT DO NOTHING
 `
 
 type InsertPlayQueueItemParams struct {
-	ID           string
-	WorkspaceID  string
-	ProjectID    string
-	TargetType   string
-	TargetID     string
-	PlayID       string
-	PlayLabel    string
-	AutoPlayID   string
-	AutomationID string
-	PersonID     string
-	RunOn        string
-	Moment       string
-	Via          string
-	Priority     int64
-	Status       string
-	Reason       string
-	TrailID      string
-	QueuedAt     int64
-	DecidedAt    sql.NullInt64
-	NotBefore    int64
+	ID               string
+	WorkspaceID      string
+	ProjectID        string
+	TargetType       string
+	TargetID         string
+	PlayID           string
+	PlayLabel        string
+	AutoPlayID       string
+	AutomationID     string
+	PersonID         string
+	RunOn            string
+	Moment           string
+	Via              string
+	Priority         int64
+	Status           string
+	Reason           string
+	TrailID          string
+	QueuedAt         int64
+	DecidedAt        sql.NullInt64
+	NotBefore        int64
+	ComputerID       string
+	HarnessProjectID string
 }
 
 func (q *Queries) InsertPlayQueueItem(ctx context.Context, arg InsertPlayQueueItemParams) (int64, error) {
@@ -129,6 +133,8 @@ func (q *Queries) InsertPlayQueueItem(ctx context.Context, arg InsertPlayQueueIt
 		arg.QueuedAt,
 		arg.DecidedAt,
 		arg.NotBefore,
+		arg.ComputerID,
+		arg.HarnessProjectID,
 	)
 	if err != nil {
 		return 0, err
@@ -137,7 +143,7 @@ func (q *Queries) InsertPlayQueueItem(ctx context.Context, arg InsertPlayQueueIt
 }
 
 const listDuePlayQueue = `-- name: ListDuePlayQueue :many
-SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id FROM play_queue WHERE status = 'queued' AND person_id = ? AND not_before <= ?
+SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id FROM play_queue WHERE status = 'queued' AND person_id = ? AND not_before <= ?
 ORDER BY priority DESC, queued_at, id
 `
 
@@ -176,6 +182,8 @@ func (q *Queries) ListDuePlayQueue(ctx context.Context, arg ListDuePlayQueuePara
 			&i.DecidedAt,
 			&i.NotBefore,
 			&i.AutomationID,
+			&i.ComputerID,
+			&i.HarnessProjectID,
 		); err != nil {
 			return nil, err
 		}
@@ -191,7 +199,7 @@ func (q *Queries) ListDuePlayQueue(ctx context.Context, arg ListDuePlayQueuePara
 }
 
 const listPlayQueueByTarget = `-- name: ListPlayQueueByTarget :many
-SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id FROM play_queue WHERE target_type = ? AND target_id = ? ORDER BY queued_at DESC, id DESC
+SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id FROM play_queue WHERE target_type = ? AND target_id = ? ORDER BY queued_at DESC, id DESC
 `
 
 type ListPlayQueueByTargetParams struct {
@@ -229,6 +237,8 @@ func (q *Queries) ListPlayQueueByTarget(ctx context.Context, arg ListPlayQueueBy
 			&i.DecidedAt,
 			&i.NotBefore,
 			&i.AutomationID,
+			&i.ComputerID,
+			&i.HarnessProjectID,
 		); err != nil {
 			return nil, err
 		}
@@ -271,7 +281,7 @@ func (q *Queries) ListPlayQueuePeople(ctx context.Context, notBefore int64) ([]s
 }
 
 const listQueuedPlayQueueByPlay = `-- name: ListQueuedPlayQueueByPlay :many
-SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id FROM play_queue
+SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id FROM play_queue
 WHERE status = 'queued' AND play_id = ?1
   AND (?2 OR project_id IN (SELECT value FROM json_each(?3)))
 ORDER BY priority DESC, queued_at, id
@@ -313,6 +323,8 @@ func (q *Queries) ListQueuedPlayQueueByPlay(ctx context.Context, arg ListQueuedP
 			&i.DecidedAt,
 			&i.NotBefore,
 			&i.AutomationID,
+			&i.ComputerID,
+			&i.HarnessProjectID,
 		); err != nil {
 			return nil, err
 		}
@@ -378,18 +390,20 @@ func (q *Queries) RecoverDispatchingPlayQueue(ctx context.Context) error {
 }
 
 const updatePlayQueueItem = `-- name: UpdatePlayQueueItem :execrows
-UPDATE play_queue SET status = ?, reason = ?, trail_id = ?, decided_at = ?, not_before = ?
-WHERE id = ? AND status = ?7
+UPDATE play_queue SET status = ?, reason = ?, trail_id = ?, decided_at = ?, not_before = ?, computer_id = ?, harness_project_id = ?
+WHERE id = ? AND status = ?9
 `
 
 type UpdatePlayQueueItemParams struct {
-	Status     string
-	Reason     string
-	TrailID    string
-	DecidedAt  sql.NullInt64
-	NotBefore  int64
-	ID         string
-	FromStatus string
+	Status           string
+	Reason           string
+	TrailID          string
+	DecidedAt        sql.NullInt64
+	NotBefore        int64
+	ComputerID       string
+	HarnessProjectID string
+	ID               string
+	FromStatus       string
 }
 
 func (q *Queries) UpdatePlayQueueItem(ctx context.Context, arg UpdatePlayQueueItemParams) (int64, error) {
@@ -399,6 +413,8 @@ func (q *Queries) UpdatePlayQueueItem(ctx context.Context, arg UpdatePlayQueueIt
 		arg.TrailID,
 		arg.DecidedAt,
 		arg.NotBefore,
+		arg.ComputerID,
+		arg.HarnessProjectID,
 		arg.ID,
 		arg.FromStatus,
 	)
@@ -427,5 +443,20 @@ func (q *Queries) UpsertPlayQueueResume(ctx context.Context, arg UpsertPlayQueue
 		arg.ResumedBy,
 		arg.ResumedAt,
 	)
+	return err
+}
+
+const wakePlayQueuePerson = `-- name: WakePlayQueuePerson :exec
+UPDATE play_queue SET not_before = ?1
+WHERE status = 'queued' AND person_id = ?2 AND not_before > ?1
+`
+
+type WakePlayQueuePersonParams struct {
+	Now      int64
+	PersonID string
+}
+
+func (q *Queries) WakePlayQueuePerson(ctx context.Context, arg WakePlayQueuePersonParams) error {
+	_, err := q.db.ExecContext(ctx, wakePlayQueuePerson, arg.Now, arg.PersonID)
 	return err
 }

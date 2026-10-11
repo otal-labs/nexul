@@ -110,11 +110,13 @@ type answerIn struct {
 }
 
 type trailUpdateIn struct {
-	ID       string              `json:"id" jsonschema:"The trail's id, from play_run or trail_list."`
-	Answer   map[string]answerIn `json:"answer,omitempty" jsonschema:"Answers to the question a waiting trail stopped on, keyed by each question's id from trail_list, for example {\"q1\": {\"selected\": [\"Yes\"]}}. The run continues on the same trail."`
-	Stop     bool                `json:"stop,omitempty" jsonschema:"true interrupts the run and ends the trail as interrupted, keeping its steps."`
-	Continue string              `json:"continue,omitempty" jsonschema:"A message for an ended trail's agent, sent to the same harness thread as the trail's next turn, for example \"Carry on with the second option.\" The play's instructions are not sent again."`
-	Cancel   bool                `json:"cancel,omitempty" jsonschema:"true cancels a queued auto run before it starts; id is then the queued run's id from trail_list with queue true, not a trail's."`
+	ID          string              `json:"id" jsonschema:"The trail's id, from play_run or trail_list."`
+	Answer      map[string]answerIn `json:"answer,omitempty" jsonschema:"Answers to the question a waiting trail stopped on, keyed by each question's id from trail_list, for example {\"q1\": {\"selected\": [\"Yes\"]}}. The run continues on the same trail."`
+	Stop        bool                `json:"stop,omitempty" jsonschema:"true interrupts the run and ends the trail as interrupted, keeping its steps."`
+	Continue    string              `json:"continue,omitempty" jsonschema:"A message for an ended trail's agent, sent to the same harness thread as the trail's next turn, for example \"Carry on with the second option.\" The play's instructions are not sent again."`
+	Cancel      bool                `json:"cancel,omitempty" jsonschema:"true cancels a queued auto run before it starts; id is then the queued run's id from trail_list with queue true, not a trail's."`
+	ComputerID  string              `json:"computer_id,omitempty" jsonschema:"With t3_project_id, runs a queued auto run of the caller's on this computer of theirs; id is then the queued run's id from trail_list with queue true. computer_list lists the caller's computers."`
+	T3ProjectID string              `json:"t3_project_id,omitempty" jsonschema:"The T3 project on computer_id the queued run runs in, from computer_list with that computer's id. Required with computer_id."`
 }
 
 // queuePage is a target's auto runs as trail_list with queue returns them: one page of items and the paused state.
@@ -197,11 +199,17 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				"trail. Pass exactly one of the three; trail_list with the trail's id shows the question and its ids. "+
 				"Returns the trail. Allowed for the run's starter or a plays:write holder in its workspace. "+
 				"With cancel true instead, id names a queued auto run from trail_list with queue true, which is dropped "+
-				"before it starts and returned; allowed for the person it would run on or an autoplays:write holder.",
+				"before it starts and returned; allowed for the person it would run on or an autoplays:write holder. "+
+				"With computer_id and t3_project_id instead, id names a queued auto run of the caller's, such as one "+
+				"waiting with reason no_default_computer, which then runs on that computer and T3 project without "+
+				"changing the caller's defaults or links; allowed for the person it runs on only.",
 			mcptool.Hints{},
 			func(ctx context.Context, in trailUpdateIn) (any, error) {
 				if in.Cancel {
 					return cancelQueued(ctx, r, in)
+				}
+				if in.ComputerID != "" || in.T3ProjectID != "" {
+					return pickComputer(ctx, r, in)
 				}
 				t, err := steerTrail(ctx, r, in)
 				if err != nil {
@@ -225,6 +233,13 @@ func cancelQueued(ctx context.Context, r *Runner, in trailUpdateIn) (any, error)
 		return nil, fmt.Errorf("%w: cancel takes only id, a queued run's id", apperrs.ErrInvalid)
 	}
 	return r.CancelQueued(ctx, in.ID)
+}
+
+func pickComputer(ctx context.Context, r *Runner, in trailUpdateIn) (any, error) {
+	if len(in.Answer) > 0 || in.Stop || in.Continue != "" {
+		return nil, fmt.Errorf("%w: computer_id and t3_project_id take only id, a queued run's id", apperrs.ErrInvalid)
+	}
+	return r.PickComputer(ctx, in.ID, in.ComputerID, in.T3ProjectID)
 }
 
 func toQueuePage(q *Queue, page mcptool.PageArgs) queuePage {

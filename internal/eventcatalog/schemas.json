@@ -4844,7 +4844,7 @@
       },
       "reason": {
         "type": "string",
-        "description": "While queued: offline, ticket busy, paused, or empty while it waits for a free slot. Once skipped or didn't run: why."
+        "description": "While queued: offline, ticket busy, paused, no free slot, a gap in its person's computer setup (unpaired, expired_token, no_default, no_default_computer, setup_required), or empty until first tried. Once skipped or didn't run: why."
       },
       "trail_id": {
         "type": "string",
@@ -4871,8 +4871,12 @@
       },
       "not_before": {
         "type": "string",
-        "description": "The item is not tried before this; an offline computer is tried again a minute later.",
+        "description": "The item is not tried before this; an offline computer or a setup gap is tried again a minute later.",
         "format": "date-time"
+      },
+      "computer_id": {
+        "type": "string",
+        "description": "The computer its person picked for it to run on, when several are paired and none is the default; empty until picked."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4897,7 +4901,8 @@
       "via",
       "queued_at",
       "decided_at",
-      "not_before"
+      "not_before",
+      "computer_id"
     ]
   },
   "play.queued": {
@@ -4983,7 +4988,7 @@
       },
       "reason": {
         "type": "string",
-        "description": "While queued: offline, ticket busy, paused, or empty while it waits for a free slot. Once skipped or didn't run: why."
+        "description": "While queued: offline, ticket busy, paused, no free slot, a gap in its person's computer setup (unpaired, expired_token, no_default, no_default_computer, setup_required), or empty until first tried. Once skipped or didn't run: why."
       },
       "trail_id": {
         "type": "string",
@@ -5010,8 +5015,12 @@
       },
       "not_before": {
         "type": "string",
-        "description": "The item is not tried before this; an offline computer is tried again a minute later.",
+        "description": "The item is not tried before this; an offline computer or a setup gap is tried again a minute later.",
         "format": "date-time"
+      },
+      "computer_id": {
+        "type": "string",
+        "description": "The computer its person picked for it to run on, when several are paired and none is the default; empty until picked."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5036,7 +5045,8 @@
       "via",
       "queued_at",
       "decided_at",
-      "not_before"
+      "not_before",
+      "computer_id"
     ]
   },
   "play.run_finished": {

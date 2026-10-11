@@ -56,6 +56,7 @@ func (h *RunHandler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/plays/queue", h.queuePlay)
 	mux.HandleFunc("POST /api/plays/queue/resume", h.resumeQueue)
 	mux.HandleFunc("POST /api/plays/queue/{itemID}/cancel", h.cancelQueued)
+	mux.HandleFunc("POST /api/plays/queue/{itemID}/computer", h.pickComputer)
 	return mux
 }
 
@@ -130,6 +131,25 @@ func (h *RunHandler) resumeQueue(w http.ResponseWriter, r *http.Request) {
 
 func (h *RunHandler) cancelQueued(w http.ResponseWriter, r *http.Request) {
 	item, err := h.runner.CancelQueued(r.Context(), r.PathValue("itemID"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, item)
+}
+
+type pickComputerRequest struct {
+	ComputerID       string `json:"computer_id"`
+	HarnessProjectID string `json:"harness_project_id"`
+}
+
+func (h *RunHandler) pickComputer(w http.ResponseWriter, r *http.Request) {
+	var req pickComputerRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	item, err := h.runner.PickComputer(r.Context(), r.PathValue("itemID"), req.ComputerID, req.HarnessProjectID)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

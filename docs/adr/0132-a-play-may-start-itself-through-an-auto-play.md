@@ -35,3 +35,8 @@ spend someone's agent time without them pressing anything. The queue, the per-ti
 run", and "paused" lines on the ticket, and the off-by-default switch on every auto play are how that stays visible.
 
 Decided 2026-10-08, amending ADRs 0055 and 0066.
+
+Amended 2026-10-11: a run held up by its person's computer setup (nothing paired, an expired session, no T3 project
+linked, setup not done, or several computers and none the default) waits in the queue like an offline computer instead
+of failing as "didn't run", and starts once the gap is fixed. With several computers and no default, the waiting run
+asks its person to pick a computer and T3 project for it, which leaves their default alone.

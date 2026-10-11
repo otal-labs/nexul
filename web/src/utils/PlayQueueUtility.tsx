@@ -12,14 +12,41 @@ export const waitingRuns = (queue: PlayQueue | undefined): PlayQueueItem[] =>
 
 export const hasAutoPlaySignals = (queue: PlayQueue | undefined): boolean => !!queue && (queue.paused || waitingRuns(queue).length > 0);
 
+// A gap in the person's computer setup: a few words for the editor's line, and the server's sentence for the rail,
+// which says how to fix it (internal/pairing NotConfiguredError).
+const setupGaps: Record<string, { why: string; sentence: string }> = {
+  unpaired: { why: "no computer paired", sentence: "no computer is paired to run it on; add one in Settings → Computers" },
+  expired_token: {
+    why: "computer session expired",
+    sentence: "the paired computer's session expired; pair it again in Settings → Computers",
+  },
+  no_default: {
+    why: "no T3 project linked",
+    sentence: "no T3 project is picked for this project; link one in Settings → Computers → Projects",
+  },
+  no_default_computer: {
+    why: "no default computer",
+    sentence: "several computers are paired and none is the default; pick one to run it on",
+  },
+  setup_required: { why: "computer setup not done", sentence: "the computer's setup isn't done; run it in Settings → Computers" },
+};
+
+// Several computers and no default: the run's person picks where it runs.
+export const pickingComputer = (item: PlayQueueItem): boolean => item.status === "queued" && item.reason === "no_default_computer";
+
 // Why a queued run waits, from the server's hold reasons (internal/plays/queue.go).
 export const waitingWhy = (item: PlayQueueItem): string => {
   if (item.status === "dispatching") return "starting";
   if (item.reason === "offline") return "computer offline";
   if (item.reason === "ticket busy") return `${item.target_type} busy`;
   if (item.reason === "paused") return "paused";
-  return "no free slot";
+  if (item.reason === "no free slot") return "busy with another run";
+  return setupGaps[item.reason]?.why ?? "waiting its turn";
 };
+
+// waitingWhy, with a setup gap as the sentence that says how to fix it.
+export const waitingSentence = (item: PlayQueueItem): string =>
+  (item.status === "queued" && setupGaps[item.reason]?.sentence) || waitingWhy(item);
 
 const outcomes: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^nobody to run it on: no person caused it and the (ticket|doc) has no developer$/, (m) => `nobody caused it and the ${m[1]} has no developer`],

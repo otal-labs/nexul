@@ -63,6 +63,31 @@ export const useCancelQueuedRun = () => {
   });
 };
 
+interface PickComputerInput {
+  itemId: string;
+  computerId: string;
+  harnessProjectId: string;
+}
+
+// Runs a queued run on one of its person's computers and a T3 project there; their defaults stay as they are.
+export const usePickQueuedComputer = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ itemId, computerId, harnessProjectId }: PickComputerInput) =>
+      (
+        await api.post<PlayQueueItem>(`/api/plays/queue/${itemId}/computer`, {
+          computer_id: computerId,
+          harness_project_id: harnessProjectId,
+        })
+      ).data,
+    onSuccess: async (item) => {
+      await refreshQueues(client, item);
+      toast.success(`${item.play_label} starts on the picked computer`);
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 export const useResumeAutoPlays = () => {
   const client = useQueryClient();
   return useMutation({

@@ -432,6 +432,10 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		mustSubscribe(ctx, bus, "plays.auto_match", topic, " for auto plays", svc.playsRunner.HandleAutoPlayMoment)
 	}
 	mustSubscribe(ctx, bus, "plays.queue", plays.TopicRunFinished, " for the run queue", svc.playsRunner.HandleRunFinished)
+	// A paired computer or a finished setup may close the gap a person's queued runs wait on.
+	for _, topic := range plays.ComputerTopics {
+		mustSubscribe(ctx, bus, "plays.queue_computer", topic, " for the run queue", svc.playsRunner.HandleComputerChanged)
+	}
 	// After ResumeRunsAfterRestart, so the active trails each person's slot is counted against are accurate.
 	go svc.playsRunner.RunQueue(ctx)
 
