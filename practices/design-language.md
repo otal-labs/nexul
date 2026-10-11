@@ -754,9 +754,10 @@ all and selects no rung once the rows differ. Each domain row is the name on
 the left, its extra verbs (Run, Clone, Thread) as small outline toggles, then
 the level as a segmented strip of None, Read, Write, Delete where every rung
 up to the chosen one fills, so it reads as "this much access". The role
-editor splits its lists under Workspace (with the instance areas) and Every
-project, from the catalog's area. Project access is the same list: an Every
-project lead row (a muted icon, "Every project" over its one-line
+editor (Role dialog, below) puts its lists on one tab per catalog area, each
+led by its own bulk row, and sets the extra verbs as checkboxes on a second
+line under the area's name, disabled until it holds Read. Project access is
+the same list: an Every project lead row (a muted icon, "Every project" over its one-line
 consequence, and a From role / Chosen projects segmented pair), then one row
 per project with the same level strip and an "Areas" toggle that opens that
 project's area rows indented under it; a project whose areas differ selects
@@ -797,8 +798,8 @@ the name, the levels as a tally, highest first, each a `LevelGlyph` (the
 level strip in miniature, a shorter ladder keeping the three-rung width so a
 column of them lines up), the level and a mono count, then a muted "No access
 · Events, Audit log, Accounts +2". The chevron opens every area read-only
-below it (`RoleAccessDetail`, the editor's Workspace and Every project
-groups, two columns from a 36rem card) as a disclosure. The Owner row has no
+below it (`RoleAccessDetail`, its Workspace and Every project groups, two
+columns from a 36rem card) as a disclosure. The Owner row has no
 menu and says what it is in one line. A role someone holds can't be deleted:
 its Delete says who to move first instead. `RoleRow` and `RoleAccessSummary`
 in `web/src/components/settings/` are the reference.
@@ -834,6 +835,20 @@ change shows as a destructive line above the footer while the rest stays
 held. Account actions (Disable, Remove account) sit at the footer's left and
 apply at once. `TeamPersonDialog` and `TeamWorkspaceTabs` in
 `web/src/components/team/` are the reference.
+
+Role dialog. New role and a role's Edit open one dialog, 40rem wide and
+`min(52rem, 100dvh - 4rem)` tall at every width: a header with the title and,
+on an edit, the holders as overlapping 20px avatars over a muted line of who a
+save reaches; the Name (and on a new role a 12rem Start from beside it from a
+32rem band, under it below that); then one browser-style tab per catalog area,
+Instance, Workspace and Every project, each with a mono "3/12" of the areas it
+allows and the person dialog's `foreground` dot while it holds changes; then
+the open tab's list, the only part that scrolls; and a footer whose muted note
+reads "No changes yet", "Name it to create it" or a dot and "Unsaved changes",
+with Cancel and Save or Create role. It opens on Instance, the first tab, and
+focuses no field. Leaving with changes asks "Discard changes?".
+`RoleEditorDialog` and `RoleSectionTabs` in `web/src/components/settings/`
+are the reference.
 
 Chat stream. The messages run in one centred column up to 48rem wide, the
 composer under it at the same width, so your bubble on the right never sits a
@@ -1062,6 +1077,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Paired computers: a folded row per computer, the setup as one column of provider rows | Against a row that showed every fact and five buttons at once (status, address, version, three provider lines, the token, two delete icons that read alike) and a setup step of three panes' worth of controls beside a transcript pane; one action for the state, the rest a fold or a menu away, keeps every capability with a fraction on screen |
 | Add a computer: the command beside the live connection and three named checks | Against numbered install steps above a single "waiting for connection" line (one line cannot say which part is stuck, and the person only ever runs one command) and a progress bar (it says how far, never what to fix); three checks in the order they happen name the part that is stuck and what to do about it |
 | Person dialog: a tab per workspace, changes held until Confirm | Several workspaces stacked in one scroll mixed their controls, and applying each change on the spot made the dialog change under the owner; tabs separate the workspaces and Confirm makes the edit one deliberate act |
+| Role dialog: a browser-style tab per area, not stacked sections | Three stacked sections made a 35-row scroll; tabs keep one area in view under a fixed name and footer. The person dialog's tabs, picked over a segmented control (it read as a filter, its 12px labels beside rows of level strips) and line tabs (the idiom for separate jobs addressed by the path) |
 
 ### Motion baseline
 

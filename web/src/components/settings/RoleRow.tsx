@@ -4,7 +4,7 @@ import { ChevronRightIcon } from "lucide-react";
 import { CloneRoleDialog } from "@/components/settings/CloneRoleDialog";
 import { RoleAccessDetail } from "@/components/settings/RoleAccessDetail";
 import { RoleAccessSummary } from "@/components/settings/RoleAccessSummary";
-import { RoleEditForm } from "@/components/settings/RoleEditForm";
+import { RoleEditorDialog } from "@/components/settings/RoleEditorDialog";
 import { RoleHolders } from "@/components/settings/RoleHolders";
 import { RowActionsMenu, type RowAction } from "@/components/settings/RowActionsMenu";
 import { useCreateWorkspaceRole, useDeleteWorkspaceRole, useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
@@ -70,45 +70,37 @@ export const RoleRow = ({ onLeave, role, workspaceId, catalog, holders }: RoleRo
   ];
 
   return (
-    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "bg-card px-4 py-3.5")}>
-      {editing && (
-        <div className="settle-in">
-          <RoleEditForm role={role} workspaceId={workspaceId} catalog={catalog} onDone={() => setEditing(false)} />
+    <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "space-y-2.5 bg-card px-4 py-3.5")}>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+          className="group -ml-1 flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1 py-0.5 text-left focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
+          <ChevronRightIcon
+            aria-hidden
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-standard group-hover:text-foreground",
+              open && "rotate-90",
+            )}
+          />
+          <span className="truncate text-sm font-medium" title={role.name}>
+            {role.name}
+          </span>
+        </button>
+        {holders && <RoleHolders people={holders} />}
+        <RowActionsMenu subject={role.name} actions={actions} />
+      </div>
+      <div className="pl-6">
+        <RoleAccessSummary catalog={catalog} permissions={role.permissions} />
+      </div>
+      <div inert={!open} aria-hidden={!open} data-closed={!open || undefined} className="disclosure">
+        <div className="pl-6">
+          <RoleAccessDetail catalog={catalog} permissions={role.permissions} />
         </div>
-      )}
-      {!editing && (
-        <div className="space-y-2.5">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              aria-expanded={open}
-              onClick={() => setOpen(!open)}
-              className="group -ml-1 flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1 py-0.5 text-left focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-            >
-              <ChevronRightIcon
-                aria-hidden
-                className={cn(
-                  "size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-standard group-hover:text-foreground",
-                  open && "rotate-90",
-                )}
-              />
-              <span className="truncate text-sm font-medium" title={role.name}>
-                {role.name}
-              </span>
-            </button>
-            {holders && <RoleHolders people={holders} />}
-            <RowActionsMenu subject={role.name} actions={actions} />
-          </div>
-          <div className="pl-6">
-            <RoleAccessSummary catalog={catalog} permissions={role.permissions} />
-          </div>
-          <div inert={!open} aria-hidden={!open} data-closed={!open || undefined} className="disclosure">
-            <div className="pl-6">
-              <RoleAccessDetail catalog={catalog} permissions={role.permissions} />
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
+      <RoleEditorDialog open={editing} role={role} holders={holders} onClose={() => setEditing(false)} />
       {canClone && <CloneRoleDialog role={role} open={cloning} onClose={() => setCloning(false)} />}
     </li>
   );

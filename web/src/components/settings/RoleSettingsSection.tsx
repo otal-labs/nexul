@@ -5,8 +5,8 @@ import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { EmptyRow } from "@/components/EmptyRow";
-import { CreateRoleForm } from "@/components/settings/CreateRoleForm";
 import { OwnerRoleRow } from "@/components/settings/OwnerRoleRow";
+import { RoleEditorDialog } from "@/components/settings/RoleEditorDialog";
 import { RoleRow } from "@/components/settings/RoleRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
@@ -40,8 +40,7 @@ export const RoleSettingsSection = () => {
       description="What each role can open and change in this workspace. Open a role to see every area."
       footer={
         roles &&
-        catalog &&
-        !creating && (
+        catalog && (
           <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
             <PlusIcon className="size-4" />
             New role
@@ -66,15 +65,7 @@ export const RoleSettingsSection = () => {
               </EnterList>
             </div>
           )}
-
-          {creating && (
-            <CreateRoleForm
-              workspaceId={workspaceId}
-              roles={roles}
-              catalog={catalog}
-              onDone={() => setCreating(false)}
-            />
-          )}
+          <RoleEditorDialog open={creating} onClose={() => setCreating(false)} />
         </div>
       )}
     </SettingsCard>

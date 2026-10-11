@@ -1,8 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { toast } from "sonner";
 
 import { RoleSettingsSection } from "@/components/settings/RoleSettingsSection";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -31,10 +33,13 @@ const catalog = [
   { value: "roles:write", label: "Create and update roles", domain: "roles", action: "write", area: "workspace" },
   { value: "roles:delete", label: "Delete roles", domain: "roles", action: "delete", area: "workspace" },
   { value: "roles:clone", label: "Clone roles to another workspace", domain: "roles", action: "clone", area: "workspace" },
+  { value: "runners:read", label: "Read runners", domain: "runners", action: "read", area: "instance" },
 ];
 
-const level = (scope: HTMLElement, domain: string, name: string) =>
-  within(within(scope).getByRole("radiogroup", { name: `${domain} access` })).getByRole("radio", { name });
+const level = (domain: string, name: string) =>
+  within(within(screen.getByRole("dialog")).getByRole("radiogroup", { name: `${domain} access` })).getByRole("radio", { name });
+
+const tab = (name: string) => screen.getByRole("tab", { name: new RegExp(`^${name}`) });
 
 const role = (overrides: Record<string, unknown> = {}) => ({
   id: "role-editor",
@@ -121,90 +126,148 @@ describe("RoleSettingsSection", () => {
     const levels = within(row).getByRole("list", { name: "Areas per level" });
     expect(levels).toHaveTextContent("Write1");
     expect(levels).toHaveTextContent("Read1");
-    expect(levels).toHaveTextContent("None1");
-    expect(within(row).getByText(/Projects/, { selector: "p" })).toHaveTextContent("No access · Projects");
+    expect(levels).toHaveTextContent("None2");
+    expect(within(row).getByText(/Projects/, { selector: "p" })).toHaveTextContent("No access · Projects, Runners");
   });
 
-  it("creates a role with the chosen levels", async () => {
+  it("creates a role in the dialog, its levels set across the area tabs", async () => {
     mockRoles([ownerRole]);
-    mocks.post.mockResolvedValue({ data: role() });
+    mocks.post.mockResolvedValue({ data: role({ name: "Support" }) });
     const user = userEvent.setup();
     renderSection();
 
     await user.click(await screen.findByRole("button", { name: /new role/i }));
-    await user.type(screen.getByLabelText("New role name"), "Editor");
-    const form = screen.getByLabelText("New role name").closest("form")!;
-    await user.click(level(form, "Every domain", "Read"));
-    await user.click(level(form, "Projects", "Write"));
-    await user.click(screen.getByRole("button", { name: /create role/i }));
+    expect(screen.getByRole("dialog", { name: "New role" })).toBeInTheDocument();
+    await user.type(screen.getByRole("textbox", { name: "Name" }), "Support");
+    await user.click(tab("Workspace"));
+    await user.click(level("All workspace areas", "Read"));
+    await user.click(tab("Every project"));
+    await user.click(level("Projects", "Write"));
+    await user.click(screen.getByRole("button", { name: "Create role" }));
 
     expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", {
-      name: "Editor",
+      name: "Support",
       actions: ["members:read", "roles:read", "projects:read", "projects:write"],
     });
+    expect(toast.success).toHaveBeenCalledWith("Support created");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  it("lists project areas under Every project and the rest under Workspace, from the catalog's area", async () => {
-    mockRoles([ownerRole]);
-    const user = userEvent.setup();
-    renderSection();
-
-    await user.click(await screen.findByRole("button", { name: /new role/i }));
-    const workspace = screen.getByRole("heading", { name: "Workspace" }).closest("section")!;
-    const everyProject = screen.getByRole("heading", { name: "Every project" }).closest("section")!;
-    expect(within(workspace).getByRole("radiogroup", { name: "Members access" })).toBeInTheDocument();
-    expect(within(workspace).queryByRole("radiogroup", { name: "Projects access" })).not.toBeInTheDocument();
-    expect(within(everyProject).getByRole("radiogroup", { name: "Every area access" })).toBeInTheDocument();
-    expect(within(everyProject).getByRole("radiogroup", { name: "Projects access" })).toBeInTheDocument();
-    expect(screen.getByText("Applies to members whose Every project is From role.")).toBeInTheDocument();
-  });
-
-  it("starts a new role from an existing role's permissions", async () => {
-    mockRoles([ownerRole, role({ permissions: ["members:read"] })]);
-    mocks.post.mockResolvedValue({ data: role() });
-    const user = userEvent.setup();
-    renderSection();
-
-    await user.click(await screen.findByRole("button", { name: /new role/i }));
-    await user.type(screen.getByLabelText("New role name"), "Auditor");
-    await user.click(screen.getByRole("combobox", { name: "Copy permissions from role" }));
-    await user.click(await screen.findByRole("option", { name: "Editor" }));
-    await user.click(screen.getByRole("button", { name: /create role/i }));
-
-    expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", {
-      name: "Auditor",
-      actions: ["members:read"],
-    });
-  });
-
-  it("does not call the api for an empty role name", async () => {
-    mockRoles([ownerRole]);
-    const user = userEvent.setup();
-    renderSection();
-
-    await user.click(await screen.findByRole("button", { name: /new role/i }));
-    await user.click(screen.getByRole("button", { name: /create role/i }));
-    expect(mocks.post).not.toHaveBeenCalled();
-  });
-
-  it("renames a role and changes its levels inline", async () => {
-    mockRoles([ownerRole, role({ permissions: ["members:read", "members:write"] })]);
-    mocks.patch.mockResolvedValue({ data: role() });
+  it("puts each area under the tab for its catalog area, with a count of what's allowed", async () => {
+    mockRoles([ownerRole, role({ permissions: ["members:read", "runners:read"] })]);
     const user = userEvent.setup();
     renderSection();
 
     await openMenu(user, "Editor", "Edit");
-    const input = screen.getByLabelText("Role name");
-    const row = input.closest("li")!;
-    await user.clear(input);
-    await user.type(input, "Reviewer");
-    await user.click(level(row, "Roles", "Write"));
-    await user.click(screen.getByRole("button", { name: "Save role" }));
+    expect(tab("Instance")).toHaveAccessibleName("Instance, 1 of 1 allowed");
+    expect(screen.getByRole("radiogroup", { name: "Runners access" })).toBeInTheDocument();
+    expect(screen.getByText("Applies across every workspace on this install.")).toBeInTheDocument();
+    await user.click(tab("Workspace"));
+    expect(tab("Workspace")).toHaveAccessibleName("Workspace, 1 of 2 allowed");
+    expect(screen.getByRole("radiogroup", { name: "Members access" })).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Projects access" })).not.toBeInTheDocument();
+    await user.click(tab("Every project"));
+    expect(screen.getByRole("radiogroup", { name: "Projects access" })).toBeInTheDocument();
+    expect(screen.getByText("Applies to members whose Every project is From role.")).toBeInTheDocument();
+  });
+
+  it("starts a new role from a copy of another role's permissions", async () => {
+    mockRoles([ownerRole, role({ permissions: ["members:read"] })]);
+    mocks.post.mockResolvedValue({ data: role({ name: "Auditor" }) });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: /new role/i }));
+    await user.type(screen.getByRole("textbox", { name: "Name" }), "Auditor");
+    await user.click(screen.getByRole("combobox", { name: "Start from" }));
+    expect(screen.queryByRole("option", { name: "A copy of Owner" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("option", { name: "A copy of Editor" }));
+    expect(screen.getByText("Copied from Editor. Change anything below; Editor stays as it is.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Create role" }));
+
+    expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", { name: "Auditor", actions: ["members:read"] });
+  });
+
+  it("keeps Create role off until the role has a name", async () => {
+    mockRoles([ownerRole]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: /new role/i }));
+    await user.click(level("All instance areas", "Read"));
+    expect(screen.getByText("Name it to create it")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create role" })).toBeDisabled();
+    await user.type(screen.getByRole("textbox", { name: "Name" }), "   ");
+    expect(screen.getByRole("button", { name: "Create role" })).toBeDisabled();
+  });
+
+  it("renames a role and changes its levels, then saves them in one update", async () => {
+    mockRoles([ownerRole, role({ permissions: ["members:read", "members:write"] })], [], [holder("role-editor")]);
+    mocks.patch.mockResolvedValue({ data: role({ name: "Reviewer" }) });
+    const user = userEvent.setup();
+    renderSection();
+
+    await screen.findByText("1 person");
+    await openMenu(user, "Editor", "Edit");
+    expect(screen.getByText("Held by Bob. Saving changes what they can do.")).toBeInTheDocument();
+    expect(screen.getByText("No changes yet")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    const name = screen.getByRole("textbox", { name: "Name" });
+    await user.clear(name);
+    await user.type(name, "Reviewer");
+    await user.click(tab("Workspace"));
+    await user.click(level("Roles", "Write"));
+    expect(tab("Workspace")).toHaveAccessibleName(/unsaved changes/);
+    expect(tab("Instance")).not.toHaveAccessibleName(/unsaved changes/);
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
       name: "Reviewer",
       actions: ["members:read", "members:write", "roles:read", "roles:write"],
     });
+    expect(toast.success).toHaveBeenCalledWith("Reviewer saved");
+  });
+
+  it("asks before discarding changes, and closes at once with none", async () => {
+    mockRoles([ownerRole, role()]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await openMenu(user, "Editor", "Edit");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    await openMenu(user, "Editor", "Edit");
+    await user.click(level("All instance areas", "Read"));
+    await user.keyboard("{Escape}");
+    expect(await screen.findByText("Your changes to Editor haven't been saved.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("dialog", { name: "Edit Editor" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    await user.click(await screen.findByRole("button", { name: "Discard changes" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(mocks.patch).not.toHaveBeenCalled();
+  });
+
+  it("opens and closes a new role without looping, and reopens it empty", async () => {
+    mockRoles([ownerRole]);
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: /new role/i }));
+    await user.type(screen.getByRole("textbox", { name: "Name" }), "Temp");
+    await user.keyboard("{Escape}");
+    expect(await screen.findByText("This role hasn't been created yet; what you set here will be lost.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Discard changes" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /new role/i }));
+
+    expect(screen.getByRole("textbox", { name: "Name" })).toHaveValue("");
+    expect(errors).not.toHaveBeenCalled();
+    errors.mockRestore();
   });
 
   it("deletes a role nobody holds after confirming", async () => {
@@ -257,15 +320,21 @@ describe("RoleSettingsSection", () => {
     expect(await screen.findByRole("dialog", { name: "Clone Editor to another workspace" })).toBeInTheDocument();
   });
 
-  it("toggles the Clone verb for Roles in the role editor", async () => {
+  it("holds an area's extra verbs as checkboxes that need Read first", async () => {
     mockRoles([ownerRole, role({ permissions: ["roles:read"] })]);
     mocks.patch.mockResolvedValue({ data: role() });
     const user = userEvent.setup();
     renderSection();
 
     await openMenu(user, "Editor", "Edit");
-    await user.click(screen.getByRole("button", { name: "Clone roles to another workspace" }));
-    await user.click(screen.getByRole("button", { name: "Save role" }));
+    await user.click(tab("Workspace"));
+    await user.click(screen.getByRole("checkbox", { name: "Clone roles to another workspace" }));
+    await user.click(level("Roles", "None"));
+    expect(screen.getByRole("checkbox", { name: "Clone roles to another workspace" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Clone roles to another workspace" })).not.toBeChecked();
+    await user.click(level("Roles", "Read"));
+    await user.click(screen.getByRole("checkbox", { name: "Clone roles to another workspace" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
       name: "Editor",

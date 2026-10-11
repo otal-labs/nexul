@@ -1,6 +1,6 @@
 # 08 — The role editor as a dialog
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** None — can start immediately (the look is locked in permission-rework ticket 08)
 
@@ -12,6 +12,13 @@ Read first: `practices/react-guide.md` (F1 to F7, State management, Forms, the s
 
 Per rework ticket 08's answer: the inline `RoleEditForm` and `CreateRoleForm` become one dialog, so editing a role
 doesn't spread down the roles list. The list itself, Duplicate, Clone to workspace and Delete are unchanged.
+
+Owner changes, 2026-10-11: three sections, **Instance**, **Workspace** and **Every project** (In projects from slice
+15), each with its own bulk row and allowed count; Instance holds the instance-area domains from the catalog's area,
+"Applies across every workspace on this install." Then the three became **tabs** inside the dialog so it doesn't
+grow too tall: browser-style tabs like the person dialog's, under the name, each with its mono "allowed/total" and a
+dot while it holds changes, opening on Instance; the open tab's list is the only part that scrolls (picked in auto
+design mode over a segmented control and line tabs; screenshots in `~/Code/Images/permission-rework/build/08/`).
 
 ## What to build
 
@@ -37,7 +44,7 @@ doesn't spread down the roles list. The list itself, Duplicate, Clone to workspa
     the full label as tooltip and `aria-label`, disabled at None with "Needs Read first", and cleared by None as
     `withLevel` already does;
   - a domain with no ladder renders as switches.
-- The instance areas stay in the Workspace section, after the workspace areas, in catalog order.
+- ~~The instance areas stay in the Workspace section~~ superseded by the owner change above: their own Instance tab.
 - Leaving with changes (Cancel, ×, Escape, scrim) asks "Discard changes?" with the role's or the new role's line;
   with nothing changed it closes at once. Save shows the usual toast and closes.
 - The draft is one held value (name and actions) compared with what was loaded. A store selector's fallback for a
@@ -47,9 +54,9 @@ doesn't spread down the roles list. The list itself, Duplicate, Clone to workspa
 
 ## Acceptance criteria
 
-- [ ] A role is created, edited, copied from another and cloned through the dialog, over the existing routes.
-- [ ] Save stays in view as the body scrolls, at the 60-character worst-case name too.
-- [ ] Leaving with changes asks first; leaving with none doesn't.
-- [ ] Closing the dialog renders no loop (a test that opens and closes it).
-- [ ] `RoleSettingsSection.test.tsx` covers the dialog in place of the inline forms.
-- [ ] Verified at 768, 1024 and 1440px in both modes, and the self-review passes.
+- [x] A role is created, edited, copied from another and cloned through the dialog, over the existing routes.
+- [x] Save stays in view as the body scrolls, at the 60-character worst-case name too.
+- [x] Leaving with changes asks first; leaving with none doesn't.
+- [x] Closing the dialog renders no loop (a test that opens and closes it).
+- [x] `RoleSettingsSection.test.tsx` covers the dialog in place of the inline forms.
+- [x] Verified at 768, 1024 and 1440px in both modes, and the self-review passes.
