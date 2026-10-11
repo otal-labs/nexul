@@ -578,10 +578,10 @@ func TestIntegration_GrantsNeverExceedTheGiver(t *testing.T) {
 			return err
 		}},
 		{"a member given a role carrying instance:write", func(ctx context.Context) error {
-			return s.tenancySvc.ChangeMemberRole(ctx, actorID(ctx), "workspace-default", uPlain, "role-steward")
+			return s.tenancySvc.SetMemberRoles(ctx, actorID(ctx), "workspace-default", uPlain, "role-steward")
 		}},
 		{"taking away a role carrying instance:write", func(ctx context.Context) error {
-			return s.tenancySvc.ChangeMemberRole(ctx, actorID(ctx), "workspace-default", uSteward, "role-plain")
+			return s.tenancySvc.SetMemberRoles(ctx, actorID(ctx), "workspace-default", uSteward, "role-plain")
 		}},
 		{"an invitation into a role carrying instance:write", func(ctx context.Context) error {
 			_, err := s.invitationSvc.Create(ctx, actorID(ctx), tenancy.CreateInvitationInput{ExpiresInDays: 1,

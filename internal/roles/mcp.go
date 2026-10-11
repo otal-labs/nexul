@@ -57,7 +57,7 @@ func roleUpdateTool(s *Service) mcptool.Tool {
 			"with clone_from_id it copies that custom role from its own workspace into workspace_id, renamed to \"<name> (copy)\" when the name is taken; "+
 			"with id it changes only the fields you send. "+
 			"workspace_list with the workspace's id lists its roles and the permission_catalog of valid permissions, and the Owner role can't be edited or cloned. "+
-			"A permission whose catalog area is project reaches only members whose every_project is role; a Restricted member's project levels come from account_update's project_access instead. "+
+			"A permission whose catalog area is project counts only inside the projects a holder is in, which each project's rules decide (permission_overwrite_update); a workspace or instance one counts everywhere. "+
 			"Returns the role as it now stands; remove one with role_delete.",
 		mcptool.Hints{Local: true},
 		func(ctx context.Context, in roleUpdateIn) (any, error) {
@@ -103,7 +103,8 @@ func updateRole(ctx context.Context, s *Service, in roleUpdateIn) (*Role, error)
 func roleDeleteTool(s *Service) mcptool.Tool {
 	return mcptool.New("role_delete", "Delete role",
 		"Deletes a custom role from its workspace for good. "+
-			"Members holding it lose the permissions it granted, so reassign them first; the Owner role can't be deleted. "+
+			"Members holding it lose it and the permissions it granted, and someone left with no role stays a member who sees no project; "+
+			"rules naming it go with it, and so do pending invites and invitation links giving it. The Owner role can't be deleted. "+
 			"Returns the deleted id; change a role instead with role_update.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in roleDeleteIn) (any, error) {

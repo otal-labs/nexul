@@ -22,9 +22,9 @@ var fixedNow = time.Date(2026, 8, 19, 9, 0, 0, 0, time.UTC)
 type fakeRepo struct {
 	mu             sync.Mutex
 	workspaces     map[string]*Workspace
-	members        map[string][]string          // workspaceID -> userIDs
-	roleIDs        map[string]map[string]string // workspaceID -> userID -> roleID
-	listed         map[string][]string          // projectID -> the userIDs in it
+	members        map[string][]string            // workspaceID -> userIDs
+	roleIDs        map[string]map[string][]string // workspaceID -> userID -> roleIDs
+	listed         map[string][]string            // projectID -> the userIDs in it
 	teamWorkspaces []*TeamWorkspace
 	events         []eventbus.OutboxEvent
 	createErr      error
@@ -38,7 +38,7 @@ func newFakeRepo() *fakeRepo {
 	return &fakeRepo{
 		workspaces: map[string]*Workspace{},
 		members:    map[string][]string{},
-		roleIDs:    map[string]map[string]string{},
+		roleIDs:    map[string]map[string][]string{},
 		listed:     map[string][]string{},
 	}
 }
@@ -118,20 +118,23 @@ func (f *fakeRepo) AddMember(_ context.Context, m *Member, events ...eventbus.Ou
 	f.events = append(f.events, events...)
 	f.members[m.WorkspaceID] = append(f.members[m.WorkspaceID], m.UserID)
 	if f.roleIDs[m.WorkspaceID] == nil {
-		f.roleIDs[m.WorkspaceID] = map[string]string{}
+		f.roleIDs[m.WorkspaceID] = map[string][]string{}
 	}
-	f.roleIDs[m.WorkspaceID][m.UserID] = m.RoleID
+	f.roleIDs[m.WorkspaceID][m.UserID] = slices.Clone(m.Held())
 	return nil
 }
 
 func (f *fakeRepo) RoleIDFor(_ context.Context, workspaceID, userID string) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	roleID, ok := f.roleIDs[workspaceID][userID]
+	roleIDs, ok := f.roleIDs[workspaceID][userID]
 	if !ok {
 		return "", apperrs.ErrNotFound
 	}
-	return roleID, nil
+	if len(roleIDs) == 0 {
+		return "", nil
+	}
+	return roleIDs[0], nil
 }
 
 func (f *fakeRepo) ListByWorkspace(_ context.Context, workspaceID string) ([]*Member, error) {
@@ -139,7 +142,7 @@ func (f *fakeRepo) ListByWorkspace(_ context.Context, workspaceID string) ([]*Me
 	defer f.mu.Unlock()
 	var out []*Member
 	for _, userID := range f.members[workspaceID] {
-		out = append(out, &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: f.roleIDs[workspaceID][userID]})
+		out = append(out, f.member(workspaceID, userID))
 	}
 	return out, nil
 }
@@ -159,15 +162,26 @@ func (f *fakeRepo) RemoveMember(_ context.Context, workspaceID, userID string, e
 	return apperrs.ErrNotFound
 }
 
-func (f *fakeRepo) SetRole(_ context.Context, workspaceID, userID, roleID string, events ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) ChangeRoles(_ context.Context, workspaceID, userID string, add, remove []string, events ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if _, ok := f.roleIDs[workspaceID][userID]; !ok {
+	held, ok := f.roleIDs[workspaceID][userID]
+	if !ok {
 		return apperrs.ErrNotFound
 	}
-	f.roleIDs[workspaceID][userID] = roleID
+	held = slices.DeleteFunc(slices.Clone(held), func(id string) bool { return slices.Contains(remove, id) })
+	f.roleIDs[workspaceID][userID] = append(held, add...)
 	f.events = append(f.events, events...)
 	return nil
+}
+
+// member is userID's membership of workspaceID as the fake holds it; the caller holds f.mu.
+func (f *fakeRepo) member(workspaceID, userID string) *Member {
+	m := &Member{UserID: userID, WorkspaceID: workspaceID, RoleIDs: slices.Clone(f.roleIDs[workspaceID][userID])}
+	if len(m.RoleIDs) > 0 {
+		m.RoleID = m.RoleIDs[0]
+	}
+	return m
 }
 
 func (f *fakeRepo) ListAllMemberships(context.Context) ([]*TeamMembership, error) {
@@ -176,7 +190,7 @@ func (f *fakeRepo) ListAllMemberships(context.Context) ([]*TeamMembership, error
 	var out []*TeamMembership
 	for workspaceID, users := range f.members {
 		for _, userID := range users {
-			out = append(out, &TeamMembership{UserID: userID, WorkspaceID: workspaceID, RoleID: f.roleIDs[workspaceID][userID]})
+			out = append(out, &TeamMembership{UserID: userID, WorkspaceID: workspaceID, RoleID: f.member(workspaceID, userID).RoleID})
 		}
 	}
 	return out, nil
@@ -185,11 +199,10 @@ func (f *fakeRepo) ListAllMemberships(context.Context) ([]*TeamMembership, error
 func (f *fakeRepo) Member(_ context.Context, workspaceID, userID string) (*Member, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	roleID, ok := f.roleIDs[workspaceID][userID]
-	if !ok {
+	if _, ok := f.roleIDs[workspaceID][userID]; !ok {
 		return nil, apperrs.ErrNotFound
 	}
-	return &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: roleID, RoleIDs: []string{roleID}}, nil
+	return f.member(workspaceID, userID), nil
 }
 
 // projectWorkspace is the fixture's one project-to-workspace mapping, shared with fakeProjects.
@@ -1048,10 +1061,10 @@ func TestRemoveMember(t *testing.T) {
 	})
 }
 
-func TestChangeMemberRole(t *testing.T) {
+func TestSetMemberRoles(t *testing.T) {
 	t.Run("actor without members:write is forbidden", func(t *testing.T) {
 		f := newInviteFixture()
-		err := f.svc.ChangeMemberRole(context.Background(), "actor", "ws-1", "u-bob", "role-admin")
+		err := f.svc.SetMemberRoles(context.Background(), "actor", "ws-1", "u-bob", "role-admin")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 	})
@@ -1060,7 +1073,7 @@ func TestChangeMemberRole(t *testing.T) {
 		f.grantManageMembers("actor")
 		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-owner", WorkspaceID: "ws-1", RoleID: "owner-role-ws-1"}))
 
-		err := f.svc.ChangeMemberRole(context.Background(), "actor", "ws-1", "u-owner", "role-editor")
+		err := f.svc.SetMemberRoles(context.Background(), "actor", "ws-1", "u-owner", "role-editor")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
@@ -1069,7 +1082,7 @@ func TestChangeMemberRole(t *testing.T) {
 		f.grantManageMembers("actor")
 		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
 
-		err := f.svc.ChangeMemberRole(context.Background(), "actor", "ws-1", "u-bob", "owner-role-ws-1")
+		err := f.svc.SetMemberRoles(context.Background(), "actor", "ws-1", "u-bob", "owner-role-ws-1")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
@@ -1078,7 +1091,7 @@ func TestChangeMemberRole(t *testing.T) {
 		f.grantManageMembers("actor")
 		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
 
-		require.NoError(t, f.svc.ChangeMemberRole(context.Background(), "actor", "ws-1", "u-bob", "role-admin"))
+		require.NoError(t, f.svc.SetMemberRoles(context.Background(), "actor", "ws-1", "u-bob", "role-admin"))
 
 		roleID, err := f.svc.MemberRoleID(context.Background(), "ws-1", "u-bob")
 		require.NoError(t, err)
@@ -1090,7 +1103,7 @@ func TestChangeMemberRole(t *testing.T) {
 		f.nameGate.perms["role-lead"] = permissions.SetOf(permissions.MembersWrite, permissions.RolesWrite)
 		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-lead"}))
 
-		err := f.svc.ChangeMemberRole(context.Background(), "actor", "ws-1", "u-bob", "role-editor")
+		err := f.svc.SetMemberRoles(context.Background(), "actor", "ws-1", "u-bob", "role-editor")
 
 		require.ErrorIs(t, err, apperrs.ErrForbidden)
 		assert.ErrorContains(t, err, "take away a role you couldn't give")
@@ -1104,7 +1117,50 @@ func TestChangeMemberRole(t *testing.T) {
 		f.grantManageMembers("actor")
 		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
 
-		require.NoError(t, f.svc.ChangeMemberRole(context.Background(), "actor", "ws-1", "u-bob", "role-editor"))
+		require.NoError(t, f.svc.SetMemberRoles(context.Background(), "actor", "ws-1", "u-bob", "role-editor"))
+		assert.Empty(t, f.repo.events, "no change publishes nothing")
+	})
+	t.Run("none leaves a member with zero roles", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleIDs: []string{"role-editor", "role-admin"}}))
+
+		require.NoError(t, f.svc.SetMemberRoles(context.Background(), "actor", "ws-1", "u-bob"))
+
+		m, err := f.svc.Member(context.Background(), "ws-1", "u-bob")
+		require.NoError(t, err)
+		assert.Empty(t, m.RoleIDs)
+	})
+}
+
+func TestUpdateMemberRoles(t *testing.T) {
+	t.Run("gives and takes away in one write, keeping the order given", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleIDs: []string{"role-editor", "role-admin"}}))
+
+		require.NoError(t, f.svc.UpdateMemberRoles(context.Background(), "actor", "ws-1", "u-bob", []string{"role-viewer", "role-editor"}, []string{"role-admin", "role-gone"}))
+
+		m, err := f.svc.Member(context.Background(), "ws-1", "u-bob")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"role-editor", "role-viewer"}, m.RoleIDs)
+		require.Len(t, f.repo.events, 1)
+		assert.Equal(t, TopicWorkspaceMemberUpdated, f.repo.events[0].Topic)
+	})
+	t.Run("the Owner role is never given or taken, while an Owner may hold another", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-owner", WorkspaceID: "ws-1", RoleID: "owner-role-ws-1"}))
+		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
+
+		require.ErrorIs(t, f.svc.UpdateMemberRoles(context.Background(), "actor", "ws-1", "u-owner", nil, []string{"owner-role-ws-1"}), apperrs.ErrInvalid)
+		require.ErrorIs(t, f.svc.UpdateMemberRoles(context.Background(), "actor", "ws-1", "u-bob", []string{"owner-role-ws-1"}, nil), apperrs.ErrInvalid)
+		require.NoError(t, f.svc.UpdateMemberRoles(context.Background(), "actor", "ws-1", "u-owner", []string{"role-editor"}, nil))
+	})
+	t.Run("a non-member is not found", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		require.ErrorIs(t, f.svc.UpdateMemberRoles(context.Background(), "actor", "ws-1", "u-nobody", []string{"role-editor"}, nil), apperrs.ErrNotFound)
 	})
 }
 

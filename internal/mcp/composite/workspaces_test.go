@@ -138,8 +138,8 @@ func TestWorkspaceList_WithoutIDListsTheCallersWorkspacesOnly(t *testing.T) {
 	page, ok := out.(mcptool.Page[workspaceResult])
 	require.True(t, ok)
 	assert.Equal(t, []workspaceResult{
-		{ID: "ws-1", Name: "Acme", Role: "Owner", YourRoles: []*tenancy.TeamRole{{ID: "role-owner-ws-1", Name: "Owner", IsOwner: true}}},
-		{ID: "ws-2", Name: "Beta", Role: "Owner", YourRoles: []*tenancy.TeamRole{{ID: "role-owner-ws-2", Name: "Owner", IsOwner: true}}},
+		{ID: "ws-1", Name: "Acme", YourRoles: []*tenancy.TeamRole{{ID: "role-owner-ws-1", Name: "Owner", IsOwner: true}}},
+		{ID: "ws-2", Name: "Beta", YourRoles: []*tenancy.TeamRole{{ID: "role-owner-ws-2", Name: "Owner", IsOwner: true}}},
 	}, page.Items)
 }
 

@@ -241,6 +241,18 @@ func (g tenancyProjectGate) ProjectPermissions(ctx context.Context, userID, proj
 	return g.access.ProjectPermissions(ctx, userID, projectID)
 }
 
+func (g tenancyProjectGate) ProjectActions(ctx context.Context, userID, workspaceID string) ([]tenancy.MeProject, error) {
+	held, err := g.access.ProjectActions(ctx, userID, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]tenancy.MeProject, len(held))
+	for i, h := range held {
+		out[i] = tenancy.MeProject{ProjectID: h.ProjectID, Actions: h.Actions}
+	}
+	return out, nil
+}
+
 func (g tenancyProjectGate) WorkspaceProjects(ctx context.Context, workspaceID string) ([]string, error) {
 	projects, err := g.projects.List(ctx, workspaceID)
 	if err != nil {

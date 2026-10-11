@@ -9,7 +9,7 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 // The loaded form draws its own card, so its Save can sit in the card's footer beside the text it saves.
 export const InterviewTemplateSection = () => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  const canWrite = useHasPermission("memories:write");
+  const canWrite = useHasPermission("memories:template");
   const { data: template, error, isPending } = useFetchInterviewTemplate(workspaceId);
 
   return (

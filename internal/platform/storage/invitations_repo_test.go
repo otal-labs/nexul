@@ -95,6 +95,31 @@ func TestInvitationsRepo_CreateAndGet_DoesNotExposeRawToken(t *testing.T) {
 	assert.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
+// TestInvitationsRepo_List_NamesEveryRoleAGrantGives: a link giving several roles lists each with its name, and one
+// whose second role is gone is dropped, as one whose only role is gone always was.
+func TestInvitationsRepo_List_NamesEveryRoleAGrantGives(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	now := time.Now().UTC()
+	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
+	require.NoError(t, s.Roles.Create(ctx, &roles.Role{ID: "role-viewer", WorkspaceID: "ws-1", Name: "Viewers", Permissions: permissions.SetOf(permissions.DocsRead), CreatedAt: now, UpdatedAt: now}))
+	invitation := newInvitation("inv-1", "actor", "ws-1", "role-editor", now, 7*24*time.Hour)
+	invitation.Grants[0].RoleIDs = []string{"role-editor", "role-viewer"}
+	_, hash := invitationToken(t, "21")
+	require.NoError(t, s.Invitations.Create(ctx, invitation, hash))
+
+	listed, err := s.Invitations.List(ctx, "actor", now)
+	require.NoError(t, err)
+	require.Len(t, listed, 1)
+	assert.Equal(t, []*tenancy.TeamRole{{ID: "role-editor", Name: "Editors"}, {ID: "role-viewer", Name: "Viewers"}}, listed[0].Grants[0].Roles)
+
+	require.NoError(t, s.Roles.Delete(ctx, "role-viewer"))
+	listed, err = s.Invitations.List(ctx, "actor", now)
+	require.NoError(t, err)
+	assert.Empty(t, listed)
+}
+
 func TestInvitationsRepo_GetByTokenHash_RejectsInvalidTokenShape(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

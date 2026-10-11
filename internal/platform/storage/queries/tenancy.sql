@@ -23,8 +23,8 @@ INSERT INTO workspace_members (user_id, workspace_id, created_at) VALUES (?, ?, 
 -- name: AddMemberRole :exec
 INSERT INTO member_roles (user_id, workspace_id, role_id, created_at) VALUES (?, ?, ?, ?);
 
--- name: DeleteMemberRoles :exec
-DELETE FROM member_roles WHERE workspace_id = ? AND user_id = ?;
+-- name: DeleteMemberRole :exec
+DELETE FROM member_roles WHERE workspace_id = ? AND user_id = ? AND role_id = ?;
 
 -- name: ListMemberRoleIDs :many
 SELECT mr.role_id FROM member_roles mr

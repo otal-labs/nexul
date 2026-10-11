@@ -2,9 +2,11 @@ package tenancy
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -186,51 +188,60 @@ func (h *Handler) setMentionChipTemplate(w http.ResponseWriter, r *http.Request)
 	httpx.WriteJSON(w, http.StatusOK, ws)
 }
 
-// meResponse is the /me wire shape the frontend's hasPermission(action) helper reads directly.
+// meResponse is the /me wire shape the frontend's hasPermission(action) helper reads directly; Restricted is true for
+// every non-Owner, whose Permissions hold nothing project-area and whose Projects say what they hold in each.
 type meResponse struct {
-	// RoleName is the first of Roles' names.
+	// RoleName is Roles' names joined, for a client from before a member held several.
 	RoleName    string      `json:"role_name"`
 	Roles       []*TeamRole `json:"roles"`
 	Permissions []string    `json:"permissions"`
 	Restricted  bool        `json:"restricted"`
-	Projects    []MeProject `json:"projects,omitempty"`
-}
-
-// MeProject is one project a member is in and the project-area actions they hold there.
-type MeProject struct {
-	ProjectID string          `json:"project_id"`
-	Actions   permissions.Set `json:"actions"`
+	Projects    []MeProject `json:"projects"`
 }
 
 // me is re-fetched whenever useWorkspaceStore's selectedWorkspaceId changes.
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
-	workspaceID := r.PathValue("workspaceID")
-	userID := UserIDFromCtx(r.Context())
-	roles, err := h.svc.MemberRoles(r.Context(), workspaceID, userID)
+	access, err := h.svc.MyAccess(r.Context(), r.PathValue("workspaceID"), UserIDFromCtx(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	me := meResponse{Roles: roles, Permissions: h.svc.MemberPermissions(r.Context(), workspaceID, userID)}
-	if len(roles) > 0 {
-		me.RoleName = roles[0].Name
+	httpx.WriteJSON(w, http.StatusOK, meResponse{
+		RoleName: RoleNames(access.Roles), Roles: access.Roles, Permissions: access.Permissions,
+		Restricted: access.Restricted, Projects: access.Projects,
+	})
+}
+
+// rolesRequest names roles as role_ids, or as the one role_id a client from before several roles sends.
+type rolesRequest struct {
+	RoleID  string    `json:"role_id"`
+	RoleIDs *[]string `json:"role_ids"`
+}
+
+// roleIDs is RoleIDs when sent, else RoleID as a set of one; sent is false when neither was.
+func (r rolesRequest) roleIDs() (ids []string, sent bool) {
+	if r.RoleIDs != nil {
+		return *r.RoleIDs, true
 	}
-	httpx.WriteJSON(w, http.StatusOK, me)
+	if r.RoleID != "" {
+		return []string{r.RoleID}, true
+	}
+	return nil, false
 }
 
 type inviteMemberRequest struct {
-	Login  string `json:"login"`
-	RoleID string `json:"role_id"`
+	Login string `json:"login"`
+	rolesRequest
 }
 
 type addMemberRequest struct {
-	RoleID string `json:"role_id"`
+	rolesRequest
 }
 
-// changeMemberRoleRequest changes a member's role; allow, deny, every_project and project_access are removed fields
+// changeMemberRoleRequest replaces a member's roles; allow, deny, every_project and project_access are removed fields
 // that still parse, refused unless empty (ADR 0148).
 type changeMemberRoleRequest struct {
-	RoleID        string               `json:"role_id"`
+	rolesRequest
 	Allow         *permissions.Set     `json:"allow"`
 	Deny          *permissions.Set     `json:"deny"`
 	EveryProject  *string              `json:"every_project"`
@@ -259,7 +270,8 @@ func (h *Handler) inviteMember(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	if err := h.svc.InviteMember(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), req.Login, req.RoleID); err != nil {
+	roleIDs, _ := req.roleIDs()
+	if err := h.svc.InviteMember(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), req.Login, roleIDs...); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -291,7 +303,8 @@ func (h *Handler) addMember(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	err := h.svc.AddMember(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID"), req.RoleID)
+	roleIDs, _ := req.roleIDs()
+	err := h.svc.AddMember(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID"), roleIDs...)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -312,16 +325,20 @@ func (h *Handler) changeMemberRole(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// patchMember changes the role; a body carrying only empty removed fields changes nothing, as it did before.
+// patchMember replaces the roles; a body carrying only empty removed fields changes nothing, as it did before.
 func (h *Handler) patchMember(ctx context.Context, actorID, workspaceID, userID string, req changeMemberRoleRequest) error {
 	if err := RefusePerPersonAccess(deref(req.Allow), deref(req.Deny), deref(req.EveryProject), len(req.ProjectAccess)); err != nil {
 		return err
 	}
+	roleIDs, sent := req.roleIDs()
 	removedOnly := req.Allow != nil || req.Deny != nil || req.EveryProject != nil || req.ProjectAccess != nil
-	if req.RoleID == "" && removedOnly {
+	if !sent && removedOnly {
 		return nil
 	}
-	return h.svc.ChangeMemberRole(ctx, actorID, workspaceID, userID, req.RoleID)
+	if !sent {
+		return fmt.Errorf("%w: role_ids is required", apperrs.ErrInvalid)
+	}
+	return h.svc.SetMemberRoles(ctx, actorID, workspaceID, userID, roleIDs...)
 }
 
 func deref[T any](p *T) T {

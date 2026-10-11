@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"slices"
@@ -134,6 +135,7 @@ func (f *fakeRepo) List(_ context.Context, workspaceID string) ([]*Project, erro
 		}
 		out = append(out, p)
 	}
+	slices.SortFunc(out, func(a, b *Project) int { return cmp.Or(cmp.Compare(a.Position, b.Position), cmp.Compare(a.ID, b.ID)) })
 	return out, nil
 }
 
@@ -855,6 +857,24 @@ func (g *projectsGate) CallerProjectsIn(context.Context, string, permissions.Act
 	return g.open, false, g.err
 }
 
+// onlyGate holds membership and one action.
+type onlyGate struct{ action permissions.Action }
+
+func (g onlyGate) Require(_ context.Context, _ string, action permissions.Action) error {
+	if action == permissions.Member || action == g.action {
+		return nil
+	}
+	return apperrs.ErrForbidden
+}
+
+func (g onlyGate) RequireProject(ctx context.Context, _ string, action permissions.Action) error {
+	return g.Require(ctx, "", action)
+}
+
+func (g onlyGate) CallerProjectsIn(context.Context, string, permissions.Action) ([]string, bool, error) {
+	return nil, true, nil
+}
+
 func TestRename(t *testing.T) {
 	t.Run("non-owner is forbidden", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, false)
@@ -1016,6 +1036,23 @@ func TestReorder(t *testing.T) {
 		err := s.Reorder(context.Background(), "ws-1", []string{"p-1"})
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
+	})
+	t.Run("takes projects:create, not projects:write", func(t *testing.T) {
+		repo := newFakeRepo()
+		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A", WorkspaceID: "ws-1"}
+		err := newTestService(repo, onlyGate{permissions.ProjectsWrite}).Reorder(context.Background(), "ws-1", []string{"p-1"})
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+		require.NoError(t, newTestService(repo, onlyGate{permissions.ProjectsCreate}).Reorder(context.Background(), "ws-1", []string{"p-1"}))
+	})
+	t.Run("orders the projects the caller is in and leaves a hidden one in its place", func(t *testing.T) {
+		repo := newFakeRepo()
+		for i, id := range []string{"p-1", "p-2", "p-3"} {
+			repo.projects[id] = &Project{ID: id, Name: id, WorkspaceID: "ws-1", Position: i}
+		}
+		s := newTestService(repo, &projectsGate{fakeGate: fakeGate{allow: true}, open: []string{"p-1", "p-3"}})
+		require.ErrorIs(t, s.Reorder(context.Background(), "ws-1", []string{"p-2", "p-3", "p-1"}), apperrs.ErrInvalid)
+		require.NoError(t, s.Reorder(context.Background(), "ws-1", []string{"p-3", "p-1"}))
+		assert.Equal(t, []int{2, 1, 0}, []int{repo.projects["p-1"].Position, repo.projects["p-2"].Position, repo.projects["p-3"].Position})
 	})
 	t.Run("reorders positions", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)

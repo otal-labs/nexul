@@ -377,3 +377,26 @@ func TestIntegration_ProjectCreate_ListsTheCreatorAndTheirRoles(t *testing.T) {
 	require.Len(t, rules, 1, "the Owner role is in every project, so no rule names it")
 	assert.Equal(t, uOwner, rules[0].UserID)
 }
+
+// TestIntegration_MeReadsEachProjectFromItsOwnList: /me lists only the projects someone is in, with what they hold in
+// each, and keeps project-area actions out of permissions, the shape a Restricted member read before the switch.
+func TestIntegration_MeReadsEachProjectFromItsOwnList(t *testing.T) {
+	f := newPermFixture(t)
+	listedClient(t, f)
+
+	me, err := f.svc.tenancySvc.MyAccess(as(uClient), wsDefault, uClient)
+	require.NoError(t, err)
+	assert.True(t, me.Restricted)
+	assert.Contains(t, me.Permissions, "chat:write")
+	assert.NotContains(t, me.Permissions, "tickets:read")
+	require.Len(t, me.Projects, 1)
+	assert.Equal(t, pClient, me.Projects[0].ProjectID)
+	assert.True(t, me.Projects[0].Actions.Has(permissions.TicketsWrite))
+	assert.False(t, me.Projects[0].Actions.Has(permissions.ProjectsDelete))
+
+	owner, err := f.svc.tenancySvc.MyAccess(as(uOwner), wsDefault, uOwner)
+	require.NoError(t, err)
+	assert.False(t, owner.Restricted)
+	assert.Contains(t, owner.Permissions, "tickets:read")
+	assert.GreaterOrEqual(t, len(owner.Projects), 2, "the Owner is in every project")
+}

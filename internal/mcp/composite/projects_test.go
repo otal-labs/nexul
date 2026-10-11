@@ -84,19 +84,6 @@ func TestProjectGet_SetupServiceIsFilledOnlyForAReaderOfStacks(t *testing.T) {
 	}
 }
 
-func TestProjectGet_AccessReadsAsEmptyWithOrWithoutMembersWrite(t *testing.T) {
-	for _, denied := range []permissions.Action{permissions.MembersWrite, ""} {
-		f := newFixture(t)
-		f.w.denied = denied
-
-		got, err := call(t, t.Context(), f.projectTools(), "project_get", `{"id":"p-1"}`)
-		require.NoError(t, err)
-		d := got.(projectDetail)
-		assert.Equal(t, []workspace.ProjectAccessEntry{}, d.Access, "no member is Restricted any more")
-		assert.Equal(t, []workspace.RestrictedMember{}, d.DeleteImpact.RestrictedMembers)
-	}
-}
-
 func TestProjectUpdate_Errors(t *testing.T) {
 	tests := []struct {
 		name    string

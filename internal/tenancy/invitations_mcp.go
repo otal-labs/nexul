@@ -3,11 +3,11 @@ package tenancy
 import (
 	"context"
 	"fmt"
+	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
-	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // MCPTools exposes invitations through the same use-cases as HTTP; each call acts as the context's actor.
@@ -16,22 +16,33 @@ func MCPTools(s *InvitationService) []mcptool.Tool {
 }
 
 type invitationGrantIn struct {
-	WorkspaceID   string                `json:"workspace_id" jsonschema:"The workspace the invitation admits the person to."`
-	RoleID        string                `json:"role_id" jsonschema:"The role they get in that workspace."`
-	Allow         []string              `json:"allow,omitempty" jsonschema:"Permissions allowed on top of the role, each <domain>:<action>, for example [\"docs:write\"]."`
-	Deny          []string              `json:"deny,omitempty" jsonschema:"Permissions denied despite the role, each <domain>:<action>, for example [\"members:write\"]."`
-	EveryProject  string                `json:"every_project,omitempty" jsonschema:"role (the default: the role's project areas apply on every project) or none (a Restricted member, who sees only the projects in project_access)."`
-	ProjectAccess []invitationProjectIn `json:"project_access,omitempty" jsonschema:"With every_project none, the projects the person may open, one entry per project of that workspace."`
-}
-
-type invitationProjectIn struct {
-	ProjectID string   `json:"project_id" jsonschema:"A project of that workspace, from project_list."`
-	Allow     []string `json:"allow" jsonschema:"The levels on that project, each a project-area <domain>:<action> from permission_catalog, for example [\"tickets:read\",\"tickets:write\"]."`
+	WorkspaceID string   `json:"workspace_id" jsonschema:"The workspace the invitation admits the person to."`
+	Roles       []string `json:"roles" jsonschema:"The role ids they get in that workspace, at least one and never the Owner role; workspace_list with the workspace's id lists them."`
 }
 
 type invitationCreateIn struct {
 	Grants        []invitationGrantIn `json:"grants" jsonschema:"One entry per workspace the invitation admits the person to; at least one."`
 	ExpiresInDays int                 `json:"expires_in_days,omitzero" jsonschema:"How long the link stays valid: 1 or 7 days. Defaults to 7."`
+}
+
+// invitationResult is an invitation as the tools show it: each workspace with the roles it gives, never its link.
+type invitationResult struct {
+	ID        string                  `json:"id"`
+	InvitedBy string                  `json:"invited_by"`
+	CreatedAt time.Time               `json:"created_at"`
+	ExpiresAt time.Time               `json:"expires_at"`
+	Grants    []invitationGrantResult `json:"grants"`
+}
+
+type invitationGrantResult struct {
+	WorkspaceID   string      `json:"workspace_id"`
+	WorkspaceName string      `json:"workspace_name,omitempty"`
+	Roles         []*TeamRole `json:"roles"`
+}
+
+type createdInvitationResult struct {
+	Invitation invitationResult `json:"invitation"`
+	URL        string           `json:"url"`
 }
 
 type invitationListIn struct {
@@ -44,10 +55,10 @@ type invitationDeleteIn struct {
 
 func invitationCreateTool(s *InvitationService) mcptool.Tool {
 	return mcptool.New("invitation_create", "Create invitation",
-		"Creates a single-use invitation link that admits one person to the instance with the given role, plus "+
-			"optional permission overwrites, in each listed workspace. You need members:write in every one of them. "+
-			"A grant with every_project none admits a Restricted member who sees only the projects in its project_access; "+
-			"you may give only levels you hold on each project, and every level is checked again when the link is redeemed. "+
+		"Creates a single-use invitation link that admits one person to the instance with the given roles in each "+
+			"listed workspace, and nothing per person. You need members:write in every one of them, and may give only "+
+			"roles whose permissions you hold there; every role is checked again when the link is redeemed. Which "+
+			"projects the person is in is set on each project, with permission_overwrite_update. "+
 			"The returned url carries the only copy of the link's secret and is never shown again, so hand it straight "+
 			"to the person being invited; invitation_list shows the invitation without it, and invitation_delete "+
 			"revokes it.",
@@ -57,22 +68,30 @@ func invitationCreateTool(s *InvitationService) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			return s.Create(ctx, actorID(ctx), CreateInvitationInput{Grants: grants, ExpiresInDays: in.ExpiresInDays})
+			created, err := s.Create(ctx, actorID(ctx), CreateInvitationInput{Grants: grants, ExpiresInDays: in.ExpiresInDays})
+			if err != nil {
+				return nil, err
+			}
+			return createdInvitationResult{Invitation: toInvitationResult(created.Invitation), URL: created.URL}, nil
 		})
 }
 
 func invitationListTool(s *InvitationService) mcptool.Tool {
 	return mcptool.New("invitation_list", "List invitations",
 		"Lists the unredeemed, unexpired invitations you may manage, meaning you hold members:write in every "+
-			"workspace each one grants. Each shows its workspaces and roles, any every_project none with its "+
-			"project_access, who invited, and when it expires, never its link. Use invitation_create for a new link and invitation_delete to revoke one.",
+			"workspace each one grants. Each shows its workspaces with the roles it gives there (id, name, whether it "+
+			"is the Owner role), who invited, and when it expires, never its link. Use invitation_create for a new link and invitation_delete to revoke one.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in invitationListIn) (any, error) {
 			invitations, err := s.List(ctx, actorID(ctx))
 			if err != nil {
 				return nil, err
 			}
-			return mcptool.Paginate(invitations, in.PageArgs), nil
+			out := make([]invitationResult, len(invitations))
+			for i, inv := range invitations {
+				out[i] = toInvitationResult(inv)
+			}
+			return mcptool.Paginate(out, in.PageArgs), nil
 		})
 }
 
@@ -93,37 +112,26 @@ func invitationDeleteTool(s *InvitationService) mcptool.Tool {
 func invitationGrants(in []invitationGrantIn) ([]*InvitationGrant, error) {
 	grants := make([]*InvitationGrant, 0, len(in))
 	for _, g := range in {
-		allow, err := actionSet(g.Allow)
-		if err != nil {
-			return nil, err
+		if len(g.Roles) == 0 {
+			return nil, fmt.Errorf("%w: the grant for workspace %s needs at least one role in roles; workspace_list with its id lists them", apperrs.ErrInvalid, g.WorkspaceID)
 		}
-		deny, err := actionSet(g.Deny)
-		if err != nil {
-			return nil, err
-		}
-		projects := make([]*ProjectAccess, 0, len(g.ProjectAccess))
-		for _, p := range g.ProjectAccess {
-			levels, err := actionSet(p.Allow)
-			if err != nil {
-				return nil, err
-			}
-			projects = append(projects, &ProjectAccess{ProjectID: p.ProjectID, Allow: levels})
-		}
-		grants = append(grants, &InvitationGrant{WorkspaceID: g.WorkspaceID, RoleID: g.RoleID, Allow: allow, Deny: deny, EveryProject: g.EveryProject, ProjectAccess: projects})
+		grants = append(grants, &InvitationGrant{WorkspaceID: g.WorkspaceID, RoleID: g.Roles[0], RoleIDs: g.Roles})
 	}
 	return grants, nil
 }
 
-func actionSet(raw []string) (permissions.Set, error) {
-	actions := make([]permissions.Action, 0, len(raw))
-	for _, r := range raw {
-		a, ok := permissions.ParseAction(r)
-		if !ok {
-			return nil, fmt.Errorf("%w: unknown permission %q; a permission is <domain>:<action>, for example docs:write", apperrs.ErrInvalid, r)
+func toInvitationResult(inv *Invitation) invitationResult {
+	out := invitationResult{ID: inv.ID, InvitedBy: inv.InvitedBy, CreatedAt: inv.CreatedAt, ExpiresAt: inv.ExpiresAt, Grants: make([]invitationGrantResult, len(inv.Grants))}
+	for i, g := range inv.Grants {
+		roles := g.Roles
+		if roles == nil {
+			for _, id := range g.Held() {
+				roles = append(roles, &TeamRole{ID: id})
+			}
 		}
-		actions = append(actions, a)
+		out.Grants[i] = invitationGrantResult{WorkspaceID: g.WorkspaceID, WorkspaceName: g.WorkspaceName, Roles: roles}
 	}
-	return permissions.SetOf(actions...), nil
+	return out
 }
 
 func actorID(ctx context.Context) string {

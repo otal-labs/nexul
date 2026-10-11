@@ -289,27 +289,50 @@ func validateReorderIDs(ids []string, existingIDs []string, noun string) error {
 	return nil
 }
 
-// Reorder sets a workspace's project display order (projects:write); every project must appear exactly once.
+// Reorder sets the display order of the workspace's projects the caller is in (projects:create): each must appear
+// exactly once, and a project hidden from them keeps its place among the others.
 func (s *Service) Reorder(ctx context.Context, workspaceID string, ids []string) error {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
 		return fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
 	}
-	if err := s.requireIn(ctx, workspaceID, permissions.ProjectsWrite); err != nil {
+	if err := s.requireIn(ctx, workspaceID, permissions.ProjectsCreate); err != nil {
 		return err
 	}
 	projects, err := s.repo.List(ctx, workspaceID)
 	if err != nil {
 		return fmt.Errorf("list projects: %w", err)
 	}
-	existingIDs := make([]string, len(projects))
-	for i, p := range projects {
-		existingIDs[i] = p.ID
-	}
-	if err := validateReorderIDs(ids, existingIDs, "project"); err != nil {
+	visible, err := s.openable(ctx, workspaceID, slices.Clone(projects))
+	if err != nil {
 		return err
 	}
-	return s.repo.Reorder(ctx, ids)
+	if err := validateReorderIDs(ids, projectIDs(visible), "project"); err != nil {
+		return err
+	}
+	return s.repo.Reorder(ctx, inTheirSlots(projectIDs(projects), projectIDs(visible), ids))
+}
+
+func projectIDs(projects []*Project) []string {
+	out := make([]string, len(projects))
+	for i, p := range projects {
+		out[i] = p.ID
+	}
+	return out
+}
+
+// inTheirSlots refills the slots of moved within all from ordered, so every other project keeps its place.
+func inTheirSlots(all, moved, ordered []string) []string {
+	out := slices.Clone(all)
+	next := 0
+	for i, id := range out {
+		if !slices.Contains(moved, id) {
+			continue
+		}
+		out[i] = ordered[next]
+		next++
+	}
+	return out
 }
 
 // DeleteImpact reports what removing a project would affect, so the management UI can warn before the owner confirms.

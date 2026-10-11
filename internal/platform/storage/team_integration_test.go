@@ -247,7 +247,7 @@ func TestIntegration_TeamEdits_WithoutMembersWriteInTheWorkspace_AreForbidden(t 
 	ctx := t.Context()
 	f := newTeamFixture(t)
 
-	require.ErrorIs(t, f.svc.ChangeMemberRole(ctx, "admin", f.acme.ID, "carol", f.viewer.ID), apperrs.ErrForbidden)
+	require.ErrorIs(t, f.svc.SetMemberRoles(ctx, "admin", f.acme.ID, "carol", f.viewer.ID), apperrs.ErrForbidden)
 	require.ErrorIs(t, f.svc.AddMember(ctx, "admin", f.acme.ID, "bob", f.viewer.ID), apperrs.ErrForbidden)
 	require.ErrorIs(t, f.svc.RemoveMember(ctx, "admin", f.acme.ID, "carol"), apperrs.ErrForbidden)
 }
@@ -257,7 +257,7 @@ func TestIntegration_TeamEdits_OwnerStaysProtected(t *testing.T) {
 	f := newTeamFixture(t)
 
 	require.ErrorIs(t, f.svc.AddMember(ctx, "admin", f.nexul.ID, "carol", f.nexulOwnerID), apperrs.ErrInvalid)
-	require.ErrorIs(t, f.svc.ChangeMemberRole(ctx, "dana", f.acme.ID, "dana", f.viewer.ID), apperrs.ErrInvalid)
+	require.ErrorIs(t, f.svc.SetMemberRoles(ctx, "dana", f.acme.ID, "dana", f.viewer.ID), apperrs.ErrInvalid)
 }
 
 // Carol holds only docs:read in Acme, so the members list refuses her; the people list must not.

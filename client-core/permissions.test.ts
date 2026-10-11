@@ -29,3 +29,33 @@ describe("a Restricted member's /me", () => {
     expect(workspaceWidePermissions(member)).toEqual(["tickets:read"]);
   });
 });
+
+// Since projects became opt-in every non-Owner's /me reads as Restricted did, so a pre-switch client-core still answers per project.
+describe("a non-Owner's /me after the switch, read by the client-core from before it", () => {
+  const before: MyWorkspaceInfo = { role_name: "Editor", permissions: ["chat:write", "tickets:read", "tickets:write"] };
+  const after: MyWorkspaceInfo = {
+    role_name: "Editor, Frontend",
+    roles: [
+      { id: "role-editor", name: "Editor", is_owner: false },
+      { id: "role-frontend", name: "Frontend", is_owner: false },
+    ],
+    permissions: ["chat:write"],
+    restricted: true,
+    projects: [
+      { project_id: "p-web", actions: ["tickets:read", "tickets:write"] },
+      { project_id: "p-api", actions: ["tickets:read", "tickets:write"] },
+    ],
+  };
+  const sorted = (values: string[]) => [...new Set(values)].sort();
+
+  it.each(["p-web", "p-api", undefined])("answers %s as before for a member listed in every project", (projectId) => {
+    expect(sorted(projectPermissions(after, projectId))).toEqual(sorted(projectPermissions(before, projectId)));
+    expect(sorted(workspaceWidePermissions(after))).toEqual(sorted(workspaceWidePermissions(before)));
+  });
+
+  it("answers a project's rule that takes an action away from that project alone", () => {
+    const denied: MyWorkspaceInfo = { ...after, projects: [{ project_id: "p-web", actions: ["tickets:read"] }, ...after.projects!.slice(1)] };
+    expect(projectPermissions(denied, "p-web")).not.toContain("tickets:write");
+    expect(projectPermissions(denied, "p-api")).toContain("tickets:write");
+  });
+});

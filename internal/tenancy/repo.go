@@ -30,8 +30,8 @@ type MemberRepo interface {
 	// ListByWorkspace returns every member of workspaceID with their roles (Membership invites' roster).
 	ListByWorkspace(ctx context.Context, workspaceID string) ([]*Member, error)
 	RemoveMember(ctx context.Context, workspaceID, userID string, events ...eventbus.OutboxEvent) error
-	// SetRole replaces the roles userID holds in workspaceID with roleID alone.
-	SetRole(ctx context.Context, workspaceID, userID, roleID string, events ...eventbus.OutboxEvent) error
+	// ChangeRoles gives userID the roles in add and takes away those in remove, in one write, or apperrs.ErrNotFound.
+	ChangeRoles(ctx context.Context, workspaceID, userID string, add, remove []string, events ...eventbus.OutboxEvent) error
 	// ListAllMemberships returns every membership on the instance with its workspace and roles.
 	ListAllMemberships(ctx context.Context) ([]*TeamMembership, error)
 	// Member returns userID's membership of workspaceID with their roles, or apperrs.ErrNotFound.
@@ -114,6 +114,8 @@ type ProjectGate interface {
 	ProjectPermissions(ctx context.Context, userID, projectID string) (actions []string, opens bool)
 	// WorkspaceProjects lists the ids of workspaceID's projects.
 	WorkspaceProjects(ctx context.Context, workspaceID string) ([]string, error)
+	// ProjectActions is each project of workspaceID userID is in, with the project-area actions they hold there.
+	ProjectActions(ctx context.Context, userID, workspaceID string) ([]MeProject, error)
 }
 
 // ChannelGate creates a new workspace's #general channel without tenancy importing chat (ADR 0017).

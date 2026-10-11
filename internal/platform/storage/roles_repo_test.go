@@ -160,6 +160,27 @@ func TestRolesRepo_Delete_AHeldRoleLeavesItsHolderWithNone(t *testing.T) {
 	assert.Equal(t, 1, count(t, s.db, `SELECT COUNT(*) FROM outbox WHERE id = 'evt-role'`))
 }
 
+// TestRolesRepo_Delete_TakesThePendingInvitesGivingIt: a pending invite gives its one role and nothing else, so it
+// goes with the role instead of refusing the delete; an invite for another role stays.
+func TestRolesRepo_Delete_TakesThePendingInvitesGivingIt(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-1", "Acme")))
+	require.NoError(t, s.Roles.Create(ctx, newTestRole("role-1", "ws-1")))
+	require.NoError(t, s.Roles.Create(ctx, newTestRole("role-2", "ws-1")))
+	mustCreateUser(t, s, "alice", "alice")
+	require.NoError(t, s.WorkspaceInvites.Upsert(ctx, &tenancy.Invite{WorkspaceID: "ws-1", Login: "lena", RoleID: "role-1", InvitedBy: "alice", CreatedAt: time.Now()}))
+	require.NoError(t, s.WorkspaceInvites.Upsert(ctx, &tenancy.Invite{WorkspaceID: "ws-1", Login: "sam", RoleID: "role-2", InvitedBy: "alice", CreatedAt: time.Now()}))
+
+	require.NoError(t, s.Roles.Delete(ctx, "role-1"))
+
+	invites, err := s.WorkspaceInvites.ListByWorkspace(ctx, "ws-1")
+	require.NoError(t, err)
+	require.Len(t, invites, 1)
+	assert.Equal(t, "sam", invites[0].Login)
+}
+
 func TestRolesRepo_Delete_NotFound(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

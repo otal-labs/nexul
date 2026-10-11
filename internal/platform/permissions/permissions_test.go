@@ -10,7 +10,7 @@ import (
 
 func TestCatalog_GridShape(t *testing.T) {
 	catalog := Catalog()
-	require.Len(t, catalog, 94)
+	require.Len(t, catalog, 95)
 	assert.Equal(t, Info{Value: "docs:read", Label: "Read docs", Domain: "docs", Action: "read", Area: AreaProject}, catalog[0])
 	assert.Equal(t, Info{Value: "docs:write", Label: "Create and update docs", Domain: "docs", Action: "write", Area: AreaProject}, catalog[1])
 	assert.Equal(t, Info{Value: "docs:delete", Label: "Delete docs", Domain: "docs", Action: "delete", Area: AreaProject}, catalog[2])
@@ -48,6 +48,8 @@ func TestAreaOf(t *testing.T) {
 		{ProjectsAccess, AreaProject},
 		{ProjectsOpen, AreaProject},
 		{ProjectsCreate, AreaWorkspace},
+		{MemoriesWrite, AreaProject},
+		{MemoriesTemplate, AreaWorkspace},
 		{"attachments:read", AreaProject},
 		{"repositories:write", AreaProject},
 		{PlaysRun, AreaWorkspace},
@@ -86,6 +88,7 @@ func TestCatalog_DomainDeclaredVerbs(t *testing.T) {
 		{MemoriesWrite, "Create and update memories", "memories", "write"},
 		{MemoriesDelete, "Delete memories", "memories", "delete"},
 		{MemoriesClone, "Clone memories to another project", "memories", "clone"},
+		{MemoriesTemplate, "Edit the workspace Interview template", "memories", "template"},
 		{DocsThread, "See doc threads", "docs", "thread"},
 		{DocsClone, "Clone docs into another project", "docs", "clone"},
 		{DocsLock, "Lock and unlock docs", "docs", "lock"},

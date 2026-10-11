@@ -87,17 +87,18 @@ func (q *Queries) DeleteMemberProjectAccess(ctx context.Context, arg DeleteMembe
 	return err
 }
 
-const deleteMemberRoles = `-- name: DeleteMemberRoles :exec
-DELETE FROM member_roles WHERE workspace_id = ? AND user_id = ?
+const deleteMemberRole = `-- name: DeleteMemberRole :exec
+DELETE FROM member_roles WHERE workspace_id = ? AND user_id = ? AND role_id = ?
 `
 
-type DeleteMemberRolesParams struct {
+type DeleteMemberRoleParams struct {
 	WorkspaceID string
 	UserID      string
+	RoleID      string
 }
 
-func (q *Queries) DeleteMemberRoles(ctx context.Context, arg DeleteMemberRolesParams) error {
-	_, err := q.db.ExecContext(ctx, deleteMemberRoles, arg.WorkspaceID, arg.UserID)
+func (q *Queries) DeleteMemberRole(ctx context.Context, arg DeleteMemberRoleParams) error {
+	_, err := q.db.ExecContext(ctx, deleteMemberRole, arg.WorkspaceID, arg.UserID, arg.RoleID)
 	return err
 }
 

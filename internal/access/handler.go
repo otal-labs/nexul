@@ -33,18 +33,18 @@ func (h *Handler) Routes() http.Handler {
 
 func (h *Handler) listGrants(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	if q.Get("resource_type") == resourceTypePlay {
+	if resourceType := q.Get("resource_type"); resourceType == resourceTypePlay || resourceType == resourceTypeProject {
 		resourceID := q.Get("resource_id")
 		if resourceID == "" {
 			httpx.WriteError(w, fmt.Errorf("%w: resource_id is required", apperrs.ErrInvalid))
 			return
 		}
-		grants, err := h.svc.ListPlayGrants(r.Context(), actorID(r), resourceID)
+		grants, err := h.svc.ListRules(r.Context(), actorID(r), resourceType, resourceID)
 		if err != nil {
 			httpx.WriteError(w, err)
 			return
 		}
-		httpx.WriteJSON(w, http.StatusOK, map[string]any{"resource_type": resourceTypePlay, "resource_id": resourceID, "grants": grants})
+		httpx.WriteJSON(w, http.StatusOK, map[string]any{"resource_type": resourceType, "resource_id": resourceID, "grants": grants})
 		return
 	}
 	docID := q.Get("doc_id")

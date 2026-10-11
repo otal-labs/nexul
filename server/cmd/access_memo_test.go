@@ -133,9 +133,9 @@ func TestIntegration_LiveAudienceMemo_FollowsEveryChange(t *testing.T) {
 	assert.False(t, reaches(uReader, ticketFrame), "removed from the workspace")
 
 	assert.False(t, reaches(uPlain, ticketFrame))
-	require.NoError(t, s.tenancySvc.ChangeMemberRole(as(uOwner), uOwner, wsDefault, uPlain, "role-writer"))
+	require.NoError(t, s.tenancySvc.SetMemberRoles(as(uOwner), uOwner, wsDefault, uPlain, "role-writer"))
 	assert.True(t, reaches(uPlain, ticketFrame), "given a role that reads tickets")
-	require.NoError(t, s.tenancySvc.ChangeMemberRole(as(uOwner), uOwner, wsDefault, uPlain, "role-plain"))
+	require.NoError(t, s.tenancySvc.SetMemberRoles(as(uOwner), uOwner, wsDefault, uPlain, "role-plain"))
 	assert.False(t, reaches(uPlain, ticketFrame), "the role taken back")
 
 	assert.False(t, reaches(uClient, ticketFrame))
@@ -481,6 +481,10 @@ func TestStatements_ProjectRulesCostTheSameAtAnyLength(t *testing.T) {
 		},
 		"project people": func(ctx context.Context, f permFixture) error {
 			_, err := f.svc.tenancySvc.ListProjectPeople(ctx, uReader, pGeneral)
+			return err
+		},
+		"/me": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.tenancySvc.MyAccess(ctx, wsDefault, uReader)
 			return err
 		},
 		"ticket_list": func(ctx context.Context, f permFixture) error {

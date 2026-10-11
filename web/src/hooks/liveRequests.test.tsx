@@ -316,7 +316,7 @@ describe("requests a live frame sends", () => {
     expect(await requestsAfter("play.run", run)).toEqual(["/api/memories?workspace_id=ws-1"]);
   });
 
-  it("refetches who may open only the projects a membership change names", async () => {
+  it("refetches only the people of the projects a membership change names", async () => {
     const { requestsAfter } = await mountLive(
       view(() => {
         useFetchProjectAccess("p-1");
@@ -326,8 +326,7 @@ describe("requests a live frame sends", () => {
       }),
       respond,
     );
-    expect((await requestsAfter("workspace.member.updated", { user_id: "u-2", workspace_id: "ws-1", project_ids: ["p-1"] })).sort()).toEqual([
-      "/api/projects/p-1/access",
+    expect(await requestsAfter("workspace.member.updated", { user_id: "u-2", workspace_id: "ws-1", project_ids: ["p-1"] })).toEqual([
       "/api/projects/p-1/people",
     ]);
   });

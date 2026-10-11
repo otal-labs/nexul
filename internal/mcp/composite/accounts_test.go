@@ -3,6 +3,7 @@ package composite
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,12 +52,12 @@ func (f *fakeTeam) MemberRoleID(_ context.Context, workspaceID, userID string) (
 	return "", apperrs.ErrNotFound
 }
 
-func (f *fakeTeam) AddMember(_ context.Context, _, workspaceID, _, roleID string) error {
-	return f.record("add " + workspaceID + " " + roleID)
+func (f *fakeTeam) AddMember(_ context.Context, _, workspaceID, _ string, roleIDs ...string) error {
+	return f.record("add " + workspaceID + " " + strings.Join(roleIDs, ","))
 }
 
-func (f *fakeTeam) ChangeMemberRole(_ context.Context, _, workspaceID, _, roleID string) error {
-	return f.record("role " + workspaceID + " " + roleID)
+func (f *fakeTeam) UpdateMemberRoles(_ context.Context, _, workspaceID, _ string, add, remove []string) error {
+	return f.record("roles " + workspaceID + " +" + strings.Join(add, ",") + " -" + strings.Join(remove, ","))
 }
 
 func (f *fakeTeam) RemoveMember(_ context.Context, _, workspaceID, _ string) error {
@@ -87,7 +88,7 @@ func TestAccountList_CarriesPresenceProvidersAndEachMembershipWithTheViewersMana
 		People: []*tenancy.TeamPerson{{
 			TeamAccount: tenancy.TeamAccount{ID: "bob", Login: "bob", Status: "active", Online: true, LastSeenAt: &seen, Providers: []string{"github", "discord"}},
 			Workspaces: []*tenancy.TeamMembership{
-				{WorkspaceID: "ws-nexul", RoleName: "Editor"},
+				{WorkspaceID: "ws-nexul", RoleName: "Editor, Frontend", Roles: []*tenancy.TeamRole{{ID: "r-editor", Name: "Editor"}, {ID: "r-front", Name: "Frontend"}}},
 				{WorkspaceID: "ws-acme", RoleName: "Viewer"},
 			},
 		}},
@@ -104,10 +105,11 @@ func TestAccountList_CarriesPresenceProvidersAndEachMembershipWithTheViewersMana
 	require.Len(t, page.Items[0].Workspaces, 2)
 	assert.True(t, page.Items[0].Workspaces[0].CanManageMembers)
 	assert.False(t, page.Items[0].Workspaces[1].CanManageMembers)
-	for _, m := range page.Items[0].Workspaces {
-		assert.Empty(t, m.Allow, "the removed fields read as empty")
-		assert.Empty(t, m.EveryProject)
-		assert.Empty(t, m.Projects)
+	assert.Equal(t, []*tenancy.TeamRole{{ID: "r-editor", Name: "Editor"}, {ID: "r-front", Name: "Frontend"}}, page.Items[0].Workspaces[0].Roles)
+	raw, err := json.Marshal(page.Items[0].Workspaces[0])
+	require.NoError(t, err)
+	for _, gone := range []string{"role_id", "role_name", "allow", "deny", "every_project", "projects"} {
+		assert.NotContains(t, string(raw), `"`+gone+`"`, "the single role and the per-person fields are gone")
 	}
 }
 
@@ -120,11 +122,11 @@ func TestAccountUpdate_RoutesEachWorkspaceToAddOrChangeAndStopsAtTheFirstFailure
 		wantErr   error
 	}{
 		{"nothing to change is invalid", `{"id":"bob"}`, "", nil, apperrs.ErrInvalid},
-		{"a workspace the account is not in is an add", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","role_id":"viewer"}]}`, "", []string{"add ws-acme viewer"}, nil},
-		{"a workspace the account is in is a role change", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","role_id":"editor"}]}`, "", []string{"role ws-nexul editor"}, nil},
-		{"removed fields sent empty leave the role alone", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","allow":[],"deny":[]}]}`, "", nil, nil},
-		{"removal comes after the workspaces", `{"id":"bob","remove_workspace_ids":["ws-nexul"],"workspaces":[{"workspace_id":"ws-acme","role_id":"viewer"}]}`, "", []string{"add ws-acme viewer", "remove ws-nexul"}, nil},
-		{"a refused workspace stops the rest", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","role_id":"viewer"}],"remove_workspace_ids":["ws-nexul"]}`, "add ws-acme viewer", []string{"add ws-acme viewer"}, apperrs.ErrForbidden},
+		{"a workspace the account is not in is an add", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","add_roles":["viewer","front"]}]}`, "", []string{"add ws-acme viewer,front"}, nil},
+		{"a workspace the account is in gives and takes away", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","add_roles":["editor"],"remove_roles":["viewer"]}]}`, "", []string{"roles ws-nexul +editor -viewer"}, nil},
+		{"taking a role from a non-member is invalid", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","remove_roles":["viewer"]}]}`, "", nil, apperrs.ErrInvalid},
+		{"removal comes after the workspaces", `{"id":"bob","remove_workspace_ids":["ws-nexul"],"workspaces":[{"workspace_id":"ws-acme","add_roles":["viewer"]}]}`, "", []string{"add ws-acme viewer", "remove ws-nexul"}, nil},
+		{"a refused workspace stops the rest", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","add_roles":["viewer"]}],"remove_workspace_ids":["ws-nexul"]}`, "add ws-acme viewer", []string{"add ws-acme viewer"}, apperrs.ErrForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -141,17 +143,20 @@ func TestAccountUpdate_RoutesEachWorkspaceToAddOrChangeAndStopsAtTheFirstFailure
 	}
 }
 
-func TestAccountUpdate_RemovedFieldsAreRefusedBeforeAnythingChanges(t *testing.T) {
+// TestAccountUpdate_RemovedFieldsFailTheSchema: each field the switch removed is gone from the input, so sending one,
+// even empty, is a schema error before anything changes.
+func TestAccountUpdate_RemovedFieldsFailTheSchema(t *testing.T) {
 	for _, entry := range []string{
-		`{"workspace_id":"ws-nexul","role_id":"editor","deny":["docs:delete"]}`,
-		`{"workspace_id":"ws-acme","role_id":"viewer","allow":["docs:read"]}`,
+		`{"workspace_id":"ws-nexul","role_id":"editor"}`,
+		`{"workspace_id":"ws-nexul","deny":["docs:delete"]}`,
+		`{"workspace_id":"ws-acme","allow":[]}`,
 		`{"workspace_id":"ws-nexul","every_project":"none"}`,
 		`{"workspace_id":"ws-nexul","project_access":[{"project_id":"p-1","allow":["tickets:read"]}]}`,
 	} {
 		team := &fakeTeam{members: map[string][]string{"ws-nexul": {"bob"}}}
 		_, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team), "account_update", `{"id":"bob","workspaces":[`+entry+`]}`)
 		require.ErrorIs(t, err, apperrs.ErrInvalid, entry)
-		assert.Regexp(t, "a role|list the person", err.Error(), entry)
+		assert.Contains(t, err.Error(), "input schema", entry)
 		assert.Empty(t, team.calls, entry)
 	}
 }

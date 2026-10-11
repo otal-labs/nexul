@@ -146,11 +146,14 @@ func (s *Service) InterviewQuestions(ctx context.Context, m *Memory) ([]Question
 	return t.Questions, nil
 }
 
-// InterviewTemplate returns the workspace's Interview template, the instance's until the workspace saves its own.
+// InterviewTemplate returns the workspace's Interview template, to whoever may edit it (memories:template) or read memories.
 func (s *Service) InterviewTemplate(ctx context.Context, workspaceID string) (*InterviewTemplate, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
+	}
+	if err := s.require(ctx, workspaceID, permissions.MemoriesTemplate); err == nil {
+		return s.loadTemplate(ctx, workspaceID)
 	}
 	if err := s.require(ctx, workspaceID, permissions.MemoriesRead); err != nil {
 		return nil, err
@@ -171,7 +174,7 @@ func (s *Service) ProjectInterviewTemplate(ctx context.Context, projectID string
 	return s.loadTemplate(ctx, workspaceID)
 }
 
-// SaveInterviewTemplate replaces the workspace's Interview template; existing interviews are never touched.
+// SaveInterviewTemplate replaces the workspace's Interview template (memories:template); existing interviews are never touched.
 func (s *Service) SaveInterviewTemplate(ctx context.Context, workspaceID, body string) (*InterviewTemplate, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
@@ -181,7 +184,7 @@ func (s *Service) SaveInterviewTemplate(ctx context.Context, workspaceID, body s
 	if !ok || actor.ID == "" {
 		return nil, fmt.Errorf("%w: an authenticated user is required", apperrs.ErrUnauthorized)
 	}
-	if err := s.require(ctx, workspaceID, permissions.MemoriesWrite); err != nil {
+	if err := s.require(ctx, workspaceID, permissions.MemoriesTemplate); err != nil {
 		return nil, err
 	}
 	if err := CheckInterviewTemplate(body); err != nil {
@@ -195,7 +198,7 @@ func (s *Service) SaveInterviewTemplate(ctx context.Context, workspaceID, body s
 	return s.loadTemplate(ctx, workspaceID)
 }
 
-// ResetInterviewTemplate drops the workspace's own Interview template, so it follows the instance's again.
+// ResetInterviewTemplate drops the workspace's own Interview template (memories:template), so it follows the instance's again.
 func (s *Service) ResetInterviewTemplate(ctx context.Context, workspaceID string) (*InterviewTemplate, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
@@ -205,7 +208,7 @@ func (s *Service) ResetInterviewTemplate(ctx context.Context, workspaceID string
 	if !ok || actor.ID == "" {
 		return nil, fmt.Errorf("%w: an authenticated user is required", apperrs.ErrUnauthorized)
 	}
-	if err := s.require(ctx, workspaceID, permissions.MemoriesWrite); err != nil {
+	if err := s.require(ctx, workspaceID, permissions.MemoriesTemplate); err != nil {
 		return nil, err
 	}
 	if err := s.repo.DeleteInterviewTemplate(ctx, workspaceID, s.templateEvent(workspaceID, actor.ID, s.now().UTC())); err != nil {

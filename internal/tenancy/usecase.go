@@ -335,6 +335,29 @@ func (s *Service) MemberPermissions(ctx context.Context, workspaceID, userID str
 	return s.wsPerms.WorkspacePermissions(ctx, userID, workspaceID)
 }
 
+// MyAccess is userID's own access in workspaceID: their roles, what they hold outside any project, and each project
+// they are in with what they hold there. Every non-Owner reads as Restricted did, so a phone build from before projects
+// were opt-in answers each project from its own list (ADR 0082, 0148).
+func (s *Service) MyAccess(ctx context.Context, workspaceID, userID string) (*MyAccess, error) {
+	roles, err := s.MemberRoles(ctx, workspaceID, userID)
+	if err != nil {
+		return nil, err
+	}
+	owner := slices.ContainsFunc(roles, func(r *TeamRole) bool { return r.IsOwner })
+	held := s.MemberPermissions(ctx, workspaceID, userID)
+	if !owner {
+		held = slices.DeleteFunc(held, func(a string) bool { return permissions.AreaOf(permissions.Action(a)) == permissions.AreaProject })
+	}
+	me := &MyAccess{Roles: roles, Permissions: held, Restricted: !owner, Projects: []MeProject{}}
+	if s.projects == nil {
+		return me, nil
+	}
+	if me.Projects, err = s.projects.ProjectActions(ctx, userID, workspaceID); err != nil {
+		return nil, fmt.Errorf("read the projects %s is in: %w", userID, err)
+	}
+	return me, nil
+}
+
 // requireWorkspacePermission already covers Owner via WorkspacePermissionGate's bypass.
 func (s *Service) requireWorkspacePermission(ctx context.Context, actorID, workspaceID string, action permissions.Action) error {
 	for _, p := range s.wsPerms.WorkspacePermissions(ctx, actorID, workspaceID) {
@@ -363,28 +386,22 @@ func (s *Service) requireHoldsRole(ctx context.Context, actorID, workspaceID, ro
 	return s.requireHolds(ctx, actorID, workspaceID, grant)
 }
 
-// InviteMember requires login to already be allowlisted; an unknown login is held pending until first sign-in.
-func (s *Service) InviteMember(ctx context.Context, actorID, workspaceID, login, roleID string) error {
+// InviteMember requires login to already be allowlisted; an unknown login is held pending until first sign-in, with
+// the one role a pending invite gives.
+func (s *Service) InviteMember(ctx context.Context, actorID, workspaceID, login string, roleIDs ...string) error {
 	workspaceID = strings.TrimSpace(workspaceID)
 	login = strings.ToLower(strings.TrimSpace(login))
-	roleID = strings.TrimSpace(roleID)
+	roleIDs = trimmedIDs(roleIDs)
 	if login == "" {
 		return fmt.Errorf("%w: login is required", apperrs.ErrInvalid)
 	}
-	if roleID == "" {
+	if len(roleIDs) == 0 {
 		return fmt.Errorf("%w: role id is required", apperrs.ErrInvalid)
 	}
 	if err := s.requireManageWorkspaceMembers(ctx, actorID, workspaceID); err != nil {
 		return err
 	}
-	isOwner, err := s.roleNames.IsOwnerRole(ctx, workspaceID, roleID)
-	if err != nil {
-		return fmt.Errorf("check owner role %s: %w", roleID, err)
-	}
-	if isOwner {
-		return fmt.Errorf("%w: the Owner role cannot be assigned via invite", apperrs.ErrInvalid)
-	}
-	if err := s.requireHoldsRole(ctx, actorID, workspaceID, roleID); err != nil {
+	if err := s.requireGivable(ctx, actorID, workspaceID, roleIDs); err != nil {
 		return err
 	}
 	allowed, err := s.allowlist.IsAllowlisted(ctx, login)
@@ -399,15 +416,47 @@ func (s *Service) InviteMember(ctx context.Context, actorID, workspaceID, login,
 		return fmt.Errorf("resolve user for %s: %w", login, err)
 	}
 	if found {
-		if err := s.members.AddMember(ctx, &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: roleID, CreatedAt: s.now().UTC()}); err != nil {
+		if err := s.members.AddMember(ctx, &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: roleIDs[0], RoleIDs: roleIDs, CreatedAt: s.now().UTC()}); err != nil {
 			return fmt.Errorf("add member %s to workspace %s: %w", userID, workspaceID, err)
 		}
 		return nil
 	}
-	if err := s.invites.Upsert(ctx, &Invite{WorkspaceID: workspaceID, Login: login, RoleID: roleID, InvitedBy: actorID, CreatedAt: s.now().UTC()}); err != nil {
+	if len(roleIDs) > 1 {
+		return fmt.Errorf("%w: %s hasn't signed in yet, and a pending invite gives one role; give the others once they join", apperrs.ErrInvalid, login)
+	}
+	if err := s.invites.Upsert(ctx, &Invite{WorkspaceID: workspaceID, Login: login, RoleID: roleIDs[0], InvitedBy: actorID, CreatedAt: s.now().UTC()}); err != nil {
 		return fmt.Errorf("upsert invite for %s to workspace %s: %w", login, workspaceID, err)
 	}
 	return nil
+}
+
+// requireGivable refuses giving any of roleIDs: the Owner role, or a role holding more than actorID holds (ADR 0088).
+func (s *Service) requireGivable(ctx context.Context, actorID, workspaceID string, roleIDs []string) error {
+	for _, roleID := range roleIDs {
+		isOwner, err := s.roleNames.IsOwnerRole(ctx, workspaceID, roleID)
+		if err != nil {
+			return fmt.Errorf("check owner role %s: %w", roleID, err)
+		}
+		if isOwner {
+			return fmt.Errorf("%w: the Owner role is never given or taken", apperrs.ErrInvalid)
+		}
+		if err := s.requireHoldsRole(ctx, actorID, workspaceID, roleID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// trimmedIDs is ids trimmed, without blanks or repeats, in their order.
+func trimmedIDs(ids []string) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id != "" && !slices.Contains(out, id) {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 // CancelInvite withdraws a pending invite before it ever resolves into a membership.
@@ -472,15 +521,10 @@ func (s *Service) RemoveMember(ctx context.Context, actorID, workspaceID, userID
 	return nil
 }
 
-// ChangeMemberRole replaces a member's roles with roleID; it refuses to demote or promote into the Owner role, to give a
-// role holding more than the actor holds, and to take away one the actor couldn't have given (ADR 0148).
-func (s *Service) ChangeMemberRole(ctx context.Context, actorID, workspaceID, userID, roleID string) error {
+// SetMemberRoles replaces the roles a member holds with roleIDs, none included (ADR 0148), through UpdateMemberRoles.
+func (s *Service) SetMemberRoles(ctx context.Context, actorID, workspaceID, userID string, roleIDs ...string) error {
 	workspaceID = strings.TrimSpace(workspaceID)
 	userID = strings.TrimSpace(userID)
-	roleID = strings.TrimSpace(roleID)
-	if roleID == "" {
-		return fmt.Errorf("%w: role id is required", apperrs.ErrInvalid)
-	}
 	if err := s.requireManageWorkspaceMembers(ctx, actorID, workspaceID); err != nil {
 		return err
 	}
@@ -488,37 +532,43 @@ func (s *Service) ChangeMemberRole(ctx context.Context, actorID, workspaceID, us
 	if err != nil {
 		return fmt.Errorf("resolve membership of %s in workspace %s: %w", userID, workspaceID, err)
 	}
-	isCurrentlyOwner, err := s.ownerRoleAmong(ctx, workspaceID, m.RoleIDs)
-	if err != nil {
+	want := trimmedIDs(roleIDs)
+	remove := slices.DeleteFunc(slices.Clone(m.RoleIDs), func(id string) bool { return slices.Contains(want, id) })
+	return s.UpdateMemberRoles(ctx, actorID, workspaceID, userID, want, remove)
+}
+
+// UpdateMemberRoles gives a member the roles in add and takes away those in remove; it refuses the Owner role either
+// way, a role holding more than the actor holds, and taking away one the actor couldn't have given (ADR 0148).
+func (s *Service) UpdateMemberRoles(ctx context.Context, actorID, workspaceID, userID string, add, remove []string) error {
+	workspaceID = strings.TrimSpace(workspaceID)
+	userID = strings.TrimSpace(userID)
+	if err := s.requireManageWorkspaceMembers(ctx, actorID, workspaceID); err != nil {
 		return err
 	}
-	if isCurrentlyOwner {
-		return fmt.Errorf("%w: the workspace Owner's role cannot be changed", apperrs.ErrInvalid)
-	}
-	isNewOwner, err := s.roleNames.IsOwnerRole(ctx, workspaceID, roleID)
+	m, err := s.members.Member(ctx, workspaceID, userID)
 	if err != nil {
-		return fmt.Errorf("check owner role %s: %w", roleID, err)
+		return fmt.Errorf("resolve membership of %s in workspace %s: %w", userID, workspaceID, err)
 	}
-	if isNewOwner {
-		return fmt.Errorf("%w: the Owner role cannot be assigned via invite", apperrs.ErrInvalid)
-	}
-	if err := s.requireHoldsRole(ctx, actorID, workspaceID, roleID); err != nil {
+	add = slices.DeleteFunc(trimmedIDs(add), func(id string) bool { return slices.Contains(m.RoleIDs, id) })
+	remove = slices.DeleteFunc(trimmedIDs(remove), func(id string) bool { return !slices.Contains(m.RoleIDs, id) })
+	if err := s.requireGivable(ctx, actorID, workspaceID, add); err != nil {
 		return err
 	}
-	for _, held := range m.RoleIDs {
-		if held == roleID {
-			continue
-		}
-		if err := s.requireHoldsRole(ctx, actorID, workspaceID, held); err != nil {
+	if err := s.requireGivable(ctx, actorID, workspaceID, remove); err != nil {
+		if errors.Is(err, apperrs.ErrForbidden) {
 			return fmt.Errorf("you can't take away a role you couldn't give: %w", err)
 		}
+		return err
+	}
+	if len(add)+len(remove) == 0 {
+		return nil
 	}
 	evt, err := s.memberUpdated(ctx, actorID, workspaceID, userID)
 	if err != nil {
 		return err
 	}
-	if err := s.members.SetRole(ctx, workspaceID, userID, roleID, evt); err != nil {
-		return fmt.Errorf("set role for %s in workspace %s: %w", userID, workspaceID, err)
+	if err := s.members.ChangeRoles(ctx, workspaceID, userID, add, remove, evt); err != nil {
+		return fmt.Errorf("change roles of %s in workspace %s: %w", userID, workspaceID, err)
 	}
 	return nil
 }
@@ -615,28 +665,21 @@ func teamPeople(accounts []*TeamAccount, memberships []*TeamMembership, visible 
 	return people
 }
 
-// AddMember puts an existing account into workspaceID with a non-Owner role; requires members:write there.
-func (s *Service) AddMember(ctx context.Context, actorID, workspaceID, userID, roleID string) error {
+// AddMember puts an existing account into workspaceID with one or more non-Owner roles; requires members:write there.
+func (s *Service) AddMember(ctx context.Context, actorID, workspaceID, userID string, roleIDs ...string) error {
 	workspaceID = strings.TrimSpace(workspaceID)
 	userID = strings.TrimSpace(userID)
-	roleID = strings.TrimSpace(roleID)
+	roleIDs = trimmedIDs(roleIDs)
 	if userID == "" {
 		return fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
 	}
-	if roleID == "" {
+	if len(roleIDs) == 0 {
 		return fmt.Errorf("%w: role id is required", apperrs.ErrInvalid)
 	}
 	if err := s.requireManageWorkspaceMembers(ctx, actorID, workspaceID); err != nil {
 		return err
 	}
-	isOwner, err := s.roleNames.IsOwnerRole(ctx, workspaceID, roleID)
-	if err != nil {
-		return fmt.Errorf("check owner role %s: %w", roleID, err)
-	}
-	if isOwner {
-		return fmt.Errorf("%w: the Owner role cannot be assigned", apperrs.ErrInvalid)
-	}
-	if err := s.requireHoldsRole(ctx, actorID, workspaceID, roleID); err != nil {
+	if err := s.requireGivable(ctx, actorID, workspaceID, roleIDs); err != nil {
 		return err
 	}
 	account, err := s.accounts.Account(ctx, userID)
@@ -648,12 +691,12 @@ func (s *Service) AddMember(ctx context.Context, actorID, workspaceID, userID, r
 	}
 	_, err = s.members.RoleIDFor(ctx, workspaceID, userID)
 	if err == nil {
-		return fmt.Errorf("%w: %s is already a member of this workspace; change their role instead", apperrs.ErrConflict, account.Login)
+		return fmt.Errorf("%w: %s is already a member of this workspace; change their roles instead", apperrs.ErrConflict, account.Login)
 	}
 	if !errors.Is(err, apperrs.ErrNotFound) {
 		return fmt.Errorf("check membership of %s in workspace %s: %w", userID, workspaceID, err)
 	}
-	member := &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: roleID, CreatedAt: s.now().UTC()}
+	member := &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: roleIDs[0], RoleIDs: roleIDs, CreatedAt: s.now().UTC()}
 	if err := s.members.AddMember(ctx, member, memberEvent(TopicWorkspaceMemberAdded, actorID, workspaceID, userID)); err != nil {
 		return fmt.Errorf("add member %s to workspace %s: %w", userID, workspaceID, err)
 	}

@@ -46,7 +46,7 @@ const settingsSectionsFor = (anywhere: string[] | undefined, permissions: string
     showGeneral: hasPermission(permissions, "workspaces:write"),
     showRoles: hasPermission(permissions, "roles:write"),
     showPlays: hasPermission(permissions, "plays:read"),
-    showInterviewTemplate: hasPermission(permissions, "memories:read"),
+    showInterviewTemplate: hasPermission(permissions, "memories:read") || hasPermission(permissions, "memories:template"),
     showMentionLayout: hasPermission(permissions, "workspaces:write"),
   });
 };

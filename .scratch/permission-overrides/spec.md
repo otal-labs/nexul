@@ -98,9 +98,11 @@ anywhere. A computer takes named people only.
 | **Manage this project's access** | `projects:access` | project | A verb. Writes the rules on a project. A role may hold it, meaning in every project the holder is in, or a rule may give it on one project. |
 | **See this play** | `plays:read` set per play | workspace | Not a new key: today's `plays:read`, which a play rule may now set. |
 | **Post in this channel** | `channels:post` | workspace | Slice 20. Granted by migration to every role, integration install and automation holding `chat:write`. |
+| **Edit the workspace Interview template** | `memories:template` | workspace | A verb on memories, with the per-action area `projects:create` has. Saving or resetting the workspace's Interview template takes it, and its holders read it on Settings; reading it through a project needs only `memories:read` there (Q32). |
 
 A migration grants `projects:create` to every role holding `projects:write`, and `projects:access` to every role
-holding `members:write`, the way migration 0046 did, so nobody gains or loses either on upgrade.
+holding `members:write`, the way migration 0046 did, so nobody gains or loses either on upgrade. Another grants
+`memories:template` to every role holding `memories:write`.
 
 ### Projects are opt-in
 
@@ -461,13 +463,14 @@ parameters change under `practices/mcp.md` section 11.
 - `permission_overwrite_list`: `resource_type` gains `project` and `channel` at the switch, then `folder`, `stack`,
   `computer` and `instance_area` with their slices. Each row says its `target` and its `user_id` or `role_id`. An
   optional `user_id` returns that person's `effective` answers with `allowed` and `source` (slice 01).
-- `permission_overwrite_update`: gains `state` (`allow`, `fallback`, `deny`) in slice 06, and `target` (`person`,
-  `role`) and `role_ids` at the switch. `grant` stays and keeps its meaning when `state` is absent, on a play
+- `permission_overwrite_update`: gains `state` (`allow`, `fallback`, `deny`) in slice 06, and `role_ids` beside
+  `user_ids` at the switch; which list an id is in says its target, so there is no separate `target` input. `grant` stays and keeps its meaning when `state` is absent, on a play
   included. It is how agents list a role or a person on a project, keep someone out, hide a channel, share a computer
   and open an instance area.
 - `account_update`: gains `add_roles` and `remove_roles` (child-collection fields, `practices/mcp.md` section 4) and
   loses `role_id`, `allow`, `deny`, `every_project` and `project_access`. Each removed field fails with a schema error.
-- `account_list` and `workspace_list` carry `roles`, beside the single fields until the switch.
+- `account_list` and `workspace_list` carry the roles held, beside the single fields until the switch, which drops
+  them; `workspace_list` names the caller's `your_roles`, since its `roles` lists the workspace's roles.
 - `invitation_create` takes `roles` (at least one per workspace) and loses its per-person fields; `invitation_list`
   carries `roles`.
 - `project_create` lists the creator and the creator's roles, with no new field.
@@ -594,6 +597,15 @@ anyone's access across the upgrade.
     and count; Instance holds the instance-area domains, from the catalog's area. They are tabs inside the dialog, so
     it doesn't grow too tall (2026-10-11).
 
+**2026-10-11** (questions from the switch)
+
+19. Reordering projects in the sidebar takes Create projects (`projects:create`), and orders only the projects the
+    person is in; a project hidden from them keeps its place (Q31).
+20. Editing the workspace Interview template is its own workspace permission, **Edit the workspace Interview template**
+    (`memories:template`), shown in the role editor's Workspace tab. Reading it stays as it is: members read it through
+    any project they're in, and a holder of it also opens it on Settings, where no project is named. A migration grants it to every role holding `memories:write`, who could edit it before
+    (Q32).
+
 **Technical calls the owner delegated (2026-10-11)**
 
 - In this project is its own permission, separate from `projects:read`.
@@ -605,6 +617,11 @@ anyone's access across the upgrade.
 - Hold-what-you-give is added to doc and play rules, and you can't remove a role you couldn't have given.
 - The Access page has its own sidebar row.
 - The build order and the switch branch (rework ticket 06).
+- `memories:template` is a verb on the memories domain with a workspace area, as `projects:create` is on projects: the
+  template is memories', and a `workspace_templates` domain would have carried a `read` nobody needs and named every
+  workspace template while gating one.
+- A pending login invite (`workspace_invites`) whose role is deleted is deleted with it: an invite gives its one role and
+  nothing else, as an open link keeps its role, so with the role gone there is nothing left to give.
 - Made while rewriting this spec: the keys `projects:open`, `projects:create` and `projects:access`; the paths that
   asked a project-area action with no project move to `projects:create`; a DM with Owners only takes membership alone;
   the zero-roles copy above; the creator's doc row is kept as stored; no channel carry-over.

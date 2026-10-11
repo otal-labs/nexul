@@ -41,7 +41,7 @@ A role sets one level per area: **None**, **Read**, **Write**, or **Delete**, ea
 - **Workspace**: areas such as chat, channels, plays, members, and roles.
 - **Every project**: a project's areas, such as tickets, docs, memories, and stacks, applied on every project.
 
-Each role's row counts its areas per level, names the first ones it has no access to, and shows who holds it; its chevron opens every area. Its **…** menu edits, duplicates (the copy is named `Admin (copy)`), clones to another workspace, or deletes it. A role someone still holds can't be deleted: give them another role on **Team** first.
+Each role's row counts its areas per level, names the first ones it has no access to, and shows who holds it; its chevron opens every area. Its **…** menu edits, duplicates (the copy is named `Admin (copy)`), clones to another workspace, or deletes it. Deleting a role someone holds takes it from them, along with the rules that name it and the pending invites that give it; someone left with no role stays a member and sees no project.
 
 Nobody can hand out a permission they don't hold: not in a role, an override, or an invitation. Every permission is written `<area>:<action>`, such as `docs:write`, and the same names gate a person, a personal access token, an automation, and an agent.
 
@@ -95,7 +95,7 @@ To see every answer on one doc, play, or project at once, each with its source a
 GET /api/permissions/explain?resource_type=doc&resource_id=<id>&user_id=<id>
 ```
 
-Leave out `user_id` for your own answers, which take only being able to open it. Someone else's take managing it: `permissions:write` on a doc, `plays:write` on a play, or `members:write` in a project's workspace. Agents ask the same with `permission_overwrite_list` and a `user_id`.
+Leave out `user_id` for your own answers, which take only being able to open it. Someone else's take managing it: `permissions:write` on a doc, `plays:write` on a play, or `projects:access` on a project. Agents ask the same with `permission_overwrite_list` and a `user_id`.
 
 ## Names and pictures
 
@@ -109,4 +109,4 @@ Under **GitHub**, the same page shows whether your own GitHub account lists your
 
 ## Over MCP
 
-Agents manage people with `account_list` (each person's `roles` per workspace), `account_update`, `invitation_create`, `invitation_list`, `invitation_delete`, `role_update`, `role_delete`, and the `permission_overwrite_*` tools; `permission_overwrite_update` takes a `state` of `allow`, `fallback`, or `deny`. `account_update` and `invitation_create` take `every_project` (`role` or `none`) and `project_access` per workspace. See [MCP server](/docs/guide/mcp-server/).
+Agents manage people with `account_list` (each person's `roles` per workspace), `account_update`, `invitation_create`, `invitation_list`, `invitation_delete`, `role_update`, `role_delete`, and the `permission_overwrite_*` tools. `account_update` gives and takes away roles per workspace with `add_roles` and `remove_roles`, and `invitation_create` takes `roles` per workspace, at least one; neither sets anything per person. `permission_overwrite_update` sets a `state` of `allow`, `fallback`, or `deny` for people (`user_ids`) or roles (`role_ids`) on a doc, play, or project: allowing `projects:open` on a project lists a role or a person in it, and denying it keeps a person out. See [MCP server](/docs/guide/mcp-server/).

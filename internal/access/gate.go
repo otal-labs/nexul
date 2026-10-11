@@ -322,6 +322,49 @@ func (s *Service) standing(ctx context.Context, userID, workspaceID string) (Rol
 	return info, nil
 }
 
+// ProjectActions is each project of workspaceID userID is in, with the project-area actions they hold there, from one
+// read of the workspace's projects and one of the rules reaching them (feeds /api/workspaces/{id}/me).
+func (s *Service) ProjectActions(ctx context.Context, userID, workspaceID string) ([]ProjectHeld, error) {
+	if userID == "" || s.scopes == nil {
+		return []ProjectHeld{}, nil
+	}
+	ctx = s.memoized(ctx)
+	projectIDs, err := remember(ctx, workspaceProjectsKey{workspaceID}, func() ([]string, error) {
+		return s.scopes.ProjectIDs(ctx, workspaceID)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list projects of workspace %s: %w", workspaceID, err)
+	}
+	projects, err := s.layerRules(ctx, userID, workspaceID, s.roleIDsIn(ctx, userID, workspaceID), projectIDs)
+	if err != nil {
+		return nil, err
+	}
+	ws := s.layers(ctx, userID, workspaceID, "")
+	out := make([]ProjectHeld, 0, len(projectIDs))
+	for _, projectID := range projectIDs {
+		in := ws.in(projectID, projects[projectID])
+		if !in.member || in.hidden() {
+			continue
+		}
+		out = append(out, ProjectHeld{ProjectID: projectID, Actions: in.projectActions()})
+	}
+	return out, nil
+}
+
+// projectActions is every project-area action held inside the project ws is in.
+func (ws workspaceLayers) projectActions() permissions.Set {
+	var out []permissions.Action
+	for _, a := range permissions.AllActions() {
+		if permissions.AreaOf(a) != permissions.AreaProject {
+			continue
+		}
+		if held, _ := decide(ws, a, noRules); held {
+			out = append(out, a)
+		}
+	}
+	return permissions.SetOf(out...)
+}
+
 // ProjectsWith lists the projects of workspaceID in which userID holds action (permissions.Member: may open them), from
 // the layers and one read of the workspace's projects, so a list can filter by them in SQL instead of row by row.
 func (s *Service) ProjectsWith(ctx context.Context, userID, workspaceID string, action permissions.Action) ([]string, error) {

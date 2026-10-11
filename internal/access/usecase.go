@@ -761,6 +761,21 @@ func (s *Service) ListPlayGrants(ctx context.Context, actorID, playID string) ([
 	return s.listGrants(ctx, actorID, resourceTypePlay, playID)
 }
 
+// ListRules is the rules on a doc, play, or project, for whoever manages it; a project the actor is not in is not
+// found, so listing its rules never confirms it exists.
+func (s *Service) ListRules(ctx context.Context, actorID, resourceType, resourceID string) ([]*Overwrite, error) {
+	if actorID == "" {
+		return nil, fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
+	}
+	if !slices.Contains([]string{resourceTypeDoc, resourceTypePlay, resourceTypeProject}, resourceType) {
+		return nil, fmt.Errorf("%w: resource_type %q is not doc, play, or project", apperrs.ErrInvalid, resourceType)
+	}
+	if err := s.requireInProject(ctx, actorID, resourceType, resourceID); err != nil {
+		return nil, err
+	}
+	return s.listGrants(ctx, actorID, resourceType, resourceID)
+}
+
 func (s *Service) listGrants(ctx context.Context, actorID, resourceType, resourceID string) ([]*Overwrite, error) {
 	if actorID == "" {
 		return nil, fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)

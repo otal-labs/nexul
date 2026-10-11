@@ -49,6 +49,29 @@ func (m *Member) Held() []string {
 	return m.RoleIDs
 }
 
+// MyAccess is a member's own access in one workspace, as /api/workspaces/{id}/me answers it.
+type MyAccess struct {
+	Roles       []*TeamRole
+	Permissions []string
+	Restricted  bool
+	Projects    []MeProject
+}
+
+// RoleNames is roles' names joined, the one role_name a client from before members held several reads.
+func RoleNames(roles []*TeamRole) string {
+	names := make([]string, len(roles))
+	for i, r := range roles {
+		names[i] = r.Name
+	}
+	return strings.Join(names, ", ")
+}
+
+// MeProject is one project a member is in and the project-area actions they hold there.
+type MeProject struct {
+	ProjectID string          `json:"project_id"`
+	Actions   permissions.Set `json:"actions"`
+}
+
 // ProjectAccess is the shape the removed Project access was sent in; old fields still parse and read as empty.
 type ProjectAccess struct {
 	ProjectID   string          `json:"project_id"`
@@ -91,10 +114,11 @@ type Invitation struct {
 type InvitationGrant struct {
 	WorkspaceID   string `json:"workspace_id"`
 	WorkspaceName string `json:"workspace_name,omitempty"`
-	// RoleID and RoleName name the first of RoleIDs.
-	RoleID   string   `json:"role_id"`
-	RoleName string   `json:"role_name,omitempty"`
-	RoleIDs  []string `json:"-"`
+	// RoleID and RoleName name the first of RoleIDs, for a client from before an invitation gave several.
+	RoleID   string      `json:"role_id"`
+	RoleName string      `json:"role_name,omitempty"`
+	RoleIDs  []string    `json:"role_ids"`
+	Roles    []*TeamRole `json:"roles"`
 	// Allow, Deny, EveryProject and ProjectAccess are removed fields that read as empty and refuse a value.
 	Allow         permissions.Set  `json:"allow"`
 	Deny          permissions.Set  `json:"deny"`
@@ -173,7 +197,7 @@ type People struct {
 	People []Person `json:"people"`
 }
 
-// TeamMembership is one person's place in one workspace: their roles, RoleID and RoleName naming the first. Allow,
+// TeamMembership is one person's place in one workspace: their roles, RoleID naming the first and RoleName all. Allow,
 // Deny, EveryProject and Projects are removed fields that read as empty (ADR 0148).
 type TeamMembership struct {
 	UserID        string           `json:"-"`

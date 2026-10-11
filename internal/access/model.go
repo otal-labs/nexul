@@ -19,6 +19,12 @@ type Overwrite struct {
 	UpdatedAt    time.Time       `json:"updated_at"`
 }
 
+// ProjectHeld is one project someone is in and the project-area actions they hold there.
+type ProjectHeld struct {
+	ProjectID string
+	Actions   permissions.Set
+}
+
 // Rules are the rules on one entity that reach one person: the rule naming them, and those naming a role they hold.
 type Rules struct {
 	Person *Overwrite

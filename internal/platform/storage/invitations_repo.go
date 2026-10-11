@@ -519,8 +519,17 @@ func readInvitation(ctx context.Context, q *sqlcgen.Queries, row sqlcgen.Invitat
 	}
 	var grant *tenancy.InvitationGrant
 	for _, grantRow := range grantRows {
+		role, err := q.GetRoleForInvitationGrant(ctx, sqlcgen.GetRoleForInvitationGrantParams{ID: grantRow.RoleID, WorkspaceID: grantRow.WorkspaceID})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, fmt.Errorf("%w: invitation role is unavailable", apperrs.ErrInvalid)
+			}
+			return nil, fmt.Errorf("read invitation role: %w", err)
+		}
+		held := &tenancy.TeamRole{ID: role.ID, Name: role.Name, IsOwner: role.IsOwnerRole != 0}
 		if grant != nil && grant.WorkspaceID == grantRow.WorkspaceID {
 			grant.RoleIDs = append(grant.RoleIDs, grantRow.RoleID)
+			grant.Roles = append(grant.Roles, held)
 			continue
 		}
 		workspace, err := q.GetWorkspaceForInvitationGrant(ctx, grantRow.WorkspaceID)
@@ -530,14 +539,7 @@ func readInvitation(ctx context.Context, q *sqlcgen.Queries, row sqlcgen.Invitat
 			}
 			return nil, fmt.Errorf("read invitation workspace: %w", err)
 		}
-		role, err := q.GetRoleForInvitationGrant(ctx, sqlcgen.GetRoleForInvitationGrantParams{ID: grantRow.RoleID, WorkspaceID: grantRow.WorkspaceID})
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, fmt.Errorf("%w: invitation role is unavailable", apperrs.ErrInvalid)
-			}
-			return nil, fmt.Errorf("read invitation role: %w", err)
-		}
-		grant = &tenancy.InvitationGrant{WorkspaceID: grantRow.WorkspaceID, WorkspaceName: workspace.Name, RoleID: grantRow.RoleID, RoleName: role.Name, RoleIDs: []string{grantRow.RoleID}}
+		grant = &tenancy.InvitationGrant{WorkspaceID: grantRow.WorkspaceID, WorkspaceName: workspace.Name, RoleID: grantRow.RoleID, RoleName: role.Name, RoleIDs: []string{grantRow.RoleID}, Roles: []*tenancy.TeamRole{held}}
 		invitation.Grants = append(invitation.Grants, grant)
 	}
 	return invitation, nil

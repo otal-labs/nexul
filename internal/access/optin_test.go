@@ -278,3 +278,23 @@ func TestSetRules_OnAProject(t *testing.T) {
 		})
 	}
 }
+
+// TestProjectActions_ListsOnlyTheProjectsSomeoneIsInWithWhatTheyHoldThere feeds /me: the rules on each project shape
+// its actions, and a project nothing lists them in is left out.
+func TestProjectActions_ListsOnlyTheProjectsSomeoneIsInWithWhatTheyHoldThere(t *testing.T) {
+	s, repo := projectsFixture(t)
+	require.NoError(t, repo.Set(t.Context(), "project", "p-open", "client", permissions.SetOf(permissions.ProjectsOpen), permissions.SetOf(permissions.TicketsWrite)))
+
+	client, err := s.ProjectActions(t.Context(), "client", "ws")
+	require.NoError(t, err)
+	assert.Equal(t, []ProjectHeld{{ProjectID: "p-open", Actions: permissions.SetOf(permissions.DocsRead, permissions.TicketsRead)}}, client)
+
+	nobody, err := s.ProjectActions(t.Context(), "nobody", "ws")
+	require.NoError(t, err)
+	assert.Empty(t, nobody)
+
+	owner, err := s.ProjectActions(t.Context(), "owner", "ws")
+	require.NoError(t, err)
+	require.Len(t, owner, 2)
+	assert.True(t, owner[0].Actions.Has(permissions.ProjectsDelete))
+}

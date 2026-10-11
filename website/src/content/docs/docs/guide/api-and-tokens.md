@@ -31,14 +31,14 @@ A permission is `<domain>:<action>`, where the action is `read`, `write` or `del
 GET /api/permissions/catalog
 ```
 
-Each domain in the catalog has an area: `project`, `workspace` or `instance`.
+Each permission in the catalog has an area: `project`, `workspace` or `instance`. Most take their domain's, but `projects:create` and `memories:template` are workspace permissions, since creating a project and editing the workspace's Interview template happen outside any project.
 
 - Edit roles in **Configuration → Roles**. Every workspace has an **Owner** role that holds everything and can't be removed; every other role is yours to define.
-- A role's **Every project** levels apply to all projects, new ones included, for members whose **Every project** is **From role**.
-- A member set to **Chosen projects** sees only the projects you give them on **Team**, each at the level you set there. Their role still covers the workspace areas but opens no instance area.
-- Instance areas, such as runners, DNS and connectors, are checked against every workspace you belong to (except where you are on chosen projects only). Holding one in any of them is enough.
+- A role's project areas count only inside the projects a member is in, and each project's rules say who is in it, by role or by name. See [People and access](/docs/guide/people-and-access/).
 
-`GET /api/workspaces/{workspaceID}/me` lists the roles the caller holds there in `roles`, `role_name` naming the first, and tells a client whether the caller is on chosen projects and, if so, which projects with which actions. `GET /api/team` lists each person's `roles` per workspace the same way. `GET /api/permissions/explain` says what decided each of a person's permissions on a doc, play, or project; see [Why someone can or can't](/docs/guide/people-and-access/#why-someone-can-or-cant).
+`GET /api/workspaces/{workspaceID}/me` lists the roles the caller holds there in `roles`, and `role_name` joins their names for a client that reads one. `permissions` holds what they hold outside any project, and `projects` lists each project they're in with the project-area actions they hold there. `restricted` is true for everyone but the Owner, so a client from before projects were opt-in answers each project from that list. `GET /api/team` lists each person's `roles` per workspace the same way, with `role_name` joining them. `GET /api/permissions/explain` says what decided each of a person's permissions on a doc, play, or project; see [Why someone can or can't](/docs/guide/people-and-access/#why-someone-can-or-cant).
+
+The member routes under `/api/workspaces/{workspaceID}/members` take `role_ids`, the roles to give or, on `PATCH`, the whole set, which may be empty; `role_id` still works as a set of one. An invitation's grants take `role_ids` and list `roles`. `GET /api/permissions?resource_type=project&resource_id=<id>` lists a project's rules, each naming a person or a role, for someone holding `projects:access` there. The per-person fields `allow`, `deny`, `every_project` and `project_access` still parse and read as empty; a non-empty value is refused with a message naming what replaced it.
 
 To copy a custom role into another workspace, choose **Clone to workspace…** in its **…** menu in **Configuration → Roles**. That takes `roles:clone` in this workspace and `roles:write` in the other. A clashing name gets a suffix, so `Editors` arrives as `Editors (copy)`. Over the API it is `POST /api/workspaces/{workspaceID}/roles/{roleID}/clone` with `{"workspace_id": "<target>"}`; over MCP, `role_update` with `clone_from_id`.
 

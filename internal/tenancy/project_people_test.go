@@ -43,6 +43,20 @@ func (f fakeProjects) WorkspaceProjects(_ context.Context, workspaceID string) (
 	return ids, nil
 }
 
+func (f fakeProjects) ProjectActions(ctx context.Context, userID, workspaceID string) ([]MeProject, error) {
+	ids, err := f.WorkspaceProjects(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	var out []MeProject
+	for _, id := range ids {
+		if actions, ok := f.held[userID][id]; ok {
+			out = append(out, MeProject{ProjectID: id, Actions: permissions.SetOfStrings(actions)})
+		}
+	}
+	return out, nil
+}
+
 func (f fakeProjects) ProjectPermissions(_ context.Context, userID, projectID string) ([]string, bool) {
 	actions, ok := f.held[userID][projectID]
 	return actions, ok
@@ -76,8 +90,8 @@ func TestListProjectPeople(t *testing.T) {
 	_, err = f.svc.ListProjectPeople(t.Context(), "bob", "p-gone")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 	f.repo.members["ws-1"] = append(f.repo.members["ws-1"], "actor", "lena")
-	f.repo.roleIDs["ws-1"]["actor"] = "role-editor"
-	f.repo.roleIDs["ws-1"]["lena"] = "role-editor"
+	f.repo.roleIDs["ws-1"]["actor"] = []string{"role-editor"}
+	f.repo.roleIDs["ws-1"]["lena"] = []string{"role-editor"}
 	f.accounts.accounts["lena"] = &TeamAccount{ID: "lena", Login: "lena", Status: "active"}
 	f.repo.listed["p-web"] = []string{"bob", "olga", "actor"}
 	people, err := f.svc.ListProjectPeople(t.Context(), "bob", "p-web")
@@ -103,11 +117,23 @@ func TestHandler_ProjectPeople_AnswersOnlySomeoneInTheProject(t *testing.T) {
 	assert.JSONEq(t, `{"people":[{"user_id":"bob","login":"bob","display_name":"","avatar_url":""},{"user_id":"olga","login":"olga","display_name":"","avatar_url":""}]}`, rec.Body.String())
 }
 
-func TestHandler_Me_ReadsNoRestrictedMember(t *testing.T) {
+// TestHandler_Me_ReadsEveryNonOwnerAsRestricted: a phone build from before projects were opt-in reads a non-Owner's
+// project actions from projects, so permissions carries none and restricted is set; the Owner reads as before.
+func TestHandler_Me_ReadsEveryNonOwnerAsRestricted(t *testing.T) {
 	f := newAccessFixture(t)
+	f.wsPerms.perms["bob"] = []string{"chat:write", "tickets:read"}
+	f.repo.roleIDs["ws-1"]["bob"] = []string{"role-editor", "role-viewer"}
 	rec := do(t, NewHandler(f.svc).Routes(), http.MethodGet, "/api/workspaces/ws-1/me", "", "bob")
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"role_name":"role-name-role-editor","roles":[{"id":"role-editor","name":"role-name-role-editor","is_owner":false}],"permissions":[],"restricted":false}`, rec.Body.String())
+	assert.JSONEq(t, `{"role_name":"role-name-role-editor, role-name-role-viewer",
+		"roles":[{"id":"role-editor","name":"role-name-role-editor","is_owner":false},{"id":"role-viewer","name":"role-name-role-viewer","is_owner":false}],
+		"permissions":["chat:write"],"restricted":true,"projects":[{"project_id":"p-web","actions":["tickets:read"]}]}`, rec.Body.String())
+
+	f.wsPerms.perms["olga"] = []string{"chat:write", "tickets:read"}
+	rec = do(t, NewHandler(f.svc).Routes(), http.MethodGet, "/api/workspaces/ws-1/me", "", "olga")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"role_name":"role-name-owner-role","roles":[{"id":"owner-role","name":"role-name-owner-role","is_owner":true}],
+		"permissions":["chat:write","tickets:read"],"restricted":false,"projects":[]}`, rec.Body.String())
 }
 
 func TestListTeam_RemovedFieldsReadAsEmpty(t *testing.T) {

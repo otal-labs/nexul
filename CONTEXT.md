@@ -195,7 +195,7 @@ How a project's rules for agents are established: its stack, paradigm,
 testing strategy, principles, and vocabulary. A person answers the
 workspace's Interview template, a list of questions, on the project's
 Interview page, with no agent involved; the template is the instance
-template until the workspace edits its own. Then the Interview play reads
+template until the workspace edits its own, which takes `memories:template`. Then the Interview play reads
 those answers, the codebase, and the question sources, asks follow-ups about
 skipped questions, gaps, anything the code contradicts, and what a question
 source did that the answers do not settle, a round at a time on the same
@@ -760,7 +760,8 @@ _Avoid_: Global template, default template (that is the code's), master copy
 One capability, written `<domain>:<action>` where the action is `read`,
 `write`, or `delete` (`docs:write`, `members:delete`), or a verb the domain
 declares for an act that is neither (`plays:run`, `memories:clone`,
-`roles:clone`, `docs:thread`, `docs:clone`, `docs:lock`, `stacks:logs`, `projects:create`, `projects:access`). One vocabulary for every actor: a role, a
+`roles:clone`, `docs:thread`, `docs:clone`, `docs:lock`, `stacks:logs`, `projects:create`, `projects:access`,
+`memories:template`). One vocabulary for every actor: a role, a
 scoped token, and the agent are checked against the same values. Checked in
 the workspace the entity belongs to (a workspace's topology canvas in that workspace); runners, machines, DNS,
 connectors, the instance's own stacks, and the instance itself (its settings,
@@ -769,7 +770,8 @@ workspace the caller is in. A member holds a set of roles, or none, and holds wh
 any workspace therefore holds every instance-level permission, and nobody grants a permission they don't hold. What
 every member reads (public channels, their own DMs and inbox, People) takes membership, not a permission. Each domain
 is a project area, a workspace area, or an instance area; a role's project areas count only inside the projects the
-person is In, and Create projects (`projects:create`) is a workspace permission. Something a person cannot read is
+person is In, and Create projects (`projects:create`) and Edit the workspace Interview template (`memories:template`)
+are workspace permissions. Something a person cannot read is
 not found for them, never forbidden (ADR 0148).
 _Avoid_: Right, privilege, capability, ACL entry, instance admin (holding the
 instance's permissions is what that meant)
@@ -992,7 +994,8 @@ internals.
 permission is `<domain>:<read|write|delete>` (`docs:write`,
 `members:delete`), or a verb a domain declares beside those three
 (`plays:run`, `memories:clone`, `roles:clone`, `docs:thread`, `docs:clone`, `docs:lock`, `stacks:logs`,
-`projects:create`, `projects:access`), one vocabulary shared by roles, token scopes, and the agent; `projects:open`
+`projects:create`, `projects:access`, `memories:template`), one vocabulary shared by roles, token scopes, and the
+agent; `projects:open`
 is held only through a project's rules. Distinct from auth.
 
 **Auth** — who a user is. Identity and device sessions, via an owner-configured OAuth provider.

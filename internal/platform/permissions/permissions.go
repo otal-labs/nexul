@@ -79,6 +79,7 @@ const (
 	MemoriesWrite      Action = "memories:write"
 	MemoriesDelete     Action = "memories:delete"
 	MemoriesClone      Action = "memories:clone"
+	MemoriesTemplate   Action = "memories:template"
 	InstanceRead       Action = "instance:read"
 	InstanceWrite      Action = "instance:write"
 	AccountsRead       Action = "accounts:read"
@@ -97,27 +98,29 @@ const (
 const ProjectsOpen Action = "projects:open"
 
 const (
-	read   = "read"
-	write  = "write"
-	delete = "delete"
-	run    = "run"
-	clone  = "clone"
-	thread = "thread"
-	lock   = "lock"
-	create = "create"
-	logs   = "logs"
-	access = "access"
+	read     = "read"
+	write    = "write"
+	delete   = "delete"
+	run      = "run"
+	clone    = "clone"
+	thread   = "thread"
+	lock     = "lock"
+	create   = "create"
+	logs     = "logs"
+	access   = "access"
+	template = "template"
 )
 
 // verbLabel is the owner-facing text for a domain-declared verb (ADR 0057): one line per verb, no per-domain switch.
 var verbLabel = map[Action]string{
-	PlaysRun:      "Run plays",
-	MemoriesClone: "Clone memories to another project",
-	RolesClone:    "Clone roles to another workspace",
-	DocsThread:    "See doc threads",
-	DocsClone:     "Clone docs into another project",
-	DocsLock:      "Lock and unlock docs",
-	StacksLogs:    "Read container logs",
+	PlaysRun:         "Run plays",
+	MemoriesClone:    "Clone memories to another project",
+	MemoriesTemplate: "Edit the workspace Interview template",
+	RolesClone:       "Clone roles to another workspace",
+	DocsThread:       "See doc threads",
+	DocsClone:        "Clone docs into another project",
+	DocsLock:         "Lock and unlock docs",
+	StacksLogs:       "Read container logs",
 	// The creator owns what they create, and an Owner holds every permission, so this one is as strong as Owner.
 	WorkspacesCreate: "Create workspaces",
 	ProjectsCreate:   "Create projects",
@@ -148,7 +151,7 @@ var domainTable = []domainInfo{
 	{"attachments", "attachments", []string{read, write, delete}, AreaProject},
 	{"plays", "plays", []string{read, write, delete, run}, AreaWorkspace},
 	{"autoplays", "auto plays", []string{read, write, delete}, AreaWorkspace},
-	{"memories", "memories", []string{read, write, delete, clone}, AreaProject},
+	{"memories", "memories", []string{read, write, delete, clone, template}, AreaProject},
 	{"tickets", "tickets", []string{read, write, delete}, AreaProject},
 	{"deploys", "deploys", []string{read, write}, AreaProject},
 	{"stacks", "stacks", []string{read, write, delete, logs}, AreaProject},
@@ -183,8 +186,9 @@ var domainTable = []domainInfo{
 	{"templates", "instance templates", []string{read, write}, AreaInstance},
 }
 
-// actionArea is the area of an action whose area differs from its domain's: creating a project happens outside one.
-var actionArea = map[Action]Area{ProjectsCreate: AreaWorkspace}
+// actionArea is the area of an action whose area differs from its domain's: creating a project, or editing the
+// workspace's Interview template, happens outside one.
+var actionArea = map[Action]Area{ProjectsCreate: AreaWorkspace, MemoriesTemplate: AreaWorkspace}
 
 // Info is one catalog entry: the action, its owner-facing label, and the domain/action pair grids render from.
 type Info struct {

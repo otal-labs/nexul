@@ -260,17 +260,23 @@ func (r *WorkspaceMembersRepo) ProjectMemberIDs(ctx context.Context, workspaceID
 	return ids, nil
 }
 
-func (r *WorkspaceMembersRepo) SetRole(ctx context.Context, workspaceID, userID, roleID string, events ...eventbus.OutboxEvent) error {
+// ChangeRoles gives userID the roles in add and takes away those in remove, in one write; an added role comes after
+// the ones already held.
+func (r *WorkspaceMembersRepo) ChangeRoles(ctx context.Context, workspaceID, userID string, add, remove []string, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		if _, err := q.GetWorkspaceMember(ctx, sqlcgen.GetWorkspaceMemberParams{WorkspaceID: workspaceID, UserID: userID}); err != nil {
-			return fmt.Errorf("set role for %s in workspace %s: %w", userID, workspaceID, notFoundIfNoRows(err))
+			return fmt.Errorf("change roles of %s in workspace %s: %w", userID, workspaceID, notFoundIfNoRows(err))
 		}
-		if err := q.DeleteMemberRoles(ctx, sqlcgen.DeleteMemberRolesParams{WorkspaceID: workspaceID, UserID: userID}); err != nil {
-			return fmt.Errorf("set role for %s in workspace %s: %w", userID, workspaceID, err)
+		for _, roleID := range remove {
+			if err := q.DeleteMemberRole(ctx, sqlcgen.DeleteMemberRoleParams{WorkspaceID: workspaceID, UserID: userID, RoleID: roleID}); err != nil {
+				return fmt.Errorf("take role %s from %s in workspace %s: %w", roleID, userID, workspaceID, err)
+			}
 		}
-		if err := addMemberRole(ctx, q, workspaceID, userID, roleID, time.Now()); err != nil {
-			return err
+		for _, roleID := range add {
+			if err := addMemberRole(ctx, q, workspaceID, userID, roleID, time.Now()); err != nil {
+				return err
+			}
 		}
 		return insertOutboxRows(ctx, tx, events)
 	})
@@ -294,9 +300,10 @@ func (r *WorkspaceMembersRepo) ListAllMemberships(ctx context.Context) ([]*tenan
 		}
 		role := &tenancy.TeamRole{ID: row.RoleID.String, Name: row.RoleName.String, IsOwner: row.IsOwnerRole.Int64 != 0}
 		if len(m.Roles) == 0 {
-			m.RoleID, m.RoleName = role.ID, role.Name
+			m.RoleID = role.ID
 		}
 		m.Roles = append(m.Roles, role)
+		m.RoleName = tenancy.RoleNames(m.Roles)
 		m.IsOwner = m.IsOwner || role.IsOwner
 	}
 	return out, nil
