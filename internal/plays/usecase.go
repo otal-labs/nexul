@@ -237,6 +237,37 @@ func (s *Service) Update(ctx context.Context, workspaceID, id string, in UpdateI
 	return p, nil
 }
 
+// RenameImpact is what renaming a play would break: the automations whose code still calls it by its old label.
+type RenameImpact struct {
+	Count int `json:"count"`
+	// Automations names them for a caller holding automations:read; without it only Count says how many.
+	Automations []string `json:"automations"`
+}
+
+// RenameImpact reports the automations whose active or pending code names play id's current label in quotes, which
+// runPlay stops finding once the label becomes label; none when only the case changes, since runPlay ignores it.
+func (s *Service) RenameImpact(ctx context.Context, workspaceID, id, label string) (RenameImpact, error) {
+	if err := s.require(ctx, workspaceID, permissions.PlaysRead); err != nil {
+		return RenameImpact{}, err
+	}
+	p, err := s.getInWorkspace(ctx, workspaceID, id)
+	if err != nil {
+		return RenameImpact{}, err
+	}
+	if strings.EqualFold(strings.TrimSpace(label), p.Label) {
+		return RenameImpact{}, nil
+	}
+	names, err := s.repo.AutomationNamesByLabel(ctx, workspaceID, p.Label)
+	if err != nil {
+		return RenameImpact{}, fmt.Errorf("find automations calling play %s: %w", id, err)
+	}
+	impact := RenameImpact{Count: len(names)}
+	if s.perm.HasPermission(ctx, actorID(ctx), workspaceID, permissions.AutomationsRead, "", "") {
+		impact.Automations = names
+	}
+	return impact, nil
+}
+
 // labelTaken words a write the unique label index refused, since a label names the play to automations (ADR 0132).
 func labelTaken(p *Play, err error) error {
 	if !errors.Is(err, apperrs.ErrConflict) {

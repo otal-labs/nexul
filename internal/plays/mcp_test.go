@@ -181,3 +181,39 @@ func TestPlayTools_CreateListDelete(t *testing.T) {
 		require.ErrorIs(t, err, apperrs.ErrNotFound)
 	})
 }
+
+func TestPlayUpdate_RenameAppliesAndWarnsAboutAutomationsCallingTheOldLabel(t *testing.T) {
+	tests := []struct {
+		name  string
+		actor string
+		label string
+		names []string
+		want  []string
+	}{
+		{"names them for a caller who reads automations", "owner", "Fix it", []string{"Deploy notifier", "Nightly triage"},
+			[]string{`2 automations (Deploy notifier, Nightly triage) still call this play by its old label "Fix with AI" with runPlay and fail until their code uses the new label.`}},
+		{"counts them for a caller who cannot", "editor", "Fix it", []string{"Deploy notifier"},
+			[]string{`1 automation still calls this play by its old label "Fix with AI" with runPlay and fails until its code uses the new label.`}},
+		{"says nothing when no automation calls it", "owner", "Fix it", nil, nil},
+		{"says nothing when only the case changes", "owner", "FIX WITH AI", []string{"Deploy notifier"}, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			repo.automationNames = map[string][]string{"Fix with AI": tt.names}
+			svc := newTestService(repo, newFakePerm(map[string][]permissions.Action{
+				"owner":  {permissions.PlaysRead, permissions.PlaysWrite, permissions.AutomationsRead},
+				"editor": {permissions.PlaysRead, permissions.PlaysWrite},
+			}))
+			p, err := svc.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Fix with AI", Type: TypeDoc})
+			require.NoError(t, err)
+
+			out, err := callTool(t, MCPTools(svc), ctxAs(tt.actor), "play_update",
+				`{"workspace_id":"$WS","id":"`+p.ID+`","label":"`+tt.label+`"}`)
+			require.NoError(t, err)
+			got := out.(playResult)
+			assert.Equal(t, tt.label, got.Label, "the rename applies either way")
+			assert.Equal(t, tt.want, got.Warnings)
+		})
+	}
+}

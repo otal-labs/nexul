@@ -19,6 +19,8 @@ type Repo interface {
 	GetByLabel(ctx context.Context, workspaceID, label string) (*Play, error)
 	Update(ctx context.Context, p *Play, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
+	// AutomationNamesByLabel names workspaceID's automations whose active or pending code holds label in quotes, ignoring ASCII case.
+	AutomationNamesByLabel(ctx context.Context, workspaceID, label string) ([]string, error)
 	AutoPlayRepo
 }
 

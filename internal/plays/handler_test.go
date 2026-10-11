@@ -177,3 +177,21 @@ func TestHandler_ListApplicable(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
+
+func TestHandler_RenameImpact_NamesTheAutomationsCallingTheOldLabel(t *testing.T) {
+	h, repo := newTestHandler()
+	rec := do(t, h.Routes(), http.MethodPost, "/api/workspaces/ws-1/plays", `{"label":"Fix with AI","type":"doc"}`, "u-owner")
+	var p Play
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &p))
+	repo.automationNames = map[string][]string{"Fix with AI": {"Deploy notifier", "Nightly triage"}}
+
+	rec = do(t, h.Routes(), http.MethodGet, "/api/workspaces/ws-1/plays/"+p.ID+"/rename-impact?label=Fix+it", "", "u-owner")
+	require.Equal(t, http.StatusOK, rec.Code)
+	var impact RenameImpact
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &impact))
+	assert.Equal(t, 2, impact.Count)
+	assert.Empty(t, impact.Automations, "u-owner holds no automations:read, so only the count goes out")
+
+	rec = do(t, h.Routes(), http.MethodGet, "/api/workspaces/ws-1/plays/missing/rename-impact?label=x", "", "u-owner")
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
@@ -22,6 +23,8 @@ type playResult struct {
 	ExcludedProjectIDs []string `json:"excluded_project_ids"`
 	// AutoPlays is left out for a caller without autoplays:read, and on a list filtered by type.
 	AutoPlays []autoPlayResult `json:"auto_plays,omitzero"`
+	// Warnings carries what an update applied but may have broken, such as automations calling an old label.
+	Warnings []string `json:"warnings,omitzero"`
 }
 
 func toPlayResult(p *Play) playResult {
@@ -131,7 +134,8 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"doc's project or folder, with is and is_not over values or set and unset, at most 20 rules in all. "+
 				"Play fields apply first, then add_auto_plays, update_auto_plays, and remove_auto_plays in that order, "+
 				"stopping at the first failure with what already took effect. Returns the play, with its auto plays when "+
-				"they changed. Needs plays:read, plays:write for play fields, autoplays:write to add or change auto plays, "+
+				"they changed. A new label still applies when automations call the play by its old one with runPlay, and "+
+				"warnings then names them, since they fail until their code changes. Needs plays:read, plays:write for play fields, autoplays:write to add or change auto plays, "+
 				"and autoplays:delete to remove them. The decisions check is switched on or off through its play's auto play, "+
 				"with update_auto_plays and enabled.",
 			mcptool.Hints{Idempotent: true, Local: true},
@@ -167,24 +171,49 @@ func updatePlay(ctx context.Context, s *Service, in playUpdateIn) (any, error) {
 	if err != nil {
 		return nil, playNotFoundHint(err)
 	}
-	var applied []string
+	var applied, warnings []string
 	if in.changesPlay() {
+		if warnings, err = renameWarnings(ctx, s, p, in.Label); err != nil {
+			return nil, err
+		}
 		if p, err = s.Update(ctx, in.WorkspaceID, in.ID, overlayPlay(p, in)); err != nil {
 			return nil, err
 		}
 		applied = append(applied, "play fields")
 	}
+	res := toPlayResult(p)
+	res.Warnings = warnings
 	if !in.changesAutoPlays() {
-		return toPlayResult(p), nil
+		return res, nil
 	}
 	if err := changeAutoPlays(ctx, s, in.WorkspaceID, p.ID, in, applied); err != nil {
 		return nil, err
 	}
-	out := []playResult{toPlayResult(p)}
+	out := []playResult{res}
 	if err := attachAutoPlays(ctx, s, in.WorkspaceID, out); err != nil {
 		return nil, err
 	}
 	return out[0], nil
+}
+
+// renameWarnings warns, without refusing, when a new label leaves automations calling the play by its old one.
+func renameWarnings(ctx context.Context, s *Service, p *Play, label *string) ([]string, error) {
+	if label == nil {
+		return nil, nil
+	}
+	impact, err := s.RenameImpact(ctx, p.WorkspaceID, p.ID, *label)
+	if err != nil || impact.Count == 0 {
+		return nil, err
+	}
+	names := ""
+	if len(impact.Automations) > 0 {
+		names = " (" + strings.Join(impact.Automations, ", ") + ")"
+	}
+	format := "%d automations%s still call this play by its old label %q with runPlay and fail until their code uses the new label."
+	if impact.Count == 1 {
+		format = "%d automation%s still calls this play by its old label %q with runPlay and fails until its code uses the new label."
+	}
+	return []string{fmt.Sprintf(format, impact.Count, names, p.Label)}, nil
 }
 
 // attachAutoPlays reads the page's auto plays in one batch; without autoplays:read the plays go out without them.

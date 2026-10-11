@@ -26,6 +26,9 @@ type fakeRepo struct {
 	// autoPlayLists counts ListAutoPlays calls, so a list proves it reads once per page.
 	autoPlayLists int
 	dailyCap      map[string]int
+	// automationNames answers AutomationNamesByLabel by the label asked for; the matching itself is storage's.
+	automationNames map[string][]string
+	namesErr        error
 }
 
 func newFakeRepo() *fakeRepo {
@@ -228,6 +231,15 @@ func (f *fakeRepo) Update(_ context.Context, p *Play, evts ...eventbus.OutboxEve
 	f.byID[p.ID] = &cp
 	f.published = append(f.published, evts...)
 	return nil
+}
+
+func (f *fakeRepo) AutomationNamesByLabel(_ context.Context, _, label string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.namesErr != nil {
+		return nil, f.namesErr
+	}
+	return f.automationNames[label], nil
 }
 
 func (f *fakeRepo) Delete(_ context.Context, id string, evts ...eventbus.OutboxEvent) error {

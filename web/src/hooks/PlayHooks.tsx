@@ -1,11 +1,11 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { toast } from "sonner";
 
 import { api, errorMessage, type ApiErrorBody } from "@/api/client";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import type { AutoPlay, AutoPlayLimits, SaveAutoPlayRequest } from "@/models/AutoPlay";
-import type { Play, PlayStage, PlayType, SavePlayFormData } from "@/models/Play";
+import type { Play, PlayRenameImpact, PlayStage, PlayType, SavePlayFormData } from "@/models/Play";
 import { toSavePlayRequest } from "@/models/Play";
 import type { Ticket } from "@/models/Ticket";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -16,6 +16,7 @@ export const getWorkspacePlaysKey = "getWorkspacePlays";
 export const getApplicablePlaysKey = "getApplicablePlays";
 export const getAutoPlaysKey = "getAutoPlays";
 export const getAutoPlayLimitsKey = "getAutoPlayLimits";
+export const getPlayRenameImpactKey = "getPlayRenameImpact";
 
 export const useFetchWorkspacePlays = (workspaceId: string) =>
   useQuery({
@@ -176,6 +177,15 @@ export const useUpdatePlay = (workspaceId: string) => {
     onError: toastUnlessLabelError,
   });
 };
+
+// Asked fresh before the play dialog saves a new label, so it reflects the automations' latest pushed code.
+export const playRenameImpactQuery = (workspaceId: string, playId: string, label: string) =>
+  queryOptions({
+    queryKey: [getPlayRenameImpactKey, workspaceId, playId, label],
+    queryFn: async () =>
+      (await api.get<PlayRenameImpact>(`/api/workspaces/${workspaceId}/plays/${playId}/rename-impact`, { params: { label } })).data,
+    staleTime: 0,
+  });
 
 export const useDeletePlay = (workspaceId: string) => {
   const client = useQueryClient();

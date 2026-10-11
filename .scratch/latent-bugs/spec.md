@@ -144,13 +144,3 @@ threads open the Bots section from their menu. Channel threads cannot be
 created yet (no use-case sets `parent_message_id`) and the web has no screen
 for one, so they have no menu to carry it. When channel threads get a screen,
 give its menu the same "Bots" item (`useBotsDialog`).
-
-## A renamed play doesn't warn about automations calling it by its old name
-
-`runPlay` names a play by its label, so renaming a play breaks every
-automation that still uses the old label; the run fails with a 404 only when
-the automation runs, and `nexul push` doesn't type-check, so the generated
-`PlayNames` union catches it only in the author's editor. Warn on rename
-when an automation's last pushed code names the old label, or have
-`nexul push` type-check when the project has TypeScript set up.
-

@@ -192,4 +192,63 @@ describe("PlayForm", () => {
       label: "Fix with AI",
     }));
   });
+
+  describe("renaming", () => {
+    const impactOf = (impact: { count: number; automations: string[] }) =>
+      vi.mocked(api.get).mockImplementation(async (url: string) => ({ data: url.endsWith("/rename-impact") ? impact : [] }));
+
+    const rename = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole("button", { name: "Open" }));
+      await user.clear(screen.getByLabelText("Label"));
+      await user.type(screen.getByLabelText("Label"), "Fix it");
+      await user.click(screen.getByRole("button", { name: "Save" }));
+    };
+
+    it("asks first, naming the automations that call the old name, and Cancel keeps the old label", async () => {
+      const user = userEvent.setup();
+      impactOf({ count: 2, automations: ["Deploy notifier", "Nightly triage"] });
+      renderHarness(editingPlay);
+
+      await rename(user);
+
+      expect(
+        await screen.findByText(
+          "2 automations call this play by its old name: Deploy notifier, Nightly triage. They'll fail until their code uses the new name.",
+        ),
+      ).toBeInTheDocument();
+      expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/play-fix/rename-impact", { params: { label: "Fix it" } });
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(api.patch).not.toHaveBeenCalled();
+      expect(screen.getByLabelText("Label")).toHaveValue("Fix with AI");
+      expect(screen.getByText("pending")).toBeInTheDocument();
+      await user.keyboard("{Escape}");
+    });
+
+    it("renames once the person confirms", async () => {
+      const user = userEvent.setup();
+      impactOf({ count: 1, automations: [] });
+      vi.mocked(api.patch).mockResolvedValue({ data: { id: "play-fix" } });
+      renderHarness(editingPlay);
+
+      await rename(user);
+      expect(await screen.findByText("1 automation calls this play by its old name. It'll fail until its code uses the new name.")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Rename anyway" }));
+
+      expect(await screen.findByText("saved")).toBeInTheDocument();
+      expect(api.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/play-fix", expect.objectContaining({ label: "Fix it" }));
+    });
+
+    it("saves without asking when no automation calls the old name", async () => {
+      const user = userEvent.setup();
+      impactOf({ count: 0, automations: [] });
+      vi.mocked(api.patch).mockResolvedValue({ data: { id: "play-fix" } });
+      renderHarness(editingPlay);
+
+      await rename(user);
+
+      expect(await screen.findByText("saved")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Rename anyway" })).not.toBeInTheDocument();
+    });
+  });
 });
