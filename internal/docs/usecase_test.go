@@ -322,6 +322,13 @@ func newDenyService(repo *fakeRepo) *Service {
 	return s
 }
 
+// newReadOnlyService wires a service whose access checker allows reading a doc and nothing else.
+func newReadOnlyService(repo *fakeRepo) *Service {
+	s := NewService(repo, fakeAccess{allow: []permissions.Action{permissions.DocsRead}}, nil)
+	s.now = func() time.Time { return fixedNow }
+	return s
+}
+
 // newScriptedService wires a checker whose Can result is driven by the test.
 func newScriptedService(repo *fakeRepo, can bool, grantErr error) *Service {
 	s := NewService(repo, fakeAccess{can: can, grant: grantErr}, nil)
@@ -383,7 +390,7 @@ func (f fakeAccess) DeleteByDoc(_ context.Context, _ string) error {
 // fakeProjects are the projects the docs tests file docs in.
 var fakeProjects = []string{"project-1", "project-2"}
 
-func (f fakeAccess) DocsWith(ctx context.Context, userID string, action permissions.Action) ([]string, []string, []string, error) {
+func (f fakeAccess) DocsWith(ctx context.Context, userID, _ string, action permissions.Action) ([]string, []string, []string, error) {
 	if f.readable != nil {
 		return []string{}, f.readable, []string{}, nil
 	}
@@ -394,7 +401,10 @@ func (f fakeAccess) DocsWith(ctx context.Context, userID string, action permissi
 }
 
 func (f fakeAccess) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
-	return nil, f.projectErr == nil, nil
+	if f.projectErr != nil {
+		return nil, false, nil
+	}
+	return fakeProjects, false, nil
 }
 
 func (f fakeAccess) RequireProject(_ context.Context, _ string, action permissions.Action) error {
@@ -695,46 +705,38 @@ func TestCreate_GrantErrorFails(t *testing.T) {
 }
 
 func TestEnforcement_Deny(t *testing.T) {
-	t.Run("get denied without read", func(t *testing.T) {
-		repo := newFakeRepo()
-		created, err := newTestService(repo).Create(testCtx(), "project-1", "t", "b")
+	created := func(t *testing.T, repo *fakeRepo) string {
+		t.Helper()
+		d, err := newTestService(repo).Create(testCtx(), "project-1", "t", "b")
 		require.NoError(t, err)
-		s := newDenyService(repo)
-		_, err = s.Get(testCtx(), created.ID)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("update denied without edit", func(t *testing.T) {
-		repo := newFakeRepo()
-		created, err := newTestService(repo).Create(testCtx(), "project-1", "t", "b")
-		require.NoError(t, err)
-		s := newDenyService(repo)
-		_, err = s.Update(testCtx(), created.ID, "new", "body")
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("delete denied without delete", func(t *testing.T) {
-		repo := newFakeRepo()
-		created, err := newTestService(repo).Create(testCtx(), "project-1", "t", "b")
-		require.NoError(t, err)
-		s := newDenyService(repo)
-		err = s.Delete(testCtx(), created.ID)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("archive denied without archive bit", func(t *testing.T) {
-		repo := newFakeRepo()
-		created, err := newTestService(repo).Create(testCtx(), "project-1", "t", "b")
-		require.NoError(t, err)
-		s := newDenyService(repo)
-		_, err = s.Archive(testCtx(), created.ID)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-	t.Run("versions denied without read", func(t *testing.T) {
-		repo := newFakeRepo()
-		created, err := newTestService(repo).Create(testCtx(), "project-1", "t", "b")
-		require.NoError(t, err)
-		s := newDenyService(repo)
-		_, err = s.ListVersions(testCtx(), created.ID)
-		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
+		return d.ID
+	}
+	tests := []struct {
+		name string
+		svc  func(*fakeRepo) *Service
+		call func(s *Service, id string) error
+		want error
+	}{
+		{"get without read is not found", newDenyService, func(s *Service, id string) error { _, err := s.Get(testCtx(), id); return err }, apperrs.ErrNotFound},
+		{"versions without read are not found", newDenyService, func(s *Service, id string) error { _, err := s.ListVersions(testCtx(), id); return err }, apperrs.ErrNotFound},
+		{"an edit of a doc they can't read is not found", newDenyService, func(s *Service, id string) error {
+			_, err := s.Update(testCtx(), id, "new", "body")
+			return err
+		}, apperrs.ErrNotFound},
+		{"update without edit is forbidden", newReadOnlyService, func(s *Service, id string) error {
+			_, err := s.Update(testCtx(), id, "new", "body")
+			return err
+		}, apperrs.ErrForbidden},
+		{"delete without delete is forbidden", newReadOnlyService, func(s *Service, id string) error { return s.Delete(testCtx(), id) }, apperrs.ErrForbidden},
+		{"archive without the archive bit is forbidden", newReadOnlyService, func(s *Service, id string) error { _, err := s.Archive(testCtx(), id); return err }, apperrs.ErrForbidden},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			id := created(t, repo)
+			require.ErrorIs(t, tt.call(tt.svc(repo), id), tt.want)
+		})
+	}
 }
 
 func TestArchiveRestore(t *testing.T) {
@@ -841,18 +843,14 @@ func TestList_Disclosure(t *testing.T) {
 		require.Len(t, items, 1)
 		assert.True(t, items[0].CanOpen)
 	})
-	t.Run("unopenable docs disclose title but not body", func(t *testing.T) {
+	t.Run("a doc they can't read is left out", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
-		created, err := s.Create(testCtx(), "project-1", "secret title", "secret body")
+		_, err := s.Create(testCtx(), "project-1", "secret title", "secret body")
 		require.NoError(t, err)
-		deny := newDenyService(repo)
-		items, err := deny.List(testCtx())
+		items, err := newDenyService(repo).List(testCtx())
 		require.NoError(t, err)
-		require.Len(t, items, 1)
-		assert.False(t, items[0].CanOpen)
-		assert.Equal(t, "secret title", items[0].Title)
-		assert.Equal(t, created.ID, items[0].ID)
+		assert.Empty(t, items)
 	})
 }
 
@@ -1057,7 +1055,7 @@ func TestCreateNamedVersion(t *testing.T) {
 	})
 	t.Run("no edit bit is forbidden", func(t *testing.T) {
 		repo := newFakeRepo()
-		s := newDenyService(repo)
+		s := newReadOnlyService(repo)
 		d := seed(t, s, repo)
 		_, err := s.CreateNamedVersion(testCtx(), d.ID, "v1")
 		require.ErrorIs(t, err, apperrs.ErrForbidden)

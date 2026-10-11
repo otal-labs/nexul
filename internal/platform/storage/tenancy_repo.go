@@ -213,7 +213,7 @@ func (r *WorkspaceMembersRepo) MemberRole(ctx context.Context, workspaceID, user
 		}
 		held = append(held, access.HeldRole{ID: row.RoleID.String, IsOwner: row.IsOwnerRole.Int64 != 0, Permissions: perms})
 	}
-	return access.RolesHeld(rows[0].Restricted != 0, held...), nil
+	return access.RolesHeld(held...), nil
 }
 
 // RemoveMember also deletes their Project access in the workspace's projects, so coming back starts from nothing.
@@ -280,8 +280,8 @@ func (r *WorkspaceMembersRepo) SetRestricted(ctx context.Context, workspaceID, u
 	})
 }
 
-// ProjectMemberIDs lists the members of workspaceID who may open projectID, in one read: the Owner, every member who
-// is not Restricted, and a Restricted one holding Project access there (ADR 0097).
+// ProjectMemberIDs lists the members of workspaceID who may open projectID, in one read: the Owner, and anyone its
+// rules let in, by name or through a role, unless a rule naming them keeps them out (ADR 0148).
 func (r *WorkspaceMembersRepo) ProjectMemberIDs(ctx context.Context, workspaceID, projectID string) ([]string, error) {
 	ids, err := r.q.ListProjectMemberIDs(ctx, sqlcgen.ListProjectMemberIDsParams{WorkspaceID: workspaceID, ProjectID: projectID})
 	if err != nil {

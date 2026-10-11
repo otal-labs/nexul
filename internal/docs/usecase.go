@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -29,8 +30,9 @@ type AccessChecker interface {
 	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
 	// CallerProjects lists the projects RequireProject lets the caller act in with action; all is true for any project.
 	CallerProjects(ctx context.Context, action permissions.Action) (projectIDs []string, all bool, err error)
-	// DocsWith is the docs userID may act on with action: a project set, and the docs whose own overwrite turns it.
-	DocsWith(ctx context.Context, userID string, action permissions.Action) (projectIDs, allowed, denied []string, err error)
+	// DocsWith is the docs userID may act on with action, in projectID when named: a project set, and the docs whose own
+	// rules turn it.
+	DocsWith(ctx context.Context, userID, projectID string, action permissions.Action) (projectIDs, allowed, denied []string, err error)
 	// RefuseDoc is the forbidden answer to userID's action on docID, naming the rule or role that refused it.
 	RefuseDoc(ctx context.Context, userID, docID string, action permissions.Action) error
 }
@@ -219,7 +221,7 @@ func actorID(ctx context.Context) string {
 	return a.ID
 }
 
-// Get returns a doc by id; a user without the read bit gets ErrForbidden, though list surfaces may disclose its title.
+// Get returns a doc by id; a user without the read bit gets ErrNotFound, though a mention pill still shows its title.
 func (s *Service) Get(ctx context.Context, id string) (*Doc, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
@@ -234,7 +236,7 @@ func (s *Service) Get(ctx context.Context, id string) (*Doc, error) {
 	return d, nil
 }
 
-// List returns all docs, oldest first; docs the actor can't open come back as entries with can_open=false, no body.
+// List returns every doc the actor may read, oldest first.
 func (s *Service) List(ctx context.Context) ([]*DocListItem, error) {
 	ds, err := s.repo.List(ctx)
 	if err != nil {
@@ -255,15 +257,15 @@ func (s *Service) ListByProject(ctx context.Context, projectID string) ([]*DocLi
 	return s.toListItems(ctx, ds)
 }
 
-// PageDocs returns one window of the docs f keeps in the projects the caller may open, and how many there are: oldest
-// first with a doc they cannot open marked can_open false, or for a query only the docs they may read, by relevance.
-// Both are filtered in SQL, a doc's own overwrite included, so the total counts only what the pages hold (ADR 0140).
+// PageDocs returns one window of the docs f keeps that the caller may read, and how many there are: oldest first, or by
+// relevance for a query. It is filtered in SQL, a doc's own rules included, so the total counts only what the pages
+// hold (ADR 0140), and a doc they cannot read is left out (ADR 0148).
 func (s *Service) PageDocs(ctx context.Context, f DocFilter, w paging.Window) ([]*DocListItem, int, error) {
 	if f.Query != "" && strings.TrimSpace(f.Query) == "" {
 		return nil, 0, fmt.Errorf("%w: query is required", apperrs.ErrInvalid)
 	}
 	f.Query = strings.TrimSpace(f.Query)
-	scope, err := s.listScope(ctx, f.Query != "")
+	scope, err := s.listScope(ctx, f.Query != "", f.ProjectID)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -271,12 +273,12 @@ func (s *Service) PageDocs(ctx context.Context, f DocFilter, w paging.Window) ([
 	if err != nil {
 		return nil, 0, fmt.Errorf("list docs: %w", err)
 	}
-	return s.listItems(ctx, ds), total, nil
+	return listItems(ds), total, nil
 }
 
-// listScope is the projects whose docs the caller may see listed and, for a search, the docs they may read; a search
+// listScope is the projects whose docs the caller may see listed and, within them, the docs they may read; a search
 // with no person to check reads nothing, as a single doc read does.
-func (s *Service) listScope(ctx context.Context, search bool) (DocScope, error) {
+func (s *Service) listScope(ctx context.Context, search bool, projectID string) (DocScope, error) {
 	if s.access == nil && search {
 		return DocScope{Read: &DocReadScope{}}, nil
 	}
@@ -288,20 +290,19 @@ func (s *Service) listScope(ctx context.Context, search bool) (DocScope, error) 
 		return DocScope{}, fmt.Errorf("list docs: %w", err)
 	}
 	scope := DocScope{All: all, ProjectIDs: projectIDs}
-	if !search {
+	if all && !search {
 		return scope, nil
 	}
 	actor, _ := identity.ActorFromCtx(ctx)
-	read, allowed, denied, err := s.access.DocsWith(ctx, actor.ID, permissions.DocsRead)
+	read, allowed, denied, err := s.access.DocsWith(ctx, actor.ID, projectID, permissions.DocsRead)
 	if err != nil {
-		return DocScope{}, fmt.Errorf("search docs: %w", err)
+		return DocScope{}, fmt.Errorf("list docs: %w", err)
 	}
 	scope.Read = &DocReadScope{ProjectIDs: read, Allowed: allowed, Denied: denied}
 	return scope, nil
 }
 
-// toListItems lists the docs of the workspaces the caller belongs to; inside one, a doc they can't open still
-// shows its title with can_open=false.
+// toListItems lists the docs the caller may read, one read check per project rather than one per doc.
 func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, error) {
 	ds, err := permissions.Filter(ds, func(d *Doc) string { return d.ProjectID }, func(projectID string) error {
 		return s.requireProject(ctx, projectID, permissions.Member)
@@ -309,12 +310,13 @@ func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, e
 	if err != nil {
 		return nil, err
 	}
-	return s.listItems(ctx, ds), nil
+	reads := s.canEach(ctx, ds, permissions.DocsRead)
+	ds = slices.DeleteFunc(ds, func(d *Doc) bool { return !reads[d.ID] })
+	return listItems(ds), nil
 }
 
-// listItems shows each doc's title, and its author and snippet only where the caller may open it.
-func (s *Service) listItems(ctx context.Context, ds []*Doc) []*DocListItem {
-	opens := s.canEach(ctx, ds, permissions.DocsRead)
+// listItems shows each doc, every one of which the caller may read.
+func listItems(ds []*Doc) []*DocListItem {
 	out := make([]*DocListItem, 0, len(ds))
 	for _, d := range ds {
 		item := &DocListItem{
@@ -325,13 +327,11 @@ func (s *Service) listItems(ctx context.Context, ds []*Doc) []*DocListItem {
 			Version:   d.Version,
 			Archived:  d.Archived,
 			Locked:    d.Locked,
+			CanOpen:   true,
 			CreatedAt: d.CreatedAt,
 			UpdatedAt: d.UpdatedAt,
-		}
-		item.CanOpen = opens[d.ID]
-		if item.CanOpen {
-			item.CreatedBy = d.CreatedBy
-			item.Snippet = richtext.Snippet(d.Body, snippetRunes)
+			CreatedBy: d.CreatedBy,
+			Snippet:   richtext.Snippet(d.Body, snippetRunes),
 		}
 		out = append(out, item)
 	}
@@ -652,7 +652,8 @@ func (s *Service) CreateNamedVersion(ctx context.Context, docID, name string) (*
 	return v, nil
 }
 
-// require answers a doc its caller may not open the project of, or belongs to no workspace of, as not found.
+// require answers a doc its caller may not read, whose project they are not in, or outside their workspaces, as not
+// found; an action refused on a doc they read is forbidden, naming its source (ADR 0148).
 func (s *Service) require(ctx context.Context, docID string, action permissions.Action) error {
 	if s.can(ctx, docID, action) {
 		return nil
@@ -665,6 +666,9 @@ func (s *Service) require(ctx context.Context, docID string, action permissions.
 	actor, _ := identity.ActorFromCtx(ctx)
 	if s.access == nil || actor.ID == "" {
 		return fmt.Errorf("%w: no %s permission on doc %s", apperrs.ErrForbidden, action, docID)
+	}
+	if action == permissions.DocsRead || !s.can(ctx, docID, permissions.DocsRead) {
+		return fmt.Errorf("%w: doc %s", apperrs.ErrNotFound, docID)
 	}
 	return s.access.RefuseDoc(ctx, actor.ID, docID, action)
 }

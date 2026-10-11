@@ -1,6 +1,12 @@
 -- name: CreateProject :exec
 INSERT INTO projects (id, name, prefix, position, workspace_id, icon, setup_finished, setup_steps, setup_stack_id, setup_env_keys, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
+-- name: InsertProjectCreatorRoleRules :exec
+INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, allow, deny, created_at, updated_at)
+SELECT 'project', sqlc.arg(project_id), 'role', mr.role_id, '["projects:open"]', '[]', sqlc.arg(now), sqlc.arg(now)
+FROM member_roles mr JOIN roles r ON r.id = mr.role_id
+WHERE mr.user_id = sqlc.arg(user_id) AND mr.workspace_id = sqlc.arg(workspace_id) AND r.is_owner_role = 0;
+
 -- name: SeedProjectStatus :exec
 INSERT INTO statuses (id, project_id, name, position, kind, icon, created_at, updated_at) VALUES (?, ?, ?, ?, ?, '', ?, ?);
 

@@ -80,3 +80,6 @@ DMs, the inbox and People still take membership only.
 Amended 2026-10-10 by ADR 0147: the wizard's repository list still takes `projects:write`, but lists what the caller's
 own GitHub sign-in can open; the installations list takes no permission and shows the caller's own installations;
 detaching an account from a workspace takes `projects:write` there.
+
+Amended by ADR 0148 (proposed): creating a project, the wizard's repository list and scan, and detaching an account
+take `projects:create`; a member reads a project only once its rules list them or a role they hold.

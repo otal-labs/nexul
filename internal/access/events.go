@@ -8,8 +8,8 @@ func Topics() []eventbus.Topic {
 	return []eventbus.Topic{{Name: TopicGrantChanged, Payload: GrantEvent{}}}
 }
 
-// GrantEvent is the payload of a rule on a doc or play changing; it reaches the person it names, or a role's holders,
-// whose open reads refetch.
+// GrantEvent is the payload of a rule on a doc, play, or project changing; it reaches the person it names, or a role's
+// holders, whose open reads refetch.
 type GrantEvent struct {
 	ResourceType string `json:"resource_type" enum:"doc,play,project"`
 	ResourceID   string `json:"resource_id"`

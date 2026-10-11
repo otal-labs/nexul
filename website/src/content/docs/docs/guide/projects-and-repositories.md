@@ -53,4 +53,6 @@ A new name changes nothing else. A new slug moves every link: old links stop wor
 
 ## Who can see a project
 
-Everyone in the workspace sees every project at their role's level, unless they're held to chosen projects. A project's **Settings → General** lists those people under **People with access**. See [People and access](/docs/guide/people-and-access/).
+Projects are opt-in. Someone sees a project only once it lists them, or a role they hold; everything in a project they aren't in, its name included, is hidden from them. Inside a project they're in, their roles decide what they can do there. Workspace Owners see every project.
+
+Creating a project takes **Create projects**. The new project lists you and each of your roles, so it opens for you and for whoever holds those roles, and you can manage who else is in it. See [People and access](/docs/guide/people-and-access/).

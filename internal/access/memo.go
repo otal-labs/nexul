@@ -147,8 +147,9 @@ type (
 	typeRulesKey  struct{ resourceType, userID string }
 	projectKey    struct{ projectID string }
 	docKey        struct{ docID string }
-	workspacesKey struct{ userID string }
 	membershipKey struct{ userID string }
+	// workspaceProjectsKey is a workspace's projects, which a list asks for once per action it filters by.
+	workspaceProjectsKey struct{ workspaceID string }
 )
 
 func (s *Service) memberRole(ctx context.Context, workspaceID, userID string) (RoleInfo, error) {

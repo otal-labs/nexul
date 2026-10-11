@@ -125,8 +125,8 @@ func TestDocWatchers_ChangesNotifyOnlyWatchers(t *testing.T) {
 	})
 }
 
-// TestDocWatchers_WatchingTakesReadingTheDoc checks watching is gated where the doc lives: a member who cannot read
-// docs is forbidden, and someone outside the workspace learns nothing about it.
+// TestDocWatchers_WatchingTakesReadingTheDoc checks watching is gated where the doc lives: neither a member who cannot
+// read docs nor someone outside the workspace learns anything about it.
 func TestDocWatchers_WatchingTakesReadingTheDoc(t *testing.T) {
 	svc, store := newWired(t)
 	seedMentionPeople(t, store)
@@ -134,11 +134,11 @@ func TestDocWatchers_WatchingTakesReadingTheDoc(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.docsSvc.SetWatching(as("u-sam"), plan.ID, true)
-	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
 	_, err = svc.docsSvc.SetWatching(as("u-out"), plan.ID, true)
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 	_, err = svc.docsSvc.Watchers(as("u-sam"), plan.ID)
-	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
 
 	got, err := svc.docsSvc.SetWatching(as("u-nor"), plan.ID, true)
 	require.NoError(t, err, "reading is enough; watching never needs docs:write")

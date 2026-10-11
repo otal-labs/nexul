@@ -435,7 +435,9 @@ chat like any channel.
 **Direct message** (DM):
 A conversation between named people, read by them alone. It starts in a
 workspace, between members of it, and shows in that workspace and in every
-other one all its people belong to. Never renamed or deleted.
+other one all its people belong to. Starting one takes `chat:write`, except
+with only the workspace's Owners, which takes membership alone. Never renamed
+or deleted.
 _Avoid_: Private message, PM
 
 **Bot**:
@@ -758,7 +760,7 @@ _Avoid_: Global template, default template (that is the code's), master copy
 One capability, written `<domain>:<action>` where the action is `read`,
 `write`, or `delete` (`docs:write`, `members:delete`), or a verb the domain
 declares for an act that is neither (`plays:run`, `memories:clone`,
-`roles:clone`, `docs:thread`, `docs:clone`, `docs:lock`, `stacks:logs`). One vocabulary for every actor: a role, a
+`roles:clone`, `docs:thread`, `docs:clone`, `docs:lock`, `stacks:logs`, `projects:create`, `projects:access`). One vocabulary for every actor: a role, a
 scoped token, and the agent are checked against the same values. Checked in
 the workspace the entity belongs to (a workspace's topology canvas in that workspace); runners, machines, DNS,
 connectors, the instance's own stacks, and the instance itself (its settings,
@@ -767,8 +769,8 @@ workspace the caller is in. A member holds a set of roles, or none, and holds wh
 any workspace therefore holds every instance-level permission, and nobody grants a permission they don't hold. What
 every member reads (public channels, their own DMs and inbox, People) takes membership, not a permission. Each domain
 is a project area, a workspace area, or an instance area; a role's project areas count only inside the projects the
-person is In, and Create projects is a workspace permission. Something a person cannot read is not found for them,
-never forbidden (ADR 0148).
+person is In, and Create projects (`projects:create`) is a workspace permission. Something a person cannot read is
+not found for them, never forbidden (ADR 0148).
 _Avoid_: Right, privilege, capability, ACL entry, instance admin (holding the
 instance's permissions is what that meant)
 
@@ -797,10 +799,12 @@ _Avoid_: Reason, cause, origin
 Being in a project: what the project's Permission overwrites allow, for a role
 the person holds or for them by name. A project someone is not In, and
 everything in it, is not found for them, its name included. Nothing else lets
-anyone in, no role holds it, and the Owner is In every project. A new project
-has its creator and the creator's chosen roles In it. Listed on the project's
-"People in this project"; its row on the project's panel reads "See this
-project".
+anyone in, no role holds it, and the Owner is In every project. Written as
+`projects:open` on a project's rules, by whoever holds Manage this project's
+access (`projects:access`) there. A new project has its creator and the
+creator's roles In it, and the creator manages its access. Listed on the
+project's "People in this project"; its row on the project's panel reads "See
+this project".
 _Avoid_: Project member, project access, Every project, restricted, private
 project
 
@@ -882,8 +886,10 @@ display name from People; as markdown it is `[@login](/people/<user id>)`.
 A link to a ticket or doc page in the same workspace becomes a Mention
 when it is pasted or loaded (ADR 0120); one made from a ticket URL holds
 the ticket's key. Saving a doc or ticket that newly mentions someone tells
-them in their inbox. Chat's `@login` and `@Agent` are plain text in the
-message instead.
+them in their inbox. A chip of a ticket or doc its reader can't open still
+shows it, locked: a doc's title, a ticket's title, status and developer,
+even from a project they are not In. Chat's `@login` and `@Agent` are plain
+text in the message instead.
 _Avoid_: Tag, ping
 
 **Personal access token**:
@@ -983,8 +989,9 @@ internals.
 **Access** — what an actor may do. Permissions and access control. A
 permission is `<domain>:<read|write|delete>` (`docs:write`,
 `members:delete`), or a verb a domain declares beside those three
-(`plays:run`, `memories:clone`, `roles:clone`, `docs:thread`, `docs:clone`, `docs:lock`, `stacks:logs`), one
-vocabulary shared by roles, token scopes, and the agent. Distinct from auth.
+(`plays:run`, `memories:clone`, `roles:clone`, `docs:thread`, `docs:clone`, `docs:lock`, `stacks:logs`,
+`projects:create`, `projects:access`), one vocabulary shared by roles, token scopes, and the agent; `projects:open`
+is held only through a project's rules. Distinct from auth.
 
 **Auth** — who a user is. Identity and device sessions, via an owner-configured OAuth provider.
 Distinct from access.

@@ -55,22 +55,22 @@ type DocReadScope struct {
 	Denied     []string
 }
 
-// DocListItem is the disclosure-aware list view: unopenable docs show title/status with can_open=false, no body.
+// DocListItem is a doc in a list, without its body; a list holds only docs the caller may read (ADR 0148).
 type DocListItem struct {
 	ID string `json:"id"`
 	// ProjectID lets the frontend group/filter the list by project (ticket 10), matching Ticket.ProjectID.
-	ProjectID string    `json:"project_id"`
-	FolderID  string    `json:"folder_id"`
-	Title     string    `json:"title"`
-	Version   int       `json:"version"`
-	Archived  bool      `json:"archived"`
-	Locked    bool      `json:"locked"`
+	ProjectID string `json:"project_id"`
+	FolderID  string `json:"folder_id"`
+	Title     string `json:"title"`
+	Version   int    `json:"version"`
+	Archived  bool   `json:"archived"`
+	Locked    bool   `json:"locked"`
+	// CanOpen is always true, kept for clients that predate unreadable docs leaving lists (ADR 0082).
 	CanOpen   bool      `json:"can_open"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	// Filled only when CanOpen, so a doc the caller can't open discloses its title alone.
-	CreatedBy string `json:"created_by,omitempty"`
-	Snippet   string `json:"snippet,omitempty"`
+	CreatedBy string    `json:"created_by,omitempty"`
+	Snippet   string    `json:"snippet,omitempty"`
 }
 
 // Folder groups a project's docs one level deep; each project has one default folder, which is never deleted.

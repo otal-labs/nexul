@@ -232,14 +232,14 @@ func TestLiveAudience_InstanceAndDeletedTicketFrames(t *testing.T) {
 	}
 }
 
-// TestLiveAudience_InstallationFramesReachWhoSeesTheWorkspacesInstallations: a link or detach reaches who reads the
-// workspace's projects, whose installations card names it, and nobody outside the workspace.
+// TestLiveAudience_InstallationFramesReachWhoSeesTheWorkspacesInstallations: a link or detach reaches who may create
+// projects in the workspace, whose installations card names it, and nobody outside the workspace.
 func TestLiveAudience_InstallationFramesReachWhoSeesTheWorkspacesInstallations(t *testing.T) {
 	f := newPermFixture(t)
 	ctx := t.Context()
 	now := time.Now()
 	const uConnectors, uProjects, uTickets = "u-connectors", "u-projects", "u-tickets"
-	for user, perm := range map[string]string{uConnectors: "connectors:read", uProjects: "projects:read", uTickets: "tickets:read"} {
+	for user, perm := range map[string]string{uConnectors: "connectors:read", uProjects: "projects:create", uTickets: "projects:read"} {
 		_, _, err := f.store.Users.UpsertUser(ctx, &auth.Identity{UserID: user, Provider: auth.ProviderGitHub, ProviderUserID: user, Login: user})
 		require.NoError(t, err)
 		require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-" + user, WorkspaceID: "workspace-default", Name: user, Permissions: grant(perm), CreatedAt: now, UpdatedAt: now}))

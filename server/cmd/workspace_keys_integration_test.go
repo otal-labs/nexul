@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/tenancy"
 )
@@ -49,6 +50,7 @@ func TestIntegration_TicketKeysAreUniquePerWorkspace(t *testing.T) {
 	now := time.Now()
 	require.NoError(t, f.store.Roles.Create(owner, &roles.Role{ID: "role-otal-reader", WorkspaceID: otal.ID, Name: "Reader", Permissions: grant("tickets:read"), CreatedAt: now, UpdatedAt: now}))
 	require.NoError(t, f.store.WorkspaceMembers.AddMember(owner, &tenancy.Member{UserID: uReader, WorkspaceID: otal.ID, RoleID: "role-otal-reader", CreatedAt: now}))
+	require.NoError(t, f.store.Access.SetRole(owner, "project", otalWeb.ID, "role-otal-reader", grant(string(permissions.ProjectsOpen)), nil))
 	got, err = f.svc.ticketsSvc.Resolve(as(uReader), "", "WEB-1")
 	require.NoError(t, err, "a key that only one of the caller's workspaces holds needs no workspace")
 	assert.Equal(t, otalTicket.ID, got.ID)

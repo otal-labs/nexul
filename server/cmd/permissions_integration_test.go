@@ -208,11 +208,11 @@ func seedPermFixture(t *testing.T, db *sql.DB, svc *coreServices, store *storage
 	for _, r := range []*roles.Role{
 		{ID: "role-owner", WorkspaceID: "workspace-default", Name: "Owner", IsOwnerRole: true},
 		{ID: "role-reader", WorkspaceID: "workspace-default", Name: "Reader", Permissions: grant(reads...)},
-		{ID: "role-writer", WorkspaceID: "workspace-default", Name: "Writer", Permissions: grant("tickets:read", "tickets:write", "projects:write", "docs:write", "chat:write", "channels:write")},
+		{ID: "role-writer", WorkspaceID: "workspace-default", Name: "Writer", Permissions: grant("tickets:read", "tickets:write", "projects:write", "projects:create", "docs:write", "chat:write", "channels:write")},
 		{ID: "role-plain", WorkspaceID: "workspace-default", Name: "Member"},
 		{ID: "role-steward", WorkspaceID: "workspace-default", Name: "Steward", Permissions: grant(instanceBits...)},
 		{ID: "role-clerk", WorkspaceID: "workspace-default", Name: "Clerk", Permissions: grant("accounts:read", "accounts:write")},
-		{ID: "role-manager", WorkspaceID: "workspace-default", Name: "Manager", Permissions: grant("roles:write", "members:write")},
+		{ID: "role-manager", WorkspaceID: "workspace-default", Name: "Manager", Permissions: grant("roles:write", "members:write", "projects:access")},
 		{ID: "role-cloner", WorkspaceID: "workspace-default", Name: "Cloner", Permissions: grant("docs:read", "docs:clone")},
 		{ID: "role-editor", WorkspaceID: "workspace-default", Name: "Editor", Permissions: grant("docs:read", "docs:write")},
 		{ID: "role-copier", WorkspaceID: "workspace-default", Name: "Copier", Permissions: grant("docs:read", "docs:clone", "docs:write")},
@@ -249,8 +249,7 @@ func seedPermFixture(t *testing.T, db *sql.DB, svc *coreServices, store *storage
 }
 
 // listRolesIn lists every non-Owner role of the default workspace in projectID with a rule allowing In this project,
-// as the access grid will, so no check passes for having found nobody once projects are opt-in. Written in SQL since
-// no writer names a role on a project yet; nothing reads it before the switch.
+// as the access grid will, so no check passes for having found nobody.
 func listRolesIn(t *testing.T, db *sql.DB, projectID string) {
 	t.Helper()
 	_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, allow, deny, created_at, updated_at)
@@ -311,11 +310,11 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		{"docs: list", func(ctx context.Context) error {
 			ds, err := s.docsSvc.List(ctx)
 			return contains(ds, err, func(d *docs.DocListItem) bool { return d.ID == f.doc })
-		}, map[string]string{uPlain: ok, uOutsider: hidden}},
+		}, map[string]string{uReader: ok, uPlain: hidden, uOutsider: hidden}},
 		{"docs: clone", func(ctx context.Context) error {
 			_, err := s.docsSvc.Clone(ctx, f.doc, "project-general")
 			return err
-		}, map[string]string{uOwner: ok, uCopier: ok, uEditor: forbidden, uCloner: forbidden, uWriter: forbidden, uOutsider: notFound}},
+		}, map[string]string{uOwner: ok, uCopier: ok, uEditor: forbidden, uCloner: forbidden, uWriter: notFound, uOutsider: notFound}},
 		{"docs: create a folder", func(ctx context.Context) error {
 			_, err := s.docsSvc.CreateFolder(ctx, "project-general", "Folder "+actorID(ctx))
 			return err

@@ -14,6 +14,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/jsonx"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -41,12 +42,37 @@ func (r *ProjectsRepo) Create(ctx context.Context, p *workspace.Project) error {
 		if err != nil {
 			return fmt.Errorf("insert project %s: %w", p.ID, classifyWriteErr(err))
 		}
+		if err := listCreator(ctx, q, p); err != nil {
+			return err
+		}
 		types := p.SeedTicketTypes
 		if len(types) == 0 {
 			types = workspace.DefaultTicketTypes
 		}
 		return seedProjectDefaults(ctx, q, p.WorkspaceID, p.ID, types, p.CreatedAt.Unix())
 	})
+}
+
+// creatorGrant is what a project's creator holds on it by name: being in it, and managing who else is.
+var creatorGrant = permissions.SetOf(permissions.ProjectsOpen, permissions.ProjectsAccess)
+
+// listCreator lets p's creator into it by name, and each role they hold but the Owner role, which is in every project.
+func listCreator(ctx context.Context, q *sqlcgen.Queries, p *workspace.Project) error {
+	if p.CreatorID == "" {
+		return nil
+	}
+	at := p.CreatedAt.Unix()
+	if _, err := q.UpsertOverwrite(ctx, sqlcgen.UpsertOverwriteParams{
+		ResourceType: "project", ResourceID: p.ID, UserID: nullString(p.CreatorID), Allow: setJSON(creatorGrant), Deny: setJSON(nil), Now: at,
+	}); err != nil {
+		return fmt.Errorf("list creator %s in project %s: %w", p.CreatorID, p.ID, classifyWriteErr(err))
+	}
+	if err := q.InsertProjectCreatorRoleRules(ctx, sqlcgen.InsertProjectCreatorRoleRulesParams{
+		ProjectID: p.ID, Now: at, UserID: p.CreatorID, WorkspaceID: p.WorkspaceID,
+	}); err != nil {
+		return fmt.Errorf("list the roles of %s in project %s: %w", p.CreatorID, p.ID, err)
+	}
+	return nil
 }
 
 // seedProjectDefaults inserts defaults in the same transaction as the project, so a board is always usable and a

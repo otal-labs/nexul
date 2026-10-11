@@ -214,7 +214,7 @@ func (q *Queries) InsertNamedDocVersion(ctx context.Context, arg InsertNamedDocV
 const listDocScopes = `-- name: ListDocScopes :many
 SELECT d.id, COALESCE(d.project_id, '') AS project_id, COALESCE(p.workspace_id, '') AS workspace_id
 FROM docs d LEFT JOIN projects p ON p.id = d.project_id
-WHERE d.id IN (/*SLICE:ids*/?)
+WHERE d.id IN (SELECT value FROM json_each(?1))
 `
 
 type ListDocScopesRow struct {
@@ -223,18 +223,8 @@ type ListDocScopesRow struct {
 	WorkspaceID string
 }
 
-func (q *Queries) ListDocScopes(ctx context.Context, ids []string) ([]ListDocScopesRow, error) {
-	query := listDocScopes
-	var queryParams []interface{}
-	if len(ids) > 0 {
-		for _, v := range ids {
-			queryParams = append(queryParams, v)
-		}
-		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
-	} else {
-		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
-	}
-	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+func (q *Queries) ListDocScopes(ctx context.Context, ids interface{}) ([]ListDocScopesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listDocScopes, ids)
 	if err != nil {
 		return nil, err
 	}

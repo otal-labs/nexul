@@ -66,16 +66,16 @@ func useTestMemoOf(t *testing.T, a *access.Service) {
 
 // TestIntegration_PermissionSuitesAnswerTheSameWithAMemo runs the permission suites again with memoised access: a
 // memo per call, as every request has, and one memo across a whole test, which only stays right if every grant,
-// role, membership, and Project access change clears it (ADRs 0087, 0088, 0097-0099, 0135).
+// role, membership, and project rule change clears it (ADRs 0087, 0088, 0098, 0099, 0135, 0148).
 func TestIntegration_PermissionSuitesAnswerTheSameWithAMemo(t *testing.T) {
 	suites := map[string]func(*testing.T){
 		"permission table":                  TestIntegration_PermissionTable,
 		"grants never exceed the giver":     TestIntegration_GrantsNeverExceedTheGiver,
 		"first user holds instance bits":    TestIntegration_FirstUserReachesEveryFormerAdminCapability,
-		"restricted member":                 TestIntegration_RestrictedMember,
-		"restricted notices and trails":     TestIntegration_RestrictedMember_NoticesAndTrailsFollowAccess,
-		"restricted live frames":            TestIntegration_RestrictedMember_LiveFramesFollowAccess,
-		"restricted granting and cleanup":   TestIntegration_RestrictedMember_GrantingAndCleanup,
+		"not in a project":                  TestIntegration_NotInAProject,
+		"not in: notices and trails":        TestIntegration_NotInAProject_NoticesAndTrailsFollowAccess,
+		"not in: live frames":               TestIntegration_NotInAProject_LiveFramesFollowAccess,
+		"project rules and cleanup":         TestIntegration_ProjectRules_GrantingAndCleanup,
 		"private channel":                   TestIntegration_PrivateChannel,
 		"channel rules":                     TestIntegration_ChannelRules,
 		"switching private":                 TestIntegration_SwitchingPrivateReachesEveryOpenSidebar,
@@ -102,11 +102,11 @@ func TestIntegration_PermissionSuitesAnswerTheSameWithAMemo(t *testing.T) {
 }
 
 // TestIntegration_LiveAudienceMemo_FollowsEveryChange holds the live hub's audience, whose memo lasts across frames,
-// to the next frame after each kind of change: a role's permissions, a membership, a workspace-wide overwrite,
-// Project access, and a doc's own overwrite.
+// to the next frame after each kind of change: a role's permissions, a membership, a workspace-wide overwrite, a
+// project's rule listing someone, and a doc's own overwrite.
 func TestIntegration_LiveAudienceMemo_FollowsEveryChange(t *testing.T) {
 	f := newPermFixture(t)
-	restrictedClient(t, f)
+	listedClient(t, f)
 	s := f.svc
 	ctx := context.Background()
 	audience := memoizedAudience(s)
@@ -140,10 +140,10 @@ func TestIntegration_LiveAudienceMemo_FollowsEveryChange(t *testing.T) {
 	assert.False(t, reaches(uPlain, ticketFrame), "a workspace-wide deny")
 
 	assert.False(t, reaches(uClient, ticketFrame))
-	giveGeneral(t, f, "tickets:read")
-	assert.True(t, reaches(uClient, ticketFrame), "Project access given")
-	giveGeneral(t, f)
-	assert.False(t, reaches(uClient, ticketFrame), "Project access taken")
+	listClientInGeneral(t, f, true)
+	assert.True(t, reaches(uClient, ticketFrame), "listed in the project")
+	listClientInGeneral(t, f, false)
+	assert.False(t, reaches(uClient, ticketFrame), "taken back out")
 
 	assert.False(t, reaches(uWriter, docFrame))
 	require.NoError(t, s.accessSvc.SetGrants(as(uOwner), uOwner, []string{f.doc}, []string{uWriter}, []permissions.Action{permissions.DocsRead}, access.StateAllow))
@@ -156,7 +156,7 @@ func TestIntegration_LiveAudienceMemo_FollowsEveryChange(t *testing.T) {
 // live audience's shared one, and every answer must be the one that person gets alone; -race watches the memos.
 func TestAccessMemo_ConcurrentRequestsShareNothing(t *testing.T) {
 	f := newPermFixture(t)
-	restrictedClient(t, f)
+	listedClient(t, f)
 	s := f.svc
 	frame, err := json.Marshal(tickets.UpdatedEvent{Ticket: *f.ticket})
 	require.NoError(t, err)

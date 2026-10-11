@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"slices"
 	"time"
 
@@ -26,7 +25,7 @@ const resourceTypePlay = "play"
 // resourceTypeWorkspace keys a workspace-wide override by resource_id = the workspace id.
 const resourceTypeWorkspace = "workspace"
 
-// resourceTypeProject keys a Restricted member's Project access by resource_id = the project id (ADR 0097).
+// resourceTypeProject keys a project's rules by resource_id = the project id (ADR 0148).
 const resourceTypeProject = "project"
 
 // resourceTypeChannel keys a channel's rules by resource_id = the conversation id (ADR 0148).
@@ -37,6 +36,7 @@ type Service struct {
 	repo          Repo
 	users         Users
 	roles         RoleResolver
+	roleWorkspace RoleWorkspaceResolver
 	docWorkspace  DocWorkspaceResolver
 	playWorkspace PlayWorkspaceResolver
 	scopes        Scopes
@@ -55,6 +55,11 @@ func (s *Service) SetRoles(r RoleResolver) {
 	s.roles = r
 }
 
+// SetRoleWorkspaces wires the roles domain's RoleWorkspaceResolver, which a rule for a role is checked against.
+func (s *Service) SetRoleWorkspaces(r RoleWorkspaceResolver) {
+	s.roleWorkspace = r
+}
+
 // SetDocWorkspaces wires the docs+workspace domains' DocWorkspaceResolver.
 func (s *Service) SetDocWorkspaces(r DocWorkspaceResolver) {
 	s.docWorkspace = r
@@ -65,8 +70,8 @@ func (s *Service) SetPlayWorkspaces(r PlayWorkspaceResolver) {
 	s.playWorkspace = r
 }
 
-// HasPermission checks Owner bypass, then role set, then workspace overwrite, then resource overwrite, in order. For
-// a Restricted member a doc or "project" resource puts the project's access between the workspace and the resource.
+// HasPermission checks the Owner bypass, then for anything in a project whether userID is in it, then the role set,
+// the workspace overwrite, the project's rules and the resource's own, in order (ADR 0148).
 func (s *Service) HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action, resourceType, resourceID string) bool {
 	if userID == "" {
 		return false
@@ -107,8 +112,8 @@ func decide(ws workspaceLayers, action permissions.Action, resource func() *Rule
 	return applyRules(allowed, src, resource(), ws.roles.roleIDs(), action)
 }
 
-// workspaceLayers is the role set, the workspace-wide overwrite, and for a Restricted member the Project access of the
-// project asked about, fetched once so a whole-grid answer costs the same lookups as a single check.
+// workspaceLayers is the role set, the workspace-wide overwrite, and the rules of the project asked about reaching the
+// person, fetched once so a whole-grid answer costs the same lookups as a single check.
 type workspaceLayers struct {
 	userID      string
 	workspaceID string
@@ -116,15 +121,14 @@ type workspaceLayers struct {
 	roles       RoleInfo
 	member      bool
 	owner       bool
-	restricted  bool
 	overwrite   *Overwrite
-	inProject   bool
-	project     permissions.Set
+	project     *Rules
+	// listed is whether the project's rules let the person in: Allow of In this project, for a role or for them.
+	listed bool
 }
 
 // layers reads userID's roles in workspaceID, their rule on it, and projectID's rules for them and their roles, built
-// once per request so a list's per-row checks cost one memo lookup. Every member's project rules are read; until
-// projects are opt-in only a Restricted member's own row applies (ADR 0148).
+// once per request so a list's per-row checks cost one memo lookup.
 func (s *Service) layers(ctx context.Context, userID, workspaceID, projectID string) workspaceLayers {
 	// A failed read counts as no rule, as a check's always has, and the memo keeps nothing built on one.
 	ws, _ := remember(ctx, layersKey{userID, workspaceID, projectID}, func() (workspaceLayers, error) {
@@ -147,7 +151,6 @@ func (s *Service) readLayers(ctx context.Context, userID, workspaceID, projectID
 		if err == nil {
 			ws.member = true
 			ws.owner = info.IsOwnerRole
-			ws.restricted = info.Restricted && !info.IsOwnerRole
 			ws.roles = info
 		}
 	}
@@ -163,24 +166,18 @@ func (s *Service) readLayers(ctx context.Context, userID, workspaceID, projectID
 	return ws.in(projectID, projects[projectID]), failed
 }
 
-// in is ws inside projectID, whose rules reaching the person are r; until projects are opt-in only a Restricted
-// member's own row applies.
+// in is ws inside projectID, whose rules reaching the person are r: the person is in it when they end in Allow of In
+// this project, for a role they hold or for them by name (ADR 0148).
 func (ws workspaceLayers) in(projectID string, r *Rules) workspaceLayers {
-	ws.projectID = projectID
-	ws.inProject, ws.project = false, nil
-	if !ws.restricted || projectID == "" {
-		return ws
-	}
-	ws.inProject = true
-	if r != nil && r.Person != nil {
-		ws.project = r.Person.Allow
-	}
+	ws.projectID, ws.project = projectID, r
+	ws.listed, _ = applyRules(false, Source{}, r, ws.roles.roleIDs(), permissions.ProjectsOpen)
 	return ws
 }
 
-// hidden is a project a Restricted member holds no access to: it reads as not found, whatever else would allow.
+// hidden is a project someone other than the Owner is not in, a non-member never being: it, and everything in it, reads
+// as not found, a stale rule naming them inside it included.
 func (ws workspaceLayers) hidden() bool {
-	return ws.restricted && ws.inProject && len(ws.project) == 0
+	return !ws.owner && ws.projectID != "" && (!ws.member || !ws.listed)
 }
 
 func sourceOf(kind, entityType, entityID, targetType, targetID string, allowed bool) Source {
@@ -191,49 +188,60 @@ func sourceOf(kind, entityType, entityID, targetType, targetID string, allowed b
 	return Source{Kind: kind, EntityType: entityType, EntityID: entityID, TargetType: targetType, TargetID: targetID, State: state}
 }
 
+// has is action from the roles and, inside a project, the project's rules; a project-area action with no project
+// named is not held, since it counts only inside a project the person is in.
 func (ws workspaceLayers) has(action permissions.Action) (bool, Source) {
-	if ws.restricted {
-		switch permissions.AreaOf(action) {
-		case permissions.AreaInstance:
-			return false, sourceOf(SourceRestricted, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, false)
-		case permissions.AreaProject:
-			held := ws.project.Has(action)
-			if !ws.inProject {
-				return held, sourceOf(SourceRestricted, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, held)
-			}
-			return held, sourceOf(SourceRestricted, resourceTypeProject, ws.projectID, TargetPerson, ws.userID, held)
-		}
+	if ws.member && ws.projectID == "" && permissions.AreaOf(action) == permissions.AreaProject {
+		return false, sourceOf(SourceOutsideProject, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, false)
 	}
+	allowed, src := ws.granted(action)
+	if ws.projectID == "" {
+		return allowed, src
+	}
+	return applyRules(allowed, src, ws.project, ws.roles.roleIDs(), action)
+}
+
+// granted is action from the roles held and the workspace-wide overwrite alone, whatever the project.
+func (ws workspaceLayers) granted(action permissions.Action) (bool, Source) {
 	allowed := ws.roles.Permissions.Has(action)
 	src := sourceOf(SourceRole, resourceTypeWorkspace, ws.workspaceID, TargetRole, ws.roles.sourceRole(action), allowed)
+	if len(ws.roles.roleIDs()) == 0 {
+		src = sourceOf(SourceRole, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, false)
+	}
 	if !ws.member {
 		src = sourceOf(SourceMember, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, false)
 	}
 	return applyPersonRule(allowed, src, ws.overwrite, action)
 }
 
-func (ws workspaceLayers) actions() []string {
+// actions is every grid action held: in the project asked about, or from the roles alone when byRole.
+func (ws workspaceLayers) actions(byRole bool) []string {
 	all := permissions.AllActions()
 	out := make([]string, 0, len(all))
 	for _, a := range all {
-		if held, _ := ws.has(a); ws.owner || held {
+		held, _ := ws.has(a)
+		if byRole {
+			held, _ = ws.granted(a)
+		}
+		if ws.owner || held {
 			out = append(out, string(a))
 		}
 	}
 	return out
 }
 
-// WorkspacePermissions returns every grid action userID holds in workspaceID with no project named, which for a
-// Restricted member leaves out every project and instance area (feeds /api/workspaces/{id}/me).
+// WorkspacePermissions returns every grid action userID's roles grant in workspaceID, with the workspace overwrite: what
+// they may give, what an instance area answers to, and what holds in each project they are in before its rules, though
+// Require on the workspace itself holds no project-area action (feeds /api/workspaces/{id}/me).
 func (s *Service) WorkspacePermissions(ctx context.Context, userID, workspaceID string) []string {
 	if userID == "" {
 		return []string{}
 	}
-	return s.layers(ctx, userID, workspaceID, "").actions()
+	return s.layers(ctx, userID, workspaceID, "").actions(true)
 }
 
 // ProjectPermissions returns every grid action userID holds inside projectID; opens is false when the project is
-// unknown, outside their workspaces, or hidden from them.
+// unknown, outside their workspaces, or they are not in it.
 func (s *Service) ProjectPermissions(ctx context.Context, userID, projectID string) (actions []string, opens bool) {
 	if userID == "" {
 		return []string{}, false
@@ -243,10 +251,10 @@ func (s *Service) ProjectPermissions(ctx context.Context, userID, projectID stri
 		return []string{}, false
 	}
 	ws := s.layers(ctx, userID, workspaceID, projectID)
-	if !ws.member || (!ws.owner && ws.hidden()) {
+	if !ws.member || ws.hidden() {
 		return []string{}, false
 	}
-	return ws.actions(), true
+	return ws.actions(false), true
 }
 
 // CanInProject reports whether userID holds action inside projectID; the empty action asks whether they may open it.
@@ -324,8 +332,8 @@ func ruleSource(ow *Overwrite, state string) Source {
 	return Source{Kind: SourceRule, EntityType: ow.ResourceType, EntityID: ow.ResourceID, TargetType: TargetPerson, TargetID: ow.UserID, State: state}
 }
 
-// Can reports whether userID may perform action on docID; in a project hidden from a Restricted member the doc's
-// own overwrite allows nothing.
+// Can reports whether userID may perform action on docID; in a project they are not in, the doc's own rules allow
+// nothing.
 func (s *Service) Can(ctx context.Context, userID, docID string, action permissions.Action) (bool, error) {
 	return s.CanDocs(ctx, userID, "", []string{docID}, action)[docID], nil
 }
@@ -369,33 +377,41 @@ func projectsByWorkspace(scopes map[string]DocScope) map[string][]string {
 	return out
 }
 
-// DocsWith is what a doc list filters by in SQL for action: the projects in which userID holds it on every doc without
+// DocsWith is what a doc list filters by in SQL for action: the projects in which userID holds it on a doc without
 // rules of its own, and the docs whose rules for userID or their roles turn that answer, allowed in a project outside
-// the set or denied in one inside it, read in one statement bounded by the rules. A doc passes exactly when CanDocs
-// would pass it (ADR 0140).
-func (s *Service) DocsWith(ctx context.Context, userID string, action permissions.Action) (projectIDs, allowed, denied []string, err error) {
-	allowed, denied = []string{}, []string{}
+// the set or denied in one inside it. Those rules are decided in one statement, only within the projects userID is in,
+// or projectID alone when named, and the Owner's workspaces not at all, so a list hands back only the docs they turn.
+// A doc passes exactly when CanDocs would pass it (ADR 0140, ADR 0148).
+func (s *Service) DocsWith(ctx context.Context, userID, projectID string, action permissions.Action) (projectIDs, allowed, denied []string, err error) {
 	ctx = s.memoized(ctx)
-	_, projectIDs, err = s.ProjectsAnywhere(ctx, userID, action)
-	if err != nil || userID == "" {
-		return projectIDs, allowed, denied, err
+	workspaceIDs, projectIDs, err := s.ProjectsAnywhere(ctx, userID, action)
+	if err != nil {
+		return nil, nil, nil, err
 	}
-	own, err := s.repo.RulesOfType(ctx, resourceTypeDoc, userID)
+	ruled := []string{}
+	for _, workspaceID := range workspaceIDs {
+		info, err := s.standing(ctx, userID, workspaceID)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if info.IsOwnerRole {
+			continue
+		}
+		in, err := s.ProjectsWith(ctx, userID, workspaceID, permissions.Member)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		ruled = append(ruled, in...)
+	}
+	if projectID != "" {
+		ruled = slices.DeleteFunc(ruled, func(id string) bool { return id != projectID })
+	}
+	if len(ruled) == 0 {
+		return projectIDs, []string{}, []string{}, nil
+	}
+	allowed, denied, err = s.repo.DocRuleTurns(ctx, userID, action, ruled, projectIDs)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("doc rules of %s: %w", userID, err)
-	}
-	docIDs := slices.Sorted(maps.Keys(own))
-	scopes := s.docScopes(ctx, docIDs)
-	for _, id := range docIDs {
-		scope := scopes[id]
-		inSet := scope.ProjectID != "" && slices.Contains(projectIDs, scope.ProjectID)
-		can, _ := decide(s.layers(ctx, userID, scope.WorkspaceID, scope.ProjectID), action, func() *Rules { return own[id] })
-		if can && !inSet {
-			allowed = append(allowed, id)
-		}
-		if !can && inSet {
-			denied = append(denied, id)
-		}
 	}
 	return projectIDs, allowed, denied, nil
 }
@@ -503,73 +519,199 @@ func GrantState(resourceType string, grant bool) string {
 
 // SetGrants sets actions to state for every (docID, userID) pair in one bulk operation (the permissions panel).
 func (s *Service) SetGrants(ctx context.Context, actorID string, docIDs, userIDs []string, actions []permissions.Action, state string) error {
-	return s.setGrants(ctx, actorID, resourceTypeDoc, docIDs, userIDs, actions, state)
+	return s.SetRules(ctx, actorID, resourceTypeDoc, docIDs, Targets{UserIDs: userIDs}, actions, state)
 }
 
 // SetPlayGrants sets plays:run to state for users on plays; it is the only action a play rule sets until See per play.
 func (s *Service) SetPlayGrants(ctx context.Context, actorID string, playIDs, userIDs []string, actions []permissions.Action, state string) error {
-	for _, a := range actions {
-		if a != permissions.PlaysRun {
-			return fmt.Errorf("%w: only plays:run may be set on a play", apperrs.ErrInvalid)
-		}
-	}
-	return s.setGrants(ctx, actorID, resourceTypePlay, playIDs, userIDs, actions, state)
+	return s.SetRules(ctx, actorID, resourceTypePlay, playIDs, Targets{UserIDs: userIDs}, actions, state)
 }
 
-// ruleWrite is one person's rule on one resource as it will be stored.
+// Targets are whom a write's rules name: people by account id, and roles by id.
+type Targets struct {
+	UserIDs []string
+	RoleIDs []string
+}
+
+// ruleWrite is one rule on one resource as it will be stored, naming a person or a role; existed is whether it was.
 type ruleWrite struct {
-	resourceID, userID string
-	allow, deny        permissions.Set
+	resourceID, target, targetID string
+	allow, deny                  permissions.Set
+	existed                      bool
 }
 
-// setGrants checks every write before storing any: the actor manages each resource, and holds there each action the
-// write allows or lifts a Deny on (ADR 0088).
-func (s *Service) setGrants(ctx context.Context, actorID, resourceType string, resourceIDs, userIDs []string, actions []permissions.Action, state string) error {
-	if actorID == "" {
-		return fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
+// SetRules sets actions to state on every resource for every target, checking every write before storing any: the
+// actor manages each resource (permissions:write on a doc, plays:write on a play, Manage this project's access on a
+// project), each action is one the resource's rules may set, each role is the resource's workspace's, and the actor
+// holds there each action the write allows or lifts a Deny on (ADR 0088).
+func (s *Service) SetRules(ctx context.Context, actorID, resourceType string, resourceIDs []string, to Targets, actions []permissions.Action, state string) error {
+	if err := checkWrite(actorID, resourceType, resourceIDs, to, actions, state); err != nil {
+		return err
 	}
-	if len(resourceIDs) == 0 || len(userIDs) == 0 || len(actions) == 0 {
-		return fmt.Errorf("%w: at least one resource, one user, and one action are required", apperrs.ErrInvalid)
-	}
-	if !slices.Contains([]string{StateAllow, StateFallback, StateDeny, stateRevoke, stateLift}, state) {
-		return fmt.Errorf("%w: state %q is not allow, fallback, or deny", apperrs.ErrInvalid, state)
-	}
-	writes := make([]ruleWrite, 0, len(resourceIDs)*len(userIDs))
+	writes := make([]ruleWrite, 0, len(resourceIDs)*(len(to.UserIDs)+len(to.RoleIDs)))
 	for _, id := range resourceIDs {
-		ok, err := s.canManage(ctx, actorID, resourceType, id)
+		planned, err := s.planRules(ctx, actorID, resourceType, id, to, actions, state)
 		if err != nil {
 			return err
 		}
-		if !ok {
-			return fmt.Errorf("%w: manage permission required on %s %s", apperrs.ErrForbidden, resourceType, id)
-		}
-		for _, userID := range userIDs {
-			w, err := s.nextRule(ctx, actorID, resourceType, id, userID, actions, state)
-			if err != nil {
-				return err
-			}
-			writes = append(writes, w)
-		}
+		writes = append(writes, planned...)
 	}
 	for _, w := range writes {
-		event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicGrantChanged, Payload: GrantEvent{ResourceType: resourceType, ResourceID: w.resourceID, Target: TargetPerson, UserID: w.userID, ActorID: actorID}}
-		if err := s.repo.Set(ctx, resourceType, w.resourceID, w.userID, w.allow, w.deny, event); err != nil {
-			return fmt.Errorf("set overwrite %s/%s/%s: %w", resourceType, w.resourceID, w.userID, err)
+		event := GrantEvent{ResourceType: resourceType, ResourceID: w.resourceID, Target: w.target, ActorID: actorID}
+		if w.target == TargetRole {
+			event.RoleID = w.targetID
+		}
+		if w.target == TargetPerson {
+			event.UserID = w.targetID
+		}
+		if err := s.store(ctx, resourceType, w, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicGrantChanged, Payload: event}); err != nil {
+			return fmt.Errorf("set overwrite %s/%s/%s: %w", resourceType, w.resourceID, w.targetID, err)
 		}
 	}
 	return nil
 }
 
-// nextRule is userID's rule on the resource with actions moved to state, refused when it allows or lifts a Deny on an
-// action the actor doesn't hold there.
-func (s *Service) nextRule(ctx context.Context, actorID, resourceType, resourceID, userID string, actions []permissions.Action, state string) (ruleWrite, error) {
-	w := ruleWrite{resourceID: resourceID, userID: userID}
-	existing, err := s.repo.Get(ctx, resourceType, resourceID, userID)
+// checkWrite refuses a write missing what it needs, or setting what the resource's rules may not.
+func checkWrite(actorID, resourceType string, resourceIDs []string, to Targets, actions []permissions.Action, state string) error {
+	if actorID == "" {
+		return fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
+	}
+	if len(resourceIDs) == 0 || len(to.UserIDs)+len(to.RoleIDs) == 0 || len(actions) == 0 {
+		return fmt.Errorf("%w: at least one resource, one person or role, and one action are required", apperrs.ErrInvalid)
+	}
+	if !slices.Contains([]string{StateAllow, StateFallback, StateDeny, stateRevoke, stateLift}, state) {
+		return fmt.Errorf("%w: state %q is not allow, fallback, or deny", apperrs.ErrInvalid, state)
+	}
+	return checkRuleActions(resourceType, actions)
+}
+
+// planRules is each target's next rule on one resource, refused before anything is stored; a Fallback where no rule
+// is changes nothing and plans no write.
+func (s *Service) planRules(ctx context.Context, actorID, resourceType, resourceID string, to Targets, actions []permissions.Action, state string) ([]ruleWrite, error) {
+	if err := s.requireInProject(ctx, actorID, resourceType, resourceID); err != nil {
+		return nil, err
+	}
+	ok, err := s.canManage(ctx, actorID, resourceType, resourceID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("%w: manage permission required on %s %s", apperrs.ErrForbidden, resourceType, resourceID)
+	}
+	if err := s.requireRolesOf(ctx, resourceType, resourceID, to.RoleIDs); err != nil {
+		return nil, err
+	}
+	var out []ruleWrite
+	for _, t := range to.each() {
+		w, err := s.nextRule(ctx, actorID, resourceType, resourceID, t, actions, state)
+		if err != nil {
+			return nil, err
+		}
+		if w.existed || len(w.allow)+len(w.deny) > 0 {
+			out = append(out, w)
+		}
+	}
+	return out, nil
+}
+
+// each is every target as a (target type, id) pair, people first.
+func (t Targets) each() [][2]string {
+	out := make([][2]string, 0, len(t.UserIDs)+len(t.RoleIDs))
+	for _, id := range t.UserIDs {
+		out = append(out, [2]string{TargetPerson, id})
+	}
+	for _, id := range t.RoleIDs {
+		out = append(out, [2]string{TargetRole, id})
+	}
+	return out
+}
+
+// checkRuleActions refuses an action resourceType's rules may not set: a play's rules set Run, a project's In this
+// project and the project-area actions.
+func checkRuleActions(resourceType string, actions []permissions.Action) error {
+	if !slices.Contains([]string{resourceTypeDoc, resourceTypePlay, resourceTypeProject}, resourceType) {
+		return fmt.Errorf("%w: resource_type %q is not doc, play, or project", apperrs.ErrInvalid, resourceType)
+	}
+	for _, a := range actions {
+		if a == permissions.ProjectsOpen && resourceType != resourceTypeProject {
+			return fmt.Errorf("%w: projects:open is set only on a project", apperrs.ErrInvalid)
+		}
+		if resourceType == resourceTypePlay && !slices.Contains(playActions, a) {
+			return fmt.Errorf("%w: only plays:run may be set on a play", apperrs.ErrInvalid)
+		}
+		if resourceType == resourceTypeProject && !slices.Contains(projectActions, a) {
+			return fmt.Errorf("%w: %s is not set on a project; its rules set projects:open and project-area actions", apperrs.ErrInvalid, a)
+		}
+	}
+	return nil
+}
+
+// requireRolesOf refuses a role from outside the workspace the resource lives in, whose rule would reach nobody there.
+func (s *Service) requireRolesOf(ctx context.Context, resourceType, resourceID string, roleIDs []string) error {
+	if len(roleIDs) == 0 {
+		return nil
+	}
+	workspaceID := s.workspaceOf(ctx, resourceType, resourceID)
+	for _, roleID := range roleIDs {
+		if s.roleWorkspace == nil {
+			return fmt.Errorf("%w: no role lookup wired", apperrs.ErrForbidden)
+		}
+		got, err := s.roleWorkspace.WorkspaceIDForRole(ctx, roleID)
+		if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+			return fmt.Errorf("resolve role %s: %w", roleID, err)
+		}
+		if err != nil || got != workspaceID {
+			return fmt.Errorf("%w: role %s is not a role of this %s's workspace", apperrs.ErrNotFound, roleID, resourceType)
+		}
+	}
+	return nil
+}
+
+// requireInProject answers a project the actor is not in as not found, so writing its rules never confirms it exists.
+func (s *Service) requireInProject(ctx context.Context, actorID, resourceType, resourceID string) error {
+	if resourceType != resourceTypeProject {
+		return nil
+	}
+	e, err := s.entityOf(ctx, resourceType, resourceID)
+	if err != nil {
+		return err
+	}
+	if opens, _ := s.answer(ctx, actorID, e, e.open, true); !opens {
+		return fmt.Errorf("%w: %s %s", apperrs.ErrNotFound, resourceType, resourceID)
+	}
+	return nil
+}
+
+// workspaceOf is the workspace a doc, play, or project lives in; "" when it can't be resolved.
+func (s *Service) workspaceOf(ctx context.Context, resourceType, resourceID string) string {
+	switch resourceType {
+	case resourceTypePlay:
+		return s.resolvePlayWorkspace(ctx, resourceID)
+	case resourceTypeProject:
+		workspaceID, _ := s.projectWorkspace(ctx, resourceID)
+		return workspaceID
+	}
+	workspaceID, _ := s.resolveDoc(ctx, resourceID)
+	return workspaceID
+}
+
+func (s *Service) store(ctx context.Context, resourceType string, w ruleWrite, event eventbus.OutboxEvent) error {
+	if w.target == TargetRole {
+		return s.repo.SetRole(ctx, resourceType, w.resourceID, w.targetID, w.allow, w.deny, event)
+	}
+	return s.repo.Set(ctx, resourceType, w.resourceID, w.targetID, w.allow, w.deny, event)
+}
+
+// nextRule is the target's rule on the resource with actions moved to state, refused when it allows or lifts a Deny on
+// an action the actor doesn't hold there.
+func (s *Service) nextRule(ctx context.Context, actorID, resourceType, resourceID string, target [2]string, actions []permissions.Action, state string) (ruleWrite, error) {
+	w := ruleWrite{resourceID: resourceID, target: target[0], targetID: target[1]}
+	existing, err := s.existingRule(ctx, resourceType, resourceID, w.target, w.targetID)
 	if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
-		return w, fmt.Errorf("get overwrite %s/%s/%s: %w", resourceType, resourceID, userID, err)
+		return w, fmt.Errorf("get overwrite %s/%s/%s: %w", resourceType, resourceID, w.targetID, err)
 	}
 	if err == nil {
-		w.allow, w.deny = existing.Allow, existing.Deny
+		w.allow, w.deny, w.existed = existing.Allow, existing.Deny, true
 	}
 	for _, a := range actions {
 		allow, deny := moveTo(w.allow, w.deny, a, state)
@@ -580,6 +722,13 @@ func (s *Service) nextRule(ctx context.Context, actorID, resourceType, resourceI
 		w.allow, w.deny = allow, deny
 	}
 	return w, nil
+}
+
+func (s *Service) existingRule(ctx context.Context, resourceType, resourceID, target, targetID string) (*Overwrite, error) {
+	if target == TargetRole {
+		return s.repo.GetRole(ctx, resourceType, resourceID, targetID)
+	}
+	return s.repo.Get(ctx, resourceType, resourceID, targetID)
 }
 
 func moveTo(allow, deny permissions.Set, a permissions.Action, state string) (permissions.Set, permissions.Set) {
@@ -596,10 +745,10 @@ func moveTo(allow, deny permissions.Set, a permissions.Action, state string) (pe
 	return allow.Without(a), deny.Without(a)
 }
 
-// holds is whether actorID holds action on the doc or play, its own rule for them included.
+// holds is whether actorID holds action on the doc, play, or project, its own rules for them included.
 func (s *Service) holds(ctx context.Context, actorID, resourceType, resourceID string, action permissions.Action) bool {
-	if resourceType == resourceTypePlay {
-		return s.HasPermission(ctx, actorID, s.resolvePlayWorkspace(ctx, resourceID), action, resourceTypePlay, resourceID)
+	if resourceType != resourceTypeDoc {
+		return s.HasPermission(ctx, actorID, s.workspaceOf(ctx, resourceType, resourceID), action, resourceType, resourceID)
 	}
 	can, _ := s.Can(ctx, actorID, resourceID, action)
 	return can
@@ -673,11 +822,13 @@ func (s *Service) accountsByID(ctx context.Context) (map[string]*User, error) {
 
 // canManage grants no instance-wide bypass, since that would cross workspace isolation boundaries. A doc's
 // manage action is the cross-cutting permissions:write share grant; a play's is plays:write, the same bit
-// that gates editing the play's own definition.
+// that gates editing the play's own definition; a project's is Manage this project's access.
 func (s *Service) canManage(ctx context.Context, actorID, resourceType, resourceID string) (bool, error) {
 	if resourceType == resourceTypePlay {
-		workspaceID := s.resolvePlayWorkspace(ctx, resourceID)
-		return s.HasPermission(ctx, actorID, workspaceID, permissions.PlaysWrite, resourceTypePlay, resourceID), nil
+		return s.holds(ctx, actorID, resourceType, resourceID, permissions.PlaysWrite), nil
+	}
+	if resourceType == resourceTypeProject {
+		return s.holds(ctx, actorID, resourceType, resourceID, permissions.ProjectsAccess), nil
 	}
 	return s.Can(ctx, actorID, resourceID, permissions.PermissionsWrite)
 }

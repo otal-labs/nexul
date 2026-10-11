@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"testing"
 
@@ -23,6 +24,8 @@ type fakeRepo struct {
 	setErr     error
 	events     []eventbus.OutboxEvent
 	reads      int
+	// docProjects is where each doc lives, for DocRuleTurns, which a real repo joins in SQL.
+	docProjects map[string]string
 }
 
 // readCounts is how many overwrite and rule reads reached the fake, so a test can pin what a check costs.
@@ -99,12 +102,76 @@ func (f *fakeRepo) OwnRules(_ context.Context, userID, workspaceID string, proje
 	return out, nil
 }
 
-// RoleRules finds none: the fake keeps rules for people only.
-func (f *fakeRepo) RoleRules(context.Context, string, []string, []string) (map[string][]*Overwrite, error) {
+// DocRuleTurns decides the person's own rules alone: the fake keeps no record of who holds which role.
+func (f *fakeRepo) DocRuleTurns(_ context.Context, userID string, action permissions.Action, ruled, readable []string) ([]string, []string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.reads++
-	return map[string][]*Overwrite{}, nil
+	allowed, denied := []string{}, []string{}
+	for _, ow := range f.overwrites {
+		project := f.docProjects[ow.ResourceID]
+		if ow.ResourceType != resourceTypeDoc || ow.UserID != userID || !slices.Contains(ruled, project) {
+			continue
+		}
+		state := stateOf(ow, action)
+		if state == StateAllow && !slices.Contains(readable, project) {
+			allowed = append(allowed, ow.ResourceID)
+		}
+		if state == StateDeny && slices.Contains(readable, project) {
+			denied = append(denied, ow.ResourceID)
+		}
+	}
+	slices.Sort(allowed)
+	slices.Sort(denied)
+	return allowed, denied, nil
+}
+
+// roleKey keys a role's rule apart from any person's.
+func roleKey(resourceType, resourceID, roleID string) string {
+	return key(resourceType, resourceID, "role\x00"+roleID)
+}
+
+func (f *fakeRepo) GetRole(_ context.Context, resourceType, resourceID, roleID string) (*Overwrite, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reads++
+	ow, ok := f.overwrites[roleKey(resourceType, resourceID, roleID)]
+	if !ok {
+		return nil, apperrs.ErrNotFound
+	}
+	return ow, nil
+}
+
+func (f *fakeRepo) SetRole(_ context.Context, resourceType, resourceID, roleID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.setErr != nil {
+		return f.setErr
+	}
+	f.events = append(f.events, events...)
+	k := roleKey(resourceType, resourceID, roleID)
+	if len(allow) == 0 && len(deny) == 0 {
+		delete(f.overwrites, k)
+		return nil
+	}
+	f.overwrites[k] = &Overwrite{ResourceType: resourceType, ResourceID: resourceID, Target: TargetRole, RoleID: roleID, Allow: allow, Deny: deny}
+	return nil
+}
+
+// RoleRules finds the role rules on each resource for roleIDs, in role order; Rules and RulesOfType find people's only.
+func (f *fakeRepo) RoleRules(_ context.Context, resourceType string, resourceIDs, roleIDs []string) (map[string][]*Overwrite, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reads++
+	out := map[string][]*Overwrite{}
+	for _, id := range resourceIDs {
+		for _, roleID := range slices.Sorted(slices.Values(roleIDs)) {
+			if ow, ok := f.overwrites[roleKey(resourceType, id, roleID)]; ok {
+				out[id] = append(out[id], ow)
+			}
+		}
+	}
+	return out, nil
 }
 
 func (f *fakeRepo) Rules(_ context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*Rules, error) {
@@ -301,7 +368,8 @@ func TestCan_ResolvesWorkspaceViaDocProject(t *testing.T) {
 		roles.set(ws, "alice", RoleInfo{Permissions: permissions.SetOf(permissions.DocsRead)})
 		s := newService(repo, newFakeUsers(&User{ID: "alice"}))
 		s.SetRoles(roles)
-		s.SetDocWorkspaces(&fakeDocWorkspace{byDoc: map[string]string{"doc-1": ws}})
+		s.SetDocWorkspaces(&fakeDocWorkspace{byDoc: map[string]string{"doc-1": ws}, projectOf: map[string]string{"doc-1": "p-1"}})
+		setOverwrite(repo, "project", "p-1", "alice", permissions.SetOf(permissions.ProjectsOpen))
 
 		got, err := s.Can(context.Background(), "alice", "doc-1", permissions.DocsRead)
 		require.NoError(t, err)
@@ -351,78 +419,78 @@ func TestHasPermission_Precedence(t *testing.T) {
 	t.Run("role mask alone grants the action", func(t *testing.T) {
 		repo := newFakeRepo()
 		roles := newFakeRoles()
-		roles.set(ws, "alice", RoleInfo{Permissions: permissions.SetOf(permissions.ProjectsWrite)})
+		roles.set(ws, "alice", RoleInfo{Permissions: permissions.SetOf(permissions.MembersWrite)})
 		s := newService(repo, newFakeUsers())
 		s.SetRoles(roles)
-		assert.True(t, s.HasPermission(context.Background(), "alice", ws, permissions.ProjectsWrite, "", ""))
+		assert.True(t, s.HasPermission(context.Background(), "alice", ws, permissions.MembersWrite, "", ""))
 	})
 
 	t.Run("no role and no overwrite denies", func(t *testing.T) {
 		s := newService(newFakeRepo(), newFakeUsers())
 		s.SetRoles(newFakeRoles())
-		assert.False(t, s.HasPermission(context.Background(), "ghost", ws, permissions.ProjectsWrite, "", ""))
+		assert.False(t, s.HasPermission(context.Background(), "ghost", ws, permissions.MembersWrite, "", ""))
 	})
 
 	t.Run("workspace-wide deny beats role allow", func(t *testing.T) {
 		repo := newFakeRepo()
 		roles := newFakeRoles()
-		roles.set(ws, "alice", RoleInfo{Permissions: permissions.SetOf(permissions.ProjectsWrite)})
-		require.NoError(t, repo.Set(context.Background(), "workspace", ws, "alice", nil, permissions.SetOf(permissions.ProjectsWrite)))
+		roles.set(ws, "alice", RoleInfo{Permissions: permissions.SetOf(permissions.MembersWrite)})
+		require.NoError(t, repo.Set(context.Background(), "workspace", ws, "alice", nil, permissions.SetOf(permissions.MembersWrite)))
 		s := newService(repo, newFakeUsers())
 		s.SetRoles(roles)
-		assert.False(t, s.HasPermission(context.Background(), "alice", ws, permissions.ProjectsWrite, "", ""))
+		assert.False(t, s.HasPermission(context.Background(), "alice", ws, permissions.MembersWrite, "", ""))
 	})
 
 	t.Run("workspace-wide allow grants even without a role mask bit", func(t *testing.T) {
 		repo := newFakeRepo()
 		roles := newFakeRoles()
 		roles.set(ws, "alice", RoleInfo{})
-		require.NoError(t, repo.Set(context.Background(), "workspace", ws, "alice", permissions.SetOf(permissions.ProjectsWrite), nil))
+		require.NoError(t, repo.Set(context.Background(), "workspace", ws, "alice", permissions.SetOf(permissions.MembersWrite), nil))
 		s := newService(repo, newFakeUsers())
 		s.SetRoles(roles)
-		assert.True(t, s.HasPermission(context.Background(), "alice", ws, permissions.ProjectsWrite, "", ""))
+		assert.True(t, s.HasPermission(context.Background(), "alice", ws, permissions.MembersWrite, "", ""))
 	})
 
 	t.Run("resource-instance allow beats workspace-wide deny", func(t *testing.T) {
 		repo := newFakeRepo()
 		roles := newFakeRoles()
-		roles.set(ws, "alice", RoleInfo{Permissions: permissions.SetOf(permissions.ProjectsWrite)})
-		require.NoError(t, repo.Set(context.Background(), "workspace", ws, "alice", nil, permissions.SetOf(permissions.ProjectsWrite)))
-		require.NoError(t, repo.Set(context.Background(), "doc", "doc-1", "alice", permissions.SetOf(permissions.ProjectsWrite), nil))
+		roles.set(ws, "alice", RoleInfo{Permissions: permissions.SetOf(permissions.MembersWrite)})
+		require.NoError(t, repo.Set(context.Background(), "workspace", ws, "alice", nil, permissions.SetOf(permissions.MembersWrite)))
+		require.NoError(t, repo.Set(context.Background(), "doc", "doc-1", "alice", permissions.SetOf(permissions.MembersWrite), nil))
 		s := newService(repo, newFakeUsers())
 		s.SetRoles(roles)
-		assert.True(t, s.HasPermission(context.Background(), "alice", ws, permissions.ProjectsWrite, "doc", "doc-1"))
+		assert.True(t, s.HasPermission(context.Background(), "alice", ws, permissions.MembersWrite, "doc", "doc-1"))
 	})
 
 	t.Run("resource-instance deny beats workspace-wide allow", func(t *testing.T) {
 		repo := newFakeRepo()
 		roles := newFakeRoles()
 		roles.set(ws, "alice", RoleInfo{})
-		require.NoError(t, repo.Set(context.Background(), "workspace", ws, "alice", permissions.SetOf(permissions.ProjectsWrite), nil))
-		require.NoError(t, repo.Set(context.Background(), "doc", "doc-1", "alice", nil, permissions.SetOf(permissions.ProjectsWrite)))
+		require.NoError(t, repo.Set(context.Background(), "workspace", ws, "alice", permissions.SetOf(permissions.MembersWrite), nil))
+		require.NoError(t, repo.Set(context.Background(), "doc", "doc-1", "alice", nil, permissions.SetOf(permissions.MembersWrite)))
 		s := newService(repo, newFakeUsers())
 		s.SetRoles(roles)
-		assert.False(t, s.HasPermission(context.Background(), "alice", ws, permissions.ProjectsWrite, "doc", "doc-1"))
+		assert.False(t, s.HasPermission(context.Background(), "alice", ws, permissions.MembersWrite, "doc", "doc-1"))
 	})
 
 	t.Run("resource-instance deny beats role allow with no workspace overwrite at all", func(t *testing.T) {
 		repo := newFakeRepo()
 		roles := newFakeRoles()
-		roles.set(ws, "alice", RoleInfo{Permissions: permissions.SetOf(permissions.ProjectsWrite)})
-		require.NoError(t, repo.Set(context.Background(), "doc", "doc-1", "alice", nil, permissions.SetOf(permissions.ProjectsWrite)))
+		roles.set(ws, "alice", RoleInfo{Permissions: permissions.SetOf(permissions.MembersWrite)})
+		require.NoError(t, repo.Set(context.Background(), "doc", "doc-1", "alice", nil, permissions.SetOf(permissions.MembersWrite)))
 		s := newService(repo, newFakeUsers())
 		s.SetRoles(roles)
-		assert.False(t, s.HasPermission(context.Background(), "alice", ws, permissions.ProjectsWrite, "doc", "doc-1"))
+		assert.False(t, s.HasPermission(context.Background(), "alice", ws, permissions.MembersWrite, "doc", "doc-1"))
 	})
 
 	t.Run("no resourceType/resourceID skips the resource-instance layer entirely", func(t *testing.T) {
 		repo := newFakeRepo()
 		roles := newFakeRoles()
-		roles.set(ws, "alice", RoleInfo{Permissions: permissions.SetOf(permissions.ProjectsWrite)})
-		require.NoError(t, repo.Set(context.Background(), "project", "proj-1", "alice", nil, permissions.SetOf(permissions.ProjectsWrite)))
+		roles.set(ws, "alice", RoleInfo{Permissions: permissions.SetOf(permissions.MembersWrite)})
+		require.NoError(t, repo.Set(context.Background(), "project", "proj-1", "alice", nil, permissions.SetOf(permissions.MembersWrite)))
 		s := newService(repo, newFakeUsers())
 		s.SetRoles(roles)
-		assert.True(t, s.HasPermission(context.Background(), "alice", ws, permissions.ProjectsWrite, "", ""))
+		assert.True(t, s.HasPermission(context.Background(), "alice", ws, permissions.MembersWrite, "", ""))
 	})
 
 	t.Run("empty workspaceID skips the role and workspace-wide layers, only the resource overwrite applies", func(t *testing.T) {
@@ -444,7 +512,7 @@ func TestHasPermission_Precedence(t *testing.T) {
 
 	t.Run("nil RoleResolver behaves like no role found, not an error", func(t *testing.T) {
 		s := newService(newFakeRepo(), newFakeUsers())
-		assert.False(t, s.HasPermission(context.Background(), "alice", ws, permissions.ProjectsWrite, "", ""))
+		assert.False(t, s.HasPermission(context.Background(), "alice", ws, permissions.MembersWrite, "", ""))
 	})
 
 	t.Run("a play deny beats a role holder's plays:run", func(t *testing.T) {

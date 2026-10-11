@@ -143,6 +143,30 @@ func (q *Queries) GetProjectRepoByOwnerAndName(ctx context.Context, arg GetProje
 	return i, err
 }
 
+const insertProjectCreatorRoleRules = `-- name: InsertProjectCreatorRoleRules :exec
+INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, allow, deny, created_at, updated_at)
+SELECT 'project', ?1, 'role', mr.role_id, '["projects:open"]', '[]', ?2, ?2
+FROM member_roles mr JOIN roles r ON r.id = mr.role_id
+WHERE mr.user_id = ?3 AND mr.workspace_id = ?4 AND r.is_owner_role = 0
+`
+
+type InsertProjectCreatorRoleRulesParams struct {
+	ProjectID   string
+	Now         int64
+	UserID      string
+	WorkspaceID string
+}
+
+func (q *Queries) InsertProjectCreatorRoleRules(ctx context.Context, arg InsertProjectCreatorRoleRulesParams) error {
+	_, err := q.db.ExecContext(ctx, insertProjectCreatorRoleRules,
+		arg.ProjectID,
+		arg.Now,
+		arg.UserID,
+		arg.WorkspaceID,
+	)
+	return err
+}
+
 const listAllProjectRepos = `-- name: ListAllProjectRepos :many
 SELECT owner, name, full_name, connector_id, role FROM project_repos ORDER BY full_name
 `

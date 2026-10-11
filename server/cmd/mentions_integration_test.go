@@ -69,8 +69,13 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 
 	accessSvc := access.NewService(s.Access, accessUsers{users: s.Users})
 	accessSvc.SetScopes(accessScopes{projects: s.Projects, members: s.WorkspaceMembers})
-	require.NoError(t, s.Access.Set(ctx, "workspace", "workspace-default", "u-alice", permissions.SetOf(permissions.TicketsRead), nil))
-	require.NoError(t, s.Access.Set(ctx, "workspace", "workspace-default", "u-owner", permissions.SetOf(permissions.TicketsRead), nil))
+	accessSvc.SetRoles(s.WorkspaceMembers)
+	now := time.Now()
+	require.NoError(t, s.Roles.Create(ctx, &roles.Role{ID: "role-ticket-reader", WorkspaceID: "workspace-default", Name: "Reader", Permissions: permissions.SetOf(permissions.TicketsRead), CreatedAt: now, UpdatedAt: now}))
+	for _, user := range []string{"u-alice", "u-owner"} {
+		require.NoError(t, s.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: user, WorkspaceID: "workspace-default", RoleID: "role-ticket-reader", CreatedAt: now}))
+	}
+	require.NoError(t, s.Access.SetRole(ctx, "project", pGeneral, "role-ticket-reader", permissions.SetOf(permissions.ProjectsOpen), nil))
 	svc := mentions.New(mentions.Config{
 		Tickets:     mentionTicketSource{repo: s.Tickets},
 		Docs:        mentionDocSource{repo: s.Docs},
@@ -152,6 +157,7 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 		}))
 		keyTicket := &tickets.Ticket{ID: "tk-erf-1", ProjectID: "p-erf", Title: "Ship the router rewrite", Body: "body", Status: tickets.StatusOpen}
 		require.NoError(t, s.Tickets.Create(ctx, keyTicket)) // first ticket in p-erf, so number 1 -> ERF-1
+		require.NoError(t, s.Access.SetRole(ctx, "project", "p-erf", "role-ticket-reader", permissions.SetOf(permissions.ProjectsOpen), nil))
 
 		results, err := svc.Search(aliceCtx, "ERF-1", "", 10)
 		require.NoError(t, err)
@@ -196,6 +202,7 @@ func seedMentionPeople(t *testing.T, store *storage.Store) {
 	} {
 		r.WorkspaceID, r.CreatedAt, r.UpdatedAt = "workspace-default", now, now
 		require.NoError(t, store.Roles.Create(ctx, r))
+		require.NoError(t, store.Access.SetRole(ctx, "project", pGeneral, r.ID, grant(string(permissions.ProjectsOpen)), nil))
 	}
 	for user, role := range map[string]string{"u-onik": "role-writer", "u-nor": "role-reader", "u-sam": "role-member"} {
 		require.NoError(t, store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: user, WorkspaceID: "workspace-default", RoleID: role, CreatedAt: now}))

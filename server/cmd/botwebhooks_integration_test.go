@@ -41,6 +41,7 @@ func TestIntegration_BotsFollowTheirConversationsGate(t *testing.T) {
 		require.NoError(t, f.store.Roles.Create(ctx, role))
 		require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: user, WorkspaceID: "workspace-default", RoleID: role.ID, CreatedAt: now}))
 	}
+	listRolesIn(t, f.db, pGeneral)
 	ticketThread, err := s.chatSvc.ExistingThread(as(uOwner), chat.KindTicketThread, f.ticket.ID, uOwner)
 	require.NoError(t, err)
 	docThread, err := s.chatSvc.GetOrCreateDocThread(as(uOwner), "workspace-default", f.doc, uOwner)

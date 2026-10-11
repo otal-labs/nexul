@@ -333,7 +333,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/reviews/{id}", "Get a code review", "reviews")
 	spec.Register("GET", "/api/repos/{owner}/{repo}/prs", "List pull requests", "repos")
 	spec.Register("POST", "/api/repositories/scan", "Scan a repository's tree for deployable candidates", "repositories")
-	spec.Register("GET", "/api/repositories", "List the repositories the caller's own GitHub account can open where the App is installed; ?workspace_id= checks projects:write there, ?q= (3 or more characters) keeps those whose owner/name contains it, ?refresh=1 skips the one-minute cache; 403 github_not_connected or github_reconnect without a live GitHub sign-in", "repositories")
+	spec.Register("GET", "/api/repositories", "List the repositories the caller's own GitHub account can open where the App is installed; ?workspace_id= checks projects:create there, ?q= (3 or more characters) keeps those whose owner/name contains it, ?refresh=1 skips the one-minute cache; 403 github_not_connected or github_reconnect without a live GitHub sign-in", "repositories")
 	spec.Register("GET", "/api/repositories/installations", "List the GitHub App's installations the caller's own GitHub account sees, with the caller's workspaces that use each", "repositories")
 	spec.Register("GET", "/api/repositories/install-url", "GitHub's page for installing the App on another account; installing links it to no workspace", "repositories")
 	spec.Register("PUT", "/api/repositories/installations/{account}/workspaces/{workspaceID}", "Refused since installations are linked by attaching a repository; kept for older clients", "repositories")

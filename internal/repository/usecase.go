@@ -21,12 +21,12 @@ type Gate interface {
 	WorkspacesWith(ctx context.Context, action permissions.Action) ([]string, error)
 }
 
-// requireWizard is what a scan takes: projects:write, what making a project from a repository needs, anywhere.
+// requireWizard is what a scan takes: projects:create, what making a project from a repository needs, anywhere.
 func requireWizard(ctx context.Context, g Gate) error {
 	if g == nil {
 		return permissions.Ungated(ctx)
 	}
-	return g.RequireAnywhere(ctx, permissions.ProjectsWrite)
+	return g.RequireAnywhere(ctx, permissions.ProjectsCreate)
 }
 
 // Scan reads owner/name's tree at ref (the repo's default branch when ref is empty) and proposes deployable

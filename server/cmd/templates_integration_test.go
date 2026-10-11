@@ -40,6 +40,7 @@ func newTemplateFixture(t *testing.T) templateFixture {
 	require.NoError(t, err)
 	require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-templater", WorkspaceID: wsDefault, Name: "Templater", Permissions: grant("templates:write"), CreatedAt: now, UpdatedAt: now}))
 	require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: uTemplater, WorkspaceID: wsDefault, RoleID: "role-templater", CreatedAt: now}))
+	listRolesIn(t, f.db, pGeneral)
 	return templateFixture{permFixture: f, tpl: f.svc.templatesSvc}
 }
 

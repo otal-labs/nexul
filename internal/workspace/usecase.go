@@ -10,6 +10,7 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -62,7 +63,8 @@ func (s *Service) requireOn(ctx context.Context, projectID string, action permis
 	return s.gate.RequireProject(ctx, projectID, action)
 }
 
-// Create adds a project to a workspace with the next display position (projects:write); its setup starts finished.
+// Create adds a project to a workspace with the next display position (projects:create), listing its creator and their
+// roles in it in the same write (ADR 0148); its setup starts finished.
 func (s *Service) Create(ctx context.Context, workspaceID, name, prefix string, icon ProjectIcon) (*Project, error) {
 	return s.create(ctx, workspaceID, name, prefix, icon, NewSetup(true))
 }
@@ -77,7 +79,7 @@ func (s *Service) create(ctx context.Context, workspaceID, name, prefix string, 
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required — create a workspace before creating a project", apperrs.ErrInvalid)
 	}
-	if err := s.requireIn(ctx, workspaceID, permissions.ProjectsWrite); err != nil {
+	if err := s.requireIn(ctx, workspaceID, permissions.ProjectsCreate); err != nil {
 		return nil, err
 	}
 	ok, err := s.workspaces.WorkspaceExists(ctx, workspaceID)
@@ -108,7 +110,8 @@ func (s *Service) create(ctx context.Context, workspaceID, name, prefix string, 
 	if err != nil {
 		return nil, err
 	}
-	p := &Project{ID: ids.New(), Name: name, Prefix: prefix, Position: position, WorkspaceID: workspaceID, Icon: icon, Setup: setup, CreatedAt: now, UpdatedAt: now, SeedTicketTypes: types}
+	creator, _ := identity.ActorFromCtx(ctx)
+	p := &Project{ID: ids.New(), Name: name, Prefix: prefix, Position: position, WorkspaceID: workspaceID, Icon: icon, Setup: setup, CreatedAt: now, UpdatedAt: now, SeedTicketTypes: types, CreatorID: creator.ID}
 	// Default statuses/types are seeded by ProjectsRepo.Create in the same transaction, not here.
 	if err := s.repo.Create(ctx, p); err != nil {
 		return nil, fmt.Errorf("create project: %w", err)

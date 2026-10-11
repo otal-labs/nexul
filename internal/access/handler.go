@@ -97,6 +97,7 @@ type setGrantsRequest struct {
 	DocIDs       []string `json:"doc_ids"`
 	ResourceIDs  []string `json:"resource_ids"`
 	UserIDs      []string `json:"user_ids"`
+	RoleIDs      []string `json:"role_ids"`
 	Actions      []string `json:"actions"`
 	Grant        bool     `json:"grant"`
 	// State is allow, fallback, or deny; without it grant keeps its older meaning.
@@ -121,15 +122,12 @@ func (h *Handler) setGrants(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	if req.ResourceType == resourceTypePlay {
-		if err := h.svc.SetPlayGrants(r.Context(), actorID(r), req.ResourceIDs, req.UserIDs, actions, req.state(resourceTypePlay)); err != nil {
-			httpx.WriteError(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-		return
+	resourceType, resourceIDs := req.ResourceType, req.ResourceIDs
+	if resourceType == "" || resourceType == resourceTypeDoc {
+		resourceType, resourceIDs = resourceTypeDoc, req.DocIDs
 	}
-	if err := h.svc.SetGrants(r.Context(), actorID(r), req.DocIDs, req.UserIDs, actions, req.state(resourceTypeDoc)); err != nil {
+	to := Targets{UserIDs: req.UserIDs, RoleIDs: req.RoleIDs}
+	if err := h.svc.SetRules(r.Context(), actorID(r), resourceType, resourceIDs, to, actions, req.state(resourceType)); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -139,7 +137,7 @@ func (h *Handler) setGrants(w http.ResponseWriter, r *http.Request) {
 func parseActions(raw []string) ([]permissions.Action, error) {
 	actions := make([]permissions.Action, 0, len(raw))
 	for _, r := range raw {
-		a, ok := permissions.ParseAction(r)
+		a, ok := permissions.ParseRuleAction(r)
 		if !ok {
 			return nil, fmt.Errorf("%w: unknown action %s", apperrs.ErrInvalid, r)
 		}

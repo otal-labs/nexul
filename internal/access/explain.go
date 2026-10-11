@@ -13,11 +13,12 @@ func (s *Service) SetNames(n Names) {
 	s.names = n
 }
 
-// The actions each entity's rules may set today: a doc's sharing, a play's exclusion, a project's Project access.
+// The actions each entity's rules may set: a doc's docs actions and its access, a play's Run, and on a project In this
+// project and every project-area action.
 var (
 	docActions     = catalogActions(func(i permissions.Info) bool { return i.Domain == "docs" || i.Value == permissions.PermissionsWrite })
 	playActions    = []permissions.Action{permissions.PlaysRun}
-	projectActions = catalogActions(func(i permissions.Info) bool { return i.Area == permissions.AreaProject })
+	projectActions = append([]permissions.Action{permissions.ProjectsOpen}, catalogActions(func(i permissions.Info) bool { return i.Area == permissions.AreaProject })...)
 )
 
 func catalogActions(keep func(permissions.Info) bool) []permissions.Action {
@@ -55,7 +56,7 @@ func (s *Service) entityOf(ctx context.Context, resourceType, resourceID string)
 			return e, err
 		}
 		e.workspaceID, e.projectID = workspaceID, resourceID
-		e.open, e.manage, e.actions = permissions.Member, permissions.MembersWrite, projectActions
+		e.open, e.manage, e.actions = permissions.Member, permissions.ProjectsAccess, projectActions
 		return e, nil
 	}
 	return e, fmt.Errorf("%w: resource_type %q is not doc, play, or project", apperrs.ErrInvalid, resourceType)
@@ -69,16 +70,17 @@ func (s *Service) answer(ctx context.Context, userID string, e entity, action pe
 	}
 	ws := s.layers(ctx, userID, e.workspaceID, e.projectID)
 	if e.kind == resourceTypeProject {
-		ws.project = nil
-		return decide(ws, action, noRules)
+		return decide(ws.in(e.projectID, rolesOnly(ws.project)), action, noRules)
 	}
-	return decide(ws, action, func() *Rules {
-		r := s.rules(ctx, e.kind, e.id, userID)
-		if r == nil {
-			return nil
-		}
-		return &Rules{Roles: r.Roles}
-	})
+	return decide(ws, action, func() *Rules { return rolesOnly(s.rules(ctx, e.kind, e.id, userID)) })
+}
+
+// rolesOnly is r with the rule naming the person at Fallback.
+func rolesOnly(r *Rules) *Rules {
+	if r == nil {
+		return nil
+	}
+	return &Rules{Roles: r.Roles}
 }
 
 func noRules() *Rules { return nil }
@@ -196,18 +198,25 @@ func sentence(r NamedSource) string {
 	case SourceMember:
 		return memberSentence(r, allowed)
 	case SourceRole:
-		if allowed {
-			return "Allowed by role " + r.TargetName
-		}
-		return "Not allowed: role " + r.TargetName + " doesn't grant it"
+		return roleSentence(r, allowed)
 	case SourceRule:
 		return ruleSentence(r, allowed)
-	case SourceRestricted:
-		return restrictedSentence(r, allowed)
+	case SourceOutsideProject:
+		return "Not allowed: it counts only inside a project"
 	case SourceNotInProject:
 		return "Not found: " + r.TargetName + " isn't in project " + r.EntityName
 	}
 	return ""
+}
+
+func roleSentence(r NamedSource, allowed bool) string {
+	if r.TargetType == TargetPerson {
+		return "Not allowed: " + r.TargetName + " holds no role"
+	}
+	if allowed {
+		return "Allowed by role " + r.TargetName
+	}
+	return "Not allowed: role " + r.TargetName + " doesn't grant it"
 }
 
 func memberSentence(r NamedSource, allowed bool) string {
@@ -226,14 +235,4 @@ func ruleSentence(r NamedSource, allowed bool) string {
 		target = "role " + target
 	}
 	return fmt.Sprintf("%s on %s %s for %s", verb, r.EntityType, r.EntityName, target)
-}
-
-func restrictedSentence(r NamedSource, allowed bool) string {
-	if r.EntityType == resourceTypeWorkspace {
-		return "Not allowed: " + r.TargetName + " is a Restricted member of " + r.EntityName
-	}
-	if allowed {
-		return "Allowed by " + r.TargetName + "'s Project access on project " + r.EntityName
-	}
-	return "Not allowed: " + r.TargetName + "'s Project access on project " + r.EntityName + " doesn't grant it"
 }

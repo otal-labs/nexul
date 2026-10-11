@@ -158,7 +158,7 @@ func (s *Service) InterviewTemplate(ctx context.Context, workspaceID string) (*I
 	return s.loadTemplate(ctx, workspaceID)
 }
 
-// ProjectInterviewTemplate reads the template through a project, for a restricted member without memories:read on the workspace.
+// ProjectInterviewTemplate reads the template through a project, where a member holds memories:read (ADR 0148).
 func (s *Service) ProjectInterviewTemplate(ctx context.Context, projectID string) (*InterviewTemplate, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {

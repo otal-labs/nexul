@@ -1,6 +1,6 @@
 # 09 — The flip to opt-in projects
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 01, 02, 03, 04, 05 (merged on master; the `permission-switch` branch is cut from master after them)
 
@@ -40,17 +40,17 @@ Evaluation order, Pills), the research (sections 1, 4.5, 7.5, 9 and 10).
 
 ## Acceptance criteria
 
-- [ ] `TestIntegration_PermissionSuitesAnswerTheSameWithAMemo` and `…LiveAudienceMemo_FollowsEveryChange` pass with
+- [x] `TestIntegration_PermissionSuitesAnswerTheSameWithAMemo` and `…LiveAudienceMemo_FollowsEveryChange` pass with
       the fixture's `uClient` as a client listed in one project.
-- [ ] `TestListTools_ShowWhatTheRowByRowCheckShowed`: `restrictedClient` becomes an unlisted member and a member with
+- [x] `TestListTools_ShowWhatTheRowByRowCheckShowed`: `restrictedClient` becomes an unlisted member and a member with
       zero roles; `doc_list` parity becomes "listed equals openable".
-- [ ] The "docs list" and "a play's queued runs" rows of `TestStatements_ListsCostTheSameAtAnyLength` keep their
+- [x] The "docs list" and "a play's queued runs" rows of `TestStatements_ListsCostTheSameAtAnyLength` keep their
       counts; `TestCanDocs_ReadsEachLayerOnceForTheLot` moves out of `restricted_test.go`; the slice 01 parity test
       runs over the new fixture.
-- [ ] The access and chat tests in research section 10 are deleted or rewritten.
-- [ ] A zero-role member reads People, public channels, DMs and the inbox, starts a DM with an Owner, and reaches
+- [x] The access and chat tests in research section 10 are deleted or rewritten.
+- [x] A zero-role member reads People, public channels, DMs and the inbox, starts a DM with an Owner, and reaches
       nothing in a project.
-- [ ] Pills from an unlisted project show their full content, locked.
-- [ ] A creator's new project opens for them, over HTTP and MCP.
-- [ ] `doc_list`, `ticket_list` and one live frame: statements and median time on the heavy copy, before and after,
+- [x] Pills from an unlisted project show their full content, locked.
+- [x] A creator's new project opens for them, over HTTP and MCP.
+- [x] `doc_list`, `ticket_list` and one live frame: statements and median time on the heavy copy, before and after,
       in the commit message.

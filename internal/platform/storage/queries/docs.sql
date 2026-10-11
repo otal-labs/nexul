@@ -16,7 +16,7 @@ SELECT * FROM docs WHERE project_id = ? ORDER BY created_at;
 -- name: ListDocScopes :many
 SELECT d.id, COALESCE(d.project_id, '') AS project_id, COALESCE(p.workspace_id, '') AS workspace_id
 FROM docs d LEFT JOIN projects p ON p.id = d.project_id
-WHERE d.id IN (sqlc.slice('ids'));
+WHERE d.id IN (SELECT value FROM json_each(sqlc.arg(ids)));
 
 -- name: UpdateDoc :execrows
 UPDATE docs SET title = ?, body = ?, body_md = ?, version = ?, updated_at = ? WHERE id = ?;

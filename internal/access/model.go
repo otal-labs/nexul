@@ -38,8 +38,6 @@ type RoleInfo struct {
 	RoleID      string
 	IsOwnerRole bool
 	Permissions permissions.Set
-	// Restricted is a Restricted member's membership: project areas answer from Project access alone (ADR 0097).
-	Restricted bool
 	// Roles are every role held, in the order given; empty means RoleID alone.
 	Roles []HeldRole
 }
@@ -52,8 +50,8 @@ type HeldRole struct {
 }
 
 // RolesHeld is the RoleInfo of a member holding roles, in the order given.
-func RolesHeld(restricted bool, roles ...HeldRole) RoleInfo {
-	info := RoleInfo{Restricted: restricted, Roles: roles}
+func RolesHeld(roles ...HeldRole) RoleInfo {
+	info := RoleInfo{Roles: roles}
 	var union []permissions.Action
 	for _, r := range roles {
 		info.IsOwnerRole = info.IsOwnerRole || r.IsOwner
@@ -90,12 +88,12 @@ func (r RoleInfo) sourceRole(action permissions.Action) string {
 
 // The kinds of Source: what decided an answer.
 const (
-	SourceOwner        = "owner"
-	SourceMember       = "member"
-	SourceRole         = "role"
-	SourceRule         = "rule"
-	SourceRestricted   = "restricted"
-	SourceNotInProject = "not_in_project"
+	SourceOwner          = "owner"
+	SourceMember         = "member"
+	SourceRole           = "role"
+	SourceRule           = "rule"
+	SourceOutsideProject = "outside_project"
+	SourceNotInProject   = "not_in_project"
 )
 
 // The states a Source sets, and the targets a rule names.
@@ -107,8 +105,8 @@ const (
 	TargetPerson  = "person"
 )
 
-// Source is what decided an access answer, as ids (ADR 0148): the Owner role, membership, the person's role, a rule
-// on an entity, a Restricted member's Project access, or a project hidden from them.
+// Source is what decided an access answer, as ids (ADR 0148): the Owner role, membership, the person's roles, a rule
+// on an entity, a project-area action asked outside any project, or a project the person is not in.
 type Source struct {
 	Kind       string `json:"kind"`
 	EntityType string `json:"entity_type"`

@@ -243,7 +243,7 @@ func grantFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	}
 	switch p.ResourceType {
 	case "project":
-		return a.access.RequireProject(ctx, p.ResourceID, permissions.MembersWrite) == nil
+		return a.access.RequireProject(ctx, p.ResourceID, permissions.ProjectsAccess) == nil
 	case "doc":
 		manages, _, err := a.access.Decide(ctx, actorID(ctx), p.ResourceType, p.ResourceID, permissions.PermissionsWrite)
 		return err == nil && manages
@@ -280,7 +280,7 @@ func topologyCanvasFrame(ctx context.Context, a liveAudience, raw json.RawMessag
 	return decode(raw, &p) && p.WorkspaceID != "" && a.access.Require(ctx, p.WorkspaceID, permissions.TopologyRead) == nil
 }
 
-// installationFrame reaches who reads projects in the workspace: the installations card names the workspaces they read
+// installationFrame reaches who may create projects in the workspace: the installations card names those workspaces
 // as using an account.
 func installationFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	var p struct {
@@ -289,7 +289,7 @@ func installationFrame(ctx context.Context, a liveAudience, raw json.RawMessage)
 	if !decode(raw, &p) || p.WorkspaceID == "" {
 		return false
 	}
-	return a.access.Require(ctx, p.WorkspaceID, permissions.ProjectsRead) == nil
+	return a.access.Require(ctx, p.WorkspaceID, permissions.ProjectsCreate) == nil
 }
 
 func anywhere(action permissions.Action) liveRule {

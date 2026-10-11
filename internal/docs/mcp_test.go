@@ -45,7 +45,7 @@ func TestMCPTools_Surface(t *testing.T) {
 func TestMCPTools_Errors(t *testing.T) {
 	repo := newFakeRepo()
 	d := mustDoc(t, newTestService(repo), "project-1", "Spec", "body")
-	allowed, denied := newTestService(repo), newDenyService(repo)
+	allowed, denied, readOnly := newTestService(repo), newDenyService(repo), newReadOnlyService(repo)
 	tests := []struct {
 		name    string
 		svc     *Service
@@ -63,12 +63,13 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"list with a blank query", allowed, testCtx(), "doc_list", `{"query":" "}`, apperrs.ErrInvalid},
 		{"get a missing doc", allowed, testCtx(), "doc_get", `{"id":"nope"}`, apperrs.ErrNotFound},
 		{"update a missing doc", allowed, testCtx(), "doc_update", `{"id":"nope","title":"x"}`, apperrs.ErrNotFound},
-		{"get without read", denied, testCtx(), "doc_get", `{"id":"` + d.ID + `"}`, apperrs.ErrForbidden},
-		{"update without read or write", denied, testCtx(), "doc_update", `{"id":"` + d.ID + `","title":"x"}`, apperrs.ErrForbidden},
-		{"watch without read", denied, testCtx(), "doc_update", `{"id":"` + d.ID + `","watch":true}`, apperrs.ErrForbidden},
+		{"get without read", denied, testCtx(), "doc_get", `{"id":"` + d.ID + `"}`, apperrs.ErrNotFound},
+		{"update without read or write", denied, testCtx(), "doc_update", `{"id":"` + d.ID + `","title":"x"}`, apperrs.ErrNotFound},
+		{"update without write", readOnly, testCtx(), "doc_update", `{"id":"` + d.ID + `","title":"x"}`, apperrs.ErrForbidden},
+		{"watch without read", denied, testCtx(), "doc_update", `{"id":"` + d.ID + `","watch":true}`, apperrs.ErrNotFound},
 		{"delete without id", allowed, testCtx(), "doc_delete", `{}`, apperrs.ErrInvalid},
 		{"delete a missing doc", allowed, testCtx(), "doc_delete", `{"id":"nope"}`, apperrs.ErrNotFound},
-		{"delete without the delete bit", denied, testCtx(), "doc_delete", `{"id":"` + d.ID + `"}`, apperrs.ErrForbidden},
+		{"delete without the delete bit", readOnly, testCtx(), "doc_delete", `{"id":"` + d.ID + `"}`, apperrs.ErrForbidden},
 		{"create without an actor", allowed, context.Background(), "doc_create", `{"project_id":"project-1","title":"Spec"}`, apperrs.ErrUnauthorized},
 	}
 	for _, tt := range tests {
@@ -214,11 +215,10 @@ func TestDocList(t *testing.T) {
 		assert.Equal(t, 2, p.Total)
 		assert.True(t, p.HasMore)
 	})
-	t.Run("a doc the caller cannot open is listed without access", func(t *testing.T) {
+	t.Run("a doc the caller cannot read is left out, and counts for nothing", func(t *testing.T) {
 		p := page(t, newDenyService(repo), `{"project_id":"project-1"}`)
-		require.Len(t, p.Items, 1)
-		assert.False(t, p.Items[0].CanOpen)
-		assert.Empty(t, p.Items[0].Snippet)
+		assert.Empty(t, p.Items)
+		assert.Zero(t, p.Total)
 	})
 	t.Run("a search leaves out what the caller cannot read, and counts only the rest", func(t *testing.T) {
 		readsSpine := NewService(repo, fakeAccess{readable: []string{spine.ID}}, nil)

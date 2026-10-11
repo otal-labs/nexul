@@ -24,6 +24,8 @@ type Project struct {
 	UpdatedAt     time.Time     `json:"updated_at"`
 	// SeedTicketTypes are the types creating the project seeds; empty seeds DefaultTicketTypes.
 	SeedTicketTypes []TicketType `json:"-"`
+	// CreatorID is whom creating the project lists in it, with their roles; empty for the server's own create.
+	CreatorID string `json:"-"`
 }
 
 // ProjectSetup is the project wizard's record of a project (ADR 0143): until Finished, the sidebar offers Continue setup.

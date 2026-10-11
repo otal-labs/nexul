@@ -59,7 +59,7 @@ func accessGrantListTool(s *Service) mcptool.Tool {
 			"their allow and deny sets; change them with permission_overwrite_update. With user_id it returns instead "+
 			"that person's effective answer for each action the doc's, play's, or project's rules may set, with "+
 			"allowed and a source naming the rule or role that decided it; your own needs only opening the entity, "+
-			"anyone else's its manage permission (members:write for a project).",
+			"anyone else's its manage permission (projects:access for a project).",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in accessGrantListIn) (any, error) {
 			if in.UserID != "" {

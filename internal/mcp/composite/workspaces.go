@@ -61,7 +61,7 @@ type workspaceUpdateIn struct {
 	Name                 *string  `json:"name,omitempty" jsonschema:"The workspace's new display name, for example Norwood Labs. Omit to keep it."`
 	Slug                 *string  `json:"slug,omitempty" jsonschema:"The workspace's new name in web links, for example norwood: lowercase letters and digits joined by single dashes, at most 48 characters, not a reserved path such as settings, and not taken by another workspace. Omit to keep it."`
 	AutoPlayDailyCap     *int     `json:"auto_play_daily_cap,omitempty" jsonschema:"How many automatic runs auto plays may start on one ticket per rolling day, across every auto play, 1 to 50; a ticket past it pauses its auto plays. Omit to keep it."`
-	RemoveGitHubAccounts []string `json:"remove_github_accounts,omitempty" jsonschema:"GitHub accounts or organisations, by login such as acme, to detach from this workspace: background work there stops reading their repositories as the GitHub App until someone attaches one again with project_update. Needs projects:write in this workspace."`
+	RemoveGitHubAccounts []string `json:"remove_github_accounts,omitempty" jsonschema:"GitHub accounts or organisations, by login such as acme, to detach from this workspace: background work there stops reading their repositories as the GitHub App until someone attaches one again with project_update. Needs projects:create in this workspace."`
 }
 
 type workspaceUpdateResult struct {
@@ -83,7 +83,7 @@ func workspaceUpdateTool(w WorkspaceService, limits AutoPlayLimits, accounts Git
 		"Changes a workspace's display name, its slug, its daily cap on automatic runs per ticket, detaches GitHub accounts from it, or several; a field you omit keeps its value. "+
 			"Changing the slug moves every web link into the workspace, so links using the old slug stop working and are not redirected; "+
 			"a rename that keeps the slug leaves every link working. "+
-			"The name and slug need workspaces:write in that workspace and apply first; auto_play_daily_cap needs autoplays:write; remove_github_accounts needs projects:write and applies last. "+
+			"The name and slug need workspaces:write in that workspace and apply first; auto_play_daily_cap needs autoplays:write; remove_github_accounts needs projects:create and applies last. "+
 			"Returns the workspace's id, name, and slug as they now stand, with the cap and the GitHub accounts when they changed; workspace_list finds the id.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in workspaceUpdateIn) (any, error) {

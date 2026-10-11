@@ -61,7 +61,8 @@ INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, 
 	assert.Equal(t, "role-owner", owner.RoleID)
 	dev, err := s.WorkspaceMembers.MemberRole(ctx, "workspace-default", "bob")
 	require.NoError(t, err)
-	assert.Equal(t, permissions.SetOf(permissions.TicketsRead, permissions.TicketsWrite, permissions.MembersWrite), dev.Permissions, "a role's set")
+	assert.Equal(t, permissions.SetOf(permissions.TicketsRead, permissions.TicketsWrite, permissions.MembersWrite, permissions.ProjectsAccess), dev.Permissions,
+		"a role's set, with what 0099 gives a members:write holder")
 	restricted, err := s.WorkspaceMembers.Member(ctx, "workspace-default", "sam")
 	require.NoError(t, err)
 	assert.True(t, restricted.Restricted, "a Restricted member")

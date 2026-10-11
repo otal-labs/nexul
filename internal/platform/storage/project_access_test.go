@@ -133,41 +133,36 @@ func TestWorkspaceMembers_ProjectMemberIDs_AreWhoMayOpenTheProject(t *testing.T)
 	ctx := t.Context()
 	now := time.Now().UTC()
 	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-2", "Beta")))
-	require.NoError(t, s.Roles.Create(ctx, &roles.Role{ID: "role-own", WorkspaceID: "workspace-default", Name: "Owner", IsOwnerRole: true, CreatedAt: now, UpdatedAt: now}))
-	require.NoError(t, s.Roles.Create(ctx, &roles.Role{ID: "role-dev", WorkspaceID: "workspace-default", Name: "Developer", CreatedAt: now, UpdatedAt: now}))
-	require.NoError(t, s.Roles.Create(ctx, &roles.Role{ID: "role-beta", WorkspaceID: "ws-2", Name: "Member", CreatedAt: now, UpdatedAt: now}))
-	members := []struct {
-		user, role string
-		restricted bool
-	}{
-		{"u-owner", "role-own", true}, {"u-dev", "role-dev", false}, {"u-client", "role-dev", true},
-		{"u-shut", "role-dev", true}, {"u-denied", "role-dev", true}, {"u-role", "role-dev", true},
+	for _, r := range []*roles.Role{
+		{ID: "role-own", WorkspaceID: "workspace-default", Name: "Owner", IsOwnerRole: true},
+		{ID: "role-dev", WorkspaceID: "workspace-default", Name: "Developer"},
+		{ID: "role-other", WorkspaceID: "workspace-default", Name: "Client"},
+		{ID: "role-beta", WorkspaceID: "ws-2", Name: "Member"},
+	} {
+		r.CreatedAt, r.UpdatedAt = now, now
+		require.NoError(t, s.Roles.Create(ctx, r))
+	}
+	members := []struct{ user, role string }{
+		{"u-owner", "role-own"}, {"u-dev", "role-dev"}, {"u-named", "role-other"}, {"u-kept", "role-dev"}, {"u-out", "role-other"},
 	}
 	for i, m := range members {
 		mustCreateUser(t, s, m.user, m.user)
 		require.NoError(t, s.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: m.user, WorkspaceID: "workspace-default", RoleID: m.role, CreatedAt: now.Add(time.Duration(i) * time.Second)}))
-		require.NoError(t, s.WorkspaceMembers.SetRestricted(ctx, "workspace-default", m.user, m.restricted))
 	}
 	mustCreateUser(t, s, "u-beta", "beta")
 	require.NoError(t, s.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: "u-beta", WorkspaceID: "ws-2", RoleID: "role-beta", CreatedAt: now}))
 	seedProject(t, s, "p-web", "workspace-default", "WEB")
 	seedProject(t, s, "p-api", "workspace-default", "API")
-	require.NoError(t, s.WorkspaceMembers.SetProjectAccess(ctx, "p-web", "u-client", permissions.SetOf(permissions.TicketsRead)))
-	require.NoError(t, s.WorkspaceMembers.SetProjectAccess(ctx, "p-api", "u-shut", permissions.SetOf(permissions.TicketsRead)))
-	require.NoError(t, s.Access.Set(ctx, "project", "p-web", "u-denied", nil, permissions.SetOf(permissions.TicketsRead)))
-	_, err := s.db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, allow, deny, created_at, updated_at)
-VALUES ('project', 'p-web', 'role', 'role-dev', '["projects:open"]', '[]', 1, 1)`)
-	require.NoError(t, err)
+	open := permissions.SetOf(permissions.ProjectsOpen)
+	require.NoError(t, s.Access.SetRole(ctx, "project", "p-web", "role-dev", open, nil))
+	require.NoError(t, s.Access.Set(ctx, "project", "p-web", "u-named", permissions.SetOf(permissions.ProjectsOpen, permissions.TicketsRead), nil))
+	require.NoError(t, s.Access.Set(ctx, "project", "p-web", "u-kept", nil, open))
+	require.NoError(t, s.Access.Set(ctx, "project", "p-api", "u-out", open, nil))
 
 	ids, err := s.WorkspaceMembers.ProjectMemberIDs(ctx, "workspace-default", "p-web")
 
 	require.NoError(t, err)
-	assert.Equal(t, []string{"u-owner", "u-dev", "u-client"}, ids)
-	all, err := s.WorkspaceMembers.ListAllProjectAccess(ctx)
-	require.NoError(t, err)
-	for _, row := range all {
-		assert.NotEmpty(t, row.UserID, "a rule for a role is nobody's Project access")
-	}
+	assert.Equal(t, []string{"u-owner", "u-dev", "u-named"}, ids, "the Owner, a listed role, a person by name; not one kept out")
 }
 
 func TestProjectsRepo_ListRestrictedAccess_NamesOnlyRestrictedMembers(t *testing.T) {

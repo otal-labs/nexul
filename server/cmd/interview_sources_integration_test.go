@@ -29,6 +29,7 @@ func TestIntegration_DocSourceFollowsTheReadersAccess(t *testing.T) {
 	role := &roles.Role{ID: "role-memo", WorkspaceID: "workspace-default", Name: "Memo", Permissions: grant("memories:read", "memories:write"), CreatedAt: now, UpdatedAt: now}
 	require.NoError(t, f.store.Roles.Create(ctx, role))
 	require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: uMemo, WorkspaceID: "workspace-default", RoleID: role.ID, CreatedAt: now}))
+	listRolesIn(t, f.db, pGeneral)
 
 	doc := memories.InterviewSource{ProjectID: "project-general", Kind: memories.SourceDoc, Ref: f.doc, Stance: memories.StanceFollow}
 	_, err = mem.AddSource(as(uMemo), doc)

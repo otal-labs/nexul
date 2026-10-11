@@ -10,7 +10,7 @@ import (
 
 func TestCatalog_GridShape(t *testing.T) {
 	catalog := Catalog()
-	require.Len(t, catalog, 92)
+	require.Len(t, catalog, 94)
 	assert.Equal(t, Info{Value: "docs:read", Label: "Read docs", Domain: "docs", Action: "read", Area: AreaProject}, catalog[0])
 	assert.Equal(t, Info{Value: "docs:write", Label: "Create and update docs", Domain: "docs", Action: "write", Area: AreaProject}, catalog[1])
 	assert.Equal(t, Info{Value: "docs:delete", Label: "Delete docs", Domain: "docs", Action: "delete", Area: AreaProject}, catalog[2])
@@ -35,7 +35,7 @@ func TestCatalog_GridShape(t *testing.T) {
 	}())
 }
 
-// The area decides what a Restricted member reaches (ADR 0097), so the rows that sit on a non-obvious side are pinned.
+// The area decides what counts only inside a project (ADR 0148), so the rows that sit on a non-obvious side are pinned.
 func TestAreaOf(t *testing.T) {
 	tests := []struct {
 		action Action
@@ -45,6 +45,9 @@ func TestAreaOf(t *testing.T) {
 		{"bogus:read", AreaWorkspace},
 		{PermissionsWrite, AreaProject},
 		{ProjectsWrite, AreaProject},
+		{ProjectsAccess, AreaProject},
+		{ProjectsOpen, AreaProject},
+		{ProjectsCreate, AreaWorkspace},
 		{"attachments:read", AreaProject},
 		{"repositories:write", AreaProject},
 		{PlaysRun, AreaWorkspace},
@@ -89,6 +92,8 @@ func TestCatalog_DomainDeclaredVerbs(t *testing.T) {
 		{StacksLogs, "Read container logs", "stacks", "logs"},
 		{RolesClone, "Clone roles to another workspace", "roles", "clone"},
 		{WorkspacesCreate, "Create workspaces", "workspaces", "create"},
+		{ProjectsCreate, "Create projects", "projects", "create"},
+		{ProjectsAccess, "Manage this project's access", "projects", "access"},
 	}
 	for _, tt := range tests {
 		t.Run(string(tt.value), func(t *testing.T) {
@@ -128,6 +133,7 @@ func TestParseAction(t *testing.T) {
 		{"channels delete", "channels:delete", ChannelsDelete, true},
 		{"a verb channels didn't declare", "channels:clone", "", false},
 		{"a verb another domain didn't declare", "plays:clone", "", false},
+		{"In this project, which only a rule holds", "projects:open", "", false},
 		{"a verb tickets didn't declare", "tickets:run", "", false},
 	}
 	for _, tt := range tests {
@@ -137,6 +143,17 @@ func TestParseAction(t *testing.T) {
 			assert.Equal(t, tt.ok, ok)
 		})
 	}
+}
+
+func TestParseRuleAction_AlsoTakesWhatOnlyARuleHolds(t *testing.T) {
+	got, ok := ParseRuleAction(" projects:open ")
+	assert.True(t, ok)
+	assert.Equal(t, ProjectsOpen, got)
+	got, ok = ParseRuleAction("docs:read")
+	assert.True(t, ok)
+	assert.Equal(t, DocsRead, got)
+	_, ok = ParseRuleAction("projects:run")
+	assert.False(t, ok)
 }
 
 func TestSet_HasWithWithout(t *testing.T) {

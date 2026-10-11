@@ -265,17 +265,18 @@ func TestDocsHandler_WatchUnwatch(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, serve(t, h, http.MethodPut, "/api/docs/nope/watchers/me", "").Code)
 }
 
-func TestDocsHandler_Forbidden(t *testing.T) {
+func TestDocsHandler_UnreadableIsNotFound(t *testing.T) {
 	repo := newFakeRepo()
 	created, err := newTestService(repo).Create(testCtx(), "project-1", "A", "1")
 	require.NoError(t, err)
-	h := NewHandler(newDenyService(repo)).Routes()
 
-	rec := serve(t, h, http.MethodGet, "/api/docs/"+created.ID, "")
-	assert.Equal(t, http.StatusForbidden, rec.Code)
+	rec := serve(t, NewHandler(newDenyService(repo)).Routes(), http.MethodGet, "/api/docs/"+created.ID, "")
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	rec = serve(t, NewHandler(newReadOnlyService(repo)).Routes(), http.MethodDelete, "/api/docs/"+created.ID, "")
+	assert.Equal(t, http.StatusForbidden, rec.Code, "an action refused on a doc they read is forbidden")
 }
 
-func TestDocsHandler_ListDisclosure(t *testing.T) {
+func TestDocsHandler_ListLeavesOutWhatTheyCantRead(t *testing.T) {
 	repo := newFakeRepo()
 	_, err := newTestService(repo).Create(testCtx(), "project-1", "secret title", "secret body")
 	require.NoError(t, err)
@@ -285,9 +286,7 @@ func TestDocsHandler_ListDisclosure(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	var items []DocListItem
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &items))
-	require.Len(t, items, 1)
-	assert.False(t, items[0].CanOpen)
-	assert.Equal(t, "secret title", items[0].Title)
+	assert.Empty(t, items)
 }
 
 func TestDocsHandler_ImportMarkdown(t *testing.T) {

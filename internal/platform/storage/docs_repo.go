@@ -69,7 +69,7 @@ func (r *DocsRepo) ScopesOf(ctx context.Context, ids []string) (map[string]acces
 	if len(ids) == 0 {
 		return out, nil
 	}
-	rows, err := r.q.ListDocScopes(ctx, ids)
+	rows, err := r.q.ListDocScopes(ctx, idsJSON(ids))
 	if err != nil {
 		return nil, fmt.Errorf("scopes of docs: %w", err)
 	}
@@ -264,7 +264,12 @@ func (r *DocsRepo) Page(ctx context.Context, f docs.DocFilter, scope docs.DocSco
 	if !scope.All {
 		q.where("d.project_id IN (SELECT value FROM json_each(?))", idsJSON(scope.ProjectIDs))
 	}
-	if read := scope.Read; read != nil {
+	read := scope.Read
+	if read != nil && len(read.Allowed)+len(read.Denied) == 0 {
+		// No doc's own rule turns its project's answer, so the index on project_id serves the filter alone.
+		q.where("d.project_id IN (SELECT value FROM json_each(?))", idsJSON(read.ProjectIDs))
+	}
+	if read != nil && len(read.Allowed)+len(read.Denied) > 0 {
 		q.where(`((d.project_id IN (SELECT value FROM json_each(?)) AND d.id NOT IN (SELECT value FROM json_each(?)))
 			OR d.id IN (SELECT value FROM json_each(?)))`, idsJSON(read.ProjectIDs), idsJSON(read.Denied), idsJSON(read.Allowed))
 	}

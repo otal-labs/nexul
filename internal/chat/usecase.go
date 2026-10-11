@@ -53,14 +53,13 @@ type ThreadGate interface {
 // SetThreadGate wires the per-project thread check; unset, a thread is checked in its workspace instead.
 func (s *Service) SetThreadGate(g ThreadGate) { s.threads = g }
 
-// Standing: the Owner reads every channel, a Restricted member no public one, and a channel's rules may deny the rest.
+// Standing: the Owner reads every channel, and a channel's rules may deny anyone else.
 type Standing interface {
 	IsOwner(ctx context.Context, userID, workspaceID string) (bool, error)
-	IsRestricted(ctx context.Context, userID, workspaceID string) (bool, error)
 	ChannelsDenied(ctx context.Context, userID, workspaceID string, channelIDs []string) (map[string]bool, error)
 }
 
-// SetStanding wires the Owner, Restricted member and channel rule lookups; unset, nobody is any of them.
+// SetStanding wires the Owner and channel rule lookups; unset, nobody is the Owner and no rule denies.
 func (s *Service) SetStanding(st Standing) { s.standing = st }
 
 // SetMembership wires the membership lookup; unset, only the server's own calls may start a DM.
@@ -143,7 +142,7 @@ func (s *Service) reads(ctx context.Context, userID string, c *Conversation) err
 	return nil
 }
 
-// readsChannel: a channel is read by its members (everyone but a Restricted member if public) unless its rules deny them.
+// readsChannel: a channel is read by its members (every member if public) unless its rules deny them.
 func (s *Service) readsChannel(ctx context.Context, userID string, c *Conversation) (bool, error) {
 	denied, err := s.deniedChannels(ctx, userID, []*Conversation{c})
 	if err != nil {
@@ -155,8 +154,7 @@ func (s *Service) readsChannel(ctx context.Context, userID string, c *Conversati
 // readsChannelUnless is readsChannel with the channel's rules already read, so a list reads them once for every row.
 func (s *Service) readsChannelUnless(ctx context.Context, userID string, c *Conversation, denied bool) (bool, error) {
 	if !c.Private {
-		restricted, err := s.standingOf(ctx, Standing.IsRestricted, userID, c.WorkspaceID)
-		return !restricted && !denied, err
+		return !denied, nil
 	}
 	if slices.Contains(c.ParticipantIDs, userID) && !denied {
 		return true, nil
@@ -247,9 +245,6 @@ func (s *Service) createChannelKind(ctx context.Context, c *Conversation, member
 		return nil, err
 	}
 	if !c.Private {
-		if err := s.refuseRestricted(ctx, c.CreatedBy, c.WorkspaceID); err != nil {
-			return nil, err
-		}
 		return s.createConversation(ctx, c, []string{c.CreatedBy})
 	}
 	members := dedupeParticipants(c.CreatedBy, memberIDs)
@@ -258,18 +253,6 @@ func (s *Service) createChannelKind(ctx context.Context, c *Conversation, member
 	}
 	c.ParticipantIDs = members
 	return s.createConversation(ctx, c, members)
-}
-
-// refuseRestricted refuses a Restricted member anything that leaves a channel public, which they could not then read.
-func (s *Service) refuseRestricted(ctx context.Context, userID, workspaceID string) error {
-	restricted, err := s.standingOf(ctx, Standing.IsRestricted, userID, workspaceID)
-	if err != nil {
-		return err
-	}
-	if restricted {
-		return fmt.Errorf("%w: a member who sees only some projects may only have private channels", apperrs.ErrForbidden)
-	}
-	return nil
 }
 
 // channelName is the one validation a channel's name goes through, on create and on rename.
@@ -354,9 +337,6 @@ func (s *Service) SetChannelPrivate(ctx context.Context, id string, private bool
 	}
 	actor := actorID(ctx)
 	if !private {
-		if err := s.refuseRestricted(ctx, actor, c.WorkspaceID); err != nil {
-			return nil, err
-		}
 		return s.switchPrivate(ctx, c, false, nil, nil)
 	}
 	members := cleanIDs(append([]string{actor}, keepUserIDs...))

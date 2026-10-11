@@ -37,7 +37,7 @@ func (m fakeMembers) MemberIDs(context.Context, string) ([]string, error) {
 }
 
 type fakeStanding struct {
-	owners, restricted []string
+	owners []string
 	// denied is the channels a rule denies each person, and failRules fails every rule read.
 	denied    map[string][]string
 	failRules error
@@ -55,10 +55,6 @@ func (f fakeStanding) ChannelsDenied(_ context.Context, userID, _ string, channe
 
 func (f fakeStanding) IsOwner(_ context.Context, userID, _ string) (bool, error) {
 	return slices.Contains(f.owners, userID), nil
-}
-
-func (f fakeStanding) IsRestricted(_ context.Context, userID, _ string) (bool, error) {
-	return slices.Contains(f.restricted, userID), nil
 }
 
 // fakeThreads refuses the tickets and projects it lists as not found, the way a hidden project reads; the server's
@@ -99,13 +95,13 @@ type privateFixture struct {
 	eng, secret *Conversation
 }
 
-func newPrivateFixture(t *testing.T, restricted ...string) privateFixture {
+func newPrivateFixture(t *testing.T) privateFixture {
 	t.Helper()
 	repo := newFakeRepo()
 	s := newTestService(repo)
 	s.SetGate(refuseGate{"u-2": {permissions.ChannelsWrite}, "u-3": {permissions.ChannelsWrite}})
 	s.SetMembership(fakeMembers{"u-1", "u-2", "u-3", "u-owner"})
-	s.SetStanding(fakeStanding{owners: []string{"u-owner"}, restricted: restricted})
+	s.SetStanding(fakeStanding{owners: []string{"u-owner"}})
 	eng, err := s.CreateChannel(as("u-1"), "w-1", "u-1", "eng")
 	require.NoError(t, err)
 	secret, err := s.CreatePrivateChannel(as("u-1"), "w-1", "u-1", "secret", KindChannel, []string{"u-2"})
@@ -134,7 +130,7 @@ func listedIDs(t *testing.T, s *Service, userID string) []string {
 }
 
 func TestSetChannelPrivate_Refusals(t *testing.T) {
-	f := newPrivateFixture(t, "u-2")
+	f := newPrivateFixture(t)
 	require.NoError(t, f.s.EnsureGeneralChannel(context.Background(), "w-1", "u-1"))
 	general, err := f.repo.GetChannelByName(context.Background(), "w-1", GeneralChannelName)
 	require.NoError(t, err)
@@ -157,7 +153,7 @@ func TestSetChannelPrivate_Refusals(t *testing.T) {
 		{"a private channel the caller is not in reads as not found", "u-3", f.secret.ID, false, nil, apperrs.ErrNotFound},
 		{"without channels:write", "u-3", f.eng.ID, true, nil, apperrs.ErrForbidden},
 		{"keeping someone outside the workspace", "u-1", f.eng.ID, true, []string{"u-9"}, apperrs.ErrNotFound},
-		{"a Restricted member never makes a channel public", "u-2", f.secret.ID, false, nil, apperrs.ErrForbidden},
+		{"a member of a private channel without channels:write never makes it public", "u-2", f.secret.ID, false, nil, apperrs.ErrForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -243,18 +239,6 @@ func TestCreatePrivateChannel(t *testing.T) {
 		assert.True(t, created[len(created)-1].Payload.(ConversationCreatedEvent).Conversation.Private)
 		_, err := f.s.GetConversation(as("u-3"), f.secret.ID)
 		require.ErrorIs(t, err, apperrs.ErrNotFound)
-	})
-	t.Run("a Restricted member creates only private channels", func(t *testing.T) {
-		f := newPrivateFixture(t)
-		f.s.SetStanding(fakeStanding{restricted: []string{"u-1"}})
-		_, err := f.s.CreateChannel(as("u-1"), "w-1", "u-1", "open")
-		require.ErrorIs(t, err, apperrs.ErrForbidden)
-		_, err = f.s.CreateVoiceChannel(as("u-1"), "w-1", "u-1", "open")
-		require.ErrorIs(t, err, apperrs.ErrForbidden)
-		c, err := f.s.CreatePrivateChannel(as("u-1"), "w-1", "u-1", "client", KindVoiceChannel, nil)
-		require.NoError(t, err)
-		assert.Equal(t, []string{"u-1"}, c.ParticipantIDs, "created with them in it")
-		assert.Contains(t, listedIDs(t, f.s, "u-1"), c.ID)
 	})
 }
 
@@ -396,8 +380,10 @@ func TestReadsDeleted_APrivateChannelReachesItsMembersAndTheOwner(t *testing.T) 
 	assert.True(t, f.s.ReadsDeleted(as("u-3"), public))
 }
 
-func TestRestrictedMember_ReadsDMsTheirPrivateChannelsAndReadableThreads(t *testing.T) {
-	f := newPrivateFixture(t, "u-2")
+// TestMember_ReadsPublicChannelsDMsAndOnlyThreadsOfProjectsTheyAreIn: being in no project hides that project's threads
+// and nothing else in chat (ADR 0148).
+func TestMember_ReadsPublicChannelsDMsAndOnlyThreadsOfProjectsTheyAreIn(t *testing.T) {
+	f := newPrivateFixture(t)
 	f.s.SetThreadGate(fakeThreads{hiddenTickets: []string{"ticket-hidden"}, hiddenProjects: []string{"project-hidden"}})
 	dm, err := f.s.CreateDM(as("u-1"), "w-1", "u-1", []string{"u-2"})
 	require.NoError(t, err)
@@ -413,25 +399,52 @@ func TestRestrictedMember_ReadsDMsTheirPrivateChannelsAndReadableThreads(t *test
 		threads = append(threads, c)
 	}
 
-	assert.ElementsMatch(t, []string{f.secret.ID, dm.ID, threads[0].ID, threads[2].ID}, listedIDs(t, f.s, "u-2"))
+	assert.ElementsMatch(t, []string{f.eng.ID, f.secret.ID, dm.ID, threads[0].ID, threads[2].ID}, listedIDs(t, f.s, "u-2"))
 	_, err = f.s.GetConversation(as("u-2"), f.eng.ID)
-	require.ErrorIs(t, err, apperrs.ErrNotFound, "a Restricted member reads no public channel")
+	require.NoError(t, err, "every member reads a public channel")
 	_, err = f.s.ListMessages(as("u-2"), threads[1].ID, "u-2", 50)
-	require.ErrorIs(t, err, apperrs.ErrNotFound, "a thread of a hidden project reads as not found")
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "a thread of a project they are not in reads as not found")
 	marks, err := f.s.HasTicketThreads(as("u-2"), []string{"ticket-open", "ticket-hidden"})
 	require.NoError(t, err)
-	assert.Equal(t, map[string]bool{"ticket-open": true}, marks, "the board marks only threads of projects they hold")
-	_, err = f.s.GetOrCreateTicketThread(as("u-2"), "w-1", "ticket-other", "u-2")
-	require.NoError(t, err, "a ticket in a project they hold starts a thread")
+	assert.Equal(t, map[string]bool{"ticket-open": true}, marks, "the board marks only threads of projects they are in")
 	f.s.SetThreadGate(fakeThreads{hiddenTickets: []string{"ticket-new"}})
 	_, err = f.s.GetOrCreateTicketThread(as("u-2"), "w-1", "ticket-new", "u-2")
-	require.ErrorIs(t, err, apperrs.ErrNotFound, "a hidden ticket starts no thread")
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "a ticket in a project they are not in starts no thread")
 
 	counts, err := f.s.UnreadCounts(as("u-2"), "w-1", "u-2")
 	require.NoError(t, err)
-	assert.NotContains(t, counts, f.eng.ID)
+	assert.Contains(t, counts, f.eng.ID)
 	assert.Contains(t, counts, f.secret.ID)
-	assert.ElementsMatch(t, []string{f.secret.ID, f.eng.ID, dm.ID}, listedIDs(t, f.s, "u-1"), "everyone else lists as before")
+}
+
+// TestCreateDM_WithOnlyOwnersTakesMembershipAlone: someone holding no role can still reach the workspace's Owners.
+func TestCreateDM_WithOnlyOwnersTakesMembershipAlone(t *testing.T) {
+	f := newPrivateFixture(t)
+	f.s.SetMembership(fakeMembers{"u-1", "u-none", "u-owner", "u-owner-2"})
+	f.s.SetStanding(fakeStanding{owners: []string{"u-owner", "u-owner-2"}})
+	f.s.SetGate(refuseGate{"u-none": {permissions.ChatWrite}})
+
+	tests := []struct {
+		name   string
+		others []string
+		want   error
+	}{
+		{"one Owner", []string{"u-owner"}, nil},
+		{"every Owner", []string{"u-owner", "u-owner-2"}, nil},
+		{"an Owner and someone else", []string{"u-owner", "u-1"}, apperrs.ErrForbidden},
+		{"someone else", []string{"u-1"}, apperrs.ErrForbidden},
+		{"nobody but themselves", nil, apperrs.ErrForbidden},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := f.s.CreateDM(as("u-none"), "w-1", "u-none", tt.others)
+			if tt.want == nil {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorIs(t, err, tt.want)
+		})
+	}
 }
 
 func TestMessageEvents_MarkDMAndPrivateChannelMessagesMembersOnly(t *testing.T) {

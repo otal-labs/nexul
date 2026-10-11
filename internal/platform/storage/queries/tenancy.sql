@@ -76,12 +76,18 @@ ORDER BY p.position, p.id;
 -- name: ListProjectMemberIDs :many
 SELECT m.user_id FROM workspace_members m
 WHERE m.workspace_id = sqlc.arg(workspace_id)
-  AND (m.restricted = 0
-    OR EXISTS (SELECT 1 FROM member_roles mr JOIN roles r ON r.id = mr.role_id
+  AND (EXISTS (SELECT 1 FROM member_roles mr JOIN roles r ON r.id = mr.role_id
                WHERE mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id AND r.is_owner_role = 1)
-    OR EXISTS (SELECT 1 FROM permission_overwrites po
-               WHERE po.resource_type = 'project' AND po.resource_id = sqlc.arg(project_id) AND po.target = 'person'
-                 AND po.user_id = m.user_id AND po.allow != '[]'))
+    OR (NOT EXISTS (SELECT 1 FROM permission_overwrites po, json_each(po.deny) d
+                    WHERE po.resource_type = 'project' AND po.resource_id = sqlc.arg(project_id) AND po.target = 'person'
+                      AND po.user_id = m.user_id AND d.value = 'projects:open')
+      AND (EXISTS (SELECT 1 FROM permission_overwrites po, json_each(po.allow) a
+                   WHERE po.resource_type = 'project' AND po.resource_id = sqlc.arg(project_id) AND po.target = 'person'
+                     AND po.user_id = m.user_id AND a.value = 'projects:open')
+        OR EXISTS (SELECT 1 FROM member_roles mr
+                   JOIN permission_overwrites pr ON pr.role_id = mr.role_id, json_each(pr.allow) a
+                   WHERE mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
+                     AND pr.resource_type = 'project' AND pr.resource_id = sqlc.arg(project_id) AND a.value = 'projects:open'))))
 ORDER BY m.created_at, m.user_id;
 
 -- name: ListTeamProjectAccess :many

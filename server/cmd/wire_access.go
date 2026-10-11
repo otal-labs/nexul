@@ -26,6 +26,19 @@ func (a accessPlayWorkspaceResolver) WorkspaceIDForPlay(ctx context.Context, pla
 	return p.WorkspaceID, nil
 }
 
+// accessRoleWorkspaceResolver reads a role's workspace from the repo directly, past the roles domain's own checks.
+type accessRoleWorkspaceResolver struct {
+	roles *storage.RolesRepo
+}
+
+func (a accessRoleWorkspaceResolver) WorkspaceIDForRole(ctx context.Context, roleID string) (string, error) {
+	r, err := a.roles.Get(ctx, roleID)
+	if err != nil {
+		return "", err
+	}
+	return r.WorkspaceID, nil
+}
+
 // accessNames reads what a source sentence names from storage, past every permission check: the sentence is about
 // an answer already given.
 type accessNames struct {
@@ -129,10 +142,6 @@ func (a accessScopes) ProjectIDs(ctx context.Context, workspaceID string) ([]str
 		ids[i] = p.ID
 	}
 	return ids, nil
-}
-
-func (a accessScopes) UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
-	return a.members.UnrestrictedWorkspaceIDs(ctx, userID)
 }
 
 func (a accessScopes) WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
