@@ -37,6 +37,10 @@ asking the owner anything. This map plans; it builds nothing.
   that only Restricted members had. One role is assumed across schema, queries, invitations, `/me` and MCP, with
   no tool headroom. Restricted also hides public channels. On production the wipe deletes 2 rows and keeps the 32
   creator rows.
+- [The permissions panel and the right-click menu](issues/03-the-permissions-panel.md): a dialog with the targets
+  in a column (a scrolling tab row at 768px) beside each permission as a compact Allow / Fallback / Deny select, the
+  inherited answer and its source under each Fallback, and Check access in the same dialog. A project fronts it with
+  a "People in this project" card, and Permissions… joins every row menu, right-click or ⋯, just above Delete.
 
 ## Not yet specified
 
