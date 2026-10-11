@@ -66,6 +66,18 @@ Their tokens and agents see exactly what they see. A change reaches their open b
 
 A project's **Settings → General** lists, under **People with access**, everyone on chosen projects who can open it. Deleting a project names who loses it before you confirm.
 
+## Why someone can or can't
+
+Every answer has a source: the Owner role, the person's role, an override on the workspace, a doc or a play, or their access to a project. When Nexul refuses something you can see, the message names it, such as `docs:write required (Denied on doc Pricing for bob)` or `tickets:write required (Not allowed: role Client doesn't grant it)`. Something you can't see is not found and says nothing more, so it never confirms it exists.
+
+To see every answer on one doc, play, or project at once, each with its source and the answer it would have without that doc's, play's, or project's own override:
+
+```
+GET /api/permissions/explain?resource_type=doc&resource_id=<id>&user_id=<id>
+```
+
+Leave out `user_id` for your own answers, which take only being able to open it. Someone else's take managing it: `permissions:write` on a doc, `plays:write` on a play, or `members:write` in a project's workspace. Agents ask the same with `permission_overwrite_list` and a `user_id`.
+
 ## Names and pictures
 
 Every member of a workspace sees its people's login, display name, and picture, and nothing about their roles. Set your own name and picture in **Settings → Profile**; a change reaches everyone's open screens without a refresh.

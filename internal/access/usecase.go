@@ -37,6 +37,7 @@ type Service struct {
 	docWorkspace  DocWorkspaceResolver
 	playWorkspace PlayWorkspaceResolver
 	scopes        Scopes
+	names         Names
 	commits       *wake.Broadcast
 	now           func() time.Time
 }
@@ -74,10 +75,11 @@ func (s *Service) HasPermission(ctx context.Context, userID, workspaceID string,
 	case resourceTypeDoc:
 		_, projectID = s.resolveDoc(ctx, resourceID)
 	}
-	return s.check(ctx, userID, workspaceID, projectID, action, resourceType, resourceID)
+	held, _ := s.check(ctx, userID, workspaceID, projectID, action, resourceType, resourceID)
+	return held
 }
 
-func (s *Service) check(ctx context.Context, userID, workspaceID, projectID string, action permissions.Action, resourceType, resourceID string) bool {
+func (s *Service) check(ctx context.Context, userID, workspaceID, projectID string, action permissions.Action, resourceType, resourceID string) (bool, Source) {
 	return decide(s.layers(ctx, userID, workspaceID, projectID), action, func() *Overwrite {
 		if resourceType == "" || resourceType == resourceTypeProject || resourceID == "" {
 			return nil
@@ -90,39 +92,43 @@ func (s *Service) check(ctx context.Context, userID, workspaceID, projectID stri
 	})
 }
 
-// decide answers a check from layers already read; resource, the resource's own overwrite, is read only when the
-// layers leave the answer open.
-func decide(ws workspaceLayers, action permissions.Action, resource func() *Overwrite) bool {
+// decide answers a check from layers already read, with what decided it as ids; resource, the resource's own
+// overwrite, is read only when the layers leave the answer open.
+func decide(ws workspaceLayers, action permissions.Action, resource func() *Overwrite) (bool, Source) {
 	if ws.owner {
-		return true
+		return true, sourceOf(SourceOwner, resourceTypeWorkspace, ws.workspaceID, TargetRole, ws.roleID, true)
 	}
 	if ws.hidden() {
-		return false
+		return false, sourceOf(SourceNotInProject, resourceTypeProject, ws.projectID, TargetPerson, ws.userID, false)
 	}
 	if action == permissions.Member {
-		return ws.member
+		return ws.member, sourceOf(SourceMember, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, ws.member)
 	}
-	allowed := ws.has(action)
+	allowed, src := ws.has(action)
 	if ow := resource(); ow != nil {
-		allowed = applyOverwrite(allowed, ow, action)
+		allowed, src = applyOverwrite(allowed, src, ow, action)
 	}
-	return allowed
+	return allowed, src
 }
 
 // workspaceLayers is the role set, workspace-wide overwrite, and for a Restricted member the Project access of the
 // project asked about, fetched once so a whole-grid answer costs the same lookups as a single check.
 type workspaceLayers struct {
-	member     bool
-	owner      bool
-	restricted bool
-	role       permissions.Set
-	overwrite  *Overwrite
-	inProject  bool
-	project    permissions.Set
+	userID      string
+	workspaceID string
+	projectID   string
+	roleID      string
+	member      bool
+	owner       bool
+	restricted  bool
+	role        permissions.Set
+	overwrite   *Overwrite
+	inProject   bool
+	project     permissions.Set
 }
 
 func (s *Service) workspaceLayers(ctx context.Context, userID, workspaceID string) workspaceLayers {
-	var ws workspaceLayers
+	ws := workspaceLayers{userID: userID, workspaceID: workspaceID}
 	if workspaceID == "" {
 		return ws
 	}
@@ -132,6 +138,7 @@ func (s *Service) workspaceLayers(ctx context.Context, userID, workspaceID strin
 			ws.owner = info.IsOwnerRole
 			ws.restricted = info.Restricted && !info.IsOwnerRole
 			ws.role = info.Permissions
+			ws.roleID = info.RoleID
 		}
 	}
 	if ow, err := s.overwrite(ctx, resourceTypeWorkspace, workspaceID, userID); err == nil {
@@ -144,6 +151,7 @@ func (s *Service) workspaceLayers(ctx context.Context, userID, workspaceID strin
 // member is restricted, so a From role member's stored rows change nothing.
 func (s *Service) layers(ctx context.Context, userID, workspaceID, projectID string) workspaceLayers {
 	ws := s.workspaceLayers(ctx, userID, workspaceID)
+	ws.projectID = projectID
 	if !ws.restricted || projectID == "" {
 		return ws
 	}
@@ -159,27 +167,43 @@ func (ws workspaceLayers) hidden() bool {
 	return ws.restricted && ws.inProject && len(ws.project) == 0
 }
 
-func (ws workspaceLayers) has(action permissions.Action) bool {
+func sourceOf(kind, entityType, entityID, targetType, targetID string, allowed bool) Source {
+	state := StateDeny
+	if allowed {
+		state = StateAllow
+	}
+	return Source{Kind: kind, EntityType: entityType, EntityID: entityID, TargetType: targetType, TargetID: targetID, State: state}
+}
+
+func (ws workspaceLayers) has(action permissions.Action) (bool, Source) {
 	if ws.restricted {
 		switch permissions.AreaOf(action) {
 		case permissions.AreaInstance:
-			return false
+			return false, sourceOf(SourceRestricted, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, false)
 		case permissions.AreaProject:
-			return ws.project.Has(action)
+			held := ws.project.Has(action)
+			if !ws.inProject {
+				return held, sourceOf(SourceRestricted, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, held)
+			}
+			return held, sourceOf(SourceRestricted, resourceTypeProject, ws.projectID, TargetPerson, ws.userID, held)
 		}
 	}
 	allowed := ws.role.Has(action)
-	if ws.overwrite == nil {
-		return allowed
+	src := sourceOf(SourceRole, resourceTypeWorkspace, ws.workspaceID, TargetRole, ws.roleID, allowed)
+	if !ws.member {
+		src = sourceOf(SourceMember, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, false)
 	}
-	return applyOverwrite(allowed, ws.overwrite, action)
+	if ws.overwrite == nil {
+		return allowed, src
+	}
+	return applyOverwrite(allowed, src, ws.overwrite, action)
 }
 
 func (ws workspaceLayers) actions() []string {
 	all := permissions.AllActions()
 	out := make([]string, 0, len(all))
 	for _, a := range all {
-		if ws.owner || ws.has(a) {
+		if held, _ := ws.has(a); ws.owner || held {
 			out = append(out, string(a))
 		}
 	}
@@ -221,18 +245,23 @@ func (s *Service) CanInProject(ctx context.Context, userID, projectID string, ac
 	if err != nil {
 		return false
 	}
-	return s.check(ctx, userID, workspaceID, projectID, action, "", "")
+	held, _ := s.check(ctx, userID, workspaceID, projectID, action, "", "")
+	return held
 }
 
-// applyOverwrite: deny wins over allow within a row; a row naming neither leaves the state untouched.
-func applyOverwrite(allowed bool, ow *Overwrite, action permissions.Action) bool {
+// applyOverwrite: deny wins over allow within a row, and a row that sets the action becomes the source; a row naming
+// neither leaves the answer and its source untouched.
+func applyOverwrite(allowed bool, src Source, ow *Overwrite, action permissions.Action) (bool, Source) {
+	rule := Source{Kind: SourceRule, EntityType: ow.ResourceType, EntityID: ow.ResourceID, TargetType: TargetPerson, TargetID: ow.UserID}
 	if ow.Deny.Has(action) {
-		return false
+		rule.State = StateDeny
+		return false, rule
 	}
 	if ow.Allow.Has(action) {
-		return true
+		rule.State = StateAllow
+		return true, rule
 	}
-	return allowed
+	return allowed, src
 }
 
 // Can reports whether userID may perform action on docID; in a project hidden from a Restricted member the doc's
@@ -254,7 +283,7 @@ func (s *Service) CanDocs(ctx context.Context, userID, projectID string, docIDs 
 	var own map[string]*Overwrite
 	for _, id := range docIDs {
 		scope := scopes[id]
-		out[id] = decide(s.layers(ctx, userID, scope.WorkspaceID, scope.ProjectID), action, func() *Overwrite {
+		out[id], _ = decide(s.layers(ctx, userID, scope.WorkspaceID, scope.ProjectID), action, func() *Overwrite {
 			if own == nil {
 				own = s.docOverwrites(ctx, docIDs, userID)
 			}
@@ -283,7 +312,7 @@ func (s *Service) DocsWith(ctx context.Context, userID string, action permission
 	for _, id := range docIDs {
 		scope := scopes[id]
 		inSet := scope.ProjectID != "" && slices.Contains(projectIDs, scope.ProjectID)
-		can := decide(s.layers(ctx, userID, scope.WorkspaceID, scope.ProjectID), action, func() *Overwrite { return own[id] })
+		can, _ := decide(s.layers(ctx, userID, scope.WorkspaceID, scope.ProjectID), action, func() *Overwrite { return own[id] })
 		if can && !inSet {
 			allowed = append(allowed, id)
 		}

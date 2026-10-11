@@ -46,7 +46,7 @@ func TestJSONParity_HTTPBodiesMatchTheCopyEverythingEncoder(t *testing.T) {
 		plays.Play{}, plays.Trail{}, plays.Choices{},
 		memories.Memory{}, memories.MemoryItem{}, memories.InterviewTemplate{}, memories.InterviewDraft{},
 		tenancy.Workspace{}, tenancy.TeamPerson{}, tenancy.Team{}, tenancy.MembersList{}, tenancy.Invitation{}, tenancy.People{},
-		roles.Role{}, roles.RoleResult{}, access.Overwrite{},
+		roles.Role{}, roles.RoleResult{}, access.Overwrite{}, access.Explanation{},
 		integrations.Install{}, integrations.SchemaEntry{}, integrations.Delivery{}, integrations.AuditEntry{},
 		automations.Automation{}, automations.HostView{}, automations.Run{},
 		botwebhook.Bot{}, dns.TunnelInfo{}, dns.Zone{}, dns.ExposureSummary{}, dns.Gateway{},

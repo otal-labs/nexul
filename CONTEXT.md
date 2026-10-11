@@ -757,6 +757,15 @@ everyone and none on the workspace itself.
 _Avoid_: Grant, share, ACL, override (Team's per-person override is gone),
 Everyone rule
 
+**Source**:
+What decided a permission answer: the Owner role, membership, the person's
+roles, or the Permission overwrite that last set Allow or Deny on the way in.
+Every check carries it as ids; explaining someone's access and a forbidden
+answer turn it into a sentence, such as "Denied on doc Pricing for bob" or
+"Not allowed: role Client doesn't grant it". A not-found answer carries none,
+so it never confirms a rule exists.
+_Avoid_: Reason, cause, origin
+
 **In this project**:
 Being in a project: what the project's Permission overwrites allow, for a role
 the person holds or for them by name. A project someone is not In, and

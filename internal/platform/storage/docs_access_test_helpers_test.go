@@ -3,6 +3,7 @@ package storage_test
 import (
 	"context"
 
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -25,6 +26,10 @@ func (allowAll) CanDocs(_ context.Context, _, _ string, docIDs []string, _ permi
 
 func (allowAll) GrantCreator(context.Context, string, string) error {
 	return nil
+}
+
+func (allowAll) RefuseDoc(context.Context, string, string, permissions.Action) error {
+	return apperrs.ErrForbidden
 }
 
 func (allowAll) DeleteByDoc(context.Context, string) error {

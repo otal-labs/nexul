@@ -65,3 +65,9 @@ type PlayWorkspaceResolver interface {
 	// WorkspaceIDForPlay returns "" if it can't be resolved (unknown play).
 	WorkspaceIDForPlay(ctx context.Context, playID string) (string, error)
 }
+
+// Names resolves what a source names for the sentence a person reads, read only on the explain and refusal paths.
+type Names interface {
+	// Name returns the name of the workspace, project, doc, play, role, or person with id: a title, a label, a login.
+	Name(ctx context.Context, entityType, id string) (string, error)
+}

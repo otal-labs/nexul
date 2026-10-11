@@ -174,7 +174,12 @@ func pageThrough(t *testing.T, a *access.Service, tl mcptool.Tool, user, filter 
 // deploy, and notices in every state an inbox filters.
 func listParityFixture(t *testing.T) permFixture {
 	t.Helper()
-	f := newPermFixture(t)
+	return withListParityRows(t, newPermFixture(t))
+}
+
+// withListParityRows adds listParityFixture's rows to a permission fixture.
+func withListParityRows(t *testing.T, f permFixture) permFixture {
+	t.Helper()
 	restrictedClient(t, f)
 	ctx := context.Background()
 	now := time.Now()

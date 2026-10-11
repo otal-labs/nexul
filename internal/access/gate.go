@@ -33,17 +33,14 @@ func (s *Service) require(ctx context.Context, workspaceID, projectID string, ac
 	if !ws.owner && ws.hidden() {
 		return apperrs.ErrNotFound
 	}
-	allowed := ws.owner || ws.has(action)
-	if action == "" {
-		allowed = ws.member
-	}
+	allowed, src := decide(ws, action, noOverwrite)
 	if userID != "" && allowed {
 		return nil
 	}
 	if !ws.member {
 		return fmt.Errorf("%w: workspace %s", apperrs.ErrNotFound, workspaceID)
 	}
-	return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
+	return s.refusal(ctx, action, src)
 }
 
 // RequireProject is Require inside projectID, in the workspace it belongs to. An unknown project, or one hidden from
@@ -282,7 +279,7 @@ func (s *Service) ProjectsWith(ctx context.Context, userID, workspaceID string, 
 	}
 	out := make([]string, 0, len(projectIDs))
 	for _, projectID := range projectIDs {
-		if s.check(ctx, userID, workspaceID, projectID, action, "", "") {
+		if held, _ := s.check(ctx, userID, workspaceID, projectID, action, "", ""); held {
 			out = append(out, projectID)
 		}
 	}
