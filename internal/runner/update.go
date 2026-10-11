@@ -15,6 +15,7 @@ import (
 // handleUpdate applies an update frame immediately when the runner is idle, or defers it until the running
 // job's result frame has been sent (a mid-job binary swap would kill the job).
 func (c *Client) handleUpdate(ctx context.Context, frame Frame) {
+	defer c.contained(frame, nil)
 	if c.cfg.Version == "dev" {
 		c.log.Info("update frame ignored: dev build", "runner", c.cfg.Name)
 		return
@@ -55,6 +56,7 @@ func (c *Client) jobFinished(ctx context.Context, id string) {
 // applyUpdateFrame resolves the running executable and applies frame, logging the outcome; a failed update
 // leaves the runner exactly as it was, connected and running the old binary.
 func (c *Client) applyUpdateFrame(ctx context.Context, frame Frame) {
+	defer c.contained(frame, nil)
 	if frame.Sha256 == "" {
 		c.log.Warn("update has no checksum; skipping verification", "runner", c.cfg.Name, "version", frame.Version)
 	}

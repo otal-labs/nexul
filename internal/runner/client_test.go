@@ -540,3 +540,86 @@ func TestClient_UnknownCredential_KeepsRetryingWithoutUninstalling(t *testing.T)
 	require.NoError(t, <-done)
 	assert.Empty(t, exec.uninstalled(), "only a removal uninstalls; an unknown credential may be a server restored from backup")
 }
+
+// serveHandlerPanicAsks sends the frames whose handlers panic, then the second discover only once the first is answered.
+func serveHandlerPanicAsks(connections *atomic.Int32, answers chan<- Frame) func(context.Context, *websocket.Conn) {
+	return func(ctx context.Context, conn *websocket.Conn) {
+		connections.Add(1)
+		asks := []Frame{
+			{Type: FrameDiscover, ID: "d-1"},
+			{Type: FrameJoinNetworks, GatewayContainer: "gw", JoinNetworks: []string{"net1"}},
+			{Type: FrameLogsRequest, ID: "l-1", Container: "web"},
+			{Type: FrameAssignUpgrade, ID: "up-1", Version: "v9"},
+		}
+		for _, ask := range asks {
+			if err := wsjson.Write(ctx, conn, ask); err != nil {
+				return
+			}
+		}
+		for {
+			var raw json.RawMessage
+			if err := wsjson.Read(ctx, conn, &raw); err != nil {
+				return
+			}
+			fr, err := ParseFrame(raw)
+			if err != nil {
+				return
+			}
+			if fr.Type != FrameHeartbeat {
+				answers <- *fr
+			}
+			if fr.Type == FrameDiscoverResult && fr.ID == "d-1" {
+				// Only now, so the executor's call order never depends on goroutine scheduling.
+				if err := wsjson.Write(ctx, conn, Frame{Type: FrameDiscover, ID: "d-2"}); err != nil {
+					return
+				}
+			}
+		}
+	}
+}
+
+func TestClient_APanicInAFrameHandlerAnswersWithAnErrorAndKeepsTheRunnerConnected(t *testing.T) {
+	var connections atomic.Int32
+	answers := make(chan Frame, 16)
+	srv := wsTestServer(t, serveHandlerPanicAsks(&connections, answers))
+	var discovers atomic.Int32
+	exec := &fakeExecutor{
+		discoverFn: func(context.Context) (DiscoverReport, error) {
+			if discovers.Add(1) == 1 {
+				panic("discover exploded")
+			}
+			return DiscoverReport{}, nil
+		},
+		joinNetworks: func(context.Context, string, []string, func(Frame)) { panic("join exploded") },
+		logsFn:       func(context.Context, Frame, func(Frame)) { panic("logs exploded") },
+		upgradeFn:    func(context.Context, Frame, func(Frame) error) error { panic("upgrade exploded") },
+	}
+	cancel, done := runClient(t, newTestClient(wsURL(srv), exec))
+
+	got := map[FrameType]Frame{}
+	var secondDiscover Frame
+	for len(got) < 4 || secondDiscover.ID == "" {
+		select {
+		case fr := <-answers:
+			if fr.Type == FrameDiscoverResult && fr.ID == "d-2" {
+				secondDiscover = fr
+				continue
+			}
+			got[fr.Type] = fr
+		case <-time.After(2 * time.Second):
+			t.Fatalf("timed out; answers so far: %v, second discover: %v", got, secondDiscover)
+		}
+	}
+
+	assert.Contains(t, got[FrameDiscoverResult].Error, "discover exploded")
+	assert.Contains(t, got[FrameJoinNetworksResult].Error, "join exploded")
+	assert.Equal(t, BuildStatusFailed, got[FrameJoinNetworksResult].Status)
+	assert.Contains(t, got[FrameLogsEnd].Error, "logs exploded")
+	assert.Equal(t, "l-1", got[FrameLogsEnd].ID)
+	assert.Equal(t, UpgradeStatusFailed, got[FrameUpgradeResult].Status)
+	assert.Contains(t, got[FrameUpgradeResult].Error, "upgrade exploded")
+	assert.Empty(t, secondDiscover.Error, "the request after the panic succeeds")
+	assert.EqualValues(t, 1, connections.Load(), "the runner never dropped its connection")
+	cancel()
+	assert.NoError(t, <-done)
+}

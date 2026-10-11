@@ -198,7 +198,7 @@ func (c *Client) handleFrame(streamCtx, ctx context.Context, conn *websocket.Con
 	case FrameDiscover:
 		go c.handleDiscover(ctx, conn, frame)
 	case FrameJoinNetworks:
-		go c.cfg.Executor.JoinNetworks(ctx, frame.GatewayContainer, frame.JoinNetworks, func(fr Frame) { c.sendFrame(ctx, conn, fr) })
+		go c.joinNetworks(ctx, conn, frame)
 	case FrameUpdate:
 		go c.handleUpdate(ctx, frame)
 	case FrameLogsRequest:
@@ -235,7 +235,10 @@ func (c *Client) startJob(ctx context.Context, conn *websocket.Conn, f Frame) {
 		}
 		// sendFrame logs and swallows write failures rather than returning them, so Upgrade always runs to its
 		// terminal frame; the error return exists for Upgrade's own early-return control flow, not for this call.
-		go func() { _ = c.cfg.Executor.Upgrade(jobCtx, f, send) }()
+		go func() {
+			defer c.contained(f, func(msg string) { _ = send(upgradeFailed(f, msg)) })
+			_ = c.cfg.Executor.Upgrade(jobCtx, f, send)
+		}()
 		return
 	}
 
@@ -277,6 +280,26 @@ func (c *Client) startJob(ctx context.Context, conn *websocket.Conn, f Frame) {
 	case FrameAssignDeploy:
 		req.Kind = RequestDeploy
 		go c.cfg.Executor.Deploy(jobCtx, req, send)
+	}
+}
+
+func (c *Client) joinNetworks(ctx context.Context, conn *websocket.Conn, f Frame) {
+	defer c.contained(f, func(msg string) {
+		c.sendFrame(ctx, conn, Frame{Type: FrameJoinNetworksResult, GatewayContainer: f.GatewayContainer, Status: BuildStatusFailed, Error: msg})
+	})
+	c.cfg.Executor.JoinNetworks(ctx, f.GatewayContainer, f.JoinNetworks, func(fr Frame) { c.sendFrame(ctx, conn, fr) })
+}
+
+// contained is deferred first in a goroutine the client starts: a panic there is logged and answered with reply
+// (nil when no one waits), because it would otherwise end the whole runner and every stream on it.
+func (c *Client) contained(f Frame, reply func(msg string)) {
+	r := recover()
+	if r == nil {
+		return
+	}
+	c.log.Error("runner goroutine panicked", "runner", c.cfg.Name, "id", f.ID, "type", f.Type, "panic", r)
+	if reply != nil {
+		reply(fmt.Sprint("the runner hit an unexpected error: ", r))
 	}
 }
 
