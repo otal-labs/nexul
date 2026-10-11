@@ -39,7 +39,7 @@ func ticketDeleteTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			if err := s.Delete(ctx, t.ID); err != nil {
+			if err := s.Delete(WithViaMCP(ctx), t.ID); err != nil {
 				return nil, err
 			}
 			return mcptool.Gone(t.ID), nil

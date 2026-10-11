@@ -118,6 +118,8 @@ func TestMomentOf(t *testing.T) {
 			moment{name: MomentTicketCreated, targetType: TargetTicket, targetID: "t-1", projectID: "p-1", causerID: "u-2", via: ViaWeb}, true},
 		{"entered done", "ticket.status_changed", `{"ticket":{"id":"t-1","project_id":"p-1"},"from":"st-progress","to":"st-done","actor":{"kind":"user","user_id":"u-1"}}`,
 			moment{name: MomentTicketEnteredStage, stage: StageDone, targetType: TargetTicket, targetID: "t-1", projectID: "p-1", causerID: "u-1", via: ViaWeb}, true},
+		{"entered done over MCP", "ticket.status_changed", `{"ticket":{"id":"t-1","project_id":"p-1"},"from":"st-progress","to":"st-done","actor":{"kind":"user:mcp","user_id":"u-1"}}`,
+			moment{name: MomentTicketEnteredStage, stage: StageDone, targetType: TargetTicket, targetID: "t-1", projectID: "p-1", causerID: "u-1", via: ViaMCP}, true},
 		{"between two done columns", "ticket.status_changed", `{"ticket":{"id":"t-1"},"from":"st-done","to":"st-shipped"}`, moment{}, false},
 		{"into a deleted column", "ticket.status_changed", `{"ticket":{"id":"t-1"},"from":"st-done","to":"st-gone"}`, moment{}, false},
 		{"developer cleared", "ticket.developer_changed", `{"ticket":{"id":"t-1"},"from":"login-u-1","to":""}`, moment{}, false},

@@ -213,6 +213,17 @@ func TestQueue_MatchWhileOneWaits_IsANoOp(t *testing.T) {
 	assert.True(t, r.Kicked(), "a queued run wakes the dispatcher")
 }
 
+func TestQueue_MomentFromAnMCPMove_RecordsViaMCP(t *testing.T) {
+	r := newRig(t, openStore(t))
+	fix := r.play(t, "Fix it")
+	r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked)
+	r.ticket("t-1")
+
+	r.moment(t, "ticket.unblocked", map[string]any{"ticket_id": "t-1", "project_id": project, "actor": map[string]any{"kind": "user:mcp", "user_id": tester}})
+
+	assert.Equal(t, plays.ViaMCP, r.only(t, "t-1").Via)
+}
+
 func TestQueue_MatchOnNobody_DidntRunWithAFailedTrail(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -727,9 +738,11 @@ func TestDecisionsCheck_TicketEnteringDone_QueuesOneCheckForTheCauser(t *testing
 		name  string
 		actor map[string]any
 		want  string
+		via   plays.Via
 	}{
-		{"a person moves it", map[string]any{"kind": "user", "user_id": tester}, tester},
-		{"an automation moves it, so its developer runs it", map[string]any{"kind": "automation"}, dev},
+		{"a person moves it", map[string]any{"kind": "user", "user_id": tester}, tester, plays.ViaWeb},
+		{"a person moves it over MCP", map[string]any{"kind": "user:mcp", "user_id": tester}, tester, plays.ViaMCP},
+		{"an automation moves it, so its developer runs it", map[string]any{"kind": "automation"}, dev, plays.ViaWeb},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -753,7 +766,7 @@ func TestDecisionsCheck_TicketEnteringDone_QueuesOneCheckForTheCauser(t *testing
 			require.NoError(t, r.Runner.HandleAutoPlayMoment(t.Context(), move("st-done", "st-shipped")), "a move between two done columns")
 
 			it := r.only(t, "t-1")
-			assert.Equal(t, []any{check.ID, tt.want, plays.QueueStarted}, []any{it.PlayID, it.PersonID, it.Status})
+			assert.Equal(t, []any{check.ID, tt.want, plays.QueueStarted, tt.via}, []any{it.PlayID, it.PersonID, it.Status, it.Via})
 		})
 	}
 }
