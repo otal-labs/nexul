@@ -56,9 +56,10 @@ type presence struct {
 
 // loop is one maintain goroutine's identity, compared by pointer so a stale cleanup can't remove its replacement.
 type loop struct {
-	cancel context.CancelFunc
-	state  string
-	kind   harness.Kind
+	cancel  context.CancelFunc
+	state   string
+	kind    harness.Kind
+	session harness.Session
 }
 
 // Presence states surfaced per computer (Status); no entry means nothing is held.
@@ -222,15 +223,15 @@ func (k *Keeper) reconcile(userID string) {
 	}
 	for id, computer := range desired {
 		held, ok := p.computers[id]
-		if ok && held.kind == computer.Kind {
+		if ok && held.kind == computer.Kind && held.session == computer.Session() {
 			continue
 		}
-		// A computer that moved to another harness kind is held again through that kind's client.
+		// A computer that moved to another harness kind, address or token is held again on its new session.
 		if ok {
 			held.cancel()
 		}
 		ctx, cancel := context.WithCancel(p.ctx)
-		l := &loop{cancel: cancel, state: StateConnecting, kind: computer.Kind}
+		l := &loop{cancel: cancel, state: StateConnecting, kind: computer.Kind, session: computer.Session()}
 		p.computers[id] = l
 		go k.maintain(ctx, userID, p, l, computer)
 	}

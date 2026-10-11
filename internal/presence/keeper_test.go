@@ -236,6 +236,29 @@ func TestKeeper_RefreshAfterAKindSwitch_HoldsTheComputerOnItsNewKind(t *testing.
 	}
 }
 
+func TestKeeper_RefreshAfterAMoveToTheRunner_HoldsTheComputerOnItsNewSession(t *testing.T) {
+	t.Parallel()
+	sessions := &sessionsFunc{}
+	sessions.set(computer("c1"))
+	t3 := newFakeT3()
+	k := newTestKeeper(sessions, t3)
+
+	k.Connected("u1")
+	waitDial(t, t3, "c1")
+	tunnelConn := t3.conn("c1")
+	moved := computer("c1")
+	moved.ServerURL = "http://c1.nexul-computer.invalid"
+	moved.BearerToken = "tok-runner"
+	sessions.set(moved)
+	k.Refresh("u1")
+	waitDial(t, t3, "c1")
+	select {
+	case <-tunnelConn.done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the connection held through the tunnel was not closed")
+	}
+}
+
 func TestKeeper_UnauthorizedStopsRedialUntilRefresh(t *testing.T) {
 	t.Parallel()
 	sessions := &sessionsFunc{}
