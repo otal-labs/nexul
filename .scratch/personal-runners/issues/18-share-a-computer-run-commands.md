@@ -2,24 +2,24 @@
 
 **Status:** ready-for-agent
 
-**Blocked by:** permission-overrides 12, 15
+**Blocked by:** permission-overrides 21, 15
 
 Read first: `practices/go.md` (section 17), `practices/architecture.md` (sections 2, 3, 6),
 `practices/react-guide.md`, `practices/mcp.md`, ADRs 0097, 0102, 0140, 0146, 0148, the spec (Later: sharing a
-computer, Access and privacy), `.scratch/permission-overrides/spec.md` (Computers) and its ticket 12.
+computer, Access and privacy), `.scratch/permission-overrides/spec.md` (Computers) and its ticket 21.
 
-Sharing is built on computer rules (permission-overrides ticket 12): the storage, who may write a rule, the
+Sharing is built on computer rules (permission-overrides ticket 21): the storage, who may write a rule, the
 checks, the immediate revoke and the privacy tests live there. This ticket is the runner-side half for "Run
 commands". There is no `computer_grants` table.
 
 ## What to build
 
 - Shell jobs honour the computer rule's Run commands permission: the caller's start, list and read go through
-  ticket 12's computer check, and still need both of the computer's switches on. A grantee sees
-  "<owner>'s <computer> (shared)" with name and online state only (ticket 12), and may start shell jobs on it.
+  ticket 21's computer check, and still need both of the computer's switches on. A grantee sees
+  "<owner>'s <computer> (shared)" with name and online state only (ticket 21), and may start shell jobs on it.
 - The owner's sharing dialog on the computer row, writing the computer rule through
   `permission_overwrite_update` (named people only), with the warning the spec requires: the grantee's commands
-  run as the owner's own OS user on the owner's computer. If permission-overrides 03 has merged, reuse its row
+  run as the owner's own OS user on the owner's computer. If permission-overrides 06 has merged, reuse its row
   component with two states; otherwise the dialog builds its own rows.
 - The grant follows the grantee's identity: their own web session, their plays and `@Agent` turns, and
   `command_run` with their own token. Nothing else gets in through it.
@@ -27,7 +27,7 @@ commands". There is no `computer_grants` table.
   cancels their running ones, killing the process and recording "cancelled: access revoked".
 - The owner's run log of what grantees ran (who, when, what, how long, how it ended, shell output); no agent
   transcript. A grantee sees only their own jobs.
-- MCP: sharing is `permission_overwrite_update` on the computer (ticket 12); `computer_list` shows the rules
+- MCP: sharing is `permission_overwrite_update` on the computer (ticket 21); `computer_list` shows the rules
   to the owner. No new tool.
 
 ## Acceptance criteria

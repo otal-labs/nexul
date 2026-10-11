@@ -274,9 +274,10 @@ map is in `.scratch/project-paths/`.
 Turn the integration contract into a platform and widen the surface area
 without changing the core architecture.
 
-- **Permissions per entity** — allow, fall back to the role, or deny each
-  permission on a project, doc, play, computer or instance area for everyone,
-  a role or one person, and see which rule decided any answer
+- **Permissions on roles** — people hold several roles, projects show only to
+  the roles and people listed in them, and each project, doc, play, channel,
+  computer or instance area can allow, fall back or deny any permission for a
+  role or one person, with the rule that decided every answer shown
   (`.scratch/permission-overrides/`, ADR 0148).
 - **DNS extensions** — TLS automation (Let's Encrypt) for direct-to-server
   paths, additional registrars behind the provider interface, managed subdomain

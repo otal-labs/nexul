@@ -2,14 +2,14 @@
 
 **Status:** ready-for-agent
 
-**Blocked by:** permission-overrides 12, 15, 18
+**Blocked by:** permission-overrides 21, 15, 18
 
 Read first: `practices/go.md`, `practices/architecture.md`, `practices/mcp.md`, `practices/react-guide.md`,
 `practices/testing.md`, ADRs 0063, 0102, 0111, 0146, 0148, the spec (Later: sharing a computer, Access and
-privacy), `.scratch/permission-overrides/spec.md` (Computers) and its ticket 12.
+privacy), `.scratch/permission-overrides/spec.md` (Computers) and its ticket 21.
 
 The Run agents permission, its storage and its checks come from the computer rules of permission-overrides
-ticket 12. This ticket is the runner-side work for it: the starter's own identity for each run, the attribution
+ticket 21. This ticket is the runner-side work for it: the starter's own identity for each run, the attribution
 line, the warning, and revoking a running turn.
 
 ## Design (owner, 2026-10-10)
@@ -30,7 +30,7 @@ lands in, and the computer owner's run log (ticket 18).
 - Mint the starter's per-run token at the start of a grantee's run, bound to the starter's identity and the
   run, expiring when the run ends or at the run's longest allowed time, and revoked at the end. It is never
   written into the providers' config files or kept on the computer after the run.
-- Honour the Run agents permission of ticket 12's computer check in target resolution, the run dialog and
+- Honour the Run agents permission of ticket 21's computer check in target resolution, the run dialog and
   project links (amends ADR 0102): a grantee picks "<owner>'s <computer> (shared)" and, with this permission,
   its T3 projects and models. An offline computer fails at once, as for the owner (spec, decision 18).
 - Show the attribution line in the trail, the thread and the owner's run log. The owner's run log lists who,

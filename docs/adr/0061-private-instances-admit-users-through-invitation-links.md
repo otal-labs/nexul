@@ -30,6 +30,8 @@ Removal keeps authored content attributed while removing access. The final
 active instance administrator cannot be disabled or removed; since ADR 0088 the
 rule protects the last active Owner.
 
+Amended by ADR 0148 (proposed): an invitation gives at least one role per workspace and nothing per person.
+
 This replaces the need to discover a recipient's GitHub username or verified
 email before inviting them. The cost is that an Invitation URL is itself a
 short-lived credential: whoever receives it can claim the specified access,

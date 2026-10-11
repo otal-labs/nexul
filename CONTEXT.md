@@ -278,10 +278,11 @@ progress stage), "To tickets via AI" (doc), "Interview" (interview),
 (ticket, done stage, with its auto play), as ordinary plays
 a member
 may edit or delete; each keeps a built-in key through renames, and a new
-workspace's start from the instance template of their instructions. Seen and fired with `plays:run`, managed with
-`plays:read`, `plays:write`, `plays:delete`. A named user can be excluded
-from one play: a permission overwrite denying that user `plays:run` on the
-play, set from the play's own settings page.
+workspace's start from the instance template of their instructions. Seen with `plays:read`, fired with `plays:run`,
+managed with `plays:write` and `plays:delete`. Each play may carry Permission
+overwrites for a role or a person, its own See (`plays:read`) among them: a
+play someone can't see is gone from their lists and menus, and its link is not
+found, while its runs stay readable to whoever started them.
 _Avoid_: Agent action, button, automation (that is event-driven code)
 
 **Auto play**:
@@ -413,8 +414,9 @@ inside a doc), collection (the retired workspace-wide doc grouping)
 
 **Channel**:
 A workspace conversation its readers post in: a text channel, named with a
-leading `#`, or a voice channel. Every member reads a public channel except a
-Restricted member; a Private channel only its members read. Created and renamed with
+leading `#`, or a voice channel. Every member reads a public channel unless a
+Permission overwrite on it denies a role they hold or them; a Private channel
+only its members read. Created and renamed with
 `channels:write`, deleted together with every message in it with
 `channels:delete`. Each workspace has one `#general`, made with the workspace,
 which can be renamed but never deleted.
@@ -732,43 +734,51 @@ scoped token, and the agent are checked against the same values. Checked in
 the workspace the entity belongs to (a workspace's topology canvas in that workspace); runners, machines, DNS,
 connectors, the instance's own stacks, and the instance itself (its settings,
 upgrades, accounts, workspace creation), which belong to none, against every
-workspace the caller is in and not a Restricted member of. The Owner of any workspace therefore holds every
-instance-level permission, and nobody grants a permission they don't hold. What every member reads (the project list, public
-channels, their own DMs and inbox, People) takes membership, not a permission; a Restricted member's project list
-is the projects they hold Project access to, and they read no public channel. Each domain is a project area, a
-workspace area, or an instance area; a role's project areas reach every project only for members whose Every
-project is From role.
+workspace the caller is in. A member holds a set of roles, or none, and holds what any of them allows. The Owner of
+any workspace therefore holds every instance-level permission, and nobody grants a permission they don't hold. What
+every member reads (public channels, their own DMs and inbox, People) takes membership, not a permission. Each domain
+is a project area, a workspace area, or an instance area; a role's project areas count only inside the projects the
+person is In, and Create projects is a workspace permission. Something a person cannot read is not found for them,
+never forbidden (ADR 0148).
 _Avoid_: Right, privilege, capability, ACL entry, instance admin (holding the
 instance's permissions is what that meant)
 
 **Permission overwrite**:
-A per-user allow/deny set layered on top of their role, either workspace-wide
-or on one resource. Most-specific wins; deny beats allow inside a layer. The
-workspace Owner bypasses all of it.
-_Avoid_: Grant, share, ACL
+The rule on one entity (a project, doc folder, doc, stack, play, channel,
+computer, or instance area) for a role or a person, holding each permission as
+Allow, Fallback, or Deny. Fallback says nothing, so the answer comes from
+further out. The nearer entity beats the farther one; on one entity a rule
+naming the person beats the role rules, and between role rules Allow wins. Every
+answer names its source, the rule that decided it, or the roles. The workspace
+Owner bypasses all of it, except on a personal computer. There is no rule for
+everyone and none on the workspace itself.
+_Avoid_: Grant, share, ACL, override (Team's per-person override is gone),
+Everyone rule
 
-**Restricted member**:
-A workspace member whose Every project is None: they see only the projects
-they hold Project access to, instead of every project. A project they hold
-none on is invisible to them, its name included, and so are projects made
-later. Their role still decides the workspace areas; it opens no instance
-area, and of channels they read only the Private channels they are in, plus
-DMs and the threads of what they can read. The Owner is never one.
-_Avoid_: Guest, client (Client is a role someone named), external member
+**In this project**:
+Being in a project: what the project's Permission overwrites allow, for a role
+the person holds or for them by name. A project someone is not In, and
+everything in it, is not found for them, its name included. Nothing else lets
+anyone in, no role holds it, and the Owner is In every project. A new project
+has its creator and the creator's chosen roles In it. Listed on the project's
+"People in this project"; its row on the project's panel reads "See this
+project".
+_Avoid_: Project member, project access, Every project, restricted, private
+project
 
-**Project access**:
-The levels one person holds in one project, per project area, from None to
-Delete. For a Restricted member it is the whole answer inside that project,
-with a doc's own sharing on top; everyone else gets a role's project areas
-on every project. Set from Team, or carried by an Invitation.
-_Avoid_: Project role, project membership, project grant, share
+**Kept out**:
+A person whose rule on a project denies In this project, so they are not In it
+whatever roles they hold. Listed under its own heading on "People in this
+project".
+_Avoid_: Banned, blocked, excluded, Restricted member
 
-**Every project**:
-The first row of a person's access in a workspace: From role, where the
-role's project areas apply on every project, new ones included, or None,
-which makes them a Restricted member. Every member upgraded from before it
-existed is From role.
-_Avoid_: All projects, access mode, restricted switch
+**Access page**:
+A workspace's page of who is In each project and which roles see each public
+channel, as tick grids of projects and channels by roles. An Owner's first
+visit after the upgrade that rebuilt permissions opens it as the one-time setup
+"Who's in each project". Shown to anyone who may manage a project's access;
+only an Owner sees the channels grid.
+_Avoid_: Permissions page, project access, setup wizard (that is the instance's)
 
 **Private channel**:
 A Channel only its members see and read, rather than every member of the
@@ -780,9 +790,9 @@ Its events, a DM's too, reach no Integration or Automation.
 _Avoid_: Group, locked channel, hidden channel
 
 **Invitation**:
-A single-use bearer link that admits one person to the instance and grants a
-chosen Role plus optional Permission overwrites, and the Every project row
-with any Project access, in one or more Workspaces. The
+A single-use bearer link that admits one person to the instance and gives
+them at least one Role in each of one or more Workspaces, and nothing per
+person; which projects they are In follows from those roles. The
 link expires after one or seven days and is not bound to a provider identity.
 _Avoid_: Allowlist entry, invite code, join link
 
@@ -794,13 +804,13 @@ _Avoid_: Allowlist status, membership status
 **Team**:
 Everyone registered on the instance and what each can reach: every account
 with its Account status, whether it is online or when it was last seen, and,
-per workspace, its Role, workspace-wide Permission overwrites, Every project
-row, and Project access. A holder of
+per workspace, the Roles it holds, or none. A holder of
 `accounts:read` sees all of it, under Instance settings; someone who manages
 members in a workspace finds it in Configuration and sees only the workspaces
 they manage. A change
 inside a workspace always needs `members:write` there, and the Owner role is
-never given or taken through it.
+never given or taken through it. Nobody gives a role holding more than they
+hold, or takes away one they couldn't give.
 _Avoid_: Members (one workspace's roster), registered accounts, users
 
 **Instance settings**:

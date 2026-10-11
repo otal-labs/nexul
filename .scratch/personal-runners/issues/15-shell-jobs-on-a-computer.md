@@ -9,8 +9,8 @@ Read first: `practices/go.md`, `practices/architecture.md`, `practices/mcp.md` (
 `internal/platform/permissions`, the spec (Later: shell jobs, Access and privacy).
 
 This ticket adds an instance-area permission, so it lands in the evaluator that names sources (permission-overrides
-01). Once permission-overrides 13 ships, Read computer activity is an entity the instance Owner can give to a role
-or a person with a rule; nothing here changes for that. A grantee's shell jobs come from permission-overrides 12
+01). Once permission-overrides 23 ships, Read computer activity is an entity the instance Owner can give to a role
+or a person with a rule; nothing here changes for that. A grantee's shell jobs come from permission-overrides 21
 and ticket 18.
 
 ## What to build

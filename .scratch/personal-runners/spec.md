@@ -482,7 +482,7 @@ builds it.
 3. **The checks are ownership, plus the owner's own rules naming people, never a role.** They do not go through
    the role gate, so no role, Everyone rule, Owner or role holding every bit (ADR 0042) can reach a person's
    computer. The only way in besides owning it is a computer rule the owner wrote for a named person
-   (permission-overrides ticket 12, ADR 0148), which gives exactly what it names.
+   (permission-overrides ticket 21, ADR 0148), which gives exactly what it names.
 4. **The one admin lever** is the account. Disabling or removing an account calls
    `RevokePersonalRunners(userID)` on the runner domain, which tombstones each credential (ADR 0074) and
    closes its connection, so each runner uninstalls itself; and deletes every grant the person gave or
@@ -676,8 +676,8 @@ offers the same, as an optional capability:
 
 The owner may let named people use a computer, per person, with two separate levels, both off by default and
 both shipping (tickets 18 and 19). Sharing is built on the permission overrides model (ADR 0148,
-`.scratch/permission-overrides/`, ticket 12): a **grant** is a **computer rule**, a row naming the person and
-the computer's three permissions, See this computer, Run agents and Run commands. Ticket 12 owns the storage,
+`.scratch/permission-overrides/`, ticket 21): a **grant** is a **computer rule**, a row naming the person and
+the computer's three permissions, See this computer, Run agents and Run commands. Ticket 21 owns the storage,
 the checks and the privacy tests; tickets 18 and 19 build the runner-side work on top.
 
 - **Run agents**: plays and `@Agent` turns run through its T3 Code, picked like one's own computer in the
@@ -716,7 +716,7 @@ Owner's rules (2026-10-10):
 - Removing the computer deletes its grants.
 
 Data model: no `computer_grants` table. A grant is a `permission_overwrites` row with `resource_type =
-'computer'` and `target = 'person'` (permission-overrides ticket 12), holding See this computer and, where
+'computer'` and `target = 'person'` (permission-overrides ticket 21), holding See this computer and, where
 granted, Run agents and Run commands. A person with no row holds nothing, and the rows are deleted with the
 computer and with either account. Event `computer.grant_changed` (outbox, members-only) carries ids and the
 permissions, never the computer's name, and reaches the owner and the grantee.
@@ -771,8 +771,8 @@ What sharing really hands over, which the grant dialog must say plainly:
   3); personal runners filtered out of `runners:read` lists; `computer_activity:read` (Read computer activity,
   instance area, Owner role by default) for reading the record of commands, with shell jobs; later
   `runners:shell` for shell jobs on runners that are not personal. Run commands and Run agents are computer
-  rules (permission-overrides ticket 12), not role permissions; the instance areas above take rules from
-  permission-overrides ticket 13.
+  rules (permission-overrides ticket 21), not role permissions; the instance areas above take rules from
+  permission-overrides ticket 23.
 - Reverse states: remove a computer revokes its runner; account removal revokes; adoption is the way back
   for a computer that lost its runner.
 - Docs: `paired-computers.md`, `setup-wizard.md`, `mcp-server.md`, `runners.md`; `CONTEXT.md` per Naming;
@@ -819,5 +819,5 @@ What sharing really hands over, which the grant dialog must say plainly:
 
 - Platforms: Linux first (tickets 01 to 07 and 20), then macOS (ticket 08), then Windows (ticket 09).
 - The owner is reworking permissions (`.scratch/permission-overrides/`, ADR 0148). Tickets 15 and 16 wait for its
-  ticket 01; tickets 18 and 19 wait for its ticket 12, which builds the computer rules they stand on. Tickets 01
+  ticket 01; tickets 18 and 19 wait for its ticket 21, which builds the computer rules they stand on. Tickets 01
   to 10, 17 and 20 do not depend on it.

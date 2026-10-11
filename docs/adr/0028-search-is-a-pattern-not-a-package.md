@@ -22,3 +22,7 @@ already knows the thing exists because somebody linked it, whereas search
 would otherwise turn into an oracle for enumerating titles the user was never
 shown. Archived and soft-deleted items never appear either. The MCP tools
 enforce the same rule against the user the agent acts as.
+
+Superseded in part by ADR 0148 (proposed): the doc list leaves out a doc the user cannot read, and its direct link
+answers not found. The pill rule changes: a mention pill shows its target locked and inert with "You don't have
+access", a doc's title or a ticket's title, status and developer, including from a project the user is not in.
