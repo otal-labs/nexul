@@ -15,6 +15,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 )
 
@@ -135,9 +136,9 @@ func (h *DialinHandler) CloseAll(reason string) {
 // ServeHTTP authenticates and upgrades an automation connection, then owns it until it disconnects.
 func (h *DialinHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
-	automation, err := h.svc.AuthenticateToken(r.Context(), token)
+	automation, err := h.svc.AuthenticateDialin(r.Context(), token)
 	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httpx.WriteError(w, refusal(err))
 		return
 	}
 	conn, err := websocket.Accept(w, r, nil)
@@ -188,7 +189,7 @@ func (h *DialinHandler) handleConn(ctx context.Context, automationID string, ws 
 		h.log.Warn("initialize automation cursor failed", "automation_id", automationID, "error", err)
 	}
 
-	secrets, err := h.cfg.Secrets.AllSecrets(ctx, automation.WorkspaceID)
+	secrets, err := h.secretsFor(ctx, automation)
 	if err != nil {
 		h.log.Warn("load workspace secrets failed", "automation_id", automationID, "error", err)
 		secrets = map[string]string{}
@@ -201,6 +202,14 @@ func (h *DialinHandler) handleConn(ctx context.Context, automationID string, ws 
 
 	go h.deliverLoop(ctx, c)
 	h.readLoop(ctx, c)
+}
+
+// secretsFor withholds the workspace's secrets from a switched-off automation, which may only announce its code.
+func (h *DialinHandler) secretsFor(ctx context.Context, a *Automation) (map[string]string, error) {
+	if !a.Enabled {
+		return map[string]string{}, nil
+	}
+	return h.cfg.Secrets.AllSecrets(ctx, a.WorkspaceID)
 }
 
 // readLoop drains run frames until the peer closes; a run left in flight is a crash with the cursor unadvanced (ADR 0046).

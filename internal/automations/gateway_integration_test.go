@@ -44,7 +44,9 @@ func TestRequireAutomation_EndToEndScopedTicketsRead(t *testing.T) {
 	svc := automations.NewService(store.Automations, allowAutomationPerm{userID: "creator-1"})
 	svc.SetGateway(integrations.ScopeAllows, integrations.ResolveScopes)
 
-	_, raw, err := svc.Create(context.Background(), "creator-1", "ws-1", "ticket-reader", []string{"tickets:read"})
+	a, raw, err := svc.Create(context.Background(), "creator-1", "ws-1", "ticket-reader", []string{"tickets:read"})
+	require.NoError(t, err)
+	_, err = svc.SetEnabled(context.Background(), "creator-1", a.ID, true)
 	require.NoError(t, err)
 
 	ticketsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +78,35 @@ func TestRequireAutomation_EndToEndScopedTicketsRead(t *testing.T) {
 		handler.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
+}
+
+func TestRequireAutomation_SwitchedOff_CannotQueuePlays(t *testing.T) {
+	store := testutil.NewStore(t)
+	svc := automations.NewService(store.Automations, allowAutomationPerm{userID: "creator-1"})
+	svc.SetGateway(integrations.ScopeAllows, integrations.ResolveScopes)
+	a, raw, err := svc.Create(t.Context(), "creator-1", "ws-1", "fixer", []string{"plays:run"})
+	require.NoError(t, err)
+	queued := 0
+	handler := svc.RequireAutomation(fellThroughUserAuth, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		queued++
+		w.WriteHeader(http.StatusCreated)
+	}))
+	queue := func() int {
+		req := httptest.NewRequest(http.MethodPost, "/api/plays/queue", nil)
+		req.Header.Set("Authorization", "Bearer "+raw)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	assert.Equal(t, http.StatusUnauthorized, queue(), "a new automation is off until switched on")
+	_, err = svc.SetEnabled(t.Context(), "creator-1", a.ID, true)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusCreated, queue())
+	_, err = svc.SetEnabled(t.Context(), "creator-1", a.ID, false)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, queue(), "switching off refuses the token")
+	assert.Equal(t, 1, queued, "only the switched-on call reached the route")
 }
 
 func TestCreate_ScopesUseTheIntegrationsVocabulary(t *testing.T) {

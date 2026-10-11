@@ -636,8 +636,9 @@ too, so an upgrade never silently changes a default's behaviour.
 _Avoid_: Draft, staged
 
 **Self-read**:
-An automation token reading its own automation record. Always permitted
-regardless of scopes; that is how the host loads its state and active code.
+An automation token reading its own automation record. Permitted regardless
+of scopes while the automation is switched on; that is how the host loads its
+state and active code.
 Reading yourself is identity, not a grant.
 
 **Integration**:

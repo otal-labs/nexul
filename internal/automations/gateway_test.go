@@ -54,6 +54,8 @@ func newGatewaySvc(t *testing.T, scope string, wired bool) (*Service, string) {
 	a, raw, err := svc.Create(context.Background(), "creator-1", "ws-1", "webhook-relay", []string{scope})
 	require.NoError(t, err)
 	require.NotEmpty(t, a.CreatedBy)
+	_, err = svc.SetEnabled(context.Background(), "creator-1", a.ID, true)
+	require.NoError(t, err)
 	return svc, raw
 }
 
@@ -118,6 +120,35 @@ func TestRequireAutomation(t *testing.T) {
 		assert.Equal(t, "true", req.Header.Get("X-Fell-Through"))
 	})
 
+	t.Run("a switched-off automation's token is refused until it is switched on again", func(t *testing.T) {
+		svc, raw := newGatewaySvc(t, "tickets:read", true)
+		list, err := svc.List(context.Background(), "creator-1", "")
+		require.NoError(t, err)
+		require.Len(t, list, 1)
+		id := list[0].ID
+		handler := svc.RequireAutomation(fakeUserAuth, okHandler())
+		call := func(path string) *httptest.ResponseRecorder {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			req.Header.Set("Authorization", "Bearer "+raw)
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+			return rec
+		}
+
+		_, err = svc.SetEnabled(context.Background(), "creator-1", id, false)
+		require.NoError(t, err)
+		for _, path := range []string{"/api/tickets", "/api/automations/" + id} {
+			rec := call(path)
+			assert.Equal(t, http.StatusUnauthorized, rec.Code, path)
+			assert.Contains(t, rec.Body.String(), "automation is switched off", path)
+			assert.Contains(t, rec.Body.String(), "automation_switched_off", path)
+		}
+
+		_, err = svc.SetEnabled(context.Background(), "creator-1", id, true)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, call("/api/tickets").Code, "the same token works again")
+	})
+
 	t.Run("revoked token rejected", func(t *testing.T) {
 		svc, raw := newGatewaySvc(t, "tickets:read", true)
 		list, err := svc.List(context.Background(), "creator-1", "")
@@ -138,6 +169,8 @@ func TestRequireAutomation_SelfRead(t *testing.T) {
 	svc := NewService(newFakeRepo(), allowAll("creator-1"))
 	svc.SetGateway(allowScope("tickets:read"), nil)
 	a, raw, err := svc.Create(context.Background(), "creator-1", "ws-1", "self-reader", []string{"docs:read"})
+	require.NoError(t, err)
+	_, err = svc.SetEnabled(context.Background(), "creator-1", a.ID, true)
 	require.NoError(t, err)
 	other, _, err := svc.Create(context.Background(), "creator-1", "ws-1", "someone-else", []string{"docs:read"})
 	require.NoError(t, err)

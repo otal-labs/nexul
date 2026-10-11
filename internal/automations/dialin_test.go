@@ -323,6 +323,8 @@ func TestDialinHandler_Reenabled_SkipsEventsFromWhileDisabled(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	var ev automations.Frame
+	require.Error(t, wsjson.Read(ctx, conn, &ev), "each switch drops the connection")
+	conn = dialAnnounce(t, setup.wsURL(token), automations.Frame{Subscriptions: []string{"ticket.created"}})
 	require.NoError(t, wsjson.Read(ctx, conn, &ev))
 	assert.Equal(t, "ev-after-on", ev.EventID, "an event published while the automation was off must never be delivered")
 }
@@ -470,6 +472,73 @@ func TestDialinHandler_RevokeWhileConnected_DisconnectsSocket(t *testing.T) {
 	var f automations.Frame
 	err = wsjson.Read(ctx, conn, &f)
 	require.Error(t, err, "a revoked token must force-close the live connection")
+}
+
+func TestDialinHandler_SwitchOffWhileConnected_DisconnectsSocket(t *testing.T) {
+	setup := newDialinSetup(t)
+	created, token, err := setup.svc.Create(t.Context(), "owner", "ws-1", "x", []string{"tickets:read"})
+	require.NoError(t, err)
+	_, err = setup.svc.SetEnabled(t.Context(), "owner", created.ID, true)
+	require.NoError(t, err)
+	conn := dialAnnounce(t, setup.wsURL(token), automations.Frame{})
+
+	_, err = setup.svc.SetEnabled(t.Context(), "owner", created.ID, false)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	var f automations.Frame
+	require.Error(t, wsjson.Read(ctx, conn, &f), "switching off must force-close the live connection")
+}
+
+type fixedSecrets map[string]string
+
+func (s fixedSecrets) AllSecrets(context.Context, string) (map[string]string, error) { return s, nil }
+
+func TestDialinHandler_SwitchedOff_AnnouncesWithoutSecretsUntilSwitchedOn(t *testing.T) {
+	_, store := newTestStore(t)
+	svc := automations.NewService(store.Automations, allowAllPerm{})
+	dh := automations.NewDialinHandler(svc, automations.DialinConfig{
+		Repo: store.Automations, Cursors: store.AutomationCursors, EventLog: store.AutomationEventLog, Runs: store.AutomationRuns,
+		Secrets: fixedSecrets{"API_KEY": "s3cret"}, Logger: testutil.DiscardLogger(), PollInterval: 10 * time.Millisecond,
+	})
+	svc.SetConnectionRegistry(dh)
+	srv := httptest.NewServer(dh)
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/?token="
+	created, token, err := svc.Create(t.Context(), "owner", "ws-1", "x", []string{"tickets:read"})
+	require.NoError(t, err)
+	_, err = svc.UpdateConfigValues(t.Context(), "owner", created.ID, json.RawMessage(`{"status":"done"}`))
+	require.NoError(t, err)
+	hello := func(conn *websocket.Conn) automations.Frame {
+		require.NoError(t, wsjson.Write(t.Context(), conn, automations.Frame{Type: automations.FrameAnnounce, Name: "PR notifier", Subscriptions: []string{"ticket.created"}}))
+		var f automations.Frame
+		require.NoError(t, wsjson.Read(t.Context(), conn, &f))
+		require.Equal(t, automations.FrameHello, f.Type)
+		return f
+	}
+
+	conn, _, err := websocket.Dial(t.Context(), url+token, nil)
+	require.NoError(t, err, "a new automation is off, and its code must still be able to dial in")
+	t.Cleanup(func() { _ = conn.CloseNow() })
+	off := hello(conn)
+	assert.JSONEq(t, `{"status":"done"}`, string(off.ConfigValues))
+	assert.Empty(t, off.Secrets, "a switched-off automation is never handed the workspace's secrets")
+	got, err := svc.Get(t.Context(), "owner", created.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"ticket.created"}, got.Subscriptions, "the announce registers its code")
+
+	_, err = svc.SetEnabled(t.Context(), "owner", created.ID, true)
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	var f automations.Frame
+	require.Error(t, wsjson.Read(ctx, conn, &f), "switching on drops the connection so it reconnects with its secrets")
+
+	conn, _, err = websocket.Dial(t.Context(), url+token, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = conn.CloseNow() })
+	assert.Equal(t, map[string]string{"API_KEY": "s3cret"}, hello(conn).Secrets, "the same token works again")
 }
 
 func TestDialinHandler_CloseAll_ClosesEveryLiveConnection(t *testing.T) {

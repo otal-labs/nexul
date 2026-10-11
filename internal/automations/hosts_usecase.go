@@ -289,8 +289,8 @@ func placedOn(a *Automation, host *Host) bool {
 	return *a.HostID == host.ID
 }
 
-// authenticateToken checks a host-scoped automation token: it holds only while the automation is placed on the
-// host whose live credential it was minted from, and while the automation's own token is neither rotated nor revoked.
+// authenticateToken checks a host-scoped automation token: it holds only while the automation is switched on, placed
+// on the host whose live credential it was minted from, and its own token is neither rotated nor revoked.
 func (h *HostsService) authenticateToken(ctx context.Context, raw string) (*Automation, error) {
 	id, mac, ok := parseHostToken(raw)
 	if !ok || len(h.key) == 0 {
@@ -305,6 +305,9 @@ func (h *HostsService) authenticateToken(ctx context.Context, raw string) (*Auto
 	}
 	if a.TokenRevokedAt != nil {
 		return nil, fmt.Errorf("%w: automation token revoked", apperrs.ErrUnauthorized)
+	}
+	if !a.Enabled {
+		return nil, errSwitchedOff
 	}
 	host, err := h.placement(ctx, a)
 	if errors.Is(err, apperrs.ErrNotFound) {

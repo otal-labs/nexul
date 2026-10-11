@@ -217,6 +217,19 @@ func TestService_AuthenticateToken(t *testing.T) {
 	created, token, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
+	t.Run("a switched-off automation's token is refused, saying why", func(t *testing.T) {
+		_, err := s.AuthenticateToken(context.Background(), token)
+		require.ErrorIs(t, err, apperrs.ErrUnauthorized)
+		assert.Contains(t, err.Error(), "switched off")
+	})
+	t.Run("a switched-off automation's own token may still dial in", func(t *testing.T) {
+		a, err := s.AuthenticateDialin(context.Background(), token)
+		require.NoError(t, err)
+		assert.Equal(t, created.ID, a.ID)
+	})
+	_, err = s.SetEnabled(context.Background(), "owner", created.ID, true)
+	require.NoError(t, err)
+
 	t.Run("valid token resolves the automation", func(t *testing.T) {
 		a, err := s.AuthenticateToken(context.Background(), token)
 		require.NoError(t, err)
@@ -254,6 +267,24 @@ func TestService_RevokeToken_DisconnectsLiveConnection(t *testing.T) {
 	require.Len(t, ids, 1)
 	assert.Equal(t, created.ID, ids[0])
 	assert.Equal(t, "token revoked", reasons[0])
+}
+
+func TestService_SetEnabled_DisconnectsLiveConnectionEitherWay(t *testing.T) {
+	s := newTestService(newFakeRepo(), allowAll("owner"))
+	created, _, err := s.Create(t.Context(), "owner", "ws-1", "x", []string{"tickets:read"})
+	require.NoError(t, err)
+	conns := &fakeConnRegistry{}
+	s.SetConnectionRegistry(conns)
+
+	_, err = s.SetEnabled(t.Context(), "owner", created.ID, true)
+	require.NoError(t, err)
+	_, err = s.SetEnabled(t.Context(), "owner", created.ID, true)
+	require.NoError(t, err)
+	_, err = s.SetEnabled(t.Context(), "owner", created.ID, false)
+	require.NoError(t, err)
+
+	ids, _ := conns.calledWith()
+	assert.Equal(t, []string{created.ID, created.ID}, ids, "each real switch drops the connection; a no-op does not")
 }
 
 func TestService_MintToken_DisconnectsLiveConnection(t *testing.T) {

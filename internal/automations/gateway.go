@@ -2,6 +2,7 @@ package automations
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -49,7 +50,7 @@ func (s *Service) RequireAutomation(userAuth func(http.Handler) http.Handler, ne
 		}
 		a, err := s.AuthenticateToken(r.Context(), token)
 		if err != nil {
-			httpx.WriteError(w, apperrs.ErrUnauthorized)
+			httpx.WriteError(w, refusal(err))
 			return
 		}
 		if !isSelfRead(r, a.ID) && (s.scopeAllows == nil || !s.scopeAllows(r.Method, r.URL.Path, a.Scopes)) {
@@ -73,4 +74,12 @@ func isSelfRead(r *http.Request, automationID string) bool {
 	}
 	self := "/api/automations/" + automationID
 	return r.URL.Path == self || strings.HasPrefix(r.URL.Path, self+"/")
+}
+
+// refusal is what a refused token is told: only a switched-off automation learns why, every other refusal is bare.
+func refusal(err error) error {
+	if errors.Is(err, errSwitchedOff) {
+		return err
+	}
+	return apperrs.ErrUnauthorized
 }
