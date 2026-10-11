@@ -117,7 +117,7 @@ Owner's answers to the open questions (2026-10-10, second round):
     refused, and a machine without sudo gets a clear message. Because sudo is always there, Linux installs a
     **system** service, `/etc/systemd/system/nexul-computer.service` with `User=<that user>`: it starts at
     boot and survives logout with no lingering. macOS installs a LaunchDaemon with `UserName` set to that
-    user, and Windows a service under that user's account or the closest equivalent (Installing a personal
+    user, and Windows, where no sudo is needed, a logon task of that user's own (Installing a personal
     runner). The runner process itself never runs as root.
 23. **The app says Computers.** The settings page titled "T3 Code Setup" is renamed **Computers**. "Personal
     runner" stays internal, in code and `CONTEXT.md`.
@@ -276,7 +276,7 @@ The runner is one process with separate lanes, so heavy work in one never starve
   an error frame or a closed stream, and leaves the rest running. What a recover cannot catch (a fatal
   runtime error, running out of memory) ends the process, and the service manager starts it again
   (`Restart=always` on the systemd service, `KeepAlive` on the LaunchDaemon, restart on failure on the
-  Windows service or task).
+  task host on Windows).
 - **Caps per lane.** 32 relayed streams, 16 log streams (ADR 0091), 4 shell jobs with the rest queued,
   each with its own output rate and size limits. No lane borrows another's budget.
 - **Restarts and updates.** A self-update (ADR 0052) or a restart drops open relayed streams for a few
@@ -348,7 +348,7 @@ The person runs one line, `curl -fsSL <site>/computer.sh | sudo sh -s -- <token>
 ticket 09); nobody types `nexul`. `<site>` is `https://nexul.io` unless the instance sets another. The token is an
 HS256 JWT the instance signs with a key derived from its existing auth secret (no new secret, no new env var). Its
 claims carry the instance's address, the single-use enrollment code, the computer's id and `exp`, the code's
-one-hour expiry. `computer.sh` checks the OS (Linux and macOS; Windows says "coming soon" until ticket 09), decodes the token's middle segment in POSIX sh (base64url to base64, re-pad, `base64 -d`, a `sed` for
+one-hour expiry. `computer.sh` checks the OS (Linux and macOS; elsewhere it points at the Windows command), decodes the token's middle segment in POSIX sh (base64url to base64, re-pad, `base64 -d`, a `sed` for
 `server`; no `jq`) only to say where it connects, and hands over to `install.sh`, which downloads and checksums
 the `nexul` command into the user's own `~/.local/bin` and runs `nexul install computer --token <token>`. That
 engine sends the whole token to the instance it names, which checks the signature, the expiry and that the code is
@@ -378,7 +378,7 @@ never runs as root.
 |---|---|---|---|
 | Linux | `~/.local/bin/nexul`, data under `~/.local/share/nexul`, both the user's | systemd **system** service `/etc/systemd/system/nexul-computer.service` with `User=<that user>`, `Restart=always`, enabled and started | Starts at boot and survives logout. No lingering and no user manager are involved for the runner. |
 | macOS | `~/.local/bin/nexul`, the runner under `~/Library/Application Support/nexul`, its log in `~/Library/Logs/nexul`, all the user's | LaunchDaemon `/Library/LaunchDaemons/io.nexul.nexul-computer.plist` with `UserName` set to that user and `KeepAlive` (`SuccessfulExit` false, as Linux's `RestartPreventExitStatus=0`) | Starts at boot and survives logout. T3 Code's own macOS service is a LaunchAgent, which runs only while the person is logged in at the screen, so until then the computer is connected but T3 Code is not running. |
-| Windows | `%LOCALAPPDATA%\Nexul` | A service under that user's account, or the closest equivalent | Ticket 09. A service under a named account needs that person's password or the log-on-as-service right; the fallback is the per-user Scheduled Task at log on with restart on failure. T3 Code on Windows is the desktop app, which runs only while the person is logged in anyway. Ticket 09 decides. |
+| Windows | `nexul.exe` and the runner under `%LOCALAPPDATA%\Nexul`, the folder on the user's own Path, all the user's | Task Scheduler task `nexul-computer` of the user's own: a logon trigger, `InteractiveToken`, `LeastPrivilege`, no time limit; it runs `nexul service-host nexul-computer`, which keeps the runner in a kill-on-close job, starts it again 5 s after a failure and ends with its clean exit | No administrator: a service under a named account needs that person's password or the log-on-as-service right, which the install never asks for, and T3 Code on Windows is the desktop app, which runs only while the person is logged on anyway. The runner runs from log on to log off. The task is the person's, so removal needs no root cleanup: a removed runner starts `nexul uninstall computer --yes` outside its task, which ends and deletes the task, then deletes the folder and its Path entry once it exits. |
 
 Today's code is ahead of this table: ticket 02 shipped a systemd **user** unit with lingering, which refuses root.
 Ticket 20 changes it to the Linux row, and removes the lingering step.
@@ -797,8 +797,8 @@ What sharing really hands over, which the grant dialog must say plainly:
   the installer is new code on three OSes, and macOS and Windows native installs are still untested
   (ADR 0073's trade-offs).
 - **Windows cannot run a service under a named user without that person's password** or the log-on-as-service
-  right, and `internal/install` has no per-user process host (`servicehost_windows.go` serves the Service Control
-  Manager only). Ticket 09 chooses between a service and a per-user Scheduled Task, which is new code either way.
+  right, so a Windows runner is a per-user Scheduled Task whose task host (`servicehost_windows.go`) supervises it,
+  and it runs only while its person is logged on.
 - **`NetConn` deadlines close the whole socket** (coder/websocket's documented behaviour). `http.Transport`
   does not set deadlines on idle HTTP/1.1 connections, but ticket 01 proves a keep-alive reuse and a 30-minute
   idle WebSocket through the relay before anything builds on it.

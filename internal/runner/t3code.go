@@ -467,12 +467,17 @@ func findT3(home string) string {
 	if path, err := exec.LookPath("t3"); err == nil {
 		return path
 	}
-	candidates := []string{filepath.Join(home, "bin", "t3")}
+	launcher := "t3"
+	if runtime.GOOS == "windows" {
+		launcher = "t3.cmd"
+	}
+	candidates := []string{filepath.Join(home, "bin", launcher)}
 	if userHome, err := os.UserHomeDir(); err == nil {
-		candidates = append(candidates, filepath.Join(userHome, ".local", "bin", "t3"))
+		candidates = append(candidates, filepath.Join(userHome, ".local", "bin", launcher))
 	}
 	for _, path := range candidates {
-		if info, err := os.Stat(path); err == nil && !info.IsDir() && info.Mode()&0o111 != 0 {
+		info, err := os.Stat(path)
+		if err == nil && !info.IsDir() && (runtime.GOOS == "windows" || info.Mode()&0o111 != 0) { // Windows has no execute bit
 			return path
 		}
 	}

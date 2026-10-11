@@ -15,7 +15,7 @@ fail() {
 
 case "$(uname -s)" in
   Linux | Darwin) ;;
-  *) fail "adding this kind of computer is coming soon; for now, add a Linux computer or a Mac" ;;
+  *) fail "this script adds a Linux computer or a Mac; on Windows, run Add a computer's Windows command in PowerShell" ;;
 esac
 
 if [ "$(id -u)" -ne 0 ]; then

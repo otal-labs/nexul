@@ -1,0 +1,165 @@
+# Adds and removes a Windows PC as a computer end to end; start by hand: gh workflow run computer-windows-smoke.yml --ref <branch>.
+name: Computer on Windows
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      TAG: v0.0.1-windows-smoke
+      SITE: http://127.0.0.1:8371
+      API: http://127.0.0.1:8370
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      # Releases are built from LF files on Linux; the server's embedded skills refuse a CRLF frontmatter.
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Build the release and serve it with the install scripts
+        shell: bash
+        run: |
+          rel="$RUNNER_TEMP/site"
+          mkdir -p "$rel/$TAG"
+          for bin in nexul:./cmd/nexul nexul-server:./server/cmd nexul-runner:./runner/cmd; do
+            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-X github.com/otal-labs/nexul/internal/platform/version.Version=$TAG" \
+              -o "$rel/$TAG/${bin%%:*}-windows-amd64.exe" "${bin#*:}"
+          done
+          (cd "$rel/$TAG" && sha256sum --text nexul* > checksums.txt && cat checksums.txt)
+          cp website/public/*.ps1 "$rel/"
+          echo "SITE_DIR=$rel" >> "$GITHUB_ENV"
+          echo "SERVER_BIN=$rel/$TAG/nexul-server-windows-amd64.exe" >> "$GITHUB_ENV"
+
+      # A step ends every process it started, so what later steps need starts through WMI, outside the step.
+      - name: Start the site and a throwaway instance, and add a computer
+        run: |
+          @'
+          function Detach($line) {
+            $r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = "cmd.exe /d /s /c `"$line`"" }
+            if ($r.ReturnValue -ne 0) { throw "could not start $line" }
+          }
+          '@ | Set-Content "$env:RUNNER_TEMP\detach.ps1"
+          . "$env:RUNNER_TEMP\detach.ps1"
+          Detach "`"$((Get-Command python).Source)`" -m http.server 8371 --bind 127.0.0.1 --directory `"$env:SITE_DIR`" > `"$env:RUNNER_TEMP\site.log`" 2>&1"
+          $data = New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\instance"
+          Detach ("set NEXUL_HTTP_ADDR=127.0.0.1:8370&& set `"NEXUL_DB_PATH=$data\nexul.db`"&& set NEXUL_DEV_LOGIN=true&& " +
+            "set NEXUL_SITE_URL=$env:SITE&& set NEXUL_RELEASE_URL=$env:SITE&& `"$env:SERVER_BIN`" > `"$env:RUNNER_TEMP\server.log`" 2>&1")
+          foreach ($i in 1..60) { if ((curl.exe -s -o NUL -w '%{http_code}' "$env:API/auth/dev-login") -eq '302') { break }; Start-Sleep 1 }
+          $session = (curl.exe -s -o NUL -w '%{redirect_url}' "$env:API/auth/dev-login") -replace '.*token=', ''
+          if (-not $session) { throw 'the instance never answered dev login' }
+          echo "::add-mask::$session"
+          "SESSION=$session" >> $env:GITHUB_ENV
+          $auth = @{ Authorization = "Bearer $session" }
+          Invoke-RestMethod -Method Post -Headers $auth -ContentType 'application/json' -Body (@{ instance_url = $env:API } | ConvertTo-Json) "$env:API/api/auth/onboarding/owner" | Out-Null
+          $enrollment = Invoke-RestMethod -Method Post -Headers $auth -ContentType 'application/json' -Body '{"name":"smoke-pc"}' "$env:API/api/pairing/computers/enrollments"
+          $enrollment | ConvertTo-Json -Depth 5 | Set-Content "$env:RUNNER_TEMP\enrollment.json"
+          "COMPUTER=$($enrollment.computer.id)" >> $env:GITHUB_ENV
+          $enrollment.commands.windows -replace '\)\)\) .*', '))) <token>'
+
+      # T3 Code on Windows is the desktop app, which a runner without a screen cannot open; its command line serves the
+      # same server. Its installer looks the release up on GitHub's API, which refuses the shared runners' addresses
+      # unsigned in, so the version is pinned.
+      - name: Run T3 Code's server as the account
+        timeout-minutes: 5
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $env:T3CODE_VERSION = (gh release view -R pingdotgg/t3code --json tagName -q .tagName).TrimStart('v')
+          irm https://t3.codes/install.ps1 | iex
+          $shim = Get-Content "$HOME\.local\bin\t3.cmd"
+          $shim
+          $t3 = ($shim | Select-Object -Last 1) -replace '^"([^"]+)".*', '$1'
+          . "$env:RUNNER_TEMP\detach.ps1"
+          Detach "set `"USERPROFILE=$HOME`"&& `"$t3`" serve --port 3773 > `"$env:RUNNER_TEMP\t3.log`" 2>&1"
+          foreach ($i in 1..60) { if ((curl.exe -s --max-time 5 -o NUL -w '%{http_code}' http://127.0.0.1:3773/.well-known/t3/environment) -eq '200') { break }; Start-Sleep 2 }
+          curl.exe -fsS --max-time 5 http://127.0.0.1:3773/.well-known/t3/environment
+
+      - name: Run Add a computer's command as the runner's account
+        timeout-minutes: 5
+        run: |
+          "account: $([Security.Principal.WindowsIdentity]::GetCurrent().Name); session: $((Get-Process -Id $PID).SessionId)"
+          Get-NetTCPConnection -State Listen -LocalPort 8370, 8371, 3773 | Format-Table LocalAddress, LocalPort, OwningProcess
+          Invoke-Expression (Get-Content "$env:RUNNER_TEMP\enrollment.json" | ConvertFrom-Json).commands.windows
+
+      - name: The runner is the account's own logon task, and comes back when killed
+        timeout-minutes: 3
+        run: |
+          $me = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+          $task = Get-ScheduledTask -TaskName nexul-computer
+          $task.Principal | Format-List UserId, LogonType, RunLevel
+          $task.Triggers | Format-List
+          if ($task.Principal.UserId -notin @($me, $me.Split('\')[-1])) { throw "the task runs as $($task.Principal.UserId), not $me" }
+          if ($task.Principal.RunLevel -ne 'Limited') { throw 'the task runs elevated' }
+          $dir = "$env:LOCALAPPDATA\Nexul"
+          Get-ChildItem -Recurse $dir | Select-Object FullName, Length
+          if (-not ([Environment]::GetEnvironmentVariable('Path', 'User') -split ';' -contains $dir)) { throw "$dir is not on the account's Path" }
+          $runner = $null
+          foreach ($i in 1..30) { $runner = Get-CimInstance Win32_Process -Filter "Name = 'nexul-runner.exe'"; if ($runner) { break }; Start-Sleep 1 }
+          if (-not $runner) { Get-Content "$dir\computer\service.log" -ErrorAction SilentlyContinue; throw 'the task never started the runner' }
+          $owner = Invoke-CimMethod -InputObject $runner -MethodName GetOwner
+          "runner $($runner.ProcessId) runs as $($owner.Domain)\$($owner.User)"
+          if ("$($owner.Domain)\$($owner.User)" -ne $me) { throw "the runner runs as $($owner.Domain)\$($owner.User), not $me" }
+          Stop-Process -Id $runner.ProcessId -Force
+          $again = $null
+          foreach ($i in 1..30) {
+            $again = Get-CimInstance Win32_Process -Filter "Name = 'nexul-runner.exe'" | Where-Object ProcessId -ne $runner.ProcessId
+            if ($again) { break }; Start-Sleep 1
+          }
+          if (-not $again) { throw 'the task host did not start the killed runner again' }
+          "killed $($runner.ProcessId); the task host started it again as $($again.ProcessId)"
+
+      - name: The computer shows connected and paired through its runner
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          for _ in $(seq 120); do
+            row=$(curl -fsS -H "Authorization: Bearer $SESSION" "$API/api/pairing/computers" | jq ".computers[] | select(.id == \"$COMPUTER\")")
+            [ "$(echo "$row" | jq -r '.runner.connected')" = true ] && [ -n "$(echo "$row" | jq -r '.harness_version // empty')" ] && break
+            sleep 2
+          done
+          echo "$row" | jq '{name, runner, harness_version, token_expires_at, pair_error}'
+          test "$(echo "$row" | jq -r '.runner.connected')" = true
+          test -n "$(echo "$row" | jq -r '.harness_version // empty')"
+
+      - name: A relayed request reaches T3 Code
+        shell: bash
+        run: |
+          curl -fsS -H "Authorization: Bearer $SESSION" "$API/api/pairing/computers/$COMPUTER/providers" > providers.json
+          head -c 800 providers.json; echo
+          jq -e '.providers | type == "array"' providers.json
+
+      - name: Removing the computer removes the task and the folder
+        timeout-minutes: 4
+        run: |
+          Copy-Item "$env:LOCALAPPDATA\Nexul\computer\service.log" "$env:RUNNER_TEMP\runner.log" -ErrorAction SilentlyContinue
+          Invoke-RestMethod -Method Delete -Headers @{ Authorization = "Bearer $env:SESSION" } "$env:API/api/pairing/computers/$env:COMPUTER" | Out-Null
+          $dir = "$env:LOCALAPPDATA\Nexul"
+          function Left {
+            if (Get-ScheduledTask -TaskName nexul-computer -ErrorAction SilentlyContinue) { 'the nexul-computer task' }
+            if (Test-Path $dir) { $dir }
+            if (Get-Process nexul-runner -ErrorAction SilentlyContinue) { 'a nexul-runner process' }
+            if ([Environment]::GetEnvironmentVariable('Path', 'User') -split ';' -contains $dir) { "$dir on the account's Path" }
+          }
+          foreach ($i in 1..60) { if (-not (Left)) { break }; Start-Sleep 2 }
+          $remaining = Left
+          if ($remaining) { "still installed:"; $remaining; exit 1 }
+          'nothing of the install is left'
+
+      - name: Logs
+        if: always()
+        run: |
+          foreach ($f in "$env:RUNNER_TEMP\site.log", "$env:RUNNER_TEMP\server.log", "$env:RUNNER_TEMP\runner.log", "$env:LOCALAPPDATA\Nexul\computer\service.log",
+            "$env:TEMP\nexul-uninstall-computer.log", "$env:RUNNER_TEMP\t3.log") {
+            if (Test-Path $f) { "== $f"; Get-Content $f -Tail 40 }
+          }
+          Get-ScheduledTaskInfo -TaskName nexul-computer -ErrorAction SilentlyContinue | Format-List

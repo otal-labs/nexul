@@ -36,6 +36,7 @@ func TestService_CreatePersonalEnrollment_SignsATokenBoundToItsPersonAndComputer
 	assert.Equal(t, enrollNow.Add(time.Hour), e.ExpiresAt)
 	assert.Empty(t, e.Code, "the code travels only inside the token")
 	assert.Equal(t, "curl -fsSL https://nexul.io/computer.sh | sudo NEXUL_VERSION=v0.3.0-beta-012 sh -s -- "+e.Token, e.Commands.Unix)
+	assert.Equal(t, "$env:NEXUL_VERSION='v0.3.0-beta-012'; & ([scriptblock]::Create((irm https://nexul.io/computer.ps1))) "+e.Token, e.Commands.Windows)
 	claims := claimsOf(t, e.Token)
 	assert.Equal(t, ComputerClaims{Server: "https://nexul.example.com", Code: claims.Code, Computer: "c-laptop", Exp: enrollNow.Add(time.Hour).Unix()}, claims)
 	stored := repo.codes[hostcred.Hash(claims.Code)]

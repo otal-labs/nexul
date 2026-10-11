@@ -6,7 +6,10 @@ A runner reports its version on every connect. When the server is a real release
 reports a different real version, the server sends it an `update` frame naming the version, a download URL back
 to the server's own download route, and the release's sha256. The runner downloads the matching binary,
 verifies the checksum, renames the running binary aside (`<exe>.old`), swaps the new one into place, and
-re-execs itself in place (`syscall.Exec` on Unix; start-and-exit on Windows, which has no equivalent). A runner
+re-execs itself in place (`syscall.Exec` on Unix; start-and-exit on Windows, which has no equivalent). A computer's
+runner on Windows (ADR 0146) runs under its logon task's host, which sets `NEXUL_SUPERVISED`: there it only exits,
+and the host starts the new binary, because a process it started itself would sit outside the host's job, where
+ending the task could no longer stop it. A runner
 mid-job defers the swap until its job's result frame has been sent. The bundled `instance` runner and any runner
 running inside a container never apply this — they follow the compose image tag instead.
 
@@ -20,7 +23,8 @@ principle, but it doubles the thing to install and keep running per machine for 
 for itself with a download and a rename.
 
 The trade-off: a runner that dies mid-swap (killed before the final rename, or the new binary starts and
-immediately crashes) is not self-healing — there is no supervisor watching it. The checksum step catches a
+immediately crashes) is not self-healing — there is no supervisor watching it, beyond the service manager or the
+Windows task host restarting the same broken binary. The checksum step catches a
 corrupted download before anything is touched, but a binary that downloads intact, passes verification, and
 still crashes on start has no automatic rollback; `<exe>.old` sits right next to it as the manual recovery.
 Accepted because the failure mode is loud (the runner simply stops reconnecting) and the fix is a one-line

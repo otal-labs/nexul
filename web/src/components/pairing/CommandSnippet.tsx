@@ -43,29 +43,24 @@ export const CommandSnippet = ({ commands, label, guide }: CommandSnippetProps) 
           picked === TunnelOs.Unix && "motion-safe:slide-in-from-left-[6px]",
         )}
       >
-        {command.lines.length === 0 && <p className="min-w-0 flex-1 py-2.5 font-mono text-xs text-muted-foreground">Coming soon</p>}
-        {command.lines.length > 0 && (
-          <pre
-            tabIndex={0}
-            aria-label={`${label}, ${TUNNEL_OS_LABELS[os]}`}
-            className="min-w-0 flex-1 overflow-x-auto py-1.5 font-mono text-xs leading-6 [scrollbar-width:none] [mask-image:linear-gradient(to_left,transparent,#000_2rem)] quiet-focus [&::-webkit-scrollbar]:hidden"
-          >
-            {command.lines.map((line) => (
-              <code key={line} className="block w-max pr-8">
-                {line}
-              </code>
-            ))}
-          </pre>
-        )}
-        {command.lines.length > 0 && (
-          <CopyButton
-            value={command.lines.join("\n")}
-            label={`Copy ${label.toLowerCase()}`}
-            iconOnly
-            variant="default"
-            className="size-8 text-brand-foreground hover:text-brand-foreground"
-          />
-        )}
+        <pre
+          tabIndex={0}
+          aria-label={`${label}, ${TUNNEL_OS_LABELS[os]}`}
+          className="min-w-0 flex-1 overflow-x-auto py-1.5 font-mono text-xs leading-6 [scrollbar-width:none] [mask-image:linear-gradient(to_left,transparent,#000_2rem)] quiet-focus [&::-webkit-scrollbar]:hidden"
+        >
+          {command.lines.map((line) => (
+            <code key={line} className="block w-max pr-8">
+              {line}
+            </code>
+          ))}
+        </pre>
+        <CopyButton
+          value={command.lines.join("\n")}
+          label={`Copy ${label.toLowerCase()}`}
+          iconOnly
+          variant="default"
+          className="size-8 text-brand-foreground hover:text-brand-foreground"
+        />
       </div>
       <div className="flex min-w-0 items-center justify-between gap-4 text-xs text-muted-foreground">
         <span className="min-w-0">{command.note}</span>

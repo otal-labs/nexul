@@ -105,8 +105,8 @@ func (s *Service) CreatePersonalEnrollment(ctx context.Context, userID, computer
 		return Enrollment{}, err
 	}
 	site := cmp.Or(strings.TrimRight(s.install.SiteURL, "/"), hostcred.DefaultSite)
-	unix := hostcred.ComputerCommand(site, strings.TrimRight(s.install.ReleaseURL, "/"), token)
-	return Enrollment{Token: token, ExpiresAt: code.ExpiresAt, Commands: InstallCommands{Unix: unix}}, nil
+	unix, windows := hostcred.ComputerCommands(site, strings.TrimRight(s.install.ReleaseURL, "/"), token)
+	return Enrollment{Token: token, ExpiresAt: code.ExpiresAt, Commands: InstallCommands{Unix: unix, Windows: windows}}, nil
 }
 
 func (s *Service) mintEnrollment(ctx context.Context, name, machine string, ttl time.Duration) (string, time.Time, error) {
