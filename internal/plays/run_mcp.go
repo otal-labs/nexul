@@ -201,8 +201,9 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				"With cancel true instead, id names a queued auto run from trail_list with queue true, which is dropped "+
 				"before it starts and returned; allowed for the person it would run on or an autoplays:write holder. "+
 				"With computer_id and t3_project_id instead, id names a queued auto run of the caller's, such as one "+
-				"waiting with reason no_default_computer, which then runs on that computer and T3 project without "+
-				"changing the caller's defaults or links; allowed for the person it runs on only.",
+				"waiting with reason no_default_computer, which then runs on that computer and T3 project; the pick is "+
+				"saved as the caller's link for its project, as a first play_run there saves one, so their other runs "+
+				"in that project start through it, and their defaults stay as they are; allowed for the person it runs on only.",
 			mcptool.Hints{},
 			func(ctx context.Context, in trailUpdateIn) (any, error) {
 				if in.Cancel {

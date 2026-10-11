@@ -505,7 +505,7 @@ func TestDispatch_SetupGap_WaitsWithoutAFailedTrailUntilFixed(t *testing.T) {
 	}
 }
 
-func TestDispatch_SetupGap_DoesNotHoldUpThePersonsOtherRuns(t *testing.T) {
+func TestPickComputer_LinkNotSaved_KeepsThePickForThatRunOnly(t *testing.T) {
 	r := newRig(t, openStore(t))
 	fix := r.play(t, "Fix it")
 	r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked)
@@ -516,14 +516,47 @@ func TestDispatch_SetupGap_DoesNotHoldUpThePersonsOtherRuns(t *testing.T) {
 	r.unblock(t, "t-2")
 	r.Refuse(plays.RefusalNoDefaultComputer)
 	r.dispatch(t)
-	_, err := r.Runner.PickComputer(as(t.Context(), dev), r.only(t, "t-2").ID, "c-laptop", "t3-project")
-	require.NoError(t, err)
+	r.FailLinkSave(errors.New("computer offline"))
+
+	it, err := r.Runner.PickComputer(as(t.Context(), dev), r.only(t, "t-2").ID, "c-laptop", "t3-project")
+
+	require.NoError(t, err, "the pick stands though its link was not saved")
+	assert.Equal(t, "c-laptop", it.ComputerID)
+	assert.Empty(t, r.Link(dev, project))
 	r.clock = r.clock.Add(time.Minute)
-
 	r.dispatch(t)
-
 	assert.Equal(t, []any{plays.QueueQueued, plays.QueueStarted}, []any{r.only(t, "t-1").Status, r.only(t, "t-2").Status},
 		"the older run still waits on its gap while the picked one goes")
+}
+
+func TestPickComputer_SavesTheLink_SoTheProjectsNextRunNeedsNoPick(t *testing.T) {
+	r := newRig(t, openStore(t))
+	fix := r.play(t, "Fix it")
+	r.autoPlay(t, fix.ID, plays.MomentTicketUnblocked)
+	r.ticket("t-1")
+	r.ticket("t-2")
+	r.unblock(t, "t-1")
+	r.clock = r.clock.Add(time.Second)
+	r.unblock(t, "t-2")
+	r.Refuse(plays.RefusalNoDefaultComputer)
+	r.dispatch(t)
+	require.Equal(t, plays.RefusalNoDefaultComputer, r.only(t, "t-2").Reason)
+
+	_, err := r.Runner.PickComputer(as(t.Context(), dev), r.only(t, "t-1").ID, "c-laptop", "t3-project")
+	require.NoError(t, err)
+
+	assert.Equal(t, [2]string{"c-laptop", "t3-project"}, r.Link(dev, project), "saved as the person's link for the project")
+	r.dispatch(t)
+	assert.Equal(t, []any{plays.QueueStarted, plays.ReasonNoFreeSlot}, []any{r.only(t, "t-1").Status, r.only(t, "t-2").Reason},
+		"the other run is due at once and waits only for the slot")
+	r.endRuns(t, "t-1")
+	r.dispatch(t)
+	second := r.only(t, "t-2")
+	require.Equal(t, plays.QueueStarted, second.Status)
+	assert.Empty(t, second.ComputerID, "it was never picked")
+	trail, err := r.store.PlayTrails.GetTrail(t.Context(), second.TrailID)
+	require.NoError(t, err)
+	assert.Equal(t, "c-laptop", trail.ComputerID, "it ran through the saved link")
 }
 
 func TestHandleComputerChanged_RetriesTheHeldRunsAtOnce(t *testing.T) {
@@ -580,6 +613,7 @@ func TestPickComputer_RunsTheHeldRunThereForItsPersonOnly(t *testing.T) {
 		})
 	}
 
+	assert.Empty(t, r.Link(dev, project), "a refused pick saves no link")
 	before := r.updates(t)
 	it, err := r.Runner.PickComputer(as(t.Context(), dev), id, "c-laptop", "t3-project")
 	require.NoError(t, err)

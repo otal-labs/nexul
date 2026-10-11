@@ -475,6 +475,8 @@ func (f *fakeCheckouts) ListProjects(context.Context, string, string) ([]harness
 	return f.projects, f.listErr
 }
 
+func (f *fakeCheckouts) SaveLink(context.Context, string, string, string, string) error { return nil }
+
 type fakeRound struct {
 	projectID, answeredBy string
 	followUps             []FollowUp

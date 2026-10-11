@@ -138,7 +138,8 @@ One person's choice of paired computer, T3 project, provider, model, model
 options, and start-in for one project they can open, set in Your settings →
 Computers → Projects. Each person has their own; nobody else's turns use it.
 A play a person starts in a project they have not linked asks where to run,
-their defaults filled in, and saves the answer as their link (ADR 0145);
+their defaults filled in, and saves the answer as their link (ADR 0145); so
+does picking a computer for an auto run waiting on no default computer;
 `@Agent` and runs nobody presses use their own pairing defaults there (ADR 0102).
 _Avoid_: Project pairing, shared link
 
@@ -297,7 +298,8 @@ since a doc has no developer). The play's show-when stage does not apply; a
 "Stage is" condition does that. A match waits in that person's queue, highest
 priority then oldest first, until they have a free slot and their computer
 is online and set up, and is checked again before it starts; with several
-computers and none the default, the waiting run asks them to pick one. A ticket past the daily
+computers and none the default, the waiting run asks them to pick one, saved
+as their project link so the project's next runs need no pick. A ticket past the daily
 cap on automatic runs shows "Auto plays paused" until resumed. Managed with
 `autoplays:read`, `autoplays:write`, `autoplays:delete`; the person it runs
 on needs `plays:run`. An automation starts one in code with `runPlay`.

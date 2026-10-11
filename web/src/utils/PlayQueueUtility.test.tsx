@@ -29,7 +29,7 @@ describe("waitingWhy and waitingSentence", () => {
     ["unpaired", "no computer paired", "no computer is paired to run it on; add one in Settings → Computers"],
     ["expired_token", "computer session expired", "the paired computer's session expired; pair it again in Settings → Computers"],
     ["no_default", "no T3 project linked", "no T3 project is picked for this project; link one in Settings → Computers → Projects"],
-    ["no_default_computer", "no default computer", "several computers are paired and none is the default; pick one to run it on"],
+    ["no_default_computer", "no default computer", "several computers are paired and none is the default; pick one, and this project's runs use it from now on"],
     ["setup_required", "computer setup not done", "the computer's setup isn't done; run it in Settings → Computers"],
   ])("says the held reason %j in plain words", (reason, why, sentence) => {
     const item = queueItem({ reason });
