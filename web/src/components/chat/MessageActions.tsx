@@ -16,7 +16,7 @@ interface MessageActionsProps {
 export const MessageActions = ({ message, onEdit, onDelete }: MessageActionsProps) => {
   const toggle = useToggleReaction(message);
   return (
-    <div className="pointer-events-none absolute -top-3.5 -right-2 z-10 flex rounded-md border border-input bg-popover opacity-0 shadow-card transition-opacity duration-150 ease-standard group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-[[data-state=open]]:pointer-events-auto has-[[data-state=open]]:opacity-100">
+    <div className="pointer-events-none absolute -top-3.5 -right-2 z-10 flex rounded-md border border-input bg-popover text-popover-foreground opacity-0 shadow-card transition-opacity duration-150 ease-standard group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-[[data-state=open]]:pointer-events-auto has-[[data-state=open]]:opacity-100">
       <EmojiPickerPopover onPick={toggle} align="end">
         <Button size="icon" variant="ghost" className="size-6" aria-label="Add reaction">
           <SmilePlus className="size-3.5" aria-hidden />
