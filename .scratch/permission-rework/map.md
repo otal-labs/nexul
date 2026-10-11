@@ -37,8 +37,9 @@ asking the owner anything. This map plans; it builds nothing.
   that only Restricted members had. One role is assumed across schema, queries, invitations, `/me` and MCP, with
   no tool headroom. Restricted also hides public channels. On production the wipe deletes 2 rows and keeps the 32
   creator rows.
-- [Several roles on screen, and a person with none](issues/04-several-roles-on-screen.md): a roles checklist with a
-  reasoned "Can't give" group, role chips in Team rows, and an empty state naming the Owners for a member with none.
+- [The one-time "who's in each project" setup](issues/05-the-one-time-project-setup.md): one page with a projects ×
+  roles tick grid ("Every project" lead row, People column), then a public channels grid ticked "can see", and one
+  Finish. A non-Owner gets an empty state until then. Afterwards it is the workspace's Access page, `/:workspace/access`.
 
 ## Not yet specified
 
