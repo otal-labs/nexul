@@ -6,15 +6,23 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// Overwrite is workspace-wide when ResourceType is "workspace" (ResourceID is the workspace id).
+// Overwrite is a rule on one entity for a person or a role (Target); workspace-wide when ResourceType is "workspace".
 type Overwrite struct {
 	ResourceType string          `json:"resource_type"`
 	ResourceID   string          `json:"resource_id"`
+	Target       string          `json:"target"`
 	UserID       string          `json:"user_id"`
+	RoleID       string          `json:"role_id,omitempty"`
 	Allow        permissions.Set `json:"allow"`
 	Deny         permissions.Set `json:"deny"`
 	CreatedAt    time.Time       `json:"created_at"`
 	UpdatedAt    time.Time       `json:"updated_at"`
+}
+
+// Rules are the rules on one entity that reach one person: the rule naming them, and those naming a role they hold.
+type Rules struct {
+	Person *Overwrite
+	Roles  []*Overwrite
 }
 
 // User is mirrored here so access never imports auth (ADR 0017).

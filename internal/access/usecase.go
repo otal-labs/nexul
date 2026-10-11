@@ -80,21 +80,17 @@ func (s *Service) HasPermission(ctx context.Context, userID, workspaceID string,
 }
 
 func (s *Service) check(ctx context.Context, userID, workspaceID, projectID string, action permissions.Action, resourceType, resourceID string) (bool, Source) {
-	return decide(s.layers(ctx, userID, workspaceID, projectID), action, func() *Overwrite {
+	return decide(s.layers(ctx, userID, workspaceID, projectID), action, func() *Rules {
 		if resourceType == "" || resourceType == resourceTypeProject || resourceID == "" {
 			return nil
 		}
-		ow, err := s.overwrite(ctx, resourceType, resourceID, userID)
-		if err != nil {
-			return nil
-		}
-		return ow
+		return s.rules(ctx, resourceType, resourceID, userID)
 	})
 }
 
-// decide answers a check from layers already read, with what decided it as ids; resource, the resource's own
-// overwrite, is read only when the layers leave the answer open.
-func decide(ws workspaceLayers, action permissions.Action, resource func() *Overwrite) (bool, Source) {
+// decide answers a check from layers already read, with what decided it as ids; resource, the resource's own rules,
+// is read only when the layers leave the answer open.
+func decide(ws workspaceLayers, action permissions.Action, resource func() *Rules) (bool, Source) {
 	if ws.owner {
 		return true, sourceOf(SourceOwner, resourceTypeWorkspace, ws.workspaceID, TargetRole, ws.roleID, true)
 	}
@@ -105,19 +101,17 @@ func decide(ws workspaceLayers, action permissions.Action, resource func() *Over
 		return ws.member, sourceOf(SourceMember, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, ws.member)
 	}
 	allowed, src := ws.has(action)
-	if ow := resource(); ow != nil {
-		allowed, src = applyOverwrite(allowed, src, ow, action)
-	}
-	return allowed, src
+	return applyRules(allowed, src, resource(), ws.roleIDs, action)
 }
 
-// workspaceLayers is the role set, workspace-wide overwrite, and for a Restricted member the Project access of the
+// workspaceLayers is the role set, the workspace-wide overwrite, and for a Restricted member the Project access of the
 // project asked about, fetched once so a whole-grid answer costs the same lookups as a single check.
 type workspaceLayers struct {
 	userID      string
 	workspaceID string
 	projectID   string
 	roleID      string
+	roleIDs     []string
 	member      bool
 	owner       bool
 	restricted  bool
@@ -139,8 +133,10 @@ func (s *Service) workspaceLayers(ctx context.Context, userID, workspaceID strin
 			ws.restricted = info.Restricted && !info.IsOwnerRole
 			ws.role = info.Permissions
 			ws.roleID = info.RoleID
+			ws.roleIDs = []string{info.RoleID}
 		}
 	}
+	// The workspace itself carries no rule for a role (ADR 0148), so its person's row is read alone.
 	if ow, err := s.overwrite(ctx, resourceTypeWorkspace, workspaceID, userID); err == nil {
 		ws.overwrite = ow
 	}
@@ -156,8 +152,8 @@ func (s *Service) layers(ctx context.Context, userID, workspaceID, projectID str
 		return ws
 	}
 	ws.inProject = true
-	if ow, err := s.overwrite(ctx, resourceTypeProject, projectID, userID); err == nil {
-		ws.project = ow.Allow
+	if r := s.rules(ctx, resourceTypeProject, projectID, userID); r != nil && r.Person != nil {
+		ws.project = r.Person.Allow
 	}
 	return ws
 }
@@ -193,10 +189,7 @@ func (ws workspaceLayers) has(action permissions.Action) (bool, Source) {
 	if !ws.member {
 		src = sourceOf(SourceMember, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, false)
 	}
-	if ws.overwrite == nil {
-		return allowed, src
-	}
-	return applyOverwrite(allowed, src, ws.overwrite, action)
+	return applyPersonRule(allowed, src, ws.overwrite, action)
 }
 
 func (ws workspaceLayers) actions() []string {
@@ -249,19 +242,66 @@ func (s *Service) CanInProject(ctx context.Context, userID, projectID string, ac
 	return held
 }
 
-// applyOverwrite: deny wins over allow within a row, and a row that sets the action becomes the source; a row naming
-// neither leaves the answer and its source untouched.
-func applyOverwrite(allowed bool, src Source, ow *Overwrite, action permissions.Action) (bool, Source) {
-	rule := Source{Kind: SourceRule, EntityType: ow.ResourceType, EntityID: ow.ResourceID, TargetType: TargetPerson, TargetID: ow.UserID}
+// applyRules lays an entity's rules over the answer from further out: the rules for the roles held, of which Allow
+// wins, then the rule naming the person, which beats them (ADR 0148). A rule that sets the action becomes the source;
+// one naming neither leaves the answer and its source untouched.
+func applyRules(allowed bool, src Source, r *Rules, roleIDs []string, action permissions.Action) (bool, Source) {
+	if r == nil {
+		return allowed, src
+	}
+	allowed, src = applyRoleRules(allowed, src, r.Roles, roleIDs, action)
+	return applyPersonRule(allowed, src, r.Person, action)
+}
+
+func applyPersonRule(allowed bool, src Source, ow *Overwrite, action permissions.Action) (bool, Source) {
+	if ow == nil {
+		return allowed, src
+	}
+	state := stateOf(ow, action)
+	if state == "" {
+		return allowed, src
+	}
+	return state == StateAllow, ruleSource(ow, state)
+}
+
+// applyRoleRules merges the rules for the roles in roleIDs: Allow if any allows, else Deny if any denies, the first in
+// the entity's target order being the source.
+func applyRoleRules(allowed bool, src Source, rules []*Overwrite, roleIDs []string, action permissions.Action) (bool, Source) {
+	var denied *Overwrite
+	for _, ow := range rules {
+		if !slices.Contains(roleIDs, ow.RoleID) {
+			continue
+		}
+		state := stateOf(ow, action)
+		if state == StateAllow {
+			return true, ruleSource(ow, state)
+		}
+		if state == StateDeny && denied == nil {
+			denied = ow
+		}
+	}
+	if denied == nil {
+		return allowed, src
+	}
+	return false, ruleSource(denied, StateDeny)
+}
+
+// stateOf is what one rule sets action to, deny winning over allow inside it; "" is Fallback.
+func stateOf(ow *Overwrite, action permissions.Action) string {
 	if ow.Deny.Has(action) {
-		rule.State = StateDeny
-		return false, rule
+		return StateDeny
 	}
 	if ow.Allow.Has(action) {
-		rule.State = StateAllow
-		return true, rule
+		return StateAllow
 	}
-	return allowed, src
+	return ""
+}
+
+func ruleSource(ow *Overwrite, state string) Source {
+	if ow.Target == TargetRole {
+		return Source{Kind: SourceRule, EntityType: ow.ResourceType, EntityID: ow.ResourceID, TargetType: TargetRole, TargetID: ow.RoleID, State: state}
+	}
+	return Source{Kind: SourceRule, EntityType: ow.ResourceType, EntityID: ow.ResourceID, TargetType: TargetPerson, TargetID: ow.UserID, State: state}
 }
 
 // Can reports whether userID may perform action on docID; in a project hidden from a Restricted member the doc's
@@ -270,7 +310,7 @@ func (s *Service) Can(ctx context.Context, userID, docID string, action permissi
 	return s.CanDocs(ctx, userID, "", []string{docID}, action)[docID], nil
 }
 
-// CanDocs answers Can for each of docIDs from one read of userID's overwrites on them, with each project's layers
+// CanDocs answers Can for each of docIDs from one read of the rules reaching userID on them, with each project's layers
 // read once; a list of docs would otherwise pay for them per row. projectID, when every doc is in it, saves reading
 // where each doc lives; empty, that is read for all of them at once.
 func (s *Service) CanDocs(ctx context.Context, userID, projectID string, docIDs []string, action permissions.Action) map[string]bool {
@@ -280,12 +320,12 @@ func (s *Service) CanDocs(ctx context.Context, userID, projectID string, docIDs 
 	}
 	ctx = s.memoized(ctx)
 	scopes := s.docScopesIn(ctx, projectID, docIDs)
-	var own map[string]*Overwrite
+	var own map[string]*Rules
 	for _, id := range docIDs {
 		scope := scopes[id]
-		out[id], _ = decide(s.layers(ctx, userID, scope.WorkspaceID, scope.ProjectID), action, func() *Overwrite {
+		out[id], _ = decide(s.layers(ctx, userID, scope.WorkspaceID, scope.ProjectID), action, func() *Rules {
 			if own == nil {
-				own = s.docOverwrites(ctx, docIDs, userID)
+				own = s.docRules(ctx, docIDs, userID)
 			}
 			return own[id]
 		})
@@ -294,8 +334,9 @@ func (s *Service) CanDocs(ctx context.Context, userID, projectID string, docIDs 
 }
 
 // DocsWith is what a doc list filters by in SQL for action: the projects in which userID holds it on every doc without
-// an overwrite of its own, and the docs whose own overwrite turns that answer, allowed in a project outside the set or
-// denied in one inside it. A doc passes exactly when CanDocs would pass it (ADR 0140).
+// rules of its own, and the docs whose rules for userID or their roles turn that answer, allowed in a project outside
+// the set or denied in one inside it, read in one statement bounded by the rules. A doc passes exactly when CanDocs
+// would pass it (ADR 0140).
 func (s *Service) DocsWith(ctx context.Context, userID string, action permissions.Action) (projectIDs, allowed, denied []string, err error) {
 	allowed, denied = []string{}, []string{}
 	ctx = s.memoized(ctx)
@@ -303,16 +344,16 @@ func (s *Service) DocsWith(ctx context.Context, userID string, action permission
 	if err != nil || userID == "" {
 		return projectIDs, allowed, denied, err
 	}
-	own, err := s.repo.ListByUser(ctx, resourceTypeDoc, userID)
+	own, err := s.repo.RulesOfType(ctx, resourceTypeDoc, userID)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("doc overwrites of %s: %w", userID, err)
+		return nil, nil, nil, fmt.Errorf("doc rules of %s: %w", userID, err)
 	}
 	docIDs := slices.Sorted(maps.Keys(own))
 	scopes := s.docScopes(ctx, docIDs)
 	for _, id := range docIDs {
 		scope := scopes[id]
 		inSet := scope.ProjectID != "" && slices.Contains(projectIDs, scope.ProjectID)
-		can, _ := decide(s.layers(ctx, userID, scope.WorkspaceID, scope.ProjectID), action, func() *Overwrite { return own[id] })
+		can, _ := decide(s.layers(ctx, userID, scope.WorkspaceID, scope.ProjectID), action, func() *Rules { return own[id] })
 		if can && !inSet {
 			allowed = append(allowed, id)
 		}
@@ -323,12 +364,12 @@ func (s *Service) DocsWith(ctx context.Context, userID string, action permission
 	return projectIDs, allowed, denied, nil
 }
 
-// docOverwrites is userID's overwrite on each of docIDs that has one; a failed read counts as none, as a single
+// docRules is the rules reaching userID on each of docIDs that has any; a failed read counts as none, as a single
 // check's does.
-func (s *Service) docOverwrites(ctx context.Context, docIDs []string, userID string) map[string]*Overwrite {
-	own, err := s.overwrites(ctx, resourceTypeDoc, docIDs, userID)
+func (s *Service) docRules(ctx context.Context, docIDs []string, userID string) map[string]*Rules {
+	own, err := s.rulesOn(ctx, resourceTypeDoc, docIDs, userID)
 	if err != nil {
-		return map[string]*Overwrite{}
+		return map[string]*Rules{}
 	}
 	return own
 }
@@ -475,7 +516,7 @@ func (s *Service) setGrants(ctx context.Context, actorID, resourceType string, r
 		}
 	}
 	for _, w := range writes {
-		event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicGrantChanged, Payload: GrantEvent{ResourceType: resourceType, ResourceID: w.resourceID, UserID: w.userID, ActorID: actorID}}
+		event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicGrantChanged, Payload: GrantEvent{ResourceType: resourceType, ResourceID: w.resourceID, Target: TargetPerson, UserID: w.userID, ActorID: actorID}}
 		if err := s.repo.Set(ctx, resourceType, w.resourceID, w.userID, w.allow, w.deny, event); err != nil {
 			return fmt.Errorf("set overwrite %s/%s/%s: %w", resourceType, w.resourceID, w.userID, err)
 		}

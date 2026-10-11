@@ -236,7 +236,7 @@ ORDER BY u.login, u.id
 `
 
 type ListProjectRestrictedAccessRow struct {
-	UserID      string
+	UserID      sql.NullString
 	Login       string
 	Name        string
 	DisplayName string

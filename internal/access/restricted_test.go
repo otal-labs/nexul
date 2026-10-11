@@ -202,5 +202,5 @@ func TestCanDocs_ReadsEachLayerOnceForTheLot(t *testing.T) {
 	assert.True(t, got["d-49"])
 	assert.False(t, got["d-48"])
 	assert.Equal(t, 1, roles.calls, "membership once for the lot")
-	assert.Equal(t, readCounts{getMany: 1, get: 1}, repo.readCounts(), "the workspace overwrite, then every doc's in one read")
+	assert.Equal(t, 2, repo.readCounts(), "the workspace's rules, then every doc's in one read")
 }

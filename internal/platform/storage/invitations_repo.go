@@ -361,7 +361,7 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 			if len(grant.Allow) == 0 && len(grant.Deny) == 0 {
 				continue
 			}
-			if err := q.AddInvitationOverwrite(ctx, sqlcgen.AddInvitationOverwriteParams{ResourceID: grant.WorkspaceID, UserID: userID, Allow: setJSON(grant.Allow), Deny: setJSON(grant.Deny), CreatedAt: now.Unix(), UpdatedAt: now.Unix()}); err != nil {
+			if err := q.AddInvitationOverwrite(ctx, sqlcgen.AddInvitationOverwriteParams{ResourceID: grant.WorkspaceID, UserID: nullString(userID), Allow: setJSON(grant.Allow), Deny: setJSON(grant.Deny), CreatedAt: now.Unix(), UpdatedAt: now.Unix()}); err != nil {
 				return fmt.Errorf("add invitation overwrite: %w", err)
 			}
 		}
@@ -467,7 +467,7 @@ func requireCreatorHoldsProjects(ctx context.Context, q *sqlcgen.Queries, actorI
 	for _, pa := range grant.ProjectAccess {
 		held := access.held
 		if access.restricted {
-			allow, err := q.GetInvitationCreatorProjectAccess(ctx, sqlcgen.GetInvitationCreatorProjectAccessParams{ResourceID: pa.ProjectID, UserID: actorID})
+			allow, err := q.GetInvitationCreatorProjectAccess(ctx, sqlcgen.GetInvitationCreatorProjectAccessParams{ResourceID: pa.ProjectID, UserID: nullString(actorID)})
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return fmt.Errorf("check project authority: %w", err)
 			}
@@ -507,7 +507,7 @@ func addInvitationProjectAccess(ctx context.Context, q *sqlcgen.Queries, userID 
 		return nil
 	}
 	for _, pa := range grant.ProjectAccess {
-		if err := q.AddInvitationProjectAccess(ctx, sqlcgen.AddInvitationProjectAccessParams{ResourceID: pa.ProjectID, UserID: userID, Allow: setJSON(pa.Allow), CreatedAt: now.Unix(), UpdatedAt: now.Unix()}); err != nil {
+		if err := q.AddInvitationProjectAccess(ctx, sqlcgen.AddInvitationProjectAccessParams{ResourceID: pa.ProjectID, UserID: nullString(userID), Allow: setJSON(pa.Allow), CreatedAt: now.Unix(), UpdatedAt: now.Unix()}); err != nil {
 			return fmt.Errorf("add invitation project access: %w", err)
 		}
 	}

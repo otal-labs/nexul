@@ -39,6 +39,7 @@ func Topics() []eventbus.Topic {
 type ProjectAccessEvent struct {
 	ResourceType string `json:"resource_type" enum:"doc,play,project"`
 	ResourceID   string `json:"resource_id"`
+	Target       string `json:"target" enum:"person,role" jsonschema:"Whom the rule names: a person, as user_id, or a role, as role_id."`
 	UserID       string `json:"user_id"`
 	ActorID      string `json:"actor_id,omitempty"`
 }

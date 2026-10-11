@@ -61,22 +61,27 @@ func (s *Service) entityOf(ctx context.Context, resourceType, resourceID string)
 	return e, fmt.Errorf("%w: resource_type %q is not doc, play, or project", apperrs.ErrInvalid, resourceType)
 }
 
-// answer is userID's answer for action on e, from the check that enforces it; with own false, e's own rule for them
-// counts as Fallback.
+// answer is userID's answer for action on e, from the check that enforces it; with own false, e's rule naming them
+// counts as Fallback, and its rules for their roles still apply.
 func (s *Service) answer(ctx context.Context, userID string, e entity, action permissions.Action, own bool) (bool, Source) {
-	if e.kind == resourceTypeProject && !own {
-		ws := s.layers(ctx, userID, e.workspaceID, e.projectID)
+	if own {
+		return s.check(ctx, userID, e.workspaceID, e.projectID, action, e.kind, e.id)
+	}
+	ws := s.layers(ctx, userID, e.workspaceID, e.projectID)
+	if e.kind == resourceTypeProject {
 		ws.project = nil
-		return decide(ws, action, noOverwrite)
+		return decide(ws, action, noRules)
 	}
-	resourceType := e.kind
-	if !own {
-		resourceType = ""
-	}
-	return s.check(ctx, userID, e.workspaceID, e.projectID, action, resourceType, e.id)
+	return decide(ws, action, func() *Rules {
+		r := s.rules(ctx, e.kind, e.id, userID)
+		if r == nil {
+			return nil
+		}
+		return &Rules{Roles: r.Roles}
+	})
 }
 
-func noOverwrite() *Overwrite { return nil }
+func noRules() *Rules { return nil }
 
 // Decide is userID's answer for action on a doc, play, or project, with what decided it: the evaluator every check
 // uses, so an explanation can never disagree with enforcement.

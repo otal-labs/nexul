@@ -132,5 +132,26 @@ describe("the live socket", () => {
       push("role.updated", { role_id: "r-mine", workspace_id: "ws-1" });
       await vi.waitFor(() => expect(isStale(client, ["getTickets"])).toBe(true));
     });
+
+    it("refetches every open read after a rule for a role only when the viewer's own permissions moved", async () => {
+      const client = new QueryClient();
+      let held = ["docs:read"];
+      client.setQueryDefaults(["getMyRole"], { queryFn: () => ({ role_name: "Editor", permissions: held }) });
+      client.setQueryDefaults(["getMe"], { queryFn: () => ({ user: { id: "u-1" }, instance_permissions: [] }) });
+      await client.fetchQuery({ queryKey: ["getMyRole", "ws-1"] });
+      await client.fetchQuery({ queryKey: ["getMe"] });
+      client.setQueryData(["getTickets"], []);
+      const push = await connect(client);
+      const roleFetches = () => client.getQueryState(["getMyRole", "ws-1"])?.dataUpdateCount;
+      const frame = { resource_type: "project", resource_id: "p-1", target: "role", user_id: "", role_id: "r-mine" };
+
+      push("access.grant.changed", frame);
+      await vi.waitFor(() => expect(roleFetches()).toBe(2));
+      expect(isStale(client, ["getTickets"])).toBe(false);
+
+      held = ["docs:read", "tickets:read"];
+      push("access.grant.changed", frame);
+      await vi.waitFor(() => expect(isStale(client, ["getTickets"])).toBe(true));
+    });
   });
 });

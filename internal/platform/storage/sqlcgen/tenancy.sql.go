@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 )
 
 const addWorkspaceMember = `-- name: AddWorkspaceMember :exec
@@ -62,7 +63,7 @@ WHERE resource_type = 'project' AND user_id = ?
 `
 
 type DeleteMemberProjectAccessParams struct {
-	UserID      string
+	UserID      sql.NullString
 	WorkspaceID string
 }
 
@@ -172,7 +173,7 @@ ORDER BY p.position, p.id
 `
 
 type ListMemberProjectAccessParams struct {
-	UserID      string
+	UserID      sql.NullString
 	WorkspaceID string
 }
 
@@ -272,7 +273,7 @@ ORDER BY p.position, p.id
 `
 
 type ListTeamProjectAccessRow struct {
-	UserID      string
+	UserID      sql.NullString
 	WorkspaceID string
 	ProjectID   string
 	ProjectName string

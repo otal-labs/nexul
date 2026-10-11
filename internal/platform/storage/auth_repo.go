@@ -268,7 +268,7 @@ func removeAccountAccess(ctx context.Context, q *sqlcgen.Queries, id string, now
 		run  func() error
 	}{
 		{"memberships", func() error { return q.DeleteAccountMemberships(ctx, id) }},
-		{"overwrites", func() error { return q.DeleteAccountOverwrites(ctx, id) }},
+		{"overwrites", func() error { return q.DeleteAccountOverwrites(ctx, nullString(id)) }},
 		{"tokens", func() error {
 			return q.RevokeAccountPATs(ctx, sqlcgen.RevokeAccountPATsParams{RevokedAt: sql.NullInt64{Int64: now, Valid: true}, UserID: id})
 		}},

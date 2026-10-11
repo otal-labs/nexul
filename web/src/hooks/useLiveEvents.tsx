@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { type QueryClient, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, type QueryFilters, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router";
 
 import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
@@ -45,23 +45,29 @@ import { getMyRoleKey, workspaceFollower } from "@/hooks/WorkspaceHooks";
 import type { MeResponse } from "@/models/User";
 import { followEach, type Live, type LiveFollower } from "@/lib/live";
 
-const heldPermissions = (client: QueryClient, workspaceId: string) =>
-  JSON.stringify([client.getQueryData<MyWorkspaceInfo>([getMyRoleKey, workspaceId]), client.getQueryData<MeResponse>([getMeKey])?.instance_permissions]);
+const viewersOwnChange = ({ user_id: userID }: { user_id?: string }, { client }: Live) =>
+  !!userID && userID === client.getQueryData<MeResponse>([getMeKey])?.user.id && client.invalidateQueries();
+
+// The viewer's permissions that myRole matches are refetched with /api/auth/me, and every open read only if they moved.
+const refetchHeld = async (client: QueryClient, myRole: QueryFilters) => {
+  const held = () => JSON.stringify([client.getQueriesData<MyWorkspaceInfo>(myRole), client.getQueryData<MeResponse>([getMeKey])?.instance_permissions]);
+  const before = held();
+  await Promise.all([client.refetchQueries(myRole), client.refetchQueries({ queryKey: [getMeKey] })]);
+  if (held() === before) return;
+  await client.invalidateQueries();
+};
 
 // Every read is checked on the server, so once the viewer's permissions move, all open reads refetch through those checks.
 const permissionFollower: LiveFollower = {
-  ...followEach(
-    ["workspace.member.added", "workspace.member.removed", "workspace.member.updated", "access.grant.changed"],
-    ({ user_id: userID }: { user_id?: string }, { client }) =>
-      !!userID && userID === client.getQueryData<MeResponse>([getMeKey])?.user.id && client.invalidateQueries(),
-  ),
-  // A role frame names no holder, so the viewer's own permissions in that workspace are refetched and compared.
-  "role.updated": async ({ workspace_id: workspaceId }: { workspace_id: string }, { client }) => {
-    const before = heldPermissions(client, workspaceId);
-    await Promise.all([client.refetchQueries({ queryKey: [getMyRoleKey, workspaceId], exact: true }), client.refetchQueries({ queryKey: [getMeKey] })]);
-    if (heldPermissions(client, workspaceId) === before) return;
-    await client.invalidateQueries();
+  ...followEach(["workspace.member.added", "workspace.member.removed", "workspace.member.updated"], viewersOwnChange),
+  // A rule for a role names no person and reaches the role's holders, so they refetch their permissions as on role.updated.
+  "access.grant.changed": (payload: { user_id?: string }, live) => {
+    if (payload.user_id) return viewersOwnChange(payload, live);
+    return refetchHeld(live.client, { queryKey: [getMyRoleKey] });
   },
+  // A role frame names no holder, so the viewer's own permissions in that workspace are refetched and compared.
+  "role.updated": ({ workspace_id: workspaceId }: { workspace_id: string }, { client }) =>
+    refetchHeld(client, { queryKey: [getMyRoleKey, workspaceId], exact: true }),
 };
 
 // Each domain follows its own topics next to its keys (ADR 0134); the socket only routes.

@@ -224,18 +224,22 @@ func recipientFrame(ctx context.Context, _ liveAudience, raw json.RawMessage) bo
 	return decode(raw, &p) && slices.Contains(p.UserIDs, actorID(ctx))
 }
 
-// grantFrame reaches the person whose grant changed and whoever manages the rules it changed: a doc's or a play's, or
-// for Project access the project's workspace.
+// grantFrame reaches the person whose rule changed, or the holders of the role it names, and whoever manages the rules
+// it changed: a doc's or a play's, or for Project access the project's workspace.
 func grantFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	var p struct {
 		ResourceType string `json:"resource_type"`
 		ResourceID   string `json:"resource_id"`
+		RoleID       string `json:"role_id"`
 	}
 	if ownFrame(ctx, a, raw) {
 		return true
 	}
 	if !decode(raw, &p) {
 		return false
+	}
+	if holds, err := a.access.HoldsRole(ctx, actorID(ctx), p.RoleID); holds && err == nil {
+		return true
 	}
 	switch p.ResourceType {
 	case "project":

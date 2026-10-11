@@ -806,7 +806,9 @@ type PairingUserDefault struct {
 type PermissionOverwrite struct {
 	ResourceType string
 	ResourceID   string
-	UserID       string
+	Target       string
+	UserID       sql.NullString
+	RoleID       sql.NullString
 	Allow        string
 	Deny         string
 	CreatedAt    int64

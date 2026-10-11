@@ -381,6 +381,19 @@ describe("requests a live frame sends", () => {
     expect(await requestsAfter("role.updated", { role_id: "r-9", workspace_id: "ws-2" })).toEqual(["/api/auth/me"]);
   });
 
+  it("refetches only the viewer's own permissions when a rule for one of their roles changes", async () => {
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useFetchMe();
+        useFetchMyRole("ws-1");
+        useFetchWorkspaceRoles("ws-1");
+      }),
+      respond,
+    );
+    const frame = { resource_type: "doc", resource_id: "d-1", target: "role", user_id: "", role_id: "r-9" };
+    expect((await requestsAfter("access.grant.changed", frame)).sort()).toEqual(["/api/auth/me", "/api/workspaces/ws-1/me"]);
+  });
+
   it("sends nothing when another computer's setup turn moves", async () => {
     const { requestsAfter } = await mountLive(view(() => useFetchComputerSetup("c-1")), respond);
     expect(await requestsAfter("computer.setup_turn_changed", { computer_id: "c-2", user_id: "u-me", state: "running" })).toEqual([]);

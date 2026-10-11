@@ -31,11 +31,12 @@ export const useCurrentWorkspaceId = (): string | undefined => useSelectedWorksp
 export const getMyRoleKey = "getMyRole";
 
 // Shared with push routing, which checks a tapped ticket's workspace outside any screen. A role frame names no holder,
-// so the viewer's own permissions in that workspace refetch and every gate follows them.
+// so the viewer's own permissions in that workspace refetch and every gate follows them; a rule for a role names no
+// workspace, so every workspace's refetch.
 export const myRoleQuery = defineQuery({
   key: getMyRoleKey,
   fetch: (workspaceId: string | undefined) => api.get<MyWorkspaceInfo>(`/api/workspaces/${workspaceId}/me`),
-  refreshes: { "role.updated": { key: (p) => p.workspace_id } },
+  refreshes: { "role.updated": { key: (p) => p.workspace_id }, "access.grant.changed": "all" },
   untilPushed: true,
 });
 

@@ -69,7 +69,7 @@ func TestProjectsWith_ReadsARestrictedMembersAccessOnce(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{"p-open"}, got)
-	assert.Equal(t, readCounts{get: 1, getMany: 1}, repo.readCounts(), "the workspace overwrite, then every project's access at once")
+	assert.Equal(t, 2, repo.readCounts(), "the workspace's rules, then every project's access at once")
 }
 
 // TestCallerProjects_AnswersAsRequireProject: the set a list filters by in SQL is exactly the projects RequireProject
