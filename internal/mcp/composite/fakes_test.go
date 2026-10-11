@@ -93,6 +93,7 @@ type world struct {
 	target     tickets.TestTarget
 	fail       string
 	gets       int // ticket reads by id, so a test can pin how often a tool loads each ticket
+	moves      []eventbus.OutboxEvent
 }
 
 var errBoom = errors.New("storage is down")
@@ -317,7 +318,8 @@ func (r ticketRepo) UpdateTicket(_ context.Context, id, title, body string, _ ..
 	return r.edit(id, func(t *tickets.Ticket) { t.Title, t.Body = title, body })
 }
 
-func (r ticketRepo) UpdateStatus(_ context.Context, id string, status tickets.Status, _ tickets.UnblockedEvents, _ ...eventbus.OutboxEvent) error {
+func (r ticketRepo) UpdateStatus(_ context.Context, id string, status tickets.Status, _ tickets.UnblockedEvents, evts ...eventbus.OutboxEvent) error {
+	r.w.moves = append(r.w.moves, evts...)
 	return r.edit(id, func(t *tickets.Ticket) { t.Status = status })
 }
 

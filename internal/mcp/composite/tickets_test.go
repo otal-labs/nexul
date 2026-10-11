@@ -269,6 +269,16 @@ func TestTicketUpdate_AnOmittedFieldKeepsItsValue(t *testing.T) {
 	}
 }
 
+func TestTicketUpdate_AStatusMovePublishesUserMCP(t *testing.T) {
+	f := newFixture(t)
+
+	_, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_update", `{"id":"t-1","status_id":"st-doing"}`)
+	require.NoError(t, err)
+
+	require.Len(t, f.w.moves, 1)
+	assert.Equal(t, tickets.ActorKindUserMCP, f.w.moves[0].Payload.(tickets.StatusChangedEvent).Actor.Kind)
+}
+
 func TestTicketUpdate_EveryField(t *testing.T) {
 	f := newFixture(t)
 	f.w.addTicket(&tickets.Ticket{ID: "t-3", ProjectID: "p-1", Title: "Blocker", Status: "st-todo"})

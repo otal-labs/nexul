@@ -1252,6 +1252,25 @@ func TestUpdateStatus_UserRequestRecordsTheMoversUserID(t *testing.T) {
 	assert.Equal(t, Actor{Kind: ActorKindUser, UserID: "u-7"}, e.Actor)
 }
 
+func TestUpdateStatus_ThroughMCPPublishesUserMCPOnEveryEvent(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	ts := seedTickets(t, s, "blocked", "blocker")
+	_, err := s.AddBlocker(t.Context(), ts[0].ID, ts[1].ID)
+	require.NoError(t, err)
+	want := Actor{Kind: ActorKindUserMCP, UserID: "u-7"}
+
+	_, err = s.UpdateStatus(WithViaMCP(identity.WithActor(t.Context(), identity.Actor{ID: "u-7"})), ts[1].ID, StatusDone)
+	require.NoError(t, err)
+
+	evts := repo.eventsFor(TopicStatusChanged)
+	require.Len(t, evts, 1)
+	assert.Equal(t, want, evts[0].Payload.(StatusChangedEvent).Actor)
+	unblocked := repo.unblocked([]Unblocked{{TicketID: ts[0].ID, ProjectID: ts[0].ProjectID}})
+	require.Len(t, unblocked, 1)
+	assert.Equal(t, want, unblocked[0].Payload.(UnblockedEvent).Actor)
+}
+
 func TestListByPR(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)

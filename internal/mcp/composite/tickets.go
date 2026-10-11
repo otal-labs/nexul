@@ -453,7 +453,7 @@ func ticketUpdateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 				return nil, err
 			}
 			u := ticketUpdate{t: t, w: w, id: tk.ID, workspace: scope}
-			applied, err := runSteps(ctx, u.steps(in))
+			applied, err := runSteps(tickets.WithViaMCP(ctx), u.steps(in))
 			if err != nil {
 				return nil, err
 			}

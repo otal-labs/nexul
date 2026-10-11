@@ -744,10 +744,20 @@ func (s *Service) UpdateStatus(ctx context.Context, id string, to Status) (*Tick
 	return s.transition(ctx, id, to, statusActor(ctx), "")
 }
 
+type viaMCPKey struct{}
+
+// WithViaMCP marks a call as a person's over MCP, so the moves it makes are published as user:mcp (ADR 0049).
+func WithViaMCP(ctx context.Context) context.Context {
+	return context.WithValue(ctx, viaMCPKey{}, true)
+}
+
 func statusActor(ctx context.Context) Actor {
 	actor, _ := identity.ActorFromCtx(ctx)
 	if actor.Automation != nil {
 		return Actor{Kind: ActorKindAutomation, AutomationID: actor.Automation.ID, AutomationName: actor.Automation.Name}
+	}
+	if ctx.Value(viaMCPKey{}) != nil {
+		return Actor{Kind: ActorKindUserMCP, UserID: actor.ID}
 	}
 	return Actor{Kind: ActorKindUser, UserID: actor.ID}
 }
