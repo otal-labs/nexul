@@ -68,19 +68,19 @@ Welcome wizard, and an admin seeing each person's progress on Team.
 - [How the permission rework lands on roles, invitations and computers](issues/01-how-the-permission-rework-lands-on-roles.md): roles keep their table and combine as a union; steps need a new field; Template roles are a new template kind copied in at workspace creation; projects are opt-in under ADR 0148; build after the `permission-switch` branch merges
 - [What counts as done for each step, and what skipping does](issues/02-what-counts-as-done-and-what-skip-does.md): done is read from existing data, except a per-person record of skips and of the phone's first connect, and a record of who enrolled each deploy runner; a skip lasts until the step is given again; the phone stays done once connected; `first_login_done` now means the first run happened
 - [How a role stores and edits its steps](issues/03-how-a-role-stores-and-edits-its-steps.md): a JSON list of five step keys on the role, edited in a Welcome tab with `roles:write`, carried by clones, `role_update` and `workspace_list`; Profile is always first; the uneditable Owner role has Connect GitHub and Your computer fixed in code
+- [The five Template roles: their permissions and their steps](issues/04-the-five-template-roles.md): Client, Junior Developer, Senior Developer, DevOps and Administrator with their grids and ticks; Administrator gets everything except the instance's own administration; the instance can add and delete its own template roles, and the shipped five reset but don't delete
+- [How the Welcome wizard, the account menu entry and its dot look](issues/05-the-welcome-wizard-screens.md): Rail frame (step list beside the step), each step's screen, the owner hand-over beat, the Welcome row and red dot in the account menu; the phone step shows its QR code itself; runner-up Row
+- [How an admin sees each person's progress on Team](issues/06-progress-on-team.md): a gap line under each person while a step is left or skipped, details in the person dialog, accepted invitations in the last 30 days; runner-up Progress column
 
 ## Not yet specified
 
-- The phone app step. Can the wizard show the QR connect code itself, or does it
-  link to Devices? Should the phone app show the same dot?
+- Should the phone app show the same dot?
 - Live updates. The dot should clear when a computer pairs or a runner connects
   without a refresh, which needs a topic, its audience rule and a follower.
 - Agents. Should the progress Team shows also be readable over MCP (`account_list`
   or `account_get`), so an agent answering "why can't Bob run plays" sees it?
 - The guide page under `website/src/content/docs/docs/guide/`, and the roadmap
   entry, once the spec exists.
-- Accepted invitations on Team: who accepted and when. It sits beside the
-  progress view and may join that ticket.
 
 ## Out of scope
 
