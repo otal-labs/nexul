@@ -7,14 +7,15 @@ interface ProjectSwitcherMenuProps {
   currentId: string;
   onSelect: (project: Project) => void;
   onSettings: (project: Project) => void;
+  onPermissions: (project: Project) => void;
   // Absent for a viewer who may not create a project.
   onCreate?: (() => void) | undefined;
 }
 
-export const ProjectSwitcherMenu = ({ projects, currentId, onSelect, onSettings, onCreate }: ProjectSwitcherMenuProps) => (
+export const ProjectSwitcherMenu = ({ projects, currentId, onSelect, onSettings, onPermissions, onCreate }: ProjectSwitcherMenuProps) => (
   <SwitcherMenu createLabel="New project" onCreate={onCreate}>
     {projects.map((project) => (
-      <ProjectSwitcherItem key={project.id} project={project} selected={project.id === currentId} onSelect={onSelect} onSettings={onSettings} />
+      <ProjectSwitcherItem key={project.id} project={project} selected={project.id === currentId} onSelect={onSelect} onSettings={onSettings} onPermissions={onPermissions} />
     ))}
   </SwitcherMenu>
 );

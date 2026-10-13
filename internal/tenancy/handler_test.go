@@ -11,8 +11,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 func newTestHandler(t *testing.T) (*Handler, *fakeRepo) {
@@ -181,6 +179,53 @@ func TestHandler_InviteMember(t *testing.T) {
 	})
 }
 
+// TestHandler_MemberRoutesTakeRoleIDs: each member route takes role_ids beside the one role_id older clients send.
+func TestHandler_MemberRoutesTakeRoleIDs(t *testing.T) {
+	heldBy := func(t *testing.T, f *inviteTestFixture, userID string) []string {
+		t.Helper()
+		m, err := f.svc.Member(context.Background(), "ws-1", userID)
+		require.NoError(t, err)
+		return m.RoleIDs
+	}
+	t.Run("patch replaces the set, and an empty one leaves no role", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
+		h := NewHandler(f.svc).Routes()
+
+		rec := do(t, h, http.MethodPatch, "/api/workspaces/ws-1/members/u-bob", `{"role_ids":["role-editor","role-viewer"]}`, "actor")
+		require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
+		assert.Equal(t, []string{"role-editor", "role-viewer"}, heldBy(t, f, "u-bob"))
+
+		rec = do(t, h, http.MethodPatch, "/api/workspaces/ws-1/members/u-bob", `{"role_ids":[]}`, "actor")
+		require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
+		assert.Empty(t, heldBy(t, f, "u-bob"))
+	})
+	t.Run("put adds an account with several roles", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		f.accounts.accounts["u-bob"] = &TeamAccount{ID: "u-bob", Login: "bob", Status: "active"}
+
+		rec := do(t, NewHandler(f.svc).Routes(), http.MethodPut, "/api/workspaces/ws-1/members/u-bob", `{"role_ids":["role-editor","role-viewer"]}`, "actor")
+		require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
+		assert.Equal(t, []string{"role-editor", "role-viewer"}, heldBy(t, f, "u-bob"))
+	})
+	t.Run("post gives a signed-in login several roles, and holds a pending one to a single role", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		f.users.register("bob", "u-bob")
+		h := NewHandler(f.svc).Routes()
+
+		rec := do(t, h, http.MethodPost, "/api/workspaces/ws-1/members", `{"login":"bob","role_ids":["role-editor","role-viewer"]}`, "actor")
+		require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
+		assert.Equal(t, []string{"role-editor", "role-viewer"}, heldBy(t, f, "u-bob"))
+
+		rec = do(t, h, http.MethodPost, "/api/workspaces/ws-1/members", `{"login":"carol","role_ids":["role-editor","role-viewer"]}`, "actor")
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Contains(t, rec.Body.String(), "a pending invite gives one role")
+	})
+}
+
 func TestHandler_ListMembers(t *testing.T) {
 	t.Run("returns the roster and pending invites", func(t *testing.T) {
 		f := newInviteFixture()
@@ -252,20 +297,31 @@ func TestHandler_ChangeMemberRole(t *testing.T) {
 		rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/ws-1/members/u-bob", `{"role_id":"owner-role-ws-1"}`, "actor")
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
-	t.Run("overrides alone change only the overrides", func(t *testing.T) {
+	t.Run("a removed field with a value is refused, naming what replaced it", func(t *testing.T) {
+		for _, body := range []string{`{"deny":["docs:delete"]}`, `{"role_id":"role-admin","allow":["docs:read"]}`, `{"every_project":"none"}`,
+			`{"project_access":[{"project_id":"p-web","allow":["tickets:read"]}]}`} {
+			f := newInviteFixture()
+			f.grantManageMembers("actor")
+			require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
+
+			rec := do(t, NewHandler(f.svc).Routes(), http.MethodPatch, "/api/workspaces/ws-1/members/u-bob", body, "actor")
+
+			assert.Equal(t, http.StatusBadRequest, rec.Code, body)
+			assert.Regexp(t, "a role|list the person", rec.Body.String(), body)
+			roleID, err := f.svc.MemberRoleID(context.Background(), "ws-1", "u-bob")
+			require.NoError(t, err)
+			assert.Equal(t, "role-editor", roleID, "nothing changed: %s", body)
+		}
+	})
+	t.Run("removed fields sent empty change nothing, as before", func(t *testing.T) {
 		f := newInviteFixture()
 		f.grantManageMembers("actor")
 		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
-		h := NewHandler(f.svc)
 
-		rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/ws-1/members/u-bob", `{"deny":["docs:delete"]}`, "actor")
-		require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
-		roleID, err := f.svc.MemberRoleID(context.Background(), "ws-1", "u-bob")
-		require.NoError(t, err)
-		assert.Equal(t, "role-editor", roleID)
-		_, deny, err := f.repo.Overrides(context.Background(), "ws-1", "u-bob")
-		require.NoError(t, err)
-		assert.Equal(t, permissions.SetOf(permissions.DocsDelete), deny)
+		rec := do(t, NewHandler(f.svc).Routes(), http.MethodPatch, "/api/workspaces/ws-1/members/u-bob", `{"allow":[],"deny":[],"project_access":[]}`, "actor")
+
+		assert.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
+		assert.Empty(t, f.repo.events)
 	})
 }
 

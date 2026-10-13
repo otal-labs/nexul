@@ -36,7 +36,7 @@ export interface Installation {
 export interface InstallationWorkspace {
   id: string;
   name: string;
-  // The person holds projects:write there, what detaching the account takes.
+  // The person holds projects:create there, what detaching the account takes.
   can_detach: boolean;
 }
 

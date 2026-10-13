@@ -268,7 +268,7 @@ describe("DocsPage", () => {
   });
 
   it("points at the project wizard when the workspace has no project yet", async () => {
-    renderPage("/acme/docs", ["projects:write"], { "/api/projects": [] });
+    renderPage("/acme/docs", ["projects:create"], { "/api/projects": [] });
 
     expect(await screen.findByText("No projects yet")).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: "New project" })).toHaveAttribute("href", "/acme/wizard/project/project");

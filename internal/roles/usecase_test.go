@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -26,7 +27,6 @@ type fakeRepo struct {
 	listErr   error
 	updateErr error
 	deleteErr error
-	holders   map[string]int
 	events    []eventbus.OutboxEvent
 }
 
@@ -93,13 +93,7 @@ func (f *fakeRepo) Update(_ context.Context, r *Role, events ...eventbus.OutboxE
 	return nil
 }
 
-func (f *fakeRepo) CountHolders(_ context.Context, id string) (int, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.holders[id], nil
-}
-
-func (f *fakeRepo) Delete(_ context.Context, id string) error {
+func (f *fakeRepo) Delete(_ context.Context, id string, events ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.deleteErr != nil {
@@ -109,13 +103,15 @@ func (f *fakeRepo) Delete(_ context.Context, id string) error {
 		return apperrs.ErrNotFound
 	}
 	delete(f.byID, id)
+	f.events = append(f.events, events...)
 	return nil
 }
 
 // fakeMemberGate maps (workspaceID, userID) -> roleID, standing in for the tenancy domain's workspace_members lookup.
 type fakeMemberGate struct {
-	roleIDs map[string]string // memberKey(workspaceID, userID) -> roleID
-	err     error
+	roleIDs   map[string]string // memberKey(workspaceID, userID) -> roleID
+	err       error
+	holderErr error
 }
 
 func memberKey(workspaceID, userID string) string {
@@ -129,6 +125,20 @@ func newFakeMemberGate() *fakeMemberGate {
 func (g *fakeMemberGate) RequireMember(ctx context.Context, workspaceID, userID string) error {
 	_, err := g.MemberRoleID(ctx, workspaceID, userID)
 	return err
+}
+
+// HolderEvents answers one event per member holding roleID, its payload the holder's id.
+func (g *fakeMemberGate) HolderEvents(_ context.Context, workspaceID, roleID, _ string) ([]eventbus.OutboxEvent, error) {
+	if g.holderErr != nil {
+		return nil, g.holderErr
+	}
+	var events []eventbus.OutboxEvent
+	for key, held := range g.roleIDs {
+		if held == roleID && strings.HasPrefix(key, workspaceID+"|") {
+			events = append(events, eventbus.OutboxEvent{Topic: "workspace.member.updated", Payload: strings.TrimPrefix(key, workspaceID+"|")})
+		}
+	}
+	return events, nil
 }
 
 func (g *fakeMemberGate) MemberRoleID(_ context.Context, workspaceID, userID string) (string, error) {
@@ -424,18 +434,6 @@ func TestDelete(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 	})
-	t.Run("a role someone holds is kept", func(t *testing.T) {
-		repo, members := newFakeRepo(), newFakeMemberGate()
-		seedOwner(t, repo, members, "ws-1", "u-owner")
-		require.NoError(t, repo.Create(context.Background(), &Role{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors", CreatedAt: fixedNow, UpdatedAt: fixedNow}))
-		repo.holders = map[string]int{"role-editors": 2}
-		s := newTestService(repo, members)
-		err := s.Delete(context.Background(), "ws-1", "role-editors", "u-owner")
-		require.ErrorIs(t, err, apperrs.ErrConflict)
-		assert.ErrorContains(t, err, "held by 2")
-		_, err = repo.Get(context.Background(), "role-editors")
-		require.NoError(t, err)
-	})
 	t.Run("actor with roles:write deletes a custom role", func(t *testing.T) {
 		repo, members := newFakeRepo(), newFakeMemberGate()
 		seedOwner(t, repo, members, "ws-1", "u-owner")
@@ -446,6 +444,32 @@ func TestDelete(t *testing.T) {
 
 		_, err := repo.Get(context.Background(), "role-editors")
 		require.ErrorIs(t, err, apperrs.ErrNotFound)
+		require.Len(t, repo.events, 1, "its holders refetch what they hold")
+		assert.Equal(t, RoleEvent{RoleID: "role-editors", WorkspaceID: "ws-1", ActorID: "u-owner"}, repo.events[0].Payload)
+	})
+	t.Run("each holder's membership update is written with the delete", func(t *testing.T) {
+		repo, members := newFakeRepo(), newFakeMemberGate()
+		seedOwner(t, repo, members, "ws-1", "u-owner")
+		require.NoError(t, repo.Create(context.Background(), &Role{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors", CreatedAt: fixedNow, UpdatedAt: fixedNow}))
+		members.roleIDs[memberKey("ws-1", "u-lena")] = "role-editors"
+		members.roleIDs[memberKey("ws-2", "u-sam")] = "role-editors"
+		s := newTestService(repo, members)
+		require.NoError(t, s.Delete(context.Background(), "ws-1", "role-editors", "u-owner"))
+
+		require.Len(t, repo.events, 2)
+		assert.Equal(t, "u-lena", repo.events[0].Payload)
+		assert.Equal(t, TopicUpdated, repo.events[1].Topic)
+	})
+	t.Run("a failed holder read deletes nothing", func(t *testing.T) {
+		repo, members := newFakeRepo(), newFakeMemberGate()
+		seedOwner(t, repo, members, "ws-1", "u-owner")
+		require.NoError(t, repo.Create(context.Background(), &Role{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors", CreatedAt: fixedNow, UpdatedAt: fixedNow}))
+		members.holderErr = errors.New("disk gone")
+		s := newTestService(repo, members)
+		require.Error(t, s.Delete(context.Background(), "ws-1", "role-editors", "u-owner"))
+
+		_, err := repo.Get(context.Background(), "role-editors")
+		require.NoError(t, err)
 	})
 }
 

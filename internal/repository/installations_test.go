@@ -74,7 +74,7 @@ func aliceAndBob() (*fakePeople, *fakeStore, *fakeScanner) {
 	return &fakePeople{views: map[string]*fakeScanner{"alice": alice, "bob": bob}}, store, alice
 }
 
-var aliceWrites = fakeGate{"": {"ws-a"}, permissions.ProjectsRead: {"ws-a"}, permissions.ProjectsWrite: {"ws-a"}}
+var aliceWrites = fakeGate{"": {"ws-a"}, permissions.ProjectsCreate: {"ws-a"}}
 
 func TestListRepos_ListsOnlyTheCallersOwnGitHubViewWhateverIsLinkedToTheirWorkspace(t *testing.T) {
 	people, store, alice := aliceAndBob()
@@ -183,15 +183,15 @@ func TestListInstallations_ShowsOnlyTheViewersOwnInstallationsAndTheWorkspacesTh
 		Assignment{AccountID: 11, AccountLogin: "acme", WorkspaceID: "ws-c", WorkspaceName: "Initech"},
 	)
 	store.attached["acme"] = []string{"ws-a", "ws-b"}
-	gate := fakeGate{"": {"ws-a", "ws-b", "ws-c"}, permissions.ProjectsRead: {"ws-a", "ws-b", "ws-c"}, permissions.ProjectsWrite: {"ws-a"}}
+	gate := fakeGate{"": {"ws-a", "ws-b", "ws-c"}, permissions.ProjectsCreate: {"ws-a", "ws-c"}}
 	svc := NewService(Config{Gate: gate, People: people, Installations: alice, Accounts: &fakeAccounts{installs: alice.installs}, Store: store})
 
 	got, err := svc.ListInstallations(signedIn(t, "alice"))
 	require.NoError(t, err)
 	require.Len(t, got, 1, "Bob's account never appears to Alice")
 	assert.Equal(t, "acme", got[0].AccountLogin)
-	assert.Equal(t, []InstallationWorkspace{{ID: "ws-a", Name: "Acme", CanDetach: true}, {ID: "ws-b", Name: "Globex"}}, got[0].Workspaces,
-		"a workspace whose projects attach none of its repositories does not use it, and detaching takes projects:write")
+	assert.Equal(t, []InstallationWorkspace{{ID: "ws-a", Name: "Acme", CanDetach: true}}, got[0].Workspaces,
+		"a workspace whose projects attach none of its repositories does not use it, and seeing and detaching take projects:create")
 
 	_, err = svc.ListInstallations(signedIn(t, "carol"))
 	require.ErrorIs(t, err, errNotConnected)
@@ -219,15 +219,15 @@ func TestListInstallations_MarksAnUninstalledAccountGoneAndAReinstallLinksNothin
 	assert.NotContains(t, store.rows, Assignment{AccountID: 22, AccountLogin: "bob", WorkspaceID: "ws-a", WorkspaceName: "Acme", Gone: true}, "a reinstall drops the gone link instead of reviving it")
 }
 
-func TestUnassignInstallation_DetachesWithProjectsWriteInThatWorkspace(t *testing.T) {
+func TestUnassignInstallation_DetachesWithProjectsCreateInThatWorkspace(t *testing.T) {
 	tests := []struct {
 		name string
 		gate fakeGate
 		want error
 	}{
-		{"projects:write there detaches the account", aliceWrites, nil},
-		{"without projects:write nothing is detached", fakeGate{"": {"ws-a"}, permissions.ConnectorsWrite: {"ws-a"}}, apperrors.ErrForbidden},
-		{"a workspace the caller is not in reads as not found", fakeGate{"": {"ws-b"}, permissions.ProjectsWrite: {"ws-b"}}, apperrors.ErrNotFound},
+		{"projects:create there detaches the account", aliceWrites, nil},
+		{"without projects:create nothing is detached", fakeGate{"": {"ws-a"}, permissions.ProjectsWrite: {"ws-a"}}, apperrors.ErrForbidden},
+		{"a workspace the caller is not in reads as not found", fakeGate{"": {"ws-b"}, permissions.ProjectsCreate: {"ws-b"}}, apperrors.ErrNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/memories"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/githubapp"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
@@ -241,6 +242,18 @@ func (g tenancyProjectGate) ProjectPermissions(ctx context.Context, userID, proj
 	return g.access.ProjectPermissions(ctx, userID, projectID)
 }
 
+func (g tenancyProjectGate) ProjectActions(ctx context.Context, userID, workspaceID string) ([]tenancy.MeProject, error) {
+	held, err := g.access.ProjectActions(ctx, userID, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]tenancy.MeProject, len(held))
+	for i, h := range held {
+		out[i] = tenancy.MeProject{ProjectID: h.ProjectID, Actions: h.Actions}
+	}
+	return out, nil
+}
+
 func (g tenancyProjectGate) WorkspaceProjects(ctx context.Context, workspaceID string) ([]string, error) {
 	projects, err := g.projects.List(ctx, workspaceID)
 	if err != nil {
@@ -310,6 +323,10 @@ type roleMemberGate struct {
 func (g roleMemberGate) RequireMember(ctx context.Context, workspaceID, userID string) error {
 	_, err := g.svc.Member(ctx, workspaceID, userID)
 	return err
+}
+
+func (g roleMemberGate) HolderEvents(ctx context.Context, workspaceID, roleID, actorID string) ([]eventbus.OutboxEvent, error) {
+	return g.svc.RoleHolderEvents(ctx, workspaceID, roleID, actorID)
 }
 
 // workspaceDefaultsGate seeds a workspace's default plays and automations for tenancy's DefaultsGate seam (ADR 0017).

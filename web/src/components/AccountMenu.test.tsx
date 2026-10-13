@@ -25,8 +25,11 @@ const ownerUser = {
   created_at: "2026-08-12T12:00:00Z",
 };
 
-let roleResponse: { role_name: string; permissions?: string[] } = {
+const held = (...names: string[]) => names.map((name) => ({ id: `r-${name}`, name, is_owner: name === "Owner" }));
+
+let roleResponse: { role_name: string; roles: ReturnType<typeof held>; permissions?: string[] } = {
   role_name: "Owner",
+  roles: held("Owner"),
   permissions: ["projects:write"],
 };
 
@@ -48,7 +51,7 @@ describe("AccountMenu", () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     useWorkspaceStore.persist.clearStorage();
-    roleResponse = { role_name: "Owner", permissions: ["projects:write"] };
+    roleResponse = { role_name: "Owner", roles: held("Owner"), permissions: ["projects:write"] };
     // /api/auth/me returns the user; every other GET returns the workspace
     // role. Override the role via roleResponse, not by replacing this dispatcher.
     vi.mocked(api.get).mockImplementation(async (url: string) => {
@@ -173,10 +176,15 @@ describe("AccountMenu", () => {
     expect(role.closest("[data-slot='no-fill-badge']")).toBeNull();
   });
 
-  it("shows a custom role's real name instead of a hardcoded string", async () => {
-    roleResponse = { role_name: "Editor" };
+  it("lists every role held, joined, and says when there is none", async () => {
+    roleResponse = { role_name: "Developer, Frontend", roles: held("Developer", "Frontend") };
+    const { unmount } = renderMenu();
+    expect(await screen.findByText("Developer, Frontend")).toBeInTheDocument();
+    unmount();
+
+    roleResponse = { role_name: "", roles: [] };
     renderMenu();
-    expect(await screen.findByText("Editor")).toBeInTheDocument();
+    expect(await screen.findByText("No roles")).toBeInTheDocument();
   });
 
   it("re-fetches the role when the selected workspace changes", async () => {

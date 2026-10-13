@@ -119,7 +119,7 @@ describe("BoardFilterBar", () => {
   it("leaves the create menu out on a project where the viewer may only read tickets", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/workspaces/ws-1/me") {
-        return { data: { role_name: "Client", permissions: [], restricted: true, projects: [{ project_id: "p-1", actions: ["tickets:read"] }] } };
+        return { data: { role_name: "Client", permissions: [], projects: [{ project_id: "p-1", actions: ["tickets:read"] }] } };
       }
       return { data: url === "/api/projects" ? projects : [] };
     });

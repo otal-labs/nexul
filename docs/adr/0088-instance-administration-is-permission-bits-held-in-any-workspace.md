@@ -55,6 +55,6 @@ Supersedes the instance-administration layer of ADR 0024 (sign-in and per-member
 active administrator rule of ADR 0061. Amends ADR 0085, whose Team now answers to `accounts:read`, and ADR 0087.
 Decided 2026-09-29. Amended by ADR 0097: a restricted membership holds no instance bit, whatever its role carries.
 Amended by ADR 0103: `templates:write` edits the instance templates.
-Amended by ADR 0148 (proposed): a bit counts when any role the person holds in any workspace carries it, since no
+Amended by ADR 0148: a bit counts when any role the person holds in any workspace carries it, since no
 membership is restricted any more; the grant rule covers rules on things for a role or a person, the workspace-wide
 allow override goes, and the instance Owner may hand out one instance area with a rule.

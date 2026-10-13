@@ -46,10 +46,6 @@ func (sc storeScopes) ProjectIDs(ctx context.Context, workspaceID string) ([]str
 	return ids, err
 }
 
-func (sc storeScopes) UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
-	return sc.s.WorkspaceMembers.UnrestrictedWorkspaceIDs(ctx, userID)
-}
-
 func (sc storeScopes) WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
 	return sc.s.WorkspaceMembers.WorkspaceIDs(ctx, userID)
 }

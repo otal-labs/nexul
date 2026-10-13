@@ -12,12 +12,13 @@ A project holds a piece of your work: its board, docs, memories, repository, and
 Press **New project** in the sidebar. A new workspace shows the same button on its empty board and docs list. The project wizard takes you from nothing to a deployed service:
 
 1. **Info.** Name the project and give it a prefix: 2 to 5 letters or digits, starting with a letter. Ticket keys start with it, such as `BE-42`. A prefix is unique within its workspace.
-2. **Repository.** Say where the project's tests live, then pick the repository to deploy. The search lists the repositories your own GitHub account can open wherever the [GitHub App](/docs/guide/github-app/) is installed, and the wizard scans the one you pick with your GitHub too. If your GitHub isn't connected, the step shows **Connect GitHub to see your repositories** instead; **Connect GitHub** links it to your profile and brings you to **Settings → Profile**, and you come back to the wizard from there. **Install it on an account or organisation you manage** under the search installs the App somewhere new.
-3. **Service.** Check the service the scan proposes and pick the machine to run it on. See [Runners](/docs/guide/runners/).
-4. **Environment.** Only if the repository has a `.env.example`: fill in its values.
-5. **Reach.** Optional: give the service a hostname now, or later from the stack page.
-6. **Deploy branches.** Optional: deploy other branches, such as `feature/*`, as their own copies. See [Stacks and deploys](/docs/guide/stacks-and-deploys/).
-7. **Done.** Start the project's [interview](/docs/guide/interview/), check what's left for later, then press **Finish**.
+2. **Who's in it.** Tick the roles that can open the project. Your own roles start ticked, and you're always in. Add people by name or keep someone out later, from the project's settings.
+3. **Repository.** Say where the project's tests live, then pick the repository to deploy. The search lists the repositories your own GitHub account can open wherever the [GitHub App](/docs/guide/github-app/) is installed, and the wizard scans the one you pick with your GitHub too. If your GitHub isn't connected, the step shows **Connect GitHub to see your repositories** instead; **Connect GitHub** links it to your profile and brings you to **Settings → Profile**, and you come back to the wizard from there. **Install it on an account or organisation you manage** under the search installs the App somewhere new.
+4. **Service.** Check the service the scan proposes and pick the machine to run it on. See [Runners](/docs/guide/runners/).
+5. **Environment.** Only if the repository has a `.env.example`: fill in its values.
+6. **Reach.** Optional: give the service a hostname now, or later from the stack page.
+7. **Deploy branches.** Optional: deploy other branches, such as `feature/*`, as their own copies. See [Stacks and deploys](/docs/guide/stacks-and-deploys/).
+8. **Done.** Start the project's [interview](/docs/guide/interview/), check what's left for later, then press **Finish**.
 
 Skipping the interview asks if you're sure. Agents still work, but without the project's rules, and the board shows a banner until the interview is done.
 
@@ -27,7 +28,7 @@ Click any step in the row at the top to open it, in any order. Each one shows wh
 
 The project exists from the moment you press **Continue** on the Info step, and stays in setup until you press **Finish** on the last step. **Finish** works with steps skipped; the Done step lists them, each with a way back. Until then, the project's part of the sidebar shows only **Continue setup**, on every device and for everyone who can change the project, and it reopens the wizard at the first step that's neither done nor skipped. If setup already created a service, resuming uses that same stack even when another service was added later. Detected Environment fields and saved stack values return on another device; **Continue** stays on Service when progress cannot be saved, so it can be retried without creating again. Everyone else sees **Being set up**. The board, docs, and settings still open from a link while setup is open. Adding a service from the project's page makes a new one beside the service setup recorded and never changes the setup. If Repository is done but this browser has no scan of it (another device, or after a reload), Service asks you to scan it again and Repository stays done. Only people who can read the project's stacks see which service setup recorded.
 
-After **Finish**, the sidebar lists the project's pages. Right-clicking the project in the sidebar or its switcher offers **Project settings**. To revisit a step later, open the project's **Settings → General** and press **Open the wizard**. The project stays set up.
+After **Finish**, the sidebar lists the project's pages. Right-clicking the project in the sidebar or its switcher offers **Project settings** and, to whoever manages who's in it, **Permissions…**. To revisit a step later, open the project's **Settings → General** and press **Open the wizard**. The project stays set up.
 
 A project made over [MCP](/docs/guide/mcp-server/) or the API is set up straight away, unless the call asks for setup with `setup_finished` set to `false`.
 
@@ -53,4 +54,8 @@ A new name changes nothing else. A new slug moves every link: old links stop wor
 
 ## Who can see a project
 
-Everyone in the workspace sees every project at their role's level, unless they're held to chosen projects. A project's **Settings → General** lists those people under **People with access**. See [People and access](/docs/guide/people-and-access/).
+Projects are opt-in. Someone sees a project only once it lists them, or a role they hold; everything in a project they aren't in, its name included, is hidden from them. Inside a project they're in, their roles decide what they can do there. Workspace Owners see every project.
+
+Creating a project takes **Create projects**. The new project lists you and each of your roles, so it opens for you and for whoever holds those roles, and you can manage who else is in it: the wizard's **Who's in it** step, then **People in this project** in the project's **Settings → General**. See [People in this project](/docs/guide/people-and-access/#people-in-this-project).
+
+Projects made before the **Who's in it** step existed count it as done.

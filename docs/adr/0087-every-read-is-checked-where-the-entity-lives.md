@@ -73,10 +73,13 @@ Amended 2026-10-10 by ADR 0144: the wizard's repository list takes `projects:wri
 lists only the installations assigned to it once Nexul reads GitHub as its App; the installations list takes
 `connectors:read`.
 
-Amended by ADR 0148 (proposed): the project list is no longer read with membership alone; a member sees the projects
+Amended by ADR 0148: the project list is no longer read with membership alone; a member sees the projects
 whose rules list a role they hold or them, and a member whose roles grant nothing sees no project. Public channels,
 DMs, the inbox and People still take membership only.
 
 Amended 2026-10-10 by ADR 0147: the wizard's repository list still takes `projects:write`, but lists what the caller's
 own GitHub sign-in can open; the installations list takes no permission and shows the caller's own installations;
 detaching an account from a workspace takes `projects:write` there.
+
+Amended by ADR 0148: creating a project, the wizard's repository list and scan, and detaching an account
+take `projects:create`; a member reads a project only once its rules list them or a role they hold.

@@ -15,7 +15,8 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// CreateDM creates a direct-message conversation; v1 has no dedup lookup, each call is a new one.
+// CreateDM creates a direct-message conversation; each call is a new one. It takes chat:write, except a DM whose other
+// participants are all Owners of the workspace, which takes membership alone, so someone with no role can reach one.
 func (s *Service) CreateDM(ctx context.Context, workspaceID, creatorUserID string, participantUserIDs []string) (*Conversation, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
@@ -25,10 +26,14 @@ func (s *Service) CreateDM(ctx context.Context, workspaceID, creatorUserID strin
 	if creatorUserID == "" {
 		return nil, fmt.Errorf("%w: creator id is required", apperrs.ErrInvalid)
 	}
-	if err := s.require(ctx, workspaceID, permissions.ChatWrite); err != nil {
+	participants := dedupeParticipants(creatorUserID, participantUserIDs)
+	action, err := s.dmAction(ctx, workspaceID, participants[1:])
+	if err != nil {
 		return nil, err
 	}
-	participants := dedupeParticipants(creatorUserID, participantUserIDs)
+	if err := s.require(ctx, workspaceID, action); err != nil {
+		return nil, err
+	}
 	if err := s.requireMembers(ctx, workspaceID, participants); err != nil {
 		return nil, err
 	}
@@ -37,6 +42,20 @@ func (s *Service) CreateDM(ctx context.Context, workspaceID, creatorUserID strin
 		Kind:        KindDM,
 		CreatedBy:   creatorUserID,
 	}, participants)
+}
+
+// dmAction is what starting a DM with others takes: membership when every one of them is an Owner, else chat:write.
+func (s *Service) dmAction(ctx context.Context, workspaceID string, others []string) (permissions.Action, error) {
+	if len(others) == 0 {
+		return permissions.ChatWrite, nil
+	}
+	for _, id := range others {
+		owner, err := s.standingOf(ctx, Standing.IsOwner, id, workspaceID)
+		if err != nil || !owner {
+			return permissions.ChatWrite, err
+		}
+	}
+	return permissions.Member, nil
 }
 
 // requireMembers refuses a participant outside the workspace as not found, the same answer for someone who does not

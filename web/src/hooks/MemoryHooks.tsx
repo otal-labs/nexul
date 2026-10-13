@@ -170,7 +170,7 @@ export const useFetchInterviewTemplate = (workspaceId: string) =>
     enabled: workspaceId !== "",
   });
 
-// The template a project's Interview page asks, readable by a restricted member with access to that project.
+// The template a project's Interview page asks, readable by anyone holding memories:read in that project.
 export const useFetchProjectInterviewTemplate = (projectId: string) =>
   useQuery({
     queryKey: [getInterviewTemplateKey, "project", projectId],

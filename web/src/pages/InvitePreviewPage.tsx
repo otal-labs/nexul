@@ -106,7 +106,7 @@ export const InvitePreviewPage = () => {
           </header>
           {checking && <LoadingDisplay label="Checking invitation…" />}
           {invalid && <div className="space-y-3"><ErrorDisplay title={INVALID_MESSAGE} message="Ask whoever sent it for a new link." />{fragment.token && <Button type="button" variant="outline" onClick={retry}>Try again</Button>}</div>}
-          {!invalid && details && <InvitationGrantSummary invitation={details} detailed={acceptance != null} />}
+          {!invalid && details && <InvitationGrantSummary invitation={details} />}
           {!invalid && acceptance && <InvitationAcceptancePanel pending={redeem.isPending} onAccept={accept} onDecline={() => navigate("/", { replace: true })} />}
           {!invalid && !acceptance && publicPreview && <InvitationProviderList providers={providers} disabled={oauth.isPending} onSelect={startOAuth} />}
         </div>

@@ -5,13 +5,13 @@ INSERT INTO workspaces (id, name, slug, mention_chip_template, created_at, updat
 UPDATE workspaces SET name = ?, slug = ?, mention_chip_template = ?, updated_at = ? WHERE id = ?;
 
 -- name: GetWorkspace :one
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap FROM workspaces WHERE id = ?;
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at FROM workspaces WHERE id = ?;
 
 -- name: GetWorkspaceBySlug :one
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap FROM workspaces WHERE slug = ?;
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at FROM workspaces WHERE slug = ?;
 
 -- name: ListWorkspacesForUser :many
-SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug, w.decisions_check_enabled, w.auto_play_daily_cap
+SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug, w.decisions_check_enabled, w.auto_play_daily_cap, w.access_setup_finished, w.access_setup_by, w.access_setup_at
 FROM workspaces w
 JOIN workspace_members m ON m.workspace_id = w.id
 WHERE m.user_id = ?
@@ -23,8 +23,8 @@ INSERT INTO workspace_members (user_id, workspace_id, created_at) VALUES (?, ?, 
 -- name: AddMemberRole :exec
 INSERT INTO member_roles (user_id, workspace_id, role_id, created_at) VALUES (?, ?, ?, ?);
 
--- name: DeleteMemberRoles :exec
-DELETE FROM member_roles WHERE workspace_id = ? AND user_id = ?;
+-- name: DeleteMemberRole :exec
+DELETE FROM member_roles WHERE workspace_id = ? AND user_id = ? AND role_id = ?;
 
 -- name: ListMemberRoleIDs :many
 SELECT mr.role_id FROM member_roles mr
@@ -39,7 +39,7 @@ WHERE mr.workspace_id = ?
 ORDER BY mr.user_id, mr.created_at, r.is_owner_role DESC, mr.role_id;
 
 -- name: ListMemberRoleGrants :many
-SELECT m.restricted, r.id AS role_id, r.is_owner_role, r.permissions
+SELECT m.user_id, r.id AS role_id, r.is_owner_role, r.permissions
 FROM workspace_members m
 LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
 LEFT JOIN roles r ON r.id = mr.role_id
@@ -52,44 +52,35 @@ SELECT * FROM workspace_members WHERE workspace_id = ? ORDER BY created_at, user
 -- name: GetWorkspaceMember :one
 SELECT * FROM workspace_members WHERE workspace_id = ? AND user_id = ?;
 
--- name: SetWorkspaceMemberRestricted :execrows
-UPDATE workspace_members SET restricted = ? WHERE workspace_id = ? AND user_id = ?;
-
 -- name: ListWorkspaceIDsForUser :many
 SELECT workspace_id FROM workspace_members WHERE user_id = ? ORDER BY created_at, workspace_id;
-
--- name: ListUnrestrictedWorkspaceIDsForUser :many
-SELECT workspace_id FROM workspace_members WHERE user_id = ? AND restricted = 0 ORDER BY created_at, workspace_id;
 
 -- name: DeleteMemberProjectAccess :exec
 DELETE FROM permission_overwrites
 WHERE resource_type = 'project' AND user_id = ?
   AND resource_id IN (SELECT id FROM projects WHERE workspace_id = ?);
 
--- name: ListMemberProjectAccess :many
-SELECT po.resource_id AS project_id, p.name AS project_name, po.allow
-FROM permission_overwrites po
-JOIN projects p ON p.id = po.resource_id
-WHERE po.resource_type = 'project' AND po.user_id = ? AND p.workspace_id = ? AND po.allow != '[]'
-ORDER BY p.position, p.id;
-
 -- name: ListProjectMemberIDs :many
 SELECT m.user_id FROM workspace_members m
 WHERE m.workspace_id = sqlc.arg(workspace_id)
-  AND (m.restricted = 0
-    OR EXISTS (SELECT 1 FROM member_roles mr JOIN roles r ON r.id = mr.role_id
+  AND (EXISTS (SELECT 1 FROM member_roles mr JOIN roles r ON r.id = mr.role_id
                WHERE mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id AND r.is_owner_role = 1)
-    OR EXISTS (SELECT 1 FROM permission_overwrites po
-               WHERE po.resource_type = 'project' AND po.resource_id = sqlc.arg(project_id) AND po.target = 'person'
-                 AND po.user_id = m.user_id AND po.allow != '[]'))
+    OR (NOT EXISTS (SELECT 1 FROM permission_overwrites po, json_each(po.deny) d
+                    WHERE po.resource_type = 'project' AND po.resource_id = sqlc.arg(project_id) AND po.target = 'person'
+                      AND po.user_id = m.user_id AND d.value = 'projects:open')
+      AND (EXISTS (SELECT 1 FROM permission_overwrites po, json_each(po.allow) a
+                   WHERE po.resource_type = 'project' AND po.resource_id = sqlc.arg(project_id) AND po.target = 'person'
+                     AND po.user_id = m.user_id AND a.value = 'projects:open')
+        OR EXISTS (SELECT 1 FROM member_roles mr
+                   JOIN permission_overwrites pr ON pr.role_id = mr.role_id, json_each(pr.allow) a
+                   WHERE mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
+                     AND pr.resource_type = 'project' AND pr.resource_id = sqlc.arg(project_id) AND a.value = 'projects:open'))))
 ORDER BY m.created_at, m.user_id;
 
--- name: ListTeamProjectAccess :many
-SELECT po.user_id, p.workspace_id, po.resource_id AS project_id, p.name AS project_name, po.allow
-FROM permission_overwrites po
-JOIN projects p ON p.id = po.resource_id
-WHERE po.resource_type = 'project' AND po.target = 'person' AND po.allow != '[]'
-ORDER BY p.position, p.id;
+-- name: ListProjectRoleIDs :many
+SELECT po.role_id FROM permission_overwrites po, json_each(po.allow) a
+WHERE po.resource_type = 'project' AND po.resource_id = sqlc.arg(project_id) AND po.target = 'role' AND a.value = 'projects:open'
+ORDER BY po.created_at, po.role_id;
 
 -- name: RemoveWorkspaceMember :execrows
 DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ?;
@@ -114,16 +105,11 @@ SELECT workspace_id, login, role_id, invited_by, created_at
 FROM workspace_invites WHERE login = ? ORDER BY created_at, workspace_id;
 
 -- name: ListTeamMemberships :many
-SELECT m.user_id, m.workspace_id, w.name AS workspace_name, r.id AS role_id, r.name AS role_name, r.is_owner_role, m.restricted,
-       COALESCE(po.allow, '[]') AS allow, COALESCE(po.deny, '[]') AS deny
+SELECT m.user_id, m.workspace_id, w.name AS workspace_name, r.id AS role_id, r.name AS role_name, r.is_owner_role
 FROM workspace_members m
 JOIN workspaces w ON w.id = m.workspace_id
 LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
 LEFT JOIN roles r ON r.id = mr.role_id
-LEFT JOIN permission_overwrites po
-  ON po.resource_type = 'workspace'
- AND po.resource_id = m.workspace_id
- AND po.user_id = m.user_id
 ORDER BY w.created_at, w.id, m.user_id, mr.created_at, r.is_owner_role DESC, mr.role_id;
 
 -- name: ListTeamWorkspaces :many

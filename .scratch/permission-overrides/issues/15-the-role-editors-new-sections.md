@@ -1,6 +1,6 @@
 # 15 — The role editor's new sections, and the web's last Restricted reads
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 08, 11
 
@@ -27,5 +27,12 @@ Read first: `practices/react-guide.md` (F1 to F7, the self-review), `practices/d
 
 ## Acceptance criteria
 
-- [ ] `rg -w restricted web/src` finds nothing.
-- [ ] Verified at 768, 1024 and 1440px, and the self-review passes.
+- [x] `rg -w restricted web/src` finds nothing outside the components slices 12 and 14 delete (`EveryProjectRow`,
+      `InvitationProjectAccess` and the invitation model's `every_project` note; `ProjectPeopleAccessSection`,
+      `RestrictedMembersLoseAccess` and their tests); client-core's `/me` type no longer carries `restricted`.
+- [x] Verified at 768, 1024 and 1440px, and the self-review passes.
+
+## Notes for later slices
+
+- Deleting a role publishes `role.updated` only, which the Team follows nowhere: the deleter's own Team refetches
+  from the mutation, but another open Team page shows the old holders until it refetches.

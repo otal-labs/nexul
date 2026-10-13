@@ -79,12 +79,20 @@ type InvitationAcceptance struct {
 
 // InvitationGrant mirrors tenancy grant data without importing tenancy into auth.
 type InvitationGrant struct {
-	WorkspaceID   string   `json:"workspace_id"`
-	WorkspaceName string   `json:"workspace_name"`
-	RoleID        string   `json:"role_id"`
-	RoleName      string   `json:"role_name"`
-	Allow         []string `json:"allow"`
-	Deny          []string `json:"deny"`
+	WorkspaceID   string `json:"workspace_id"`
+	WorkspaceName string `json:"workspace_name"`
+	RoleID        string `json:"role_id"`
+	RoleName      string `json:"role_name"`
+	// Roles is every role the grant gives; RoleID and RoleName name the first.
+	Roles []InvitationRole `json:"roles"`
+	Allow []string         `json:"allow"`
+	Deny  []string         `json:"deny"`
+}
+
+// InvitationRole is one role an invitation grant gives.
+type InvitationRole struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // InvitationAuthenticatedUser is provider identity or an admitted user shown on acceptance.

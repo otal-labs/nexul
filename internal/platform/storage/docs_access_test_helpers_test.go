@@ -45,7 +45,7 @@ func (allowAll) RequireProject(context.Context, string, permissions.Action) erro
 	return nil
 }
 
-func (allowAll) DocsWith(context.Context, string, permissions.Action) ([]string, []string, []string, error) {
+func (allowAll) DocsWith(context.Context, string, string, permissions.Action) ([]string, []string, []string, error) {
 	return []string{"project-general"}, []string{}, []string{}, nil
 }
 

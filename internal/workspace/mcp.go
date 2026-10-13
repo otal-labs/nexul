@@ -47,7 +47,8 @@ type projectCreateIn struct {
 func projectCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("project_create", "Create project",
 		"Creates a project, the grouping tickets, repositories, and stacks belong to, with the default status "+
-			"columns and ticket types (task, bug, feature), its setup finished unless setup_finished is false. Owners only. Use project_update afterwards to rename it, "+
+			"columns and ticket types (task, bug, feature), its setup finished unless setup_finished is false. It needs projects:create in the workspace, "+
+			"and lists you and each of your roles in the new project, so it opens for you and whoever holds those roles. Use project_update afterwards to rename it, "+
 			"attach repositories, or change its columns, categories, and ticket types. Returns the new project.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in projectCreateIn) (any, error) {

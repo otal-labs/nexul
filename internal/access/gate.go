@@ -19,7 +19,7 @@ func (s *Service) SetScopes(sc Scopes) {
 // Require checks the calling actor holds action in workspaceID; an empty action asks only for membership, for
 // what every member may read (chat, the inbox, People). A caller outside the workspace gets ErrNotFound, so a
 // direct fetch never confirms what the workspace holds; a member without the action gets ErrForbidden. With no
-// project named a Restricted member holds no project area. A call with no actor is the server's own (event
+// project named nobody but the Owner holds a project area. A call with no actor is the server's own (event
 // consumers, workers) and passes: every adapter attaches one.
 func (s *Service) Require(ctx context.Context, workspaceID string, action permissions.Action) error {
 	return s.require(ctx, workspaceID, "", action)
@@ -31,7 +31,7 @@ func (s *Service) require(ctx context.Context, workspaceID, projectID string, ac
 		return defaultAutomationInside(ctx, workspaceID)
 	}
 	ws := s.layers(ctx, userID, workspaceID, projectID)
-	if !ws.owner && ws.hidden() {
+	if ws.hidden() {
 		return apperrs.ErrNotFound
 	}
 	allowed, src := decide(ws, action, noRules)
@@ -44,8 +44,8 @@ func (s *Service) require(ctx context.Context, workspaceID, projectID string, ac
 	return s.refusal(ctx, action, src)
 }
 
-// RequireProject is Require inside projectID, in the workspace it belongs to. An unknown project, or one hidden from
-// a Restricted member, is ErrNotFound; the empty action asks whether the caller may open the project at all.
+// RequireProject is Require inside projectID, in the workspace it belongs to. An unknown project, or one the caller is
+// not in, is ErrNotFound; the empty action asks whether the caller may open the project at all.
 func (s *Service) RequireProject(ctx context.Context, projectID string, action permissions.Action) error {
 	if _, checked := caller(ctx); !checked && defaultAutomationWorkspace(ctx) == "" {
 		return nil
@@ -153,23 +153,23 @@ func (s *Service) WorkspacesWith(ctx context.Context, action permissions.Action)
 	return out, nil
 }
 
-// HoldsAnywhere reports whether userID holds action in at least one workspace they belong to unrestricted; an Owner
-// of any workspace holds every action, which is all instance-level power there is (ADR 0088, ADR 0097).
+// HoldsAnywhere reports whether the roles userID holds in at least one workspace they belong to grant action; an Owner
+// of any workspace holds every action, which is all instance-level power there is (ADR 0088).
 func (s *Service) HoldsAnywhere(ctx context.Context, userID string, action permissions.Action) (bool, error) {
 	workspaceIDs, err := s.workspacesOf(ctx, userID)
 	if err != nil {
 		return false, err
 	}
 	for _, workspaceID := range workspaceIDs {
-		if s.HasPermission(ctx, userID, workspaceID, action, "", "") {
+		if slices.Contains(s.WorkspacePermissions(ctx, userID, workspaceID), string(action)) {
 			return true, nil
 		}
 	}
 	return false, nil
 }
 
-// PermissionsAnywhere is every action userID holds in at least one workspace they belong to unrestricted, in catalog
-// order: what an instance-level area answers to, so a client shows the same areas the server lets through.
+// PermissionsAnywhere is every action userID's roles grant in at least one workspace they belong to, in catalog order:
+// what an instance-level area answers to, so a client shows the same areas the server lets through.
 func (s *Service) PermissionsAnywhere(ctx context.Context, userID string) ([]string, error) {
 	workspaceIDs, err := s.workspacesOf(ctx, userID)
 	if err != nil {
@@ -194,8 +194,8 @@ func (s *Service) workspacesOf(ctx context.Context, userID string) ([]string, er
 	if userID == "" || s.scopes == nil {
 		return nil, nil
 	}
-	workspaceIDs, err := remember(ctx, workspacesKey{userID}, func() ([]string, error) {
-		return s.scopes.UnrestrictedWorkspaceIDsForUser(ctx, userID)
+	workspaceIDs, err := remember(ctx, membershipKey{userID}, func() ([]string, error) {
+		return s.scopes.WorkspaceIDsForUser(ctx, userID)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list workspaces of %s: %w", userID, err)
@@ -279,12 +279,6 @@ func (s *Service) HoldsRole(ctx context.Context, userID, roleID string) (bool, e
 	return false, nil
 }
 
-// IsRestricted reports whether userID is a Restricted member of workspaceID (ADR 0097); the Owner never is.
-func (s *Service) IsRestricted(ctx context.Context, userID, workspaceID string) (bool, error) {
-	info, err := s.standing(ctx, userID, workspaceID)
-	return info.Restricted && !info.IsOwnerRole, err
-}
-
 // ChannelsDenied is which of channelIDs in workspaceID deny userID channels:read, in one read; never the Owner (ADR 0148).
 func (s *Service) ChannelsDenied(ctx context.Context, userID, workspaceID string, channelIDs []string) (map[string]bool, error) {
 	out := map[string]bool{}
@@ -328,18 +322,63 @@ func (s *Service) standing(ctx context.Context, userID, workspaceID string) (Rol
 	return info, nil
 }
 
+// ProjectActions is each project of workspaceID userID is in, with the project-area actions they hold there, from one
+// read of the workspace's projects and one of the rules reaching them (feeds /api/workspaces/{id}/me).
+func (s *Service) ProjectActions(ctx context.Context, userID, workspaceID string) ([]ProjectHeld, error) {
+	if userID == "" || s.scopes == nil {
+		return []ProjectHeld{}, nil
+	}
+	ctx = s.memoized(ctx)
+	projectIDs, err := remember(ctx, workspaceProjectsKey{workspaceID}, func() ([]string, error) {
+		return s.scopes.ProjectIDs(ctx, workspaceID)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list projects of workspace %s: %w", workspaceID, err)
+	}
+	projects, err := s.layerRules(ctx, userID, workspaceID, s.roleIDsIn(ctx, userID, workspaceID), projectIDs)
+	if err != nil {
+		return nil, err
+	}
+	ws := s.layers(ctx, userID, workspaceID, "")
+	out := make([]ProjectHeld, 0, len(projectIDs))
+	for _, projectID := range projectIDs {
+		in := ws.in(projectID, projects[projectID])
+		if !in.member || in.hidden() {
+			continue
+		}
+		out = append(out, ProjectHeld{ProjectID: projectID, Actions: in.projectActions()})
+	}
+	return out, nil
+}
+
+// projectActions is every project-area action held inside the project ws is in.
+func (ws workspaceLayers) projectActions() permissions.Set {
+	var out []permissions.Action
+	for _, a := range permissions.AllActions() {
+		if permissions.AreaOf(a) != permissions.AreaProject {
+			continue
+		}
+		if held, _ := decide(ws, a, noRules); held {
+			out = append(out, a)
+		}
+	}
+	return permissions.SetOf(out...)
+}
+
 // ProjectsWith lists the projects of workspaceID in which userID holds action (permissions.Member: may open them), from
 // the layers and one read of the workspace's projects, so a list can filter by them in SQL instead of row by row.
 func (s *Service) ProjectsWith(ctx context.Context, userID, workspaceID string, action permissions.Action) ([]string, error) {
 	if userID == "" || s.scopes == nil {
 		return []string{}, nil
 	}
-	projectIDs, err := s.scopes.ProjectIDs(ctx, workspaceID)
+	ctx = s.memoized(ctx)
+	projectIDs, err := remember(ctx, workspaceProjectsKey{workspaceID}, func() ([]string, error) {
+		return s.scopes.ProjectIDs(ctx, workspaceID)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list projects of workspace %s: %w", workspaceID, err)
 	}
-	ctx = s.memoized(ctx)
-	_, projects, err := s.layerRules(ctx, userID, workspaceID, s.roleIDsIn(ctx, userID, workspaceID), projectIDs)
+	projects, err := s.layerRules(ctx, userID, workspaceID, s.roleIDsIn(ctx, userID, workspaceID), projectIDs)
 	if err != nil {
 		return nil, err
 	}

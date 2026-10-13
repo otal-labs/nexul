@@ -49,7 +49,7 @@ export interface ProjectSetup {
 export const inSetup = (project: Project): boolean => !project.setup.finished;
 
 // The letters a project shows on its tile: the prefix, or the name's first letter before one was backfilled.
-export const projectTile = (project: Project): string => project.prefix || project.name[0]?.toUpperCase() || "";
+export const projectTile = (project: Pick<Project, "prefix" | "name">): string => project.prefix || project.name[0]?.toUpperCase() || "";
 
 // A project's URL token: its prefix, so links survive renames, or the id if a prefix was never backfilled.
 export const projectToken = (project: Project): string => project.prefix || project.id;
@@ -111,21 +111,10 @@ export interface RepoRef {
   role: RepoRole;
 }
 
-// A Restricted member holding access to a project, named the way People shows them.
-export interface RestrictedMember {
-  user_id: string;
-  name: string;
-}
-
 export interface DeleteImpact {
   tickets: number;
   repos: number;
   services: number;
-  restricted_members?: RestrictedMember[];
-}
-
-export interface ProjectAccessEntry extends RestrictedMember {
-  actions: string[];
 }
 
 export const SaveProjectFormSchema = z.object({

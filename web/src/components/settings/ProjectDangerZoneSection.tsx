@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router";
 
 import { DangerAction, DangerButton, DangerZone } from "@/components/settings/DangerZone";
-import { RestrictedMembersLoseAccess } from "@/components/settings/RestrictedMembersLoseAccess";
+import { PeopleLoseProject } from "@/components/settings/PeopleLoseProject";
+import { useFetchProjectPeople } from "@/hooks/PeopleHooks";
 import { useDeleteProject, useFetchProjectDeleteImpact } from "@/hooks/ProjectHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import type { DeleteImpact, Project } from "@/models/Project";
@@ -28,6 +29,7 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
   const navigate = useNavigate();
   const deleteProject = useDeleteProject();
   const { data: impact } = useFetchProjectDeleteImpact(project.id);
+  const { data: people } = useFetchProjectPeople(project.id);
   const { open: confirmDelete } = useConfirmationDialog();
 
   const onDelete = async () => {
@@ -41,12 +43,12 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
       });
       return;
     }
-    const losing = impact.restricted_members ?? [];
+    const losing = people?.length ?? 0;
     const ok = await confirmDelete({
       message: "The project is empty. Removing it can't be undone.",
       title: `Remove ${project.name}?`,
       confirmLabel: "Remove project",
-      details: losing.length > 0 && <RestrictedMembersLoseAccess members={losing} />,
+      details: losing > 0 && <PeopleLoseProject count={losing} />,
     });
     if (!ok) return;
     await deleteProject.mutateAsync(project.id);

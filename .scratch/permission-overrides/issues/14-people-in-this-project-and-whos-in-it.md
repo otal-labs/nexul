@@ -1,6 +1,6 @@
 # 14 — People in this project, the project panel, and "Who's in it"
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 06, 07, 11
 
@@ -28,7 +28,18 @@ Read first: `practices/react-guide.md` (F1 to F7, Live events, the self-review),
 
 ## Acceptance criteria
 
-- [ ] A role added on the card opens the project for its holders live.
-- [ ] A person kept out disappears from their own sidebar live.
-- [ ] Projects made before the step count it as done.
-- [ ] Verified at 768, 1024 and 1440px, and the self-review passes.
+- [x] A role added on the card opens the project for its holders live.
+- [x] A person kept out disappears from their own sidebar live.
+- [x] Projects made before the step count it as done.
+- [x] Verified at 768, 1024 and 1440px, and the self-review passes.
+
+## Notes for later slices
+
+- `GET /api/permissions/explain` takes `role_id`: a role's answers as a holder of it alone gets them. A Fallback line,
+  for a role or a person, now reads the rule with only that row's permission at Fallback, so a person or role listed
+  on a project reads what their roles give there rather than "not found" on every row.
+- `GET /api/projects/{id}/people` carries `role_ids`, the roles the project lets in, which a doc's panel refuses
+  outside of. `GET /api/projects/{id}/access` and the delete impact's `restricted_members` still answer empty; nothing
+  in the web reads them.
+- Migration 0104 (provisional) marks the new `people` setup step done on every project made before it.
+- A doc panel's refused target links to the project's panel, open on that target, for whoever manages the project.

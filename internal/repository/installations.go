@@ -115,18 +115,18 @@ func (s *Service) personRepo(ctx context.Context, owner, name string) (Repo, err
 	return Repo{}, fmt.Errorf("%w: your GitHub account cannot open %s/%s where the GitHub App is installed; repository_list lists the ones it can", apperrors.ErrNotFound, owner, name)
 }
 
-// wizardWorkspaces checks projects:write in workspaceID, or in any workspace when none is named, and returns them.
+// wizardWorkspaces checks projects:create in workspaceID, or in any workspace when none is named, and returns them.
 func (s *Service) wizardWorkspaces(ctx context.Context, workspaceID string) ([]string, error) {
 	if s.cfg.Gate == nil {
 		return []string{workspaceID}, permissions.Ungated(ctx)
 	}
 	if workspaceID != "" {
-		return []string{workspaceID}, s.cfg.Gate.Require(ctx, workspaceID, permissions.ProjectsWrite)
+		return []string{workspaceID}, s.cfg.Gate.Require(ctx, workspaceID, permissions.ProjectsCreate)
 	}
-	if err := s.cfg.Gate.RequireAnywhere(ctx, permissions.ProjectsWrite); err != nil {
+	if err := s.cfg.Gate.RequireAnywhere(ctx, permissions.ProjectsCreate); err != nil {
 		return nil, err
 	}
-	return s.cfg.Gate.WorkspacesWith(ctx, permissions.ProjectsWrite)
+	return s.cfg.Gate.WorkspacesWith(ctx, permissions.ProjectsCreate)
 }
 
 // ListRepos lists the repositories the caller's own GitHub account can open where the App is installed, whose
@@ -283,17 +283,14 @@ func (s *Service) syncAsApp(ctx context.Context) error {
 	return s.sync(ctx, live)
 }
 
-// installationViewer is the caller's workspaces whose use of an account they may see, and those they may detach it from.
+// installationViewer is the caller's workspaces whose use of an account they may see, and those they may detach it
+// from: both where they may create projects, since a project-area action asked of a workspace is held by nobody.
 func (s *Service) installationViewer(ctx context.Context) (readable, manageable []string, err error) {
 	if s.cfg.Gate == nil {
 		return nil, nil, permissions.Ungated(ctx)
 	}
-	readable, err = s.cfg.Gate.WorkspacesWith(ctx, permissions.ProjectsRead)
-	if err != nil {
-		return nil, nil, err
-	}
-	manageable, err = s.cfg.Gate.WorkspacesWith(ctx, permissions.ProjectsWrite)
-	return readable, manageable, err
+	readable, err = s.cfg.Gate.WorkspacesWith(ctx, permissions.ProjectsCreate)
+	return readable, readable, err
 }
 
 // usedBy is the workspaces among rows where a project attaches one of inst's repositories.
@@ -309,7 +306,7 @@ func usedBy(rows []Assignment, inst Installation, manageable []string) []Install
 }
 
 // UnassignInstallation detaches the account from workspaceID: background work there stops reading its repositories
-// as the App until someone attaches one of them again. It takes projects:write there.
+// as the App until someone attaches one of them again. It takes projects:create there.
 func (s *Service) UnassignInstallation(ctx context.Context, account, workspaceID string) error {
 	account = strings.ToLower(strings.TrimSpace(account))
 	if account == "" || workspaceID == "" {
@@ -337,7 +334,7 @@ func (s *Service) requireDetacher(ctx context.Context, workspaceID string) error
 	if s.cfg.Gate == nil {
 		return permissions.Ungated(ctx)
 	}
-	return s.cfg.Gate.Require(ctx, workspaceID, permissions.ProjectsWrite)
+	return s.cfg.Gate.Require(ctx, workspaceID, permissions.ProjectsCreate)
 }
 
 func actorID(ctx context.Context) string {

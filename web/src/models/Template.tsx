@@ -63,7 +63,7 @@ export const BELOW_SCOPE: Record<TemplateKind, "workspace" | "project" | null> =
 
 // The permission writing a template of each kind takes.
 export const WRITE_PERMISSION: Record<TemplateKind, string> = {
-  interview: "memories:write",
+  interview: "memories:template",
   mention_chip: "workspaces:write",
   play_instructions: "plays:write",
   ticket_body: "projects:write",

@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"slices"
 
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/auth"
+	"github.com/otal-labs/nexul/internal/chat"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
@@ -24,6 +27,44 @@ func (a accessPlayWorkspaceResolver) WorkspaceIDForPlay(ctx context.Context, pla
 		return "", err
 	}
 	return p.WorkspaceID, nil
+}
+
+// accessChannelWorkspaceResolver reads a channel's workspace from the repo directly, past the chat domain's own checks;
+// a DM or a thread carries no channel rules.
+type accessChannelWorkspaceResolver struct {
+	chat *storage.ChatRepo
+}
+
+func (a accessChannelWorkspaceResolver) WorkspaceIDForChannel(ctx context.Context, channelID string) (string, error) {
+	c, err := a.chat.GetConversation(ctx, channelID)
+	if err != nil {
+		return "", err
+	}
+	if c.Kind != chat.KindChannel && c.Kind != chat.KindVoiceChannel {
+		return "", fmt.Errorf("%w: %s is not a channel", apperrs.ErrNotFound, channelID)
+	}
+	return c.WorkspaceID, nil
+}
+
+// accessRoleWorkspaceResolver reads a role's workspace from the repo directly, past the roles domain's own checks.
+type accessRoleWorkspaceResolver struct {
+	roles *storage.RolesRepo
+}
+
+func (a accessRoleWorkspaceResolver) WorkspaceIDForRole(ctx context.Context, roleID string) (string, error) {
+	r, err := a.roles.Get(ctx, roleID)
+	if err != nil {
+		return "", err
+	}
+	return r.WorkspaceID, nil
+}
+
+func (a accessRoleWorkspaceResolver) HeldRole(ctx context.Context, roleID string) (access.HeldRole, error) {
+	r, err := a.roles.Get(ctx, roleID)
+	if err != nil {
+		return access.HeldRole{}, err
+	}
+	return access.HeldRole{ID: r.ID, IsOwner: r.IsOwnerRole, Permissions: r.Permissions}, nil
 }
 
 // accessNames reads what a source sentence names from storage, past every permission check: the sentence is about
@@ -129,10 +170,6 @@ func (a accessScopes) ProjectIDs(ctx context.Context, workspaceID string) ([]str
 		ids[i] = p.ID
 	}
 	return ids, nil
-}
-
-func (a accessScopes) UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
-	return a.members.UnrestrictedWorkspaceIDs(ctx, userID)
 }
 
 func (a accessScopes) WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {

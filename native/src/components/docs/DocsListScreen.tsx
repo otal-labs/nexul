@@ -24,9 +24,7 @@ export const DocsListScreen = () => {
   const activeProjectId = activeProject?.id;
   const { data: docs, error: docsError, isPending: docsPending, isRefetching, refetch } = useFetchDocsByProject(activeProjectId);
 
-  const onSelect = (doc: DocListItem) => {
-    if (doc.can_open) router.push(`/more/docs/${doc.id}`);
-  };
+  const onSelect = (doc: DocListItem) => router.push(`/more/docs/${doc.id}`);
 
   const header = (
     <ScreenHeader

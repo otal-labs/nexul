@@ -30,32 +30,16 @@ type MemberRepo interface {
 	// ListByWorkspace returns every member of workspaceID with their roles (Membership invites' roster).
 	ListByWorkspace(ctx context.Context, workspaceID string) ([]*Member, error)
 	RemoveMember(ctx context.Context, workspaceID, userID string, events ...eventbus.OutboxEvent) error
-	// SetRole replaces the roles userID holds in workspaceID with roleID alone.
-	SetRole(ctx context.Context, workspaceID, userID, roleID string, events ...eventbus.OutboxEvent) error
-	// Overrides returns userID's workspace-wide overwrite in workspaceID; both sets are empty when there is none.
-	Overrides(ctx context.Context, workspaceID, userID string) (allow, deny permissions.Set, err error)
-	// SetOverrides replaces userID's workspace-wide overwrite in workspaceID; two empty sets delete it.
-	SetOverrides(ctx context.Context, workspaceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error
-	// ListAllMemberships returns every membership on the instance with its workspace, roles, and overrides.
+	// ChangeRoles gives userID the roles in add and takes away those in remove, in one write, or apperrs.ErrNotFound.
+	ChangeRoles(ctx context.Context, workspaceID, userID string, add, remove []string, events ...eventbus.OutboxEvent) error
+	// ListAllMemberships returns every membership on the instance with its workspace and roles.
 	ListAllMemberships(ctx context.Context) ([]*TeamMembership, error)
-	ProjectAccessRepo
-}
-
-// ProjectAccessRepo persists Every project and Project access (ADR 0097); Project access rows are permission
-// overwrites with resource_type "project" (ADR 0042).
-type ProjectAccessRepo interface {
 	// Member returns userID's membership of workspaceID with their roles, or apperrs.ErrNotFound.
 	Member(ctx context.Context, workspaceID, userID string) (*Member, error)
-	// SetRestricted switches userID's Every project row; their Project access rows are kept either way.
-	SetRestricted(ctx context.Context, workspaceID, userID string, restricted bool, events ...eventbus.OutboxEvent) error
-	// ProjectAccess lists userID's Project access in workspaceID's projects, in project order.
-	ProjectAccess(ctx context.Context, workspaceID, userID string) ([]*ProjectAccess, error)
-	// SetProjectAccess replaces userID's levels on projectID; an empty allow deletes the row.
-	SetProjectAccess(ctx context.Context, projectID, userID string, allow permissions.Set, events ...eventbus.OutboxEvent) error
-	// ListAllProjectAccess lists every Project access row on the instance, in project order.
-	ListAllProjectAccess(ctx context.Context) ([]*ProjectAccess, error)
-	// ProjectMemberIDs lists the members of workspaceID who may open projectID, in membership order, in one read.
+	// ProjectMemberIDs lists the members of workspaceID who are in projectID, in membership order, in one read.
 	ProjectMemberIDs(ctx context.Context, workspaceID, projectID string) ([]string, error)
+	// ProjectRoleIDs lists the roles projectID's rules let in, in the order they were listed, in one read.
+	ProjectRoleIDs(ctx context.Context, projectID string) ([]string, error)
 }
 
 // InviteRepo is the consumer-side persistence contract for pending workspace invites.
@@ -132,6 +116,8 @@ type ProjectGate interface {
 	ProjectPermissions(ctx context.Context, userID, projectID string) (actions []string, opens bool)
 	// WorkspaceProjects lists the ids of workspaceID's projects.
 	WorkspaceProjects(ctx context.Context, workspaceID string) ([]string, error)
+	// ProjectActions is each project of workspaceID userID is in, with the project-area actions they hold there.
+	ProjectActions(ctx context.Context, userID, workspaceID string) ([]MeProject, error)
 }
 
 // ChannelGate creates a new workspace's #general channel without tenancy importing chat (ADR 0017).

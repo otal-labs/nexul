@@ -46,7 +46,7 @@ export const useFetchMyRole = () => {
 };
 
 // Undefined until permissions first arrive; isFetched, since a failed read refetches as pending and must not blink.
-// Answers for projectId as the server does for a Restricted member (ADR 0097); with none, for any project.
+// Answers for projectId from what the viewer holds in it (ADR 0148); with none, for any project they are in.
 export const useAreaAccess = (projectId?: string): ((area: Area) => boolean) | undefined => {
   const { data, isFetched } = useFetchMyRole();
   if (!isFetched) return undefined;

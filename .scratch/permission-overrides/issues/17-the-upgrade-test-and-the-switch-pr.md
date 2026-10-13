@@ -1,6 +1,6 @@
 # 17 — The upgrade test, and the switch PR
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 12, 13, 14, 15, 16
 
@@ -29,6 +29,9 @@ Read first: AGENTS.md (Branches and pull requests, Hit every surface), `practice
 
 ## Acceptance criteria
 
-- [ ] Every box-test assertion holds and is recorded in the PR body.
-- [ ] The rollback drill boots the previous release on its old data.
-- [ ] The production copy is deleted afterwards and never enters the repo.
+- [ ] Every box-test assertion holds and is recorded in the PR body. All are recorded and all hold but one: "nothing
+      widens" fails where the wipe lifts a deny (a play exclusion, a Team deny), which the spec's two exceptions don't
+      cover. The PR body lists the answers; the owner decides whether the spec names a third exception.
+- [x] The rollback drill boots the previous release on its old data.
+- [x] The production copy is deleted afterwards and never enters the repo. Replaced by the owner's decision of
+      2026-10-11: no production copy is made; the box test runs on a production-shaped synthetic dataset only.

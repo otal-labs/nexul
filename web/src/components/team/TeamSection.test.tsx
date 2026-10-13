@@ -91,6 +91,25 @@ describe("TeamSection", () => {
     expect(dotOf(eve)).toHaveClass("bg-muted-foreground");
   });
 
+  it("shows a person's roles as chips, three then a count, and says when there are none", async () => {
+    const roles = ["Owner", "Lead", "Editor", "Client", "Tester"].map((name) => ({ id: `r-${name}`, name, is_owner: name === "Owner" }));
+    const nexul = team.people[0]!.workspaces[0]!;
+    renderSection("/settings/team", {
+      ...team,
+      people: [
+        { ...team.people[0]!, id: "u-lena", name: "Lena", workspaces: [{ ...nexul, roles }] },
+        { ...team.people[0]!, id: "u-sam", name: "Sam", workspaces: [{ ...nexul, roles: [] }] },
+      ],
+    });
+
+    const lena = await screen.findByRole("button", { name: "Open Lena" });
+    expect(within(lena).getByText("Owner")).toBeInTheDocument();
+    expect(within(lena).getByText("Editor")).toBeInTheDocument();
+    expect(within(lena).queryByText("Client")).not.toBeInTheDocument();
+    expect(within(lena).getByText("+2")).toHaveAttribute("title", "Client, Tester");
+    expect(within(screen.getByRole("button", { name: "Open Sam" })).getByText("No roles")).toBeInTheDocument();
+  });
+
   it("shows each linked sign-in account on the row with its username, never the email Discord signs in with", async () => {
     renderSection("/settings/team", {
       ...team,
@@ -136,12 +155,12 @@ describe("TeamSection", () => {
     const acme = within(dialog.getByRole("tabpanel", { name: "Acme" }));
     expect(acme.getByText("Viewer")).toBeInTheDocument();
     expect(acme.getByText("Read only: you can't manage members in Acme.")).toBeInTheDocument();
-    expect(acme.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(acme.queryByText("Everything these roles allow, combined.")).not.toBeInTheDocument();
     expect(acme.queryByRole("button", { name: "Remove from workspace" })).not.toBeInTheDocument();
 
     await user.click(dialog.getByRole("tab", { name: "Nexul" }));
     const nexul = within(dialog.getByRole("tabpanel", { name: "Nexul" }));
-    expect(nexul.getByRole("combobox", { name: "Role in Nexul" })).toBeInTheDocument();
+    expect(nexul.getByText("Everything these roles allow, combined.")).toBeInTheDocument();
     expect(nexul.getByRole("button", { name: "Remove from workspace" })).toBeInTheDocument();
     expect(await dialog.findByRole("button", { name: "Disable" })).toBeInTheDocument();
   });

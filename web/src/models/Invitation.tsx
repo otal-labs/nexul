@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { EveryProject, type ProjectGrant } from "@/models/Team";
+import type { TeamRole } from "@/models/Team";
 
 export const InvitationProvider = {
   GitHub: "github",
@@ -15,12 +15,10 @@ export type InvitationProvider = (typeof InvitationProvider)[keyof typeof Invita
 export interface InvitationGrant {
   workspace_id: string;
   workspace_name: string;
+  // Every role the grant gives; role_id and role_name name the first.
+  roles: Pick<TeamRole, "id" | "name">[];
   role_id: string;
   role_name: string;
-  allow: string[];
-  deny: string[];
-  every_project?: EveryProject;
-  project_access?: ProjectGrant[];
 }
 
 export interface InvitationPreview {
@@ -52,29 +50,12 @@ export interface RedeemedInvitation {
   workspace_ids: string[];
 }
 
-export interface InvitationGrantInput {
-  workspace_id: string;
-  role_id: string;
-  allow: string[];
-  deny: string[];
-  every_project?: EveryProject | undefined;
-  project_access?: ProjectGrant[] | undefined;
-}
+export const InvitationGrantFormSchema = z.object({
+  workspace_id: z.string().min(1, "Choose a workspace"),
+  role_ids: z.array(z.string()).min(1, "Pick at least one role"),
+});
 
-export const InvitationGrantFormSchema = z
-  .object({
-    workspace_id: z.string().min(1, "Choose a workspace"),
-    role_id: z.string().min(1, "Choose a role"),
-    allow: z.array(z.string()),
-    deny: z.array(z.string()),
-    // Omitted means From role; under None the person lands restricted to project_access.
-    every_project: z.enum([EveryProject.Role, EveryProject.None]).optional(),
-    project_access: z.array(z.object({ project_id: z.string().min(1), allow: z.array(z.string()) })).optional(),
-  })
-  .refine((grant) => grant.allow.every((value) => !grant.deny.includes(value)), {
-    message: "A permission cannot be allowed and denied at the same time",
-    path: ["allow"],
-  });
+export type InvitationGrantInput = z.infer<typeof InvitationGrantFormSchema>;
 
 export const CreateInvitationFormSchema = z.object({
   expires_in_days: z.union([z.literal(1), z.literal(7)]),
@@ -82,15 +63,6 @@ export const CreateInvitationFormSchema = z.object({
 });
 
 export type CreateInvitationFormData = z.infer<typeof CreateInvitationFormSchema>;
-
-// Project access only travels with None; levels picked before switching back to From role stay behind.
-export const invitationRequest = (input: CreateInvitationFormData): CreateInvitationFormData => ({
-  ...input,
-  grants: input.grants.map((grant) => ({
-    ...grant,
-    project_access: grant.every_project === EveryProject.None ? (grant.project_access ?? []).filter((access) => access.allow.length > 0) : [],
-  })),
-});
 
 export const hasDuplicateInvitationWorkspaces = (grants: readonly InvitationGrantInput[]): boolean =>
   new Set(grants.map((grant) => grant.workspace_id)).size !== grants.length;

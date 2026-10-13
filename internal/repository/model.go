@@ -80,7 +80,7 @@ func (s AccountSync) empty() bool {
 type InstallationWorkspace struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
-	// CanDetach is true where the viewer holds projects:write, what detaching the account there takes.
+	// CanDetach is true where the viewer holds projects:create, what detaching the account there takes.
 	CanDetach bool `json:"can_detach"`
 }
 

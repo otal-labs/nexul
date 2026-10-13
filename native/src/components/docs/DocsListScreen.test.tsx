@@ -25,7 +25,6 @@ const docA = {
   title: "Alpha spec",
   version: 1,
   archived: false,
-  can_open: true,
   updated_at: new Date().toISOString(),
 };
 

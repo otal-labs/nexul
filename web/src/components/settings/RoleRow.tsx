@@ -25,6 +25,12 @@ interface RoleRowProps {
   holders: TeamPerson[] | undefined;
 }
 
+const deleteMessage = (held: number): string => {
+  if (held === 0) return "Nobody holds this role. Deleting it can't be undone.";
+  const who = held === 1 ? "1 person loses" : `${held} people lose`;
+  return `${who} this role. Anyone left with no role stays a member and sees no project. Deleting it can't be undone.`;
+};
+
 export const RoleRow = ({ onLeave, role, workspaceId, catalog, holders }: RoleRowProps) => {
   const { data: roles = [] } = useFetchWorkspaceRoles(workspaceId);
   const createRole = useCreateWorkspaceRole(workspaceId);
@@ -39,21 +45,11 @@ export const RoleRow = ({ onLeave, role, workspaceId, catalog, holders }: RoleRo
   const duplicate = () =>
     createRole.mutate({ name: copyName(role.name, roles.map((r) => r.name)), actions: role.permissions });
 
-  // A role someone holds can't go: the confirm says who to move first instead of offering a delete that fails.
   const remove = async () => {
     const held = holders?.length ?? 0;
-    if (held > 0) {
-      await confirm({
-        title: `${role.name} is in use`,
-        message: `${held === 1 ? "1 person holds" : `${held} people hold`} this role. Give them another role in Team, then delete it.`,
-        confirmLabel: "Got it",
-        destructive: false,
-      });
-      return;
-    }
     const ok = await confirm({
       title: `Delete ${role.name}?`,
-      message: "Nobody holds this role. Deleting it can't be undone.",
+      message: deleteMessage(held),
       confirmLabel: "Delete role",
     });
     if (!ok) return;

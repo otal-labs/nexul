@@ -4,19 +4,15 @@ import { ChannelMembersSection } from "@/components/chat/ChannelMembersSection";
 import { PrivateChannelRow } from "@/components/chat/PrivateChannelRow";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useChannelSettingsActions } from "@/hooks/useChannelSettingsActions";
-import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
-import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { cn } from "@/lib/utils";
 
 interface ChannelSettingsCardProps {
   channel: Conversation;
 }
 
-// The private switch over a private channel's members; a Restricted member's channel stays private.
+// The private switch over a private channel's members.
 export const ChannelSettingsCard = ({ channel }: ChannelSettingsCardProps) => {
   const can = useAreaAccess();
-  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  const { data: role } = useFetchMyRole(workspaceId);
   const { setPrivate } = useChannelSettingsActions(channel);
   const canSwitch = (can?.("editChannels") ?? false) && !channel.general;
   const isPrivate = channel.private ?? false;
@@ -26,7 +22,6 @@ export const ChannelSettingsCard = ({ channel }: ChannelSettingsCardProps) => {
       {canSwitch && (
         <PrivateChannelRow
           checked={isPrivate}
-          fixed={isPrivate && role?.restricted === true}
           onCheckedChange={setPrivate}
           className={cn(isPrivate && "border-b border-border")}
         />

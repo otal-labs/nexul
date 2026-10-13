@@ -81,7 +81,12 @@ const ticket = (id: string, number: number) => ({
 const responses: Record<string, unknown> = {
   "/api/auth/me": { user: { id: "me", login: "onik97", name: "Onik" } },
   "/api/workspaces": [{ id: "ws-1", name: "Acme", slug: "acme" }],
-  "/api/workspaces/ws-1/me": { role_name: "Member", permissions: ["tickets:read", "docs:read", "stacks:read", "deploys:read"] },
+  "/api/workspaces/ws-1/me": {
+    role_name: "Member",
+    roles: [{ id: "r-member", name: "Member", is_owner: false }],
+    permissions: [],
+    projects: [{ project_id: "p-1", actions: ["tickets:read", "docs:read", "stacks:read", "deploys:read"] }],
+  },
   "/api/workspaces/ws-1/people": {
     people: [
       { user_id: "ana", login: "ana", display_name: "Ana", avatar_url: "" },
@@ -242,13 +247,28 @@ describe("requests a session sends", () => {
     expect(gets.sort()).toEqual(["/api/tickets/t-2", "/api/tickets?project_id=p-1"]);
   });
 
-  // It reached the viewer as a holder of the role it names, so only their own permissions refetch.
-  test("a grant frame that names no person refetches the viewer's permissions, nothing else", async () => {
-    const client = await renderSession();
-    const frame = { topic: "access.grant.changed", type: "event", payload: { resource_type: "doc", resource_id: "d1", target: "role", user_id: "", role_id: "r-9" } };
+  const roleFrame = (roleID: string) => ({
+    topic: "access.grant.changed",
+    type: "event",
+    payload: { resource_type: "project", resource_id: "p-1", target: "role", user_id: "", role_id: roleID },
+  });
 
-    const gets = await requestsDuring(client, () => dispatch(client)(frame));
+  // It reached the viewer as someone who manages the project, so only their own permissions refetch.
+  test("a grant frame for a role the viewer doesn't hold refetches the viewer's permissions, nothing else", async () => {
+    const client = await renderSession();
+
+    const gets = await requestsDuring(client, () => dispatch(client)(roleFrame("r-9")));
 
     expect(gets).toEqual(["/api/workspaces/ws-1/me"]);
+  });
+
+  // The viewer's own access moved, so a project taken away turns its open screens revoked.
+  test("a grant frame for a role the viewer holds refetches each open read once", async () => {
+    const client = await renderSession();
+
+    const gets = await requestsDuring(client, () => dispatch(client)(roleFrame("r-member")));
+
+    expect(new Set(gets).size).toBe(gets.length);
+    expect(gets).toHaveLength(21);
   });
 });

@@ -8,8 +8,7 @@ import { INSTANCE_SECTION_PERMISSION, type InstanceSection, type RouteArea } fro
 import type { WorkspaceAccess } from "@/models/Workspace";
 
 // Undefined until permissions first arrive; isFetched, since a failed read refetches as pending and must not blink.
-// A project area answers for projectId, else the project in view, which is what the server checks for a Restricted
-// member; an unrestricted member's answer is the same on every project.
+// A project area answers for projectId, else the project in view, since a member holds it only in projects they're in.
 export const useAreaAccess = (projectId?: string): ((area: Area) => boolean) | undefined => {
   const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const selectedProjectId = useWorkspaceStore((s) => s.selectedProjectId);
@@ -26,6 +25,17 @@ export const useAnyProjectAreaAccess = (): ((area: Area) => boolean) | undefined
   if (!isFetched) return undefined;
   const held = workspaceWidePermissions(data);
   return (area) => hasPermission(held, AREA_PERMISSION[area]);
+};
+
+// Manage this project's access, held through a role or on one project: what opens the Access page.
+const MANAGES_ACCESS = "projects:access";
+
+// Whether the viewer holds value through a role or in any project they are in; undefined while that is still loading.
+const useAnyProjectAreaAccessOf = (value: string): boolean | undefined => {
+  const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  const { data, isFetched } = useFetchMyRole(selectedWorkspaceId);
+  if (!isFetched) return undefined;
+  return hasPermission(workspaceWidePermissions(data), value);
 };
 
 // Whether the viewer holds value in any workspace, which is what the server checks an instance-level action against.
@@ -46,7 +56,7 @@ const settingsSectionsFor = (anywhere: string[] | undefined, permissions: string
     showGeneral: hasPermission(permissions, "workspaces:write"),
     showRoles: hasPermission(permissions, "roles:write"),
     showPlays: hasPermission(permissions, "plays:read"),
-    showInterviewTemplate: hasPermission(permissions, "memories:read"),
+    showInterviewTemplate: hasPermission(permissions, "memories:read") || hasPermission(permissions, "memories:template"),
     showMentionLayout: hasPermission(permissions, "workspaces:write"),
   });
 };
@@ -62,8 +72,11 @@ export const workspaceAccess = (anywhere: string[] | undefined, permissions: str
   );
   return {
     configurationSections,
-    canOpen: (area) =>
-      area === "configuration" ? opensConfiguration(configurationSections) : hasPermission(permissions, AREA_PERMISSION[area]),
+    canOpen: (area) => {
+      if (area === "configuration") return opensConfiguration(configurationSections);
+      if (area === "access") return hasPermission(permissions, MANAGES_ACCESS);
+      return hasPermission(permissions, AREA_PERMISSION[area]);
+    },
   };
 };
 
@@ -98,9 +111,11 @@ export const useCanOpenSection = (section: SettingsSection): boolean =>
 // Whether the viewer may open an area's page; undefined while that is still loading.
 export const useCanOpen = (): ((area: RouteArea) => boolean | undefined) => {
   const can = useAreaAccess();
+  const anywhere = useAnyProjectAreaAccessOf(MANAGES_ACCESS);
   const sections = useConfigurationSections();
   return (area) => {
     if (area === "configuration") return sections && opensConfiguration(sections);
+    if (area === "access") return anywhere;
     return can && can(area);
   };
 };

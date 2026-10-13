@@ -24,11 +24,18 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+// In the server's order: memories' template and projects' create are workspace verbs of project domains.
 const catalog = [
+  { value: "plays:read", label: "Read plays", domain: "plays", action: "read", area: "workspace" },
+  { value: "plays:run", label: "Run plays", domain: "plays", action: "run", area: "workspace" },
+  { value: "memories:read", label: "Read memories", domain: "memories", action: "read", area: "project" },
+  { value: "memories:template", label: "Edit the workspace Interview template", domain: "memories", action: "template", area: "workspace" },
   { value: "members:read", label: "Read members", domain: "members", action: "read", area: "workspace" },
   { value: "members:write", label: "Create and update members", domain: "members", action: "write", area: "workspace" },
   { value: "projects:read", label: "Read projects", domain: "projects", action: "read", area: "project" },
   { value: "projects:write", label: "Create and update projects", domain: "projects", action: "write", area: "project" },
+  { value: "projects:create", label: "Create projects", domain: "projects", action: "create", area: "workspace" },
+  { value: "projects:access", label: "Manage this project's access", domain: "projects", action: "access", area: "project" },
   { value: "roles:read", label: "Read roles", domain: "roles", action: "read", area: "workspace" },
   { value: "roles:write", label: "Create and update roles", domain: "roles", action: "write", area: "workspace" },
   { value: "roles:delete", label: "Delete roles", domain: "roles", action: "delete", area: "workspace" },
@@ -40,6 +47,13 @@ const level = (domain: string, name: string) =>
   within(within(screen.getByRole("dialog")).getByRole("radiogroup", { name: `${domain} access` })).getByRole("radio", { name });
 
 const tab = (name: string) => screen.getByRole("tab", { name: new RegExp(`^${name}`) });
+
+const ability = (name: string) => within(screen.getByRole("dialog")).getByRole("switch", { name: new RegExp(`^${name}`) });
+
+const rowNames = () =>
+  within(screen.getByRole("tabpanel"))
+    .getAllByRole("listitem")
+    .map((item) => item.textContent ?? "");
 
 const role = (overrides: Record<string, unknown> = {}) => ({
   id: "role-editor",
@@ -126,8 +140,8 @@ describe("RoleSettingsSection", () => {
     const levels = within(row).getByRole("list", { name: "Areas per level" });
     expect(levels).toHaveTextContent("Write1");
     expect(levels).toHaveTextContent("Read1");
-    expect(levels).toHaveTextContent("None2");
-    expect(within(row).getByText(/Projects/, { selector: "p" })).toHaveTextContent("No access · Projects, Runners");
+    expect(levels).toHaveTextContent("None4");
+    expect(within(row).getByText(/Projects/, { selector: "p" })).toHaveTextContent("No access · Plays, Memories, Projects +1");
   });
 
   it("creates a role in the dialog, its levels set across the area tabs", async () => {
@@ -141,13 +155,13 @@ describe("RoleSettingsSection", () => {
     await user.type(screen.getByRole("textbox", { name: "Name" }), "Support");
     await user.click(tab("Workspace"));
     await user.click(level("All workspace areas", "Read"));
-    await user.click(tab("Every project"));
+    await user.click(tab("In projects"));
     await user.click(level("Projects", "Write"));
     await user.click(screen.getByRole("button", { name: "Create role" }));
 
     expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", {
       name: "Support",
-      actions: ["members:read", "roles:read", "projects:read", "projects:write"],
+      actions: ["plays:read", "members:read", "roles:read", "projects:read", "projects:write"],
     });
     expect(toast.success).toHaveBeenCalledWith("Support created");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -163,12 +177,63 @@ describe("RoleSettingsSection", () => {
     expect(screen.getByRole("radiogroup", { name: "Runners access" })).toBeInTheDocument();
     expect(screen.getByText("Applies across every workspace on this install.")).toBeInTheDocument();
     await user.click(tab("Workspace"));
-    expect(tab("Workspace")).toHaveAccessibleName("Workspace, 1 of 2 allowed");
+    expect(tab("Workspace")).toHaveAccessibleName("Workspace, 1 of 5 allowed");
     expect(screen.getByRole("radiogroup", { name: "Members access" })).toBeInTheDocument();
     expect(screen.queryByRole("radiogroup", { name: "Projects access" })).not.toBeInTheDocument();
-    await user.click(tab("Every project"));
+    await user.click(tab("In projects"));
     expect(screen.getByRole("radiogroup", { name: "Projects access" })).toBeInTheDocument();
-    expect(screen.getByText("Applies to members whose Every project is From role.")).toBeInTheDocument();
+    expect(screen.getByText("Only inside the projects a holder is in. Each project lists who's in it.")).toBeInTheDocument();
+    expect(screen.queryByText(/In this project|See this project/)).not.toBeInTheDocument();
+  });
+
+  it("leads each tab with its switches, which the bulk row never touches and the tally counts", async () => {
+    mockRoles([ownerRole, role({ permissions: ["projects:create"] })]);
+    mocks.patch.mockResolvedValue({ data: role() });
+    const user = userEvent.setup();
+    renderSection();
+
+    await openMenu(user, "Editor", "Edit");
+    await user.click(tab("Workspace"));
+    expect(rowNames().slice(1, 3)).toEqual([
+      "Create projectsA new project lists its creator and the roles they pick.",
+      "Edit the workspace Interview templateChange the questions every interview in this workspace asks.",
+    ]);
+    expect(ability("Create projects")).toBeChecked();
+    expect(tab("Workspace")).toHaveAccessibleName("Workspace, 1 of 5 allowed");
+    await user.click(level("All workspace areas", "None"));
+    expect(ability("Create projects")).toBeChecked();
+    await user.click(ability("Edit the workspace Interview template"));
+    expect(tab("Workspace")).toHaveAccessibleName(/^Workspace, 2 of 5 allowed/);
+
+    await user.click(tab("In projects"));
+    expect(rowNames()[1]).toBe("Manage this project's accessChoose who's in a project and what they can do there.");
+    expect(screen.queryByRole("checkbox", { name: "Manage this project's access" })).not.toBeInTheDocument();
+    await user.click(ability("Manage this project's access"));
+    await user.click(level("All areas in projects", "Read"));
+    await user.click(level("Projects", "None"));
+    expect(ability("Manage this project's access")).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
+      name: "Editor",
+      actions: ["projects:create", "memories:template", "projects:access", "memories:read"],
+    });
+  });
+
+  it("calls plays' first rung See, and their extras need See first", async () => {
+    mockRoles([ownerRole, role()]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await openMenu(user, "Editor", "Edit");
+    await user.click(tab("Workspace"));
+    expect(within(screen.getByRole("radiogroup", { name: "Plays access" })).getAllByRole("radio").map((rung) => rung.textContent)).toEqual([
+      "None",
+      "See",
+    ]);
+    expect(screen.getByRole("checkbox", { name: "Run plays" })).toBeDisabled();
+    expect(screen.getByTitle("Needs See first")).toHaveTextContent("Run");
+    expect(screen.getByTitle("Needs Read first")).toHaveTextContent("Clone");
   });
 
   it("starts a new role from a copy of another role's permissions", async () => {
@@ -283,16 +348,20 @@ describe("RoleSettingsSection", () => {
     expect(mocks.delete).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor");
   });
 
-  it("won't delete a role someone holds and says who to move first", async () => {
-    mockRoles([ownerRole, role()], [], [holder("role-editor")]);
+  it("deletes a role people hold after a confirm that says how many lose it", async () => {
+    mockRoles([ownerRole, role()], [], [holder("role-editor"), { ...holder("role-editor"), id: "u-lena", login: "lena", name: "Lena" }]);
+    mocks.delete.mockResolvedValue({});
     const user = userEvent.setup();
     renderSection();
 
-    await screen.findByText("1 person");
+    await screen.findByText("2 people");
     await openMenu(user, "Editor", "Delete");
-    expect(await screen.findByText("Editor is in use")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Got it" }));
-    expect(mocks.delete).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("2 people lose this role. Anyone left with no role stays a member and sees no project. Deleting it can't be undone."),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Delete role" }));
+
+    expect(mocks.delete).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor");
   });
 
   it("duplicates a role under a free copy name", async () => {

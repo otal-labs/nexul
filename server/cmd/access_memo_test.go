@@ -66,18 +66,19 @@ func useTestMemoOf(t *testing.T, a *access.Service) {
 
 // TestIntegration_PermissionSuitesAnswerTheSameWithAMemo runs the permission suites again with memoised access: a
 // memo per call, as every request has, and one memo across a whole test, which only stays right if every grant,
-// role, membership, and Project access change clears it (ADRs 0087, 0088, 0097-0099, 0135).
+// role, membership, and project rule change clears it (ADRs 0087, 0088, 0098, 0099, 0135, 0148).
 func TestIntegration_PermissionSuitesAnswerTheSameWithAMemo(t *testing.T) {
 	suites := map[string]func(*testing.T){
 		"permission table":                  TestIntegration_PermissionTable,
 		"grants never exceed the giver":     TestIntegration_GrantsNeverExceedTheGiver,
 		"first user holds instance bits":    TestIntegration_FirstUserReachesEveryFormerAdminCapability,
-		"restricted member":                 TestIntegration_RestrictedMember,
-		"restricted notices and trails":     TestIntegration_RestrictedMember_NoticesAndTrailsFollowAccess,
-		"restricted live frames":            TestIntegration_RestrictedMember_LiveFramesFollowAccess,
-		"restricted granting and cleanup":   TestIntegration_RestrictedMember_GrantingAndCleanup,
+		"not in a project":                  TestIntegration_NotInAProject,
+		"not in: notices and trails":        TestIntegration_NotInAProject_NoticesAndTrailsFollowAccess,
+		"not in: live frames":               TestIntegration_NotInAProject_LiveFramesFollowAccess,
+		"project rules and cleanup":         TestIntegration_ProjectRules_GrantingAndCleanup,
 		"private channel":                   TestIntegration_PrivateChannel,
 		"channel rules":                     TestIntegration_ChannelRules,
+		"the access grid":                   TestIntegration_AccessGrid,
 		"switching private":                 TestIntegration_SwitchingPrivateReachesEveryOpenSidebar,
 		"removal from a private voice call": TestIntegration_RemovalFromPrivateVoiceChannelEndsTheirCall,
 		"live frames follow the read":       TestLiveAudience_FramesFollowTheEntitysRead,
@@ -102,11 +103,11 @@ func TestIntegration_PermissionSuitesAnswerTheSameWithAMemo(t *testing.T) {
 }
 
 // TestIntegration_LiveAudienceMemo_FollowsEveryChange holds the live hub's audience, whose memo lasts across frames,
-// to the next frame after each kind of change: a role's permissions, a membership, a workspace-wide overwrite,
-// Project access, and a doc's own overwrite.
+// to the next frame after each kind of change: a role's permissions, a membership, a workspace-wide overwrite, a
+// project's rule listing someone, and a doc's own overwrite.
 func TestIntegration_LiveAudienceMemo_FollowsEveryChange(t *testing.T) {
 	f := newPermFixture(t)
-	restrictedClient(t, f)
+	listedClient(t, f)
 	s := f.svc
 	ctx := context.Background()
 	audience := memoizedAudience(s)
@@ -133,17 +134,16 @@ func TestIntegration_LiveAudienceMemo_FollowsEveryChange(t *testing.T) {
 	assert.False(t, reaches(uReader, ticketFrame), "removed from the workspace")
 
 	assert.False(t, reaches(uPlain, ticketFrame))
-	allow := grant("tickets:read")
-	require.NoError(t, s.tenancySvc.SetMemberOverrides(as(uOwner), uOwner, wsDefault, uPlain, &allow, nil))
-	assert.True(t, reaches(uPlain, ticketFrame), "a workspace-wide allow")
-	require.NoError(t, s.tenancySvc.SetMemberOverrides(as(uOwner), uOwner, wsDefault, uPlain, &permissions.Set{}, &allow))
-	assert.False(t, reaches(uPlain, ticketFrame), "a workspace-wide deny")
+	require.NoError(t, s.tenancySvc.SetMemberRoles(as(uOwner), uOwner, wsDefault, uPlain, "role-writer"))
+	assert.True(t, reaches(uPlain, ticketFrame), "given a role that reads tickets")
+	require.NoError(t, s.tenancySvc.SetMemberRoles(as(uOwner), uOwner, wsDefault, uPlain, "role-plain"))
+	assert.False(t, reaches(uPlain, ticketFrame), "the role taken back")
 
 	assert.False(t, reaches(uClient, ticketFrame))
-	giveGeneral(t, f, "tickets:read")
-	assert.True(t, reaches(uClient, ticketFrame), "Project access given")
-	giveGeneral(t, f)
-	assert.False(t, reaches(uClient, ticketFrame), "Project access taken")
+	listClientInGeneral(t, f, true)
+	assert.True(t, reaches(uClient, ticketFrame), "listed in the project")
+	listClientInGeneral(t, f, false)
+	assert.False(t, reaches(uClient, ticketFrame), "taken back out")
 
 	assert.False(t, reaches(uWriter, docFrame))
 	require.NoError(t, s.accessSvc.SetGrants(as(uOwner), uOwner, []string{f.doc}, []string{uWriter}, []permissions.Action{permissions.DocsRead}, access.StateAllow))
@@ -156,7 +156,7 @@ func TestIntegration_LiveAudienceMemo_FollowsEveryChange(t *testing.T) {
 // live audience's shared one, and every answer must be the one that person gets alone; -race watches the memos.
 func TestAccessMemo_ConcurrentRequestsShareNothing(t *testing.T) {
 	f := newPermFixture(t)
-	restrictedClient(t, f)
+	listedClient(t, f)
 	s := f.svc
 	frame, err := json.Marshal(tickets.UpdatedEvent{Ticket: *f.ticket})
 	require.NoError(t, err)
@@ -273,7 +273,10 @@ func queueRuns(t *testing.T, f permFixture, ticketIDs []string) {
 			Status: plays.QueueQueued, Via: plays.ViaWeb, QueuedAt: now, NotBefore: now})
 		require.NoError(t, err)
 	}
-	require.NoError(t, f.store.Access.Set(ctx, "workspace", wsDefault, uReader, grant("autoplays:read"), nil))
+	reader, err := f.store.Roles.Get(ctx, "role-reader")
+	require.NoError(t, err)
+	reader.Permissions = reader.Permissions.With(permissions.AutoplaysRead)
+	require.NoError(t, f.store.Roles.Update(ctx, reader))
 }
 
 // TestStatements_ListsCostTheSameAtAnyLength pins each list path's statements as independent of how many rows it
@@ -429,6 +432,36 @@ func TestStatements_ChannelRulesCostTheSameAtAnyLength(t *testing.T) {
 	assert.Equal(t, none, cost(12, true), "many channels, each with rules")
 }
 
+// TestStatements_AccessGridCostsTheSameAtAnyLength: the Access page's read and its Finish, which takes every role off
+// every project and hides every public channel from a role, cost the same statements at 3 projects as at 30.
+func TestStatements_AccessGridCostsTheSameAtAnyLength(t *testing.T) {
+	cost := func(n int) map[string]int64 {
+		f, st, db := newCountedFixtureDB(t)
+		grow(t, f, n)
+		_, err := db.Exec(`UPDATE workspaces SET access_setup_finished = 0`)
+		require.NoError(t, err)
+		ctx := func() context.Context {
+			return access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: uOwner}), f.svc.accessSvc.NewMemo())
+		}
+		st.Reset()
+		grid, err := f.svc.accessSvc.Grid(ctx(), uOwner, wsDefault)
+		require.NoError(t, err)
+		read := st.Count()
+		save := access.GridSave{Finish: true}
+		for _, p := range grid.Projects {
+			save.Projects = append(save.Projects, access.GridProjectSave{ProjectID: p.ID})
+		}
+		for _, c := range grid.Channels {
+			save.Channels = append(save.Channels, access.GridChannelSave{ChannelID: c.ID, HiddenRoleIDs: []string{"role-reader"}})
+		}
+		require.Greater(t, len(save.Projects), n)
+		st.Reset()
+		require.NoError(t, f.svc.accessSvc.SaveGrid(ctx(), uOwner, wsDefault, save))
+		return map[string]int64{"read": read, "finish": st.Count()}
+	}
+	assert.Equal(t, cost(3), cost(30))
+}
+
 // TestStatements_RoleRulesCostTheSameAtAnyLength: rules for roles on every doc cost a doc list, a doc_list page and a
 // doc's read no statement more than no rules at all, at a few docs or many, since they come back with the person's own.
 func TestStatements_RoleRulesCostTheSameAtAnyLength(t *testing.T) {
@@ -481,6 +514,10 @@ func TestStatements_ProjectRulesCostTheSameAtAnyLength(t *testing.T) {
 			_, err := f.svc.tenancySvc.ListProjectPeople(ctx, uReader, pGeneral)
 			return err
 		},
+		"/me": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.tenancySvc.MyAccess(ctx, wsDefault, uReader)
+			return err
+		},
 		"ticket_list": func(ctx context.Context, f permFixture) error {
 			_, err := tool(t, composite.TicketTools(f.svc.ticketsSvc, f.svc.workspaceSvc, f.svc.reviewSvc), "ticket_list").Call(ctx, json.RawMessage(`{}`))
 			return err
@@ -512,7 +549,8 @@ ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO U
 			require.NoError(t, err)
 			_, err = db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
 SELECT 'project', p.id, 'person', m.user_id, '["projects:open"]', '["tickets:delete"]', 1, 1 FROM projects p, workspace_members m
-WHERE m.user_id != 'u-owner'`)
+WHERE m.user_id != 'u-owner'
+ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO UPDATE SET allow = excluded.allow, deny = excluded.deny`)
 			require.NoError(t, err)
 		}
 		out := map[string]int64{}
@@ -554,7 +592,8 @@ func TestRows_ASingleCheckReadsOnlyItsProjectsRules(t *testing.T) {
 		f, st, db := newCountedFixtureDB(t)
 		grow(t, f, n)
 		_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
-SELECT 'project', p.id, 'person', m.user_id, '["projects:open"]', '[]', 1, 1 FROM projects p, workspace_members m WHERE m.user_id != 'u-owner'`)
+SELECT 'project', p.id, 'person', m.user_id, '["projects:open"]', '[]', 1, 1 FROM projects p, workspace_members m WHERE m.user_id != 'u-owner'
+ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO UPDATE SET allow = excluded.allow`)
 		require.NoError(t, err)
 		out := map[string]cost{}
 		for name, run := range paths {

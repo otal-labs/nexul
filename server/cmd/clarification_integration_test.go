@@ -10,6 +10,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/tenancy"
@@ -21,13 +22,14 @@ const uDev = "u-dev"
 // and closes it, and how a round's run holds the doc's lock.
 func TestIntegration_Clarification(t *testing.T) {
 	f := newPermFixture(t)
-	restrictedClient(t, f)
+	listedClient(t, f)
 	ctx := context.Background()
 	now := time.Now()
 	_, _, err := f.store.Users.UpsertUser(ctx, &auth.Identity{UserID: uDev, Provider: auth.ProviderGitHub, ProviderUserID: uDev, Login: uDev})
 	require.NoError(t, err)
 	require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-dev", WorkspaceID: wsDefault, Name: "Dev", Permissions: grant("docs:read", "docs:write", "plays:run"), CreatedAt: now, UpdatedAt: now}))
 	require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: uDev, WorkspaceID: wsDefault, RoleID: "role-dev", CreatedAt: now}))
+	require.NoError(t, f.store.Access.SetRole(ctx, "project", pGeneral, "role-dev", grant(string(permissions.ProjectsOpen)), nil))
 	require.NoError(t, f.store.Access.Set(ctx, "doc", f.doc, uClient, grant("docs:read", "docs:write"), nil))
 
 	s := f.svc.docsSvc

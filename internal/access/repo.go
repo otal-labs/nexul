@@ -11,15 +11,19 @@ import (
 type Repo interface {
 	// Get returns the rule naming userID on (resourceType, resourceID), or ErrNotFound when absent.
 	Get(ctx context.Context, resourceType, resourceID, userID string) (*Overwrite, error)
+	// GetRole returns the rule naming roleID on (resourceType, resourceID), or ErrNotFound when absent.
+	GetRole(ctx context.Context, resourceType, resourceID, roleID string) (*Overwrite, error)
 	// Rules returns the rules naming userID or a role they hold on each of resourceIDs that has any, keyed by
 	// resource id, in one read.
 	Rules(ctx context.Context, resourceType string, resourceIDs []string, userID string) (map[string]*Rules, error)
 	// RulesOfType returns every rule on a resourceType naming userID or a role they hold, keyed by resource id, in one
 	// read.
 	RulesOfType(ctx context.Context, resourceType, userID string) (map[string]*Rules, error)
-	// OwnRules returns the rules naming userID on workspaceID and on each of projectIDs that has one, keyed by resource
-	// id, in one read.
-	OwnRules(ctx context.Context, userID, workspaceID string, projectIDs []string) (map[string]*Overwrite, error)
+	// DocRuleTurns returns the docs in ruled whose rules for userID or a role they hold there turn action: allowed
+	// where readable does not hold it, denied where it does. It decides them in one read and hands back only those.
+	DocRuleTurns(ctx context.Context, userID string, action permissions.Action, ruled, readable []string) (allowed, denied []string, err error)
+	// OwnRules returns the rules naming userID on each of projectIDs that has one, keyed by project id, in one read.
+	OwnRules(ctx context.Context, userID string, projectIDs []string) (map[string]*Overwrite, error)
 	// RoleRules returns the rules for roleIDs on each of resourceIDs that has any, keyed by resource id in role order,
 	// in one read.
 	RoleRules(ctx context.Context, resourceType string, resourceIDs, roleIDs []string) (map[string][]*Overwrite, error)
@@ -27,11 +31,18 @@ type Repo interface {
 	ListByResource(ctx context.Context, resourceType, resourceID string) ([]*Overwrite, error)
 	// Set upserts the allow/deny sets of userID's rule on (resourceType, resourceID); both empty deletes the row.
 	Set(ctx context.Context, resourceType, resourceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error
+	// SetRole is Set for the rule naming roleID.
+	SetRole(ctx context.Context, resourceType, resourceID, roleID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error
 	// DeleteByResource removes every overwrite on one resource instance (doc delete/restore path).
 	DeleteByResource(ctx context.Context, resourceType, resourceID string) error
 	// HasAllowAny reports whether a rule on a resourceType naming userID or a role they hold allows action; it gates
 	// the user directory for permissions:write holders.
 	HasAllowAny(ctx context.Context, resourceType, userID string, action permissions.Action) (bool, error)
+	// Grid reads what workspaceID's Access page is built from in the same statements at any size.
+	Grid(ctx context.Context, workspaceID string) (*GridSource, error)
+	// SaveGrid stores rules, deleting each whose sets are both empty, and with finishedBy set marks workspaceID's access
+	// setup finished by them, with events, in one transaction of the same statements at any size.
+	SaveGrid(ctx context.Context, workspaceID string, rules []*Overwrite, finishedBy string, events ...eventbus.OutboxEvent) error
 }
 
 // Users lets access use the auth user store without importing auth (ADR 0017).
@@ -63,16 +74,28 @@ type Scopes interface {
 	WorkspaceIDForProject(ctx context.Context, projectID string) (string, error)
 	// ProjectIDs lists the projects in workspaceID.
 	ProjectIDs(ctx context.Context, workspaceID string) ([]string, error)
-	// UnrestrictedWorkspaceIDsForUser lists the workspaces userID is a member of and not a Restricted member of.
-	UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error)
-	// WorkspaceIDsForUser lists every workspace userID is a member of, a Restricted membership included.
+	// WorkspaceIDsForUser lists every workspace userID is a member of.
 	WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error)
+}
+
+// RoleWorkspaceResolver resolves a role's workspace, so a rule names only a role of its entity's workspace (ADR 0017).
+type RoleWorkspaceResolver interface {
+	// WorkspaceIDForRole returns ErrNotFound for an unknown role.
+	WorkspaceIDForRole(ctx context.Context, roleID string) (string, error)
+	// HeldRole returns what roleID allows and whether it is the Owner role; ErrNotFound for an unknown role.
+	HeldRole(ctx context.Context, roleID string) (HeldRole, error)
 }
 
 // PlayWorkspaceResolver resolves a play's own workspace so HasPermission/canManage apply to plays too (ADR 0017).
 type PlayWorkspaceResolver interface {
 	// WorkspaceIDForPlay returns "" if it can't be resolved (unknown play).
 	WorkspaceIDForPlay(ctx context.Context, playID string) (string, error)
+}
+
+// ChannelWorkspaceResolver resolves a channel's workspace so a rule on it is written there (ADR 0017).
+type ChannelWorkspaceResolver interface {
+	// WorkspaceIDForChannel returns ErrNotFound for an unknown conversation or one that is not a text or voice channel.
+	WorkspaceIDForChannel(ctx context.Context, channelID string) (string, error)
 }
 
 // Names resolves what a source names for the sentence a person reads, read only on the explain and refusal paths.

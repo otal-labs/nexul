@@ -53,7 +53,7 @@ export const myRoleQuery = (workspaceId: string) =>
 export const useFetchMyRole = (workspaceId: string) => useQuery(myRoleQuery(workspaceId));
 
 // The frontend's single hasPermission(value) helper; no call site should compute permissions itself. A project
-// action answers for the project in view, which is what the server checks for a Restricted member.
+// action answers for the project in view, since a member holds it only in projects they're in.
 export const useHasPermission = (value: string): boolean => {
   const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const selectedProjectId = useWorkspaceStore((s) => s.selectedProjectId);

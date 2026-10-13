@@ -1,6 +1,6 @@
 # 11 — The HTTP and MCP contract
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 10
 
@@ -34,9 +34,41 @@ The HTTP API only grows (ADR 0082); MCP parameters change under `practices/mcp.m
 
 ## Acceptance criteria
 
-- [ ] A `/me` response from before the switch, fed to the current client-core in a test, gives the same answers as
+- [x] A `/me` response from before the switch, fed to the current client-core in a test, gives the same answers as
       the new shape.
-- [ ] Each removed MCP field fails with a schema error; writing a non-empty removed HTTP field is refused with the
+- [x] Each removed MCP field fails with a schema error; writing a non-empty removed HTTP field is refused with the
       replacement named.
-- [ ] The MCP surface test keeps 110 tools.
-- [ ] `liveRequests.test.tsx`'s member-updated and `role.updated` counts are updated.
+- [x] The MCP surface test keeps 110 tools.
+- [x] `liveRequests.test.tsx`'s member-updated and `role.updated` counts are updated: a member-updated frame now costs
+      one request, the project's people, since the access route it also refetched reads empty; `role.updated` holds at
+      `/api/auth/me`, since a role changed in another workspace moves nothing here.
+
+## Added by the owner (2026-10-11)
+
+- [x] Q31: reordering projects takes `projects:create` and orders the projects the caller is in; a hidden one keeps
+      its place.
+- [x] Q32: `memories:template` (Edit the workspace Interview template), a workspace verb on memories; saving or
+      resetting the template takes it, and its holders open it on Settings, while the read through a project stays as it
+      was; migration 0102 (provisional) grants it to roles holding
+      `memories:write`.
+- [x] A pending login invite goes with its role (migration 0101, provisional), since the invite gives that one role
+      and nothing else.
+
+## Notes for later slices
+
+- `rg -w` finds none of the removed fields in the built-in play instructions or the `nexul-memory` skill, so neither
+  changes and no migration rewrites stored instructions; `api-and-tokens.md`, `people-and-access.md`,
+  `mcp-server.md` and `interview.md` are updated.
+
+- `permission_overwrite_*` take `project` and role targets; `channel` is left for slice 13, whose grid save writes the
+  channel rules and needs a channel's workspace, the event's `channel` resource type and its audience.
+- The invitation acceptance page and `POST /api/invitations/preview` still name a grant's first role only; slice 12
+  shows every role (`InvitationGrant.roles` carries them on the list).
+- `POST /api/workspaces/{id}/members` for a login with no account yet takes one role, as `workspace_invites` holds one.
+- The web still sends `role_id`, `every_project` and `project_access`, and reads `/me` through the pre-switch
+  client-core; slices 12 and 16 move them. `practices/native.md` still describes the Restricted member (slice 16).
+- Settings reads the workspace Interview template with no project named, which a holder of `memories:template` passes;
+  a member with only a project's `memories:read` reads it through that project, as before.
+- Token scopes: a `PUT /api/memories/interview-template` and `POST /api/projects/reorder` still need the
+  `memories:write` and `projects:write` scopes at the gateway, as project create needs `projects:write`; the installer
+  must also hold the new bit.

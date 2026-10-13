@@ -18,7 +18,7 @@ const expiresLabel = (expiresAt: string): string => {
 };
 
 const grantsLabel = (invitation: ActiveInvitation): string =>
-  invitation.grants.map((grant) => `${grant.workspace_name} · ${grant.role_name}`).join(", ");
+  invitation.grants.map((grant) => `${grant.workspace_name} · ${grant.roles.map((role) => role.name).join(", ")}`).join("; ");
 
 export const InvitationRow = ({ invitation, inviter, onRevoke, disabled }: InvitationRowProps) => (
   <li className="flex items-center gap-3 px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40 sm:px-4">

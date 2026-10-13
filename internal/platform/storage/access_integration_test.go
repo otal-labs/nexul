@@ -13,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/docs"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
@@ -67,16 +68,13 @@ func (sc testScopes) ProjectIDs(ctx context.Context, workspaceID string) ([]stri
 	return ids, err
 }
 
-func (sc testScopes) UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
-	return sc.s.WorkspaceMembers.UnrestrictedWorkspaceIDs(ctx, userID)
-}
-
 func (sc testScopes) WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
 	return sc.s.WorkspaceMembers.WorkspaceIDs(ctx, userID)
 }
 
 // joinDefaultWorkspace wires accessSvc's role and scope lookups over real storage and makes each user a member of
-// the default workspace under a role holding docs:write, since only members create or list its docs.
+// the default workspace under a role holding docs:write, listed in project-general, since only those in a project
+// create or list its docs.
 func joinDefaultWorkspace(t *testing.T, s *storage.Store, accessSvc *access.Service, userIDs ...string) {
 	t.Helper()
 	ctx := context.Background()
@@ -87,6 +85,7 @@ func joinDefaultWorkspace(t *testing.T, s *storage.Store, accessSvc *access.Serv
 	accessSvc.SetScopes(testScopes{s: s})
 	role := &roles.Role{ID: "role-writer", WorkspaceID: "workspace-default", Name: "Writer", Permissions: permissions.SetOf(permissions.DocsWrite), CreatedAt: time.Now(), UpdatedAt: time.Now()}
 	require.NoError(t, s.Roles.Create(ctx, role))
+	require.NoError(t, s.Access.SetRole(ctx, "project", "project-general", role.ID, permissions.SetOf(permissions.ProjectsOpen), nil))
 	for _, id := range userIDs {
 		require.NoError(t, s.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: id, WorkspaceID: "workspace-default", RoleID: role.ID, CreatedAt: time.Now()}))
 	}
@@ -180,8 +179,8 @@ func TestIntegration_ArchivedHiddenFromSearch(t *testing.T) {
 	require.Len(t, results, 1)
 }
 
-// TestIntegration_ListDisclosure covers the disclosure rule: a user who cannot
-// open a doc sees its title but cannot open the target.
+// TestIntegration_ListDisclosure covers that a doc someone can't read is gone for them: left out of their list, and
+// not found when opened (ADR 0148).
 func TestIntegration_ListDisclosure(t *testing.T) {
 
 	s := storage.New(newDB(t), []byte("0123456789abcdef0123456789abcdef"))
@@ -192,18 +191,19 @@ func TestIntegration_ListDisclosure(t *testing.T) {
 	seedUser(t, s, "bob", "bob")
 	joinDefaultWorkspace(t, s, accessSvc, "owner", "alice", "bob")
 
-	_, err := docsSvc.Create(actor("alice"), "project-general", "Private Notes", "nobody else should open this")
+	doc, err := docsSvc.Create(actor("alice"), "project-general", "Private Notes", "nobody else should open this")
 	require.NoError(t, err)
 
 	items, err := docsSvc.List(actor("bob"))
 	require.NoError(t, err)
+	assert.Empty(t, items)
+	items, err = docsSvc.List(actor("alice"))
+	require.NoError(t, err)
 	require.Len(t, items, 1)
-	assert.False(t, items[0].CanOpen)
-	assert.Equal(t, "Private Notes", items[0].Title)
+	assert.True(t, items[0].CanOpen)
 
-	// Bob still cannot open the target.
-	_, err = docsSvc.Get(actor("bob"), items[0].ID)
-	require.Error(t, err)
+	_, err = docsSvc.Get(actor("bob"), doc.ID)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 // testRoleGate/testMemberGate mirror server/cmd/main.go's roleGate/
@@ -225,6 +225,10 @@ type testMemberGate struct{ svc *tenancy.Service }
 func (g testMemberGate) RequireMember(ctx context.Context, workspaceID, userID string) error {
 	_, err := g.svc.Member(ctx, workspaceID, userID)
 	return err
+}
+
+func (g testMemberGate) HolderEvents(ctx context.Context, workspaceID, roleID, actorID string) ([]eventbus.OutboxEvent, error) {
+	return g.svc.RoleHolderEvents(ctx, workspaceID, roleID, actorID)
 }
 
 // testRoleNameGate mirrors main.go's roleNameGate adapter, needed to construct a real tenancy.Service for this test.
@@ -310,7 +314,7 @@ func (testDefaultsGate) SeedWorkspaceDefaults(context.Context, string) error {
 // workspace-wide overwrite can deny what a role allows, and a
 // resource-instance overwrite can allow what a workspace-wide overwrite
 // denies.
-func TestIntegration_HasPermission_WorkspacePrecedence(t *testing.T) {
+func TestIntegration_HasPermission_RoleThenResource(t *testing.T) {
 	ctx := context.Background()
 	s := storage.New(newDB(t), []byte("0123456789abcdef0123456789abcdef"))
 	accessSvc := access.NewService(s.Access, realUsers{s.Users})
@@ -330,30 +334,29 @@ func TestIntegration_HasPermission_WorkspacePrecedence(t *testing.T) {
 
 	// The workspace creator is bound to the Owner role and bypasses
 	// everything, with no permission set bit or overwrite needed.
-	assert.True(t, accessSvc.HasPermission(ctx, "owner", ws.ID, permissions.ProjectsWrite, "", ""))
+	assert.True(t, accessSvc.HasPermission(ctx, "owner", ws.ID, permissions.MembersWrite, "", ""))
 
 	// A custom role's permission set is the base layer.
-	editorRole, err := rolesSvc.Create(ctx, ws.ID, "owner", "Editor", permissions.SetOf(permissions.ProjectsWrite))
+	editorRole, err := rolesSvc.Create(ctx, ws.ID, "owner", "Editor", permissions.SetOf(permissions.MembersWrite))
 	require.NoError(t, err)
 	require.NoError(t, s.WorkspaceMembers.AddMember(ctx, &tenancy.Member{
 		UserID: "alice", WorkspaceID: ws.ID, RoleID: editorRole.ID, CreatedAt: time.Now(),
 	}))
-	assert.True(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.ProjectsWrite, "", ""),
+	assert.True(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.MembersWrite, "", ""),
 		"role mask alone grants the action")
 
-	// A workspace-wide deny overrides the role's allow.
-	require.NoError(t, s.Access.Set(ctx, "workspace", ws.ID, "alice", nil, permissions.SetOf(permissions.ProjectsWrite)))
-	assert.False(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.ProjectsWrite, "", ""),
-		"workspace-wide deny beats role allow")
+	// No rule sits on the workspace itself, so one left there by an older release changes nothing (ADR 0148).
+	require.NoError(t, s.Access.Set(ctx, "workspace", ws.ID, "alice", nil, permissions.SetOf(permissions.MembersWrite)))
+	assert.True(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.MembersWrite, "", ""),
+		"a rule left on the workspace is never read")
 
-	// A resource-instance allow overrides the workspace-wide deny —
-	// most-specific overwrite wins overall.
-	require.NoError(t, s.Access.Set(ctx, "doc", "doc-1", "alice", permissions.SetOf(permissions.ProjectsWrite), nil))
-	assert.True(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.ProjectsWrite, "doc", "doc-1"),
-		"resource-instance allow beats workspace-wide deny")
-	assert.False(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.ProjectsWrite, "", ""),
+	// A resource-instance deny overrides the role's allow, on that resource alone.
+	require.NoError(t, s.Access.Set(ctx, "doc", "doc-1", "alice", nil, permissions.SetOf(permissions.MembersWrite)))
+	assert.False(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.MembersWrite, "doc", "doc-1"),
+		"resource-instance deny beats the role")
+	assert.True(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.MembersWrite, "", ""),
 		"the resource-instance overwrite doesn't leak into a check with no resource")
 
 	// A user with no role and no overwrite in the workspace is denied.
-	assert.False(t, accessSvc.HasPermission(ctx, "stranger", ws.ID, permissions.ProjectsWrite, "", ""))
+	assert.False(t, accessSvc.HasPermission(ctx, "stranger", ws.ID, permissions.MembersWrite, "", ""))
 }

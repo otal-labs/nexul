@@ -16,8 +16,6 @@ import (
 type fakeScopes struct {
 	projects   map[string]string
 	workspaces map[string][]string
-	// restricted lists each person's Restricted memberships, which only WorkspaceIDsForUser counts.
-	restricted map[string][]string
 }
 
 func (f fakeScopes) WorkspaceIDForProject(_ context.Context, projectID string) (string, error) {
@@ -39,12 +37,8 @@ func (f fakeScopes) ProjectIDs(_ context.Context, workspaceID string) ([]string,
 	return out, nil
 }
 
-func (f fakeScopes) UnrestrictedWorkspaceIDsForUser(_ context.Context, userID string) ([]string, error) {
-	return f.workspaces[userID], nil
-}
-
 func (f fakeScopes) WorkspaceIDsForUser(_ context.Context, userID string) ([]string, error) {
-	return append(f.workspaces[userID], f.restricted[userID]...), nil
+	return f.workspaces[userID], nil
 }
 
 // TestRequire covers what the gate adds over HasPermission: who is let through without a person to resolve, the
@@ -133,21 +127,27 @@ func TestPermissionsAnywhere(t *testing.T) {
 	assert.Empty(t, got)
 }
 
-// TestWorkspacesWith: the workspaces holding the action, never a restricted one, and none for the server's own call.
+// TestWorkspacesWith: the workspaces holding the action, every membership counted, none for a project-area action
+// asked of a workspace, and none for the server's own call.
 func TestWorkspacesWith(t *testing.T) {
 	roles := newFakeRoles()
-	roles.set("ws-a", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.ProjectsWrite)})
+	roles.set("ws-a", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.ProjectsCreate, permissions.ProjectsWrite)})
 	roles.set("ws-b", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.TicketsRead)})
-	roles.set("ws-c", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.ProjectsWrite)})
+	roles.set("ws-c", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.ProjectsCreate)})
 	s := newService(newFakeRepo(), newFakeUsers())
 	s.SetRoles(roles)
-	s.SetScopes(fakeScopes{workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}}, restricted: map[string][]string{"alice": {"ws-c"}}})
+	s.SetScopes(fakeScopes{workspaces: map[string][]string{"alice": {"ws-a", "ws-b", "ws-c"}}})
+	alice := identity.WithActor(context.Background(), identity.Actor{ID: "alice"})
 
-	got, err := s.WorkspacesWith(identity.WithActor(context.Background(), identity.Actor{ID: "alice"}), permissions.ProjectsWrite)
+	got, err := s.WorkspacesWith(alice, permissions.ProjectsCreate)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"ws-a"}, got)
+	assert.Equal(t, []string{"ws-a", "ws-c"}, got)
 
-	got, err = s.WorkspacesWith(context.Background(), permissions.ProjectsWrite)
+	got, err = s.WorkspacesWith(alice, permissions.ProjectsWrite)
+	require.NoError(t, err)
+	assert.Empty(t, got, "a project-area action counts only inside a project")
+
+	got, err = s.WorkspacesWith(context.Background(), permissions.ProjectsCreate)
 	require.NoError(t, err)
 	assert.Empty(t, got)
 }

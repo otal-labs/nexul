@@ -59,6 +59,7 @@ func TestGrantTools_ErrorPaths(t *testing.T) {
 		{"list by the dropped doc_id alias", "owner", "permission_overwrite_list", `{"doc_id": "doc-1"}`, apperrs.ErrInvalid},
 		{"list without a resource type", "owner", "permission_overwrite_list", `{"resource_id": "doc-1"}`, apperrs.ErrInvalid},
 		{"list an unknown resource type", "owner", "permission_overwrite_list", `{"resource_type": "ticket", "resource_id": "t-1"}`, apperrs.ErrInvalid},
+		{"update naming nobody", "owner", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": ["doc-1"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrInvalid},
 		{"update by the dropped doc_ids alias", "owner", "permission_overwrite_update", `{"resource_type": "doc", "doc_ids": ["doc-1"], "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrInvalid},
 		{"update without grant", "owner", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["docs:read"]}`, apperrs.ErrInvalid},
 		{"update with an unknown action", "owner", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["comment"], "grant": true}`, apperrs.ErrInvalid},
@@ -133,8 +134,8 @@ func TestGrantList_ShowsEachUsersOverwrite(t *testing.T) {
 	require.NoError(t, err)
 	page := got.(mcptool.Page[grantResult])
 	assert.ElementsMatch(t, []grantResult{
-		{UserID: "owner", Login: "owner", Allow: permissions.CreatorGrant},
-		{UserID: "alice", Login: "alice", Allow: permissions.SetOf(permissions.DocsRead)},
+		{Target: TargetPerson, UserID: "owner", Login: "owner", Allow: permissions.CreatorGrant},
+		{Target: TargetPerson, UserID: "alice", Login: "alice", Allow: permissions.SetOf(permissions.DocsRead)},
 	}, page.Items)
 }
 
@@ -162,5 +163,31 @@ func TestGrantTools_PlayExclusion(t *testing.T) {
 
 	got, err := callGrantTool(t, svc, "owner", "permission_overwrite_list", `{"resource_type": "play", "resource_id": "play-1"}`)
 	require.NoError(t, err)
-	assert.Contains(t, got.(mcptool.Page[grantResult]).Items, grantResult{UserID: "alice", Login: "alice", Deny: permissions.SetOf(permissions.PlaysRun)})
+	assert.Contains(t, got.(mcptool.Page[grantResult]).Items, grantResult{Target: TargetPerson, UserID: "alice", Login: "alice", Deny: permissions.SetOf(permissions.PlaysRun)})
+}
+
+// TestGrantTools_ProjectRulesForARoleAndAPerson: a project's manager lists a role and keeps a person out over MCP, and
+// the list names each rule's target; someone not in the project finds nothing to manage.
+func TestGrantTools_ProjectRulesForARoleAndAPerson(t *testing.T) {
+	t.Parallel()
+	s, repo := projectsFixture(t)
+	s.SetRoleWorkspaces(fakeRoleWorkspaces{"role-client": "ws", "role-team": "ws"})
+	setOverwrite(repo, "project", "p-open", "client", permissions.SetOf(permissions.ProjectsOpen, permissions.ProjectsAccess))
+
+	_, err := callGrantTool(t, s, "client", "permission_overwrite_update", `{"resource_type": "project", "resource_ids": ["p-open"], "role_ids": ["role-client"], "actions": ["projects:open"], "state": "allow"}`)
+	require.NoError(t, err)
+	_, err = callGrantTool(t, s, "client", "permission_overwrite_update", `{"resource_type": "project", "resource_ids": ["p-open"], "user_ids": ["team"], "actions": ["projects:open"], "state": "deny"}`)
+	require.NoError(t, err)
+
+	got, err := callGrantTool(t, s, "client", "permission_overwrite_list", `{"resource_type": "project", "resource_id": "p-open"}`)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []grantResult{
+		{Target: TargetPerson, UserID: "client", Allow: permissions.SetOf(permissions.ProjectsOpen, permissions.ProjectsAccess)},
+		{Target: TargetPerson, UserID: "team", Deny: permissions.SetOf(permissions.ProjectsOpen)},
+		{Target: TargetRole, RoleID: "role-team", RoleName: "role-team", Allow: permissions.SetOf(permissions.ProjectsOpen)},
+		{Target: TargetRole, RoleID: "role-client", RoleName: "role-client", Allow: permissions.SetOf(permissions.ProjectsOpen)},
+	}, got.(mcptool.Page[grantResult]).Items)
+
+	_, err = callGrantTool(t, s, "client", "permission_overwrite_list", `{"resource_type": "project", "resource_id": "p-hidden"}`)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }

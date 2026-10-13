@@ -3,6 +3,7 @@ package tenancy
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -21,28 +22,27 @@ var fixedNow = time.Date(2026, 8, 19, 9, 0, 0, 0, time.UTC)
 type fakeRepo struct {
 	mu             sync.Mutex
 	workspaces     map[string]*Workspace
-	members        map[string][]string                   // workspaceID -> userIDs
-	roleIDs        map[string]map[string]string          // workspaceID -> userID -> roleID
-	overrides      map[string][2]permissions.Set         // workspaceID/userID -> allow, deny
-	restricted     map[string]bool                       // workspaceID/userID
-	access         map[string]map[string]permissions.Set // workspaceID/userID -> projectID -> allow
+	members        map[string][]string            // workspaceID -> userIDs
+	roleIDs        map[string]map[string][]string // workspaceID -> userID -> roleIDs
+	listed         map[string][]string            // projectID -> the userIDs in it
+	listedRoles    map[string][]string            // projectID -> the roles its rules let in
 	teamWorkspaces []*TeamWorkspace
 	events         []eventbus.OutboxEvent
 	createErr      error
 	getErr         error
 	listErr        error
+	listMembersErr error
 	// projectMembersErr fails ProjectMemberIDs.
 	projectMembersErr error
 }
 
 func newFakeRepo() *fakeRepo {
 	return &fakeRepo{
-		workspaces: map[string]*Workspace{},
-		members:    map[string][]string{},
-		roleIDs:    map[string]map[string]string{},
-		overrides:  map[string][2]permissions.Set{},
-		restricted: map[string]bool{},
-		access:     map[string]map[string]permissions.Set{},
+		workspaces:  map[string]*Workspace{},
+		members:     map[string][]string{},
+		roleIDs:     map[string]map[string][]string{},
+		listed:      map[string][]string{},
+		listedRoles: map[string][]string{},
 	}
 }
 
@@ -121,28 +121,34 @@ func (f *fakeRepo) AddMember(_ context.Context, m *Member, events ...eventbus.Ou
 	f.events = append(f.events, events...)
 	f.members[m.WorkspaceID] = append(f.members[m.WorkspaceID], m.UserID)
 	if f.roleIDs[m.WorkspaceID] == nil {
-		f.roleIDs[m.WorkspaceID] = map[string]string{}
+		f.roleIDs[m.WorkspaceID] = map[string][]string{}
 	}
-	f.roleIDs[m.WorkspaceID][m.UserID] = m.RoleID
+	f.roleIDs[m.WorkspaceID][m.UserID] = slices.Clone(m.Held())
 	return nil
 }
 
 func (f *fakeRepo) RoleIDFor(_ context.Context, workspaceID, userID string) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	roleID, ok := f.roleIDs[workspaceID][userID]
+	roleIDs, ok := f.roleIDs[workspaceID][userID]
 	if !ok {
 		return "", apperrs.ErrNotFound
 	}
-	return roleID, nil
+	if len(roleIDs) == 0 {
+		return "", nil
+	}
+	return roleIDs[0], nil
 }
 
 func (f *fakeRepo) ListByWorkspace(_ context.Context, workspaceID string) ([]*Member, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.listMembersErr != nil {
+		return nil, f.listMembersErr
+	}
 	var out []*Member
 	for _, userID := range f.members[workspaceID] {
-		out = append(out, &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: f.roleIDs[workspaceID][userID]})
+		out = append(out, f.member(workspaceID, userID))
 	}
 	return out, nil
 }
@@ -156,37 +162,32 @@ func (f *fakeRepo) RemoveMember(_ context.Context, workspaceID, userID string, e
 		if u == userID {
 			f.members[workspaceID] = append(users[:i], users[i+1:]...)
 			delete(f.roleIDs[workspaceID], userID)
-			delete(f.access, workspaceID+"/"+userID)
 			return nil
 		}
 	}
 	return apperrs.ErrNotFound
 }
 
-func (f *fakeRepo) SetRole(_ context.Context, workspaceID, userID, roleID string, events ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) ChangeRoles(_ context.Context, workspaceID, userID string, add, remove []string, events ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if _, ok := f.roleIDs[workspaceID][userID]; !ok {
+	held, ok := f.roleIDs[workspaceID][userID]
+	if !ok {
 		return apperrs.ErrNotFound
 	}
-	f.roleIDs[workspaceID][userID] = roleID
+	held = slices.DeleteFunc(slices.Clone(held), func(id string) bool { return slices.Contains(remove, id) })
+	f.roleIDs[workspaceID][userID] = append(held, add...)
 	f.events = append(f.events, events...)
 	return nil
 }
 
-func (f *fakeRepo) Overrides(_ context.Context, workspaceID, userID string) (permissions.Set, permissions.Set, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	o := f.overrides[workspaceID+"/"+userID]
-	return o[0], o[1], nil
-}
-
-func (f *fakeRepo) SetOverrides(_ context.Context, workspaceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.overrides[workspaceID+"/"+userID] = [2]permissions.Set{allow, deny}
-	f.events = append(f.events, events...)
-	return nil
+// member is userID's membership of workspaceID as the fake holds it; the caller holds f.mu.
+func (f *fakeRepo) member(workspaceID, userID string) *Member {
+	m := &Member{UserID: userID, WorkspaceID: workspaceID, RoleIDs: slices.Clone(f.roleIDs[workspaceID][userID])}
+	if len(m.RoleIDs) > 0 {
+		m.RoleID = m.RoleIDs[0]
+	}
+	return m
 }
 
 func (f *fakeRepo) ListAllMemberships(context.Context) ([]*TeamMembership, error) {
@@ -195,7 +196,7 @@ func (f *fakeRepo) ListAllMemberships(context.Context) ([]*TeamMembership, error
 	var out []*TeamMembership
 	for workspaceID, users := range f.members {
 		for _, userID := range users {
-			out = append(out, &TeamMembership{UserID: userID, WorkspaceID: workspaceID, RoleID: f.roleIDs[workspaceID][userID], Restricted: f.restricted[workspaceID+"/"+userID]})
+			out = append(out, &TeamMembership{UserID: userID, WorkspaceID: workspaceID, RoleID: f.member(workspaceID, userID).RoleID})
 		}
 	}
 	return out, nil
@@ -204,47 +205,22 @@ func (f *fakeRepo) ListAllMemberships(context.Context) ([]*TeamMembership, error
 func (f *fakeRepo) Member(_ context.Context, workspaceID, userID string) (*Member, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	roleID, ok := f.roleIDs[workspaceID][userID]
-	if !ok {
+	if _, ok := f.roleIDs[workspaceID][userID]; !ok {
 		return nil, apperrs.ErrNotFound
 	}
-	return &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: roleID, RoleIDs: []string{roleID}, Restricted: f.restricted[workspaceID+"/"+userID]}, nil
-}
-
-func (f *fakeRepo) SetRestricted(_ context.Context, workspaceID, userID string, restricted bool, events ...eventbus.OutboxEvent) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.restricted[workspaceID+"/"+userID] = restricted
-	f.events = append(f.events, events...)
-	return nil
+	return f.member(workspaceID, userID), nil
 }
 
 // projectWorkspace is the fixture's one project-to-workspace mapping, shared with fakeProjects.
 var projectWorkspace = map[string]string{"p-web": "ws-1", "p-api": "ws-1", "p-other": "ws-2"}
 
-func (f *fakeRepo) ProjectAccess(_ context.Context, workspaceID, userID string) ([]*ProjectAccess, error) {
+func (f *fakeRepo) ProjectRoleIDs(_ context.Context, projectID string) ([]string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	var out []*ProjectAccess
-	for projectID, allow := range f.access[workspaceID+"/"+userID] {
-		out = append(out, &ProjectAccess{ProjectID: projectID, Allow: allow, UserID: userID, WorkspaceID: workspaceID})
+	if f.projectMembersErr != nil {
+		return nil, f.projectMembersErr
 	}
-	return out, nil
-}
-
-func (f *fakeRepo) SetProjectAccess(_ context.Context, projectID, userID string, allow permissions.Set, events ...eventbus.OutboxEvent) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	key := projectWorkspace[projectID] + "/" + userID
-	if f.access[key] == nil {
-		f.access[key] = map[string]permissions.Set{}
-	}
-	f.access[key][projectID] = allow
-	if len(allow) == 0 {
-		delete(f.access[key], projectID)
-	}
-	f.events = append(f.events, events...)
-	return nil
+	return f.listedRoles[projectID], nil
 }
 
 func (f *fakeRepo) ProjectMemberIDs(_ context.Context, workspaceID, projectID string) ([]string, error) {
@@ -255,22 +231,8 @@ func (f *fakeRepo) ProjectMemberIDs(_ context.Context, workspaceID, projectID st
 	}
 	var out []string
 	for _, userID := range f.members[workspaceID] {
-		key := workspaceID + "/" + userID
-		if !f.restricted[key] || len(f.access[key][projectID]) > 0 {
+		if slices.Contains(f.listed[projectID], userID) {
 			out = append(out, userID)
-		}
-	}
-	return out, nil
-}
-
-func (f *fakeRepo) ListAllProjectAccess(context.Context) ([]*ProjectAccess, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	var out []*ProjectAccess
-	for key, projects := range f.access {
-		workspaceID, userID, _ := strings.Cut(key, "/")
-		for projectID, allow := range projects {
-			out = append(out, &ProjectAccess{ProjectID: projectID, Allow: allow, UserID: userID, WorkspaceID: workspaceID})
 		}
 	}
 	return out, nil
@@ -1114,10 +1076,10 @@ func TestRemoveMember(t *testing.T) {
 	})
 }
 
-func TestChangeMemberRole(t *testing.T) {
+func TestSetMemberRoles(t *testing.T) {
 	t.Run("actor without members:write is forbidden", func(t *testing.T) {
 		f := newInviteFixture()
-		err := f.svc.ChangeMemberRole(context.Background(), "actor", "ws-1", "u-bob", "role-admin")
+		err := f.svc.SetMemberRoles(context.Background(), "actor", "ws-1", "u-bob", "role-admin")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 	})
@@ -1126,7 +1088,7 @@ func TestChangeMemberRole(t *testing.T) {
 		f.grantManageMembers("actor")
 		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-owner", WorkspaceID: "ws-1", RoleID: "owner-role-ws-1"}))
 
-		err := f.svc.ChangeMemberRole(context.Background(), "actor", "ws-1", "u-owner", "role-editor")
+		err := f.svc.SetMemberRoles(context.Background(), "actor", "ws-1", "u-owner", "role-editor")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
@@ -1135,7 +1097,7 @@ func TestChangeMemberRole(t *testing.T) {
 		f.grantManageMembers("actor")
 		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
 
-		err := f.svc.ChangeMemberRole(context.Background(), "actor", "ws-1", "u-bob", "owner-role-ws-1")
+		err := f.svc.SetMemberRoles(context.Background(), "actor", "ws-1", "u-bob", "owner-role-ws-1")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
@@ -1144,11 +1106,93 @@ func TestChangeMemberRole(t *testing.T) {
 		f.grantManageMembers("actor")
 		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
 
-		require.NoError(t, f.svc.ChangeMemberRole(context.Background(), "actor", "ws-1", "u-bob", "role-admin"))
+		require.NoError(t, f.svc.SetMemberRoles(context.Background(), "actor", "ws-1", "u-bob", "role-admin"))
 
 		roleID, err := f.svc.MemberRoleID(context.Background(), "ws-1", "u-bob")
 		require.NoError(t, err)
 		assert.Equal(t, "role-admin", roleID)
+	})
+	t.Run("taking away a role the actor couldn't have given is refused", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		f.nameGate.perms["role-lead"] = permissions.SetOf(permissions.MembersWrite, permissions.RolesWrite)
+		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-lead"}))
+
+		err := f.svc.SetMemberRoles(context.Background(), "actor", "ws-1", "u-bob", "role-editor")
+
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+		assert.ErrorContains(t, err, "take away a role you couldn't give")
+		roleID, err := f.svc.MemberRoleID(context.Background(), "ws-1", "u-bob")
+		require.NoError(t, err)
+		assert.Equal(t, "role-lead", roleID, "nothing changed")
+		assert.Empty(t, f.repo.events)
+	})
+	t.Run("keeping the role being given needs no more than giving it", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
+
+		require.NoError(t, f.svc.SetMemberRoles(context.Background(), "actor", "ws-1", "u-bob", "role-editor"))
+		assert.Empty(t, f.repo.events, "no change publishes nothing")
+	})
+	t.Run("none leaves a member with zero roles", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleIDs: []string{"role-editor", "role-admin"}}))
+
+		require.NoError(t, f.svc.SetMemberRoles(context.Background(), "actor", "ws-1", "u-bob"))
+
+		m, err := f.svc.Member(context.Background(), "ws-1", "u-bob")
+		require.NoError(t, err)
+		assert.Empty(t, m.RoleIDs)
+	})
+}
+
+func TestRoleHolderEvents_AFailedRead_ReturnsTheError(t *testing.T) {
+	for name, fail := range map[string]func(f *inviteTestFixture){
+		"members": func(f *inviteTestFixture) { f.repo.listMembersErr = errors.New("disk gone") },
+		"projects": func(f *inviteTestFixture) {
+			f.svc.SetProjects(fakeProjects{listErr: errors.New("disk gone")})
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newInviteFixture()
+			require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
+			fail(f)
+			_, err := f.svc.RoleHolderEvents(context.Background(), "ws-1", "role-editor", "actor")
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestUpdateMemberRoles(t *testing.T) {
+	t.Run("gives and takes away in one write, keeping the order given", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleIDs: []string{"role-editor", "role-admin"}}))
+
+		require.NoError(t, f.svc.UpdateMemberRoles(context.Background(), "actor", "ws-1", "u-bob", []string{"role-viewer", "role-editor"}, []string{"role-admin", "role-gone"}))
+
+		m, err := f.svc.Member(context.Background(), "ws-1", "u-bob")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"role-editor", "role-viewer"}, m.RoleIDs)
+		require.Len(t, f.repo.events, 1)
+		assert.Equal(t, TopicWorkspaceMemberUpdated, f.repo.events[0].Topic)
+	})
+	t.Run("the Owner role is never given or taken, while an Owner may hold another", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-owner", WorkspaceID: "ws-1", RoleID: "owner-role-ws-1"}))
+		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
+
+		require.ErrorIs(t, f.svc.UpdateMemberRoles(context.Background(), "actor", "ws-1", "u-owner", nil, []string{"owner-role-ws-1"}), apperrs.ErrInvalid)
+		require.ErrorIs(t, f.svc.UpdateMemberRoles(context.Background(), "actor", "ws-1", "u-bob", []string{"owner-role-ws-1"}, nil), apperrs.ErrInvalid)
+		require.NoError(t, f.svc.UpdateMemberRoles(context.Background(), "actor", "ws-1", "u-owner", []string{"role-editor"}, nil))
+	})
+	t.Run("a non-member is not found", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		require.ErrorIs(t, f.svc.UpdateMemberRoles(context.Background(), "actor", "ws-1", "u-nobody", []string{"role-editor"}, nil), apperrs.ErrNotFound)
 	})
 }
 
@@ -1278,60 +1322,5 @@ func TestAddMember(t *testing.T) {
 		require.Len(t, f.repo.events, 1)
 		assert.Equal(t, TopicWorkspaceMemberAdded, f.repo.events[0].Topic)
 		assert.Equal(t, MemberEvent{UserID: "bob", WorkspaceID: "ws-1", ActorID: "actor"}, f.repo.events[0].Payload)
-	})
-}
-
-func TestSetMemberOverrides(t *testing.T) {
-	set := func(actions ...permissions.Action) *permissions.Set {
-		s := permissions.SetOf(actions...)
-		return &s
-	}
-	newMemberFixture := func(t *testing.T) *inviteTestFixture {
-		f := newInviteFixture()
-		f.grantManageMembers("actor")
-		require.NoError(t, f.repo.AddMember(t.Context(), &Member{UserID: "bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
-		return f
-	}
-	tests := []struct {
-		name        string
-		allow, deny *permissions.Set
-	}{
-		{"neither set is invalid", nil, nil},
-		{"an unknown permission is invalid", set("docs:fly"), nil},
-		{"allowing and denying one permission is invalid", set(permissions.DocsWrite), set(permissions.DocsWrite)},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			f := newMemberFixture(t)
-			err := f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", tt.allow, tt.deny)
-			require.ErrorIs(t, err, apperrs.ErrInvalid)
-		})
-	}
-	t.Run("an allow the actor does not hold is refused", func(t *testing.T) {
-		f := newMemberFixture(t)
-		err := f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.InstanceWrite), nil)
-		require.ErrorIs(t, err, apperrs.ErrForbidden)
-	})
-	t.Run("an allow the member already had stays without the actor holding it", func(t *testing.T) {
-		f := newMemberFixture(t)
-		require.NoError(t, f.repo.SetOverrides(t.Context(), "ws-1", "bob", permissions.SetOf(permissions.InstanceWrite), nil))
-		require.NoError(t, f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.InstanceWrite), set(permissions.DocsDelete)))
-	})
-	t.Run("lifting a deny the actor does not hold is refused, since it hands back what the role gives", func(t *testing.T) {
-		f := newMemberFixture(t)
-		require.NoError(t, f.repo.SetOverrides(t.Context(), "ws-1", "bob", nil, permissions.SetOf(permissions.InstanceWrite)))
-		err := f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", nil, set())
-		require.ErrorIs(t, err, apperrs.ErrForbidden)
-	})
-	t.Run("an omitted set keeps its current value", func(t *testing.T) {
-		f := newMemberFixture(t)
-		f.wsPerms.perms["actor"] = []string{"members:write", "docs:write", "projects:write"}
-		require.NoError(t, f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.DocsWrite), set(permissions.DocsDelete)))
-		require.NoError(t, f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.ProjectsWrite), nil))
-		allow, deny, err := f.repo.Overrides(t.Context(), "ws-1", "bob")
-		require.NoError(t, err)
-		assert.Equal(t, permissions.SetOf(permissions.ProjectsWrite), allow)
-		assert.Equal(t, permissions.SetOf(permissions.DocsDelete), deny)
-		assert.Equal(t, TopicWorkspaceMemberUpdated, f.repo.events[len(f.repo.events)-1].Topic)
 	})
 }

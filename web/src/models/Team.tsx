@@ -11,7 +11,7 @@ export type AccountStatus = (typeof AccountStatus)[keyof typeof AccountStatus];
 
 export const getTeamKey = "getTeam";
 
-// A membership's Every project row: From role, or None for a Restricted member (ADR 0097).
+// A removed field (ADR 0148): the server sends it empty and refuses a value.
 export const EveryProject = {
   Role: "role",
   None: "none",
@@ -26,17 +26,6 @@ export interface ProjectGrant {
   allow: string[];
 }
 
-// The levels per project keyed by project, the shape the access rows read.
-export const accessByProject = (grants: readonly ProjectGrant[]): Record<string, string[]> =>
-  Object.fromEntries(grants.map((grant) => [grant.project_id, grant.allow]));
-
-// Replaces one project's levels in a list of grants, dropping the project once nothing is left.
-export const withProjectGrant = (grants: readonly ProjectGrant[], projectId: string, allow: string[]): ProjectGrant[] => {
-  const rest = grants.filter((grant) => grant.project_id !== projectId);
-  if (allow.length === 0) return rest;
-  return [...rest, { project_id: projectId, allow }];
-};
-
 export interface TeamMembership {
   workspace_id: string;
   workspace_name: string;
@@ -48,7 +37,7 @@ export interface TeamMembership {
   allow: string[];
   deny: string[];
   every_project: EveryProject;
-  // Only projects the viewer may open themselves, kept while Every project is From role.
+  // A removed field (ADR 0148), sent empty.
   projects: ProjectGrant[];
 }
 
@@ -90,6 +79,10 @@ export interface Team {
   can_manage_accounts: boolean;
 }
 
+// Every role a membership holds, or the one role a server from before several roles names.
+export const heldRoles = (membership: TeamMembership): TeamRole[] =>
+  membership.roles ?? [{ id: membership.role_id, name: membership.role_name, is_owner: membership.is_owner }];
+
 // The people holding a role in a workspace; removed accounts hold nothing.
 export const roleHolders = (team: Team | undefined, workspaceId: string, roleId: string): TeamPerson[] =>
   (team?.people ?? []).filter(
@@ -98,6 +91,6 @@ export const roleHolders = (team: Team | undefined, workspaceId: string, roleId:
       person.workspaces.some(
         (membership) =>
           membership.workspace_id === workspaceId &&
-          (membership.roles ?? [{ id: membership.role_id }]).some((role) => role.id === roleId),
+          heldRoles(membership).some((role) => role.id === roleId),
       ),
   );

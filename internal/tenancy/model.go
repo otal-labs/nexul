@@ -2,10 +2,12 @@
 package tenancy
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
 
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -24,20 +26,21 @@ type Workspace struct {
 	// MentionChipTemplate is the @-mention ticket chip layout with {ticket.Field} tokens; gated on workspaces:write.
 	MentionChipTemplate string `json:"mention_chip_template"`
 	// MentionChipTemplateEdited is false while the workspace follows the instance's chip template (ADR 0103).
-	MentionChipTemplateEdited bool      `json:"mention_chip_template_edited"`
-	CreatedAt                 time.Time `json:"created_at"`
-	UpdatedAt                 time.Time `json:"updated_at"`
+	MentionChipTemplateEdited bool `json:"mention_chip_template_edited"`
+	// AccessSetupFinished is false while an Owner has yet to finish the one-time access setup (ADR 0148).
+	AccessSetupFinished bool      `json:"access_setup_finished"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
-// Member is one person's place in a workspace; Restricted is their Every project row set to None (ADR 0097).
+// Member is one person's place in a workspace.
 type Member struct {
 	UserID      string `json:"user_id"`
 	WorkspaceID string `json:"workspace_id"`
 	// RoleID is the first of RoleIDs, the roles they hold in the order given (ADR 0148).
-	RoleID     string    `json:"role_id"`
-	RoleIDs    []string  `json:"role_ids"`
-	CreatedAt  time.Time `json:"created_at"`
-	Restricted bool      `json:"restricted"`
+	RoleID    string    `json:"role_id"`
+	RoleIDs   []string  `json:"role_ids"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // Held is the roles the membership holds: RoleIDs, or RoleID alone where a writer gave just that one.
@@ -48,27 +51,48 @@ func (m *Member) Held() []string {
 	return m.RoleIDs
 }
 
-// Every project values: From role (the role's project areas on every project) or None (a Restricted member).
-const (
-	EveryProjectRole = "role"
-	EveryProjectNone = "none"
-)
-
-// everyProject is the wire value of a membership's Every project row.
-func everyProject(restricted bool) string {
-	if restricted {
-		return EveryProjectNone
-	}
-	return EveryProjectRole
+// MyAccess is a member's own access in one workspace, as /api/workspaces/{id}/me answers it.
+type MyAccess struct {
+	Roles       []*TeamRole
+	Permissions []string
+	Restricted  bool
+	Projects    []MeProject
+	// AccessSetupFinished is the workspace's, so a member waiting on the one-time setup sees why (ADR 0148).
+	AccessSetupFinished bool
 }
 
-// ProjectAccess is one project's levels for a Restricted member, held as the actions they expand to.
+// RoleNames is roles' names joined, the one role_name a client from before members held several reads.
+func RoleNames(roles []*TeamRole) string {
+	names := make([]string, len(roles))
+	for i, r := range roles {
+		names[i] = r.Name
+	}
+	return strings.Join(names, ", ")
+}
+
+// MeProject is one project a member is in and the project-area actions they hold there.
+type MeProject struct {
+	ProjectID string          `json:"project_id"`
+	Actions   permissions.Set `json:"actions"`
+}
+
+// ProjectAccess is the shape the removed Project access was sent in; old fields still parse and read as empty.
 type ProjectAccess struct {
 	ProjectID   string          `json:"project_id"`
 	ProjectName string          `json:"project_name,omitempty"`
 	Allow       permissions.Set `json:"allow"`
-	UserID      string          `json:"-"`
-	WorkspaceID string          `json:"-"`
+}
+
+// RefusePerPersonAccess refuses a non-empty value for a field the wipe removed (ADR 0148), naming what replaced it;
+// an empty one still passes, so a client that sends it keeps working.
+func RefusePerPersonAccess(allow, deny permissions.Set, everyProject string, projectAccess int) error {
+	if len(allow) > 0 || len(deny) > 0 {
+		return fmt.Errorf("%w: per-person allow and deny are gone; give the person a role that holds it, or set a rule on the project, doc or play", apperrs.ErrInvalid)
+	}
+	if everyProject != "" || projectAccess > 0 {
+		return fmt.Errorf("%w: every_project and project_access are gone; list the person, or a role they hold, on each project they should be in", apperrs.ErrInvalid)
+	}
+	return nil
 }
 
 // Invite resolves into a real Member the moment that login's first User row is created.
@@ -90,21 +114,28 @@ type Invitation struct {
 	Grants     []*InvitationGrant `json:"grants"`
 }
 
+// InvitationGrant is one workspace of an invitation: the roles it gives there and nothing per person (ADR 0148).
 type InvitationGrant struct {
-	WorkspaceID   string          `json:"workspace_id"`
-	WorkspaceName string          `json:"workspace_name,omitempty"`
-	RoleID        string          `json:"role_id"`
-	RoleName      string          `json:"role_name,omitempty"`
-	Allow         permissions.Set `json:"allow"`
-	Deny          permissions.Set `json:"deny"`
-	// EveryProject is "role" (also when empty) or "none", which lands the person restricted to ProjectAccess.
+	WorkspaceID   string `json:"workspace_id"`
+	WorkspaceName string `json:"workspace_name,omitempty"`
+	// RoleID and RoleName name the first of RoleIDs, for a client from before an invitation gave several.
+	RoleID   string      `json:"role_id"`
+	RoleName string      `json:"role_name,omitempty"`
+	RoleIDs  []string    `json:"role_ids"`
+	Roles    []*TeamRole `json:"roles"`
+	// Allow, Deny, EveryProject and ProjectAccess are removed fields that read as empty and refuse a value.
+	Allow         permissions.Set  `json:"allow"`
+	Deny          permissions.Set  `json:"deny"`
 	EveryProject  string           `json:"every_project,omitempty"`
 	ProjectAccess []*ProjectAccess `json:"project_access,omitempty"`
 }
 
-// Restricted reports whether the grant admits a Restricted member.
-func (g *InvitationGrant) Restricted() bool {
-	return g.EveryProject == EveryProjectNone
+// Held is the roles the grant gives: RoleIDs, or RoleID alone where a writer gave just that one.
+func (g *InvitationGrant) Held() []string {
+	if len(g.RoleIDs) == 0 && g.RoleID != "" {
+		return []string{g.RoleID}
+	}
+	return g.RoleIDs
 }
 
 type InvitationIdentity struct {
@@ -157,12 +188,14 @@ type TeamAccount struct {
 	AvatarOverride string `json:"-"`
 }
 
-// Person is all any member of a workspace sees of another: never a role, an override, an email, or account status.
+// Person is all any member of a workspace sees of another: never a role but Owner, an email, or account status.
 type Person struct {
 	UserID      string `json:"user_id"`
 	Login       string `json:"login"`
 	DisplayName string `json:"display_name"`
 	AvatarURL   string `json:"avatar_url"`
+	// Owner is set in a workspace's directory, so someone with no role knows who to ask for one (ADR 0148).
+	Owner bool `json:"owner,omitempty"`
 }
 
 // People is a workspace's people as the directory route answers them.
@@ -170,8 +203,14 @@ type People struct {
 	People []Person `json:"people"`
 }
 
-// TeamMembership is one person's place in one workspace: their roles (RoleID and RoleName name the first), their
-// workspace-wide overrides, their Every project row, and the projects they hold access to that the viewer may open.
+// ProjectPeople is a project's People and the roles its rules let in.
+type ProjectPeople struct {
+	People  []Person `json:"people"`
+	RoleIDs []string `json:"role_ids"`
+}
+
+// TeamMembership is one person's place in one workspace: their roles, RoleID naming the first and RoleName all. Allow,
+// Deny, EveryProject and Projects are removed fields that read as empty (ADR 0148).
 type TeamMembership struct {
 	UserID        string           `json:"-"`
 	WorkspaceID   string           `json:"workspace_id"`
@@ -182,7 +221,6 @@ type TeamMembership struct {
 	IsOwner       bool             `json:"is_owner"`
 	Allow         permissions.Set  `json:"allow"`
 	Deny          permissions.Set  `json:"deny"`
-	Restricted    bool             `json:"-"`
 	EveryProject  string           `json:"every_project"`
 	Projects      []*ProjectAccess `json:"projects"`
 }

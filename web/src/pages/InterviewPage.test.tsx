@@ -185,7 +185,7 @@ describe("InterviewPage", () => {
     expect(screen.getByText("Layers")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Initial questions/ })).toHaveTextContent("1 answered · 1 skipped");
     expect(screen.getByText("No memory yet")).toBeInTheDocument();
-    // Asked by project, so a restricted member with access to it can read the questions.
+    // Asked by project, so a member in it can read the questions.
     expect(api.get).toHaveBeenCalledWith("/api/memories/interview-template", { params: { project_id: "p-1" } });
   });
 

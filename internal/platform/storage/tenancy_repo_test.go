@@ -178,27 +178,27 @@ func TestWorkspaceMembersRepo_RemoveMember(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
-func TestWorkspaceMembersRepo_SetRole(t *testing.T) {
+func TestWorkspaceMembersRepo_ChangeRoles(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	require.NoError(t, s.Workspaces.Create(context.Background(), newTestWorkspace("ws-1", "Acme")))
-	_, _, err := s.Users.UpsertUser(context.Background(), newTestUser("u-1", "1", "u-1"))
+	ctx := t.Context()
+	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-1", "Acme")))
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u-1", "1", "u-1"))
 	require.NoError(t, err)
-	role1 := newTestRole("role-1", "ws-1")
-	require.NoError(t, s.Roles.Create(context.Background(), role1))
-	role2 := newTestRole("role-2", "ws-1")
-	require.NoError(t, s.Roles.Create(context.Background(), role2))
-	require.NoError(t, s.WorkspaceMembers.AddMember(context.Background(), &tenancy.Member{
-		UserID: "u-1", WorkspaceID: "ws-1", RoleID: role1.ID, CreatedAt: time.Now(),
+	for _, id := range []string{"role-1", "role-2", "role-3"} {
+		require.NoError(t, s.Roles.Create(ctx, newTestRole(id, "ws-1")))
+	}
+	require.NoError(t, s.WorkspaceMembers.AddMember(ctx, &tenancy.Member{
+		UserID: "u-1", WorkspaceID: "ws-1", RoleIDs: []string{"role-1", "role-2"}, CreatedAt: time.Now().Add(-time.Hour),
 	}))
 
-	require.NoError(t, s.WorkspaceMembers.SetRole(context.Background(), "ws-1", "u-1", role2.ID))
+	require.NoError(t, s.WorkspaceMembers.ChangeRoles(ctx, "ws-1", "u-1", []string{"role-3"}, []string{"role-1"}))
 
-	got, err := s.WorkspaceMembers.RoleIDFor(context.Background(), "ws-1", "u-1")
+	m, err := s.WorkspaceMembers.Member(ctx, "ws-1", "u-1")
 	require.NoError(t, err)
-	assert.Equal(t, role2.ID, got)
+	assert.Equal(t, []string{"role-2", "role-3"}, m.RoleIDs, "an added role comes after the ones held")
 
-	err = s.WorkspaceMembers.SetRole(context.Background(), "ws-1", "u-nobody", role2.ID)
+	err = s.WorkspaceMembers.ChangeRoles(ctx, "ws-1", "u-nobody", []string{"role-2"}, nil)
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 

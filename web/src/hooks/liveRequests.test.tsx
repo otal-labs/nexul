@@ -8,7 +8,6 @@ import { useFetchComputerSetup } from "@/hooks/ComputerSetupHooks";
 import { useFetchDeploy, useFetchDeployLog } from "@/hooks/DeployHooks";
 import { useFetchDoc, useFetchDocClarification, useFetchDocs, useFetchDocsByProject } from "@/hooks/DocHooks";
 import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
-import { useFetchProjectAccess } from "@/hooks/ProjectHooks";
 import { useFetchInterviewSources } from "@/hooks/InterviewSourceHooks";
 import { useFetchMemories, useFetchMemoriesByProject, useFetchMemory, useFetchMemoryVersions } from "@/hooks/MemoryHooks";
 import { useFetchInbox, useFetchUnreadByWorkspace, useFetchUnreadCount } from "@/hooks/NotificationHooks";
@@ -316,18 +315,15 @@ describe("requests a live frame sends", () => {
     expect(await requestsAfter("play.run", run)).toEqual(["/api/memories?workspace_id=ws-1"]);
   });
 
-  it("refetches who may open only the projects a membership change names", async () => {
+  it("refetches only the people of the projects a membership change names", async () => {
     const { requestsAfter } = await mountLive(
       view(() => {
-        useFetchProjectAccess("p-1");
-        useFetchProjectAccess("p-2");
         useFetchProjectPeople("p-1");
         useFetchProjectPeople("p-2");
       }),
       respond,
     );
-    expect((await requestsAfter("workspace.member.updated", { user_id: "u-2", workspace_id: "ws-1", project_ids: ["p-1"] })).sort()).toEqual([
-      "/api/projects/p-1/access",
+    expect(await requestsAfter("workspace.member.updated", { user_id: "u-2", workspace_id: "ws-1", project_ids: ["p-1"] })).toEqual([
       "/api/projects/p-1/people",
     ]);
   });
@@ -391,6 +387,19 @@ describe("requests a live frame sends", () => {
       respond,
     );
     const frame = { resource_type: "doc", resource_id: "d-1", target: "role", user_id: "", role_id: "r-9" };
+    expect((await requestsAfter("access.grant.changed", frame)).sort()).toEqual(["/api/auth/me", "/api/workspaces/ws-1/me"]);
+  });
+
+  it("refetches the viewer's own permissions when an Owner saves the Access page, so their projects arrive without a reload", async () => {
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useFetchMe();
+        useFetchMyRole("ws-1");
+        useFetchWorkspaceRoles("ws-1");
+      }),
+      respond,
+    );
+    const frame = { resource_type: "workspace", resource_id: "ws-1", target: "role", user_id: "" };
     expect((await requestsAfter("access.grant.changed", frame)).sort()).toEqual(["/api/auth/me", "/api/workspaces/ws-1/me"]);
   });
 

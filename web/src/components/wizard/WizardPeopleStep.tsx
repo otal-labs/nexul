@@ -1,0 +1,74 @@
+import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { WizardFooter } from "@/components/wizard/WizardFooter";
+import { WizardRoleRow } from "@/components/wizard/WizardRoleRow";
+import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
+import { useFetchGrants, useSaveRules } from "@/hooks/PermissionHooks";
+import { usePanelTargets } from "@/hooks/usePanelTargets";
+import { useCanOpenSection } from "@/hooks/AccessHooks";
+import { useFetchTeam } from "@/hooks/TeamHooks";
+import { RuleState } from "@/models/Permission";
+import { targetKey } from "@/models/PermissionPanel";
+import { holdItWord, IN_THIS_PROJECT, projectPeopleRules } from "@/models/ProjectPeople";
+import type { Project } from "@/models/Project";
+import { roleHolders } from "@/models/Team";
+
+interface WizardPeopleStepProps {
+  project: Project;
+  continueLabel: string;
+  onDone: () => void;
+  onBack: () => void;
+  onSkip: () => void;
+}
+
+// "Who's in it": the roles the project lets in, pre-ticked with the creator's own by its creation; the creator is always in.
+export const WizardPeopleStep = ({ project, continueLabel, onDone, onBack, onSkip }: WizardPeopleStepProps) => {
+  const { data: grants, error, isPending } = useFetchGrants("project", project.id);
+  const { roles, ready } = usePanelTargets({ workspaceId: project.workspace_id });
+  // Holder counts come from Team, so only a viewer who may read Team asks for it.
+  const { data: team } = useFetchTeam(useCanOpenSection("team"));
+  const save = useSaveRules();
+  // Ticks the person changed here, over what the project's rules already list.
+  const [ticked, setTicked] = useState<Record<string, boolean>>({});
+  const listed = grants ? projectPeopleRules(grants).roles.map((g) => g.role_id ?? "") : [];
+  const isTicked = (id: string) => ticked[id] ?? listed.includes(id);
+  const holders = (id: string) => (team ? holdItWord(roleHolders(team, project.workspace_id, id).length) : "Its holders can open the project");
+
+  const onContinue = async () => {
+    const moved = roles.filter((r) => isTicked(r.id) !== listed.includes(r.id));
+    const changes = moved.map((r) => ({ target: targetKey("role", r.id), state: isTicked(r.id) ? RuleState.Allow : RuleState.Fallback, actions: [IN_THIS_PROJECT] }));
+    try {
+      await save.mutateAsync({ resourceType: "project", resourceId: project.id, changes, done: `Saved who's in ${project.name}` });
+      onDone();
+    } catch {
+      // The hook shows the error; the step stays open for retry.
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Owners open every project, and you're always in {project.name}. Add people by name or keep someone out later, in the project's
+        settings.
+      </p>
+      {(isPending || !ready) && <LoadingDisplay />}
+      {error && <ErrorDisplay error={error} />}
+      {grants && ready && roles.length === 0 && <p className="text-sm text-muted-foreground">This workspace has no roles but the Owner's yet.</p>}
+      {grants && ready && roles.length > 0 && (
+        <ul className="divide-y divide-border border-y border-border" aria-label="Roles in this project">
+          {roles.map((role) => (
+            <WizardRoleRow key={role.key} role={role} checked={isTicked(role.id)} line={holders(role.id)} onToggle={(on) => setTicked((t) => ({ ...t, [role.id]: on }))} />
+          ))}
+        </ul>
+      )}
+      <WizardFooter onBack={onBack} skip={<WizardSkipLink onClick={onSkip} />}>
+        <Button type="button" disabled={!grants} loading={save.isPending} onClick={() => void onContinue()}>
+          {continueLabel}
+        </Button>
+      </WizardFooter>
+    </div>
+  );
+};

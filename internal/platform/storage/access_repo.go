@@ -60,28 +60,27 @@ func (r *AccessRepo) RulesOfType(ctx context.Context, resourceType, userID strin
 	return toRules(rows)
 }
 
-// OwnRules returns the rules naming userID on workspaceID and on each of projectIDs that has one, keyed by resource
-// id, in one read: two index lookups for one project, the person's rules on every workspace and project for a list.
-func (r *AccessRepo) OwnRules(ctx context.Context, userID, workspaceID string, projectIDs []string) (map[string]*access.Overwrite, error) {
+// OwnRules returns the rules naming userID on each of projectIDs that has one, keyed by project id, in one read: an
+// index lookup for one project, the person's rules on every project for a list.
+func (r *AccessRepo) OwnRules(ctx context.Context, userID string, projectIDs []string) (map[string]*access.Overwrite, error) {
 	var rows []sqlcgen.PermissionOverwrite
 	var err error
-	if len(projectIDs) <= 1 {
-		rows, err = r.hot.ListOwnOverwritesInProject(ctx, sqlcgen.ListOwnOverwritesInProjectParams{UserID: nullString(userID), WorkspaceID: workspaceID, ProjectID: firstOf(projectIDs)})
+	if len(projectIDs) == 1 {
+		rows, err = r.hot.ListOwnOverwritesInProject(ctx, sqlcgen.ListOwnOverwritesInProjectParams{UserID: nullString(userID), ResourceID: projectIDs[0]})
 	}
 	if len(projectIDs) > 1 {
 		rows, err = r.q.ListOwnOverwrites(ctx, nullString(userID))
 	}
 	if err != nil {
-		return nil, fmt.Errorf("get the rules of %s in workspace %s: %w", userID, workspaceID, err)
+		return nil, fmt.Errorf("get the project rules of %s: %w", userID, err)
 	}
-	asked := append([]string{workspaceID}, projectIDs...)
 	out := make(map[string]*access.Overwrite, len(rows))
 	for _, row := range rows {
 		ow, err := toOverwrite(row)
 		if err != nil {
 			return nil, err
 		}
-		if slices.Contains(asked, ow.ResourceID) {
+		if slices.Contains(projectIDs, ow.ResourceID) {
 			out[ow.ResourceID] = ow
 		}
 	}
@@ -118,11 +117,24 @@ func (r *AccessRepo) RoleRules(ctx context.Context, resourceType string, resourc
 	return out, nil
 }
 
-func firstOf(ids []string) string {
-	if len(ids) == 0 {
-		return ""
+// DocRuleTurns decides userID's rules on the docs of ruled for action in SQL, the person's rule first and then Allow
+// winning between the roles they hold in each doc's workspace, and hands back only the docs whose answer turns.
+func (r *AccessRepo) DocRuleTurns(ctx context.Context, userID string, action permissions.Action, ruled, readable []string) (allowed, denied []string, err error) {
+	rows, err := r.q.ListDocRuleTurns(ctx, sqlcgen.ListDocRuleTurnsParams{
+		QuotedAction: `"` + string(action) + `"`, UserID: nullString(userID), Ruled: idsJSON(ruled), Readable: idsJSON(readable),
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("doc rules of %s for %s: %w", userID, action, err)
 	}
-	return ids[0]
+	allowed, denied = []string{}, []string{}
+	for _, row := range rows {
+		if state, _ := row.State.(int64); state == 1 {
+			allowed = append(allowed, row.ResourceID)
+			continue
+		}
+		denied = append(denied, row.ResourceID)
+	}
+	return allowed, denied, nil
 }
 
 // toRules groups rows by resource, each entity's role rules in their target order.
@@ -160,30 +172,58 @@ func (r *AccessRepo) ListByResource(ctx context.Context, resourceType, resourceI
 	return toOverwrites(rows)
 }
 
+func (r *AccessRepo) GetRole(ctx context.Context, resourceType, resourceID, roleID string) (*access.Overwrite, error) {
+	row, err := r.q.GetRoleOverwrite(ctx, sqlcgen.GetRoleOverwriteParams{
+		ResourceType: resourceType, ResourceID: resourceID, RoleID: nullString(roleID),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get role overwrite %s/%s/%s: %w", resourceType, resourceID, roleID, notFoundIfNoRows(err))
+	}
+	return toOverwrite(row)
+}
+
 func (r *AccessRepo) Set(ctx context.Context, resourceType, resourceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error {
-	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		q := r.q.WithTx(tx)
-		if len(allow) == 0 && len(deny) == 0 {
-			n, err := q.DeleteOverwrite(ctx, sqlcgen.DeleteOverwriteParams{
-				ResourceType: resourceType, ResourceID: resourceID, UserID: nullString(userID),
-			})
-			if err != nil {
-				return fmt.Errorf("delete overwrite %s/%s/%s: %w", resourceType, resourceID, userID, err)
-			}
-			if n == 0 {
-				return fmt.Errorf("delete overwrite %s/%s/%s: %w", resourceType, resourceID, userID, apperrs.ErrNotFound)
-			}
-			return insertOutboxRows(ctx, tx, events)
-		}
-		n, err := q.UpsertOverwrite(ctx, sqlcgen.UpsertOverwriteParams{
+	return r.set(ctx, resourceType+"/"+resourceID+"/"+userID, allow, deny, events, func(q *sqlcgen.Queries) (int64, error) {
+		return q.DeleteOverwrite(ctx, sqlcgen.DeleteOverwriteParams{ResourceType: resourceType, ResourceID: resourceID, UserID: nullString(userID)})
+	}, func(q *sqlcgen.Queries) (int64, error) {
+		return q.UpsertOverwrite(ctx, sqlcgen.UpsertOverwriteParams{
 			ResourceType: resourceType, ResourceID: resourceID, UserID: nullString(userID),
 			Allow: setJSON(allow), Deny: setJSON(deny), Now: time.Now().Unix(),
 		})
+	})
+}
+
+func (r *AccessRepo) SetRole(ctx context.Context, resourceType, resourceID, roleID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error {
+	return r.set(ctx, resourceType+"/"+resourceID+"/role "+roleID, allow, deny, events, func(q *sqlcgen.Queries) (int64, error) {
+		return q.DeleteRoleOverwrite(ctx, sqlcgen.DeleteRoleOverwriteParams{ResourceType: resourceType, ResourceID: resourceID, RoleID: nullString(roleID)})
+	}, func(q *sqlcgen.Queries) (int64, error) {
+		return q.UpsertRoleOverwrite(ctx, sqlcgen.UpsertRoleOverwriteParams{
+			ResourceType: resourceType, ResourceID: resourceID, RoleID: nullString(roleID),
+			Allow: setJSON(allow), Deny: setJSON(deny), Now: time.Now().Unix(),
+		})
+	})
+}
+
+// set upserts one rule, or deletes it when both sets are empty, with its events in the same transaction.
+func (r *AccessRepo) set(ctx context.Context, name string, allow, deny permissions.Set, events []eventbus.OutboxEvent, del, upsert func(*sqlcgen.Queries) (int64, error)) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		if len(allow) == 0 && len(deny) == 0 {
+			n, err := del(q)
+			if err != nil {
+				return fmt.Errorf("delete overwrite %s: %w", name, err)
+			}
+			if n == 0 {
+				return fmt.Errorf("delete overwrite %s: %w", name, apperrs.ErrNotFound)
+			}
+			return insertOutboxRows(ctx, tx, events)
+		}
+		n, err := upsert(q)
 		if err != nil {
-			return fmt.Errorf("set overwrite %s/%s/%s: %w", resourceType, resourceID, userID, classifyWriteErr(err))
+			return fmt.Errorf("set overwrite %s: %w", name, classifyWriteErr(err))
 		}
 		if n == 0 {
-			return fmt.Errorf("set overwrite %s/%s/%s: %w", resourceType, resourceID, userID, apperrs.ErrConflict)
+			return fmt.Errorf("set overwrite %s: %w", name, apperrs.ErrConflict)
 		}
 		return insertOutboxRows(ctx, tx, events)
 	})

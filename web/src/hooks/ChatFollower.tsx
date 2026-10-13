@@ -96,6 +96,12 @@ const followMessage = ({ message }: MessagePayload, { client }: { client: QueryC
 };
 
 export const chatFollower: LiveFollower = {
+  // A channel rule can hide a channel or show it again; it names no workspace, so every cached list rereads.
+  "access.grant.changed": ({ resource_type: type, resource_id: id }: { resource_type: string; resource_id: string }, { client }) => {
+    if (type === "workspace") return refetchWorkspace(client, id);
+    if (type !== "channel") return undefined;
+    return Promise.all([client.invalidateQueries({ queryKey: [getChatConversationsKey] }), client.invalidateQueries({ queryKey: [getChatUnreadKey] })]);
+  },
   "chat.conversation.created": ({ conversation }: { conversation: Conversation }, { client }) => {
     if (conversation.ticket_id) ticketThreadStarted(client, conversation.ticket_id, conversation.project_id);
     if (conversation.kind === "dm") return client.invalidateQueries({ queryKey: [getChatConversationsKey] });

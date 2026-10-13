@@ -30,7 +30,7 @@ the Owner, which leaves one nobody can manage once its members are gone.
 Amends ADR 0094, whose "reading a channel takes membership alone" now holds for public channels only, and ADR 0087's
 list of what every member reads. Decided 2026-10-01.
 
-Amended by ADR 0148 (proposed): with the Restricted member gone, a public channel is read by every member unless a
+Amended by ADR 0148: with the Restricted member gone, a public channel is read by every member unless a
 rule on it denies `channels:read` to a role they hold or to them; the Owner still sees every channel.
 
 Amended 2026-10-01: a private channel's and a DM's events (messages, creation, renames, member changes and the switch to

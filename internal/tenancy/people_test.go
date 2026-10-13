@@ -53,6 +53,21 @@ func TestHandler_ListPeople(t *testing.T) {
 	})
 }
 
+func TestListPeople_MarksTheOwners(t *testing.T) {
+	_, svc, _ := newPeopleFixture(t)
+	repo := svc.members.(*fakeRepo)
+	require.NoError(t, repo.AddMember(t.Context(), &Member{UserID: "bob", WorkspaceID: "ws-1", RoleIDs: []string{"r", "owner-role-ws-1"}}))
+
+	people, err := svc.ListPeople(t.Context(), "carol", "ws-1")
+	require.NoError(t, err)
+
+	owners := map[string]bool{}
+	for _, p := range people {
+		owners[p.UserID] = p.Owner
+	}
+	assert.Equal(t, map[string]bool{"lewis": false, "carol": false, "bob": true}, owners)
+}
+
 func TestListPeople_AvatarURLFollowsTheUploadedPicture(t *testing.T) {
 	_, svc, accounts := newPeopleFixture(t)
 	avatarOf := func() string {

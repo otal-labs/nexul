@@ -104,7 +104,7 @@ func docListTool(s *Service) mcptool.Tool {
 			"A folder groups a project's docs one level deep: every doc lives in exactly one, the project's default folder Main unless placed elsewhere, and project_get lists them. "+
 			"Use it to find a doc's id, then doc_get to read its body. "+
 			"Returns items without bodies, each with its folder_id, ranked by relevance with a query and oldest first without one; "+
-			"a doc you cannot open is listed with can_open false when browsing and left out of a search. "+
+			"a doc you cannot read is left out, browsing and searching alike. "+
 			"Archived docs are hidden unless include_archived is set.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in docListIn) (any, error) {
@@ -123,7 +123,7 @@ func docGetTool(s *Service) mcptool.Tool {
 			"and its watchers: the people its edits notify, who are its creator, everyone who edited it, and anyone who chose to watch, with watching true when you are one. "+
 			"It also returns the doc's clarification: every round of questions with their answers, each round's Anything else? text and its reply, whether a round is running, and whether it is closed. "+
 			"Use it after doc_list has given you the id, and before doc_update so you edit the current text. "+
-			"Fails with forbidden when you cannot read the doc.",
+			"Fails with not found when you cannot read the doc, as for one that does not exist.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in docGetIn) (any, error) {
 			d, err := s.Get(ctx, in.ID)

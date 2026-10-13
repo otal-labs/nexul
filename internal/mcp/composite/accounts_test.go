@@ -3,7 +3,7 @@ package composite
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,7 +13,6 @@ import (
 	"github.com/otal-labs/nexul/internal/auth"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
-	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/tenancy"
 )
 
@@ -53,28 +52,16 @@ func (f *fakeTeam) MemberRoleID(_ context.Context, workspaceID, userID string) (
 	return "", apperrs.ErrNotFound
 }
 
-func (f *fakeTeam) AddMember(_ context.Context, _, workspaceID, _, roleID string) error {
-	return f.record("add " + workspaceID + " " + roleID)
+func (f *fakeTeam) AddMember(_ context.Context, _, workspaceID, _ string, roleIDs ...string) error {
+	return f.record("add " + workspaceID + " " + strings.Join(roleIDs, ","))
 }
 
-func (f *fakeTeam) ChangeMemberRole(_ context.Context, _, workspaceID, _, roleID string) error {
-	return f.record("role " + workspaceID + " " + roleID)
-}
-
-func (f *fakeTeam) SetMemberOverrides(_ context.Context, _, workspaceID, _ string, allow, deny *permissions.Set) error {
-	return f.record("overrides " + workspaceID)
+func (f *fakeTeam) UpdateMemberRoles(_ context.Context, _, workspaceID, _ string, add, remove []string) error {
+	return f.record("roles " + workspaceID + " +" + strings.Join(add, ",") + " -" + strings.Join(remove, ","))
 }
 
 func (f *fakeTeam) RemoveMember(_ context.Context, _, workspaceID, _ string) error {
 	return f.record("remove " + workspaceID)
-}
-
-func (f *fakeTeam) SetEveryProject(_ context.Context, _, workspaceID, _, every string) error {
-	return f.record("every " + workspaceID + " " + every)
-}
-
-func (f *fakeTeam) SetProjectAccess(_ context.Context, _, workspaceID, _, projectID string, allow permissions.Set) error {
-	return f.record("access " + workspaceID + " " + projectID + " " + allow.String())
 }
 
 type fakeStatusSetter struct{ calls []auth.AccountStatus }
@@ -97,13 +84,12 @@ func callAccountTool(t *testing.T, tools []mcptool.Tool, name, args string) (any
 
 func TestAccountList_CarriesPresenceProvidersAndEachMembershipWithTheViewersManageFlag(t *testing.T) {
 	seen := time.Date(2026, 9, 29, 10, 0, 0, 0, time.UTC)
-	web := []*tenancy.ProjectAccess{{ProjectID: "p-web", ProjectName: "Web", Allow: permissions.SetOf(permissions.TicketsRead)}}
 	team := &fakeTeam{team: &tenancy.Team{
 		People: []*tenancy.TeamPerson{{
 			TeamAccount: tenancy.TeamAccount{ID: "bob", Login: "bob", Status: "active", Online: true, LastSeenAt: &seen, Providers: []string{"github", "discord"}},
 			Workspaces: []*tenancy.TeamMembership{
-				{WorkspaceID: "ws-nexul", RoleName: "Editor", EveryProject: tenancy.EveryProjectRole, Projects: web},
-				{WorkspaceID: "ws-acme", RoleName: "Viewer", EveryProject: tenancy.EveryProjectNone, Projects: web},
+				{WorkspaceID: "ws-nexul", RoleName: "Editor, Frontend", Roles: []*tenancy.TeamRole{{ID: "r-editor", Name: "Editor"}, {ID: "r-front", Name: "Frontend"}}},
+				{WorkspaceID: "ws-acme", RoleName: "Viewer"},
 			},
 		}},
 		Workspaces: []*tenancy.TeamWorkspace{{ID: "ws-nexul", CanManageMembers: true}, {ID: "ws-acme"}},
@@ -119,9 +105,12 @@ func TestAccountList_CarriesPresenceProvidersAndEachMembershipWithTheViewersMana
 	require.Len(t, page.Items[0].Workspaces, 2)
 	assert.True(t, page.Items[0].Workspaces[0].CanManageMembers)
 	assert.False(t, page.Items[0].Workspaces[1].CanManageMembers)
-	assert.Nil(t, page.Items[0].Workspaces[0].Projects, "rows kept for a From role member grant nothing, so they stay out")
-	assert.Equal(t, tenancy.EveryProjectNone, page.Items[0].Workspaces[1].EveryProject)
-	assert.Equal(t, web, page.Items[0].Workspaces[1].Projects)
+	assert.Equal(t, []*tenancy.TeamRole{{ID: "r-editor", Name: "Editor"}, {ID: "r-front", Name: "Frontend"}}, page.Items[0].Workspaces[0].Roles)
+	raw, err := json.Marshal(page.Items[0].Workspaces[0])
+	require.NoError(t, err)
+	for _, gone := range []string{"role_id", "role_name", "allow", "deny", "every_project", "projects"} {
+		assert.NotContains(t, string(raw), `"`+gone+`"`, "the single role and the per-person fields are gone")
+	}
 }
 
 func TestAccountUpdate_RoutesEachWorkspaceToAddOrChangeAndStopsAtTheFirstFailure(t *testing.T) {
@@ -133,11 +122,11 @@ func TestAccountUpdate_RoutesEachWorkspaceToAddOrChangeAndStopsAtTheFirstFailure
 		wantErr   error
 	}{
 		{"nothing to change is invalid", `{"id":"bob"}`, "", nil, apperrs.ErrInvalid},
-		{"a workspace the account is not in is an add", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","role_id":"viewer"}]}`, "", []string{"add ws-acme viewer"}, nil},
-		{"a workspace the account is in is a role change", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","role_id":"editor"}]}`, "", []string{"role ws-nexul editor"}, nil},
-		{"overrides alone leave the role alone", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","deny":["docs:delete"]}]}`, "", []string{"overrides ws-nexul"}, nil},
-		{"removal comes after the workspaces", `{"id":"bob","remove_workspace_ids":["ws-nexul"],"workspaces":[{"workspace_id":"ws-acme","role_id":"viewer"}]}`, "", []string{"add ws-acme viewer", "remove ws-nexul"}, nil},
-		{"a refused workspace stops the rest", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","role_id":"viewer"}],"remove_workspace_ids":["ws-nexul"]}`, "add ws-acme viewer", []string{"add ws-acme viewer"}, apperrs.ErrForbidden},
+		{"a workspace the account is not in is an add", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","add_roles":["viewer","front"]}]}`, "", []string{"add ws-acme viewer,front"}, nil},
+		{"a workspace the account is in gives and takes away", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","add_roles":["editor"],"remove_roles":["viewer"]}]}`, "", []string{"roles ws-nexul +editor -viewer"}, nil},
+		{"taking a role from a non-member is invalid", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","remove_roles":["viewer"]}]}`, "", nil, apperrs.ErrInvalid},
+		{"removal comes after the workspaces", `{"id":"bob","remove_workspace_ids":["ws-nexul"],"workspaces":[{"workspace_id":"ws-acme","add_roles":["viewer"]}]}`, "", []string{"add ws-acme viewer", "remove ws-nexul"}, nil},
+		{"a refused workspace stops the rest", `{"id":"bob","workspaces":[{"workspace_id":"ws-acme","add_roles":["viewer"]}],"remove_workspace_ids":["ws-nexul"]}`, "add ws-acme viewer", []string{"add ws-acme viewer"}, apperrs.ErrForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -154,42 +143,21 @@ func TestAccountUpdate_RoutesEachWorkspaceToAddOrChangeAndStopsAtTheFirstFailure
 	}
 }
 
-func TestAccountUpdate_ProjectAccessRunsAfterTheMembershipAndNamesTheFieldThatFailed(t *testing.T) {
-	notHeld := fmt.Errorf("%w: tickets:delete is not yours to give", apperrs.ErrForbidden)
-	tests := []struct {
-		name      string
-		args      string
-		failOn    string
-		failErr   error
-		wantCalls []string
-		wantErr   error
-		wantMsg   string
-	}{
-		{"an invalid every_project changes nothing", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","every_project":"some"}]}`, "every ws-nexul some", apperrs.ErrInvalid,
-			[]string{"every ws-nexul some"}, apperrs.ErrInvalid, "workspaces[ws-nexul].every_project: invalid; nothing was changed"},
-		{"an unknown project points at project_list", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","project_access":[{"project_id":"p-gone","allow":["tickets:read"]}]}]}`, "access ws-nexul p-gone tickets:read", apperrs.ErrNotFound,
-			[]string{"access ws-nexul p-gone tickets:read"}, apperrs.ErrNotFound, "project_list"},
-		{"a level the caller does not hold stops the rest and says what applied", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","every_project":"none","project_access":[{"project_id":"p-1","allow":["tickets:delete"]},{"project_id":"p-2","allow":["tickets:read"]}]}],"remove_workspace_ids":["ws-acme"]}`, "access ws-nexul p-1 tickets:delete", notHeld,
-			[]string{"every ws-nexul none", "access ws-nexul p-1 tickets:delete"}, apperrs.ErrForbidden, "already applied: workspaces[ws-nexul].every_project"},
-		{"role, overrides, every_project, then each project in order", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","role_id":"editor","deny":["docs:delete"],"every_project":"none","project_access":[{"project_id":"p-1","allow":["tickets:read"]},{"project_id":"p-2","allow":[]}]}]}`, "", nil,
-			[]string{"role ws-nexul editor", "overrides ws-nexul", "every ws-nexul none", "access ws-nexul p-1 tickets:read", "access ws-nexul p-2 "}, nil, ""},
-		{"access fields alone leave the role alone", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","project_access":[{"project_id":"p-1","allow":["tickets:read"]}]}]}`, "", nil,
-			[]string{"access ws-nexul p-1 tickets:read"}, nil, ""},
-		{"an omitted project_access keeps every project's levels", `{"id":"bob","workspaces":[{"workspace_id":"ws-nexul","every_project":"role"}]}`, "", nil,
-			[]string{"every ws-nexul role"}, nil, ""},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			team := &fakeTeam{members: map[string][]string{"ws-nexul": {"bob"}}, failOn: tt.failOn, failErr: tt.failErr}
-			_, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team), "account_update", tt.args)
-			assert.Equal(t, tt.wantCalls, team.calls)
-			if tt.wantErr == nil {
-				require.NoError(t, err)
-				return
-			}
-			require.ErrorIs(t, err, tt.wantErr)
-			assert.Contains(t, err.Error(), tt.wantMsg)
-		})
+// TestAccountUpdate_RemovedFieldsFailTheSchema: each field the switch removed is gone from the input, so sending one,
+// even empty, is a schema error before anything changes.
+func TestAccountUpdate_RemovedFieldsFailTheSchema(t *testing.T) {
+	for _, entry := range []string{
+		`{"workspace_id":"ws-nexul","role_id":"editor"}`,
+		`{"workspace_id":"ws-nexul","deny":["docs:delete"]}`,
+		`{"workspace_id":"ws-acme","allow":[]}`,
+		`{"workspace_id":"ws-nexul","every_project":"none"}`,
+		`{"workspace_id":"ws-nexul","project_access":[{"project_id":"p-1","allow":["tickets:read"]}]}`,
+	} {
+		team := &fakeTeam{members: map[string][]string{"ws-nexul": {"bob"}}}
+		_, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team), "account_update", `{"id":"bob","workspaces":[`+entry+`]}`)
+		require.ErrorIs(t, err, apperrs.ErrInvalid, entry)
+		assert.Contains(t, err.Error(), "input schema", entry)
+		assert.Empty(t, team.calls, entry)
 	}
 }
 

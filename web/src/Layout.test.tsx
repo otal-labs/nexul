@@ -41,6 +41,7 @@ const ownerGrid = [
   "docs:write",
   "members:write",
   "memories:read",
+  "projects:create",
   "projects:read",
   "projects:write",
   "roles:write",

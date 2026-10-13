@@ -605,13 +605,9 @@ type Invitation struct {
 }
 
 type InvitationGrant struct {
-	InvitationID      string
-	WorkspaceID       string
-	RoleID            string
-	AllowJson         string
-	DenyJson          string
-	Restricted        int64
-	ProjectAccessJson string
+	InvitationID string
+	WorkspaceID  string
+	RoleID       string
 }
 
 type InvitationOauthHandoff struct {
@@ -1168,6 +1164,9 @@ type Workspace struct {
 	Slug                  string
 	DecisionsCheckEnabled int64
 	AutoPlayDailyCap      int64
+	AccessSetupFinished   int64
+	AccessSetupBy         string
+	AccessSetupAt         int64
 }
 
 type WorkspaceInvite struct {
@@ -1182,5 +1181,4 @@ type WorkspaceMember struct {
 	UserID      string
 	WorkspaceID string
 	CreatedAt   int64
-	Restricted  int64
 }

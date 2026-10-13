@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,7 +13,13 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const catalog = [
   { value: "tickets:read", label: "Read tickets", domain: "tickets", action: "read", area: "project" },
-  { value: "chat:read", label: "Read chat", domain: "chat", action: "read", area: "workspace" },
+  { value: "tickets:write", label: "Create and update tickets", domain: "tickets", action: "write", area: "project" },
+];
+
+const roles = [
+  { id: "r-owner", name: "Owner", permissions: [], is_owner_role: true },
+  { id: "r-client", name: "Client", permissions: ["tickets:read"], is_owner_role: false },
+  { id: "r-dev", name: "Developer", permissions: ["tickets:read", "tickets:write"], is_owner_role: false },
 ];
 
 describe("CreateInvitationForm", () => {
@@ -21,16 +27,16 @@ describe("CreateInvitationForm", () => {
     vi.clearAllMocks();
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     mocks.get.mockImplementation((url: string) => {
-      if (url === "/api/workspaces") return Promise.resolve({ data: [{ id: "ws-1", name: "OTAL", slug: "otal" }] });
-      if (url === "/api/workspaces/ws-1/roles") return Promise.resolve({ data: [{ id: "r-client", name: "Client", permissions: [], is_owner_role: false }] });
+      if (url === "/api/workspaces") return Promise.resolve({ data: [{ id: "ws-1", name: "Acme", slug: "acme" }] });
+      if (url === "/api/workspaces/ws-1/roles") return Promise.resolve({ data: roles });
+      if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Owner", roles: [{ id: "r-owner", name: "Owner", is_owner: true }], permissions: [] } });
       if (url === "/api/permissions/catalog") return Promise.resolve({ data: { permissions: catalog } });
-      if (url === "/api/projects") return Promise.resolve({ data: [{ id: "p-web", name: "Web", prefix: "WEB" }, { id: "p-api", name: "Api", prefix: "API" }] });
       return Promise.resolve({ data: [] });
     });
   });
 
-  it("builds a link that lands the person held to the projects chosen", async () => {
-    mocks.post.mockResolvedValue({ data: { id: "inv-1", url: "https://nexul.test/invite#t", grants: [] } });
+  it("holds Create link until a role is ticked, then sends every role ticked", async () => {
+    mocks.post.mockResolvedValue({ data: { id: "inv-1", url: "https://nexul.example.com/invite#t", grants: [] } });
     const user = userEvent.setup();
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -40,18 +46,16 @@ describe("CreateInvitationForm", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Invite" }));
-    const everyProject = await screen.findByRole("radiogroup", { name: "Every project for the invited person" });
-    await user.click(within(everyProject).getByRole("radio", { name: "Chosen projects" }));
-    await user.click(within(await screen.findByRole("radiogroup", { name: "Web access" })).getByRole("radio", { name: "Read" }));
+    expect(await screen.findByText("Roles in Acme")).toBeInTheDocument();
+    expect(await screen.findByText("Pick at least one role. An invitation gives a role on joining.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create link" })).toBeDisabled();
+
+    await user.click(screen.getByRole("checkbox", { name: /Client/ }));
+    await user.click(screen.getByRole("checkbox", { name: /Developer/ }));
     await user.click(screen.getByRole("button", { name: "Create link" }));
 
     await vi.waitFor(() =>
-      expect(mocks.post).toHaveBeenCalledWith(
-        "/api/invitations",
-        expect.objectContaining({
-          grants: [expect.objectContaining({ workspace_id: "ws-1", role_id: "r-client", every_project: "none", project_access: [{ project_id: "p-web", allow: ["tickets:read"] }] })],
-        }),
-      ),
+      expect(mocks.post).toHaveBeenCalledWith("/api/invitations", { expires_in_days: 7, grants: [{ workspace_id: "ws-1", role_ids: ["r-client", "r-dev"] }] }),
     );
   });
 });

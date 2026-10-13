@@ -4,7 +4,6 @@ export interface DocListItem {
   title: string;
   version: number;
   archived: boolean;
-  can_open: boolean;
   updated_at: string;
 }
 

@@ -48,10 +48,10 @@ beforeEach(() => {
 
 describe("WizardProgress", () => {
   it("shows each step as the project records it: done, skipped, the one on screen, or never visited", async () => {
-    renderAt("reach", { finished: false, steps: { project: "done", repository: "skipped" } });
+    renderAt("reach", { finished: false, steps: { project: "done", people: "done", repository: "skipped" } });
 
-    await vi.waitFor(() => expect(states()).toEqual(["done", "skipped", "unvisited", "current", "unvisited", "unvisited"]));
-    expect(items()[3]!.querySelector("[aria-current='step']")).not.toBeNull();
+    await vi.waitFor(() => expect(states()).toEqual(["done", "done", "skipped", "unvisited", "current", "unvisited", "unvisited"]));
+    expect(items()[4]!.querySelector("[aria-current='step']")).not.toBeNull();
   });
 
   it("shows Done as done once setup was finished", async () => {
@@ -74,8 +74,8 @@ describe("WizardProgress", () => {
   it("shows one counter and the current label under the row for narrow widths, with the per-step labels hidden until wide", () => {
     renderAt("service");
 
-    const compact = screen.getByText("3 / 6").parentElement!;
-    expect(screen.getAllByText("3 / 6")).toHaveLength(1);
+    const compact = screen.getByText("4 / 7").parentElement!;
+    expect(screen.getAllByText("4 / 7")).toHaveLength(1);
     expect(compact).toHaveClass("@2xl:hidden");
     expect(within(compact).getByText("Service")).toHaveClass("font-bold");
     for (const item of items()) expect(item.querySelector("span[aria-hidden]:last-child")).toHaveClass("hidden", "@2xl:block");
@@ -85,6 +85,6 @@ describe("WizardProgress", () => {
     useProjectWizardStore.getState().setScanResult({ default_branch: "main", candidates: [], env_keys: ["A"] });
     renderAt("env");
 
-    expect(screen.getByText("4 / 7")).toBeInTheDocument();
+    expect(screen.getByText("5 / 8")).toBeInTheDocument();
   });
 });

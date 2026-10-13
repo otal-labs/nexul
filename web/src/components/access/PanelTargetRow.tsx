@@ -1,17 +1,16 @@
-import { personLabel, type Person } from "@nexul/client-core/person";
-
-import { PersonAvatar } from "@/components/PersonAvatar";
+import { TargetMark } from "@/components/access/TargetMark";
+import type { PanelTarget } from "@/hooks/usePanelTargets";
 import { cn } from "@/lib/utils";
 
 interface PanelTargetRowProps {
-  person: Person;
+  target: PanelTarget;
   selected: boolean;
   onSelect: () => void;
   subline: string;
 }
 
-// Wide: a list row with the 2px brand edge when selected. At 768px: the same person as a compact tab in a scrolling row.
-export const PanelTargetRow = ({ person, selected, onSelect, subline }: PanelTargetRowProps) => (
+// Wide: a list row with the 2px brand edge when selected. At 768px: the same target as a compact tab in a scrolling row.
+export const PanelTargetRow = ({ target, selected, onSelect, subline }: PanelTargetRowProps) => (
   <li className="shrink-0">
     <button
       type="button"
@@ -23,10 +22,10 @@ export const PanelTargetRow = ({ person, selected, onSelect, subline }: PanelTar
         !selected && "hover:bg-accent/40 @3xl/panel:border-l-transparent",
       )}
     >
-      <PersonAvatar login={person.login} src={person.avatar_url} className="size-6" label={personLabel(person)} />
+      <TargetMark target={target} />
       <span className="min-w-0 flex-1">
-        <span title={personLabel(person)} className="block truncate text-[13px] font-medium">
-          {personLabel(person)}
+        <span title={target.name} className="block truncate text-[13px] font-medium">
+          {target.name}
         </span>
         <span className="hidden truncate font-mono text-[11px] text-muted-foreground @3xl/panel:block">{subline}</span>
       </span>

@@ -3,7 +3,7 @@
 // Regenerate: bun run generate:events (from sdk/).
 
 export interface EventPayloads {
-  "access.grant.changed": { "resource_type": "doc" | "play" | "project"; "resource_id": string; "target": "person" | "role"; "user_id": string; "actor_id"?: string; "role_id"?: string; };
+  "access.grant.changed": { "resource_type": "doc" | "play" | "project" | "channel" | "workspace"; "resource_id": string; "target": "person" | "role"; "user_id": string; "role_id"?: string; "actor_id"?: string; };
   "account.admitted": { "account_id"?: string; "actor_id"?: string; "invitation_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; };
   "account.disabled": { "account_id": string; "actor_id"?: string; };
   "account.profile_updated": { "account_id": string; "actor_id"?: string; };
@@ -313,7 +313,7 @@ export const TOPICS: Topic[] = [
 ];
 
 export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
-  "access.grant.changed": {"resource_type":"doc","resource_id":"fixture-resource_id","target":"person","user_id":"fixture-user_id","actor_id":"fixture-actor_id","role_id":"fixture-role_id"},
+  "access.grant.changed": {"resource_type":"doc","resource_id":"fixture-resource_id","target":"person","user_id":"fixture-user_id","role_id":"fixture-role_id","actor_id":"fixture-actor_id"},
   "account.admitted": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id","invitation_id":"fixture-invitation_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason"},
   "account.disabled": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id"},
   "account.profile_updated": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id"},

@@ -53,7 +53,7 @@ const routeGet = (url: string) => {
   if (url === "/api/workspaces") {
     return Promise.resolve({ data: [{ id: "ws-1", name: "Alpha", slug: "alpha" }, { id: "ws-2", name: "Beta", slug: "beta" }] });
   }
-  if (url.endsWith("/me")) return Promise.resolve({ data: { role_name: "Owner", permissions: ["memories:write", "plays:write"] } });
+  if (url.endsWith("/me")) return Promise.resolve({ data: { role_name: "Owner", permissions: ["memories:template", "plays:write"] } });
   if (url.endsWith("/people")) return Promise.resolve({ data: { people: [{ user_id: "u-1", login: "sam", display_name: "Sam" }] } });
   return Promise.reject(new Error(`unexpected GET ${url}`));
 };

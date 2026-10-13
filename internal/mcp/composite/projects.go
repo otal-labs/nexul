@@ -30,14 +30,13 @@ func ProjectTools(w *workspace.Service, t *tickets.Service, d DocFolders) []mcpt
 // projectDetail is everything an agent needs before filing or moving a ticket in a project.
 type projectDetail struct {
 	*workspace.Project
-	Repositories []workspace.RepoRef            `json:"repositories"`
-	Statuses     []statusResult                 `json:"statuses"`
-	Categories   []categoryResult               `json:"categories"`
-	TicketTypes  []ticketTypeResult             `json:"ticket_types"`
-	Labels       []labelResult                  `json:"labels"`
-	DocFolders   []docFolderResult              `json:"doc_folders"`
-	DeleteImpact workspace.DeleteImpact         `json:"delete_impact"`
-	Access       []workspace.ProjectAccessEntry `json:"access"`
+	Repositories []workspace.RepoRef    `json:"repositories"`
+	Statuses     []statusResult         `json:"statuses"`
+	Categories   []categoryResult       `json:"categories"`
+	TicketTypes  []ticketTypeResult     `json:"ticket_types"`
+	Labels       []labelResult          `json:"labels"`
+	DocFolders   []docFolderResult      `json:"doc_folders"`
+	DeleteImpact workspace.DeleteImpact `json:"delete_impact"`
 }
 
 type docFolderResult struct {
@@ -86,9 +85,8 @@ func projectGetTool(w *workspace.Service, t *tickets.Service, d DocFolders) mcpt
 			"(each with its role, app or tests), where its tests live, its doc folders (the one-level groups every "+
 			"doc lives in exactly one of, the default Main first, where a new doc goes unless doc_create names "+
 			"another), delete_impact, the tickets, repositories, "+
-			"and services that block deleting it and the Restricted members who lose access with it, and access, the "+
-			"Restricted members who may open it with the actions they hold, filled only when you hold members:write in "+
-			"its workspace and empty otherwise; account_update changes that access. Its setup says whether the project "+
+			"and services that block deleting it. Who is in the project is its rules', which permission_overwrite_list "+
+			"reads and permission_overwrite_update changes. Its setup says whether the project "+
 			"wizard was finished and which steps were done or skipped; an unfinished project still works in full. Call it before ticket_create or ticket_update to get valid "+
 			"status, type, and category ids, and before doc_create or doc_update to get folder ids; change any of "+
 			"these with project_update. Use project_list to find a project's id.",
@@ -116,20 +114,8 @@ func projectView(ctx context.Context, w *workspace.Service, t *tickets.Service, 
 	if d.DocFolders, err = projectDocFolders(ctx, folders, id); err != nil {
 		return d, err
 	}
-	if d.DeleteImpact, err = w.DeleteImpact(ctx, id); err != nil {
-		return d, err
-	}
-	d.Access, err = projectAccess(ctx, w, id)
+	d.DeleteImpact, err = w.DeleteImpact(ctx, id)
 	return d, err
-}
-
-// projectAccess is empty rather than an error for a caller without members:write, so project_get still answers.
-func projectAccess(ctx context.Context, w *workspace.Service, id string) ([]workspace.ProjectAccessEntry, error) {
-	entries, err := w.ProjectAccess(ctx, id)
-	if errors.Is(err, apperrs.ErrForbidden) {
-		return []workspace.ProjectAccessEntry{}, nil
-	}
-	return entries, err
 }
 
 // getProject names the tool that lists projects when the one asked for is missing.
@@ -223,7 +209,7 @@ type setupIn struct {
 	StackID  *string           `json:"stack_id,omitempty" jsonschema:"The exact stack the wizard created or adopted; empty clears it."`
 	EnvKeys  *[]string         `json:"env_keys,omitempty" jsonschema:"Detected environment variable names; an empty list clears them. Values belong to the stack."`
 	Finished *bool             `json:"finished,omitempty" jsonschema:"true finishes setup, so the sidebar lists the project's pages instead of Continue setup; false reopens it."`
-	Steps    map[string]string `json:"steps,omitempty" jsonschema:"Wizard steps to mark, each done or skipped, keyed by step: project, repository, service, env, reach, or branches. A step already done stays done when marked skipped."`
+	Steps    map[string]string `json:"steps,omitempty" jsonschema:"Wizard steps to mark, each done or skipped, keyed by step: project, people, repository, service, env, reach, or branches. A step already done stays done when marked skipped."`
 }
 
 type docFolderChanges struct {

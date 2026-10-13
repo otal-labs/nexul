@@ -28,9 +28,9 @@ func (f *flakyRoles) MemberRole(ctx context.Context, workspaceID, userID string)
 }
 
 func TestMemo_AFailedReadIsNotRemembered(t *testing.T) {
-	s, repo := restrictedFixture(t)
+	s, repo := projectsFixture(t)
 	roles := &flakyRoles{fakeRoles: newFakeRoles(), failing: true}
-	roles.set("ws", "team", RoleInfo{Permissions: permissions.SetOf(permissions.TicketsRead)})
+	roles.set("ws", "team", RolesHeld(HeldRole{ID: "role-team", Permissions: permissions.SetOf(permissions.TicketsRead)}))
 	s.SetRoles(roles)
 	repo.getErr = errors.New("database is locked")
 	ctx := WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: "team"}), s.NewMemo())
@@ -42,11 +42,11 @@ func TestMemo_AFailedReadIsNotRemembered(t *testing.T) {
 }
 
 func TestProjectsWith_AnswersAsEachProjectsCheck(t *testing.T) {
-	s, repo := restrictedFixture(t)
-	require.NoError(t, repo.Set(t.Context(), "workspace", "ws", "team", nil, permissions.SetOf(permissions.TicketsWrite)))
+	s, repo := projectsFixture(t)
+	require.NoError(t, repo.Set(t.Context(), "project", "p-open", "team", nil, permissions.SetOf(permissions.TicketsWrite)))
 	actions := []permissions.Action{permissions.Member, permissions.TicketsRead, permissions.TicketsWrite, permissions.RunnersRead, permissions.ChatWrite}
 
-	for _, user := range []string{"client", "team", "owner", "stranger"} {
+	for _, user := range []string{"client", "team", "nobody", "owner", "stranger"} {
 		for _, action := range actions {
 			got, err := s.ProjectsWith(t.Context(), user, "ws", action)
 			require.NoError(t, err)
@@ -62,12 +62,12 @@ func TestProjectsWith_AnswersAsEachProjectsCheck(t *testing.T) {
 }
 
 func TestProjectsWith_ReadsEveryMembersProjectRulesOnce(t *testing.T) {
-	s, repo := restrictedFixture(t)
+	s, repo := projectsFixture(t)
 	roles := newFakeRoles()
-	roles.set("ws", "client", RoleInfo{RoleID: "role-client", Permissions: permissions.SetOf(permissions.TicketsRead), Restricted: true})
-	roles.set("ws", "team", RoleInfo{RoleID: "role-team", Permissions: permissions.SetOf(permissions.TicketsRead)})
+	roles.set("ws", "client", RolesHeld(HeldRole{ID: "role-client", Permissions: permissions.SetOf(permissions.TicketsRead)}))
+	roles.set("ws", "team", RolesHeld(HeldRole{ID: "role-team", Permissions: permissions.SetOf(permissions.TicketsRead)}))
 	s.SetRoles(roles)
-	setOverwrite(repo, "project", "p-hidden", "team", permissions.SetOf(permissions.ProjectsDelete))
+	setOverwrite(repo, "project", "p-hidden", "team", permissions.SetOf(permissions.ProjectsOpen))
 	want := map[string][]string{"client": {"p-open"}, "team": {"p-hidden", "p-open"}}
 
 	for user, projects := range want {
@@ -76,26 +76,25 @@ func TestProjectsWith_ReadsEveryMembersProjectRulesOnce(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.ElementsMatch(t, projects, got, user)
-		assert.Equal(t, 2, repo.readCounts(), "%s: their rules on the workspace and every project, then every role's, once", user)
+		assert.Equal(t, 2, repo.readCounts(), "%s: their rules on every project, then every role's, once", user)
 	}
 }
 
 // TestCallerProjects_AnswersAsRequireProject: the set a list filters by in SQL is exactly the projects RequireProject
 // lets each kind of caller through, so a list filtered by it shows what the row-by-row check showed (ADR 0140).
 func TestCallerProjects_AnswersAsRequireProject(t *testing.T) {
-	s, repo := restrictedFixture(t)
-	require.NoError(t, repo.Set(t.Context(), "workspace", "ws", "team", nil, permissions.SetOf(permissions.TicketsWrite)))
+	s, repo := projectsFixture(t)
+	require.NoError(t, repo.Set(t.Context(), "project", "p-open", "team", nil, permissions.SetOf(permissions.TicketsWrite)))
 	s.SetScopes(fakeScopes{
 		projects:   map[string]string{"p-open": "ws", "p-hidden": "ws", "p-other": "ws-2"},
-		workspaces: map[string][]string{"team": {"ws"}},
-		restricted: map[string][]string{"client": {"ws"}, "owner": {"ws"}},
+		workspaces: map[string][]string{"team": {"ws"}, "client": {"ws"}, "nobody": {"ws"}, "owner": {"ws"}},
 	})
 	callers := map[string]context.Context{
 		"no actor":           context.Background(),
 		"default automation": identity.WithActor(context.Background(), identity.Actor{Automation: &identity.AutomationRef{ID: "a-1", WorkspaceID: "ws"}}),
 		"anonymous actor":    identity.WithActor(context.Background(), identity.Actor{}),
 	}
-	for _, user := range []string{"client", "team", "owner", "stranger"} {
+	for _, user := range []string{"client", "team", "nobody", "owner", "stranger"} {
 		callers[user] = identity.WithActor(context.Background(), identity.Actor{ID: user})
 	}
 	actions := []permissions.Action{permissions.Member, permissions.TicketsRead, permissions.TicketsWrite, permissions.DocsRead}
@@ -138,16 +137,16 @@ func TestCallerProjects_AnswersAsRequireProject(t *testing.T) {
 // TestDocsWith_AnswersAsCanDocs: the project set and its exceptions a doc list filters by in SQL pass exactly the docs
 // CanDocs passes, through a doc's own allow in a project outside the set and its own deny inside it.
 func TestDocsWith_AnswersAsCanDocs(t *testing.T) {
-	s, repo := restrictedFixture(t)
+	s, repo := projectsFixture(t)
 	s.SetScopes(fakeScopes{
 		projects:   map[string]string{"p-open": "ws", "p-hidden": "ws"},
-		workspaces: map[string][]string{"team": {"ws"}},
-		restricted: map[string][]string{"client": {"ws"}, "owner": {"ws"}},
+		workspaces: map[string][]string{"team": {"ws"}, "client": {"ws"}, "nobody": {"ws"}, "owner": {"ws"}},
 	})
 	s.SetDocWorkspaces(&fakeDocWorkspace{
 		byDoc:     map[string]string{"d-open": "ws", "d-hidden": "ws", "d-denied": "ws", "d-shared": "ws"},
 		projectOf: map[string]string{"d-open": "p-open", "d-hidden": "p-hidden", "d-denied": "p-open", "d-shared": "p-hidden"},
 	})
+	repo.docProjects = map[string]string{"d-open": "p-open", "d-hidden": "p-hidden", "d-denied": "p-open", "d-shared": "p-hidden"}
 	require.NoError(t, repo.Set(t.Context(), "doc", "d-denied", "team", nil, permissions.SetOf(permissions.DocsRead)))
 	require.NoError(t, repo.Set(t.Context(), "doc", "d-denied", "client", nil, permissions.SetOf(permissions.DocsRead)))
 	require.NoError(t, repo.Set(t.Context(), "doc", "d-denied", "owner", nil, permissions.SetOf(permissions.DocsRead)))
@@ -156,9 +155,9 @@ func TestDocsWith_AnswersAsCanDocs(t *testing.T) {
 	docs := []string{"d-open", "d-hidden", "d-denied", "d-shared"}
 	projectOf := map[string]string{"d-open": "p-open", "d-hidden": "p-hidden", "d-denied": "p-open", "d-shared": "p-hidden"}
 
-	for _, user := range []string{"client", "team", "owner", "stranger"} {
+	for _, user := range []string{"client", "team", "nobody", "owner", "stranger"} {
 		for _, action := range []permissions.Action{permissions.DocsRead, permissions.DocsWrite} {
-			projects, allowed, denied, err := s.DocsWith(t.Context(), user, action)
+			projects, allowed, denied, err := s.DocsWith(t.Context(), user, "", action)
 			require.NoError(t, err)
 			want := s.CanDocs(t.Context(), user, "", docs, action)
 			for _, doc := range docs {
@@ -176,7 +175,7 @@ func (failingMembershipScopes) WorkspaceIDsForUser(context.Context, string) ([]s
 }
 
 func TestProjectsAnywhere_FailsWhenTheMembershipsCannotBeListed(t *testing.T) {
-	s, _ := restrictedFixture(t)
+	s, _ := projectsFixture(t)
 	s.SetScopes(failingMembershipScopes{})
 
 	_, _, err := s.ProjectsAnywhere(t.Context(), "team", permissions.TicketsRead)
@@ -191,7 +190,7 @@ func (failingProjectScopes) ProjectIDs(context.Context, string) ([]string, error
 }
 
 func TestProjectsWith_FailsWhenTheProjectsCannotBeListed(t *testing.T) {
-	s, _ := restrictedFixture(t)
+	s, _ := projectsFixture(t)
 	s.SetScopes(failingProjectScopes{})
 
 	_, err := s.ProjectsWith(t.Context(), "team", "ws", permissions.TicketsRead)
@@ -200,7 +199,7 @@ func TestProjectsWith_FailsWhenTheProjectsCannotBeListed(t *testing.T) {
 }
 
 func TestChannelsDenied_ARuleDeniesAnyoneButTheOwnerInOneRead(t *testing.T) {
-	s, repo := restrictedFixture(t)
+	s, repo := projectsFixture(t)
 	read := permissions.SetOf(permissions.ChannelsRead)
 	for _, user := range []string{"team", "owner"} {
 		require.NoError(t, repo.Set(t.Context(), "channel", "c-hidden", user, nil, read))

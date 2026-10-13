@@ -13,12 +13,10 @@ interface CreateChannelFormProps {
   workspaceId: string;
   /** Picks which create endpoint the submit hits. Default false (text channel). */
   voice?: boolean;
-  // A Restricted member creates only private channels.
-  privateOnly?: boolean;
   onCreated?: (conversation: Conversation) => void;
 }
 
-export const CreateChannelForm = ({ workspaceId, voice = false, privateOnly = false, onCreated }: CreateChannelFormProps) => {
+export const CreateChannelForm = ({ workspaceId, voice = false, onCreated }: CreateChannelFormProps) => {
   const { control, onSubmit, watch } = useFormDialogContext<CreateChannelFormData>();
   const createChannel = useCreateChannel(workspaceId);
   const isPrivate = watch("private");
@@ -43,7 +41,7 @@ export const CreateChannelForm = ({ workspaceId, voice = false, privateOnly = fa
       <Controller
         control={control}
         name="private"
-        render={({ field }) => <PrivateChannelRow checked={field.value} onCheckedChange={field.onChange} fixed={privateOnly} />}
+        render={({ field }) => <PrivateChannelRow checked={field.value} onCheckedChange={field.onChange} />}
       />
       {isPrivate && (
         <Controller

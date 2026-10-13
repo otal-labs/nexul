@@ -2,6 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -40,6 +45,7 @@ func newTemplateFixture(t *testing.T) templateFixture {
 	require.NoError(t, err)
 	require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-templater", WorkspaceID: wsDefault, Name: "Templater", Permissions: grant("templates:write"), CreatedAt: now, UpdatedAt: now}))
 	require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: uTemplater, WorkspaceID: wsDefault, RoleID: "role-templater", CreatedAt: now}))
+	listRolesIn(t, f.db, pGeneral)
 	return templateFixture{permFixture: f, tpl: f.svc.templatesSvc}
 }
 
@@ -281,4 +287,43 @@ func TestIntegration_TemplatesBitGatesTheInstance(t *testing.T) {
 		_, err = f.tpl.Reset(as(user), memories.TemplateKind, "", templates.Instance)
 		assert.Equal(t, want, outcome(err), user)
 	}
+}
+
+// TestIntegration_TemplateEditorOpensEditsAndSavesItFromSettings: a non-Owner whose only bit is memories:template
+// reads the workspace Interview template the way Settings does, with no project named, and saves an edit; someone
+// holding neither it nor memories:read is still refused.
+func TestIntegration_TemplateEditorOpensEditsAndSavesItFromSettings(t *testing.T) {
+	f := newTemplateFixture(t)
+	now := time.Now()
+	ctx := context.Background()
+	const uEditor = "u-template-editor"
+	_, _, err := f.store.Users.UpsertUser(ctx, &auth.Identity{UserID: uEditor, Provider: auth.ProviderGitHub, ProviderUserID: uEditor, Login: uEditor})
+	require.NoError(t, err)
+	require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-template-editor", WorkspaceID: wsDefault, Name: "Template editor", Permissions: grant("memories:template"), CreatedAt: now, UpdatedAt: now}))
+	require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: uEditor, WorkspaceID: wsDefault, RoleID: "role-template-editor", CreatedAt: now}))
+	routes := memories.NewHandler(f.svc.memoriesSvc).Routes()
+	serve := func(actor, method, body string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		path := "/api/memories/interview-template?workspace_id=" + wsDefault
+		routes.ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)).WithContext(as(actor)))
+		return rec
+	}
+
+	opened := serve(uEditor, http.MethodGet, "")
+	require.Equal(t, http.StatusOK, opened.Code, opened.Body.String())
+	var template memories.InterviewTemplate
+	require.NoError(t, json.Unmarshal(opened.Body.Bytes(), &template))
+	assert.False(t, template.Edited)
+
+	edited := template.Body + "\n## What do we never ship on a Friday?\n"
+	saved := serve(uEditor, http.MethodPut, `{"workspace_id":"`+wsDefault+`","body":`+strconv.Quote(edited)+`}`)
+	require.Equal(t, http.StatusOK, saved.Code, saved.Body.String())
+
+	reopened := serve(uEditor, http.MethodGet, "")
+	require.Equal(t, http.StatusOK, reopened.Code)
+	require.NoError(t, json.Unmarshal(reopened.Body.Bytes(), &template))
+	assert.True(t, template.Edited)
+	assert.Equal(t, edited, template.Body)
+
+	assert.Equal(t, http.StatusForbidden, serve(uTemplater, http.MethodGet, "").Code, "templates:write alone opens no workspace's template")
 }

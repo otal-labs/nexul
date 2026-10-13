@@ -10,6 +10,7 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -62,7 +63,8 @@ func (s *Service) requireOn(ctx context.Context, projectID string, action permis
 	return s.gate.RequireProject(ctx, projectID, action)
 }
 
-// Create adds a project to a workspace with the next display position (projects:write); its setup starts finished.
+// Create adds a project to a workspace with the next display position (projects:create), listing its creator and their
+// roles in it in the same write (ADR 0148); its setup starts finished.
 func (s *Service) Create(ctx context.Context, workspaceID, name, prefix string, icon ProjectIcon) (*Project, error) {
 	return s.create(ctx, workspaceID, name, prefix, icon, NewSetup(true))
 }
@@ -77,7 +79,7 @@ func (s *Service) create(ctx context.Context, workspaceID, name, prefix string, 
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required — create a workspace before creating a project", apperrs.ErrInvalid)
 	}
-	if err := s.requireIn(ctx, workspaceID, permissions.ProjectsWrite); err != nil {
+	if err := s.requireIn(ctx, workspaceID, permissions.ProjectsCreate); err != nil {
 		return nil, err
 	}
 	ok, err := s.workspaces.WorkspaceExists(ctx, workspaceID)
@@ -108,7 +110,8 @@ func (s *Service) create(ctx context.Context, workspaceID, name, prefix string, 
 	if err != nil {
 		return nil, err
 	}
-	p := &Project{ID: ids.New(), Name: name, Prefix: prefix, Position: position, WorkspaceID: workspaceID, Icon: icon, Setup: setup, CreatedAt: now, UpdatedAt: now, SeedTicketTypes: types}
+	creator, _ := identity.ActorFromCtx(ctx)
+	p := &Project{ID: ids.New(), Name: name, Prefix: prefix, Position: position, WorkspaceID: workspaceID, Icon: icon, Setup: setup, CreatedAt: now, UpdatedAt: now, SeedTicketTypes: types, CreatorID: creator.ID}
 	// Default statuses/types are seeded by ProjectsRepo.Create in the same transaction, not here.
 	if err := s.repo.Create(ctx, p); err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
@@ -179,8 +182,8 @@ func (s *Service) openable(ctx context.Context, workspaceID string, projects []*
 	return slices.DeleteFunc(projects, func(p *Project) bool { return !slices.Contains(ids, p.ID) }), nil
 }
 
-// ProjectAccess lists the Restricted members who may open projectID and what they hold there; it takes
-// members:write in the project's workspace, since it shows the people a manager sets access for.
+// ProjectAccess answers the route that listed a project's Restricted members, none of whom remain (ADR 0148); it
+// takes members:write in the project's workspace, as it did.
 func (s *Service) ProjectAccess(ctx context.Context, projectID string) ([]ProjectAccessEntry, error) {
 	p, err := s.Get(ctx, projectID)
 	if err != nil {
@@ -189,11 +192,7 @@ func (s *Service) ProjectAccess(ctx context.Context, projectID string) ([]Projec
 	if err := s.requireIn(ctx, p.WorkspaceID, permissions.MembersWrite); err != nil {
 		return nil, err
 	}
-	entries, err := s.repo.ListRestrictedAccess(ctx, projectID)
-	if err != nil {
-		return nil, fmt.Errorf("list access to project %s: %w", projectID, err)
-	}
-	return entries, nil
+	return []ProjectAccessEntry{}, nil
 }
 
 // Rename updates a project's name and/or icon (projects:write); icon nil keeps current, "" clears it.
@@ -290,27 +289,50 @@ func validateReorderIDs(ids []string, existingIDs []string, noun string) error {
 	return nil
 }
 
-// Reorder sets a workspace's project display order (projects:write); every project must appear exactly once.
+// Reorder sets the display order of the workspace's projects the caller is in (projects:create): each must appear
+// exactly once, and a project hidden from them keeps its place among the others.
 func (s *Service) Reorder(ctx context.Context, workspaceID string, ids []string) error {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
 		return fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
 	}
-	if err := s.requireIn(ctx, workspaceID, permissions.ProjectsWrite); err != nil {
+	if err := s.requireIn(ctx, workspaceID, permissions.ProjectsCreate); err != nil {
 		return err
 	}
 	projects, err := s.repo.List(ctx, workspaceID)
 	if err != nil {
 		return fmt.Errorf("list projects: %w", err)
 	}
-	existingIDs := make([]string, len(projects))
-	for i, p := range projects {
-		existingIDs[i] = p.ID
-	}
-	if err := validateReorderIDs(ids, existingIDs, "project"); err != nil {
+	visible, err := s.openable(ctx, workspaceID, slices.Clone(projects))
+	if err != nil {
 		return err
 	}
-	return s.repo.Reorder(ctx, ids)
+	if err := validateReorderIDs(ids, projectIDs(visible), "project"); err != nil {
+		return err
+	}
+	return s.repo.Reorder(ctx, inTheirSlots(projectIDs(projects), projectIDs(visible), ids))
+}
+
+func projectIDs(projects []*Project) []string {
+	out := make([]string, len(projects))
+	for i, p := range projects {
+		out[i] = p.ID
+	}
+	return out
+}
+
+// inTheirSlots refills the slots of moved within all from ordered, so every other project keeps its place.
+func inTheirSlots(all, moved, ordered []string) []string {
+	out := slices.Clone(all)
+	next := 0
+	for i, id := range out {
+		if !slices.Contains(moved, id) {
+			continue
+		}
+		out[i] = ordered[next]
+		next++
+	}
+	return out
 }
 
 // DeleteImpact reports what removing a project would affect, so the management UI can warn before the owner confirms.
@@ -337,15 +359,7 @@ func (s *Service) deleteImpact(ctx context.Context, id string) (DeleteImpact, er
 	if err != nil {
 		return DeleteImpact{}, fmt.Errorf("impact of deleting project %s: %w", id, err)
 	}
-	access, err := s.repo.ListRestrictedAccess(ctx, id)
-	if err != nil {
-		return DeleteImpact{}, fmt.Errorf("impact of deleting project %s: %w", id, err)
-	}
-	losing := make([]RestrictedMember, len(access))
-	for i, a := range access {
-		losing[i] = a.RestrictedMember
-	}
-	return DeleteImpact{Tickets: tickets, Repos: repos, Services: services, RestrictedMembers: losing}, nil
+	return DeleteImpact{Tickets: tickets, Repos: repos, Services: services, RestrictedMembers: []RestrictedMember{}}, nil
 }
 
 // Delete removes a project (projects:delete); refused while it has tickets, repos, or services, to avoid orphans.

@@ -38,7 +38,7 @@ INSERT INTO invitation_grants (invitation_id, workspace_id, role_id, allow_json,
 	script, err := migrationFS.ReadFile("migrations/0082_auto_plays.sql")
 	require.NoError(t, err)
 	require.NoError(t, applyMigration(db, "0082_auto_plays", string(script)))
-	require.NoError(t, Migrate(db), "every later migration applies on top, as an upgrade would")
+	migrateUpTo(t, db, "0100")
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 	ctx := t.Context()
 

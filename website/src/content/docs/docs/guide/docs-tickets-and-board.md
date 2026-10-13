@@ -23,7 +23,7 @@ Every doc lives in one folder of its project. New docs land in **Main** unless y
 
 ### Lock, clone, and delete
 
-The row menu, on a right-click, also has **Lock**, **Clone**, **Permissions…** for whoever can change the doc's [rules](/docs/guide/people-and-access/#permissions-on-a-doc-or-a-play), and **Delete**.
+The row menu, on a right-click, also has **Lock**, **Clone**, **Permissions…** for whoever can change the doc's [rules](/docs/guide/people-and-access/#permissions-on-a-project-a-doc-or-a-play), and **Delete**.
 
 - **Lock** makes the doc read-only for everyone, people and agents alike, until someone presses **Unlock**. Locking needs `docs:lock`, granted apart from editing. Starting a doc play locks the doc too.
 - **Clone** copies the doc and its files into any project where you can write docs.

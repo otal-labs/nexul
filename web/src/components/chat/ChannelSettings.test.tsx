@@ -44,7 +44,6 @@ const channel = (overrides: Partial<Conversation>): Conversation => ({
 
 let conversations: Conversation[] = [];
 let permissions: string[] = [];
-let restricted = false;
 
 const renderSidebar = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -74,7 +73,6 @@ const openSettings = async (u: ReturnType<typeof userEvent.setup>, label = "#eng
 beforeEach(() => {
   conversations = [channel({})];
   permissions = ["chat:write", "channels:write"];
-  restricted = false;
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   for (const fn of Object.values(api)) vi.mocked(fn).mockReset();
   for (const fn of Object.values(mocks.toast)) fn.mockReset();
@@ -83,7 +81,7 @@ beforeEach(() => {
     if (url === "/api/chat/unread") return { data: {} };
     if (url === "/api/auth/me") return { data: meResponse };
     if (url === "/api/voice/occupancy") return { data: {} };
-    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions, restricted } };
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
     if (url === "/api/workspaces/ws-1/people") return { data: { people } };
     return { data: {} };
   });
@@ -92,14 +90,14 @@ beforeEach(() => {
 describe("a channel's settings", () => {
   it("shows the server's refusal when making a channel public fails, and the channel stays private", async () => {
     conversations = [channel({ private: true, participant_ids: ["u1", "u2"] })];
-    vi.mocked(api.put).mockRejectedValue(new Error("a member who sees only some projects may only have private channels"));
+    vi.mocked(api.put).mockRejectedValue(new Error("this channel must stay private"));
     const u = user();
     renderSidebar();
     const dialog = await openSettings(u);
     await u.click(within(dialog).getByRole("switch", { name: "Private channel" }));
     await u.click(await screen.findByRole("button", { name: "Make public" }));
 
-    await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith("a member who sees only some projects may only have private channels"));
+    await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith("this channel must stay private"));
     expect(within(dialog).getByRole("switch", { name: "Private channel" })).toBeChecked();
   });
 
@@ -129,14 +127,6 @@ describe("a channel's settings", () => {
     renderSidebar();
     await user().pointer({ keys: "[MouseRight]", target: await screen.findByText("eng") });
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-  });
-
-  it("holds a Restricted member's private channel private", async () => {
-    restricted = true;
-    conversations = [channel({ private: true, participant_ids: ["u1", "u2"] })];
-    renderSidebar();
-    const dialog = await openSettings(user());
-    await waitFor(() => expect(within(dialog).getByRole("switch", { name: "Private channel" })).toBeDisabled());
   });
 
   it("turns private keeping the switcher and whoever is checked", async () => {
@@ -254,16 +244,5 @@ describe("creating a channel", () => {
       expect(api.post).toHaveBeenCalledWith("/api/chat/channels", { workspace_id: "ws-1", name: "client", private: true, member_ids: ["u2"] }),
     );
     expect(mocks.toast.success).toHaveBeenCalledWith("#client created");
-  });
-
-  it("gives a Restricted member only a private channel, its switch fixed on", async () => {
-    restricted = true;
-    const u = user();
-    renderSidebar();
-    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/me"));
-    await u.click(await screen.findByRole("button", { name: "New channel" }));
-    const toggle = await screen.findByRole("switch", { name: "Private channel" });
-    expect(toggle).toBeChecked();
-    expect(toggle).toBeDisabled();
   });
 });

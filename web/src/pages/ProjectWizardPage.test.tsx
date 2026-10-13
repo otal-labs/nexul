@@ -10,7 +10,7 @@ import { pickOption } from "@/test/pickOption";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const access = vi.hoisted(() => ({ areas: ["tickets"] as string[] }));
-vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area), useCanOpenSection: () => false }));
 
 beforeEach(() => {
   access.areas = ["tickets"];
@@ -166,16 +166,19 @@ describe("ProjectWizardPage", () => {
   it("records a skipped step on the project and moves on to the next step, keeping the project it made", async () => {
     mockProjectInSetup();
     mocks.post.mockResolvedValueOnce({ data: inSetup({ project: "done" }) });
-    mocks.put.mockResolvedValue({ data: inSetup({ project: "done", repository: "skipped" }) });
+    mocks.put.mockResolvedValue({ data: inSetup({ project: "done", people: "skipped", repository: "skipped" }) });
     const user = userEvent.setup();
     renderPage("/acme/wizard/project/project");
 
     await user.type(await screen.findByLabelText("Project name"), "Backend");
     await user.type(screen.getByLabelText("Prefix"), "BE");
-    await user.click(screen.getByRole("button", { name: "Continue to Repository" }));
+    await user.click(screen.getByRole("button", { name: "Continue to Who's in it" }));
+    await user.click(await screen.findByRole("button", { name: "Skip for now" }));
+    expect(await screen.findByRole("heading", { name: "Repository" })).toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: "Skip for now" }));
 
     expect(await screen.findByRole("heading", { name: "Service" })).toBeInTheDocument();
+    expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", { finished: undefined, steps: { people: "skipped" } });
     expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", { finished: undefined, steps: { repository: "skipped" } });
     expect(mocks.post).toHaveBeenCalledTimes(1);
   });
@@ -428,10 +431,10 @@ describe("ProjectWizardPage", () => {
     renderPage("/acme/wizard/project/project");
     await screen.findByRole("heading", { name: "Info" });
     expect(rung("Info")).toHaveAttribute("data-state", "current");
-    for (const label of ["Repository", "Service", "Reach", "Deploy branches", "Done"]) {
+    for (const label of ["Who's in it", "Repository", "Service", "Reach", "Deploy branches", "Done"]) {
       expect(rung(label)).toHaveAttribute("data-state", "unvisited");
     }
-    expect(within(screen.getByRole("list", { name: "Project wizard steps" })).getAllByRole("listitem")).toHaveLength(6);
+    expect(within(screen.getByRole("list", { name: "Project wizard steps" })).getAllByRole("listitem")).toHaveLength(7);
   });
 
   it("frames the project rung as the first project when the workspace has none", async () => {

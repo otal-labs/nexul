@@ -58,6 +58,32 @@ describe("dispatch", () => {
     },
   );
 
+  test("a grant frame that names no person refetches every open read only for a holder of the role it names", () => {
+    const client = new QueryClient();
+    client.setQueryData([getMyRoleKey, "ws-2"], { role_name: "Client", permissions: [], roles: [{ id: "r-client", name: "Client", is_owner: false }] });
+    const invalidate = jest.spyOn(client, "invalidateQueries").mockResolvedValue();
+    const frame = (roleID: string) => ({
+      topic: "access.grant.changed",
+      type: "event",
+      payload: { resource_type: "project", resource_id: "p1", target: "role", user_id: "", role_id: roleID },
+    });
+
+    dispatch(client)(frame("r-other"));
+    expect(invalidate).not.toHaveBeenCalledWith();
+
+    dispatch(client)(frame("r-client"));
+    expect(invalidate).toHaveBeenCalledWith();
+  });
+
+  test("a save of the Access page refetches every open read", () => {
+    const client = new QueryClient();
+    const invalidate = jest.spyOn(client, "invalidateQueries").mockResolvedValue();
+
+    dispatch(client)({ topic: "access.grant.changed", type: "event", payload: { resource_type: "workspace", resource_id: "ws-1", target: "role", user_id: "" } });
+
+    expect(invalidate).toHaveBeenCalledWith();
+  });
+
   // A frame names the change, so an open thread updates without downloading its page of messages again.
   const message = (id: string, body: string): Message => ({
     id,

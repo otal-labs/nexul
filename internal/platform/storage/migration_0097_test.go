@@ -41,7 +41,7 @@ INSERT INTO permission_overwrites (resource_type, resource_id, user_id, allow, d
 	const columns = `resource_type || '|' || resource_id || '|' || user_id || '|' || allow || '|' || deny || '|' || created_at || '|' || updated_at`
 	before := rows(`SELECT ` + columns + ` FROM permission_overwrites ORDER BY 1`)
 
-	require.NoError(t, Migrate(db), "0097 and every later migration apply on top, as an upgrade would")
+	migrateUpTo(t, db, "0100")
 
 	assert.Equal(t, before, rows(`SELECT `+columns+` FROM permission_overwrites ORDER BY 1`))
 	assert.Equal(t, []string{"person|6"}, rows(`SELECT target || '|' || COUNT(*) FROM permission_overwrites WHERE role_id IS NULL GROUP BY target`))
@@ -58,14 +58,13 @@ INSERT INTO permission_overwrites (resource_type, resource_id, user_id, allow, d
 	plays, err := s.Access.RulesOfType(ctx, "play", "sam")
 	require.NoError(t, err)
 	assert.Equal(t, permissions.SetOf(permissions.PlaysRun), plays["play-notes"].Person.Deny, "a play exclusion")
-	projectAccess, err := s.WorkspaceMembers.ProjectAccess(ctx, "workspace-default", "sam")
+	projectAccess, err := s.Access.Get(ctx, "project", "p-store", "sam")
 	require.NoError(t, err)
-	require.Len(t, projectAccess, 1)
-	assert.Equal(t, permissions.SetOf(permissions.TicketsRead, permissions.TicketsWrite), projectAccess[0].Allow, "Project access")
-	allow, deny, err := s.WorkspaceMembers.Overrides(ctx, "workspace-default", "bob")
+	assert.Equal(t, permissions.SetOf(permissions.TicketsRead, permissions.TicketsWrite), projectAccess.Allow, "Project access")
+	override, err := s.Access.Get(ctx, "workspace", "workspace-default", "bob")
 	require.NoError(t, err)
-	assert.Equal(t, permissions.SetOf(permissions.TicketsWrite), allow, "a workspace-wide allow")
-	assert.Equal(t, permissions.SetOf(permissions.DocsDelete), deny, "a workspace-wide deny")
+	assert.Equal(t, permissions.SetOf(permissions.TicketsWrite), override.Allow, "a workspace-wide allow")
+	assert.Equal(t, permissions.SetOf(permissions.DocsDelete), override.Deny, "a workspace-wide deny")
 
 	require.NoError(t, s.Access.Set(ctx, "doc", "d-price", "bob", permissions.SetOf(permissions.DocsWrite), nil))
 	assert.Equal(t, []string{"bob|1"}, rows(`SELECT user_id || '|' || COUNT(*) FROM permission_overwrites WHERE resource_id = 'd-price' AND user_id = 'bob' GROUP BY user_id`),

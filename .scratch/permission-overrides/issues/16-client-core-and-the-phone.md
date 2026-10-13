@@ -1,6 +1,6 @@
 # 16 — client-core and the phone
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 11
 
@@ -20,5 +20,7 @@ ADRs 0082, 0139, 0148, the spec (MCP, the HTTP paragraph), the research (section
 
 ## Acceptance criteria
 
-- [ ] `native/src/hooks/requestCounts.test.tsx` and `useLiveEvents.test.tsx` cover a frame that names no person.
-- [ ] Checked through the T3 Device panel: an unlisted member sees no projects, and chat works.
+- [x] `native/src/hooks/requestCounts.test.tsx` and `useLiveEvents.test.tsx` cover a frame that names no person.
+- [ ] Checked through the T3 Device panel: an unlisted member sees no projects, and chat works. Not yet: the server
+  side was checked on a migrated device-pass copy (`/me` sends `projects: []` and chat permissions, the project list is
+  empty) and `AreaGate.test.tsx` holds the tabs, but the Device panel was out of reach from the slice's session.

@@ -24,6 +24,8 @@ type Project struct {
 	UpdatedAt     time.Time     `json:"updated_at"`
 	// SeedTicketTypes are the types creating the project seeds; empty seeds DefaultTicketTypes.
 	SeedTicketTypes []TicketType `json:"-"`
+	// CreatorID is whom creating the project lists in it, with their roles; empty for the server's own create.
+	CreatorID string `json:"-"`
 }
 
 // ProjectSetup is the project wizard's record of a project (ADR 0143): until Finished, the sidebar offers Continue setup.
@@ -45,7 +47,7 @@ func (setup ProjectSetup) withoutService() ProjectSetup {
 type SetupStep string
 
 // SetupSteps are the wizard's steps in order.
-var SetupSteps = []SetupStep{"project", "repository", "service", "env", "reach", "branches"}
+var SetupSteps = []SetupStep{"project", "people", "repository", "service", "env", "reach", "branches"}
 
 // SetupMark is what happened at a step.
 type SetupMark string
@@ -238,7 +240,7 @@ type DeleteImpact struct {
 	Tickets  int `json:"tickets"`
 	Repos    int `json:"repos"`
 	Services int `json:"services"`
-	// RestrictedMembers lose access with the project; a signal for the confirmation, not a gate.
+	// RestrictedMembers reads as empty: no member is Restricted since ADR 0148.
 	RestrictedMembers []RestrictedMember `json:"restricted_members"`
 }
 

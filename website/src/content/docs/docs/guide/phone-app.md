@@ -39,6 +39,8 @@ The phone stays signed in for 90 days after you last used it. It shows under **D
 - **Deploys**: your stacks and their deploys, with the deploy log and each service's live logs. A stack that runs an image can be redeployed from here; one built from a compose file redeploys from the web.
 - **More**: docs to read, runners (if you can see them), and your settings: appearance, devices, and which workspace the app shows.
 
+The Board, Deploys and docs show the projects you're in. Until a project lists you or one of your roles, the app has no Board or Deploys tab, and chat and the inbox work as usual.
+
 While the app is open, everything on it updates as it changes. If the connection drops, the app catches up on what it missed when it reconnects, and again each time you bring it back to the front.
 
 ## Updates

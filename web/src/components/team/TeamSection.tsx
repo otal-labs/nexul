@@ -27,7 +27,7 @@ export const TeamSection = () => {
   const personId = params.get("person");
   const everyone = useHasInstancePermission("accounts:read");
   const scope = everyone ? "Everyone on this instance" : "People in the workspaces you manage";
-  const description = `${scope}, and what they can reach in each workspace. Invite someone with a link.`;
+  const description = `${scope}, and the roles they hold in each. Invite someone with a link.`;
 
   const open = (id: string | null) =>
     setParams(

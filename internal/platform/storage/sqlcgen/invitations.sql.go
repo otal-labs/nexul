@@ -11,8 +11,8 @@ import (
 )
 
 const addInvitationMember = `-- name: AddInvitationMember :exec
-INSERT INTO workspace_members (user_id, workspace_id, created_at, restricted)
-VALUES (?, ?, ?, ?)
+INSERT INTO workspace_members (user_id, workspace_id, created_at)
+VALUES (?, ?, ?)
 ON CONFLICT(user_id, workspace_id) DO NOTHING
 `
 
@@ -20,68 +20,10 @@ type AddInvitationMemberParams struct {
 	UserID      string
 	WorkspaceID string
 	CreatedAt   int64
-	Restricted  int64
 }
 
 func (q *Queries) AddInvitationMember(ctx context.Context, arg AddInvitationMemberParams) error {
-	_, err := q.db.ExecContext(ctx, addInvitationMember,
-		arg.UserID,
-		arg.WorkspaceID,
-		arg.CreatedAt,
-		arg.Restricted,
-	)
-	return err
-}
-
-const addInvitationOverwrite = `-- name: AddInvitationOverwrite :exec
-INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
-VALUES ('workspace', ?, 'person', ?, ?, ?, ?, ?)
-ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO NOTHING
-`
-
-type AddInvitationOverwriteParams struct {
-	ResourceID string
-	UserID     sql.NullString
-	Allow      string
-	Deny       string
-	CreatedAt  int64
-	UpdatedAt  int64
-}
-
-func (q *Queries) AddInvitationOverwrite(ctx context.Context, arg AddInvitationOverwriteParams) error {
-	_, err := q.db.ExecContext(ctx, addInvitationOverwrite,
-		arg.ResourceID,
-		arg.UserID,
-		arg.Allow,
-		arg.Deny,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	return err
-}
-
-const addInvitationProjectAccess = `-- name: AddInvitationProjectAccess :exec
-INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
-VALUES ('project', ?, 'person', ?, ?, '[]', ?, ?)
-ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO NOTHING
-`
-
-type AddInvitationProjectAccessParams struct {
-	ResourceID string
-	UserID     sql.NullString
-	Allow      string
-	CreatedAt  int64
-	UpdatedAt  int64
-}
-
-func (q *Queries) AddInvitationProjectAccess(ctx context.Context, arg AddInvitationProjectAccessParams) error {
-	_, err := q.db.ExecContext(ctx, addInvitationProjectAccess,
-		arg.ResourceID,
-		arg.UserID,
-		arg.Allow,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
+	_, err := q.db.ExecContext(ctx, addInvitationMember, arg.UserID, arg.WorkspaceID, arg.CreatedAt)
 	return err
 }
 
@@ -179,30 +121,17 @@ func (q *Queries) CreateInvitation(ctx context.Context, arg CreateInvitationPara
 }
 
 const createInvitationGrant = `-- name: CreateInvitationGrant :exec
-INSERT INTO invitation_grants (invitation_id, workspace_id, role_id, allow_json, deny_json, restricted, project_access_json)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO invitation_grants (invitation_id, workspace_id, role_id) VALUES (?, ?, ?)
 `
 
 type CreateInvitationGrantParams struct {
-	InvitationID      string
-	WorkspaceID       string
-	RoleID            string
-	AllowJson         string
-	DenyJson          string
-	Restricted        int64
-	ProjectAccessJson string
+	InvitationID string
+	WorkspaceID  string
+	RoleID       string
 }
 
 func (q *Queries) CreateInvitationGrant(ctx context.Context, arg CreateInvitationGrantParams) error {
-	_, err := q.db.ExecContext(ctx, createInvitationGrant,
-		arg.InvitationID,
-		arg.WorkspaceID,
-		arg.RoleID,
-		arg.AllowJson,
-		arg.DenyJson,
-		arg.Restricted,
-		arg.ProjectAccessJson,
-	)
+	_, err := q.db.ExecContext(ctx, createInvitationGrant, arg.InvitationID, arg.WorkspaceID, arg.RoleID)
 	return err
 }
 
@@ -314,22 +243,6 @@ func (q *Queries) GetInvitationByTokenHash(ctx context.Context, tokenHash string
 	return i, err
 }
 
-const getInvitationCreatorProjectAccess = `-- name: GetInvitationCreatorProjectAccess :one
-SELECT allow FROM permission_overwrites WHERE resource_type = 'project' AND resource_id = ? AND user_id = ?
-`
-
-type GetInvitationCreatorProjectAccessParams struct {
-	ResourceID string
-	UserID     sql.NullString
-}
-
-func (q *Queries) GetInvitationCreatorProjectAccess(ctx context.Context, arg GetInvitationCreatorProjectAccessParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getInvitationCreatorProjectAccess, arg.ResourceID, arg.UserID)
-	var allow string
-	err := row.Scan(&allow)
-	return allow, err
-}
-
 const getInvitationMember = `-- name: GetInvitationMember :one
 SELECT user_id
 FROM workspace_members
@@ -401,23 +314,6 @@ func (q *Queries) GetOAuthHandoffByState(ctx context.Context, oauthStateHash sql
 		&i.CreatedAt,
 		&i.ExpiresAt,
 	)
-	return i, err
-}
-
-const getProjectForInvitationGrant = `-- name: GetProjectForInvitationGrant :one
-SELECT id, workspace_id, name FROM projects WHERE id = ?
-`
-
-type GetProjectForInvitationGrantRow struct {
-	ID          string
-	WorkspaceID string
-	Name        string
-}
-
-func (q *Queries) GetProjectForInvitationGrant(ctx context.Context, id string) (GetProjectForInvitationGrantRow, error) {
-	row := q.db.QueryRowContext(ctx, getProjectForInvitationGrant, id)
-	var i GetProjectForInvitationGrantRow
-	err := row.Scan(&i.ID, &i.WorkspaceID, &i.Name)
 	return i, err
 }
 
@@ -503,14 +399,10 @@ func (q *Queries) ListAllInvitations(ctx context.Context) ([]Invitation, error) 
 }
 
 const listInvitationCreatorWorkspaceAccess = `-- name: ListInvitationCreatorWorkspaceAccess :many
-SELECT COALESCE(r.is_owner_role, 0) AS is_owner_role, COALESCE(r.permissions, '[]') AS permissions, po.allow, po.deny, m.restricted
+SELECT COALESCE(r.is_owner_role, 0) AS is_owner_role, COALESCE(r.permissions, '[]') AS permissions
 FROM workspace_members m
 LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
 LEFT JOIN roles r ON r.id = mr.role_id
-LEFT JOIN permission_overwrites po
-  ON po.resource_type = 'workspace'
- AND po.resource_id = m.workspace_id
- AND po.user_id = m.user_id
 WHERE m.workspace_id = ? AND m.user_id = ?
 `
 
@@ -522,9 +414,6 @@ type ListInvitationCreatorWorkspaceAccessParams struct {
 type ListInvitationCreatorWorkspaceAccessRow struct {
 	IsOwnerRole int64
 	Permissions string
-	Allow       sql.NullString
-	Deny        sql.NullString
-	Restricted  int64
 }
 
 func (q *Queries) ListInvitationCreatorWorkspaceAccess(ctx context.Context, arg ListInvitationCreatorWorkspaceAccessParams) ([]ListInvitationCreatorWorkspaceAccessRow, error) {
@@ -536,13 +425,7 @@ func (q *Queries) ListInvitationCreatorWorkspaceAccess(ctx context.Context, arg 
 	var items []ListInvitationCreatorWorkspaceAccessRow
 	for rows.Next() {
 		var i ListInvitationCreatorWorkspaceAccessRow
-		if err := rows.Scan(
-			&i.IsOwnerRole,
-			&i.Permissions,
-			&i.Allow,
-			&i.Deny,
-			&i.Restricted,
-		); err != nil {
+		if err := rows.Scan(&i.IsOwnerRole, &i.Permissions); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -557,10 +440,10 @@ func (q *Queries) ListInvitationCreatorWorkspaceAccess(ctx context.Context, arg 
 }
 
 const listInvitationGrantsByInvitation = `-- name: ListInvitationGrantsByInvitation :many
-SELECT invitation_id, workspace_id, role_id, allow_json, deny_json, restricted, project_access_json
+SELECT invitation_id, workspace_id, role_id
 FROM invitation_grants
 WHERE invitation_id = ?
-ORDER BY workspace_id
+ORDER BY workspace_id, role_id
 `
 
 func (q *Queries) ListInvitationGrantsByInvitation(ctx context.Context, invitationID string) ([]InvitationGrant, error) {
@@ -572,15 +455,7 @@ func (q *Queries) ListInvitationGrantsByInvitation(ctx context.Context, invitati
 	var items []InvitationGrant
 	for rows.Next() {
 		var i InvitationGrant
-		if err := rows.Scan(
-			&i.InvitationID,
-			&i.WorkspaceID,
-			&i.RoleID,
-			&i.AllowJson,
-			&i.DenyJson,
-			&i.Restricted,
-			&i.ProjectAccessJson,
-		); err != nil {
+		if err := rows.Scan(&i.InvitationID, &i.WorkspaceID, &i.RoleID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -643,25 +518,11 @@ WHERE i.redeemed_at IS NULL
       WHERE g.invitation_id = i.id
         AND NOT EXISTS (
             SELECT 1
-            FROM workspace_members m
-            LEFT JOIN member_roles mr ON mr.workspace_id = m.workspace_id AND mr.user_id = m.user_id
-            LEFT JOIN roles r ON r.id = mr.role_id
-            LEFT JOIN permission_overwrites po
-              ON po.resource_type = 'workspace'
-             AND po.resource_id = g.workspace_id
-             AND po.user_id = m.user_id
-            WHERE m.workspace_id = g.workspace_id
-              AND m.user_id = ?
-              AND (
-                  COALESCE(r.is_owner_role, 0) = 1
-                  OR (
-                      instr(COALESCE(po.deny, '[]'), '"members:write"') = 0
-                      AND (
-                          instr(COALESCE(r.permissions, '[]'), '"members:write"') > 0
-                          OR instr(COALESCE(po.allow, '[]'), '"members:write"') > 0
-                      )
-                  )
-              )
+            FROM member_roles mr
+            JOIN roles r ON r.id = mr.role_id
+            WHERE mr.workspace_id = g.workspace_id
+              AND mr.user_id = ?
+              AND (r.is_owner_role = 1 OR instr(r.permissions, '"members:write"') > 0)
         )
   )
 ORDER BY i.created_at, i.id

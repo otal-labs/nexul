@@ -2,7 +2,8 @@ import { LevelGlyph } from "@/components/access/LevelGlyph";
 import { Microheader } from "@/components/Microheader";
 import { cn } from "@/lib/utils";
 import { PermissionArea, type PermissionInfo } from "@/models/Permission";
-import { domainsOf, levelName, levelOf, type PermissionDomain } from "@/models/PermissionLevel";
+import { domainsOf, levelOf, type PermissionDomain } from "@/models/PermissionLevel";
+import { rungName } from "@/models/RoleSection";
 
 interface RoleAccessDetailProps {
   catalog: PermissionInfo[];
@@ -24,7 +25,7 @@ const DomainLine = ({ domain, permissions }: DomainLineProps) => {
       </span>
       {extras.length > 0 && <span className="truncate font-mono text-[11px] text-muted-foreground">+{extras.join(" +")}</span>}
       <LevelGlyph level={level} rungs={domain.levels.length} />
-      <span className="w-12 shrink-0 text-muted-foreground">{levelName(level)}</span>
+      <span className="w-12 shrink-0 text-muted-foreground">{rungName(domain.domain, level)}</span>
     </li>
   );
 };
@@ -33,7 +34,7 @@ const DomainLine = ({ domain, permissions }: DomainLineProps) => {
 export const RoleAccessDetail = ({ catalog, permissions }: RoleAccessDetailProps) => {
   const groups = [
     { label: "Workspace", domains: domainsOf(catalog.filter((entry) => entry.area !== PermissionArea.Project)) },
-    { label: "Every project", domains: domainsOf(catalog.filter((entry) => entry.area === PermissionArea.Project)) },
+    { label: "In projects", domains: domainsOf(catalog.filter((entry) => entry.area === PermissionArea.Project)) },
   ];
   return (
     <div className="@container grid gap-5 pt-1">

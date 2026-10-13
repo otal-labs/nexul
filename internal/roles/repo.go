@@ -12,15 +12,16 @@ type Repo interface {
 	Get(ctx context.Context, id string) (*Role, error)
 	List(ctx context.Context, workspaceID string) ([]*Role, error)
 	Update(ctx context.Context, r *Role, events ...eventbus.OutboxEvent) error
-	Delete(ctx context.Context, id string) error
-	// CountHolders is how many members hold role id.
-	CountHolders(ctx context.Context, id string) (int, error)
+	// Delete removes the role and, by cascade, every holding of it and every rule naming it.
+	Delete(ctx context.Context, id string, events ...eventbus.OutboxEvent) error
 }
 
 // MemberGate answers whether someone belongs to a workspace without roles importing tenancy (ADR 0017).
 type MemberGate interface {
 	// RequireMember returns apperrs.ErrNotFound unless userID is a member of workspaceID.
 	RequireMember(ctx context.Context, workspaceID, userID string) error
+	// HolderEvents returns a member update for each member of workspaceID holding roleID, written with the role's change.
+	HolderEvents(ctx context.Context, workspaceID, roleID, actorID string) ([]eventbus.OutboxEvent, error)
 }
 
 // PermissionGate reads what a user holds in a workspace without roles importing access (ADR 0017), so a role never

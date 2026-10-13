@@ -26,7 +26,81 @@ func (s *Service) ListPeople(ctx context.Context, actorID, workspaceID string) (
 	for i, m := range members {
 		userIDs[i] = m.UserID
 	}
+	people, err := s.peopleNamed(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	owners, err := s.ownerIDs(ctx, workspaceID, members)
+	if err != nil {
+		return nil, err
+	}
+	for i := range people {
+		people[i].Owner = owners[people[i].UserID]
+	}
+	return people, nil
+}
+
+// ownerIDs is the members holding workspaceID's Owner role, asking once per role.
+func (s *Service) ownerIDs(ctx context.Context, workspaceID string, members []*Member) (map[string]bool, error) {
+	isOwner := map[string]bool{}
+	owners := map[string]bool{}
+	for _, m := range members {
+		for _, roleID := range m.RoleIDs {
+			owner, seen := isOwner[roleID]
+			if !seen {
+				var err error
+				if owner, err = s.roleNames.IsOwnerRole(ctx, workspaceID, roleID); err != nil {
+					return nil, fmt.Errorf("check owner role %s: %w", roleID, err)
+				}
+				isOwner[roleID] = owner
+			}
+			if owner {
+				owners[m.UserID] = true
+			}
+		}
+	}
+	return owners, nil
+}
+
+// SetProjects wires the project lookups a project's people are read through.
+func (s *Service) SetProjects(g ProjectGate) { s.projects = g }
+
+// ListProjectPeople is the workspace's People who are in projectID, for a ticket's developer and tester pickers;
+// anyone in the project reads it.
+func (s *Service) ListProjectPeople(ctx context.Context, actorID, projectID string) ([]Person, error) {
+	workspaceID, err := s.openProject(ctx, actorID, projectID)
+	if err != nil {
+		return nil, err
+	}
+	userIDs, err := s.members.ProjectMemberIDs(ctx, workspaceID, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("list the people of project %s: %w", projectID, err)
+	}
 	return s.peopleNamed(ctx, userIDs)
+}
+
+// ListProjectRoles is the roles projectID's rules let in, for a doc's permissions panel, which lists only those;
+// anyone in the project reads it.
+func (s *Service) ListProjectRoles(ctx context.Context, actorID, projectID string) ([]string, error) {
+	if _, err := s.openProject(ctx, actorID, projectID); err != nil {
+		return nil, err
+	}
+	return s.members.ProjectRoleIDs(ctx, projectID)
+}
+
+// openProject is projectID's workspace, when actorID is in the project; otherwise it is not found.
+func (s *Service) openProject(ctx context.Context, actorID, projectID string) (string, error) {
+	if s.projects == nil {
+		return "", fmt.Errorf("%w: no project lookup wired", apperrs.ErrForbidden)
+	}
+	workspaceID, err := s.projects.ProjectWorkspace(ctx, projectID)
+	if err != nil {
+		return "", fmt.Errorf("resolve project %s: %w", projectID, err)
+	}
+	if _, opens := s.projects.ProjectPermissions(ctx, actorID, projectID); !opens {
+		return "", fmt.Errorf("%w: project %s", apperrs.ErrNotFound, projectID)
+	}
+	return workspaceID, nil
 }
 
 // peopleNamed is the Person of each of userIDs with an account, in their order.

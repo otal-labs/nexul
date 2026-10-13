@@ -33,18 +33,18 @@ func (h *Handler) Routes() http.Handler {
 
 func (h *Handler) listGrants(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	if q.Get("resource_type") == resourceTypePlay {
+	if resourceType := q.Get("resource_type"); resourceType == resourceTypePlay || resourceType == resourceTypeProject || resourceType == resourceTypeChannel {
 		resourceID := q.Get("resource_id")
 		if resourceID == "" {
 			httpx.WriteError(w, fmt.Errorf("%w: resource_id is required", apperrs.ErrInvalid))
 			return
 		}
-		grants, err := h.svc.ListPlayGrants(r.Context(), actorID(r), resourceID)
+		grants, err := h.svc.ListRules(r.Context(), actorID(r), resourceType, resourceID)
 		if err != nil {
 			httpx.WriteError(w, err)
 			return
 		}
-		httpx.WriteJSON(w, http.StatusOK, map[string]any{"resource_type": resourceTypePlay, "resource_id": resourceID, "grants": grants})
+		httpx.WriteJSON(w, http.StatusOK, map[string]any{"resource_type": resourceType, "resource_id": resourceID, "grants": grants})
 		return
 	}
 	docID := q.Get("doc_id")
@@ -63,16 +63,56 @@ func (h *Handler) listGrants(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"doc_id": docID, "grants": grants})
 }
 
+// GridRoutes returns a workspace's Access page endpoints, mounted under /api/workspaces/{workspaceID}/access.
+func (h *Handler) GridRoutes() http.Handler {
+	mux := httpx.NewServeMux()
+	mux.HandleFunc("GET /api/workspaces/{workspaceID}/access", h.grid)
+	mux.HandleFunc("PUT /api/workspaces/{workspaceID}/access", h.saveGrid)
+	return mux
+}
+
+func (h *Handler) grid(w http.ResponseWriter, r *http.Request) {
+	g, err := h.svc.Grid(r.Context(), actorID(r), r.PathValue("workspaceID"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, g)
+}
+
+func (h *Handler) saveGrid(w http.ResponseWriter, r *http.Request) {
+	var req GridSave
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.SaveGrid(r.Context(), actorID(r), r.PathValue("workspaceID"), req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // catalog is the full grid in display order; roles, tokens, and doc grants all pick from it.
 func (h *Handler) catalog(w http.ResponseWriter, _ *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"permissions": permissions.Catalog()})
 }
 
-// explain is a person's answers on a doc, play, or project and where each came from; user_id defaults to the caller.
+// explain is a person's or, with role_id, a role's answers on a doc, play, or project and where each came from;
+// user_id defaults to the caller.
 func (h *Handler) explain(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	if q.Get("resource_id") == "" {
 		httpx.WriteError(w, fmt.Errorf("%w: resource_id is required", apperrs.ErrInvalid))
+		return
+	}
+	if roleID := q.Get("role_id"); roleID != "" {
+		out, err := h.svc.ExplainRole(r.Context(), actorID(r), q.Get("resource_type"), q.Get("resource_id"), roleID)
+		if err != nil {
+			httpx.WriteError(w, err)
+			return
+		}
+		httpx.WriteJSON(w, http.StatusOK, out)
 		return
 	}
 	out, err := h.svc.Explain(r.Context(), actorID(r), q.Get("resource_type"), q.Get("resource_id"), q.Get("user_id"))
@@ -97,6 +137,7 @@ type setGrantsRequest struct {
 	DocIDs       []string `json:"doc_ids"`
 	ResourceIDs  []string `json:"resource_ids"`
 	UserIDs      []string `json:"user_ids"`
+	RoleIDs      []string `json:"role_ids"`
 	Actions      []string `json:"actions"`
 	Grant        bool     `json:"grant"`
 	// State is allow, fallback, or deny; without it grant keeps its older meaning.
@@ -121,15 +162,12 @@ func (h *Handler) setGrants(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	if req.ResourceType == resourceTypePlay {
-		if err := h.svc.SetPlayGrants(r.Context(), actorID(r), req.ResourceIDs, req.UserIDs, actions, req.state(resourceTypePlay)); err != nil {
-			httpx.WriteError(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-		return
+	resourceType, resourceIDs := req.ResourceType, req.ResourceIDs
+	if resourceType == "" || resourceType == resourceTypeDoc {
+		resourceType, resourceIDs = resourceTypeDoc, req.DocIDs
 	}
-	if err := h.svc.SetGrants(r.Context(), actorID(r), req.DocIDs, req.UserIDs, actions, req.state(resourceTypeDoc)); err != nil {
+	to := Targets{UserIDs: req.UserIDs, RoleIDs: req.RoleIDs}
+	if err := h.svc.SetRules(r.Context(), actorID(r), resourceType, resourceIDs, to, actions, req.state(resourceType)); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -139,7 +177,7 @@ func (h *Handler) setGrants(w http.ResponseWriter, r *http.Request) {
 func parseActions(raw []string) ([]permissions.Action, error) {
 	actions := make([]permissions.Action, 0, len(raw))
 	for _, r := range raw {
-		a, ok := permissions.ParseAction(r)
+		a, ok := permissions.ParseRuleAction(r)
 		if !ok {
 			return nil, fmt.Errorf("%w: unknown action %s", apperrs.ErrInvalid, r)
 		}

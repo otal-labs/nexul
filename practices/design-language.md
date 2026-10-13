@@ -692,7 +692,7 @@ led: the finished rung's rail draws down (260ms `--ease-out`, `scaleY` from
 the top), then the next body rises in (200ms, 4px, with a 180ms delay only
 when it follows a drawn rail). `DnsSetupStepper` is the reference.
 
-Project wizard. The `/wizard/project/<step>` flow (info, repository, service,
+Project wizard. The `/wizard/project/<step>` flow (info, who's in it, repository, service,
 environment when the scan found keys, reach, deploy branches, done) is a
 horizontal progress row above the active step, not the vertical rail. The row
 is an `ol` up to `max-w-3xl` of 20px nodes evenly spaced on a 1px connector;
@@ -746,9 +746,8 @@ reached trailing right in mono (public hostnames as links, then
 `service:port` on the stack's network, then `host :port` when published on the
 machine); its footer names the networks and when the runner last looked.
 
-Permission rows. Wherever access is set (a role, a person's overrides and
-Project access, an invitation, an automation's scopes) the domains sit in one
-bordered list (`rounded-md border border-input`, hairline dividers), led by an
+Permission rows. Wherever access is set (a role, an automation's scopes) the
+domains sit in one bordered list (`rounded-md border border-input`, hairline dividers), led by an
 "Every domain" or "Every area" row on a `bg-muted/40` strip that sets them
 all and selects no rung once the rows differ. Each domain row is the name on
 the left, its extra verbs (Run, Clone, Thread) as small outline toggles, then
@@ -756,16 +755,11 @@ the level as a segmented strip of None, Read, Write, Delete where every rung
 up to the chosen one fills, so it reads as "this much access". The role
 editor (Role dialog, below) puts its lists on one tab per catalog area, each
 led by its own bulk row, and sets the extra verbs as checkboxes on a second
-line under the area's name, disabled until it holds Read. Project access is
-the same list: an Every project lead row (a muted icon, "Every project" over its one-line
-consequence, and a From role / Chosen projects segmented pair), then one row
-per project with the same level strip and an "Areas" toggle that opens that
-project's area rows indented under it; a project whose areas differ selects
-no rung and shows a mono summary under its name ("tickets Write · docs
-Read"). Under From role the project rows are disabled. A viewer who can't
-change a list sees it disabled. `PermissionLevels`, `PermissionLevelControl`,
-and `ProjectAccessBlock` in `web/src/components/access/` are the reference;
-deny overrides keep the checkbox grid (`PermissionGrid`).
+line under the area's name, disabled until it holds Read (See on plays, whose
+first rung is named so), and leads each tab with its yes-or-no permissions as
+switch rows (the name over a muted line), which the bulk row never sets. A
+viewer who can't change a list sees it disabled. `PermissionLevels` and
+`PermissionLevelControl` in `web/src/components/access/` are the reference.
 
 Settings card. `SettingsCard` opens with its title in 15px semibold and an
 optional muted description, no rule under them, then the body and the
@@ -798,11 +792,23 @@ the name, the levels as a tally, highest first, each a `LevelGlyph` (the
 level strip in miniature, a shorter ladder keeping the three-rung width so a
 column of them lines up), the level and a mono count, then a muted "No access
 · Events, Audit log, Accounts +2". The chevron opens every area read-only
-below it (`RoleAccessDetail`, its Workspace and Every project groups, two
+below it (`RoleAccessDetail`, its Workspace and In projects groups, two
 columns from a 36rem card) as a disclosure. The Owner row has no
-menu and says what it is in one line. A role someone holds can't be deleted:
-its Delete says who to move first instead. `RoleRow` and `RoleAccessSummary`
+menu and says what it is in one line. Deleting a role someone holds asks
+first, naming how many people lose it. `RoleRow` and `RoleAccessSummary`
 in `web/src/components/settings/` are the reference.
+
+People in this project. A project's Settings → General card for whoever
+manages its access: a Roles microheader over the roles it lets in, People over
+the people with a rule of their own, then Kept out over the people a rule keeps
+out. A row is the 24px target mark (a role a muted people icon on a
+`surface-2` tile with the hairline ring, a person their avatar), the name in
+14px medium over a muted line (who holds a role, what a person holds, the
+rules here), and a trailing chevron; the whole row opens the permissions panel
+on that target, and a ghost `×` beside it asks before taking the target off.
+The footer's "Add a role or person" lists one, which lets it in, and opens
+nothing. `ProjectPeopleSection` in `web/src/components/settings/` is the
+reference; the panel's target column uses the same marks.
 
 Danger zone. Every danger zone (Configuration, project, stack, automation)
 is one `DangerZone` card (`danger`, the warning icon) holding `DangerAction`
@@ -826,8 +832,10 @@ Person dialog. The Team's person dialog holds one browser-style tab per
 workspace the person is in: a row of tabs on a hairline that scrolls
 sideways, the selected tab bordered on three sides and joined to the panel
 below, no close button on a tab, and a ghost `+` after the last one that
-opens a popover to pick a workspace and a role. A tab's panel is that
-workspace's role, overrides, Project access, and "Remove from workspace".
+opens a popover to pick a workspace. A tab's panel is that workspace's Roles
+checklist (below), a muted line saying what follows from the roles, and
+"Remove from workspace"; a workspace the viewer can't manage, or an Owner,
+shows the roles as chips instead.
 Every change is held until Confirm: a tab with held changes shows a small
 `foreground` dot, the footer is Cancel and Confirm (disabled with nothing
 held), closing with held changes asks "Discard changes?", and a refused
@@ -836,13 +844,29 @@ held. Account actions (Disable, Remove account) sit at the footer's left and
 apply at once. `TeamPersonDialog` and `TeamWorkspaceTabs` in
 `web/src/components/team/` are the reference.
 
+Roles checklist. Wherever roles are given (the person dialog, each workspace of
+an invitation) every role shows at once, never a dropdown, straight on the
+surface: the microheader and a mono "2 of 5" trailing, one muted line ("Everything
+these roles allow, combined."), then one hairline row per role you may give, at
+least 44px, the whole row the checkbox's label, the name in 14px medium and the
+role's tally trailing (two levels at most, as in Role rows). Under a "Can't
+give" microheader sit the Owner role and the roles holding more than you hold:
+disabled boxes that keep the person's tick, muted names, and a lock with the
+reason. With nothing ticked a `warning` triangle and one muted line settle in
+(`settle-in`): a warning for a member, "Pick at least one role" on an
+invitation, whose Create link waits for one. A role is shown elsewhere as a
+chip: a neutral `rounded-full` hairline pill at 20px, `foreground` at 4%, 11px
+medium, never tinted; three then a mono `+N` with the rest in its tooltip, and
+a dashed muted "No roles". `RolesChecklist` and `RoleChipRow` in
+`web/src/components/role/` are the reference.
+
 Role dialog. New role and a role's Edit open one dialog, 40rem wide and
 `min(52rem, 100dvh - 4rem)` tall at every width: a header with the title and,
 on an edit, the holders as overlapping 20px avatars over a muted line of who a
 save reaches; the Name (and on a new role a 12rem Start from beside it from a
 32rem band, under it below that); then one browser-style tab per catalog area,
-Instance, Workspace and Every project, each with a mono "3/12" of the areas it
-allows and the person dialog's `foreground` dot while it holds changes; then
+Instance, Workspace and In projects, each with a mono "3/12" of the areas and
+switches it allows and the person dialog's `foreground` dot while it holds changes; then
 the open tab's list, the only part that scrolls; and a footer whose muted note
 reads "No changes yet", "Name it to create it" or a dot and "Unsaved changes",
 with Cancel and Save or Create role. It opens on Instance, the first tab, and
@@ -1064,7 +1088,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Runners: one card per machine, actions in its header, dashed when offline | Against a facts grid band per machine (a second header's worth of height, truncated the host and stack root, and hid the actions in a menu) and one table with machine group rows (aligned, but machines stopped reading as units and an offline machine looked like any other); greying a whole row to 60% made offline runners hard to read, a dashed unlit card says offline at full contrast |
 | Topology cards: an icon tile, the name and status on one line, facts under a rule | Against a dot-and-mono-lines card (compact, but the status hue sat on a 6px dot and the word was a muted mono line) and a title strip with a coloured leading edge (a third band of height and colour on every card); the tile and trailing status echo the runner cards, and network boxes became faint filled regions instead of dashed outlines, which read as unfinished next to the lit cards |
 | Sidebar: places before conversations, one scroll | With the channels first, Board and the project's pages sat below the fold at 860px and the docked workspace pane took a sixth of the height; with fixed-length pages first and the workspace section in the same scroll, every page is visible at a glance and the variable lists grow downwards |
-| Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
+| Permission levels as a segmented strip per domain | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance |
 | Segmented control: a well with a raised thumb | Against joined outline buttons with an accent fill (read as a toolbar of buttons, the same box as Copy and Download beside it in the logs) and a ghost row with an accent thumb (the same grey block as the section nav's top row, so a filter looked like navigation); the well and card step is the panel's own depth vocabulary, and it reads as one control |
 | Section nav in the sidebar's grammar | Against the grey block alone (the sidebar marks where you are with the ember edge, the section nav with nothing, so the two navs on one screen read as unrelated) and a hairline rail with a sliding ember segment (a table of contents, not navigation, and the rows lost their click target) |
 | A role row is a tally of levels, every area one click away | Against a fingerprint of one three-rung bar per domain (aligned across roles, but noise at 6px and unreadable without hovering each bar) and one stacked bar of the levels (showed the proportions, lost which level was which and needed a legend anyway); "Delete 18 · Write 8 · Read 2 · None 5" with the level strip in miniature reads without a key, and the first areas with no access say what the role leaves out |
@@ -1078,6 +1102,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Setup: each provider row carries its own switch, model and run, providers run side by side | A separate Options disclosure hid the switches and models from the rows they belonged to, and one run at a time made a person wait on every provider to try one; a row that ends in exactly one thing (an action while it waits on you, else nothing but its state) reads at a glance |
 | Add a computer: the command beside the live connection and three named checks | Against numbered install steps above a single "waiting for connection" line (one line cannot say which part is stuck, and the person only ever runs one command) and a progress bar (it says how far, never what to fix); three checks in the order they happen name the part that is stuck and what to do about it |
 | Person dialog: a tab per workspace, changes held until Confirm | Several workspaces stacked in one scroll mixed their controls, and applying each change on the spot made the dialog change under the owner; tabs separate the workspaces and Confirm makes the edit one deliberate act |
+| Roles as a checklist with a Can't give group, chips on the rows | Against held roles as chips with an × beside an "Add role" menu of checkable roles (the menu hid the full set and every reason until it opened) and the roles as plain muted text on Team rows (read like any other meta line); every role and why one is out of reach shows at once |
 | Role dialog: a browser-style tab per area, not stacked sections | Three stacked sections made a 35-row scroll; tabs keep one area in view under a fixed name and footer. The person dialog's tabs, picked over a segmented control (it read as a filter, its 12px labels beside rows of level strips) and line tabs (the idiom for separate jobs addressed by the path) |
 
 ### Motion baseline

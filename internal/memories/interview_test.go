@@ -226,7 +226,9 @@ func TestProjectInterviewTemplate_RestrictedReader_GetsTheWorkspaceTemplate(t *t
 	repo := newFakeRepo()
 	_, err := newTestService(repo).SaveInterviewTemplate(testCtx(), "workspace-1", "## Only this")
 	require.NoError(t, err)
-	restricted := newTestServiceWith(repo, fakeAccess{can: true, deny: map[string]bool{"workspace-1:" + string(permissions.MemoriesRead): true}})
+	restricted := newTestServiceWith(repo, fakeAccess{can: true, deny: map[string]bool{
+		"workspace-1:" + string(permissions.MemoriesRead): true, "workspace-1:" + string(permissions.MemoriesTemplate): true,
+	}})
 
 	_, err = restricted.InterviewTemplate(testCtx(), "workspace-1")
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
@@ -286,6 +288,21 @@ func TestInterviewTemplate_Errors(t *testing.T) {
 			_, err := newDenyService(newFakeRepo()).SaveInterviewTemplate(testCtx(), "workspace-1", "x")
 			return err
 		}, apperrs.ErrForbidden},
+		{"get: neither memories:read nor memories:template", func() error {
+			neither := fakeAccess{can: true, deny: map[string]bool{"workspace-1:memories:read": true, "workspace-1:memories:template": true}}
+			_, err := newTestServiceWith(newFakeRepo(), neither).InterviewTemplate(testCtx(), "workspace-1")
+			return err
+		}, apperrs.ErrForbidden},
+		{"save: memories:write without memories:template", func() error {
+			only := fakeAccess{can: true, deny: map[string]bool{"workspace-1:memories:template": true}}
+			_, err := newTestServiceWith(newFakeRepo(), only).SaveInterviewTemplate(testCtx(), "workspace-1", "## x")
+			return err
+		}, apperrs.ErrForbidden},
+		{"reset: memories:write without memories:template", func() error {
+			only := fakeAccess{can: true, deny: map[string]bool{"workspace-1:memories:template": true}}
+			_, err := newTestServiceWith(newFakeRepo(), only).ResetInterviewTemplate(testCtx(), "workspace-1")
+			return err
+		}, apperrs.ErrForbidden},
 		{"save: over the template limit", func() error {
 			_, err := newTestService(newFakeRepo()).SaveInterviewTemplate(testCtx(), "workspace-1", "## A\n"+strings.Repeat("a", MaxInterviewTemplateChars))
 			return err
@@ -308,6 +325,13 @@ func TestInterviewTemplate_Errors(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestInterviewTemplate_OpensForWhoeverMayEditIt(t *testing.T) {
+	editor := fakeAccess{can: true, deny: map[string]bool{"workspace-1:memories:read": true}}
+	got, err := newTestServiceWith(newFakeRepo(), editor).InterviewTemplate(testCtx(), "workspace-1")
+	require.NoError(t, err)
+	assert.NotEmpty(t, got.Body)
 }
 
 func TestInterviewHandlers(t *testing.T) {

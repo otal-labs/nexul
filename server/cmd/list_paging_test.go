@@ -130,6 +130,37 @@ func TestRows_ListToolsReadOnlyTheirPage(t *testing.T) {
 	}
 }
 
+// TestRows_DocListReadsNoneOfTheReadersDocRules: a reader's doc rules, thousands in the listed project and thousands
+// in another, cost doc_list no statement and no row handed back, since the page decides them in SQL.
+func TestRows_DocListReadsNoneOfTheReadersDocRules(t *testing.T) {
+	f, st, db := newCountedFixtureDB(t)
+	now := time.Now()
+	require.NoError(t, f.store.Projects.Create(t.Context(), &workspace.Project{ID: "p-far", Name: "Far", Prefix: "FAR", WorkspaceID: wsDefault, CreatedAt: now, UpdatedAt: now}))
+	listRolesIn(t, db, "p-far")
+	_, err := db.Exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 2000)
+		INSERT INTO docs (id, title, body, body_md, version, created_at, updated_at, project_id, folder_id)
+		SELECT printf('d-%s-%05d', p.id, i), 'Runbook ' || i, '{"type":"doc","content":[]}', '', 1, 1700000000 + i, 1700000000 + i, p.id,
+			(SELECT id FROM doc_folders WHERE project_id = p.id LIMIT 1)
+		FROM n, projects p WHERE p.id IN ('project-general', 'p-far')`)
+	require.NoError(t, err)
+	docList := tool(t, docs.MCPTools(f.svc.docsSvc), "doc_list")
+	cost := func(args string) [2]int64 {
+		st.Reset()
+		ids, _ := callPage(t, f.svc.accessSvc, docList, uReader, args)
+		require.Len(t, ids, 20)
+		return [2]int64{st.Count(), st.Rows()}
+	}
+	listed, everywhere := `{"project_id":"project-general","limit":20}`, `{"limit":20}`
+	before := [2][2]int64{cost(listed), cost(everywhere)}
+
+	_, err = db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, role_id, allow, deny, created_at, updated_at)
+		SELECT 'doc', d.id, 'person', ?, NULL, '["docs:read","docs:thread"]', '[]', 1, 1 FROM docs d WHERE d.id LIKE 'd-%'
+		UNION ALL SELECT 'doc', d.id, 'role', NULL, 'role-reader', '["docs:read"]', '[]', 1, 1 FROM docs d WHERE d.id LIKE 'd-p-far-%'`, uReader)
+	require.NoError(t, err)
+
+	assert.Equal(t, before, [2][2]int64{cost(listed), cost(everywhere)}, "statements and rows, with no rule and with 6,000")
+}
+
 // explain is SQLite's query plan for query, its detail lines joined.
 func explain(t *testing.T, db interface {
 	Query(string, ...any) (*sql.Rows, error)
@@ -171,9 +202,10 @@ func pageThrough(t *testing.T, a *access.Service, tl mcptool.Tool, user, filter 
 	}
 }
 
-// listParityFixture is the permission fixture with uClient restricted to p-client, a ticket, stack, and deploy in each
-// project, blockers across them, a doc each in a private and a shared state, rules for roles on the docs, an instance
-// stack and a deleted stack's deploy, and notices in every state an inbox filters.
+// listParityFixture is the permission fixture with uClient listed in p-client only, uUnlisted in no project and uNoRole
+// holding no role, a ticket, stack, and deploy in each project, blockers across them, a doc each in a private and a
+// shared state, rules for roles on the docs, an instance stack and a deleted stack's deploy, and notices in every state
+// an inbox filters.
 func listParityFixture(t *testing.T) permFixture {
 	t.Helper()
 	db := mentionsTestDB(t)
@@ -183,8 +215,8 @@ func listParityFixture(t *testing.T) permFixture {
 	return f
 }
 
-// withRoleRulesOnDocs gives the docs rules for roles, written in SQL since no writer names a role yet: one opening a
-// doc to a role outside its project's answer, one closing a shared doc to a role, and one a person's own rule beats.
+// withRoleRulesOnDocs gives the docs rules for roles: one opening a doc to a role outside its project's answer, one
+// closing a shared doc to a role, and one a person's own rule beats.
 func withRoleRulesOnDocs(t *testing.T, db *sql.DB) {
 	t.Helper()
 	_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, allow, deny, created_at, updated_at) VALUES
@@ -199,7 +231,8 @@ func withRoleRulesOnDocs(t *testing.T, db *sql.DB) {
 // withListParityRows adds listParityFixture's rows to a permission fixture.
 func withListParityRows(t *testing.T, f permFixture) permFixture {
 	t.Helper()
-	restrictedClient(t, f)
+	listedClient(t, f)
+	unlistedMembers(t, f)
 	ctx := context.Background()
 	now := time.Now()
 	clientTicket, err := f.svc.ticketsSvc.Create(ctx, pClient, "Login page for the portal", "", "", "")
@@ -225,7 +258,7 @@ func withListParityRows(t *testing.T, f permFixture) permFixture {
 	require.NoError(t, f.store.Stacks.Delete(ctx, "stack-gone"))
 
 	var notices []*workspace.Notification
-	for i, user := range []string{uOwner, uReader, uPlain, uClient, uOutsider} {
+	for i, user := range []string{uOwner, uReader, uPlain, uClient, uUnlisted, uNoRole, uOutsider} {
 		for j, n := range []struct{ kind, subject, workspace string }{
 			{string(workspace.SubjectTicket), f.ticket.ID, wsDefault}, {string(workspace.SubjectTicket), clientTicket.ID, wsDefault},
 			{string(workspace.SubjectDoc), "doc-client", wsDefault}, {string(workspace.SubjectDoc), "doc-deleted", wsDefault},
@@ -250,7 +283,7 @@ func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
 	deployList := tool(t, deploy.MCPTools(s.deploySvc), "deploy_list")
 	notificationList := tool(t, workspace.NotificationMCPTools(s.notifSvc), "notification_list")
 
-	for _, user := range []string{uOwner, uReader, uWriter, uPlain, uOverwrite, uOutsider, uClient} {
+	for _, user := range []string{uOwner, uReader, uWriter, uPlain, uOverwrite, uOutsider, uClient, uUnlisted, uNoRole} {
 		t.Run(user, func(t *testing.T) {
 			listed, searched, blocked := rowByRowTickets(t, f, user)
 			assert.Equal(t, listed, pageThrough(t, s.accessSvc, ticketList, user, ""), "ticket_list")
@@ -258,8 +291,8 @@ func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
 			assert.Equal(t, blocked, pageThrough(t, s.accessSvc, ticketList, user, `"blocked_only":true,`), "ticket_list blocked_only")
 
 			docIDs, openable, ranked := rowByRowDocs(t, f, user)
+			assert.Equal(t, openable, docIDs, "listed equals openable")
 			assert.Equal(t, docIDs, pageThrough(t, s.accessSvc, docList, user, ""), "doc_list")
-			assert.Equal(t, openable, openedOnFirstPage(t, s.accessSvc, docList, user), "doc_list can_open")
 			// Docs that rank alike come in insertion order from Search and by id from the page; the storage test pins order.
 			assert.ElementsMatch(t, ranked, pageThrough(t, s.accessSvc, docList, user, `"query":"spec",`), "doc_list query")
 
@@ -296,14 +329,19 @@ func rowByRowTickets(t *testing.T, f permFixture, user string) (listed, searched
 	return ticketIDs(ts), searched, blocked
 }
 
-// rowByRowDocs is what the docs use-cases that check each row show user: every doc, those they open, and a search.
+// rowByRowDocs is what the docs use-cases that check each row show user: every doc listed, every doc a single read
+// check opens, and a search.
 func rowByRowDocs(t *testing.T, f permFixture, user string) (listed, openable, searched []string) {
 	t.Helper()
 	items, err := f.svc.docsSvc.List(as(user))
 	require.NoError(t, err)
 	for _, d := range items {
 		listed = append(listed, d.ID)
-		if d.CanOpen {
+	}
+	all, err := f.store.Docs.List(context.Background())
+	require.NoError(t, err)
+	for _, d := range all {
+		if can, err := f.svc.accessSvc.Can(context.Background(), user, d.ID, permissions.DocsRead); err == nil && can {
 			openable = append(openable, d.ID)
 		}
 	}
@@ -334,21 +372,6 @@ func rowByRowInbox(t *testing.T, f permFixture, user string) []string {
 		}
 	}
 	return inbox
-}
-
-// openedOnFirstPage is the ids doc_list marks can_open on a page that holds every doc.
-func openedOnFirstPage(t *testing.T, a *access.Service, docList mcptool.Tool, user string) []string {
-	t.Helper()
-	_, page := callPage(t, a, docList, user, `{"limit":100}`)
-	var opened []string
-	for _, raw := range page.Items {
-		var item docs.DocListItem
-		require.NoError(t, json.Unmarshal(raw, &item))
-		if item.CanOpen {
-			opened = append(opened, item.ID)
-		}
-	}
-	return opened
 }
 
 func ticketIDs(ts []*tickets.Ticket) []string {

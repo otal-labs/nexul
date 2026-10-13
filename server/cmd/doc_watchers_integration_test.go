@@ -110,8 +110,10 @@ func TestDocWatchers_ChangesNotifyOnlyWatchers(t *testing.T) {
 		readAll(t, svc, "u-onik", "u-kai", "u-nor")
 		require.Contains(t, watcherIDs(t, svc, "u-onik", plan.ID), "u-nor")
 		before := len(inbox(t, svc, "u-nor", workspace.KindDocUpdated))
-		require.NoError(t, store.WorkspaceMembers.SetRole(context.Background(), "workspace-default", "u-nor", "role-member"))
-		_, err := svc.docsSvc.Update(as("u-onik"), plan.ID, "Launch plan v4", "")
+		nor, err := store.WorkspaceMembers.Member(context.Background(), "workspace-default", "u-nor")
+		require.NoError(t, err)
+		require.NoError(t, store.WorkspaceMembers.ChangeRoles(context.Background(), "workspace-default", "u-nor", []string{"role-member"}, nor.RoleIDs))
+		_, err = svc.docsSvc.Update(as("u-onik"), plan.ID, "Launch plan v4", "")
 		require.NoError(t, err)
 		deliverNotifications(t, svc, store)
 		assert.Len(t, inbox(t, svc, "u-nor", workspace.KindDocUpdated), before, "nothing new after losing docs:read")
@@ -125,8 +127,8 @@ func TestDocWatchers_ChangesNotifyOnlyWatchers(t *testing.T) {
 	})
 }
 
-// TestDocWatchers_WatchingTakesReadingTheDoc checks watching is gated where the doc lives: a member who cannot read
-// docs is forbidden, and someone outside the workspace learns nothing about it.
+// TestDocWatchers_WatchingTakesReadingTheDoc checks watching is gated where the doc lives: neither a member who cannot
+// read docs nor someone outside the workspace learns anything about it.
 func TestDocWatchers_WatchingTakesReadingTheDoc(t *testing.T) {
 	svc, store := newWired(t)
 	seedMentionPeople(t, store)
@@ -134,11 +136,11 @@ func TestDocWatchers_WatchingTakesReadingTheDoc(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.docsSvc.SetWatching(as("u-sam"), plan.ID, true)
-	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
 	_, err = svc.docsSvc.SetWatching(as("u-out"), plan.ID, true)
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 	_, err = svc.docsSvc.Watchers(as("u-sam"), plan.ID)
-	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
 
 	got, err := svc.docsSvc.SetWatching(as("u-nor"), plan.ID, true)
 	require.NoError(t, err, "reading is enough; watching never needs docs:write")

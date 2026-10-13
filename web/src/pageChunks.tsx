@@ -15,6 +15,7 @@ const page = <M, C extends ComponentType<Record<string, never>>>(load: () => Pro
   return Object.assign(Page, { preload });
 };
 
+export const AccessPage = page(() => import("@/pages/AccessPage"), (m) => m.AccessPage);
 export const AutomationPage = page(() => import("@/pages/AutomationPage"), (m) => m.AutomationPage);
 export const AutomationsPage = page(() => import("@/pages/AutomationsPage"), (m) => m.AutomationsPage);
 export const BoardPage = page(() => import("@/pages/BoardPage"), (m) => m.BoardPage);
@@ -44,6 +45,7 @@ export const YourSettingsPage = page(() => import("@/pages/YourSettingsPage"), (
 
 // Topology and Interview are left to load on a visit: most sessions never open them, and their chunks are the heaviest.
 const warmed: (() => Promise<unknown>)[] = [
+  AccessPage.preload,
   AutomationPage.preload,
   AutomationsPage.preload,
   BoardPage.preload,

@@ -10,7 +10,6 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
-	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/tenancy"
 )
 
@@ -23,12 +22,9 @@ type AccountStatusSetter interface {
 type Team interface {
 	ListTeam(ctx context.Context, actorID string) (*tenancy.Team, error)
 	MemberRoleID(ctx context.Context, workspaceID, userID string) (string, error)
-	AddMember(ctx context.Context, actorID, workspaceID, userID, roleID string) error
-	ChangeMemberRole(ctx context.Context, actorID, workspaceID, userID, roleID string) error
-	SetMemberOverrides(ctx context.Context, actorID, workspaceID, userID string, allow, deny *permissions.Set) error
+	AddMember(ctx context.Context, actorID, workspaceID, userID string, roleIDs ...string) error
+	UpdateMemberRoles(ctx context.Context, actorID, workspaceID, userID string, add, remove []string) error
 	RemoveMember(ctx context.Context, actorID, workspaceID, userID string) error
-	SetEveryProject(ctx context.Context, actorID, workspaceID, userID, every string) error
-	SetProjectAccess(ctx context.Context, actorID, workspaceID, userID, projectID string, allow permissions.Set) error
 }
 
 // AccountTools are the account tools that carry workspace access, which the tenancy domain owns.
@@ -52,17 +48,11 @@ type accountResult struct {
 }
 
 type membershipResult struct {
-	WorkspaceID      string                   `json:"workspace_id"`
-	WorkspaceName    string                   `json:"workspace_name"`
-	RoleID           string                   `json:"role_id"`
-	RoleName         string                   `json:"role_name"`
-	Roles            []*tenancy.TeamRole      `json:"roles"`
-	IsOwner          bool                     `json:"is_owner"`
-	Allow            permissions.Set          `json:"allow"`
-	Deny             permissions.Set          `json:"deny"`
-	CanManageMembers bool                     `json:"can_manage_members"`
-	EveryProject     string                   `json:"every_project"`
-	Projects         []*tenancy.ProjectAccess `json:"projects,omitzero"`
+	WorkspaceID      string              `json:"workspace_id"`
+	WorkspaceName    string              `json:"workspace_name"`
+	Roles            []*tenancy.TeamRole `json:"roles"`
+	IsOwner          bool                `json:"is_owner"`
+	CanManageMembers bool                `json:"can_manage_members"`
 }
 
 type accountListIn struct {
@@ -70,23 +60,15 @@ type accountListIn struct {
 }
 
 type accountWorkspaceIn struct {
-	WorkspaceID   string            `json:"workspace_id" jsonschema:"The workspace's id, from workspace_list."`
-	RoleID        string            `json:"role_id,omitempty" jsonschema:"A role of that workspace, never its Owner role; workspace_list with the workspace's id lists them. Required when the account is not a member yet."`
-	Allow         *permissions.Set  `json:"allow,omitempty" jsonschema:"Replaces the account's workspace-wide allow overrides, each <domain>:<action>, for example [\"docs:write\"]. An empty list clears them; omit it to keep them."`
-	Deny          *permissions.Set  `json:"deny,omitempty" jsonschema:"Replaces the account's workspace-wide deny overrides, each <domain>:<action>, for example [\"members:write\"]. An empty list clears them; omit it to keep them."`
-	EveryProject  string            `json:"every_project,omitempty" jsonschema:"role (the role's project areas apply on every project) or none (a Restricted member, who sees only the projects in project_access). Omit it to keep the current one."`
-	ProjectAccess []projectAccessIn `json:"project_access,omitempty" jsonschema:"Project access for a Restricted member, one entry per project to change; projects not listed keep their levels."`
-}
-
-type projectAccessIn struct {
-	ProjectID string          `json:"project_id" jsonschema:"A project of that workspace, from project_list."`
-	Allow     permissions.Set `json:"allow" jsonschema:"Replaces the levels on that project, each a project-area <domain>:<action> from permission_catalog, for example [\"tickets:read\",\"tickets:write\"]. An empty list takes the project away."`
+	WorkspaceID string   `json:"workspace_id" jsonschema:"The workspace's id, from workspace_list."`
+	AddRoles    []string `json:"add_roles,omitempty" jsonschema:"Role ids to give the account there, never the Owner role; workspace_list with the workspace's id lists them. At least one when the account is not a member yet."`
+	RemoveRoles []string `json:"remove_roles,omitempty" jsonschema:"Role ids to take away there, never the Owner role; taking away every role leaves a member who sees no project."`
 }
 
 type accountUpdateIn struct {
 	ID                 string               `json:"id" jsonschema:"The account's id, from account_list."`
 	Status             auth.AccountStatus   `json:"status,omitempty" jsonschema:"active or disabled. active reactivates a disabled account and restores a removed one. Needs accounts:write in any workspace."`
-	Workspaces         []accountWorkspaceIn `json:"workspaces,omitempty" jsonschema:"Workspace access to set: adds the account to a workspace it is not in with role_id, changes its role where it is a member, and replaces its overrides where allow or deny is sent."`
+	Workspaces         []accountWorkspaceIn `json:"workspaces,omitempty" jsonschema:"Roles to change per workspace: adds the account to a workspace it is not in with add_roles, and gives or takes away roles where it is a member."`
 	RemoveWorkspaceIDs []string             `json:"remove_workspace_ids,omitempty" jsonschema:"Workspaces to take the account out of; its account and authored content stay."`
 }
 
@@ -100,14 +82,13 @@ func accountListTool(t Team) mcptool.Tool {
 		"Lists the Team: accounts with their status (active, disabled, or removed), whether they are online now, "+
 			"when they were last seen (to the hour, null once signed out everywhere), providers (the sign-in accounts "+
 			"linked, github, google or discord, in the order they were linked), and their workspace access, one "+
-			"entry per workspace with roles, every role they hold there (id, name, whether it is the Owner role), "+
-			"role_id and role_name naming the first, is_owner, whether the Owner role is among them, the workspace-wide allow and deny "+
-			"overrides, can_manage_members, whether you hold members:write there and so may change that access, and "+
-			"every_project: role, where the role's project areas reach every project, or none, a Restricted member "+
-			"whose projects list the project access they hold on projects you can open yourself. "+
+			"entry per workspace with roles, every role they hold there in the order given (id, name, whether it is "+
+			"the Owner role), is_owner, whether the Owner role is among them, and can_manage_members, whether you hold "+
+			"members:write there and so may change their roles. Which projects someone is in is set on each project, "+
+			"through permission_overwrite_list and permission_overwrite_update. "+
 			"A holder of accounts:read in any workspace sees every account and workspace; anyone else sees only the "+
 			"workspaces where they hold members:write and the people in them, and callers with neither are refused. Use account_get "+
-			"for your own account, account_update to change an account's status or workspace access, and "+
+			"for your own account, account_update to change an account's status or roles, and "+
 			"account_delete to remove it. People online come first, then the most recently seen.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in accountListIn) (any, error) {
@@ -125,16 +106,14 @@ func accountListTool(t Team) mcptool.Tool {
 
 func accountUpdateTool(a AccountStatusSetter, t Team) mcptool.Tool {
 	return mcptool.New("account_update", "Update account",
-		"Changes an account's status and its workspace access. status disabled blocks sign-in and disconnects "+
+		"Changes an account's status and the roles it holds in each workspace. status disabled blocks sign-in and disconnects "+
 			"their computers while keeping memberships and credentials; active reactivates a disabled account, or restores a removed one without "+
-			"the access account_delete took away; status needs accounts:write in any workspace. workspaces adds the "+
-			"account to a workspace, changes its role, or replaces its overrides there, and remove_workspace_ids "+
-			"takes it out of one; each needs members:write in that workspace, a role or allow override may only "+
-			"carry permissions you hold there yourself, and the Owner role can never be given, changed, or removed. "+
-			"Inside a workspaces entry, every_project none restricts the person to the projects they hold access to and "+
-			"role lifts it, and project_access replaces their levels on each project named; nobody grants a level they "+
-			"don't hold on that project, and role needs the role's project levels on every project, which a Restricted "+
-			"caller never has. Only the fields you send change. The changes apply in the order listed "+
+			"the access account_delete took away; status needs accounts:write in any workspace. A workspaces entry adds the "+
+			"account to a workspace it is not in with add_roles, or gives it add_roles and takes away remove_roles where "+
+			"it is a member; remove_workspace_ids takes it out of one. Each needs members:write in that workspace, you "+
+			"may give or take away only a role whose permissions you hold there yourself, and the Owner role is never "+
+			"given or taken. Someone left with no role stays a member and sees no project. Which projects a person is "+
+			"in is set on each project with permission_overwrite_update. Only the fields you send change. The changes apply in the order listed "+
 			"here and stop at the first failure, whose message names the field and the ones already applied. "+
 			"Returns the fields applied and the account as account_list shows it to you, when it shows it at all.",
 		mcptool.Hints{Idempotent: true, Local: true},
@@ -169,49 +148,28 @@ func accountUpdateSteps(a AccountStatusSetter, t Team, actor string, in accountU
 	return steps
 }
 
-// workspaceSteps sets one workspace entry: membership and overrides, then Every project, then each project's levels.
+// workspaceSteps sets one workspace entry's membership and roles.
 func workspaceSteps(t Team, actor, userID string, w accountWorkspaceIn) []step {
 	field := "workspaces[" + w.WorkspaceID + "]"
-	var steps []step
-	if w.RoleID != "" || w.Allow != nil || w.Deny != nil || (w.EveryProject == "" && w.ProjectAccess == nil) {
-		steps = append(steps, step{field: field, hint: "workspace_list with the workspace's id lists its roles", run: func(ctx context.Context) error {
-			return setWorkspaceAccess(ctx, t, actor, userID, w)
-		}})
-	}
-	if w.EveryProject != "" {
-		steps = append(steps, step{field: field + ".every_project", run: func(ctx context.Context) error {
-			return t.SetEveryProject(ctx, actor, w.WorkspaceID, userID, w.EveryProject)
-		}})
-	}
-	for _, p := range w.ProjectAccess {
-		steps = append(steps, step{field: field + ".project_access[" + p.ProjectID + "]", hint: "project_list lists the workspace's projects", run: func(ctx context.Context) error {
-			return t.SetProjectAccess(ctx, actor, w.WorkspaceID, userID, p.ProjectID, p.Allow)
-		}})
-	}
-	return steps
+	return []step{{field: field, hint: "workspace_list with the workspace's id lists its roles", run: func(ctx context.Context) error {
+		return setWorkspaceRoles(ctx, t, actor, userID, w)
+	}}}
 }
 
-// setWorkspaceAccess adds the account where it is not a member yet, else changes its role; then sets any overrides.
-func setWorkspaceAccess(ctx context.Context, t Team, actor, userID string, w accountWorkspaceIn) error {
+// setWorkspaceRoles adds the account where it is not a member yet, else gives and takes away the roles named.
+func setWorkspaceRoles(ctx context.Context, t Team, actor, userID string, w accountWorkspaceIn) error {
 	_, err := t.MemberRoleID(ctx, w.WorkspaceID, userID)
 	member := err == nil
 	if !member && !errors.Is(err, apperrs.ErrNotFound) {
 		return err
 	}
-	if !member {
-		if err := t.AddMember(ctx, actor, w.WorkspaceID, userID, w.RoleID); err != nil {
-			return err
-		}
+	if member {
+		return t.UpdateMemberRoles(ctx, actor, w.WorkspaceID, userID, w.AddRoles, w.RemoveRoles)
 	}
-	if member && w.RoleID != "" {
-		if err := t.ChangeMemberRole(ctx, actor, w.WorkspaceID, userID, w.RoleID); err != nil {
-			return err
-		}
+	if len(w.RemoveRoles) > 0 {
+		return fmt.Errorf("%w: the account is not a member of workspace %s, so it holds no role to take away", apperrs.ErrInvalid, w.WorkspaceID)
 	}
-	if w.Allow == nil && w.Deny == nil {
-		return nil
-	}
-	return t.SetMemberOverrides(ctx, actor, w.WorkspaceID, userID, w.Allow, w.Deny)
+	return t.AddMember(ctx, actor, w.WorkspaceID, userID, w.AddRoles...)
 }
 
 // readAccount is nil when the account falls outside the caller's view of the Team.
@@ -246,9 +204,8 @@ func toAccountResult(p *tenancy.TeamPerson, canManage map[string]bool) accountRe
 	}
 	for _, m := range p.Workspaces {
 		r.Workspaces = append(r.Workspaces, membershipResult{
-			WorkspaceID: m.WorkspaceID, WorkspaceName: m.WorkspaceName, RoleID: m.RoleID, RoleName: m.RoleName, Roles: m.Roles,
-			IsOwner: m.IsOwner, Allow: m.Allow, Deny: m.Deny, CanManageMembers: canManage[m.WorkspaceID],
-			EveryProject: m.EveryProject, Projects: restrictedProjects(m),
+			WorkspaceID: m.WorkspaceID, WorkspaceName: m.WorkspaceName, Roles: m.Roles,
+			IsOwner: m.IsOwner, CanManageMembers: canManage[m.WorkspaceID],
 		})
 	}
 	return r
@@ -259,12 +216,4 @@ func accountActor(ctx context.Context) string {
 		return a.ID
 	}
 	return ""
-}
-
-// restrictedProjects hides the rows a From role member keeps for a later switch back, since they grant nothing now.
-func restrictedProjects(m *tenancy.TeamMembership) []*tenancy.ProjectAccess {
-	if m.EveryProject != tenancy.EveryProjectNone {
-		return nil
-	}
-	return m.Projects
 }

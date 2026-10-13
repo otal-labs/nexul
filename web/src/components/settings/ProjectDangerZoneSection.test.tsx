@@ -14,8 +14,10 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const project = { id: "p-web", name: "Web", prefix: "WEB" } as Project;
 
-const renderSection = (impact: unknown) => {
-  mocks.get.mockResolvedValue({ data: impact });
+const person = (login: string) => ({ user_id: login, login, display_name: "", avatar_url: "" });
+
+const renderSection = (impact: unknown, people: unknown[]) => {
+  mocks.get.mockImplementation((url: string) => Promise.resolve({ data: url.endsWith("/people") ? { people, role_ids: [] } : impact }));
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter>
@@ -29,27 +31,26 @@ const renderSection = (impact: unknown) => {
 describe("ProjectDangerZoneSection", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("names the Restricted members who lose access in the delete confirmation", async () => {
+  it("says how many people lose the project in the delete confirmation", async () => {
     const user = userEvent.setup();
-    renderSection({ tickets: 0, repos: 0, services: 0, restricted_members: [{ user_id: "u-1", name: "Bob" }, { user_id: "u-2", name: "Sam" }] });
+    renderSection({ tickets: 0, repos: 0, services: 0 }, [person("bob"), person("sam")]);
 
-    await vi.waitFor(() => expect(mocks.get).toHaveBeenCalled());
+    await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(2));
     await user.click(screen.getByRole("button", { name: "Remove project" }));
 
-    expect(await screen.findByText("Bob and 1 other restricted member lose access.")).toBeInTheDocument();
-    expect(screen.getByText("Bob, Sam")).toBeInTheDocument();
+    expect(await screen.findByText("2 people lose this project.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
   });
 
-  it("adds no line when nobody restricted holds the project", async () => {
+  it("adds no line when nobody is in the project", async () => {
     const user = userEvent.setup();
-    renderSection({ tickets: 0, repos: 0, services: 0, restricted_members: [] });
+    renderSection({ tickets: 0, repos: 0, services: 0 }, []);
 
-    await vi.waitFor(() => expect(mocks.get).toHaveBeenCalled());
+    await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(2));
     await user.click(screen.getByRole("button", { name: "Remove project" }));
 
     expect(await screen.findByText("The project is empty. Removing it can't be undone.")).toBeInTheDocument();
-    expect(screen.queryByText(/lose access/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/lose this project/)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
   });
 });
