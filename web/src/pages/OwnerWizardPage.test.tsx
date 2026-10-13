@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
   useFetchConnectors: vi.fn(),
 }));
 
-// ConnectorsSection.test.tsx already covers the full tab/card behavior; this file only needs enough to prove the real list shows up and the Finish setup handoff still works.
+// ConnectorsSection.test.tsx already covers the full tab/card behavior; this file only needs enough to prove the real list shows up and the hand-over still works.
 const connectorFixture: ConnectorStatus[] = [
   {
     connector: { id: "github", name: "GitHub", description: "Turns tasks into issues", category: "development", icon: "github" },
@@ -46,10 +46,6 @@ vi.mock("@/components/auth/SetupWorkspaceStep", () => ({
   ),
 }));
 
-vi.mock("@/components/auth/SetupT3CodeStep", () => ({
-  SetupT3CodeStep: ({ onFinish }: { onFinish: () => void }) => <button onClick={onFinish}>Finish setup</button>,
-}));
-
 vi.mock("@/hooks/AuthHooks", () => ({
   useFetchSettings: mocks.useFetchSettings,
   useFetchMe: () => ({ data: { user: {}, instance_permissions: [] } }),
@@ -58,7 +54,6 @@ vi.mock("@/hooks/AuthHooks", () => ({
 
 vi.mock("@/hooks/WorkspaceHooks", () => ({
   useRenameWorkspace: () => ({ mutateAsync: mocks.renameWorkspaceMutateAsync }),
-  useSelectedWorkspace: () => ({ id: "workspace-default", slug: "default" }),
 }));
 
 const renderPage = () => {
@@ -71,7 +66,7 @@ const renderPage = () => {
           <Route path="/login" element={<div>Login page</div>} />
           <Route path="/wizard/onboarding/dns" element={<div>DNS page</div>} />
           <Route path="/" element={<div>Home page</div>} />
-          <Route path="/acme/wizard/project/project" element={<div>Project wizard</div>} />
+          <Route path="/wizard/welcome" element={<div>Welcome wizard</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -94,7 +89,7 @@ describe("OwnerWizardPage", () => {
     mocks.useFetchConnectors.mockReturnValue({ data: connectorFixture, isPending: false, error: undefined });
   });
 
-  it("walks through all four steps in sequence as each step's onContinue fires", async () => {
+  it("walks through all three steps in sequence as each step's onContinue fires", async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -106,10 +101,7 @@ describe("OwnerWizardPage", () => {
 
     expect(await screen.findByText("Connect your tools")).toBeInTheDocument();
     expect(screen.getByText(/cloudflare is optional/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Continue" }));
-
-    expect(screen.getByText("Set up T3 Code")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /finish setup/i })).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Step 3 of 3" })).toBeInTheDocument();
   });
 
   it("renders the real connectors list in step 3, not the old placeholder", async () => {
@@ -165,11 +157,10 @@ describe("OwnerWizardPage", () => {
 
     expect(screen.getByText("Connect your tools")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    await user.click(screen.getByRole("button", { name: /finish setup/i }));
-    expect(await screen.findByText("Project wizard", {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(await screen.findByText("Welcome wizard", {}, { timeout: 3000 })).toBeInTheDocument();
   });
 
-  it("makes the caller owner and names the workspace when step 2 continues, so steps 3 and 4 run with owner permissions", async () => {
+  it("makes the caller owner and names the workspace when step 2 continues, so step 3 runs with owner permissions", async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -194,17 +185,17 @@ describe("OwnerWizardPage", () => {
     expect(mocks.renameWorkspaceMutateAsync).not.toHaveBeenCalled();
   });
 
-  it("finishes step 4 into the project wizard of the renamed workspace", async () => {
+  it("finishes with no computer, handing over to the Welcome wizard after Workspace ready", async () => {
     const user = userEvent.setup();
     renderPage();
 
     await user.click(screen.getByRole("button", { name: "Step1 continue" }));
     await user.click(screen.getByRole("button", { name: "Step2 continue" }));
     await user.click(await screen.findByRole("button", { name: "Continue" }));
-    await user.click(screen.getByRole("button", { name: /finish setup/i }));
 
-    expect(await screen.findByText("Workspace ready")).toBeInTheDocument();
-    expect(await screen.findByText("Project wizard", {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Workspace ready" })).toBeInTheDocument();
+    expect(screen.getByText("Next, what's yours to set up: GitHub and your computer.")).toBeInTheDocument();
+    expect(await screen.findByText("Welcome wizard", {}, { timeout: 3000 })).toBeInTheDocument();
     expect(useOwnerWizardStore.getState().step).toBe(1);
   });
 });

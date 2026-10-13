@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { QrCode } from "lucide-react";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -6,9 +7,21 @@ import { IssuedConnectCode } from "@/components/you/IssuedConnectCode";
 import { QrFrame } from "@/components/you/QrFrame";
 import { useConnectCode } from "@/hooks/AuthHooks";
 
-export const ConnectCodePanel = () => {
+interface ConnectCodePanelProps {
+  // Where showing the code is the whole point of the screen, it is issued on arrival instead of on a click.
+  issueOnArrival?: boolean;
+}
+
+export const ConnectCodePanel = ({ issueOnArrival = false }: ConnectCodePanelProps) => {
   const { mutate, data, error, isPending } = useConnectCode();
   const generate = () => mutate();
+  // Each call mints a new code, so neither a re-render nor StrictMode's second effect may issue another.
+  const issued = useRef(false);
+  useEffect(() => {
+    if (!issueOnArrival || issued.current) return;
+    issued.current = true;
+    mutate();
+  }, [issueOnArrival, mutate]);
 
   return (
     <>

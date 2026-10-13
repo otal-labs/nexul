@@ -31,17 +31,47 @@ func newLinkHarness(t *testing.T) (*Service, *fakeUserStore, string) {
 
 func TestStartIdentityLink_Refusals(t *testing.T) {
 	s, _, userID := newLinkHarness(t)
-	_, _, err := s.StartIdentityLink(context.Background(), "", ProviderGoogle)
+	_, _, err := s.StartIdentityLink(context.Background(), "", ProviderGoogle, "")
 	assert.ErrorIs(t, err, apperrs.ErrUnauthorized)
-	_, _, err = s.StartIdentityLink(context.Background(), userID, Provider("facebook"))
+	_, _, err = s.StartIdentityLink(context.Background(), userID, Provider("facebook"), "")
 	assert.ErrorIs(t, err, apperrs.ErrInvalid)
-	_, _, err = s.StartIdentityLink(context.Background(), userID, ProviderDiscord)
+	_, _, err = s.StartIdentityLink(context.Background(), userID, ProviderDiscord, "")
 	assert.ErrorIs(t, err, apperrs.ErrInvalid, "a provider the instance has not turned on cannot be linked")
+}
+
+func TestStartIdentityLink_ReturnTo_OnlyThisAppsPages(t *testing.T) {
+	s, _, userID := newLinkHarness(t)
+	tests := []struct {
+		name     string
+		returnTo string
+		ok       bool
+	}{
+		{"the Welcome wizard on a step", "/wizard/welcome?step=github", true},
+		{"Profile", "/settings/profile", true},
+		{"an absolute URL", "https://evil.example.com/wizard/welcome", false},
+		{"a scheme-relative URL", "//evil.example.com/wizard/welcome", false},
+		{"a backslash host", "/\\evil.example.com/wizard/welcome", false},
+		{"a script URL", "javascript:alert(1)", false},
+		{"a relative path", "wizard/welcome", false},
+		{"a path that climbs out", "/wizard/welcome/../../login", false},
+		{"another page of the app", "/docs", false},
+		{"a header break", "/wizard/welcome\r\nSet-Cookie: x=1", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := s.StartIdentityLink(context.Background(), userID, ProviderGoogle, tt.returnTo)
+			if tt.ok {
+				assert.NoError(t, err)
+				return
+			}
+			assert.ErrorIs(t, err, apperrs.ErrInvalid)
+		})
+	}
 }
 
 func TestCompleteIdentityLink_AttachesToTheUserWhoStartedIt(t *testing.T) {
 	s, users, userID := newLinkHarness(t)
-	authorizeURL, state, err := s.StartIdentityLink(context.Background(), userID, ProviderGoogle)
+	authorizeURL, state, err := s.StartIdentityLink(context.Background(), userID, ProviderGoogle, "")
 	require.NoError(t, err)
 	assert.Contains(t, authorizeURL, "state="+state)
 	assert.True(t, IsLinkState(state))
@@ -65,7 +95,7 @@ func TestCompleteIdentityLink_AttachesToTheUserWhoStartedIt(t *testing.T) {
 
 func TestCompleteIdentityLink_RejectsBadStates(t *testing.T) {
 	s, _, userID := newLinkHarness(t)
-	_, state, err := s.StartIdentityLink(context.Background(), userID, ProviderGoogle)
+	_, state, err := s.StartIdentityLink(context.Background(), userID, ProviderGoogle, "")
 	require.NoError(t, err)
 	tests := []struct {
 		name     string
@@ -94,7 +124,7 @@ func TestCompleteIdentityLink_SomeoneElsesAccount_ChangesNothing(t *testing.T) {
 	s, users, userID := newLinkHarness(t)
 	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "other", Provider: ProviderGoogle, ProviderUserID: "sub-9", Login: "owner@example.com"})
 	require.NoError(t, err)
-	_, state, err := s.StartIdentityLink(context.Background(), userID, ProviderGoogle)
+	_, state, err := s.StartIdentityLink(context.Background(), userID, ProviderGoogle, "")
 	require.NoError(t, err)
 
 	err = s.CompleteIdentityLink(context.Background(), ProviderGoogle, state, "good-code")
@@ -116,7 +146,7 @@ func TestUnlinkIdentity(t *testing.T) {
 	err = s.UnlinkIdentity(context.Background(), userID, ProviderGoogle)
 	assert.ErrorIs(t, err, apperrs.ErrNotFound)
 
-	_, state, err := s.StartIdentityLink(context.Background(), userID, ProviderGoogle)
+	_, state, err := s.StartIdentityLink(context.Background(), userID, ProviderGoogle, "")
 	require.NoError(t, err)
 	require.NoError(t, s.CompleteIdentityLink(context.Background(), ProviderGoogle, state, "good-code"))
 	require.NoError(t, s.UnlinkIdentity(context.Background(), userID, ProviderGitHub))
@@ -197,6 +227,26 @@ func TestHandler_IdentityRoutes(t *testing.T) {
 		location := rec.Header().Get("Location")
 		assert.True(t, strings.HasPrefix(location, "https://deploy.example.com/settings/profile?provider=google&error="), location)
 		assert.Contains(t, location, "already+linked")
+	})
+
+	t.Run("a link started from the Welcome wizard lands back on its step", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		body := `{"provider":"google","return_to":"/wizard/welcome?step=github"}`
+		protected.ServeHTTP(rec, protectedRequest(t, s, users, http.MethodPost, "/api/auth/identities/link", userID, body))
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		var state string
+		for _, c := range rec.Result().Cookies() {
+			if c.Name == stateCookie {
+				state = c.Value
+			}
+		}
+		req := httptest.NewRequest(http.MethodGet, "/auth/google/callback?code=good-code&state="+state, nil)
+		req.AddCookie(&http.Cookie{Name: stateCookie, Value: state})
+		rec = httptest.NewRecorder()
+		public.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusFound, rec.Code)
+		location := rec.Header().Get("Location")
+		assert.True(t, strings.HasPrefix(location, "https://deploy.example.com/wizard/welcome?step=github&provider=google&error="), location)
 	})
 
 	rec = httptest.NewRecorder()

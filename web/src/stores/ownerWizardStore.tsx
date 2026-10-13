@@ -3,10 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 export type OwnerWizardStore = {
   step: number;
-  // The workspace's slug once step 2 has named it, for the last step's hand-off to the project wizard.
-  workspaceSlug: string | null;
   setStep: (step: number) => void;
-  setWorkspaceSlug: (slug: string) => void;
   reset: () => void;
 };
 
@@ -18,15 +15,13 @@ export const useOwnerWizardStore = create<OwnerWizardStore>()(
   persist(
     (set) => ({
       step: 1,
-      workspaceSlug: null,
       setStep: (step) => set({ step }),
-      setWorkspaceSlug: (workspaceSlug) => set({ workspaceSlug }),
-      reset: () => set({ step: 1, workspaceSlug: null }),
+      reset: () => set({ step: 1 }),
     }),
     {
       name: "owner-wizard",
       storage: createJSONStorage(() => sessionStorage),
-      partialize: (state) => ({ step: state.step, workspaceSlug: state.workspaceSlug }),
+      partialize: (state) => ({ step: state.step }),
     },
   ),
 );

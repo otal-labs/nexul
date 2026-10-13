@@ -10,6 +10,7 @@ import { getMeKey } from "@/hooks/AuthHooks";
 import { welcomeFollower } from "@/hooks/WelcomeHooks";
 import { WelcomeWizardPage } from "@/pages/WelcomeWizardPage";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { MeResponse } from "@/models/User";
 import { followFrame } from "@/test/followFrame";
 
@@ -58,6 +59,8 @@ const renderWizard = (path = "/wizard/welcome") => {
         <Routes>
           <Route path="/wizard/welcome" element={<WelcomeWizardPage />} />
           <Route path="/" element={<div>home-page</div>} />
+          <Route path="/northwind" element={<div>workspace-home</div>} />
+          <Route path="/northwind/wizard/project/project" element={<div>project-wizard</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -126,5 +129,42 @@ describe("WelcomeWizardPage", () => {
     await followFrame(welcomeFollower, "welcome.progress_changed", { user_id: "u-alice" }, client);
     expect(await screen.findByText(settled)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+  });
+
+  it.each([
+    { who: "someone who may create projects", permissions: ["projects:create"], label: "Create your first project", lands: "project-wizard" },
+    { who: "a member who may not", permissions: [], label: "Go to Northwind", lands: "workspace-home" },
+  ])("ends a workspace with no project for $who with $label", async ({ permissions, label, lands }) => {
+    useWorkspaceStore.getState().selectWorkspace("w1", "northwind");
+    progress = { first_run_done: true, steps: [step("github", "done")], dot: false };
+    const get = mocks.get.getMockImplementation()!;
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/projects") return { data: [] };
+      if (url === "/api/workspaces/w1/me") return { data: { role_name: "Owner", permissions } };
+      return get(url);
+    });
+    renderWizard("/wizard/welcome?step=finish");
+    await userEvent.click(await screen.findByRole("button", { name: label }));
+    expect(await screen.findByText(lands)).toBeInTheDocument();
+  });
+
+  it("issues the phone's connect code as the step opens, and only once", async () => {
+    progress = { first_run_done: true, steps: [step("phone", "left")], dot: true };
+    const code = { code: "7Q4F-K92M-3XYZ", host: "https://nexul.example.com", expires_at: new Date(Date.now() + 90_000).toISOString() };
+    mocks.post.mockResolvedValue({ data: code });
+    const client = renderWizard("/wizard/welcome?step=phone");
+    expect(await screen.findByText("7Q4F-K92M-3XYZ")).toBeInTheDocument();
+    await followFrame(welcomeFollower, "welcome.progress_changed", { user_id: "u-alice" }, client);
+    expect(mocks.post.mock.calls.filter(([url]) => url === "/api/auth/connect-codes")).toHaveLength(1);
+  });
+
+  it("starts the GitHub link to land back on its step, and shows why one failed there", async () => {
+    progress = { first_run_done: true, steps: [step("github", "left")], dot: true };
+    mocks.post.mockReturnValue(new Promise(() => {}));
+    renderWizard("/wizard/welcome?step=github&provider=github&error=already+linked");
+    const connect = (await screen.findAllByRole("button", { name: "Connect GitHub" })).at(-1)!;
+    expect(mocks.toast.error).toHaveBeenCalledWith("GitHub: already linked");
+    await userEvent.click(connect);
+    expect(mocks.post).toHaveBeenCalledWith("/api/auth/identities/link", { provider: "github", return_to: "/wizard/welcome?step=github" });
   });
 });

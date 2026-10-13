@@ -34,7 +34,7 @@ const ConnectPhone = () => {
             Open it and scan this code.
           </li>
         </ol>
-        <ConnectCodePanel />
+        <ConnectCodePanel issueOnArrival />
         <ul className="rounded-lg border border-border bg-card" role="status" aria-live="polite">
           <CheckRow icon={Smartphone} check={phoneCheck(connected)} />
         </ul>

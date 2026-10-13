@@ -492,15 +492,21 @@ func (h *Handler) invitationCallback(w http.ResponseWriter, r *http.Request, pro
 	http.Redirect(w, r, h.spaOrigin(r)+"/invite#acceptance-token="+acceptance, http.StatusFound)
 }
 
-// identityLinkCallback lands back on Profile either way: the person is signed in, so an error is a toast there.
+// identityLinkCallback lands back on the page the link started from either way: the person is signed in, so an error
+// is a toast there.
 func (h *Handler) identityLinkCallback(w http.ResponseWriter, r *http.Request, provider Provider, state, code string) {
-	target := h.spaOrigin(r) + "/settings/profile"
+	back := h.svc.LinkReturn(state, provider)
+	sep := "?"
+	if strings.Contains(back, "?") {
+		sep = "&"
+	}
+	target := h.spaOrigin(r) + back + sep + "provider=" + string(provider)
 	if err := h.svc.CompleteIdentityLink(r.Context(), provider, state, code); err != nil {
 		logging.FromCtx(r.Context()).Warn("link identity", "provider", provider, "error", err)
-		http.Redirect(w, r, target+"?provider="+string(provider)+"&error="+url.QueryEscape(err.Error()), http.StatusFound)
+		http.Redirect(w, r, target+"&error="+url.QueryEscape(err.Error()), http.StatusFound)
 		return
 	}
-	http.Redirect(w, r, target+"?provider="+string(provider)+"&linked=1", http.StatusFound)
+	http.Redirect(w, r, target+"&linked=1", http.StatusFound)
 }
 
 // callbackPOST exchanges a code for a token, returning JSON for programmatic clients; the browser uses the GET flow.
@@ -812,6 +818,8 @@ func (h *Handler) listIdentities(w http.ResponseWriter, r *http.Request) {
 
 type identityLinkRequest struct {
 	Provider Provider `json:"provider"`
+	// ReturnTo is the page to land back on, when not Profile; StartIdentityLink holds it to an allow-list.
+	ReturnTo string `json:"return_to,omitempty"`
 }
 
 // startIdentityLink answers the authorize URL for the browser to visit; a top-level redirect could not carry the bearer.
@@ -825,7 +833,7 @@ func (h *Handler) startIdentityLink(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	authorizeURL, state, err := h.svc.StartIdentityLink(r.Context(), currentUserID(r), req.Provider)
+	authorizeURL, state, err := h.svc.StartIdentityLink(r.Context(), currentUserID(r), req.Provider, req.ReturnTo)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
