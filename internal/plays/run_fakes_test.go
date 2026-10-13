@@ -427,9 +427,14 @@ func (f *fakeHarnessResolver) ResolveTarget(_ context.Context, _, _ string, choi
 type fakeMemories struct {
 	byProject map[string][]Memory
 	err       error
+	// unreadable is a starter without memories:read.
+	unreadable bool
 }
 
 func (f *fakeMemories) ListForProject(_ context.Context, projectID string) ([]Memory, error) {
+	if f.unreadable {
+		return nil, apperrs.ErrForbidden
+	}
 	return f.byProject[projectID], f.err
 }
 

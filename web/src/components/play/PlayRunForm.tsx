@@ -19,7 +19,8 @@ interface PlayRunFormProps {
   play: Play;
   targetType: PlayType;
   targetId: string;
-  memories: Memory[];
+  // Undefined when the person cannot read the project's memories: the pickers are left out and none are chosen.
+  memories: Memory[] | undefined;
   choices: LatestChoices;
   resolvedHarness: HarnessPick;
   // The person's project link, else their defaults as the suggestion; linked says which.
@@ -47,7 +48,7 @@ export const PlayRunForm = ({
   const runPlay = useRunPlay();
   const confirmBlocked = useConfirmBlockedRun(targetType, targetId);
   const [selected, setSelected] = useState<string[]>(() =>
-    choices.memory_ids.filter((id) => memories.some((m) => m.id === id && !m.always_included)),
+    choices.memory_ids.filter((id) => memories?.some((m) => m.id === id && !m.always_included)),
   );
   const [instructions, setInstructions] = useState(seedInstructions);
   const [where, setWhere] = useState<RunWhere>(seedWhere);
@@ -68,8 +69,8 @@ export const PlayRunForm = ({
       current.computer_id === next.computer_id ? current : { computer_id: next.computer_id, provider: "", model: "", model_options: [] },
     );
   }, []);
-  const regular = memories.filter((m) => !m.footer);
-  const footers = memories.filter((m) => m.footer);
+  const regular = memories?.filter((m) => !m.footer);
+  const footers = memories?.filter((m) => m.footer);
 
   const toggle = (id: string) =>
     setSelected((current) => (current.includes(id) ? current.filter((m) => m !== id) : [...current, id]));
@@ -97,13 +98,15 @@ export const PlayRunForm = ({
 
   return (
     <>
-      <MemoryPickSection
-        title="Main"
-        emptyMessage="No memories in this project yet."
-        memories={regular}
-        selected={selected}
-        onToggle={toggle}
-      />
+      {regular && (
+        <MemoryPickSection
+          title="Main"
+          emptyMessage="No memories in this project yet."
+          memories={regular}
+          selected={selected}
+          onToggle={toggle}
+        />
+      )}
 
       <section className="space-y-2">
         <h3 className={microheaderClass}>Instructions for this run</h3>
@@ -116,13 +119,15 @@ export const PlayRunForm = ({
         />
       </section>
 
-      <MemoryPickSection
-        title="Footer"
-        emptyMessage="No footer memories. Move a memory to the Footer folder to conclude runs with it."
-        memories={footers}
-        selected={selected}
-        onToggle={toggle}
-      />
+      {footers && (
+        <MemoryPickSection
+          title="Footer"
+          emptyMessage="No footer memories. Move a memory to the Footer folder to conclude runs with it."
+          memories={footers}
+          selected={selected}
+          onToggle={toggle}
+        />
+      )}
 
       <RunWhereSection
         value={where}
