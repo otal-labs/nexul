@@ -1,7 +1,7 @@
 # 05: Build the way back to deploying
 
 Type: task
-Status: open
+Status: resolved
 Blocked by: 02, 03
 
 ## Question

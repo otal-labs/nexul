@@ -466,6 +466,49 @@ describe("ProjectWizardPage", () => {
     expect(rung("Repository")).toHaveAttribute("data-state", "current");
   });
 
+  describe("adding a service while a repository waits to deploy", () => {
+    const attached = (full: string) => ({ owner: full.split("/")[0], name: full.split("/")[1], full_name: full, connector_id: "github", role: "app" });
+
+    beforeEach(() => {
+      access.areas = ["tickets", "stacks", "newProject"];
+      mocks.post.mockResolvedValue({
+        data: { default_branch: "main", env_keys: [], candidates: [{ kind: "compose", path: "compose.yaml", name: "web", services: [] }] },
+      });
+    });
+
+    const mockWaiting = (repos: string[]) =>
+      mocks.get.mockImplementation(async (url: string) => {
+        if (url === "/api/projects/p-1") return { data: project };
+        if (url === "/api/projects/p-1/repos") return { data: repos.map(attached) };
+        if (url === "/api/repositories") return { data: { repositories: [] } };
+        return { data: [] };
+      });
+
+    it.each([
+      ["the only one", ["acme/portal"], "", "acme/portal"],
+      ["the one the link names", ["acme/portal", "acme/site"], "&repo=acme%2Fsite", "acme/site"],
+    ])("scans %s and opens Service without asking for it", async (_, repos, query, picked) => {
+      mockWaiting(repos);
+      renderPage(`/acme/wizard/project/repository?project=p-1&add=1${query}`);
+
+      expect(await screen.findByRole("heading", { name: "Service" })).toBeInTheDocument();
+      const [owner, name] = picked.split("/");
+      expect(mocks.post).toHaveBeenCalledWith("/api/repositories/scan", { owner, name, workspace_id: "ws-1" });
+      expect(useProjectWizardStore.getState().repository?.full_name).toBe(picked);
+    });
+
+    it("asks which one when several wait and the link names none", async () => {
+      mockWaiting(["acme/portal", "acme/site"]);
+      renderPage("/acme/wizard/project/repository?project=p-1&add=1");
+
+      expect(await screen.findByPlaceholderText("Search repositories…")).toBeInTheDocument();
+      await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/api/projects/p-1/repos"));
+      await vi.waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/api/services", { params: { project_id: "p-1" } }));
+      expect(mocks.post).not.toHaveBeenCalled();
+      expect(screen.getByRole("heading", { name: "Repository" })).toBeInTheDocument();
+    });
+  });
+
   it("door 3: preselects the project from ?stack= and opens the repository rung", async () => {
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/stacks/stack-1") return { data: stack };

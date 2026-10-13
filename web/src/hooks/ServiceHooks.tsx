@@ -11,11 +11,12 @@ const getServiceKey = "getService";
 export const getServiceDeploysKey = "getServiceDeploys";
 
 // No project lists every project's services, which the workspace-wide topology canvas wires from.
-export const useFetchServices = (projectId?: string) =>
+export const useFetchServices = (projectId?: string, enabled = true) =>
   useQuery({
     queryKey: [getServicesKey, projectId ?? "all"],
     queryFn: async () =>
       (await api.get<ServiceDef[]>("/api/services", { params: projectId ? { project_id: projectId } : {} })).data,
+    enabled,
   });
 
 export const useFetchService = (id: string | undefined) =>

@@ -6,6 +6,7 @@ import { ProjectWizardStepContent } from "@/components/wizard/ProjectWizardStepC
 import { WizardProgress } from "@/components/wizard/WizardProgress";
 import { useFetchProject, useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchStack } from "@/hooks/StackHooks";
+import { useSeedWaitingRepository } from "@/hooks/useWaitingRepos";
 import { useSetupSession, useWizardProject } from "@/hooks/useWizardSetup";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { Project } from "@/models/Project";
@@ -89,6 +90,7 @@ export const ProjectWizardPage = () => {
   useSeedPreselectedProject();
   const wsPath = useWorkspacePath();
   useSeedAttachStack();
+  useSeedWaitingRepository();
   const reset = useProjectWizardStore((s) => s.reset);
   // Leaving ends the run, so the next visit starts clean; a project it already made resumes through Continue setup.
   useEffect(() => reset, [reset]);
