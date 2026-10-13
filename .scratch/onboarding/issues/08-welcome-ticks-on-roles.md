@@ -1,7 +1,7 @@
 # 08: A role carries its welcome steps
 
 Type: task
-Status: open
+Status: claimed
 Blocked by: 07, and the permission rework's `permission-switch` branch merged
 
 Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role), `practices/go.md`, `practices/architecture.md`, `practices/mcp.md`, `practices/react-guide.md`,

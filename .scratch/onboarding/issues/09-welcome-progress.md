@@ -1,7 +1,7 @@
 # 09: Each person's welcome progress, skip and live updates
 
 Type: task
-Status: open
+Status: claimed
 Blocked by: 08
 
 Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role), `practices/go.md` (section 17 for the list read), `practices/architecture.md` (sections 2 to 6),
