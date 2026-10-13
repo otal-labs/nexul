@@ -1,5 +1,5 @@
 -- name: CreateRunner :exec
-INSERT INTO runners (id, name, version, last_seen, connected, created_at, machine_id, owner_user_id, computer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO runners (id, name, version, last_seen, connected, created_at, machine_id, owner_user_id, computer_id, enrolled_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetRunner :one
 SELECT * FROM runners WHERE id = ?;
@@ -29,7 +29,7 @@ SELECT * FROM runners WHERE owner_user_id = ? AND owner_user_id != '' ORDER BY c
 DELETE FROM runner_enrollment_codes WHERE expires_at <= ?;
 
 -- name: CreateRunnerEnrollmentCode :exec
-INSERT INTO runner_enrollment_codes (code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id) VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO runner_enrollment_codes (code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id, enrolled_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetRunnerEnrollmentCode :one
 SELECT * FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?;
@@ -67,3 +67,7 @@ SELECT * FROM instance_upgrades WHERE status IN ('pending', 'started') ORDER BY 
 
 -- name: SetInstanceUpgradeStatus :execrows
 UPDATE instance_upgrades SET status = ?, error = ?, updated_at = ? WHERE id = ?;
+
+-- name: ListUsersWithConnectedDeployRunner :many
+SELECT DISTINCT enrolled_by FROM runners
+WHERE connected = 1 AND owner_user_id = '' AND enrolled_by IN (SELECT value FROM json_each(sqlc.arg(user_ids)));

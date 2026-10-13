@@ -28,6 +28,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
 	"github.com/otal-labs/nexul/internal/plays"
+	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -855,4 +856,32 @@ UNION ALL SELECT 'instance_area', ?, 'person', NULL, user_id, ?, '[]', 1, 1 FROM
 	none := cost(0, false)
 	assert.Equal(t, none, cost(0, true), "rules on every area")
 	assert.Equal(t, none, cost(30, true), "rules on many more areas")
+}
+
+// TestStatements_WelcomeProgressCostsTheSameForAnyPage: account_list reads a page's Welcome wizard progress with one
+// statement per seam, whether the page holds one person or fifty.
+func TestStatements_WelcomeProgressCostsTheSameForAnyPage(t *testing.T) {
+	cost := func(n int) int64 {
+		f, st := newCountedFixture(t)
+		ctx := context.Background()
+		now := time.Now()
+		require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-newcomer", WorkspaceID: wsDefault, Name: "Newcomer",
+			WelcomeSteps: []string{"github", "computer", "projects", "deploy_server", "phone"}, CreatedAt: now, UpdatedAt: now}))
+		var page []string
+		for i := range n {
+			id := fmt.Sprintf("u-newcomer-%d", i)
+			_, _, err := f.store.Users.UpsertUser(ctx, &auth.Identity{UserID: id, Provider: auth.ProviderGitHub, ProviderUserID: id, Login: id})
+			require.NoError(t, err)
+			require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: id, WorkspaceID: wsDefault, RoleID: "role-newcomer", CreatedAt: now}))
+			_, err = f.svc.welcomeSvc.Skip(ctx, id, "phone")
+			require.NoError(t, err)
+			page = append(page, id)
+		}
+		st.Reset()
+		progress, err := f.svc.welcomeSvc.ProgressFor(ctx, page)
+		require.NoError(t, err)
+		require.Len(t, progress, n)
+		return st.Count()
+	}
+	assert.Equal(t, cost(1), cost(50))
 }

@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 
@@ -100,6 +102,27 @@ func TestAccountGet_WithoutIDIsTheCaller(t *testing.T) {
 	got, err = callAccountTool(t, s, "member", "account_get", `{}`)
 	require.NoError(t, err)
 	assert.Equal(t, "Mem", got.(accountResult).DisplayName, "the chosen display name sits beside the provider's name")
+}
+
+// welcomeOf answers each person's progress as their id, or fails with err.
+type welcomeOf struct{ err error }
+
+func (w welcomeOf) Progress(_ context.Context, userID string) (any, error) {
+	return "progress of " + userID, w.err
+}
+
+func TestAccountGet_CarriesTheAccountsWelcomeProgress(t *testing.T) {
+	t.Parallel()
+	s, _ := newAccountsHarness(t)
+	s.SetWelcome(welcomeOf{})
+
+	got, err := callAccountTool(t, s, "owner", "account_get", `{"id": "member"}`)
+	require.NoError(t, err)
+	assert.Equal(t, "progress of member", got.(accountResult).Welcome, "the account read, not the caller's")
+
+	s.SetWelcome(welcomeOf{err: errors.New("disk gone")})
+	_, err = callAccountTool(t, s, "member", "account_get", `{}`)
+	require.Error(t, err)
 }
 
 func TestUpdateAccountStatus_Refusals(t *testing.T) {

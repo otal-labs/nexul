@@ -40,6 +40,7 @@ import (
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
 	"github.com/otal-labs/nexul/internal/voice"
+	"github.com/otal-labs/nexul/internal/welcome"
 	"github.com/otal-labs/nexul/internal/workspace"
 	"github.com/otal-labs/nexul/server/webui"
 )
@@ -125,6 +126,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	apiMux.Handle("POST /api/machines/{id}/import", deployHandler)
 	mountGateway(apiMux, "/api/dns", svc.dnsHandler.Routes())
 	mountGateway(apiMux, "/api/pairing", svc.pairingHandler.Routes())
+	mountGateway(apiMux, "/api/me", welcome.NewHandler(svc.welcomeSvc).Routes())
 	apiMux.HandleFunc("GET /api/pairing/presence", pairingPresenceHandler(svc.presenceKeeper))
 	mountGateway(apiMux, "/api/connectors", withUserID(connectors.WithUserID)(svc.connectorsHandler.Routes()))
 	mountGateway(apiMux, "/api/notifications", workspace.NewNotificationHandler(svc.notifSvc, currentUserID).Routes())
@@ -180,6 +182,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Plays:       svc.playsSvc,
 		PlayRuns:    svc.playsRunner,
 		Pairing:     svc.pairingSvc,
+		Welcome:     svc.welcomeSvc,
 		DeadLetter:  store.DeadLetters,
 		Publisher:   bus,
 		Logger:      logger,

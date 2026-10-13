@@ -66,6 +66,13 @@
       },
       "reason": {
         "type": "string"
+      },
+      "role_ids_added": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The roles the person was just given in the workspace, on workspace.member.added and workspace.member.updated."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema"
@@ -1870,6 +1877,27 @@
       "user_id",
       "server_url",
       "token_expires_at",
+      "members_only"
+    ]
+  },
+  "computer.removed": {
+    "type": "object",
+    "properties": {
+      "computer_id": {
+        "type": "string"
+      },
+      "user_id": {
+        "type": "string"
+      },
+      "members_only": {
+        "type": "boolean",
+        "description": "Always true: a person's computer is never delivered to integrations or automations."
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "computer_id",
+      "user_id",
       "members_only"
     ]
   },
@@ -3898,6 +3926,28 @@
       "sha"
     ]
   },
+  "github_link.changed": {
+    "type": "object",
+    "properties": {
+      "user_id": {
+        "type": "string"
+      },
+      "state": {
+        "type": "string",
+        "description": "What the link is now: connected lists the person's repositories, reconnect needs them to connect GitHub again, none is no link.",
+        "enum": [
+          "connected",
+          "reconnect",
+          "none"
+        ]
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "user_id",
+      "state"
+    ]
+  },
   "identity.linked": {
     "type": "object",
     "properties": {
@@ -4354,6 +4404,13 @@
       },
       "reason": {
         "type": "string"
+      },
+      "role_ids_added": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The roles the person was just given in the workspace, on workspace.member.added and workspace.member.updated."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4378,6 +4435,13 @@
       },
       "reason": {
         "type": "string"
+      },
+      "role_ids_added": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The roles the person was just given in the workspace, on workspace.member.added and workspace.member.updated."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4402,6 +4466,13 @@
       },
       "reason": {
         "type": "string"
+      },
+      "role_ids_added": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The roles the person was just given in the workspace, on workspace.member.added and workspace.member.updated."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4426,6 +4497,13 @@
       },
       "reason": {
         "type": "string"
+      },
+      "role_ids_added": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The roles the person was just given in the workspace, on workspace.member.added and workspace.member.updated."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5530,6 +5608,10 @@
       },
       "name": {
         "type": "string"
+      },
+      "enrolled_by": {
+        "type": "string",
+        "description": "Who made the install command the runner enrolled with; empty for one enrolled before it was kept, and for the instance runner."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5545,6 +5627,10 @@
       },
       "reason": {
         "type": "string"
+      },
+      "enrolled_by": {
+        "type": "string",
+        "description": "Who made the install command the runner enrolled with; empty for one enrolled before it was kept, and for the instance runner."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -8186,6 +8272,18 @@
       "occupants"
     ]
   },
+  "welcome.progress_changed": {
+    "type": "object",
+    "properties": {
+      "user_id": {
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "required": [
+      "user_id"
+    ]
+  },
   "workspace.member.added": {
     "type": "object",
     "properties": {
@@ -8203,6 +8301,13 @@
       },
       "reason": {
         "type": "string"
+      },
+      "role_ids_added": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The roles the person was just given in the workspace, on workspace.member.added and workspace.member.updated."
       },
       "project_ids": {
         "type": "array",
@@ -8232,6 +8337,13 @@
           "type": "string"
         },
         "description": "On workspace.member.updated, the workspace's projects, whose access the change can move."
+      },
+      "role_ids_added": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The roles the person was just given in the workspace, on workspace.member.added and workspace.member.updated."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -8258,6 +8370,13 @@
           "type": "string"
         },
         "description": "On workspace.member.updated, the workspace's projects, whose access the change can move."
+      },
+      "role_ids_added": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The roles the person was just given in the workspace, on workspace.member.added and workspace.member.updated."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",

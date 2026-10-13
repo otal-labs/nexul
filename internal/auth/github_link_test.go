@@ -13,12 +13,21 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 // fakeGitHubLinks is an in-memory GitHubLinkStore.
 type fakeGitHubLinks struct {
 	mu    sync.Mutex
 	links map[string]GitHubLink
+	// states are the link states its events announced, in order.
+	states []GitHubLinkState
+}
+
+func (f *fakeGitHubLinks) record(events []eventbus.OutboxEvent) {
+	for _, e := range events {
+		f.states = append(f.states, e.Payload.(GitHubLinkEvent).State)
+	}
 }
 
 func (f *fakeGitHubLinks) GetGitHubLink(_ context.Context, userID string) (GitHubLink, error) {
@@ -31,17 +40,19 @@ func (f *fakeGitHubLinks) GetGitHubLink(_ context.Context, userID string) (GitHu
 	return l, nil
 }
 
-func (f *fakeGitHubLinks) SaveGitHubLink(_ context.Context, l GitHubLink) error {
+func (f *fakeGitHubLinks) SaveGitHubLink(_ context.Context, l GitHubLink, events ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.links[l.UserID] = l
+	f.record(events)
 	return nil
 }
 
-func (f *fakeGitHubLinks) DeleteGitHubLink(_ context.Context, userID string) error {
+func (f *fakeGitHubLinks) DeleteGitHubLink(_ context.Context, userID string, events ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	delete(f.links, userID)
+	f.record(events)
 	return nil
 }
 
@@ -94,6 +105,7 @@ func TestLoginWith_GitHub_KeepsThePersonsOwnTokenAndItsRefresh(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "ghu_alice", got)
 	assert.Empty(t, gh.refreshes, "a live token is used as it is")
+	assert.Equal(t, []GitHubLinkState{GitHubLinkConnected}, links.states)
 }
 
 func TestGitHubToken_RefreshesALapsedTokenAndNeverFallsBack(t *testing.T) {
@@ -123,8 +135,10 @@ func TestGitHubToken_RefreshesALapsedTokenAndNeverFallsBack(t *testing.T) {
 				require.ErrorIs(t, err, tt.wantErr)
 				assert.Equal(t, tt.reconnect, links.links["alice"].NeedsReconnect)
 				if !tt.reconnect {
+					assert.Empty(t, links.states)
 					return
 				}
+				assert.Equal(t, []GitHubLinkState{GitHubLinkReconnect}, links.states, "the person's link stops working")
 				assert.Empty(t, links.links["alice"].AccessToken, "a refused token is not kept")
 				_, err = s.GitHubToken(t.Context(), "alice")
 				require.ErrorIs(t, err, ErrGitHubReconnect)
@@ -134,6 +148,7 @@ func TestGitHubToken_RefreshesALapsedTokenAndNeverFallsBack(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 			assert.Equal(t, "ghr_next", links.links["alice"].RefreshToken)
+			assert.Empty(t, links.states, "a refresh keeps the link working and announces nothing")
 		})
 	}
 
@@ -230,6 +245,8 @@ func TestHandler_DisconnectGitHub_NeedsASignedInDeviceAndIsTheWayBack(t *testing
 
 	assert.Equal(t, http.StatusNoContent, send(http.MethodDelete, token).Code)
 	assert.NotContains(t, links.links, userID)
+	assert.Equal(t, []GitHubLinkState{GitHubLinkConnected, GitHubLinkNone}, links.states)
+
 	assert.JSONEq(t, `{"state":"none"}`, send(http.MethodGet, token).Body.String())
 }
 

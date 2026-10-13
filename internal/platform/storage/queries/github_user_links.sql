@@ -11,3 +11,7 @@ ON CONFLICT(user_id) DO UPDATE SET
 
 -- name: DeleteGitHubUserLink :exec
 DELETE FROM github_user_links WHERE user_id = ?;
+
+-- name: ListUsersWithWorkingGitHubLink :many
+SELECT user_id FROM github_user_links
+WHERE needs_reconnect = 0 AND user_id IN (SELECT value FROM json_each(sqlc.arg(user_ids)));

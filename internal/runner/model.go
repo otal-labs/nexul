@@ -18,6 +18,8 @@ type Runner struct {
 	// OwnerUserID and ComputerID make a personal runner (ADR 0146); both empty on a deploy runner.
 	OwnerUserID string
 	ComputerID  string
+	// EnrolledBy is who made the install command a deploy runner enrolled with; empty from before, and for instance.
+	EnrolledBy string
 }
 
 // Personal reports whether the runner belongs to a person's computer, which never takes deploy work.
@@ -52,8 +54,10 @@ type EnrollmentCode struct {
 	Machine     string
 	OwnerUserID string
 	ComputerID  string
-	CreatedAt   time.Time
-	ExpiresAt   time.Time
+	// EnrolledBy is who made the code, copied to the runner it enrolls.
+	EnrolledBy string
+	CreatedAt  time.Time
+	ExpiresAt  time.Time
 }
 
 // Personal reports whether the code enrolls a personal runner.

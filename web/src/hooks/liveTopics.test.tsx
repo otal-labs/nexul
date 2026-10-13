@@ -6,6 +6,7 @@ import { followedTopics as followed } from "@/hooks/useLiveEvents";
 // Topics the server pushes that the browser leaves alone on purpose, each with why.
 const ignoredTopics: Record<string, string> = {
   "ticket.assignee_changed": "a deprecated alias published beside ticket.developer_changed, which the browser follows",
+  "welcome.progress_changed": "the Welcome wizard and the account menu dot follow it once they exist (.scratch/onboarding/issues/10 and 11)",
 };
 
 // The server's audience rules generate liveTopics.generated.json (make live-topics); a topic without a rule reaches

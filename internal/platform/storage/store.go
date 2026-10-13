@@ -77,6 +77,7 @@ type Store struct {
 	Botwebhooks           *BotwebhooksRepo
 	Pairing               *PairingRepo
 	InstanceTemplates     *InstanceTemplatesRepo
+	Welcome               *WelcomeRepo
 }
 
 // New builds a Store over db; encKey is the AES-256 key repos use to encrypt secrets, derived once at startup.
@@ -149,6 +150,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Botwebhooks:           &BotwebhooksRepo{db: db, w: w, q: q, encKey: encKey},
 		Pairing:               &PairingRepo{db: db, w: w, q: q},
 		InstanceTemplates:     &InstanceTemplatesRepo{db: db, w: w, q: q},
+		Welcome:               &WelcomeRepo{db: db, w: w, q: q},
 	}
 }
 

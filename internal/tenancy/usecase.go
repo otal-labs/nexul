@@ -567,7 +567,7 @@ func (s *Service) UpdateMemberRoles(ctx context.Context, actorID, workspaceID, u
 	if len(add)+len(remove) == 0 {
 		return nil
 	}
-	evt, err := s.memberUpdated(ctx, actorID, workspaceID, userID)
+	evt, err := s.memberUpdated(ctx, actorID, workspaceID, userID, add)
 	if err != nil {
 		return err
 	}
@@ -701,7 +701,10 @@ func (s *Service) AddMember(ctx context.Context, actorID, workspaceID, userID st
 		return fmt.Errorf("check membership of %s in workspace %s: %w", userID, workspaceID, err)
 	}
 	member := &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: roleIDs[0], RoleIDs: roleIDs, CreatedAt: s.now().UTC()}
-	if err := s.members.AddMember(ctx, member, memberEvent(TopicWorkspaceMemberAdded, actorID, workspaceID, userID)); err != nil {
+	added := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicWorkspaceMemberAdded, Payload: MemberEvent{
+		UserID: userID, WorkspaceID: workspaceID, ActorID: actorID, RoleIDsAdded: roleIDs,
+	}}
+	if err := s.members.AddMember(ctx, member, added); err != nil {
 		return fmt.Errorf("add member %s to workspace %s: %w", userID, workspaceID, err)
 	}
 	return nil
@@ -734,9 +737,9 @@ func memberEvent(topic, actorID, workspaceID, userID string) eventbus.OutboxEven
 	return eventbus.OutboxEvent{ID: ids.New(), Topic: topic, Payload: MemberEvent{UserID: userID, WorkspaceID: workspaceID, ActorID: actorID}}
 }
 
-// memberUpdated names the workspace's projects, since a role change can open or close any of them.
-func (s *Service) memberUpdated(ctx context.Context, actorID, workspaceID, userID string) (eventbus.OutboxEvent, error) {
-	e := MemberEvent{UserID: userID, WorkspaceID: workspaceID, ActorID: actorID}
+// memberUpdated names the workspace's projects, since a role change can open or close any of them, and the roles given.
+func (s *Service) memberUpdated(ctx context.Context, actorID, workspaceID, userID string, given []string) (eventbus.OutboxEvent, error) {
+	e := MemberEvent{UserID: userID, WorkspaceID: workspaceID, ActorID: actorID, RoleIDsAdded: given}
 	if s.projects != nil {
 		projectIDs, err := s.projects.WorkspaceProjects(ctx, workspaceID)
 		if err != nil {
@@ -765,7 +768,7 @@ func (s *Service) RoleHolderEvents(ctx context.Context, workspaceID, roleID, act
 			events = append(events, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicWorkspaceMemberUpdated, Payload: payload})
 			continue
 		}
-		e, err := s.memberUpdated(ctx, actorID, workspaceID, m.UserID)
+		e, err := s.memberUpdated(ctx, actorID, workspaceID, m.UserID, nil)
 		if err != nil {
 			return nil, err
 		}

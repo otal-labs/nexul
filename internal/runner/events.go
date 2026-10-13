@@ -76,14 +76,16 @@ const (
 
 // RunnerConnectedEvent is published when a runner authenticates and connects.
 type RunnerConnectedEvent struct {
-	RunnerID string `json:"runner_id"`
-	Name     string `json:"name,omitempty"`
+	RunnerID   string `json:"runner_id"`
+	Name       string `json:"name,omitempty"`
+	EnrolledBy string `json:"enrolled_by,omitempty" jsonschema:"Who made the install command the runner enrolled with; empty for one enrolled before it was kept, and for the instance runner."`
 }
 
 // RunnerDisconnectedEvent is published when a runner disconnects or is dropped for a heartbeat timeout.
 type RunnerDisconnectedEvent struct {
-	RunnerID string `json:"runner_id"`
-	Reason   string `json:"reason,omitempty"`
+	RunnerID   string `json:"runner_id"`
+	Reason     string `json:"reason,omitempty"`
+	EnrolledBy string `json:"enrolled_by,omitempty" jsonschema:"Who made the install command the runner enrolled with; empty for one enrolled before it was kept, and for the instance runner."`
 }
 
 // Personal runner states a PersonalChangedEvent reports.

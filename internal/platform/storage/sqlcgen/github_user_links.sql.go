@@ -37,6 +37,34 @@ func (q *Queries) GetGitHubUserLink(ctx context.Context, userID string) (GithubU
 	return i, err
 }
 
+const listUsersWithWorkingGitHubLink = `-- name: ListUsersWithWorkingGitHubLink :many
+SELECT user_id FROM github_user_links
+WHERE needs_reconnect = 0 AND user_id IN (SELECT value FROM json_each(?1))
+`
+
+func (q *Queries) ListUsersWithWorkingGitHubLink(ctx context.Context, userIds interface{}) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listUsersWithWorkingGitHubLink, userIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const saveGitHubUserLink = `-- name: SaveGitHubUserLink :exec
 INSERT INTO github_user_links (user_id, access_token, refresh_token, expires_at, refresh_expires_at, needs_reconnect, connected_at)
 VALUES (?, ?, ?, ?, ?, ?, ?)

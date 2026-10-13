@@ -241,6 +241,11 @@ func (s *Service) PermissionsAnywhere(ctx context.Context, userID string) ([]str
 	return out, nil
 }
 
+// WorkspacesOf lists the workspaces userID is a member of, through the memo on ctx.
+func (s *Service) WorkspacesOf(ctx context.Context, userID string) ([]string, error) {
+	return s.workspacesOf(s.memoized(ctx), userID)
+}
+
 func (s *Service) workspacesOf(ctx context.Context, userID string) ([]string, error) {
 	if userID == "" || s.scopes == nil {
 		return nil, nil

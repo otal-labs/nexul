@@ -223,6 +223,18 @@ type Service struct {
 	// githubRefresh serialises GitHub token refreshes: a refresh token works once, so two at a time would spend it twice.
 	// ponytail: one lock for every person; per-person locks if refreshes ever queue behind each other.
 	githubRefresh sync.Mutex
+	// welcome reads a person's Welcome wizard progress for account_get; unset, it returns none.
+	welcome WelcomeReader
+}
+
+// WelcomeReader reads a person's Welcome wizard progress without auth importing the welcome domain (ADR 0017).
+type WelcomeReader interface {
+	Progress(ctx context.Context, userID string) (any, error)
+}
+
+// SetWelcome wires the welcome domain's progress read once both services exist.
+func (s *Service) SetWelcome(w WelcomeReader) {
+	s.welcome = w
 }
 
 // NewService wires the auth use-cases.

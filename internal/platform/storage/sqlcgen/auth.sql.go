@@ -441,6 +441,33 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
+const listUsersWithFirstRunDone = `-- name: ListUsersWithFirstRunDone :many
+SELECT id FROM users WHERE first_login_done = 1 AND id IN (SELECT value FROM json_each(?1))
+`
+
+func (q *Queries) ListUsersWithFirstRunDone(ctx context.Context, userIds interface{}) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listUsersWithFirstRunDone, userIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markFirstLoginDone = `-- name: MarkFirstLoginDone :execrows
 UPDATE users SET first_login_done = 1, updated_at = ? WHERE id = ?
 `

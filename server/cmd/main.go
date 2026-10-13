@@ -37,6 +37,7 @@ import (
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/voice"
+	"github.com/otal-labs/nexul/internal/welcome"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -322,6 +323,7 @@ var livePushTopics = []string{
 	tenancy.TopicWorkspaceMemberUpdated,
 	tenancy.TopicWorkspaceUpdated,
 	roles.TopicUpdated,
+	welcome.TopicProgressChanged,
 	access.TopicGrantChanged,
 	templates.TopicUpdated,
 	plays.TopicCreated,

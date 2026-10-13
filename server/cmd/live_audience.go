@@ -25,6 +25,7 @@ import (
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/voice"
+	"github.com/otal-labs/nexul/internal/welcome"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -83,6 +84,7 @@ var liveRules = map[string]liveRule{
 	tenancy.TopicWorkspaceMemberUpdated: memberFrame,
 	tenancy.TopicWorkspaceUpdated:       workspaceFrame,
 	roles.TopicUpdated:                  workspaceFrame,
+	welcome.TopicProgressChanged:        welcomeFrame,
 
 	tickets.TopicCreated:                 ticketFrame,
 	tickets.TopicUpdated:                 ticketFrame,
@@ -283,6 +285,25 @@ func memberFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool 
 		return false
 	}
 	return p.UserID == actorID(ctx) || a.access.Require(ctx, p.WorkspaceID, permissions.Member) == nil
+}
+
+// welcomeFrame reaches the person and whoever sees them on Team: accounts:read anywhere, or members:write in a
+// workspace they are in.
+func welcomeFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		UserID string `json:"user_id"`
+	}
+	if !decode(raw, &p) || p.UserID == "" {
+		return false
+	}
+	if p.UserID == actorID(ctx) || a.access.RequireAnywhere(ctx, permissions.AccountsRead) == nil {
+		return true
+	}
+	workspaceIDs, err := a.access.WorkspacesOf(ctx, p.UserID)
+	if err != nil {
+		return false
+	}
+	return slices.ContainsFunc(workspaceIDs, func(id string) bool { return a.access.Require(ctx, id, permissions.MembersWrite) == nil })
 }
 
 // workspaceFrame carries the workspace's new name and slug, which only its members may see.

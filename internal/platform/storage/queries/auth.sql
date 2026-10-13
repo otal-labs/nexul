@@ -95,3 +95,6 @@ UPDATE instance_settings SET instance_url = ?, settings_version = settings_versi
 
 -- name: SetSettingsGitHubOAuth :execrows
 UPDATE instance_settings SET github_oauth_client_id = ?, github_oauth_client_secret = ?, updated_at = ? WHERE id = 1;
+
+-- name: ListUsersWithFirstRunDone :many
+SELECT id FROM users WHERE first_login_done = 1 AND id IN (SELECT value FROM json_each(sqlc.arg(user_ids)));

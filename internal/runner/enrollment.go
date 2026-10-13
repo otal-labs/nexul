@@ -13,6 +13,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -63,7 +64,8 @@ func (s *Service) CreateEnrollment(ctx context.Context, name, machine string) (E
 	if instanceURL == "" {
 		return Enrollment{}, fmt.Errorf("%w: set the instance URL in settings before adding a runner", apperrs.ErrConflict)
 	}
-	code, expiresAt, err := s.mintEnrollment(ctx, name, machine, enrollmentTTL)
+	actor, _ := identity.ActorFromCtx(ctx)
+	code, expiresAt, err := s.mintEnrollment(ctx, name, machine, actor.ID, enrollmentTTL)
 	if err != nil {
 		return Enrollment{}, err
 	}
@@ -109,7 +111,7 @@ func (s *Service) CreatePersonalEnrollment(ctx context.Context, userID, computer
 	return Enrollment{Token: token, ExpiresAt: code.ExpiresAt, Commands: InstallCommands{Unix: unix, Windows: windows}}, nil
 }
 
-func (s *Service) mintEnrollment(ctx context.Context, name, machine string, ttl time.Duration) (string, time.Time, error) {
+func (s *Service) mintEnrollment(ctx context.Context, name, machine, enrolledBy string, ttl time.Duration) (string, time.Time, error) {
 	name = strings.TrimSpace(name)
 	if !hostcred.NamePattern.MatchString(name) {
 		return "", time.Time{}, fmt.Errorf("%w: a runner name is 1 to 32 lowercase letters, digits or dashes, starting with a letter or digit", apperrs.ErrInvalid)
@@ -121,7 +123,7 @@ func (s *Service) mintEnrollment(ctx context.Context, name, machine string, ttl 
 	if !errors.Is(err, apperrs.ErrNotFound) {
 		return "", time.Time{}, err
 	}
-	code := &EnrollmentCode{Name: name, Machine: strings.TrimSpace(machine)}
+	code := &EnrollmentCode{Name: name, Machine: strings.TrimSpace(machine), EnrolledBy: enrolledBy}
 	raw, err := s.storeCode(ctx, code, ttl)
 	if err != nil {
 		return "", time.Time{}, err
@@ -185,7 +187,7 @@ func (s *Service) Enroll(ctx context.Context, req EnrollRequest) (Enrolled, erro
 	if err != nil {
 		return Enrolled{}, err
 	}
-	r := &Runner{ID: ids.New(), Name: code.Name, Version: req.Version, LastSeen: now, CreatedAt: now, MachineID: machineID}
+	r := &Runner{ID: ids.New(), Name: code.Name, Version: req.Version, LastSeen: now, CreatedAt: now, MachineID: machineID, EnrolledBy: code.EnrolledBy}
 	credential, err := s.enroll(ctx, codeHash, r, now)
 	if err != nil {
 		return Enrolled{}, err
@@ -349,7 +351,7 @@ func (s *Service) remove(ctx context.Context, r *Runner) error {
 		s.publish(ctx, TopicPersonalChanged, personalChanged(r, PersonalRemoved, ""))
 		return nil
 	}
-	s.publish(ctx, TopicRunnerDisconnected, RunnerDisconnectedEvent{RunnerID: r.ID, Reason: "removed"})
+	s.publish(ctx, TopicRunnerDisconnected, RunnerDisconnectedEvent{RunnerID: r.ID, Reason: "removed", EnrolledBy: r.EnrolledBy})
 	return nil
 }
 
@@ -380,7 +382,7 @@ func (s *Service) WriteInstanceEnrollment(ctx context.Context) error {
 	if !errors.Is(err, apperrs.ErrNotFound) {
 		return err
 	}
-	code, _, err := s.mintEnrollment(ctx, instanceRunnerName, "", instanceEnrollmentTTL)
+	code, _, err := s.mintEnrollment(ctx, instanceRunnerName, "", "", instanceEnrollmentTTL)
 	if err != nil {
 		return err
 	}

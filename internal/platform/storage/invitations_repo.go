@@ -343,7 +343,7 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 					return err
 				}
 			}
-			redemptionEvents = append(redemptionEvents, eventbus.OutboxEvent{ID: ids.New(), Topic: tenancy.TopicWorkspaceMemberAdded, Payload: tenancy.InvitationEvent{InvitationID: invitation.ID, UserID: userID, WorkspaceID: grant.WorkspaceID}})
+			redemptionEvents = append(redemptionEvents, eventbus.OutboxEvent{ID: ids.New(), Topic: tenancy.TopicWorkspaceMemberAdded, Payload: tenancy.InvitationEvent{InvitationID: invitation.ID, UserID: userID, WorkspaceID: grant.WorkspaceID, RoleIDsAdded: grant.Held()}})
 		}
 		if !existing {
 			if _, err := q.SetInvitationRedeemedBy(ctx, sqlcgen.SetInvitationRedeemedByParams{RedeemedBy: sql.NullString{String: userID, Valid: true}, ID: invitation.ID}); err != nil {

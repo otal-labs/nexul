@@ -119,3 +119,7 @@ WHERE c.user_id = sqlc.arg(user_id)
        AND EXISTS (SELECT 1 FROM workspace_members a JOIN workspace_members b ON b.workspace_id = a.workspace_id
                    WHERE a.user_id = sqlc.arg(user_id) AND b.user_id = c.user_id))
 ORDER BY po.allow IS NOT NULL, c.created_at DESC;
+
+-- name: ListUsersWithReadyComputer :many
+SELECT DISTINCT user_id FROM pairing_computers
+WHERE token_expires_at > 0 AND setup_confirmed_at IS NOT NULL AND user_id IN (SELECT value FROM json_each(sqlc.arg(user_ids)));

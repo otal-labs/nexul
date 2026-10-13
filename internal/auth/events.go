@@ -1,6 +1,9 @@
 package auth
 
-import "github.com/otal-labs/nexul/internal/platform/eventbus"
+import (
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/ids"
+)
 
 const (
 	TopicAccountAdmitted    = "account.admitted"
@@ -15,7 +18,18 @@ const (
 	TopicSessionRevoked     = "session.revoked"
 	TopicIdentityLinked     = "identity.linked"
 	TopicIdentityUnlinked   = "identity.unlinked"
+	TopicGitHubLinkChanged  = "github_link.changed"
 )
+
+// GitHubLinkEvent is a person's GitHub link being made, needing a reconnect, or forgotten; it never carries a token.
+type GitHubLinkEvent struct {
+	UserID string          `json:"user_id"`
+	State  GitHubLinkState `json:"state" enum:"connected,reconnect,none" jsonschema:"What the link is now: connected lists the person's repositories, reconnect needs them to connect GitHub again, none is no link."`
+}
+
+func githubLinkEvent(userID string, state GitHubLinkState) eventbus.OutboxEvent {
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicGitHubLinkChanged, Payload: GitHubLinkEvent{UserID: userID, State: state}}
+}
 
 // IdentityChangedEvent is the payload for both identity topics; it never carries the provider's own user id.
 type IdentityChangedEvent struct {
@@ -62,5 +76,6 @@ func Topics() []eventbus.Topic {
 		{Name: TopicSessionRevoked, Payload: SessionChangedEvent{}},
 		{Name: TopicIdentityLinked, Payload: IdentityChangedEvent{}},
 		{Name: TopicIdentityUnlinked, Payload: IdentityChangedEvent{}},
+		{Name: TopicGitHubLinkChanged, Payload: GitHubLinkEvent{}},
 	}
 }

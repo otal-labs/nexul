@@ -14,6 +14,9 @@ Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role), `practice
 - `OnboardingGate` sends a person whose first run hasn't happened to the wizard. The wizard replaces
   `FirstLoginWizardPage` and `/wizard/onboarding/profile`, which 404 afterwards (no redirect).
 - Skip for now, Finish later, the end screen with ticket 05's copy fix, and opening the wizard on a named step.
+- A `welcomeFollower` in the welcome hooks for `welcome.progress_changed`, which takes the topic off
+  `ignoredTopics` in `web/src/hooks/liveTopics.test.tsx`. The step keys, names and dot rule are in
+  `client-core/welcome.ts`.
 
 ## Acceptance criteria
 

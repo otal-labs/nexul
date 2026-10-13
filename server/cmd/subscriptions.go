@@ -327,6 +327,8 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	mustSubscribe(ctx, bus, "voice.close_room", chat.TopicConversationDeleted, "", voiceRoomCloseHandler(svc.voiceSvc))
 	mustSubscribe(ctx, bus, "voice.remove_from_call", chat.TopicConversationMembersChanged, "", voiceCallRemoveHandler(svc.voiceSvc))
 
+	subscribeWelcome(ctx, bus, svc.welcomeSvc)
+
 	// A computer added without a name takes the hostname its runner reports when it enrolls.
 	mustSubscribe(ctx, bus, "pairing.computer_name", runner.TopicPersonalChanged, "", svc.pairingSvc.HandleRunnerChanged)
 	mustSubscribe(ctx, bus, "pairing.through_runner", runner.TopicFactsReported, "", svc.pairingSvc.HandleFactsReported)
