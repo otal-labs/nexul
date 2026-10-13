@@ -127,7 +127,7 @@ type SessionStore interface {
 type GitHubLinkStore interface {
 	// GetGitHubLink returns ErrNotFound for a person who never connected GitHub.
 	GetGitHubLink(ctx context.Context, userID string) (GitHubLink, error)
-	SaveGitHubLink(ctx context.Context, l GitHubLink) error
+	SaveGitHubLink(ctx context.Context, l GitHubLink, events ...eventbus.OutboxEvent) error
 	// DeleteGitHubLink is a no-op for a person with no link.
-	DeleteGitHubLink(ctx context.Context, userID string) error
+	DeleteGitHubLink(ctx context.Context, userID string, events ...eventbus.OutboxEvent) error
 }

@@ -4,7 +4,7 @@
 
 export interface EventPayloads {
   "access.grant.changed": { "resource_type": "doc" | "folder" | "play" | "project" | "channel" | "stack" | "workspace" | "instance_area"; "resource_id": string; "target": "person" | "role"; "user_id": string; "role_id"?: string; "actor_id"?: string; };
-  "account.admitted": { "account_id"?: string; "actor_id"?: string; "invitation_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; };
+  "account.admitted": { "account_id"?: string; "actor_id"?: string; "invitation_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; "role_ids_added"?: string[]; };
   "account.disabled": { "account_id": string; "actor_id"?: string; };
   "account.profile_updated": { "account_id": string; "actor_id"?: string; };
   "account.reactivated": { "account_id": string; "actor_id"?: string; };
@@ -35,6 +35,7 @@ export interface EventPayloads {
   "computer.move_requested": { "computer_id": string; "user_id": string; "members_only": boolean; };
   "computer.pair_failed": { "computer_id": string; "user_id": string; "members_only": boolean; };
   "computer.paired": { "computer_id": string; "user_id": string; "server_url": string; "harness_version"?: string; "token_expires_at": string; "members_only": boolean; };
+  "computer.removed": { "computer_id": string; "user_id": string; "members_only": boolean; };
   "computer.setup_confirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; "members_only": boolean; };
   "computer.setup_finished": { "computer_id": string; "user_id": string; "run_id": string; "confirmed": boolean; "providers": ({ "provider": string; "state": "running" | "confirmed" | "failed"; "status": string; })[]; "members_only": boolean; };
   "computer.setup_turn_activity": { "computer_id": string; "user_id": string; "run_id": string; "turn_id": string; "provider": string; "status": string; "call_id"?: string; "kind"?: "tool_call" | "tool_result" | "text" | "question" | "other" | "note" | "user_message"; "tool"?: string; "text"?: string; "at": string; "members_only": boolean; };
@@ -81,6 +82,7 @@ export interface EventPayloads {
   "git.pr_review_submitted": { "owner": string; "repo": string; "pr": { "number": number; "state": string; "reviewer": string; }; };
   "git.provider_event": { "provider": string; "event_type": string; "delivery_id": string; "action"?: string; "repository"?: { "id": number; "name": string; "full_name": string; "owner": string; "html_url": string; "default_branch": string; }; "payload": Record<string, unknown>; "received_at": string; };
   "git.push": { "owner": string; "repo": string; "branch": string; "sha": string; "pusher"?: string; };
+  "github_link.changed": { "user_id": string; "state": "connected" | "reconnect" | "none"; };
   "identity.linked": { "user_id": string; "provider": string; "login": string; };
   "identity.unlinked": { "user_id": string; "provider": string; "login": string; };
   "instance.upgrade_changed": { "id": string; "from_version": string; "to_version": string; "status": "pending" | "started" | "completed" | "failed"; "error": string; "requested_by": string; "created_at": string; "updated_at": string; };
@@ -94,10 +96,10 @@ export interface EventPayloads {
   "interview_source.changed": { "workspace_id": string; "project_id": string; "source_id": string; "kind": "path" | "doc" | "memory" | "project" | "text"; "stance": "follow" | "question"; "author_id": string; "at": string; };
   "interview_source.removed": { "workspace_id": string; "project_id": string; "source_id": string; "kind": "path" | "doc" | "memory" | "project" | "text"; "stance": "follow" | "question"; "author_id": string; "at": string; };
   "interview_template.updated": { "workspace_id": string; "author_id": string; "updated_at": string; };
-  "invitation.created": { "invitation_id": string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; };
-  "invitation.deleted": { "invitation_id": string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; };
-  "invitation.redeemed": { "invitation_id": string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; };
-  "invitation.revoked": { "invitation_id": string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; };
+  "invitation.created": { "invitation_id": string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; "role_ids_added"?: string[]; };
+  "invitation.deleted": { "invitation_id": string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; "role_ids_added"?: string[]; };
+  "invitation.redeemed": { "invitation_id": string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; "role_ids_added"?: string[]; };
+  "invitation.revoked": { "invitation_id": string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; "role_ids_added"?: string[]; };
   "memory.created": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use": string; "always_included": boolean; "footer": boolean; "version": number; "updated_at": string; }; "author_id": string; };
   "memory.deleted": { "id": string; "workspace_id": string; "project_id": string; "title": string; "author_id": string; };
   "memory.updated": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use": string; "always_included": boolean; "footer": boolean; "version": number; "updated_at": string; }; "author_id": string; "author_via"?: string; };
@@ -119,8 +121,8 @@ export interface EventPayloads {
   "repository.installation.unassigned": { "account_id": number; "account_login": string; "workspace_id": string; "actor_id"?: string; "uninstalled"?: boolean; };
   "review.status_changed": { "id": string; "repo": string; "pr_number": number; "status": string; "reviewer"?: string; };
   "role.updated": { "role_id": string; "workspace_id": string; "actor_id"?: string; "welcome_steps_added": string[]; };
-  "runner.connected": { "runner_id": string; "name"?: string; };
-  "runner.disconnected": { "runner_id": string; "reason"?: string; };
+  "runner.connected": { "runner_id": string; "name"?: string; "enrolled_by"?: string; };
+  "runner.disconnected": { "runner_id": string; "reason"?: string; "enrolled_by"?: string; };
   "runner.facts_reported": { "runner_id": string; "computer_id": string; "user_id": string; "facts": { "hostname"?: string; "os"?: string; "arch"?: string; "runner_version"?: string; "t3": { "state": "answering" | "not_running" | "missing" | "not_loopback"; "install"?: "service" | "command_line" | "desktop_app"; "port"?: number; "version"?: string; "restarted_at"?: string; "restart_error"?: string; }; "cloudflared"?: string; "git_name"?: string; "git_email"?: string; "free_disk_bytes"?: number; "docker"?: { "available": boolean; "version"?: string; }; }; "members_only": boolean; };
   "runner.heartbeat": { "runner_id": string; "ts": number; };
   "runner.personal_changed": { "runner_id": string; "computer_id": string; "user_id": string; "state": "enrolled" | "connected" | "disconnected" | "removed"; "hostname"?: string; "members_only": boolean; };
@@ -151,9 +153,10 @@ export interface EventPayloads {
   "ticket_type.updated": { "ticket_type": { "id": string; "project_id": string; "name": string; "position": number; "color": string; "body_template": string; "created_at": string; "updated_at": string; }; };
   "topology.updated": { "environment": string; "workspace_id"?: string; "canvas": { "schema_version": number; "nodes": { "id": string; "type": string; "position": { "x": number; "y": number; }; "data": { "service_id"?: string; "name"?: string; "runtime"?: string; "url"?: string; "status"?: string; "replicas"?: number; "volume"?: string; "address"?: string; "label"?: string; }; }[]; "edges": { "id": string; "source": string; "target": string; "type": string; "data": { "kind": string; }; }[]; "viewport"?: { "x": number; "y": number; "zoom": number; }; }; };
   "voice.occupancy.changed": { "conversation_id": string; "occupants": { "identity": string; "name": string; }[]; "members_only"?: boolean; };
-  "workspace.member.added": { "invitation_id"?: string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; "project_ids"?: string[]; };
-  "workspace.member.removed": { "user_id": string; "workspace_id": string; "actor_id"?: string; "project_ids"?: string[]; };
-  "workspace.member.updated": { "user_id": string; "workspace_id": string; "actor_id"?: string; "project_ids"?: string[]; };
+  "welcome.progress_changed": { "user_id": string; };
+  "workspace.member.added": { "invitation_id"?: string; "actor_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; "role_ids_added"?: string[]; "project_ids"?: string[]; };
+  "workspace.member.removed": { "user_id": string; "workspace_id": string; "actor_id"?: string; "project_ids"?: string[]; "role_ids_added"?: string[]; };
+  "workspace.member.updated": { "user_id": string; "workspace_id": string; "actor_id"?: string; "project_ids"?: string[]; "role_ids_added"?: string[]; };
   "workspace.updated": { "workspace_id": string; "name": string; "slug": string; "actor_id"?: string; };
 }
 
@@ -192,6 +195,7 @@ export const TOPICS: Topic[] = [
   "computer.move_requested",
   "computer.pair_failed",
   "computer.paired",
+  "computer.removed",
   "computer.setup_confirmed",
   "computer.setup_finished",
   "computer.setup_turn_activity",
@@ -238,6 +242,7 @@ export const TOPICS: Topic[] = [
   "git.pr_review_submitted",
   "git.provider_event",
   "git.push",
+  "github_link.changed",
   "identity.linked",
   "identity.unlinked",
   "instance.upgrade_changed",
@@ -308,6 +313,7 @@ export const TOPICS: Topic[] = [
   "ticket_type.updated",
   "topology.updated",
   "voice.occupancy.changed",
+  "welcome.progress_changed",
   "workspace.member.added",
   "workspace.member.removed",
   "workspace.member.updated",
@@ -316,7 +322,7 @@ export const TOPICS: Topic[] = [
 
 export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "access.grant.changed": {"resource_type":"doc","resource_id":"fixture-resource_id","target":"person","user_id":"fixture-user_id","role_id":"fixture-role_id","actor_id":"fixture-actor_id"},
-  "account.admitted": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id","invitation_id":"fixture-invitation_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason"},
+  "account.admitted": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id","invitation_id":"fixture-invitation_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason","role_ids_added":["fixture-role_ids_added"]},
   "account.disabled": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id"},
   "account.profile_updated": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id"},
   "account.reactivated": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id"},
@@ -347,6 +353,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "computer.move_requested": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","members_only":false},
   "computer.pair_failed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","members_only":false},
   "computer.paired": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","server_url":"fixture-server_url","harness_version":"fixture-harness_version","token_expires_at":"2026-01-01T00:00:00Z","members_only":false},
+  "computer.removed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","members_only":false},
   "computer.setup_confirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"],"members_only":false},
   "computer.setup_finished": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","run_id":"fixture-run_id","confirmed":false,"providers":[{"provider":"fixture-provider","state":"running","status":"fixture-status"}],"members_only":false},
   "computer.setup_turn_activity": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","run_id":"fixture-run_id","turn_id":"fixture-turn_id","provider":"fixture-provider","status":"fixture-status","call_id":"fixture-call_id","kind":"tool_call","tool":"fixture-tool","text":"fixture-text","at":"2026-01-01T00:00:00Z","members_only":false},
@@ -393,6 +400,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "git.pr_review_submitted": {"owner":"fixture-owner","repo":"fixture-repo","pr":{"number":1,"state":"fixture-state","reviewer":"fixture-reviewer"}},
   "git.provider_event": {"provider":"fixture-provider","event_type":"fixture-event_type","delivery_id":"fixture-delivery_id","action":"fixture-action","repository":{"id":1,"name":"fixture-name","full_name":"fixture-full_name","owner":"fixture-owner","html_url":"fixture-html_url","default_branch":"fixture-default_branch"},"payload":{},"received_at":"2026-01-01T00:00:00Z"},
   "git.push": {"owner":"fixture-owner","repo":"fixture-repo","branch":"fixture-branch","sha":"fixture-sha","pusher":"fixture-pusher"},
+  "github_link.changed": {"user_id":"fixture-user_id","state":"connected"},
   "identity.linked": {"user_id":"fixture-user_id","provider":"fixture-provider","login":"fixture-login"},
   "identity.unlinked": {"user_id":"fixture-user_id","provider":"fixture-provider","login":"fixture-login"},
   "instance.upgrade_changed": {"id":"fixture-id","from_version":"fixture-from_version","to_version":"fixture-to_version","status":"pending","error":"fixture-error","requested_by":"fixture-requested_by","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},
@@ -406,10 +414,10 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "interview_source.changed": {"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","source_id":"fixture-source_id","kind":"path","stance":"follow","author_id":"fixture-author_id","at":"2026-01-01T00:00:00Z"},
   "interview_source.removed": {"workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","source_id":"fixture-source_id","kind":"path","stance":"follow","author_id":"fixture-author_id","at":"2026-01-01T00:00:00Z"},
   "interview_template.updated": {"workspace_id":"fixture-workspace_id","author_id":"fixture-author_id","updated_at":"2026-01-01T00:00:00Z"},
-  "invitation.created": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason"},
-  "invitation.deleted": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason"},
-  "invitation.redeemed": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason"},
-  "invitation.revoked": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason"},
+  "invitation.created": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason","role_ids_added":["fixture-role_ids_added"]},
+  "invitation.deleted": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason","role_ids_added":["fixture-role_ids_added"]},
+  "invitation.redeemed": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason","role_ids_added":["fixture-role_ids_added"]},
+  "invitation.revoked": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason","role_ids_added":["fixture-role_ids_added"]},
   "memory.created": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"footer":false,"version":1,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
   "memory.deleted": {"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","title":"fixture-title","author_id":"fixture-author_id"},
   "memory.updated": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"footer":false,"version":1,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id","author_via":"fixture-author_via"},
@@ -431,8 +439,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "repository.installation.unassigned": {"account_id":1,"account_login":"fixture-account_login","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id","uninstalled":false},
   "review.status_changed": {"id":"fixture-id","repo":"fixture-repo","pr_number":1,"status":"fixture-status","reviewer":"fixture-reviewer"},
   "role.updated": {"role_id":"fixture-role_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id","welcome_steps_added":["fixture-welcome_steps_added"]},
-  "runner.connected": {"runner_id":"fixture-runner_id","name":"fixture-name"},
-  "runner.disconnected": {"runner_id":"fixture-runner_id","reason":"fixture-reason"},
+  "runner.connected": {"runner_id":"fixture-runner_id","name":"fixture-name","enrolled_by":"fixture-enrolled_by"},
+  "runner.disconnected": {"runner_id":"fixture-runner_id","reason":"fixture-reason","enrolled_by":"fixture-enrolled_by"},
   "runner.facts_reported": {"runner_id":"fixture-runner_id","computer_id":"fixture-computer_id","user_id":"fixture-user_id","facts":{"hostname":"fixture-hostname","os":"fixture-os","arch":"fixture-arch","runner_version":"fixture-runner_version","t3":{"state":"answering","install":"service","port":1,"version":"fixture-version","restarted_at":"2026-01-01T00:00:00Z","restart_error":"fixture-restart_error"},"cloudflared":"fixture-cloudflared","git_name":"fixture-git_name","git_email":"fixture-git_email","free_disk_bytes":1,"docker":{"available":false,"version":"fixture-version"}},"members_only":false},
   "runner.heartbeat": {"runner_id":"fixture-runner_id","ts":1},
   "runner.personal_changed": {"runner_id":"fixture-runner_id","computer_id":"fixture-computer_id","user_id":"fixture-user_id","state":"enrolled","hostname":"fixture-hostname","members_only":false},
@@ -463,8 +471,9 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "ticket_type.updated": {"ticket_type":{"id":"fixture-id","project_id":"fixture-project_id","name":"fixture-name","position":1,"color":"fixture-color","body_template":"fixture-body_template","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}},
   "topology.updated": {"environment":"fixture-environment","workspace_id":"fixture-workspace_id","canvas":{"schema_version":1,"nodes":[{"id":"fixture-id","type":"fixture-type","position":{"x":1,"y":1},"data":{"service_id":"fixture-service_id","name":"fixture-name","runtime":"fixture-runtime","url":"fixture-url","status":"fixture-status","replicas":1,"volume":"fixture-volume","address":"fixture-address","label":"fixture-label"}}],"edges":[{"id":"fixture-id","source":"fixture-source","target":"fixture-target","type":"fixture-type","data":{"kind":"fixture-kind"}}],"viewport":{"x":1,"y":1,"zoom":1}}},
   "voice.occupancy.changed": {"conversation_id":"fixture-conversation_id","occupants":[{"identity":"fixture-identity","name":"fixture-name"}],"members_only":false},
-  "workspace.member.added": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason","project_ids":["fixture-project_ids"]},
-  "workspace.member.removed": {"user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id","project_ids":["fixture-project_ids"]},
-  "workspace.member.updated": {"user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id","project_ids":["fixture-project_ids"]},
+  "welcome.progress_changed": {"user_id":"fixture-user_id"},
+  "workspace.member.added": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","reason":"fixture-reason","role_ids_added":["fixture-role_ids_added"],"project_ids":["fixture-project_ids"]},
+  "workspace.member.removed": {"user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id","project_ids":["fixture-project_ids"],"role_ids_added":["fixture-role_ids_added"]},
+  "workspace.member.updated": {"user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id","project_ids":["fixture-project_ids"],"role_ids_added":["fixture-role_ids_added"]},
   "workspace.updated": {"workspace_id":"fixture-workspace_id","name":"fixture-name","slug":"fixture-slug","actor_id":"fixture-actor_id"},
 };

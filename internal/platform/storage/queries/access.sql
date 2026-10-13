@@ -230,3 +230,24 @@ WHERE po.resource_type = 'computer'
     OR NOT EXISTS (SELECT 1 FROM users p WHERE p.id = po.user_id AND p.account_status = 'active')
     OR NOT EXISTS (SELECT 1 FROM workspace_members a JOIN workspace_members b ON b.workspace_id = a.workspace_id
                    WHERE a.user_id = po.user_id AND b.user_id = c.user_id));
+
+-- name: ListUsersInAProject :many
+-- Who of user_ids is in at least one project: an Owner of a workspace with a project, or a member a project's rule
+-- lets in (projects:open) by name, or through a role they hold unless a rule naming them keeps them out (ADR 0148).
+SELECT DISTINCT wm.user_id FROM workspace_members wm
+JOIN projects p ON p.workspace_id = wm.workspace_id
+WHERE wm.user_id IN (SELECT value FROM json_each(sqlc.arg(user_ids)))
+  AND (
+    EXISTS (SELECT 1 FROM member_roles mr JOIN roles r ON r.id = mr.role_id
+            WHERE mr.user_id = wm.user_id AND mr.workspace_id = wm.workspace_id AND r.is_owner_role = 1)
+    OR EXISTS (SELECT 1 FROM permission_overwrites o
+               WHERE o.resource_type = 'project' AND o.resource_id = p.id AND o.target = 'person' AND o.user_id = wm.user_id
+                 AND EXISTS (SELECT 1 FROM json_each(o.allow) WHERE value = 'projects:open'))
+    OR (NOT EXISTS (SELECT 1 FROM permission_overwrites o
+                    WHERE o.resource_type = 'project' AND o.resource_id = p.id AND o.target = 'person' AND o.user_id = wm.user_id
+                      AND EXISTS (SELECT 1 FROM json_each(o.deny) WHERE value = 'projects:open'))
+        AND EXISTS (SELECT 1 FROM permission_overwrites o
+                    JOIN member_roles mr ON mr.role_id = o.role_id AND mr.user_id = wm.user_id AND mr.workspace_id = wm.workspace_id
+                    WHERE o.resource_type = 'project' AND o.resource_id = p.id AND o.target = 'role'
+                      AND EXISTS (SELECT 1 FROM json_each(o.allow) WHERE value = 'projects:open')))
+  );

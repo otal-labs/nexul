@@ -51,7 +51,7 @@ func (s *Service) keepGitHubLink(ctx context.Context, userID string, grant GitHu
 	if s.cfg.GitHubLinks == nil {
 		return nil
 	}
-	return s.cfg.GitHubLinks.SaveGitHubLink(ctx, s.linkFromGrant(userID, grant))
+	return s.cfg.GitHubLinks.SaveGitHubLink(ctx, s.linkFromGrant(userID, grant), githubLinkEvent(userID, GitHubLinkConnected))
 }
 
 // GitHubToken is userID's own GitHub user token, refreshed when it has lapsed. It never falls back to another
@@ -108,7 +108,7 @@ func (s *Service) refreshGitHub(ctx context.Context, refreshToken string) (GitHu
 
 func (s *Service) markReconnect(ctx context.Context, link GitHubLink) error {
 	spent := GitHubLink{UserID: link.UserID, NeedsReconnect: true, ConnectedAt: link.ConnectedAt}
-	if err := s.cfg.GitHubLinks.SaveGitHubLink(ctx, spent); err != nil {
+	if err := s.cfg.GitHubLinks.SaveGitHubLink(ctx, spent, githubLinkEvent(link.UserID, GitHubLinkReconnect)); err != nil {
 		return err
 	}
 	return ErrGitHubReconnect
@@ -148,5 +148,5 @@ func (s *Service) DisconnectGitHub(ctx context.Context, userID string) error {
 	if s.cfg.GitHubLinks == nil {
 		return nil
 	}
-	return s.cfg.GitHubLinks.DeleteGitHubLink(ctx, userID)
+	return s.cfg.GitHubLinks.DeleteGitHubLink(ctx, userID, githubLinkEvent(userID, GitHubLinkNone))
 }

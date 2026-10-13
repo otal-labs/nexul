@@ -32,19 +32,21 @@ func Topics() []eventbus.Topic {
 }
 
 type InvitationEvent struct {
-	InvitationID string `json:"invitation_id"`
-	ActorID      string `json:"actor_id,omitempty"`
-	UserID       string `json:"user_id,omitempty"`
-	WorkspaceID  string `json:"workspace_id,omitempty"`
-	Reason       string `json:"reason,omitempty"`
+	InvitationID string   `json:"invitation_id"`
+	ActorID      string   `json:"actor_id,omitempty"`
+	UserID       string   `json:"user_id,omitempty"`
+	WorkspaceID  string   `json:"workspace_id,omitempty"`
+	Reason       string   `json:"reason,omitempty"`
+	RoleIDsAdded []string `json:"role_ids_added,omitempty" jsonschema:"The roles the person was just given in the workspace, on workspace.member.added and workspace.member.updated."`
 }
 
 // MemberEvent is the payload of a membership change made outside an invitation; updated covers the roles a member holds.
 type MemberEvent struct {
-	UserID      string   `json:"user_id"`
-	WorkspaceID string   `json:"workspace_id"`
-	ActorID     string   `json:"actor_id,omitempty"`
-	ProjectIDs  []string `json:"project_ids,omitempty" jsonschema:"On workspace.member.updated, the workspace's projects, whose access the change can move."`
+	UserID       string   `json:"user_id"`
+	WorkspaceID  string   `json:"workspace_id"`
+	ActorID      string   `json:"actor_id,omitempty"`
+	ProjectIDs   []string `json:"project_ids,omitempty" jsonschema:"On workspace.member.updated, the workspace's projects, whose access the change can move."`
+	RoleIDsAdded []string `json:"role_ids_added,omitempty" jsonschema:"The roles the person was just given in the workspace, on workspace.member.added and workspace.member.updated."`
 }
 
 // WorkspaceEvent is the payload of a rename or slug change; it carries the new name and slug so a client open on the workspace can move its URL.

@@ -456,6 +456,34 @@ func (q *Queries) ListPairingSetupTurnsLatest(ctx context.Context, computerID st
 	return items, nil
 }
 
+const listUsersWithReadyComputer = `-- name: ListUsersWithReadyComputer :many
+SELECT DISTINCT user_id FROM pairing_computers
+WHERE token_expires_at > 0 AND setup_confirmed_at IS NOT NULL AND user_id IN (SELECT value FROM json_each(?1))
+`
+
+func (q *Queries) ListUsersWithReadyComputer(ctx context.Context, userIds interface{}) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listUsersWithReadyComputer, userIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const pairingComputerTunnelHostnameExists = `-- name: PairingComputerTunnelHostnameExists :one
 SELECT EXISTS (SELECT 1 FROM pairing_computers WHERE tunnel_hostname = ? AND tunnel_hostname != '')
 `

@@ -26,6 +26,7 @@ import (
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
 	"github.com/otal-labs/nexul/internal/voice"
+	"github.com/otal-labs/nexul/internal/welcome"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -69,6 +70,7 @@ func declared() []eventbus.Topic {
 		access.Topics(),
 		templates.Topics(),
 		repository.Topics(),
+		welcome.Topics(),
 	} {
 		all = append(all, topics...)
 	}

@@ -30,6 +30,7 @@ type accountResult struct {
 	AvatarURL   string        `json:"avatar_url,omitempty"`
 	Status      AccountStatus `json:"status"`
 	CreatedAt   time.Time     `json:"created_at"`
+	Welcome     any           `json:"welcome,omitempty"`
 }
 
 func toAccountResult(u *User) accountResult {
@@ -52,15 +53,23 @@ func accountGetTool(s *Service) mcptool.Tool {
 		"Returns one account: without id, the account this MCP connection acts as, which also confirms Nexul is "+
 			"reachable; call it first in a session. With another account's id it needs accounts:read in any "+
 			"workspace, the same as seeing everyone in account_list, which lists every account with its workspace "+
-			"access. Returns the login, name, the display name the person chose if any, and status (active, "+
-			"disabled, or removed).",
+			"access. Returns the login, name, the display name the person chose if any, status (active, "+
+			"disabled, or removed), and welcome, their Welcome wizard progress: whether its first run happened, each "+
+			"step their roles give them as done, skipped or left, and dot, whether one still waits on them.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in accountGetIn) (any, error) {
 			u, err := s.GetAccount(ctx, actorID(ctx), in.ID)
 			if err != nil {
 				return nil, err
 			}
-			return toAccountResult(u), nil
+			r := toAccountResult(u)
+			if s.welcome == nil {
+				return r, nil
+			}
+			if r.Welcome, err = s.welcome.Progress(ctx, u.ID); err != nil {
+				return nil, err
+			}
+			return r, nil
 		})
 }
 

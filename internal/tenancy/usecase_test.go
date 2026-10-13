@@ -1178,6 +1178,7 @@ func TestUpdateMemberRoles(t *testing.T) {
 		assert.Equal(t, []string{"role-editor", "role-viewer"}, m.RoleIDs)
 		require.Len(t, f.repo.events, 1)
 		assert.Equal(t, TopicWorkspaceMemberUpdated, f.repo.events[0].Topic)
+		assert.Equal(t, []string{"role-viewer"}, f.repo.events[0].Payload.(MemberEvent).RoleIDsAdded, "only the role they did not hold yet is given")
 	})
 	t.Run("the Owner role is never given or taken, while an Owner may hold another", func(t *testing.T) {
 		f := newInviteFixture()
@@ -1321,6 +1322,6 @@ func TestAddMember(t *testing.T) {
 		assert.Equal(t, "role-editor", roleID)
 		require.Len(t, f.repo.events, 1)
 		assert.Equal(t, TopicWorkspaceMemberAdded, f.repo.events[0].Topic)
-		assert.Equal(t, MemberEvent{UserID: "bob", WorkspaceID: "ws-1", ActorID: "actor"}, f.repo.events[0].Payload)
+		assert.Equal(t, MemberEvent{UserID: "bob", WorkspaceID: "ws-1", ActorID: "actor", RoleIDsAdded: []string{"role-editor"}}, f.repo.events[0].Payload)
 	})
 }

@@ -142,7 +142,7 @@ func (s *Service) DeleteComputer(ctx context.Context, userID, id string) error {
 	if err := s.revokeMCPToken(ctx, *computer); err != nil {
 		return err
 	}
-	var evts []eventbus.OutboxEvent
+	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: TopicComputerRemoved, Payload: ComputerRemovedEvent{ComputerID: computer.ID, UserID: computer.UserID, MembersOnly: true}}}
 	if computer.Tunnel != nil {
 		tunnels, err := s.tunnelSeam()
 		if err != nil {

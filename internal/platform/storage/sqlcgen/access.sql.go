@@ -1031,6 +1031,51 @@ func (q *Queries) ListStackRuleTurns(ctx context.Context, arg ListStackRuleTurns
 	return items, nil
 }
 
+const listUsersInAProject = `-- name: ListUsersInAProject :many
+SELECT DISTINCT wm.user_id FROM workspace_members wm
+JOIN projects p ON p.workspace_id = wm.workspace_id
+WHERE wm.user_id IN (SELECT value FROM json_each(?1))
+  AND (
+    EXISTS (SELECT 1 FROM member_roles mr JOIN roles r ON r.id = mr.role_id
+            WHERE mr.user_id = wm.user_id AND mr.workspace_id = wm.workspace_id AND r.is_owner_role = 1)
+    OR EXISTS (SELECT 1 FROM permission_overwrites o
+               WHERE o.resource_type = 'project' AND o.resource_id = p.id AND o.target = 'person' AND o.user_id = wm.user_id
+                 AND EXISTS (SELECT 1 FROM json_each(o.allow) WHERE value = 'projects:open'))
+    OR (NOT EXISTS (SELECT 1 FROM permission_overwrites o
+                    WHERE o.resource_type = 'project' AND o.resource_id = p.id AND o.target = 'person' AND o.user_id = wm.user_id
+                      AND EXISTS (SELECT 1 FROM json_each(o.deny) WHERE value = 'projects:open'))
+        AND EXISTS (SELECT 1 FROM permission_overwrites o
+                    JOIN member_roles mr ON mr.role_id = o.role_id AND mr.user_id = wm.user_id AND mr.workspace_id = wm.workspace_id
+                    WHERE o.resource_type = 'project' AND o.resource_id = p.id AND o.target = 'role'
+                      AND EXISTS (SELECT 1 FROM json_each(o.allow) WHERE value = 'projects:open')))
+  )
+`
+
+// Who of user_ids is in at least one project: an Owner of a workspace with a project, or a member a project's rule
+// lets in (projects:open) by name, or through a role they hold unless a rule naming them keeps them out (ADR 0148).
+func (q *Queries) ListUsersInAProject(ctx context.Context, userIds interface{}) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listUsersInAProject, userIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertOverwrite = `-- name: UpsertOverwrite :execrows
 INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
 VALUES (?1, ?2, 'person', ?3, ?4, ?5, ?6, ?6)

@@ -118,6 +118,7 @@
   "ticket_type.updated",
   "topology",
   "voice.occupancy.changed",
+  "welcome.progress_changed",
   "workspace.member.added",
   "workspace.member.removed",
   "workspace.member.updated",

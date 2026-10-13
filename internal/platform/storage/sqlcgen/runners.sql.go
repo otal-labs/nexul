@@ -60,7 +60,7 @@ func (q *Queries) CreateInstanceUpgrade(ctx context.Context, arg CreateInstanceU
 }
 
 const createRunner = `-- name: CreateRunner :exec
-INSERT INTO runners (id, name, version, last_seen, connected, created_at, machine_id, owner_user_id, computer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO runners (id, name, version, last_seen, connected, created_at, machine_id, owner_user_id, computer_id, enrolled_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateRunnerParams struct {
@@ -73,6 +73,7 @@ type CreateRunnerParams struct {
 	MachineID   string
 	OwnerUserID string
 	ComputerID  string
+	EnrolledBy  string
 }
 
 func (q *Queries) CreateRunner(ctx context.Context, arg CreateRunnerParams) error {
@@ -86,6 +87,7 @@ func (q *Queries) CreateRunner(ctx context.Context, arg CreateRunnerParams) erro
 		arg.MachineID,
 		arg.OwnerUserID,
 		arg.ComputerID,
+		arg.EnrolledBy,
 	)
 	return err
 }
@@ -112,7 +114,7 @@ func (q *Queries) CreateRunnerCredential(ctx context.Context, arg CreateRunnerCr
 }
 
 const createRunnerEnrollmentCode = `-- name: CreateRunnerEnrollmentCode :exec
-INSERT INTO runner_enrollment_codes (code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id) VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO runner_enrollment_codes (code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id, enrolled_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateRunnerEnrollmentCodeParams struct {
@@ -123,6 +125,7 @@ type CreateRunnerEnrollmentCodeParams struct {
 	ExpiresAt   int64
 	OwnerUserID string
 	ComputerID  string
+	EnrolledBy  string
 }
 
 func (q *Queries) CreateRunnerEnrollmentCode(ctx context.Context, arg CreateRunnerEnrollmentCodeParams) error {
@@ -134,6 +137,7 @@ func (q *Queries) CreateRunnerEnrollmentCode(ctx context.Context, arg CreateRunn
 		arg.ExpiresAt,
 		arg.OwnerUserID,
 		arg.ComputerID,
+		arg.EnrolledBy,
 	)
 	return err
 }
@@ -421,6 +425,34 @@ func (q *Queries) ListUnresolvedInstanceUpgrades(ctx context.Context) ([]Instanc
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersWithConnectedDeployRunner = `-- name: ListUsersWithConnectedDeployRunner :many
+SELECT DISTINCT enrolled_by FROM runners
+WHERE connected = 1 AND owner_user_id = '' AND enrolled_by IN (SELECT value FROM json_each(?1))
+`
+
+func (q *Queries) ListUsersWithConnectedDeployRunner(ctx context.Context, userIds interface{}) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listUsersWithConnectedDeployRunner, userIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var enrolled_by string
+		if err := rows.Scan(&enrolled_by); err != nil {
+			return nil, err
+		}
+		items = append(items, enrolled_by)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

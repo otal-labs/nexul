@@ -236,9 +236,10 @@ func TestService_DeleteComputer_TearsItsTunnelDownFirst(t *testing.T) {
 	assert.Equal(t, "app-1", tunnels.deleted[0].AccessAppID)
 	_, err = repo.GetComputer(t.Context(), "u1", id)
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
-	require.Len(t, repo.outbox, 2)
-	assert.Equal(t, TopicTunnelRemoved, repo.outbox[1].Topic)
-	assert.Equal(t, id, repo.outbox[1].Payload.(TunnelChangedEvent).ComputerID)
+	require.Len(t, repo.outbox, 3)
+	assert.Equal(t, ComputerRemovedEvent{ComputerID: id, UserID: "u1", MembersOnly: true}, repo.outbox[1].Payload, "its owner's Your computer step may be left again")
+	assert.Equal(t, TopicTunnelRemoved, repo.outbox[2].Topic)
+	assert.Equal(t, id, repo.outbox[2].Payload.(TunnelChangedEvent).ComputerID)
 }
 
 func TestService_DeleteComputer_WithTunnelButTunnelsUnwired_KeepsTheComputer(t *testing.T) {

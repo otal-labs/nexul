@@ -700,10 +700,10 @@ func (h *Handler) publishPresence(ctx context.Context, c *runnerConn, connected 
 		return
 	}
 	if connected {
-		h.publish(ctx, TopicRunnerConnected, RunnerConnectedEvent{RunnerID: c.id, Name: c.name})
+		h.publish(ctx, TopicRunnerConnected, RunnerConnectedEvent{RunnerID: c.id, Name: c.name, EnrolledBy: c.record.EnrolledBy})
 		return
 	}
-	h.publish(ctx, TopicRunnerDisconnected, RunnerDisconnectedEvent{RunnerID: c.id, Reason: "disconnected"})
+	h.publish(ctx, TopicRunnerDisconnected, RunnerDisconnectedEvent{RunnerID: c.id, Reason: "disconnected", EnrolledBy: c.record.EnrolledBy})
 }
 
 // touchMachine refreshes the connected runner's machine last_seen at connect and on every heartbeat; best-effort.

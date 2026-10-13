@@ -71,6 +71,99 @@ func (q *Queries) GetRole(ctx context.Context, id string) (Role, error) {
 	return i, err
 }
 
+const listRoleHolders = `-- name: ListRoleHolders :many
+SELECT DISTINCT user_id FROM member_roles WHERE role_id = ? ORDER BY user_id
+`
+
+func (q *Queries) ListRoleHolders(ctx context.Context, roleID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listRoleHolders, roleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRoleWelcomeStepsForRoles = `-- name: ListRoleWelcomeStepsForRoles :many
+SELECT welcome_steps, is_owner_role FROM roles WHERE id IN (SELECT value FROM json_each(?1))
+`
+
+type ListRoleWelcomeStepsForRolesRow struct {
+	WelcomeSteps string
+	IsOwnerRole  int64
+}
+
+func (q *Queries) ListRoleWelcomeStepsForRoles(ctx context.Context, roleIds interface{}) ([]ListRoleWelcomeStepsForRolesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listRoleWelcomeStepsForRoles, roleIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoleWelcomeStepsForRolesRow
+	for rows.Next() {
+		var i ListRoleWelcomeStepsForRolesRow
+		if err := rows.Scan(&i.WelcomeSteps, &i.IsOwnerRole); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRoleWelcomeStepsForUsers = `-- name: ListRoleWelcomeStepsForUsers :many
+SELECT mr.user_id, r.welcome_steps, r.is_owner_role FROM member_roles mr JOIN roles r ON r.id = mr.role_id
+WHERE mr.user_id IN (SELECT value FROM json_each(?1))
+`
+
+type ListRoleWelcomeStepsForUsersRow struct {
+	UserID       string
+	WelcomeSteps string
+	IsOwnerRole  int64
+}
+
+func (q *Queries) ListRoleWelcomeStepsForUsers(ctx context.Context, userIds interface{}) ([]ListRoleWelcomeStepsForUsersRow, error) {
+	rows, err := q.db.QueryContext(ctx, listRoleWelcomeStepsForUsers, userIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoleWelcomeStepsForUsersRow
+	for rows.Next() {
+		var i ListRoleWelcomeStepsForUsersRow
+		if err := rows.Scan(&i.UserID, &i.WelcomeSteps, &i.IsOwnerRole); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRoles = `-- name: ListRoles :many
 SELECT id, workspace_id, name, is_owner_role, created_at, updated_at, permissions, welcome_steps FROM roles WHERE workspace_id = ? ORDER BY is_owner_role DESC, created_at, id
 `

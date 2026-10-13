@@ -34,6 +34,7 @@ import (
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
+	"github.com/otal-labs/nexul/internal/welcome"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -69,6 +70,7 @@ type RegistryOptions struct {
 	Plays       *plays.Service
 	PlayRuns    *plays.Runner
 	Pairing     *pairing.Service
+	Welcome     *welcome.Service
 	DeadLetter  DeadLetterStore
 	Publisher   deadletter.Publisher
 	// InstanceURL is the configured public URL; a browser request from any other origin is refused.
@@ -124,7 +126,7 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		automations.MCPTools(opts.Automations),
 		access.MCPTools(opts.Access),
 		auth.MCPTools(opts.Auth),
-		composite.AccountTools(opts.Auth, opts.Workspaces),
+		composite.AccountTools(opts.Auth, opts.Workspaces, opts.Welcome),
 		composite.WorkspaceTools(opts.Workspaces, opts.Roles, opts.Plays, opts.Repository, opts.Access),
 		roles.MCPTools(opts.Roles),
 		tenancy.MCPTools(opts.Invitations),

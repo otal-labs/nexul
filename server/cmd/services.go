@@ -48,6 +48,7 @@ import (
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
 	"github.com/otal-labs/nexul/internal/voice"
+	"github.com/otal-labs/nexul/internal/welcome"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -115,6 +116,8 @@ type coreServices struct {
 
 	notifSvc   *workspace.NotificationService
 	pushSender *push.Sender
+
+	welcomeSvc *welcome.Service
 }
 
 // wireCoreServices constructs every domain service; order matters since some close cycles via Set*/gateway calls.
@@ -356,7 +359,10 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Logger:     logger,
 	})
 
+	welcomeSvc := newWelcomeService(store, authSvc)
+	authSvc.SetWelcome(welcomeProgress{svc: welcomeSvc})
 	return &coreServices{
+		welcomeSvc:     welcomeSvc,
 		accessSvc:      accessSvc,
 		docsSvc:        docsSvc,
 		memoriesSvc:    memoriesSvc,

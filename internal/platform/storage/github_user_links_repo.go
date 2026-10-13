@@ -8,6 +8,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/platform/crypto"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -43,7 +44,7 @@ func (r *GitHubUserLinksRepo) GetGitHubLink(ctx context.Context, userID string) 
 }
 
 // SaveGitHubLink upserts l, encrypting its tokens before they reach SQL.
-func (r *GitHubUserLinksRepo) SaveGitHubLink(ctx context.Context, l auth.GitHubLink) error {
+func (r *GitHubUserLinksRepo) SaveGitHubLink(ctx context.Context, l auth.GitHubLink, events ...eventbus.OutboxEvent) error {
 	access, err := r.encrypt(l.AccessToken)
 	if err != nil {
 		return fmt.Errorf("encrypt github token of %s: %w", l.UserID, err)
@@ -65,17 +66,17 @@ func (r *GitHubUserLinksRepo) SaveGitHubLink(ctx context.Context, l auth.GitHubL
 		if err != nil {
 			return fmt.Errorf("save github link of %s: %w", l.UserID, classifyWriteErr(err))
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, events)
 	})
 }
 
 // DeleteGitHubLink forgets userID's link; one never made is a no-op.
-func (r *GitHubUserLinksRepo) DeleteGitHubLink(ctx context.Context, userID string) error {
+func (r *GitHubUserLinksRepo) DeleteGitHubLink(ctx context.Context, userID string, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		if err := r.q.WithTx(tx).DeleteGitHubUserLink(ctx, userID); err != nil {
 			return fmt.Errorf("delete github link of %s: %w", userID, err)
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, events)
 	})
 }
 

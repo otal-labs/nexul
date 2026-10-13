@@ -10,6 +10,7 @@ import (
 // Topics published by the pairing domain.
 const (
 	TopicComputerPaired   = "computer.paired"
+	TopicComputerRemoved  = "computer.removed"
 	TopicSetupConfirmed   = "computer.setup_confirmed"
 	TopicSetupUnconfirmed = "computer.setup_unconfirmed"
 	TopicTunnelCreated    = "computer.tunnel_created"
@@ -33,6 +34,7 @@ const (
 func Topics() []eventbus.Topic {
 	return []eventbus.Topic{
 		{Name: TopicComputerPaired, Payload: ComputerPairedEvent{}},
+		{Name: TopicComputerRemoved, Payload: ComputerRemovedEvent{}},
 		{Name: TopicSetupConfirmed, Payload: SetupChangedEvent{}},
 		{Name: TopicSetupUnconfirmed, Payload: SetupChangedEvent{}},
 		{Name: TopicTunnelCreated, Payload: TunnelChangedEvent{}},
@@ -85,6 +87,13 @@ type ComputerPairedEvent struct {
 	HarnessVersion string    `json:"harness_version,omitempty"`
 	TokenExpiresAt time.Time `json:"token_expires_at"`
 	MembersOnly    bool      `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
+}
+
+// ComputerRemovedEvent is one of a person's computers being removed, which can leave Your computer to do again.
+type ComputerRemovedEvent struct {
+	ComputerID  string `json:"computer_id"`
+	UserID      string `json:"user_id"`
+	MembersOnly bool   `json:"members_only" jsonschema:"Always true: a person's computer is never delivered to integrations or automations."`
 }
 
 // HarnessSwitchedEvent is a computer's stored kind moving forward, because its harness moved on (ADR 0113).
