@@ -278,6 +278,15 @@ Developer, DevOps, Administrator) that the instance can edit and add to, the
 owner can finish setting up without a computer, and Team shows how far each
 person got. Spec in `.scratch/onboarding/`, built after the permission rework.
 
+Planned: **screens that know your role**. Every button that changes something
+is hidden from people whose roles can't use it, or, for roles that should know
+it exists, shown locked with the reason ("Your role can't deploy"), instead of
+refusing after the click. A test keeps every new button honest. And the things
+you could make but never undo get their way back: delete a machine or a tunnel
+once nothing uses it, edit a stack's environment after launch with secrets
+masked, retry a failed deploy, unlink a ticket's branch, archive a workspace.
+Spec in `.scratch/role-aware-ui/`.
+
 ---
 
 ## Next — ecosystem & reach

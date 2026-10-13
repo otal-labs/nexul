@@ -16,6 +16,8 @@ answer, the spec (Template roles).
 - **The Roles card:** Settings → Templates → Roles, with add, edit in the role editor, Reset (shipped) and Delete
   (added).
 - **MCP:** `template_get` and `template_update` cover the kind.
+- **The locked-actions switch:** the role-aware UI effort's `show_locked_actions` is off for Client and on for the
+  other four (`.scratch/role-aware-ui/`, its ticket 08).
 
 ## Acceptance criteria
 

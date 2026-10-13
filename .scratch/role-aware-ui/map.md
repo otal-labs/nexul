@@ -16,6 +16,8 @@ A spec in `.scratch/role-aware-ui/spec.md`, ready to slice into build tickets. I
 
 ## Notes
 
+- The destination is reached: `spec.md` is written. Build tickets 08 to 23 carry the build on this map.
+
 - Skills every session consults: `grilling` and `domain-modeling`, and `CONTEXT.md` (Locked action, Source,
   Permission overwrite). Look tickets run in `auto-design-mode`: the agent picks and reports the runner-up.
 - The permission rework (`.scratch/permission-overrides/`) already decides two things:
@@ -43,12 +45,14 @@ A spec in `.scratch/role-aware-ui/spec.md`, ready to slice into build tickets. I
 - [Every action on every screen, and the permission it needs](issues/01-every-action-and-its-permission.md): 152 actions, 74 ungated, 8 gated on the wrong permission; worst are projects and board, tickets, stacks and deploys
 - [Every one-way door](issues/02-one-way-doors.md): 15 doors; ticket delete, DNS records and archived docs are web-only; tunnel, stack env and deploy retry need small server work; machine, branch unlink, workspace delete, enrollment codes and notifications need the server first
 - [What the web can know about one thing's permissions after the switch](issues/03-what-the-web-can-know.md): `/me` covers role-wide actions; a locked action on one row needs explain widened or a server flag on the row; the switch is on master (#614)
+- [How a locked action looks](issues/04-how-a-locked-action-looks.md): quiet lock and tooltip; `aria-disabled` and focusable, the reason announced; destructive items drop their red; tap for the reason on the phone; runner-up writes the reason under the control
+- [How a new action is kept from slipping back](issues/05-the-guard.md): one shared action piece draws every write; each request declares its permission and a test checks it against a generated route file; detail pages read their item's answers once through explain, lists stay role-wide
+- [How each one-way door behaves](issues/06-how-each-door-behaves.md): twelve doors fixed; machine and tunnel deletes refused while something uses them, naming what; Retry rebuilds the same commit with current settings; secrets masked for readers; workspaces archive and restore
+- [Write the spec](issues/07-write-the-spec.md): `spec.md` with build tickets 08 to 23
 
 ## Not yet specified
 
-- Copy for each action's "Your role can't …" line. It may be generated from the permission catalog's labels.
-- Whether the switch belongs in the welcome wizard effort's template role table (`.scratch/onboarding/` ticket 04)
-  or only here. The template defaults are decided above either way.
+Nothing. The spec answered the last open questions.
 
 ## Out of scope
 
