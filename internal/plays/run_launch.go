@@ -328,8 +328,8 @@ func (r *Runner) Answer(ctx context.Context, trailID string, answer harness.Ques
 		return nil, fmt.Errorf("get trail %s: %w", trailID, err)
 	}
 	actor := actorID(ctx)
-	if actor != trail.StarterID && !r.perm.HasPermission(ctx, actor, trail.WorkspaceID, permissions.PlaysWrite, "", "") {
-		return nil, fmt.Errorf("%w: only the starter or a %s holder can answer", apperrs.ErrForbidden, permissions.PlaysWrite)
+	if err := r.requireSteer(ctx, trail, "answer"); err != nil {
+		return nil, err
 	}
 	if trail.State != TrailWaiting || trail.Question == nil {
 		return nil, fmt.Errorf("%w: the run is not waiting for an answer", apperrs.ErrConflict)
@@ -382,8 +382,8 @@ func (r *Runner) Continue(ctx context.Context, trailID, message string, via Via)
 		return nil, fmt.Errorf("get trail %s: %w", trailID, err)
 	}
 	actor := actorID(ctx)
-	if actor != trail.StarterID && !r.perm.HasPermission(ctx, actor, trail.WorkspaceID, permissions.PlaysWrite, "", "") {
-		return nil, fmt.Errorf("%w: only the starter or a %s holder can continue a run", apperrs.ErrForbidden, permissions.PlaysWrite)
+	if err := r.requireSteer(ctx, trail, "continue a run"); err != nil {
+		return nil, err
 	}
 	if trail.State.Active() {
 		return nil, fmt.Errorf("%w: the run is still going; answer or stop it instead", apperrs.ErrConflict)
@@ -545,7 +545,7 @@ func (r *Runner) checkPlay(ctx context.Context, starter string, play *Play, proj
 	if err != nil {
 		return fmt.Errorf("resolve workspace for project %s: %w", projectID, err)
 	}
-	if play.WorkspaceID != workspaceID {
+	if play.WorkspaceID != workspaceID || !r.perm.HasPermission(ctx, starter, workspaceID, permissions.PlaysRead, resourceTypePlay, play.ID) {
 		return fmt.Errorf("get play %s: %w", play.ID, apperrs.ErrNotFound)
 	}
 	if !play.Enabled {

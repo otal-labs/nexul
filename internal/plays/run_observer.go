@@ -12,7 +12,6 @@ import (
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
-	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 type trailObserver struct {
@@ -229,8 +228,8 @@ func (r *Runner) Stop(ctx context.Context, trailID string) (*Trail, error) {
 		return nil, fmt.Errorf("get trail %s: %w", trailID, err)
 	}
 	actor := actorID(ctx)
-	if actor != trail.StarterID && !r.perm.HasPermission(ctx, actor, trail.WorkspaceID, permissions.PlaysWrite, "", "") {
-		return nil, fmt.Errorf("%w: only the starter or a %s holder can stop a run", apperrs.ErrForbidden, permissions.PlaysWrite)
+	if err := r.requireSteer(ctx, trail, "stop a run"); err != nil {
+		return nil, err
 	}
 	if !trail.State.Active() {
 		return nil, fmt.Errorf("%w: the run has already ended", apperrs.ErrConflict)

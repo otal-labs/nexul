@@ -99,6 +99,8 @@ type TrailRepo interface {
 // resourceID are empty for a workspace-wide check and name a play or doc for a per-resource overwrite.
 type PermissionGate interface {
 	HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action, resourceType, resourceID string) bool
+	// PlaysWith is which of playIDs userID holds action on, each play's rules included, from one read of them.
+	PlaysWith(ctx context.Context, userID, workspaceID string, action permissions.Action, playIDs []string) map[string]bool
 	// CallerProjects lists the projects the caller on ctx may act in with action, so a list filters in SQL (ADR 0140).
 	CallerProjects(ctx context.Context, action permissions.Action) (projectIDs []string, all bool, err error)
 }

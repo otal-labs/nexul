@@ -342,8 +342,8 @@ func (g workspaceDefaultsGate) SeedWorkspaceDefaults(ctx context.Context, worksp
 	return g.automations.SeedWorkspace(ctx, workspaceID)
 }
 
-// clarifyPlayGate answers docs' Clarify check (ADR 0017): plays:run on the workspace's Clarify play, or workspace-wide
-// while the workspace has none.
+// clarifyPlayGate answers docs' Clarify check (ADR 0017): See and Run on the workspace's Clarify play, or plays:run
+// workspace-wide while the workspace has none.
 type clarifyPlayGate struct {
 	access   *access.Service
 	plays    *storage.PlaysRepo
@@ -361,7 +361,8 @@ func (g clarifyPlayGate) CanRunClarify(ctx context.Context, userID, projectID st
 	}
 	for _, play := range ps {
 		if play.BuiltinKey == plays.ClarifyKey {
-			return g.access.HasPermission(ctx, userID, p.WorkspaceID, permissions.PlaysRun, "play", play.ID)
+			return g.access.HasPermission(ctx, userID, p.WorkspaceID, permissions.PlaysRead, "play", play.ID) &&
+				g.access.HasPermission(ctx, userID, p.WorkspaceID, permissions.PlaysRun, "play", play.ID)
 		}
 	}
 	return g.access.HasPermission(ctx, userID, p.WorkspaceID, permissions.PlaysRun, "", "")

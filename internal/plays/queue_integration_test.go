@@ -226,13 +226,16 @@ func TestQueue_MomentFromAnMCPMove_RecordsViaMCP(t *testing.T) {
 
 func TestQueue_MatchOnNobody_DidntRunWithAFailedTrail(t *testing.T) {
 	tests := []struct {
-		name   string
-		facts  func(*plays.Facts)
-		setup  func(r *rig, playID string)
-		reason string
+		name    string
+		facts   func(*plays.Facts)
+		setup   func(r *rig, playID string)
+		reason  string
+		starter string
 	}{
-		{"no developer", func(f *plays.Facts) { f.Developer = "" }, func(*rig, string) {}, "nobody to run it on: the ticket has no developer"},
-		{"developer excluded from the play", func(*plays.Facts) {}, func(r *rig, playID string) { r.Exclude(dev, playID) }, "may not run Fix it here"},
+		{"no developer", func(f *plays.Facts) { f.Developer = "" }, func(*rig, string) {}, "nobody to run it on: the ticket has no developer", ""},
+		{"developer excluded from the play", func(*plays.Facts) {}, func(r *rig, playID string) { r.Exclude(dev, playID) }, "may not run Fix it here", dev},
+		// A starter always reads their run, so a developer who can't see the play starts none.
+		{"developer can't see the play", func(*plays.Facts) {}, func(r *rig, playID string) { r.Hide(dev, playID) }, "may not run Fix it here", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -250,6 +253,7 @@ func TestQueue_MatchOnNobody_DidntRunWithAFailedTrail(t *testing.T) {
 			trail, err := r.store.PlayTrails.GetTrail(t.Context(), it.TrailID)
 			require.NoError(t, err)
 			assert.Equal(t, plays.TrailFailed, trail.State)
+			assert.Equal(t, tt.starter, trail.StarterID)
 		})
 	}
 }
@@ -604,7 +608,7 @@ func TestPickComputer_RunsTheHeldRunThereForItsPersonOnly(t *testing.T) {
 		{"no T3 project", dev, id, "c-laptop", "", apperrs.ErrInvalid},
 		{"a missing run", dev, "missing", "c-laptop", "t3-project", apperrs.ErrNotFound},
 		{"an autoplays:write holder", tester, id, "c-laptop", "t3-project", apperrs.ErrForbidden},
-		{"a stranger", "u-stranger", id, "c-laptop", "t3-project", apperrs.ErrForbidden},
+		{"a stranger, who can't see the play", "u-stranger", id, "c-laptop", "t3-project", apperrs.ErrNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -928,8 +932,11 @@ func TestQueueSurfaces_MCP(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "resume takes only the target")
 	_, err = tool(t, r, ctx, "play_run", `{"resume_auto_plays":true,"target_type":"ticket","target_id":"t-1"}`)
 	require.ErrorIs(t, err, apperrs.ErrConflict, "nothing is paused")
-	_, err = tool(t, r, as(t.Context(), "u-stranger"), "trail_list", `{"target_type":"ticket","target_id":"t-1","queue":true}`)
-	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	out, err = tool(t, r, as(t.Context(), "u-stranger"), "trail_list", `{"target_type":"ticket","target_id":"t-1","queue":true}`)
+	require.NoError(t, err)
+	raw, err = json.Marshal(out)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `"items":[]`, "auto runs of a play the caller can't see are left out")
 }
 
 func TestQueueSurfaces_HTTP(t *testing.T) {

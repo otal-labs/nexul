@@ -106,10 +106,26 @@ func TestList_SortsByLabel(t *testing.T) {
 	assert.True(t, labels["Zeta"] && labels["Alpha"])
 }
 
-func TestList_WithoutPlaysRead_ReturnsForbidden(t *testing.T) {
-	s := newTestService(newFakeRepo(), newFakePerm(nil))
-	_, err := s.List(ctxAs("alice"), workspaceID)
-	require.ErrorIs(t, err, apperrs.ErrForbidden)
+func TestList_LeavesOutPlaysTheCallerCannotSee(t *testing.T) {
+	perm := allowAll("owner")
+	perm.grants["alice"] = []permissions.Action{permissions.PlaysRead}
+	s := newTestService(newFakeRepo(), perm)
+	seen, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Seen", Type: TypeDoc})
+	require.NoError(t, err)
+	hidden, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Hidden", Type: TypeDoc})
+	require.NoError(t, err)
+	perm.hide("alice", hidden.ID)
+
+	list, err := s.List(ctxAs("alice"), workspaceID)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, seen.ID, list[0].ID)
+	_, err = s.Get(ctxAs("alice"), workspaceID, hidden.ID)
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "its link is not found")
+
+	none, err := s.List(ctxAs("bob"), workspaceID)
+	require.NoError(t, err)
+	assert.Empty(t, none, "without plays:read no play is seen")
 }
 
 func TestGet_FromAnotherWorkspace_ReturnsNotFound(t *testing.T) {
@@ -165,7 +181,7 @@ func TestUpdate_WithoutPlaysWrite_ReturnsForbidden(t *testing.T) {
 	p, err := seed.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Doc", Type: TypeDoc})
 	require.NoError(t, err)
 
-	s := newTestService(repo, newFakePerm(nil))
+	s := newTestService(repo, newFakePerm(map[string][]permissions.Action{"alice": {permissions.PlaysRead}}))
 	_, err = s.Update(ctxAs("alice"), workspaceID, p.ID, UpdateInput{Label: "Doc"})
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 }
@@ -254,14 +270,14 @@ func TestActorID_NoActorInContext_ReturnsEmpty(t *testing.T) {
 	assert.Equal(t, "", actorID(context.Background()))
 }
 
-// runnerPerm grants owner the write/read/delete bits Create needs to seed fixtures, plus plays:run for
+// runnerPerm grants owner the write/read/delete bits Create needs to seed fixtures, plus plays:read and plays:run for
 // whichever users are named, so ListApplicable tests can then deny specific plays per user.
 func runnerPerm(runners ...string) *fakePerm {
 	grants := map[string][]permissions.Action{
 		"owner": {permissions.PlaysWrite, permissions.PlaysRead, permissions.PlaysDelete},
 	}
 	for _, u := range runners {
-		grants[u] = append(grants[u], permissions.PlaysRun)
+		grants[u] = append(grants[u], permissions.PlaysRead, permissions.PlaysRun)
 	}
 	return newFakePerm(grants)
 }
@@ -409,6 +425,14 @@ func (ownerBypassPerm) HasPermission(context.Context, string, string, permission
 	return true
 }
 
+func (ownerBypassPerm) PlaysWith(_ context.Context, _, _ string, _ permissions.Action, playIDs []string) map[string]bool {
+	out := map[string]bool{}
+	for _, id := range playIDs {
+		out[id] = true
+	}
+	return out
+}
+
 func (ownerBypassPerm) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
 	return nil, true, nil
 }
@@ -468,7 +492,7 @@ func TestRenameImpact_ErrorPaths(t *testing.T) {
 		namesErr  error
 		want      error
 	}{
-		{"without plays:read it is forbidden", "stranger", workspaceID, nil, apperrs.ErrForbidden},
+		{"a play the caller can't see is not found", "stranger", workspaceID, nil, apperrs.ErrNotFound},
 		{"a play of another workspace is not found", "owner", "ws-other", nil, apperrs.ErrNotFound},
 		{"a failed read of the automations is returned", "owner", workspaceID, errors.New("disk"), nil},
 	}

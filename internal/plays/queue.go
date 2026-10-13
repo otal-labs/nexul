@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -95,7 +96,7 @@ func (r *Runner) GetQueue(ctx context.Context, targetType TargetType, targetID s
 	if err != nil {
 		return nil, fmt.Errorf("list the queue of %s %s: %w", targetType, targetID, err)
 	}
-	q := &Queue{Items: items}
+	q := &Queue{Items: r.seenItems(ctx, workspaceID, items)}
 	var frees time.Time
 	q.AutoRuns, q.DailyCap, frees, err = r.autoRunsToday(ctx, workspaceID, targetType, targetID)
 	if err != nil {
@@ -122,6 +123,9 @@ func (r *Runner) QueuedForPlay(ctx context.Context, playID string) ([]*QueueItem
 		return nil, fmt.Errorf("get play %s: %w", playID, err)
 	}
 	actor := actorID(ctx)
+	if !r.perm.HasPermission(ctx, actor, play.WorkspaceID, permissions.PlaysRead, resourceTypePlay, play.ID) {
+		return nil, fmt.Errorf("get play %s: %w", playID, apperrs.ErrNotFound)
+	}
 	if !r.perm.HasPermission(ctx, actor, play.WorkspaceID, permissions.AutoplaysRead, "", "") {
 		return nil, fmt.Errorf("%w: %s required", apperrs.ErrForbidden, permissions.AutoplaysRead)
 	}
@@ -142,11 +146,8 @@ func (r *Runner) CancelQueued(ctx context.Context, id string) (*QueueItem, error
 	if id == "" {
 		return nil, fmt.Errorf("%w: queue item id is required", apperrs.ErrInvalid)
 	}
-	it, err := r.queue.GetQueueItem(ctx, id)
+	it, err := r.queuedItem(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("get queue item %s: %w", id, err)
-	}
-	if _, _, err := r.queueTarget(ctx, it.TargetType, it.TargetID); err != nil {
 		return nil, err
 	}
 	actor := actorID(ctx)
@@ -171,11 +172,8 @@ func (r *Runner) PickComputer(ctx context.Context, id, computerID, harnessProjec
 	if id == "" || computerID == "" || harnessProjectID == "" {
 		return nil, fmt.Errorf("%w: a queued run's id, a computer, and a T3 project on it are required", apperrs.ErrInvalid)
 	}
-	it, err := r.queue.GetQueueItem(ctx, id)
+	it, err := r.queuedItem(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("get queue item %s: %w", id, err)
-	}
-	if _, _, err := r.queueTarget(ctx, it.TargetType, it.TargetID); err != nil {
 		return nil, err
 	}
 	if actorID(ctx) != it.PersonID {
@@ -253,6 +251,32 @@ func (r *Runner) ResumeAutoPlays(ctx context.Context, targetType TargetType, tar
 	return r.GetQueue(ctx, targetType, targetID)
 }
 
+// queuedItem reads a queue item whose target and play the caller can see; any other is not found.
+func (r *Runner) queuedItem(ctx context.Context, id string) (*QueueItem, error) {
+	it, err := r.queue.GetQueueItem(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get queue item %s: %w", id, err)
+	}
+	_, workspaceID, err := r.queueTarget(ctx, it.TargetType, it.TargetID)
+	if err != nil {
+		return nil, err
+	}
+	if len(r.seenItems(ctx, workspaceID, []*QueueItem{it})) == 0 {
+		return nil, fmt.Errorf("get queue item %s: %w", id, apperrs.ErrNotFound)
+	}
+	return it, nil
+}
+
+// seenItems keeps the items of plays the caller can see, from one read of the rules on them.
+func (r *Runner) seenItems(ctx context.Context, workspaceID string, items []*QueueItem) []*QueueItem {
+	playIDs := make([]string, 0, len(items))
+	for _, it := range items {
+		playIDs = append(playIDs, it.PlayID)
+	}
+	sees := r.perm.PlaysWith(ctx, actorID(ctx), workspaceID, permissions.PlaysRead, playIDs)
+	return slices.DeleteFunc(slices.Clone(items), func(it *QueueItem) bool { return !sees[it.PlayID] })
+}
+
 // queueTarget reads a ticket or doc for the queue's surfaces and checks the caller may read its trails.
 func (r *Runner) queueTarget(ctx context.Context, targetType TargetType, targetID string) (Facts, string, error) {
 	targetID = strings.TrimSpace(targetID)
@@ -273,7 +297,7 @@ func (r *Runner) queueTarget(ctx context.Context, targetType TargetType, targetI
 	if !r.perm.HasPermission(ctx, actorID(ctx), workspaceID, permissions.Member, resourceTypeProject, f.ProjectID) {
 		return Facts{}, "", fmt.Errorf("get %s %s: %w", targetType, targetID, apperrs.ErrNotFound)
 	}
-	if err := r.requireTrailAccess(ctx, workspaceID, targetType, targetID); err != nil {
+	if err := r.requireThread(ctx, workspaceID, targetType, targetID); err != nil {
 		return Facts{}, "", err
 	}
 	return f, workspaceID, nil

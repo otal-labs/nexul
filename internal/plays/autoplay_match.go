@@ -360,7 +360,7 @@ func (r *Runner) matchOne(ctx context.Context, workspaceID string, a *AutoPlay, 
 	return r.queue.EnqueueRun(ctx, it, r.queueEvent(TopicQueued, it))
 }
 
-// whyNobody says why a run has nobody to land on: no such person, or one the play's permissions leave out.
+// whyNobody says why a run has nobody to land on: no such person, or one who can't see or run the play there.
 func (r *Runner) whyNobody(ctx context.Context, it *QueueItem) string {
 	if it.PersonID == "" && it.RunOn == RunOnCauser {
 		return fmt.Sprintf("nobody to run it on: no person caused it and the %s has no developer", it.TargetType)
@@ -369,17 +369,28 @@ func (r *Runner) whyNobody(ctx context.Context, it *QueueItem) string {
 		return fmt.Sprintf("nobody to run it on: the %s has no %s", it.TargetType, it.RunOn)
 	}
 	if !r.perm.HasPermission(ctx, it.PersonID, it.WorkspaceID, permissions.Member, resourceTypeProject, it.ProjectID) ||
+		!r.sees(ctx, it.PersonID, it) ||
 		!r.perm.HasPermission(ctx, it.PersonID, it.WorkspaceID, permissions.PlaysRun, resourceTypePlay, it.PlayID) {
 		return fmt.Sprintf("%s may not run %s here", r.login(ctx, it.PersonID), it.PlayLabel)
 	}
 	return ""
 }
 
-// failedTrail keeps a run that didn't run as a failed trail on its target, so the target says why.
+// sees is whether userID can see it's play.
+func (r *Runner) sees(ctx context.Context, userID string, it *QueueItem) bool {
+	return r.perm.HasPermission(ctx, userID, it.WorkspaceID, permissions.PlaysRead, resourceTypePlay, it.PlayID)
+}
+
+// failedTrail keeps a run that didn't run as a failed trail on its target, so the target says why; its person starts it
+// only when they can see the play, since a starter always reads their run.
 func (r *Runner) failedTrail(ctx context.Context, it *QueueItem, reason string) {
+	starter := it.PersonID
+	if starter != "" && !r.sees(ctx, starter, it) {
+		starter = ""
+	}
 	trail := &Trail{
 		ID: ids.New(), WorkspaceID: it.WorkspaceID, PlayID: it.PlayID, PlayLabel: it.PlayLabel, TargetType: it.TargetType,
-		TargetID: it.TargetID, ProjectID: it.ProjectID, StarterID: it.PersonID, Via: it.Via, SelectedMemoryIDs: []string{},
+		TargetID: it.TargetID, ProjectID: it.ProjectID, StarterID: starter, Via: it.Via, SelectedMemoryIDs: []string{},
 		StartedAt: r.now().UTC(),
 	}
 	title := ""

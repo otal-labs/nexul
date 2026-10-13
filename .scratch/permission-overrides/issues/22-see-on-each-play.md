@@ -1,6 +1,6 @@
 # 22 — See on each play
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 14, 17
 
@@ -25,9 +25,9 @@ workspace-wide, Evaluation order), the research (sections 5 and 8).
 
 ## Acceptance criteria
 
-- [ ] `TestPlays_SeeHidesItEverywhere`: a play denied to a role is gone from the list, run menus, auto plays and
+- [x] `TestPlays_SeeHidesItEverywhere`: a play denied to a role is gone from the list, run menus, auto plays and
       agents' play lists for its holders, and its link is not found, over HTTP and MCP.
-- [ ] `TestPlays_TheStarterReadsTheirRun`.
-- [ ] "a play's queued runs" and the plays list keep their counts with rules on every play; new
+- [x] `TestPlays_TheStarterReadsTheirRun`.
+- [x] "a play's queued runs" and the plays list keep their counts with rules on every play; new
       `TestStatements_PlayRulesCostTheSameAtAnyLength`.
-- [ ] Verified at 768, 1024 and 1440px.
+- [x] Verified at 768, 1024 and 1440px.

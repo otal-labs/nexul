@@ -275,8 +275,81 @@ func queueRuns(t *testing.T, f permFixture, ticketIDs []string) {
 	}
 	reader, err := f.store.Roles.Get(ctx, "role-reader")
 	require.NoError(t, err)
-	reader.Permissions = reader.Permissions.With(permissions.AutoplaysRead)
+	reader.Permissions = reader.Permissions.With(permissions.AutoplaysRead).With(permissions.PlaysRead).With(permissions.PlaysRun)
 	require.NoError(t, f.store.Roles.Update(ctx, reader))
+}
+
+// addPlays adds n doc plays, each with a run on the fixture's ticket started by the writer, so the reader reads each run
+// only by seeing its play.
+func addPlays(t *testing.T, f permFixture, n int) {
+	t.Helper()
+	ctx := context.Background()
+	now := time.Now().UTC()
+	for i := range n {
+		id := fmt.Sprintf("play-%d-%d", n, i)
+		require.NoError(t, f.store.Plays.Create(ctx, &plays.Play{ID: id, WorkspaceID: wsDefault, Label: "Notes " + id, Type: plays.TypeDoc,
+			Instructions: "Write them.", Enabled: true, ExcludedProjectIDs: []string{}, CreatedAt: now, UpdatedAt: now}))
+		require.NoError(t, f.store.PlayTrails.CreateTrail(ctx, &plays.Trail{ID: "tr-" + id, WorkspaceID: wsDefault, PlayID: id, PlayLabel: "Notes",
+			TargetType: plays.TargetTicket, TargetID: f.ticket.ID, ProjectID: pGeneral, StarterID: uWriter, Via: plays.ViaWeb, State: plays.TrailDone,
+			StartedAt: now, Activity: []plays.ActivityEntry{}}))
+	}
+}
+
+// TestStatements_PlayRulesCostTheSameAtAnyLength: rules for every role and the reader on every play cost the plays list,
+// the run menus, play_list, a play's queued runs and a ticket's trails no statement more than none do, at a few plays or
+// many, since the play rules reaching a person come in one read.
+func TestStatements_PlayRulesCostTheSameAtAnyLength(t *testing.T) {
+	runnerOf := func(f permFixture) *plays.Runner {
+		return plays.NewRunner(plays.RunnerConfig{Plays: f.store.Plays, Trails: f.store.PlayTrails, Queue: f.store.PlayQueue, Perm: f.svc.accessSvc})
+	}
+	paths := map[string]func(ctx context.Context, f permFixture) error{
+		"plays list": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.playsSvc.List(ctx, wsDefault)
+			return err
+		},
+		"run menus": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.playsSvc.ListApplicable(ctx, wsDefault, uReader, pGeneral, plays.TypeDoc, nil)
+			return err
+		},
+		"play_list": func(ctx context.Context, f permFixture) error {
+			_, err := tool(t, plays.MCPTools(f.svc.playsSvc), "play_list").Call(ctx, json.RawMessage(`{"workspace_id":"`+wsDefault+`"}`))
+			return err
+		},
+		"a play's queued runs": func(ctx context.Context, f permFixture) error {
+			_, err := runnerOf(f).QueuedForPlay(ctx, guardPlay)
+			return err
+		},
+		"a ticket's trails": func(ctx context.Context, f permFixture) error {
+			_, err := runnerOf(f).ListTrails(ctx, plays.TargetTicket, f.ticket.ID, "")
+			return err
+		},
+	}
+	cost := func(n int, rules bool) map[string]int64 {
+		f, st, db := newCountedFixtureDB(t)
+		queueRuns(t, f, grow(t, f, 1))
+		addPlays(t, f, n)
+		if rules {
+			_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, allow, deny, created_at, updated_at)
+SELECT 'play', p.id, 'role', r.id, '["plays:read","plays:run"]', '["plays:delete"]', 1, 1 FROM plays p, roles r
+WHERE r.id IN ('role-reader', 'role-writer')`)
+			require.NoError(t, err)
+			_, err = db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at)
+SELECT 'play', p.id, 'person', ?, '["plays:run"]', '["plays:write"]', 1, 1 FROM plays p`, uReader)
+			require.NoError(t, err)
+		}
+		out := map[string]int64{}
+		for name, run := range paths {
+			ctx := access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: uReader}), f.svc.accessSvc.NewMemo())
+			st.Reset()
+			require.NoError(t, run(ctx, f), name)
+			out[name] = st.Count()
+		}
+		t.Logf("statements with %d plays, rules %v: %v", n, rules, out)
+		return out
+	}
+	none := cost(12, false)
+	assert.Equal(t, none, cost(2, true), "a few plays, each with rules")
+	assert.Equal(t, none, cost(12, true), "many plays, each with rules")
 }
 
 // TestStatements_ListsCostTheSameAtAnyLength pins each list path's statements as independent of how many rows it

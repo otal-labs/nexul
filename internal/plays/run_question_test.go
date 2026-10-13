@@ -179,7 +179,7 @@ func TestAnswer_Refusals(t *testing.T) {
 
 	obs.OnQuestion(askedQuestion())
 	_, err = f.runner.Answer(ctxAs("stranger"), trail.ID, yesAnswer())
-	assert.ErrorIs(t, err, apperrs.ErrForbidden)
+	assert.ErrorIs(t, err, apperrs.ErrNotFound)
 	_, err = f.runner.Answer(ctxAs(starter), trail.ID, harness.QuestionAnswer{})
 	assert.ErrorIs(t, err, apperrs.ErrInvalid)
 	_, err = f.runner.Answer(ctxAs(starter), "missing", yesAnswer())

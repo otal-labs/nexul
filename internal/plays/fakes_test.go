@@ -283,10 +283,19 @@ func (f *fakePerm) HasPermission(_ context.Context, userID, _ string, action per
 	if !granted {
 		return false
 	}
-	if resourceType != "" && f.denied[userID][resourceType+":"+resourceID] {
+	key := resourceType + ":" + resourceID
+	if resourceType != "" && (f.denied[userID][key] || f.denied[userID][key+"#"+string(action)]) {
 		return false
 	}
 	return true
+}
+
+func (f *fakePerm) PlaysWith(ctx context.Context, userID, workspaceID string, action permissions.Action, playIDs []string) map[string]bool {
+	out := map[string]bool{}
+	for _, id := range playIDs {
+		out[id] = f.HasPermission(ctx, userID, workspaceID, action, resourceTypePlay, id)
+	}
+	return out
 }
 
 func (f *fakePerm) CallerProjects(ctx context.Context, _ permissions.Action) ([]string, bool, error) {
@@ -304,8 +313,14 @@ func (f *fakePerm) hideProject(userID, projectID string) {
 	f.denyResource(userID, resourceTypeProject, projectID)
 }
 
+// deny is a play rule denying userID Run on playID.
 func (f *fakePerm) deny(userID, playID string) {
-	f.denyResource(userID, resourceTypePlay, playID)
+	f.denyResource(userID, resourceTypePlay, playID+"#"+string(permissions.PlaysRun))
+}
+
+// hide is a play rule denying userID See on playID.
+func (f *fakePerm) hide(userID, playID string) {
+	f.denyResource(userID, resourceTypePlay, playID+"#"+string(permissions.PlaysRead))
 }
 
 func (f *fakePerm) denyResource(userID, resourceType, resourceID string) {

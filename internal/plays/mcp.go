@@ -80,8 +80,9 @@ type playDeleteIn struct {
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("play_list", "List plays",
-			"Lists a workspace's plays sorted by label, each with its type, instructions, enabled switch, stage, "+
-				"and excluded projects. Without type it lists every definition and needs plays:read, and a caller with "+
+			"Lists the plays of a workspace the caller can see, sorted by label, each with its type, instructions, "+
+				"enabled switch, stage, and excluded projects; a play hidden from the caller (plays:read denied on it) is "+
+				"left out, and plays:read is what lets them see the rest. Without type it lists every definition, and a caller with "+
 				"autoplays:read also gets each play's auto_plays: the moment that starts it by itself, its conditions "+
 				"(all or any groups of rules, each a field, an op of is, is_not, set, or unset, and values), priority, "+
 				"once_within_minutes limit, run_on, and enabled switch. With type (and "+
@@ -135,7 +136,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 				"Play fields apply first, then add_auto_plays, update_auto_plays, and remove_auto_plays in that order, "+
 				"stopping at the first failure with what already took effect. Returns the play, with its auto plays when "+
 				"they changed. A new label still applies when automations call the play by its old one with runPlay, and "+
-				"warnings then names them, since they fail until their code changes. Needs plays:read, plays:write for play fields, autoplays:write to add or change auto plays, "+
+				"warnings then names them, since they fail until their code changes. Needs plays:read, plays:write on the play for its fields, autoplays:write to add or change auto plays, "+
 				"and autoplays:delete to remove them. The decisions check is switched on or off through its play's auto play, "+
 				"with update_auto_plays and enabled.",
 			mcptool.Hints{Idempotent: true, Local: true},
@@ -145,7 +146,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 		mcptool.New("play_delete", "Delete play",
 			"Deletes a play from its workspace and returns its id with deleted true. Trails of its past runs stay "+
 				"readable through trail_list. To hide a play without losing it, use play_update with enabled false "+
-				"instead. Needs plays:delete.",
+				"instead. Needs plays:delete on the play.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in playDeleteIn) (any, error) {
 				if err := s.Delete(ctx, in.WorkspaceID, in.ID); err != nil {

@@ -121,25 +121,21 @@ type UpdateInput struct {
 	ExcludedProjectIDs []string
 }
 
-// List returns workspaceID's plays sorted by label.
+// List returns the plays of workspaceID the caller can see, sorted by label.
 func (s *Service) List(ctx context.Context, workspaceID string) ([]*Play, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
 	}
-	if err := s.require(ctx, workspaceID, permissions.PlaysRead); err != nil {
-		return nil, err
-	}
 	list, err := s.repo.List(ctx, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("list plays for workspace %s: %w", workspaceID, err)
 	}
-	return list, nil
+	return s.holding(ctx, actorID(ctx), workspaceID, list, permissions.PlaysRead), nil
 }
 
 // ListApplicable returns workspaceID's enabled plays of playType that apply to a run on projectID for userID:
-// not excluded for that project, matching stage for a ticket play, and not denied plays:run (ticket 21). Unlike
-// List, this skips the plays:read gate: any viewer of the target may see the buttons they hold plays:run for.
+// not excluded for that project, matching stage for a ticket play, and ones they can see and run.
 func (s *Service) ListApplicable(ctx context.Context, workspaceID, userID, projectID string, playType Type, stage *Stage) ([]*Play, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
@@ -163,20 +159,28 @@ func (s *Service) ListApplicable(ctx context.Context, workspaceID, userID, proje
 		if playType == TypeTicket && (stage == nil || p.ShowWhenStage == nil || *p.ShowWhenStage != *stage) {
 			continue
 		}
-		if !s.perm.HasPermission(ctx, userID, workspaceID, permissions.PlaysRun, resourceTypePlay, p.ID) {
-			continue
-		}
 		out = append(out, p)
 	}
-	return out, nil
+	return s.holding(ctx, userID, workspaceID, out, permissions.PlaysRead, permissions.PlaysRun), nil
 }
 
-// Get returns a single play scoped to workspaceID; a play from another workspace is reported not found.
-func (s *Service) Get(ctx context.Context, workspaceID, id string) (*Play, error) {
-	if err := s.require(ctx, workspaceID, permissions.PlaysRead); err != nil {
-		return nil, err
+// holding keeps the plays of list userID holds every one of actions on, from one read of the rules on them.
+func (s *Service) holding(ctx context.Context, userID, workspaceID string, list []*Play, actions ...permissions.Action) []*Play {
+	ids := make([]string, 0, len(list))
+	for _, p := range list {
+		ids = append(ids, p.ID)
 	}
-	return s.getInWorkspace(ctx, workspaceID, id)
+	for _, action := range actions {
+		held := s.perm.PlaysWith(ctx, userID, workspaceID, action, ids)
+		list = slices.DeleteFunc(slices.Clone(list), func(p *Play) bool { return !held[p.ID] })
+	}
+	return list
+}
+
+// Get returns a single play scoped to workspaceID; a play from another workspace, or one the caller can't see, is
+// reported not found.
+func (s *Service) Get(ctx context.Context, workspaceID, id string) (*Play, error) {
+	return s.seen(ctx, workspaceID, id)
 }
 
 // Create adds a play to workspaceID; actorID must hold plays:write.
@@ -212,13 +216,13 @@ func (s *Service) Create(ctx context.Context, workspaceID string, in CreateInput
 	return p, nil
 }
 
-// Update replaces a play's owner-edited fields; the play's type never changes after create.
+// Update replaces a play's owner-edited fields (plays:write on it); the play's type never changes after create.
 func (s *Service) Update(ctx context.Context, workspaceID, id string, in UpdateInput) (*Play, error) {
-	if err := s.require(ctx, workspaceID, permissions.PlaysWrite); err != nil {
+	p, err := s.seen(ctx, workspaceID, id)
+	if err != nil {
 		return nil, err
 	}
-	p, err := s.getInWorkspace(ctx, workspaceID, id)
-	if err != nil {
+	if err := s.requireOn(ctx, p, permissions.PlaysWrite); err != nil {
 		return nil, err
 	}
 	p.Label = strings.TrimSpace(in.Label)
@@ -247,10 +251,7 @@ type RenameImpact struct {
 // RenameImpact reports the automations whose active or pending code names play id's current label in quotes, which
 // runPlay stops finding once the label becomes label; none when only the case changes, since runPlay ignores it.
 func (s *Service) RenameImpact(ctx context.Context, workspaceID, id, label string) (RenameImpact, error) {
-	if err := s.require(ctx, workspaceID, permissions.PlaysRead); err != nil {
-		return RenameImpact{}, err
-	}
-	p, err := s.getInWorkspace(ctx, workspaceID, id)
+	p, err := s.seen(ctx, workspaceID, id)
 	if err != nil {
 		return RenameImpact{}, err
 	}
@@ -276,13 +277,13 @@ func labelTaken(p *Play, err error) error {
 	return fmt.Errorf("%w: a play named %q already exists in this workspace", apperrs.ErrConflict, p.Label)
 }
 
-// Delete removes a play; actorID must hold plays:delete.
+// Delete removes a play; the caller must hold plays:delete on it.
 func (s *Service) Delete(ctx context.Context, workspaceID, id string) error {
-	if err := s.require(ctx, workspaceID, permissions.PlaysDelete); err != nil {
+	p, err := s.seen(ctx, workspaceID, id)
+	if err != nil {
 		return err
 	}
-	p, err := s.getInWorkspace(ctx, workspaceID, id)
-	if err != nil {
+	if err := s.requireOn(ctx, p, permissions.PlaysDelete); err != nil {
 		return err
 	}
 	if err := s.repo.Delete(ctx, id, s.event(TopicDeleted, DeletedEvent{ID: p.ID, Label: p.Label, WorkspaceID: p.WorkspaceID})); err != nil {
@@ -402,21 +403,26 @@ func (s *Service) instanceInstructions(ctx context.Context, b Builtin) (string, 
 	return body, nil
 }
 
-// BuiltinPlay returns workspaceID's copy of the built-in play key (plays:read); a deleted one is not found.
+// BuiltinPlay returns workspaceID's copy of the built-in play key; a deleted one, or one the caller can't see, is not
+// found.
 func (s *Service) BuiltinPlay(ctx context.Context, workspaceID, key string) (*Play, error) {
-	if err := s.require(ctx, workspaceID, permissions.PlaysRead); err != nil {
-		return nil, err
-	}
-	return s.builtin(ctx, workspaceID, key)
-}
-
-// SetBuiltinInstructions replaces the instructions of workspaceID's copy of the built-in play key (plays:write).
-func (s *Service) SetBuiltinInstructions(ctx context.Context, workspaceID, key, instructions string) (*Play, error) {
-	if err := s.require(ctx, workspaceID, permissions.PlaysWrite); err != nil {
-		return nil, err
-	}
 	p, err := s.builtin(ctx, workspaceID, key)
 	if err != nil {
+		return nil, err
+	}
+	if !s.sees(ctx, p) {
+		return nil, fmt.Errorf("%w: workspace %s has no built-in play %q", apperrs.ErrNotFound, workspaceID, key)
+	}
+	return p, nil
+}
+
+// SetBuiltinInstructions replaces the instructions of workspaceID's copy of the built-in play key (plays:write on it).
+func (s *Service) SetBuiltinInstructions(ctx context.Context, workspaceID, key, instructions string) (*Play, error) {
+	p, err := s.BuiltinPlay(ctx, workspaceID, key)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.requireOn(ctx, p, permissions.PlaysWrite); err != nil {
 		return nil, err
 	}
 	p.Instructions = instructions
@@ -470,6 +476,31 @@ func (s *Service) getInWorkspace(ctx context.Context, workspaceID, id string) (*
 		return nil, fmt.Errorf("get play %s: %w", id, apperrs.ErrNotFound)
 	}
 	return p, nil
+}
+
+// seen is workspaceID's play id, reported not found when the caller can't see it, as when it isn't there.
+func (s *Service) seen(ctx context.Context, workspaceID, id string) (*Play, error) {
+	p, err := s.getInWorkspace(ctx, workspaceID, id)
+	if err != nil {
+		return nil, err
+	}
+	if !s.sees(ctx, p) {
+		return nil, fmt.Errorf("get play %s: %w", p.ID, apperrs.ErrNotFound)
+	}
+	return p, nil
+}
+
+// sees is whether the caller holds plays:read on p, its rules included.
+func (s *Service) sees(ctx context.Context, p *Play) bool {
+	return s.perm.HasPermission(ctx, actorID(ctx), p.WorkspaceID, permissions.PlaysRead, resourceTypePlay, p.ID)
+}
+
+// requireOn refuses a caller who can see p but doesn't hold action on it.
+func (s *Service) requireOn(ctx context.Context, p *Play, action permissions.Action) error {
+	if !s.perm.HasPermission(ctx, actorID(ctx), p.WorkspaceID, action, resourceTypePlay, p.ID) {
+		return fmt.Errorf("%w: %s required on play %q", apperrs.ErrForbidden, action, p.Label)
+	}
+	return nil
 }
 
 // unseenExclusions are the play's excluded projects its editor cannot open: they never saw them, so saving keeps them.

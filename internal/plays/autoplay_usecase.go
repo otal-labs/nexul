@@ -3,6 +3,7 @@ package plays
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -25,7 +26,7 @@ func (s *Service) ListAutoPlays(ctx context.Context, workspaceID, playID string)
 	if err := s.require(ctx, strings.TrimSpace(workspaceID), permissions.AutoplaysRead); err != nil {
 		return nil, err
 	}
-	p, err := s.getInWorkspace(ctx, workspaceID, playID)
+	p, err := s.seen(ctx, workspaceID, playID)
 	if err != nil {
 		return nil, err
 	}
@@ -37,12 +38,14 @@ func (s *Service) ListAutoPlays(ctx context.Context, workspaceID, playID string)
 }
 
 // AutoPlaysByPlay returns the auto plays of workspaceID's plays named in playIDs in one read, keyed by play
-// (autoplays:read); every named play has an entry, empty when it has none.
+// (autoplays:read); every named play the caller can see has an entry, empty when it has none.
 func (s *Service) AutoPlaysByPlay(ctx context.Context, workspaceID string, playIDs []string) (map[string][]*AutoPlay, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if err := s.require(ctx, workspaceID, permissions.AutoplaysRead); err != nil {
 		return nil, err
 	}
+	sees := s.perm.PlaysWith(ctx, actorID(ctx), workspaceID, permissions.PlaysRead, playIDs)
+	playIDs = slices.DeleteFunc(slices.Clone(playIDs), func(id string) bool { return !sees[id] })
 	out := make(map[string][]*AutoPlay, len(playIDs))
 	for _, id := range playIDs {
 		out[id] = []*AutoPlay{}
@@ -67,7 +70,7 @@ func (s *Service) CreateAutoPlay(ctx context.Context, workspaceID, playID string
 	if err := s.require(ctx, strings.TrimSpace(workspaceID), permissions.AutoplaysWrite); err != nil {
 		return nil, err
 	}
-	p, err := s.getInWorkspace(ctx, workspaceID, playID)
+	p, err := s.seen(ctx, workspaceID, playID)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +156,7 @@ func (s *Service) SetAutoPlayDailyCap(ctx context.Context, workspaceID string, l
 
 // autoPlayInPlay finds an auto play under its play and workspace; one under another play reads as not found.
 func (s *Service) autoPlayInPlay(ctx context.Context, workspaceID, playID, id string) (*Play, *AutoPlay, error) {
-	p, err := s.getInWorkspace(ctx, workspaceID, playID)
+	p, err := s.seen(ctx, workspaceID, playID)
 	if err != nil {
 		return nil, nil, err
 	}

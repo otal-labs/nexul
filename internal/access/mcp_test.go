@@ -20,7 +20,7 @@ func newGrantsHarness(t *testing.T) (*Service, *fakeRepo) {
 	t.Helper()
 	svc, repo, _ := newAccessHarness()
 	setOverwrite(repo, resourceTypeDoc, "doc-1", "owner", permissions.CreatorGrant)
-	setOverwrite(repo, resourceTypePlay, "play-1", "owner", permissions.SetOf(permissions.PlaysWrite))
+	setOverwrite(repo, resourceTypePlay, "play-1", "owner", permissions.SetOf(permissions.PlaysRead, permissions.PlaysWrite))
 	return svc, repo
 }
 
@@ -68,7 +68,7 @@ func TestGrantTools_ErrorPaths(t *testing.T) {
 		{"update an unknown resource type", "owner", "permission_overwrite_update", `{"resource_type": "ticket", "resource_ids": ["t-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrInvalid},
 		{"list a doc without the manage bit", "alice", "permission_overwrite_list", `{"resource_type": "doc", "resource_id": "doc-1"}`, apperrs.ErrForbidden},
 		{"update an unknown doc", "owner", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": ["doc-1", "nope"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrForbidden},
-		{"update a play without plays:write", "alice", "permission_overwrite_update", `{"resource_type": "play", "resource_ids": ["play-1"], "user_ids": ["owner"], "actions": ["plays:run"], "grant": false}`, apperrs.ErrForbidden},
+		{"update a play the caller can't see", "alice", "permission_overwrite_update", `{"resource_type": "play", "resource_ids": ["play-1"], "user_ids": ["owner"], "actions": ["plays:run"], "grant": false}`, apperrs.ErrNotFound},
 		{"update without a caller", "", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrUnauthorized},
 	}
 	for _, tt := range tests {

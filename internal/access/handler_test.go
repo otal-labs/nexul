@@ -78,7 +78,7 @@ func TestHandler_ListGrants(t *testing.T) {
 
 func TestHandler_ListGrants_Play(t *testing.T) {
 	svc, repo, _ := newAccessHarness()
-	setOverwrite(repo, resourceTypePlay, "play-1", "owner", permissions.SetOf(permissions.PlaysWrite))
+	setOverwrite(repo, resourceTypePlay, "play-1", "owner", permissions.SetOf(permissions.PlaysRead, permissions.PlaysWrite))
 	require.NoError(t, repo.Set(context.Background(), resourceTypePlay, "play-1", "alice", nil, permissions.SetOf(permissions.PlaysRun)))
 	h := NewHandler(svc).Routes()
 
@@ -103,9 +103,9 @@ func TestHandler_ListGrants_Play(t *testing.T) {
 		rec := serveAccess(t, h, identity.Actor{ID: "owner"}, http.MethodGet, "/api/permissions?resource_type=play", "")
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
-	t.Run("non-manager is 403", func(t *testing.T) {
+	t.Run("someone who can't see the play gets 404", func(t *testing.T) {
 		rec := serveAccess(t, h, identity.Actor{ID: "alice"}, http.MethodGet, "/api/permissions?resource_type=play&resource_id=play-1", "")
-		assert.Equal(t, http.StatusForbidden, rec.Code)
+		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
 }
 
@@ -194,7 +194,7 @@ func TestHandler_SetGrants(t *testing.T) {
 
 func TestHandler_SetGrants_Play(t *testing.T) {
 	svc, repo, _ := newAccessHarness()
-	setOverwrite(repo, resourceTypePlay, "play-1", "owner", permissions.SetOf(permissions.PlaysWrite))
+	setOverwrite(repo, resourceTypePlay, "play-1", "owner", permissions.SetOf(permissions.PlaysRead, permissions.PlaysWrite))
 	h := NewHandler(svc).Routes()
 
 	t.Run("plays:write holder denies a user's plays:run", func(t *testing.T) {
@@ -205,14 +205,14 @@ func TestHandler_SetGrants_Play(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, permissions.SetOf(permissions.PlaysRun), g.Deny)
 	})
-	t.Run("an action other than plays:run is 400", func(t *testing.T) {
+	t.Run("an action no play rule sets is 400", func(t *testing.T) {
 		rec := serveAccess(t, h, identity.Actor{ID: "owner"}, http.MethodPut, "/api/permissions",
-			`{"resource_type":"play","resource_ids":["play-1"],"user_ids":["alice"],"actions":["plays:write"],"grant":false}`)
+			`{"resource_type":"play","resource_ids":["play-1"],"user_ids":["alice"],"actions":["docs:read"],"grant":false}`)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
-	t.Run("non-manager is 403", func(t *testing.T) {
+	t.Run("someone who can't see the play gets 404", func(t *testing.T) {
 		rec := serveAccess(t, h, identity.Actor{ID: "alice"}, http.MethodPut, "/api/permissions",
 			`{"resource_type":"play","resource_ids":["play-1"],"user_ids":["bob"],"actions":["plays:run"],"grant":false}`)
-		assert.Equal(t, http.StatusForbidden, rec.Code)
+		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
 }

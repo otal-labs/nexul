@@ -68,6 +68,7 @@ const outcomes: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^invalid: play ".*" is excluded from this project$/, () => "the play is excluded from this project"],
   [/^forbidden: plays:run required/, () => "its person may not run the play"],
   [/^get project \S+: not found$/, () => "its person can't open the project"],
+  [/^get play \S+: not found$/, () => "its person can't see the play"],
   [/^get (ticket|doc) \S+: not found$/, (m) => `the ${m[1]} is gone`],
 ];
 

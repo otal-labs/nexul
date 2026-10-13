@@ -12,6 +12,7 @@ describe("outcomeText", () => {
     ['invalid: play "Fix with AI" is excluded from this project', "the play is excluded from this project"],
     ['forbidden: plays:run required on play "Fix with AI"', "its person may not run the play"],
     ["get project p-1: not found", "its person can't open the project"],
+    ["get play pl-1: not found", "its person can't see the play"],
     ["get ticket t-1: not found", "the ticket is gone"],
     ["no longer unblocked", "no longer unblocked"],
     ["alice may not run Fix with AI here", "alice may not run Fix with AI here"],

@@ -57,7 +57,7 @@ func TestRunHandler_Run_Errors(t *testing.T) {
 		{"malformed body", `{`, starter, http.StatusBadRequest},
 		{"no actor", `{"target_type":"ticket","target_id":"t-1"}`, "", http.StatusUnauthorized},
 		{"wrong stage", `{"target_type":"ticket","target_id":"t-backlog"}`, starter, http.StatusBadRequest},
-		{"forbidden", `{"target_type":"ticket","target_id":"t-1"}`, "stranger", http.StatusForbidden},
+		{"a play the caller can't see", `{"target_type":"ticket","target_id":"t-1"}`, "stranger", http.StatusNotFound},
 		{"unknown ticket", `{"target_type":"ticket","target_id":"nope"}`, starter, http.StatusNotFound},
 	}
 	for _, tt := range tests {
@@ -78,7 +78,7 @@ func TestRunHandler_Stop(t *testing.T) {
 	var tr Trail
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &tr))
 
-	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodPost, "/api/plays/runs/"+tr.ID+"/stop", "", "stranger").Code)
+	assert.Equal(t, http.StatusNotFound, do(t, h, http.MethodPost, "/api/plays/runs/"+tr.ID+"/stop", "", "stranger").Code)
 	assert.Equal(t, http.StatusNotFound, do(t, h, http.MethodPost, "/api/plays/runs/missing/stop", "", starter).Code)
 
 	rec = do(t, h, http.MethodPost, "/api/plays/runs/"+tr.ID+"/stop", "", starter)
@@ -113,7 +113,7 @@ func TestRunHandler_GetAndList(t *testing.T) {
 	assert.Equal(t, "tr-1", tr.ID)
 
 	assert.Equal(t, http.StatusNotFound, do(t, h, http.MethodGet, "/api/plays/runs/missing", "", starter).Code)
-	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodGet, "/api/plays/runs/tr-1", "", "stranger").Code)
+	assert.Equal(t, http.StatusNotFound, do(t, h, http.MethodGet, "/api/plays/runs/tr-1", "", "stranger").Code)
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs?target_type=ticket&target_id="+ticketID, "", starter)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -136,7 +136,7 @@ func TestRunHandler_LatestChoices(t *testing.T) {
 	assert.Equal(t, Choices{MemoryIDs: []string{alwaysMem}, ComputerID: "comp-tr-1", ModelOptions: []harness.OptionSetting{}}, c)
 
 	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodGet, "/api/plays/latest-choices?play_id="+fixPlayID, "", starter).Code)
-	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodGet, "/api/plays/latest-choices?play_id="+fixPlayID+"&project_id="+projectID, "", "stranger").Code)
+	assert.Equal(t, http.StatusNotFound, do(t, h, http.MethodGet, "/api/plays/latest-choices?play_id="+fixPlayID+"&project_id="+projectID, "", "stranger").Code)
 }
 
 func TestRunHandler_Active(t *testing.T) {
@@ -203,7 +203,7 @@ func TestRunHandler_Answer(t *testing.T) {
 	body := `{"answers":{"q1":{"selected":["Yes"]}}}`
 	assert.Equal(t, http.StatusConflict, do(t, h, http.MethodPost, "/api/plays/runs/"+tr.ID+"/answer", body, starter).Code, "nothing asked yet")
 	obs.OnQuestion(askedQuestion())
-	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodPost, "/api/plays/runs/"+tr.ID+"/answer", body, "stranger").Code)
+	assert.Equal(t, http.StatusNotFound, do(t, h, http.MethodPost, "/api/plays/runs/"+tr.ID+"/answer", body, "stranger").Code)
 	assert.Equal(t, http.StatusNotFound, do(t, h, http.MethodPost, "/api/plays/runs/missing/answer", body, starter).Code)
 	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodPost, "/api/plays/runs/"+tr.ID+"/answer", `{`, starter).Code)
 
@@ -224,7 +224,7 @@ func TestRunHandler_Continue(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodPost, path, `{`, starter).Code)
 	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodPost, path, `{"message":" "}`, starter).Code)
-	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodPost, path, `{"message":"more"}`, "stranger").Code)
+	assert.Equal(t, http.StatusNotFound, do(t, h, http.MethodPost, path, `{"message":"more"}`, "stranger").Code)
 
 	recs := make(chan *httptest.ResponseRecorder, 1)
 	go func() { recs <- do(t, h, http.MethodPost, path, `{"message":"Keep two threads."}`, starter) }()

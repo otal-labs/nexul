@@ -163,8 +163,9 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				"choices, the question a waiting run stopped on, and its newest transcript steps (summaries, not raw "+
 				"tool output). Pass either id, or target_type and target_id. With queue true it lists the target's auto "+
 				"runs instead: each queued, started, skipped, didn't-run, or cancelled run of an auto play with why, and "+
-				"whether the daily cap paused auto plays there. Needs plays:read, and the doc's thread "+
-				"permission for a doc trail.",
+				"whether the daily cap paused auto plays there. A trail reads to its starter and to whoever can see its "+
+				"play, and the doc's thread permission is needed for a doc trail; another trail, or a queued run of a play "+
+				"the caller can't see, is left out or not found.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in trailListIn) (any, error) {
 				if in.Queue && in.ID == "" {
@@ -197,7 +198,7 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				"own harness thread so it goes on as the same trail, without the play's instructions again. When that "+
 				"thread was deleted, continue starts the play again as a new run carrying the message and returns that "+
 				"trail. Pass exactly one of the three; trail_list with the trail's id shows the question and its ids. "+
-				"Returns the trail. Allowed for the run's starter or a plays:write holder in its workspace. "+
+				"Returns the trail. Allowed for the run's starter or someone holding plays:write on its play; a run the caller can't read is not found. "+
 				"With cancel true instead, id names a queued auto run from trail_list with queue true, which is dropped "+
 				"before it starts and returned; allowed for the person it would run on or an autoplays:write holder. "+
 				"With computer_id and t3_project_id instead, id names a queued auto run of the caller's, such as one "+
