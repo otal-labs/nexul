@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 
 import { formatUpdatedAgo } from "@/components/doc/docTime";
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
-import { RowActions } from "@/components/listpane/RowActions";
 import { CloneMemoryDialog } from "@/components/memory/CloneMemoryDialog";
 import { MemoryPinSwitch } from "@/components/memory/MemoryPinSwitch";
 import { memoryFolderOptions } from "@/components/memory/memoryGroups";
@@ -49,11 +48,7 @@ export const MemoryListRow = ({ memory, projectToken, selected }: MemoryListRowP
         snippet={snippet}
         selected={selected}
         meta={<span className="font-mono text-xs text-muted-foreground tabular-nums">{formatUpdatedAgo(memory.updated_at)}</span>}
-        actions={
-          (moveTo || onClone || onDelete) && (
-            <RowActions itemLabel={memory.title} moveTo={moveTo} onClone={onClone} onDelete={onDelete} />
-          )
-        }
+        menu={{ moveTo, onClone, onDelete }}
         trailing={<MemoryPinSwitch memory={memory} label={`Always include ${memory.title}`} size="sm" />}
       />
       {cloneOpen && <CloneMemoryDialog memoryId={memory.id} open onClose={() => setCloneOpen(false)} />}

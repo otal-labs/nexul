@@ -2,7 +2,6 @@ import { Users } from "lucide-react";
 
 import type { Conversation } from "@nexul/client-core/chat";
 
-import { RowActions } from "@/components/listpane/RowActions";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { ChatSidebarRow } from "@/components/sidebar/ChatSidebarRow";
 import { useFetchMe } from "@/hooks/AuthHooks";
@@ -30,7 +29,7 @@ export const DMSidebarRow = ({ conversation, label, unreadCount }: DMSidebarRowP
         icon={Users}
         leading={person && <PersonAvatar login={person.login} src={person.avatar_url} label={label} className="size-[18px]" />}
         unreadCount={unreadCount}
-        actions={onBots && <RowActions itemLabel={label} onBots={onBots} />}
+        menu={{ onBots }}
       />
       {botsDialog}
     </>

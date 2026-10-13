@@ -2,7 +2,6 @@ import { FileText } from "lucide-react";
 
 import type { Conversation } from "@nexul/client-core/chat";
 
-import { RowActions } from "@/components/listpane/RowActions";
 import { ChatSidebarRow } from "@/components/sidebar/ChatSidebarRow";
 import { useFetchDoc } from "@/hooks/DocHooks";
 import { useBotsDialog } from "@/hooks/useBotsDialog";
@@ -26,13 +25,7 @@ export const DocThreadSidebarRow = ({ conversation, unreadCount }: DocThreadSide
         label={label}
         icon={FileText}
         unreadCount={unreadCount}
-        actions={
-          <RowActions
-            itemLabel={label}
-            onBots={onBots}
-            sidebar={{ hidden: hiddenIds.includes(conversation.id), onToggle: () => toggle(conversation.id) }}
-          />
-        }
+        menu={{ onBots, sidebar: { hidden: hiddenIds.includes(conversation.id), onToggle: () => toggle(conversation.id) } }}
       />
       {botsDialog}
     </>

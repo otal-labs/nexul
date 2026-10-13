@@ -189,10 +189,10 @@ describe("ChatSidebarSection", () => {
     expect(screen.queryByRole("button", { name: "New voice channel" })).not.toBeInTheDocument();
   });
 
-  describe("a channel's … menu", () => {
+  describe("a channel's right-click menu", () => {
     const menuItems = async (channel: string) => {
       const user = userEvent.setup();
-      await user.click(await screen.findByRole("button", { name: `More actions for ${channel}` }));
+      await user.pointer({ keys: "[MouseRight]", target: await screen.findByText(channel.replace(/^#/, "")) });
       return (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
     };
 
@@ -217,8 +217,8 @@ describe("ChatSidebarSection", () => {
     it("is gone when the viewer may neither rename nor delete", async () => {
       permissions = ["chat:write"];
       renderSection();
-      expect(await screen.findByText("eng")).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: /More actions/ })).not.toBeInTheDocument();
+      await userEvent.setup().pointer({ keys: "[MouseRight]", target: await screen.findByText("eng") });
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     });
 
     it("renames a channel through the name form", async () => {
@@ -267,7 +267,7 @@ describe("ChatSidebarSection", () => {
       mockThread({});
       const user = userEvent.setup();
       renderSection();
-      await user.click(await screen.findByRole("button", { name: "More actions for Runbook" }));
+      await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Runbook") });
       await user.click(await screen.findByRole("menuitem", { name: "Remove from sidebar" }));
 
       await waitFor(() => expect(screen.queryByText("Runbook")).not.toBeInTheDocument());
@@ -279,7 +279,7 @@ describe("ChatSidebarSection", () => {
       useHiddenThreadStore.setState({ hidden: { "ws-1": ["c4"] } });
       const user = userEvent.setup();
       renderSection(false, "/acme/chat/c4");
-      await user.click(await screen.findByRole("button", { name: "More actions for Runbook" }));
+      await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Runbook") });
       await user.click(await screen.findByRole("menuitem", { name: "Show in sidebar" }));
 
       expect(useHiddenThreadStore.getState().hidden["ws-1"]).toEqual([]);

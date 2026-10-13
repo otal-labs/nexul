@@ -100,7 +100,7 @@ describe("MemoriesPage", () => {
     vi.mocked(api.put).mockResolvedValue({ data: {} });
     renderPage("/memories", ["memories:read", "memories:write"]);
 
-    await user.click(await screen.findByRole("button", { name: "More actions for Naming rules" }));
+    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Naming rules") });
     await user.click(await screen.findByRole("menuitem", { name: "Move to" }));
     (await screen.findByRole("menuitemradio", { name: "Footer" })).focus();
     await user.keyboard("{Enter}");
@@ -138,19 +138,19 @@ describe("MemoriesPage", () => {
     const user = userEvent.setup();
     renderPage("/memories", ["memories:read", "memories:delete"]);
 
-    // Delete's menu shows once the role has loaded, so what follows is the role's answer, not a pending fetch's.
-    const menu = await screen.findByRole("button", { name: "More actions for Naming rules" });
-    expect(await rowSwitch("Naming rules")).toBeDisabled();
-    await user.click(menu);
+    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Naming rules") });
     expect(await screen.findByRole("menuitem", { name: "Delete" })).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Clone" })).not.toBeInTheDocument();
+    // Delete showing means the role has loaded, so the switch's state is the role's answer, not a pending fetch's.
+    await user.keyboard("{Escape}");
+    expect(await rowSwitch("Naming rules")).toBeDisabled();
   });
 
   it("offers Clone in the row menu to a role with memories:clone", async () => {
     const user = userEvent.setup();
     renderPage("/memories", ["memories:read", "memories:clone"]);
 
-    await user.click(await screen.findByRole("button", { name: "More actions for Naming rules" }));
+    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Naming rules") });
     expect(await screen.findByRole("menuitem", { name: "Clone" })).toBeInTheDocument();
   });
 

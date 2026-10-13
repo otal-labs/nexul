@@ -1,8 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Link } from "react-router";
 
-import { RowActions } from "@/components/listpane/RowActions";
-import { offersMenu, type RowMenu } from "@/components/listpane/rowMenu";
+import type { RowMenu } from "@/components/listpane/rowMenu";
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +17,7 @@ interface ListPaneRowProps {
   /** Time, avatar, chips: the action cluster takes their place on hover, focus, and selection. */
   meta?: ReactNode;
   actions?: ReactNode;
-  /** The row's menu: its ⋯ and its right-click menu hold the same items. */
+  /** The row's right-click menu. */
   menu?: RowMenu | undefined;
   /** Always visible at the right edge, e.g. a switch. */
   trailing?: ReactNode;
@@ -27,7 +26,7 @@ interface ListPaneRowProps {
 // The link's ::after covers the row so the whole row opens it; actions and trailing sit above that layer.
 export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selected, meta, actions, menu, trailing }: ListPaneRowProps) => {
   const ref = useRef<HTMLLIElement>(null);
-  const hasActions = !!actions || offersMenu(menu);
+  const hasActions = !!actions;
 
   // A deep link can select a row far down the list.
   useEffect(() => {
@@ -81,7 +80,6 @@ export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selec
             )}
           >
             {actions}
-            {offersMenu(menu) && <RowActions itemLabel={title} {...menu} />}
           </div>
         )}
         {!!trailing && <div className="relative z-10 flex shrink-0 items-center">{trailing}</div>}

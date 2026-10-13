@@ -33,11 +33,11 @@ Every computer's [setup](/docs/guide/computer-setup/) installs the nexul-memory 
 
 ## Main and Footer
 
-The list has two folders. **Main** holds everyday memories. **Footer** holds memories that conclude a play run: the agent reads them once the work is done, for example to decide which column the ticket belongs in now. Move a memory between them with **Move to** in its row menu. A play's run dialog lists footer memories in their own section.
+The list has two folders. **Main** holds everyday memories. **Footer** holds memories that conclude a play run: the agent reads them once the work is done, for example to decide which column the ticket belongs in now. Move a memory between them with **Move to** in its right-click menu. A play's run dialog lists footer memories in their own section.
 
 ## Clone or delete
 
-**Clone** in the row menu, or **Clone to…** on an open memory, copies it into another project in any workspace you belong to. The copy is independent from then on. **Delete** removes it.
+**Clone** in the right-click menu, or **Clone to…** on an open memory, copies it into another project in any workspace you belong to. The copy is independent from then on. **Delete** removes it.
 
 ## The decisions log
 

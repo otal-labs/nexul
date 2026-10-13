@@ -4,7 +4,6 @@ import type { Conversation } from "@nexul/client-core/chat";
 
 import { ChatSidebarRow } from "@/components/sidebar/ChatSidebarRow";
 import { useChannelRowActions } from "@/hooks/useChannelRowActions";
-import { channelMention } from "@/models/Chat";
 
 interface ChannelSidebarRowProps {
   conversation: Conversation;
@@ -22,7 +21,6 @@ export const ChannelSidebarRow = ({ conversation, unreadCount }: ChannelSidebarR
         isPrivate={conversation.private}
         unreadCount={unreadCount}
         menu={{ onSettings, onRename, onDelete }}
-        menuLabel={channelMention(conversation)}
       />
       {settingsDialog}
     </>

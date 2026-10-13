@@ -2,8 +2,7 @@ import type { ReactNode } from "react";
 import { LockIcon, type LucideIcon } from "lucide-react";
 import { NavLink } from "react-router";
 
-import { RowActions } from "@/components/listpane/RowActions";
-import { offersMenu, type RowMenu } from "@/components/listpane/rowMenu";
+import type { RowMenu } from "@/components/listpane/rowMenu";
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import { navLinkClass } from "@/components/SidebarNav";
 import { UnreadBadge } from "@/components/UnreadBadge";
@@ -20,18 +19,16 @@ interface ChatSidebarRowProps {
   isPrivate?: boolean | undefined;
   unreadCount: number;
   onClick?: (() => void) | undefined;
-  /** A … menu that takes the unread badge's place on hover, focus, and while open. */
+  /** Controls that take the unread badge's place on hover, focus, and while open. */
   actions?: ReactNode;
-  /** The row's menu, as its … and on right-click; a row with a menu passes no actions. */
+  /** The row's right-click menu. */
   menu?: RowMenu | undefined;
-  /** What the … names, when the row reads differently (#general). */
-  menuLabel?: string | undefined;
 }
 
 // The sidebar is chat's only conversation list (ADR 0093), so the open conversation is the active row.
-export const ChatSidebarRow = ({ conversationId, label, icon: Icon, leading, isPrivate, unreadCount, onClick, actions, menu, menuLabel = label }: ChatSidebarRowProps) => {
+export const ChatSidebarRow = ({ conversationId, label, icon: Icon, leading, isPrivate, unreadCount, onClick, actions, menu }: ChatSidebarRowProps) => {
   const wsPath = useWorkspacePath();
-  const hasActions = !!actions || offersMenu(menu);
+  const hasActions = !!actions;
   const revealed = "group-hover/row:hidden group-has-[:focus-visible]/row:hidden group-has-[[data-state=open]]/row:hidden";
   return (
     <RowContextMenu menu={menu}>
@@ -58,7 +55,6 @@ export const ChatSidebarRow = ({ conversationId, label, icon: Icon, leading, isP
         {hasActions && (
           <div className="absolute inset-y-0 right-1 hidden items-center group-has-[:focus-visible]/row:flex group-hover/row:flex has-[[data-state=open]]:flex">
             {actions}
-            {offersMenu(menu) && <RowActions itemLabel={menuLabel} {...menu} />}
           </div>
         )}
       </div>

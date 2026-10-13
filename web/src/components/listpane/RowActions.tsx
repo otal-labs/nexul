@@ -10,7 +10,7 @@ interface RowActionsProps extends RowMenu {
   itemLabel: string;
 }
 
-// The row's ⋯, for the keyboard and touch: the same items its right-click menu holds.
+// A ⋯ for a header with no row to right-click, such as a ticket's thread: the same items a row's right-click menu holds.
 export const RowActions = ({ itemLabel, ...menu }: RowActionsProps) => (
   <DropdownMenu>
     {/* The menu trigger wraps the tooltip's, so the button's data-state is the menu's. */}
