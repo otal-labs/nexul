@@ -5506,12 +5506,20 @@
       },
       "actor_id": {
         "type": "string"
+      },
+      "welcome_steps_added": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The Welcome wizard steps this save ticked that the role did not tick before; each is given again to everyone holding the role."
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "required": [
       "role_id",
-      "workspace_id"
+      "workspace_id",
+      "welcome_steps_added"
     ]
   },
   "runner.connected": {

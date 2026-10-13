@@ -121,6 +121,21 @@ func TestHandler_Update(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &r))
 		assert.Equal(t, "Reviewers", r.Name)
 	})
+	t.Run("a request without welcome_steps keeps the role's, and one with them replaces them", func(t *testing.T) {
+		h, repo, members := newTestHandler(t)
+		seedOwner(t, repo, members, "ws-1", "u-owner")
+		require.NoError(t, repo.Create(context.Background(), &Role{ID: "role-dev", WorkspaceID: "ws-1", Name: "Dev", WelcomeSteps: []string{"github"}}))
+
+		var r Role
+		rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/ws-1/roles/role-dev", `{"name":"Dev","actions":[]}`, "u-owner")
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &r))
+		assert.Equal(t, []string{"github"}, r.WelcomeSteps)
+		rec = do(t, h.Routes(), http.MethodPatch, "/api/workspaces/ws-1/roles/role-dev", `{"name":"Dev","actions":[],"welcome_steps":["phone"]}`, "u-owner")
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &r))
+		assert.Equal(t, []string{"phone"}, r.WelcomeSteps)
+	})
 	t.Run("owner role can't be renamed", func(t *testing.T) {
 		h, repo, members := newTestHandler(t)
 		seedOwner(t, repo, members, "ws-1", "u-owner")

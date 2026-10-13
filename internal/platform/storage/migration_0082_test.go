@@ -49,9 +49,7 @@ INSERT INTO invitation_grants (invitation_id, workspace_id, role_id, allow_json,
 		"role-automations": permissions.SetOf(permissions.AutomationsRead, permissions.AutomationsWrite),
 		"role-empty":       nil,
 	} {
-		role, err := s.Roles.Get(ctx, id)
-		require.NoError(t, err)
-		assert.Equal(t, want, role.Permissions, id)
+		assert.Equal(t, want, rolePermissions(t, db, id), id)
 	}
 
 	ow, err := s.Access.Get(ctx, "project", "p-1", "u-1")

@@ -1,8 +1,12 @@
+import type { WelcomeStep } from "@nexul/client-core/welcome";
+
 export interface Role {
   id: string;
   workspace_id: string;
   name: string;
   permissions: string[];
+  // The Welcome wizard steps the role gives its holders; the Owner role's are fixed by the server.
+  welcome_steps: WelcomeStep[];
   is_owner_role: boolean;
   created_at: string;
   updated_at: string;

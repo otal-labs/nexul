@@ -211,7 +211,7 @@ func (q *Queries) GetLatestInstanceUpgrade(ctx context.Context) (InstanceUpgrade
 }
 
 const getRunner = `-- name: GetRunner :one
-SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id FROM runners WHERE id = ?
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by FROM runners WHERE id = ?
 `
 
 func (q *Queries) GetRunner(ctx context.Context, id string) (Runner, error) {
@@ -227,12 +227,13 @@ func (q *Queries) GetRunner(ctx context.Context, id string) (Runner, error) {
 		&i.MachineID,
 		&i.OwnerUserID,
 		&i.ComputerID,
+		&i.EnrolledBy,
 	)
 	return i, err
 }
 
 const getRunnerByComputer = `-- name: GetRunnerByComputer :one
-SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id FROM runners WHERE computer_id = ? AND computer_id != '' LIMIT 1
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by FROM runners WHERE computer_id = ? AND computer_id != '' LIMIT 1
 `
 
 func (q *Queries) GetRunnerByComputer(ctx context.Context, computerID string) (Runner, error) {
@@ -248,12 +249,13 @@ func (q *Queries) GetRunnerByComputer(ctx context.Context, computerID string) (R
 		&i.MachineID,
 		&i.OwnerUserID,
 		&i.ComputerID,
+		&i.EnrolledBy,
 	)
 	return i, err
 }
 
 const getRunnerByName = `-- name: GetRunnerByName :one
-SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id FROM runners WHERE name = ?
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by FROM runners WHERE name = ?
 `
 
 func (q *Queries) GetRunnerByName(ctx context.Context, name string) (Runner, error) {
@@ -269,6 +271,7 @@ func (q *Queries) GetRunnerByName(ctx context.Context, name string) (Runner, err
 		&i.MachineID,
 		&i.OwnerUserID,
 		&i.ComputerID,
+		&i.EnrolledBy,
 	)
 	return i, err
 }
@@ -291,7 +294,7 @@ func (q *Queries) GetRunnerCredential(ctx context.Context, credentialHash string
 }
 
 const getRunnerEnrollmentCode = `-- name: GetRunnerEnrollmentCode :one
-SELECT code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?
+SELECT code_hash, name, machine, created_at, expires_at, owner_user_id, computer_id, enrolled_by FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?
 `
 
 type GetRunnerEnrollmentCodeParams struct {
@@ -310,12 +313,13 @@ func (q *Queries) GetRunnerEnrollmentCode(ctx context.Context, arg GetRunnerEnro
 		&i.ExpiresAt,
 		&i.OwnerUserID,
 		&i.ComputerID,
+		&i.EnrolledBy,
 	)
 	return i, err
 }
 
 const listRunners = `-- name: ListRunners :many
-SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id FROM runners WHERE owner_user_id = '' ORDER BY created_at
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by FROM runners WHERE owner_user_id = '' ORDER BY created_at
 `
 
 func (q *Queries) ListRunners(ctx context.Context) ([]Runner, error) {
@@ -337,6 +341,7 @@ func (q *Queries) ListRunners(ctx context.Context) ([]Runner, error) {
 			&i.MachineID,
 			&i.OwnerUserID,
 			&i.ComputerID,
+			&i.EnrolledBy,
 		); err != nil {
 			return nil, err
 		}
@@ -352,7 +357,7 @@ func (q *Queries) ListRunners(ctx context.Context) ([]Runner, error) {
 }
 
 const listRunnersByOwner = `-- name: ListRunnersByOwner :many
-SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id FROM runners WHERE owner_user_id = ? AND owner_user_id != '' ORDER BY created_at
+SELECT id, name, last_seen, connected, created_at, version, machine_id, owner_user_id, computer_id, enrolled_by FROM runners WHERE owner_user_id = ? AND owner_user_id != '' ORDER BY created_at
 `
 
 func (q *Queries) ListRunnersByOwner(ctx context.Context, ownerUserID string) ([]Runner, error) {
@@ -374,6 +379,7 @@ func (q *Queries) ListRunnersByOwner(ctx context.Context, ownerUserID string) ([
 			&i.MachineID,
 			&i.OwnerUserID,
 			&i.ComputerID,
+			&i.EnrolledBy,
 		); err != nil {
 			return nil, err
 		}

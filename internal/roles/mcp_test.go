@@ -72,6 +72,9 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"update of a role in another workspace is not found", "u-owner", "role_update", `{"workspace_id":"ws-dst","id":"role-editors","name":"X"}`, apperrs.ErrNotFound},
 		{"renaming the Owner role is invalid", "u-owner", "role_update", `{"workspace_id":"ws-src","id":"role-owner-src","name":"Boss"}`, apperrs.ErrInvalid},
 		{"changing the Owner role's permissions is invalid", "u-owner", "role_update", `{"workspace_id":"ws-src","id":"role-owner-src","permissions":[]}`, apperrs.ErrInvalid},
+		{"changing the Owner role's steps is invalid", "u-owner", "role_update", `{"workspace_id":"ws-src","id":"role-owner-src","welcome_steps":[]}`, apperrs.ErrInvalid},
+		{"an unknown welcome step is invalid", "u-owner", "role_update", `{"workspace_id":"ws-src","id":"role-editors","welcome_steps":["profile"]}`, apperrs.ErrInvalid},
+		{"clone with welcome steps is invalid", "u-owner", "role_update", `{"workspace_id":"ws-dst","clone_from_id":"role-editors","welcome_steps":[]}`, apperrs.ErrInvalid},
 		{"delete without roles:write is forbidden", "u-plain", "role_delete", `{"workspace_id":"ws-src","id":"role-editors"}`, apperrs.ErrForbidden},
 		{"delete of a missing role is not found", "u-owner", "role_delete", `{"workspace_id":"ws-src","id":"ghost"}`, apperrs.ErrNotFound},
 		{"delete of the Owner role is invalid", "u-owner", "role_delete", `{"workspace_id":"ws-src","id":"role-owner-src"}`, apperrs.ErrInvalid},
@@ -90,7 +93,7 @@ func TestMCPTools_CloneErrorsSayWhatToOmit(t *testing.T) {
 	s, _ := newToolFixture(t)
 	_, err := callRoleTool(asActor("u-owner"), t, s, "role_update", `{"workspace_id":"ws-dst","clone_from_id":"role-editors","name":"X"}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
-	assert.Contains(t, err.Error(), "omit id, name, and permissions")
+	assert.Contains(t, err.Error(), "omit id, name, permissions and welcome_steps")
 }
 
 func TestRoleUpdate_Creates(t *testing.T) {
@@ -116,6 +119,7 @@ func TestRoleUpdate_Clones(t *testing.T) {
 	assert.Equal(t, "ws-dst", got.WorkspaceID)
 	assert.Equal(t, "Editors (copy)", got.Name)
 	assert.Equal(t, []string{"docs:read", "memories:clone", "plays:run"}, got.Permissions)
+	assert.Equal(t, []string{"computer"}, got.WelcomeSteps)
 }
 
 func TestRoleUpdate_OmittedFieldsKeepTheirValue(t *testing.T) {
@@ -124,11 +128,14 @@ func TestRoleUpdate_OmittedFieldsKeepTheirValue(t *testing.T) {
 		args      string
 		wantName  string
 		wantPerms []string
+		wantSteps []string
 	}{
-		{"name only keeps permissions", `{"workspace_id":"ws-src","id":"role-editors","name":"Writers"}`, "Writers", []string{"docs:read", "memories:clone", "plays:run"}},
-		{"permissions only keeps the name", `{"workspace_id":"ws-src","id":"role-editors","permissions":["roles:clone"]}`, "Editors", []string{"roles:clone"}},
-		{"an empty permission list clears them", `{"workspace_id":"ws-src","id":"role-editors","permissions":[]}`, "Editors", []string{}},
-		{"nothing sent changes nothing", `{"workspace_id":"ws-src","id":"role-editors"}`, "Editors", []string{"docs:read", "memories:clone", "plays:run"}},
+		{"name only keeps permissions and steps", `{"workspace_id":"ws-src","id":"role-editors","name":"Writers"}`, "Writers", []string{"docs:read", "memories:clone", "plays:run"}, []string{"computer"}},
+		{"permissions only keeps the name", `{"workspace_id":"ws-src","id":"role-editors","permissions":["roles:clone"]}`, "Editors", []string{"roles:clone"}, []string{"computer"}},
+		{"an empty permission list clears them", `{"workspace_id":"ws-src","id":"role-editors","permissions":[]}`, "Editors", []string{}, []string{"computer"}},
+		{"steps only keeps the rest", `{"workspace_id":"ws-src","id":"role-editors","welcome_steps":["phone","github"]}`, "Editors", []string{"docs:read", "memories:clone", "plays:run"}, []string{"github", "phone"}},
+		{"an empty step list clears them", `{"workspace_id":"ws-src","id":"role-editors","welcome_steps":[]}`, "Editors", []string{"docs:read", "memories:clone", "plays:run"}, []string{}},
+		{"nothing sent changes nothing", `{"workspace_id":"ws-src","id":"role-editors"}`, "Editors", []string{"docs:read", "memories:clone", "plays:run"}, []string{"computer"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -138,6 +145,7 @@ func TestRoleUpdate_OmittedFieldsKeepTheirValue(t *testing.T) {
 			got := out.(RoleResult)
 			assert.Equal(t, tt.wantName, got.Name)
 			assert.Equal(t, tt.wantPerms, got.Permissions)
+			assert.Equal(t, tt.wantSteps, got.WelcomeSteps)
 			stored, err := repo.Get(context.Background(), "role-editors")
 			require.NoError(t, err)
 			assert.Equal(t, ToRoleResult(stored), got)

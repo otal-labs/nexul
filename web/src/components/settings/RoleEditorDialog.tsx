@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { WelcomeStep } from "@nexul/client-core/welcome";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RoleDialogFooter } from "@/components/settings/RoleDialogFooter";
@@ -11,7 +12,7 @@ import { RoleDraftContext } from "@/hooks/useRoleDraft";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { PermissionArea } from "@/models/Permission";
 import type { Role } from "@/models/Role";
-import { NO_ACTIONS, sameActions } from "@/models/RoleSection";
+import { NO_ACTIONS, NO_STEPS, sameActions, type RoleTab } from "@/models/RoleSection";
 import type { TeamPerson } from "@/models/Team";
 
 interface RoleEditorDialogProps {
@@ -25,6 +26,7 @@ interface RoleEditorDialogProps {
 interface RoleEdits {
   name?: string;
   actions?: string[];
+  steps?: WelcomeStep[];
   copiedFrom?: Role | undefined;
 }
 
@@ -35,15 +37,17 @@ export const RoleEditorDialog = ({ open, role, holders, onClose }: RoleEditorDia
   const updateRole = useUpdateWorkspaceRole(workspaceId);
   const { open: ask } = useConfirmationDialog();
   const [edits, setEdits] = useState<RoleEdits>({});
-  const [tab, setTab] = useState<PermissionArea>(PermissionArea.Instance);
+  const [tab, setTab] = useState<RoleTab>(PermissionArea.Instance);
 
   const creating = !role;
   const loadedName = role?.name ?? "";
   const loaded = role?.permissions ?? NO_ACTIONS;
   const name = edits.name ?? loadedName;
   const actions = edits.actions ?? loaded;
+  const loadedSteps = role?.welcome_steps ?? NO_STEPS;
+  const steps = edits.steps ?? loadedSteps;
   const named = name.trim().length > 0;
-  const dirty = name !== loadedName || !sameActions(actions, loaded);
+  const dirty = name !== loadedName || !sameActions(actions, loaded) || !sameActions(steps, loadedSteps);
   const title = creating ? "New role" : `Edit ${role.name}`;
 
   const finish = () => {
@@ -66,7 +70,7 @@ export const RoleEditorDialog = ({ open, role, holders, onClose }: RoleEditorDia
   };
 
   const save = () => {
-    const input = { name: name.trim(), actions };
+    const input = { name: name.trim(), actions, welcome_steps: steps };
     if (!role) {
       createRole.mutate(input, { onSuccess: finish });
       return;
@@ -74,7 +78,14 @@ export const RoleEditorDialog = ({ open, role, holders, onClose }: RoleEditorDia
     updateRole.mutate({ roleId: role.id, ...input }, { onSuccess: finish });
   };
 
-  const draft = { actions, loaded, setActions: (next: string[]) => setEdits((current) => ({ ...current, actions: next })) };
+  const draft = {
+    actions,
+    loaded,
+    setActions: (next: string[]) => setEdits((current) => ({ ...current, actions: next })),
+    steps,
+    loadedSteps,
+    setSteps: (next: WelcomeStep[]) => setEdits((current) => ({ ...current, steps: next })),
+  };
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && void leave()}>
@@ -99,7 +110,14 @@ export const RoleEditorDialog = ({ open, role, holders, onClose }: RoleEditorDia
             name={name}
             copiedFrom={edits.copiedFrom}
             onName={(next) => setEdits((current) => ({ ...current, name: next }))}
-            onStartFrom={(from) => setEdits((current) => ({ ...current, copiedFrom: from, actions: from?.permissions ?? NO_ACTIONS }))}
+            onStartFrom={(from) =>
+              setEdits((current) => ({
+                ...current,
+                copiedFrom: from,
+                actions: from?.permissions ?? NO_ACTIONS,
+                steps: from?.welcome_steps ?? NO_STEPS,
+              }))
+            }
           />
         </div>
         <RoleDraftContext value={draft}>

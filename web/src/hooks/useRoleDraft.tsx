@@ -1,12 +1,16 @@
 import { createContext, use } from "react";
+import type { WelcomeStep } from "@nexul/client-core/welcome";
 
 interface RoleDraftContextValue {
   actions: string[];
   loaded: string[];
   setActions: (actions: string[]) => void;
+  steps: WelcomeStep[];
+  loadedSteps: WelcomeStep[];
+  setSteps: (steps: WelcomeStep[]) => void;
 }
 
-// The role dialog's held permissions, provided by the dialog so its tabs and rows edit them without threading.
+// The role dialog's held permissions and welcome steps, provided by the dialog so its tabs and rows edit them without threading.
 export const RoleDraftContext = createContext<RoleDraftContextValue | null>(null);
 
 export const useRoleDraft = (): RoleDraftContextValue => {

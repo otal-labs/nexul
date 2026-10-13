@@ -337,7 +337,7 @@ func TestIntegration_HasPermission_RoleThenResource(t *testing.T) {
 	assert.True(t, accessSvc.HasPermission(ctx, "owner", ws.ID, permissions.MembersWrite, "", ""))
 
 	// A custom role's permission set is the base layer.
-	editorRole, err := rolesSvc.Create(ctx, ws.ID, "owner", "Editor", permissions.SetOf(permissions.MembersWrite))
+	editorRole, err := rolesSvc.Create(ctx, ws.ID, "owner", "Editor", permissions.SetOf(permissions.MembersWrite), nil)
 	require.NoError(t, err)
 	require.NoError(t, s.WorkspaceMembers.AddMember(ctx, &tenancy.Member{
 		UserID: "alice", WorkspaceID: ws.ID, RoleID: editorRole.ID, CreatedAt: time.Now(),

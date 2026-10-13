@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/welcomestep"
 )
 
 // Service is the roles use-case layer: the workspace-scoped role catalog and its protected Owner role.
@@ -54,11 +56,20 @@ func (s *Service) CreateOwnerRole(ctx context.Context, workspaceID string) (*Rol
 	if err := s.repo.Create(ctx, r); err != nil {
 		return nil, fmt.Errorf("create owner role for workspace %s: %w", workspaceID, err)
 	}
-	return r, nil
+	return withOwnerSteps(r), nil
 }
 
-// Create makes a new custom role in workspaceID; actorUserID must hold roles:write or the Owner bypass.
-func (s *Service) Create(ctx context.Context, workspaceID, actorUserID, name string, perms permissions.Set) (*Role, error) {
+// withOwnerSteps gives the Owner role its welcome steps, which live in code and never in its row.
+func withOwnerSteps(r *Role) *Role {
+	if r.IsOwnerRole {
+		r.WelcomeSteps = slices.Clone(welcomestep.Owner)
+	}
+	return r
+}
+
+// Create makes a new custom role in workspaceID; actorUserID must hold roles:write or the Owner bypass. A welcome step
+// gives no power, so steps need nothing more.
+func (s *Service) Create(ctx context.Context, workspaceID, actorUserID, name string, perms permissions.Set, steps []string) (*Role, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	name = strings.TrimSpace(name)
 	if workspaceID == "" {
@@ -66,6 +77,10 @@ func (s *Service) Create(ctx context.Context, workspaceID, actorUserID, name str
 	}
 	if name == "" {
 		return nil, fmt.Errorf("%w: role name is required", apperrs.ErrInvalid)
+	}
+	steps, err := welcomestep.Parse(steps)
+	if err != nil {
+		return nil, err
 	}
 	if err := s.requireManageRoles(ctx, workspaceID, actorUserID); err != nil {
 		return nil, err
@@ -75,12 +90,13 @@ func (s *Service) Create(ctx context.Context, workspaceID, actorUserID, name str
 	}
 	now := s.now().UTC()
 	r := &Role{
-		ID:          ids.New(),
-		WorkspaceID: workspaceID,
-		Name:        name,
-		Permissions: perms,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:           ids.New(),
+		WorkspaceID:  workspaceID,
+		Name:         name,
+		Permissions:  perms,
+		WelcomeSteps: steps,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 	if err := s.repo.Create(ctx, r); err != nil {
 		return nil, fmt.Errorf("create role in workspace %s: %w", workspaceID, err)
@@ -106,6 +122,9 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]*Role, error)
 	rs, err := s.repo.List(ctx, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("list roles for workspace %s: %w", workspaceID, err)
+	}
+	for _, r := range rs {
+		withOwnerSteps(r)
 	}
 	return rs, nil
 }
@@ -140,18 +159,23 @@ func (s *Service) requireMember(ctx context.Context, workspaceID, actorUserID st
 	return nil
 }
 
-// Update renames a custom role and/or replaces its permissions; the Owner role can't be renamed or edited.
-func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, name string, perms permissions.Set) (*Role, error) {
+// Update renames a custom role and replaces its permissions and welcome steps, nil steps keeping the ones it has; the
+// Owner role can't be renamed or edited. The steps the save adds are named on role.updated, which gives them again.
+func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, name string, perms permissions.Set, steps []string) (*Role, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, fmt.Errorf("%w: role name is required", apperrs.ErrInvalid)
+	}
+	steps, err := welcomestep.Parse(steps)
+	if err != nil {
+		return nil, err
 	}
 	r, err := s.getInWorkspace(ctx, workspaceID, roleID)
 	if err != nil {
 		return nil, err
 	}
 	if r.IsOwnerRole {
-		return nil, fmt.Errorf("%w: the Owner role can't be renamed or edited", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: the Owner role can't be renamed or edited; its welcome steps are always %s", apperrs.ErrInvalid, strings.Join(welcomestep.Owner, ", "))
 	}
 	if err := s.requireManageRoles(ctx, workspaceID, actorUserID); err != nil {
 		return nil, err
@@ -160,10 +184,17 @@ func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, 
 	if err := s.requireHolds(ctx, workspaceID, actorUserID, perms.Except(r.Permissions)); err != nil {
 		return nil, err
 	}
+	var added []string
+	if steps != nil {
+		added = welcomestep.Added(r.WelcomeSteps, steps)
+		r.WelcomeSteps = steps
+	}
 	r.Name = name
 	r.Permissions = perms
 	r.UpdatedAt = s.now().UTC()
-	event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: RoleEvent{RoleID: r.ID, WorkspaceID: r.WorkspaceID, ActorID: actorUserID}}
+	event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: RoleEvent{
+		RoleID: r.ID, WorkspaceID: r.WorkspaceID, ActorID: actorUserID, WelcomeStepsAdded: added,
+	}}
 	if err := s.repo.Update(ctx, r, event); err != nil {
 		return nil, fmt.Errorf("update role %s: %w", roleID, err)
 	}
@@ -228,12 +259,13 @@ func (s *Service) Clone(ctx context.Context, sourceWorkspaceID, roleID, targetWo
 	}
 	now := s.now().UTC()
 	r := &Role{
-		ID:          ids.New(),
-		WorkspaceID: targetWorkspaceID,
-		Name:        freeName(source.Name, taken),
-		Permissions: permissions.SetOf(source.Permissions...),
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:           ids.New(),
+		WorkspaceID:  targetWorkspaceID,
+		Name:         freeName(source.Name, taken),
+		Permissions:  permissions.SetOf(source.Permissions...),
+		WelcomeSteps: slices.Clone(source.WelcomeSteps),
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 	if err := s.repo.Create(ctx, r); err != nil {
 		return nil, fmt.Errorf("clone role %s into workspace %s: %w", roleID, targetWorkspaceID, err)
@@ -288,7 +320,7 @@ func (s *Service) getInWorkspace(ctx context.Context, workspaceID, roleID string
 	if r.WorkspaceID != workspaceID {
 		return nil, fmt.Errorf("get role %s: %w", roleID, apperrs.ErrNotFound)
 	}
-	return r, nil
+	return withOwnerSteps(r), nil
 }
 
 // requireHolds refuses a role carrying an action actorUserID does not hold in workspaceID (ADR 0088).
