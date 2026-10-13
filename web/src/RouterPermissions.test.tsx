@@ -53,6 +53,7 @@ const mockApi = (anywhere: string[], permissions: string[]) =>
       };
     }
     if (url === "/api/workspaces/ws-1/me" || url === "/api/workspaces/ws-2/me") return { data: { role_name: "Member", permissions } };
+    if (url === "/api/me/welcome") return { data: { first_run_done: true, steps: [], dot: false } };
     if (url === "/api/team") throw forbidden;
     if (url === "/api/automations/a-1") throw forbidden;
     return { data: [] };

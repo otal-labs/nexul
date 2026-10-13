@@ -4,9 +4,12 @@ import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
 
 import { PopoverTrigger } from "@/components/ui/popover";
 import { RailTooltip } from "@/components/sidebar/RailTooltip";
+import { UpdateDot } from "@/components/UpdateDot";
+import { useWelcomeProgress } from "@/hooks/WelcomeHooks";
 import { avatarGradient } from "@/lib/avatarGradient";
 import { effectiveAvatar, userLabel } from "@/models/User";
 import type { User } from "@/models/User";
+import { welcomeMenuSummary } from "@/utils/WelcomeMenuUtility";
 
 const initials = (name: string) =>
   name
@@ -25,31 +28,39 @@ interface AccountMenuTriggerProps {
   collapsed: boolean;
 }
 
-export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTriggerProps) => (
+export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTriggerProps) => {
+  const { data: progress } = useWelcomeProgress();
+  const left = progress ? welcomeMenuSummary(progress).left : 0;
+  const welcomeLabel = `${left} welcome steps left`;
+
+  return (
   <RailTooltip label={userLabel(user)} collapsed={collapsed}>
     <PopoverTrigger asChild>
       <button
         type="button"
-        aria-label={collapsed ? `Account menu for ${userLabel(user)}` : undefined}
+        aria-label={collapsed ? `Account menu for ${userLabel(user)}${left > 0 ? `, ${welcomeLabel}` : ""}` : undefined}
         title={collapsed ? undefined : `@${user.login}`}
         className="nav-row flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left hover:bg-accent/60 active:bg-accent data-[state=open]:bg-accent"
       >
-        {effectiveAvatar(user) !== "" && (
-          <img
-            src={effectiveAvatar(user)}
-            alt=""
-            referrerPolicy="no-referrer"
-            className="size-8 shrink-0 rounded-lg object-cover"
-          />
-        )}
-        {effectiveAvatar(user) === "" && (
-          <span
-            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white"
-            style={{ backgroundImage: avatarGradient(user.login) }}
-          >
-            {initials(userLabel(user))}
-          </span>
-        )}
+        <span className="relative shrink-0">
+          {effectiveAvatar(user) !== "" && (
+            <img
+              src={effectiveAvatar(user)}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="size-8 rounded-lg object-cover"
+            />
+          )}
+          {effectiveAvatar(user) === "" && (
+            <span
+              className="flex size-8 items-center justify-center rounded-lg text-xs font-semibold text-white"
+              style={{ backgroundImage: avatarGradient(user.login) }}
+            >
+              {initials(userLabel(user))}
+            </span>
+          )}
+          {left > 0 && <UpdateDot className="-top-0.5 -right-0.5 bg-destructive" label={collapsed ? undefined : welcomeLabel} />}
+        </span>
         {!collapsed && (
           <>
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -62,4 +73,5 @@ export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTrigger
       </button>
     </PopoverTrigger>
   </RailTooltip>
-);
+  );
+};

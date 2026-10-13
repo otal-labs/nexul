@@ -42,6 +42,7 @@ import { playQueueFollower } from "@/hooks/PlayQueueHooks";
 import { trailFollower } from "@/hooks/TrailHooks";
 import { notifyIfServerUpdated } from "@/hooks/VersionHooks";
 import { voiceFollower } from "@/hooks/VoiceHooks";
+import { welcomeFollower } from "@/hooks/WelcomeHooks";
 import { getMyRoleKey, workspaceFollower } from "@/hooks/WorkspaceHooks";
 import type { MeResponse } from "@/models/User";
 import { followEach, type Live, type LiveFollower } from "@/lib/live";
@@ -110,6 +111,7 @@ const followers: LiveFollower[] = [
   trailFollower,
   playQueueFollower,
   voiceFollower,
+  welcomeFollower,
   workspaceFollower,
 ];
 
