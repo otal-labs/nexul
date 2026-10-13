@@ -753,6 +753,11 @@ status over its image and a muted `container <name>` line, with how it is
 reached trailing right in mono (public hostnames as links, then
 `service:port` on the stack's network, then `host :port` when published on the
 machine); its footer names the networks and when the runner last looked.
+A project's Services card lists each attached repository no service builds
+from as a row in one bordered box, after the services or in place of the
+empty line: the mono name over a hollow muted dot and "Attached, not deployed
+yet", and an outline "Deploy this repository" with a rocket. No banner, no
+dismiss; the row goes once a service builds from it.
 
 Permission rows. Wherever access is set (a role, an automation's scopes) the
 domains sit in one bordered list (`rounded-md border border-input`, hairline dividers), led by an

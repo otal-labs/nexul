@@ -30,11 +30,17 @@ const runners = [
   { id: "r1", name: "instance", connected: true, last_seen: "2026-09-03T00:00:00Z", running_job: null, version: "0.1.0" },
 ];
 
-const renderServices = (list: ServiceDef[] = services) => {
+const repo = (full: string, role = "app") => {
+  const [owner, name] = full.split("/");
+  return { owner, name, full_name: full, connector_id: "github", role };
+};
+
+const renderServices = (list: ServiceDef[] = services, repos: unknown[] = []) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/services") return { data: list };
     if (url === "/api/runners") return { data: runners };
+    if (url === "/api/projects/p-1/repos") return { data: repos };
     return { data: [] };
   });
   return render(
@@ -71,6 +77,31 @@ describe("ProjectServices", () => {
       "href",
       "/acme/wizard/project/repository?project=p-1&add=1",
     );
+  });
+
+  it("offers to deploy each attached repository no service builds from, never the tests repository", async () => {
+    const deployed = { ...services[0]!, build_source: { repo_owner: "acme", repo_name: "api" } };
+    renderServices([deployed], [repo("acme/api"), repo("acme/portal"), repo("acme/e2e", "tests")]);
+
+    expect(await screen.findByRole("link", { name: /deploy this repository/i })).toHaveAttribute(
+      "href",
+      "/acme/wizard/project/repository?project=p-1&add=1&repo=acme%2Fportal",
+    );
+    expect(screen.getByText("acme/portal")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /deploy this repository/i })).toHaveLength(1);
+  });
+
+  it("puts a waiting repository where the empty line was", async () => {
+    renderServices([], [repo("acme/portal")]);
+    expect(await screen.findByText("Attached, not deployed yet")).toBeInTheDocument();
+    expect(screen.queryByText(/No services yet/)).not.toBeInTheDocument();
+  });
+
+  it("shows no repository as waiting to someone who can't read stacks, whose service list is always empty", async () => {
+    access.areas = ["newProject"];
+    renderServices([], [repo("acme/portal")]);
+    expect(await screen.findByText(/No services yet/)).toBeInTheDocument();
+    expect(screen.queryByText("Attached, not deployed yet")).not.toBeInTheDocument();
   });
 
   it("hides New service and unlinks the cards without projects:write and stacks:read", async () => {

@@ -36,7 +36,8 @@ A project made over [MCP](/docs/guide/mcp-server/) or the API is set up straight
 
 From an existing project:
 
-- **New service**, in the project's **Settings → Services**, reopens the wizard at the repository step to deploy something else.
+- **New service**, in the project's **Settings → Services**, reopens the wizard at the repository step to deploy something else. If exactly one attached repository has no service yet, it skips the pick and opens **Service** for that repository.
+- **Deploy this repository** sits in **Settings → Services** beside each attached repository no service builds from, marked **Attached, not deployed yet**. It opens **Service** for that repository, and the row goes once a service deploys it. Only people who can read the project's stacks and add services see it.
 - **Add repo**, in **Settings → Repositories**, attaches a repository without deploying it.
 - **Import from this machine**, on the [Runners](/docs/guide/runners/) page next to a machine, adopts what's already running there as unmanaged stacks. Press **Attach repository** on one to give it a repository and make it deployable.
 
