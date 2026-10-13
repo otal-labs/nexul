@@ -23,7 +23,7 @@ From the map and tickets 01 to 06.
    web and phone each have components. Nobody writes a check by hand.
 4. **The guard** (ticket 05).
    - Every request that writes declares its permission where it is defined.
-   - `make route-permissions` generates the server's route → permission file.
+   - `make permission-catalog` generates the server's route → permission file.
    - A test fails when a request's permission is missing or differs from its route's.
 5. **Single-item answers** (ticket 05).
    - A stack, doc, play or project page reads its item's answers once through `GET /api/permissions/explain`.
@@ -49,6 +49,25 @@ up as a new `/me` field, `show_locked_actions`, which is true when any held role
 explain overrides the role-wide answer and supplies the source sentence. "Your role can't <verb>" is built from the
 permission catalog's label.
 
+### A typed permission
+
+The permission is never a free string. `make permission-catalog` writes the server's permission catalog as
+`client-core/permissionActions.ts`:
+
+```ts
+export const PERMISSION_ACTIONS = ["docs:read", "docs:write", /* … */] as const;
+export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
+```
+
+The catalog comes from `domainTable` in `internal/platform/permissions`. These all take `PermissionAction`, so a
+misspelt or retired permission fails `typecheck`:
+- `actionState`
+- every action component's `permission` prop
+- every mutation's declared permission
+
+`web/src/models/Permission.tsx`'s `PermissionAction = string` becomes this type. CI fails when the generated file
+is stale.
+
 ### Web and phone components
 
 - Web: `ActionButton`, `ActionMenuItem`, `ActionInlineEdit` and `ActionDragHandle` in `web/src/components/action/`.
@@ -59,7 +78,7 @@ permission catalog's label.
 ### Declared permissions and the route file
 
 - **Requests**: each mutation hook is defined with its permission (`permission: "deploys:write"`).
-- **The route file**: `make route-permissions` writes `client-core/routePermissions.json`, mapping method and path to
+- **The route file**: `make permission-catalog` writes `client-core/routePermissions.json`, mapping method and path to
   action, from the router's permission table. The audit test already classifies every route by method, so the same
   walk can emit it.
 - **The guard test**: `client-core/routePermissions.test.ts` checks every declared mutation against the file.

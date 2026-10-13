@@ -8,6 +8,9 @@ Read first: `AGENTS.md`, `CONTEXT.md` (Locked action, Source), `practices/typesc
 
 ## What to build
 
+- `make permission-catalog`, which writes `client-core/permissionActions.ts` from `domainTable`: the
+  `PERMISSION_ACTIONS` `as const` list and the `PermissionAction` union. CI checks it is current. Ticket 10 adds the
+  route file to the same target. Every `permission` prop and `actionState` take that type, never `string`.
 - `client-core`: `actionState` and the "Your role can't <verb>" line from the catalog's labels, with tests.
 - Web: `ActionButton`, `ActionMenuItem`, `ActionInlineEdit` and `ActionDragHandle` in ticket 04's look. That
   means `aria-disabled`, `aria-describedby` and the tooltip on focus.

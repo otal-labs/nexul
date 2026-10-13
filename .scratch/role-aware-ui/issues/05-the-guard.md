@@ -29,7 +29,7 @@ Owner's calls, 2026-10-13.
 - **The guard ties the permission to the request.**
   - Every web and phone request that writes declares its permission where it is defined, and the shared piece reads
     it from there.
-  - A generated route → permission file comes from the server's route table, through `make route-permissions`, the
+  - A generated route → permission file comes from the server's route table, through `make permission-catalog`, the
     same pattern as `make live-topics`.
   - A test fails when a request declares no permission or a different one than its route checks. That also fixes
     the 8 actions research 01 found gated on the wrong permission.
