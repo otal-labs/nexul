@@ -1,15 +1,19 @@
 import { RuleState, type PermissionGrant, type PermissionInfo, type PermissionSource, type RuleChange } from "@/models/Permission";
 import { domainLabel } from "@/models/PermissionLevel";
 
-// What the permissions panel opens on. A doc names its project and folder for the header and the add list.
+// What the permissions panel opens on. A doc or folder names its project, a doc its folder, for the header and the add list.
 export interface PanelEntity {
-  type: "doc" | "play" | "project";
+  type: "doc" | "folder" | "play" | "project";
   id: string;
   name: string;
   workspaceId: string;
   projectId: string;
   folderId: string;
 }
+
+// The project a doc's or folder's panel lists targets of, refusing anyone outside it.
+export const targetsProject = (entity: Pick<PanelEntity, "type" | "projectId">) =>
+  entity.type === "doc" || entity.type === "folder" ? entity.projectId : undefined;
 
 // A project as the panel opens on it.
 export const projectEntity = (project: { id: string; name: string; workspace_id: string }): PanelEntity => ({
@@ -37,6 +41,7 @@ export const grantKey = (grant: PermissionGrant) =>
 // The entity-specific names the panel gives a permission; every other one reads as the catalog labels it.
 const panelLabels: Record<PanelEntity["type"], Record<string, string>> = {
   doc: { "permissions:write": "Manage this doc's access" },
+  folder: { "permissions:write": "Manage this folder's access" },
   play: { "plays:run": "Run" },
   project: { "projects:open": "See this project", "projects:access": "Manage this project's access", "permissions:write": "Manage each doc's access" },
 };

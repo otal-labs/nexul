@@ -60,3 +60,12 @@ func RequireHeld(grant, held Set) error {
 	}
 	return fmt.Errorf("%w: you can only grant permissions you hold yourself; you lack %s", apperrs.ErrForbidden, missing)
 }
+
+// DocReach is what a doc list filters by in SQL: the projects an action holds in, and the folders and docs that turn it.
+type DocReach struct {
+	ProjectIDs     []string
+	AllowedFolders []string
+	DeniedFolders  []string
+	Allowed        []string
+	Denied         []string
+}

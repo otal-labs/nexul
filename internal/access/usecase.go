@@ -31,6 +31,9 @@ const resourceTypeProject = "project"
 // resourceTypeChannel keys a channel's rules by resource_id = the conversation id (ADR 0148).
 const resourceTypeChannel = "channel"
 
+// resourceTypeFolder keys a doc folder's rules, which reach every doc in it, by resource_id = the folder id (ADR 0148).
+const resourceTypeFolder = "folder"
+
 // Service is the access use-case layer (ADR 0019): permission overwrites and the HasPermission/Can checks.
 type Service struct {
 	repo          Repo
@@ -80,7 +83,7 @@ func (s *Service) SetChannelWorkspaces(r ChannelWorkspaceResolver) {
 }
 
 // HasPermission checks the Owner bypass, then for anything in a project whether userID is in it, then the role set,
-// the project's rules and the resource's own, in order (ADR 0148).
+// the project's rules and those of each entity inward to the resource, in order (ADR 0148).
 func (s *Service) HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action, resourceType, resourceID string) bool {
 	if userID == "" {
 		return false
@@ -91,23 +94,32 @@ func (s *Service) HasPermission(ctx context.Context, userID, workspaceID string,
 		projectID = resourceID
 	case resourceTypeDoc:
 		_, projectID = s.resolveDoc(ctx, resourceID)
+	case resourceTypeFolder:
+		projectID = s.folderScope(ctx, resourceID).ProjectID
 	}
 	held, _ := s.check(ctx, userID, workspaceID, projectID, action, resourceType, resourceID)
 	return held
 }
 
 func (s *Service) check(ctx context.Context, userID, workspaceID, projectID string, action permissions.Action, resourceType, resourceID string) (bool, Source) {
-	return decide(s.layers(ctx, userID, workspaceID, projectID), action, func() *Rules {
-		if resourceType == "" || resourceType == resourceTypeProject || resourceID == "" {
-			return nil
-		}
-		return s.rules(ctx, resourceType, resourceID, userID)
+	return decide(s.layers(ctx, userID, workspaceID, projectID), action, func() []*Rules {
+		return s.chain(ctx, resourceType, resourceID, userID)
 	})
 }
 
-// decide answers a check from layers already read, with what decided it as ids; resource, the resource's own rules,
-// is read only when the layers leave the answer open.
-func decide(ws workspaceLayers, action permissions.Action, resource func() *Rules) (bool, Source) {
+// chain is the rules reaching userID on each entity from the project inward: a doc's folder then the doc, or the resource.
+func (s *Service) chain(ctx context.Context, resourceType, resourceID, userID string) []*Rules {
+	if resourceType == "" || resourceType == resourceTypeProject || resourceID == "" {
+		return nil
+	}
+	if resourceType == resourceTypeDoc {
+		return s.docRules(ctx, []string{resourceID}, userID)[resourceID].chain()
+	}
+	return []*Rules{s.rules(ctx, resourceType, resourceID, userID)}
+}
+
+// decide answers from layers already read, then from chain, read only if they leave it open, the nearest rule winning.
+func decide(ws workspaceLayers, action permissions.Action, chain func() []*Rules) (bool, Source) {
 	if ws.owner {
 		return true, sourceOf(SourceOwner, resourceTypeWorkspace, ws.workspaceID, TargetRole, ws.roles.sourceRole(""), true)
 	}
@@ -118,7 +130,10 @@ func decide(ws workspaceLayers, action permissions.Action, resource func() *Rule
 		return ws.member, sourceOf(SourceMember, resourceTypeWorkspace, ws.workspaceID, TargetPerson, ws.userID, ws.member)
 	}
 	allowed, src := ws.has(action)
-	return applyRules(allowed, src, resource(), ws.roles.roleIDs(), action)
+	for _, r := range chain() {
+		allowed, src = applyRules(allowed, src, r, ws.roles.roleIDs(), action)
+	}
+	return allowed, src
 }
 
 // workspaceLayers is the role set and the rules of the project asked about reaching the person, fetched once so a whole-grid answer costs the same lookups as a single check.
@@ -358,14 +373,14 @@ func (s *Service) CanDocs(ctx context.Context, userID, projectID string, docIDs 
 		// Read up front so the docs' projects cost one read per workspace, not one each; a failure reads again per check.
 		_, _ = s.layerRules(ctx, userID, workspaceID, s.roleIDsIn(ctx, userID, workspaceID), projectIDs)
 	}
-	var own map[string]*Rules
+	var own map[string]*DocRules
 	for _, id := range docIDs {
 		scope := scopes[id]
-		out[id], _ = decide(s.layers(ctx, userID, scope.WorkspaceID, scope.ProjectID), action, func() *Rules {
+		out[id], _ = decide(s.layers(ctx, userID, scope.WorkspaceID, scope.ProjectID), action, func() []*Rules {
 			if own == nil {
 				own = s.docRules(ctx, docIDs, userID)
 			}
-			return own[id]
+			return own[id].chain()
 		})
 	}
 	return out
@@ -383,29 +398,25 @@ func projectsByWorkspace(scopes map[string]DocScope) map[string][]string {
 	return out
 }
 
-// DocsWith is what a doc list filters by in SQL for action: the projects in which userID holds it on a doc without
-// rules of its own, and the docs whose rules for userID or their roles turn that answer, allowed in a project outside
-// the set or denied in one inside it. Those rules are decided in one statement, only within the projects userID is in,
-// or projectID alone when named, and the Owner's workspaces not at all, so a list hands back only the docs they turn.
-// A doc passes exactly when CanDocs would pass it (ADR 0140, ADR 0148).
-func (s *Service) DocsWith(ctx context.Context, userID, projectID string, action permissions.Action) (projectIDs, allowed, denied []string, err error) {
+// DocsWith is what a doc list filters by in SQL for action; a doc passes exactly when CanDocs would (ADR 0140, ADR 0148).
+func (s *Service) DocsWith(ctx context.Context, userID, projectID string, action permissions.Action) (permissions.DocReach, error) {
 	ctx = s.memoized(ctx)
 	workspaceIDs, projectIDs, err := s.ProjectsAnywhere(ctx, userID, action)
 	if err != nil {
-		return nil, nil, nil, err
+		return permissions.DocReach{}, err
 	}
 	ruled := []string{}
 	for _, workspaceID := range workspaceIDs {
 		info, err := s.standing(ctx, userID, workspaceID)
 		if err != nil {
-			return nil, nil, nil, err
+			return permissions.DocReach{}, err
 		}
 		if info.IsOwnerRole {
 			continue
 		}
 		in, err := s.ProjectsWith(ctx, userID, workspaceID, permissions.Member)
 		if err != nil {
-			return nil, nil, nil, err
+			return permissions.DocReach{}, err
 		}
 		ruled = append(ruled, in...)
 	}
@@ -413,21 +424,23 @@ func (s *Service) DocsWith(ctx context.Context, userID, projectID string, action
 		ruled = slices.DeleteFunc(ruled, func(id string) bool { return id != projectID })
 	}
 	if len(ruled) == 0 {
-		return projectIDs, []string{}, []string{}, nil
+		return permissions.DocReach{ProjectIDs: projectIDs, AllowedFolders: []string{}, DeniedFolders: []string{}, Allowed: []string{}, Denied: []string{}}, nil
 	}
-	allowed, denied, err = s.repo.DocRuleTurns(ctx, userID, action, ruled, projectIDs)
+	reach, err := s.repo.DocRuleTurns(ctx, userID, action, ruled, projectIDs)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("doc rules of %s: %w", userID, err)
+		return permissions.DocReach{}, fmt.Errorf("doc rules of %s: %w", userID, err)
 	}
-	return projectIDs, allowed, denied, nil
+	reach.ProjectIDs = projectIDs
+	return reach, nil
 }
 
-// docRules is the rules reaching userID on each of docIDs that has any; a failed read counts as none, as a single
-// check's does.
-func (s *Service) docRules(ctx context.Context, docIDs []string, userID string) map[string]*Rules {
-	own, err := s.rulesOn(ctx, resourceTypeDoc, docIDs, userID)
+// docRules is the rules reaching userID on each of docIDs and its folder; a failed read counts as none.
+func (s *Service) docRules(ctx context.Context, docIDs []string, userID string) map[string]*DocRules {
+	own, err := rememberEach(ctx, docIDs, func(id string) any { return docRulesKey{id, userID} }, func(missing []string) (map[string]*DocRules, error) {
+		return s.repo.DocRules(ctx, missing, userID)
+	})
 	if err != nil {
-		return map[string]*Rules{}
+		return map[string]*DocRules{}
 	}
 	return own
 }
@@ -468,6 +481,17 @@ func (s *Service) docScopes(ctx context.Context, docIDs []string) map[string]Doc
 		return map[string]DocScope{}
 	}
 	return scopes
+}
+
+// folderScope is where folderID lives; empty when it can't be resolved.
+func (s *Service) folderScope(ctx context.Context, folderID string) DocScope {
+	if s.docWorkspace == nil {
+		return DocScope{}
+	}
+	scope, _ := remember(ctx, folderKey{folderID}, func() (DocScope, error) {
+		return s.docWorkspace.FolderScope(ctx, folderID)
+	})
+	return scope
 }
 
 // resolvePlayWorkspace resolves playID's own workspace (a play carries it directly, unlike a doc).
@@ -547,9 +571,9 @@ type ruleWrite struct {
 }
 
 // SetRules sets actions to state on every resource for every target, checking every write before storing any: the
-// actor manages each resource (permissions:write on a doc, plays:write on a play, Manage this project's access on a
-// project, the Owner on a channel), each action is one the resource's rules may set, each role is the resource's workspace's, and the actor
-// holds there each action the write allows or lifts a Deny on (ADR 0088).
+// actor manages each resource (permissions:write on a doc or folder, plays:write on a play, Manage this project's
+// access on a project, the Owner on a channel), each action is one the resource's rules may set, each role is the
+// resource's workspace's, and the actor holds there each action the write allows or lifts a Deny on (ADR 0088).
 func (s *Service) SetRules(ctx context.Context, actorID, resourceType string, resourceIDs []string, to Targets, actions []permissions.Action, state string) error {
 	if err := checkWrite(actorID, resourceType, resourceIDs, to, actions, state); err != nil {
 		return err
@@ -636,13 +660,19 @@ func (t Targets) each() [][2]string {
 }
 
 // ruleTypes are the entities rules sit on.
-var ruleTypes = []string{resourceTypeDoc, resourceTypePlay, resourceTypeProject, resourceTypeChannel, resourceTypeInstanceArea}
+var ruleTypes = []string{resourceTypeDoc, resourceTypeFolder, resourceTypePlay, resourceTypeProject, resourceTypeChannel, resourceTypeInstanceArea}
+
+// errNotARuleType refuses a resource_type no rule sits on.
+func errNotARuleType(resourceType string) error {
+	return fmt.Errorf("%w: resource_type %q is not doc, folder, play, project, channel, or instance_area", apperrs.ErrInvalid, resourceType)
+}
 
 // checkRuleActions refuses an action resourceType's rules may not set: a play's rules set Run, a project's In this
-// project and the project-area actions, a channel's its read, an instance area's its own actions (checkArea).
+// project and the project-area actions, a folder's the docs actions and their access, a channel's its read, an
+// instance area's its own actions (checkArea).
 func checkRuleActions(resourceType string, actions []permissions.Action) error {
 	if !slices.Contains(ruleTypes, resourceType) {
-		return fmt.Errorf("%w: resource_type %q is not doc, play, project, channel, or instance_area", apperrs.ErrInvalid, resourceType)
+		return errNotARuleType(resourceType)
 	}
 	for _, a := range actions {
 		if a == permissions.ProjectsOpen && resourceType != resourceTypeProject {
@@ -653,6 +683,9 @@ func checkRuleActions(resourceType string, actions []permissions.Action) error {
 		}
 		if resourceType == resourceTypeProject && !slices.Contains(projectActions, a) {
 			return fmt.Errorf("%w: %s is not set on a project; its rules set projects:open and project-area actions", apperrs.ErrInvalid, a)
+		}
+		if resourceType == resourceTypeFolder && !slices.Contains(docActions, a) {
+			return fmt.Errorf("%w: %s is not set on a folder; its rules set the docs actions and permissions:write", apperrs.ErrInvalid, a)
 		}
 		if resourceType == resourceTypeChannel && a != permissions.ChannelsRead {
 			return fmt.Errorf("%w: only channels:read may be set on a channel", apperrs.ErrInvalid)
@@ -683,9 +716,9 @@ func (s *Service) requireRolesOf(ctx context.Context, resourceType, resourceID s
 	return nil
 }
 
-// requireInProject answers a project the actor is not in as not found, so writing its rules never confirms it exists.
+// requireInProject answers a project, or a folder of one, the actor is not in as not found, never forbidden.
 func (s *Service) requireInProject(ctx context.Context, actorID, resourceType, resourceID string) error {
-	if resourceType != resourceTypeProject {
+	if resourceType != resourceTypeProject && resourceType != resourceTypeFolder {
 		return nil
 	}
 	e, err := s.entityOf(ctx, resourceType, resourceID)
@@ -698,9 +731,11 @@ func (s *Service) requireInProject(ctx context.Context, actorID, resourceType, r
 	return nil
 }
 
-// workspaceOf is the workspace a doc, play, project, or channel lives in; "" when it can't be resolved.
+// workspaceOf is the workspace a doc, folder, play, project, or channel lives in; "" when it can't be resolved.
 func (s *Service) workspaceOf(ctx context.Context, resourceType, resourceID string) string {
 	switch resourceType {
+	case resourceTypeFolder:
+		return s.folderScope(ctx, resourceID).WorkspaceID
 	case resourceTypePlay:
 		return s.resolvePlayWorkspace(ctx, resourceID)
 	case resourceTypeChannel:
@@ -767,7 +802,7 @@ func moveTo(allow, deny permissions.Set, a permissions.Action, state string) (pe
 	return allow.Without(a), deny.Without(a)
 }
 
-// holds is whether actorID holds action on the doc, play, project, or instance area, its own rules for them included.
+// holds is whether actorID holds action on the doc, folder, play, project, or instance area, its own rules for them included.
 func (s *Service) holds(ctx context.Context, actorID, resourceType, resourceID string, action permissions.Action) bool {
 	if resourceType == resourceTypeInstanceArea {
 		held, _ := s.HoldsArea(ctx, actorID, resourceID, action)
@@ -790,14 +825,14 @@ func (s *Service) ListPlayGrants(ctx context.Context, actorID, playID string) ([
 	return s.listGrants(ctx, actorID, resourceTypePlay, playID)
 }
 
-// ListRules is the rules on a doc, play, project, channel, or instance area, for whoever manages it; a project the
-// actor is not in is not found, so listing its rules never confirms it exists.
+// ListRules is the rules on a doc, folder, play, project, channel, or instance area, for whoever manages it; a project
+// the actor is not in, or a folder of one, is not found, so listing its rules never confirms it exists.
 func (s *Service) ListRules(ctx context.Context, actorID, resourceType, resourceID string) ([]*Overwrite, error) {
 	if actorID == "" {
 		return nil, fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
 	}
 	if !slices.Contains(ruleTypes, resourceType) {
-		return nil, fmt.Errorf("%w: resource_type %q is not doc, play, project, channel, or instance_area", apperrs.ErrInvalid, resourceType)
+		return nil, errNotARuleType(resourceType)
 	}
 	if err := s.checkArea(resourceType, resourceID, nil); err != nil {
 		return nil, err
@@ -826,7 +861,7 @@ func (s *Service) listGrants(ctx context.Context, actorID, resourceType, resourc
 	return grants, nil
 }
 
-// ListUsers is gated to a holder of accounts:read or anyone holding permissions:write on at least one document.
+// ListUsers is gated to a holder of accounts:read or anyone holding permissions:write on at least one doc or folder.
 func (s *Service) ListUsers(ctx context.Context, actorID string) ([]*User, error) {
 	if actorID == "" {
 		return nil, fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
@@ -836,9 +871,9 @@ func (s *Service) ListUsers(ctx context.Context, actorID string) ([]*User, error
 		return nil, err
 	}
 	if !readsAccounts {
-		has, err := s.repo.HasAllowAny(ctx, resourceTypeDoc, actorID, permissions.PermissionsWrite)
+		has, err := s.sharesAnyDoc(ctx, actorID)
 		if err != nil {
-			return nil, fmt.Errorf("check permissions:write for %s: %w", actorID, err)
+			return nil, err
 		}
 		if !has {
 			return nil, fmt.Errorf("%w: accounts:read or permissions:write required", apperrs.ErrForbidden)
@@ -849,6 +884,20 @@ func (s *Service) ListUsers(ctx context.Context, actorID string) ([]*User, error
 		return nil, fmt.Errorf("list users: %w", err)
 	}
 	return users, nil
+}
+
+// sharesAnyDoc is whether a rule allows actorID permissions:write on some doc or folder.
+func (s *Service) sharesAnyDoc(ctx context.Context, actorID string) (bool, error) {
+	for _, resourceType := range []string{resourceTypeDoc, resourceTypeFolder} {
+		has, err := s.repo.HasAllowAny(ctx, resourceType, actorID, permissions.PermissionsWrite)
+		if err != nil {
+			return false, fmt.Errorf("check permissions:write for %s: %w", actorID, err)
+		}
+		if has {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // accountsByID indexes every account by id, so a listed overwrite can say whose it is.
@@ -864,8 +913,7 @@ func (s *Service) accountsByID(ctx context.Context) (map[string]*User, error) {
 	return byID, nil
 }
 
-// ManagesRules reports whether userID may write the rules on a doc, play, project, channel, or instance area; a failed
-// lookup is no.
+// ManagesRules reports whether userID may write a doc's, folder's, play's, project's, channel's, or instance area's rules.
 func (s *Service) ManagesRules(ctx context.Context, userID, resourceType, resourceID string) bool {
 	if userID == "" {
 		return false
@@ -874,8 +922,8 @@ func (s *Service) ManagesRules(ctx context.Context, userID, resourceType, resour
 	return err == nil && ok
 }
 
-// canManage grants no instance-wide bypass, since that would cross workspace isolation boundaries. A doc's
-// manage action is the cross-cutting permissions:write share grant; a play's is plays:write, the same bit
+// canManage grants no instance-wide bypass, since that would cross workspace isolation boundaries. A doc's or a
+// folder's manage action is the cross-cutting permissions:write share grant; a play's is plays:write, the same bit
 // that gates editing the play's own definition; a project's is Manage this project's access; a channel's is the
 // Owner's alone until channels carry their own manage permission; an instance area's the instance Owner's alone.
 func (s *Service) canManage(ctx context.Context, actorID, resourceType, resourceID string) (bool, error) {
@@ -894,6 +942,9 @@ func (s *Service) canManage(ctx context.Context, actorID, resourceType, resource
 	}
 	if resourceType == resourceTypeProject {
 		return s.holds(ctx, actorID, resourceType, resourceID, permissions.ProjectsAccess), nil
+	}
+	if resourceType == resourceTypeFolder {
+		return s.holds(ctx, actorID, resourceType, resourceID, permissions.PermissionsWrite), nil
 	}
 	return s.Can(ctx, actorID, resourceID, permissions.PermissionsWrite)
 }

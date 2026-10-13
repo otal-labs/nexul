@@ -501,6 +501,55 @@ SELECT 'doc', d.id, 'role', r.id, '["docs:write"]', '["docs:delete"]', 1, 1 FROM
 	assert.Equal(t, none, cost(12, true), "many docs, each with rules")
 }
 
+// TestStatements_FolderRulesCostTheSameAtAnyLength: rules on every doc's folder cost the doc paths no statement at any length.
+func TestStatements_FolderRulesCostTheSameAtAnyLength(t *testing.T) {
+	paths := map[string]func(ctx context.Context, f permFixture) error{
+		"docs list": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.docsSvc.ListByProject(ctx, pGeneral)
+			return err
+		},
+		"doc_list": func(ctx context.Context, f permFixture) error {
+			_, err := tool(t, docs.MCPTools(f.svc.docsSvc), "doc_list").Call(ctx, json.RawMessage(`{}`))
+			return err
+		},
+		"a doc's read": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.docsSvc.Get(ctx, f.doc)
+			return err
+		},
+		"folder list": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.docsSvc.ListFolders(ctx, pGeneral)
+			return err
+		},
+	}
+	cost := func(n int, rules bool) map[string]int64 {
+		f, st, db := newCountedFixtureDB(t)
+		grow(t, f, n)
+		if rules {
+			_, err := db.Exec(`INSERT INTO doc_folders (id, project_id, name, is_default, created_at, updated_at)
+SELECT 'f-' || id, project_id, 'Folder ' || id, 0, 1, 1 FROM docs`)
+			require.NoError(t, err)
+			_, err = db.Exec(`UPDATE docs SET folder_id = 'f-' || id`)
+			require.NoError(t, err)
+			_, err = db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, user_id, allow, deny, created_at, updated_at)
+SELECT 'folder', f.id, 'role', r.id, NULL, '["docs:write"]', '["docs:delete"]', 1, 1 FROM doc_folders f, roles r
+WHERE f.is_default = 0 AND r.id IN ('role-reader', 'role-writer')
+UNION ALL SELECT 'folder', f.id, 'person', NULL, ?, '["docs:read","docs:thread"]', '[]', 1, 1 FROM doc_folders f WHERE f.is_default = 0`, uReader)
+			require.NoError(t, err)
+		}
+		out := map[string]int64{}
+		for name, run := range paths {
+			ctx := access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: uReader}), f.svc.accessSvc.NewMemo())
+			st.Reset()
+			require.NoError(t, run(ctx, f), name)
+			out[name] = st.Count()
+		}
+		return out
+	}
+	none := cost(12, false)
+	assert.Equal(t, none, cost(2, true), "a few docs, each in a folder with rules")
+	assert.Equal(t, none, cost(12, true), "many docs, each in a folder with rules")
+}
+
 // TestStatements_ProjectRulesCostTheSameAtAnyLength: rules for every role and every member on every project cost the
 // project list, its people, ticket_list, doc_list, a ticket's read and a live frame no statement more than the fixture's
 // listing alone, at a few projects or many, since every member's project rules come in one read with the workspace's.

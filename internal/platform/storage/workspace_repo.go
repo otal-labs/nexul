@@ -206,6 +206,9 @@ func (r *ProjectsRepo) SaveSetup(ctx context.Context, id string, apply func(*wor
 func (r *ProjectsRepo) Delete(ctx context.Context, id string) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
+		if err := q.DeleteProjectFolderRules(ctx, id); err != nil {
+			return fmt.Errorf("delete the folder rules of project %s: %w", id, err)
+		}
 		n, err := q.DeleteProject(ctx, id)
 		if err != nil {
 			return fmt.Errorf("delete project %s: %w", id, err)

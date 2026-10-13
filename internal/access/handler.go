@@ -99,7 +99,7 @@ func (h *Handler) catalog(w http.ResponseWriter, _ *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"permissions": permissions.Catalog(), "instance_areas": h.svc.InstanceAreas()})
 }
 
-// explain is a person's or, with role_id, a role's answers on a doc, play, project, or instance area and where each came from;
+// explain is a person's or, with role_id, a role's answers on a doc, folder, play, project, or instance area and where each came from;
 // user_id defaults to the caller.
 func (h *Handler) explain(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()

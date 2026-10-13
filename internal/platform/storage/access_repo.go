@@ -117,24 +117,63 @@ func (r *AccessRepo) RoleRules(ctx context.Context, resourceType string, resourc
 	return out, nil
 }
 
-// DocRuleTurns decides userID's rules on the docs of ruled for action in SQL, the person's rule first and then Allow
-// winning between the roles they hold in each doc's workspace, and hands back only the docs whose answer turns.
-func (r *AccessRepo) DocRuleTurns(ctx context.Context, userID string, action permissions.Action, ruled, readable []string) (allowed, denied []string, err error) {
+// DocRules returns the rules naming userID or a role they hold on each of docIDs and on its folder, in one read.
+func (r *AccessRepo) DocRules(ctx context.Context, docIDs []string, userID string) (map[string]*access.DocRules, error) {
+	if len(docIDs) == 0 {
+		return map[string]*access.DocRules{}, nil
+	}
+	rows, err := r.q.ListDocChainRules(ctx, sqlcgen.ListDocChainRulesParams{DocIds: idsJSON(docIDs), UserID: nullString(userID)})
+	if err != nil {
+		return nil, fmt.Errorf("get doc rules for %s: %w", userID, err)
+	}
+	byDoc := map[string][]sqlcgen.PermissionOverwrite{}
+	for _, row := range rows {
+		byDoc[row.DocID] = append(byDoc[row.DocID], sqlcgen.PermissionOverwrite{
+			ResourceType: row.ResourceType, ResourceID: row.ResourceID, Target: row.Target, UserID: row.UserID, RoleID: row.RoleID,
+			Allow: row.Allow, Deny: row.Deny, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		})
+	}
+	out := make(map[string]*access.DocRules, len(byDoc))
+	for docID, owned := range byDoc {
+		rules, err := toRules(owned)
+		if err != nil {
+			return nil, err
+		}
+		chain := &access.DocRules{Doc: rules[docID]}
+		for id, r := range rules {
+			if id != docID {
+				chain.Folder = r
+			}
+		}
+		out[docID] = chain
+	}
+	return out, nil
+}
+
+// DocRuleTurns decides userID's folder and doc rules for action in SQL and hands back only those that turn the answer.
+func (r *AccessRepo) DocRuleTurns(ctx context.Context, userID string, action permissions.Action, ruled, readable []string) (permissions.DocReach, error) {
 	rows, err := r.q.ListDocRuleTurns(ctx, sqlcgen.ListDocRuleTurnsParams{
 		QuotedAction: `"` + string(action) + `"`, UserID: nullString(userID), Ruled: idsJSON(ruled), Readable: idsJSON(readable),
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("doc rules of %s for %s: %w", userID, action, err)
+		return permissions.DocReach{}, fmt.Errorf("doc rules of %s for %s: %w", userID, action, err)
 	}
-	allowed, denied = []string{}, []string{}
+	out := permissions.DocReach{AllowedFolders: []string{}, DeniedFolders: []string{}, Allowed: []string{}, Denied: []string{}}
 	for _, row := range rows {
-		if state, _ := row.State.(int64); state == 1 {
-			allowed = append(allowed, row.ResourceID)
-			continue
+		folder := row.Kind == "folder"
+		into := &out.Denied
+		if folder {
+			into = &out.DeniedFolders
 		}
-		denied = append(denied, row.ResourceID)
+		if state, _ := row.State.(int64); state == 1 {
+			into = &out.Allowed
+			if folder {
+				into = &out.AllowedFolders
+			}
+		}
+		*into = append(*into, row.ResourceID)
 	}
-	return allowed, denied, nil
+	return out, nil
 }
 
 // toRules groups rows by resource, each entity's role rules in their target order.

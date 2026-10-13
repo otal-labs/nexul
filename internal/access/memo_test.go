@@ -157,11 +157,11 @@ func TestDocsWith_AnswersAsCanDocs(t *testing.T) {
 
 	for _, user := range []string{"client", "team", "nobody", "owner", "stranger"} {
 		for _, action := range []permissions.Action{permissions.DocsRead, permissions.DocsWrite} {
-			projects, allowed, denied, err := s.DocsWith(t.Context(), user, "", action)
+			reach, err := s.DocsWith(t.Context(), user, "", action)
 			require.NoError(t, err)
 			want := s.CanDocs(t.Context(), user, "", docs, action)
 			for _, doc := range docs {
-				got := (slices.Contains(projects, projectOf[doc]) && !slices.Contains(denied, doc)) || slices.Contains(allowed, doc)
+				got := (slices.Contains(reach.ProjectIDs, projectOf[doc]) && !slices.Contains(reach.Denied, doc)) || slices.Contains(reach.Allowed, doc)
 				assert.Equal(t, want[doc], got, "%s %s %s", user, action, doc)
 			}
 		}

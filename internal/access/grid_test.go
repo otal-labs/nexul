@@ -181,6 +181,6 @@ func TestSetRules_OnAChannelAreTheOwners(t *testing.T) {
 	assert.ErrorIs(t, s.SetRules(t.Context(), "manager", "channel", []string{"c-backend"}, Targets{UserIDs: []string{"client"}}, read, StateDeny), apperrs.ErrForbidden)
 	assert.ErrorIs(t, s.SetRules(t.Context(), "owner", "channel", []string{"c-gone"}, Targets{UserIDs: []string{"client"}}, read, StateDeny), apperrs.ErrNotFound)
 	assert.ErrorIs(t, s.SetRules(t.Context(), "owner", "channel", []string{"c-backend"}, Targets{UserIDs: []string{"client"}}, []permissions.Action{permissions.ChatWrite}, StateDeny), apperrs.ErrInvalid)
-	_, err = s.ListRules(t.Context(), "owner", "folder", "f-1")
+	_, err = s.ListRules(t.Context(), "owner", "ticket", "t-1")
 	assert.ErrorIs(t, err, apperrs.ErrInvalid)
 }

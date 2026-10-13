@@ -19,9 +19,10 @@ type Repo interface {
 	// RulesOfType returns every rule on a resourceType naming userID or a role they hold, keyed by resource id, in one
 	// read.
 	RulesOfType(ctx context.Context, resourceType, userID string) (map[string]*Rules, error)
-	// DocRuleTurns returns the docs in ruled whose rules for userID or a role they hold there turn action: allowed
-	// where readable does not hold it, denied where it does. It decides them in one read and hands back only those.
-	DocRuleTurns(ctx context.Context, userID string, action permissions.Action, ruled, readable []string) (allowed, denied []string, err error)
+	// DocRules returns the rules naming userID or a role they hold on each of docIDs and its folder, by doc id, in one read.
+	DocRules(ctx context.Context, docIDs []string, userID string) (map[string]*DocRules, error)
+	// DocRuleTurns decides in one read the folders and docs in ruled whose rules for userID turn readable's answer.
+	DocRuleTurns(ctx context.Context, userID string, action permissions.Action, ruled, readable []string) (permissions.DocReach, error)
 	// OwnRules returns the rules naming userID on each of projectIDs that has one, keyed by project id, in one read.
 	OwnRules(ctx context.Context, userID string, projectIDs []string) (map[string]*Overwrite, error)
 	// RoleRules returns the rules for roleIDs on each of resourceIDs that has any, keyed by resource id in role order,
@@ -56,16 +57,19 @@ type RoleResolver interface {
 	MemberRole(ctx context.Context, workspaceID, userID string) (RoleInfo, error)
 }
 
-// DocScope is where a doc lives: its project and that project's workspace, both empty for a doc in no project.
+// DocScope is where a doc or folder lives: its workspace, its project, and a doc's folder; empty outside any project.
 type DocScope struct {
 	WorkspaceID string
 	ProjectID   string
+	FolderID    string
 }
 
 // DocWorkspaceResolver resolves docs' projects and workspaces so HasPermission applies to docs too.
 type DocWorkspaceResolver interface {
 	// DocScopes returns the scope of each doc in docIDs it knows, in one read; an unknown doc is left out.
 	DocScopes(ctx context.Context, docIDs []string) (map[string]DocScope, error)
+	// FolderScope returns where a doc folder lives; ErrNotFound for an unknown folder.
+	FolderScope(ctx context.Context, folderID string) (DocScope, error)
 }
 
 // Scopes resolves where a checked entity lives straight from storage, never through a gated use-case (ADR 0017).

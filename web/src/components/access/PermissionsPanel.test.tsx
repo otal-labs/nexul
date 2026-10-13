@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import type { PermissionAnswer, PermissionSource } from "@/models/Permission";
+import type { PanelEntity } from "@/models/PermissionPanel";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), put: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -54,6 +55,7 @@ const grants = [
 
 const mockGet = (url: string, config?: { params?: Record<string, string> }) => {
   if (url === "/api/permissions?resource_type=doc&resource_id=doc-1") return Promise.resolve({ data: { grants } });
+  if (url === "/api/permissions?resource_type=folder&resource_id=f-1") return Promise.resolve({ data: { grants: [] } });
   if (url === "/api/permissions/explain" && config?.params?.role_id) return Promise.resolve(explain(actions.map((a) => answer(a, byRole, notListed))));
   if (url === "/api/permissions/explain") return Promise.resolve(explain(explanations[config?.params?.user_id ?? ""] ?? []));
   if (url === "/api/workspaces/ws-1/roles") return Promise.resolve({ data: roles });
@@ -65,10 +67,11 @@ const mockGet = (url: string, config?: { params?: Record<string, string> }) => {
   return Promise.reject(new Error(`unexpected GET ${url}`));
 };
 
-const Harness = () => {
+const pricing: PanelEntity = { type: "doc", id: "doc-1", name: "Pricing", workspaceId: "ws-1", projectId: "p-1", folderId: "f-1" };
+
+const Harness = ({ entity }: { entity: PanelEntity }) => {
   const open = usePermissionsDialog();
   const [result, setResult] = useState("pending");
-  const entity = { type: "doc" as const, id: "doc-1", name: "Pricing", workspaceId: "ws-1", projectId: "p-1", folderId: "f-1" };
   return (
     <div>
       <button type="button" onClick={async () => setResult((await open(entity)).success ? "saved" : "cancelled")}>
@@ -81,12 +84,12 @@ const Harness = () => {
 
 let user = userEvent.setup();
 
-const openPanel = async () => {
+const openPanel = async (entity = pricing) => {
   user = userEvent.setup();
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <ContextAwareConfirmation.ConfirmationRoot />
-      <Harness />
+      <Harness entity={entity} />
     </QueryClientProvider>,
   );
   await user.click(screen.getByRole("button", { name: "Open" }));
@@ -171,6 +174,20 @@ describe("PermissionsPanel", () => {
     await user.click(screen.getByRole("button", { name: /alice/ }));
     expect(await screen.findByRole("heading", { name: "alice" })).toBeInTheDocument();
     expect(within(screen.getByRole("navigation", { name: "Roles and people with rules" })).getByText("alice")).toBeInTheDocument();
+  });
+
+  it("on a folder, names it in its project, refuses who isn't in the project, and saves its rules for the folder", async () => {
+    await openPanel({ type: "folder", id: "f-1", name: "Sales", workspaceId: "ws-1", projectId: "p-1", folderId: "f-1" });
+    expect(await screen.findByText("in Storefront", { exact: false })).toHaveTextContent("folder Sales in Storefront");
+    await user.click(screen.getByRole("button", { name: "Add role or person" }));
+    expect(await screen.findByText("Add sam to Storefront first")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /lena/ }));
+    expect(await control("Manage this folder's access").findByRole("radio", { name: "Fallback" })).toBeChecked();
+    await user.click(control("Read docs").getByRole("radio", { name: "Deny" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(api.put).toHaveBeenCalledWith("/api/permissions", { resource_type: "folder", resource_ids: ["f-1"], user_ids: ["lena"], actions: ["docs:read"], state: "deny" }),
+    );
   });
 
   it("sets a role's rules, says what applies under each Fallback without them, and saves them for the role", async () => {

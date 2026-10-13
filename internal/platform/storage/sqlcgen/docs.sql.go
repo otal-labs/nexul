@@ -212,7 +212,7 @@ func (q *Queries) InsertNamedDocVersion(ctx context.Context, arg InsertNamedDocV
 }
 
 const listDocScopes = `-- name: ListDocScopes :many
-SELECT d.id, COALESCE(d.project_id, '') AS project_id, COALESCE(p.workspace_id, '') AS workspace_id
+SELECT d.id, COALESCE(d.project_id, '') AS project_id, COALESCE(p.workspace_id, '') AS workspace_id, d.folder_id
 FROM docs d LEFT JOIN projects p ON p.id = d.project_id
 WHERE d.id IN (SELECT value FROM json_each(?1))
 `
@@ -221,6 +221,7 @@ type ListDocScopesRow struct {
 	ID          string
 	ProjectID   string
 	WorkspaceID string
+	FolderID    string
 }
 
 func (q *Queries) ListDocScopes(ctx context.Context, ids interface{}) ([]ListDocScopesRow, error) {
@@ -232,7 +233,12 @@ func (q *Queries) ListDocScopes(ctx context.Context, ids interface{}) ([]ListDoc
 	var items []ListDocScopesRow
 	for rows.Next() {
 		var i ListDocScopesRow
-		if err := rows.Scan(&i.ID, &i.ProjectID, &i.WorkspaceID); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.WorkspaceID,
+			&i.FolderID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

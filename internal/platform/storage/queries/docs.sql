@@ -14,7 +14,7 @@ SELECT * FROM docs WHERE id IN (sqlc.slice('ids'));
 SELECT * FROM docs WHERE project_id = ? ORDER BY created_at;
 
 -- name: ListDocScopes :many
-SELECT d.id, COALESCE(d.project_id, '') AS project_id, COALESCE(p.workspace_id, '') AS workspace_id
+SELECT d.id, COALESCE(d.project_id, '') AS project_id, COALESCE(p.workspace_id, '') AS workspace_id, d.folder_id
 FROM docs d LEFT JOIN projects p ON p.id = d.project_id
 WHERE d.id IN (SELECT value FROM json_each(sqlc.arg(ids)));
 

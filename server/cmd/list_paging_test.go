@@ -204,15 +204,37 @@ func pageThrough(t *testing.T, a *access.Service, tl mcptool.Tool, user, filter 
 
 // listParityFixture is the permission fixture with uClient listed in p-client only, uUnlisted in no project and uNoRole
 // holding no role, a ticket, stack, and deploy in each project, blockers across them, a doc each in a private and a
-// shared state, rules for roles on the docs, an instance stack and a deleted stack's deploy, and notices in every state
-// an inbox filters.
+// shared state, rules for roles on the docs, a folder whose rules reach two of them, an instance stack and a deleted
+// stack's deploy, and notices in every state an inbox filters.
 func listParityFixture(t *testing.T) permFixture {
 	t.Helper()
 	db := mentionsTestDB(t)
 	svc, store := wiredOver(t, db)
 	f := withListParityRows(t, seedPermFixture(t, db, svc, store))
 	withRoleRulesOnDocs(t, db)
+	withFolderRules(t, f)
 	return f
+}
+
+// parityFolder is the folder in project-general holding doc-shared and doc-folder, with rules of every shape.
+const parityFolder = "folder-sales"
+
+// withFolderRules puts doc-shared and doc-folder in parityFolder, its rules of every shape, one beaten by doc-folder's own.
+func withFolderRules(t *testing.T, f permFixture) {
+	t.Helper()
+	ctx := context.Background()
+	now := time.Now()
+	require.NoError(t, f.store.Docs.CreateFolder(ctx, &docs.Folder{ID: parityFolder, ProjectID: pGeneral, Name: "Sales", CreatedAt: now, UpdatedAt: now}))
+	require.NoError(t, f.store.Docs.Create(ctx, &docs.Doc{ID: "doc-folder", ProjectID: pGeneral, FolderID: parityFolder, Title: "Spec doc-folder",
+		Body: `{"type":"doc","content":[]}`, Version: 1, CreatedAt: now, UpdatedAt: now}))
+	require.NoError(t, f.store.Docs.SetDocFolder(ctx, "doc-shared", parityFolder))
+	read := grant("docs:read")
+	require.NoError(t, f.store.Access.SetRole(ctx, "folder", parityFolder, "role-reader", nil, read))
+	require.NoError(t, f.store.Access.SetRole(ctx, "folder", parityFolder, "role-plain", read, nil))
+	require.NoError(t, f.store.Access.Set(ctx, "folder", parityFolder, uWriter, read, nil))
+	require.NoError(t, f.store.Access.Set(ctx, "folder", parityFolder, uOverwrite, nil, read))
+	require.NoError(t, f.store.Access.Set(ctx, "folder", parityFolder, uClient, read, nil))
+	require.NoError(t, f.store.Access.SetRole(ctx, "doc", "doc-folder", "role-reader", read, nil))
 }
 
 // withRoleRulesOnDocs gives the docs rules for roles: one opening a doc to a role outside its project's answer, one

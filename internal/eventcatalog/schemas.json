@@ -4,9 +4,10 @@
     "properties": {
       "resource_type": {
         "type": "string",
-        "description": "What the rule sits on; workspace is a save of the Access page, which may change rules on many of its projects and channels; instance_area is an instance area, keyed by resource_id (dns, connector:github).",
+        "description": "What the rule sits on; a folder's rules reach every doc in it; workspace is a save of the Access page, which may change rules on many of its projects and channels; instance_area is an instance area, keyed by resource_id (dns, connector:github).",
         "enum": [
           "doc",
+          "folder",
           "play",
           "project",
           "channel",

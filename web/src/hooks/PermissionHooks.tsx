@@ -2,6 +2,7 @@ import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tansta
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import { getDocFoldersKey } from "@/hooks/DocFolderHooks";
 import { getDocsKey } from "@/hooks/DocHooks";
 import { getProjectPeopleKey } from "@/hooks/PeopleHooks";
 import {
@@ -17,7 +18,7 @@ export const getGrantsKey = "getGrants";
 export const getExplanationKey = "getExplanation";
 const getPermissionCatalogKey = "getPermissionCatalog";
 
-// A doc's, play's or project's rules, one row per role or person. A caller without the manage permission (which the endpoint requires)
+// A doc's, folder's, play's or project's rules, one row per role or person. A caller without the manage permission (which the endpoint requires)
 // passes enabled false so it never fires a request it knows will 403.
 export const useFetchGrants = (resourceType: string, resourceId: string, enabled = true) =>
   useQuery({
@@ -90,7 +91,8 @@ export const useSaveRules = () => {
     },
     onSuccess: async (_, { resourceType, resourceId, changes, done }) => {
       await refreshRules(client, resourceType, resourceId);
-      if (resourceType === "doc") await client.invalidateQueries({ queryKey: [getDocsKey] });
+      if (resourceType === "doc" || resourceType === "folder") await client.invalidateQueries({ queryKey: [getDocsKey] });
+      if (resourceType === "folder") await client.invalidateQueries({ queryKey: [getDocFoldersKey] });
       if (changes.length > 0) toast.success(done ?? "Permissions saved");
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -102,7 +104,7 @@ interface GrantPayload {
   resource_id: string;
 }
 
-// A rule changed on a doc, play or project: an open panel or people card on it rereads its rules and answers.
+// A rule changed on a doc, folder, play or project: an open panel or people card on it rereads its rules and answers.
 export const permissionRulesFollower: LiveFollower = {
   "access.grant.changed": ({ resource_type, resource_id }: GrantPayload, { client }) => refreshRules(client, resource_type, resource_id),
 };

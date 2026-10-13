@@ -6,14 +6,16 @@ import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useCreateDocDialog } from "@/hooks/useCreateDocDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
+import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { DocFolderFormSchema, type DocFolder, type DocFolderFormData } from "@/models/DocFolder";
 import { docPath, projectTokenById } from "@/models/Project";
 
 const moveLine = (n: number, to: string) => (n === 1 ? `1 doc moves to ${to}` : `${n} docs move to ${to}`);
 
-// A folder row's New doc, Rename, and Delete, each undefined without docs:write; the default folder offers only Rename, the header's + files there.
+// A folder row's actions, each left out without its permission; the default folder offers no New doc, the header's + does.
 export const useDocFolderActions = (folder: DocFolder, total: number) => {
   const canWrite = useHasPermission("docs:write");
   const createDoc = useCreateDocDialog(folder.project_id, folder.id);
@@ -25,6 +27,9 @@ export const useDocFolderActions = (folder: DocFolder, total: number) => {
   const deleteFolder = useDeleteDocFolder();
   const { data: folders } = useFetchDocFolders(folder.project_id);
   const defaultName = folders?.find((f) => f.is_default)?.name ?? "the default folder";
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  const openPermissions = usePermissionsDialog();
+  const entity = { type: "folder" as const, id: folder.id, name: folder.name, workspaceId, projectId: folder.project_id, folderId: folder.id };
 
   const onNewDoc =
     createDoc &&
@@ -52,5 +57,6 @@ export const useDocFolderActions = (folder: DocFolder, total: number) => {
     onNewDoc: folder.is_default ? undefined : onNewDoc,
     onRename: canWrite ? rename : undefined,
     onDelete: canWrite && !folder.is_default ? () => void remove() : undefined,
+    permissions: { entity, onOpen: () => void openPermissions(entity) },
   };
 };

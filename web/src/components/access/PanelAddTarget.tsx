@@ -9,19 +9,19 @@ import { usePanelEntity } from "@/hooks/usePanelEntity";
 import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { usePermissionPanelStore } from "@/stores/permissionPanelStore";
-import { projectEntity } from "@/models/PermissionPanel";
+import { projectEntity, targetsProject } from "@/models/PermissionPanel";
 
 interface PanelAddTargetProps {
   listed: string[];
 }
 
-// At the target column's foot: the roles and members not listed yet; a doc refuses one who isn't in its project, and
+// At the target column's foot: the roles and members not listed yet; a doc or folder refuses one who isn't in its project, and
 // to whoever manages that project offers its list, open on them.
 export const PanelAddTarget = ({ listed }: PanelAddTargetProps) => {
   const entity = usePanelEntity();
   const [open, setOpen] = useState(false);
   const add = usePermissionPanelStore((s) => s.add);
-  const { roles, people, blockedFor, project } = usePanelTargets({ workspaceId: entity.workspaceId, projectId: entity.type === "doc" ? entity.projectId : undefined });
+  const { roles, people, blockedFor, project } = usePanelTargets({ workspaceId: entity.workspaceId, projectId: targetsProject(entity) });
   const managesProject = useCanManageAccess(project && { type: "project", id: project.id });
   const openPanel = usePermissionsDialog();
   const free = (t: { key: string }) => !listed.includes(t.key);

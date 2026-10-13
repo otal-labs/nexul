@@ -1,6 +1,6 @@
 # 18 — Doc folder rules
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 17
 
@@ -25,7 +25,7 @@ Read first: `practices/go.md` (sections 14, 17), `practices/react-guide.md`, `pr
 
 ## Acceptance criteria
 
-- [ ] `TestDecide_FolderBetweenProjectAndDoc`: the spec's worked example extended with a folder, with sources.
-- [ ] `TestFolderRules_MovingADocChangesWhatReachesIt`.
-- [ ] `list_paging_test.go` gains folder rules and stays green; new `TestStatements_FolderRulesCostTheSameAtAnyLength`.
-- [ ] Verified at 768, 1024 and 1440px.
+- [x] `TestDecide_FolderBetweenProjectAndDoc`: the spec's worked example extended with a folder, with sources.
+- [x] `TestFolderRules_MovingADocChangesWhatReachesIt`.
+- [x] `list_paging_test.go` gains folder rules and stays green; new `TestStatements_FolderRulesCostTheSameAtAnyLength`.
+- [x] Verified at 768, 1024 and 1440px.

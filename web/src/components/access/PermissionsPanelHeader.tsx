@@ -4,13 +4,14 @@ import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
 import { usePanelEntity } from "@/hooks/usePanelEntity";
 import { usePermissionPanelStore, type PermissionPanelMode } from "@/stores/permissionPanelStore";
+import { targetsProject } from "@/models/PermissionPanel";
 
-// "doc Pricing in Storefront › Sales": the entity and where it sits, then Rules | Check access, a view held in the dialog.
+// "doc Pricing in Storefront › Sales" or "folder Sales in Storefront": the entity and where it sits, then Rules | Check access, a view held in the dialog.
 export const PermissionsPanelHeader = () => {
   const entity = usePanelEntity();
   const mode = usePermissionPanelStore((s) => s.mode);
   const setMode = usePermissionPanelStore((s) => s.setMode);
-  const { data: project } = useFetchProject(entity.type === "doc" ? entity.projectId || undefined : undefined);
+  const { data: project } = useFetchProject(targetsProject(entity) || undefined);
   const { data: folders } = useFetchDocFolders(entity.type === "doc" ? entity.projectId : "");
   const where = [project?.name, folders?.find((f) => f.id === entity.folderId)?.name].filter(Boolean).join(" › ");
 

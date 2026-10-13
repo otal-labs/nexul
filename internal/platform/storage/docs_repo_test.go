@@ -14,6 +14,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/paging"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -323,11 +324,20 @@ func seedPagedDocs(t *testing.T, s *Store) []*docs.Doc {
 	return all
 }
 
+// reaches is whether read keeps d: its own rule first, then its folder's, then its project's.
+func reaches(read *permissions.DocReach, d *docs.Doc) bool {
+	if read == nil || slices.Contains(read.Allowed, d.ID) {
+		return true
+	}
+	if slices.Contains(read.Denied, d.ID) {
+		return false
+	}
+	return (slices.Contains(read.ProjectIDs, d.ProjectID) && !slices.Contains(read.DeniedFolders, d.FolderID)) || slices.Contains(read.AllowedFolders, d.FolderID)
+}
+
 // docKept is the per-row rule a doc page applies in SQL.
 func docKept(d *docs.Doc, f docs.DocFilter, scope docs.DocScope) bool {
-	read := scope.Read
-	readable := read == nil || slices.Contains(read.Allowed, d.ID) || (slices.Contains(read.ProjectIDs, d.ProjectID) && !slices.Contains(read.Denied, d.ID))
-	return readable && (scope.All || slices.Contains(scope.ProjectIDs, d.ProjectID)) && (f.ProjectID == "" || d.ProjectID == f.ProjectID) &&
+	return reaches(scope.Read, d) && (scope.All || slices.Contains(scope.ProjectIDs, d.ProjectID)) && (f.ProjectID == "" || d.ProjectID == f.ProjectID) &&
 		(f.FolderID == "" || d.FolderID == f.FolderID) && (f.Query != "" || f.IncludeArchived || !d.Archived) && (f.Query == "" || !d.Archived)
 }
 
@@ -356,7 +366,9 @@ func TestDocsRepo_Page_FiltersAndSearchesInSQL(t *testing.T) {
 	for _, d := range all {
 		byID[d.ID] = d
 	}
-	read := &docs.DocReadScope{ProjectIDs: []string{"project-general"}, Allowed: []string{"doc-04"}, Denied: []string{"doc-01", "doc-02"}}
+	read := &permissions.DocReach{ProjectIDs: []string{"project-general"}, Allowed: []string{"doc-04"}, Denied: []string{"doc-01", "doc-02"}}
+	deniedFolder := &permissions.DocReach{ProjectIDs: []string{"project-general"}, DeniedFolders: []string{"f-ops"}, Allowed: []string{"doc-05"}, Denied: []string{"doc-01"}}
+	allowedFolder := &permissions.DocReach{ProjectIDs: []string{}, AllowedFolders: []string{"f-ops"}, Denied: []string{"doc-10"}}
 	filters := []docs.DocFilter{{}, {IncludeArchived: true}, {ProjectID: "project-general"}, {FolderID: "f-ops"}, {ProjectID: "p-hidden", IncludeArchived: true}}
 	for _, scope := range []docs.DocScope{{All: true}, {ProjectIDs: []string{"project-general"}}, {ProjectIDs: []string{}}} {
 		for _, f := range filters {
@@ -369,7 +381,7 @@ func TestDocsRepo_Page_FiltersAndSearchesInSQL(t *testing.T) {
 			assert.Equal(t, want, pageDocIDs(t, s, f, scope), "browse %+v %+v", f, scope)
 
 			f.Query = "rollback"
-			for _, scope.Read = range []*docs.DocReadScope{nil, read} {
+			for _, scope.Read = range []*permissions.DocReach{nil, read, deniedFolder, allowedFolder} {
 				var ranked []string
 				for _, h := range hits {
 					if docKept(byID[h.ID], f, scope) {

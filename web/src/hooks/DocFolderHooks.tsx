@@ -80,8 +80,16 @@ interface FolderPayload {
   folder: DocFolder;
 }
 
+interface GrantPayload {
+  resource_type: string;
+}
+
 // Folders list in creation order, so a rename keeps its row's place.
 export const docFolderFollower: LiveFollower = {
+  // The frame names no project, so a folder's rule refetches every doc and folder list.
+  "access.grant.changed": ({ resource_type }: GrantPayload, { client }) =>
+    resource_type === "folder" &&
+    Promise.all([client.invalidateQueries({ queryKey: [getDocsKey] }), client.invalidateQueries({ queryKey: [getDocFoldersKey] })]),
   "doc.folder.created": ({ folder }: FolderPayload, { client }) =>
     client.invalidateQueries({ queryKey: [getDocFoldersKey, folder.project_id], exact: true }),
   "doc.folder.updated": ({ folder }: FolderPayload, { client }) =>

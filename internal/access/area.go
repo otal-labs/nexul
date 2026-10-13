@@ -211,8 +211,8 @@ func (s *Service) explainRoleArea(ctx context.Context, actorID, key, roleID stri
 	n := s.namer(ctx)
 	out := &Explanation{ResourceType: resourceTypeInstanceArea, ResourceID: key, RoleID: roleID, Effective: make([]Answer, 0, len(area.Actions))}
 	for _, a := range area.Actions {
-		with, src := decide(ws, a, func() *Rules { return &Rules{Roles: own[key]} })
-		without, from := decide(ws, a, func() *Rules { return &Rules{Roles: atFallback(own[key], a)} })
+		with, src := decide(ws, a, func() []*Rules { return []*Rules{{Roles: own[key]}} })
+		without, from := decide(ws, a, func() []*Rules { return []*Rules{{Roles: atFallback(own[key], a)}} })
 		out.Effective = append(out.Effective, Answer{Action: a, Verdict: Verdict{with, n.named(src)}, Fallback: Verdict{without, n.named(from)}})
 	}
 	return out, nil

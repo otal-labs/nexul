@@ -42,6 +42,17 @@ func (q *Queries) EventWorkspaceOfDoc(ctx context.Context, id string) (string, e
 	return workspace_id, err
 }
 
+const eventWorkspaceOfDocFolder = `-- name: EventWorkspaceOfDocFolder :one
+SELECT p.workspace_id FROM doc_folders f JOIN projects p ON p.id = f.project_id WHERE f.id = ?
+`
+
+func (q *Queries) EventWorkspaceOfDocFolder(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, eventWorkspaceOfDocFolder, id)
+	var workspace_id string
+	err := row.Scan(&workspace_id)
+	return workspace_id, err
+}
+
 const eventWorkspaceOfPlay = `-- name: EventWorkspaceOfPlay :one
 SELECT workspace_id FROM plays WHERE id = ?
 `

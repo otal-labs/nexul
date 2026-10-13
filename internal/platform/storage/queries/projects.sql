@@ -25,6 +25,10 @@ UPDATE projects SET name = ?, prefix = ?, icon = ?, tests_location = ?, updated_
 -- name: UpdateProjectSetup :execrows
 UPDATE projects SET setup_finished = ?, setup_steps = ?, setup_stack_id = ?, setup_env_keys = ?, updated_at = ? WHERE id = ?;
 
+-- name: DeleteProjectFolderRules :exec
+DELETE FROM permission_overwrites
+WHERE resource_type = 'folder' AND resource_id IN (SELECT f.id FROM doc_folders f WHERE f.project_id = ?);
+
 -- name: DeleteProject :execrows
 DELETE FROM projects WHERE id = ?;
 

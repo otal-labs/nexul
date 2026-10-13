@@ -30,9 +30,9 @@ type AccessChecker interface {
 	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
 	// CallerProjects lists the projects RequireProject lets the caller act in with action; all is true for any project.
 	CallerProjects(ctx context.Context, action permissions.Action) (projectIDs []string, all bool, err error)
-	// DocsWith is the docs userID may act on with action, in projectID when named: a project set, and the docs whose own
-	// rules turn it.
-	DocsWith(ctx context.Context, userID, projectID string, action permissions.Action) (projectIDs, allowed, denied []string, err error)
+	// DocsWith is the docs userID may act on with action, in projectID when named: a project set, and the folders and
+	// docs whose own rules turn it.
+	DocsWith(ctx context.Context, userID, projectID string, action permissions.Action) (permissions.DocReach, error)
 	// RefuseDoc is the forbidden answer to userID's action on docID, naming the rule or role that refused it.
 	RefuseDoc(ctx context.Context, userID, docID string, action permissions.Action) error
 }
@@ -280,7 +280,7 @@ func (s *Service) PageDocs(ctx context.Context, f DocFilter, w paging.Window) ([
 // with no person to check reads nothing, as a single doc read does.
 func (s *Service) listScope(ctx context.Context, search bool, projectID string) (DocScope, error) {
 	if s.access == nil && search {
-		return DocScope{Read: &DocReadScope{}}, nil
+		return DocScope{Read: &permissions.DocReach{}}, nil
 	}
 	if s.access == nil {
 		return DocScope{All: permissions.Ungated(ctx) == nil}, nil
@@ -294,11 +294,11 @@ func (s *Service) listScope(ctx context.Context, search bool, projectID string) 
 		return scope, nil
 	}
 	actor, _ := identity.ActorFromCtx(ctx)
-	read, allowed, denied, err := s.access.DocsWith(ctx, actor.ID, projectID, permissions.DocsRead)
+	read, err := s.access.DocsWith(ctx, actor.ID, projectID, permissions.DocsRead)
 	if err != nil {
 		return DocScope{}, fmt.Errorf("list docs: %w", err)
 	}
-	scope.Read = &DocReadScope{ProjectIDs: read, Allowed: allowed, Denied: denied}
+	scope.Read = &read
 	return scope, nil
 }
 

@@ -36,6 +36,10 @@ func (r *EventWorkspacesRepo) OfDoc(ctx context.Context, id string) (string, err
 	return optionalWorkspace(r.q.EventWorkspaceOfDoc(ctx, id))
 }
 
+func (r *EventWorkspacesRepo) OfDocFolder(ctx context.Context, id string) (string, error) {
+	return optionalWorkspace(r.q.EventWorkspaceOfDocFolder(ctx, id))
+}
+
 func (r *EventWorkspacesRepo) OfConversation(ctx context.Context, id string) (string, error) {
 	return optionalWorkspace(r.q.EventWorkspaceOfConversation(ctx, id))
 }

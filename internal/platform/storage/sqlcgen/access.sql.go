@@ -363,8 +363,87 @@ func (q *Queries) ListAccessGridRules(ctx context.Context, workspaceID string) (
 	return items, nil
 }
 
+const listDocChainRules = `-- name: ListDocChainRules :many
+SELECT po.resource_id AS doc_id, po.resource_type, po.resource_id, po.target, po.user_id, po.role_id, po.allow, po.deny, po.created_at, po.updated_at FROM permission_overwrites po
+WHERE po.resource_type = 'doc' AND po.resource_id IN (SELECT value FROM json_each(?1))
+  AND (po.user_id = ?2 OR po.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = ?2))
+UNION ALL
+SELECT d.id AS doc_id, pf.resource_type, pf.resource_id, pf.target, pf.user_id, pf.role_id, pf.allow, pf.deny, pf.created_at, pf.updated_at FROM docs d JOIN permission_overwrites pf ON pf.resource_type = 'folder' AND pf.resource_id = d.folder_id
+WHERE d.id IN (SELECT value FROM json_each(?1))
+  AND (pf.user_id = ?2 OR pf.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = ?2))
+`
+
+type ListDocChainRulesParams struct {
+	DocIds interface{}
+	UserID sql.NullString
+}
+
+type ListDocChainRulesRow struct {
+	DocID        string
+	ResourceType string
+	ResourceID   string
+	Target       string
+	UserID       sql.NullString
+	RoleID       sql.NullString
+	Allow        string
+	Deny         string
+	CreatedAt    int64
+	UpdatedAt    int64
+}
+
+func (q *Queries) ListDocChainRules(ctx context.Context, arg ListDocChainRulesParams) ([]ListDocChainRulesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listDocChainRules, arg.DocIds, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDocChainRulesRow
+	for rows.Next() {
+		var i ListDocChainRulesRow
+		if err := rows.Scan(
+			&i.DocID,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.Target,
+			&i.UserID,
+			&i.RoleID,
+			&i.Allow,
+			&i.Deny,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDocRuleTurns = `-- name: ListDocRuleTurns :many
-SELECT rs.resource_id, rs.state FROM (
+WITH folder_states AS (
+  SELECT u.resource_id, COALESCE(MAX(CASE WHEN u.by_role = 0 THEN u.state END), MAX(CASE WHEN u.by_role = 1 THEN u.state END)) AS state
+  FROM (
+    SELECT po.resource_id, 0 AS by_role,
+      CASE WHEN instr(po.deny, ?1) > 0 THEN 0 WHEN instr(po.allow, ?1) > 0 THEN 1 END AS state
+    FROM permission_overwrites po JOIN doc_folders rf ON rf.id = po.resource_id
+    WHERE po.user_id = ?2 AND po.resource_type = 'folder' AND po.target = 'person'
+      AND rf.project_id IN (SELECT value FROM json_each(?3))
+    UNION ALL
+    SELECT pr.resource_id, 1 AS by_role,
+      CASE WHEN instr(pr.deny, ?1) > 0 THEN 0 WHEN instr(pr.allow, ?1) > 0 THEN 1 END AS state
+    FROM member_roles mr CROSS JOIN permission_overwrites pr CROSS JOIN doc_folders rf CROSS JOIN projects rp
+    WHERE mr.user_id = ?2 AND pr.role_id = mr.role_id AND pr.resource_type = 'folder' AND rf.id = pr.resource_id
+      AND rp.id = rf.project_id AND rp.workspace_id = mr.workspace_id
+      AND rf.project_id IN (SELECT value FROM json_each(?3))
+  ) u
+  GROUP BY u.resource_id
+), doc_states AS (
   SELECT u.resource_id, COALESCE(MAX(CASE WHEN u.by_role = 0 THEN u.state END), MAX(CASE WHEN u.by_role = 1 THEN u.state END)) AS state
   FROM (
     SELECT po.resource_id, 0 AS by_role,
@@ -381,10 +460,15 @@ SELECT rs.resource_id, rs.state FROM (
       AND rd.project_id IN (SELECT value FROM json_each(?3))
   ) u
   GROUP BY u.resource_id
-) rs JOIN docs d ON d.id = rs.resource_id
-WHERE (rs.state = 0 AND d.project_id IN (SELECT value FROM json_each(?4)))
-   OR (rs.state = 1 AND d.project_id NOT IN (SELECT value FROM json_each(?4)))
-ORDER BY rs.resource_id
+)
+SELECT 'folder' AS kind, fs.resource_id, fs.state FROM folder_states fs JOIN doc_folders f ON f.id = fs.resource_id
+WHERE (fs.state = 0 AND f.project_id IN (SELECT value FROM json_each(?4)))
+   OR (fs.state = 1 AND f.project_id NOT IN (SELECT value FROM json_each(?4)))
+UNION ALL
+SELECT 'doc' AS kind, ds.resource_id, ds.state FROM doc_states ds JOIN docs d ON d.id = ds.resource_id
+LEFT JOIN folder_states fs ON fs.resource_id = d.folder_id
+WHERE ds.state != COALESCE(fs.state, d.project_id IN (SELECT value FROM json_each(?4)))
+ORDER BY kind, resource_id
 `
 
 type ListDocRuleTurnsParams struct {
@@ -395,6 +479,7 @@ type ListDocRuleTurnsParams struct {
 }
 
 type ListDocRuleTurnsRow struct {
+	Kind       string
 	ResourceID string
 	State      interface{}
 }
@@ -413,7 +498,7 @@ func (q *Queries) ListDocRuleTurns(ctx context.Context, arg ListDocRuleTurnsPara
 	var items []ListDocRuleTurnsRow
 	for rows.Next() {
 		var i ListDocRuleTurnsRow
-		if err := rows.Scan(&i.ResourceID, &i.State); err != nil {
+		if err := rows.Scan(&i.Kind, &i.ResourceID, &i.State); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

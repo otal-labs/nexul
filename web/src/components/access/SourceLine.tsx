@@ -5,7 +5,7 @@ import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { usePermissionPanelStore } from "@/stores/permissionPanelStore";
 import type { PermissionSource, PermissionVerdict } from "@/models/Permission";
-import { sentenceParts, targetKey, verdictTone, type SentencePart } from "@/models/PermissionPanel";
+import { sentenceParts, targetKey, targetsProject, verdictTone, type SentencePart } from "@/models/PermissionPanel";
 import { cn } from "@/lib/utils";
 
 const dotClass = {
@@ -36,11 +36,11 @@ const EntityName = ({ text, source }: { text: string; source: PermissionSource }
   );
 };
 
-// A role this sentence names selects it in the column, unless the doc's project doesn't list it.
+// A role this sentence names selects it in the column, unless the doc's or folder's project doesn't list it.
 const RoleName = ({ text, source }: { text: string; source: PermissionSource }) => {
   const entity = usePanelEntity();
   const add = usePermissionPanelStore((s) => s.add);
-  const { targetOf, blockedFor } = usePanelTargets({ workspaceId: entity.workspaceId, projectId: entity.type === "doc" ? entity.projectId : undefined });
+  const { targetOf, blockedFor } = usePanelTargets({ workspaceId: entity.workspaceId, projectId: targetsProject(entity) });
   const key = targetKey("role", source.target_id);
   const target = targetOf(key);
   const opens = target.known && !blockedFor(target);

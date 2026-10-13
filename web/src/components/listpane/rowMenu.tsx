@@ -62,5 +62,6 @@ export interface RowMenu {
 export const hasOwnActions = (m: RowMenu) =>
   !!m.onSettings || !!m.onBots || !!m.onNewDoc || !!m.pin || !!m.sidebar || !!m.lock || !!m.moveTo || !!m.onEdit || !!m.onRename || !!m.onClone;
 
-// Permissions… never counts: until the check answers, a menu holding only it would open empty.
-export const offersMenu = (m: RowMenu | undefined): m is RowMenu => !!m && (hasOwnActions(m) || !!m.onDelete);
+// Permissions… counts only once its check has answered (manages), or a menu holding only it would open empty.
+export const offersMenu = (m: RowMenu | undefined, manages = false): m is RowMenu =>
+  !!m && (hasOwnActions(m) || !!m.onDelete || (manages && !!m.permissions));

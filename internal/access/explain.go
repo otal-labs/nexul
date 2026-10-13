@@ -34,9 +34,9 @@ func catalogActions(keep func(permissions.Info) bool) []permissions.Action {
 
 // entity is what an explanation is about: where it lives, what opens and manages it, and what its rules may set.
 type entity struct {
-	kind, id, workspaceID, projectID string
-	open, manage                     permissions.Action
-	actions                          []permissions.Action
+	kind, id, workspaceID, projectID, folderID string
+	open, manage                               permissions.Action
+	actions                                    []permissions.Action
 }
 
 func (s *Service) entityOf(ctx context.Context, resourceType, resourceID string) (entity, error) {
@@ -44,8 +44,17 @@ func (s *Service) entityOf(ctx context.Context, resourceType, resourceID string)
 	switch resourceType {
 	case resourceTypeDoc:
 		scope := s.docScopes(ctx, []string{resourceID})[resourceID]
-		e.workspaceID, e.projectID = scope.WorkspaceID, scope.ProjectID
+		e.workspaceID, e.projectID, e.folderID = scope.WorkspaceID, scope.ProjectID, scope.FolderID
 		e.open, e.manage, e.actions = permissions.DocsRead, permissions.PermissionsWrite, docActions
+		return e, nil
+	case resourceTypeFolder:
+		scope := s.folderScope(ctx, resourceID)
+		if scope.ProjectID == "" {
+			return e, fmt.Errorf("%w: folder %s", apperrs.ErrNotFound, resourceID)
+		}
+		// A folder opens to whoever is in its project; its rules decide only the docs in it.
+		e.workspaceID, e.projectID = scope.WorkspaceID, scope.ProjectID
+		e.open, e.manage, e.actions = permissions.Member, permissions.PermissionsWrite, docActions
 		return e, nil
 	case resourceTypePlay:
 		e.workspaceID = s.resolvePlayWorkspace(ctx, resourceID)
@@ -60,7 +69,7 @@ func (s *Service) entityOf(ctx context.Context, resourceType, resourceID string)
 		e.open, e.manage, e.actions = permissions.Member, permissions.ProjectsAccess, projectActions
 		return e, nil
 	}
-	return e, fmt.Errorf("%w: resource_type %q is not doc, play, or project", apperrs.ErrInvalid, resourceType)
+	return e, fmt.Errorf("%w: resource_type %q is not doc, folder, play, or project", apperrs.ErrInvalid, resourceType)
 }
 
 // answer is userID's answer for action on e, from the check that enforces it; with own false, e's rule naming them
@@ -73,7 +82,13 @@ func (s *Service) answer(ctx context.Context, userID string, e entity, action pe
 	if e.kind == resourceTypeProject {
 		return decide(ws.in(e.projectID, personAtFallback(ws.project, action)), action, noRules)
 	}
-	return decide(ws, action, func() *Rules { return personAtFallback(s.rules(ctx, e.kind, e.id, userID), action) })
+	return decide(ws, action, func() []*Rules {
+		chain := s.chain(ctx, e.kind, e.id, userID)
+		if len(chain) > 0 {
+			chain[len(chain)-1] = personAtFallback(chain[len(chain)-1], action)
+		}
+		return chain
+	})
 }
 
 // personAtFallback is r with the rule naming the person saying nothing about action.
@@ -91,9 +106,9 @@ func withoutAction(ow *Overwrite, action permissions.Action) *Overwrite {
 	return &next
 }
 
-func noRules() *Rules { return nil }
+func noRules() []*Rules { return nil }
 
-// Decide is userID's answer for action on a doc, play, or project, with what decided it: the evaluator every check
+// Decide is userID's answer for action on a doc, folder, play, or project, with what decided it: the evaluator every check
 // uses, so an explanation can never disagree with enforcement.
 func (s *Service) Decide(ctx context.Context, userID, resourceType, resourceID string, action permissions.Action) (bool, Source, error) {
 	e, err := s.entityOf(ctx, resourceType, resourceID)
@@ -104,9 +119,9 @@ func (s *Service) Decide(ctx context.Context, userID, resourceType, resourceID s
 	return held, src, nil
 }
 
-// Explain answers each action a doc's, play's, project's, or instance area's rules may set for userID, the caller when
-// empty, with its source as a sentence. Explaining yourself takes opening the entity, anyone else its manage
-// permission; an entity the caller can't open is not found.
+// Explain answers each action a doc's, folder's, play's, project's, or instance area's rules may set for userID, the
+// caller when empty, with its source as a sentence. Explaining yourself takes opening the entity, anyone else its
+// manage permission; an entity the caller can't open is not found.
 func (s *Service) Explain(ctx context.Context, actorID, resourceType, resourceID, userID string) (*Explanation, error) {
 	if actorID == "" {
 		return nil, fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
@@ -140,7 +155,7 @@ func (s *Service) Explain(ctx context.Context, actorID, resourceType, resourceID
 	return out, nil
 }
 
-// ExplainRole answers each action a doc's, play's, or project's rules may set for a holder of roleID alone, with the
+// ExplainRole answers each action a doc's, folder's, play's, or project's rules may set for a holder of roleID alone, with the
 // role's own rule there, and with that rule holding the action at Fallback: what the panel shows under a role's
 // Fallback. It takes managing the
 // entity, and a role of another workspace is not found.
@@ -174,22 +189,34 @@ func (s *Service) ExplainRole(ctx context.Context, actorID, resourceType, resour
 		return nil, fmt.Errorf("rules for role %s on %s %s: %w", roleID, e.kind, e.id, err)
 	}
 	ws := workspaceLayers{workspaceID: e.workspaceID, member: true, owner: held.IsOwner, roles: RolesHeld(held)}
-	var inProject []*Overwrite
+	var inProject, inFolder []*Overwrite
 	if e.projectID != "" && e.kind != resourceTypeProject {
-		got, err := s.repo.RoleRules(ctx, resourceTypeProject, []string{e.projectID}, []string{roleID})
-		if err != nil {
-			return nil, fmt.Errorf("rules for role %s on project %s: %w", roleID, e.projectID, err)
+		if inProject, err = s.roleRulesOn(ctx, resourceTypeProject, e.projectID, roleID); err != nil {
+			return nil, err
 		}
-		inProject = got[e.projectID]
+	}
+	if e.folderID != "" {
+		if inFolder, err = s.roleRulesOn(ctx, resourceTypeFolder, e.folderID, roleID); err != nil {
+			return nil, err
+		}
 	}
 	n := s.namer(ctx)
 	out := &Explanation{ResourceType: resourceType, ResourceID: resourceID, RoleID: roleID, Effective: make([]Answer, 0, len(e.actions))}
 	for _, a := range e.actions {
-		with, src := roleAnswer(ws, e, roleID, a, inProject, own[e.id])
-		without, from := roleAnswer(ws, e, roleID, a, inProject, atFallback(own[e.id], a))
+		with, src := roleAnswer(ws, e, roleID, a, inProject, inFolder, own[e.id])
+		without, from := roleAnswer(ws, e, roleID, a, inProject, inFolder, atFallback(own[e.id], a))
 		out.Effective = append(out.Effective, Answer{Action: a, Verdict: Verdict{with, n.named(src)}, Fallback: Verdict{without, n.named(from)}})
 	}
 	return out, nil
+}
+
+// roleRulesOn is roleID's rules on one entity.
+func (s *Service) roleRulesOn(ctx context.Context, resourceType, resourceID, roleID string) ([]*Overwrite, error) {
+	got, err := s.repo.RoleRules(ctx, resourceType, []string{resourceID}, []string{roleID})
+	if err != nil {
+		return nil, fmt.Errorf("rules for role %s on %s %s: %w", roleID, resourceType, resourceID, err)
+	}
+	return got[resourceID], nil
 }
 
 // atFallback is rules each holding action at Fallback.
@@ -201,16 +228,16 @@ func atFallback(rules []*Overwrite, action permissions.Action) []*Overwrite {
 	return out
 }
 
-// roleAnswer is a holder of roleID alone asking for action on e, given the role's rules on e's project and on e itself.
-func roleAnswer(ws workspaceLayers, e entity, roleID string, action permissions.Action, inProject, own []*Overwrite) (bool, Source) {
-	rules := &Rules{Roles: own}
+// roleAnswer is a holder of roleID alone asking for action on e, given its rules on e's project, a doc's folder and e.
+func roleAnswer(ws workspaceLayers, e entity, roleID string, action permissions.Action, inProject, inFolder, own []*Overwrite) (bool, Source) {
+	chain := []*Rules{{Roles: inFolder}, {Roles: own}}
 	if e.kind == resourceTypeProject {
-		inProject, rules = own, nil
+		inProject, chain = own, nil
 	}
 	if e.projectID != "" {
 		ws = ws.in(e.projectID, &Rules{Roles: inProject})
 	}
-	allowed, src := decide(ws, action, func() *Rules { return rules })
+	allowed, src := decide(ws, action, func() []*Rules { return chain })
 	if src.Kind == SourceNotInProject {
 		src.TargetType, src.TargetID = TargetRole, roleID
 	}

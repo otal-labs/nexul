@@ -169,6 +169,43 @@ describe("DocsPage", () => {
     expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Pin", "Permissions…", "Delete"]);
   });
 
+  it("offers Permissions… on a folder's right-click menu for whoever may manage the folder's access", async () => {
+    const user = userEvent.setup();
+    renderPage("/acme/docs", ["docs:read", "docs:write"], {
+      "/api/permissions/explain": { effective: [{ action: "permissions:write", allowed: true }] },
+    });
+
+    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("GetSource") });
+    expect(await screen.findByRole("menuitem", { name: "Permissions…" })).toBeInTheDocument();
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["New doc", "Rename", "Permissions…", "Delete"]);
+    expect(api.get).toHaveBeenCalledWith("/api/permissions/explain", { params: { resource_type: "folder", resource_id: "f-gs" } });
+  });
+
+  it("opens a folder's menu holding only Permissions… for a reader who manages the folder's access", async () => {
+    const user = userEvent.setup();
+    renderPage("/acme/docs", ["docs:read"], {
+      "/api/permissions/explain": { effective: [{ action: "permissions:write", allowed: true }] },
+    });
+
+    await vi.waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith("/api/permissions/explain", { params: { resource_type: "folder", resource_id: "f-gs" } }),
+    );
+    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("GetSource") });
+    expect(await screen.findByRole("menuitem", { name: "Permissions…" })).toBeInTheDocument();
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Permissions…"]);
+  });
+
+  it("keeps the browser's own menu on a folder for a reader who can't manage its access", async () => {
+    const user = userEvent.setup();
+    renderPage("/acme/docs", ["docs:read"]);
+
+    await vi.waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith("/api/permissions/explain", { params: { resource_type: "folder", resource_id: "f-gs" } }),
+    );
+    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("GetSource") });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
   it("leaves Permissions… out for someone who can't manage the doc's access", async () => {
     const user = userEvent.setup();
     renderPage("/acme/docs", ["docs:read", "docs:delete"]);
