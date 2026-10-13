@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { queueItem } from "@/test/playQueueItem";
-import { outcomeText, pickingComputer, waitingSentence, waitingWhy } from "@/utils/PlayQueueUtility";
+import { outcomeText, pickingComputer, waitingLink, waitingSentence, waitingWhy } from "@/utils/PlayQueueUtility";
 
 describe("outcomeText", () => {
   it.each([
@@ -26,14 +26,20 @@ describe("waitingWhy and waitingSentence", () => {
     ["", "waiting its turn", "waiting its turn"],
     ["no free slot", "busy with another run", "busy with another run"],
     ["offline", "computer offline", "computer offline"],
-    ["unpaired", "no computer paired", "no computer is paired to run it on; add one in Settings → Computers"],
-    ["expired_token", "computer session expired", "the paired computer's session expired; pair it again in Settings → Computers"],
-    ["no_default", "no T3 project linked", "no T3 project is picked for this project; link one in Settings → Computers → Projects"],
+    ["unpaired", "no computer paired", "no computer is paired to run it on"],
+    ["expired_token", "computer session expired", "the paired computer's session expired"],
+    ["no_default", "no T3 project linked", "no T3 project is picked for this project"],
     ["no_default_computer", "no default computer", "several computers are paired and none is the default; pick one, and this project's runs use it from now on"],
-    ["setup_required", "computer setup not done", "the computer's setup isn't done; run it in Settings → Computers"],
+    ["setup_required", "computer setup not done", "the computer's setup isn't done"],
   ])("says the held reason %j in plain words", (reason, why, sentence) => {
     const item = queueItem({ reason });
     expect([waitingWhy(item), waitingSentence(item)]).toEqual([why, sentence]);
+  });
+
+  it("sends a missing T3 project to the Projects tab and links nothing for a hold settings can't fix", () => {
+    expect(waitingLink(queueItem({ reason: "no_default" }))?.to).toBe("/settings/pairing/projects");
+    expect(waitingLink(queueItem({ reason: "offline" }))).toBeUndefined();
+    expect(waitingLink(queueItem({ reason: "no_default_computer" }))).toBeUndefined();
   });
 
   it.each([

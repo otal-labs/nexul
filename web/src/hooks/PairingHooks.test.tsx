@@ -70,7 +70,7 @@ describe("useHarnessReadiness", () => {
     mockRoutes({ resolve: { ok: true, computer_id: "c1" }, presence: { c1: "rejected" } });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toEqual({ state: "expired", message: "Your computer's pairing has expired or was revoked. Re-pair it in Settings." }),
+      expect(result.current).toMatchObject({ state: "expired", link: { to: "/settings/pairing" } }),
     );
   });
 
@@ -78,7 +78,7 @@ describe("useHarnessReadiness", () => {
     mockRoutes({ resolve: { ok: false, reason: "unpaired" }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toEqual({ state: "unpaired", message: "Add a computer in Settings to run plays." }),
+      expect(result.current).toMatchObject({ state: "unpaired", link: { to: "/settings/pairing" } }),
     );
   });
 
@@ -86,10 +86,7 @@ describe("useHarnessReadiness", () => {
     mockRoutes({ resolve: { ok: false, reason: "expired_token" }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toEqual({
-        state: "expired",
-        message: "Your computer's pairing has expired or was revoked. Re-pair it in Settings.",
-      }),
+      expect(result.current).toMatchObject({ state: "expired", link: { to: "/settings/pairing" } }),
     );
   });
 
@@ -97,10 +94,7 @@ describe("useHarnessReadiness", () => {
     mockRoutes({ resolve: { ok: false, reason: "no_default" }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toEqual({
-        state: "no_harness_project",
-        message: "Link this project in Settings → Computers → Projects, or set a fallback under Defaults.",
-      }),
+      expect(result.current).toMatchObject({ state: "no_harness_project", link: { to: "/settings/pairing/projects" } }),
     );
   });
 
@@ -108,10 +102,7 @@ describe("useHarnessReadiness", () => {
     mockRoutes({ resolve: { ok: false, reason: "no_default_computer" }, presence: {} });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toEqual({
-        state: "no_default_computer",
-        message: "Several computers are paired. Pick a default in Settings.",
-      }),
+      expect(result.current).toMatchObject({ state: "no_default_computer", link: { to: "/settings/pairing/defaults" } }),
     );
   });
 

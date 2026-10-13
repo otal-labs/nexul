@@ -126,14 +126,14 @@ describe("PlayButton", () => {
   it("is disabled with the readiness reason when no harness is paired", async () => {
     mockApi({ resolve: { ok: false, reason: "unpaired" } });
     renderButton();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription("Add a computer in Settings to run plays."));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Fix with AI" })).toHaveAccessibleDescription("No computer is paired to run plays."));
     expect(screen.getByRole("button", { name: "Fix with AI" })).toBeDisabled();
   });
 
 
   it.each([
     ["offline", { ok: true, computer_id: "c-1" }, "T3 Code on your computer is offline."],
-    ["expired", { ok: false, reason: "expired_token" }, "Your computer's pairing has expired or was revoked. Re-pair it in Settings."],
+    ["expired", { ok: false, reason: "expired_token" }, "Your computer's pairing has expired or was revoked."],
   ])("is disabled with the reason when the project's linked computer is %s", async (_, resolve, reason) => {
     mockApi({ resolve, presence: {}, links: [{ project_id: "p-1", computer_id: "c-1", harness_project_id: "t3-app" }] });
     renderButton();

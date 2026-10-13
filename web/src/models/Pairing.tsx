@@ -515,18 +515,36 @@ export const EXPIRY_WARNING_DAYS = 5;
 // without a second call to the same resolve endpoint.
 export type HarnessReadiness =
   | { state: "ready"; computerId: string; harnessProjectId: string; provider: string; model: string; modelOptions: OptionSetting[] }
-  | { state: "unpaired" | "expired" | "no_harness_project" | "no_default_computer" | "offline"; message: string };
+  | { state: "unpaired" | "expired" | "no_harness_project" | "no_default_computer" | "offline"; message: string; link?: ReadinessLink };
 
 // A run asks where instead of refusing when no link answers it (ADR 0145); a linked computer's offline or expired state is the reason.
 export const canChooseRunLocation = (readiness: HarnessReadiness, linked: boolean): boolean =>
   readiness.state === "no_harness_project" || readiness.state === "no_default_computer" ||
   (!linked && (readiness.state === "offline" || readiness.state === "expired"));
 
+// Where a blocked state is fixed, kept beside its sentence so the sentence still reads alone as a tooltip.
+export interface ReadinessLink {
+  to: string;
+  label: string;
+}
+
+export const COMPUTERS_SETTINGS_PATH = "/settings/pairing";
+export const ADD_COMPUTER_LINK: ReadinessLink = { to: COMPUTERS_SETTINGS_PATH, label: "Add a computer" };
+
 // Copy for every non-ready state; shared by the hook's join and the settings readiness line.
-export const HARNESS_READINESS_COPY: Record<Exclude<HarnessReadiness["state"], "ready">, string> = {
-  unpaired: "Add a computer in Settings to run plays.",
-  expired: "Your computer's pairing has expired or was revoked. Re-pair it in Settings.",
-  no_harness_project: "Link this project in Settings → Computers → Projects, or set a fallback under Defaults.",
-  no_default_computer: "Several computers are paired. Pick a default in Settings.",
-  offline: "T3 Code on your computer is offline.",
+export const HARNESS_READINESS_COPY: Record<Exclude<HarnessReadiness["state"], "ready">, { message: string; link?: ReadinessLink }> = {
+  unpaired: { message: "No computer is paired to run plays.", link: ADD_COMPUTER_LINK },
+  expired: {
+    message: "Your computer's pairing has expired or was revoked.",
+    link: { to: COMPUTERS_SETTINGS_PATH, label: "Re-pair it" },
+  },
+  no_harness_project: {
+    message: "This project has no T3 project linked and no fallback is set.",
+    link: { to: `${COMPUTERS_SETTINGS_PATH}/projects`, label: "Link this project" },
+  },
+  no_default_computer: {
+    message: "Several computers are paired and none is the default.",
+    link: { to: `${COMPUTERS_SETTINGS_PATH}/defaults`, label: "Pick a default" },
+  },
+  offline: { message: "T3 Code on your computer is offline." },
 };

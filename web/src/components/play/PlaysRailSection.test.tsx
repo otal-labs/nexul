@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -36,7 +37,9 @@ const renderSection = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <PlaysRailSection ticket={ticket} />
+      <MemoryRouter>
+        <PlaysRailSection ticket={ticket} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 };
@@ -76,8 +79,9 @@ describe("PlaysRailSection", () => {
     const second = { ...play, id: "play-2", label: "Review with AI" };
     mockApi([play, second], ["plays:run"], { ok: false, reason: "unpaired" });
     renderSection();
-    const hint = "Add a computer in Settings to run plays.";
+    const hint = "No computer is paired to run plays.";
     expect(await screen.findAllByText(hint)).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Add a computer" })).toHaveAttribute("href", "/settings/pairing");
     expect(screen.getByRole("button", { name: /Fix with AI/ })).toHaveAccessibleDescription(hint);
     expect(screen.getByRole("button", { name: /Review with AI/ })).toBeDisabled();
   });

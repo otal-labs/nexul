@@ -1,6 +1,7 @@
 import { ChevronDown, LoaderCircle, Sparkles, Square } from "lucide-react";
 import { useState } from "react";
 
+import { FixLink } from "@/components/FixLink";
 import { PlayMenuRow } from "@/components/play/PlayMenuRow";
 import { PlayRunDialog } from "@/components/play/PlayRunDialog";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchApplicablePlays } from "@/hooks/PlayHooks";
 import { useActiveTrail, useStopTrail } from "@/hooks/TrailHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
-import { useRunBlockedReason } from "@/hooks/PairingProjectHooks";
+import { useRunBlock } from "@/hooks/PairingProjectHooks";
 import type { Play } from "@/models/Play";
 
 const disabledReason = (running: boolean, blocked: string | undefined): string => {
@@ -31,7 +32,8 @@ export const PlaysMenu = ({ workspaceId, projectId, docId }: PlaysMenuProps) => 
   const canWrite = useHasPermission("plays:write");
   const { data: me } = useFetchMe();
   const { data: plays } = useFetchApplicablePlays(workspaceId, projectId, "doc", undefined);
-  const blocked = useRunBlockedReason(projectId);
+  const block = useRunBlock(projectId);
+  const blocked = block?.message;
   const activeTrail = useActiveTrail("doc", docId);
   const stopTrail = useStopTrail();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -61,7 +63,11 @@ export const PlaysMenu = ({ workspaceId, projectId, docId }: PlaysMenuProps) => 
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-72 p-1">
-          {reason !== "" && <p className="px-2 py-1.5 font-mono text-xs text-muted-foreground">{reason}</p>}
+          {reason !== "" && (
+            <p className="px-2 py-1.5 font-mono text-xs text-muted-foreground">
+              {reason} {!running && block?.link && <FixLink {...block.link} />}
+            </p>
+          )}
           {canStop && (
             <Button
               variant="outline"

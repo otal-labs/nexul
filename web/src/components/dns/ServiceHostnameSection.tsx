@@ -2,6 +2,7 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { ConnectCloudflareAction } from "@/components/dns/ConnectCloudflareAction";
 import { ExposeServiceDialog } from "@/components/dns/ExposeServiceDialog";
 import { ExposureRow } from "@/components/dns/ExposureRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
@@ -52,7 +53,11 @@ export const ServiceHostnameSection = ({ containers }: ServiceHostnameSectionPro
     >
       {loading && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} title="Couldn't load DNS." />}
-      {!statusPending && !configured && <EmptyRow flush>Connect a DNS provider to expose this stack.</EmptyRow>}
+      {!statusPending && !configured && (
+        <EmptyRow flush>
+          Connect a DNS provider to expose this stack. <ConnectCloudflareAction />
+        </EmptyRow>
+      )}
       {ready && containers.length === 0 && <EmptyRow flush>No containers in this stack yet, so nothing to expose.</EmptyRow>}
       {canExpose && stackExposures.length === 0 && <EmptyRow flush>Not exposed yet.</EmptyRow>}
       {ready && stackExposures.length > 0 && (

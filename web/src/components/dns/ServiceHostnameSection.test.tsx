@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ServiceHostnameSection } from "@/components/dns/ServiceHostnameSection";
@@ -29,7 +30,9 @@ const renderSection = (list = containers) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <ServiceHostnameSection containers={list} />
+      <MemoryRouter>
+        <ServiceHostnameSection containers={list} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 };
@@ -69,13 +72,24 @@ describe("ServiceHostnameSection", () => {
     expect(await screen.findByRole("status")).toBeInTheDocument();
   });
 
-  it("hints to connect DNS when no provider is configured", async () => {
+  const mockUnconnected = (instancePermissions: string[]) =>
     mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/auth/me") return { data: { user: { id: "u1" }, instance_permissions: instancePermissions } };
       if (url === "/api/connectors") return { data: cloudflareConnector(false) };
       return { data: [] };
     });
+
+  it("links to Connectors when no provider is configured and the viewer can connect one", async () => {
+    mockUnconnected(["connectors:write"]);
     renderSection();
-    expect(await screen.findByText(/connect a dns provider/i)).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Connect Cloudflare" })).toHaveAttribute("href", "/settings/connectors");
+  });
+
+  it("says who to ask when no provider is configured and the viewer can't connect one", async () => {
+    mockUnconnected(["connectors:read"]);
+    renderSection();
+    expect(await screen.findByText("Ask the instance owner to connect Cloudflare.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Connect Cloudflare" })).not.toBeInTheDocument();
   });
 
   it("shows an empty state when nothing is exposed yet", async () => {
