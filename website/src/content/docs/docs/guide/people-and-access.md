@@ -1,31 +1,35 @@
 ---
 title: People and access
-description: Invite people, give them a role in each workspace, and keep a client to the one project they work on.
+description: Invite people, give them roles in each workspace, and keep a client to the one project they work on.
 sidebar:
   order: 9
 ---
 
-Your instance is private: nobody signs in without an invitation. Each person then has a role in each workspace they're in, and the role decides what they can do there. A person can also be held to chosen projects, so a client sees their project and nothing else.
+Your instance is private: nobody signs in without an invitation. Each person then holds roles in each workspace they're in, several or none, and together their roles decide what they can do there. A person can also be held to chosen projects, so a client sees their project and nothing else.
 
 ## Invite someone
 
 1. Open **Settings → Team** and press **Invite**.
 2. Under **Link expires in**, choose **1 day** or **7 days**.
-3. Under **Workspace access**, choose a workspace and a role. **Add workspace** adds another.
-4. To hold them to some projects, set **Every project** to **Chosen projects** and give each project a level. See [Hold someone to chosen projects](#hold-someone-to-chosen-projects).
-5. Optionally open **Optional permission overrides** to allow or deny single permissions on top of the role.
-6. Press **Create link**. Team switches to its **Invitations** tab with the new link on top; press **Copy link**. It's shown once.
-7. Send the link however you like. The person opens it, signs in with one of the instance's sign-in providers, reviews what they're being given, and accepts.
+3. Under **Workspace access**, choose a workspace, then tick the roles the link gives there under **Roles in** that workspace. Nothing is ticked at first, and each workspace needs at least one role: **Create link** stays off until it has one. **Add workspace** adds another.
+4. Press **Create link**. Team switches to its **Invitations** tab with the new link on top; press **Copy link**. It's shown once.
+5. Send the link however you like. The person opens it, signs in with one of the instance's sign-in providers, reviews each workspace and the roles they're being given, and accepts.
 
-A link works once. The Owner role is never offered; ownership doesn't move through an invitation. The **Invitations** tab lists the links not used yet under **Active invitation links**; **Revoke invitation** kills one.
+A link works once and gives nothing but its roles. The Owner role is never offered, and a role holding more than you hold sits under **Can't give** with what it holds that you don't; ownership doesn't move through an invitation. The **Invitations** tab lists the links not used yet under **Active invitation links**; **Revoke invitation** kills one.
 
 ## Manage people
 
-**Settings → Team** has two tabs. **People** lists everyone on the instance: a dot on each picture for who is online, when the others were last seen, the GitHub, Google or Discord marks of the accounts they sign in with, each beside its GitHub or Discord username, their role or how many workspaces they are in, and **Disabled** or **Removed** for an account that can't sign in. Open a person to see one tab per workspace they're in. Each tab holds their **Role**, **Edit overrides**, their projects, and **Remove from workspace**; the **+** after the last tab adds them to another workspace.
+**Settings → Team** has two tabs. **People** lists everyone on the instance: a dot on each picture for who is online, when the others were last seen, the GitHub, Google or Discord marks of the accounts they sign in with, each beside its GitHub or Discord username, their roles as chips (three, then a count whose tooltip names the rest, or **No roles**) or how many workspaces they are in, and **Disabled** or **Removed** for an account that can't sign in. Open a person to see one tab per workspace they're in. Each tab holds their **Roles**, one checkbox per role with how much it allows beside it, and **Remove from workspace**; the **+** after the last tab adds them to another workspace, where you tick at least one role before **Confirm**.
+
+The roles you may give come first. Under **Can't give** sit the Owner role and every role holding something you don't, each with the reason; their boxes keep the person's tick and can't be changed, since you can't take away a role you couldn't give. Unticking the last role warns that the person will see no projects or plays there, but you can still confirm it.
 
 Nothing applies as you edit. A tab with changes shows a dot, **Confirm** applies them all, and **Cancel** asks before throwing them away. If one change is refused, the dialog says which and keeps the rest waiting for the next **Confirm**.
 
 Account actions apply at once, each after its own confirmation: **Disable** stops someone signing in and keeps their access, **Reactivate** undoes it, and **Remove account** removes them. **Restore** brings a removed account back with no workspace access. Disable and Remove account also disconnect the person's computers: each one's runner uninstalls itself, and you are told only that their computers were disconnected, never which ones. Reactivating or restoring the account brings none back; the person adds each computer again from their own settings.
+
+A person with no role in a workspace stays a member. Opening it, they see **No roles in** that workspace, a line saying what that means, and its Owners, each a button that opens a direct message with them, which takes no role. Their sidebar shows no project; channels and direct messages show once they have some, and the public channels and their direct messages work as usual.
+
+Everyone sees their own roles in **Settings → Profile → Your roles**, one line per workspace, and the account row at the bottom of the sidebar lists them for the workspace in view.
 
 Seeing everyone takes `accounts:read`. Changing someone in a workspace takes `members:write` there. Without `accounts:read`, someone who manages members finds Team under **Configuration** instead, showing only the workspaces they manage.
 
@@ -99,7 +103,7 @@ Leave out `user_id` for your own answers, which take only being able to open it.
 
 ## Names and pictures
 
-Every member of a workspace sees its people's login, display name, and picture, and nothing about their roles. Set your own name and picture in **Settings → Profile**; a change reaches everyone's open screens without a refresh.
+Every member of a workspace sees its people's login, display name, and picture, and of their roles only who is an Owner. Set your own name and picture in **Settings → Profile**; a change reaches everyone's open screens without a refresh.
 
 ## Sign-in accounts and GitHub
 

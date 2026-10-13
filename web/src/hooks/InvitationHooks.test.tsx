@@ -37,9 +37,9 @@ describe("InvitationHooks", () => {
       .mockResolvedValueOnce({ data: { id: "i-1", url: "https://nexul/invite#token", grants: [], expires_at: "later" } })
       .mockResolvedValueOnce({ data: { token: "session", workspace_ids: ["ws-1"] } });
     const { result } = renderHook(() => ({ create: useCreateInvitation(), redeem: useRedeemInvitation() }), { wrapper });
-    await result.current.create.mutateAsync({ expires_in_days: 7, grants: [{ workspace_id: "ws-1", role_id: "r-1", allow: [], deny: [] }] });
+    await result.current.create.mutateAsync({ expires_in_days: 7, grants: [{ workspace_id: "ws-1", role_ids: ["r-1", "r-2"] }] });
     await result.current.redeem.mutateAsync("acceptance-token");
-    expect(api.post).toHaveBeenNthCalledWith(1, "/api/invitations", expect.objectContaining({ expires_in_days: 7 }));
+    expect(api.post).toHaveBeenNthCalledWith(1, "/api/invitations", { expires_in_days: 7, grants: [{ workspace_id: "ws-1", role_ids: ["r-1", "r-2"] }] });
     expect(api.post).toHaveBeenNthCalledWith(2, "/api/invitations/redeem", { acceptance_token: "acceptance-token" });
   });
 

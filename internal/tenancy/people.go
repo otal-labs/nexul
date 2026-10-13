@@ -26,7 +26,40 @@ func (s *Service) ListPeople(ctx context.Context, actorID, workspaceID string) (
 	for i, m := range members {
 		userIDs[i] = m.UserID
 	}
-	return s.peopleNamed(ctx, userIDs)
+	people, err := s.peopleNamed(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	owners, err := s.ownerIDs(ctx, workspaceID, members)
+	if err != nil {
+		return nil, err
+	}
+	for i := range people {
+		people[i].Owner = owners[people[i].UserID]
+	}
+	return people, nil
+}
+
+// ownerIDs is the members holding workspaceID's Owner role, asking once per role.
+func (s *Service) ownerIDs(ctx context.Context, workspaceID string, members []*Member) (map[string]bool, error) {
+	isOwner := map[string]bool{}
+	owners := map[string]bool{}
+	for _, m := range members {
+		for _, roleID := range m.RoleIDs {
+			owner, seen := isOwner[roleID]
+			if !seen {
+				var err error
+				if owner, err = s.roleNames.IsOwnerRole(ctx, workspaceID, roleID); err != nil {
+					return nil, fmt.Errorf("check owner role %s: %w", roleID, err)
+				}
+				isOwner[roleID] = owner
+			}
+			if owner {
+				owners[m.UserID] = true
+			}
+		}
+	}
+	return owners, nil
 }
 
 // SetProjects wires the project lookups a project's people are read through.

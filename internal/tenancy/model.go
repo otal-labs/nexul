@@ -184,12 +184,14 @@ type TeamAccount struct {
 	AvatarOverride string `json:"-"`
 }
 
-// Person is all any member of a workspace sees of another: never a role, an override, an email, or account status.
+// Person is all any member of a workspace sees of another: never a role but Owner, an email, or account status.
 type Person struct {
 	UserID      string `json:"user_id"`
 	Login       string `json:"login"`
 	DisplayName string `json:"display_name"`
 	AvatarURL   string `json:"avatar_url"`
+	// Owner is set in a workspace's directory, so someone with no role knows who to ask for one (ADR 0148).
+	Owner bool `json:"owner,omitempty"`
 }
 
 // People is a workspace's people as the directory route answers them.

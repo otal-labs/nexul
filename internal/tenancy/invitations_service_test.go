@@ -137,7 +137,7 @@ func TestInvitationService_Create_RejectsUnsupportedLifetime(t *testing.T) {
 func TestInvitationService_Preview_HidesPermissionOverwrites(t *testing.T) {
 	t.Parallel()
 	svc, repo := newInvitationServiceFixture()
-	invitation := &Invitation{ID: "inv-1", ExpiresAt: svc.now().Add(24 * time.Hour), Grants: []*InvitationGrant{{WorkspaceID: "ws-1", WorkspaceName: "Acme", RoleID: "role-editor", RoleName: "Editor", Allow: permissions.SetOf(permissions.DocsRead), Deny: permissions.SetOf(permissions.DocsDelete)}}}
+	invitation := &Invitation{ID: "inv-1", ExpiresAt: svc.now().Add(24 * time.Hour), Grants: []*InvitationGrant{{WorkspaceID: "ws-1", WorkspaceName: "Acme", RoleID: "role-editor", RoleName: "Editor", Roles: []*TeamRole{{ID: "role-editor", Name: "Editor"}, {ID: "role-client", Name: "Client"}}, Allow: permissions.SetOf(permissions.DocsRead), Deny: permissions.SetOf(permissions.DocsDelete)}}}
 	repo.byToken["token-hash"] = invitation
 
 	preview, err := svc.Preview(t.Context(), "4d2f3f29-2a43-4ae7-b2d4-0b6f1a7f4c11")
@@ -149,6 +149,7 @@ func TestInvitationService_Preview_HidesPermissionOverwrites(t *testing.T) {
 	require.Len(t, preview.Grants, 1)
 	assert.Equal(t, "Acme", preview.Grants[0].WorkspaceName)
 	assert.Equal(t, "Editor", preview.Grants[0].RoleName)
+	assert.Equal(t, []*TeamRole{{ID: "role-editor", Name: "Editor"}, {ID: "role-client", Name: "Client"}}, preview.Grants[0].Roles)
 }
 
 func TestInvitationService_AcceptanceAndRedeem_UseGenericInvalidErrors(t *testing.T) {

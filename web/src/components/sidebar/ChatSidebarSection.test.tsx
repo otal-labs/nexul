@@ -94,6 +94,23 @@ describe("ChatSidebarSection", () => {
     expect(screen.getByText("7")).toBeInTheDocument();
   });
 
+  it("for someone who may start nothing, keeps the sections with rows and leaves the empty ones out", async () => {
+    permissions = [];
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/chat/conversations") return { data: conversations.filter((c) => c.kind === "channel") };
+      if (url === "/api/auth/me") return { data: meResponse };
+      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "", roles: [], permissions } };
+      if (url.startsWith("/api/workspaces/")) return { data: peopleResponse };
+      return { data: {} };
+    });
+    renderSection();
+
+    expect(await screen.findByText("general")).toBeInTheDocument();
+    expect(screen.getByText("Channels")).toBeInTheDocument();
+    expect(screen.queryByText("Voice channels")).not.toBeInTheDocument();
+    expect(screen.queryByText("Direct messages")).not.toBeInTheDocument();
+  });
+
   it("with no conversations it still offers to create each kind", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/chat/conversations") return { data: [] };

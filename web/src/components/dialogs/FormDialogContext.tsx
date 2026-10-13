@@ -10,6 +10,8 @@ export interface FooterIntercept {
 
 export interface FormDialogContextValue<TFormValues extends FieldValues = FieldValues> {
   setLoading: (loading: boolean) => void;
+  // Disables OK while the form says it can't be sent yet, without the spinner setLoading shows.
+  setBlocked: (blocked: boolean) => void;
   onSubmit: (handler: (data: TFormValues) => Promise<TFormValues>) => void;
   // "Create more": a form flags via setStayOpen that submit should keep the dialog open, then cleans up itself.
   setStayOpen: (stayOpen: boolean) => void;

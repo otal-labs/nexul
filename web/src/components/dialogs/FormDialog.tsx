@@ -59,6 +59,7 @@ export const FormDialog = ({
   skipAutoFocus = false,
 }: ReactConfirmDialogProps<FormDialogProps, FormDialogResult>) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const submitHandlerRef = useRef<((data: FieldValues) => Promise<FieldValues>) | null>(null);
   // "Create more": a form can flag via context to keep the dialog open and clean itself up via onAfterSubmit.
   const stayOpenRef = useRef(false);
@@ -118,6 +119,7 @@ export const FormDialog = ({
       submitHandlerRef.current = handler;
     },
     setLoading: setIsLoading,
+    setBlocked,
     setStayOpen: (stayOpen: boolean) => {
       stayOpenRef.current = stayOpen;
     },
@@ -174,7 +176,7 @@ export const FormDialog = ({
                 <Button variant="outline" onClick={handleCancel}>
                   {cancelLabel}
                 </Button>
-                <Button onClick={handleAction} loading={busy}>
+                <Button onClick={handleAction} loading={busy} disabled={blocked}>
                   {okLabel}
                 </Button>
               </div>

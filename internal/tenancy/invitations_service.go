@@ -37,6 +37,7 @@ type InvitationGrantPreview struct {
 	WorkspaceName string                     `json:"workspace_name"`
 	RoleID        string                     `json:"role_id"`
 	RoleName      string                     `json:"role_name"`
+	Roles         []*TeamRole                `json:"roles"`
 	EveryProject  string                     `json:"every_project"`
 	Projects      []InvitationProjectPreview `json:"projects"`
 }
@@ -168,7 +169,7 @@ func (s *InvitationService) Redeem(ctx context.Context, acceptanceHash string, i
 func (s *InvitationService) preview(ctx context.Context, invitation *Invitation) *InvitationPreview {
 	preview := &InvitationPreview{InstanceURL: strings.TrimRight(strings.TrimSpace(s.instanceURL.InstanceURL(ctx)), "/"), ExpiresAt: invitation.ExpiresAt, Grants: make([]*InvitationGrantPreview, 0, len(invitation.Grants))}
 	for _, grant := range invitation.Grants {
-		preview.Grants = append(preview.Grants, &InvitationGrantPreview{WorkspaceID: grant.WorkspaceID, WorkspaceName: grant.WorkspaceName, RoleID: grant.RoleID, RoleName: grant.RoleName, Projects: []InvitationProjectPreview{}})
+		preview.Grants = append(preview.Grants, &InvitationGrantPreview{WorkspaceID: grant.WorkspaceID, WorkspaceName: grant.WorkspaceName, RoleID: grant.RoleID, RoleName: grant.RoleName, Roles: grant.Roles, Projects: []InvitationProjectPreview{}})
 	}
 	return preview
 }

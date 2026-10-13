@@ -51,48 +51,55 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
   // A removed thread comes back while it is open or has unread messages, so nothing new is missed.
   const shownThreads = docThreads.filter((c) => !hiddenIds.includes(c.id) || c.id === openId || (unread?.[c.id] ?? 0) > 0);
 
+  // A section with no rows and nothing the viewer may start there is left out, so someone with no role sees none.
   return (
     <div className="flex flex-col gap-0.5">
-      <div className="flex flex-col gap-0.5">
-        <SidebarSectionHeader
-          label="Channels"
-          actionLabel="New channel"
-          onAction={canCreateChannel ? () => void openNewChannel(false) : undefined}
-        />
-        {channels.map((conversation) => (
-          <ChannelSidebarRow key={conversation.id} conversation={conversation} unreadCount={unread?.[conversation.id] ?? 0} />
-        ))}
-      </div>
-      <div className="flex flex-col gap-0.5">
-        <SidebarSectionHeader
-          label="Voice channels"
-          actionLabel="New voice channel"
-          onAction={canCreateChannel ? () => void openNewChannel(true) : undefined}
-        />
-        {voiceChannels.map((conversation) => (
-          <VoiceChannelSidebarRow
-            key={conversation.id}
-            conversation={conversation}
-            occupants={occupancy[conversation.id] ?? []}
-            unreadCount={unread?.[conversation.id] ?? 0}
+      {(channels.length > 0 || canCreateChannel) && (
+        <div className="flex flex-col gap-0.5">
+          <SidebarSectionHeader
+            label="Channels"
+            actionLabel="New channel"
+            onAction={canCreateChannel ? () => void openNewChannel(false) : undefined}
           />
-        ))}
-      </div>
-      <div className="flex flex-col gap-0.5">
-        <SidebarSectionHeader
-          label="Direct messages"
-          actionLabel="New direct message"
-          onAction={canCreateDM ? () => void openNewDM() : undefined}
-        />
-        {dms.map((conversation) => (
-          <DMSidebarRow
-            key={conversation.id}
-            conversation={conversation}
-            label={conversationLabel(conversation, dmCtx)}
-            unreadCount={unread?.[conversation.id] ?? 0}
+          {channels.map((conversation) => (
+            <ChannelSidebarRow key={conversation.id} conversation={conversation} unreadCount={unread?.[conversation.id] ?? 0} />
+          ))}
+        </div>
+      )}
+      {(voiceChannels.length > 0 || canCreateChannel) && (
+        <div className="flex flex-col gap-0.5">
+          <SidebarSectionHeader
+            label="Voice channels"
+            actionLabel="New voice channel"
+            onAction={canCreateChannel ? () => void openNewChannel(true) : undefined}
           />
-        ))}
-      </div>
+          {voiceChannels.map((conversation) => (
+            <VoiceChannelSidebarRow
+              key={conversation.id}
+              conversation={conversation}
+              occupants={occupancy[conversation.id] ?? []}
+              unreadCount={unread?.[conversation.id] ?? 0}
+            />
+          ))}
+        </div>
+      )}
+      {(dms.length > 0 || canCreateDM) && (
+        <div className="flex flex-col gap-0.5">
+          <SidebarSectionHeader
+            label="Direct messages"
+            actionLabel="New direct message"
+            onAction={canCreateDM ? () => void openNewDM() : undefined}
+          />
+          {dms.map((conversation) => (
+            <DMSidebarRow
+              key={conversation.id}
+              conversation={conversation}
+              label={conversationLabel(conversation, dmCtx)}
+              unreadCount={unread?.[conversation.id] ?? 0}
+            />
+          ))}
+        </div>
+      )}
       {/* No +: a thread is started from its doc, so the group only shows once one exists. */}
       {shownThreads.length > 0 && (
         <div className="flex flex-col gap-0.5">

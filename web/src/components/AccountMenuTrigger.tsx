@@ -16,6 +16,9 @@ const initials = (name: string) =>
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
 
+// Every role held, joined; the line truncates with the rest of the row.
+const rolesLine = (role: MyWorkspaceInfo): string => (role.roles ?? []).map((held) => held.name).join(", ") || "No roles";
+
 interface AccountMenuTriggerProps {
   user: User;
   role: MyWorkspaceInfo | undefined;
@@ -51,7 +54,7 @@ export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTrigger
           <>
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="truncate text-sm font-medium">{userLabel(user)}</span>
-              {role && <span className="truncate text-xs text-muted-foreground">{role.role_name}</span>}
+              {role && <span className="truncate text-xs text-muted-foreground">{rolesLine(role)}</span>}
             </span>
             <ChevronsUpDownIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
           </>

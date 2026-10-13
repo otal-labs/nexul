@@ -10,7 +10,7 @@ import { useApplyMemberStep, useFetchTeam } from "@/hooks/TeamHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { MemberDraftContext } from "@/hooks/useMemberDraft";
 import { errorMessage } from "@/api/client";
-import { hasOverlap, memberDraftReducer, memberSteps, type MemberStep } from "@/models/MemberDraft";
+import { hasAddWithoutRoles, memberDraftReducer, memberSteps, type MemberStep } from "@/models/MemberDraft";
 import { personName, presenceText } from "@/utils/TeamUtility";
 
 interface TeamPersonDialogProps {
@@ -34,7 +34,7 @@ export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) =
   const apply = useApplyMemberStep();
   const { open: ask } = useConfirmationDialog();
   const steps = person && team ? memberSteps(person, team.workspaces, draft) : [];
-  const blocked = !!person && hasOverlap(person, draft);
+  const blocked = hasAddWithoutRoles(draft);
 
   const finish = () => {
     dispatch({ type: "reset" });

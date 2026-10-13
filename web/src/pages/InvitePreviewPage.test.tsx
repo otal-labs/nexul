@@ -28,11 +28,13 @@ describe("InvitePreviewPage", () => {
   });
 
   it("clears the raw fragment immediately and renders a public preview", async () => {
-    mocks.post.mockResolvedValue({ data: { instance_name: "Private Nexul", grants: [{ workspace_id: "ws-1", workspace_name: "Engineering", role_id: "r-1", role_name: "Editor", allow: [], deny: [] }], expires_at: "2026-09-21T00:00:00Z", providers: ["github"] } });
+    mocks.post.mockResolvedValue({ data: { instance_name: "Private Nexul", grants: [{ workspace_id: "ws-1", workspace_name: "Engineering", role_id: "r-1", role_name: "Editor", roles: [{ id: "r-1", name: "Editor" }, { id: "r-2", name: "Frontend" }] }], expires_at: "2026-09-21T00:00:00Z", providers: ["github"] } });
     renderPage();
     expect(window.location.hash).toBe("");
     expect(await screen.findByRole("heading", { name: /join private nexul/i })).toBeInTheDocument();
     expect(screen.getByText("Engineering")).toBeInTheDocument();
+    expect(screen.getByText("Editor")).toBeInTheDocument();
+    expect(screen.getByText("Frontend")).toBeInTheDocument();
   });
 
   it("shows the same generic invalid state for a rejected preview", async () => {
@@ -54,10 +56,10 @@ describe("InvitePreviewPage", () => {
   it("shows authenticated grants and redeems only after explicit acceptance", async () => {
     useSessionStore.setState({ token: "session", isLoggedIn: true });
     window.history.replaceState(null, "", "/invite#acceptance-token");
-    mocks.post.mockResolvedValueOnce({ data: { instance_name: "Private Nexul", grants: [{ workspace_id: "ws-1", workspace_name: "Engineering", role_id: "r-1", role_name: "Editor", allow: ["docs:read"], deny: [] }], expires_at: "later", providers: [], acceptance_token: "acceptance-token" } }).mockResolvedValueOnce({ data: { token: "new-session", workspace_ids: ["ws-1"] } });
+    mocks.post.mockResolvedValueOnce({ data: { instance_name: "Private Nexul", grants: [{ workspace_id: "ws-1", workspace_name: "Engineering", role_id: "r-1", role_name: "Editor", roles: [{ id: "r-1", name: "Editor" }] }], expires_at: "later", providers: [], acceptance_token: "acceptance-token" } }).mockResolvedValueOnce({ data: { token: "new-session", workspace_ids: ["ws-1"] } });
     const user = userEvent.setup();
     renderPage();
-    expect(await screen.findByText("Allow: docs:read")).toBeInTheDocument();
+    expect(await screen.findByText("Editor")).toBeInTheDocument();
     expect(mocks.post).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole("button", { name: "Accept invitation" }));
     expect(mocks.post).toHaveBeenNthCalledWith(2, "/api/invitations/redeem", { acceptance_token: "acceptance-token" });

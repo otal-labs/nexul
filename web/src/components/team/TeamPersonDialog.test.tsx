@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
-import userEvent, { type UserEvent } from "@testing-library/user-event";
+import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,109 +9,132 @@ import { TeamSection } from "@/components/team/TeamSection";
 import type { Team, TeamMembership } from "@/models/Team";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() }));
-vi.mock("@/api/client", () => ({ api: mocks, errorMessage: () => "You can't give a level you don't hold" }));
+vi.mock("@/api/client", () => ({ api: mocks, errorMessage: () => "You can't give a role holding more than you hold" }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const catalog = [
   { value: "tickets:read", label: "Read tickets", domain: "tickets", action: "read", area: "project" },
   { value: "tickets:write", label: "Create and update tickets", domain: "tickets", action: "write", area: "project" },
-  { value: "docs:read", label: "Read docs", domain: "docs", action: "read", area: "project" },
-  { value: "chat:read", label: "Read chat", domain: "chat", action: "read", area: "workspace" },
+  { value: "deploys:read", label: "Read deploys", domain: "deploys", action: "read", area: "project" },
+  { value: "deploys:write", label: "Start deploys", domain: "deploys", action: "write", area: "project" },
+  { value: "deploys:delete", label: "Delete deploys", domain: "deploys", action: "delete", area: "project" },
 ];
 
-const projects = [
-  { id: "p-web", name: "Web", prefix: "WEB" },
-  { id: "p-api", name: "Api", prefix: "API" },
+// The viewer holds Editor everywhere, so Lead, which deletes deploys, is beyond them.
+const roles = (ws: string) => [
+  { id: `${ws}-owner`, name: "Owner", permissions: [], is_owner_role: true },
+  { id: `${ws}-client`, name: "Client", permissions: ["tickets:read"], is_owner_role: false },
+  { id: `${ws}-editor`, name: "Editor", permissions: ["tickets:read", "tickets:write", "deploys:read"], is_owner_role: false },
+  { id: `${ws}-lead`, name: "Lead", permissions: ["tickets:read", "deploys:read", "deploys:write", "deploys:delete"], is_owner_role: false },
 ];
 
-const roles = (prefix: string) => [
-  { id: `${prefix}-owner`, name: "Owner", is_owner: true },
-  { id: `${prefix}-client`, name: "Client", is_owner: false },
-  { id: `${prefix}-editor`, name: "Editor", is_owner: false },
-];
+const teamRoles = (ws: string) => roles(ws).map((role) => ({ id: role.id, name: role.name, is_owner: role.is_owner_role }));
 
-const membership = (workspace: string, overrides: Partial<TeamMembership> = {}): TeamMembership => ({
-  workspace_id: `ws-${workspace.toLowerCase()}`, workspace_name: workspace, role_id: `${workspace.toLowerCase()}-client`, role_name: "Client",
-  is_owner: false, allow: [], deny: [], every_project: "role", projects: [], ...overrides,
-});
+const membership = (workspace: string, held: string[] = ["client"]): TeamMembership => {
+  const ws = workspace.toLowerCase();
+  const named = teamRoles(ws).filter((role) => held.some((id) => role.id === `${ws}-${id}`));
+  return {
+    workspace_id: `ws-${ws}`, workspace_name: workspace, role_id: named[0]?.id ?? "", role_name: named.map((r) => r.name).join(", "), roles: named,
+    is_owner: named.some((role) => role.is_owner), allow: [], deny: [], every_project: "role", projects: [],
+  };
+};
 
-const workspace = (name: string, canManage = true) => ({ id: `ws-${name.toLowerCase()}`, name, can_manage_members: canManage, roles: roles(name.toLowerCase()) });
+const workspace = (name: string, canManage = true) => ({ id: `ws-${name.toLowerCase()}`, name, can_manage_members: canManage, roles: teamRoles(name.toLowerCase()) });
 
 const teamWith = (memberships: TeamMembership[], canManage = true): Team => ({
   can_manage_accounts: false,
   workspaces: [workspace("Nexul", canManage), workspace("Labs", canManage), workspace("Kit", canManage)],
-  people: [{ id: "u-bob", login: "bob", name: "Bob", avatar_url: "", status: "active", created_at: "", providers: ["github"], online: false, last_seen_at: null, workspaces: memberships }],
+  people: [{ id: "u-sam", login: "sam", name: "Sam Lee", avatar_url: "", status: "active", created_at: "", providers: ["github"], online: false, last_seen_at: null, workspaces: memberships }],
 });
 
 const renderDialog = async (team: Team) => {
   mocks.get.mockImplementation((url: string) => {
     if (url === "/api/auth/me") return Promise.resolve({ data: { user: {}, instance_permissions: ["members:write"] } });
     if (url === "/api/team") return Promise.resolve({ data: team });
-    if (url === "/api/projects") return Promise.resolve({ data: projects });
     if (url === "/api/permissions/catalog") return Promise.resolve({ data: { permissions: catalog } });
+    const rolesOf = /^\/api\/workspaces\/ws-(\w+)\/roles$/.exec(url);
+    if (rolesOf) return Promise.resolve({ data: roles(rolesOf[1]!) });
+    const meIn = /^\/api\/workspaces\/ws-(\w+)\/me$/.exec(url);
+    if (meIn) return Promise.resolve({ data: { role_name: "Editor", roles: [{ id: `${meIn[1]}-editor`, name: "Editor", is_owner: false }], permissions: [] } });
     return Promise.resolve({ data: [] });
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
-      <MemoryRouter initialEntries={["/configuration/team?person=u-bob"]}>
+      <MemoryRouter initialEntries={["/configuration/team?person=u-sam"]}>
         <TeamSection />
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  return within(await screen.findByRole("dialog", { name: "Bob" }));
+  return within(await screen.findByRole("dialog", { name: "Sam Lee" }));
 };
 
-const pickRole = async (user: UserEvent, workspaceName: string, roleName: string) => {
-  await user.click(screen.getByRole("combobox", { name: `Role in ${workspaceName}` }));
-  await user.click(await screen.findByRole("option", { name: roleName }));
-};
-
-const level = (project: string, name: string) => within(screen.getByRole("radiogroup", { name: `${project} access` })).getByRole("radio", { name });
-
-const memberPath = (workspaceId: string) => `/api/workspaces/${workspaceId}/members/u-bob`;
-
-const webGrant = { project_id: "p-web", project_name: "Web", allow: ["tickets:read", "tickets:write"] };
+const memberPath = (workspaceId: string) => `/api/workspaces/${workspaceId}/members/u-sam`;
 
 describe("Team dialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("holds a change until Confirm, then sends it once and closes", async () => {
+  it("holds a ticked role until Confirm, then sends the whole set once and closes", async () => {
     mocks.patch.mockResolvedValue({});
     const user = userEvent.setup();
     const dialog = await renderDialog(teamWith([membership("Nexul"), membership("Labs")]));
 
     const confirm = dialog.getByRole("button", { name: "Confirm" });
     expect(confirm).toBeDisabled();
-    await pickRole(user, "Nexul", "Editor");
+    expect(await dialog.findByText("1 of 4")).toBeInTheDocument();
+    await user.click(dialog.getByRole("checkbox", { name: /Editor/ }));
 
     expect(mocks.patch).not.toHaveBeenCalled();
+    expect(dialog.getByText("2 of 4")).toBeInTheDocument();
     expect(dialog.getByRole("tab", { name: "Nexul, unsaved changes" })).toBeInTheDocument();
-    expect(dialog.getByRole("tab", { name: "Labs" })).toBeInTheDocument();
     await user.click(confirm);
 
-    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Bob" })).not.toBeInTheDocument());
+    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Sam Lee" })).not.toBeInTheDocument());
     expect(mocks.patch).toHaveBeenCalledTimes(1);
-    expect(mocks.patch).toHaveBeenCalledWith(memberPath("ws-nexul"), { role_id: "nexul-editor" });
+    expect(mocks.patch).toHaveBeenCalledWith(memberPath("ws-nexul"), { role_ids: ["nexul-client", "nexul-editor"] });
+  });
+
+  it("puts what the viewer can't give under Can't give with the reason, keeping the person's tick", async () => {
+    const dialog = await renderDialog(teamWith([membership("Nexul", ["client", "lead"])]));
+
+    const lead = await dialog.findByRole("checkbox", { name: /Lead/ });
+    expect(lead).toBeDisabled();
+    expect(lead).toBeChecked();
+    expect(dialog.getByText("Holds Deploys: Delete, which you don't hold.")).toBeInTheDocument();
+    expect(dialog.getByRole("checkbox", { name: /Owner/ })).toBeDisabled();
+    expect(dialog.getByText("The Owner role is never given or taken here.")).toBeInTheDocument();
+    expect(dialog.getByRole("checkbox", { name: /Client/ })).toBeEnabled();
+  });
+
+  it("warns once the last role goes, and still lets the empty set be confirmed", async () => {
+    mocks.patch.mockResolvedValue({});
+    const user = userEvent.setup();
+    const dialog = await renderDialog(teamWith([membership("Nexul")]));
+
+    await user.click(await dialog.findByRole("checkbox", { name: /Client/ }));
+    expect(dialog.getByText("With no roles, Sam sees no projects or plays in Nexul.")).toBeInTheDocument();
+    await user.click(dialog.getByRole("button", { name: "Confirm" }));
+
+    await vi.waitFor(() => expect(mocks.patch).toHaveBeenCalledWith(memberPath("ws-nexul"), { role_ids: [] }));
   });
 
   it("asks before discarding on Cancel, and sends nothing once discarded", async () => {
     const user = userEvent.setup();
     const dialog = await renderDialog(teamWith([membership("Nexul")]));
 
-    await pickRole(user, "Nexul", "Editor");
+    await user.click(await dialog.findByRole("checkbox", { name: /Editor/ }));
     await user.click(dialog.getByRole("button", { name: "Cancel" }));
     const prompt = within(await screen.findByRole("dialog", { name: "Discard changes?" }));
     await user.click(prompt.getByRole("button", { name: "Discard changes" }));
 
-    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Bob" })).not.toBeInTheDocument());
+    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Sam Lee" })).not.toBeInTheDocument());
     expect(mocks.patch).not.toHaveBeenCalled();
   });
 
-  it("adds a workspace from + as a selected tab, and applies adds, then changes, then removals", async () => {
+  it("adds a workspace from + once a role is picked, and applies adds, then changes, then removals", async () => {
     mocks.put.mockResolvedValue({});
     mocks.patch.mockResolvedValue({});
     mocks.delete.mockResolvedValue({});
@@ -122,18 +145,20 @@ describe("Team dialog", () => {
     await user.click(await screen.findByRole("button", { name: "Add" }));
 
     expect(dialog.getByRole("tab", { name: "Kit, unsaved changes" })).toHaveAttribute("aria-selected", "true");
-    expect(mocks.put).not.toHaveBeenCalled();
+    expect(await dialog.findByText("Pick at least one role to add Sam to Kit.")).toBeInTheDocument();
+    expect(dialog.getByRole("button", { name: "Confirm" })).toBeDisabled();
+    await user.click(dialog.getByRole("checkbox", { name: /Client/ }));
 
     await user.click(dialog.getByRole("tab", { name: "Nexul" }));
-    await pickRole(user, "Nexul", "Editor");
+    await user.click(await dialog.findByRole("checkbox", { name: /Editor/ }));
     await user.click(dialog.getByRole("tab", { name: "Labs" }));
     await user.click(dialog.getByRole("button", { name: "Remove from workspace" }));
     expect(mocks.delete).not.toHaveBeenCalled();
     await user.click(dialog.getByRole("button", { name: "Confirm" }));
 
     await vi.waitFor(() => expect(mocks.delete).toHaveBeenCalledWith(memberPath("ws-labs")));
-    expect(mocks.put).toHaveBeenCalledWith(memberPath("ws-kit"), { role_id: "kit-client" });
-    expect(mocks.patch).toHaveBeenCalledWith(memberPath("ws-nexul"), { role_id: "nexul-editor" });
+    expect(mocks.put).toHaveBeenCalledWith(memberPath("ws-kit"), { role_ids: ["kit-client"] });
+    expect(mocks.patch).toHaveBeenCalledWith(memberPath("ws-nexul"), { role_ids: ["nexul-client", "nexul-editor"] });
     const order = [mocks.put, mocks.patch, mocks.delete].map((fn) => fn.mock.invocationCallOrder[0]!);
     expect(order).toEqual([...order].sort((a, b) => a - b));
   });
@@ -146,74 +171,34 @@ describe("Team dialog", () => {
 
     await user.click(dialog.getByRole("button", { name: "Add to a workspace" }));
     await user.click(await screen.findByRole("button", { name: "Add" }));
+    await user.click(await dialog.findByRole("checkbox", { name: /Client/ }));
     await user.click(dialog.getByRole("tab", { name: "Nexul" }));
-    await pickRole(user, "Nexul", "Editor");
+    await user.click(await dialog.findByRole("checkbox", { name: /Editor/ }));
     await user.click(dialog.getByRole("button", { name: "Confirm" }));
 
-    expect(await dialog.findByRole("alert")).toHaveTextContent("Couldn't update Nexul: You can't give a level you don't hold");
+    expect(await dialog.findByRole("alert")).toHaveTextContent("Couldn't update Nexul: You can't give a role holding more than you hold");
     expect(dialog.getByRole("tab", { name: "Nexul, unsaved changes" })).toBeInTheDocument();
 
     await user.click(dialog.getByRole("button", { name: "Confirm" }));
-    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Bob" })).not.toBeInTheDocument());
+    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Sam Lee" })).not.toBeInTheDocument());
     expect(mocks.put).toHaveBeenCalledTimes(1);
     expect(mocks.patch).toHaveBeenCalledTimes(2);
   });
 
-  it("lists projects with the level buttons, held under From role and set once Chosen projects is picked", async () => {
-    mocks.patch.mockResolvedValue({});
-    const user = userEvent.setup();
-    const dialog = await renderDialog(teamWith([membership("Nexul", { projects: [webGrant] })]));
-
-    expect(await dialog.findByRole("radiogroup", { name: "Api access" })).toBeInTheDocument();
-    expect(level("Api", "Read")).toBeDisabled();
-    await user.click(dialog.getByRole("radio", { name: "Chosen projects" }));
-    expect(level("Api", "Read")).toBeEnabled();
-    expect(dialog.getByText("tickets Write")).toBeInTheDocument();
-    await user.click(level("Api", "Read"));
-    expect(mocks.patch).not.toHaveBeenCalled();
-    await user.click(dialog.getByRole("button", { name: "Confirm" }));
-
-    await vi.waitFor(() =>
-      expect(mocks.patch).toHaveBeenCalledWith(memberPath("ws-nexul"), {
-        every_project: "none",
-        project_access: [{ project_id: "p-api", allow: ["tickets:read", "docs:read"] }],
-      }),
-    );
-  });
-
-  it("opens a project's areas to give each its own level", async () => {
-    mocks.patch.mockResolvedValue({});
-    const user = userEvent.setup();
-    const dialog = await renderDialog(teamWith([membership("Nexul", { every_project: "none", projects: [webGrant] })]));
-
-    await user.click(await dialog.findByRole("button", { name: "Areas of Web" }));
-    expect(level("Tickets", "Write")).toHaveAttribute("aria-checked", "true");
-    await user.click(level("Docs", "Read"));
-    await user.click(dialog.getByRole("button", { name: "Confirm" }));
-
-    await vi.waitFor(() =>
-      expect(mocks.patch).toHaveBeenCalledWith(memberPath("ws-nexul"), {
-        project_access: [{ project_id: "p-web", allow: ["tickets:read", "tickets:write", "docs:read"] }],
-      }),
-    );
-  });
-
-  it("shows a workspace the viewer can't manage as read only, with only the projects given", async () => {
-    const dialog = await renderDialog(teamWith([membership("Nexul", { every_project: "none", projects: [webGrant] })], false));
+  it("shows a workspace the viewer can't manage as its role chips, read only", async () => {
+    const dialog = await renderDialog(teamWith([membership("Nexul", ["client", "editor"])], false));
 
     expect(await dialog.findByText("Read only: you can't manage members in Nexul.")).toBeInTheDocument();
-    expect(dialog.getByRole("radiogroup", { name: "Web access" })).toBeInTheDocument();
-    expect(dialog.queryByRole("radiogroup", { name: "Api access" })).not.toBeInTheDocument();
-    expect(dialog.getByRole("radio", { name: "Chosen projects" })).toBeDisabled();
-    expect(dialog.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(dialog.getByText("Client")).toBeInTheDocument();
+    expect(dialog.getByText("Editor")).toBeInTheDocument();
+    expect(dialog.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(dialog.queryByRole("button", { name: "Remove from workspace" })).not.toBeInTheDocument();
-    expect(mocks.get).not.toHaveBeenCalledWith("/api/projects", expect.anything());
   });
 
-  it("gives the Owner no Every project row", async () => {
-    const dialog = await renderDialog(teamWith([membership("Nexul", { role_id: "nexul-owner", role_name: "Owner", is_owner: true })]));
+  it("shows an Owner's roles without a checklist", async () => {
+    const dialog = await renderDialog(teamWith([membership("Nexul", ["owner"])]));
 
-    expect(await dialog.findByText(/The Owner role can't be changed/)).toBeInTheDocument();
-    expect(dialog.queryByRole("radiogroup", { name: /^Every project/ })).not.toBeInTheDocument();
+    expect(await dialog.findByText(/The Owner role is never given or taken here/)).toBeInTheDocument();
+    expect(dialog.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 });

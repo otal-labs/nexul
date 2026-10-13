@@ -746,9 +746,8 @@ reached trailing right in mono (public hostnames as links, then
 `service:port` on the stack's network, then `host :port` when published on the
 machine); its footer names the networks and when the runner last looked.
 
-Permission rows. Wherever access is set (a role, a person's overrides and
-Project access, an invitation, an automation's scopes) the domains sit in one
-bordered list (`rounded-md border border-input`, hairline dividers), led by an
+Permission rows. Wherever access is set (a role, an automation's scopes) the
+domains sit in one bordered list (`rounded-md border border-input`, hairline dividers), led by an
 "Every domain" or "Every area" row on a `bg-muted/40` strip that sets them
 all and selects no rung once the rows differ. Each domain row is the name on
 the left, its extra verbs (Run, Clone, Thread) as small outline toggles, then
@@ -758,16 +757,9 @@ editor (Role dialog, below) puts its lists on one tab per catalog area, each
 led by its own bulk row, and sets the extra verbs as checkboxes on a second
 line under the area's name, disabled until it holds Read (See on plays, whose
 first rung is named so), and leads each tab with its yes-or-no permissions as
-switch rows (the name over a muted line), which the bulk row never sets. Project access is
-the same list: an Every project lead row (a muted icon, "Every project" over its one-line
-consequence, and a From role / Chosen projects segmented pair), then one row
-per project with the same level strip and an "Areas" toggle that opens that
-project's area rows indented under it; a project whose areas differ selects
-no rung and shows a mono summary under its name ("tickets Write · docs
-Read"). Under From role the project rows are disabled. A viewer who can't
-change a list sees it disabled. `PermissionLevels`, `PermissionLevelControl`,
-and `ProjectAccessBlock` in `web/src/components/access/` are the reference;
-deny overrides keep the checkbox grid (`PermissionGrid`).
+switch rows (the name over a muted line), which the bulk row never sets. A
+viewer who can't change a list sees it disabled. `PermissionLevels` and
+`PermissionLevelControl` in `web/src/components/access/` are the reference.
 
 Settings card. `SettingsCard` opens with its title in 15px semibold and an
 optional muted description, no rule under them, then the body and the
@@ -828,8 +820,10 @@ Person dialog. The Team's person dialog holds one browser-style tab per
 workspace the person is in: a row of tabs on a hairline that scrolls
 sideways, the selected tab bordered on three sides and joined to the panel
 below, no close button on a tab, and a ghost `+` after the last one that
-opens a popover to pick a workspace and a role. A tab's panel is that
-workspace's role, overrides, Project access, and "Remove from workspace".
+opens a popover to pick a workspace. A tab's panel is that workspace's Roles
+checklist (below), a muted line saying what follows from the roles, and
+"Remove from workspace"; a workspace the viewer can't manage, or an Owner,
+shows the roles as chips instead.
 Every change is held until Confirm: a tab with held changes shows a small
 `foreground` dot, the footer is Cancel and Confirm (disabled with nothing
 held), closing with held changes asks "Discard changes?", and a refused
@@ -837,6 +831,22 @@ change shows as a destructive line above the footer while the rest stays
 held. Account actions (Disable, Remove account) sit at the footer's left and
 apply at once. `TeamPersonDialog` and `TeamWorkspaceTabs` in
 `web/src/components/team/` are the reference.
+
+Roles checklist. Wherever roles are given (the person dialog, each workspace of
+an invitation) every role shows at once, never a dropdown, straight on the
+surface: the microheader and a mono "2 of 5" trailing, one muted line ("Everything
+these roles allow, combined."), then one hairline row per role you may give, at
+least 44px, the whole row the checkbox's label, the name in 14px medium and the
+role's tally trailing (two levels at most, as in Role rows). Under a "Can't
+give" microheader sit the Owner role and the roles holding more than you hold:
+disabled boxes that keep the person's tick, muted names, and a lock with the
+reason. With nothing ticked a `warning` triangle and one muted line settle in
+(`settle-in`): a warning for a member, "Pick at least one role" on an
+invitation, whose Create link waits for one. A role is shown elsewhere as a
+chip: a neutral `rounded-full` hairline pill at 20px, `foreground` at 4%, 11px
+medium, never tinted; three then a mono `+N` with the rest in its tooltip, and
+a dashed muted "No roles". `RolesChecklist` and `RoleChipRow` in
+`web/src/components/role/` are the reference.
 
 Role dialog. New role and a role's Edit open one dialog, 40rem wide and
 `min(52rem, 100dvh - 4rem)` tall at every width: a header with the title and,
@@ -1080,6 +1090,7 @@ The web app's pattern decisions, each with what it was picked over.
 | Setup: each provider row carries its own switch, model and run, providers run side by side | A separate Options disclosure hid the switches and models from the rows they belonged to, and one run at a time made a person wait on every provider to try one; a row that ends in exactly one thing (an action while it waits on you, else nothing but its state) reads at a glance |
 | Add a computer: the command beside the live connection and three named checks | Against numbered install steps above a single "waiting for connection" line (one line cannot say which part is stuck, and the person only ever runs one command) and a progress bar (it says how far, never what to fix); three checks in the order they happen name the part that is stuck and what to do about it |
 | Person dialog: a tab per workspace, changes held until Confirm | Several workspaces stacked in one scroll mixed their controls, and applying each change on the spot made the dialog change under the owner; tabs separate the workspaces and Confirm makes the edit one deliberate act |
+| Roles as a checklist with a Can't give group, chips on the rows | Against held roles as chips with an × beside an "Add role" menu of checkable roles (the menu hid the full set and every reason until it opened) and the roles as plain muted text on Team rows (read like any other meta line); every role and why one is out of reach shows at once |
 | Role dialog: a browser-style tab per area, not stacked sections | Three stacked sections made a 35-row scroll; tabs keep one area in view under a fixed name and footer. The person dialog's tabs, picked over a segmented control (it read as a filter, its 12px labels beside rows of level strips) and line tabs (the idiom for separate jobs addressed by the path) |
 
 ### Motion baseline
