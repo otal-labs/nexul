@@ -19,7 +19,7 @@ export interface PanelTarget {
 
 interface TargetScope {
   workspaceId: string;
-  // Set for a doc: a target outside this project can't be listed until it is in it.
+  // Set for a doc or folder: a target outside this project can't be listed until it is in it.
   projectId?: string | undefined;
 }
 

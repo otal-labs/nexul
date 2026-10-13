@@ -1,6 +1,10 @@
 package docs
 
-import "time"
+import (
+	"time"
+
+	"github.com/otal-labs/nexul/internal/platform/permissions"
+)
 
 type Doc struct {
 	ID    string `json:"id"`
@@ -41,18 +45,11 @@ type DocFilter struct {
 }
 
 // DocScope is what access lets a doc list show: everything with All, otherwise the docs of ProjectIDs. With Read set it
-// also keeps only the docs the caller may read: those of Read's projects but its Denied, and its Allowed.
+// also keeps only the docs the caller may read, as Read describes.
 type DocScope struct {
 	All        bool
 	ProjectIDs []string
-	Read       *DocReadScope
-}
-
-// DocReadScope is the docs a caller may read, as a project set and the docs whose own overwrite turns its answer.
-type DocReadScope struct {
-	ProjectIDs []string
-	Allowed    []string
-	Denied     []string
+	Read       *permissions.DocReach
 }
 
 // DocListItem is a doc in a list, without its body; a list holds only docs the caller may read (ADR 0148).

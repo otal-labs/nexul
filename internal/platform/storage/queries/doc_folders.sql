@@ -4,6 +4,12 @@ INSERT INTO doc_folders (id, project_id, name, is_default, created_at, updated_a
 -- name: GetDocFolder :one
 SELECT * FROM doc_folders WHERE id = ?;
 
+-- name: GetDocFolderScope :one
+SELECT f.project_id, p.workspace_id FROM doc_folders f JOIN projects p ON p.id = f.project_id WHERE f.id = ?;
+
+-- name: DeleteDocFolderRules :exec
+DELETE FROM permission_overwrites WHERE resource_type = 'folder' AND resource_id = ?;
+
 -- name: GetDefaultDocFolder :one
 SELECT * FROM doc_folders WHERE project_id = ? AND is_default = 1;
 

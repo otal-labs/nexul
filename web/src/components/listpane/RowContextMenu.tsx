@@ -8,16 +8,18 @@ interface RowContextMenuProps {
   /** One DOM element: it takes the trigger's handlers, and bg-accent while the menu is open. */
   children: ReactElement;
   menu: RowMenu | undefined;
+  /** The row's own answer to Permissions…, for a row whose menu may hold nothing else. */
+  manages?: boolean;
 }
 
 // Right-clicking the row opens its items at the pointer; a row with nothing to offer keeps the browser's own menu.
 // The trigger stays mounted either way, so the row isn't remounted when the viewer's permissions arrive.
-export const RowContextMenu = ({ children, menu }: RowContextMenuProps) => (
+export const RowContextMenu = ({ children, menu, manages = false }: RowContextMenuProps) => (
   <ContextMenu>
-    <ContextMenuTrigger asChild disabled={!offersMenu(menu)} className="data-[state=open]:bg-accent">
+    <ContextMenuTrigger asChild disabled={!offersMenu(menu, manages)} className="data-[state=open]:bg-accent">
       {children}
     </ContextMenuTrigger>
-    {offersMenu(menu) && (
+    {offersMenu(menu, manages) && (
       <ContextMenuContent className="min-w-44">
         <RowActionItems ui={contextParts} {...menu} />
       </ContextMenuContent>

@@ -12,6 +12,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/paging"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -74,9 +75,18 @@ func (r *DocsRepo) ScopesOf(ctx context.Context, ids []string) (map[string]acces
 		return nil, fmt.Errorf("scopes of docs: %w", err)
 	}
 	for _, row := range rows {
-		out[row.ID] = access.DocScope{WorkspaceID: row.WorkspaceID, ProjectID: row.ProjectID}
+		out[row.ID] = access.DocScope{WorkspaceID: row.WorkspaceID, ProjectID: row.ProjectID, FolderID: row.FolderID}
 	}
 	return out, nil
+}
+
+// FolderScope returns the project and workspace a folder lives in, for access; ErrNotFound for an unknown folder.
+func (r *DocsRepo) FolderScope(ctx context.Context, id string) (access.DocScope, error) {
+	row, err := r.q.GetDocFolderScope(ctx, id)
+	if err != nil {
+		return access.DocScope{}, fmt.Errorf("scope of folder %s: %w", id, notFoundIfNoRows(err))
+	}
+	return access.DocScope{WorkspaceID: row.WorkspaceID, ProjectID: row.ProjectID}, nil
 }
 
 func (r *DocsRepo) List(ctx context.Context) ([]*docs.Doc, error) {
@@ -264,14 +274,9 @@ func (r *DocsRepo) Page(ctx context.Context, f docs.DocFilter, scope docs.DocSco
 	if !scope.All {
 		q.where("d.project_id IN (SELECT value FROM json_each(?))", idsJSON(scope.ProjectIDs))
 	}
-	read := scope.Read
-	if read != nil && len(read.Allowed)+len(read.Denied) == 0 {
-		// No doc's own rule turns its project's answer, so the index on project_id serves the filter alone.
-		q.where("d.project_id IN (SELECT value FROM json_each(?))", idsJSON(read.ProjectIDs))
-	}
-	if read != nil && len(read.Allowed)+len(read.Denied) > 0 {
-		q.where(`((d.project_id IN (SELECT value FROM json_each(?)) AND d.id NOT IN (SELECT value FROM json_each(?)))
-			OR d.id IN (SELECT value FROM json_each(?)))`, idsJSON(read.ProjectIDs), idsJSON(read.Denied), idsJSON(read.Allowed))
+	if scope.Read != nil {
+		cond, args := readClause(scope.Read)
+		q.where(cond, args...)
 	}
 	ids, total, err := q.page(ctx, r.db, w)
 	if err != nil {
@@ -285,6 +290,20 @@ func (r *DocsRepo) Page(ctx context.Context, f docs.DocFilter, scope docs.DocSco
 		return nil, 0, fmt.Errorf("page docs: %w", err)
 	}
 	return inOrder(ids, toDocs(rows), func(d *docs.Doc) string { return d.ID }), total, nil
+}
+
+// readClause keeps what read reaches with only the clauses its turns need, so an unturned read uses the project index.
+func readClause(read *permissions.DocReach) (string, []any) {
+	cond, args := "d.project_id IN (SELECT value FROM json_each(?))", []any{idsJSON(read.ProjectIDs)}
+	if len(read.AllowedFolders)+len(read.DeniedFolders) > 0 {
+		cond = `((` + cond + ` AND d.folder_id NOT IN (SELECT value FROM json_each(?))) OR d.folder_id IN (SELECT value FROM json_each(?)))`
+		args = append(args, idsJSON(read.DeniedFolders), idsJSON(read.AllowedFolders))
+	}
+	if len(read.Allowed)+len(read.Denied) == 0 {
+		return cond, args
+	}
+	return `((` + cond + ` AND d.id NOT IN (SELECT value FROM json_each(?))) OR d.id IN (SELECT value FROM json_each(?)))`,
+		append(args, idsJSON(read.Denied), idsJSON(read.Allowed))
 }
 
 func toDoc(row sqlcgen.Doc) *docs.Doc {

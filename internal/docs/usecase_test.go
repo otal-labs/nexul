@@ -390,14 +390,14 @@ func (f fakeAccess) DeleteByDoc(_ context.Context, _ string) error {
 // fakeProjects are the projects the docs tests file docs in.
 var fakeProjects = []string{"project-1", "project-2"}
 
-func (f fakeAccess) DocsWith(ctx context.Context, userID, _ string, action permissions.Action) ([]string, []string, []string, error) {
+func (f fakeAccess) DocsWith(ctx context.Context, userID, _ string, action permissions.Action) (permissions.DocReach, error) {
 	if f.readable != nil {
-		return []string{}, f.readable, []string{}, nil
+		return permissions.DocReach{ProjectIDs: []string{}, Allowed: f.readable}, nil
 	}
 	if ok, err := f.Can(ctx, userID, "", action); ok && err == nil {
-		return fakeProjects, []string{}, []string{}, nil
+		return permissions.DocReach{ProjectIDs: fakeProjects}, nil
 	}
-	return []string{}, []string{}, []string{}, nil
+	return permissions.DocReach{ProjectIDs: []string{}}, nil
 }
 
 func (f fakeAccess) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {

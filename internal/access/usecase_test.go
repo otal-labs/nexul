@@ -25,8 +25,9 @@ type fakeRepo struct {
 	setErr     error
 	events     []eventbus.OutboxEvent
 	reads      int
-	// docProjects is where each doc lives, for DocRuleTurns, which a real repo joins in SQL.
+	// docProjects and docFolders are where each doc lives, for DocRuleTurns and DocRules, which a real repo joins in SQL.
 	docProjects map[string]string
+	docFolders  map[string]string
 	// grid is what Grid hands back; saved and finishedBy are what SaveGrid was given.
 	grid       *GridSource
 	saved      []*Overwrite
@@ -116,8 +117,33 @@ func (f *fakeRepo) OwnRules(_ context.Context, userID string, projectIDs []strin
 	return out, nil
 }
 
-// DocRuleTurns decides the person's own rules alone: the fake keeps no record of who holds which role.
-func (f *fakeRepo) DocRuleTurns(_ context.Context, userID string, action permissions.Action, ruled, readable []string) ([]string, []string, error) {
+// DocRules finds the person's own rules on each doc and its folder: the fake keeps no record of who holds which role.
+func (f *fakeRepo) DocRules(_ context.Context, docIDs []string, userID string) (map[string]*DocRules, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reads++
+	out := map[string]*DocRules{}
+	for _, id := range docIDs {
+		chain := &DocRules{}
+		if ow, err := f.get(resourceTypeFolder, f.docFolders[id], userID); err == nil {
+			chain.Folder = &Rules{Person: ow}
+		}
+		ow, err := f.get(resourceTypeDoc, id, userID)
+		if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+			return nil, err
+		}
+		if err == nil {
+			chain.Doc = &Rules{Person: ow}
+		}
+		if chain.Folder != nil || chain.Doc != nil {
+			out[id] = chain
+		}
+	}
+	return out, nil
+}
+
+// DocRuleTurns decides the person's own doc rules alone; the storage tests cover roles and folders.
+func (f *fakeRepo) DocRuleTurns(_ context.Context, userID string, action permissions.Action, ruled, readable []string) (permissions.DocReach, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.reads++
@@ -137,7 +163,7 @@ func (f *fakeRepo) DocRuleTurns(_ context.Context, userID string, action permiss
 	}
 	slices.Sort(allowed)
 	slices.Sort(denied)
-	return allowed, denied, nil
+	return permissions.DocReach{AllowedFolders: []string{}, DeniedFolders: []string{}, Allowed: allowed, Denied: denied}, nil
 }
 
 // roleKey keys a role's rule apart from any person's.
@@ -378,7 +404,17 @@ func TestCan(t *testing.T) {
 type fakeDocWorkspace struct {
 	byDoc     map[string]string
 	projectOf map[string]string
+	folderOf  map[string]string
+	folders   map[string]DocScope
 	err       error
+}
+
+func (f *fakeDocWorkspace) FolderScope(_ context.Context, folderID string) (DocScope, error) {
+	scope, ok := f.folders[folderID]
+	if !ok {
+		return DocScope{}, apperrs.ErrNotFound
+	}
+	return scope, nil
 }
 
 func (f *fakeDocWorkspace) DocScopes(_ context.Context, docIDs []string) (map[string]DocScope, error) {
@@ -387,7 +423,7 @@ func (f *fakeDocWorkspace) DocScopes(_ context.Context, docIDs []string) (map[st
 	}
 	out := map[string]DocScope{}
 	for _, id := range docIDs {
-		out[id] = DocScope{WorkspaceID: f.byDoc[id], ProjectID: f.projectOf[id]}
+		out[id] = DocScope{WorkspaceID: f.byDoc[id], ProjectID: f.projectOf[id], FolderID: f.folderOf[id]}
 	}
 	return out, nil
 }

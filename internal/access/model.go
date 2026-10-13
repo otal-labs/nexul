@@ -31,6 +31,20 @@ type Rules struct {
 	Roles  []*Overwrite
 }
 
+// DocRules are the rules reaching one person on a doc's folder and on the doc itself, read together.
+type DocRules struct {
+	Folder *Rules
+	Doc    *Rules
+}
+
+// chain is the rules from the project inward: the folder's, then the doc's.
+func (r *DocRules) chain() []*Rules {
+	if r == nil {
+		return nil
+	}
+	return []*Rules{r.Folder, r.Doc}
+}
+
 // User is mirrored here so access never imports auth (ADR 0017).
 type User struct {
 	ID    string `json:"id"`

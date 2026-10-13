@@ -46,6 +46,15 @@ func (q *Queries) DeleteDocFolder(ctx context.Context, id string) (int64, error)
 	return result.RowsAffected()
 }
 
+const deleteDocFolderRules = `-- name: DeleteDocFolderRules :exec
+DELETE FROM permission_overwrites WHERE resource_type = 'folder' AND resource_id = ?
+`
+
+func (q *Queries) DeleteDocFolderRules(ctx context.Context, resourceID string) error {
+	_, err := q.db.ExecContext(ctx, deleteDocFolderRules, resourceID)
+	return err
+}
+
 const getDefaultDocFolder = `-- name: GetDefaultDocFolder :one
 SELECT id, project_id, name, is_default, created_at, updated_at FROM doc_folders WHERE project_id = ? AND is_default = 1
 `
@@ -79,6 +88,22 @@ func (q *Queries) GetDocFolder(ctx context.Context, id string) (DocFolder, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
+	return i, err
+}
+
+const getDocFolderScope = `-- name: GetDocFolderScope :one
+SELECT f.project_id, p.workspace_id FROM doc_folders f JOIN projects p ON p.id = f.project_id WHERE f.id = ?
+`
+
+type GetDocFolderScopeRow struct {
+	ProjectID   string
+	WorkspaceID string
+}
+
+func (q *Queries) GetDocFolderScope(ctx context.Context, id string) (GetDocFolderScopeRow, error) {
+	row := q.db.QueryRowContext(ctx, getDocFolderScope, id)
+	var i GetDocFolderScopeRow
+	err := row.Scan(&i.ProjectID, &i.WorkspaceID)
 	return i, err
 }
 

@@ -107,9 +107,9 @@ A project's **Settings → General** holds **People in this project**, for whoev
 
 The project wizard's **Who's in it** step sets the same roles when you create a project. Deleting a project says how many people lose it before you confirm.
 
-## Permissions on a project, a doc or a play
+## Permissions on a project, a folder, a doc or a play
 
-Right-click a project in the sidebar's switcher, a doc in the Docs list or a play in **Configuration → Plays** and pick **Permissions…**; a doc's settings menu has it too, and each row of a project's **People in this project** opens it. It shows only to someone who can change that project's, doc's or play's rules. The list on the left holds the roles, then the people, with a rule here; **Add role or person** lists another. A doc refuses a role or person who isn't in its project, and says to add them to the project first.
+Right-click a project in the sidebar's switcher, a folder or a doc in the Docs list, or a play in **Configuration → Plays** and pick **Permissions…**; a doc's settings menu has it too, and each row of a project's **People in this project** opens it. It shows only to someone who can change that project's, folder's, doc's or play's rules. The list on the left holds the roles, then the people, with a rule here; **Add role or person** lists another. A folder or a doc refuses a role or person who isn't in its project, and says to add them to the project first.
 
 Pick a role or a person to set its rule, one row per permission, each with three buttons:
 
@@ -117,23 +117,25 @@ Pick a role or a person to set its rule, one row per permission, each with three
 - **Fallback** (slash): this rule says nothing, so the answer comes from further out. The line under the row says what they get then, and from where; a project or role it names is a link to that project's panel or that role's rule.
 - **Deny** (cross): they don't have it here, whatever their roles say.
 
-A project carries **See this project** (being in it) and every project area; a doc carries the docs permissions and **Manage this doc's access**; a play carries **Run**. Between the rules for a person's roles, Allow wins, and a rule naming the person beats them. **Remove from this doc** (or project, or play) sets every row back to Fallback. Nothing changes until you press **Save**, and anyone else with the panel open sees the change without a refresh.
+A project carries **See this project** (being in it) and every project area; a folder and a doc carry the docs permissions and **Manage this folder's access** or **Manage this doc's access**; a play carries **Run**. Between the rules for a person's roles, Allow wins, and a rule naming the person beats them.
 
-You can't allow a permission you don't hold on that project, doc or play, or lift a Deny on one: its button shows a lock and says why. Adding a Deny is never limited. **Check access** shows what one person can do here, each answer with the rule or role that decided it.
+A folder's rules reach every doc in it. They sit between the project and the doc: a folder's rule beats the project's, and a doc's own rule beats its folder's, whichever role or person each names. Deny **Read** on a folder for a role and its docs drop out of that role's lists, search and links, unless a doc's own rule lets them back in. Moving a doc to another folder changes which folder's rules reach it at once, and deleting a folder deletes its rules as its docs move to Main. **Remove from this doc** (or project, or play) sets every row back to Fallback. Nothing changes until you press **Save**, and anyone else with the panel open sees the change without a refresh.
 
-Changing a project's rules takes **Manage this project's access** there, which its creator has; a doc's takes **Manage this doc's access** on it, which its creator has; a play's takes `plays:write`.
+You can't allow a permission you don't hold on that project, folder, doc or play, or lift a Deny on one: its button shows a lock and says why. Adding a Deny is never limited. **Check access** shows what one person can do here, each answer with the rule or role that decided it.
+
+Changing a project's rules takes **Manage this project's access** there, which its creator has; a folder's takes **Manage this folder's access** (`permissions:write`) on it; a doc's takes **Manage this doc's access** on it, which its creator has; a play's takes `plays:write`.
 
 ## Why someone can or can't
 
-Every answer has a source: the Owner role, the person's roles, a rule on a project, a doc or a play for one of their roles or for them, or not being in the project. When Nexul refuses something you can see, the message names it, such as `docs:write required (Denied on doc Pricing for bob)` or `tickets:write required (Not allowed: role Client doesn't grant it)`. Something you can't see is not found and says nothing more, so it never confirms it exists.
+Every answer has a source: the Owner role, the person's roles, a rule on a project, a folder, a doc or a play for one of their roles or for them, or not being in the project. When Nexul refuses something you can see, the message names it, such as `docs:write required (Denied on doc Pricing for bob)` or `tickets:write required (Not allowed: role Client doesn't grant it)`. Something you can't see is not found and says nothing more, so it never confirms it exists.
 
-To see every answer on one doc, play, project, or instance area at once, each with its source and the answer it would have without that doc's, play's, project's, or area's own rule:
+To see every answer on one doc, folder, play, project, or instance area at once, each with its source and the answer it would have without that entity's own rule:
 
 ```
 GET /api/permissions/explain?resource_type=doc&resource_id=<id>&user_id=<id>
 ```
 
-Leave out `user_id` for your own answers, which take only being able to open it. `role_id` in its place answers for a role, as someone holding only that role would get them; the panel's lines under a role's Fallback come from it. Someone else's, or a role's, take managing it: `permissions:write` on a doc, `plays:write` on a play, `projects:access` on a project, or being the instance Owner for an instance area (`resource_type=instance_area&resource_id=dns`). Agents ask the same with `permission_overwrite_list` and a `user_id`.
+Leave out `user_id` for your own answers, which take only being able to open it. `role_id` in its place answers for a role, as someone holding only that role would get them; the panel's lines under a role's Fallback come from it. Someone else's, or a role's, take managing it: `permissions:write` on a doc or folder, `plays:write` on a play, `projects:access` on a project, or being the instance Owner for an instance area (`resource_type=instance_area&resource_id=dns`). Agents ask the same with `permission_overwrite_list` and a `user_id`.
 
 ## Names and pictures
 
@@ -147,4 +149,4 @@ Under **GitHub**, the same page shows whether your own GitHub account lists your
 
 ## Over MCP
 
-Agents manage people with `account_list` (each person's `roles` per workspace), `account_update`, `invitation_create`, `invitation_list`, `invitation_delete`, `role_update`, `role_delete`, and the `permission_overwrite_*` tools. `account_update` gives and takes away roles per workspace with `add_roles` and `remove_roles`, and `invitation_create` takes `roles` per workspace, at least one; neither sets anything per person. `permission_overwrite_update` sets a `state` of `allow`, `fallback`, or `deny` for people (`user_ids`) or roles (`role_ids`) on a doc, play, project, channel, or instance area: allowing `projects:open` on a project lists a role or a person in it, denying it keeps a person out, denying `channels:read` on a public channel hides it, which only an Owner may do, and allowing `dns:write` on the `dns` instance area hands out DNS alone, which only the instance Owner may do. `workspace_update` with `finish_access_setup` ends the one-time setup after an upgrade, and `workspace_list` says whether it's done. See [MCP server](/docs/guide/mcp-server/).
+Agents manage people with `account_list` (each person's `roles` per workspace), `account_update`, `invitation_create`, `invitation_list`, `invitation_delete`, `role_update`, `role_delete`, and the `permission_overwrite_*` tools. `account_update` gives and takes away roles per workspace with `add_roles` and `remove_roles`, and `invitation_create` takes `roles` per workspace, at least one; neither sets anything per person. `permission_overwrite_update` sets a `state` of `allow`, `fallback`, or `deny` for people (`user_ids`) or roles (`role_ids`) on a doc, folder, play, project, channel, or instance area (a folder's ids are `project_get`'s `doc_folders`): allowing `projects:open` on a project lists a role or a person in it, denying it keeps a person out, denying `channels:read` on a public channel hides it, which only an Owner may do, and allowing `dns:write` on the `dns` instance area hands out DNS alone, which only the instance Owner may do. `workspace_update` with `finish_access_setup` ends the one-time setup after an upgrade, and `workspace_list` says whether it's done. See [MCP server](/docs/guide/mcp-server/).

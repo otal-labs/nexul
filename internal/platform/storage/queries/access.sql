@@ -66,8 +66,34 @@ WHERE resource_type = sqlc.arg(resource_type) AND resource_id = sqlc.arg(resourc
   AND role_id IN (SELECT value FROM json_each(sqlc.arg(role_ids)))
 ORDER BY role_id;
 
+-- name: ListDocChainRules :many
+SELECT po.resource_id AS doc_id, po.* FROM permission_overwrites po
+WHERE po.resource_type = 'doc' AND po.resource_id IN (SELECT value FROM json_each(sqlc.arg(doc_ids)))
+  AND (po.user_id = sqlc.arg(user_id) OR po.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = sqlc.arg(user_id)))
+UNION ALL
+SELECT d.id AS doc_id, pf.* FROM docs d JOIN permission_overwrites pf ON pf.resource_type = 'folder' AND pf.resource_id = d.folder_id
+WHERE d.id IN (SELECT value FROM json_each(sqlc.arg(doc_ids)))
+  AND (pf.user_id = sqlc.arg(user_id) OR pf.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = sqlc.arg(user_id)));
+
 -- name: ListDocRuleTurns :many
-SELECT rs.resource_id, rs.state FROM (
+WITH folder_states AS (
+  SELECT u.resource_id, COALESCE(MAX(CASE WHEN u.by_role = 0 THEN u.state END), MAX(CASE WHEN u.by_role = 1 THEN u.state END)) AS state
+  FROM (
+    SELECT po.resource_id, 0 AS by_role,
+      CASE WHEN instr(po.deny, sqlc.arg(quoted_action)) > 0 THEN 0 WHEN instr(po.allow, sqlc.arg(quoted_action)) > 0 THEN 1 END AS state
+    FROM permission_overwrites po JOIN doc_folders rf ON rf.id = po.resource_id
+    WHERE po.user_id = sqlc.arg(user_id) AND po.resource_type = 'folder' AND po.target = 'person'
+      AND rf.project_id IN (SELECT value FROM json_each(sqlc.arg(ruled)))
+    UNION ALL
+    SELECT pr.resource_id, 1 AS by_role,
+      CASE WHEN instr(pr.deny, sqlc.arg(quoted_action)) > 0 THEN 0 WHEN instr(pr.allow, sqlc.arg(quoted_action)) > 0 THEN 1 END AS state
+    FROM member_roles mr CROSS JOIN permission_overwrites pr CROSS JOIN doc_folders rf CROSS JOIN projects rp
+    WHERE mr.user_id = sqlc.arg(user_id) AND pr.role_id = mr.role_id AND pr.resource_type = 'folder' AND rf.id = pr.resource_id
+      AND rp.id = rf.project_id AND rp.workspace_id = mr.workspace_id
+      AND rf.project_id IN (SELECT value FROM json_each(sqlc.arg(ruled)))
+  ) u
+  GROUP BY u.resource_id
+), doc_states AS (
   SELECT u.resource_id, COALESCE(MAX(CASE WHEN u.by_role = 0 THEN u.state END), MAX(CASE WHEN u.by_role = 1 THEN u.state END)) AS state
   FROM (
     SELECT po.resource_id, 0 AS by_role,
@@ -84,10 +110,15 @@ SELECT rs.resource_id, rs.state FROM (
       AND rd.project_id IN (SELECT value FROM json_each(sqlc.arg(ruled)))
   ) u
   GROUP BY u.resource_id
-) rs JOIN docs d ON d.id = rs.resource_id
-WHERE (rs.state = 0 AND d.project_id IN (SELECT value FROM json_each(sqlc.arg(readable))))
-   OR (rs.state = 1 AND d.project_id NOT IN (SELECT value FROM json_each(sqlc.arg(readable))))
-ORDER BY rs.resource_id;
+)
+SELECT 'folder' AS kind, fs.resource_id, fs.state FROM folder_states fs JOIN doc_folders f ON f.id = fs.resource_id
+WHERE (fs.state = 0 AND f.project_id IN (SELECT value FROM json_each(sqlc.arg(readable))))
+   OR (fs.state = 1 AND f.project_id NOT IN (SELECT value FROM json_each(sqlc.arg(readable))))
+UNION ALL
+SELECT 'doc' AS kind, ds.resource_id, ds.state FROM doc_states ds JOIN docs d ON d.id = ds.resource_id
+LEFT JOIN folder_states fs ON fs.resource_id = d.folder_id
+WHERE ds.state != COALESCE(fs.state, d.project_id IN (SELECT value FROM json_each(sqlc.arg(readable))))
+ORDER BY kind, resource_id;
 
 -- name: GetAccessSetup :one
 SELECT w.access_setup_finished, w.access_setup_by, w.access_setup_at, COALESCE(u.login, '') AS finished_by_login

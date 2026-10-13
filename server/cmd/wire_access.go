@@ -93,6 +93,12 @@ func (a accessNames) Name(ctx context.Context, entityType, id string) (string, e
 			return "", err
 		}
 		return d.Title, nil
+	case "folder":
+		f, err := a.store.Docs.GetFolder(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		return f.Name, nil
 	case "play":
 		p, err := a.store.Plays.Get(ctx, id)
 		if err != nil {
@@ -122,6 +128,10 @@ type accessDocWorkspaceResolver struct {
 
 func (a accessDocWorkspaceResolver) DocScopes(ctx context.Context, docIDs []string) (map[string]access.DocScope, error) {
 	return a.docs.ScopesOf(ctx, docIDs)
+}
+
+func (a accessDocWorkspaceResolver) FolderScope(ctx context.Context, folderID string) (access.DocScope, error) {
+	return a.docs.FolderScope(ctx, folderID)
 }
 
 // accessUsers adapts UsersRepo to access's Users interface, mapping auth.User to access.User (ADR 0017).

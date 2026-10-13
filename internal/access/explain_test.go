@@ -25,7 +25,7 @@ var explainNames = map[string]string{
 	"workspace/ws": "Acme", "project/p-store": "Storefront", "project/p-back": "Backoffice", "doc/d-price": "Pricing",
 	"play/play-notes": "Release notes", "role/role-owner": "Owner", "role/role-dev": "Developer", "role/role-plain": "Member",
 	"role/role-client": "Client", "person/alice": "alice", "person/bob": "bob", "person/sam": "sam", "person/lena": "lena",
-	"person/outsider": "outsider", "person/nina": "nina",
+	"person/outsider": "outsider", "person/nina": "nina", "role/role-front": "Frontend", "folder/f-sales": "Sales",
 }
 
 func (f *fakeNames) Name(_ context.Context, entityType, id string) (string, error) {
@@ -207,7 +207,7 @@ func TestDecide_RoleRules(t *testing.T) {
 			if tt.person != "" {
 				rules.Person = doc(TargetPerson, "bob", tt.person)
 			}
-			allowed, got := decide(ws, action, func() *Rules { return rules })
+			allowed, got := decide(ws, action, func() []*Rules { return []*Rules{rules} })
 			assert.Equal(t, tt.allowed, allowed)
 			assert.Equal(t, tt.source, got)
 		})

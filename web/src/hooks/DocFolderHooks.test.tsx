@@ -21,4 +21,16 @@ describe("the doc folder follower", () => {
     await followFrame(docFolderFollower, "doc.folder.deleted", { folder: specs, moved_to_folder_id: "f-0" }, client);
     expect(client.getQueryData(["getDocFolders", "p-1"])).toEqual([]);
   });
+
+  it("refetches the doc and folder lists when a folder's rule changes, and nothing for another entity's", async () => {
+    const client = seeded([
+      [["getDocFolders", "p-1"], [specs]],
+      [["getDocs"], []],
+    ]);
+    await followFrame(docFolderFollower, "access.grant.changed", { resource_type: "doc", resource_id: "d-1" }, client);
+    expect([isStale(client, ["getDocFolders", "p-1"]), isStale(client, ["getDocs"])]).toEqual([false, false]);
+
+    await followFrame(docFolderFollower, "access.grant.changed", { resource_type: "folder", resource_id: "f-1" }, client);
+    expect([isStale(client, ["getDocFolders", "p-1"]), isStale(client, ["getDocs"])]).toEqual([true, true]);
+  });
 });

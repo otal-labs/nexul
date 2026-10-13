@@ -78,6 +78,9 @@ func (r *DocsRepo) DeleteFolder(ctx context.Context, id, toFolderID string, evts
 		if n == 0 {
 			return fmt.Errorf("delete folder %s: %w", id, apperrs.ErrNotFound)
 		}
+		if err := q.DeleteDocFolderRules(ctx, id); err != nil {
+			return fmt.Errorf("delete the rules of folder %s: %w", id, err)
+		}
 		return enqueueDocsOutbox(ctx, tx, evts)
 	})
 }

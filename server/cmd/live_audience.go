@@ -244,7 +244,7 @@ func grantFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	switch p.ResourceType {
 	case "project":
 		return a.access.RequireProject(ctx, p.ResourceID, permissions.ProjectsAccess) == nil
-	case "doc":
+	case "doc", "folder":
 		manages, _, err := a.access.Decide(ctx, actorID(ctx), p.ResourceType, p.ResourceID, permissions.PermissionsWrite)
 		return err == nil && manages
 	case "play":

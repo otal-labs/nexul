@@ -7,6 +7,9 @@ SELECT p.workspace_id FROM tickets t JOIN projects p ON p.id = t.project_id WHER
 -- name: EventWorkspaceOfDoc :one
 SELECT p.workspace_id FROM docs d JOIN projects p ON p.id = d.project_id WHERE d.id = ?;
 
+-- name: EventWorkspaceOfDocFolder :one
+SELECT p.workspace_id FROM doc_folders f JOIN projects p ON p.id = f.project_id WHERE f.id = ?;
+
 -- name: EventWorkspaceOfConversation :one
 SELECT workspace_id FROM conversations WHERE id = ?;
 

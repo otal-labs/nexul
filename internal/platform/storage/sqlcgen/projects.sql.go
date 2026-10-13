@@ -86,6 +86,16 @@ func (q *Queries) DeleteProject(ctx context.Context, id string) (int64, error) {
 	return result.RowsAffected()
 }
 
+const deleteProjectFolderRules = `-- name: DeleteProjectFolderRules :exec
+DELETE FROM permission_overwrites
+WHERE resource_type = 'folder' AND resource_id IN (SELECT f.id FROM doc_folders f WHERE f.project_id = ?)
+`
+
+func (q *Queries) DeleteProjectFolderRules(ctx context.Context, projectID string) error {
+	_, err := q.db.ExecContext(ctx, deleteProjectFolderRules, projectID)
+	return err
+}
+
 const getProject = `-- name: GetProject :one
 SELECT id, name, prefix, position, workspace_id, created_at, updated_at, icon, tests_location, setup_finished, setup_steps, setup_stack_id, setup_env_keys FROM projects WHERE id = ?
 `

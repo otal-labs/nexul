@@ -28,6 +28,7 @@ INSERT INTO projects (id, name, position, workspace_id, created_at, updated_at) 
 INSERT INTO tickets (id, project_id, title, status, created_at, updated_at) VALUES
     ('t-a', 'p-a', 'A', 's', 1, 1), ('t-b', 'p-b', 'B', 's', 1, 1);
 INSERT INTO project_repos (project_id, owner, name, added_at) VALUES ('p-b', 'acme', 'web', 1);
+INSERT INTO doc_folders (id, project_id, name, is_default, created_at, updated_at) VALUES ('f-b', 'p-b', 'Sales', 0, 1, 1);
 INSERT INTO stacks (id, project_id, name, slug, machine, strategy, created_at, updated_at) VALUES
     ('st-b', 'p-b', 'web', 'web', 'm', 'compose', 1, 1), ('st-instance', NULL, 'nexul', 'nexul', 'm', 'compose', 1, 1);
 INSERT INTO deploys (id, stack_id, service, target, image, status, strategy, created_at, updated_at) VALUES
@@ -44,6 +45,7 @@ INSERT INTO deploys (id, stack_id, service, target, image, status, strategy, cre
 	}{
 		{"a ticket event is its project's workspace", "ticket.finished", map[string]any{"ticket": map[string]any{"id": "t-b", "project_id": "p-b"}}, []string{"ws-b"}, false},
 		{"a doc folder event is its project's workspace", "doc.folder.deleted", map[string]any{"folder": map[string]any{"id": "f-b", "project_id": "p-b"}}, []string{"ws-b"}, false},
+		{"a folder's rule is its project's workspace", "access.grant.changed", map[string]any{"resource_type": "folder", "resource_id": "f-b"}, []string{"ws-b"}, false},
 		{"a deleted ticket names its project", "ticket.deleted", map[string]any{"id": "t-gone", "project_id": "p-a"}, []string{"workspace-default"}, false},
 		{"a PR reaches every workspace among its linked tickets", "git.pr_opened", map[string]any{"owner": "acme", "repo": "web", "pr": map[string]any{"linked_ticket_ids": []string{"t-a", "t-b"}}}, []string{"workspace-default", "ws-b"}, false},
 		{"a PR linking nothing is its repository's", "git.pr_merged", map[string]any{"owner": "acme", "repo": "web", "pr": map[string]any{}}, []string{"ws-b"}, false},

@@ -14,7 +14,7 @@ import (
 )
 
 // ListFolders returns a project's folders, the default first; a viewer without docs:write sees only the folders
-// holding a doc they can open.
+// holding a doc they can open, which folder rules decide with the doc's own.
 func (s *Service) ListFolders(ctx context.Context, projectID string) ([]*Folder, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
@@ -34,11 +34,10 @@ func (s *Service) ListFolders(ctx context.Context, projectID string) ([]*Folder,
 	if err != nil {
 		return nil, fmt.Errorf("list docs for project %s: %w", projectID, err)
 	}
+	reads := s.canEach(ctx, ds, permissions.DocsRead)
 	holding := map[string]bool{}
 	for _, d := range ds {
-		if !holding[d.FolderID] && s.can(ctx, d.ID, permissions.DocsRead) {
-			holding[d.FolderID] = true
-		}
+		holding[d.FolderID] = holding[d.FolderID] || reads[d.ID]
 	}
 	return slices.DeleteFunc(folders, func(f *Folder) bool { return !holding[f.ID] }), nil
 }

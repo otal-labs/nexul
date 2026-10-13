@@ -413,7 +413,10 @@ doc lands unless it was started in another folder; it can be renamed but
 never deleted, and deleting any other folder moves its docs there, never
 deleting one. A doc copied into another project lands in that project's
 default folder. Made, renamed, and deleted, and docs moved between them, with
-`docs:write`; a reader sees only the folders holding a doc they can open.
+`docs:write`; a reader sees only the folders holding a doc they can open. Its
+Permission overwrites reach every doc in it, between the project's and the
+doc's own, so moving a doc changes which reach it; they are written with
+`permissions:write` on the folder and deleted with it.
 _Avoid_: Category (that groups tickets on the board), section (a heading
 inside a doc), collection (the retired workspace-wide doc grouping)
 
