@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,10 @@ interface RepoRowProps {
   // Called as the row starts to leave, so the list can glide the rows under it up once it is gone.
   onLeave?: () => void;
   repo: RepoRef;
+  deployPrompt?: ReactNode;
 }
 
-export const RepoRow = ({ onLeave, repo }: RepoRowProps) => {
+export const RepoRow = ({ onLeave, repo, deployPrompt }: RepoRowProps) => {
   const removeRepo = useRemoveProjectRepo();
   const [leaving, setLeaving] = useState(false);
   const { open: confirm } = useConfirmationDialog();
@@ -35,7 +36,15 @@ export const RepoRow = ({ onLeave, repo }: RepoRowProps) => {
   return (
     <li data-leaving={leaving || undefined} className={cn(leavingRowClass, "flex items-center gap-3 px-3 py-2 text-sm transition-colors duration-150 ease-standard hover:bg-accent/40")}>
       <span className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="truncate font-mono text-xs">{repo.full_name}</span>
+        <span className="min-w-0">
+          <span className="block truncate font-mono text-xs">{repo.full_name}</span>
+          {deployPrompt && (
+            <span className="mt-0.5 flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
+              <span aria-hidden className="size-1.5 rounded-full border border-muted-foreground" />
+              not deployed
+            </span>
+          )}
+        </span>
         {repo.role === RepoRole.Tests && (
           <span className="shrink-0 font-mono text-xs text-muted-foreground" title="Tests repository, never deployed">
             tests
@@ -43,6 +52,7 @@ export const RepoRow = ({ onLeave, repo }: RepoRowProps) => {
         )}
       </span>
       <span className="shrink-0 font-mono text-xs text-muted-foreground">{repo.connector_id}</span>
+      {deployPrompt}
       <Button
         variant="ghost"
         size="icon"

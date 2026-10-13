@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFetchProjectRepos } from "@/hooks/ProjectHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
+import { RepoRowDeploy, useDeployPromptVariant, useWaitingRepos } from "@/prototype/projectpaths/DeployPrompts";
 import { AddProjectRepoFormSchema, type AddProjectRepoFormData } from "@/models/Project";
 
 interface ProjectReposProps {
@@ -20,6 +21,8 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
   const { data: repos, isPending, error } = useFetchProjectRepos(projectId);
   const { open: openAdd } = useFormDialog();
   const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
+  const waiting = useWaitingRepos(projectId);
+  const promptOn = useDeployPromptVariant() === "b";
 
   const onAdd = async () => {
     await openAdd<AddProjectRepoFormData>({
@@ -50,7 +53,12 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
         <div ref={glideRef}>
           <EnterList className="divide-y divide-border overflow-hidden rounded-md border border-border">
             {repos.map((repo) => (
-              <RepoRow key={`${repo.owner}/${repo.name}`} repo={repo} onLeave={prepareGlide} />
+              <RepoRow
+                key={`${repo.owner}/${repo.name}`}
+                repo={repo}
+                onLeave={prepareGlide}
+                deployPrompt={promptOn && waiting.some((w) => w.full_name === repo.full_name) && <RepoRowDeploy projectId={projectId} />}
+              />
             ))}
           </EnterList>
         </div>

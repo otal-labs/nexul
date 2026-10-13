@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Outlet, createBrowserRouter, RouterProvider, type RouteObject } from "react-router";
 
 import { Layout } from "@/Layout";
+import { RepositoryStepProto } from "@/prototype/projectpaths/RepositoryStepProto";
 import { AccessSetupGate } from "@/components/accessgrid/AccessSetupGate";
 import { AreaGate } from "@/components/auth/AreaGate";
 import { ProjectRevokedGate } from "@/components/project/ProjectRevokedGate";
@@ -63,6 +64,7 @@ const workspaceRoutes: RouteObject[] = [
   { path: "inbox/:rowKey?/:tab?", element: <InboxPage /> },
   { path: "chat", element: <ChatPage /> },
   { path: "chat/:conversationId", element: <ChatPage /> },
+  { path: "proto/project-paths", element: <RepositoryStepProto /> },
   { path: "wizard/project/import", handle: gate("newProject"), element: <ProjectWizardImportPage /> },
   { path: "wizard/project/:step", handle: gate("newProject"), element: <ProjectWizardPage /> },
   {

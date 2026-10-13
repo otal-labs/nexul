@@ -11,6 +11,7 @@ import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import type { Project } from "@/models/Project";
 import type { BoardStatus } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
+import { BoardWaitingMeta, DeployPromptPicker, useDeployPromptVariant, useWaitingRepos } from "@/prototype/projectpaths/DeployPrompts";
 
 interface ProjectBoardSectionProps {
   projectId?: string | undefined;
@@ -67,11 +68,14 @@ export const ProjectBoardSection = ({
   onAddTicket,
 }: ProjectBoardSectionProps) => {
   const workspaceCrumb = useWorkspaceCrumb();
+  const waiting = useWaitingRepos(projectId);
+  const showWaiting = useDeployPromptVariant() === "c" && waiting.length > 0 && !!projectId;
   const projectTickets = tickets?.filter((t) => t.project_id === projectId);
   const ticketCount = projectTickets?.length;
   const people = new Set(projectTickets?.flatMap((t) => [t.developer, t.tester]).filter(Boolean)).size;
   return (
     <>
+      {project && <DeployPromptPicker token={project.prefix || project.id} />}
       <PageHeader
         crumbs={[workspaceCrumb]}
         title={
@@ -87,6 +91,7 @@ export const ProjectBoardSection = ({
                 <p className="mt-1 font-mono text-xs tabular-nums text-muted-foreground">
                   {ticketCount} {ticketCount === 1 ? "ticket" : "tickets"}
                   {people > 0 && ` · ${people} ${people === 1 ? "person" : "people"}`}
+                  {showWaiting && projectId && <BoardWaitingMeta projectId={projectId} repos={waiting} />}
                 </p>
               )}
             </div>

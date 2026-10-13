@@ -11,6 +11,7 @@ import { SettingsShell } from "@/components/settings/SettingsShell";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useCanManageAccess } from "@/hooks/useCanManageAccess";
 import type { Project } from "@/models/Project";
+import { DeployPromptPicker } from "@/prototype/projectpaths/DeployPrompts";
 
 interface ProjectSettingsContentProps {
   project: Project;
@@ -30,6 +31,7 @@ export const ProjectSettingsContent = ({ project, section }: ProjectSettingsCont
       {section === "services" && <ProjectServices projectId={project.id} />}
       {section === "board" && <BoardSettingsSection projectId={project.id} />}
       {section === "danger" && <ProjectDangerZoneSection project={project} />}
+      <DeployPromptPicker token={project.prefix || project.id} />
     </SettingsShell>
   );
 };
