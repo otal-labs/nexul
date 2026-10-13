@@ -1,7 +1,7 @@
 # 03: What the web can know about one thing's permissions after the switch
 
 Type: research
-Status: open
+Status: resolved
 Blocked by: None — can start immediately
 
 ## Question
@@ -15,3 +15,20 @@ answer:
 - whether "your role can't" (the role union lacks it) can be told apart from "a rule on this thing denied it"
   without a new endpoint
 - how much the web would have to fetch per list row, so the sweep keeps the fast-by-default rule
+
+## Answer
+
+Details are in `research/03-what-the-web-can-know.md`. The switch merged as #614, so this reads master.
+
+- `/me` answers project, workspace and instance actions. That is enough to hide or lock most buttons with no new
+  endpoint.
+- For the instance and workspace areas, "absent" means "your role can't".
+- `/me` can't tell a role refusal from a rule refusal on project-area actions, and it can't see a rule on one doc,
+  play or stack.
+- `GET /api/permissions/explain` (and MCP `permission_overwrite_list`) gives the answer for one entity, with
+  `source.kind` set to `role` or `rule` and the sentence. It covers docs, plays (`plays:run` only) and projects.
+  Stacks, areas, machines and channels are refused.
+- Rework tickets 18 to 24 are still `ready-for-agent`, and each adds entities `/me` can't speak for.
+- Lists are guarded to constant statements, and their rows carry no write or delete answers. One explain call per
+  row would be N requests with no guard. A locked action on a single row therefore needs explain widened to stacks
+  and areas, or a flag the server computes on each row. That choice goes to ticket 05.

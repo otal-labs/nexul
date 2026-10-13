@@ -25,7 +25,7 @@ A spec in `.scratch/role-aware-ui/spec.md`, ready to slice into build tickets. I
   Locked pills already show "You don't have access". Stack rules (its ticket 19) and instance-area rules (23, 24)
   are still to come, so a role-wide check can't always answer for one stack or machine.
 - The owner's call: **everything here builds after the `permission-switch` branch merges**, the one-way doors
-  included.
+  included. It merged as #614 on 2026-10-13.
 - Decided while charting:
   - **Hidden or locked.** An action the viewer can't take is hidden, unless they hold a role with **Show locked
     actions** on. Then it shows as a Locked action: dimmed, with the reason. The reason is "Your role can't <do
@@ -40,10 +40,12 @@ A spec in `.scratch/role-aware-ui/spec.md`, ready to slice into build tickets. I
 
 <!-- one line per resolved ticket: [title](issues/NN-slug.md): gist -->
 
+- [Every action on every screen, and the permission it needs](issues/01-every-action-and-its-permission.md): 152 actions, 74 ungated, 8 gated on the wrong permission; worst are projects and board, tickets, stacks and deploys
+- [Every one-way door](issues/02-one-way-doors.md): 15 doors; ticket delete, DNS records and archived docs are web-only; tunnel, stack env and deploy retry need small server work; machine, branch unlink, workspace delete, enrollment codes and notifications need the server first
+- [What the web can know about one thing's permissions after the switch](issues/03-what-the-web-can-know.md): `/me` covers role-wide actions; a locked action on one row needs explain widened or a server flag on the row; the switch is on master (#614)
+
 ## Not yet specified
 
-- Whether the server should also report "would be locked" for an action. The web may be able to work it out from
-  what it already has; ticket 03 tells.
 - Copy for each action's "Your role can't …" line. It may be generated from the permission catalog's labels.
 - Whether the switch belongs in the welcome wizard effort's template role table (`.scratch/onboarding/` ticket 04)
   or only here. The template defaults are decided above either way.
