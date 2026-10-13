@@ -254,6 +254,9 @@ func grantFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 		return a.access.ManagesRules(ctx, actorID(ctx), p.ResourceType, p.ResourceID)
 	case "workspace":
 		return a.access.Require(ctx, p.ResourceID, permissions.Member) == nil
+	case "instance_area":
+		owner, err := a.access.IsInstanceOwner(ctx, actorID(ctx))
+		return err == nil && owner
 	}
 	return false
 }

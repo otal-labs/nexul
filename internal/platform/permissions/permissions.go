@@ -89,6 +89,7 @@ const (
 	IntegrationsWrite  Action = "integrations:write"
 	IntegrationsDelete Action = "integrations:delete"
 	AuditRead          Action = "audit:read"
+	EventsRead         Action = "events:read"
 	TemplatesRead      Action = "templates:read"
 	TemplatesWrite     Action = "templates:write"
 )
@@ -184,6 +185,57 @@ var domainTable = []domainInfo{
 	{"instance", "instance settings, upgrades, and failed events", []string{read, write}, AreaInstance},
 	// templates:read scopes a token's reads; a signed-in member reads instance templates with membership alone.
 	{"templates", "instance templates", []string{read, write}, AreaInstance},
+}
+
+// InstanceArea is one instance area a rule may sit on (ADR 0148): its key, its name in a sentence, and the actions its
+// rules may set.
+type InstanceArea struct {
+	Key     string   `json:"key"`
+	Label   string   `json:"label"`
+	Actions []Action `json:"actions"`
+}
+
+// SignInProviders is the sign-in providers' area, which shares instance:read and instance:write with the instance's own.
+const SignInProviders = "sign_in_providers"
+
+// instanceAreas lists the fixed instance areas in display order; ConnectorArea adds one per connector.
+var instanceAreas = []InstanceArea{
+	{"instance", "the instance", []Action{InstanceRead, InstanceWrite, EventsRead}},
+	{SignInProviders, "sign-in providers", []Action{InstanceRead, InstanceWrite}},
+	{"dns", "DNS and gateways", []Action{DNSRead, DNSWrite, DNSDelete}},
+	{"templates", "instance templates", []Action{TemplatesRead, TemplatesWrite}},
+	{"accounts", "accounts", []Action{AccountsRead, AccountsWrite, AccountsDelete}},
+	{"runners", "runners and machines", []Action{RunnersRead, RunnersWrite, RunnersDelete, MachinesRead, MachinesWrite}},
+	{"topology", "the topology registry", []Action{TopologyRead, TopologyWrite, TopologyDelete}},
+	{"automations", "automation hosts", []Action{AutomationsRead, AutomationsWrite, AutomationsDelete}},
+	{"integrations", "integrations", []Action{IntegrationsRead, IntegrationsWrite, IntegrationsDelete}},
+	{"audit", "the audit log", []Action{AuditRead}},
+}
+
+// InstanceAreas is the fixed instance areas, without the connectors'.
+func InstanceAreas() []InstanceArea {
+	return slices.Clone(instanceAreas)
+}
+
+// ConnectorArea is the area of the connector with id, named name: each connector registers its own.
+func ConnectorArea(id, name string) InstanceArea {
+	return InstanceArea{Key: ConnectorAreaKey(id), Label: "connector " + name, Actions: []Action{ConnectorsRead, ConnectorsWrite}}
+}
+
+// ConnectorAreaKey is the key of the connector with id's area.
+func ConnectorAreaKey(id string) string {
+	return "connector:" + id
+}
+
+// InstanceAreaOf is the area a check of action asks about when it names none: the first fixed area listing it, ""
+// for an action outside every fixed area, which a connector's check names itself.
+func InstanceAreaOf(action Action) string {
+	for _, a := range instanceAreas {
+		if slices.Contains(a.Actions, action) {
+			return a.Key
+		}
+	}
+	return ""
 }
 
 // actionArea is the area of an action whose area differs from its domain's: creating a project, or editing the

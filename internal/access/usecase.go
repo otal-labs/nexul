@@ -42,8 +42,11 @@ type Service struct {
 	channels      ChannelWorkspaceResolver
 	scopes        Scopes
 	names         Names
-	commits       *wake.Broadcast
-	now           func() time.Time
+	// ownerWorkspace is the default workspace, whose Owner is the instance Owner; connectorAreas are the connectors'.
+	ownerWorkspace string
+	connectorAreas []permissions.InstanceArea
+	commits        *wake.Broadcast
+	now            func() time.Time
 }
 
 // NewService wires the access use-cases over the given repo and user store.
@@ -601,6 +604,9 @@ func (s *Service) planRules(ctx context.Context, actorID, resourceType, resource
 	if !ok {
 		return nil, fmt.Errorf("%w: manage permission required on %s %s", apperrs.ErrForbidden, resourceType, resourceID)
 	}
+	if err := s.checkArea(resourceType, resourceID, actions); err != nil {
+		return nil, err
+	}
 	if err := s.requireRolesOf(ctx, resourceType, resourceID, to.RoleIDs); err != nil {
 		return nil, err
 	}
@@ -630,13 +636,13 @@ func (t Targets) each() [][2]string {
 }
 
 // ruleTypes are the entities rules sit on.
-var ruleTypes = []string{resourceTypeDoc, resourceTypePlay, resourceTypeProject, resourceTypeChannel}
+var ruleTypes = []string{resourceTypeDoc, resourceTypePlay, resourceTypeProject, resourceTypeChannel, resourceTypeInstanceArea}
 
 // checkRuleActions refuses an action resourceType's rules may not set: a play's rules set Run, a project's In this
-// project and the project-area actions, a channel's its read.
+// project and the project-area actions, a channel's its read, an instance area's its own actions (checkArea).
 func checkRuleActions(resourceType string, actions []permissions.Action) error {
 	if !slices.Contains(ruleTypes, resourceType) {
-		return fmt.Errorf("%w: resource_type %q is not doc, play, project, or channel", apperrs.ErrInvalid, resourceType)
+		return fmt.Errorf("%w: resource_type %q is not doc, play, project, channel, or instance_area", apperrs.ErrInvalid, resourceType)
 	}
 	for _, a := range actions {
 		if a == permissions.ProjectsOpen && resourceType != resourceTypeProject {
@@ -669,7 +675,8 @@ func (s *Service) requireRolesOf(ctx context.Context, resourceType, resourceID s
 		if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
 			return fmt.Errorf("resolve role %s: %w", roleID, err)
 		}
-		if err != nil || got != workspaceID {
+		// An instance area belongs to no workspace, so a role of any workspace reaches its holders there.
+		if err != nil || (got != workspaceID && resourceType != resourceTypeInstanceArea) {
 			return fmt.Errorf("%w: role %s is not a role of this %s's workspace", apperrs.ErrNotFound, roleID, resourceType)
 		}
 	}
@@ -760,8 +767,12 @@ func moveTo(allow, deny permissions.Set, a permissions.Action, state string) (pe
 	return allow.Without(a), deny.Without(a)
 }
 
-// holds is whether actorID holds action on the doc, play, or project, its own rules for them included.
+// holds is whether actorID holds action on the doc, play, project, or instance area, its own rules for them included.
 func (s *Service) holds(ctx context.Context, actorID, resourceType, resourceID string, action permissions.Action) bool {
+	if resourceType == resourceTypeInstanceArea {
+		held, _ := s.HoldsArea(ctx, actorID, resourceID, action)
+		return held
+	}
 	if resourceType != resourceTypeDoc {
 		return s.HasPermission(ctx, actorID, s.workspaceOf(ctx, resourceType, resourceID), action, resourceType, resourceID)
 	}
@@ -779,14 +790,17 @@ func (s *Service) ListPlayGrants(ctx context.Context, actorID, playID string) ([
 	return s.listGrants(ctx, actorID, resourceTypePlay, playID)
 }
 
-// ListRules is the rules on a doc, play, project, or channel, for whoever manages it; a project the actor is not in
-// is not found, so listing its rules never confirms it exists.
+// ListRules is the rules on a doc, play, project, channel, or instance area, for whoever manages it; a project the
+// actor is not in is not found, so listing its rules never confirms it exists.
 func (s *Service) ListRules(ctx context.Context, actorID, resourceType, resourceID string) ([]*Overwrite, error) {
 	if actorID == "" {
 		return nil, fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
 	}
 	if !slices.Contains(ruleTypes, resourceType) {
-		return nil, fmt.Errorf("%w: resource_type %q is not doc, play, project, or channel", apperrs.ErrInvalid, resourceType)
+		return nil, fmt.Errorf("%w: resource_type %q is not doc, play, project, channel, or instance_area", apperrs.ErrInvalid, resourceType)
+	}
+	if err := s.checkArea(resourceType, resourceID, nil); err != nil {
+		return nil, err
 	}
 	if err := s.requireInProject(ctx, actorID, resourceType, resourceID); err != nil {
 		return nil, err
@@ -850,7 +864,8 @@ func (s *Service) accountsByID(ctx context.Context) (map[string]*User, error) {
 	return byID, nil
 }
 
-// ManagesRules reports whether userID may write the rules on a doc, play, project, or channel; a failed lookup is no.
+// ManagesRules reports whether userID may write the rules on a doc, play, project, channel, or instance area; a failed
+// lookup is no.
 func (s *Service) ManagesRules(ctx context.Context, userID, resourceType, resourceID string) bool {
 	if userID == "" {
 		return false
@@ -862,8 +877,11 @@ func (s *Service) ManagesRules(ctx context.Context, userID, resourceType, resour
 // canManage grants no instance-wide bypass, since that would cross workspace isolation boundaries. A doc's
 // manage action is the cross-cutting permissions:write share grant; a play's is plays:write, the same bit
 // that gates editing the play's own definition; a project's is Manage this project's access; a channel's is the
-// Owner's alone until channels carry their own manage permission.
+// Owner's alone until channels carry their own manage permission; an instance area's the instance Owner's alone.
 func (s *Service) canManage(ctx context.Context, actorID, resourceType, resourceID string) (bool, error) {
+	if resourceType == resourceTypeInstanceArea {
+		return s.IsInstanceOwner(ctx, actorID)
+	}
 	if resourceType == resourceTypeChannel {
 		workspaceID := s.workspaceOf(ctx, resourceType, resourceID)
 		if workspaceID == "" {

@@ -629,3 +629,40 @@ func TestStatements_RoleSetCostsOneReadAtAnySize(t *testing.T) {
 	assert.Equal(t, oneRoles, manyRoles)
 	assert.Equal(t, oneCheck, manyCheck)
 }
+
+// TestStatements_InstanceAreaRulesCostNothingOnMe: rules on every instance area, for each person's roles and for them
+// by name, cost /api/auth/me no statement more than none, at a few areas or many, since they come back in one read.
+func TestStatements_InstanceAreaRulesCostNothingOnMe(t *testing.T) {
+	cost := func(connectorCount int, rules bool) map[string]int64 {
+		f, st, db := newCountedFixtureDB(t)
+		areas := []permissions.InstanceArea{}
+		for i := range connectorCount {
+			areas = append(areas, permissions.ConnectorArea(fmt.Sprintf("c%d", i), "Acme"))
+		}
+		f.svc.accessSvc.SetInstanceAreas(tenancy.DefaultWorkspaceID, areas)
+		for _, area := range f.svc.accessSvc.InstanceAreas() {
+			if !rules {
+				break
+			}
+			deny, err := json.Marshal(area.Actions[:1])
+			require.NoError(t, err)
+			_, err = db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, user_id, allow, deny, created_at, updated_at)
+SELECT 'instance_area', ?, 'role', id, NULL, '[]', ?, 1, 1 FROM roles WHERE workspace_id = ?
+UNION ALL SELECT 'instance_area', ?, 'person', NULL, user_id, ?, '[]', 1, 1 FROM workspace_members WHERE workspace_id = ?`,
+				area.Key, string(deny), wsDefault, area.Key, string(deny), wsDefault)
+			require.NoError(t, err)
+		}
+		out := map[string]int64{}
+		for _, user := range []string{uSteward, uPlain, uClerk} {
+			ctx := access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: user}), f.svc.accessSvc.NewMemo())
+			st.Reset()
+			_, err := f.svc.authSvc.Me(ctx, user)
+			require.NoError(t, err)
+			out[user] = st.Count()
+		}
+		return out
+	}
+	none := cost(0, false)
+	assert.Equal(t, none, cost(0, true), "rules on every area")
+	assert.Equal(t, none, cost(30, true), "rules on many more areas")
+}

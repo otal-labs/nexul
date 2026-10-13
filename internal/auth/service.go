@@ -201,9 +201,10 @@ type Config struct {
 	GitHubLinks GitHubLinkStore
 }
 
-// PermissionGate is the access domain's instance-level answer (ADR 0087): what a user holds in any workspace they belong to.
+// PermissionGate is the access domain's instance-level answer (ADR 0087): what a user holds on an instance area, by a
+// role in any workspace they belong to or by the area's rules (ADR 0148).
 type PermissionGate interface {
-	HoldsAnywhere(ctx context.Context, userID string, action permissions.Action) (bool, error)
+	HoldsArea(ctx context.Context, userID, area string, action permissions.Action) (bool, error)
 	PermissionsAnywhere(ctx context.Context, userID string) ([]string, error)
 }
 
@@ -351,7 +352,7 @@ func (s *Service) SetProviderOAuth(ctx context.Context, userID string, provider 
 	if _, ok := signInProviders[provider]; !ok || provider == ProviderGitHub {
 		return Settings{}, fmt.Errorf("%w: %q is not a configurable sign-in provider", apperrs.ErrInvalid, provider)
 	}
-	if err := s.requireAnywhere(ctx, userID, permissions.InstanceWrite); err != nil {
+	if err := s.requireArea(ctx, userID, permissions.SignInProviders, permissions.InstanceWrite); err != nil {
 		return Settings{}, err
 	}
 	clientID = strings.TrimSpace(clientID)
@@ -531,13 +532,18 @@ func (s *Service) Me(ctx context.Context, userID string) (*OnboardingStatus, err
 	return st, nil
 }
 
-// requireAnywhere refuses userID unless they hold action in a workspace they belong to (ADR 0087), which an Owner
-// always does; nothing else grants instance-level power (ADR 0088).
+// requireAnywhere is requireArea on the instance area action belongs to.
 func (s *Service) requireAnywhere(ctx context.Context, userID string, action permissions.Action) error {
+	return s.requireArea(ctx, userID, permissions.InstanceAreaOf(action), action)
+}
+
+// requireArea refuses userID unless they hold action on area, by a role in a workspace they belong to (ADR 0087) or by
+// the area's rules, which an Owner always does (ADR 0088, ADR 0148).
+func (s *Service) requireArea(ctx context.Context, userID, area string, action permissions.Action) error {
 	if s.cfg.Permissions == nil {
 		return fmt.Errorf("%w: no permission gate wired", apperrs.ErrForbidden)
 	}
-	held, err := s.cfg.Permissions.HoldsAnywhere(ctx, userID, action)
+	held, err := s.cfg.Permissions.HoldsArea(ctx, userID, area, action)
 	if err != nil {
 		return fmt.Errorf("check %s: %w", action, err)
 	}

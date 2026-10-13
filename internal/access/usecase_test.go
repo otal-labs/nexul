@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 
@@ -79,9 +80,21 @@ func (f *fakeRepo) RulesOfType(_ context.Context, resourceType, userID string) (
 		return nil, f.getErr
 	}
 	out := map[string]*Rules{}
+	rules := func(id string) *Rules {
+		if out[id] == nil {
+			out[id] = &Rules{}
+		}
+		return out[id]
+	}
 	for _, ow := range f.overwrites {
 		if ow.ResourceType == resourceType && ow.UserID == userID {
-			out[ow.ResourceID] = &Rules{Person: ow}
+			rules(ow.ResourceID).Person = ow
+		}
+		// Every role's rule comes back, as though the person held each: the check keeps only the roles they hold.
+		if ow.ResourceType == resourceType && ow.Target == TargetRole {
+			r := rules(ow.ResourceID)
+			r.Roles = append(r.Roles, ow)
+			slices.SortFunc(r.Roles, func(a, b *Overwrite) int { return strings.Compare(a.RoleID, b.RoleID) })
 		}
 	}
 	return out, nil
@@ -159,7 +172,7 @@ func (f *fakeRepo) SetRole(_ context.Context, resourceType, resourceID, roleID s
 	return nil
 }
 
-// RoleRules finds the role rules on each resource for roleIDs, in role order; Rules and RulesOfType find people's only.
+// RoleRules finds the role rules on each resource for roleIDs, in role order; Rules finds people's only.
 func (f *fakeRepo) RoleRules(_ context.Context, resourceType string, resourceIDs, roleIDs []string) (map[string][]*Overwrite, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

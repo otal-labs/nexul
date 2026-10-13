@@ -13,12 +13,12 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// Gate is the permission check connecting and reading connectors passes; a connector belongs to the instance, so a
-// caller needs the action in any workspace they belong to (ADR 0087).
+// Gate is the permission check connecting and reading connectors passes; each connector is its own instance area, so a
+// caller needs the action in any workspace they belong to or by that connector's rules (ADR 0087, ADR 0148).
 type Gate interface {
-	RequireAnywhere(ctx context.Context, action permissions.Action) error
-	// HoldsAnywhere answers the same check for a named user, for a use-case that is handed its caller.
-	HoldsAnywhere(ctx context.Context, userID string, action permissions.Action) (bool, error)
+	RequireArea(ctx context.Context, area string, action permissions.Action) error
+	// HoldsArea answers the same check for a named user, for a use-case that is handed its caller.
+	HoldsArea(ctx context.Context, userID, area string, action permissions.Action) (bool, error)
 }
 
 // SettingsReader is the consumer-side view of the instance settings this package needs (ADR 0017).
@@ -75,11 +75,20 @@ func NewService(cfg Config) *Service {
 	}
 }
 
-func (s *Service) require(ctx context.Context, action permissions.Action) error {
+func (s *Service) require(ctx context.Context, connectorID string, action permissions.Action) error {
 	if s.gate == nil {
 		return permissions.Ungated(ctx)
 	}
-	return s.gate.RequireAnywhere(ctx, action)
+	return s.gate.RequireArea(ctx, permissions.ConnectorAreaKey(connectorID), action)
+}
+
+// Areas is each connector's instance area, which carries its rules.
+func Areas(regs []Connector) []permissions.InstanceArea {
+	out := make([]permissions.InstanceArea, 0, len(regs))
+	for _, c := range regs {
+		out = append(out, permissions.ConnectorArea(c.ID, c.Name))
+	}
+	return out
 }
 
 // InstanceURL returns the SPA-facing base URL, or "" when unreadable, so the callback falls back to the request host.
@@ -104,11 +113,9 @@ type ConnectorStatus struct {
 	AppConfigured bool `json:"app_configured"`
 }
 
-// List returns every registry entry with its current CredentialStatus, zero-valued for connectors never connected.
+// List returns each registry entry the caller may read with its current CredentialStatus, zero-valued for connectors
+// never connected; reading none is forbidden.
 func (s *Service) List(ctx context.Context) ([]ConnectorStatus, error) {
-	if err := s.require(ctx, permissions.ConnectorsRead); err != nil {
-		return nil, err
-	}
 	regs := make([]Connector, 0, len(s.registry))
 	for _, c := range s.registry {
 		regs = append(regs, c)
@@ -116,7 +123,15 @@ func (s *Service) List(ctx context.Context) ([]ConnectorStatus, error) {
 	sort.Slice(regs, func(i, j int) bool { return regs[i].ID < regs[j].ID })
 
 	out := make([]ConnectorStatus, 0, len(regs))
+	var refused error
 	for _, c := range regs {
+		if err := s.require(ctx, c.ID, permissions.ConnectorsRead); err != nil {
+			if !permissions.Refused(err) {
+				return nil, err
+			}
+			refused = err
+			continue
+		}
 		available := c.OAuth != nil || len(c.Manual) > 0
 		appConfigured := c.OAuth != nil && c.OAuth.Configured()
 		cred, err := s.store.GetCredentials(ctx, c.ID)
@@ -129,12 +144,15 @@ func (s *Service) List(ctx context.Context) ([]ConnectorStatus, error) {
 		}
 		out = append(out, ConnectorStatus{Connector: c, Status: cred.Status(), Available: available, AppConfigured: appConfigured})
 	}
+	if len(out) == 0 && refused != nil {
+		return nil, refused
+	}
 	return out, nil
 }
 
 // AuthorizeURL builds the provider consent URL for connectorID and a CSRF state token.
 func (s *Service) AuthorizeURL(ctx context.Context, connectorID, state string) (string, error) {
-	if err := s.require(ctx, permissions.ConnectorsWrite); err != nil {
+	if err := s.require(ctx, connectorID, permissions.ConnectorsWrite); err != nil {
 		return "", err
 	}
 	c, err := s.get(connectorID)
@@ -174,7 +192,7 @@ func (s *Service) CompleteOAuth(ctx context.Context, connectorID, code, userID s
 
 // Disconnect revokes and deletes the stored credential; the local row is deleted even if provider revocation fails.
 func (s *Service) Disconnect(ctx context.Context, connectorID string) error {
-	if err := s.require(ctx, permissions.ConnectorsWrite); err != nil {
+	if err := s.require(ctx, connectorID, permissions.ConnectorsWrite); err != nil {
 		return err
 	}
 	c, ok := s.registry[connectorID]
@@ -225,7 +243,7 @@ func (s *Service) checkManual(ctx context.Context, connectorID string, fields ma
 
 // VerifyManualCredentials runs the live provider check without storing, so the UI can show a green light before Confirm.
 func (s *Service) VerifyManualCredentials(ctx context.Context, connectorID string, fields map[string]string) error {
-	if err := s.require(ctx, permissions.ConnectorsWrite); err != nil {
+	if err := s.require(ctx, connectorID, permissions.ConnectorsWrite); err != nil {
 		return err
 	}
 	_, err := s.checkManual(ctx, connectorID, fields)
@@ -234,7 +252,7 @@ func (s *Service) VerifyManualCredentials(ctx context.Context, connectorID strin
 
 // VerifyManualCheck runs one named permission check, so the dialog can fan the checks out in parallel and tick each row.
 func (s *Service) VerifyManualCheck(ctx context.Context, connectorID string, fields map[string]string, key string) (string, error) {
-	if err := s.require(ctx, permissions.ConnectorsWrite); err != nil {
+	if err := s.require(ctx, connectorID, permissions.ConnectorsWrite); err != nil {
 		return "", err
 	}
 	c, ok := s.registry[connectorID]
@@ -273,7 +291,7 @@ func asInvalid(err error) error {
 
 // SaveManualCredentials verifies again and stores, so a save can never bypass the live check.
 func (s *Service) SaveManualCredentials(ctx context.Context, connectorID, userID string, fields map[string]string) (CredentialStatus, error) {
-	if err := s.require(ctx, permissions.ConnectorsWrite); err != nil {
+	if err := s.require(ctx, connectorID, permissions.ConnectorsWrite); err != nil {
 		return CredentialStatus{}, err
 	}
 	clean, err := s.checkManual(ctx, connectorID, fields)
@@ -303,7 +321,7 @@ func (s *Service) ManualCredentials(ctx context.Context, connectorID string) (ma
 // SetAppConfig stores an app-level OAuth registration (CN3a); a person holding connectors:write sets it, since it
 // rotates an instance-wide credential.
 func (s *Service) SetAppConfig(ctx context.Context, userID, connectorID, clientID, clientSecret, baseURL, appSlug string) (AppConfigStatus, error) {
-	if err := s.requireAppWriter(ctx, userID); err != nil {
+	if err := s.requireAppWriter(ctx, userID, connectorID); err != nil {
 		return AppConfigStatus{}, err
 	}
 	if _, ok := s.registry[connectorID]; !ok {
@@ -338,15 +356,16 @@ func (s *Service) SetAppConfig(ctx context.Context, userID, connectorID, clientI
 	return cfg.Status(), nil
 }
 
-// requireAppWriter checks userID holds connectors:write anywhere, what changing an instance-wide app credential takes.
-func (s *Service) requireAppWriter(ctx context.Context, userID string) error {
+// requireAppWriter checks userID holds connectors:write on connectorID, what changing an instance-wide app credential
+// takes.
+func (s *Service) requireAppWriter(ctx context.Context, userID, connectorID string) error {
 	if userID == "" {
 		return apperrs.ErrUnauthorized
 	}
 	if s.gate == nil {
 		return fmt.Errorf("%w: no permission gate wired", apperrs.ErrForbidden)
 	}
-	held, err := s.gate.HoldsAnywhere(ctx, userID, permissions.ConnectorsWrite)
+	held, err := s.gate.HoldsArea(ctx, userID, permissions.ConnectorAreaKey(connectorID), permissions.ConnectorsWrite)
 	if err != nil {
 		return fmt.Errorf("check %s: %w", permissions.ConnectorsWrite, err)
 	}
@@ -358,7 +377,7 @@ func (s *Service) requireAppWriter(ctx context.Context, userID string) error {
 
 // keyTarget is the registered app a private key change applies to, once userID may change it.
 func (s *Service) keyTarget(ctx context.Context, userID, connectorID string) (AppConfig, AppKeyVerifier, error) {
-	if err := s.requireAppWriter(ctx, userID); err != nil {
+	if err := s.requireAppWriter(ctx, userID, connectorID); err != nil {
 		return AppConfig{}, nil, err
 	}
 	c, ok := s.registry[connectorID]

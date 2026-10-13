@@ -40,9 +40,9 @@ func (m *memAppConfigStore) SetAppConfig(_ context.Context, c connectors.AppConf
 // and the context-based check lets every call through.
 type fakeOwnerGate struct{}
 
-func (fakeOwnerGate) RequireAnywhere(context.Context, permissions.Action) error { return nil }
+func (fakeOwnerGate) RequireArea(context.Context, string, permissions.Action) error { return nil }
 
-func (fakeOwnerGate) HoldsAnywhere(_ context.Context, userID string, _ permissions.Action) (bool, error) {
+func (fakeOwnerGate) HoldsArea(_ context.Context, userID, _ string, _ permissions.Action) (bool, error) {
 	return userID == "owner-1", nil
 }
 

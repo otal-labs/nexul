@@ -774,7 +774,7 @@ scoped token, and the agent are checked against the same values. Checked in
 the workspace the entity belongs to (a workspace's topology canvas in that workspace); runners, machines, DNS,
 connectors, the instance's own stacks, and the instance itself (its settings,
 upgrades, accounts, workspace creation), which belong to none, against every
-workspace the caller is in. A member holds a set of roles, or none, and holds what any of them allows. The Owner of
+workspace the caller is in, and then the rules on the Instance area it acts on. A member holds a set of roles, or none, and holds what any of them allows. The Owner of
 any workspace therefore holds every instance-level permission, and nobody grants a permission they don't hold. What
 every member reads (public channels, their own DMs and inbox, People) takes membership, not a permission. Each domain
 is a project area, a workspace area, or an instance area; a role's project areas count only inside the projects the
@@ -875,6 +875,19 @@ Each entry shows only to a viewer holding its permission in any workspace, so
 a role holding one bit reaches that entry and nothing else. Workspace-level
 sections stay in Configuration.
 _Avoid_: Whole instance, admin settings
+
+**Instance area**:
+One part of the instance a Permission overwrite may sit on, outside every
+workspace: the instance itself (its URL, upgrades, failed events), Sign-in
+providers, each Connector, DNS and gateways, Instance templates, accounts,
+runners and machines, the topology registry, automation hosts, integrations,
+and the audit log. Each names the permissions its rules may set. A person holds
+one of them through a role in any workspace they are in, then the area's rules
+for their roles, of which Allow wins, then a rule naming them. An Owner of any
+workspace is never denied one. Only the instance Owner, the Owner of the
+default workspace, writes these rules, so one area is handed out without a
+custom role: "bob manages DNS but not connectors".
+_Avoid_: Admin area, instance permission (that is the bit, not the place)
 
 **Display name**:
 What a person is called wherever they appear: the name they set in their

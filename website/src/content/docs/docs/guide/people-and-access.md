@@ -53,6 +53,30 @@ Nobody can hand out a permission they don't hold: not in a role, a rule's Allow,
 
 Some permissions cover the whole instance, not one workspace: instance settings and upgrades, accounts, runners and machines, DNS, connectors, automations, integrations, templates, and creating workspaces. Holding one in any workspace you're in is enough. There's no separate administrator: whoever owns a workspace holds all of them, which is why `workspaces:create` is as strong as Owner.
 
+To hand out one part of the instance without a custom role, such as letting bob manage DNS but not connectors, the instance Owner (the Owner of the default workspace) sets a rule on that **instance area** for a role or a person, the same Allow, Fallback and Deny as on a project. A role rule names a role of any workspace and reaches its holders. The areas and what each rule may set:
+
+| Area | Key | Permissions |
+|---|---|---|
+| The instance itself: its URL, upgrades, failed events, public address | `instance` | `instance:read`, `instance:write`, `events:read` |
+| Sign-in providers | `sign_in_providers` | `instance:read`, `instance:write` |
+| Each connector | `connector:github`, `connector:cloudflare`, `connector:livekit` | `connectors:read`, `connectors:write` |
+| DNS and gateways | `dns` | `dns:read`, `dns:write`, `dns:delete` |
+| Instance templates | `templates` | `templates:read`, `templates:write` |
+| Accounts | `accounts` | `accounts:read`, `accounts:write`, `accounts:delete` |
+| Runners and machines | `runners` | `runners:read`, `runners:write`, `runners:delete`, `machines:read`, `machines:write` |
+| The topology registry | `topology` | `topology:read`, `topology:write`, `topology:delete` |
+| Automation hosts | `automations` | `automations:read`, `automations:write`, `automations:delete` |
+| Integrations | `integrations` | `integrations:read`, `integrations:write`, `integrations:delete` |
+| The audit log | `audit` | `audit:read` |
+
+A person holds an area's permission when one of their roles in any workspace grants it, unless a rule there says otherwise: between the rules for their roles Allow wins, and a rule naming them beats those. An Owner of any workspace is never denied, so nobody can lock the instance away from its Owners. A rule on one area says nothing about another, so allowing `connectors:read` on GitHub leaves Cloudflare as their roles have it. Only the instance Owner sees or changes these rules; with the API:
+
+```
+PUT /api/permissions
+{"resource_type": "instance_area", "resource_ids": ["dns"], "user_ids": ["<id>"], "actions": ["dns:read", "dns:write"], "state": "allow"}
+GET /api/permissions?resource_type=instance_area&resource_id=dns
+```
+
 ## Who's in each project
 
 **Access** in the sidebar's Workspace section, between Automations and Configuration, is where you choose who's in each project. It shows to anyone who can manage a project's access (`projects:access`); the Owner sees every project, anyone else only the projects they're in and manage.
@@ -103,13 +127,13 @@ Changing a project's rules takes **Manage this project's access** there, which i
 
 Every answer has a source: the Owner role, the person's roles, a rule on a project, a doc or a play for one of their roles or for them, or not being in the project. When Nexul refuses something you can see, the message names it, such as `docs:write required (Denied on doc Pricing for bob)` or `tickets:write required (Not allowed: role Client doesn't grant it)`. Something you can't see is not found and says nothing more, so it never confirms it exists.
 
-To see every answer on one doc, play, or project at once, each with its source and the answer it would have without that doc's, play's, or project's own rule:
+To see every answer on one doc, play, project, or instance area at once, each with its source and the answer it would have without that doc's, play's, project's, or area's own rule:
 
 ```
 GET /api/permissions/explain?resource_type=doc&resource_id=<id>&user_id=<id>
 ```
 
-Leave out `user_id` for your own answers, which take only being able to open it. `role_id` in its place answers for a role, as someone holding only that role would get them; the panel's lines under a role's Fallback come from it. Someone else's, or a role's, take managing it: `permissions:write` on a doc, `plays:write` on a play, or `projects:access` on a project. Agents ask the same with `permission_overwrite_list` and a `user_id`.
+Leave out `user_id` for your own answers, which take only being able to open it. `role_id` in its place answers for a role, as someone holding only that role would get them; the panel's lines under a role's Fallback come from it. Someone else's, or a role's, take managing it: `permissions:write` on a doc, `plays:write` on a play, `projects:access` on a project, or being the instance Owner for an instance area (`resource_type=instance_area&resource_id=dns`). Agents ask the same with `permission_overwrite_list` and a `user_id`.
 
 ## Names and pictures
 
@@ -123,4 +147,4 @@ Under **GitHub**, the same page shows whether your own GitHub account lists your
 
 ## Over MCP
 
-Agents manage people with `account_list` (each person's `roles` per workspace), `account_update`, `invitation_create`, `invitation_list`, `invitation_delete`, `role_update`, `role_delete`, and the `permission_overwrite_*` tools. `account_update` gives and takes away roles per workspace with `add_roles` and `remove_roles`, and `invitation_create` takes `roles` per workspace, at least one; neither sets anything per person. `permission_overwrite_update` sets a `state` of `allow`, `fallback`, or `deny` for people (`user_ids`) or roles (`role_ids`) on a doc, play, project, or channel: allowing `projects:open` on a project lists a role or a person in it, denying it keeps a person out, and denying `channels:read` on a public channel hides it, which only an Owner may do. `workspace_update` with `finish_access_setup` ends the one-time setup after an upgrade, and `workspace_list` says whether it's done. See [MCP server](/docs/guide/mcp-server/).
+Agents manage people with `account_list` (each person's `roles` per workspace), `account_update`, `invitation_create`, `invitation_list`, `invitation_delete`, `role_update`, `role_delete`, and the `permission_overwrite_*` tools. `account_update` gives and takes away roles per workspace with `add_roles` and `remove_roles`, and `invitation_create` takes `roles` per workspace, at least one; neither sets anything per person. `permission_overwrite_update` sets a `state` of `allow`, `fallback`, or `deny` for people (`user_ids`) or roles (`role_ids`) on a doc, play, project, channel, or instance area: allowing `projects:open` on a project lists a role or a person in it, denying it keeps a person out, denying `channels:read` on a public channel hides it, which only an Owner may do, and allowing `dns:write` on the `dns` instance area hands out DNS alone, which only the instance Owner may do. `workspace_update` with `finish_access_setup` ends the one-time setup after an upgrade, and `workspace_list` says whether it's done. See [MCP server](/docs/guide/mcp-server/).
