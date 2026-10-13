@@ -580,10 +580,13 @@ A guided multi-step flow that ends in something working, reached under
 The wizard where a person sets up what is theirs to set up, such as their
 GitHub link and their computer. The steps it shows are the ones ticked on any
 Role they hold, in any workspace. It is one wizard per person, so a step done
-once counts everywhere. Every step can be skipped, and a step counts as done when the
-thing it sets up exists, not when someone clicked through it. It opens at
-first sign-in. After that it stays at the top of the account menu, which shows
-a dot while any step is left.
+once counts everywhere. A step counts as done when the thing it sets up exists,
+not when someone clicked through it. Getting the phone app is the exception:
+it stays done once a phone has connected. A step can be skipped, and the skip
+lasts until the person is given that step again, either because a role they
+hold gains it or because they are given a role that has it. It opens by
+itself only at first sign-in. After that it stays at the top of the account
+menu, which shows a dot while a step is neither done nor skipped.
 _Avoid_: Onboarding, getting started, first-login wizard
 
 **Template role**:
