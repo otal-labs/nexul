@@ -59,7 +59,10 @@ let links: { project_id: string; computer_id: string; harness_project_id: string
 const mockApi = (permissions: string[], memoriesOverride: unknown[] = memories) =>
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
-    if (url === "/api/memories") return { data: memoriesOverride };
+    if (url === "/api/memories") {
+      if (!permissions.includes("memories:read")) throw { response: { status: 403, data: { message: "forbidden", code: "FORBIDDEN" } } };
+      return { data: memoriesOverride };
+    }
     if (url === "/api/plays/latest-choices") return { data: choices };
     if (url === "/api/pairing/resolve") return { data: resolve };
     if (url === "/api/pairing/presence") return { data: { computers: presence } };
@@ -96,7 +99,7 @@ beforeEach(() => {
 
 describe("PlayRunDialog", () => {
   it("pre-selects the remembered memories, locking the always-included memory, and lists footer memories apart", async () => {
-    mockApi(["plays:run", "tickets:write"]);
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
     renderDialog();
 
     const always = await screen.findByRole("checkbox", { name: "Working in this project" });
@@ -115,8 +118,23 @@ describe("PlayRunDialog", () => {
     expect(screen.getByRole("button", { name: "Run Fix with AI" })).toBeInTheDocument();
   });
 
-  it("normalises a description ending in a period instead of doubling the full stop", async () => {
+  it("runs without a memory section for a role that can run plays but not read memories", async () => {
+    const user = userEvent.setup();
     mockApi(["plays:run", "tickets:write"]);
+    vi.mocked(api.post).mockResolvedValue({ data: { id: "tr-2", play_id: "play-1", play_label: "Fix with AI", target_type: "ticket", target_id: "t-1", project_id: "p-1", state: "starting" } });
+    const { onClose } = renderDialog();
+
+    await user.click(await screen.findByRole("button", { name: "Run Fix with AI" }));
+
+    expect(screen.queryByText("Couldn't load the run choices.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Main" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Footer" })).not.toBeInTheDocument();
+    expect(api.post).toHaveBeenCalledWith("/api/plays/play-1/run", expect.objectContaining({ memory_ids: [] }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it("normalises a description ending in a period instead of doubling the full stop", async () => {
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={client}>
@@ -135,7 +153,7 @@ describe("PlayRunDialog", () => {
 
   it("posts the chosen memories, footer memories, and instructions to the linked project, then pre-selects them on the next open", async () => {
     const user = userEvent.setup();
-    mockApi(["plays:run", "tickets:write"]);
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
     vi.mocked(api.post).mockImplementation(async (_url: string, body: unknown) => {
       const input = body as { memory_ids: string[]; computer_id: string; provider: string; model: string };
       choices = {
@@ -174,14 +192,14 @@ describe("PlayRunDialog", () => {
   });
 
  it("says so when the project has no footer memories", async () => {
-    mockApi(["plays:run"], memories.filter((m) => !m.footer));
+    mockApi(["plays:run", "memories:read"], memories.filter((m) => !m.footer));
     renderDialog();
     expect(await screen.findByText("No footer memories. Move a memory to the Footer folder to conclude runs with it.")).toBeInTheDocument();
   });
 
   it("shows a refusal inside the dialog and keeps it open", async () => {
     const user = userEvent.setup();
-    mockApi(["plays:run", "tickets:write"]);
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
     vi.mocked(api.post).mockRejectedValue({
       response: { status: 400, data: { message: "memory m-9 is not in this project", code: "invalid" } },
     });
@@ -195,7 +213,7 @@ describe("PlayRunDialog", () => {
 
   it("offers the refused computer's setup when the run is refused for setup", async () => {
     const user = userEvent.setup();
-    mockApi(["plays:run", "tickets:write"]);
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
     vi.mocked(api.post).mockRejectedValue({
       response: {
         status: 400,
@@ -222,7 +240,7 @@ describe("PlayRunDialog", () => {
 
   it("offers no setup link for a refusal that names no computer to set up", async () => {
     const user = userEvent.setup();
-    mockApi(["plays:run", "tickets:write"]);
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
     vi.mocked(api.post).mockRejectedValue({
       response: { status: 400, data: { message: "no computer is paired to run it on; add one in Settings → Computers", code: "INVALID", details: { reason: "unpaired" } } },
     });
@@ -234,7 +252,7 @@ describe("PlayRunDialog", () => {
   });
 
   it("names where a linked project runs, with the resolved model", async () => {
-    mockApi(["plays:run", "tickets:write"]);
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
     renderDialog();
     expect(await screen.findByText("Onik's PC · App")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument();
@@ -244,14 +262,14 @@ describe("PlayRunDialog", () => {
 
   it("preselects the caller's last model on that computer over the resolved one", async () => {
     choices = { ...choices, computer_id: "c-1", provider: "claude", model: "haiku" };
-    mockApi(["plays:run", "tickets:write"]);
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
     renderDialog();
     expect(await screen.findByRole("button", { name: "Claude · Haiku" })).toBeInTheDocument();
   });
 
   it("reopens a failed location change with the saved checkout and retries there", async () => {
     const user = userEvent.setup();
-    mockApi(["plays:run", "tickets:write"]);
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
     vi.mocked(api.post).mockImplementationOnce(async () => {
       links = [{ project_id: "p-1", computer_id: "c-1", harness_project_id: "t3-home" }];
       resolve.harness_project_id = "t3-home";
@@ -274,7 +292,7 @@ describe("PlayRunDialog", () => {
     const user = userEvent.setup();
     links = [];
     resolve.harness_project_id = "t3-home";
-    mockApi(["plays:run", "tickets:write"]);
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
     vi.mocked(api.post).mockImplementation(async (_url: string, body: unknown) => {
       const input = body as { computer_id: string; harness_project_id?: string };
       if (input.harness_project_id) links = [{ project_id: "p-1", computer_id: input.computer_id, harness_project_id: input.harness_project_id }];
@@ -283,7 +301,7 @@ describe("PlayRunDialog", () => {
     const { onClose, close, reopen } = renderDialog();
 
     expect(await screen.findByText(/Your first run in this project/)).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Computer" })).toHaveTextContent("Onik's PC");
+    expect(await screen.findByRole("combobox", { name: "Computer" })).toHaveTextContent("Onik's PC");
     expect(await screen.findByRole("combobox", { name: "T3 project" })).toHaveTextContent("Home");
     await pickOption(user, "T3 project", "App");
     await user.click(screen.getByRole("button", { name: "Run Fix with AI" }));
@@ -303,7 +321,7 @@ describe("PlayRunDialog", () => {
   it("changes where from the run, which sends the new place to be saved", async () => {
     const user = userEvent.setup();
     presence["c-2"] = "connected";
-    mockApi(["plays:run", "tickets:write"]);
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
     renderDialog();
 
     await user.click(await screen.findByRole("button", { name: "Change" }));
@@ -321,7 +339,7 @@ describe("PlayRunDialog", () => {
 
   it("asks where when the server says the project has no link", async () => {
     const user = userEvent.setup();
-    mockApi(["plays:run", "tickets:write"]);
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
     vi.mocked(api.post).mockRejectedValue({
       response: { status: 400, data: { message: "Pick where plays run in this project", code: "INVALID", details: { reason: "needs_location" } } },
     });
@@ -334,7 +352,7 @@ describe("PlayRunDialog", () => {
 
   it("cannot pick an offline computer", async () => {
     const user = userEvent.setup();
-    mockApi(["plays:run", "tickets:write"]);
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
     renderDialog();
 
     await user.click(await screen.findByRole("button", { name: "Change" }));
@@ -345,7 +363,7 @@ describe("PlayRunDialog", () => {
   });
 
   it("asks before running on a blocked ticket, naming what it still waits on", async () => {
-    mockApi(["plays:run", "tickets:write"]);
+    mockApi(["plays:run", "tickets:write", "memories:read"]);
     const base = vi.mocked(api.get).getMockImplementation()!;
     const blocker = { id: "t-2", project_id: "p-1", prefix: "BKS", number: 2, title: "backend", status: "open", done: false };
     const cleared = { ...blocker, id: "t-3", number: 3, done: true };
@@ -390,7 +408,7 @@ describe("PlayRunDialog", () => {
     });
 
     const renderClarify = (data: unknown) => {
-      mockApi(["plays:run", "docs:write"]);
+      mockApi(["plays:run", "docs:write", "memories:read"]);
       const fallback = vi.mocked(api.get).getMockImplementation()!;
       vi.mocked(api.get).mockImplementation(async (...args: Parameters<typeof api.get>) =>
         args[0] === "/api/docs/d-1/clarification" ? { data } : fallback(...args),

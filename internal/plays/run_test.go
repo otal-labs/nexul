@@ -170,6 +170,30 @@ func TestRun_Refusals_LeaveNoTrail(t *testing.T) {
 	}
 }
 
+func TestRun_WithoutMemoriesRead(t *testing.T) {
+	run := func(t *testing.T, ids ...string) (*Trail, error) {
+		f := newRunnerFixture()
+		f.mems.unreadable = true
+		in := ticketRun()
+		in.MemoryIDs = ids
+		trail, err := f.runner.Run(ctxAs(starter), in)
+		if err == nil {
+			<-f.turns.done
+		}
+		return trail, err
+	}
+
+	t.Run("runs with no memories", func(t *testing.T) {
+		trail, err := run(t)
+		require.NoError(t, err)
+		assert.Empty(t, trail.SelectedMemoryIDs)
+	})
+	t.Run("still refuses a picked memory", func(t *testing.T) {
+		_, err := run(t, pickedMem)
+		assert.ErrorIs(t, err, apperrs.ErrForbidden)
+	})
+}
+
 func TestRun_PersonRun_AsksWhereRatherThanFallingBack(t *testing.T) {
 	f := newRunnerFixture()
 	f.harness.unlinked = true

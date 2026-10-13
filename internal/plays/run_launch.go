@@ -602,6 +602,9 @@ func (r *Runner) refuseIfActive(ctx context.Context, targetType TargetType, targ
 // interview memory, then the other always-included ones, then the rest of the selection; footer memories come apart.
 func (r *Runner) memoriesToRead(ctx context.Context, projectID string, selected []string) (runMemories, error) {
 	all, err := r.memories.ListForProject(ctx, projectID)
+	if errors.Is(err, apperrs.ErrForbidden) && len(selected) == 0 {
+		return runMemories{}, nil
+	}
 	if err != nil {
 		return runMemories{}, fmt.Errorf("list memories for project %s: %w", projectID, err)
 	}

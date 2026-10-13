@@ -143,7 +143,10 @@ type playsMemoryReader struct {
 }
 
 func (a playsMemoryReader) ListForProject(ctx context.Context, projectID string) ([]plays.Memory, error) {
-	ms, err := a.svc.ListForProject(ctx, projectID)
+	return toPlayMemories(a.svc.ListForProject(ctx, projectID))
+}
+
+func toPlayMemories(ms []*memories.Memory, err error) ([]plays.Memory, error) {
 	if err != nil {
 		return nil, err
 	}

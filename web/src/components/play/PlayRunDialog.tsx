@@ -3,6 +3,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PlayRunForm } from "@/components/play/PlayRunForm";
 import { UnansweredQuestionsSignal } from "@/components/play/UnansweredQuestionsSignal";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { useHarnessReadiness } from "@/hooks/PairingHooks";
 import { useFetchProjectLinks } from "@/hooks/PairingProjectHooks";
@@ -33,12 +34,14 @@ interface PlayRunDialogBodyProps {
 
 // Loads what the form is seeded from; the form mounts once everything is here so its initial state needs no effect.
 const PlayRunDialogBody = ({ play, projectId, targetType, targetId, instructions, askWhere, onDone }: PlayRunDialogBodyProps) => {
-  const memories = useFetchMemoriesByProject(projectId);
+  // A role that runs plays may not read memories; the form then leaves the memory pickers out rather than fail.
+  const canReadMemories = useAreaAccess(projectId)?.("memories");
+  const memories = useFetchMemoriesByProject(canReadMemories ? projectId : "");
   const choices = useFetchLatestChoices(play.id, projectId);
   // Shares the resolve query's cache with the play button that gated this dialog open, so this costs no extra call.
   const readiness = useHarnessReadiness(projectId);
   const links = useFetchProjectLinks();
-  const isPending = memories.isPending || choices.isPending || links.isPending || readiness === undefined;
+  const isPending = canReadMemories === undefined || (canReadMemories && memories.isPending) || choices.isPending || links.isPending || readiness === undefined;
   const error = memories.error ?? choices.error ?? links.error;
   const ready = readiness?.state === "ready" ? readiness : undefined;
   const resolvedHarness = {
@@ -58,7 +61,7 @@ const PlayRunDialogBody = ({ play, projectId, targetType, targetId, instructions
       {isPending && <LoadingDisplay label="Loading choices…" />}
       {error && <ErrorDisplay error={error} title="Couldn't load the run choices." />}
       {play.builtin_key === "clarify" && targetType === "doc" && <UnansweredQuestionsSignal docId={targetId} />}
-      {memories.data && choices.data && links.data && readiness && (
+      {(canReadMemories === false || memories.data) && choices.data && links.data && readiness && (
         <PlayRunForm
           play={play}
           targetType={targetType}

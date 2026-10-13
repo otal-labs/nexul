@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { TrailContinueForm } from "@/components/play/TrailContinueForm";
 import type { Trail } from "@/models/Trail";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({ api: { get: vi.fn(), post: vi.fn() }, errorMessage: vi.fn(() => "Refused") }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
@@ -51,6 +52,7 @@ const trail = (id: string) => ({ data: { id, target_type: "ticket", target_id: "
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(toast.success).mockReset();
   vi.mocked(toast.info).mockReset();
   vi.mocked(toast.error).mockReset();
@@ -99,6 +101,7 @@ describe("TrailContinueForm", () => {
 
   it("asks where to run when starting the play again needs a location, seeded with the message", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: ["plays:run", "memories:read"] } };
       if (url === "/api/workspaces/ws-1/plays") return { data: [{ id: "play-1", workspace_id: "ws-1", label: "Fix with AI", type: "ticket", description: "", builtin_key: "" }] };
       if (url === "/api/plays/latest-choices") return { data: { memory_ids: [], computer_id: "", provider: "", model: "" } };
       if (url === "/api/pairing/resolve") return { data: { ok: true, computer_id: "c-1", harness_project_id: "t3-app" } };
