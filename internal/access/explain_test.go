@@ -299,13 +299,17 @@ func TestExplain(t *testing.T) {
 		assert.Equal(t, "Denied on play Release notes for bob", run.Source.Sentence)
 		assert.True(t, run.Fallback.Allowed)
 	})
-	t.Run("a project: the rule naming the person lets them in, and without it the project is not found", func(t *testing.T) {
+	t.Run("a project: the rule naming the person lets them in, and each row's Fallback leaves the rest of it", func(t *testing.T) {
 		e, err := s.Explain(ctx, "alice", resourceTypeProject, "p-store", "lena")
 		require.NoError(t, err)
 		assert.Len(t, e.Effective, len(projectActions))
 		read := answer(t, e, permissions.TicketsRead)
 		assert.True(t, read.Allowed)
-		assert.Equal(t, "Not found: lena isn't in project Storefront", read.Fallback.Source.Sentence)
+		assert.Equal(t, "Allowed by role Client", read.Fallback.Source.Sentence, "still in the project by the rest of the rule")
+		write := answer(t, e, permissions.TicketsWrite)
+		assert.Equal(t, "Allowed on project Storefront for lena", write.Source.Sentence)
+		assert.Equal(t, "Not allowed: role Client doesn't grant it", write.Fallback.Source.Sentence)
+		assert.Equal(t, "Not found: lena isn't in project Storefront", answer(t, e, permissions.ProjectsOpen).Fallback.Source.Sentence)
 
 		_, err = s.Explain(ctx, "lena", resourceTypeProject, "p-back", "")
 		require.ErrorIs(t, err, apperrs.ErrNotFound, "a project hidden from you")
@@ -321,6 +325,84 @@ func TestExplain(t *testing.T) {
 		require.ErrorIs(t, err, apperrs.ErrNotFound)
 		_, _, err = s.Decide(ctx, "alice", "ticket", "t-1", permissions.TicketsRead)
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
+	})
+}
+
+var explainRoles = map[string]HeldRole{
+	"role-owner":  {ID: "role-owner", IsOwner: true},
+	"role-dev":    {ID: "role-dev", Permissions: permissions.SetOf(permissions.DocsRead, permissions.DocsWrite, permissions.TicketsRead)},
+	"role-client": {ID: "role-client", Permissions: permissions.SetOf(permissions.TicketsRead, permissions.DocsRead)},
+}
+
+// TestExplainRole: a role's answers are a holder of it alone's, and its Fallback leaves out its own rule on the entity.
+func TestExplainRole(t *testing.T) {
+	s, _ := explainFixture(t)
+	s.SetRoleWorkspaces(fakeRoleWorkspaces{"role-owner": "ws", "role-dev": "ws", "role-client": "ws", "role-elsewhere": "ws-2"})
+	ctx := context.Background()
+	require.NoError(t, s.repo.SetRole(ctx, resourceTypeDoc, "d-price", "role-dev", nil, permissions.SetOf(permissions.DocsWrite)))
+	answer := func(t *testing.T, e *Explanation, action permissions.Action) Answer {
+		t.Helper()
+		for _, a := range e.Effective {
+			if a.Action == action {
+				return a
+			}
+		}
+		t.Fatalf("no answer for %s", action)
+		return Answer{}
+	}
+
+	t.Run("on a project, a listed role without its rule is not listed", func(t *testing.T) {
+		e, err := s.ExplainRole(ctx, "alice", resourceTypeProject, "p-store", "role-dev")
+		require.NoError(t, err)
+		assert.Equal(t, "role-dev", e.RoleID)
+		open := answer(t, e, permissions.ProjectsOpen)
+		assert.True(t, open.Allowed)
+		assert.Equal(t, "Allowed on project Storefront for role Developer", open.Source.Sentence)
+		assert.False(t, open.Fallback.Allowed)
+		assert.Equal(t, "Not listed on project Storefront", open.Fallback.Source.Sentence)
+		read := answer(t, e, permissions.TicketsRead)
+		assert.Equal(t, "Allowed by role Developer", read.Source.Sentence)
+		assert.Equal(t, "Allowed by role Developer", read.Fallback.Source.Sentence, "the rest of the role's rule keeps it in")
+	})
+	t.Run("on a doc, the role's project rule and grants answer under its own rule", func(t *testing.T) {
+		e, err := s.ExplainRole(ctx, "alice", resourceTypeDoc, "d-price", "role-dev")
+		require.NoError(t, err)
+		write := answer(t, e, permissions.DocsWrite)
+		assert.False(t, write.Allowed)
+		assert.Equal(t, "Denied on doc Pricing for role Developer", write.Source.Sentence)
+		assert.True(t, write.Fallback.Allowed)
+		assert.Equal(t, "Allowed by role Developer", write.Fallback.Source.Sentence)
+	})
+	t.Run("on a doc, a role its project doesn't list", func(t *testing.T) {
+		e, err := s.ExplainRole(ctx, "alice", resourceTypeDoc, "d-price", "role-client")
+		require.NoError(t, err)
+		assert.Equal(t, "Not listed on project Storefront", answer(t, e, permissions.DocsRead).Fallback.Source.Sentence)
+	})
+	t.Run("the Owner role", func(t *testing.T) {
+		e, err := s.ExplainRole(ctx, "alice", resourceTypePlay, "play-notes", "role-owner")
+		require.NoError(t, err)
+		assert.Equal(t, "Owner of Acme", answer(t, e, permissions.PlaysRun).Fallback.Source.Sentence)
+	})
+	t.Run("what it refuses", func(t *testing.T) {
+		_, err := s.ExplainRole(ctx, "", resourceTypeDoc, "d-price", "role-dev")
+		require.ErrorIs(t, err, apperrs.ErrUnauthorized)
+		_, err = s.ExplainRole(ctx, "bob", resourceTypeDoc, "d-price", "role-dev")
+		require.ErrorIs(t, err, apperrs.ErrForbidden, "it takes managing the doc")
+		_, err = s.ExplainRole(ctx, "sam", resourceTypeDoc, "d-plan", "role-dev")
+		require.ErrorIs(t, err, apperrs.ErrNotFound, "a doc you can't read")
+		_, err = s.ExplainRole(ctx, "alice", resourceTypeDoc, "d-price", "role-elsewhere")
+		require.ErrorIs(t, err, apperrs.ErrNotFound, "another workspace's role")
+		_, err = s.ExplainRole(ctx, "alice", "ticket", "t-1", "role-dev")
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+	})
+	t.Run("over HTTP", func(t *testing.T) {
+		rec := serveAccess(t, NewHandler(s).Routes(), identity.Actor{ID: "alice"}, http.MethodGet,
+			"/api/permissions/explain?resource_type=project&resource_id=p-store&role_id=role-dev", "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), `"role_id":"role-dev"`)
+		rec = serveAccess(t, NewHandler(s).Routes(), identity.Actor{ID: "bob"}, http.MethodGet,
+			"/api/permissions/explain?resource_type=project&resource_id=p-store&role_id=role-dev", "")
+		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 }
 

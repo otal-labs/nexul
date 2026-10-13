@@ -1,5 +1,3 @@
-import { personLabel, unknownPerson } from "@nexul/client-core/person";
-
 import { Button } from "@/components/ui/button";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -8,62 +6,70 @@ import { PanelPaneHeader } from "@/components/access/PanelPaneHeader";
 import { PermissionGroupSection } from "@/components/access/PermissionGroupSection";
 import { PermissionRuleRow } from "@/components/access/PermissionRuleRow";
 import { useFetchExplanation, useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
-import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import { usePanelEntity } from "@/hooks/usePanelEntity";
+import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { usePermissionRules } from "@/hooks/usePermissionRules";
 import { usePermissionPanelStore } from "@/stores/permissionPanelStore";
 import type { PermissionExplanation, PermissionInfo } from "@/models/Permission";
-import { groupActions, permissionLabel, type PanelGroup } from "@/models/PermissionPanel";
+import { groupActions, parseTarget, permissionLabel, type PanelEntity, type PanelGroup } from "@/models/PermissionPanel";
 
 // The role behind a person's answers, read from the sources that name one.
 const heldRole = (explanation: PermissionExplanation | undefined) =>
   explanation?.effective.map((a) => a.fallback.source).find((s) => s.target_type === "role" && (s.kind === "role" || s.kind === "owner"))?.target_name;
 
+// The explain request's target for a rule's target key: a role by "role:<id>", a person by their id.
+const explainTargetOf = (key: string) => {
+  const { kind, id } = parseTarget(key);
+  return kind === "role" ? key : id;
+};
+
 interface RuleGroupProps {
-  userId: string;
+  targetKey: string;
+  type: PanelEntity["type"];
   group: PanelGroup;
   explanation: PermissionExplanation;
   catalog: PermissionInfo[] | undefined;
 }
 
-const RuleGroup = ({ userId, group, explanation, catalog }: RuleGroupProps) => (
+const RuleGroup = ({ targetKey, type, group, explanation, catalog }: RuleGroupProps) => (
   <PermissionGroupSection name={group.name}>
     {group.actions.map((action) => (
       <PermissionRuleRow
         key={action}
-        userId={userId}
+        targetKey={targetKey}
         action={action}
-        label={permissionLabel(action, catalog)}
+        label={permissionLabel(action, catalog, type)}
         answer={explanation.effective.find((a) => a.action === action)}
       />
     ))}
   </PermissionGroupSection>
 );
 
-const RulesFor = ({ userId }: { userId: string }) => {
+const RulesFor = ({ targetKey }: { targetKey: string }) => {
   const entity = usePanelEntity();
-  const { data: people } = useFetchWorkspacePeople(entity.workspaceId);
+  const { targetOf } = usePanelTargets({ workspaceId: entity.workspaceId });
   const { data: catalog } = useFetchPermissionCatalog();
-  const { data: explanation, error, isPending } = useFetchExplanation(entity.type, entity.id, userId);
+  const { data: explanation, error, isPending } = useFetchExplanation(entity.type, entity.id, explainTargetOf(targetKey));
   const { actions, clear } = usePermissionRules();
   const drop = usePermissionPanelStore((s) => s.drop);
-  const person = people?.find((p) => p.user_id === userId) ?? unknownPerson(userId);
+  const target = targetOf(targetKey);
   const role = heldRole(explanation);
+  const line = target.kind === "role" ? "Role" : `Person · ${role ? `holds ${role}` : "holds no role"}`;
 
   return (
     <div className="min-w-0 flex-1 space-y-5">
       <PanelPaneHeader
-        person={person}
-        title={personLabel(person)}
-        line={role ? `Person · holds ${role}` : "Person"}
+        target={target}
+        title={target.name}
+        line={line}
         action={
           <Button
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             onClick={() => {
-              clear(userId);
-              drop(userId);
+              clear(targetKey);
+              drop(targetKey);
             }}
           >
             Remove from this {entity.type}
@@ -73,21 +79,21 @@ const RulesFor = ({ userId }: { userId: string }) => {
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {explanation &&
-        groupActions(actions).map((group) => (
-          <RuleGroup key={group.name} userId={userId} group={group} explanation={explanation} catalog={catalog} />
+        groupActions(actions, catalog).map((group) => (
+          <RuleGroup key={group.name} targetKey={targetKey} type={entity.type} group={group} explanation={explanation} catalog={catalog} />
         ))}
     </div>
   );
 };
 
-// The chosen person's rule here, grouped by domain; nobody chosen is one muted sentence.
+// The chosen target's rule here, grouped by domain; nothing chosen is one muted sentence.
 export const RulesPane = () => {
   const entity = usePanelEntity();
   const target = usePermissionPanelStore((s) => s.target);
   return (
     <div className="min-w-0">
-      {!target && <EmptyRow flush>Pick a person, or add one, to set rules on {entity.name}.</EmptyRow>}
-      {target && <RulesFor key={target} userId={target} />}
+      {!target && <EmptyRow flush>Pick a role or person, or add one, to set rules on {entity.name}.</EmptyRow>}
+      {target && <RulesFor key={target} targetKey={target} />}
     </div>
   );
 };

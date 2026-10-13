@@ -10,8 +10,8 @@ export const PermissionsPanelHeader = () => {
   const entity = usePanelEntity();
   const mode = usePermissionPanelStore((s) => s.mode);
   const setMode = usePermissionPanelStore((s) => s.setMode);
-  const { data: project } = useFetchProject(entity.projectId || undefined);
-  const { data: folders } = useFetchDocFolders(entity.projectId);
+  const { data: project } = useFetchProject(entity.type === "doc" ? entity.projectId || undefined : undefined);
+  const { data: folders } = useFetchDocFolders(entity.type === "doc" ? entity.projectId : "");
   const where = [project?.name, folders?.find((f) => f.id === entity.folderId)?.name].filter(Boolean).join(" › ");
 
   return (

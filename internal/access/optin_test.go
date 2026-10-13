@@ -231,6 +231,14 @@ func (f fakeRoleWorkspaces) WorkspaceIDForRole(_ context.Context, roleID string)
 	return ws, nil
 }
 
+// HeldRole answers the explain fixture's roles: Developer and Client with what they allow, Owner as the Owner role.
+func (f fakeRoleWorkspaces) HeldRole(_ context.Context, roleID string) (HeldRole, error) {
+	if _, ok := f[roleID]; !ok {
+		return HeldRole{}, apperrs.ErrNotFound
+	}
+	return explainRoles[roleID], nil
+}
+
 func TestSetRules_OnAProject(t *testing.T) {
 	s, repo := projectsFixture(t)
 	s.SetRoleWorkspaces(fakeRoleWorkspaces{"role-client": "ws", "role-team": "ws", "role-elsewhere": "ws-2"})

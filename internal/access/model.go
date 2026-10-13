@@ -146,8 +146,10 @@ type Answer struct {
 
 // Explanation is a person's answer for every action an entity's rules may set.
 type Explanation struct {
-	ResourceType string   `json:"resource_type"`
-	ResourceID   string   `json:"resource_id"`
-	UserID       string   `json:"user_id"`
-	Effective    []Answer `json:"effective"`
+	ResourceType string `json:"resource_type"`
+	ResourceID   string `json:"resource_id"`
+	UserID       string `json:"user_id"`
+	// RoleID is set instead of UserID when the answers are a role's, as a holder of it alone would get them.
+	RoleID    string   `json:"role_id,omitempty"`
+	Effective []Answer `json:"effective"`
 }

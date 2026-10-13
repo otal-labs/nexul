@@ -24,7 +24,7 @@ type SetupChange struct {
 func (c SetupChange) validate() error {
 	for step, mark := range c.Steps {
 		if !slices.Contains(SetupSteps, step) {
-			return fmt.Errorf("%w: %q is not a project wizard step; the steps are project, repository, service, env, reach, and branches", apperrs.ErrInvalid, step)
+			return fmt.Errorf("%w: %q is not a project wizard step; the steps are project, people, repository, service, env, reach, and branches", apperrs.ErrInvalid, step)
 		}
 		if mark != SetupDone && mark != SetupSkipped {
 			return fmt.Errorf("%w: step %s must be marked %q or %q", apperrs.ErrInvalid, step, SetupDone, SetupSkipped)

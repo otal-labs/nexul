@@ -98,11 +98,21 @@ func (h *Handler) catalog(w http.ResponseWriter, _ *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"permissions": permissions.Catalog()})
 }
 
-// explain is a person's answers on a doc, play, or project and where each came from; user_id defaults to the caller.
+// explain is a person's or, with role_id, a role's answers on a doc, play, or project and where each came from;
+// user_id defaults to the caller.
 func (h *Handler) explain(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	if q.Get("resource_id") == "" {
 		httpx.WriteError(w, fmt.Errorf("%w: resource_id is required", apperrs.ErrInvalid))
+		return
+	}
+	if roleID := q.Get("role_id"); roleID != "" {
+		out, err := h.svc.ExplainRole(r.Context(), actorID(r), q.Get("resource_type"), q.Get("resource_id"), roleID)
+		if err != nil {
+			httpx.WriteError(w, err)
+			return
+		}
+		httpx.WriteJSON(w, http.StatusOK, out)
 		return
 	}
 	out, err := h.svc.Explain(r.Context(), actorID(r), q.Get("resource_type"), q.Get("resource_id"), q.Get("user_id"))

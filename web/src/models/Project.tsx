@@ -111,21 +111,10 @@ export interface RepoRef {
   role: RepoRole;
 }
 
-// A Restricted member holding access to a project, named the way People shows them.
-export interface RestrictedMember {
-  user_id: string;
-  name: string;
-}
-
 export interface DeleteImpact {
   tickets: number;
   repos: number;
   services: number;
-  restricted_members?: RestrictedMember[];
-}
-
-export interface ProjectAccessEntry extends RestrictedMember {
-  actions: string[];
 }
 
 export const SaveProjectFormSchema = z.object({

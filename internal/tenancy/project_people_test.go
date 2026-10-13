@@ -103,6 +103,13 @@ func TestListProjectPeople(t *testing.T) {
 	}
 	assert.Equal(t, []string{"bob", "olga", "actor"}, ids, "lena is not in p-web")
 
+	f.repo.listedRoles["p-web"] = []string{"role-editor"}
+	roles, err := f.svc.ListProjectRoles(t.Context(), "bob", "p-web")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"role-editor"}, roles)
+	_, err = f.svc.ListProjectRoles(t.Context(), "bob", "p-api")
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "a project hidden from the caller")
+
 	f.repo.projectMembersErr = errors.New("database is locked")
 	_, err = f.svc.ListProjectPeople(t.Context(), "bob", "p-web")
 	require.ErrorIs(t, err, f.repo.projectMembersErr)
@@ -111,11 +118,16 @@ func TestListProjectPeople(t *testing.T) {
 func TestHandler_ProjectPeople_AnswersOnlySomeoneInTheProject(t *testing.T) {
 	f := newAccessFixture(t)
 	f.repo.listed["p-web"] = []string{"bob", "olga"}
+	f.repo.listedRoles["p-web"] = []string{"role-viewer"}
 	rec := do(t, NewHandler(f.svc).ProjectPeopleRoutes(), http.MethodGet, "/api/projects/p-api/people", "", "bob")
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	rec = do(t, NewHandler(f.svc).ProjectPeopleRoutes(), http.MethodGet, "/api/projects/p-web/people", "", "bob")
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"people":[{"user_id":"bob","login":"bob","display_name":"","avatar_url":""},{"user_id":"olga","login":"olga","display_name":"","avatar_url":""}]}`, rec.Body.String())
+	assert.JSONEq(t, `{"people":[{"user_id":"bob","login":"bob","display_name":"","avatar_url":""},{"user_id":"olga","login":"olga","display_name":"","avatar_url":""}],"role_ids":["role-viewer"]}`, rec.Body.String())
+
+	f.repo.projectMembersErr = errors.New("database is locked")
+	rec = do(t, NewHandler(f.svc).ProjectPeopleRoutes(), http.MethodGet, "/api/projects/p-web/people", "", "bob")
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
 
 // TestHandler_Me_ReadsEveryNonOwnerAsRestricted: a phone build from before projects were opt-in reads a non-Owner's

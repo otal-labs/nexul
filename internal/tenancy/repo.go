@@ -38,6 +38,8 @@ type MemberRepo interface {
 	Member(ctx context.Context, workspaceID, userID string) (*Member, error)
 	// ProjectMemberIDs lists the members of workspaceID who are in projectID, in membership order, in one read.
 	ProjectMemberIDs(ctx context.Context, workspaceID, projectID string) ([]string, error)
+	// ProjectRoleIDs lists the roles projectID's rules let in, in the order they were listed, in one read.
+	ProjectRoleIDs(ctx context.Context, projectID string) ([]string, error)
 }
 
 // InviteRepo is the consumer-side persistence contract for pending workspace invites.

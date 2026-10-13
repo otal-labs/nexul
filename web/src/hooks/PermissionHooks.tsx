@@ -1,24 +1,23 @@
-import { useMemo } from "react";
 import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { getDocsKey } from "@/hooks/DocHooks";
+import { getProjectPeopleKey } from "@/hooks/PeopleHooks";
 import {
-  PermissionArea,
   type PermissionExplanation,
   type PermissionGrant,
   type PermissionInfo,
   type RuleChange,
 } from "@/models/Permission";
-import { domainsIn, type PermissionDomain } from "@/models/PermissionLevel";
+import { parseTarget, type PanelEntity } from "@/models/PermissionPanel";
 import type { LiveFollower } from "@/lib/live";
 
 export const getGrantsKey = "getGrants";
 export const getExplanationKey = "getExplanation";
 const getPermissionCatalogKey = "getPermissionCatalog";
 
-// A doc's or play's rules, one row per person. A caller without the manage permission (which the endpoint requires)
+// A doc's, play's or project's rules, one row per role or person. A caller without the manage permission (which the endpoint requires)
 // passes enabled false so it never fires a request it knows will 403.
 export const useFetchGrants = (resourceType: string, resourceId: string, enabled = true) =>
   useQuery({
@@ -32,14 +31,21 @@ export const useFetchGrants = (resourceType: string, resourceId: string, enabled
     enabled: enabled && resourceId !== "",
   });
 
-// A person's answer for every permission the entity's rules may set, with its source; userId empty is the viewer.
-export const useFetchExplanation = (resourceType: string, resourceId: string, userId = "", enabled = true) =>
+// The explain request's target: "role:<id>" asks for a role, any other non-empty value names a person.
+const explainTarget = (target: string) => {
+  if (target.startsWith("role:")) return { role_id: target.slice("role:".length) };
+  return target ? { user_id: target } : {};
+};
+
+// A person's or role's answer for every permission the entity's rules may set, with its source; target empty is the
+// viewer, a person by user id, and "role:<id>" a role.
+export const useFetchExplanation = (resourceType: string, resourceId: string, target = "", enabled = true) =>
   useQuery({
-    queryKey: [getExplanationKey, resourceType, resourceId, userId],
+    queryKey: [getExplanationKey, resourceType, resourceId, target],
     queryFn: async () =>
       (
         await api.get<PermissionExplanation>("/api/permissions/explain", {
-          params: { resource_type: resourceType, resource_id: resourceId, ...(userId ? { user_id: userId } : {}) },
+          params: { resource_type: resourceType, resource_id: resourceId, ...explainTarget(target) },
         })
       ).data,
     enabled: enabled && resourceId !== "",
@@ -54,27 +60,26 @@ export const useFetchPermissionCatalog = () =>
     staleTime: Infinity,
   });
 
-// The project areas Project access is set in, from the catalog; empty until it arrives.
-export const useProjectAreas = (): PermissionDomain[] => {
-  const { data: catalog } = useFetchPermissionCatalog();
-  return useMemo(() => domainsIn(catalog ?? [], [PermissionArea.Project]), [catalog]);
-};
-
 interface SaveRulesInput {
-  resourceType: "doc" | "play";
+  resourceType: PanelEntity["type"];
   resourceId: string;
   changes: RuleChange[];
+  // The toast once it lands, when the change says more than "Permissions saved".
+  done?: string;
 }
 
-const ruleBody = (resourceType: string, resourceId: string, { userId, state, actions }: RuleChange) => {
-  if (resourceType === "play") return { resource_type: "play", resource_ids: [resourceId], user_ids: [userId], actions, state };
-  return { doc_ids: [resourceId], user_ids: [userId], actions, state };
+const ruleBody = (resourceType: string, resourceId: string, { target, state, actions }: RuleChange) => {
+  const { kind, id } = parseTarget(target);
+  const to = kind === "role" ? { role_ids: [id] } : { user_ids: [id] };
+  if (resourceType === "doc") return { doc_ids: [resourceId], ...to, actions, state };
+  return { resource_type: resourceType, resource_ids: [resourceId], ...to, actions, state };
 };
 
 const refreshRules = (client: QueryClient, resourceType: string, resourceId: string) =>
   Promise.all([
     client.invalidateQueries({ queryKey: [getGrantsKey, resourceType, resourceId] }),
     client.invalidateQueries({ queryKey: [getExplanationKey, resourceType, resourceId] }),
+    resourceType === "project" && client.invalidateQueries({ queryKey: [getProjectPeopleKey, resourceId] }),
   ]);
 
 export const useSaveRules = () => {
@@ -83,10 +88,10 @@ export const useSaveRules = () => {
     mutationFn: async ({ resourceType, resourceId, changes }: SaveRulesInput) => {
       for (const change of changes) await api.put("/api/permissions", ruleBody(resourceType, resourceId, change));
     },
-    onSuccess: async (_, { resourceType, resourceId, changes }) => {
+    onSuccess: async (_, { resourceType, resourceId, changes, done }) => {
       await refreshRules(client, resourceType, resourceId);
       if (resourceType === "doc") await client.invalidateQueries({ queryKey: [getDocsKey] });
-      if (changes.length > 0) toast.success("Permissions saved");
+      if (changes.length > 0) toast.success(done ?? "Permissions saved");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -97,7 +102,7 @@ interface GrantPayload {
   resource_id: string;
 }
 
-// A rule changed on a doc or play: an open panel on it rereads its rules and answers.
+// A rule changed on a doc, play or project: an open panel or people card on it rereads its rules and answers.
 export const permissionRulesFollower: LiveFollower = {
   "access.grant.changed": ({ resource_type, resource_id }: GrantPayload, { client }) => refreshRules(client, resource_type, resource_id),
 };

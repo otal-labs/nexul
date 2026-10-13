@@ -30,5 +30,5 @@ VALUES ('p-old', 'Backend', 'BE', 0, 'workspace-default', '', 1, 1);`)
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 	got, err := s.Projects.Get(t.Context(), "p-old")
 	require.NoError(t, err)
-	assert.Equal(t, workspace.ProjectSetup{Finished: true, Steps: map[workspace.SetupStep]workspace.SetupMark{}}, got.Setup)
+	assert.Equal(t, workspace.ProjectSetup{Finished: true, Steps: map[workspace.SetupStep]workspace.SetupMark{"people": workspace.SetupDone}}, got.Setup, "0104 counts the later Who's in it step done too")
 }

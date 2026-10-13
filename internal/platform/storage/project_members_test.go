@@ -57,4 +57,9 @@ func TestWorkspaceMembers_ProjectMemberIDs_AreWhoMayOpenTheProject(t *testing.T)
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{"u-owner", "u-dev", "u-named"}, ids, "the Owner, a listed role, a person by name; not one kept out")
+
+	require.NoError(t, s.Access.SetRole(ctx, "project", "p-web", "role-other", permissions.SetOf(permissions.TicketsRead), nil))
+	roleIDs, err := s.WorkspaceMembers.ProjectRoleIDs(ctx, "p-web")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"role-dev"}, roleIDs, "a role rule that doesn't allow In this project lists no one")
 }

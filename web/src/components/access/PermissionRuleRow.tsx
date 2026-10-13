@@ -4,19 +4,19 @@ import { usePermissionRules } from "@/hooks/usePermissionRules";
 import { RuleState, type PermissionAnswer } from "@/models/Permission";
 
 interface PermissionRuleRowProps {
-  userId: string;
+  targetKey: string;
   action: string;
   label: string;
-  // The person's answer here; its fallback is what applies without this rule.
+  // The target's answer here; its fallback is what applies without this rule.
   answer: PermissionAnswer | undefined;
 }
 
 // One permission: its name, the three-state control, and under Fallback what applies without a rule here.
-export const PermissionRuleRow = ({ userId, action, label, answer }: PermissionRuleRowProps) => {
+export const PermissionRuleRow = ({ targetKey, action, label, answer }: PermissionRuleRowProps) => {
   const { stateOf, saved, holds, setState } = usePermissionRules();
-  const value = stateOf(userId, action);
+  const value = stateOf(targetKey, action);
   const held = holds(action);
-  const liftLocked = !held && saved(userId, action) === RuleState.Deny;
+  const liftLocked = !held && saved(targetKey, action) === RuleState.Deny;
   const locked = {
     ...(!held ? { [RuleState.Allow]: lockedAllowReason } : {}),
     ...(liftLocked ? { [RuleState.Fallback]: lockedLiftReason } : {}),
@@ -28,7 +28,7 @@ export const PermissionRuleRow = ({ userId, action, label, answer }: PermissionR
         <p className="text-sm">{label}</p>
         {value === RuleState.Fallback && answer && <SourceLine verdict={answer.fallback} className="mt-1" />}
       </div>
-      <RuleStateControl label={label} value={value} locked={locked} onChange={(state) => setState(userId, action, state)} />
+      <RuleStateControl label={label} value={value} locked={locked} onChange={(state) => setState(targetKey, action, state)} />
     </li>
   );
 };

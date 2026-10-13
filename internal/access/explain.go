@@ -63,24 +63,31 @@ func (s *Service) entityOf(ctx context.Context, resourceType, resourceID string)
 }
 
 // answer is userID's answer for action on e, from the check that enforces it; with own false, e's rule naming them
-// counts as Fallback, and its rules for their roles still apply.
+// holds action at Fallback, the rest of it and its rules for their roles still applying.
 func (s *Service) answer(ctx context.Context, userID string, e entity, action permissions.Action, own bool) (bool, Source) {
 	if own {
 		return s.check(ctx, userID, e.workspaceID, e.projectID, action, e.kind, e.id)
 	}
 	ws := s.layers(ctx, userID, e.workspaceID, e.projectID)
 	if e.kind == resourceTypeProject {
-		return decide(ws.in(e.projectID, rolesOnly(ws.project)), action, noRules)
+		return decide(ws.in(e.projectID, personAtFallback(ws.project, action)), action, noRules)
 	}
-	return decide(ws, action, func() *Rules { return rolesOnly(s.rules(ctx, e.kind, e.id, userID)) })
+	return decide(ws, action, func() *Rules { return personAtFallback(s.rules(ctx, e.kind, e.id, userID), action) })
 }
 
-// rolesOnly is r with the rule naming the person at Fallback.
-func rolesOnly(r *Rules) *Rules {
-	if r == nil {
-		return nil
+// personAtFallback is r with the rule naming the person saying nothing about action.
+func personAtFallback(r *Rules, action permissions.Action) *Rules {
+	if r == nil || r.Person == nil {
+		return r
 	}
-	return &Rules{Roles: r.Roles}
+	return &Rules{Person: withoutAction(r.Person, action), Roles: r.Roles}
+}
+
+// withoutAction is ow holding action at Fallback.
+func withoutAction(ow *Overwrite, action permissions.Action) *Overwrite {
+	next := *ow
+	next.Allow, next.Deny = ow.Allow.Without(action), ow.Deny.Without(action)
+	return &next
 }
 
 func noRules() *Rules { return nil }
@@ -127,6 +134,80 @@ func (s *Service) Explain(ctx context.Context, actorID, resourceType, resourceID
 		out.Effective = append(out.Effective, Answer{Action: a, Verdict: Verdict{held, n.named(src)}, Fallback: Verdict{inherited, n.named(from)}})
 	}
 	return out, nil
+}
+
+// ExplainRole answers each action a doc's, play's, or project's rules may set for a holder of roleID alone, with the
+// role's own rule there, and with that rule holding the action at Fallback: what the panel shows under a role's
+// Fallback. It takes managing the
+// entity, and a role of another workspace is not found.
+func (s *Service) ExplainRole(ctx context.Context, actorID, resourceType, resourceID, roleID string) (*Explanation, error) {
+	if actorID == "" {
+		return nil, fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
+	}
+	ctx = s.memoized(ctx)
+	e, err := s.entityOf(ctx, resourceType, resourceID)
+	if err != nil {
+		return nil, err
+	}
+	if opens, _ := s.answer(ctx, actorID, e, e.open, true); !opens {
+		return nil, fmt.Errorf("%w: %s %s", apperrs.ErrNotFound, resourceType, resourceID)
+	}
+	if manages, src := s.answer(ctx, actorID, e, e.manage, true); !manages {
+		return nil, s.refusal(ctx, e.manage, src)
+	}
+	if err := s.requireRolesOf(ctx, resourceType, resourceID, []string{roleID}); err != nil {
+		return nil, err
+	}
+	held, err := s.roleWorkspace.HeldRole(ctx, roleID)
+	if err != nil {
+		return nil, fmt.Errorf("read role %s: %w", roleID, err)
+	}
+	own, err := s.repo.RoleRules(ctx, e.kind, []string{e.id}, []string{roleID})
+	if err != nil {
+		return nil, fmt.Errorf("rules for role %s on %s %s: %w", roleID, e.kind, e.id, err)
+	}
+	ws := workspaceLayers{workspaceID: e.workspaceID, member: true, owner: held.IsOwner, roles: RolesHeld(held)}
+	var inProject []*Overwrite
+	if e.projectID != "" && e.kind != resourceTypeProject {
+		got, err := s.repo.RoleRules(ctx, resourceTypeProject, []string{e.projectID}, []string{roleID})
+		if err != nil {
+			return nil, fmt.Errorf("rules for role %s on project %s: %w", roleID, e.projectID, err)
+		}
+		inProject = got[e.projectID]
+	}
+	n := s.namer(ctx)
+	out := &Explanation{ResourceType: resourceType, ResourceID: resourceID, RoleID: roleID, Effective: make([]Answer, 0, len(e.actions))}
+	for _, a := range e.actions {
+		with, src := roleAnswer(ws, e, roleID, a, inProject, own[e.id])
+		without, from := roleAnswer(ws, e, roleID, a, inProject, atFallback(own[e.id], a))
+		out.Effective = append(out.Effective, Answer{Action: a, Verdict: Verdict{with, n.named(src)}, Fallback: Verdict{without, n.named(from)}})
+	}
+	return out, nil
+}
+
+// atFallback is rules each holding action at Fallback.
+func atFallback(rules []*Overwrite, action permissions.Action) []*Overwrite {
+	out := make([]*Overwrite, len(rules))
+	for i, ow := range rules {
+		out[i] = withoutAction(ow, action)
+	}
+	return out
+}
+
+// roleAnswer is a holder of roleID alone asking for action on e, given the role's rules on e's project and on e itself.
+func roleAnswer(ws workspaceLayers, e entity, roleID string, action permissions.Action, inProject, own []*Overwrite) (bool, Source) {
+	rules := &Rules{Roles: own}
+	if e.kind == resourceTypeProject {
+		inProject, rules = own, nil
+	}
+	if e.projectID != "" {
+		ws = ws.in(e.projectID, &Rules{Roles: inProject})
+	}
+	allowed, src := decide(ws, action, func() *Rules { return rules })
+	if src.Kind == SourceNotInProject {
+		src.TargetType, src.TargetID = TargetRole, roleID
+	}
+	return allowed, src
 }
 
 // RefuseDoc is the forbidden answer to userID's action on docID, naming the rule or role that refused it.
@@ -204,6 +285,9 @@ func sentence(r NamedSource) string {
 	case SourceOutsideProject:
 		return "Not allowed: it counts only inside a project"
 	case SourceNotInProject:
+		if r.TargetType == TargetRole {
+			return "Not listed on project " + r.EntityName
+		}
 		return "Not found: " + r.TargetName + " isn't in project " + r.EntityName
 	}
 	return ""

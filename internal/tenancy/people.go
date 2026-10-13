@@ -68,21 +68,39 @@ func (s *Service) SetProjects(g ProjectGate) { s.projects = g }
 // ListProjectPeople is the workspace's People who are in projectID, for a ticket's developer and tester pickers;
 // anyone in the project reads it.
 func (s *Service) ListProjectPeople(ctx context.Context, actorID, projectID string) ([]Person, error) {
-	if s.projects == nil {
-		return nil, fmt.Errorf("%w: no project lookup wired", apperrs.ErrForbidden)
-	}
-	workspaceID, err := s.projects.ProjectWorkspace(ctx, projectID)
+	workspaceID, err := s.openProject(ctx, actorID, projectID)
 	if err != nil {
-		return nil, fmt.Errorf("resolve project %s: %w", projectID, err)
-	}
-	if _, opens := s.projects.ProjectPermissions(ctx, actorID, projectID); !opens {
-		return nil, fmt.Errorf("%w: project %s", apperrs.ErrNotFound, projectID)
+		return nil, err
 	}
 	userIDs, err := s.members.ProjectMemberIDs(ctx, workspaceID, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list the people of project %s: %w", projectID, err)
 	}
 	return s.peopleNamed(ctx, userIDs)
+}
+
+// ListProjectRoles is the roles projectID's rules let in, for a doc's permissions panel, which lists only those;
+// anyone in the project reads it.
+func (s *Service) ListProjectRoles(ctx context.Context, actorID, projectID string) ([]string, error) {
+	if _, err := s.openProject(ctx, actorID, projectID); err != nil {
+		return nil, err
+	}
+	return s.members.ProjectRoleIDs(ctx, projectID)
+}
+
+// openProject is projectID's workspace, when actorID is in the project; otherwise it is not found.
+func (s *Service) openProject(ctx context.Context, actorID, projectID string) (string, error) {
+	if s.projects == nil {
+		return "", fmt.Errorf("%w: no project lookup wired", apperrs.ErrForbidden)
+	}
+	workspaceID, err := s.projects.ProjectWorkspace(ctx, projectID)
+	if err != nil {
+		return "", fmt.Errorf("resolve project %s: %w", projectID, err)
+	}
+	if _, opens := s.projects.ProjectPermissions(ctx, actorID, projectID); !opens {
+		return "", fmt.Errorf("%w: project %s", apperrs.ErrNotFound, projectID)
+	}
+	return workspaceID, nil
 }
 
 // peopleNamed is the Person of each of userIDs with an account, in their order.

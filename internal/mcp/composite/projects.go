@@ -209,7 +209,7 @@ type setupIn struct {
 	StackID  *string           `json:"stack_id,omitempty" jsonschema:"The exact stack the wizard created or adopted; empty clears it."`
 	EnvKeys  *[]string         `json:"env_keys,omitempty" jsonschema:"Detected environment variable names; an empty list clears them. Values belong to the stack."`
 	Finished *bool             `json:"finished,omitempty" jsonschema:"true finishes setup, so the sidebar lists the project's pages instead of Continue setup; false reopens it."`
-	Steps    map[string]string `json:"steps,omitempty" jsonschema:"Wizard steps to mark, each done or skipped, keyed by step: project, repository, service, env, reach, or branches. A step already done stays done when marked skipped."`
+	Steps    map[string]string `json:"steps,omitempty" jsonschema:"Wizard steps to mark, each done or skipped, keyed by step: project, people, repository, service, env, reach, or branches. A step already done stays done when marked skipped."`
 }
 
 type docFolderChanges struct {

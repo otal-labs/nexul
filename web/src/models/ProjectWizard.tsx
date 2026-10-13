@@ -1,10 +1,11 @@
 import type { Project } from "@/models/Project";
 
-export const WizardSteps = ["project", "repository", "service", "env", "reach", "branches", "done"] as const;
+export const WizardSteps = ["project", "people", "repository", "service", "env", "reach", "branches", "done"] as const;
 export type WizardStepId = (typeof WizardSteps)[number];
 
 const labels: Record<WizardStepId, string> = {
   project: "Info",
+  people: "Who's in it",
   repository: "Repository",
   service: "Service",
   env: "Environment",
@@ -14,6 +15,7 @@ const labels: Record<WizardStepId, string> = {
 };
 
 const descriptions: Partial<Record<WizardStepId, string>> = {
+  people: "Pick the roles that can open this project. Your own roles start ticked.",
   repository: "Pick the repository to deploy. Nexul reads its Dockerfile or compose file.",
   reach: "Optional. Give this service a hostname now, or later from the stack page.",
   branches: "Optional. Deploy other branches as their own copies, each at its own URL.",

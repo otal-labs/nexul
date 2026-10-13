@@ -692,7 +692,7 @@ led: the finished rung's rail draws down (260ms `--ease-out`, `scaleY` from
 the top), then the next body rises in (200ms, 4px, with a 180ms delay only
 when it follows a drawn rail). `DnsSetupStepper` is the reference.
 
-Project wizard. The `/wizard/project/<step>` flow (info, repository, service,
+Project wizard. The `/wizard/project/<step>` flow (info, who's in it, repository, service,
 environment when the scan found keys, reach, deploy branches, done) is a
 horizontal progress row above the active step, not the vertical rail. The row
 is an `ol` up to `max-w-3xl` of 20px nodes evenly spaced on a 1px connector;
@@ -797,6 +797,18 @@ columns from a 36rem card) as a disclosure. The Owner row has no
 menu and says what it is in one line. Deleting a role someone holds asks
 first, naming how many people lose it. `RoleRow` and `RoleAccessSummary`
 in `web/src/components/settings/` are the reference.
+
+People in this project. A project's Settings → General card for whoever
+manages its access: a Roles microheader over the roles it lets in, People over
+the people with a rule of their own, then Kept out over the people a rule keeps
+out. A row is the 24px target mark (a role a muted people icon on a
+`surface-2` tile with the hairline ring, a person their avatar), the name in
+14px medium over a muted line (who holds a role, what a person holds, the
+rules here), and a trailing chevron; the whole row opens the permissions panel
+on that target, and a ghost `×` beside it asks before taking the target off.
+The footer's "Add a role or person" lists one, which lets it in, and opens
+nothing. `ProjectPeopleSection` in `web/src/components/settings/` is the
+reference; the panel's target column uses the same marks.
 
 Danger zone. Every danger zone (Configuration, project, stack, automation)
 is one `DangerZone` card (`danger`, the warning icon) holding `DangerAction`

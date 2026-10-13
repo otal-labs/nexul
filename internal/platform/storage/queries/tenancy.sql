@@ -77,6 +77,11 @@ WHERE m.workspace_id = sqlc.arg(workspace_id)
                      AND pr.resource_type = 'project' AND pr.resource_id = sqlc.arg(project_id) AND a.value = 'projects:open'))))
 ORDER BY m.created_at, m.user_id;
 
+-- name: ListProjectRoleIDs :many
+SELECT po.role_id FROM permission_overwrites po, json_each(po.allow) a
+WHERE po.resource_type = 'project' AND po.resource_id = sqlc.arg(project_id) AND po.target = 'role' AND a.value = 'projects:open'
+ORDER BY po.created_at, po.role_id;
+
 -- name: RemoveWorkspaceMember :execrows
 DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ?;
 

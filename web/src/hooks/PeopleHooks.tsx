@@ -17,11 +17,20 @@ export const useFetchWorkspacePeople = (workspaceId: string | undefined) =>
     enabled: !!workspaceId,
   });
 
-// The people who may open a project, Restricted members without access left out: a ticket's developer and tester.
+// The people in a project, the Owners included: a ticket's developer and tester, and who a project's delete reaches.
 export const useFetchProjectPeople = (projectId: string | undefined) =>
   useQuery({
     queryKey: [getProjectPeopleKey, projectId],
     queryFn: async () => (await api.get<PeopleList>(`/api/projects/${projectId}/people`)).data.people,
+    enabled: !!projectId,
+  });
+
+// The roles a project's rules let in, from the same route; its key sits under the project's people, so what refreshes
+// them refreshes it.
+export const useFetchProjectRoleIds = (projectId: string | undefined) =>
+  useQuery({
+    queryKey: [getProjectPeopleKey, projectId, "roles"],
+    queryFn: async () => (await api.get<{ role_ids: string[] }>(`/api/projects/${projectId}/people`)).data.role_ids,
     enabled: !!projectId,
   });
 

@@ -24,7 +24,7 @@ const projects = [
 ];
 
 // A project the wizard made on some other device: the server's record is all this browser has to go on.
-const inSetup: (typeof projects)[number] = { ...projects[0]!, setup: { finished: false, steps: { project: "done", repository: "skipped" } } };
+const inSetup: (typeof projects)[number] = { ...projects[0]!, setup: { finished: false, steps: { project: "done", people: "done", repository: "skipped" } } };
 
 const ownerPermissions = ["docs:read", "docs:write", "memories:read", "projects:create", "projects:read", "projects:write", "tickets:read"];
 
@@ -77,7 +77,7 @@ describe("ProjectSection", () => {
 
   it("Continue setup resumes Environment when a detected key still needs its value", async () => {
     const user = userEvent.setup();
-    renderSection({ list: [{ ...projects[0]!, setup: { finished: false, steps: { project: "done", repository: "done", service: "done" }, stack_id: "stack-1", env_keys: ["PORT"] } }] });
+    renderSection({ list: [{ ...projects[0]!, setup: { finished: false, steps: { project: "done", people: "done", repository: "done", service: "done" }, stack_id: "stack-1", env_keys: ["PORT"] } }] });
 
     await user.click(await screen.findByRole("link", { name: "Continue setup" }));
 

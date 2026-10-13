@@ -203,6 +203,12 @@ type People struct {
 	People []Person `json:"people"`
 }
 
+// ProjectPeople is a project's People and the roles its rules let in.
+type ProjectPeople struct {
+	People  []Person `json:"people"`
+	RoleIDs []string `json:"role_ids"`
+}
+
 // TeamMembership is one person's place in one workspace: their roles, RoleID naming the first and RoleName all. Allow,
 // Deny, EveryProject and Projects are removed fields that read as empty (ADR 0148).
 type TeamMembership struct {

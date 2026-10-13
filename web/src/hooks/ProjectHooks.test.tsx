@@ -171,17 +171,6 @@ describe("useSaveTestsAnswer", () => {
 });
 
 describe("the project follower", () => {
-  it("refetches who has access to the project a grant names", async () => {
-    const client = seeded([
-      [["getProjectAccess", "p-1"], []],
-      [["getProjectAccess", "p-2"], []],
-      [["getProjectAccess", "p-3"], []],
-    ]);
-    const stale = () => ["p-1", "p-2", "p-3"].map((id) => isStale(client, ["getProjectAccess", id]));
-    await followFrame(projectFollower, "access.grant.changed", { user_id: "u-2", resource_type: "project", resource_id: "p-1" }, client);
-    expect(stale()).toEqual([true, false, false]);
-  });
-
   it("patches the finished flag and marks of a setup frame, keeps the service it cannot carry, and refetches the reads that hold the project", async () => {
     const project = (id: string) => ({ id, workspace_id: "ws-1", setup: { finished: false, stack_id: "stack-1", env_keys: ["PORT"], steps: { project: "done" } } });
     const client = seeded([

@@ -25,6 +25,7 @@ type fakeRepo struct {
 	members        map[string][]string            // workspaceID -> userIDs
 	roleIDs        map[string]map[string][]string // workspaceID -> userID -> roleIDs
 	listed         map[string][]string            // projectID -> the userIDs in it
+	listedRoles    map[string][]string            // projectID -> the roles its rules let in
 	teamWorkspaces []*TeamWorkspace
 	events         []eventbus.OutboxEvent
 	createErr      error
@@ -36,10 +37,11 @@ type fakeRepo struct {
 
 func newFakeRepo() *fakeRepo {
 	return &fakeRepo{
-		workspaces: map[string]*Workspace{},
-		members:    map[string][]string{},
-		roleIDs:    map[string]map[string][]string{},
-		listed:     map[string][]string{},
+		workspaces:  map[string]*Workspace{},
+		members:     map[string][]string{},
+		roleIDs:     map[string]map[string][]string{},
+		listed:      map[string][]string{},
+		listedRoles: map[string][]string{},
 	}
 }
 
@@ -207,6 +209,15 @@ func (f *fakeRepo) Member(_ context.Context, workspaceID, userID string) (*Membe
 
 // projectWorkspace is the fixture's one project-to-workspace mapping, shared with fakeProjects.
 var projectWorkspace = map[string]string{"p-web": "ws-1", "p-api": "ws-1", "p-other": "ws-2"}
+
+func (f *fakeRepo) ProjectRoleIDs(_ context.Context, projectID string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.projectMembersErr != nil {
+		return nil, f.projectMembersErr
+	}
+	return f.listedRoles[projectID], nil
+}
 
 func (f *fakeRepo) ProjectMemberIDs(_ context.Context, workspaceID, projectID string) ([]string, error) {
 	f.mu.Lock()

@@ -3,7 +3,6 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { getProjectPeopleKey, getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
-import { getProjectAccessKey } from "@/hooks/ProjectHooks";
 import type { MemberStep } from "@/models/MemberDraft";
 import { getTeamKey, type Team } from "@/models/Team";
 import { followEach, type LiveFollower } from "@/lib/live";
@@ -21,7 +20,6 @@ const invalidateTeam = (client: QueryClient) =>
   Promise.all([
     client.invalidateQueries({ queryKey: [getTeamKey] }),
     client.invalidateQueries({ queryKey: [getWorkspacePeopleKey] }),
-    client.invalidateQueries({ queryKey: [getProjectAccessKey] }),
     client.invalidateQueries({ queryKey: [getProjectPeopleKey] }),
   ]);
 

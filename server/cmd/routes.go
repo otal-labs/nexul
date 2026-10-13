@@ -341,7 +341,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("DELETE", "/api/repositories/installations/{account}/workspaces/{workspaceID}", "Detach an account from a workspace, so background work there stops reading its repositories as the App", "repositories")
 	spec.Register("GET", "/api/permissions", "List document permission grants", "permissions")
 	spec.Register("GET", "/api/permissions/catalog", "List the permission grid roles, tokens, and grants share", "permissions")
-	spec.Register("GET", "/api/permissions/explain", "Explain a person's permissions on a doc, play, or project and what decided each", "permissions")
+	spec.Register("GET", "/api/permissions/explain", "Explain a person's, or with role_id a role's, permissions on a doc, play, or project and what decided each", "permissions")
 	spec.Register("GET", "/api/workspaces/{workspaceID}/access", "Read a workspace's Access page: the roles and people each project lists, the roles each public channel is hidden from (Owner only), and its one-time setup state", "permissions")
 	spec.Register("PUT", "/api/workspaces/{workspaceID}/access", "Save the Access page in one write: who each named project lists, which roles each named public channel is hidden from, and finish to end the one-time setup", "permissions")
 	spec.Register("GET", "/api/mentions/search", "Search mention targets for the @ picker", "mentions")

@@ -59,7 +59,7 @@ Some permissions cover the whole instance, not one workspace: instance settings 
 
 The **Projects** tab is a grid: one row per project, one column per role, with how many people hold each role under its name. Tick a role on a project and everyone holding it sees the project and everything in it. The **Every project** row ticks a role on every project at once, or clears it from all of them when every project already has it; past ten projects a filter narrows the rows, and the top row then acts on the rows shown. **People**, the last column, names someone on a project whatever roles they hold: the add button opens a list of the workspace's people. A project that lists nobody says **Owners only**, since only Owners see it.
 
-The grid is the whole workspace at a glance. For one project, its settings' **People in this project** lists everyone in it, through which role or by name, and anyone kept out of it by name.
+The grid is the whole workspace at a glance. For one project, its settings' [People in this project](#people-in-this-project) lists everyone in it, through which role or by name, and anyone kept out of it by name.
 
 The **Public channels** tab is the Owner's. Every member sees a public channel, so every box starts ticked; untick a role to hide that channel from everyone holding it. Private channels keep their own members.
 
@@ -69,33 +69,47 @@ Each tab saves from its own footer, and the change reaches everyone at once: a p
 
 The release that made projects opt-in wiped every per-person permission, so right after upgrading no project lists anyone and only Owners see projects. An Owner's first visit to the workspace then opens **Who's in each project**: the Projects grid and the Public channels grid on one page, and one **Finish setup** that saves both. Until an Owner finishes, the sidebar offers Owners **Set up access** to get back to it, and members see **Projects being set up**; any page that would show a project tells them their projects are on their way, and chat works as usual. **Finish setup** works with projects left empty: they stay Owners only until you list someone. Afterwards the page is the workspace's Access page, which shows who finished the setup and when.
 
-## Permissions on a doc or a play
+## People in this project
 
-Right-click a doc in the Docs list or a play in **Configuration → Plays** and pick **Permissions…**; a doc's settings menu has it too. It shows only to someone who can change that doc's or play's rules. The list on the left holds everyone with a rule here; **Add person** lists someone else. A doc refuses someone who can't open its project and says so.
+A project they aren't in, with everything in it, is not found for someone: lists, links, search and agents alike. Inside a project they're in, their roles decide what they can do, and the project's rules can change that for a role or a person.
 
-Pick a person to set their rule, one row per permission, each with three buttons:
+A project's **Settings → General** holds **People in this project**, for whoever has **Manage this project's access** there:
 
-- **Allow** (check): they have it here, whatever their role says.
-- **Fallback** (slash): this rule says nothing, so their role decides. The line under the row says what they get then, and from where.
-- **Deny** (cross): they don't have it here, whatever their role says.
+- **Roles** lists the roles it lets in, each with how many people hold it.
+- **People** lists the people with a rule of their own here.
+- **Kept out** lists the people a rule keeps out, whatever their roles.
 
-A doc carries the docs permissions and **Manage this doc's access**; a play carries **Run**. **Remove from this doc** sets every row back to Fallback. Nothing changes until you press **Save**, and anyone else with the panel open sees the change without a refresh.
+**Add a role or person** lists one, which lets them in. Open a row to set what that role or person can do in the project. Its **×** takes it off the project, along with every rule it holds there, after asking; on someone kept out, it lets them back in. To keep someone out, open them and set **See this project** to **Deny**. A change reaches open browsers at once: a project opens in the sidebar of everyone a new role lets in, and drops out of the sidebar of someone kept out.
 
-You can't allow a permission you don't hold on that doc or play, or lift a Deny on one: its button shows a lock and says why. Adding a Deny is never limited. **Check access** shows what one person can do here, each answer with the rule or role that decided it.
+The project wizard's **Who's in it** step sets the same roles when you create a project. Deleting a project says how many people lose it before you confirm.
 
-Changing a doc's rules takes **Manage this doc's access** on it, which its creator has; a play's takes `plays:write`.
+## Permissions on a project, a doc or a play
+
+Right-click a project in the sidebar's switcher, a doc in the Docs list or a play in **Configuration → Plays** and pick **Permissions…**; a doc's settings menu has it too, and each row of a project's **People in this project** opens it. It shows only to someone who can change that project's, doc's or play's rules. The list on the left holds the roles, then the people, with a rule here; **Add role or person** lists another. A doc refuses a role or person who isn't in its project, and says to add them to the project first.
+
+Pick a role or a person to set its rule, one row per permission, each with three buttons:
+
+- **Allow** (check): they have it here, whatever their roles say.
+- **Fallback** (slash): this rule says nothing, so the answer comes from further out. The line under the row says what they get then, and from where; a project or role it names is a link to that project's panel or that role's rule.
+- **Deny** (cross): they don't have it here, whatever their roles say.
+
+A project carries **See this project** (being in it) and every project area; a doc carries the docs permissions and **Manage this doc's access**; a play carries **Run**. Between the rules for a person's roles, Allow wins, and a rule naming the person beats them. **Remove from this doc** (or project, or play) sets every row back to Fallback. Nothing changes until you press **Save**, and anyone else with the panel open sees the change without a refresh.
+
+You can't allow a permission you don't hold on that project, doc or play, or lift a Deny on one: its button shows a lock and says why. Adding a Deny is never limited. **Check access** shows what one person can do here, each answer with the rule or role that decided it.
+
+Changing a project's rules takes **Manage this project's access** there, which its creator has; a doc's takes **Manage this doc's access** on it, which its creator has; a play's takes `plays:write`.
 
 ## Why someone can or can't
 
-Every answer has a source: the Owner role, the person's role, an override on the workspace, a doc or a play, or their access to a project. When Nexul refuses something you can see, the message names it, such as `docs:write required (Denied on doc Pricing for bob)` or `tickets:write required (Not allowed: role Client doesn't grant it)`. Something you can't see is not found and says nothing more, so it never confirms it exists.
+Every answer has a source: the Owner role, the person's roles, a rule on a project, a doc or a play for one of their roles or for them, or not being in the project. When Nexul refuses something you can see, the message names it, such as `docs:write required (Denied on doc Pricing for bob)` or `tickets:write required (Not allowed: role Client doesn't grant it)`. Something you can't see is not found and says nothing more, so it never confirms it exists.
 
-To see every answer on one doc, play, or project at once, each with its source and the answer it would have without that doc's, play's, or project's own override:
+To see every answer on one doc, play, or project at once, each with its source and the answer it would have without that doc's, play's, or project's own rule:
 
 ```
 GET /api/permissions/explain?resource_type=doc&resource_id=<id>&user_id=<id>
 ```
 
-Leave out `user_id` for your own answers, which take only being able to open it. Someone else's take managing it: `permissions:write` on a doc, `plays:write` on a play, or `projects:access` on a project. Agents ask the same with `permission_overwrite_list` and a `user_id`.
+Leave out `user_id` for your own answers, which take only being able to open it. `role_id` in its place answers for a role, as someone holding only that role would get them; the panel's lines under a role's Fallback come from it. Someone else's, or a role's, take managing it: `permissions:write` on a doc, `plays:write` on a play, or `projects:access` on a project. Agents ask the same with `permission_overwrite_list` and a `user_id`.
 
 ## Names and pictures
 

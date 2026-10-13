@@ -85,14 +85,20 @@ func (h *Handler) ProjectPeopleRoutes() http.Handler {
 	return mux
 }
 
-// listProjectPeople answers anyone who may open the project: the pickers a ticket's developer and tester come from.
+// listProjectPeople answers anyone who may open the project: the pickers a ticket's developer and tester come from,
+// and the roles a doc's permissions panel may list.
 func (h *Handler) listProjectPeople(w http.ResponseWriter, r *http.Request) {
 	people, err := h.svc.ListProjectPeople(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("projectID"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, People{People: people})
+	roleIDs, err := h.svc.ListProjectRoles(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("projectID"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, ProjectPeople{People: people, RoleIDs: roleIDs})
 }
 
 // listPeople answers any member of the workspace, since seeing who you work with needs no permission.

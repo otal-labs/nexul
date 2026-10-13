@@ -1,10 +1,8 @@
-import { unknownPerson } from "@nexul/client-core/person";
-
 import { Microheader } from "@/components/Microheader";
-import { PanelAddPerson } from "@/components/access/PanelAddPerson";
+import { PanelAddTarget } from "@/components/access/PanelAddTarget";
 import { PanelTargetRow } from "@/components/access/PanelTargetRow";
-import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import { usePanelEntity } from "@/hooks/usePanelEntity";
+import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { usePermissionRules } from "@/hooks/usePermissionRules";
 import { usePermissionPanelStore } from "@/stores/permissionPanelStore";
 import { rulesWord } from "@/models/PermissionPanel";
@@ -12,7 +10,7 @@ import { rulesWord } from "@/models/PermissionPanel";
 const listClass = "flex gap-1 @3xl/panel:flex-col @3xl/panel:gap-0";
 const headClass = "hidden px-3 pt-1 pb-2 @3xl/panel:block";
 
-// Rules lists the people with a rule here, the add control at the foot; Check access lists every member.
+// Rules lists the roles, then the people, with a rule here, the add control at the foot; Check access lists every member.
 export const PanelTargetColumn = () => {
   const entity = usePanelEntity();
   const mode = usePermissionPanelStore((s) => s.mode);
@@ -20,34 +18,42 @@ export const PanelTargetColumn = () => {
   const checked = usePermissionPanelStore((s) => s.checked);
   const pick = usePermissionPanelStore((s) => s.pick);
   const check = usePermissionPanelStore((s) => s.check);
-  const { data: people } = useFetchWorkspacePeople(entity.workspaceId);
-  const { listed, ruleCount } = usePermissionRules();
-  const personOf = (userId: string) => people?.find((p) => p.user_id === userId) ?? unknownPerson(userId);
+  const { people, targetOf } = usePanelTargets({ workspaceId: entity.workspaceId });
+  const { listed, roles, people: listedPeople, ruleCount } = usePermissionRules();
 
   return (
     <nav
-      aria-label={mode === "check" ? "People to check" : "People with rules"}
+      aria-label={mode === "check" ? "People to check" : "Roles and people with rules"}
       className="flex min-w-0 shrink-0 items-center gap-1 overflow-x-auto pb-1 @3xl/panel:w-60 @3xl/panel:flex-col @3xl/panel:items-stretch @3xl/panel:gap-0 @3xl/panel:overflow-x-hidden @3xl/panel:overflow-y-auto @3xl/panel:border-r @3xl/panel:border-border @3xl/panel:py-2"
     >
       {mode === "check" && <Microheader className={headClass}>Check a person</Microheader>}
       {mode === "check" && (
         <ul className={listClass}>
-          {(people ?? []).map((person) => (
-            <PanelTargetRow key={person.user_id} person={person} selected={checked === person.user_id} onSelect={() => check(person.user_id)} subline={person.login} />
+          {people.map((person) => (
+            <PanelTargetRow key={person.key} target={person} selected={checked === person.id} onSelect={() => check(person.id)} subline={person.login} />
           ))}
         </ul>
       )}
-      {mode === "rules" && listed.length > 0 && <Microheader className={headClass}>People</Microheader>}
-      {mode === "rules" && (
+      {mode === "rules" && roles.length > 0 && <Microheader className={headClass}>Roles</Microheader>}
+      {mode === "rules" && roles.length > 0 && (
         <ul className={listClass}>
-          {listed.map((userId) => (
-            <PanelTargetRow key={userId} person={personOf(userId)} selected={target === userId} onSelect={() => pick(userId)} subline={rulesWord(ruleCount(userId))} />
+          {roles.map((key) => (
+            <PanelTargetRow key={key} target={targetOf(key)} selected={target === key} onSelect={() => pick(key)} subline={rulesWord(ruleCount(key))} />
+          ))}
+        </ul>
+      )}
+      {mode === "rules" && roles.length > 0 && listedPeople.length > 0 && <span className="h-5 w-px shrink-0 bg-border @3xl/panel:hidden" aria-hidden />}
+      {mode === "rules" && listedPeople.length > 0 && <Microheader className={`${headClass} @3xl/panel:pt-3`}>People</Microheader>}
+      {mode === "rules" && listedPeople.length > 0 && (
+        <ul className={listClass}>
+          {listedPeople.map((key) => (
+            <PanelTargetRow key={key} target={targetOf(key)} selected={target === key} onSelect={() => pick(key)} subline={rulesWord(ruleCount(key))} />
           ))}
         </ul>
       )}
       {mode === "rules" && (
         <div className="shrink-0 @3xl/panel:mt-auto @3xl/panel:px-1.5 @3xl/panel:pt-3">
-          <PanelAddPerson listed={listed} />
+          <PanelAddTarget listed={listed} />
         </div>
       )}
     </nav>

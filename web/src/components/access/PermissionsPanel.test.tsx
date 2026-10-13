@@ -32,6 +32,9 @@ const source = (over: Partial<PermissionSource>): PermissionSource => ({
 const byRole = { allowed: true, source: source({}) };
 const answer = (action: string, verdict = byRole, fallback = byRole): PermissionAnswer => ({ action, ...verdict, fallback });
 const explain = (effective: PermissionAnswer[]) => ({ data: { resource_type: "doc", resource_id: "doc-1", user_id: "", effective } });
+const role = (id: string, name: string, owner = false) => ({ id, workspace_id: "ws-1", name, permissions: [], is_owner_role: owner, created_at: "", updated_at: "" });
+const roles = [role("r-owner", "Owner", true), role("r-dev", "Developer"), role("r-client", "Client"), role("r-ops", "Ops")];
+const notListed = { allowed: false, source: source({ kind: "not_in_project", entity_type: "project", entity_id: "p-1", target_type: "role", target_id: "r-client", state: "deny", entity_name: "Storefront", target_name: "Client", sentence: "Not listed on project Storefront" }) };
 
 const bobDenied = { allowed: false, source: source({ kind: "rule", entity_type: "doc", entity_id: "doc-1", target_type: "person", target_id: "bob", state: "deny", entity_name: "Pricing", target_name: "bob", sentence: "Denied on doc Pricing for bob" }) };
 const samOutside = { allowed: false, source: source({ kind: "not_in_project", entity_type: "project", target_type: "person", target_id: "sam", state: "deny", entity_name: "Storefront", target_name: "sam", sentence: "Not found: sam isn't in project Storefront" }) };
@@ -44,16 +47,19 @@ const explanations: Record<string, PermissionAnswer[]> = {
 };
 
 const grants = [
-  { resource_type: "doc", resource_id: "doc-1", user_id: "lena", allow: ["docs:read"], deny: [], created_at: "2026-10-02", updated_at: "" },
-  { resource_type: "doc", resource_id: "doc-1", user_id: "bob", allow: [], deny: ["docs:write"], created_at: "2026-10-01", updated_at: "" },
+  { resource_type: "doc", resource_id: "doc-1", target: "person", user_id: "lena", allow: ["docs:read"], deny: [], created_at: "2026-10-02", updated_at: "" },
+  { resource_type: "doc", resource_id: "doc-1", target: "person", user_id: "bob", allow: [], deny: ["docs:write"], created_at: "2026-10-01", updated_at: "" },
+  { resource_type: "doc", resource_id: "doc-1", target: "role", user_id: "", role_id: "r-client", allow: [], deny: ["docs:read"], created_at: "2026-10-03", updated_at: "" },
 ];
 
 const mockGet = (url: string, config?: { params?: Record<string, string> }) => {
   if (url === "/api/permissions?resource_type=doc&resource_id=doc-1") return Promise.resolve({ data: { grants } });
+  if (url === "/api/permissions/explain" && config?.params?.role_id) return Promise.resolve(explain(actions.map((a) => answer(a, byRole, notListed))));
   if (url === "/api/permissions/explain") return Promise.resolve(explain(explanations[config?.params?.user_id ?? ""] ?? []));
+  if (url === "/api/workspaces/ws-1/roles") return Promise.resolve({ data: roles });
   if (url === "/api/permissions/catalog") return Promise.resolve({ data: { permissions: catalog } });
   if (url === "/api/workspaces/ws-1/people") return Promise.resolve({ data: { people } });
-  if (url === "/api/projects/p-1/people") return Promise.resolve({ data: { people: people.filter((p) => p.login !== "sam") } });
+  if (url === "/api/projects/p-1/people") return Promise.resolve({ data: { people: people.filter((p) => p.login !== "sam"), role_ids: ["r-dev", "r-client"] } });
   if (url === "/api/projects/p-1") return Promise.resolve({ data: { id: "p-1", name: "Storefront" } });
   if (url === "/api/docs/folders") return Promise.resolve({ data: [{ id: "f-1", name: "Sales" }] });
   return Promise.reject(new Error(`unexpected GET ${url}`));
@@ -84,7 +90,7 @@ const openPanel = async () => {
     </QueryClientProvider>,
   );
   await user.click(screen.getByRole("button", { name: "Open" }));
-  await screen.findByRole("navigation", { name: "People with rules" });
+  await screen.findByRole("navigation", { name: "Roles and people with rules" });
   return user;
 };
 
@@ -105,8 +111,8 @@ describe("PermissionsPanel", () => {
   it("names the doc and where it sits, and lists its people in the order their rules were made", async () => {
     await openPanel();
     expect(await screen.findByText("in Storefront › Sales", { exact: false })).toBeInTheDocument();
-    const rows = within(screen.getByRole("navigation", { name: "People with rules" })).getAllByRole("listitem");
-    expect(rows.map((r) => r.textContent)).toEqual(["bob1 rule", "lena1 rule"]);
+    const rows = within(screen.getByRole("navigation", { name: "Roles and people with rules" })).getAllByRole("listitem");
+    expect(rows.map((r) => r.textContent)).toEqual(["Client1 rule", "bob1 rule", "lena1 rule"]);
   });
 
   it("opens a person's rules with their saved states and what applies under each Fallback", async () => {
@@ -147,7 +153,7 @@ describe("PermissionsPanel", () => {
     await openPanel();
     await user.click(screen.getByRole("button", { name: /bob/ }));
     await user.click(await screen.findByRole("button", { name: "Remove from this doc" }));
-    expect(screen.getByText("Pick a person, or add one, to set rules on Pricing.")).toBeInTheDocument();
+    expect(screen.getByText("Pick a role or person, or add one, to set rules on Pricing.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /bob/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
@@ -155,13 +161,39 @@ describe("PermissionsPanel", () => {
     );
   });
 
-  it("adds a member to the list, and refuses one who isn't in the doc's project", async () => {
+  it("adds a member to the list, and refuses a role or person who isn't in the doc's project", async () => {
     await openPanel();
-    await user.click(screen.getByRole("button", { name: "Add person" }));
-    expect(await screen.findByRole("button", { name: /Add sam to Storefront first/ })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Add role or person" }));
+    expect(await screen.findByText("Add sam to Storefront first")).toBeInTheDocument();
+    expect(screen.getByText("Add Ops to Storefront first")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /sam/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Owner/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /alice/ }));
     expect(await screen.findByRole("heading", { name: "alice" })).toBeInTheDocument();
-    expect(within(screen.getByRole("navigation", { name: "People with rules" })).getByText("alice")).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Roles and people with rules" })).getByText("alice")).toBeInTheDocument();
+  });
+
+  it("sets a role's rules, says what applies under each Fallback without them, and saves them for the role", async () => {
+    await openPanel();
+    await user.click(screen.getByRole("button", { name: /Client/ }));
+    expect(await screen.findByText("Role")).toBeInTheDocument();
+    expect(control("Read docs").getByRole("radio", { name: "Deny" })).toBeChecked();
+    expect(screen.getAllByText((_, el) => el?.tagName === "P" && el.textContent === "Not listed on project Storefront")).toHaveLength(3);
+    expect(api.get).toHaveBeenCalledWith("/api/permissions/explain", { params: { resource_type: "doc", resource_id: "doc-1", role_id: "r-client" } });
+
+    await user.click(control("Read docs").getByRole("radio", { name: "Fallback" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(api.put).toHaveBeenCalledWith("/api/permissions", { doc_ids: ["doc-1"], role_ids: ["r-client"], actions: ["docs:read"], state: "fallback" }),
+    );
+  });
+
+  it("selects a role a source sentence names", async () => {
+    await openPanel();
+    await user.click(screen.getByRole("button", { name: /bob/ }));
+    const [link] = await screen.findAllByRole("button", { name: "Developer" });
+    await user.click(link!);
+    expect(await screen.findByRole("heading", { name: "Developer" })).toBeInTheDocument();
   });
 
   it("checks a person's answers with the source of each, and a person outside the project once", async () => {

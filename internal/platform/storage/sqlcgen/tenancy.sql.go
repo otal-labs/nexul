@@ -308,6 +308,35 @@ func (q *Queries) ListProjectMemberIDs(ctx context.Context, arg ListProjectMembe
 	return items, nil
 }
 
+const listProjectRoleIDs = `-- name: ListProjectRoleIDs :many
+SELECT po.role_id FROM permission_overwrites po, json_each(po.allow) a
+WHERE po.resource_type = 'project' AND po.resource_id = ?1 AND po.target = 'role' AND a.value = 'projects:open'
+ORDER BY po.created_at, po.role_id
+`
+
+func (q *Queries) ListProjectRoleIDs(ctx context.Context, projectID string) ([]sql.NullString, error) {
+	rows, err := q.db.QueryContext(ctx, listProjectRoleIDs, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []sql.NullString
+	for rows.Next() {
+		var role_id sql.NullString
+		if err := rows.Scan(&role_id); err != nil {
+			return nil, err
+		}
+		items = append(items, role_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTeamMemberships = `-- name: ListTeamMemberships :many
 SELECT m.user_id, m.workspace_id, w.name AS workspace_name, r.id AS role_id, r.name AS role_name, r.is_owner_role
 FROM workspace_members m

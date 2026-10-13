@@ -82,6 +82,8 @@ type Scopes interface {
 type RoleWorkspaceResolver interface {
 	// WorkspaceIDForRole returns ErrNotFound for an unknown role.
 	WorkspaceIDForRole(ctx context.Context, roleID string) (string, error)
+	// HeldRole returns what roleID allows and whether it is the Owner role; ErrNotFound for an unknown role.
+	HeldRole(ctx context.Context, roleID string) (HeldRole, error)
 }
 
 // PlayWorkspaceResolver resolves a play's own workspace so HasPermission/canManage apply to plays too (ADR 0017).

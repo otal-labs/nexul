@@ -261,6 +261,19 @@ func (r *WorkspaceMembersRepo) ProjectMemberIDs(ctx context.Context, workspaceID
 	return ids, nil
 }
 
+// ProjectRoleIDs lists the roles projectID's rules let in, in the order they were listed, in one read.
+func (r *WorkspaceMembersRepo) ProjectRoleIDs(ctx context.Context, projectID string) ([]string, error) {
+	rows, err := r.q.ListProjectRoleIDs(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("list the roles in project %s: %w", projectID, err)
+	}
+	ids := make([]string, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.String)
+	}
+	return ids, nil
+}
+
 // ChangeRoles gives userID the roles in add and takes away those in remove, in one write; an added role comes after
 // the ones already held.
 func (r *WorkspaceMembersRepo) ChangeRoles(ctx context.Context, workspaceID, userID string, add, remove []string, events ...eventbus.OutboxEvent) error {

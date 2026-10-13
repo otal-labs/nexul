@@ -3,6 +3,7 @@ import { useShallow } from "zustand/react/shallow";
 import { WizardBranchesStep } from "@/components/wizard/WizardBranchesStep";
 import { WizardDoneStep } from "@/components/wizard/WizardDoneStep";
 import { WizardEnvStep } from "@/components/wizard/WizardEnvStep";
+import { WizardPeopleStep } from "@/components/wizard/WizardPeopleStep";
 import { WizardProjectStep } from "@/components/wizard/WizardProjectStep";
 import { WizardReachStep } from "@/components/wizard/WizardReachStep";
 import { WizardRepositoryStep } from "@/components/wizard/WizardRepositoryStep";
@@ -70,12 +71,18 @@ export const ProjectWizardStepContent = ({ step }: ProjectWizardStepContentProps
   return (
     <WizardStepPanel step={step} title={wizardStepLabel(step, isAttach)}>
       {step === "project" && !projectId && (
-        <WizardProjectStep onDone={(id) => goTo("repository", id)} onBack={onBack} continueLabel={continueLabel} />
+        <WizardProjectStep onDone={(id) => goTo("people", id)} onBack={onBack} continueLabel={continueLabel} />
       )}
       {step === "project" && projectId && (
-        <WizardStepSummary continueLabel={continueLabel} onContinue={() => goTo("repository")} onBack={onBack}>
+        <WizardStepSummary continueLabel={continueLabel} onContinue={() => goTo("people")} onBack={onBack}>
           {projectName} is created. Rename it any time in the project's Settings.
         </WizardStepSummary>
+      )}
+      {step === "people" && !project && (
+        <WizardStepNeeds needs="project" message="Who's in it is set on a project. Name the project first." onBack={onBack} onSkip={skip} />
+      )}
+      {step === "people" && project && (
+        <WizardPeopleStep project={project} continueLabel={continueLabel} onDone={() => complete("repository")} onBack={onBack} onSkip={skip} />
       )}
       {step === "repository" && !projectId && !isAttach && (
         <WizardStepNeeds needs="project" message="A repository belongs to a project. Name the project first." onBack={onBack} />

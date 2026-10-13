@@ -47,7 +47,7 @@ func (setup ProjectSetup) withoutService() ProjectSetup {
 type SetupStep string
 
 // SetupSteps are the wizard's steps in order.
-var SetupSteps = []SetupStep{"project", "repository", "service", "env", "reach", "branches"}
+var SetupSteps = []SetupStep{"project", "people", "repository", "service", "env", "reach", "branches"}
 
 // SetupMark is what happened at a step.
 type SetupMark string

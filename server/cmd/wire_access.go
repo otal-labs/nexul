@@ -59,6 +59,14 @@ func (a accessRoleWorkspaceResolver) WorkspaceIDForRole(ctx context.Context, rol
 	return r.WorkspaceID, nil
 }
 
+func (a accessRoleWorkspaceResolver) HeldRole(ctx context.Context, roleID string) (access.HeldRole, error) {
+	r, err := a.roles.Get(ctx, roleID)
+	if err != nil {
+		return access.HeldRole{}, err
+	}
+	return access.HeldRole{ID: r.ID, IsOwner: r.IsOwnerRole, Permissions: r.Permissions}, nil
+}
+
 // accessNames reads what a source sentence names from storage, past every permission check: the sentence is about
 // an answer already given.
 type accessNames struct {

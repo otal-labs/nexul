@@ -25,7 +25,10 @@ export interface PermissionInfo {
 export interface PermissionGrant {
   resource_type: string;
   resource_id: string;
+  // Whom the rule names: a person by user_id, or a role by role_id (ADR 0148).
+  target: "person" | "role";
   user_id: string;
+  role_id?: string;
   allow: string[];
   deny: string[];
   created_at: string;
@@ -69,17 +72,20 @@ export interface PermissionExplanation {
   resource_type: string;
   resource_id: string;
   user_id: string;
+  // Set instead of user_id when the answers are a role's, as a holder of it alone would get them.
+  role_id?: string;
   effective: PermissionAnswer[];
 }
 
-// One PUT /api/permissions: one person's actions moved to one state on one doc or play.
+// One PUT /api/permissions: one target's actions moved to one state on one doc, play or project.
 export interface RuleChange {
-  userId: string;
+  // A targetKey: "role:<id>" or "person:<id>".
+  target: string;
   state: RuleState;
   actions: string[];
 }
 
-// The panel's held rules, keyed by ruleKey(person, action); a key absent keeps what is saved.
+// The panel's held rules, keyed by ruleKey(target, action); a key absent keeps what is saved.
 export const PermissionRulesFormSchema = z.object({
   rules: z.record(z.string(), z.enum([RuleState.Allow, RuleState.Fallback, RuleState.Deny])),
 });

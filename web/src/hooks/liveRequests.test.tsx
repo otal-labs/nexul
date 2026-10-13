@@ -8,7 +8,6 @@ import { useFetchComputerSetup } from "@/hooks/ComputerSetupHooks";
 import { useFetchDeploy, useFetchDeployLog } from "@/hooks/DeployHooks";
 import { useFetchDoc, useFetchDocClarification, useFetchDocs, useFetchDocsByProject } from "@/hooks/DocHooks";
 import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
-import { useFetchProjectAccess } from "@/hooks/ProjectHooks";
 import { useFetchInterviewSources } from "@/hooks/InterviewSourceHooks";
 import { useFetchMemories, useFetchMemoriesByProject, useFetchMemory, useFetchMemoryVersions } from "@/hooks/MemoryHooks";
 import { useFetchInbox, useFetchUnreadByWorkspace, useFetchUnreadCount } from "@/hooks/NotificationHooks";
@@ -319,8 +318,6 @@ describe("requests a live frame sends", () => {
   it("refetches only the people of the projects a membership change names", async () => {
     const { requestsAfter } = await mountLive(
       view(() => {
-        useFetchProjectAccess("p-1");
-        useFetchProjectAccess("p-2");
         useFetchProjectPeople("p-1");
         useFetchProjectPeople("p-2");
       }),
