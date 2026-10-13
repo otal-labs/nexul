@@ -1,11 +1,12 @@
 import { useSearchParams } from "react-router";
 import { useShallow } from "zustand/react/shallow";
 
-import { useChangeProjectSetup, useFetchProject } from "@/hooks/ProjectHooks";
+import { useChangeProjectSetup, useFetchProject, useFetchProjectRepos } from "@/hooks/ProjectHooks";
 import { useFetchStack } from "@/hooks/StackHooks";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { inSetup, type SetupMark } from "@/models/Project";
 import type { WizardStepId } from "@/models/ProjectWizard";
+import { RepoRole } from "@/enums/Project";
 
 // The project the wizard is working on, as the server records it; undefined until Info has made one.
 export const useWizardProject = () => {
@@ -29,13 +30,13 @@ export const useMarkStep = () => {
   const session = useSetupSession();
   const change = useChangeProjectSetup();
   const pendingContext = usePendingServiceContext();
-  return (step: WizardStepId, mark: SetupMark) => {
+  return (step: WizardStepId, mark: SetupMark, also: Partial<Record<WizardStepId, SetupMark>> = {}) => {
     if (!projectId || !session || step === "done") return;
     const context = pendingContext();
     return change.mutateAsync({
       projectId,
       ...context,
-      steps: { ...context.steps, [step]: mark },
+      steps: { ...context.steps, ...also, [step]: mark },
     });
   };
 };
@@ -52,6 +53,12 @@ export const useWizardStackId = (): string | null => {
 };
 
 export const useWizardStack = () => useFetchStack(useWizardStackId() ?? undefined).data;
+
+// The project's repositories a service could build from; undefined until they load.
+export const useWizardAppRepos = () => {
+  const projectId = useProjectWizardStore((s) => s.projectId);
+  return useFetchProjectRepos(projectId ?? undefined).data?.filter((r) => r.role !== RepoRole.Tests);
+};
 
 // A scan describes one build source: once a service exists, its detected keys stay with that service.
 export const useWizardEnvKeys = (): string[] => {

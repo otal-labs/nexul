@@ -715,7 +715,15 @@ then a ghost "Skip for now" where the step allows it, which records the step
 skipped and moves to the next, then the primary action; Info's reads
 "Continue to <next step>". Done lists what is left for later (skipped or never
 visited) as hairline rows with an Open each, and ends with Finish, which sets
-the project up and lands on its board. No new stepper chrome beyond this row
+the project up and lands on its board. Repository has no Skip: while a project
+is set up, a picked repository opens in place once scanned (`accent` fill, a
+2px `brand` left edge, the scan as one mono line) with a ghost "Attach without
+deploying" and a primary "Deploy it", and a muted "No code to point at?" line
+under the results holds an ink "No repository yet". Both early exits mark the
+deploy steps skipped and land on Done, which, while the project has no
+service, folds Repository and the deploy steps into one Deploying row and
+lists Docs, Board and Invite people under "Where to next" as hairline rows
+that finish setup on the way out. No new stepper chrome beyond this row
 exists. The URL step is the whole navigation state.
 
 Stack detail page. The header keeps the detail-page shape (breadcrumb of the

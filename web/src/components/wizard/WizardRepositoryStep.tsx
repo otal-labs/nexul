@@ -10,21 +10,25 @@ import { Input } from "@/components/ui/input";
 import { RepositorySearch } from "@/components/wizard/RepositorySearch";
 import { TestsLocationChoice } from "@/components/wizard/TestsLocationChoice";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
-import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
-import { useFetchProjectRepos, useSaveTestsAnswer } from "@/hooks/ProjectHooks";
+import { WizardNoRepositoryLine } from "@/components/wizard/WizardNoRepositoryLine";
+import { WizardOpenRepositoryRow } from "@/components/wizard/WizardOpenRepositoryRow";
+import { useAddProjectRepo, useFetchProjectRepos, useSaveTestsAnswer } from "@/hooks/ProjectHooks";
 import { useScanRepository } from "@/hooks/RepositoryHooks";
-import { manualCandidate, parseInstallUrl, type Repo } from "@/models/Repository";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
+import type { SetupMark } from "@/models/Project";
+import { manualCandidate, parseInstallUrl, preferredCandidate, type Repo } from "@/models/Repository";
 import { TestsLocation } from "@/enums/Project";
 
 interface WizardRepositoryStepProps {
   onDone: () => void;
-  onSkip?: (() => void) | undefined;
+  onBack?: (() => void) | undefined;
+  // Offered while the project is set up: ends setup's deploy path here, with the repository attached or none.
+  onLeaveEarly?: ((repository: SetupMark) => Promise<void>) | undefined;
 }
 
 // Searches installation repositories (spec §5/§7); picking one scans it. A scan can land in three places: candidates
-// found (advance), nothing found (offer a manual Dockerfile candidate), or the App isn't installed (link to fix it).
-export const WizardRepositoryStep = ({ onDone, onSkip }: WizardRepositoryStepProps) => {
+// found (advance, or open the row while setting up), nothing found (a manual Dockerfile), or the App isn't installed.
+export const WizardRepositoryStep = ({ onDone, onBack, onLeaveEarly }: WizardRepositoryStepProps) => {
   const scanRepository = useScanRepository();
   const setRepository = useProjectWizardStore((s) => s.setRepository);
   const setScanResult = useProjectWizardStore((s) => s.setScanResult);
@@ -39,16 +43,20 @@ export const WizardRepositoryStep = ({ onDone, onSkip }: WizardRepositoryStepPro
   );
   const { data: projectRepos } = useFetchProjectRepos(projectId ?? undefined);
   const saveTestsAnswer = useSaveTestsAnswer();
+  const addRepo = useAddProjectRepo();
   const asksTests = !!projectId && !attachStackId;
   const separateTestsRepo = testsLocation === TestsLocation.Separate ? testsRepo : null;
   const [picked, setPicked] = useState<Repo | null>(null);
   const [dockerfilePath, setDockerfilePath] = useState("Dockerfile");
 
-  // The answer is saved on the way out so it lands whichever way the step is left; a failed save is toasted.
-  const advance = async () => {
+  // The answer is saved on every way out, so it lands whichever way the step is left; a failed save is toasted.
+  const saveTests = async () => {
     if (asksTests && testsLocation) {
       await saveTestsAnswer.mutateAsync({ projectId, testsLocation, testsRepo, attached: projectRepos ?? [] });
     }
+  };
+  const advance = async () => {
+    await saveTests();
     onDone();
   };
 
@@ -58,14 +66,39 @@ export const WizardRepositoryStep = ({ onDone, onSkip }: WizardRepositoryStepPro
       const result = await scanRepository.mutateAsync({ owner: repo.owner, name: repo.name });
       setRepository(repo);
       setScanResult(result);
-      if (result.candidates.length > 0) {
-        const preferred = result.candidates.find((c) => c.kind === "compose") ?? result.candidates[0]!;
-        setCandidate(preferred);
-        await advance();
-      }
+      const preferred = preferredCandidate(result);
+      if (preferred) setCandidate(preferred);
+      if (preferred && !onLeaveEarly) await advance();
     } catch {
       // Scan failures render inline below; a failed tests-answer save was already toasted by its hook.
     }
+  };
+
+  // Failures are toasted by their hooks; the step stays for another try.
+  const leaveWithoutRepository = async () => {
+    await saveTests();
+    await onLeaveEarly?.("skipped");
+  };
+  const attachWithoutDeploying = async () => {
+    if (!picked || !projectId) return;
+    const attached = projectRepos?.some((r) => r.owner === picked.owner && r.name === picked.name);
+    await saveTests();
+    if (!attached) await addRepo.mutateAsync({ projectId, owner: picked.owner, name: picked.name, connectorId: picked.provider });
+    await onLeaveEarly?.("done");
+  };
+
+  const scanned = !!onLeaveEarly && picked && scanRepository.data;
+  const openRow = scanned && {
+    id: picked.id,
+    row: (
+      <WizardOpenRepositoryRow
+        repo={picked}
+        scan={scanned}
+        attaching={addRepo.isPending || saveTestsAnswer.isPending}
+        onAttach={() => void attachWithoutDeploying().catch(() => undefined)}
+        onDeploy={scanned.candidates.length > 0 ? () => void advance().catch(() => undefined) : undefined}
+      />
+    ),
   };
 
   const continueManually = async () => {
@@ -85,11 +118,13 @@ export const WizardRepositoryStep = ({ onDone, onSkip }: WizardRepositoryStepPro
   return (
     <div className="space-y-4">
       {asksTests && <TestsLocationChoice />}
-      {asksTests && <p className="text-sm font-medium">Repository to deploy</p>}
+      {asksTests && <p className="text-sm font-medium">Repository</p>}
       <RepositorySearch
         onSelect={(repo) => void scan(repo)}
         excludeId={separateTestsRepo?.id}
         busyId={scanRepository.isPending ? picked?.id : undefined}
+        openRow={openRow || undefined}
+        after={onLeaveEarly && <WizardNoRepositoryLine onClick={() => void leaveWithoutRepository().catch(() => undefined)} />}
       />
       {notInstalled && (
         <EmptyState
@@ -131,7 +166,7 @@ export const WizardRepositoryStep = ({ onDone, onSkip }: WizardRepositoryStepPro
           }
         />
       )}
-      <WizardFooter skip={onSkip && <WizardSkipLink onClick={onSkip} />} />
+      <WizardFooter onBack={onBack} />
     </div>
   );
 };

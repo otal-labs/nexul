@@ -85,6 +85,16 @@ export const manualCandidate = (repoName: string, dockerfilePath: string): Candi
   services: [],
 });
 
+export const preferredCandidate = (result: ScanResult): Candidate | undefined =>
+  result.candidates.find((c) => c.kind === "compose") ?? result.candidates[0];
+
+// What a scan found, as one mono line: the file, then the services it declares.
+export const scanSummary = (candidate: Candidate | undefined): string => {
+  if (!candidate) return "no Dockerfile or compose file";
+  const services = candidate.services.map((s) => s.name).join(", ");
+  return services ? `${candidate.path} · ${services}` : candidate.path;
+};
+
 // mapNotInstalled (server/cmd/wire_repository.go) folds "not installed" into the ErrNotFound message as free
 // text ending in an install URL; this pulls it back out so the wizard can render a real link instead of prose.
 export const parseInstallUrl = (message: string): string | undefined => message.match(/https:\/\/\S+/)?.[0];

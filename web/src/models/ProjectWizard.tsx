@@ -3,6 +3,9 @@ import type { Project } from "@/models/Project";
 export const WizardSteps = ["project", "people", "repository", "service", "env", "reach", "branches", "done"] as const;
 export type WizardStepId = (typeof WizardSteps)[number];
 
+// The steps that need a service; a project with none folds them into one Deploying row on Done.
+export const DeploySteps: readonly WizardStepId[] = ["service", "env", "reach", "branches"];
+
 const labels: Record<WizardStepId, string> = {
   project: "Info",
   people: "Who's in it",
@@ -16,7 +19,7 @@ const labels: Record<WizardStepId, string> = {
 
 const descriptions: Partial<Record<WizardStepId, string>> = {
   people: "Pick the roles that can open this project. Your own roles start ticked.",
-  repository: "Pick the repository to deploy. Nexul reads its Dockerfile or compose file.",
+  repository: "Pick the repository this project's code lives in. Nexul reads its Dockerfile or compose file to deploy it.",
   reach: "Optional. Give this service a hostname now, or later from the stack page.",
   branches: "Optional. Deploy other branches as their own copies, each at its own URL.",
 };
