@@ -114,6 +114,9 @@ git history, and anything durable it decided is an ADR.
   Template roles, the account menu dot and progress on Team. Map complete
   2026-10-13 with `spec.md`; build tickets 08–15 start after the permission
   rework merges. The five persona walks are in `research/persona-gaps.md`.
+- `.scratch/role-aware-ui/` — wayfinder map charted 2026-10-13: hide or lock
+  actions a role can't take on every web and phone screen, and close the
+  one-way doors. Builds after the permission rework merges.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
