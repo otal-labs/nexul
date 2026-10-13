@@ -50,7 +50,7 @@ const renderGate = (path = "/") => {
             }
           />
           <Route path="/wizard/onboarding/owner" element={<div>owner-wizard</div>} />
-          <Route path="/wizard/onboarding/profile" element={<div>profile-wizard</div>} />
+          <Route path="/wizard/welcome" element={<div>welcome-wizard</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -83,10 +83,10 @@ describe("OnboardingGate", () => {
     expect(await screen.findByText("owner-wizard")).toBeInTheDocument();
   });
 
-  it("redirects to the first-login wizard for a new member", async () => {
+  it("sends a person whose first run hasn't happened to the Welcome wizard", async () => {
     mocks.get.mockResolvedValue({ data: me({ needs_first_login_wizard: true }) });
     renderGate();
-    expect(await screen.findByText("profile-wizard")).toBeInTheDocument();
+    expect(await screen.findByText("welcome-wizard")).toBeInTheDocument();
   });
 
   it("renders an error display when /me fails", async () => {

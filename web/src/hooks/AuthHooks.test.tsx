@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import {
-  useCompleteFirstLogin,
   useCompleteOwnerWizard,
   useFetchMe,
   useFetchSettings,
@@ -90,16 +89,6 @@ describe("useCompleteOwnerWizard", () => {
     const { result } = renderHook(() => useCompleteOwnerWizard(), { wrapper });
     await result.current.mutateAsync("https://deploy.example.com").catch(() => {});
     await waitFor(() => expect(result.current.isError).toBe(true));
-  });
-});
-
-describe("useCompleteFirstLogin", () => {
-  it("posts the profile completion", async () => {
-    const completed = { ...me, needs_first_login_wizard: false };
-    vi.mocked(api.post).mockResolvedValue({ data: completed });
-    const { result } = renderHook(() => useCompleteFirstLogin(), { wrapper });
-    await result.current.mutateAsync();
-    expect(api.post).toHaveBeenCalledWith("/api/auth/onboarding/profile");
   });
 });
 

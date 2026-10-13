@@ -52,18 +52,6 @@ export const useCompleteOwnerWizard = () => {
   });
 };
 
-export const useCompleteFirstLogin = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async () => (await api.post<MeResponse>("/api/auth/onboarding/profile")).data,
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getMeKey], refetchType: "all" });
-      toast.success("Welcome");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
 // Sets the caller's optional name/avatar override; an empty string for either field clears back to provider-sourced.
 export const useUpdateProfile = () => {
   const client = useQueryClient();

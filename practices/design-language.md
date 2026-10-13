@@ -726,6 +726,20 @@ lists Docs, Board and Invite people under "Where to next" as hairline rows
 that finish setup on the way out. No new stepper chrome beyond this row
 exists. The URL step is the whole navigation state.
 
+Welcome wizard. `/wizard/welcome?step=<key>` sits on the quiet showcase surface
+inside `max-w-6xl`, a top bar of the logo and a ghost "Finish later", then a
+rail beside the step from a 42rem container (13rem, 15rem from 56rem, a
+hairline `border-r`), stacked above it narrower. The rail is a `WELCOME`
+microheader over a mono "N of M done" and one project-wizard node per step,
+each a button, done and skipped ones with an 11px mono word under the name.
+The step is a Fraunces title at 2rem over a muted lead, in `max-w-3xl`, sliding
+8px over 180ms like the project wizard's, and ends in the same footer. A step
+done before it opened shows what it found in a `bg-card` row with Continue
+alone; one done while open settles its live check and unlocks Continue. The
+finish view rises over 200ms: "N things left for later" (or "You're set up"),
+one hairline row per step not done with an Open, then "Go to <workspace>".
+`WelcomeFrame` is the reference.
+
 Stack detail page. The header keeps the detail-page shape (breadcrumb of the
 workspace and project, title, the mono slug in the meta line, actions top
 right), then the live status (`StackLiveHero`): one `surface-2` well split in

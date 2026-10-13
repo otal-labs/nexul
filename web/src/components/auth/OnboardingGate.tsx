@@ -21,7 +21,7 @@ export const OnboardingGate = ({ children }: OnboardingGateProps) => {
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {needsOwnerWizard && <Navigate to="/wizard/onboarding/owner" replace />}
-      {data && !needsOwnerWizard && data.needs_first_login_wizard && <Navigate to="/wizard/onboarding/profile" replace />}
+      {data && !needsOwnerWizard && data.needs_first_login_wizard && <Navigate to="/wizard/welcome" replace />}
       {data && !needsOwnerWizard && !data.needs_first_login_wizard && children}
     </>
   );

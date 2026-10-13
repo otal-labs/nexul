@@ -5,11 +5,12 @@ import type { ComputerSetup } from "@/models/Pairing";
 
 interface SaveAndCloseProps {
   setup: ComputerSetup;
+  label: string;
   onDone: () => void;
 }
 
 // Saves only once the harness listed its providers: an unreachable computer would otherwise save every choice away.
-const SaveAndClose = ({ setup, onDone }: SaveAndCloseProps) => {
+const SaveAndClose = ({ setup, label, onDone }: SaveAndCloseProps) => {
   const { choices, body } = useSetupChoices(setup);
   const save = useSaveSetupChoices(setup.computer_id);
   const done = () => {
@@ -22,18 +23,19 @@ const SaveAndClose = ({ setup, onDone }: SaveAndCloseProps) => {
   return (
     // The run's own button is the brand one until the computer is confirmed; Done only keeps the choices.
     <Button type="button" variant={setup.confirmed_at ? "default" : "outline"} onClick={done} loading={save.isPending}>
-      Done
+      {label}
     </Button>
   );
 };
 
 interface SetupDoneButtonProps {
   computerId: string;
+  label?: string;
   onDone: () => void;
 }
 
 // The Set up step's Done: keeps the switches, models, options, and folder for this computer, then closes; it shows once setup has loaded.
-export const SetupDoneButton = ({ computerId, onDone }: SetupDoneButtonProps) => {
+export const SetupDoneButton = ({ computerId, label = "Done", onDone }: SetupDoneButtonProps) => {
   const { data: setup } = useFetchComputerSetup(computerId);
-  return setup && <SaveAndClose setup={setup} onDone={onDone} />;
+  return setup && <SaveAndClose setup={setup} label={label} onDone={onDone} />;
 };

@@ -15,7 +15,7 @@ const ProfileFormSchema = z.object({
 
 type ProfileFormData = z.infer<typeof ProfileFormSchema>;
 
-// The display name and picture override form, shared by the first-login wizard and Settings → Profile.
+// The display name and picture override form, shared by the wizards and Settings → Profile.
 export const useProfileForm = (user: User, onSaved?: () => void) => {
   const updateProfile = useUpdateProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);

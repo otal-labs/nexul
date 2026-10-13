@@ -24,7 +24,6 @@ export const ConfigurationPage = page(() => import("@/pages/ConfigurationPage"),
 export const DeployPage = page(() => import("@/pages/DeployPage"), (m) => m.DeployPage);
 export const DnsOnboardingPage = page(() => import("@/pages/DnsOnboardingPage"), (m) => m.DnsOnboardingPage);
 export const DocsPage = page(() => import("@/pages/DocsPage"), (m) => m.DocsPage);
-export const FirstLoginWizardPage = page(() => import("@/pages/FirstLoginWizardPage"), (m) => m.FirstLoginWizardPage);
 export const HomePage = page(() => import("@/pages/HomePage"), (m) => m.HomePage);
 export const InboxPage = page(() => import("@/pages/InboxPage"), (m) => m.InboxPage);
 export const InterviewPage = page(() => import("@/pages/InterviewPage"), (m) => m.InterviewPage);
@@ -40,6 +39,7 @@ export const SetupPage = page(() => import("@/pages/SetupPage"), (m) => m.SetupP
 export const StackPage = page(() => import("@/pages/StackPage"), (m) => m.StackPage);
 export const TicketPage = page(() => import("@/pages/TicketPage"), (m) => m.TicketPage);
 export const TopologyPage = page(() => import("@/pages/TopologyPage"), (m) => m.TopologyPage);
+export const WelcomeWizardPage = page(() => import("@/pages/WelcomeWizardPage"), (m) => m.WelcomeWizardPage);
 export const WorkspaceEntryPage = page(() => import("@/pages/WorkspaceEntryPage"), (m) => m.WorkspaceEntryPage);
 export const YourSettingsPage = page(() => import("@/pages/YourSettingsPage"), (m) => m.YourSettingsPage);
 
@@ -54,7 +54,6 @@ const warmed: (() => Promise<unknown>)[] = [
   DeployPage.preload,
   DnsOnboardingPage.preload,
   DocsPage.preload,
-  FirstLoginWizardPage.preload,
   HomePage.preload,
   InboxPage.preload,
   InvitePreviewPage.preload,
