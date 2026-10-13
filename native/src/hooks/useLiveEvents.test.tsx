@@ -75,6 +75,15 @@ describe("dispatch", () => {
     expect(invalidate).toHaveBeenCalledWith();
   });
 
+  test("a save of the Access page refetches every open read", () => {
+    const client = new QueryClient();
+    const invalidate = jest.spyOn(client, "invalidateQueries").mockResolvedValue();
+
+    dispatch(client)({ topic: "access.grant.changed", type: "event", payload: { resource_type: "workspace", resource_id: "ws-1", target: "role", user_id: "" } });
+
+    expect(invalidate).toHaveBeenCalledWith();
+  });
+
   // A frame names the change, so an open thread updates without downloading its page of messages again.
   const message = (id: string, body: string): Message => ({
     id,

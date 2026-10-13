@@ -197,6 +197,8 @@ type meResponse struct {
 	Permissions []string    `json:"permissions"`
 	Restricted  bool        `json:"restricted"`
 	Projects    []MeProject `json:"projects"`
+	// AccessSetupFinished is false until an Owner finishes the workspace's one-time access setup.
+	AccessSetupFinished bool `json:"access_setup_finished"`
 }
 
 // me is re-fetched whenever useWorkspaceStore's selectedWorkspaceId changes.
@@ -208,7 +210,7 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.WriteJSON(w, http.StatusOK, meResponse{
 		RoleName: RoleNames(access.Roles), Roles: access.Roles, Permissions: access.Permissions,
-		Restricted: access.Restricted, Projects: access.Projects,
+		Restricted: access.Restricted, Projects: access.Projects, AccessSetupFinished: access.AccessSetupFinished,
 	})
 }
 

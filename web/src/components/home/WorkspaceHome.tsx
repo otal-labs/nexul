@@ -1,6 +1,7 @@
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoRolesState } from "@/components/home/NoRolesState";
 import { WorkspaceWelcome } from "@/components/home/WorkspaceWelcome";
+import { useAccessSetupRedirect } from "@/hooks/useAccessSetupRedirect";
 import { useFetchMyRole, useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -10,6 +11,7 @@ export const WorkspaceHome = () => {
   const workspace = useSelectedWorkspace();
   const { data: me, isPending } = useFetchMyRole(workspaceId);
   const noRoles = me?.roles?.length === 0;
+  useAccessSetupRedirect();
 
   return (
     <>

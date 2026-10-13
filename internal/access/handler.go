@@ -33,7 +33,7 @@ func (h *Handler) Routes() http.Handler {
 
 func (h *Handler) listGrants(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	if resourceType := q.Get("resource_type"); resourceType == resourceTypePlay || resourceType == resourceTypeProject {
+	if resourceType := q.Get("resource_type"); resourceType == resourceTypePlay || resourceType == resourceTypeProject || resourceType == resourceTypeChannel {
 		resourceID := q.Get("resource_id")
 		if resourceID == "" {
 			httpx.WriteError(w, fmt.Errorf("%w: resource_id is required", apperrs.ErrInvalid))
@@ -61,6 +61,36 @@ func (h *Handler) listGrants(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"doc_id": docID, "grants": grants})
+}
+
+// GridRoutes returns a workspace's Access page endpoints, mounted under /api/workspaces/{workspaceID}/access.
+func (h *Handler) GridRoutes() http.Handler {
+	mux := httpx.NewServeMux()
+	mux.HandleFunc("GET /api/workspaces/{workspaceID}/access", h.grid)
+	mux.HandleFunc("PUT /api/workspaces/{workspaceID}/access", h.saveGrid)
+	return mux
+}
+
+func (h *Handler) grid(w http.ResponseWriter, r *http.Request) {
+	g, err := h.svc.Grid(r.Context(), actorID(r), r.PathValue("workspaceID"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, g)
+}
+
+func (h *Handler) saveGrid(w http.ResponseWriter, r *http.Request) {
+	var req GridSave
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.SaveGrid(r.Context(), actorID(r), r.PathValue("workspaceID"), req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // catalog is the full grid in display order; roles, tokens, and doc grants all pick from it.

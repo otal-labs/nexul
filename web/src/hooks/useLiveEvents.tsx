@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router";
 import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
 import { LiveEventsClient, type LiveEventsClientOptions, type ServerFrame } from "@nexul/client-core/liveSocket";
 
+import { accessGridFollower } from "@/hooks/AccessGridHooks";
 import { authFollower, getMeKey } from "@/hooks/AuthHooks";
 import { botwebhookFollower } from "@/hooks/BotwebhookHooks";
 import { categoryFollower } from "@/hooks/CategoryHooks";
@@ -72,6 +73,7 @@ const permissionFollower: LiveFollower = {
 
 // Each domain follows its own topics next to its keys (ADR 0134); the socket only routes.
 const followers: LiveFollower[] = [
+  accessGridFollower,
   authFollower,
   botwebhookFollower,
   categoryFollower,

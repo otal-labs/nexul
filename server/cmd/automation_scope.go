@@ -375,6 +375,8 @@ func grantScope(ctx context.Context, l *storage.EventWorkspacesRepo, raw json.Ra
 		return one(l.OfPlay(ctx, p.ResourceID))
 	case "project":
 		return one(l.OfProject(ctx, p.ResourceID))
+	case "channel":
+		return one(l.OfConversation(ctx, p.ResourceID))
 	}
 	return nil, true, nil
 }

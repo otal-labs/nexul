@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Outlet, createBrowserRouter, RouterProvider, type RouteObject } from "react-router";
 
 import { Layout } from "@/Layout";
+import { AccessSetupGate } from "@/components/accessgrid/AccessSetupGate";
 import { AreaGate } from "@/components/auth/AreaGate";
 import { ProjectRevokedGate } from "@/components/project/ProjectRevokedGate";
 import { OnboardingGate } from "@/components/auth/OnboardingGate";
@@ -12,6 +13,7 @@ import { useBootstrapStatus } from "@/hooks/AuthHooks";
 import { TabSegmentContext } from "@/hooks/useTabPath";
 import { ErrorPage } from "@/pages/ErrorPage";
 import {
+  AccessPage,
   AutomationPage,
   AutomationsPage,
   BoardPage,
@@ -45,6 +47,7 @@ import { useSessionStore } from "@/stores/sessionStore";
 import type { RouteAccess, RouteArea } from "@/models/Access";
 
 const gate = (area: RouteArea): RouteAccess => ({ area });
+const projectGate = (area?: RouteArea): RouteAccess => ({ ...(area && { area }), needsProject: true });
 
 // Each tab is a static route where `:tab` would swallow a sibling's `:id`; the bare path is wrapped alike so tab switches don't remount.
 const staticTabs = (path: string, tabs: string[], area: RouteArea, element: ReactNode): RouteObject[] =>
@@ -56,7 +59,7 @@ const staticTabs = (path: string, tabs: string[], area: RouteArea, element: Reac
 
 // Every page reached from a workspace's sidebar lives under its slug; personal and instance pages stay unprefixed.
 const workspaceRoutes: RouteObject[] = [
-  { index: true, element: <HomePage /> },
+  { index: true, handle: projectGate(), element: <HomePage /> },
   { path: "inbox/:rowKey?/:tab?", element: <InboxPage /> },
   { path: "chat", element: <ChatPage /> },
   { path: "chat/:conversationId", element: <ChatPage /> },
@@ -71,26 +74,27 @@ const workspaceRoutes: RouteObject[] = [
       </Suspense>
     ),
   },
-  { path: "docs", element: <DocsPage /> },
-  { path: "docs/:projectToken/:docId", element: <DocsPage /> },
+  { path: "docs", handle: projectGate(), element: <DocsPage /> },
+  { path: "docs/:projectToken/:docId", handle: projectGate(), element: <DocsPage /> },
   // Mention chips carry only the doc id; the page moves them to the project's URL.
-  { path: "docs/:docId", element: <DocsPage /> },
-  { path: "memories", handle: gate("memories"), element: <MemoriesPage /> },
-  { path: "memories/:projectToken/:memoryId/:tab?", handle: gate("memories"), element: <MemoriesPage /> },
-  { path: "board", handle: gate("tickets"), element: <BoardPage /> },
-  { path: "board/:projectId", handle: gate("tickets"), element: <BoardPage /> },
-  { path: "tickets/:ticketId", handle: gate("tickets"), element: <TicketPage /> },
+  { path: "docs/:docId", handle: projectGate(), element: <DocsPage /> },
+  { path: "memories", handle: projectGate("memories"), element: <MemoriesPage /> },
+  { path: "memories/:projectToken/:memoryId/:tab?", handle: projectGate("memories"), element: <MemoriesPage /> },
+  { path: "board", handle: projectGate("tickets"), element: <BoardPage /> },
+  { path: "board/:projectId", handle: projectGate("tickets"), element: <BoardPage /> },
+  { path: "tickets/:ticketId", handle: projectGate("tickets"), element: <TicketPage /> },
   { path: "runners", handle: gate("runners"), element: <RunnersPage /> },
   ...staticTabs("automations", ["hosts", "secrets"], "automations", <AutomationsPage />),
   { path: "automations/:id/:tab?", handle: gate("automations"), element: <AutomationPage /> },
+  ...staticTabs("access", ["channels"], "access", <AccessPage />),
   { path: "stacks/:stackId/logs/:service?", handle: gate("stacks"), element: <StackPage forcedSection="logs" /> },
   { path: "stacks/:stackId/:section?", handle: gate("stacks"), element: <StackPage /> },
   { path: "stacks/:stackId/deploys/:deployId", handle: gate("deploys"), element: <DeployPage /> },
   { path: "configuration/:section?/:tab?", handle: gate("configuration"), element: <ConfigurationPage /> },
-  { path: "projects/:projectId/settings/:section?/:tab?", handle: gate("projects"), element: <ProjectSettingsPage /> },
+  { path: "projects/:projectId/settings/:section?/:tab?", handle: projectGate("projects"), element: <ProjectSettingsPage /> },
   {
     path: "projects/:projectId/interview/:tab?",
-    handle: gate("memories"),
+    handle: projectGate("memories"),
     element: (
       <Suspense fallback={<LoadingDisplay />}>
         <InterviewPage />
@@ -135,9 +139,11 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
                     {
                       element: (
                         <ProjectRevokedGate>
-                          <AreaGate>
-                            <Outlet />
-                          </AreaGate>
+                          <AccessSetupGate>
+                            <AreaGate>
+                              <Outlet />
+                            </AreaGate>
+                          </AccessSetupGate>
                         </ProjectRevokedGate>
                       ),
                       children: workspaceRoutes,

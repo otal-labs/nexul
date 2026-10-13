@@ -1165,6 +1165,8 @@ type Workspace struct {
 	DecisionsCheckEnabled int64
 	AutoPlayDailyCap      int64
 	AccessSetupFinished   int64
+	AccessSetupBy         string
+	AccessSetupAt         int64
 }
 
 type WorkspaceInvite struct {

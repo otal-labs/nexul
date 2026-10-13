@@ -1,6 +1,6 @@
 # 13 — The Access page and the one-time setup
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 11
 
@@ -29,9 +29,24 @@ The look of rework ticket 05:
 
 ## Acceptance criteria
 
-- [ ] New `TestStatements_AccessGridCostsTheSameAtAnyLength`: the grid's read and the Finish write at 3 projects and
+- [x] New `TestStatements_AccessGridCostsTheSameAtAnyLength`: the grid's read and the Finish write at 3 projects and
       at 30.
-- [ ] Finish with every project left empty still works.
-- [ ] A member's projects appear without a refresh.
-- [ ] Leaving with unsaved ticks asks first.
-- [ ] Verified at 768, 1024 and 1440px, including the 30 × 10 case, and the self-review passes.
+- [x] Finish with every project left empty still works.
+- [x] A member's projects appear without a refresh.
+- [x] Leaving with unsaved ticks asks first.
+- [x] Verified at 768, 1024 and 1440px, including the 30 × 10 case, and the self-review passes.
+
+## Notes for later slices
+
+- The grid reads in 10 statements and Finish writes in 17, at 3 projects and at 30
+  (`TestStatements_AccessGridCostsTheSameAtAnyLength`). The save writes every moved rule with one upsert and one delete
+  through `json_each`, and sends one `access.grant.changed` with `resource_type` `workspace`, which reaches every
+  member.
+- Channel rules now go through `permission_overwrite_*` and `PUT /api/permissions` with `resource_type` `channel`. They
+  set `channels:read` only, and only the Owner writes them; slice 20 moves that to `channels:write` and adds
+  `channels:post`. `GET /api/permissions/explain` doesn't cover a channel yet.
+- `workspace_update` takes `finish_access_setup`, and `workspace_list` and `/me` carry `access_setup_finished`.
+  Migration 0103 (provisional) adds who finished the setup and when.
+- The dead `tenancy.ProjectAccessEvent` payload is gone from the grant topic.
+- The Invite steps and the person dialog in `people-and-access.md` still describe per-person overrides; slice 12 owns
+  them.

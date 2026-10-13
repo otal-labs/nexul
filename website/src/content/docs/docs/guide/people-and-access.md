@@ -1,11 +1,11 @@
 ---
 title: People and access
-description: Invite people, give them roles in each workspace, and keep a client to the one project they work on.
+description: Invite people, give them roles in each workspace, and choose who's in each project.
 sidebar:
   order: 9
 ---
 
-Your instance is private: nobody signs in without an invitation. Each person then holds roles in each workspace they're in, several or none, and together their roles decide what they can do there. A person can also be held to chosen projects, so a client sees their project and nothing else.
+Your instance is private: nobody signs in without an invitation. Each person then holds roles in each workspace they're in, several or none, and together their roles decide what they can do there. Projects are opt-in: a person sees a project only once it lists one of their roles, or them by name, so a client sees their project and nothing else.
 
 ## Invite someone
 
@@ -53,25 +53,21 @@ Nobody can hand out a permission they don't hold: not in a role, an override, or
 
 Some permissions cover the whole instance, not one workspace: instance settings and upgrades, accounts, runners and machines, DNS, connectors, automations, integrations, templates, and creating workspaces. Holding one in any workspace you're in is enough. There's no separate administrator: whoever owns a workspace holds all of them, which is why `workspaces:create` is as strong as Owner.
 
-## Hold someone to chosen projects
+## Who's in each project
 
-A person's **Every project** row decides which projects they see:
+**Access** in the sidebar's Workspace section, between Automations and Configuration, is where you choose who's in each project. It shows to anyone who can manage a project's access (`projects:access`); the Owner sees every project, anyone else only the projects they're in and manage.
 
-- **From role**: every project at their role's level, new projects included. This is the default.
-- **Chosen projects**: only the projects you give them. A project with no level stays hidden, its name included, and so do projects made later. A link to one reads as not found.
+The **Projects** tab is a grid: one row per project, one column per role, with how many people hold each role under its name. Tick a role on a project and everyone holding it sees the project and everything in it. The **Every project** row ticks a role on every project at once, or clears it from all of them when every project already has it; past ten projects a filter narrows the rows, and the top row then acts on the rows shown. **People**, the last column, names someone on a project whatever roles they hold: the add button opens a list of the workspace's people. A project that lists nobody says **Owners only**, since only Owners see it.
 
-Under **Chosen projects**, each project gets one level, and **Areas** opens its areas (tickets, docs, memories, and so on) to set each on its own. Switching back to **From role** keeps the levels you chose, ready for next time.
+The grid is the whole workspace at a glance. For one project, its settings' **People in this project** lists everyone in it, through which role or by name, and anyone kept out of it by name.
 
-Someone on chosen projects:
+The **Public channels** tab is the Owner's. Every member sees a public channel, so every box starts ticked; untick a role to hide that channel from everyone holding it. Private channels keep their own members.
 
-- can't create a project;
-- reads no public channel, only the [private channels](/docs/guide/chat-and-voice/#private-channels) they're in, their direct messages, and threads of what they can open;
-- can create only private channels;
-- holds no instance permission, whatever their role says.
+Each tab saves from its own footer, and the change reaches everyone at once: a project someone was just listed in shows up in their sidebar without a reload. Leaving the page with unsaved ticks asks first.
 
-Their tokens and agents see exactly what they see. A change reaches their open browser at once: a project taken away drops out of their sidebar.
+### After upgrading
 
-A project's **Settings → General** lists, under **People with access**, everyone on chosen projects who can open it. Deleting a project names who loses it before you confirm.
+The release that made projects opt-in wiped every per-person permission, so right after upgrading no project lists anyone and only Owners see projects. An Owner's first visit to the workspace then opens **Who's in each project**: the Projects grid and the Public channels grid on one page, and one **Finish setup** that saves both. Until an Owner finishes, the sidebar offers Owners **Set up access** to get back to it, and members see **Projects being set up**; any page that would show a project tells them their projects are on their way, and chat works as usual. **Finish setup** works with projects left empty: they stay Owners only until you list someone. Afterwards the page is the workspace's Access page, which shows who finished the setup and when.
 
 ## Permissions on a doc or a play
 
@@ -113,4 +109,4 @@ Under **GitHub**, the same page shows whether your own GitHub account lists your
 
 ## Over MCP
 
-Agents manage people with `account_list` (each person's `roles` per workspace), `account_update`, `invitation_create`, `invitation_list`, `invitation_delete`, `role_update`, `role_delete`, and the `permission_overwrite_*` tools. `account_update` gives and takes away roles per workspace with `add_roles` and `remove_roles`, and `invitation_create` takes `roles` per workspace, at least one; neither sets anything per person. `permission_overwrite_update` sets a `state` of `allow`, `fallback`, or `deny` for people (`user_ids`) or roles (`role_ids`) on a doc, play, or project: allowing `projects:open` on a project lists a role or a person in it, and denying it keeps a person out. See [MCP server](/docs/guide/mcp-server/).
+Agents manage people with `account_list` (each person's `roles` per workspace), `account_update`, `invitation_create`, `invitation_list`, `invitation_delete`, `role_update`, `role_delete`, and the `permission_overwrite_*` tools. `account_update` gives and takes away roles per workspace with `add_roles` and `remove_roles`, and `invitation_create` takes `roles` per workspace, at least one; neither sets anything per person. `permission_overwrite_update` sets a `state` of `allow`, `fallback`, or `deny` for people (`user_ids`) or roles (`role_ids`) on a doc, play, project, or channel: allowing `projects:open` on a project lists a role or a person in it, denying it keeps a person out, and denying `channels:read` on a public channel hides it, which only an Owner may do. `workspace_update` with `finish_access_setup` ends the one-time setup after an upgrade, and `workspace_list` says whether it's done. See [MCP server](/docs/guide/mcp-server/).

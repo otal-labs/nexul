@@ -26,9 +26,11 @@ type Workspace struct {
 	// MentionChipTemplate is the @-mention ticket chip layout with {ticket.Field} tokens; gated on workspaces:write.
 	MentionChipTemplate string `json:"mention_chip_template"`
 	// MentionChipTemplateEdited is false while the workspace follows the instance's chip template (ADR 0103).
-	MentionChipTemplateEdited bool      `json:"mention_chip_template_edited"`
-	CreatedAt                 time.Time `json:"created_at"`
-	UpdatedAt                 time.Time `json:"updated_at"`
+	MentionChipTemplateEdited bool `json:"mention_chip_template_edited"`
+	// AccessSetupFinished is false while an Owner has yet to finish the one-time access setup (ADR 0148).
+	AccessSetupFinished bool      `json:"access_setup_finished"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 // Member is one person's place in a workspace.
@@ -55,6 +57,8 @@ type MyAccess struct {
 	Permissions []string
 	Restricted  bool
 	Projects    []MeProject
+	// AccessSetupFinished is the workspace's, so a member waiting on the one-time setup sees why (ADR 0148).
+	AccessSetupFinished bool
 }
 
 // RoleNames is roles' names joined, the one role_name a client from before members held several reads.

@@ -1,0 +1,44 @@
+import { AccessChannelsTab } from "@/components/accessgrid/AccessChannelsTab";
+import { AccessProjectsTab } from "@/components/accessgrid/AccessProjectsTab";
+import { PageHeader } from "@/components/PageHeader";
+import { PageTabs, PageTabsContent } from "@/components/PageTabs";
+import { useAccessDraft } from "@/hooks/useAccessDraft";
+import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { useAccessDraftStore } from "@/stores/accessDraftStore";
+import { countLabel, type AccessGrid } from "@/models/AccessGrid";
+
+interface AccessTabsViewProps {
+  grid: AccessGrid;
+  owner: boolean;
+}
+
+// The workspace's Access page once set up: the two grids as tabs, Public channels for the Owner alone.
+export const AccessTabsView = ({ grid, owner }: AccessTabsViewProps) => {
+  const crumb = useWorkspaceCrumb();
+  const wsPath = useWorkspacePath();
+  const draft = useAccessDraft(grid);
+  useLeaveGuard(draft.projectChanges.length + draft.channelChanges.length > 0, wsPath("/access"), useAccessDraftStore.getState().clear);
+  const facts = [
+    countLabel(grid.projects.length, "project", "projects"),
+    owner && countLabel(grid.channels.length, "public channel", "public channels"),
+    countLabel(grid.roles.length, "role", "roles"),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <>
+      <PageHeader className="mb-6" crumbs={[crumb]} title="Access" meta={<span className="font-mono text-xs text-muted-foreground">{facts}</span>} />
+      <PageTabs label="Access" tabs={[{ value: "projects", label: "Projects" }, { value: "channels", label: "Public channels", hidden: !owner }]}>
+        <PageTabsContent value="projects">
+          <AccessProjectsTab grid={grid} />
+        </PageTabsContent>
+        <PageTabsContent value="channels">
+          <AccessChannelsTab grid={grid} />
+        </PageTabsContent>
+      </PageTabs>
+    </>
+  );
+};

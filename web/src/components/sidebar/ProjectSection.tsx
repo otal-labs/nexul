@@ -2,10 +2,12 @@ import { PlusIcon } from "lucide-react";
 import { useNavigate } from "react-router";
 
 import { navLinkClass, sectionLabelClass } from "@/components/SidebarNav";
+import { AccessSetupNav } from "@/components/sidebar/AccessSetupNav";
 import { ProjectNav } from "@/components/sidebar/ProjectNav";
 import { ProjectSetupNav } from "@/components/sidebar/ProjectSetupNav";
 import { ProjectSwitcher } from "@/components/sidebar/ProjectSwitcher";
 import { RailTooltip } from "@/components/sidebar/RailTooltip";
+import { useAccessSetupState } from "@/hooks/AccessGridHooks";
 import { useAnyProjectAreaAccess } from "@/hooks/AccessHooks";
 import { useSidebarProject } from "@/hooks/useSidebarProject";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -25,10 +27,12 @@ export const ProjectSection = ({ collapsed }: ProjectSectionProps) => {
   const canCreate = can?.("newProject") ?? false;
   // The switcher only earns its place when the viewer can open something inside some project.
   const readsProjects = !!can && (["projects", "tickets", "memories", "docs"] as const).some((area) => can(area));
-  const offerCreate = !!projects && projects.length === 0 && canCreate;
-  const showSwitcher = readsProjects && !!current;
+  // While the one-time access setup is open its row stands in for the project's pages.
+  const setup = useAccessSetupState();
+  const offerCreate = !setup && !!projects && projects.length === 0 && canCreate;
+  const showSwitcher = !setup && readsProjects && !!current;
 
-  if (!offerCreate && !showSwitcher) return null;
+  if (!offerCreate && !showSwitcher && !setup) return null;
   return (
     <div className="flex flex-col gap-0.5">
       {!collapsed && <div className={sectionLabelClass}>Project</div>}
@@ -53,6 +57,7 @@ export const ProjectSection = ({ collapsed }: ProjectSectionProps) => {
       )}
       {current && showSwitcher && !inSetup(current) && <ProjectNav project={current} collapsed={collapsed} />}
       {current && showSwitcher && inSetup(current) && <ProjectSetupNav project={current} collapsed={collapsed} />}
+      {setup && <AccessSetupNav setup={setup} collapsed={collapsed} />}
     </div>
   );
 };

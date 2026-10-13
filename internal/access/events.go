@@ -8,10 +8,11 @@ func Topics() []eventbus.Topic {
 	return []eventbus.Topic{{Name: TopicGrantChanged, Payload: GrantEvent{}}}
 }
 
-// GrantEvent is the payload of a rule on a doc, play, or project changing; it reaches the person it names, or a role's
-// holders, whose open reads refetch.
+// GrantEvent is the payload of a rule on a doc, play, project, or channel changing; it reaches the person it names, or
+// a role's holders, whose open reads refetch. A save of a workspace's Access page is one event on the workspace, which
+// reaches every member.
 type GrantEvent struct {
-	ResourceType string `json:"resource_type" enum:"doc,play,project"`
+	ResourceType string `json:"resource_type" enum:"doc,play,project,channel,workspace" jsonschema:"What the rule sits on; workspace is a save of the Access page, which may change rules on many of its projects and channels."`
 	ResourceID   string `json:"resource_id"`
 	Target       string `json:"target" enum:"person,role" jsonschema:"Whom the rule names: a person, as user_id, or a role, as role_id."`
 	UserID       string `json:"user_id"`

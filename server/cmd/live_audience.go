@@ -250,6 +250,10 @@ func grantFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	case "play":
 		manages, _, err := a.access.Decide(ctx, actorID(ctx), p.ResourceType, p.ResourceID, permissions.PlaysWrite)
 		return err == nil && manages
+	case "channel":
+		return a.access.ManagesRules(ctx, actorID(ctx), p.ResourceType, p.ResourceID)
+	case "workspace":
+		return a.access.Require(ctx, p.ResourceID, permissions.Member) == nil
 	}
 	return false
 }

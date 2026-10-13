@@ -23,8 +23,10 @@ const permissionTopics = new Set([
 // Once the viewer's own access moves every open read refetches, so a project taken away turns its open screen revoked.
 const isViewersAccessChange = (client: QueryClient, frame: ServerFrame) => {
   if (!permissionTopics.has(frame.topic)) return false;
-  const { user_id: userID, role_id: roleID } = (frame.payload ?? {}) as { user_id?: string; role_id?: string };
+  const { user_id: userID, role_id: roleID, resource_type: type } = (frame.payload ?? {}) as { user_id?: string; role_id?: string; resource_type?: string };
   if (userID) return userID === client.getQueryData<MeResponse>([getMeKey])?.user.id;
+  // A save of the Access page can move any member's projects, so it reaches only that workspace's members.
+  if (type === "workspace") return true;
   if (!roleID) return false;
   // A role rule also reaches people who manage the entity; only its holders' access moved.
   return client

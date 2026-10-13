@@ -30,6 +30,8 @@ const ownerPermissions = ["docs:read", "docs:write", "memories:read", "projects:
 
 interface MeExtra {
   projects?: { project_id: string; actions: string[] }[];
+  roles?: { id: string; name: string; is_owner: boolean }[];
+  access_setup_finished?: boolean;
 }
 
 const mockApi = (list: unknown[] = projects, permissions: string[] = ownerPermissions, me: MeExtra = {}) => {
@@ -62,6 +64,17 @@ beforeEach(() => {
 });
 
 describe("ProjectSection", () => {
+  it("while the access setup is open, offers the Owner Set up access in place of the project's pages", async () => {
+    renderSection({ me: { roles: [{ id: "r-o", name: "Owner", is_owner: true }], access_setup_finished: false } });
+    expect(await screen.findByRole("link", { name: "Set up access" })).toHaveAttribute("href", "/acme/access");
+    expect(screen.queryByRole("link", { name: "Board" })).not.toBeInTheDocument();
+  });
+
+  it("while the access setup is open, tells a member no project lists that theirs are on the way", async () => {
+    renderSection({ permissions: ["chat:write"], me: { roles: [{ id: "r-d", name: "Developer", is_owner: false }], projects: [], access_setup_finished: false } });
+    expect(await screen.findByText("Projects being set up")).toBeInTheDocument();
+  });
+
   it("Continue setup resumes Environment when a detected key still needs its value", async () => {
     const user = userEvent.setup();
     renderSection({ list: [{ ...projects[0]!, setup: { finished: false, steps: { project: "done", repository: "done", service: "done" }, stack_id: "stack-1", env_keys: ["PORT"] } }] });

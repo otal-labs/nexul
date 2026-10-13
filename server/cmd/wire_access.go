@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"slices"
 
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/auth"
+	"github.com/otal-labs/nexul/internal/chat"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
@@ -24,6 +27,23 @@ func (a accessPlayWorkspaceResolver) WorkspaceIDForPlay(ctx context.Context, pla
 		return "", err
 	}
 	return p.WorkspaceID, nil
+}
+
+// accessChannelWorkspaceResolver reads a channel's workspace from the repo directly, past the chat domain's own checks;
+// a DM or a thread carries no channel rules.
+type accessChannelWorkspaceResolver struct {
+	chat *storage.ChatRepo
+}
+
+func (a accessChannelWorkspaceResolver) WorkspaceIDForChannel(ctx context.Context, channelID string) (string, error) {
+	c, err := a.chat.GetConversation(ctx, channelID)
+	if err != nil {
+		return "", err
+	}
+	if c.Kind != chat.KindChannel && c.Kind != chat.KindVoiceChannel {
+		return "", fmt.Errorf("%w: %s is not a channel", apperrs.ErrNotFound, channelID)
+	}
+	return c.WorkspaceID, nil
 }
 
 // accessRoleWorkspaceResolver reads a role's workspace from the repo directly, past the roles domain's own checks.

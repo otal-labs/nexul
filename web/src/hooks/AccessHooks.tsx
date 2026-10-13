@@ -28,6 +28,17 @@ export const useAnyProjectAreaAccess = (): ((area: Area) => boolean) | undefined
   return (area) => hasPermission(held, AREA_PERMISSION[area]);
 };
 
+// Manage this project's access, held through a role or on one project: what opens the Access page.
+const MANAGES_ACCESS = "projects:access";
+
+// Whether the viewer holds value through a role or in any project they are in; undefined while that is still loading.
+const useAnyProjectAreaAccessOf = (value: string): boolean | undefined => {
+  const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  const { data, isFetched } = useFetchMyRole(selectedWorkspaceId);
+  if (!isFetched) return undefined;
+  return hasPermission(workspaceWidePermissions(data), value);
+};
+
 // Whether the viewer holds value in any workspace, which is what the server checks an instance-level action against.
 export const useHasInstancePermission = (value: string): boolean => {
   const { data: me } = useFetchMe();
@@ -62,8 +73,11 @@ export const workspaceAccess = (anywhere: string[] | undefined, permissions: str
   );
   return {
     configurationSections,
-    canOpen: (area) =>
-      area === "configuration" ? opensConfiguration(configurationSections) : hasPermission(permissions, AREA_PERMISSION[area]),
+    canOpen: (area) => {
+      if (area === "configuration") return opensConfiguration(configurationSections);
+      if (area === "access") return hasPermission(permissions, MANAGES_ACCESS);
+      return hasPermission(permissions, AREA_PERMISSION[area]);
+    },
   };
 };
 
@@ -98,9 +112,11 @@ export const useCanOpenSection = (section: SettingsSection): boolean =>
 // Whether the viewer may open an area's page; undefined while that is still loading.
 export const useCanOpen = (): ((area: RouteArea) => boolean | undefined) => {
   const can = useAreaAccess();
+  const anywhere = useAnyProjectAreaAccessOf(MANAGES_ACCESS);
   const sections = useConfigurationSections();
   return (area) => {
     if (area === "configuration") return sections && opensConfiguration(sections);
+    if (area === "access") return anywhere;
     return can && can(area);
   };
 };

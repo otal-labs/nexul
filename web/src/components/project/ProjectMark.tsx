@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { projectTile, type Project } from "@/models/Project";
 
 interface ProjectMarkProps {
-  project: Project;
+  project: Pick<Project, "prefix" | "name">;
   className?: string;
 }
 

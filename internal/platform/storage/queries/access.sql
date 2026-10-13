@@ -88,3 +88,50 @@ SELECT rs.resource_id, rs.state FROM (
 WHERE (rs.state = 0 AND d.project_id IN (SELECT value FROM json_each(sqlc.arg(readable))))
    OR (rs.state = 1 AND d.project_id NOT IN (SELECT value FROM json_each(sqlc.arg(readable))))
 ORDER BY rs.resource_id;
+
+-- name: GetAccessSetup :one
+SELECT w.access_setup_finished, w.access_setup_by, w.access_setup_at, COALESCE(u.login, '') AS finished_by_login
+FROM workspaces w LEFT JOIN users u ON u.id = w.access_setup_by
+WHERE w.id = ?;
+
+-- name: ListAccessGridProjects :many
+SELECT id, name, prefix FROM projects WHERE workspace_id = ? ORDER BY position, id;
+
+-- name: ListAccessGridRoles :many
+SELECT r.id, r.name, (SELECT COUNT(*) FROM member_roles mr WHERE mr.role_id = r.id) AS holders
+FROM roles r WHERE r.workspace_id = ? AND r.is_owner_role = 0 ORDER BY r.created_at, r.id;
+
+-- name: ListAccessGridChannels :many
+SELECT id, name, kind FROM conversations
+WHERE workspace_id = ? AND kind IN ('channel', 'voice_channel') AND private = 0
+ORDER BY is_general DESC, kind, name, id;
+
+-- name: ListAccessGridMembers :many
+SELECT user_id FROM workspace_members WHERE workspace_id = ?;
+
+-- name: ListAccessGridRules :many
+SELECT po.* FROM permission_overwrites po JOIN projects p ON p.id = po.resource_id
+WHERE po.resource_type = 'project' AND p.workspace_id = sqlc.arg(workspace_id)
+UNION ALL
+SELECT co.* FROM permission_overwrites co JOIN conversations c ON c.id = co.resource_id
+WHERE co.resource_type = 'channel' AND c.workspace_id = sqlc.arg(workspace_id);
+
+-- name: UpsertOverwritesFromJSON :exec
+INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, role_id, allow, deny, created_at, updated_at)
+SELECT json_extract(j.value, '$.resource_type'), json_extract(j.value, '$.resource_id'), json_extract(j.value, '$.target'),
+       json_extract(j.value, '$.user_id'), json_extract(j.value, '$.role_id'), json_extract(j.value, '$.allow'),
+       json_extract(j.value, '$.deny'), sqlc.arg(now), sqlc.arg(now)
+FROM json_each(sqlc.arg(rules)) j WHERE true
+ON CONFLICT(resource_type, resource_id, target, coalesce(user_id, role_id)) DO UPDATE SET
+  allow = excluded.allow, deny = excluded.deny, updated_at = excluded.updated_at;
+
+-- name: DeleteOverwritesFromJSON :exec
+DELETE FROM permission_overwrites WHERE rowid IN (
+  SELECT po.rowid FROM json_each(sqlc.arg(rules)) j JOIN permission_overwrites po
+    ON po.resource_type = json_extract(j.value, '$.resource_type') AND po.resource_id = json_extract(j.value, '$.resource_id')
+   AND po.target = json_extract(j.value, '$.target')
+   AND coalesce(po.user_id, po.role_id) = coalesce(json_extract(j.value, '$.user_id'), json_extract(j.value, '$.role_id'))
+);
+
+-- name: FinishAccessSetup :exec
+UPDATE workspaces SET access_setup_finished = 1, access_setup_by = ?, access_setup_at = ? WHERE id = ?;

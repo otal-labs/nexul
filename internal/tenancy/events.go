@@ -12,8 +12,6 @@ const (
 	TopicWorkspaceMemberRemoved = "workspace.member.removed"
 	TopicWorkspaceMemberUpdated = "workspace.member.updated"
 	TopicWorkspaceUpdated       = "workspace.updated"
-	// TopicProjectAccessChanged is the access domain's grant topic, shared so a Project access change rides it (ADR 0097).
-	TopicProjectAccessChanged = "access.grant.changed"
 )
 
 // Topics declares each topic with its payload; workspace.member.added carries an InvitationEvent when an
@@ -30,18 +28,7 @@ func Topics() []eventbus.Topic {
 		{Name: TopicWorkspaceMemberRemoved, Payload: MemberEvent{}},
 		{Name: TopicWorkspaceMemberUpdated, Payload: MemberEvent{}},
 		{Name: TopicWorkspaceUpdated, Payload: WorkspaceEvent{}},
-		{Name: TopicProjectAccessChanged, Payload: ProjectAccessEvent{}},
 	}
-}
-
-// ProjectAccessEvent is access.grant.changed for one person's Project access; it reaches them and the workspace's
-// holders of members:write.
-type ProjectAccessEvent struct {
-	ResourceType string `json:"resource_type" enum:"doc,play,project"`
-	ResourceID   string `json:"resource_id"`
-	Target       string `json:"target" enum:"person,role" jsonschema:"Whom the rule names: a person, as user_id, or a role, as role_id."`
-	UserID       string `json:"user_id"`
-	ActorID      string `json:"actor_id,omitempty"`
 }
 
 type InvitationEvent struct {

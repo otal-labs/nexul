@@ -117,7 +117,7 @@ func (q *Queries) DeleteWorkspaceInvite(ctx context.Context, arg DeleteWorkspace
 }
 
 const getWorkspace = `-- name: GetWorkspace :one
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished FROM workspaces WHERE id = ?
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at FROM workspaces WHERE id = ?
 `
 
 func (q *Queries) GetWorkspace(ctx context.Context, id string) (Workspace, error) {
@@ -133,12 +133,14 @@ func (q *Queries) GetWorkspace(ctx context.Context, id string) (Workspace, error
 		&i.DecisionsCheckEnabled,
 		&i.AutoPlayDailyCap,
 		&i.AccessSetupFinished,
+		&i.AccessSetupBy,
+		&i.AccessSetupAt,
 	)
 	return i, err
 }
 
 const getWorkspaceBySlug = `-- name: GetWorkspaceBySlug :one
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished FROM workspaces WHERE slug = ?
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at FROM workspaces WHERE slug = ?
 `
 
 func (q *Queries) GetWorkspaceBySlug(ctx context.Context, slug string) (Workspace, error) {
@@ -154,6 +156,8 @@ func (q *Queries) GetWorkspaceBySlug(ctx context.Context, slug string) (Workspac
 		&i.DecisionsCheckEnabled,
 		&i.AutoPlayDailyCap,
 		&i.AccessSetupFinished,
+		&i.AccessSetupBy,
+		&i.AccessSetupAt,
 	)
 	return i, err
 }
@@ -581,7 +585,7 @@ func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID string) 
 }
 
 const listWorkspacesForUser = `-- name: ListWorkspacesForUser :many
-SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug, w.decisions_check_enabled, w.auto_play_daily_cap, w.access_setup_finished
+SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug, w.decisions_check_enabled, w.auto_play_daily_cap, w.access_setup_finished, w.access_setup_by, w.access_setup_at
 FROM workspaces w
 JOIN workspace_members m ON m.workspace_id = w.id
 WHERE m.user_id = ?
@@ -607,6 +611,8 @@ func (q *Queries) ListWorkspacesForUser(ctx context.Context, userID string) ([]W
 			&i.DecisionsCheckEnabled,
 			&i.AutoPlayDailyCap,
 			&i.AccessSetupFinished,
+			&i.AccessSetupBy,
+			&i.AccessSetupAt,
 		); err != nil {
 			return nil, err
 		}

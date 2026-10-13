@@ -44,6 +44,8 @@ export interface MyWorkspaceInfo {
   roles?: HeldRole[];
   permissions: string[];
   projects?: { project_id: string; actions: string[] }[];
+  // False until an Owner finishes the workspace's one-time access setup; a server from before it sends none.
+  access_setup_finished?: boolean;
 }
 
 // The one place client-side permission logic lives: a thin wrapper the server resolves, the client just reads.

@@ -38,6 +38,11 @@ type Repo interface {
 	// HasAllowAny reports whether a rule on a resourceType naming userID or a role they hold allows action; it gates
 	// the user directory for permissions:write holders.
 	HasAllowAny(ctx context.Context, resourceType, userID string, action permissions.Action) (bool, error)
+	// Grid reads what workspaceID's Access page is built from in the same statements at any size.
+	Grid(ctx context.Context, workspaceID string) (*GridSource, error)
+	// SaveGrid stores rules, deleting each whose sets are both empty, and with finishedBy set marks workspaceID's access
+	// setup finished by them, with events, in one transaction of the same statements at any size.
+	SaveGrid(ctx context.Context, workspaceID string, rules []*Overwrite, finishedBy string, events ...eventbus.OutboxEvent) error
 }
 
 // Users lets access use the auth user store without importing auth (ADR 0017).
@@ -83,6 +88,12 @@ type RoleWorkspaceResolver interface {
 type PlayWorkspaceResolver interface {
 	// WorkspaceIDForPlay returns "" if it can't be resolved (unknown play).
 	WorkspaceIDForPlay(ctx context.Context, playID string) (string, error)
+}
+
+// ChannelWorkspaceResolver resolves a channel's workspace so a rule on it is written there (ADR 0017).
+type ChannelWorkspaceResolver interface {
+	// WorkspaceIDForChannel returns ErrNotFound for an unknown conversation or one that is not a text or voice channel.
+	WorkspaceIDForChannel(ctx context.Context, channelID string) (string, error)
 }
 
 // Names resolves what a source names for the sentence a person reads, read only on the explain and refusal paths.

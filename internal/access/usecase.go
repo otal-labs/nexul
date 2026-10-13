@@ -39,6 +39,7 @@ type Service struct {
 	roleWorkspace RoleWorkspaceResolver
 	docWorkspace  DocWorkspaceResolver
 	playWorkspace PlayWorkspaceResolver
+	channels      ChannelWorkspaceResolver
 	scopes        Scopes
 	names         Names
 	commits       *wake.Broadcast
@@ -68,6 +69,11 @@ func (s *Service) SetDocWorkspaces(r DocWorkspaceResolver) {
 // SetPlayWorkspaces wires the plays domain's PlayWorkspaceResolver.
 func (s *Service) SetPlayWorkspaces(r PlayWorkspaceResolver) {
 	s.playWorkspace = r
+}
+
+// SetChannelWorkspaces wires the chat domain's ChannelWorkspaceResolver, which a channel's rules are written through.
+func (s *Service) SetChannelWorkspaces(r ChannelWorkspaceResolver) {
+	s.channels = r
 }
 
 // HasPermission checks the Owner bypass, then for anything in a project whether userID is in it, then the role set,
@@ -539,7 +545,7 @@ type ruleWrite struct {
 
 // SetRules sets actions to state on every resource for every target, checking every write before storing any: the
 // actor manages each resource (permissions:write on a doc, plays:write on a play, Manage this project's access on a
-// project), each action is one the resource's rules may set, each role is the resource's workspace's, and the actor
+// project, the Owner on a channel), each action is one the resource's rules may set, each role is the resource's workspace's, and the actor
 // holds there each action the write allows or lifts a Deny on (ADR 0088).
 func (s *Service) SetRules(ctx context.Context, actorID, resourceType string, resourceIDs []string, to Targets, actions []permissions.Action, state string) error {
 	if err := checkWrite(actorID, resourceType, resourceIDs, to, actions, state); err != nil {
@@ -623,11 +629,14 @@ func (t Targets) each() [][2]string {
 	return out
 }
 
+// ruleTypes are the entities rules sit on.
+var ruleTypes = []string{resourceTypeDoc, resourceTypePlay, resourceTypeProject, resourceTypeChannel}
+
 // checkRuleActions refuses an action resourceType's rules may not set: a play's rules set Run, a project's In this
-// project and the project-area actions.
+// project and the project-area actions, a channel's its read.
 func checkRuleActions(resourceType string, actions []permissions.Action) error {
-	if !slices.Contains([]string{resourceTypeDoc, resourceTypePlay, resourceTypeProject}, resourceType) {
-		return fmt.Errorf("%w: resource_type %q is not doc, play, or project", apperrs.ErrInvalid, resourceType)
+	if !slices.Contains(ruleTypes, resourceType) {
+		return fmt.Errorf("%w: resource_type %q is not doc, play, project, or channel", apperrs.ErrInvalid, resourceType)
 	}
 	for _, a := range actions {
 		if a == permissions.ProjectsOpen && resourceType != resourceTypeProject {
@@ -638,6 +647,9 @@ func checkRuleActions(resourceType string, actions []permissions.Action) error {
 		}
 		if resourceType == resourceTypeProject && !slices.Contains(projectActions, a) {
 			return fmt.Errorf("%w: %s is not set on a project; its rules set projects:open and project-area actions", apperrs.ErrInvalid, a)
+		}
+		if resourceType == resourceTypeChannel && a != permissions.ChannelsRead {
+			return fmt.Errorf("%w: only channels:read may be set on a channel", apperrs.ErrInvalid)
 		}
 	}
 	return nil
@@ -679,11 +691,17 @@ func (s *Service) requireInProject(ctx context.Context, actorID, resourceType, r
 	return nil
 }
 
-// workspaceOf is the workspace a doc, play, or project lives in; "" when it can't be resolved.
+// workspaceOf is the workspace a doc, play, project, or channel lives in; "" when it can't be resolved.
 func (s *Service) workspaceOf(ctx context.Context, resourceType, resourceID string) string {
 	switch resourceType {
 	case resourceTypePlay:
 		return s.resolvePlayWorkspace(ctx, resourceID)
+	case resourceTypeChannel:
+		if s.channels == nil {
+			return ""
+		}
+		workspaceID, _ := s.channels.WorkspaceIDForChannel(ctx, resourceID)
+		return workspaceID
 	case resourceTypeProject:
 		workspaceID, _ := s.projectWorkspace(ctx, resourceID)
 		return workspaceID
@@ -761,14 +779,14 @@ func (s *Service) ListPlayGrants(ctx context.Context, actorID, playID string) ([
 	return s.listGrants(ctx, actorID, resourceTypePlay, playID)
 }
 
-// ListRules is the rules on a doc, play, or project, for whoever manages it; a project the actor is not in is not
-// found, so listing its rules never confirms it exists.
+// ListRules is the rules on a doc, play, project, or channel, for whoever manages it; a project the actor is not in
+// is not found, so listing its rules never confirms it exists.
 func (s *Service) ListRules(ctx context.Context, actorID, resourceType, resourceID string) ([]*Overwrite, error) {
 	if actorID == "" {
 		return nil, fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
 	}
-	if !slices.Contains([]string{resourceTypeDoc, resourceTypePlay, resourceTypeProject}, resourceType) {
-		return nil, fmt.Errorf("%w: resource_type %q is not doc, play, or project", apperrs.ErrInvalid, resourceType)
+	if !slices.Contains(ruleTypes, resourceType) {
+		return nil, fmt.Errorf("%w: resource_type %q is not doc, play, project, or channel", apperrs.ErrInvalid, resourceType)
 	}
 	if err := s.requireInProject(ctx, actorID, resourceType, resourceID); err != nil {
 		return nil, err
@@ -832,10 +850,27 @@ func (s *Service) accountsByID(ctx context.Context) (map[string]*User, error) {
 	return byID, nil
 }
 
+// ManagesRules reports whether userID may write the rules on a doc, play, project, or channel; a failed lookup is no.
+func (s *Service) ManagesRules(ctx context.Context, userID, resourceType, resourceID string) bool {
+	if userID == "" {
+		return false
+	}
+	ok, err := s.canManage(ctx, userID, resourceType, resourceID)
+	return err == nil && ok
+}
+
 // canManage grants no instance-wide bypass, since that would cross workspace isolation boundaries. A doc's
 // manage action is the cross-cutting permissions:write share grant; a play's is plays:write, the same bit
-// that gates editing the play's own definition; a project's is Manage this project's access.
+// that gates editing the play's own definition; a project's is Manage this project's access; a channel's is the
+// Owner's alone until channels carry their own manage permission.
 func (s *Service) canManage(ctx context.Context, actorID, resourceType, resourceID string) (bool, error) {
+	if resourceType == resourceTypeChannel {
+		workspaceID := s.workspaceOf(ctx, resourceType, resourceID)
+		if workspaceID == "" {
+			return false, fmt.Errorf("%w: channel %s", apperrs.ErrNotFound, resourceID)
+		}
+		return s.IsOwner(ctx, actorID, workspaceID)
+	}
 	if resourceType == resourceTypePlay {
 		return s.holds(ctx, actorID, resourceType, resourceID, permissions.PlaysWrite), nil
 	}

@@ -76,6 +76,7 @@ func newAccessFixture(t *testing.T) *inviteTestFixture {
 		f.accounts.accounts[id] = &TeamAccount{ID: id, Login: id, Status: "active"}
 	}
 	f.repo.teamWorkspaces = []*TeamWorkspace{{ID: "ws-1", Name: "Acme"}}
+	f.repo.workspaces["ws-1"] = &Workspace{ID: "ws-1", Name: "Acme", Slug: "acme", AccessSetupFinished: true}
 	f.svc.SetProjects(fakeProjects{held: map[string]map[string][]string{
 		"actor": {"p-web": {"tickets:read", "tickets:write", "members:write"}, "p-other": {"tickets:read"}},
 		"bob":   {"p-web": {"tickets:read"}},
@@ -127,13 +128,22 @@ func TestHandler_Me_ReadsEveryNonOwnerAsRestricted(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"role_name":"role-name-role-editor, role-name-role-viewer",
 		"roles":[{"id":"role-editor","name":"role-name-role-editor","is_owner":false},{"id":"role-viewer","name":"role-name-role-viewer","is_owner":false}],
-		"permissions":["chat:write"],"restricted":true,"projects":[{"project_id":"p-web","actions":["tickets:read"]}]}`, rec.Body.String())
+		"permissions":["chat:write"],"restricted":true,"projects":[{"project_id":"p-web","actions":["tickets:read"]}],
+		"access_setup_finished":true}`, rec.Body.String())
 
 	f.wsPerms.perms["olga"] = []string{"chat:write", "tickets:read"}
 	rec = do(t, NewHandler(f.svc).Routes(), http.MethodGet, "/api/workspaces/ws-1/me", "", "olga")
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"role_name":"role-name-owner-role","roles":[{"id":"owner-role","name":"role-name-owner-role","is_owner":true}],
-		"permissions":["chat:write","tickets:read"],"restricted":false,"projects":[]}`, rec.Body.String())
+		"permissions":["chat:write","tickets:read"],"restricted":false,"projects":[],"access_setup_finished":true}`, rec.Body.String())
+
+	f.repo.workspaces["ws-1"].AccessSetupFinished = false
+	me, err := f.svc.MyAccess(t.Context(), "ws-1", "bob")
+	require.NoError(t, err)
+	assert.False(t, me.AccessSetupFinished, "a member reads that the setup is still open")
+	f.repo.getErr = errors.New("database is locked")
+	_, err = f.svc.MyAccess(t.Context(), "ws-1", "bob")
+	require.ErrorIs(t, err, f.repo.getErr)
 }
 
 func TestListTeam_RemovedFieldsReadAsEmpty(t *testing.T) {

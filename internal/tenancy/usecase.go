@@ -348,7 +348,11 @@ func (s *Service) MyAccess(ctx context.Context, workspaceID, userID string) (*My
 	if !owner {
 		held = slices.DeleteFunc(held, func(a string) bool { return permissions.AreaOf(permissions.Action(a)) == permissions.AreaProject })
 	}
-	me := &MyAccess{Roles: roles, Permissions: held, Restricted: !owner, Projects: []MeProject{}}
+	ws, err := s.repo.Get(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("get workspace %s: %w", workspaceID, err)
+	}
+	me := &MyAccess{Roles: roles, Permissions: held, Restricted: !owner, Projects: []MeProject{}, AccessSetupFinished: ws.AccessSetupFinished}
 	if s.projects == nil {
 		return me, nil
 	}

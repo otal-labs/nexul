@@ -16,18 +16,18 @@ func MCPTools(s *Service) []mcptool.Tool {
 }
 
 type accessGrantListIn struct {
-	ResourceType string `json:"resource_type" jsonschema:"doc, play, or project."`
-	ResourceID   string `json:"resource_id" jsonschema:"The doc's, play's, or project's id."`
+	ResourceType string `json:"resource_type" jsonschema:"doc, play, project, or channel."`
+	ResourceID   string `json:"resource_id" jsonschema:"The doc's, play's, project's, or channel's id."`
 	UserID       string `json:"user_id,omitempty" jsonschema:"An account id, yours or another's, as account_list shows them; returns that person's effective answers instead of the rules."`
 	mcptool.PageArgs
 }
 
 type accessGrantUpdateIn struct {
-	ResourceType string   `json:"resource_type" jsonschema:"doc, play, or project."`
-	ResourceIDs  []string `json:"resource_ids" jsonschema:"The docs', plays', or projects' ids; every one gets the same change."`
+	ResourceType string   `json:"resource_type" jsonschema:"doc, play, project, or channel."`
+	ResourceIDs  []string `json:"resource_ids" jsonschema:"The docs', plays', projects', or channels' ids; every one gets the same change."`
 	UserIDs      []string `json:"user_ids,omitempty" jsonschema:"The people the change applies to, by account id as account_list shows them. Send user_ids, role_ids, or both."`
 	RoleIDs      []string `json:"role_ids,omitempty" jsonschema:"The roles the change applies to, each a role of the resource's workspace as workspace_list with the workspace's id lists them; the rule reaches everyone holding it."`
-	Actions      []string `json:"actions" jsonschema:"Permissions to set, each <domain>:<action>, for example [\"docs:read\", \"docs:write\"]. On a play only plays:run; on a project projects:open (In this project) and the project-area actions."`
+	Actions      []string `json:"actions" jsonschema:"Permissions to set, each <domain>:<action>, for example [\"docs:read\", \"docs:write\"]. On a play only plays:run; on a project projects:open (In this project) and the project-area actions; on a channel only channels:read."`
 	State        string   `json:"state,omitempty" jsonschema:"allow, fallback, or deny: allow and deny hold the actions here whatever the roles say, fallback removes this rule's say so the answer comes from further out. Takes precedence over grant."`
 	Grant        *bool    `json:"grant,omitempty" jsonschema:"Without state: true grants the actions (on a play, lifts a deny); false revokes a grant (on a play, denies running it)."`
 }
@@ -57,11 +57,12 @@ type grantResult struct {
 
 func accessGrantListTool(s *Service) mcptool.Tool {
 	return mcptool.New("permission_overwrite_list", "List permission overwrites",
-		"Lists the rules on one doc, play, or project, each naming a person or a role (target person or role, with "+
+		"Lists the rules on one doc, play, project, or channel, each naming a person or a role (target person or role, with "+
 			"user_id, login and name, or role_id and role_name) and the actions it allows and denies. A project's rules "+
 			"say who is in it (projects:open) and what they hold there beyond their roles; a play's say whose plays:run "+
-			"is allowed or denied. Needs permissions:write on the doc, plays:write on the play, or projects:access on "+
-			"the project; a project you are not in is not found. Change them with permission_overwrite_update. With "+
+			"is allowed or denied; a channel's whose channels:read is denied, which hides it from them. Needs "+
+			"permissions:write on the doc, plays:write on the play, projects:access on the project, or the Owner role "+
+			"for a channel; a project you are not in is not found. Change them with permission_overwrite_update. With "+
 			"user_id it returns instead that person's effective answer for each action the rules may set, with "+
 			"allowed and a source naming the rule or role that decided it; your own needs only opening the entity, "+
 			"anyone else's its manage permission.",
@@ -109,11 +110,12 @@ func explain(ctx context.Context, s *Service, in accessGrantListIn) (any, error)
 func accessGrantUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("permission_overwrite_update", "Update permission overwrites",
 		"Sets permission actions to allow, fallback, or deny for every listed person and role on every listed doc, "+
-			"play, or project, in one operation: allow and deny hold here whatever the roles say, fallback leaves it "+
+			"play, project, or channel, in one operation: allow and deny hold here whatever the roles say, fallback leaves it "+
 			"to further out, and between one person's roles Allow wins while a rule naming the person beats them. "+
 			"Listing a role or a person on a project is projects:open allow; projects:open deny keeps a person out "+
-			"whatever their roles. Only the named actions change. Needs permissions:write on each doc, plays:write on "+
-			"each play, or projects:access on each project, and you can't allow, or lift a deny on, an action you "+
+			"whatever their roles. channels:read deny hides a channel from a role or a person. Only the named actions "+
+			"change. Needs permissions:write on each doc, plays:write on each play, projects:access on each project, or "+
+			"the Owner role for a channel, and you can't allow, or lift a deny on, an action you "+
 			"don't hold there; adding a deny is never limited. Changes nothing unless every check passes; "+
 			"permission_overwrite_list shows the result.",
 		mcptool.Hints{Idempotent: true, Local: true},

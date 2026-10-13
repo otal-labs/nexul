@@ -26,6 +26,10 @@ type fakeRepo struct {
 	reads      int
 	// docProjects is where each doc lives, for DocRuleTurns, which a real repo joins in SQL.
 	docProjects map[string]string
+	// grid is what Grid hands back; saved and finishedBy are what SaveGrid was given.
+	grid       *GridSource
+	saved      []*Overwrite
+	finishedBy string
 }
 
 // readCounts is how many overwrite and rule reads reached the fake, so a test can pin what a check costs.
@@ -240,6 +244,26 @@ func (f *fakeRepo) HasAllowAny(_ context.Context, resourceType, userID string, a
 		}
 	}
 	return false, nil
+}
+
+func (f *fakeRepo) Grid(context.Context, string) (*GridSource, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	return f.grid, nil
+}
+
+func (f *fakeRepo) SaveGrid(_ context.Context, _ string, rules []*Overwrite, finishedBy string, events ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.setErr != nil {
+		return f.setErr
+	}
+	f.saved, f.finishedBy = rules, finishedBy
+	f.events = append(f.events, events...)
+	return nil
 }
 
 // setOverwrite is a small test helper mirroring the old SetGrant call shape.

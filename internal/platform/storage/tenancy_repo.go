@@ -109,6 +109,7 @@ func toWorkspace(row sqlcgen.Workspace) *tenancy.Workspace {
 		Slug:                      row.Slug,
 		MentionChipTemplate:       row.MentionChipTemplate,
 		MentionChipTemplateEdited: row.MentionChipTemplate != "",
+		AccessSetupFinished:       row.AccessSetupFinished != 0,
 		CreatedAt:                 time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt:                 time.Unix(row.UpdatedAt, 0).UTC(),
 	}

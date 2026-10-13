@@ -5,13 +5,13 @@ INSERT INTO workspaces (id, name, slug, mention_chip_template, created_at, updat
 UPDATE workspaces SET name = ?, slug = ?, mention_chip_template = ?, updated_at = ? WHERE id = ?;
 
 -- name: GetWorkspace :one
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished FROM workspaces WHERE id = ?;
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at FROM workspaces WHERE id = ?;
 
 -- name: GetWorkspaceBySlug :one
-SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished FROM workspaces WHERE slug = ?;
+SELECT id, name, created_at, updated_at, mention_chip_template, slug, decisions_check_enabled, auto_play_daily_cap, access_setup_finished, access_setup_by, access_setup_at FROM workspaces WHERE slug = ?;
 
 -- name: ListWorkspacesForUser :many
-SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug, w.decisions_check_enabled, w.auto_play_daily_cap, w.access_setup_finished
+SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug, w.decisions_check_enabled, w.auto_play_daily_cap, w.access_setup_finished, w.access_setup_by, w.access_setup_at
 FROM workspaces w
 JOIN workspace_members m ON m.workspace_id = w.id
 WHERE m.user_id = ?

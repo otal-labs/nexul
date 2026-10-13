@@ -78,6 +78,7 @@ func TestIntegration_PermissionSuitesAnswerTheSameWithAMemo(t *testing.T) {
 		"project rules and cleanup":         TestIntegration_ProjectRules_GrantingAndCleanup,
 		"private channel":                   TestIntegration_PrivateChannel,
 		"channel rules":                     TestIntegration_ChannelRules,
+		"the access grid":                   TestIntegration_AccessGrid,
 		"switching private":                 TestIntegration_SwitchingPrivateReachesEveryOpenSidebar,
 		"removal from a private voice call": TestIntegration_RemovalFromPrivateVoiceChannelEndsTheirCall,
 		"live frames follow the read":       TestLiveAudience_FramesFollowTheEntitysRead,
@@ -429,6 +430,36 @@ func TestStatements_ChannelRulesCostTheSameAtAnyLength(t *testing.T) {
 	none := cost(12, false)
 	assert.Equal(t, none, cost(2, true), "a few channels, each with rules")
 	assert.Equal(t, none, cost(12, true), "many channels, each with rules")
+}
+
+// TestStatements_AccessGridCostsTheSameAtAnyLength: the Access page's read and its Finish, which takes every role off
+// every project and hides every public channel from a role, cost the same statements at 3 projects as at 30.
+func TestStatements_AccessGridCostsTheSameAtAnyLength(t *testing.T) {
+	cost := func(n int) map[string]int64 {
+		f, st, db := newCountedFixtureDB(t)
+		grow(t, f, n)
+		_, err := db.Exec(`UPDATE workspaces SET access_setup_finished = 0`)
+		require.NoError(t, err)
+		ctx := func() context.Context {
+			return access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: uOwner}), f.svc.accessSvc.NewMemo())
+		}
+		st.Reset()
+		grid, err := f.svc.accessSvc.Grid(ctx(), uOwner, wsDefault)
+		require.NoError(t, err)
+		read := st.Count()
+		save := access.GridSave{Finish: true}
+		for _, p := range grid.Projects {
+			save.Projects = append(save.Projects, access.GridProjectSave{ProjectID: p.ID})
+		}
+		for _, c := range grid.Channels {
+			save.Channels = append(save.Channels, access.GridChannelSave{ChannelID: c.ID, HiddenRoleIDs: []string{"role-reader"}})
+		}
+		require.Greater(t, len(save.Projects), n)
+		st.Reset()
+		require.NoError(t, f.svc.accessSvc.SaveGrid(ctx(), uOwner, wsDefault, save))
+		return map[string]int64{"read": read, "finish": st.Count()}
+	}
+	assert.Equal(t, cost(3), cost(30))
 }
 
 // TestStatements_RoleRulesCostTheSameAtAnyLength: rules for roles on every doc cost a doc list, a doc_list page and a

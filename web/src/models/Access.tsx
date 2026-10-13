@@ -12,10 +12,13 @@ export const INSTANCE_SECTION_PERMISSION = {
 
 export type InstanceSection = keyof typeof INSTANCE_SECTION_PERMISSION;
 
-// Configuration has no bit of its own: it opens when one of its workspace sections does.
-export type RouteArea = Area | "configuration";
+// Configuration has no bit of its own: it opens when one of its workspace sections does. Access opens for whoever
+// manages access on some project.
+export type RouteArea = Area | "configuration" | "access";
 
 // A route declares the area it belongs to as its handle; routes without one are open to every member.
 export interface RouteAccess {
-  area: RouteArea;
+  area?: RouteArea;
+  // A page that shows a project, which waits while the one-time access setup is open (ADR 0148).
+  needsProject?: boolean;
 }

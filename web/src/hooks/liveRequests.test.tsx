@@ -393,6 +393,19 @@ describe("requests a live frame sends", () => {
     expect((await requestsAfter("access.grant.changed", frame)).sort()).toEqual(["/api/auth/me", "/api/workspaces/ws-1/me"]);
   });
 
+  it("refetches the viewer's own permissions when an Owner saves the Access page, so their projects arrive without a reload", async () => {
+    const { requestsAfter } = await mountLive(
+      view(() => {
+        useFetchMe();
+        useFetchMyRole("ws-1");
+        useFetchWorkspaceRoles("ws-1");
+      }),
+      respond,
+    );
+    const frame = { resource_type: "workspace", resource_id: "ws-1", target: "role", user_id: "" };
+    expect((await requestsAfter("access.grant.changed", frame)).sort()).toEqual(["/api/auth/me", "/api/workspaces/ws-1/me"]);
+  });
+
   it("sends nothing when another computer's setup turn moves", async () => {
     const { requestsAfter } = await mountLive(view(() => useFetchComputerSetup("c-1")), respond);
     expect(await requestsAfter("computer.setup_turn_changed", { computer_id: "c-2", user_id: "u-me", state: "running" })).toEqual([]);
