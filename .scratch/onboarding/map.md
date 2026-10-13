@@ -66,6 +66,7 @@ Welcome wizard, and an admin seeing each person's progress on Team.
 <!-- one line per resolved ticket: [title](issues/NN-slug.md): gist -->
 
 - [How the permission rework lands on roles, invitations and computers](issues/01-how-the-permission-rework-lands-on-roles.md): roles keep their table and combine as a union; steps need a new field; Template roles are a new template kind copied in at workspace creation; projects are opt-in under ADR 0148; build after the `permission-switch` branch merges
+- [What counts as done for each step, and what skipping does](issues/02-what-counts-as-done-and-what-skip-does.md): done is read from existing data, except a per-person record of skips and of the phone's first connect, and a record of who enrolled each deploy runner; a skip lasts until the step is given again; the phone stays done once connected; `first_login_done` now means the first run happened
 
 ## Not yet specified
 
