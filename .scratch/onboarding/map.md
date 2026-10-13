@@ -17,6 +17,9 @@ Welcome wizard, and an admin seeing each person's progress on Team.
 
 ## Notes
 
+- The destination is reached: `spec.md` is written. Build tickets 08 to 15 carry the build on this
+  map, and start once the permission rework's `permission-switch` branch merges.
+
 - Skills every session consults: `grilling` and `domain-modeling` for decisions,
   and `CONTEXT.md` (Welcome wizard, Template role, Instance template). The
   owner chose auto design mode for the screen tickets: the agent scores, picks
@@ -71,16 +74,11 @@ Welcome wizard, and an admin seeing each person's progress on Team.
 - [The five Template roles: their permissions and their steps](issues/04-the-five-template-roles.md): Client, Junior Developer, Senior Developer, DevOps and Administrator with their grids and ticks; Administrator gets everything except the instance's own administration; the instance can add and delete its own template roles, and the shipped five reset but don't delete
 - [How the Welcome wizard, the account menu entry and its dot look](issues/05-the-welcome-wizard-screens.md): Rail frame (step list beside the step), each step's screen, the owner hand-over beat, the Welcome row and red dot in the account menu; the phone step shows its QR code itself; runner-up Row
 - [How an admin sees each person's progress on Team](issues/06-progress-on-team.md): a gap line under each person while a step is left or skipped, details in the person dialog, accepted invitations in the last 30 days; runner-up Progress column
+- [Write the spec](issues/07-write-the-spec.md): `spec.md` written and sliced into build tickets 08 to 15; the phone app shows no dot, the dot and Team update live through one topic, and agents read progress through `account_get` and `account_list`
 
 ## Not yet specified
 
-- Should the phone app show the same dot?
-- Live updates. The dot should clear when a computer pairs or a runner connects
-  without a refresh, which needs a topic, its audience rule and a follower.
-- Agents. Should the progress Team shows also be readable over MCP (`account_list`
-  or `account_get`), so an agent answering "why can't Bob run plays" sees it?
-- The guide page under `website/src/content/docs/docs/guide/`, and the roadmap
-  entry, once the spec exists.
+Nothing. The spec answered the last open questions.
 
 ## Out of scope
 

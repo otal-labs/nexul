@@ -269,6 +269,15 @@ muted skip, both end on a Done screen that says what was made, and a project
 with a repository waiting to deploy shows the way back to deploying it. The
 map is in `.scratch/project-paths/`.
 
+Planned: **a welcome wizard for every role**. A newcomer gets a short wizard
+with just the steps their roles ask for: connect GitHub, add their computer,
+see their projects, add a deploy server, get the phone app. Every step can be
+skipped, and anything left waits at the top of the account menu with a red
+dot. Workspaces start with ready-made roles (Client, Junior Developer, Senior
+Developer, DevOps, Administrator) that the instance can edit and add to, the
+owner can finish setting up without a computer, and Team shows how far each
+person got. Spec in `.scratch/onboarding/`, built after the permission rework.
+
 ---
 
 ## Next — ecosystem & reach
