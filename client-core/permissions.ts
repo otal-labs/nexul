@@ -20,7 +20,7 @@ export const AREA_PERMISSION = {
   autoPlays: "autoplays:read",
   editAutoPlays: "autoplays:write",
   deleteAutoPlays: "autoplays:delete",
-  newProject: "projects:write",
+  newProject: "projects:create",
   editProjects: "projects:write",
   newDoc: "docs:write",
   editNotes: "tickets:write",
@@ -36,13 +36,14 @@ export interface HeldRole {
   is_owner: boolean;
 }
 
-// Mirrors internal/tenancy/handler.go's meResponse; a Restricted member's permissions carry no project area, so
-// projects lists what they hold in each project they may open.
+// Mirrors internal/tenancy/handler.go's meResponse. Projects are opt-in (ADR 0148): a non-Owner's permissions carry no
+// project area, and projects lists what they hold in each project they are in.
 export interface MyWorkspaceInfo {
   role_name: string;
-  // Every role held, in the order given; role_name names the first.
+  // Every role held, in the order given; role_name names them joined.
   roles?: HeldRole[];
   permissions: string[];
+  // Still sent for builds from before projects were opt-in; true for every non-Owner, and read by nothing here.
   restricted?: boolean;
   projects?: { project_id: string; actions: string[] }[];
 }
@@ -52,16 +53,15 @@ export const hasPermission = (permissions: readonly string[] | undefined, value:
   (permissions ?? []).includes(value);
 
 // What the viewer holds somewhere in the workspace, for what stands for every project (a nav entry, a deep link's gate).
-export const workspaceWidePermissions = (info: MyWorkspaceInfo | undefined): string[] => {
-  if (!info?.restricted) return info?.permissions ?? [];
-  return [...info.permissions, ...(info.projects ?? []).flatMap((project) => project.actions)];
-};
+export const workspaceWidePermissions = (info: MyWorkspaceInfo | undefined): string[] => [
+  ...(info?.permissions ?? []),
+  ...(info?.projects ?? []).flatMap((project) => project.actions),
+];
 
-// What the viewer holds inside one project: the workspace areas plus, for a Restricted member, that project's access.
-// A project they hold nothing on (none in view yet, or one just taken away) answers as any project would.
+// What the viewer holds inside one project: the workspace areas plus what they hold in that project. A project not
+// listed (none in view yet, or one just taken away) answers as any project would.
 export const projectPermissions = (info: MyWorkspaceInfo | undefined, projectId: string | undefined): string[] => {
-  if (!info?.restricted) return info?.permissions ?? [];
-  const project = info.projects?.find((candidate) => candidate.project_id === projectId);
+  const project = info?.projects?.find((candidate) => candidate.project_id === projectId);
   if (!project) return workspaceWidePermissions(info);
-  return [...info.permissions, ...project.actions];
+  return [...(info?.permissions ?? []), ...project.actions];
 };

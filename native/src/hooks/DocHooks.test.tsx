@@ -26,7 +26,6 @@ const docListItem = {
   title: "Spec",
   version: 3,
   archived: false,
-  can_open: true,
   updated_at: "2026-08-02T00:00:00Z",
 };
 

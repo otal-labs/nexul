@@ -134,12 +134,11 @@ describe("BoardScreen", () => {
   test.each([
     { picked: "p-1", shows: "Fix login" },
     { picked: "p-2", shows: "This page doesn't exist" },
-  ])("a Restricted member's board on $picked follows that project's own access", async ({ picked, shows }) => {
+  ])("a member's board on $picked follows what they hold in that project", async ({ picked, shows }) => {
     projects = [project, other];
     myRole = {
       role_name: "Member",
       permissions: [],
-      restricted: true,
       projects: [
         { project_id: "p-1", actions: ["tickets:read"] },
         { project_id: "p-2", actions: ["docs:read"] },

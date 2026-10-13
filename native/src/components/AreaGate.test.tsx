@@ -14,7 +14,7 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 jest.mock("@/api/client", () => ({ api: { get: jest.fn() } }));
 
 let permissions: string[] = [];
-let restriction: Pick<MyWorkspaceInfo, "restricted" | "projects"> = {};
+let projects: MyWorkspaceInfo["projects"];
 
 const renderApp = (initialUrl: string) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -42,11 +42,11 @@ const renderApp = (initialUrl: string) => {
 };
 
 beforeEach(() => {
-  restriction = {};
+  projects = undefined;
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   jest.mocked(api.get).mockImplementation(async (path: string) => {
     if (path === "/api/workspaces") return [{ id: "ws-1", name: "Acme" }];
-    if (path === "/api/workspaces/ws-1/me") return { role_name: "Member", permissions, ...restriction };
+    if (path === "/api/workspaces/ws-1/me") return { role_name: "Member", permissions, ...(projects && { projects }) };
     if (path.startsWith("/api/notifications/unread-count")) return { count: 0 };
     return [];
   });
@@ -86,13 +86,22 @@ describe("tabs by permission", () => {
     expect(screen.queryByText("Runners")).toBeNull();
   });
 
-  test("a Restricted member's Project access opens the tab its project levels allow", async () => {
-    permissions = [];
-    restriction = { restricted: true, projects: [{ project_id: "p-1", actions: ["projects:read", "tickets:read"] }] };
+  test("what a member holds in a project they are in opens its tab", async () => {
+    permissions = ["chat:write"];
+    projects = [{ project_id: "p-1", actions: ["projects:read", "tickets:read"] }];
     await renderApp("/board");
 
     expect(await screen.findByText("Board list")).toBeTruthy();
     expect(tabs()).toEqual(["Inbox", "Chat", "Board", "More"]);
+  });
+
+  test("a member no project lists keeps Inbox, Chat and More", async () => {
+    permissions = ["chat:write"];
+    projects = [];
+    await renderApp("/chat");
+
+    expect(await screen.findByText("Chat list")).toBeTruthy();
+    expect(tabs()).toEqual(["Inbox", "Chat", "More"]);
   });
 
   test("a deep link into a tab the viewer can't read is not found", async () => {

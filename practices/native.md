@@ -74,9 +74,11 @@ as written. In particular:
   `ScreenHeader` in its content, on the plain canvas. Board, Deploys and More's Runners follow the viewer's read
   permission through `@nexul/client-core/permissions`, the web's own table; a
   deep link into one the viewer can't read renders the plain not-found state.
-  For a Restricted member (ADR 0097) a tab opens on what they hold in any
-  project and a project's own screen on that project's levels
-  (`useAreaAccess(projectId)`). A screen whose project is taken away while it
+  Projects are opt-in (ADR 0148): `/me` holds a non-Owner's workspace actions
+  and, per project they are in, what they hold there, so a tab opens on what
+  they hold in any project and a project's own screen on that project's
+  (`useAreaAccess(projectId)`); a member no project lists sees no project and
+  keeps Inbox, Chat and More. Lists carry only what the viewer can open. A screen whose project is taken away while it
   is open (the Board's pick, a ticket, a doc) shows `ProjectRevokedState`
   with a way to the Inbox; a project it never showed stays plain not found. Detail screens push onto the tab's stack and use the platform
   back gesture; a push into another tab passes `{ withAnchor: true }` so that
@@ -164,7 +166,8 @@ as written. In particular:
   error, and a value import fails lint, so no SDK code reaches the app.
 - The live dispatcher in `useLiveEvents` is derived from the definitions: a
   frame reaches exactly the queries that list its topic, and nothing else does
-  except the viewer's own access change, which refetches every open read.
+  except the viewer's own access change, which refetches every open read: a
+  frame naming them, or a grant frame naming a role their cached `/me` holds.
   Following a new topic is one line in the query's `refreshes`. A topic the
   server publishes twice for one change (`ticket.assignee_changed` beside
   `ticket.developer_changed`) is followed once.
