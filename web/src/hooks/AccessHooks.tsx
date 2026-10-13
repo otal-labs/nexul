@@ -8,8 +8,7 @@ import { INSTANCE_SECTION_PERMISSION, type InstanceSection, type RouteArea } fro
 import type { WorkspaceAccess } from "@/models/Workspace";
 
 // Undefined until permissions first arrive; isFetched, since a failed read refetches as pending and must not blink.
-// A project area answers for projectId, else the project in view, which is what the server checks for a Restricted
-// member; an unrestricted member's answer is the same on every project.
+// A project area answers for projectId, else the project in view, since a member holds it only in projects they're in.
 export const useAreaAccess = (projectId?: string): ((area: Area) => boolean) | undefined => {
   const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const selectedProjectId = useWorkspaceStore((s) => s.selectedProjectId);

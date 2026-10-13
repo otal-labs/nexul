@@ -20,6 +20,8 @@ type Repo interface {
 type MemberGate interface {
 	// RequireMember returns apperrs.ErrNotFound unless userID is a member of workspaceID.
 	RequireMember(ctx context.Context, workspaceID, userID string) error
+	// HolderEvents returns a member update for each member of workspaceID holding roleID, written with the role's change.
+	HolderEvents(ctx context.Context, workspaceID, roleID, actorID string) ([]eventbus.OutboxEvent, error)
 }
 
 // PermissionGate reads what a user holds in a workspace without roles importing access (ADR 0017), so a role never

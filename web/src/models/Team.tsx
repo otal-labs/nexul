@@ -11,7 +11,7 @@ export type AccountStatus = (typeof AccountStatus)[keyof typeof AccountStatus];
 
 export const getTeamKey = "getTeam";
 
-// A membership's Every project row: From role, or None for a Restricted member (ADR 0097).
+// A removed field (ADR 0148): the server sends it empty and refuses a value.
 export const EveryProject = {
   Role: "role",
   None: "none",
@@ -37,7 +37,7 @@ export interface TeamMembership {
   allow: string[];
   deny: string[];
   every_project: EveryProject;
-  // Only projects the viewer may open themselves, kept while Every project is From role.
+  // A removed field (ADR 0148), sent empty.
   projects: ProjectGrant[];
 }
 

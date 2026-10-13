@@ -50,5 +50,5 @@ App's user authorization.
 
 Decided 2026-10-10.
 
-Amended by ADR 0148 (proposed): the wizard's repository list and scan, the installations card and its frames, and
+Amended by ADR 0148: the wizard's repository list and scan, the installations card and its frames, and
 detaching an account take `projects:create`, since a project-area action asked of a workspace is held by nobody.

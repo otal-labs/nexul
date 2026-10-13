@@ -39,7 +39,7 @@ type InvitationEvent struct {
 	Reason       string `json:"reason,omitempty"`
 }
 
-// MemberEvent is the payload of a membership change made outside an invitation; updated covers a role or overrides change.
+// MemberEvent is the payload of a membership change made outside an invitation; updated covers the roles a member holds.
 type MemberEvent struct {
 	UserID      string   `json:"user_id"`
 	WorkspaceID string   `json:"workspace_id"`

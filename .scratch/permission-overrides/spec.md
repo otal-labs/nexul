@@ -606,6 +606,13 @@ anyone's access across the upgrade.
     any project they're in, and a holder of it also opens it on Settings, where no project is named. A migration grants it to every role holding `memories:write`, who could edit it before
     (Q32).
 
+**2026-10-13** (from the upgrade test)
+
+21. The upgrade lifts denies as well as allows: a play exclusion, a doc deny or a Team deny is gone after it, so a
+    non-Owner can briefly hold an action they were denied before. This is the third accepted widening, beside a former
+    Restricted member reading public channels and an instance bit their roles carry. It follows from starting over;
+    the release notes say permissions were rebuilt, and Owners add back any Deny they need.
+
 **Technical calls the owner delegated (2026-10-11)**
 
 - In this project is its own permission, separate from `projects:read`.

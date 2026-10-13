@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/memories"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/githubapp"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
@@ -322,6 +323,10 @@ type roleMemberGate struct {
 func (g roleMemberGate) RequireMember(ctx context.Context, workspaceID, userID string) error {
 	_, err := g.svc.Member(ctx, workspaceID, userID)
 	return err
+}
+
+func (g roleMemberGate) HolderEvents(ctx context.Context, workspaceID, roleID, actorID string) ([]eventbus.OutboxEvent, error) {
+	return g.svc.RoleHolderEvents(ctx, workspaceID, roleID, actorID)
 }
 
 // workspaceDefaultsGate seeds a workspace's default plays and automations for tenancy's DefaultsGate seam (ADR 0017).

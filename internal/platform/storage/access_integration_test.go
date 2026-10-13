@@ -13,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/docs"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
@@ -224,6 +225,10 @@ type testMemberGate struct{ svc *tenancy.Service }
 func (g testMemberGate) RequireMember(ctx context.Context, workspaceID, userID string) error {
 	_, err := g.svc.Member(ctx, workspaceID, userID)
 	return err
+}
+
+func (g testMemberGate) HolderEvents(ctx context.Context, workspaceID, roleID, actorID string) ([]eventbus.OutboxEvent, error) {
+	return g.svc.RoleHolderEvents(ctx, workspaceID, roleID, actorID)
 }
 
 // testRoleNameGate mirrors main.go's roleNameGate adapter, needed to construct a real tenancy.Service for this test.

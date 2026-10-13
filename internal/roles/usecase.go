@@ -171,7 +171,7 @@ func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, 
 }
 
 // Delete removes a custom role, also from everyone holding it, who may be left with none (ADR 0148); the Owner role
-// can't be deleted. Its holders are told as for an edit, since what they hold changed.
+// can't be deleted. Its holders are told as for an edit, and each one's membership as for a role taken away.
 func (s *Service) Delete(ctx context.Context, workspaceID, roleID, actorUserID string) error {
 	r, err := s.getInWorkspace(ctx, workspaceID, roleID)
 	if err != nil {
@@ -183,8 +183,12 @@ func (s *Service) Delete(ctx context.Context, workspaceID, roleID, actorUserID s
 	if err := s.requireManageRoles(ctx, workspaceID, actorUserID); err != nil {
 		return err
 	}
+	holders, err := s.members.HolderEvents(ctx, workspaceID, roleID, actorUserID)
+	if err != nil {
+		return fmt.Errorf("list holders of role %s: %w", roleID, err)
+	}
 	event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: RoleEvent{RoleID: r.ID, WorkspaceID: r.WorkspaceID, ActorID: actorUserID}}
-	if err := s.repo.Delete(ctx, roleID, event); err != nil {
+	if err := s.repo.Delete(ctx, roleID, append(holders, event)...); err != nil {
 		return fmt.Errorf("delete role %s: %w", roleID, err)
 	}
 	return nil

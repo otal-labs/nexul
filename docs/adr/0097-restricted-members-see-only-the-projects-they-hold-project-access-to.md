@@ -1,6 +1,6 @@
 # Restricted members see only the projects they hold Project access to
 
-Superseded by ADR 0148 (proposed): projects are opt-in for every member, so Every project, the Restricted member and
+Superseded by ADR 0148: projects are opt-in for every member, so Every project, the Restricted member and
 Project access go, and the upgrade wipes them; who is in a project is a rule on it for a role or a person.
 
 ADR 0087 made the project list something every member reads, so the only way to keep a client to one project was a

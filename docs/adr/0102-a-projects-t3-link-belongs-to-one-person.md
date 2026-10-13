@@ -1,6 +1,6 @@
 # A project's T3 link belongs to one person
 
-Amended by ADR 0148 (proposed): a project anyone is not in reads as not found, not only for a Restricted member, so
+Amended by ADR 0148: a project anyone is not in reads as not found, not only for a Restricted member, so
 their link to it is not listed or offered.
 
 Amended by ADR 0145: a play a person starts in a project they have not linked asks where instead of using their

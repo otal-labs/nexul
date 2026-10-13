@@ -6,7 +6,7 @@ import { useCSSVariable } from "uniwind";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 
-// What a screen shows once its project was taken away while it was open (ADR 0097).
+// What a screen shows once its project was taken away while it was open (ADR 0148).
 export const ProjectRevokedState = () => {
   const router = useRouter();
   const [mutedForeground] = useCSSVariable(["--color-muted-foreground"]);

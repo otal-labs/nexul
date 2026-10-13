@@ -35,7 +35,7 @@ Seeing everyone takes `accounts:read`. Changing someone in a workspace takes `me
 
 ## Roles
 
-Every workspace has an **Owner** role. It can't be renamed, deleted, or limited: the Owner holds every permission and bypasses overrides. Every other role is yours to define in **Configuration → Roles**.
+Every workspace has an **Owner** role. It can't be renamed, deleted, or limited: the Owner holds every permission, is in every project, and no rule can deny them. Every other role is yours to define in **Configuration → Roles**.
 
 **New role** and a role's **Edit** open the role editor, a dialog with the name at the top and Save at the bottom. A new role can **Start from** a copy of another role; the copy is yours to change and the other role stays as it is. Nothing is saved until **Create role** or **Save**, and closing with changes asks before it throws them away.
 
@@ -47,7 +47,7 @@ A role sets one level per area: **None**, **Read**, **Write**, or **Delete**, ea
 
 Each role's row counts its areas per level, names the first ones it has no access to, and shows who holds it; its chevron opens every area. Its **…** menu edits, duplicates (the copy is named `Admin (copy)`), clones to another workspace, or deletes it. Deleting a role someone holds asks first, saying how many people lose it, then takes it from them, along with the rules that name it and the pending invites that give it; someone left with no role stays a member and sees no project.
 
-Nobody can hand out a permission they don't hold: not in a role, an override, or an invitation. Every permission is written `<area>:<action>`, such as `docs:write`, and the same names gate a person, a personal access token, an automation, and an agent.
+Nobody can hand out a permission they don't hold: not in a role, a rule's Allow, or an invitation, and can't lift a Deny on one. Every permission is written `<area>:<action>`, such as `docs:write`, and the same names gate a person, a personal access token, an automation, and an agent.
 
 ### Instance permissions
 

@@ -31,6 +31,7 @@ type fakeRepo struct {
 	createErr      error
 	getErr         error
 	listErr        error
+	listMembersErr error
 	// projectMembersErr fails ProjectMemberIDs.
 	projectMembersErr error
 }
@@ -142,6 +143,9 @@ func (f *fakeRepo) RoleIDFor(_ context.Context, workspaceID, userID string) (str
 func (f *fakeRepo) ListByWorkspace(_ context.Context, workspaceID string) ([]*Member, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.listMembersErr != nil {
+		return nil, f.listMembersErr
+	}
 	var out []*Member
 	for _, userID := range f.members[workspaceID] {
 		out = append(out, f.member(workspaceID, userID))
@@ -1142,6 +1146,23 @@ func TestSetMemberRoles(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, m.RoleIDs)
 	})
+}
+
+func TestRoleHolderEvents_AFailedRead_ReturnsTheError(t *testing.T) {
+	for name, fail := range map[string]func(f *inviteTestFixture){
+		"members": func(f *inviteTestFixture) { f.repo.listMembersErr = errors.New("disk gone") },
+		"projects": func(f *inviteTestFixture) {
+			f.svc.SetProjects(fakeProjects{listErr: errors.New("disk gone")})
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newInviteFixture()
+			require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
+			fail(f)
+			_, err := f.svc.RoleHolderEvents(context.Background(), "ws-1", "role-editor", "actor")
+			require.Error(t, err)
+		})
+	}
 }
 
 func TestUpdateMemberRoles(t *testing.T) {

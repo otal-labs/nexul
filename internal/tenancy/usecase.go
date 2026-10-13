@@ -747,6 +747,33 @@ func (s *Service) memberUpdated(ctx context.Context, actorID, workspaceID, userI
 	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicWorkspaceMemberUpdated, Payload: e}, nil
 }
 
+// RoleHolderEvents returns a workspace.member.updated for each member of workspaceID holding roleID, for a change to
+// the role that takes it from them.
+func (s *Service) RoleHolderEvents(ctx context.Context, workspaceID, roleID, actorID string) ([]eventbus.OutboxEvent, error) {
+	members, err := s.members.ListByWorkspace(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("list members of workspace %s: %w", workspaceID, err)
+	}
+	var events []eventbus.OutboxEvent
+	for _, m := range members {
+		if !slices.Contains(m.Held(), roleID) {
+			continue
+		}
+		if len(events) > 0 {
+			payload := events[0].Payload.(MemberEvent)
+			payload.UserID = m.UserID
+			events = append(events, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicWorkspaceMemberUpdated, Payload: payload})
+			continue
+		}
+		e, err := s.memberUpdated(ctx, actorID, workspaceID, m.UserID)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, e)
+	}
+	return events, nil
+}
+
 // ResolvePendingInvites binds pending invites to userID so the caller's next request sees the membership.
 func (s *Service) ResolvePendingInvites(ctx context.Context, login, userID string) error {
 	login = strings.ToLower(strings.TrimSpace(login))

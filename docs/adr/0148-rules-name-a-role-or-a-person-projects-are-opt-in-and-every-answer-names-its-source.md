@@ -1,6 +1,6 @@
 # Rules name a role or a person, projects are opt-in, and every answer names its source
 
-Status: proposed, with the permission overrides effort (`.scratch/permission-overrides/`).
+Status: accepted.
 
 Supersedes ADR 0097 (Every project and the Restricted member) and ADR 0042 in part (its per-person rows and the
 workspace-wide override; the one table and the Owner bypass stand). Supersedes ADR 0028 in part (the doc list's inert
@@ -74,4 +74,4 @@ privacy ADR 0146 promises; and role rules on a computer, which would share it wi
 
 Proposed 2026-10-10 with an Everyone target and Restricted members kept. Rewritten 2026-10-11 for the owner's
 decisions on the permission rework map: roles only, several roles or none, opt-in projects, See on each play, and a
-wipe with a one-time setup.
+wipe with a one-time setup. Accepted 2026-10-13, when the switch was tested by upgrading a copy.
