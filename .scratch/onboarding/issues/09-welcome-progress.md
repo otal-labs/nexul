@@ -1,7 +1,7 @@
 # 09: Each person's welcome progress, skip and live updates
 
 Type: task
-Status: claimed
+Status: resolved
 Blocked by: 08
 
 Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role), `practices/go.md` (section 17 for the list read), `practices/architecture.md` (sections 2 to 6),
@@ -32,3 +32,14 @@ Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role), `practice
 - [ ] Integration test on real SQLite: pairing and confirming a computer publishes the topic for that person.
 - [ ] A guard test counts the statements `account_list` spends on progress, and it stays the same for 1 or 50
       people.
+
+## Answer
+
+Built in #632:
+- `internal/welcome/` with its read seams
+- the `/api/me/welcome` routes
+- giving a step through role ticks and given roles
+- `welcome.progress_changed` and three new events
+- `welcome` on `account_get` and `account_list`
+
+The web follower comes with ticket 10.

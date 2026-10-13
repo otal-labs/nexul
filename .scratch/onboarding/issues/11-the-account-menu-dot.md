@@ -1,7 +1,7 @@
 # 11: Welcome in the account menu, and its red dot
 
 Type: task
-Status: open
+Status: claimed
 Blocked by: 09
 
 Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role), `practices/react-guide.md`, `practices/design-language.md`, ticket 05's answer (Account menu).
