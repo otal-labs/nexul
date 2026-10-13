@@ -235,6 +235,11 @@ func recipientFrame(ctx context.Context, _ liveAudience, raw json.RawMessage) bo
 	return decode(raw, &p) && slices.Contains(p.UserIDs, actorID(ctx))
 }
 
+// manageAction is what writing the rules on each entity takes there.
+var manageAction = map[string]permissions.Action{
+	"doc": permissions.PermissionsWrite, "folder": permissions.PermissionsWrite, "play": permissions.PlaysWrite, "stack": permissions.StacksWrite,
+}
+
 // grantFrame reaches the person whose rule changed, or the holders of the role it names, and whoever manages the rules
 // it changed: a doc's or a play's, or for Project access the project's workspace.
 func grantFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
@@ -255,11 +260,8 @@ func grantFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	switch p.ResourceType {
 	case "project":
 		return a.access.RequireProject(ctx, p.ResourceID, permissions.ProjectsAccess) == nil
-	case "doc", "folder":
-		manages, _, err := a.access.Decide(ctx, actorID(ctx), p.ResourceType, p.ResourceID, permissions.PermissionsWrite)
-		return err == nil && manages
-	case "play":
-		manages, _, err := a.access.Decide(ctx, actorID(ctx), p.ResourceType, p.ResourceID, permissions.PlaysWrite)
+	case "doc", "folder", "play", "stack":
+		manages, _, err := a.access.Decide(ctx, actorID(ctx), p.ResourceType, p.ResourceID, manageAction[p.ResourceType])
 		return err == nil && manages
 	case "channel":
 		return a.access.ManagesRules(ctx, actorID(ctx), p.ResourceType, p.ResourceID)
@@ -527,10 +529,13 @@ func autoPlayFrame(ctx context.Context, a liveAudience, raw json.RawMessage) boo
 	return playID == "" || a.access.HasPermission(ctx, actorID(ctx), workspaceID, permissions.PlaysRead, "play", playID)
 }
 
+// stackFrame reaches who reads the stack: through its rules, a branch deployment's base stack's.
 func stackFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	var p struct {
 		Stack struct {
-			ProjectID string `json:"project_id"`
+			ID          string `json:"id"`
+			ProjectID   string `json:"project_id"`
+			DerivedFrom string `json:"derived_from"`
 		} `json:"stack"`
 	}
 	if !decode(raw, &p) {
@@ -539,7 +544,11 @@ func stackFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	if p.Stack.ProjectID == "" {
 		return a.access.RequireAnywhere(ctx, permissions.StacksRead) == nil
 	}
-	return a.access.RequireProject(ctx, p.Stack.ProjectID, permissions.StacksRead) == nil
+	ruled := p.Stack.ID
+	if p.Stack.DerivedFrom != "" {
+		ruled = p.Stack.DerivedFrom
+	}
+	return a.access.RequireStack(ctx, p.Stack.ProjectID, ruled, permissions.StacksRead) == nil
 }
 
 func deployFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {

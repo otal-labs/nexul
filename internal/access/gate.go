@@ -57,6 +57,82 @@ func (s *Service) RequireProject(ctx context.Context, projectID string, action p
 	return s.require(ctx, workspaceID, projectID, action)
 }
 
+// RequireStack is RequireProject on a stack of projectID, through the rules on stackID, a branch deployment's base
+// (ADR 0148). A stack whose stacks:read a rule denies, or one the caller can't read refusing them, is ErrNotFound, so
+// the answer never confirms it exists; a refusal on a stack they read names its source.
+func (s *Service) RequireStack(ctx context.Context, projectID, stackID string, action permissions.Action) error {
+	userID, checked := caller(ctx)
+	if !checked {
+		return s.RequireProject(ctx, projectID, action)
+	}
+	workspaceID, err := s.projectWorkspace(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	ws := s.layers(ctx, userID, workspaceID, projectID)
+	if !ws.member || ws.hidden() {
+		return fmt.Errorf("%w: stack %s", apperrs.ErrNotFound, stackID)
+	}
+	rules := func() []*Rules { return []*Rules{s.rules(ctx, resourceTypeStack, stackID, userID)} }
+	reads, readSource := decide(ws, permissions.StacksRead, rules)
+	if !reads && readSource.Kind == SourceRule {
+		return fmt.Errorf("%w: stack %s", apperrs.ErrNotFound, stackID)
+	}
+	held, src := decide(ws, action, rules)
+	if held {
+		return nil
+	}
+	if !reads {
+		return fmt.Errorf("%w: stack %s", apperrs.ErrNotFound, stackID)
+	}
+	return s.refusal(ctx, action, src)
+}
+
+// CallerStacks is what a stack or deploy list in workspaceID, or every workspace when empty, filters the caller on ctx
+// by in SQL for action: the projects RequireProject lets them act in, and the stacks whose rules turn their project's
+// answer as RequireStack turns it. Those come from one read of only the rules naming the caller or their roles on
+// stacks of projects they are in, never an Owner's, so the list costs the same at any length and its clause names a
+// stack only when a rule turns it (ADR 0140, ADR 0148). all is CallerProjects'.
+func (s *Service) CallerStacks(ctx context.Context, workspaceID string, action permissions.Action) (permissions.StackReach, bool, error) {
+	userID, checked := caller(ctx)
+	if !checked {
+		projectIDs, all, err := s.callerProjectsIn(ctx, workspaceID, action)
+		return permissions.StackReach{ProjectIDs: projectIDs, Allowed: []string{}, Denied: []string{}}, all, err
+	}
+	ctx = s.memoized(ctx)
+	workspaceIDs := []string{workspaceID}
+	if workspaceID == "" {
+		var err error
+		if workspaceIDs, err = s.workspacesOf(ctx, userID); err != nil {
+			return permissions.StackReach{}, false, err
+		}
+	}
+	reach := permissions.StackReach{ProjectIDs: []string{}, Allowed: []string{}, Denied: []string{}}
+	for _, id := range workspaceIDs {
+		in, err := s.ProjectsWith(ctx, userID, id, action)
+		if err != nil {
+			return permissions.StackReach{}, false, err
+		}
+		reach.ProjectIDs = append(reach.ProjectIDs, in...)
+	}
+	ruled, err := s.ruledProjects(ctx, userID, workspaceIDs)
+	if err != nil || len(ruled) == 0 {
+		return reach, false, err
+	}
+	if reach.Allowed, reach.Denied, err = s.repo.StackRuleTurns(ctx, userID, action, ruled, reach.ProjectIDs); err != nil {
+		return permissions.StackReach{}, false, fmt.Errorf("stack rules of %s: %w", userID, err)
+	}
+	return reach, false, nil
+}
+
+// callerProjectsIn is CallerProjectsIn, or CallerProjects with no workspace named.
+func (s *Service) callerProjectsIn(ctx context.Context, workspaceID string, action permissions.Action) ([]string, bool, error) {
+	if workspaceID == "" {
+		return s.CallerProjects(ctx, action)
+	}
+	return s.CallerProjectsIn(ctx, workspaceID, action)
+}
+
 // RequireAnywhere checks an instance-level action (runners, topology, a stack outside every project) on the instance
 // area it belongs to: the caller must hold it in at least one workspace they belong to, or by that area's rules.
 func (s *Service) RequireAnywhere(ctx context.Context, action permissions.Action) error {

@@ -44,6 +44,11 @@ WHERE po.resource_type = sqlc.arg(resource_type)
   AND (po.user_id = sqlc.arg(user_id) OR po.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = sqlc.arg(user_id)))
   AND po.resource_id IN (sqlc.slice('resource_ids'));
 
+-- name: ListOverwriteRulesInResource :many
+SELECT po.* FROM permission_overwrites po
+WHERE po.resource_type = sqlc.arg(resource_type) AND po.resource_id = sqlc.arg(resource_id)
+  AND (po.user_id = sqlc.arg(user_id) OR po.role_id IN (SELECT mr.role_id FROM member_roles mr WHERE mr.user_id = sqlc.arg(user_id)));
+
 -- name: ListOverwriteRulesOfType :many
 SELECT po.* FROM permission_overwrites po WHERE po.user_id = sqlc.arg(user_id) AND po.resource_type = sqlc.arg(resource_type)
 UNION ALL
@@ -119,6 +124,33 @@ SELECT 'doc' AS kind, ds.resource_id, ds.state FROM doc_states ds JOIN docs d ON
 LEFT JOIN folder_states fs ON fs.resource_id = d.folder_id
 WHERE ds.state != COALESCE(fs.state, d.project_id IN (SELECT value FROM json_each(sqlc.arg(readable))))
 ORDER BY kind, resource_id;
+
+-- name: ListStackRuleTurns :many
+SELECT r.stack_id, r.held FROM (
+SELECT u.resource_id AS stack_id, st.project_id IN (SELECT value FROM json_each(sqlc.arg(readable))) AS in_project,
+  CASE WHEN COALESCE(MAX(CASE WHEN u.by_role = 0 THEN u.read_state END), MAX(CASE WHEN u.by_role = 1 THEN u.read_state END)) = 0 THEN 0
+    ELSE COALESCE(MAX(CASE WHEN u.by_role = 0 THEN u.state END), MAX(CASE WHEN u.by_role = 1 THEN u.state END),
+      st.project_id IN (SELECT value FROM json_each(sqlc.arg(readable)))) END AS held
+FROM (
+  SELECT po.resource_id, 0 AS by_role,
+    CASE WHEN instr(po.deny, sqlc.arg(quoted_action)) > 0 THEN 0 WHEN instr(po.allow, sqlc.arg(quoted_action)) > 0 THEN 1 END AS state,
+    CASE WHEN instr(po.deny, '"stacks:read"') > 0 THEN 0 WHEN instr(po.allow, '"stacks:read"') > 0 THEN 1 END AS read_state
+  FROM permission_overwrites po
+  WHERE po.user_id = sqlc.arg(user_id) AND po.resource_type = 'stack' AND po.target = 'person'
+    AND (instr(po.allow || po.deny, sqlc.arg(quoted_action)) > 0 OR instr(po.allow || po.deny, '"stacks:read"') > 0)
+  UNION ALL
+  SELECT pr.resource_id, 1 AS by_role,
+    CASE WHEN instr(pr.deny, sqlc.arg(quoted_action)) > 0 THEN 0 WHEN instr(pr.allow, sqlc.arg(quoted_action)) > 0 THEN 1 END AS state,
+    CASE WHEN instr(pr.deny, '"stacks:read"') > 0 THEN 0 WHEN instr(pr.allow, '"stacks:read"') > 0 THEN 1 END AS read_state
+  FROM member_roles mr CROSS JOIN permission_overwrites pr CROSS JOIN stacks rs CROSS JOIN projects rp
+  WHERE mr.user_id = sqlc.arg(user_id) AND pr.role_id = mr.role_id AND pr.resource_type = 'stack'
+    AND (instr(pr.allow || pr.deny, sqlc.arg(quoted_action)) > 0 OR instr(pr.allow || pr.deny, '"stacks:read"') > 0)
+    AND rs.id = pr.resource_id
+    AND rp.id = rs.project_id AND rp.workspace_id = mr.workspace_id
+) u JOIN stacks st ON st.id = u.resource_id
+WHERE st.project_id IN (SELECT value FROM json_each(sqlc.arg(ruled)))
+GROUP BY u.resource_id
+) r WHERE r.held != r.in_project;
 
 -- name: GetAccessSetup :one
 SELECT w.access_setup_finished, w.access_setup_by, w.access_setup_at, COALESCE(u.login, '') AS finished_by_login

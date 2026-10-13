@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -318,8 +319,25 @@ func (f *fakeStackRepo) GetByName(_ context.Context, name string) (*Stack, error
 	return nil, apperrs.ErrNotFound
 }
 
-func (f *fakeStackRepo) ListByWorkspace(context.Context, string) ([]*Stack, error) {
-	return nil, errors.New("fakeStackRepo has no projects; workspace listing is tested over real storage")
+// ListReached keeps the base stacks scope reaches; workspaces are tested over real storage.
+func (f *fakeStackRepo) ListReached(ctx context.Context, projectID, workspaceID string, scope DeployScope) ([]*Stack, error) {
+	if workspaceID != "" {
+		return nil, errors.New("fakeStackRepo has no projects; workspace listing is tested over real storage")
+	}
+	all, err := f.ListByProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	out := []*Stack{}
+	for _, st := range all {
+		inProject := slices.Contains(scope.ProjectIDs, st.ProjectID) && !slices.Contains(scope.Denied, st.ID)
+		reached := scope.All || (st.ProjectID == "" && scope.Anywhere) || inProject || slices.Contains(scope.Allowed, st.ID)
+		if st.DerivedFrom == "" && reached {
+			out = append(out, st)
+		}
+	}
+	slices.SortFunc(out, func(a, b *Stack) int { return strings.Compare(a.Name, b.Name) })
+	return out, nil
 }
 
 func (f *fakeStackRepo) ListByProject(_ context.Context, projectID string) ([]*Stack, error) {

@@ -29,4 +29,18 @@ describe("the stack follower", () => {
     await followFrame(stackFollower, "deploy.updated", { id: "d-1", status: "building", stack_id: "s-1" }, client);
     expect(stale(client)).toEqual([false, false]);
   });
+
+  it("refetches the stack lists and the named stack's reads when its rule changes, and nothing for another entity's", async () => {
+    const client = seeded([
+      [["getStacks", "all"], []],
+      [["getStack", "s-1"], { id: "s-1" }],
+      [["getStack", "s-2"], { id: "s-2" }],
+      [["getStackDeploys", "s-1"], []],
+    ]);
+    const marks = () => [["getStacks", "all"], ["getStack", "s-1"], ["getStack", "s-2"], ["getStackDeploys", "s-1"]].map((key) => isStale(client, key));
+    await followFrame(stackFollower, "access.grant.changed", { resource_type: "doc", resource_id: "s-1" }, client);
+    expect(marks()).toEqual([false, false, false, false]);
+    await followFrame(stackFollower, "access.grant.changed", { resource_type: "stack", resource_id: "s-1" }, client);
+    expect(marks()).toEqual([true, true, false, true]);
+  });
 });

@@ -600,7 +600,8 @@ A list that pages filters by access in SQL (ADR 0140), never in Go after
 reading every row. `access.CallerProjects` is the set of projects
 `RequireProject` lets the caller through for an action, `ProjectsAnywhere`
 the same for a named person with the workspaces they belong to, and
-`DocsWith` adds the docs whose own overwrite turns their project's answer.
+`DocsWith` adds the docs whose own overwrite turns their project's answer, and
+`CallerStacks` the stacks whose rules turn it.
 Only what no project set can express (a private channel's or a DM's members)
 stays a per-row check, and it runs over every candidate before paging, so
 `total` counts exactly what the pages hold. A list never stops at a scan

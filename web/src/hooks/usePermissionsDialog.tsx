@@ -8,7 +8,7 @@ import { createPermissionPanelStore, PermissionPanelStoreContext } from "@/store
 import { PermissionRulesFormSchema, type PermissionRulesFormData } from "@/models/Permission";
 import type { PanelEntity } from "@/models/PermissionPanel";
 
-// Opens the permissions panel on a doc, play or project, on target (a targetKey) when named; rules are held until Save.
+// Opens the permissions panel on a doc, folder, play, project or stack, on target (a targetKey) when named; rules are held until Save.
 export const usePermissionsDialog = () => {
   const { open } = useFormDialog();
   return (entity: PanelEntity, target?: string) => {

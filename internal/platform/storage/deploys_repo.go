@@ -86,7 +86,8 @@ func (r *DeploysRepo) Page(ctx context.Context, f deploy.DeployFilter, scope dep
 		q.where("d.status = ?", string(f.Status))
 	}
 	if !scope.All {
-		q.where("(s.project_id IN (SELECT value FROM json_each(?)) OR (COALESCE(s.project_id, '') = '' AND ?))", idsJSON(scope.ProjectIDs), scope.Anywhere)
+		cond, args := stackReachClause(scope)
+		q.where(cond, args...)
 	}
 	ids, total, err := q.page(ctx, r.db, w)
 	if err != nil {
@@ -100,6 +101,18 @@ func (r *DeploysRepo) Page(ctx context.Context, f deploy.DeployFilter, scope dep
 		return nil, 0, fmt.Errorf("page deploys: %w", err)
 	}
 	return inOrder(ids, toDeploys(rows), func(d *deploy.Deploy) string { return d.ID }), total, nil
+}
+
+// stackReachClause keeps the deploys of the stacks scope reaches, with the stack rules' clauses only when rules turn
+// something, so an unturned scope uses the project index; a branch deployment answers to its base stack.
+func stackReachClause(scope deploy.DeployScope) (string, []any) {
+	cond, args := "s.project_id IN (SELECT value FROM json_each(?))", []any{idsJSON(scope.ProjectIDs)}
+	if len(scope.Allowed)+len(scope.Denied) > 0 {
+		ruled := "COALESCE(NULLIF(s.derived_from, ''), s.id)"
+		cond = `((` + cond + ` AND ` + ruled + ` NOT IN (SELECT value FROM json_each(?))) OR ` + ruled + ` IN (SELECT value FROM json_each(?)))`
+		args = append(args, idsJSON(scope.Denied), idsJSON(scope.Allowed))
+	}
+	return "(" + cond + " OR (COALESCE(s.project_id, '') = '' AND ?))", append(args, scope.Anywhere)
 }
 
 func (r *DeploysRepo) ListByService(ctx context.Context, service string) ([]*deploy.Deploy, error) {

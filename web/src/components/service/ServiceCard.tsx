@@ -1,8 +1,10 @@
 import { Link } from "react-router";
 
+import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import { DeployStatusBadge } from "@/components/service/DeployStatusBadge";
 import { HealthDot } from "@/components/service/HealthDot";
 import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useStackPermissions } from "@/hooks/useStackPermissions";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { DeployStatus as DeployStatusType, ServiceDef } from "@/models/Service";
 
@@ -18,9 +20,11 @@ const sourceLine = (service: ServiceDef): string => {
   return service.machine || service.target;
 };
 
-// `status` degrades gracefully to no dot/badge until a per-service health query is wired up.
+// `status` degrades gracefully to no dot/badge until a per-service health query is wired up. A right-click opens the
+// stack's Permissions… for whoever may set its rules.
 export const ServiceCard = ({ service, status }: ServiceCardProps) => {
   const canOpen = useAreaAccess()?.("stacks") ?? false;
+  const { menu, manages } = useStackPermissions(service);
   const wsPath = useWorkspacePath();
   const rowClass = "flex items-center gap-3 px-4 py-2.5";
   const source = sourceLine(service);
@@ -38,16 +42,18 @@ export const ServiceCard = ({ service, status }: ServiceCardProps) => {
     </>
   );
   return (
-    <li>
-      {canOpen && (
-        <Link
-          to={wsPath(`/stacks/${service.id}`)}
-          className={`${rowClass} transition-colors duration-[120ms] ease-standard hover:bg-accent/40`}
-        >
-          {row}
-        </Link>
-      )}
-      {!canOpen && <div className={rowClass}>{row}</div>}
-    </li>
+    <RowContextMenu menu={menu} manages={manages}>
+      <li>
+        {canOpen && (
+          <Link
+            to={wsPath(`/stacks/${service.id}`)}
+            className={`${rowClass} transition-colors duration-[120ms] ease-standard hover:bg-accent/40`}
+          >
+            {row}
+          </Link>
+        )}
+        {!canOpen && <div className={rowClass}>{row}</div>}
+      </li>
+    </RowContextMenu>
   );
 };

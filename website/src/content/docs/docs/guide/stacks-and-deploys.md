@@ -40,6 +40,16 @@ The **Deploy** card shows one way to ship, depending on the stack:
 
 A deploy also starts on every push to a branch that matches one of the stack's branch deploy rules (see below).
 
+## Who can see and deploy a stack
+
+A stack follows its project: whoever is in the project gets what their roles allow on its stacks. To narrow or widen that for one stack, such as letting only one role deploy production, right-click the stack in its project's services, or open **⋯** on the stack page, and pick **Permissions…**. It shows only to someone who holds `stacks:write` on the stack.
+
+The panel sets the stacks and deploys permissions (**Read**, **Write**, **Delete** and **Read container logs** on the stack, **Read** and **Write** on its deploys) for a role or a person, each as **Allow**, **Fallback** or **Deny**; see [Permissions on a project, a folder, a doc or a play](/docs/guide/people-and-access/#permissions-on-a-project-a-folder-a-doc-or-a-play) for how the three work. A stack's rules sit between its project's and the stack: they beat the project's rules, and between a person's roles Allow wins. They reach the stack's deploys and its branch deployments, which have no rules of their own.
+
+Deny **Read** on a stack for a role and the stack drops out of that role's stack lists, deploy lists, Topology's stack list and live updates, deploys included, and its link answers not found. A refused deploy names the rule that refused it, such as `deploys:write required (Denied on stack production for role Developer)`. Deleting a stack deletes its rules. The instance's own stacks, a gateway's, carry no rules and answer to the instance as before.
+
+Agents set the same rules with `permission_overwrite_update` and `resource_type: stack`, and read them with `permission_overwrite_list`.
+
 ## Logs
 
 **Logs** shows what each container prints, one tab per service: the last lines, then new ones as they arrive. Switch between **All** and **Errors**, or **Pause** to stop following. Values from the stack's environment are masked before they reach your browser. Reading container logs takes the `stacks:logs` permission.
@@ -61,7 +71,7 @@ To add a rule, open **Branch deploys** and fill in **Branch pattern**, **Docker 
 - **Hostname template**: `{branch}` becomes the branch as a hostname label. For a wildcard, only the part the wildcard matched counts, so `feature/dot.test` under `feature/*` with `{branch}.example.com` is served at `dot-test.example.com`. Dots, slashes and capitals become dashes and lower case, cut to 63 characters. A template needs a **Port**.
 - **Overrides**: `KEY=value` lines that replace the stack's environment values for this branch only, such as a `DATABASE_URL` pointing at a test database. Remove an override and the next deploy of that branch goes back to the stack's value. Rules that redeploy the stack itself have nothing to override; edit the stack's environment instead.
 
-**Live branch deployments** lists the copies running now. A copy has no rules of its own.
+**Live branch deployments** lists the copies running now. A copy has no branch deploy rules of its own, and its permissions are its stack's.
 
 A copy on the same network as the default branch, with no overrides, shares production's services, its database included. Nexul never offers one as a place to test a ticket.
 

@@ -506,7 +506,11 @@ _Avoid_: Test URL, staging
 One repository's worth of deployable containers: a compose file, or a
 Dockerfile as a stack of one. The stack is what gets deployed, rolled back,
 and torn down; the services inside it are observed, not deployed on their
-own. Decided 2026-09-08 for the project wizard.
+own. Its Permission overwrites set the stacks and deploys actions between its
+project's and the stack, reach its deploys and branch deployments, and are
+written with `stacks:write` on it and deleted with it; one denying
+`stacks:read` hides it, deploys included. Decided 2026-09-08 for the project
+wizard.
 _Avoid_: Compose project, resource, application
 
 **Instance stack**:

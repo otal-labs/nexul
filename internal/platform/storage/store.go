@@ -83,6 +83,7 @@ type Store struct {
 func New(db *sql.DB, encKey []byte) *Store {
 	w := &Serializer{}
 	q := sqlcgen.New(db)
+	hot := sqlcgen.New(newPreparedReads(db))
 	return &Store{
 		db:                    db,
 		w:                     w,
@@ -92,7 +93,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Tickets:               &TicketsRepo{db: db, w: w, q: q},
 		CodeReviews:           &CodeReviewsRepo{db: db, w: w, q: q},
 		Deploys:               &DeploysRepo{db: db, w: w, q: q},
-		Stacks:                &StacksRepo{db: db, w: w, q: q},
+		Stacks:                &StacksRepo{db: db, w: w, q: q, hot: hot},
 		Services:              &ServicesRepo{db: db, w: w, q: q},
 		Topology:              &TopologyRepo{db: db, w: w, q: q},
 		Runners:               &RunnersRepo{db: db, w: w, q: q},
@@ -107,7 +108,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		GitHubManifests:       &GitHubManifestsRepo{db: db, w: w, q: q, encKey: encKey},
 		SetupCodes:            &SetupCodesRepo{db: db, w: w, q: q},
 		ConnectCodes:          &ConnectCodesRepo{db: db, w: w, q: q},
-		Access:                &AccessRepo{db: db, w: w, q: q, hot: sqlcgen.New(newPreparedReads(db))},
+		Access:                &AccessRepo{db: db, w: w, q: q, hot: hot},
 		PATs:                  &PATsRepo{db: db, w: w, q: q},
 		Sessions:              &SessionsRepo{db: db, w: w, q: q},
 		Projects:              &ProjectsRepo{db: db, w: w, q: q},

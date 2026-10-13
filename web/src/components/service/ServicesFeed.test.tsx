@@ -6,6 +6,8 @@ import { ServicesFeed } from "@/components/service/ServicesFeed";
 import { DeployStrategy, type ServiceDef } from "@/models/Service";
 
 const access = vi.hoisted(() => ({ areas: ["stacks"] as string[] }));
+const manage = vi.hoisted(() => ({ stack: false }));
+vi.mock("@/hooks/useCanManageAccess", () => ({ useCanManageAccess: (entity?: { type: string }) => entity?.type === "stack" && manage.stack }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 
 const services: ServiceDef[] = [

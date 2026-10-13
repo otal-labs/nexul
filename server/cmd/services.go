@@ -283,6 +283,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	// HasPermission's role-mask layer needs both roles and tenancy, wired only after the cycle above closes.
 	accessSvc.SetRoles(store.WorkspaceMembers)
 	accessSvc.SetDocWorkspaces(accessDocWorkspaceResolver{docs: store.Docs})
+	accessSvc.SetStackScopes(accessStackScopes{stacks: store.Stacks})
 	accessSvc.SetCommits(store.Commits())
 	accessSvc.SetScopes(accessScopes{projects: store.Projects, members: store.WorkspaceMembers})
 	accessSvc.SetPlayWorkspaces(accessPlayWorkspaceResolver{plays: store.Plays})

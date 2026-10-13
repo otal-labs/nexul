@@ -69,3 +69,11 @@ type DocReach struct {
 	Allowed        []string
 	Denied         []string
 }
+
+// StackReach is what a stack or deploy list filters by in SQL: the projects an action holds in, and the stacks whose
+// own rules turn it, each a base stack whose branch deployments follow it.
+type StackReach struct {
+	ProjectIDs []string
+	Allowed    []string
+	Denied     []string
+}

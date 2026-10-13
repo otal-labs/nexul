@@ -1,6 +1,6 @@
 # 19 — Stack rules
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 17
 
@@ -24,8 +24,8 @@ Read first: `practices/go.md` (section 17), `practices/mcp.md` (sections 4, 11),
 
 ## Acceptance criteria
 
-- [ ] `TestStackRules_OnlyTheRoleDeploys`: role Developer Deny `deploys:write`, role Frontend Allow, on one stack; a
+- [x] `TestStackRules_OnlyTheRoleDeploys`: role Developer Deny `deploys:write`, role Frontend Allow, on one stack; a
       Developer without Frontend gets the source in the forbidden answer, over HTTP, MCP and a branch-driven deploy.
-- [ ] `TestStackRules_ADeniedStackLeavesTheListAndFrames`.
-- [ ] `list_paging_test.go` gains stack rules; new `TestStatements_StackRulesCostTheSameAtAnyLength`.
-- [ ] Verified at 768, 1024 and 1440px.
+- [x] `TestStackRules_ADeniedStackLeavesTheListAndFrames`.
+- [x] `list_paging_test.go` gains stack rules; new `TestStatements_StackRulesCostTheSameAtAnyLength`.
+- [x] Verified at 768, 1024 and 1440px.

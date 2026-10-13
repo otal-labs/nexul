@@ -46,11 +46,14 @@ type DeployFilter struct {
 	Status  Status
 }
 
-// DeployScope is what access lets a deploy list show: everything with All, otherwise the deploys of stacks in
-// ProjectIDs and, with Anywhere, those of a stack outside every project or one since deleted (ADR 0079).
+// DeployScope is what access lets a stack or deploy list show: everything with All, otherwise the stacks in ProjectIDs
+// but those in Denied, the stacks in Allowed, and with Anywhere a stack outside every project or a deleted one's
+// deploys (ADR 0079). Allowed and Denied name base stacks, whose branch deployments follow them (ADR 0148).
 type DeployScope struct {
 	All        bool
 	ProjectIDs []string
+	Allowed    []string
+	Denied     []string
 	Anywhere   bool
 }
 

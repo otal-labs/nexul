@@ -14,6 +14,9 @@ beforeEach(() => {
   access.areas = ["projects", "topology", "newProject", "dns"];
 });
 
+const manage = vi.hoisted(() => ({ stack: false }));
+vi.mock("@/hooks/useCanManageAccess", () => ({ useCanManageAccess: (entity?: { type: string }) => entity?.type === "stack" && manage.stack }));
+
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn(), _delete: vi.fn() }));
 
 vi.mock("@/api/client", () => ({
@@ -65,6 +68,7 @@ describe("StackPage", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    manage.stack = false;
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/stacks/stack-1") return Promise.resolve({ data: stack });
       if (url === "/api/stacks/stack-1/services") return Promise.resolve({ data: [container] });
@@ -72,6 +76,23 @@ describe("StackPage", () => {
       if (url === "/api/connectors") return Promise.resolve({ data: [] });
       return Promise.resolve({ data: [] });
     });
+  });
+
+  it("offers Permissions… under ⋯ for whoever may set the stack's rules, and nothing to anyone else", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderPage();
+    expect(await screen.findByRole("heading", { name: "api" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "More actions for api" })).not.toBeInTheDocument();
+    unmount();
+
+    manage.stack = true;
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: "More actions for api" }));
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Permissions…"]);
+    await user.click(screen.getByRole("menuitem", { name: "Permissions…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Permissions" });
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await vi.waitFor(() => expect(screen.queryByRole("dialog", { name: "Permissions" })).not.toBeInTheDocument());
   });
 
   it("renders the stack header with the strategy and runner facts", async () => {

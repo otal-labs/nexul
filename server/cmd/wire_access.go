@@ -9,10 +9,16 @@ import (
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/chat"
+	"github.com/otal-labs/nexul/internal/deploy"
+	"github.com/otal-labs/nexul/internal/docs"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/plays"
+	"github.com/otal-labs/nexul/internal/roles"
+	"github.com/otal-labs/nexul/internal/tenancy"
+	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 // accessPlayWorkspaceResolver reads from the repo directly to avoid recursing into a permission check;
@@ -76,49 +82,32 @@ type accessNames struct {
 func (a accessNames) Name(ctx context.Context, entityType, id string) (string, error) {
 	switch entityType {
 	case "workspace":
-		w, err := a.store.Workspaces.Get(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		return w.Name, nil
+		return named(ctx, id, a.store.Workspaces.Get, func(w *tenancy.Workspace) string { return w.Name })
 	case "project":
-		p, err := a.store.Projects.Get(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		return p.Name, nil
+		return named(ctx, id, a.store.Projects.Get, func(p *workspace.Project) string { return p.Name })
 	case "doc":
-		d, err := a.store.Docs.GetByID(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		return d.Title, nil
+		return named(ctx, id, a.store.Docs.GetByID, func(d *docs.Doc) string { return d.Title })
 	case "folder":
-		f, err := a.store.Docs.GetFolder(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		return f.Name, nil
+		return named(ctx, id, a.store.Docs.GetFolder, func(f *docs.Folder) string { return f.Name })
+	case "stack":
+		return named(ctx, id, a.store.Stacks.GetByID, func(st *deploy.Stack) string { return st.Name })
 	case "play":
-		p, err := a.store.Plays.Get(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		return p.Label, nil
+		return named(ctx, id, a.store.Plays.Get, func(p *plays.Play) string { return p.Label })
 	case access.TargetRole:
-		r, err := a.store.Roles.Get(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		return r.Name, nil
+		return named(ctx, id, a.store.Roles.Get, func(r *roles.Role) string { return r.Name })
 	case access.TargetPerson:
-		u, err := a.store.Users.GetUserByID(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		return u.Login, nil
+		return named(ctx, id, a.store.Users.GetUserByID, func(u *auth.User) string { return u.Login })
 	}
 	return "", nil
+}
+
+// named reads one entity with get and names it with name.
+func named[T any](ctx context.Context, id string, get func(context.Context, string) (T, error), name func(T) string) (string, error) {
+	v, err := get(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return name(v), nil
 }
 
 // accessDocWorkspaceResolver reads from the repo directly to avoid recursing into a permission check.
@@ -132,6 +121,15 @@ func (a accessDocWorkspaceResolver) DocScopes(ctx context.Context, docIDs []stri
 
 func (a accessDocWorkspaceResolver) FolderScope(ctx context.Context, folderID string) (access.DocScope, error) {
 	return a.docs.FolderScope(ctx, folderID)
+}
+
+// accessStackScopes reads where a stack lives from the repo directly, past the deploy domain's own checks.
+type accessStackScopes struct {
+	stacks *storage.StacksRepo
+}
+
+func (a accessStackScopes) StackScope(ctx context.Context, stackID string) (access.StackScope, error) {
+	return a.stacks.RuleScope(ctx, stackID)
 }
 
 // accessUsers adapts UsersRepo to access's Users interface, mapping auth.User to access.User (ADR 0017).

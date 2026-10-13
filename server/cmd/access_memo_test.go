@@ -19,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/chat"
+	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/mcp/composite"
 	"github.com/otal-labs/nexul/internal/platform/identity"
@@ -621,6 +622,73 @@ UNION ALL SELECT 'folder', f.id, 'person', NULL, ?, '["docs:read","docs:thread"]
 	none := cost(12, false)
 	assert.Equal(t, none, cost(2, true), "a few docs, each in a folder with rules")
 	assert.Equal(t, none, cost(12, true), "many docs, each in a folder with rules")
+}
+
+// TestStatements_StackRulesCostTheSameAtAnyLength: rules for roles and a person on every stack cost the stack and deploy
+// lists, the topology canvas's stacks, a stack's and a deploy's read and a stack's frame no statement more than none, at
+// a few stacks or many: a list reads the stacks with rules in one statement, a single check the one stack's.
+func TestStatements_StackRulesCostTheSameAtAnyLength(t *testing.T) {
+	paths := map[string]func(ctx context.Context, f permFixture) error{
+		"stack_list": func(ctx context.Context, f permFixture) error {
+			_, err := tool(t, deploy.MCPTools(f.svc.deploySvc), "stack_list").Call(ctx, json.RawMessage(`{}`))
+			return err
+		},
+		"deploy_list": func(ctx context.Context, f permFixture) error {
+			_, err := tool(t, deploy.MCPTools(f.svc.deploySvc), "deploy_list").Call(ctx, json.RawMessage(`{}`))
+			return err
+		},
+		"the topology canvas's stacks": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.deploySvc.ListScopedStacks(ctx, "", wsDefault)
+			return err
+		},
+		"a stack's read": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.deploySvc.GetStack(ctx, f.stack)
+			return err
+		},
+		"a deploy's read": func(ctx context.Context, f permFixture) error {
+			_, err := f.svc.deploySvc.Get(ctx, f.deploy)
+			return err
+		},
+		"a stack's frame": func(ctx context.Context, f permFixture) error {
+			a := liveAudience{access: f.svc.accessSvc, deploy: f.svc.deploySvc}
+			if !a.allows(ctx, deploy.TopicStackUpdated, deploy.StackEvent{Stack: deploy.Stack{ID: f.stack, ProjectID: pGeneral}}) {
+				return errors.New("the reader's frame was dropped")
+			}
+			return nil
+		},
+	}
+	cost := func(n int, rules bool) map[string]int64 {
+		f, st, db := newCountedFixtureDB(t)
+		_, err := db.Exec(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ?)
+INSERT INTO stacks (id, project_id, name, slug, machine, strategy, created_at, updated_at)
+SELECT 'stack-g-' || i, ?, 'web ' || i, 'web-' || i, 'm1', 'run', 1, 1 FROM n`, n, pGeneral)
+		require.NoError(t, err)
+		_, err = db.Exec(`INSERT INTO deploys (id, stack_id, service, target, image, status, strategy, created_at, updated_at)
+SELECT 'deploy-' || id, id, name, 'm1', 'web:1', 'healthy', 'run', 1, 1 FROM stacks WHERE id LIKE 'stack-g-%'`)
+		require.NoError(t, err)
+		if rules {
+			_, err = db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, user_id, allow, deny, created_at, updated_at)
+SELECT 'stack', s.id, 'role', r.id, NULL, '["deploys:write"]', '["stacks:delete"]', 1, 1 FROM stacks s, roles r
+WHERE s.project_id IS NOT NULL AND r.id IN ('role-reader', 'role-writer')
+UNION ALL SELECT 'stack', s.id, 'person', NULL, ?, '["stacks:read","deploys:read"]', '[]', 1, 1 FROM stacks s WHERE s.project_id IS NOT NULL`, uReader)
+			require.NoError(t, err)
+		}
+		out := map[string]int64{}
+		for name, run := range paths {
+			ctx := access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: uReader}), f.svc.accessSvc.NewMemo())
+			st.Reset()
+			require.NoError(t, run(ctx, f), name)
+			out[name] = st.Count()
+		}
+		return out
+	}
+	none := cost(12, false)
+	// Each list costs one read past what it cost before stack rules, the reader's stack rules: the topology's no
+	// membership read and no instance check, which its workspace's stacks never need.
+	assert.Equal(t, map[string]int64{"stack_list": 7, "deploy_list": 9, "the topology canvas's stacks": 6, "a stack's read": 6,
+		"a deploy's read": 7, "a stack's frame": 5}, none, "with no stack rules")
+	assert.Equal(t, none, cost(2, true), "a few stacks, each with rules")
+	assert.Equal(t, none, cost(12, true), "many stacks, each with rules")
 }
 
 // TestStatements_ProjectRulesCostTheSameAtAnyLength: rules for every role and every member on every project cost the

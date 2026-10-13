@@ -5,11 +5,13 @@ import { Link } from "react-router";
 import { Fact } from "@/components/Fact";
 import { PageHeader } from "@/components/PageHeader";
 import type { Crumb } from "@/components/PageBreadcrumb";
+import { RowActions } from "@/components/listpane/RowActions";
 import { StackLiveHero } from "@/components/stack/StackLiveHero";
 import { NoFillBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
+import { useStackPermissions } from "@/hooks/useStackPermissions";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { Deploy, Stack } from "@/models/Stack";
 
@@ -47,6 +49,7 @@ export const StackHeaderSection = ({ stack, latest, image, hostnames }: StackHea
   const wsPath = useWorkspacePath();
   const crumbs = useStackCrumbs(stack);
   const repo = repoLabel(stack);
+  const { menu, manages } = useStackPermissions(stack);
 
   return (
     <div className="border-b border-border pb-6">
@@ -61,15 +64,16 @@ export const StackHeaderSection = ({ stack, latest, image, hostnames }: StackHea
           </>
         }
         actions={
-          !stack.managed &&
-          !!stack.project_id &&
-          can?.("newProject") && (
-            <Button variant="outline" size="sm" asChild>
-              <Link to={wsPath(`/wizard/project/repository?stack=${stack.id}`)}>
-                <GitBranchIcon className="size-4" /> Attach repository
-              </Link>
-            </Button>
-          )
+          <div className="flex items-center gap-2">
+            {!stack.managed && !!stack.project_id && can?.("newProject") && (
+              <Button variant="outline" size="sm" asChild>
+                <Link to={wsPath(`/wizard/project/repository?stack=${stack.id}`)}>
+                  <GitBranchIcon className="size-4" /> Attach repository
+                </Link>
+              </Button>
+            )}
+            {manages && <RowActions itemLabel={stack.name} {...menu} />}
+          </div>
         }
       />
 

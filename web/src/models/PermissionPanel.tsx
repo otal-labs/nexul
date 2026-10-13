@@ -1,9 +1,9 @@
 import { RuleState, type InstanceArea, type PermissionGrant, type PermissionInfo, type PermissionSource, type RuleChange } from "@/models/Permission";
 import { domainLabel } from "@/models/PermissionLevel";
 
-// What the permissions panel opens on. A doc or folder names its project, a doc its folder, for the header and the add list.
+// What the permissions panel opens on. A doc, folder or stack names its project, a doc its folder, for the header and the add list.
 export interface PanelEntity {
-  type: "doc" | "folder" | "play" | "project" | "computer" | "instance_area";
+  type: "doc" | "folder" | "play" | "project" | "stack" | "computer" | "instance_area";
   id: string;
   name: string;
   workspaceId: string;
@@ -11,9 +11,14 @@ export interface PanelEntity {
   folderId: string;
 }
 
-// The project a doc's or folder's panel lists targets of, refusing anyone outside it.
+// The project a doc's, folder's or stack's panel lists targets of, refusing anyone outside it.
 export const targetsProject = (entity: Pick<PanelEntity, "type" | "projectId">) =>
-  entity.type === "doc" || entity.type === "folder" ? entity.projectId : undefined;
+  entity.type === "doc" || entity.type === "folder" || entity.type === "stack" ? entity.projectId : undefined;
+
+// A project's stack as the panel opens on it.
+export const stackEntity = (stack: { id: string; name: string; project_id: string }, workspaceId: string): PanelEntity => ({
+  type: "stack", id: stack.id, name: stack.name, workspaceId, projectId: stack.project_id, folderId: "",
+});
 
 // A project as the panel opens on it.
 export const projectEntity = (project: { id: string; name: string; workspace_id: string }): PanelEntity => ({
@@ -66,6 +71,7 @@ const panelLabels: Record<PanelEntity["type"], Record<string, string>> = {
   doc: { "permissions:write": "Manage this doc's access" },
   folder: { "permissions:write": "Manage this folder's access" },
   play: { "plays:read": "See this play", "plays:run": "Run", "plays:write": "Edit", "plays:delete": "Delete" },
+  stack: {},
   project: { "projects:open": "See this project", "projects:access": "Manage this project's access", "permissions:write": "Manage each doc's access" },
   computer: { "computers:see": "See this computer", "computers:run_agents": "Run agents", "computers:run_commands": "Run commands" },
   instance_area: {},
