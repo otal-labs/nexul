@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/deploy"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -20,6 +21,8 @@ type StacksRepo struct {
 	db *sql.DB
 	w  *Serializer
 	q  *sqlcgen.Queries
+	// hot runs the stack list every stack page, topology view and stack_list reads as a prepared statement.
+	hot *sqlcgen.Queries
 }
 
 func (r *StacksRepo) Create(ctx context.Context, stack *deploy.Stack, evts ...eventbus.OutboxEvent) error {
@@ -74,6 +77,28 @@ func (r *StacksRepo) ListByWorkspace(ctx context.Context, workspaceID string) ([
 	return toStacks(rows)
 }
 
+// ListReached lists the base stacks of a project, a workspace, or every one, that scope keeps, filtered in SQL.
+func (r *StacksRepo) ListReached(ctx context.Context, projectID, workspaceID string, scope deploy.DeployScope) ([]*deploy.Stack, error) {
+	rows, err := r.hot.ListReachedStacks(ctx, sqlcgen.ListReachedStacksParams{
+		ProjectID: projectID, WorkspaceID: workspaceID, AllStacks: boolToInt(scope.All), Anywhere: boolToInt(scope.Anywhere),
+		ProjectIds: idsJSON(scope.ProjectIDs), Denied: idsJSON(scope.Denied), Allowed: idsJSON(scope.Allowed),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list stacks: %w", err)
+	}
+	return toStacks(rows)
+}
+
+// RuleScope returns where a stack's rules are read, for access: its project and workspace, empty for an instance stack,
+// and the base a branch deployment follows; ErrNotFound for an unknown stack.
+func (r *StacksRepo) RuleScope(ctx context.Context, id string) (access.StackScope, error) {
+	row, err := r.q.GetStackRuleScope(ctx, id)
+	if err != nil {
+		return access.StackScope{}, fmt.Errorf("scope of stack %s: %w", id, notFoundIfNoRows(err))
+	}
+	return access.StackScope{WorkspaceID: row.WorkspaceID, ProjectID: row.ProjectID, BaseID: row.DerivedFrom}, nil
+}
+
 // ListByBuildRepo returns every base stack whose build source references this repository, for the push consumer.
 func (r *StacksRepo) ListByBuildRepo(ctx context.Context, owner, name string) ([]*deploy.Stack, error) {
 	rows, err := r.q.ListStacksByBuildRepo(ctx, sqlcgen.ListStacksByBuildRepoParams{BuildRepoOwner: owner, BuildRepoName: name})
@@ -114,12 +139,16 @@ func (r *StacksRepo) Update(ctx context.Context, stack *deploy.Stack, evts ...ev
 
 func (r *StacksRepo) Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).DeleteStack(ctx, id)
+		q := r.q.WithTx(tx)
+		n, err := q.DeleteStack(ctx, id)
 		if err != nil {
 			return fmt.Errorf("delete stack %s: %w", id, err)
 		}
 		if n == 0 {
 			return fmt.Errorf("delete stack %s: %w", id, apperrs.ErrNotFound)
+		}
+		if err := q.DeleteStackRules(ctx, id); err != nil {
+			return fmt.Errorf("delete the rules of stack %s: %w", id, err)
 		}
 		return enqueueServicesOutbox(ctx, tx, evts)
 	})

@@ -56,6 +56,7 @@ const grants = [
 const mockGet = (url: string, config?: { params?: Record<string, string> }) => {
   if (url === "/api/permissions?resource_type=doc&resource_id=doc-1") return Promise.resolve({ data: { grants } });
   if (url === "/api/permissions?resource_type=folder&resource_id=f-1") return Promise.resolve({ data: { grants: [] } });
+  if (url === "/api/permissions?resource_type=stack&resource_id=st-1") return Promise.resolve({ data: { grants: [] } });
   if (url === "/api/permissions/explain" && config?.params?.role_id) return Promise.resolve(explain(actions.map((a) => answer(a, byRole, notListed))));
   if (url === "/api/permissions/explain") return Promise.resolve(explain(explanations[config?.params?.user_id ?? ""] ?? []));
   if (url === "/api/workspaces/ws-1/roles") return Promise.resolve({ data: roles });
@@ -187,6 +188,19 @@ describe("PermissionsPanel", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(api.put).toHaveBeenCalledWith("/api/permissions", { resource_type: "folder", resource_ids: ["f-1"], user_ids: ["lena"], actions: ["docs:read"], state: "deny" }),
+    );
+  });
+
+  it("on a stack, names it in its project, refuses who isn't in the project, and saves its rules for the stack", async () => {
+    await openPanel({ type: "stack", id: "st-1", name: "production", workspaceId: "ws-1", projectId: "p-1", folderId: "" });
+    expect(await screen.findByText("in Storefront", { exact: false })).toHaveTextContent("stack production in Storefront");
+    await user.click(screen.getByRole("button", { name: "Add role or person" }));
+    expect(await screen.findByText("Add sam to Storefront first")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /lena/ }));
+    await user.click((await control("Read docs").findAllByRole("radio", { name: "Deny" }))[0]!);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(api.put).toHaveBeenCalledWith("/api/permissions", { resource_type: "stack", resource_ids: ["st-1"], user_ids: ["lena"], actions: ["docs:read"], state: "deny" }),
     );
   });
 

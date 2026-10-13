@@ -86,6 +86,15 @@ func (q *Queries) DeleteStack(ctx context.Context, id string) (int64, error) {
 	return result.RowsAffected()
 }
 
+const deleteStackRules = `-- name: DeleteStackRules :exec
+DELETE FROM permission_overwrites WHERE resource_type = 'stack' AND resource_id = ?
+`
+
+func (q *Queries) DeleteStackRules(ctx context.Context, resourceID string) error {
+	_, err := q.db.ExecContext(ctx, deleteStackRules, resourceID)
+	return err
+}
+
 const getStack = `-- name: GetStack :one
 SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at FROM stacks WHERE id = ?
 `
@@ -194,6 +203,101 @@ func (q *Queries) GetStackBySlugAndMachine(ctx context.Context, arg GetStackBySl
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getStackRuleScope = `-- name: GetStackRuleScope :one
+SELECT COALESCE(s.project_id, '') AS project_id, s.derived_from, COALESCE(p.workspace_id, '') AS workspace_id
+FROM stacks s LEFT JOIN projects p ON p.id = s.project_id WHERE s.id = ?
+`
+
+type GetStackRuleScopeRow struct {
+	ProjectID   string
+	DerivedFrom string
+	WorkspaceID string
+}
+
+func (q *Queries) GetStackRuleScope(ctx context.Context, id string) (GetStackRuleScopeRow, error) {
+	row := q.db.QueryRowContext(ctx, getStackRuleScope, id)
+	var i GetStackRuleScopeRow
+	err := row.Scan(&i.ProjectID, &i.DerivedFrom, &i.WorkspaceID)
+	return i, err
+}
+
+const listReachedStacks = `-- name: ListReachedStacks :many
+SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at FROM stacks
+WHERE derived_from = ''
+  AND (?1 = '' OR project_id = ?1)
+  AND (?2 = '' OR project_id IN (SELECT id FROM projects WHERE workspace_id = ?2))
+  AND (?3 = 1
+    OR (COALESCE(project_id, '') = '' AND ?4 = 1)
+    OR (project_id IN (SELECT value FROM json_each(?5)) AND id NOT IN (SELECT value FROM json_each(?6)))
+    OR id IN (SELECT value FROM json_each(?7)))
+ORDER BY name
+`
+
+type ListReachedStacksParams struct {
+	ProjectID   interface{}
+	WorkspaceID interface{}
+	AllStacks   interface{}
+	Anywhere    interface{}
+	ProjectIds  interface{}
+	Denied      interface{}
+	Allowed     interface{}
+}
+
+func (q *Queries) ListReachedStacks(ctx context.Context, arg ListReachedStacksParams) ([]Stack, error) {
+	rows, err := q.db.QueryContext(ctx, listReachedStacks,
+		arg.ProjectID,
+		arg.WorkspaceID,
+		arg.AllStacks,
+		arg.Anywhere,
+		arg.ProjectIds,
+		arg.Denied,
+		arg.Allowed,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Stack
+	for rows.Next() {
+		var i Stack
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Name,
+			&i.Slug,
+			&i.Machine,
+			&i.Strategy,
+			&i.ComposePath,
+			&i.Env,
+			&i.DockerNetwork,
+			&i.Ports,
+			&i.Mounts,
+			&i.Command,
+			&i.BuildRepoOwner,
+			&i.BuildRepoName,
+			&i.BuildBranch,
+			&i.BuildDockerfile,
+			&i.BuildComposePath,
+			&i.BranchDeployRules,
+			&i.DerivedFrom,
+			&i.Branch,
+			&i.Managed,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listStacksByBuildRepo = `-- name: ListStacksByBuildRepo :many

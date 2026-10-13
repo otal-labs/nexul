@@ -357,7 +357,7 @@ func notificationScope(_ context.Context, _ *storage.EventWorkspacesRepo, raw js
 	return []string{p.WorkspaceID}, false, nil
 }
 
-// grantScope reads where the changed grant applies: a workspace, or the doc, folder, play, or project it was set on.
+// grantScope reads where the changed grant applies: a workspace, or the doc, folder, play, stack, or project it was set on.
 func grantScope(ctx context.Context, l *storage.EventWorkspacesRepo, raw json.RawMessage) ([]string, bool, error) {
 	var p struct {
 		ResourceType string `json:"resource_type"`
@@ -375,6 +375,8 @@ func grantScope(ctx context.Context, l *storage.EventWorkspacesRepo, raw json.Ra
 		return one(l.OfDocFolder(ctx, p.ResourceID))
 	case "play":
 		return one(l.OfPlay(ctx, p.ResourceID))
+	case "stack":
+		return one(l.OfStack(ctx, p.ResourceID))
 	case "project":
 		return one(l.OfProject(ctx, p.ResourceID))
 	case "channel":

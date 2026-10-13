@@ -123,7 +123,7 @@ func TestServiceLogs_Refusals(t *testing.T) {
 // denyLogsGate holds stacks:read for everyone and refuses stacks:logs.
 type denyLogsGate struct{ allowGate }
 
-func (denyLogsGate) RequireProject(_ context.Context, _ string, action permissions.Action) error {
+func (denyLogsGate) RequireStack(_ context.Context, _, _ string, action permissions.Action) error {
 	if action == permissions.StacksLogs {
 		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
 	}

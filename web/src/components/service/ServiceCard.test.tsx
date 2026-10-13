@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -6,10 +7,13 @@ import { ServiceCard } from "@/components/service/ServiceCard";
 import { DeployStatus, DeployStrategy, type ServiceDef } from "@/models/Service";
 
 const access = vi.hoisted(() => ({ areas: ["stacks"] as string[] }));
+const manage = vi.hoisted(() => ({ stack: false }));
+vi.mock("@/hooks/useCanManageAccess", () => ({ useCanManageAccess: (entity?: { type: string }) => entity?.type === "stack" && manage.stack }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 
 beforeEach(() => {
   access.areas = ["stacks"];
+  manage.stack = false;
 });
 
 const baseService = (overrides: Partial<ServiceDef> = {}): ServiceDef => ({
@@ -32,6 +36,19 @@ const renderCard = (service: ServiceDef, status?: DeployStatus) =>
   );
 
 describe("ServiceCard", () => {
+  it("opens Permissions… on a right-click for whoever may set the stack's rules, and keeps the browser's menu otherwise", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderCard(baseService());
+    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("api") });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    unmount();
+
+    manage.stack = true;
+    renderCard(baseService());
+    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("api") });
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Permissions…"]);
+  });
+
   it("shows the build repo as the mono image line for repo-driven services", () => {
     renderCard(
       baseService({

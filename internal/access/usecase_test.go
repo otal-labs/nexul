@@ -28,6 +28,8 @@ type fakeRepo struct {
 	// docProjects and docFolders are where each doc lives, for DocRuleTurns and DocRules, which a real repo joins in SQL.
 	docProjects map[string]string
 	docFolders  map[string]string
+	// stackProjects is where each stack lives, for StackRuleTurns, which a real repo joins in SQL.
+	stackProjects map[string]string
 	// grid is what Grid hands back; saved and finishedBy are what SaveGrid was given.
 	grid       *GridSource
 	saved      []*Overwrite
@@ -164,6 +166,35 @@ func (f *fakeRepo) DocRuleTurns(_ context.Context, userID string, action permiss
 	slices.Sort(allowed)
 	slices.Sort(denied)
 	return permissions.DocReach{AllowedFolders: []string{}, DeniedFolders: []string{}, Allowed: allowed, Denied: denied}, nil
+}
+
+// StackRuleTurns decides the person's own stack rules alone; the storage tests cover roles.
+func (f *fakeRepo) StackRuleTurns(_ context.Context, userID string, action permissions.Action, ruled, readable []string) ([]string, []string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reads++
+	allowed, denied := []string{}, []string{}
+	for _, ow := range f.overwrites {
+		project := f.stackProjects[ow.ResourceID]
+		if ow.ResourceType != resourceTypeStack || ow.UserID != userID || !slices.Contains(ruled, project) {
+			continue
+		}
+		in := slices.Contains(readable, project)
+		held := in
+		if state := stateOf(ow, action); state != "" {
+			held = state == StateAllow
+		}
+		held = held && stateOf(ow, permissions.StacksRead) != StateDeny
+		if held && !in {
+			allowed = append(allowed, ow.ResourceID)
+		}
+		if !held && in {
+			denied = append(denied, ow.ResourceID)
+		}
+	}
+	slices.Sort(allowed)
+	slices.Sort(denied)
+	return allowed, denied, nil
 }
 
 // roleKey keys a role's rule apart from any person's.

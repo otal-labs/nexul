@@ -371,7 +371,10 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		{"stacks: get", func(ctx context.Context) error {
 			_, err := s.deploySvc.GetStack(ctx, f.stack)
 			return err
-		}, map[string]string{uOwner: ok, uReader: ok, uOverwrite: ok, uPlain: forbidden, uOutsider: notFound}},
+		}, map[string]string{uOwner: ok, uReader: ok, uOverwrite: ok, uPlain: notFound, uOutsider: notFound}},
+		{"stacks: delete, refused on a stack they read and not found on one they don't", func(ctx context.Context) error {
+			return s.deploySvc.DeleteStack(ctx, f.stack)
+		}, map[string]string{uReader: forbidden, uPlain: notFound, uOutsider: notFound}},
 		{"stacks: list", func(ctx context.Context) error {
 			st, err := s.deploySvc.ListStacks(ctx, "")
 			return contains(st, err, func(st *deploy.Stack) bool { return st.ID == f.stack })
@@ -383,7 +386,7 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		{"deploys: get", func(ctx context.Context) error {
 			_, err := s.deploySvc.Get(ctx, f.deploy)
 			return err
-		}, map[string]string{uReader: ok, uPlain: forbidden, uOutsider: notFound}},
+		}, map[string]string{uReader: ok, uPlain: notFound, uOutsider: notFound}},
 		{"topology: get a workspace's canvas", func(ctx context.Context) error {
 			_, err := s.topoSvc.Get(ctx, "workspace-default")
 			return err

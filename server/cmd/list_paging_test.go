@@ -204,8 +204,8 @@ func pageThrough(t *testing.T, a *access.Service, tl mcptool.Tool, user, filter 
 
 // listParityFixture is the permission fixture with uClient listed in p-client only, uUnlisted in no project and uNoRole
 // holding no role, a ticket, stack, and deploy in each project, blockers across them, a doc each in a private and a
-// shared state, rules for roles on the docs, a folder whose rules reach two of them, an instance stack and a deleted
-// stack's deploy, and notices in every state an inbox filters.
+// shared state, rules for roles on the docs, a folder whose rules reach two of them, rules on the stacks and a branch
+// deployment following them, an instance stack and a deleted stack's deploy, and notices in every state an inbox filters.
 func listParityFixture(t *testing.T) permFixture {
 	t.Helper()
 	db := mentionsTestDB(t)
@@ -213,7 +213,41 @@ func listParityFixture(t *testing.T) permFixture {
 	f := withListParityRows(t, seedPermFixture(t, db, svc, store))
 	withRoleRulesOnDocs(t, db)
 	withFolderRules(t, f)
+	withStackRules(t, f)
 	return f
+}
+
+// withStackRules gives the fixture's stacks rules of every shape and stack-1 a branch deployment that follows them: a
+// role denied one stack's deploys, a person denied its read though their role and project rule allow its deploys, a
+// person allowed what their role lacks, and a client denied their project's stack's deploys.
+func withStackRules(t *testing.T, f permFixture) {
+	t.Helper()
+	ctx := context.Background()
+	now := time.Now()
+	require.NoError(t, f.store.Stacks.Create(ctx, &deploy.Stack{ID: "stack-1-feat", ProjectID: pGeneral, Name: "web-feat", Slug: "web-feat", Machine: "m1",
+		Strategy: deploy.StrategyRun, DerivedFrom: f.stack, Branch: "feat", CreatedAt: now, UpdatedAt: now}))
+	require.NoError(t, f.store.Deploys.Create(ctx, &deploy.Deploy{ID: "deploy-stack-1-feat", StackID: "stack-1-feat", Service: "web-feat", Status: deploy.StatusHealthy,
+		CreatedAt: now.Add(10 * time.Second), UpdatedAt: now}))
+	require.NoError(t, f.store.Access.SetRole(ctx, "stack", f.stack, "role-reader", nil, grant("deploys:read")))
+	require.NoError(t, f.store.Access.SetRole(ctx, "stack", f.stack, "role-plain", grant("deploys:read"), nil))
+	require.NoError(t, f.store.Access.Set(ctx, "stack", f.stack, uOverwrite, nil, grant("stacks:read")))
+	require.NoError(t, f.store.Access.Set(ctx, "stack", f.stack, uPlain, grant("stacks:read", "deploys:read"), nil))
+	require.NoError(t, f.store.Access.Set(ctx, "stack", "stack-client", uClient, nil, grant("deploys:read")))
+	require.NoError(t, f.store.Access.SetRole(ctx, "stack", "stack-client", "role-client", grant("stacks:write"), nil))
+}
+
+// rowByRowStacks is every base stack a single read check opens for user, in name order.
+func rowByRowStacks(t *testing.T, f permFixture, user string) []string {
+	t.Helper()
+	all, err := f.store.Stacks.ListByProject(context.Background(), "")
+	require.NoError(t, err)
+	var out []string
+	for _, st := range all {
+		if _, err := f.svc.deploySvc.GetStack(as(user), st.ID); err == nil && st.DerivedFrom == "" {
+			out = append(out, st.ID)
+		}
+	}
+	return out
 }
 
 // parityFolder is the folder in project-general holding doc-shared and doc-folder, with rules of every shape.
@@ -303,6 +337,7 @@ func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
 	ticketList := tool(t, composite.TicketTools(s.ticketsSvc, s.workspaceSvc, s.reviewSvc), "ticket_list")
 	docList := tool(t, docs.MCPTools(s.docsSvc), "doc_list")
 	deployList := tool(t, deploy.MCPTools(s.deploySvc), "deploy_list")
+	stackList := tool(t, deploy.MCPTools(s.deploySvc), "stack_list")
 	notificationList := tool(t, workspace.NotificationMCPTools(s.notifSvc), "notification_list")
 
 	for _, user := range []string{uOwner, uReader, uWriter, uPlain, uOverwrite, uOutsider, uClient, uUnlisted, uNoRole} {
@@ -325,6 +360,7 @@ func TestListTools_ShowWhatTheRowByRowCheckShowed(t *testing.T) {
 				deployIDs = append(deployIDs, d.ID)
 			}
 			assert.Equal(t, deployIDs, pageThrough(t, s.accessSvc, deployList, user, ""), "deploy_list")
+			assert.Equal(t, rowByRowStacks(t, f, user), pageThrough(t, s.accessSvc, stackList, user, ""), "stack_list")
 
 			assert.Equal(t, rowByRowInbox(t, f, user), pageThrough(t, s.accessSvc, notificationList, user, ""), "notification_list")
 		})

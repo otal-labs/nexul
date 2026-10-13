@@ -33,6 +33,10 @@ const resourceTypeChannel = "channel"
 // resourceTypeFolder keys a doc folder's rules, which reach every doc in it, by resource_id = the folder id (ADR 0148).
 const resourceTypeFolder = "folder"
 
+// resourceTypeStack keys a stack's rules, which reach its deploys and its branch deployments, by resource_id = the stack
+// id (ADR 0148).
+const resourceTypeStack = "stack"
+
 // Service is the access use-case layer (ADR 0019): permission overwrites and the HasPermission/Can checks.
 type Service struct {
 	repo          Repo
@@ -42,6 +46,7 @@ type Service struct {
 	docWorkspace  DocWorkspaceResolver
 	playWorkspace PlayWorkspaceResolver
 	channels      ChannelWorkspaceResolver
+	stacks        StackScopeResolver
 	scopes        Scopes
 	names         Names
 	// ownerWorkspace is the default workspace, whose Owner is the instance Owner; connectorAreas are the connectors'.
@@ -82,6 +87,11 @@ func (s *Service) SetChannelWorkspaces(r ChannelWorkspaceResolver) {
 	s.channels = r
 }
 
+// SetStackScopes wires the deploy domain's StackScopeResolver, which a stack's rules are explained and written through.
+func (s *Service) SetStackScopes(r StackScopeResolver) {
+	s.stacks = r
+}
+
 // HasPermission checks the Owner bypass, then for anything in a project whether userID is in it, then the role set,
 // the project's rules and those of each entity inward to the resource, in order (ADR 0148).
 func (s *Service) HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action, resourceType, resourceID string) bool {
@@ -96,6 +106,8 @@ func (s *Service) HasPermission(ctx context.Context, userID, workspaceID string,
 		_, projectID = s.resolveDoc(ctx, resourceID)
 	case resourceTypeFolder:
 		projectID = s.folderScope(ctx, resourceID).ProjectID
+	case resourceTypeStack:
+		projectID = s.stackScope(ctx, resourceID).ProjectID
 	}
 	held, _ := s.check(ctx, userID, workspaceID, projectID, action, resourceType, resourceID)
 	return held
@@ -405,20 +417,9 @@ func (s *Service) DocsWith(ctx context.Context, userID, projectID string, action
 	if err != nil {
 		return permissions.DocReach{}, err
 	}
-	ruled := []string{}
-	for _, workspaceID := range workspaceIDs {
-		info, err := s.standing(ctx, userID, workspaceID)
-		if err != nil {
-			return permissions.DocReach{}, err
-		}
-		if info.IsOwnerRole {
-			continue
-		}
-		in, err := s.ProjectsWith(ctx, userID, workspaceID, permissions.Member)
-		if err != nil {
-			return permissions.DocReach{}, err
-		}
-		ruled = append(ruled, in...)
+	ruled, err := s.ruledProjects(ctx, userID, workspaceIDs)
+	if err != nil {
+		return permissions.DocReach{}, err
 	}
 	if projectID != "" {
 		ruled = slices.DeleteFunc(ruled, func(id string) bool { return id != projectID })
@@ -432,6 +433,27 @@ func (s *Service) DocsWith(ctx context.Context, userID, projectID string, action
 	}
 	reach.ProjectIDs = projectIDs
 	return reach, nil
+}
+
+// ruledProjects is the projects of workspaceIDs userID is in where rules can turn an answer: none in a workspace they
+// own, whose answers no rule changes.
+func (s *Service) ruledProjects(ctx context.Context, userID string, workspaceIDs []string) ([]string, error) {
+	ruled := []string{}
+	for _, workspaceID := range workspaceIDs {
+		info, err := s.standing(ctx, userID, workspaceID)
+		if err != nil {
+			return nil, err
+		}
+		if info.IsOwnerRole {
+			continue
+		}
+		in, err := s.ProjectsWith(ctx, userID, workspaceID, permissions.Member)
+		if err != nil {
+			return nil, err
+		}
+		ruled = append(ruled, in...)
+	}
+	return ruled, nil
 }
 
 // docRules is the rules reaching userID on each of docIDs and its folder; a failed read counts as none.
@@ -491,6 +513,29 @@ func (s *Service) folderScope(ctx context.Context, folderID string) DocScope {
 	scope, _ := remember(ctx, folderKey{folderID}, func() (DocScope, error) {
 		return s.docWorkspace.FolderScope(ctx, folderID)
 	})
+	return scope
+}
+
+// stackScopeOf is where stackID lives; ErrNotFound for an unknown stack.
+func (s *Service) stackScopeOf(ctx context.Context, stackID string) (StackScope, error) {
+	if s.stacks == nil {
+		return StackScope{}, fmt.Errorf("%w: stack %s", apperrs.ErrNotFound, stackID)
+	}
+	scope, err := remember(ctx, stackKey{stackID}, func() (StackScope, error) {
+		return s.stacks.StackScope(ctx, stackID)
+	})
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return StackScope{}, fmt.Errorf("%w: stack %s", apperrs.ErrNotFound, stackID)
+	}
+	if err != nil {
+		return StackScope{}, fmt.Errorf("resolve stack %s: %w", stackID, err)
+	}
+	return scope, nil
+}
+
+// stackScope is where stackID lives; empty when it can't be resolved.
+func (s *Service) stackScope(ctx context.Context, stackID string) StackScope {
+	scope, _ := s.stackScopeOf(ctx, stackID)
 	return scope
 }
 
@@ -572,7 +617,7 @@ type ruleWrite struct {
 
 // SetRules sets actions to state on every resource for every target, checking every write before storing any: the
 // actor manages each resource (permissions:write on a doc or folder, plays:write on a play, Manage this project's
-// access on a project, the Owner on a channel), each action is one the resource's rules may set, each role is the
+// access on a project, stacks:write on a stack, the Owner on a channel), each action is one the resource's rules may set, each role is the
 // resource's workspace's, and the actor holds there each action the write allows or lifts a Deny on (ADR 0088).
 func (s *Service) SetRules(ctx context.Context, actorID, resourceType string, resourceIDs []string, to Targets, actions []permissions.Action, state string) error {
 	if err := checkWrite(actorID, resourceType, resourceIDs, to, actions, state); err != nil {
@@ -675,16 +720,28 @@ func (t Targets) each() [][2]string {
 }
 
 // ruleTypes are the entities rules sit on.
-var ruleTypes = []string{resourceTypeDoc, resourceTypeFolder, resourceTypePlay, resourceTypeProject, resourceTypeChannel, resourceTypeInstanceArea, resourceTypeComputer}
+var ruleTypes = []string{resourceTypeDoc, resourceTypeFolder, resourceTypePlay, resourceTypeProject, resourceTypeChannel, resourceTypeStack, resourceTypeInstanceArea, resourceTypeComputer}
 
 // errNotARuleType refuses a resource_type no rule sits on.
 func errNotARuleType(resourceType string) error {
-	return fmt.Errorf("%w: resource_type %q is not doc, folder, play, project, channel, computer, or instance_area", apperrs.ErrInvalid, resourceType)
+	return fmt.Errorf("%w: resource_type %q is not doc, folder, play, project, channel, stack, computer, or instance_area", apperrs.ErrInvalid, resourceType)
+}
+
+// onlyActions are the actions each entity's rules may set, and how a refusal says so.
+var onlyActions = map[string]struct {
+	actions []permissions.Action
+	says    string
+}{
+	resourceTypePlay:    {playActions, "plays:read, plays:run, plays:write and plays:delete"},
+	resourceTypeProject: {projectActions, "projects:open and project-area actions"},
+	resourceTypeFolder:  {docActions, "the docs actions and permissions:write"},
+	resourceTypeStack:   {stackActions, "the stacks and deploys actions"},
+	resourceTypeChannel: {[]permissions.Action{permissions.ChannelsRead}, "only channels:read"},
 }
 
 // checkRuleActions refuses an action resourceType's rules may not set: a play's rules set See, Run, Edit and Delete, a project's In this
-// project and the project-area actions, a folder's the docs actions and their access, a channel's its read, an
-// instance area's its own actions (checkArea), a computer's its three permissions and nothing else.
+// project and the project-area actions, a folder's the docs actions and their access, a channel's its read, a stack's
+// the stacks and deploys actions, an instance area's its own actions (checkArea), a computer's its three permissions and nothing else.
 func checkRuleActions(resourceType string, actions []permissions.Action) error {
 	if !slices.Contains(ruleTypes, resourceType) {
 		return errNotARuleType(resourceType)
@@ -696,17 +753,8 @@ func checkRuleActions(resourceType string, actions []permissions.Action) error {
 		if a == permissions.ProjectsOpen && resourceType != resourceTypeProject {
 			return fmt.Errorf("%w: projects:open is set only on a project", apperrs.ErrInvalid)
 		}
-		if resourceType == resourceTypePlay && !slices.Contains(playActions, a) {
-			return fmt.Errorf("%w: %s is not set on a play; its rules set plays:read, plays:run, plays:write and plays:delete", apperrs.ErrInvalid, a)
-		}
-		if resourceType == resourceTypeProject && !slices.Contains(projectActions, a) {
-			return fmt.Errorf("%w: %s is not set on a project; its rules set projects:open and project-area actions", apperrs.ErrInvalid, a)
-		}
-		if resourceType == resourceTypeFolder && !slices.Contains(docActions, a) {
-			return fmt.Errorf("%w: %s is not set on a folder; its rules set the docs actions and permissions:write", apperrs.ErrInvalid, a)
-		}
-		if resourceType == resourceTypeChannel && a != permissions.ChannelsRead {
-			return fmt.Errorf("%w: only channels:read may be set on a channel", apperrs.ErrInvalid)
+		if only, ok := onlyActions[resourceType]; ok && !slices.Contains(only.actions, a) {
+			return fmt.Errorf("%w: %s is not set on a %s; its rules set %s", apperrs.ErrInvalid, a, resourceType, only.says)
 		}
 	}
 	return nil
@@ -734,9 +782,9 @@ func (s *Service) requireRolesOf(ctx context.Context, resourceType, resourceID s
 	return nil
 }
 
-// requireOpens answers a project, or a folder of one, the actor is not in, or a play they can't see, as not found.
+// requireOpens answers a project, or a folder of one, the actor is not in, or a play or stack they can't see, as not found.
 func (s *Service) requireOpens(ctx context.Context, actorID, resourceType, resourceID string) error {
-	if resourceType != resourceTypeProject && resourceType != resourceTypeFolder && resourceType != resourceTypePlay {
+	if resourceType != resourceTypeProject && resourceType != resourceTypeFolder && resourceType != resourceTypePlay && resourceType != resourceTypeStack {
 		return nil
 	}
 	e, err := s.entityOf(ctx, resourceType, resourceID)
@@ -749,11 +797,13 @@ func (s *Service) requireOpens(ctx context.Context, actorID, resourceType, resou
 	return nil
 }
 
-// workspaceOf is the workspace a doc, folder, play, project, or channel lives in; "" when it can't be resolved.
+// workspaceOf is the workspace a doc, folder, play, project, channel, or stack lives in; "" when it can't be resolved.
 func (s *Service) workspaceOf(ctx context.Context, resourceType, resourceID string) string {
 	switch resourceType {
 	case resourceTypeFolder:
 		return s.folderScope(ctx, resourceID).WorkspaceID
+	case resourceTypeStack:
+		return s.stackScope(ctx, resourceID).WorkspaceID
 	case resourceTypePlay:
 		return s.resolvePlayWorkspace(ctx, resourceID)
 	case resourceTypeChannel:
@@ -820,7 +870,7 @@ func moveTo(allow, deny permissions.Set, a permissions.Action, state string) (pe
 	return allow.Without(a), deny.Without(a)
 }
 
-// holds is whether actorID holds action on the doc, folder, play, project, instance area, or computer, its own rules included.
+// holds is whether actorID holds action on the doc, folder, play, project, stack, instance area, or computer, its own rules included.
 func (s *Service) holds(ctx context.Context, actorID, resourceType, resourceID string, action permissions.Action) bool {
 	if resourceType == resourceTypeInstanceArea {
 		held, _ := s.HoldsArea(ctx, actorID, resourceID, action)
@@ -847,8 +897,8 @@ func (s *Service) ListPlayGrants(ctx context.Context, actorID, playID string) ([
 	return s.listGrants(ctx, actorID, resourceTypePlay, playID)
 }
 
-// ListRules is the rules on a doc, folder, play, project, channel, or instance area, for whoever manages it; a project
-// the actor is not in, a folder of one, or a play they can't see is not found, so listing its rules never confirms it exists.
+// ListRules is the rules on a doc, folder, play, project, channel, stack, or instance area, for whoever manages it; a project
+// the actor is not in, a folder of one, or a play or stack they can't see is not found, so listing its rules never confirms it exists.
 func (s *Service) ListRules(ctx context.Context, actorID, resourceType, resourceID string) ([]*Overwrite, error) {
 	if actorID == "" {
 		return nil, fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
@@ -935,7 +985,8 @@ func (s *Service) accountsByID(ctx context.Context) (map[string]*User, error) {
 	return byID, nil
 }
 
-// ManagesRules reports whether userID may write a doc's, folder's, play's, project's, channel's, or instance area's rules.
+// ManagesRules reports whether userID may write a doc's, folder's, play's, project's, channel's, stack's, or instance
+// area's rules.
 func (s *Service) ManagesRules(ctx context.Context, userID, resourceType, resourceID string) bool {
 	if userID == "" {
 		return false
@@ -946,7 +997,7 @@ func (s *Service) ManagesRules(ctx context.Context, userID, resourceType, resour
 
 // canManage grants no instance-wide bypass, since that would cross workspace isolation boundaries. A doc's or a
 // folder's manage action is the cross-cutting permissions:write share grant; a play's is plays:write, the same bit
-// that gates editing the play's own definition; a project's is Manage this project's access; a channel's is the
+// that gates editing the play's own definition; a stack's is stacks:write, as editing it is; a project's is Manage this project's access; a channel's is the
 // Owner's alone until channels carry their own manage permission; an instance area's the instance Owner's alone; a
 // computer's its owner's, and to anyone else it is not found.
 func (s *Service) canManage(ctx context.Context, actorID, resourceType, resourceID string) (bool, error) {
@@ -974,6 +1025,9 @@ func (s *Service) canManage(ctx context.Context, actorID, resourceType, resource
 	}
 	if resourceType == resourceTypeFolder {
 		return s.holds(ctx, actorID, resourceType, resourceID, permissions.PermissionsWrite), nil
+	}
+	if resourceType == resourceTypeStack {
+		return s.holds(ctx, actorID, resourceType, resourceID, permissions.StacksWrite), nil
 	}
 	return s.Can(ctx, actorID, resourceID, permissions.PermissionsWrite)
 }

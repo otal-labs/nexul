@@ -19,7 +19,7 @@ import (
 )
 
 // TestExplain_AnswersWhatTheCheckAnswers holds explain to enforcement: over the list parity fixture's viewers, every
-// catalog action on every doc, folder, play and project answers as the check does, and so does each line of an explanation.
+// catalog action on every doc, folder, play, project and stack answers as the check does, and so does each line of an explanation.
 func TestExplain_AnswersWhatTheCheckAnswers(t *testing.T) {
 	f := listParityFixture(t)
 	a := f.svc.accessSvc
@@ -40,8 +40,12 @@ func TestExplain_AnswersWhatTheCheckAnswers(t *testing.T) {
 		"folder": func(user, id string, action permissions.Action) bool {
 			return a.HasPermission(ctx, user, wsDefault, action, "folder", id)
 		},
+		"stack": func(user, id string, action permissions.Action) bool {
+			return a.HasPermission(ctx, user, wsDefault, action, "stack", id)
+		},
 	}
-	entities := map[string][]string{"doc": {f.doc, "doc-private", "doc-shared", "doc-client", "doc-folder"}, "project": {pGeneral, pClient}, "folder": {parityFolder}}
+	entities := map[string][]string{"doc": {f.doc, "doc-private", "doc-shared", "doc-client", "doc-folder"}, "project": {pGeneral, pClient},
+		"folder": {parityFolder}, "stack": {f.stack, "stack-client"}}
 	for _, p := range ps {
 		entities["play"] = append(entities["play"], p.ID)
 	}

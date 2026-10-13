@@ -42,9 +42,18 @@ func (r *AccessRepo) Rules(ctx context.Context, resourceType string, resourceIDs
 	if len(resourceIDs) == 0 {
 		return map[string]*access.Rules{}, nil
 	}
-	rows, err := r.q.ListOverwriteRules(ctx, sqlcgen.ListOverwriteRulesParams{
-		ResourceType: resourceType, UserID: nullString(userID), ResourceIds: resourceIDs,
-	})
+	var rows []sqlcgen.PermissionOverwrite
+	var err error
+	if len(resourceIDs) == 1 {
+		rows, err = r.hot.ListOverwriteRulesInResource(ctx, sqlcgen.ListOverwriteRulesInResourceParams{
+			ResourceType: resourceType, ResourceID: resourceIDs[0], UserID: nullString(userID),
+		})
+	}
+	if len(resourceIDs) > 1 {
+		rows, err = r.q.ListOverwriteRules(ctx, sqlcgen.ListOverwriteRulesParams{
+			ResourceType: resourceType, UserID: nullString(userID), ResourceIds: resourceIDs,
+		})
+	}
 	if err != nil {
 		return nil, fmt.Errorf("get %s rules for %s: %w", resourceType, userID, err)
 	}
@@ -115,6 +124,25 @@ func (r *AccessRepo) RoleRules(ctx context.Context, resourceType string, resourc
 		slices.SortFunc(rules, func(a, b *access.Overwrite) int { return strings.Compare(a.RoleID, b.RoleID) })
 	}
 	return out, nil
+}
+
+// StackRuleTurns decides userID's stack rules for action in SQL and hands back only the stacks whose answer turns.
+func (r *AccessRepo) StackRuleTurns(ctx context.Context, userID string, action permissions.Action, ruled, readable []string) (allowed, denied []string, err error) {
+	rows, err := r.hot.ListStackRuleTurns(ctx, sqlcgen.ListStackRuleTurnsParams{
+		QuotedAction: `"` + string(action) + `"`, UserID: nullString(userID), Ruled: idsJSON(ruled), Readable: idsJSON(readable),
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("stack rules of %s for %s: %w", userID, action, err)
+	}
+	allowed, denied = []string{}, []string{}
+	for _, row := range rows {
+		if held, _ := row.Held.(int64); held == 1 {
+			allowed = append(allowed, row.StackID)
+			continue
+		}
+		denied = append(denied, row.StackID)
+	}
+	return allowed, denied, nil
 }
 
 // DocRules returns the rules naming userID or a role they hold on each of docIDs and on its folder, in one read.

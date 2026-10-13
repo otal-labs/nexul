@@ -14,11 +14,12 @@ func (s *Service) SetNames(n Names) {
 	s.names = n
 }
 
-// The actions each entity's rules may set: a doc's docs actions and its access, a play's See, Run, Edit and Delete, and
-// on a project In this project and every project-area action.
+// The actions each entity's rules may set: a doc's docs actions and its access, a play's See, Run, Edit and Delete, a stack's
+// stacks then deploys actions, and on a project In this project and every project-area action.
 var (
 	docActions     = catalogActions(func(i permissions.Info) bool { return i.Domain == "docs" || i.Value == permissions.PermissionsWrite })
 	playActions    = []permissions.Action{permissions.PlaysRead, permissions.PlaysRun, permissions.PlaysWrite, permissions.PlaysDelete}
+	stackActions   = append(catalogActions(func(i permissions.Info) bool { return i.Domain == "stacks" }), catalogActions(func(i permissions.Info) bool { return i.Domain == "deploys" })...)
 	projectActions = append([]permissions.Action{permissions.ProjectsOpen}, catalogActions(func(i permissions.Info) bool { return i.Area == permissions.AreaProject })...)
 )
 
@@ -56,6 +57,8 @@ func (s *Service) entityOf(ctx context.Context, resourceType, resourceID string)
 		e.workspaceID, e.projectID = scope.WorkspaceID, scope.ProjectID
 		e.open, e.manage, e.actions = permissions.Member, permissions.PermissionsWrite, docActions
 		return e, nil
+	case resourceTypeStack:
+		return s.stackEntity(ctx, e)
 	case resourceTypePlay:
 		e.workspaceID = s.resolvePlayWorkspace(ctx, resourceID)
 		e.open, e.manage, e.actions = permissions.PlaysRead, permissions.PlaysWrite, playActions
@@ -69,7 +72,25 @@ func (s *Service) entityOf(ctx context.Context, resourceType, resourceID string)
 		e.open, e.manage, e.actions = permissions.Member, permissions.ProjectsAccess, projectActions
 		return e, nil
 	}
-	return e, fmt.Errorf("%w: resource_type %q is not doc, folder, play, or project", apperrs.ErrInvalid, resourceType)
+	return e, fmt.Errorf("%w: resource_type %q is not doc, folder, play, project, or stack", apperrs.ErrInvalid, resourceType)
+}
+
+// stackEntity is a project's stack; an instance stack answers to its instance area and a branch deployment to its base
+// stack's rules, so neither carries rules of its own (ADR 0079).
+func (s *Service) stackEntity(ctx context.Context, e entity) (entity, error) {
+	scope, err := s.stackScopeOf(ctx, e.id)
+	if err != nil {
+		return e, err
+	}
+	if scope.ProjectID == "" {
+		return e, fmt.Errorf("%w: stack %s belongs to no project; the instance's own stacks carry no rules", apperrs.ErrInvalid, e.id)
+	}
+	if scope.BaseID != "" {
+		return e, fmt.Errorf("%w: stack %s is a branch deployment; set the rules on its base stack %s", apperrs.ErrInvalid, e.id, scope.BaseID)
+	}
+	e.workspaceID, e.projectID = scope.WorkspaceID, scope.ProjectID
+	e.open, e.manage, e.actions = permissions.StacksRead, permissions.StacksWrite, stackActions
+	return e, nil
 }
 
 // answer is userID's answer for action on e, from the check that enforces it; with own false, e's rule naming them
@@ -108,7 +129,7 @@ func withoutAction(ow *Overwrite, action permissions.Action) *Overwrite {
 
 func noRules() []*Rules { return nil }
 
-// Decide is userID's answer for action on a doc, folder, play, or project, with what decided it: the evaluator every check
+// Decide is userID's answer for action on a doc, folder, play, project, or stack, with what decided it: the evaluator every check
 // uses, so an explanation can never disagree with enforcement.
 func (s *Service) Decide(ctx context.Context, userID, resourceType, resourceID string, action permissions.Action) (bool, Source, error) {
 	e, err := s.entityOf(ctx, resourceType, resourceID)
@@ -119,7 +140,7 @@ func (s *Service) Decide(ctx context.Context, userID, resourceType, resourceID s
 	return held, src, nil
 }
 
-// Explain answers each action a doc's, folder's, play's, project's, or instance area's rules may set for userID, the
+// Explain answers each action a doc's, folder's, play's, project's, stack's, or instance area's rules may set for userID, the
 // caller when empty, with its source as a sentence. Explaining yourself takes opening the entity, anyone else its
 // manage permission; an entity the caller can't open is not found.
 func (s *Service) Explain(ctx context.Context, actorID, resourceType, resourceID, userID string) (*Explanation, error) {
@@ -158,7 +179,7 @@ func (s *Service) Explain(ctx context.Context, actorID, resourceType, resourceID
 	return out, nil
 }
 
-// ExplainRole answers each action a doc's, folder's, play's, or project's rules may set for a holder of roleID alone, with the
+// ExplainRole answers each action a doc's, folder's, play's, project's, or stack's rules may set for a holder of roleID alone, with the
 // role's own rule there, and with that rule holding the action at Fallback: what the panel shows under a role's
 // Fallback. It takes managing the
 // entity, and a role of another workspace is not found.

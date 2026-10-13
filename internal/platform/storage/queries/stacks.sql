@@ -21,6 +21,24 @@ SELECT * FROM stacks WHERE (sqlc.arg(project_id) = '' OR project_id = sqlc.arg(p
 -- name: ListStacksByWorkspace :many
 SELECT * FROM stacks WHERE project_id IN (SELECT id FROM projects WHERE workspace_id = ?) ORDER BY name;
 
+-- name: ListReachedStacks :many
+SELECT * FROM stacks
+WHERE derived_from = ''
+  AND (sqlc.arg(project_id) = '' OR project_id = sqlc.arg(project_id))
+  AND (sqlc.arg(workspace_id) = '' OR project_id IN (SELECT id FROM projects WHERE workspace_id = sqlc.arg(workspace_id)))
+  AND (sqlc.arg(all_stacks) = 1
+    OR (COALESCE(project_id, '') = '' AND sqlc.arg(anywhere) = 1)
+    OR (project_id IN (SELECT value FROM json_each(sqlc.arg(project_ids))) AND id NOT IN (SELECT value FROM json_each(sqlc.arg(denied))))
+    OR id IN (SELECT value FROM json_each(sqlc.arg(allowed))))
+ORDER BY name;
+
+-- name: GetStackRuleScope :one
+SELECT COALESCE(s.project_id, '') AS project_id, s.derived_from, COALESCE(p.workspace_id, '') AS workspace_id
+FROM stacks s LEFT JOIN projects p ON p.id = s.project_id WHERE s.id = ?;
+
+-- name: DeleteStackRules :exec
+DELETE FROM permission_overwrites WHERE resource_type = 'stack' AND resource_id = ?;
+
 -- name: ListStacksByBuildRepo :many
 SELECT * FROM stacks WHERE derived_from = '' AND build_repo_owner = ? AND build_repo_name = ? ORDER BY name;
 

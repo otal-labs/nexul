@@ -5,6 +5,7 @@ import { api, errorMessage } from "@/api/client";
 import { getDocFoldersKey } from "@/hooks/DocFolderHooks";
 import { getDocsKey } from "@/hooks/DocHooks";
 import { getProjectPeopleKey } from "@/hooks/PeopleHooks";
+import { getStacksKey } from "@/hooks/StackHooks";
 import {
   type InstanceArea,
   type PermissionExplanation,
@@ -19,7 +20,7 @@ export const getGrantsKey = "getGrants";
 export const getExplanationKey = "getExplanation";
 const getPermissionCatalogKey = "getPermissionCatalog";
 
-// A doc's, folder's, play's or project's rules, one row per role or person. A caller without the manage permission (which the endpoint requires)
+// A doc's, folder's, play's, project's or stack's rules, one row per role or person. A caller without the manage permission (which the endpoint requires)
 // passes enabled false so it never fires a request it knows will 403.
 export const useFetchGrants = (resourceType: string, resourceId: string, enabled = true) =>
   useQuery({
@@ -97,6 +98,7 @@ export const useSaveRules = () => {
       await refreshRules(client, resourceType, resourceId);
       if (resourceType === "doc" || resourceType === "folder") await client.invalidateQueries({ queryKey: [getDocsKey] });
       if (resourceType === "folder") await client.invalidateQueries({ queryKey: [getDocFoldersKey] });
+      if (resourceType === "stack") await client.invalidateQueries({ queryKey: [getStacksKey] });
       if (changes.length > 0) toast.success(done ?? "Permissions saved");
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -108,7 +110,7 @@ interface GrantPayload {
   resource_id: string;
 }
 
-// A rule changed on a doc, folder, play, project or computer: an open panel or people card on it rereads its rules and answers.
+// A rule changed on a doc, folder, play, project, stack or computer: an open panel or people card on it rereads its rules and answers.
 export const permissionRulesFollower: LiveFollower = {
   "access.grant.changed": ({ resource_type, resource_id }: GrantPayload, { client }) => refreshRules(client, resource_type, resource_id),
   "computer.grant_changed": ({ computer_id }: { computer_id: string }, { client }) => refreshRules(client, "computer", computer_id),

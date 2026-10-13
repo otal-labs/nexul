@@ -136,7 +136,7 @@ func TestDeployList_PagesWithAnHonestTotal(t *testing.T) {
 	assert.Equal(t, 4, page.NextOffset)
 }
 
-// scopeGate answers CallerProjects and RequireAnywhere as configured, for what deploy_list asks storage to show.
+// scopeGate answers CallerStacks and RequireAnywhere as configured, for what deploy_list asks storage to show.
 type scopeGate struct {
 	allowGate
 	projects    []string
@@ -146,8 +146,8 @@ type scopeGate struct {
 
 func (g scopeGate) RequireAnywhere(context.Context, permissions.Action) error { return g.anywhereErr }
 
-func (g scopeGate) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
-	return g.projects, false, g.projectsErr
+func (g scopeGate) CallerStacks(context.Context, string, permissions.Action) (permissions.StackReach, bool, error) {
+	return permissions.StackReach{ProjectIDs: g.projects}, false, g.projectsErr
 }
 
 func TestPageDeploys_AsksForWhatTheCallerReads(t *testing.T) {

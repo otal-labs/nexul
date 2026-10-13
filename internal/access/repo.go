@@ -23,6 +23,9 @@ type Repo interface {
 	DocRules(ctx context.Context, docIDs []string, userID string) (map[string]*DocRules, error)
 	// DocRuleTurns decides in one read the folders and docs in ruled whose rules for userID turn readable's answer.
 	DocRuleTurns(ctx context.Context, userID string, action permissions.Action, ruled, readable []string) (permissions.DocReach, error)
+	// StackRuleTurns decides in one read the stacks of the projects in ruled whose rules for userID or a role they hold in
+	// its workspace turn readable's answer for action, as RequireStack decides it: allowed outside readable, denied in it.
+	StackRuleTurns(ctx context.Context, userID string, action permissions.Action, ruled, readable []string) (allowed, denied []string, err error)
 	// OwnRules returns the rules naming userID on each of projectIDs that has one, keyed by project id, in one read.
 	OwnRules(ctx context.Context, userID string, projectIDs []string) (map[string]*Overwrite, error)
 	// RoleRules returns the rules for roleIDs on each of resourceIDs that has any, keyed by resource id in role order,
@@ -80,6 +83,20 @@ type Scopes interface {
 	ProjectIDs(ctx context.Context, workspaceID string) ([]string, error)
 	// WorkspaceIDsForUser lists every workspace userID is a member of.
 	WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error)
+}
+
+// StackScope is where a stack lives: its project and that project's workspace, both empty for an instance stack, and the
+// base stack a branch deployment follows.
+type StackScope struct {
+	WorkspaceID string
+	ProjectID   string
+	BaseID      string
+}
+
+// StackScopeResolver resolves where a stack lives straight from storage, so its rules are written and explained there.
+type StackScopeResolver interface {
+	// StackScope returns ErrNotFound for an unknown stack.
+	StackScope(ctx context.Context, stackID string) (StackScope, error)
 }
 
 // RoleWorkspaceResolver resolves a role's workspace, so a rule names only a role of its entity's workspace (ADR 0017).

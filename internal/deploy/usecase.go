@@ -67,9 +67,12 @@ type Service struct {
 // Gate is the permission check a stack or deploy passes before the caller touches it (the access domain, ADR 0042).
 type Gate interface {
 	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
+	// RequireStack checks action on a stack of projectID through the rules on stackID, a branch deployment's base.
+	RequireStack(ctx context.Context, projectID, stackID string, action permissions.Action) error
 	RequireAnywhere(ctx context.Context, action permissions.Action) error
-	// CallerProjects lists the projects RequireProject lets the caller act in with action; all is true for any project.
-	CallerProjects(ctx context.Context, action permissions.Action) (projectIDs []string, all bool, err error)
+	// CallerStacks is what a stack or deploy list in workspaceID, or every one when empty, filters by for action; all is
+	// true for every project's stacks.
+	CallerStacks(ctx context.Context, workspaceID string, action permissions.Action) (reach permissions.StackReach, all bool, err error)
 }
 
 // SetGate wires the permission check; unset, only the server's own calls pass.
@@ -87,13 +90,30 @@ func (s *Service) requireIn(ctx context.Context, projectID string, action permis
 	return s.gate.RequireProject(ctx, projectID, action)
 }
 
+// requireStack checks action on stack: an instance stack anywhere (ADR 0079), a project's through its rules, a branch
+// deployment's through its base stack's (ADR 0148).
+func (s *Service) requireStack(ctx context.Context, stack *Stack, action permissions.Action) error {
+	if s.gate == nil || stack.ProjectID == "" {
+		return s.requireIn(ctx, stack.ProjectID, action)
+	}
+	return s.gate.RequireStack(ctx, stack.ProjectID, ruleStackID(stack), action)
+}
+
+// ruleStackID is the stack whose rules reach stack: its base for a branch deployment, else itself.
+func ruleStackID(stack *Stack) string {
+	if stack.DerivedFrom != "" {
+		return stack.DerivedFrom
+	}
+	return stack.ID
+}
+
 // loadStack fetches a stack the caller may act on with action.
 func (s *Service) loadStack(ctx context.Context, id string, action permissions.Action) (*Stack, error) {
 	stack, err := s.stacks.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.requireIn(ctx, stack.ProjectID, action); err != nil {
+	if err := s.requireStack(ctx, stack, action); err != nil {
 		return nil, err
 	}
 	return stack, nil
@@ -111,13 +131,6 @@ func (s *Service) loadForUpdate(ctx context.Context, stack Stack) (*Stack, error
 	return existing, nil
 }
 
-// readableStacks keeps the stacks the caller may read.
-func (s *Service) readableStacks(ctx context.Context, stacks []*Stack) ([]*Stack, error) {
-	return permissions.Filter(stacks, func(st *Stack) string { return st.ProjectID }, func(projectID string) error {
-		return s.requireIn(ctx, projectID, permissions.StacksRead)
-	})
-}
-
 // requireDeploy checks action on a deploy through its stack; a deleted stack's kept history is instance-level.
 func (s *Service) requireDeploy(ctx context.Context, stackID string, action permissions.Action) error {
 	if identity.Internal(ctx) {
@@ -130,7 +143,7 @@ func (s *Service) requireDeploy(ctx context.Context, stackID string, action perm
 	if err != nil {
 		return fmt.Errorf("stack %s: %w", stackID, err)
 	}
-	return s.requireIn(ctx, stack.ProjectID, action)
+	return s.requireStack(ctx, stack, action)
 }
 
 // readableDeploys keeps the deploys the caller may read.
@@ -257,7 +270,7 @@ func (s *Service) CreateStack(ctx context.Context, stack Stack, declared map[str
 	if err := s.checkProject(ctx, &stack); err != nil {
 		return nil, err
 	}
-	if err := s.requireIn(ctx, stack.ProjectID, permissions.StacksWrite); err != nil {
+	if err := s.requireCreate(ctx, stack); err != nil {
 		return nil, err
 	}
 	if err := s.checkBranchDeployRules(ctx, &stack); err != nil {
@@ -289,6 +302,14 @@ func (s *Service) CreateStack(ctx context.Context, stack Stack, declared map[str
 	return &stack, nil
 }
 
+// requireCreate takes stacks:write where the new stack goes; a branch deployment's is its base stack's (ADR 0148).
+func (s *Service) requireCreate(ctx context.Context, stack Stack) error {
+	if stack.DerivedFrom == "" || stack.ProjectID == "" {
+		return s.requireIn(ctx, stack.ProjectID, permissions.StacksWrite)
+	}
+	return s.requireStack(ctx, &stack, permissions.StacksWrite)
+}
+
 // GetStack returns a stack by id.
 func (s *Service) GetStack(ctx context.Context, id string) (*Stack, error) {
 	if strings.TrimSpace(id) == "" {
@@ -317,24 +338,25 @@ func (s *Service) GetServiceByName(ctx context.Context, name string) (*Stack, er
 // An empty projectID spans every project, which the workspace-wide topology canvas needs to wire networks and
 // hostnames.
 func (s *Service) ListStacks(ctx context.Context, projectID string) ([]*Stack, error) {
-	stacks, err := s.stacks.ListByProject(ctx, strings.TrimSpace(projectID))
-	if err != nil {
-		return nil, fmt.Errorf("list stacks for project %s: %w", projectID, err)
-	}
-	return s.readableStacks(ctx, baseStacks(stacks))
+	return s.ListScopedStacks(ctx, projectID, "")
 }
 
-// ListScopedStacks narrows to a project when given, else to a workspace's projects, else lists every base stack.
+// ListScopedStacks narrows to a project when given, else to a workspace's projects, else lists every base stack the
+// caller reads, filtered in SQL (ADR 0140).
 func (s *Service) ListScopedStacks(ctx context.Context, projectID, workspaceID string) ([]*Stack, error) {
-	workspaceID = strings.TrimSpace(workspaceID)
-	if strings.TrimSpace(projectID) != "" || workspaceID == "" {
-		return s.ListStacks(ctx, projectID)
+	projectID, workspaceID = strings.TrimSpace(projectID), strings.TrimSpace(workspaceID)
+	if projectID != "" {
+		workspaceID = ""
 	}
-	stacks, err := s.stacks.ListByWorkspace(ctx, workspaceID)
+	scope, err := s.listScope(ctx, workspaceID, permissions.StacksRead, projectID == "" && workspaceID == "")
 	if err != nil {
-		return nil, fmt.Errorf("list stacks for workspace %s: %w", workspaceID, err)
+		return nil, fmt.Errorf("list stacks: %w", err)
 	}
-	return s.readableStacks(ctx, baseStacks(stacks))
+	stacks, err := s.stacks.ListReached(ctx, projectID, workspaceID, scope)
+	if err != nil {
+		return nil, fmt.Errorf("list stacks: %w", err)
+	}
+	return stacks, nil
 }
 
 func baseStacks(stacks []*Stack) []*Stack {
@@ -868,21 +890,36 @@ func (s *Service) deployScope(ctx context.Context, stackID string) (DeployScope,
 		}
 		return DeployScope{All: true}, nil
 	}
+	scope, err := s.listScope(ctx, "", permissions.DeploysRead, true)
+	if err != nil {
+		return DeployScope{}, fmt.Errorf("list deploys: %w", err)
+	}
+	return scope, nil
+}
+
+// listScope is what a stack or deploy list in workspaceID, or every one, shows the caller for action: the projects and
+// stacks access reaches, and with instance the instance's own stacks when they hold it anywhere (ADR 0079, ADR 0148).
+func (s *Service) listScope(ctx context.Context, workspaceID string, action permissions.Action, instance bool) (DeployScope, error) {
 	if identity.Internal(ctx) {
 		return DeployScope{All: true}, nil
 	}
 	if s.gate == nil {
 		return DeployScope{All: permissions.Ungated(ctx) == nil}, nil
 	}
-	projectIDs, all, err := s.gate.CallerProjects(ctx, permissions.DeploysRead)
+	reach, all, err := s.gate.CallerStacks(ctx, workspaceID, action)
 	if err != nil {
-		return DeployScope{}, fmt.Errorf("list deploys: %w", err)
+		return DeployScope{}, err
 	}
-	anywhere := s.gate.RequireAnywhere(ctx, permissions.DeploysRead)
+	scope := DeployScope{All: all, ProjectIDs: reach.ProjectIDs, Allowed: reach.Allowed, Denied: reach.Denied}
+	if !instance {
+		return scope, nil
+	}
+	anywhere := s.gate.RequireAnywhere(ctx, action)
 	if anywhere != nil && !permissions.Refused(anywhere) {
-		return DeployScope{}, fmt.Errorf("list deploys: %w", anywhere)
+		return DeployScope{}, anywhere
 	}
-	return DeployScope{All: all, ProjectIDs: projectIDs, Anywhere: anywhere == nil}, nil
+	scope.Anywhere = anywhere == nil
+	return scope, nil
 }
 
 // applyStackDefaults fills the compose-strategy default compose path so a stack always carries a concrete value.

@@ -63,8 +63,10 @@ func (allowGate) RequireProject(context.Context, string, permissions.Action) err
 
 func (allowGate) RequireAnywhere(context.Context, permissions.Action) error { return nil }
 
-func (allowGate) CallerProjects(context.Context, permissions.Action) ([]string, bool, error) {
-	return nil, true, nil
+func (allowGate) RequireStack(context.Context, string, string, permissions.Action) error { return nil }
+
+func (allowGate) CallerStacks(context.Context, string, permissions.Action) (permissions.StackReach, bool, error) {
+	return permissions.StackReach{}, true, nil
 }
 
 func requireStack(t *testing.T, stacks *fakeStackRepo, stack Stack) {
