@@ -1,6 +1,6 @@
 # 21 — Computer sharing
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 17
 
@@ -38,12 +38,12 @@ share it by name. The runner-side work is personal runners tickets 18 and 19, wh
 
 ## Acceptance criteria
 
-- [ ] `TestComputerRules_OwnerOrEveryBitRoleWithoutARuleGetsNotFound`, over HTTP and MCP, and the computer is in none
+- [x] `TestComputerRules_OwnerOrEveryBitRoleWithoutARuleGetsNotFound`, over HTTP and MCP, and the computer is in none
       of their lists, events or sockets.
-- [ ] `TestComputerRules_ANamedPersonHoldsExactlyWhatIsGranted`, including an Owner who is named.
-- [ ] `TestComputerRules_OnlyTheOwnerWrites`, `TestComputerRules_TargetsAreNamedPeopleOnly` (a role write and a Deny
+- [x] `TestComputerRules_ANamedPersonHoldsExactlyWhatIsGranted`, including an Owner who is named.
+- [x] `TestComputerRules_OnlyTheOwnerWrites`, `TestComputerRules_TargetsAreNamedPeopleOnly` (a role write and a Deny
       are refused), `TestComputerRules_RevokeIsImmediate`.
-- [ ] `TestComputerRules_EndWhenNoWorkspaceIsSharedOrAnAccountIsDisabled`, and a rule doesn't return on rejoining.
-- [ ] `TestComputerRules_EventsReachOnlyTheOwnerAndTheGrantee`; `computer_activity:read` alone still lists no
+- [x] `TestComputerRules_EndWhenNoWorkspaceIsSharedOrAnAccountIsDisabled`, and a rule doesn't return on rejoining.
+- [x] `TestComputerRules_EventsReachOnlyTheOwnerAndTheGrantee`; `computer_activity:read` alone still lists no
       computer.
-- [ ] The tool count is unchanged.
+- [x] The tool count is unchanged.

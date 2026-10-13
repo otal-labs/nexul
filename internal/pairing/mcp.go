@@ -105,6 +105,7 @@ type computerResult struct {
 	Containers        []Container            `json:"containers,omitempty"`
 	ContainersError   string                 `json:"containers_error,omitempty"`
 	ContainerLogs     *computerContainerLogs `json:"container_logs,omitempty"`
+	Shared            *SharedComputer        `json:"shared,omitempty"`
 }
 
 func toComputerResult(c Computer) computerResult {
@@ -129,7 +130,10 @@ func computerListTool(s *Service) mcptool.Tool {
 			"not) and projects T3 Code last listed; facts_at is when they last changed. One computer whose facts show docker "+
 			"available also lists its Docker containers (name, image, status); pass container_logs with a container's name "+
 			"to read its last lines (200 by default, at most 1000, each cut at 2000 characters), which needs the computer's "+
-			"Nexul app connected.",
+			"Nexul app connected. After yours come the computers other people share with you by name, each named "+
+			"\"<owner>'s <computer> (shared)\" with runner.connected and shared (its owner, and the permissions you hold: "+
+			"computers:see, computers:run_agents, computers:run_commands) and nothing else; its owner shares or stops "+
+			"sharing one with permission_overwrite_update on resource_type computer.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in computerListIn) (any, error) {
 			userID := mcpActorID(ctx)
@@ -145,6 +149,9 @@ func computerListTool(s *Service) mcptool.Tool {
 			}
 			if in.ID == "" && in.ContainerLogs != nil {
 				return nil, fmt.Errorf("%w: container_logs needs the computer's id", apperrs.ErrInvalid)
+			}
+			if in.ContainerLogs != nil && computers[0].Shared != nil {
+				return nil, fmt.Errorf("%w: the containers of computer %s are its owner's alone", apperrs.ErrNotFound, in.ID)
 			}
 			out := make([]computerResult, 0, len(computers))
 			for _, c := range computers {
@@ -165,6 +172,9 @@ func computerListTool(s *Service) mcptool.Tool {
 
 // listedComputer adds the setup and MCP token reads, and the live tunnel status only when one computer was asked for.
 func listedComputer(ctx context.Context, s *Service, userID string, c Computer, live bool) (computerResult, error) {
+	if c.Shared != nil {
+		return computerResult{ID: c.ID, Name: c.SharedName(), Runner: c.Runner, Shared: c.Shared}, nil
+	}
 	r := toComputerResult(c)
 	setup, err := s.GetSetup(ctx, userID, c.ID)
 	if err != nil {

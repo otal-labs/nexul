@@ -14,7 +14,9 @@ import { usePairNow } from "@/hooks/ComputerHooks";
 import { useDeleteComputer } from "@/hooks/PairingHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
+import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { computerLanes } from "@/models/ComputerChecks";
+import { computerEntity } from "@/models/PermissionPanel";
 import { onlySkillsOutdated, RenameComputerFormSchema, setupSummary, stillPairing, type Computer, type RenameComputerFormData } from "@/models/Pairing";
 import { cn } from "@/lib/utils";
 import { daysUntil } from "@/utils/TimeUtility";
@@ -39,6 +41,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
   const pairNow = usePairNow(computer);
   const { open: openRename } = useFormDialog();
   const { open: confirm } = useConfirmationDialog();
+  const openPermissions = usePermissionsDialog();
   const [folded, setFolded] = useState(true);
   const [setupOpen, setSetupOpen] = useState(!pairing && searchParams.get("setup") === computer.id);
 
@@ -82,6 +85,7 @@ export const RunnerComputerRow = ({ computer, presence }: RunnerComputerRowProps
   const actions: RowAction[] = [
     ...(!pairing && primary !== "setup" ? [{ label: setupLabel, onSelect: () => setSetupOpen(true) }] : []),
     ...(connected && primary !== "repair" ? [{ label: "Re-pair now", onSelect: () => pairNow.mutate() }] : []),
+    { label: "Share…", onSelect: () => void openPermissions(computerEntity({ id: computer.id, name })) },
     { label: "Rename", onSelect: () => void rename() },
     { label: "Remove", destructive: true, onSelect: () => void removeComputer() },
   ];

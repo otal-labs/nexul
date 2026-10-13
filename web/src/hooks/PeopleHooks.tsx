@@ -1,4 +1,4 @@
-import { useQuery, type QueryClient } from "@tanstack/react-query";
+import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query";
 
 import { unknownPerson, type PeopleList, type Person } from "@nexul/client-core/person";
 
@@ -10,12 +10,14 @@ export const getWorkspacePeopleKey = "getWorkspacePeople";
 export const getProjectPeopleKey = "getProjectPeople";
 
 // Any member may read it, unlike the members list, which needs members:write.
-export const useFetchWorkspacePeople = (workspaceId: string | undefined) =>
-  useQuery({
+export const workspacePeopleQuery = (workspaceId: string | undefined) =>
+  queryOptions({
     queryKey: [getWorkspacePeopleKey, workspaceId],
     queryFn: async () => (await api.get<PeopleList>(`/api/workspaces/${workspaceId}/people`)).data.people,
     enabled: !!workspaceId,
   });
+
+export const useFetchWorkspacePeople = (workspaceId: string | undefined) => useQuery(workspacePeopleQuery(workspaceId));
 
 // The people in a project, the Owners included: a ticket's developer and tester, and who a project's delete reaches.
 export const useFetchProjectPeople = (projectId: string | undefined) =>

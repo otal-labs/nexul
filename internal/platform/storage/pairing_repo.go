@@ -76,6 +76,26 @@ func (r *PairingRepo) ListComputers(ctx context.Context, userID string) ([]pairi
 	return out, nil
 }
 
+func (r *PairingRepo) ListComputersFor(ctx context.Context, userID string) ([]pairing.Computer, error) {
+	rows, err := r.q.ListPairingComputersFor(ctx, nullString(userID))
+	if err != nil {
+		return nil, fmt.Errorf("list computers for %s: %w", userID, err)
+	}
+	out := make([]pairing.Computer, 0, len(rows))
+	for _, row := range rows {
+		c := toPairingComputer(row.PairingComputer)
+		if c.UserID != userID {
+			allow, err := parseSet(row.RuleAllow)
+			if err != nil {
+				return nil, fmt.Errorf("decode the rule on computer %s for %s: %w", c.ID, userID, err)
+			}
+			c.Shared = &pairing.SharedComputer{OwnerID: c.UserID, OwnerName: row.OwnerName, Permissions: allow}
+		}
+		out = append(out, c)
+	}
+	return out, nil
+}
+
 func (r *PairingRepo) DeleteComputer(ctx context.Context, userID, id string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).DeletePairingComputer(ctx, sqlcgen.DeletePairingComputerParams{ID: id, UserID: userID})

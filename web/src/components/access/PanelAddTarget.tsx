@@ -9,7 +9,7 @@ import { usePanelEntity } from "@/hooks/usePanelEntity";
 import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { usePermissionPanelStore } from "@/stores/permissionPanelStore";
-import { projectEntity, targetsProject } from "@/models/PermissionPanel";
+import { projectEntity, targetScope, targetsProject } from "@/models/PermissionPanel";
 
 interface PanelAddTargetProps {
   listed: string[];
@@ -21,7 +21,7 @@ export const PanelAddTarget = ({ listed }: PanelAddTargetProps) => {
   const entity = usePanelEntity();
   const [open, setOpen] = useState(false);
   const add = usePermissionPanelStore((s) => s.add);
-  const { roles, people, blockedFor, project } = usePanelTargets({ workspaceId: entity.workspaceId, projectId: targetsProject(entity) });
+  const { roles, people, blockedFor, project } = usePanelTargets(targetScope(entity, targetsProject(entity)));
   const managesProject = useCanManageAccess(project && { type: "project", id: project.id });
   const openPanel = usePermissionsDialog();
   const free = (t: { key: string }) => !listed.includes(t.key);
@@ -31,7 +31,7 @@ export const PanelAddTarget = ({ listed }: PanelAddTargetProps) => {
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="shrink-0 justify-start text-muted-foreground">
           <Plus aria-hidden />
-          Add role or person
+          {entity.type === "computer" ? "Add a person" : "Add role or person"}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="max-h-80 w-64 overflow-y-auto p-1">

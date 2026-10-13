@@ -5,7 +5,7 @@ sidebar:
   order: 9
 ---
 
-Agent work in Nexul runs on your own computer, through T3 Code, with your permissions. Nobody else's turns ever run on your machine. A paired computer is not a [runner](/docs/guide/runners/): runners build and deploy, paired computers run agents.
+Agent work in Nexul runs on your own computer, through T3 Code, with your permissions. Nobody else sees your computer or runs anything on it unless you [share it](#share-a-computer) with them by name. A paired computer is not a [runner](/docs/guide/runners/): runners build and deploy, paired computers run agents.
 
 ## Add a computer
 
@@ -118,6 +118,23 @@ These are your own containers, not Nexul services: nothing is imported, deployed
 ### The computer's MCP token
 
 Setup gives the computer its own personal access token, "Nexul MCP on <computer>", for its providers to reach Nexul. It shows in the row's details. **Replace** mints a new one, shown once, and **Revoke MCP token** cuts it off. With none, press **Mint MCP token**.
+
+## Share a computer
+
+A computer is yours alone until you share it: nobody else sees it, a workspace Owner and the instance's Owner included. To let someone use it, open **Share…** in its row's **…** menu, press **Add a person**, pick them, and set what they may do, then **Save**:
+
+- **See this computer**: it shows in their **Computers** list under **Shared with you**, as "<you>'s <computer> (shared)", with its name and whether it is online. Its facts, setup, containers, MCP token and everything else stay yours.
+- **Run agents** and **Run commands**: allowing either also lets them see it. A shared computer shows in their run dialog and project links, where it can't be picked yet.
+
+Each permission is **Allow** or **Fallback**; there is no Deny on a computer. **Fallback** on **See this computer** takes the rest away too, and **Remove from this computer** takes the person off. **Check access** shows what each person can do on it.
+
+Read the warning at the top of the dialog before you share: agents and commands on your computer run as your own user there, so whoever you let run them can read what your account can, your SSH keys, git credentials and logins included.
+
+- You can share only with people who share a workspace with you, and only with people, never a role.
+- Only you change who it's shared with. The people you share it with can't share it on or raise their own permissions, and a change takes effect at once.
+- Sharing ends for good when the two of you no longer share a workspace, or either account is disabled or removed: adding them back, or turning the account back on, doesn't bring it back, so share it again. Removing the computer ends all of its sharing.
+
+An agent shares a computer with [`permission_overwrite_update`](/docs/guide/mcp-server/), `resource_type` `computer`, the people's `user_ids`, and `computers:see`, `computers:run_agents` or `computers:run_commands`; only the computer's owner can. `computer_list` lists the computers shared with you after your own.
 
 ## Choose where turns run
 

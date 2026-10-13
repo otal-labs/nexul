@@ -129,6 +129,9 @@ func (s *Service) Explain(ctx context.Context, actorID, resourceType, resourceID
 	if userID == "" {
 		userID = actorID
 	}
+	if resourceType == resourceTypeComputer {
+		return s.explainComputer(ctx, actorID, resourceID, userID)
+	}
 	ctx = s.memoized(ctx)
 	if resourceType == resourceTypeInstanceArea {
 		return s.explainArea(ctx, actorID, resourceID, userID)

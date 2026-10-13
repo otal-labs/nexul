@@ -98,6 +98,17 @@ const (
 // grid and ParseAction refuses it (ADR 0148).
 const ProjectsOpen Action = "projects:open"
 
+// The computer permissions, off the grid like ProjectsOpen: held only through a rule a computer's owner writes for a
+// named person, never by a role, an invitation or a token (ADR 0148).
+const (
+	ComputersSee      Action = "computers:see"
+	ComputersAgents   Action = "computers:run_agents"
+	ComputersCommands Action = "computers:run_commands"
+)
+
+// ComputerActions are what a computer rule may set, See first.
+var ComputerActions = []Action{ComputersSee, ComputersAgents, ComputersCommands}
+
 const (
 	read     = "read"
 	write    = "write"
@@ -338,9 +349,10 @@ func ParseAction(s string) (Action, bool) {
 	return a, true
 }
 
-// ParseRuleAction is ParseAction for a rule on an entity, which may also set what only a rule holds: In this project.
+// ParseRuleAction is ParseAction for a rule on an entity, which may also set what only a rule holds: In this project and
+// the computer permissions.
 func ParseRuleAction(s string) (Action, bool) {
-	if a := Action(strings.TrimSpace(s)); a == ProjectsOpen {
+	if a := Action(strings.TrimSpace(s)); a == ProjectsOpen || slices.Contains(ComputerActions, a) {
 		return a, true
 	}
 	return ParseAction(s)

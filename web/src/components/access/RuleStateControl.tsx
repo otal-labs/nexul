@@ -20,6 +20,8 @@ interface RuleStateControlProps {
   onChange: (value: RuleState) => void;
   // Why a state is closed to the giver, keyed by state: they don't hold the permission (ADR 0088).
   locked: Partial<Record<RuleState, string>>;
+  // A computer's rules only allow, so its control is Allow and Fallback.
+  withoutDeny?: boolean;
 }
 
 interface StateItemProps {
@@ -51,7 +53,7 @@ const StateItem = ({ state, word, Icon, on, reason }: StateItemProps) => (
 );
 
 // Three icon buttons as one radio group: the one that is on is filled in its own hue, a closed one shows a lock.
-export const RuleStateControl = ({ label, value, onChange, locked }: RuleStateControlProps) => (
+export const RuleStateControl = ({ label, value, onChange, locked, withoutDeny = false }: RuleStateControlProps) => (
   <ToggleGroup
     type="single"
     size="xs"
@@ -61,8 +63,10 @@ export const RuleStateControl = ({ label, value, onChange, locked }: RuleStateCo
     onValueChange={(v) => v && onChange(v as RuleState)}
     className="shrink-0 gap-0.5 rounded-md bg-surface-2 p-0.5 ring-1 ring-border ring-inset"
   >
-    {options.map((o) => (
-      <StateItem key={o.value} state={o.value} word={o.word} Icon={o.Icon} on={o.on} reason={locked[o.value]} />
-    ))}
+    {options
+      .filter((o) => !withoutDeny || o.value !== RuleState.Deny)
+      .map((o) => (
+        <StateItem key={o.value} state={o.value} word={o.word} Icon={o.Icon} on={o.on} reason={locked[o.value]} />
+      ))}
   </ToggleGroup>
 );

@@ -331,6 +331,7 @@ var livePushTopics = []string{
 	runner.TopicPersonalChanged,
 	pairing.TopicFactsChanged,
 	pairing.TopicPairFailed,
+	access.TopicComputerGrantChanged,
 	plays.TopicAutoPlayCreated,
 	plays.TopicAutoPlayUpdated,
 	plays.TopicAutoPlayDeleted,

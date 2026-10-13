@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { toast } from "sonner";
 
@@ -22,6 +22,7 @@ import {
   type PairingDefaultsFormData,
   type TunnelStatus,
 } from "@/models/Pairing";
+import { ownComputers } from "@/models/SharedComputer";
 import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getComputersKey = "getComputers";
@@ -52,11 +53,13 @@ interface ResolveResponse {
   model_options?: OptionSetting[];
 }
 
-export const useListComputers = () =>
-  useQuery({
-    queryKey: [getComputersKey],
-    queryFn: async () => (await api.get<{ computers: Computer[] }>("/api/pairing/computers")).data.computers,
-  });
+// One request lists the viewer's computers and those shared with them; each hook selects its half.
+export const computersQuery = queryOptions({
+  queryKey: [getComputersKey],
+  queryFn: async () => (await api.get<{ computers: Computer[] }>("/api/pairing/computers")).data.computers,
+});
+
+export const useListComputers = () => useQuery({ ...computersQuery, select: ownComputers });
 
 interface PairComputerInput {
   // A computer tunnel, paired at its own address.
@@ -268,7 +271,8 @@ export const pairingFollower: LiveFollower = {
   ...followEach(["computer.paired", "computer.harness_switched", "computer.tunnel_removed"], (_p: unknown, { client }) => refetchComputers(client, true)),
   "computer.tunnel_created": (_p: unknown, { client }) => refetchComputers(client, false),
   // A computer row follows its personal runner enrolling, connecting and going away, and a failed pairing's reason.
-  ...followEach(["runner.personal_changed", "computer.pair_failed"], (_p: unknown, { client }) => refetchComputers(client, false)),
+  // ...and a computer someone shares with the viewer, or stops sharing, joining or leaving their list.
+  ...followEach(["runner.personal_changed", "computer.pair_failed", "computer.grant_changed"], (_p: unknown, { client }) => refetchComputers(client, false)),
   // A computer row's details follow its facts, which the frame never carries; its pickers follow what T3 Code lists.
   "computer.facts_changed": ({ computer_id }: ComputerPayload, { client }) =>
     Promise.all([

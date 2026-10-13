@@ -1,5 +1,6 @@
 import { RuleStateControl, lockedAllowReason, lockedLiftReason } from "@/components/access/RuleStateControl";
 import { SourceLine } from "@/components/access/SourceLine";
+import { usePanelEntity } from "@/hooks/usePanelEntity";
 import { usePermissionRules } from "@/hooks/usePermissionRules";
 import { RuleState, type PermissionAnswer } from "@/models/Permission";
 
@@ -13,6 +14,7 @@ interface PermissionRuleRowProps {
 
 // One permission: its name, the three-state control, and under Fallback what applies without a rule here.
 export const PermissionRuleRow = ({ targetKey, action, label, answer }: PermissionRuleRowProps) => {
+  const entity = usePanelEntity();
   const { stateOf, saved, holds, setState } = usePermissionRules();
   const value = stateOf(targetKey, action);
   const held = holds(action);
@@ -28,7 +30,13 @@ export const PermissionRuleRow = ({ targetKey, action, label, answer }: Permissi
         <p className="text-sm">{label}</p>
         {value === RuleState.Fallback && answer && <SourceLine verdict={answer.fallback} className="mt-1" />}
       </div>
-      <RuleStateControl label={label} value={value} locked={locked} onChange={(state) => setState(targetKey, action, state)} />
+      <RuleStateControl
+        label={label}
+        value={value}
+        locked={locked}
+        withoutDeny={entity.type === "computer"}
+        onChange={(state) => setState(targetKey, action, state)}
+      />
     </li>
   );
 };

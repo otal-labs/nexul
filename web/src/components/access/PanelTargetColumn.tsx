@@ -5,7 +5,7 @@ import { usePanelEntity } from "@/hooks/usePanelEntity";
 import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { usePermissionRules } from "@/hooks/usePermissionRules";
 import { usePermissionPanelStore } from "@/stores/permissionPanelStore";
-import { rulesWord } from "@/models/PermissionPanel";
+import { rulesWord, targetScope } from "@/models/PermissionPanel";
 
 const listClass = "flex gap-1 @3xl/panel:flex-col @3xl/panel:gap-0";
 const headClass = "hidden px-3 pt-1 pb-2 @3xl/panel:block";
@@ -18,7 +18,7 @@ export const PanelTargetColumn = () => {
   const checked = usePermissionPanelStore((s) => s.checked);
   const pick = usePermissionPanelStore((s) => s.pick);
   const check = usePermissionPanelStore((s) => s.check);
-  const { people, targetOf } = usePanelTargets({ workspaceId: entity.workspaceId });
+  const { people, targetOf } = usePanelTargets(targetScope(entity));
   const { listed, roles, people: listedPeople, ruleCount } = usePermissionRules();
 
   return (

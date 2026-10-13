@@ -9,6 +9,7 @@ import { AddComputerDialog } from "@/components/pairing/AddComputerDialog";
 import { ComputerItem } from "@/components/settings/ComputerItem";
 import { HarnessReadinessLine } from "@/components/settings/HarnessReadinessLine";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { SharedComputersSection } from "@/components/settings/SharedComputersSection";
 import { useFetchPresence, useListComputers } from "@/hooks/PairingHooks";
 
 interface ComputersSectionProps {
@@ -63,6 +64,7 @@ export const ComputersSection = ({ bare = false }: ComputersSectionProps = {}) =
           <div className="space-y-4">
             <HarnessReadinessLine />
             {list}
+            <SharedComputersSection />
           </div>
         </SettingsCard>
       )}

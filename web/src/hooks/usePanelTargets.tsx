@@ -1,9 +1,14 @@
-import { personLabel, unknownPerson } from "@nexul/client-core/person";
+import { useQueries } from "@tanstack/react-query";
 
-import { useFetchProjectPeople, useFetchProjectRoleIds, useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
+import { personLabel, unknownPerson, type Person } from "@nexul/client-core/person";
+
+import { useFetchMe } from "@/hooks/AuthHooks";
+import { useFetchProjectPeople, useFetchProjectRoleIds, useFetchWorkspacePeople, workspacePeopleQuery } from "@/hooks/PeopleHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
+import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
 import { parseTarget, targetKey, type TargetKind } from "@/models/PermissionPanel";
+import type { Role } from "@/models/Role";
 
 // A role or person a rule may name, as the panel and a project's people card show it.
 export interface PanelTarget {
@@ -21,12 +26,34 @@ interface TargetScope {
   workspaceId: string;
   // Set for a doc or folder: a target outside this project can't be listed until it is in it.
   projectId?: string | undefined;
+  // A computer's: no roles, and every person who shares a workspace with the viewer, the viewer left out.
+  everyWorkspace?: boolean;
 }
 
+// Everyone in any workspace the viewer is in but the viewer, once, while everyWorkspace; undefined until all have loaded.
+const usePeopleAround = (everyWorkspace: boolean): Person[] | undefined => {
+  const { data: workspaces } = useFetchWorkspaces(everyWorkspace);
+  const { data: me } = useFetchMe();
+  return useQueries({
+    queries: (everyWorkspace ? (workspaces ?? []) : []).map((w) => workspacePeopleQuery(w.id)),
+    combine: (results) => {
+      if (!everyWorkspace || !workspaces || !me || results.some((r) => !r.data)) return undefined;
+      const people = new Map(results.flatMap((r) => r.data ?? []).map((p) => [p.user_id, p]));
+      people.delete(me.user.id);
+      return [...people.values()].sort((a, b) => personLabel(a).localeCompare(personLabel(b)));
+    },
+  });
+};
+
+const noRoles: Role[] = [];
+
 // Every role and member of the workspace as targets, and why one can't be listed here yet.
-export const usePanelTargets = ({ workspaceId, projectId }: TargetScope) => {
-  const { data: roles } = useFetchWorkspaceRoles(workspaceId);
-  const { data: people } = useFetchWorkspacePeople(workspaceId);
+export const usePanelTargets = ({ workspaceId, projectId, everyWorkspace = false }: TargetScope) => {
+  const { data: workspaceRoles } = useFetchWorkspaceRoles(everyWorkspace ? "" : workspaceId);
+  const { data: workspacePeople } = useFetchWorkspacePeople(everyWorkspace ? undefined : workspaceId);
+  const around = usePeopleAround(everyWorkspace);
+  const roles = everyWorkspace ? around && noRoles : workspaceRoles;
+  const people = everyWorkspace ? around : workspacePeople;
   const { data: inProject } = useFetchProjectPeople(projectId);
   const { data: rolesIn } = useFetchProjectRoleIds(projectId);
   const { data: project } = useFetchProject(projectId);

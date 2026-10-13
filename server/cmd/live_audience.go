@@ -76,6 +76,7 @@ var liveRules = map[string]liveRule{
 	pairing.TopicFactsChanged:        ownFrame,
 	pairing.TopicPairFailed:          ownFrame,
 	access.TopicGrantChanged:         grantFrame,
+	access.TopicComputerGrantChanged: computerGrantFrame,
 
 	tenancy.TopicWorkspaceMemberAdded:   memberFrame,
 	tenancy.TopicWorkspaceMemberRemoved: memberFrame,
@@ -214,6 +215,16 @@ func ownFrame(ctx context.Context, _ liveAudience, raw json.RawMessage) bool {
 		UserID string `json:"user_id"`
 	}
 	return decode(raw, &p) && p.UserID != "" && p.UserID == actorID(ctx)
+}
+
+// computerGrantFrame reaches a computer's owner and the person its rule names, and nobody else (ADR 0148).
+func computerGrantFrame(ctx context.Context, _ liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		OwnerID string `json:"owner_id"`
+		UserID  string `json:"user_id"`
+	}
+	me := actorID(ctx)
+	return decode(raw, &p) && me != "" && (p.OwnerID == me || p.UserID == me)
 }
 
 // recipientFrame reaches only the people whose inbox the frame names.
