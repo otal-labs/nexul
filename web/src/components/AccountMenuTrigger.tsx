@@ -4,6 +4,8 @@ import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
 
 import { PopoverTrigger } from "@/components/ui/popover";
 import { RailTooltip } from "@/components/sidebar/RailTooltip";
+import { UpdateDot } from "@/components/UpdateDot";
+import { useWelcomeLeft } from "@/prototype/welcome/WelcomeMenuSection";
 import { avatarGradient } from "@/lib/avatarGradient";
 import { effectiveAvatar, userLabel } from "@/models/User";
 import type { User } from "@/models/User";
@@ -22,15 +24,18 @@ interface AccountMenuTriggerProps {
   collapsed: boolean;
 }
 
-export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTriggerProps) => (
+export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTriggerProps) => {
+  const left = useWelcomeLeft();
+  return (
   <RailTooltip label={userLabel(user)} collapsed={collapsed}>
     <PopoverTrigger asChild>
       <button
         type="button"
-        aria-label={collapsed ? `Account menu for ${userLabel(user)}` : undefined}
+        aria-label={collapsed ? `Account menu for ${userLabel(user)}${left > 0 ? `, ${left} welcome steps left` : ""}` : undefined}
         title={collapsed ? undefined : `@${user.login}`}
         className="nav-row flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left hover:bg-accent/60 active:bg-accent data-[state=open]:bg-accent"
       >
+        <span className="relative shrink-0">
         {effectiveAvatar(user) !== "" && (
           <img
             src={effectiveAvatar(user)}
@@ -47,6 +52,8 @@ export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTrigger
             {initials(userLabel(user))}
           </span>
         )}
+        {left > 0 && <UpdateDot className="-top-0.5 -right-0.5 bg-destructive" label={collapsed ? undefined : `${left} welcome steps left`} />}
+        </span>
         {!collapsed && (
           <>
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -59,4 +66,5 @@ export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTrigger
       </button>
     </PopoverTrigger>
   </RailTooltip>
-);
+  );
+};

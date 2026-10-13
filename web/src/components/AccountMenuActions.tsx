@@ -4,6 +4,7 @@ import { PopoverContent } from "@/components/ui/popover";
 import { MenuSeparator, menuItemClass, menuItemDestructiveClass } from "@/components/MenuItem";
 import { useLogout } from "@/hooks/AuthHooks";
 import { cn } from "@/lib/utils";
+import { WelcomeMenuSection } from "@/prototype/welcome/WelcomeMenuSection";
 
 interface AccountMenuActionsProps {
   onClose: () => void;
@@ -18,8 +19,9 @@ export const AccountMenuActions = ({ onClose }: AccountMenuActionsProps) => {
   };
 
   return (
-    <PopoverContent side="top" align="start" sideOffset={8} className="w-56 p-1">
+    <PopoverContent side="top" align="start" sideOffset={8} className="w-64 p-1">
       <div className="flex flex-col">
+        <WelcomeMenuSection onClose={onClose} />
         <a
           href="https://github.com/otal-labs/nexul/issues"
           target="_blank"

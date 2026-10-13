@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Outlet, createBrowserRouter, RouterProvider, type RouteObject } from "react-router";
 
 import { Layout } from "@/Layout";
+import { WelcomeProtoPage } from "@/prototype/welcome/WelcomeProtoPage";
 import { AreaGate } from "@/components/auth/AreaGate";
 import { ProjectRevokedGate } from "@/components/project/ProjectRevokedGate";
 import { OnboardingGate } from "@/components/auth/OnboardingGate";
@@ -118,6 +119,7 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
         ? [
             { path: "/wizard/onboarding/owner", element: <OwnerWizardPage /> },
             { path: "/wizard/onboarding/profile", element: <FirstLoginWizardPage /> },
+            { path: "/wizard/welcome", element: <WelcomeProtoPage /> },
             {
               element: (
                 <OnboardingGate>
