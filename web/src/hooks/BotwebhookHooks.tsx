@@ -71,7 +71,15 @@ export const useDeleteBotwebhook = () => {
 };
 
 // An open Bots section follows a bot made, changed, deleted, or restored anywhere, its URL included.
-export const botwebhookFollower: LiveFollower = followEach(
-  ["botwebhook.created", "botwebhook.updated", "botwebhook.deleted", "botwebhook.restored"],
-  ({ conversation_id }: { conversation_id: string }, { client }) => client.invalidateQueries({ queryKey: [getBotwebhooksKey, conversation_id] }),
-);
+export const botwebhookFollower: LiveFollower = {
+  ...followEach(
+    ["botwebhook.created", "botwebhook.updated", "botwebhook.deleted", "botwebhook.restored"],
+    ({ conversation_id }: { conversation_id: string }, { client }) => client.invalidateQueries({ queryKey: [getBotwebhooksKey, conversation_id] }),
+  ),
+  // A channel rule, or the Access page's save, can stop or start a bot by what its creator may post.
+  "access.grant.changed": ({ resource_type, resource_id }: { resource_type: string; resource_id: string }, { client }) => {
+    if (resource_type === "channel") return client.invalidateQueries({ queryKey: [getBotwebhooksKey, resource_id] });
+    if (resource_type === "workspace") return client.invalidateQueries({ queryKey: [getBotwebhooksKey] });
+    return undefined;
+  },
+};

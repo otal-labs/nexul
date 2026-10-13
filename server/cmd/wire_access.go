@@ -35,21 +35,21 @@ func (a accessPlayWorkspaceResolver) WorkspaceIDForPlay(ctx context.Context, pla
 	return p.WorkspaceID, nil
 }
 
-// accessChannelWorkspaceResolver reads a channel's workspace from the repo directly, past the chat domain's own checks;
-// a DM or a thread carries no channel rules.
+// accessChannelWorkspaceResolver reads a channel from the repo directly, past the chat domain's own checks; a DM or a
+// thread carries no channel rules.
 type accessChannelWorkspaceResolver struct {
 	chat *storage.ChatRepo
 }
 
-func (a accessChannelWorkspaceResolver) WorkspaceIDForChannel(ctx context.Context, channelID string) (string, error) {
+func (a accessChannelWorkspaceResolver) ChannelScope(ctx context.Context, channelID string) (access.ChannelScope, error) {
 	c, err := a.chat.GetConversation(ctx, channelID)
 	if err != nil {
-		return "", err
+		return access.ChannelScope{}, err
 	}
 	if c.Kind != chat.KindChannel && c.Kind != chat.KindVoiceChannel {
-		return "", fmt.Errorf("%w: %s is not a channel", apperrs.ErrNotFound, channelID)
+		return access.ChannelScope{}, fmt.Errorf("%w: %s is not a channel", apperrs.ErrNotFound, channelID)
 	}
-	return c.WorkspaceID, nil
+	return access.ChannelScope{WorkspaceID: c.WorkspaceID, Private: c.Private, MemberIDs: c.ParticipantIDs}, nil
 }
 
 // accessRoleWorkspaceResolver reads a role's workspace from the repo directly, past the roles domain's own checks.
@@ -93,6 +93,8 @@ func (a accessNames) Name(ctx context.Context, entityType, id string) (string, e
 		return named(ctx, id, a.store.Stacks.GetByID, func(st *deploy.Stack) string { return st.Name })
 	case "play":
 		return named(ctx, id, a.store.Plays.Get, func(p *plays.Play) string { return p.Label })
+	case "channel":
+		return named(ctx, id, a.store.Chat.GetConversation, func(c *chat.Conversation) string { return "#" + c.Name })
 	case access.TargetRole:
 		return named(ctx, id, a.store.Roles.Get, func(r *roles.Role) string { return r.Name })
 	case access.TargetPerson:

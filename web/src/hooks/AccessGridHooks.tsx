@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import { getExplanationKey, getGrantsKey } from "@/hooks/PermissionHooks";
 import { getMyRoleKey, useFetchMyRole } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { AccessGrid, AccessGridSave } from "@/models/AccessGrid";
@@ -25,6 +26,9 @@ export const useSaveAccessGrid = (workspaceId: string) => {
       Promise.all([
         client.invalidateQueries({ queryKey: [getAccessGridKey, workspaceId], exact: true }),
         client.invalidateQueries({ queryKey: [getMyRoleKey, workspaceId], exact: true }),
+        // A hidden channel is a channel rule, which its panel shows too.
+        client.invalidateQueries({ queryKey: [getGrantsKey, "channel"] }),
+        client.invalidateQueries({ queryKey: [getExplanationKey, "channel"] }),
       ]),
     onError: (error) => toast.error(errorMessage(error)),
   });

@@ -20,6 +20,8 @@ export interface Botwebhook {
   deleted_by?: string;
   // Only for a viewer holding botwebhook:write.
   url?: string;
+  // Why a live bot's posts are refused: "Stopped: bob can't post in #eng" while its creator may not post there.
+  stopped?: string;
 }
 
 // Mirrors the server's MaxLive and MaxNameLength.

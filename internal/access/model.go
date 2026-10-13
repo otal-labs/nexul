@@ -114,6 +114,10 @@ const (
 	SourceRule           = "rule"
 	SourceOutsideProject = "outside_project"
 	SourceNotInProject   = "not_in_project"
+	// SourceEveryMember is a public channel's read, which every member holds before its rules.
+	SourceEveryMember = "every_member"
+	// SourceChannelMember is a private channel's read, which only its members hold.
+	SourceChannelMember = "channel_member"
 )
 
 // The states a Source sets, and the targets a rule names.

@@ -252,13 +252,20 @@ func (f *fakeRepo) Rules(_ context.Context, resourceType string, resourceIDs []s
 	out := map[string]*Rules{}
 	for _, id := range resourceIDs {
 		ow, err := f.get(resourceType, id, userID)
-		if errors.Is(err, apperrs.ErrNotFound) {
-			continue
-		}
-		if err != nil {
+		if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
 			return nil, err
 		}
-		out[id] = &Rules{Person: ow}
+		r := &Rules{Person: ow}
+		// Every role's rule comes back, as though the person held each: the check keeps only the roles they hold.
+		for _, role := range f.overwrites {
+			if role.ResourceType == resourceType && role.ResourceID == id && role.Target == TargetRole {
+				r.Roles = append(r.Roles, role)
+			}
+		}
+		slices.SortFunc(r.Roles, func(a, b *Overwrite) int { return strings.Compare(a.RoleID, b.RoleID) })
+		if r.Person != nil || len(r.Roles) > 0 {
+			out[id] = r
+		}
 	}
 	return out, nil
 }

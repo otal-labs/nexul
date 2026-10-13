@@ -3,7 +3,7 @@ import { domainLabel } from "@/models/PermissionLevel";
 
 // What the permissions panel opens on. A doc, folder or stack names its project, a doc its folder, for the header and the add list.
 export interface PanelEntity {
-  type: "doc" | "folder" | "play" | "project" | "stack" | "computer" | "instance_area";
+  type: "doc" | "folder" | "play" | "project" | "stack" | "channel" | "computer" | "instance_area";
   id: string;
   name: string;
   workspaceId: string;
@@ -23,6 +23,11 @@ export const stackEntity = (stack: { id: string; name: string; project_id: strin
 // A project as the panel opens on it.
 export const projectEntity = (project: { id: string; name: string; workspace_id: string }): PanelEntity => ({
   type: "project", id: project.id, name: project.name, workspaceId: project.workspace_id, projectId: project.id, folderId: "",
+});
+
+// A text or voice channel as the panel opens on it, under the name its sidebar row shows.
+export const channelEntity = (channel: { id: string; workspace_id: string }, name: string): PanelEntity => ({
+  type: "channel", id: channel.id, name, workspaceId: channel.workspace_id, projectId: "", folderId: "",
 });
 
 // One of the viewer's computers as the panel opens on it, to share it.
@@ -73,6 +78,7 @@ const panelLabels: Record<PanelEntity["type"], Record<string, string>> = {
   play: { "plays:read": "See this play", "plays:run": "Run", "plays:write": "Edit", "plays:delete": "Delete" },
   stack: {},
   project: { "projects:open": "See this project", "projects:access": "Manage this project's access", "permissions:write": "Manage each doc's access" },
+  channel: { "channels:read": "See this channel", "channels:post": "Post in this channel" },
   computer: { "computers:see": "See this computer", "computers:run_agents": "Run agents", "computers:run_commands": "Run commands" },
   instance_area: {},
 };
@@ -80,7 +86,7 @@ const panelLabels: Record<PanelEntity["type"], Record<string, string>> = {
 export const permissionLabel = (action: string, catalog: PermissionInfo[] | undefined, type: PanelEntity["type"] = "doc") =>
   panelLabels[type][action] ?? catalog?.find((c) => c.value === action)?.label ?? action;
 
-const fixedGroups: Record<string, string> = { projects: "Project", plays: "Play", permissions: "Access", computers: "Computer" };
+const fixedGroups: Record<string, string> = { projects: "Project", plays: "Play", permissions: "Access", computers: "Computer", channels: "Channel" };
 
 const groupOf = (action: string, catalog: PermissionInfo[] | undefined) => {
   const domain = action.slice(0, action.indexOf(":"));

@@ -12,6 +12,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/chat"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/tenancy"
@@ -90,8 +91,8 @@ func TestIntegration_AccessGrid(t *testing.T) {
 	assert.Zero(t, left)
 }
 
-// TestIntegration_AccessGrid_ChannelRuleFrames: a channel rule written one at a time reaches its role's holders and the
-// Owner, who manages it, and nobody else.
+// TestIntegration_AccessGrid_ChannelRuleFrames: a channel rule written one at a time reaches its role's holders and
+// whoever manages it with channels:write, the Owner included, and nobody else.
 func TestIntegration_AccessGrid_ChannelRuleFrames(t *testing.T) {
 	f := newPermFixture(t)
 	s := f.svc
@@ -99,10 +100,11 @@ func TestIntegration_AccessGrid_ChannelRuleFrames(t *testing.T) {
 	frame, err := json.Marshal(access.GrantEvent{ResourceType: "channel", ResourceID: f.channel.ID, Target: access.TargetRole, RoleID: "role-plain"})
 	require.NoError(t, err)
 	audience := liveAudience{access: s.accessSvc, tickets: s.ticketsSvc, chat: s.chatSvc, deploy: s.deploySvc}
-	for user, want := range map[string]bool{uPlain: true, uOverwrite: true, uOwner: true, uReader: false} {
+	for user, want := range map[string]bool{uPlain: true, uOverwrite: true, uOwner: true, uWriter: true, uReader: false} {
 		assert.Equal(t, want, audience.allows(identity.WithActor(context.Background(), identity.Actor{ID: user}), access.TopicGrantChanged, json.RawMessage(frame)), user)
 	}
-	require.Error(t, s.accessSvc.SetRules(as(uWriter), uWriter, "channel", []string{f.channel.ID}, access.Targets{RoleIDs: []string{"role-plain"}}, readChannels, access.StateDeny), "a writer of channels doesn't manage their rules yet")
+	require.ErrorIs(t, s.accessSvc.SetRules(as(uReader), uReader, "channel", []string{f.channel.ID}, access.Targets{RoleIDs: []string{"role-plain"}}, readChannels, access.StateFallback), apperrs.ErrForbidden)
+	require.NoError(t, s.accessSvc.SetRules(as(uWriter), uWriter, "channel", []string{f.channel.ID}, access.Targets{RoleIDs: []string{"role-reader"}}, readChannels, access.StateDeny), "a writer of channels manages their rules")
 }
 
 var readChannels = []permissions.Action{permissions.ChannelsRead}

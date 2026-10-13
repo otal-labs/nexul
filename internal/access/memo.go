@@ -149,6 +149,7 @@ type (
 	docRulesKey   struct{ docID, userID string }
 	folderKey     struct{ folderID string }
 	stackKey      struct{ stackID string }
+	channelKey    struct{ channelID string }
 	membershipKey struct{ userID string }
 	// workspaceProjectsKey is a workspace's projects, which a list asks for once per action it filters by.
 	workspaceProjectsKey struct{ workspaceID string }

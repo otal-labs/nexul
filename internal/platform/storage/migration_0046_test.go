@@ -33,7 +33,7 @@ INSERT INTO conversations (id, workspace_id, kind, name, created_by, created_at,
 	script, err := migrationFS.ReadFile("migrations/0046_channels_permission.sql")
 	require.NoError(t, err)
 	require.NoError(t, applyMigration(db, "0046_channels_permission", string(script)))
-	require.NoError(t, Migrate(db), "every later migration applies on top, as an upgrade would")
+	migrateUpTo(t, db, "0107") // 0107 gives every role channels:post, which its own test covers.
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 	ctx := t.Context()
 

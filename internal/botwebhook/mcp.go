@@ -20,12 +20,14 @@ type botResult struct {
 	PostCount      int        `json:"post_count"`
 	Deleted        bool       `json:"deleted"`
 	URL            string     `json:"url,omitempty"`
+	Stopped        string     `json:"stopped,omitempty"`
 }
 
 func toBotResult(b *Bot) botResult {
 	return botResult{
 		ID: b.ID, ConversationID: b.ConversationID, Name: b.Name, HasAvatar: b.Avatar != "", CreatedBy: b.CreatedBy,
 		CreatedAt: b.CreatedAt, LastPostAt: b.LastPostAt, PostCount: b.PostCount, Deleted: b.DeletedAt != nil, URL: b.URL,
+		Stopped: b.Stopped,
 	}
 }
 
@@ -57,6 +59,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 func botListTool(s *Service) mcptool.Tool {
 	return mcptool.New("botwebhook_list", "List bots",
 		"Lists the bots of one conversation: each with its name, whether it has an avatar, who created it, when it last posted, and how many posts it has made. "+
+			"A live bot posts only while its creator may post in its channel; stopped says why when they can't. "+
 			"A bot is a named poster that outside systems drive through a webhook URL, up to ten live ones per conversation; use it to find a bot's id before botwebhook_update. "+
 			"The url field appears only when you hold botwebhook:write, since the URL is the bot's credential, and reading bots needs botwebhook:read. "+
 			"With deleted true it lists the deleted bots instead, which a bot restored with botwebhook_update deleted false comes from.",

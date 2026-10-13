@@ -266,6 +266,7 @@ func messagePostTool(s *Service) mcptool.Tool {
 			"starting that thread if it does not exist yet (which needs workspace_id). "+
 			"Name the target the same way as message_list: conversation_id, or exactly one of doc_id, ticket_id, or project_id. "+
 			"Mentioning @Agent starts an agent turn on your own paired computer. "+
+			"In a channel it takes channels:post there, which a channel's rules may deny a role or a person; a refusal names the rule or role that decided it. "+
 			"With file, the post is a note on a ticket's thread: it shows as the Agent on your behalf, starts no turn, "+
 			"needs tickets:write on the ticket, and carries the file; message_list returns it. "+
 			"With file.note_id it replaces that note's file instead, even while people are editing it live; their unsaved typing is dropped. "+

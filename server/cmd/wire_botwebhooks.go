@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/botwebhook"
 	"github.com/otal-labs/nexul/internal/chat"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 )
 
@@ -38,18 +41,38 @@ func (b botwebhookMessages) BotMessage(ctx context.Context, id string) (*botwebh
 
 // botwebhookPoster posts through chat's bot use-case, so chat never imports botwebhook.
 type botwebhookPoster struct {
-	svc *chat.Service
+	svc   *chat.Service
+	users *storage.UsersRepo
 }
 
 func (b botwebhookPoster) PostBotMessage(ctx context.Context, p botwebhook.Post) (string, time.Time, error) {
 	m, err := b.svc.PostBotMessage(ctx, chat.BotPost{
-		ConversationID: p.ConversationID, BotID: p.BotID, Name: p.Name, AvatarURL: p.AvatarURL, Body: p.Body,
+		ConversationID: p.ConversationID, BotID: p.BotID, CreatorID: p.CreatorID, Name: p.Name, AvatarURL: p.AvatarURL, Body: p.Body,
 		Embeds: p.Embeds, Mentions: p.Mentionable, Via: p.Via, Audit: p.Audit,
 	})
+	if errors.Is(err, chat.ErrBotStopped) {
+		line, stopErr := b.Stopped(ctx, p.ConversationID, p.CreatorID)
+		if stopErr != nil || line == "" {
+			return "", time.Time{}, err
+		}
+		return "", time.Time{}, fmt.Errorf("%w: %s", apperrs.ErrForbidden, line)
+	}
 	if err != nil {
 		return "", time.Time{}, err
 	}
 	return m.ID, m.CreatedAt, nil
+}
+
+func (b botwebhookPoster) Stopped(ctx context.Context, conversationID, creatorID string) (string, error) {
+	stopped, name, err := b.svc.BotStopped(ctx, conversationID, creatorID)
+	if err != nil || !stopped {
+		return "", err
+	}
+	creator := "its creator"
+	if u, err := b.users.GetUserByID(ctx, creatorID); err == nil {
+		creator = u.Login
+	}
+	return fmt.Sprintf("Stopped: %s can't post in #%s", creator, name), nil
 }
 
 // botwebhookPeople lists a conversation's workspace members by id and login; a post has no caller to gate it on.

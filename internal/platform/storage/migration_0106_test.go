@@ -33,7 +33,7 @@ INSERT INTO pairing_computers (id, user_id, kind, name, server_url, bearer_token
     ('c-laptop', 'bob', 't3code-v2', 'Laptop', 'http://c-laptop.nexul-computer.invalid', 'sealed', 4102444800, '0.0.46', 5, 5, 6);`)
 	require.NoError(t, err)
 
-	require.NoError(t, Migrate(db), "0106 and every later migration apply on top, as an upgrade would")
+	migrateUpTo(t, db, "0107") // 0107 gives every role channels:post, which its own test covers.
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 
 	dev, err := s.Roles.Get(t.Context(), "role-dev")

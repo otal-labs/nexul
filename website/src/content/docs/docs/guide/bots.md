@@ -28,7 +28,7 @@ Anyone holding `botwebhook:read` sees the list of bots. Creating one, seeing its
 
 ## Point your tools at it
 
-Treat the URL like a password: whoever holds it can post as the bot. Paste it where the tool asks for a Discord webhook URL.
+Treat the URL like a password: whoever holds it can post as the bot. In a channel the bot posts only while the person who created it may post there, so a channel's rules reach its bots too. If they can't, because they left the workspace, a rule denies them, or they hold no role, the bot's row in the channel's settings and every post's 403 say "Stopped: bob can't post in #eng". Someone who may post there can make a new bot to take over. Paste it where the tool asks for a Discord webhook URL.
 
 **GitHub Actions.** Save the URL as a repository secret, say `BOT_WEBHOOK_URL`. A Discord-notify action takes it as its webhook input:
 

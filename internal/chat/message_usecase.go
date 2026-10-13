@@ -15,6 +15,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/paging"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // ListMessages returns a conversation's messages oldest-first; callerID gates a doc thread's messages.
@@ -67,15 +68,17 @@ func (s *Service) ListMessagesSince(ctx context.Context, conversationID string, 
 }
 
 // PostMessage posts a markdown message to a conversation, parsing @user/@Agent mentions; a doc thread
-// gates the post behind docs:thread so the gateway and MCP tools agree (ADR 0057).
+// gates the post behind docs:thread so the gateway and MCP tools agree (ADR 0057), and a channel behind channels:post.
 func (s *Service) PostMessage(ctx context.Context, conversationID, authorID, body string) (*Message, error) {
-	if err := s.requireConversation(ctx, conversationID, authorID); err != nil {
+	m, err := s.newMessage(conversationID, authorID, body, AuthorUser)
+	if err != nil {
 		return nil, err
 	}
-	return s.postMessage(ctx, conversationID, authorID, body, AuthorUser)
+	return s.createAs(ctx, m, authorID)
 }
 
-// PostAgentMessage persists the Agent's final turn reply with the work it handed off; in-progress text only streams live.
+// PostAgentMessage persists the Agent's final turn reply with the work it handed off; in-progress text only streams
+// live. The reply posts as the person who asked, so it takes what their own post would.
 func (s *Service) PostAgentMessage(ctx context.Context, conversationID, viaUserID, body string, handoffs []harness.Handoff) (*Message, error) {
 	m, err := s.newMessage(conversationID, viaUserID, body, AuthorAgent)
 	if err != nil {
@@ -84,7 +87,7 @@ func (s *Service) PostAgentMessage(ctx context.Context, conversationID, viaUserI
 	if m.Handoffs, err = storedHandoffs(handoffs); err != nil {
 		return nil, err
 	}
-	return s.create(ctx, m)
+	return s.createAs(ctx, m, viaUserID)
 }
 
 // PostHarnessMessage relays a message userID wrote in their harness itself into the conversation, at the time they wrote
@@ -97,16 +100,17 @@ func (s *Service) PostHarnessMessage(ctx context.Context, conversationID, userID
 	}
 	m.ID = ids.From("relayed-message\x00" + m.ConversationID + "\x00" + key)
 	m.Mentions, m.Via, m.CreatedAt, m.UpdatedAt = []Mention{}, via, at.UTC(), at.UTC()
-	_, err = s.create(ctx, m)
+	_, err = s.createAs(ctx, m, userID)
 	if errors.Is(err, apperrs.ErrConflict) {
 		return nil
 	}
 	return err
 }
 
-// BotPost is one post through a bot's URL as chat stores it; the URL that reached the bot is the credential.
+// BotPost is one post through a bot's URL as chat stores it; the URL that reached the bot is the credential, and the bot
+// posts with what its creator may (ADR 0149).
 type BotPost struct {
-	ConversationID, BotID string
+	ConversationID, BotID, CreatorID string
 	// Name and AvatarURL are what the message shows, kept through the bot's rename or delete.
 	Name, AvatarURL, Body string
 	Embeds                json.RawMessage
@@ -118,8 +122,8 @@ type BotPost struct {
 	Audit string
 }
 
-// PostBotMessage posts a bot's message, counts it on its bot, and audits it, in one transaction; it checks no
-// permission, and a bot gone meanwhile is ErrNotFound.
+// PostBotMessage posts a bot's message, counts it on its bot, and audits it, in one transaction; it takes the posting
+// check of the bot's creator, and a bot gone meanwhile is ErrNotFound.
 func (s *Service) PostBotMessage(ctx context.Context, p BotPost) (*Message, error) {
 	conversationID, botID, name := strings.TrimSpace(p.ConversationID), strings.TrimSpace(p.BotID), strings.TrimSpace(p.Name)
 	if conversationID == "" || botID == "" {
@@ -142,10 +146,35 @@ func (s *Service) PostBotMessage(ctx context.Context, p BotPost) (*Message, erro
 	if err != nil {
 		return nil, fmt.Errorf("post bot message to conversation %s: %w", conversationID, err)
 	}
+	err = s.requirePost(ctx, c, strings.TrimSpace(p.CreatorID))
+	if permissions.Refused(err) {
+		// The reason is text only: a creator who can't read the channel must not make the URL read as unknown.
+		return nil, fmt.Errorf("%w (%v)", ErrBotStopped, err)
+	}
+	if err != nil {
+		return nil, err
+	}
 	if err := s.repo.CreateBotMessage(ctx, m, p.Audit, messageCreated(m, c)); err != nil {
 		return nil, fmt.Errorf("post bot message to conversation %s: %w", conversationID, err)
 	}
 	return m, nil
+}
+
+// ErrBotStopped refuses a bot's post because its creator may not post where it posts, whether they left, were denied,
+// or hold no role (ADR 0149); never not found, so the URL still reads as the bot's.
+var ErrBotStopped = fmt.Errorf("%w: the bot's creator may not post here", apperrs.ErrForbidden)
+
+// BotStopped reports whether a bot that creatorID made may not post in conversationID, and the conversation's name.
+func (s *Service) BotStopped(ctx context.Context, conversationID, creatorID string) (stopped bool, name string, err error) {
+	c, err := s.repo.GetConversation(ctx, conversationID)
+	if err != nil {
+		return false, "", fmt.Errorf("get conversation %s: %w", conversationID, err)
+	}
+	err = s.requirePost(ctx, c, creatorID)
+	if permissions.Refused(err) {
+		return true, c.Name, nil
+	}
+	return false, c.Name, err
 }
 
 // allowedMentions is body's person mentions whose handle is in allowed, ignoring case; never the Agent.
@@ -254,9 +283,19 @@ func (s *Service) postMessage(ctx context.Context, conversationID, authorID, bod
 }
 
 func (s *Service) create(ctx context.Context, m *Message) (*Message, error) {
+	return s.createAs(ctx, m, "")
+}
+
+// createAs stores m once posterID passes the posting check; empty, it posts as the server, unchecked.
+func (s *Service) createAs(ctx context.Context, m *Message, posterID string) (*Message, error) {
 	c, err := s.repo.GetConversation(ctx, m.ConversationID)
 	if err != nil {
 		return nil, fmt.Errorf("post message to conversation %s: %w", m.ConversationID, err)
+	}
+	if posterID != "" {
+		if err := s.requirePost(ctx, c, posterID); err != nil {
+			return nil, err
+		}
 	}
 	if err := s.repo.CreateMessage(ctx, m, messageCreated(m, c)); err != nil {
 		return nil, fmt.Errorf("post message to conversation %s: %w", m.ConversationID, err)

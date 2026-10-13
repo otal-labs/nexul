@@ -52,11 +52,14 @@ func (s *Service) Execute(ctx context.Context, b *Bot, p Payload) (*Message, err
 		via = b.Name
 	}
 	id, at, err := s.poster.PostBotMessage(ctx, Post{
-		ConversationID: b.ConversationID, BotID: b.ID, Name: name, AvatarURL: avatar, Body: c.content, Embeds: embeds,
+		ConversationID: b.ConversationID, BotID: b.ID, CreatorID: b.CreatedBy, Name: name, AvatarURL: avatar, Body: c.content, Embeds: embeds,
 		Mentionable: mentionable, Via: via, Audit: "POST /api/botwebhooks/" + b.ID,
 	})
 	if errors.Is(err, apperrs.ErrNotFound) {
 		return nil, ErrUnknownWebhook
+	}
+	if errors.Is(err, apperrs.ErrForbidden) {
+		return nil, err
 	}
 	if err != nil {
 		return nil, fmt.Errorf("post as bot %s: %w", b.ID, err)

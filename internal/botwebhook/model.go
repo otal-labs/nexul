@@ -36,7 +36,9 @@ type Bot struct {
 	DeletedAt  *time.Time `json:"deleted_at,omitempty"`
 	DeletedBy  string     `json:"deleted_by,omitempty"`
 	URL        string     `json:"url,omitempty"`
-	Token      string     `json:"-"`
+	// Stopped says why a live bot's posts are refused: its creator may not post where it posts (ADR 0149).
+	Stopped string `json:"stopped,omitempty"`
+	Token   string `json:"-"`
 }
 
 // Changes is a PATCH on a bot: a nil field keeps its value, an empty Avatar clears it, Deleted false restores.

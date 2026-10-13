@@ -13,7 +13,8 @@ interface BotRowProps {
 }
 
 export const BotRow = ({ bot, onOpen }: BotRowProps) => {
-  const meta = `${botActivityLine(bot)} · made by ${personLabel(usePerson(bot.created_by))}`;
+  const creator = personLabel(usePerson(bot.created_by));
+  const meta = bot.stopped ?? `${botActivityLine(bot)} · made by ${creator}`;
   const content = (
     <>
       <BotAvatar avatar={bot.avatar} />
@@ -21,8 +22,9 @@ export const BotRow = ({ bot, onOpen }: BotRowProps) => {
         <span className="block truncate text-sm font-medium" title={bot.name}>
           {bot.name}
         </span>
-        <span className="block truncate text-xs text-muted-foreground" title={meta}>
-          {meta}
+        <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" title={meta}>
+          {bot.stopped && <span className="size-1.5 shrink-0 rounded-full bg-warning" aria-hidden />}
+          <span className="truncate">{meta}</span>
         </span>
       </span>
     </>

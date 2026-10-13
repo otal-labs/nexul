@@ -218,6 +218,10 @@ func seedPermFixture(t *testing.T, db *sql.DB, svc *coreServices, store *storage
 		{ID: "role-copier", WorkspaceID: "workspace-default", Name: "Copier", Permissions: grant("docs:read", "docs:clone", "docs:write")},
 	} {
 		r.CreatedAt, r.UpdatedAt = now, now
+		// Every role posts in channels, as migration 0107 leaves each role that existed before it.
+		if !r.IsOwnerRole {
+			r.Permissions = r.Permissions.With(permissions.ChannelsPost)
+		}
 		require.NoError(t, store.Roles.Create(ctx, r))
 	}
 	for user, role := range map[string]string{uOwner: "role-owner", uReader: "role-reader", uWriter: "role-writer", uPlain: "role-plain", uOverwrite: "role-plain",

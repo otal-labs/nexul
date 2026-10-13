@@ -37,6 +37,9 @@ const conversations = [
   { id: "c2", workspace_id: "ws-1", kind: "doc_thread", doc_id: "doc-1", created_by: "u1", created_at: "", updated_at: "" },
 ];
 
+// The viewer's answers on a channel: they read it and post in it unless a test says otherwise.
+let explanation: { effective: { action: string; allowed: boolean; source: { kind: string; sentence: string } }[] };
+
 const renderPage = (path = "/acme/chat") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const view = render(
@@ -53,6 +56,7 @@ const renderPage = (path = "/acme/chat") => {
 };
 
 beforeEach(() => {
+  explanation = { effective: [{ action: "channels:post", allowed: true, source: { kind: "role", sentence: "Allowed by role Member" } }] };
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
@@ -62,6 +66,7 @@ beforeEach(() => {
     if (url === "/api/auth/me") return { data: meResponse };
     if (url.startsWith("/api/chat/conversations/")) return { data: [] };
     if (url === "/api/workspaces/ws-1/people") return { data: { people: [] } };
+    if (url === "/api/permissions/explain") return { data: explanation };
     return { data: {} };
   });
 });
@@ -71,6 +76,14 @@ describe("ChatPage", () => {
     renderPage();
     expect(await screen.findByLabelText("Message")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Message general…")).toBeInTheDocument();
+  });
+
+  it("a channel the viewer may not post in shows why instead of the composer", async () => {
+    explanation = { effective: [{ action: "channels:post", allowed: false, source: { kind: "rule", sentence: "Denied on channel #general for role Client" } }] };
+    renderPage();
+    expect(await screen.findByText("You can read #general but not post in it.")).toBeInTheDocument();
+    expect(screen.getByText("Denied on channel #general for role Client")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Message")).not.toBeInTheDocument();
   });
 
   it("opens the conversation named in the URL with its composer", async () => {
@@ -158,6 +171,7 @@ describe("ChatPage live messages", () => {
       if (url === "/api/chat/unread") return { data: {} };
       if (url === "/api/auth/me") return { data: meResponse };
       if (url.startsWith("/api/chat/conversations/c1/messages")) return { data: history };
+      if (url === "/api/permissions/explain") return { data: explanation };
       if (url === "/api/workspaces/ws-1/people") {
         return { data: { people: [{ user_id: "u1", login: "onik97", display_name: "Onik", avatar_url: "" }, { user_id: "u2", login: "lena", display_name: "Lena", avatar_url: "" }] } };
       }

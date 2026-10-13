@@ -27,7 +27,7 @@ var updateAccessMatrix = flag.Bool("update-access-matrix", false, "rewrite the a
 const accessMatrixGolden = "testdata/access_matrix.json"
 
 // matrixRow is what one member holds on one entity: each catalog action the check lets through, plus "open" for a
-// project they may open and channels:read for a channel they may read.
+// project they may open, and channels:read and channels:post for a channel they may read and post in.
 type matrixRow struct {
 	User   string   `json:"user"`
 	Entity string   `json:"entity"`
@@ -89,8 +89,12 @@ func heldOn(ctx context.Context, s *coreServices, user, kind, id, workspaceID st
 	a := s.accessSvc
 	held := []string{}
 	if kind == "channel" {
-		if _, err := s.chatSvc.GetConversation(ctx, id); err == nil {
-			held = append(held, "channels:read")
+		if _, err := s.chatSvc.GetConversation(ctx, id); err != nil {
+			return held
+		}
+		held = append(held, "channels:read")
+		if a.ChannelPost(ctx, user, workspaceID, id) == nil {
+			held = append(held, "channels:post")
 		}
 		return held
 	}

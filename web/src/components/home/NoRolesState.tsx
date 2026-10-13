@@ -9,7 +9,7 @@ export const NoRolesState = ({ workspace }: { workspace: Workspace }) => (
     <EmptyState
       icon={KeyRound}
       title={`No roles in ${workspace.name} yet`}
-      message="Your roles decide what you see here, so there are no projects or plays for you yet. Chat works as usual. An Owner can give you a role."
+      message="Your roles decide what you see here, so there are no projects or plays for you yet. You can read public channels and message an Owner below, who can give you a role."
       action={<WorkspaceOwners workspace={workspace} />}
     />
   </div>

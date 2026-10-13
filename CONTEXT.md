@@ -433,11 +433,13 @@ _Avoid_: Category (that groups tickets on the board), section (a heading
 inside a doc), collection (the retired workspace-wide doc grouping)
 
 **Channel**:
-A workspace conversation its readers post in: a text channel, named with a
-leading `#`, or a voice channel. Every member reads a public channel unless a
-Permission overwrite on it denies a role they hold or them; a Private channel
-only its members read. Created and renamed with
-`channels:write`, deleted together with every message in it with
+A workspace conversation: a text channel, named with a leading `#`, or a voice
+channel. Every member reads a public channel unless a Permission overwrite on
+it denies a role they hold or them; a Private channel only its members read.
+Posting in one takes `channels:post` from a role, which its Permission
+overwrites may deny or allow a role or a person; a reader who may not post
+still reads it. Its overwrites are written with `channels:write`. Created and
+renamed with `channels:write`, deleted together with every message in it with
 `channels:delete`. Each workspace has one `#general`, made with the workspace,
 which can be renamed but never deleted.
 _Avoid_: Room, group, group chat
@@ -461,7 +463,8 @@ a webhook URL: the URL is the credential and the binding, the payload is
 Discord's webhook JSON, and the bot is the message's author with its own
 name and avatar. Not a login, not an Integration, and never the Agent.
 Gated by `botwebhook:read`, `botwebhook:write`, `botwebhook:delete`;
-posting through the URL needs no permission.
+posting through the URL needs no permission of the sender, and in a channel
+posts only while the bot's creator may post there.
 _Avoid_: Integration (a separate service with a scoped token), Agent, app
 
 **Occupancy**:

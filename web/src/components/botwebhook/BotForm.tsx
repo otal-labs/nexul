@@ -73,6 +73,12 @@ export const BotForm = ({ conversationId, bot, note, onNavigate }: BotFormProps)
       <BotAvatarControl avatar={bot ? (bot.avatar ?? "") : draftAvatar} onChange={onAvatar} />
       <FormInput control={form.control} name="name" id="bot-name" label="Name" placeholder="Name, such as CI" autoComplete="off" autoFocus={!bot} />
       {bot && <BotUrlBlock bot={bot} note={note} />}
+      {bot?.stopped && (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="size-1.5 shrink-0 rounded-full bg-warning" aria-hidden />
+          {bot.stopped}
+        </p>
+      )}
       {serverError && (
         <p role="alert" className="text-xs text-destructive">
           {serverError}

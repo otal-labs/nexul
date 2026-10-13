@@ -27,3 +27,5 @@ is renamed or deleted, and lose the per-post name a sender chose.
 
 The trade-off: the database no longer stops a message from pointing at a user that does not exist, so a bug in a post
 path shows up as an unknown author instead of a failed insert.
+
+Amended by ADR 0149: a bot posts in a channel only while its creator may post there.

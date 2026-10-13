@@ -15,11 +15,12 @@ func (s *Service) SetNames(n Names) {
 }
 
 // The actions each entity's rules may set: a doc's docs actions and its access, a play's See, Run, Edit and Delete, a stack's
-// stacks then deploys actions, and on a project In this project and every project-area action.
+// stacks then deploys actions, a channel's read and post, and on a project In this project and every project-area action.
 var (
 	docActions     = catalogActions(func(i permissions.Info) bool { return i.Domain == "docs" || i.Value == permissions.PermissionsWrite })
 	playActions    = []permissions.Action{permissions.PlaysRead, permissions.PlaysRun, permissions.PlaysWrite, permissions.PlaysDelete}
 	stackActions   = append(catalogActions(func(i permissions.Info) bool { return i.Domain == "stacks" }), catalogActions(func(i permissions.Info) bool { return i.Domain == "deploys" })...)
+	channelActions = []permissions.Action{permissions.ChannelsRead, permissions.ChannelsPost}
 	projectActions = append([]permissions.Action{permissions.ProjectsOpen}, catalogActions(func(i permissions.Info) bool { return i.Area == permissions.AreaProject })...)
 )
 
@@ -71,8 +72,16 @@ func (s *Service) entityOf(ctx context.Context, resourceType, resourceID string)
 		e.workspaceID, e.projectID = workspaceID, resourceID
 		e.open, e.manage, e.actions = permissions.Member, permissions.ProjectsAccess, projectActions
 		return e, nil
+	case resourceTypeChannel:
+		scope, err := s.channelScope(ctx, resourceID)
+		if err != nil {
+			return e, fmt.Errorf("%w: channel %s", apperrs.ErrNotFound, resourceID)
+		}
+		e.workspaceID = scope.WorkspaceID
+		e.open, e.manage, e.actions = permissions.ChannelsRead, permissions.ChannelsWrite, channelActions
+		return e, nil
 	}
-	return e, fmt.Errorf("%w: resource_type %q is not doc, folder, play, project, or stack", apperrs.ErrInvalid, resourceType)
+	return e, fmt.Errorf("%w: resource_type %q is not doc, folder, play, project, stack, or channel", apperrs.ErrInvalid, resourceType)
 }
 
 // stackEntity is a project's stack; an instance stack answers to its instance area and a branch deployment to its base
@@ -98,6 +107,9 @@ func (s *Service) stackEntity(ctx context.Context, e entity) (entity, error) {
 func (s *Service) answer(ctx context.Context, userID string, e entity, action permissions.Action, own bool) (bool, Source) {
 	if own {
 		return s.check(ctx, userID, e.workspaceID, e.projectID, action, e.kind, e.id)
+	}
+	if e.kind == resourceTypeChannel && action == permissions.ChannelsRead {
+		return s.channelRead(ctx, userID, e.workspaceID, e.id, false)
 	}
 	ws := s.layers(ctx, userID, e.workspaceID, e.projectID)
 	if e.kind == resourceTypeProject {
@@ -129,7 +141,7 @@ func withoutAction(ow *Overwrite, action permissions.Action) *Overwrite {
 
 func noRules() []*Rules { return nil }
 
-// Decide is userID's answer for action on a doc, folder, play, project, or stack, with what decided it: the evaluator every check
+// Decide is userID's answer for action on a doc, folder, play, project, stack, or channel, with what decided it: the evaluator every check
 // uses, so an explanation can never disagree with enforcement.
 func (s *Service) Decide(ctx context.Context, userID, resourceType, resourceID string, action permissions.Action) (bool, Source, error) {
 	e, err := s.entityOf(ctx, resourceType, resourceID)
@@ -140,7 +152,7 @@ func (s *Service) Decide(ctx context.Context, userID, resourceType, resourceID s
 	return held, src, nil
 }
 
-// Explain answers each action a doc's, folder's, play's, project's, stack's, or instance area's rules may set for userID, the
+// Explain answers each action a doc's, folder's, play's, project's, stack's, channel's, or instance area's rules may set for userID, the
 // caller when empty, with its source as a sentence. Explaining yourself takes opening the entity, anyone else its
 // manage permission; an entity the caller can't open is not found.
 func (s *Service) Explain(ctx context.Context, actorID, resourceType, resourceID, userID string) (*Explanation, error) {
@@ -179,7 +191,7 @@ func (s *Service) Explain(ctx context.Context, actorID, resourceType, resourceID
 	return out, nil
 }
 
-// ExplainRole answers each action a doc's, folder's, play's, project's, or stack's rules may set for a holder of roleID alone, with the
+// ExplainRole answers each action a doc's, folder's, play's, project's, stack's, or channel's rules may set for a holder of roleID alone, with the
 // role's own rule there, and with that rule holding the action at Fallback: what the panel shows under a role's
 // Fallback. It takes managing the
 // entity, and a role of another workspace is not found.
@@ -213,25 +225,38 @@ func (s *Service) ExplainRole(ctx context.Context, actorID, resourceType, resour
 		return nil, fmt.Errorf("rules for role %s on %s %s: %w", roleID, e.kind, e.id, err)
 	}
 	ws := workspaceLayers{workspaceID: e.workspaceID, member: true, owner: held.IsOwner, roles: RolesHeld(held)}
-	var inProject, inFolder []*Overwrite
+	inProject, inFolder, err := s.roleRulesAround(ctx, e, roleID)
+	if err != nil {
+		return nil, err
+	}
+	n := s.namer(ctx)
+	out := &Explanation{ResourceType: resourceType, ResourceID: resourceID, RoleID: roleID, Effective: make([]Answer, 0, len(e.actions))}
+	private := false
+	if e.kind == resourceTypeChannel {
+		scope, _ := s.channelScope(ctx, e.id)
+		private = scope.Private
+	}
+	for _, a := range e.actions {
+		with, src := roleAnswer(ws, e, roleID, a, inProject, inFolder, own[e.id], private)
+		without, from := roleAnswer(ws, e, roleID, a, inProject, inFolder, atFallback(own[e.id], a), private)
+		out.Effective = append(out.Effective, Answer{Action: a, Verdict: Verdict{with, n.named(src)}, Fallback: Verdict{without, n.named(from)}})
+	}
+	return out, nil
+}
+
+// roleRulesAround is roleID's rules on e's project, unless e is the project, and on a doc's folder.
+func (s *Service) roleRulesAround(ctx context.Context, e entity, roleID string) (inProject, inFolder []*Overwrite, err error) {
 	if e.projectID != "" && e.kind != resourceTypeProject {
 		if inProject, err = s.roleRulesOn(ctx, resourceTypeProject, e.projectID, roleID); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	if e.folderID != "" {
 		if inFolder, err = s.roleRulesOn(ctx, resourceTypeFolder, e.folderID, roleID); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	n := s.namer(ctx)
-	out := &Explanation{ResourceType: resourceType, ResourceID: resourceID, RoleID: roleID, Effective: make([]Answer, 0, len(e.actions))}
-	for _, a := range e.actions {
-		with, src := roleAnswer(ws, e, roleID, a, inProject, inFolder, own[e.id])
-		without, from := roleAnswer(ws, e, roleID, a, inProject, inFolder, atFallback(own[e.id], a))
-		out.Effective = append(out.Effective, Answer{Action: a, Verdict: Verdict{with, n.named(src)}, Fallback: Verdict{without, n.named(from)}})
-	}
-	return out, nil
+	return inProject, inFolder, nil
 }
 
 // roleRulesOn is roleID's rules on one entity.
@@ -252,8 +277,16 @@ func atFallback(rules []*Overwrite, action permissions.Action) []*Overwrite {
 	return out
 }
 
-// roleAnswer is a holder of roleID alone asking for action on e, given its rules on e's project, a doc's folder and e.
-func roleAnswer(ws workspaceLayers, e entity, roleID string, action permissions.Action, inProject, inFolder, own []*Overwrite) (bool, Source) {
+// roleAnswer is a holder of roleID alone asking for action on e, given its rules on e's project, a doc's folder and e;
+// on a private channel the holder is taken to be one of its members.
+func roleAnswer(ws workspaceLayers, e entity, roleID string, action permissions.Action, inProject, inFolder, own []*Overwrite, private bool) (bool, Source) {
+	if e.kind == resourceTypeChannel && action == permissions.ChannelsRead && !ws.owner {
+		src := sourceOf(SourceEveryMember, resourceTypeChannel, e.id, TargetRole, roleID, true)
+		if private {
+			src.Kind = SourceChannelMember
+		}
+		return applyRules(true, src, &Rules{Roles: own}, []string{roleID}, action)
+	}
 	chain := []*Rules{{Roles: inFolder}, {Roles: own}}
 	if e.kind == resourceTypeProject {
 		inProject, chain = own, nil
@@ -356,6 +389,10 @@ func sentence(r NamedSource) string {
 		return ruleSentence(r, allowed)
 	case SourceOutsideProject:
 		return "Not allowed: it counts only inside a project"
+	case SourceEveryMember:
+		return "Read by every member"
+	case SourceChannelMember:
+		return channelMemberSentence(r, allowed)
 	case SourceNotInProject:
 		if r.TargetType == TargetRole {
 			return "Not listed on project " + r.EntityName
@@ -373,6 +410,16 @@ func roleSentence(r NamedSource, allowed bool) string {
 		return "Allowed by role " + r.TargetName
 	}
 	return "Not allowed: role " + r.TargetName + " doesn't grant it"
+}
+
+func channelMemberSentence(r NamedSource, allowed bool) string {
+	if r.TargetType == TargetRole {
+		return "Read by the members of private channel " + r.EntityName
+	}
+	if allowed {
+		return "Member of private channel " + r.EntityName
+	}
+	return "Not a member of private channel " + r.EntityName
 }
 
 func memberSentence(r NamedSource, allowed bool) string {

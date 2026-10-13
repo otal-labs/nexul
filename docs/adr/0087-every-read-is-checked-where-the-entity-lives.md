@@ -83,3 +83,6 @@ detaching an account from a workspace takes `projects:write` there.
 
 Amended by ADR 0148: creating a project, the wizard's repository list and scan, and detaching an account
 take `projects:create`; a member reads a project only once its rules list them or a role they hold.
+
+Amended by ADR 0149: posting in a text or voice channel takes `channels:post` beyond reading it; DMs and threads still
+take only their read.

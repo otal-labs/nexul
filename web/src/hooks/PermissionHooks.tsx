@@ -110,8 +110,15 @@ interface GrantPayload {
   resource_id: string;
 }
 
-// A rule changed on a doc, folder, play, project, stack or computer: an open panel or people card on it rereads its rules and answers.
+// A rule changed on a doc, folder, play, project, stack, channel or computer: an open panel or people card on it rereads
+// its rules and answers. A workspace frame is the Access page's save, which names none of the channels it moved.
 export const permissionRulesFollower: LiveFollower = {
-  "access.grant.changed": ({ resource_type, resource_id }: GrantPayload, { client }) => refreshRules(client, resource_type, resource_id),
+  "access.grant.changed": ({ resource_type, resource_id }: GrantPayload, { client }) => {
+    if (resource_type !== "workspace") return refreshRules(client, resource_type, resource_id);
+    return Promise.all([
+      client.invalidateQueries({ queryKey: [getGrantsKey, "channel"] }),
+      client.invalidateQueries({ queryKey: [getExplanationKey, "channel"] }),
+    ]);
+  },
   "computer.grant_changed": ({ computer_id }: { computer_id: string }, { client }) => refreshRules(client, "computer", computer_id),
 };

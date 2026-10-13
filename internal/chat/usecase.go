@@ -53,10 +53,12 @@ type ThreadGate interface {
 // SetThreadGate wires the per-project thread check; unset, a thread is checked in its workspace instead.
 func (s *Service) SetThreadGate(g ThreadGate) { s.threads = g }
 
-// Standing: the Owner reads every channel, and a channel's rules may deny anyone else.
+// Standing: the Owner reads every channel, and a channel's rules may deny anyone else reading or posting in it.
 type Standing interface {
 	IsOwner(ctx context.Context, userID, workspaceID string) (bool, error)
 	ChannelsDenied(ctx context.Context, userID, workspaceID string, channelIDs []string) (map[string]bool, error)
+	// ChannelPost is nil when userID may post in the channel, else forbidden naming what refused it (ADR 0149).
+	ChannelPost(ctx context.Context, userID, workspaceID, channelID string) error
 }
 
 // SetStanding wires the Owner and channel rule lookups; unset, nobody is the Owner and no rule denies.
@@ -140,6 +142,18 @@ func (s *Service) reads(ctx context.Context, userID string, c *Conversation) err
 		return fmt.Errorf("%w: conversation %s", apperrs.ErrNotFound, c.ID)
 	}
 	return nil
+}
+
+// requirePost is the posting check: reading c, and in a channel channels:post (ADR 0149); every other conversation
+// takes only its read.
+func (s *Service) requirePost(ctx context.Context, c *Conversation, userID string) error {
+	if err := s.requireRead(ctx, c, userID); err != nil {
+		return err
+	}
+	if (c.Kind != KindChannel && c.Kind != KindVoiceChannel) || s.standing == nil || userID == "" {
+		return nil
+	}
+	return s.standing.ChannelPost(ctx, userID, c.WorkspaceID, c.ID)
 }
 
 // readsChannel: a channel is read by its members (every member if public) unless its rules deny them.

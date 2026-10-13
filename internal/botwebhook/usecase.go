@@ -35,14 +35,20 @@ type InstanceURL interface {
 
 // Poster posts a bot's message into its conversation; chat satisfies it, so chat never learns what a webhook is.
 type Poster interface {
-	// PostBotMessage writes the message, counts the post on its bot, and audits it, in one transaction.
+	// PostBotMessage writes the message, counts the post on its bot, and audits it, in one transaction; a post its
+	// creator may not make there is ErrForbidden, saying so as Stopped does.
 	PostBotMessage(ctx context.Context, p Post) (string, time.Time, error)
+	// Stopped is "Stopped: <creator> can't post in #<channel>" while the bot's creator may not post where it posts,
+	// else empty (ADR 0149).
+	Stopped(ctx context.Context, conversationID, creatorID string) (string, error)
 }
 
 // Post is one post through a bot's URL, as the bot's message stores it.
 type Post struct {
 	ConversationID, BotID, Name, AvatarURL, Body string
-	Embeds                                       json.RawMessage
+	// CreatorID is who made the bot, whose posting check the post takes (ADR 0149).
+	CreatorID string
+	Embeds    json.RawMessage
 	// Mentionable are the logins the body's @handles may mention; any other handle stays plain text.
 	Mentionable []string
 	// Via is the bot's own name when the post overrode it, empty otherwise.
@@ -102,6 +108,9 @@ func (s *Service) List(ctx context.Context, conversationID string, deleted bool)
 	}
 	if deleted {
 		return bots, nil
+	}
+	if err := s.withStopped(ctx, bots); err != nil {
+		return nil, err
 	}
 	err = s.gate.Require(ctx, c.WorkspaceID, permissions.BotwebhookWrite)
 	if permissions.Refused(err) {
@@ -284,6 +293,23 @@ func (s *Service) conversation(ctx context.Context, id string, action permission
 		return nil, err
 	}
 	return c, nil
+}
+
+// withStopped says on each bot whether its creator may still post where it posts, asking once per creator.
+func (s *Service) withStopped(ctx context.Context, bots []*Bot) error {
+	said := map[string]string{}
+	for _, b := range bots {
+		line, ok := said[b.CreatedBy]
+		if !ok {
+			var err error
+			if line, err = s.poster.Stopped(ctx, b.ConversationID, b.CreatedBy); err != nil {
+				return fmt.Errorf("can bot %s post: %w", b.ID, err)
+			}
+			said[b.CreatedBy] = line
+		}
+		b.Stopped = line
+	}
+	return nil
 }
 
 // withURL fills b's URL, the instance address plus Discord's path shape; before an instance URL is set it is the path alone.

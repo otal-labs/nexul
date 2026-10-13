@@ -150,20 +150,20 @@ func summarize(rules []*Overwrite) []string {
 	return out
 }
 
-// fakeChannels resolves the channels it knows to their workspace.
-type fakeChannels map[string]string
+// fakeChannels resolves the channels it knows to where they live and who reads them.
+type fakeChannels map[string]ChannelScope
 
-func (f fakeChannels) WorkspaceIDForChannel(_ context.Context, id string) (string, error) {
-	ws, ok := f[id]
+func (f fakeChannels) ChannelScope(_ context.Context, id string) (ChannelScope, error) {
+	scope, ok := f[id]
 	if !ok {
-		return "", apperrs.ErrNotFound
+		return ChannelScope{}, apperrs.ErrNotFound
 	}
-	return ws, nil
+	return scope, nil
 }
 
-func TestSetRules_OnAChannelAreTheOwners(t *testing.T) {
+func TestSetRules_OnAChannelTakeChannelsWrite(t *testing.T) {
 	s, repo := gridFixture(t)
-	s.SetChannelWorkspaces(fakeChannels{"c-backend": "ws"})
+	s.SetChannelWorkspaces(fakeChannels{"c-backend": {WorkspaceID: "ws"}})
 	s.SetRoleWorkspaces(fakeRoleWorkspaces{"role-client": "ws"})
 	read := []permissions.Action{permissions.ChannelsRead}
 

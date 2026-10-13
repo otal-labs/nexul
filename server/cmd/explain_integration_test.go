@@ -19,9 +19,15 @@ import (
 )
 
 // TestExplain_AnswersWhatTheCheckAnswers holds explain to enforcement: over the list parity fixture's viewers, every
-// catalog action on every doc, folder, play, project and stack answers as the check does, and so does each line of an explanation.
+// catalog action on every doc, folder, play, project, stack and channel answers as the check does, and so does each line
+// of an explanation.
 func TestExplain_AnswersWhatTheCheckAnswers(t *testing.T) {
 	f := listParityFixture(t)
+	postsChannel(t, f, f.channel.ID)
+	require.NoError(t, f.svc.accessSvc.SetRules(as(uOwner), uOwner, "channel", []string{f.channel.ID}, access.Targets{UserIDs: []string{uReader}},
+		[]permissions.Action{permissions.ChannelsPost}, access.StateAllow))
+	require.NoError(t, f.svc.accessSvc.SetRules(as(uOwner), uOwner, "channel", []string{f.channel.ID}, access.Targets{RoleIDs: []string{"role-plain"}},
+		[]permissions.Action{permissions.ChannelsRead}, access.StateDeny))
 	a := f.svc.accessSvc
 	ctx := context.Background()
 	ps, err := f.store.Plays.List(ctx, wsDefault)
@@ -43,9 +49,19 @@ func TestExplain_AnswersWhatTheCheckAnswers(t *testing.T) {
 		"stack": func(user, id string, action permissions.Action) bool {
 			return a.HasPermission(ctx, user, wsDefault, action, "stack", id)
 		},
+		"channel": func(user, id string, action permissions.Action) bool {
+			if action == permissions.ChannelsRead {
+				_, err := f.svc.chatSvc.GetConversation(identity.WithActor(ctx, identity.Actor{ID: user}), id)
+				return err == nil
+			}
+			if action == permissions.ChannelsPost {
+				return a.ChannelPost(ctx, user, wsDefault, id) == nil
+			}
+			return a.HasPermission(ctx, user, wsDefault, action, "channel", id)
+		},
 	}
 	entities := map[string][]string{"doc": {f.doc, "doc-private", "doc-shared", "doc-client", "doc-folder"}, "project": {pGeneral, pClient},
-		"folder": {parityFolder}, "stack": {f.stack, "stack-client"}}
+		"folder": {parityFolder}, "stack": {f.stack, "stack-client"}, "channel": {f.channel.ID}}
 	for _, p := range ps {
 		entities["play"] = append(entities["play"], p.ID)
 	}

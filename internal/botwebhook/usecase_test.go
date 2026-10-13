@@ -148,6 +148,15 @@ type fakePoster struct {
 	mu    sync.Mutex
 	posts []Post
 	err   error
+	// stopped is the line Stopped gives for each creator; stopErr fails it.
+	stopped map[string]string
+	stopErr error
+}
+
+func (f *fakePoster) Stopped(_ context.Context, _, creatorID string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.stopped[creatorID], f.stopErr
 }
 
 func (f *fakePoster) PostBotMessage(_ context.Context, p Post) (string, time.Time, error) {
@@ -552,4 +561,37 @@ func TestService_FailuresBelowTheUseCase_AreReturned(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
 	_, err = s.Delete(as(editor), "b-gone")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+// TestList_SaysWhichBotsAreStopped: a live bot whose creator may not post where it posts says so, each creator asked
+// once, and a failed answer fails the list rather than hide why.
+func TestList_SaysWhichBotsAreStopped(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	first, second := mustCreate(t, s, "CI"), mustCreate(t, s, "Deploys")
+	poster := s.poster.(*fakePoster)
+	poster.stopped = map[string]string{editor: "Stopped: " + editor + " can't post in #eng"}
+
+	bots, err := s.List(as(reader), "c-eng", false)
+	require.NoError(t, err)
+	for _, b := range bots {
+		assert.Equal(t, "Stopped: "+editor+" can't post in #eng", b.Stopped, b.Name)
+	}
+	assert.ElementsMatch(t, []string{first.ID, second.ID}, []string{bots[0].ID, bots[1].ID})
+
+	poster.stopErr = errors.New("database is locked")
+	_, err = s.List(as(reader), "c-eng", false)
+	require.Error(t, err)
+}
+
+// TestExecute_AStoppedBotIsForbiddenNotUnknown: a refusal for the creator reaches the sender as it is, never as an unknown
+// URL, so a sender learns why.
+func TestExecute_AStoppedBotIsForbiddenNotUnknown(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	b := mustCreate(t, s, "CI")
+	s.poster.(*fakePoster).err = fmt.Errorf("%w: Stopped: %s can't post in #eng", apperrs.ErrForbidden, editor)
+
+	_, err := s.Execute(t.Context(), b, Payload{Content: "green"})
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	assert.NotErrorIs(t, err, ErrUnknownWebhook)
+	assert.Equal(t, "forbidden: Stopped: "+editor+" can't post in #eng", err.Error())
 }
