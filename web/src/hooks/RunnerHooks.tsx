@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import type { Machine, QueuedJob, Runner, RunnerEnrollment, RunnerEnrollmentFormData } from "@/models/Runner";
+import type { Machine, QueuedJob, Runner, RunnerEnrollment, RunnerEnrollmentInput } from "@/models/Runner";
 import { followEach, type LiveFollower } from "@/lib/live";
 
 export const getRunnersKey = "runners";
@@ -21,11 +21,10 @@ export const useRunnerQueue = () =>
     queryFn: async () => (await api.get<QueuedJob[]>("/api/runners/queue")).data,
   });
 
-// The git token never leaves the browser: it only goes into the rendered command.
 export const useCreateRunnerEnrollment = () =>
   useMutation({
-    mutationFn: async ({ name, machine }: RunnerEnrollmentFormData) =>
-      (await api.post<RunnerEnrollment>("/api/runners/enrollments", { name, machine: machine || undefined })).data,
+    mutationFn: async ({ name, machine }: RunnerEnrollmentInput) =>
+      (await api.post<RunnerEnrollment>("/api/runners/enrollments", { name, machine })).data,
     onError: (error) => toast.error(errorMessage(error)),
   });
 
