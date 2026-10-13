@@ -2,16 +2,15 @@
 
 **Status:** ready-for-agent
 
-**Blocked by:** 06, permission-overrides 01
+**Blocked by:** 06. The permission evaluator prerequisite has merged.
 
 Read first: `practices/go.md`, `practices/architecture.md`, `practices/mcp.md` (sections 3, 4, 6 to 8),
 `practices/react-guide.md`, `practices/design-language.md`, `practices/testing.md`, ADRs 0087, 0088, 0091, 0138,
 `internal/platform/permissions`, the spec (Later: shell jobs, Access and privacy).
 
-This ticket adds an instance-area permission, so it lands in the evaluator that names sources (permission-overrides
-01). Once permission-overrides 23 ships, Read computer activity is an entity the instance Owner can give to a role
-or a person with a rule; nothing here changes for that. A grantee's shell jobs come from permission-overrides 21
-and ticket 18.
+This ticket adds an instance-area permission to the shipped evaluator that names sources (ADR 0148).
+Read computer activity uses the instance-area rules the instance Owner can give to a role or a person.
+A grantee's shell jobs use the shipped computer rules and ticket 18.
 
 ## What to build
 

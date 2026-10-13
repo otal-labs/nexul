@@ -8,8 +8,8 @@ Read first: `AGENTS.md`, `CONTEXT.md` (Locked action, Source), `practices/go.md`
 
 ## What to build
 
-- `useEntityActions(kind, id)` calls explain once per detail page, for docs, plays, projects, and stacks once rework
-  ticket 19 lands. It refetches on the rules' live frame for that item.
+- `useEntityActions(kind, id)` calls explain once per detail page, for docs, plays, projects, and stacks under the shipped
+  rules (ADR 0148). It refetches on the rules' live frame for that item.
 - A list action refused on click toasts the source sentence.
 - A statement guard covers explain.
 

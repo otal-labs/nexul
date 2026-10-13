@@ -7,7 +7,7 @@ Blocked by: None — can start immediately
 ## Question
 
 The Welcome wizard hangs off Roles, and the permission rework
-(`.scratch/permission-rework/`) is changing them now. What will the rework leave
+(ADR 0148) was changing them when this question was charted. What will the rework leave
 in place for this effort to build on?
 
 - The shape a role takes after the rework: table, columns, `member_roles`, how

@@ -20,12 +20,12 @@ A spec in `.scratch/role-aware-ui/spec.md`, ready to slice into build tickets. I
 
 - Skills every session consults: `grilling` and `domain-modeling`, and `CONTEXT.md` (Locked action, Source,
   Permission overwrite). Look tickets run in `auto-design-mode`: the agent picks and reports the runner-up.
-- The permission rework (`.scratch/permission-overrides/`) already decides two things:
-  - A thing you can't read is not found (its rule 7).
-  - A refused action answers with its source sentence (rule 8).
+- The shipped permission model (ADR 0148) decides two things:
+  - A thing you can't read is not found.
+  - A refused action answers with its source sentence.
 
-  Locked pills already show "You don't have access". Stack rules (its ticket 19) and instance-area rules (23, 24)
-  are still to come, so a role-wide check can't always answer for one stack or machine.
+  Web locked pills already show "You don't have access". Stack and instance-area rules have shipped.
+  A role-wide check still cannot answer for a rule on one stack or machine; use the entity explanation.
 - The owner's call: **everything here builds after the `permission-switch` branch merges**, the one-way doors
   included. It merged as #614 on 2026-10-13.
 - Decided while charting:

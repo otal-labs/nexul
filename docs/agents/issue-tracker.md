@@ -100,20 +100,14 @@ git history, and anything durable it decided is an ADR.
   tunnel and URL pairing retired after existing computers move; later shell
   jobs, container logs and sharing a computer. Spec and tickets 01–20
   written 2026-10-10.
-- `.scratch/permission-overrides/` — permissions on roles (ADR 0148): several
-  roles per person or none, opt-in projects, rules for a role or a person on
-  each entity (project, doc, play, channel, then doc folders, stacks, a
-  person's computers and the instance's areas), each permission Allow, Fallback
-  or Deny, and a source for every answer; the upgrade wipes per-person access
-  and an Owner sets who's in each project once. Spec and slices 01–24 rewritten
-  2026-10-11; 09–17 land together from the `permission-switch` branch.
-- `.scratch/permission-rework/` — wayfinder map charted 2026-10-11, complete:
-  it decided the model the spec above builds. Kept until slices 06, 07, 08 and
-  12–15 merge, because its tickets 03, 04, 05 and 08 hold their locked looks.
+- `.scratch/permission-followups/` — four `needs-triage` tickets for per-play Run
+  controls, See/Run explanations, phone locked mentions, and the phone acceptance
+  verification the owner skipped. Scope and ticket index in `spec.md`; ADR 0148
+  records the shipped permission model.
 - `.scratch/onboarding/` — the Welcome wizard, the steps each Role ticks,
   Template roles, the account menu dot and progress on Team. Map complete
-  2026-10-13 with `spec.md`; build tickets 08–15 start after the permission
-  rework merges. The five persona walks are in `research/persona-gaps.md`.
+  2026-10-13 with `spec.md`; build tickets 08–15; the permission
+  prerequisite has merged. The five persona walks are in `research/persona-gaps.md`.
 - `.scratch/role-aware-ui/` — hide or lock actions a role can't take on every
   web and phone screen, and close the one-way doors. Map complete 2026-10-13
   with `spec.md`; build tickets 08–23.

@@ -1,6 +1,6 @@
 # Welcome wizard: every person set up for what they do
 
-**Status:** ready-for-agent once the permission rework's `permission-switch` branch merges
+**Status:** ready-for-agent. The permission prerequisite has merged.
 
 ## Problem
 
@@ -225,8 +225,8 @@ owner's for later.
 
 ## Risks
 
-- **The permission switch moves under it.** The build starts only after `permission-switch` merges, because it
-  touches the role editor, invitations and Team, which that branch freezes.
+- **Permission prerequisite met.** The permission switch and remaining permission slices have merged.
+  Build on the shipped role editor, invitations and Team (ADR 0148).
 - **The progress read on Team.** Working out six steps per person on a long list must stay one statement per
   seam per page, not one per person. It joins the `TestStatements_*` guards in `server/cmd/access_memo_test.go`.
 - **Tunnel-paired computers.** They count once setup is confirmed. Removing tunnel pairing (personal-runners
