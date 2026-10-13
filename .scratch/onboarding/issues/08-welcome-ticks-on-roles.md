@@ -1,7 +1,7 @@
 # 08: A role carries its welcome steps
 
 Type: task
-Status: claimed
+Status: resolved
 Blocked by: 07, and the permission rework's `permission-switch` branch merged
 
 Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role), `practices/go.md`, `practices/architecture.md`, `practices/mcp.md`, `practices/react-guide.md`,
@@ -25,3 +25,11 @@ Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role), `practice
 - [ ] Saving a role with a new tick publishes the added key; an unknown key is refused.
 - [ ] Cloning copies the ticks. The Owner role refuses edits and reports its fixed steps.
 - [ ] Web tests for the tab's dirty and save paths; verified at 768, 1024, 1440.
+
+## Answer
+
+Built in #631:
+- migration 0106 (`roles.welcome_steps`, `welcome_step_states`, `enrolled_by` on enrollment codes and runners)
+- roles carrying the steps on every surface
+- the Welcome tab
+- ADR 0149

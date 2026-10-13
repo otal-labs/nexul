@@ -1,7 +1,7 @@
 # 13: Template roles
 
 Type: task
-Status: open
+Status: claimed
 Blocked by: 08
 
 Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role) (Instance template), `practices/go.md`, `practices/mcp.md`, `practices/react-guide.md`, ticket 04's

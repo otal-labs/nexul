@@ -1,7 +1,7 @@
 # 10: The Welcome wizard
 
 Type: task
-Status: open
+Status: claimed
 Blocked by: 09
 
 Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role), `practices/react-guide.md` (F1 to F7 and the self-review checklist), `practices/design-language.md`,
