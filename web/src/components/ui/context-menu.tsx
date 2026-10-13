@@ -79,14 +79,16 @@ function ContextMenuSubContent({
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.SubContent>) {
   return (
-    <ContextMenuPrimitive.SubContent
-      data-slot="context-menu-sub-content"
-      className={cn(
-        "z-50 min-w-[8rem] origin-(--radix-context-menu-content-transform-origin) overflow-hidden float-surface glass-menu rounded-lg p-1 text-popover-foreground",
-        className
-      )}
-      {...props}
-    />
+    <ContextMenuPrimitive.Portal>
+      <ContextMenuPrimitive.SubContent
+        data-slot="context-menu-sub-content"
+        className={cn(
+          "z-50 min-w-[8rem] origin-(--radix-context-menu-content-transform-origin) overflow-hidden float-surface glass-menu rounded-lg p-1 text-popover-foreground",
+          className
+        )}
+        {...props}
+      />
+    </ContextMenuPrimitive.Portal>
   )
 }
 
