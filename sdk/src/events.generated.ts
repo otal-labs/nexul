@@ -3,7 +3,7 @@
 // Regenerate: bun run generate:events (from sdk/).
 
 export interface EventPayloads {
-  "access.grant.changed": { "resource_type": "doc" | "play" | "project" | "channel" | "workspace"; "resource_id": string; "target": "person" | "role"; "user_id": string; "role_id"?: string; "actor_id"?: string; };
+  "access.grant.changed": { "resource_type": "doc" | "play" | "project" | "channel" | "workspace" | "instance_area"; "resource_id": string; "target": "person" | "role"; "user_id": string; "role_id"?: string; "actor_id"?: string; };
   "account.admitted": { "account_id"?: string; "actor_id"?: string; "invitation_id"?: string; "user_id"?: string; "workspace_id"?: string; "reason"?: string; };
   "account.disabled": { "account_id": string; "actor_id"?: string; };
   "account.profile_updated": { "account_id": string; "actor_id"?: string; };

@@ -63,7 +63,7 @@ func (f fakeDefaultWorkspace) BindDefaultWorkspaceOwner(_ context.Context, userI
 // for anyone else.
 type ownerPermissions struct{ users *UsersRepo }
 
-func (p ownerPermissions) HoldsAnywhere(ctx context.Context, userID string, _ permissions.Action) (bool, error) {
+func (p ownerPermissions) HoldsArea(ctx context.Context, userID, _ string, _ permissions.Action) (bool, error) {
 	owners, err := p.users.ListActiveOwnerIDs(ctx)
 	return slices.Contains(owners, userID), err
 }

@@ -4,13 +4,14 @@
     "properties": {
       "resource_type": {
         "type": "string",
-        "description": "What the rule sits on; workspace is a save of the Access page, which may change rules on many of its projects and channels.",
+        "description": "What the rule sits on; workspace is a save of the Access page, which may change rules on many of its projects and channels; instance_area is an instance area, keyed by resource_id (dns, connector:github).",
         "enum": [
           "doc",
           "play",
           "project",
           "channel",
-          "workspace"
+          "workspace",
+          "instance_area"
         ]
       },
       "resource_id": {

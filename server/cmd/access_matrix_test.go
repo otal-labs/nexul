@@ -35,8 +35,8 @@ type matrixRow struct {
 }
 
 // accessMatrix is every member of each workspace × every catalog action × the workspace and each of its projects,
-// docs, plays and channels, answered by the checks enforcement uses, so two runs over one database diff to exactly
-// the access that changed between them.
+// docs, plays and channels, and every member × each instance area, answered by the checks enforcement uses, so two
+// runs over one database diff to exactly the access that changed between them.
 func accessMatrix(t *testing.T, s *coreServices, db *sql.DB) []matrixRow {
 	t.Helper()
 	members := map[string][]string{}
@@ -61,6 +61,24 @@ func accessMatrix(t *testing.T, s *coreServices, db *sql.DB) []matrixRow {
 			ctx := access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: user}), a.NewMemo())
 			held := heldOn(ctx, s, user, e.kind, e.id, e.workspaceID)
 			rows = append(rows, matrixRow{User: user, Entity: e.kind + ":" + e.id, Held: held})
+		}
+	}
+	people := map[string]bool{}
+	for _, users := range members {
+		for _, user := range users {
+			people[user] = true
+		}
+	}
+	for user := range people {
+		ctx := access.WithMemo(identity.WithActor(context.Background(), identity.Actor{ID: user}), a.NewMemo())
+		for _, area := range a.InstanceAreas() {
+			held := []string{}
+			for _, action := range area.Actions {
+				if ok, err := a.HoldsArea(ctx, user, area.Key, action); err == nil && ok {
+					held = append(held, string(action))
+				}
+			}
+			rows = append(rows, matrixRow{User: user, Entity: "instance_area:" + area.Key, Held: held})
 		}
 	}
 	return rows

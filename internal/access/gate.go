@@ -57,21 +57,10 @@ func (s *Service) RequireProject(ctx context.Context, projectID string, action p
 	return s.require(ctx, workspaceID, projectID, action)
 }
 
-// RequireAnywhere checks an instance-level action (runners, topology, a stack outside every project): the
-// caller must hold it in at least one workspace they belong to, the way the sidebar shows the area.
+// RequireAnywhere checks an instance-level action (runners, topology, a stack outside every project) on the instance
+// area it belongs to: the caller must hold it in at least one workspace they belong to, or by that area's rules.
 func (s *Service) RequireAnywhere(ctx context.Context, action permissions.Action) error {
-	userID, checked := caller(ctx)
-	if !checked {
-		return nil
-	}
-	held, err := s.HoldsAnywhere(ctx, userID, action)
-	if err != nil {
-		return err
-	}
-	if !held {
-		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
-	}
-	return nil
+	return s.RequireArea(ctx, permissions.InstanceAreaOf(action), action)
 }
 
 // ProjectsAnywhere lists the workspaces userID belongs to and, across them, the projects in which they hold action
@@ -153,37 +142,23 @@ func (s *Service) WorkspacesWith(ctx context.Context, action permissions.Action)
 	return out, nil
 }
 
-// HoldsAnywhere reports whether the roles userID holds in at least one workspace they belong to grant action; an Owner
-// of any workspace holds every action, which is all instance-level power there is (ADR 0088).
+// HoldsAnywhere is HoldsArea on the instance area action belongs to; an Owner of any workspace holds every action,
+// which is all instance-level power there is (ADR 0088).
 func (s *Service) HoldsAnywhere(ctx context.Context, userID string, action permissions.Action) (bool, error) {
-	workspaceIDs, err := s.workspacesOf(ctx, userID)
-	if err != nil {
-		return false, err
-	}
-	for _, workspaceID := range workspaceIDs {
-		if slices.Contains(s.WorkspacePermissions(ctx, userID, workspaceID), string(action)) {
-			return true, nil
-		}
-	}
-	return false, nil
+	return s.HoldsArea(ctx, userID, permissions.InstanceAreaOf(action), action)
 }
 
-// PermissionsAnywhere is every action userID's roles grant in at least one workspace they belong to, in catalog order:
-// what an instance-level area answers to, so a client shows the same areas the server lets through.
+// PermissionsAnywhere is every action userID holds on at least one instance area, or by a role in any workspace for an
+// action outside every area, in catalog order: so a client shows the same areas the server lets through.
 func (s *Service) PermissionsAnywhere(ctx context.Context, userID string) ([]string, error) {
-	workspaceIDs, err := s.workspacesOf(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	held := map[string]bool{}
-	for _, workspaceID := range workspaceIDs {
-		for _, a := range s.WorkspacePermissions(ctx, userID, workspaceID) {
-			held[a] = true
-		}
-	}
-	out := make([]string, 0, len(held))
+	ctx = s.memoized(ctx)
+	out := []string{}
 	for _, a := range permissions.AllActions() {
-		if held[string(a)] {
+		held, err := s.heldOnAnyArea(ctx, userID, a)
+		if err != nil {
+			return nil, err
+		}
+		if held {
 			out = append(out, string(a))
 		}
 	}

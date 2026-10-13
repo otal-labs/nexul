@@ -231,3 +231,29 @@ func TestSet_JSON(t *testing.T) {
 		assert.Equal(t, `{"permissions":[]}`, string(b))
 	})
 }
+
+// TestInstanceAreas_EveryInstanceActionHasAnEntity: an instance-area action no area lists could never carry a rule, so
+// adding one to the catalog fails here until an area names it.
+func TestInstanceAreas_EveryInstanceActionHasAnEntity(t *testing.T) {
+	listed := map[Action]bool{}
+	for _, a := range append(InstanceAreas(), ConnectorArea("github", "GitHub")) {
+		for _, action := range a.Actions {
+			assert.Equal(t, AreaInstance, AreaOf(action), "%s on %s is not an instance-area action", action, a.Key)
+			listed[action] = true
+		}
+	}
+	for _, info := range Catalog() {
+		if info.Area == AreaInstance {
+			assert.True(t, listed[info.Value], "%s belongs to no instance area", info.Value)
+		}
+	}
+}
+
+func TestInstanceAreaOf(t *testing.T) {
+	assert.Equal(t, "instance", InstanceAreaOf(InstanceWrite), "the instance's own, sign-in providers naming theirs")
+	assert.Equal(t, "dns", InstanceAreaOf(DNSDelete))
+	assert.Equal(t, "runners", InstanceAreaOf(MachinesRead))
+	assert.Empty(t, InstanceAreaOf(ConnectorsRead), "each connector's check names its own")
+	assert.Empty(t, InstanceAreaOf(StacksRead))
+	assert.Equal(t, "connector:github", ConnectorArea("github", "GitHub").Key)
+}

@@ -33,7 +33,7 @@ func (h *Handler) Routes() http.Handler {
 
 func (h *Handler) listGrants(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	if resourceType := q.Get("resource_type"); resourceType == resourceTypePlay || resourceType == resourceTypeProject || resourceType == resourceTypeChannel {
+	if resourceType := q.Get("resource_type"); resourceType != "" && resourceType != resourceTypeDoc {
 		resourceID := q.Get("resource_id")
 		if resourceID == "" {
 			httpx.WriteError(w, fmt.Errorf("%w: resource_id is required", apperrs.ErrInvalid))
@@ -93,12 +93,13 @@ func (h *Handler) saveGrid(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// catalog is the full grid in display order; roles, tokens, and doc grants all pick from it.
+// catalog is the full grid in display order, which roles, tokens, and rules pick from, and the instance areas rules
+// may sit on.
 func (h *Handler) catalog(w http.ResponseWriter, _ *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"permissions": permissions.Catalog()})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"permissions": permissions.Catalog(), "instance_areas": h.svc.InstanceAreas()})
 }
 
-// explain is a person's or, with role_id, a role's answers on a doc, play, or project and where each came from;
+// explain is a person's or, with role_id, a role's answers on a doc, play, project, or instance area and where each came from;
 // user_id defaults to the caller.
 func (h *Handler) explain(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()

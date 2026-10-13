@@ -1,6 +1,6 @@
 # 23 — Instance-area rules
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 17
 
@@ -35,10 +35,10 @@ slice lets the instance Owner hand out one area to a role or a person without a 
 
 ## Acceptance criteria
 
-- [ ] `TestInstanceAreas_BobManagesDNSButNotConnectors`, over HTTP and MCP.
-- [ ] `TestInstanceAreas_OnlyTheInstanceOwnerWrites` and `TestInstanceAreas_AnOwnerIsNeverDenied`.
-- [ ] `TestInstanceAreas_EveryInstanceActionHasAnEntity`.
-- [ ] Table-driven `TestDecide_InstanceAreaOrder`: base, role rules from several workspaces, a person rule, every
+- [x] `TestInstanceAreas_BobManagesDNSButNotConnectors`, over HTTP and MCP.
+- [x] `TestInstanceAreas_OnlyTheInstanceOwnerWrites` and `TestInstanceAreas_AnOwnerIsNeverDenied`.
+- [x] `TestInstanceAreas_EveryInstanceActionHasAnEntity`.
+- [x] Table-driven `TestDecide_InstanceAreaOrder`: base, role rules from several workspaces, a person rule, every
       combination of states, with sources.
-- [ ] `/api/auth/me` costs the same statements with rules on every area as with none, and the tool count is
+- [x] `/api/auth/me` costs the same statements with rules on every area as with none, and the tool count is
       unchanged.

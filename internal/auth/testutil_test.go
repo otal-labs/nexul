@@ -67,7 +67,7 @@ func (f *fakeUserStore) setOwner(id string) {
 // fakePermissions answers the instance-level checks from the store: an Owner holds everything, anyone else nothing.
 type fakePermissions struct{ users *fakeUserStore }
 
-func (p fakePermissions) HoldsAnywhere(_ context.Context, userID string, _ permissions.Action) (bool, error) {
+func (p fakePermissions) HoldsArea(_ context.Context, userID, _ string, _ permissions.Action) (bool, error) {
 	p.users.mu.Lock()
 	defer p.users.mu.Unlock()
 	return p.users.owners[userID], nil

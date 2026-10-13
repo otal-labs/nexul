@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -103,9 +104,9 @@ func (s *Service) Decide(ctx context.Context, userID, resourceType, resourceID s
 	return held, src, nil
 }
 
-// Explain answers each action a doc's, play's, or project's rules may set for userID, the caller when empty, with
-// its source as a sentence. Explaining yourself takes opening the entity, anyone else its manage permission; an
-// entity the caller can't open is not found.
+// Explain answers each action a doc's, play's, project's, or instance area's rules may set for userID, the caller when
+// empty, with its source as a sentence. Explaining yourself takes opening the entity, anyone else its manage
+// permission; an entity the caller can't open is not found.
 func (s *Service) Explain(ctx context.Context, actorID, resourceType, resourceID, userID string) (*Explanation, error) {
 	if actorID == "" {
 		return nil, fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
@@ -114,6 +115,9 @@ func (s *Service) Explain(ctx context.Context, actorID, resourceType, resourceID
 		userID = actorID
 	}
 	ctx = s.memoized(ctx)
+	if resourceType == resourceTypeInstanceArea {
+		return s.explainArea(ctx, actorID, resourceID, userID)
+	}
 	e, err := s.entityOf(ctx, resourceType, resourceID)
 	if err != nil {
 		return nil, err
@@ -145,6 +149,9 @@ func (s *Service) ExplainRole(ctx context.Context, actorID, resourceType, resour
 		return nil, fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
 	}
 	ctx = s.memoized(ctx)
+	if resourceType == resourceTypeInstanceArea {
+		return s.explainRoleArea(ctx, actorID, resourceID, roleID)
+	}
 	e, err := s.entityOf(ctx, resourceType, resourceID)
 	if err != nil {
 		return nil, err
@@ -241,11 +248,12 @@ func (r refusal) Unwrap() error { return apperrs.ErrForbidden }
 type namer struct {
 	ctx   context.Context
 	names Names
+	areas []permissions.InstanceArea
 	seen  map[[2]string]string
 }
 
 func (s *Service) namer(ctx context.Context) *namer {
-	return &namer{ctx: ctx, names: s.names, seen: map[[2]string]string{}}
+	return &namer{ctx: ctx, names: s.names, areas: s.InstanceAreas(), seen: map[[2]string]string{}}
 }
 
 // name is entityType id's name, or the id itself when it has none or the read fails.
@@ -253,6 +261,10 @@ func (n *namer) name(entityType, id string) string {
 	key := [2]string{entityType, id}
 	if got, ok := n.seen[key]; ok {
 		return got
+	}
+	if entityType == resourceTypeInstanceArea {
+		n.seen[key] = n.areaLabel(id)
+		return n.seen[key]
 	}
 	name := id
 	if n.names != nil && id != "" {
@@ -262,6 +274,15 @@ func (n *namer) name(entityType, id string) string {
 	}
 	n.seen[key] = name
 	return name
+}
+
+// areaLabel is the instance area keyed key's name in a sentence, or the key itself for one no longer wired.
+func (n *namer) areaLabel(key string) string {
+	i := slices.IndexFunc(n.areas, func(a permissions.InstanceArea) bool { return a.Key == key })
+	if i < 0 {
+		return key
+	}
+	return n.areas[i].Label
 }
 
 func (n *namer) named(src Source) NamedSource {
@@ -317,6 +338,9 @@ func ruleSentence(r NamedSource, allowed bool) string {
 	}
 	if r.TargetType == TargetRole {
 		target = "role " + target
+	}
+	if r.EntityType == resourceTypeInstanceArea {
+		return fmt.Sprintf("%s on %s for %s", verb, r.EntityName, target)
 	}
 	return fmt.Sprintf("%s on %s %s for %s", verb, r.EntityType, r.EntityName, target)
 }

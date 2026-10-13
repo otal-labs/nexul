@@ -40,9 +40,9 @@ type fakeOwnerGate struct {
 	err      error
 }
 
-func (f *fakeOwnerGate) RequireAnywhere(context.Context, permissions.Action) error { return nil }
+func (f *fakeOwnerGate) RequireArea(context.Context, string, permissions.Action) error { return nil }
 
-func (f *fakeOwnerGate) HoldsAnywhere(_ context.Context, userID string, _ permissions.Action) (bool, error) {
+func (f *fakeOwnerGate) HoldsArea(_ context.Context, userID, _ string, _ permissions.Action) (bool, error) {
 	if f.err != nil {
 		return false, f.err
 	}
