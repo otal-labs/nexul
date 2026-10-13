@@ -73,13 +73,14 @@ beforeEach(() => {
 });
 
 describe("PlayRow", () => {
-  it("offers no menu without plays:write or plays:delete", () => {
+  it("offers no menu without plays:write or plays:delete", async () => {
     vi.mocked(api.get).mockImplementation(mockGet());
     renderRow({ canWrite: false, canDelete: false });
-    expect(screen.queryByRole("button", { name: "More actions for Fix with AI" })).not.toBeInTheDocument();
+    await userEvent.setup().pointer({ keys: "[MouseRight]", target: screen.getByText("Fix with AI") });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
-  it("opens the ⋯ items at the pointer on a right-click, Permissions… between Edit and Delete", async () => {
+  it("opens its items at the pointer on a right-click, Permissions… between Edit and Delete", async () => {
     const user = userEvent.setup();
     vi.mocked(api.get).mockImplementation(mockGet());
     renderRow();
@@ -104,7 +105,7 @@ describe("PlayRow", () => {
     );
     renderRow();
 
-    await user.click(await screen.findByRole("button", { name: "More actions for Fix with AI" }));
+    await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Fix with AI") });
     await user.click(await screen.findByRole("menuitem", { name: "Permissions…" }));
     await user.click(await screen.findByRole("button", { name: /bob/ }));
     const run = await screen.findByRole("radiogroup", { name: "Run" });

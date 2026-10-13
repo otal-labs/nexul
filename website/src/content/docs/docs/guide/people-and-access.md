@@ -71,7 +71,7 @@ A project's **Settings → General** lists, under **People with access**, everyo
 
 ## Permissions on a doc or a play
 
-Right-click a doc in the Docs list or a play in **Configuration → Plays**, or open its **…** menu, and pick **Permissions…**; a doc's settings menu has it too. It shows only to someone who can change that doc's or play's rules. The list on the left holds everyone with a rule here; **Add person** lists someone else. A doc refuses someone who can't open its project and says so.
+Right-click a doc in the Docs list or a play in **Configuration → Plays** and pick **Permissions…**; a doc's settings menu has it too. It shows only to someone who can change that doc's or play's rules. The list on the left holds everyone with a rule here; **Add person** lists someone else. A doc refuses someone who can't open its project and says so.
 
 Pick a person to set their rule, one row per permission, each with three buttons:
 

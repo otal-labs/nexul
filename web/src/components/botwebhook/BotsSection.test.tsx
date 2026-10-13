@@ -98,7 +98,7 @@ const renderSidebar = () => {
 };
 
 const openMenuItem = async (u: ReturnType<typeof userEvent.setup>, label: string, item: string) => {
-  await u.click(await screen.findByRole("button", { name: `More actions for ${label}` }));
+  await u.pointer({ keys: "[MouseRight]", target: await screen.findByText(label.replace(/^#/, "")) });
   await u.click(await screen.findByRole("menuitem", { name: item }));
   return screen.findByRole("dialog", { name: label });
 };

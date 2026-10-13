@@ -79,7 +79,7 @@ const openAutoPlays = async () => {
       <PlaySettingsSection canWrite canDelete />
     </QueryClientProvider>,
   );
-  await user.click(await screen.findByRole("button", { name: "More actions for Fix with AI" }));
+  await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Fix with AI") });
   await user.click(await screen.findByRole("menuitem", { name: "Edit" }));
   const dialog = await screen.findByRole("dialog", { name: "Edit Fix with AI" });
   await user.click(await within(dialog).findByRole("tab", { name: "Auto plays" }));

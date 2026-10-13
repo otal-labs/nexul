@@ -10,19 +10,17 @@ interface RowContextMenuProps {
   menu: RowMenu | undefined;
 }
 
-// Right-clicking the row opens its ⋯ items at the pointer; a row with nothing to offer keeps the browser's own menu.
+// Right-clicking the row opens its items at the pointer; a row with nothing to offer keeps the browser's own menu.
+// The trigger stays mounted either way, so the row isn't remounted when the viewer's permissions arrive.
 export const RowContextMenu = ({ children, menu }: RowContextMenuProps) => (
-  <>
-    {!offersMenu(menu) && children}
+  <ContextMenu>
+    <ContextMenuTrigger asChild disabled={!offersMenu(menu)} className="data-[state=open]:bg-accent">
+      {children}
+    </ContextMenuTrigger>
     {offersMenu(menu) && (
-      <ContextMenu>
-        <ContextMenuTrigger asChild className="data-[state=open]:bg-accent">
-          {children}
-        </ContextMenuTrigger>
-        <ContextMenuContent className="min-w-44">
-          <RowActionItems ui={contextParts} {...menu} />
-        </ContextMenuContent>
-      </ContextMenu>
+      <ContextMenuContent className="min-w-44">
+        <RowActionItems ui={contextParts} {...menu} />
+      </ContextMenuContent>
     )}
-  </>
+  </ContextMenu>
 );

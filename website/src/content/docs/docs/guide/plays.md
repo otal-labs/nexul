@@ -69,7 +69,7 @@ Open **Configuration → Plays**. A play has:
 
 A built-in play says whether its instructions match the instance's template, with **Reset to instance template** when they don't. See [Templates](/docs/guide/memories/#templates).
 
-To choose who may run one play, press **Permissions…** on its row and set **Run** to **Allow** or **Deny** for a person; see [Permissions on a doc or a play](/docs/guide/people-and-access/#permissions-on-a-doc-or-a-play).
+To choose who may run one play, right-click its row, pick **Permissions…**, and set **Run** to **Allow** or **Deny** for a person; see [Permissions on a doc or a play](/docs/guide/people-and-access/#permissions-on-a-doc-or-a-play).
 
 ## Auto plays
 

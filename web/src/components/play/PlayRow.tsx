@@ -1,8 +1,7 @@
 import { useState } from "react";
 
 import { PlayTemplateLine } from "@/components/play/PlayTemplateLine";
-import { RowActions } from "@/components/listpane/RowActions";
-import { offersMenu, type RowMenu } from "@/components/listpane/rowMenu";
+import type { RowMenu } from "@/components/listpane/rowMenu";
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import { useCloneTemplateDialog } from "@/hooks/useCloneTemplateDialog";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
@@ -88,7 +87,6 @@ export const PlayRow = ({ onLeave, play, workspaceId, canWrite, canDelete, onEdi
           {play.description && <p className="line-clamp-2 text-xs text-muted-foreground">{play.description}</p>}
           {play.builtin_key && <PlayTemplateLine play={play} canWrite={canWrite} />}
         </div>
-        {offersMenu(menu) && <RowActions itemLabel={play.label} {...menu} />}
       </li>
     </RowContextMenu>
   );

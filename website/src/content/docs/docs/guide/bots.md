@@ -18,7 +18,7 @@ You never build that by hand: Nexul gives you the finished URL to copy.
 
 ## Create a bot
 
-1. Open the conversation's bots. For a channel or voice channel, open its **Settings** from the **…** menu in the sidebar and find **Bots**. For a direct message, a ticket's thread, or a doc thread, choose **Bots** in the conversation's **…** menu.
+1. Open the conversation's bots. For a channel or voice channel, right-click it in the sidebar, open **Settings**, and find **Bots**. For a direct message or a doc thread, right-click it in the sidebar and choose **Bots**; for a ticket's thread, choose **Bots** in the thread's **…** menu.
 2. Press **New bot**, pick an avatar if you like, type a name, and press **Create bot**.
 3. Copy the **Webhook URL**.
 

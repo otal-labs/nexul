@@ -66,7 +66,7 @@ const renderSidebar = () => {
 const user = () => userEvent.setup();
 
 const openSettings = async (u: ReturnType<typeof userEvent.setup>, label = "#eng") => {
-  await u.click(await screen.findByRole("button", { name: `More actions for ${label}` }));
+  await u.pointer({ keys: "[MouseRight]", target: await screen.findByText(label.replace(/^#/, "")) });
   await u.click(await screen.findByRole("menuitem", { name: "Settings" }));
   return screen.findByRole("dialog", { name: label });
 };
@@ -127,8 +127,8 @@ describe("a channel's settings", () => {
   it("offers no Settings on a public channel to someone who cannot switch it", async () => {
     permissions = ["chat:write"];
     renderSidebar();
-    expect(await screen.findByText("eng")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "More actions for #eng" })).not.toBeInTheDocument();
+    await user().pointer({ keys: "[MouseRight]", target: await screen.findByText("eng") });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
   it("holds a Restricted member's private channel private", async () => {
