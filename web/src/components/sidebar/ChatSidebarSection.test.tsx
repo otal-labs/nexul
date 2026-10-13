@@ -213,10 +213,10 @@ describe("ChatSidebarSection", () => {
       return (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
     };
 
-    it("offers Settings and Rename on channels:write and Delete on channels:delete, Delete last", async () => {
+    it("offers Settings, Rename and Permissions… on channels:write and Delete on channels:delete, Delete last", async () => {
       permissions = ["channels:write", "channels:delete"];
       renderSection();
-      expect(await menuItems("#eng")).toEqual(["Settings", "Rename", "Delete"]);
+      expect(await menuItems("#eng")).toEqual(["Settings", "Rename", "Permissions…", "Delete"]);
     });
 
     it("offers only what the viewer holds", async () => {
@@ -228,7 +228,7 @@ describe("ChatSidebarSection", () => {
     it("never offers to delete the workspace's #general", async () => {
       permissions = ["channels:write", "channels:delete"];
       renderSection();
-      expect(await menuItems("#general")).toEqual(["Rename"]);
+      expect(await menuItems("#general")).toEqual(["Settings", "Rename", "Permissions…"]);
     });
 
     it("is gone when the viewer may neither rename nor delete", async () => {

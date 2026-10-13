@@ -212,6 +212,11 @@ func (h *ExecuteHandler) fail(w http.ResponseWriter, log *slog.Logger, err error
 		httpx.WriteError(w, err)
 		return
 	}
+	if errors.Is(err, apperrs.ErrForbidden) {
+		log.Info("bot post rejected: its creator may not post here", "reason", err.Error())
+		httpx.WriteError(w, err)
+		return
+	}
 	log.Error("bot post failed", "error", err)
 	httpx.WriteError(w, err)
 }

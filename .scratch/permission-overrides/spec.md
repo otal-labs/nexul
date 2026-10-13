@@ -514,7 +514,8 @@ The looks are locked in the rework map's tickets. A slice builds against them, n
 **Copy for a member with no role.** Ticket 04 of the rework locked "no projects, channels or plays" in the zero-roles
 empty state and the person dialog's warning, and a sidebar with no conversation sections. The later decision that a
 person with no role still reads public channels and DMs wins: the empty state's line reads "Your roles decide what you
-see here, so there are no projects or plays for you yet. Chat works as usual. An Owner can give you a role.", the
+see here, so there are no projects or plays for you yet. You can read public channels and message an Owner below, who
+can give you a role." (decision 22), the
 dialog's warning reads "With no roles, Sam sees no projects or plays in Acme.", the sidebar keeps Channels and Direct
 messages when they have rows, and each Owner row in the empty state opens a DM with that Owner. Everything else in
 ticket 04 stands.
@@ -612,6 +613,13 @@ anyone's access across the upgrade.
     non-Owner can briefly hold an action they were denied before. This is the third accepted widening, beside a former
     Restricted member reading public channels and an instance bit their roles carry. It follows from starting over;
     the release notes say permissions were rebuilt, and Owners add back any Deny they need.
+
+**2026-10-13** (from channel posting, slice 20)
+
+22. A member with no role is read-only in public channels: they read them but don't post, since posting takes
+    `channels:post` from a role. Their DMs still work, so they can message an Owner.
+23. A bot posts only while its creator may post in its channel. When they can't, because they left, a rule denies
+    them, or they hold no role, the bot's row and the sender's 403 say "Stopped: <creator> can't post in #<channel>".
 
 **Technical calls the owner delegated (2026-10-11)**
 

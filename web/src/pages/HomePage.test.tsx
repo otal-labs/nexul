@@ -91,6 +91,7 @@ describe("HomePage", () => {
     renderHome();
 
     expect(await screen.findByRole("heading", { name: "No roles in Acme yet" })).toBeInTheDocument();
+    expect(screen.getByText("Your roles decide what you see here, so there are no projects or plays for you yet. You can read public channels and message an Owner below, who can give you a role.")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Open board" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Message Sam" })).not.toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: "Message Alice" }));

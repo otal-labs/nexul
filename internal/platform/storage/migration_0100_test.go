@@ -76,7 +76,7 @@ INSERT INTO workspace_invites (workspace_id, login, role_id, invited_by, created
 	held := lines(t, db, `SELECT user_id || '|' || workspace_id || '|' || role_id || '|' || created_at FROM member_roles ORDER BY 1`)
 	roles := lines(t, db, `SELECT id || '|' || permissions FROM roles ORDER BY 1`)
 
-	require.NoError(t, Migrate(db), "0100 and every later migration apply on top, as an upgrade does")
+	migrateUpTo(t, db, "0107") // 0100 and every later migration up to 0107, which gives every role channels:post.
 
 	assert.Equal(t, []string{
 		"doc|d-brief|person|alice|" + creatorGrantJSON + "|[]",

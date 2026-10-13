@@ -83,6 +83,9 @@ beforeEach(() => {
     if (url === "/api/voice/occupancy") return { data: {} };
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
     if (url === "/api/workspaces/ws-1/people") return { data: { people } };
+    if (url.startsWith("/api/permissions?resource_type=channel")) return { data: { grants: [] } };
+    if (url === "/api/workspaces/ws-1/roles") return { data: [] };
+    if (url === "/api/permissions/explain") return { data: { resource_type: "channel", resource_id: "c5", user_id: "", effective: [] } };
     return { data: {} };
   });
 });
@@ -120,6 +123,19 @@ describe("a channel's settings", () => {
     expect(within(dialog).getByRole("button", { name: "Leave channel" })).toBeInTheDocument();
     await u.click(within(dialog).getByRole("button", { name: "Actions for Bob" }));
     expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual(["Send a message"]);
+  });
+
+  it("opens the channel's permissions panel from its settings, closing them first, for whoever holds channels:write", async () => {
+    const u = user();
+    renderSidebar();
+    const dialog = await openSettings(u);
+    expect(within(dialog).getByText("Who sees and posts here")).toBeInTheDocument();
+    await u.click(within(dialog).getByRole("button", { name: "Permissions…" }));
+    const panel = await screen.findByRole("dialog", { name: "Permissions" });
+    expect(await within(panel).findByText("Pick a role or person, or add one, to set rules on #eng.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "#eng" })).not.toBeInTheDocument();
+    await u.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Permissions" })).not.toBeInTheDocument());
   });
 
   it("offers no Settings on a public channel to someone who cannot switch it", async () => {

@@ -202,6 +202,8 @@ func TestScopeAllows(t *testing.T) {
 		{"a channel is deleted with channels:delete", "DELETE", "/api/chat/conversations/c1", []Scope{Scope("channels:delete")}, true},
 		{"channels:write does not delete one", "DELETE", "/api/chat/conversations/c1", []Scope{Scope("channels:write"), Scope("chat:delete")}, false},
 		{"a DM still takes chat:write", "POST", "/api/chat/dms", []Scope{Scope("chat:write")}, true},
+		{"a message is posted with channels:post", "POST", "/api/chat/conversations/c1/messages", []Scope{Scope("channels:post")}, true},
+		{"chat:write no longer posts one", "POST", "/api/chat/conversations/c1/messages", []Scope{Scope("chat:write")}, false},
 		{"a conversation's bots are listed with botwebhook:read", "GET", "/api/conversations/c1/botwebhooks", []Scope{Scope("botwebhook:read")}, true},
 		{"botwebhook:read does not create a bot", "POST", "/api/conversations/c1/botwebhooks", []Scope{Scope("botwebhook:read")}, false},
 		{"a bot is created with botwebhook:write", "POST", "/api/conversations/c1/botwebhooks", []Scope{Scope("botwebhook:write")}, true},
@@ -252,7 +254,7 @@ func TestCatalog_CoversEveryGrantableScopeOnce(t *testing.T) {
 		seen[sc] = true
 	}
 	assert.Len(t, seen, len(allScopes))
-	assert.Len(t, seen, 95)
+	assert.Len(t, seen, 96)
 }
 
 func TestCatalog_EveryValueParses(t *testing.T) {

@@ -127,6 +127,17 @@ beforeEach(() => {
 });
 
 describe("the Bots section", () => {
+  it("says on its row and in its detail why a bot whose creator may not post here is stopped", async () => {
+    live = [bot("b1", "CI", { stopped: "Stopped: bob can't post in #eng" }), bot("b2", "Alerts")];
+    const u = userEvent.setup();
+    renderSidebar();
+    const dialog = await openSettings(u);
+    expect(await within(dialog).findByText("Stopped: bob can't post in #eng")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("Stopped: bob can't post in #eng")).toHaveLength(1);
+    await u.click(within(dialog).getByRole("button", { name: /CI/ }));
+    expect(await within(dialog).findByText("Stopped: bob can't post in #eng")).toBeInTheDocument();
+  });
+
   it("opens settings on a public channel for someone who only reads bots, and shows them rows without URLs or editing", async () => {
     permissions = ["chat:write", "botwebhook:read"];
     live = live.map((b) => ({ ...b, url: "" }));

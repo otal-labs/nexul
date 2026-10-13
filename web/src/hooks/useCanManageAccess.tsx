@@ -11,11 +11,13 @@ const manageAction: Partial<Record<PanelEntity["type"], string>> = { doc: "permi
 // The server's manage check; a doc's, folder's or stack's costs a request, so call it from an open menu.
 export const useCanManageAccess = (entity: Pick<PanelEntity, "type" | "id"> | undefined): boolean => {
   const canWritePlays = useHasPermission("plays:write");
+  const canWriteChannels = useHasPermission("channels:write");
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: mine } = useFetchMyRole(workspaceId);
   const manage = entity && manageAction[entity.type];
   const { data } = useFetchExplanation(manage ? entity.type : "doc", entity?.id ?? "", "", !!manage);
   if (entity?.type === "play") return canWritePlays;
+  if (entity?.type === "channel") return canWriteChannels;
   if (entity?.type === "project") return hasPermission(projectPermissions(mine, entity.id), "projects:access");
   return !!data?.effective.some((answer) => answer.action === manage && answer.allowed);
 };

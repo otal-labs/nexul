@@ -21,7 +21,7 @@ INSERT INTO roles (id, workspace_id, name, is_owner_role, created_at, updated_at
 `)
 	require.NoError(t, err)
 
-	require.NoError(t, Migrate(db))
+	migrateUpTo(t, db, "0107")
 
 	want := map[string]string{
 		"role-admin":  `["members:write","projects:access","projects:create","projects:write"]`,

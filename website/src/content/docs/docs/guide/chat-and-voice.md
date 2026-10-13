@@ -13,7 +13,17 @@ Press **+** beside Channels, Voice channels, or Direct messages. Every workspace
 
 A direct message shows in every workspace you and the other people all belong to, not only the one you started it in, so it stays in the sidebar when you switch.
 
-Right-click a channel in the sidebar to rename it, opens its **Settings**, or deletes it. Deleting removes every message for good and ends a voice channel's call for everyone in it. Creating and renaming take `channels:write`, deleting takes `channels:delete`, and the items are hidden without them.
+Right-click a channel in the sidebar to rename it, open its **Settings** or **Permissions…**, or delete it. Deleting removes every message for good and ends a voice channel's call for everyone in it. Creating and renaming take `channels:write`, deleting takes `channels:delete`, and the items are hidden without them.
+
+## Who sees and posts in a channel
+
+Posting in a channel takes **Post in channels** (`channels:post`), which a role allows like any other permission. A channel's own rules can change that for a role or a person: open **Permissions…** from the channel's right-click menu, or **Who sees and posts here** in its **Settings**, pick a role or a person, and set **See this channel** and **Post in this channel** to Allow, Fallback, or Deny.
+
+- **An announcements channel:** allow **Post in this channel** for the role that announces and deny it for the others. Everyone still reads it.
+- **Hide a channel from a role:** deny **See this channel**. To them it doesn't exist, as a private channel doesn't. The Owner always sees every channel.
+- Someone who reads a channel but may not post in it sees a locked line where the message box was, saying what decided it, such as "Denied on channel #announce for role Client". A member with no role reads the public channels this way, and still messages people directly.
+
+Writing a channel's rules takes `channels:write`, and you can only allow, or lift a Deny on, what you hold there yourself. The Access page's **Public channels** tab sets the same **See this channel** rules for every role at once. Bots post only while the person who created them may post in their channel, and an integration or automation posts with the `channels:post` scope. See [People and access](/docs/guide/people-and-access/).
 
 ## Write messages
 

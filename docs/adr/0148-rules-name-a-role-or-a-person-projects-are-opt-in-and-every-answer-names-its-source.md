@@ -75,3 +75,5 @@ privacy ADR 0146 promises; and role rules on a computer, which would share it wi
 Proposed 2026-10-10 with an Everyone target and Restricted members kept. Rewritten 2026-10-11 for the owner's
 decisions on the permission rework map: roles only, several roles or none, opt-in projects, See on each play, and a
 wipe with a one-time setup. Accepted 2026-10-13, when the switch was tested by upgrading a copy.
+
+Amended by ADR 0149: a channel's rules also set `channels:post`, which roles hold and posting in it takes.

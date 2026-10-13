@@ -53,7 +53,16 @@ const grants = [
   { resource_type: "doc", resource_id: "doc-1", target: "role", user_id: "", role_id: "r-client", allow: [], deny: ["docs:read"], created_at: "2026-10-03", updated_at: "" },
 ];
 
+const everyMember = { allowed: true, source: source({ kind: "every_member", entity_type: "channel", entity_id: "c-1", target_type: "role", target_id: "r-client", entity_name: "#announce", target_name: "Client", sentence: "Read by every member" }) };
+const clientMuted = { allowed: false, source: source({ kind: "rule", entity_type: "channel", entity_id: "c-1", target_type: "role", target_id: "r-client", state: "deny", entity_name: "#announce", target_name: "Client", sentence: "Denied on channel #announce for role Client" }) };
+const channelAnswers = [answer("channels:read", everyMember, everyMember), answer("channels:post", clientMuted)];
+const channelGrants = [
+  { resource_type: "channel", resource_id: "c-1", target: "role", user_id: "", role_id: "r-client", allow: [], deny: ["channels:post"], created_at: "2026-10-03", updated_at: "" },
+];
+
 const mockGet = (url: string, config?: { params?: Record<string, string> }) => {
+  if (url === "/api/permissions?resource_type=channel&resource_id=c-1") return Promise.resolve({ data: { grants: channelGrants } });
+  if (url === "/api/permissions/explain" && config?.params?.resource_type === "channel") return Promise.resolve(explain(channelAnswers));
   if (url === "/api/permissions?resource_type=doc&resource_id=doc-1") return Promise.resolve({ data: { grants } });
   if (url === "/api/permissions?resource_type=folder&resource_id=f-1") return Promise.resolve({ data: { grants: [] } });
   if (url === "/api/permissions?resource_type=stack&resource_id=st-1") return Promise.resolve({ data: { grants: [] } });
@@ -201,6 +210,21 @@ describe("PermissionsPanel", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(api.put).toHaveBeenCalledWith("/api/permissions", { resource_type: "stack", resource_ids: ["st-1"], user_ids: ["lena"], actions: ["docs:read"], state: "deny" }),
+    );
+  });
+
+  it("on a channel, sets who sees it and who posts in it, by role, and saves them for the channel", async () => {
+    await openPanel({ type: "channel", id: "c-1", name: "#announce", workspaceId: "ws-1", projectId: "", folderId: "" });
+    expect(await screen.findByText("#announce")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Client/ }));
+    expect(await control("Post in this channel").findByRole("radio", { name: "Deny" })).toBeChecked();
+    expect(control("See this channel").getByRole("radio", { name: "Fallback" })).toBeChecked();
+    expect(screen.getByText("Read by every member")).toBeInTheDocument();
+
+    await user.click(control("See this channel").getByRole("radio", { name: "Deny" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(api.put).toHaveBeenCalledWith("/api/permissions", { resource_type: "channel", resource_ids: ["c-1"], role_ids: ["r-client"], actions: ["channels:read"], state: "deny" }),
     );
   });
 

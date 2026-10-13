@@ -28,11 +28,11 @@ export const ChannelSettingsDialog = ({ conversationId, onClose }: ChannelSettin
         {channel && (
           <DialogHeader className="min-w-0 shrink-0 pr-8">
             <DialogTitle className="break-words">{channelMention(channel)}</DialogTitle>
-            <DialogDescription>{hasCard ? "Who sees it and who is in it." : "The bots that post here."}</DialogDescription>
+            <DialogDescription>{hasCard ? "Who sees it, who posts in it and who is in it." : "The bots that post here."}</DialogDescription>
           </DialogHeader>
         )}
         <div className="-mx-6 min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-0.5">
-          {channel && hasCard && <ChannelSettingsCard channel={channel} />}
+          {channel && hasCard && <ChannelSettingsCard channel={channel} onOpenPermissions={onClose} />}
           {channel && hasBots && <BotsSection conversation={channel} className={cn(hasCard && "border-t border-border pt-4")} />}
         </div>
         <DialogFooter className="shrink-0">

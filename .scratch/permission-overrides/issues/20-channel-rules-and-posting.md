@@ -1,6 +1,6 @@
 # 20 — Channel rules and posting
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 13, 17
 
@@ -25,8 +25,15 @@ workspace-wide, Entities).
 
 ## Acceptance criteria
 
-- [ ] An `access.Matrix` diff on a production copy that is empty for posting.
-- [ ] `TestChannelRules_OnlyTheRolePosts` over HTTP, MCP, a bot webhook and an automation.
-- [ ] A rule set on the panel and one set on the Access page's channel grid show the same state in both.
-- [ ] The chat rows of `TestStatements_ListsCostTheSameAtAnyLength` keep their counts.
-- [ ] Verified at 768, 1024 and 1440px.
+- [x] An `access.Matrix` diff on a production copy that is empty for posting. Replaced, by the owner's call, with no
+      production copy: a production-shaped fixture at master's schema (two workspaces, Owners, roles with and without
+      `chat:write`, members holding one role, two and none, public, private, voice and general channels, a setup-grid
+      rule hiding a channel, DMs, an integration install and an automation), run through `TestAccessMatrix_OfACopy` on
+      master, where posting is reading (ADR 0087), and on this branch. The posting diff is empty for every member
+      holding a role, the role without `chat:write` included; a member holding no role loses posting in the public
+      channels they read, the one change, which the owner agreed on 2026-10-13 (ADR 0149).
+- [x] `TestChannelRules_OnlyTheRolePosts` over HTTP, MCP, a bot webhook and an automation.
+- [x] A rule set on the panel and one set on the Access page's channel grid show the same state in both
+      (`TestChannelRules_ThePanelAndTheAccessGridAgree`).
+- [x] The chat rows of `TestStatements_ListsCostTheSameAtAnyLength` keep their counts.
+- [x] Verified at 768, 1024 and 1440px.

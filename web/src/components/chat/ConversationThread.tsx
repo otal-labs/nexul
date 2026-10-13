@@ -7,6 +7,7 @@ import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatPaneState } from "@/components/chat/ChatPaneState";
 import { LazyVoiceCallSection } from "@/components/chat/LazyVoiceCallSection";
 import { MessageList } from "@/components/chat/MessageList";
+import { ReadOnlyComposer } from "@/components/chat/ReadOnlyComposer";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchMe } from "@/hooks/AuthHooks";
@@ -21,7 +22,9 @@ import {
 } from "@/hooks/ChatHooks";
 import { useFetchDoc } from "@/hooks/DocHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
+import { useChannelPostRefusal } from "@/hooks/useChannelPosting";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
+import { channelMention } from "@/models/Chat";
 
 interface ConversationThreadProps {
   workspaceId: string;
@@ -52,6 +55,7 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
   const label = doc?.title ?? ticket?.title ?? conversationLabel(conversation, { currentUserId: me?.user.id, resolvePerson });
   const isVoiceChannel = conversation.kind === "voice_channel";
   const isCallActive = useVoiceCallStore((s) => s.activeConversationId === conversation.id);
+  const postRefusal = useChannelPostRefusal(conversation);
 
   // Fires when the newest message is actually seen, not on open, so a scrolled-up chat keeps its unread count.
   const lastMarkedRef = useRef<string | null>(null);
@@ -116,14 +120,15 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
           onInterruptAgent={() => void interruptAgent.mutateAsync()}
         />
       )}
-      <ChatComposer
+      {postRefusal && <ReadOnlyComposer label={channelMention(conversation)} source={postRefusal} />}
+      {!postRefusal && <ChatComposer
         workspaceId={workspaceId}
         conversationId={conversation.id}
         placeholder={doc || ticket ? "Message the thread…" : `Message ${label}…`}
         onSend={async (body) => {
           await postMessage.mutateAsync(body);
         }}
-      />
+      />}
     </div>
   );
 };

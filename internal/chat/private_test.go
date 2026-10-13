@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,6 +42,15 @@ type fakeStanding struct {
 	// denied is the channels a rule denies each person, and failRules fails every rule read.
 	denied    map[string][]string
 	failRules error
+	// mute is the channels each person may not post in.
+	mute map[string][]string
+}
+
+func (f fakeStanding) ChannelPost(_ context.Context, userID, _, channelID string) error {
+	if slices.Contains(f.mute[userID], channelID) {
+		return fmt.Errorf("%w: channels:post required (Denied on channel #%s for %s)", apperrs.ErrForbidden, channelID, userID)
+	}
+	return nil
 }
 
 func (f fakeStanding) ChannelsDenied(_ context.Context, userID, _ string, channelIDs []string) (map[string]bool, error) {
@@ -555,4 +565,51 @@ func TestHasTicketThreads_ChecksTheBoardsTicketsInOneCall(t *testing.T) {
 	assert.Len(t, marks, 29)
 	assert.False(t, marks["t-3"])
 	assert.Equal(t, 1, checks)
+}
+
+// TestPosting_EveryPathTakesThePostingCheck: a person a channel's rules mute is refused there through each path that
+// posts as them, with the source the refusal names, while their DMs, their reads and the server's own notices go on.
+func TestPosting_EveryPathTakesThePostingCheck(t *testing.T) {
+	f := newPrivateFixture(t)
+	f.s.SetStanding(fakeStanding{owners: []string{"u-owner"}, mute: map[string][]string{"u-2": {f.eng.ID}}})
+	dm, err := f.s.CreateDM(as("u-1"), "w-1", "u-1", []string{"u-2"})
+	require.NoError(t, err)
+	now := time.Now()
+
+	paths := []struct {
+		name string
+		post func(ctx context.Context, conversationID string) error
+	}{
+		{"a person's message", func(ctx context.Context, id string) error {
+			_, err := f.s.PostMessage(ctx, id, "u-2", "hello")
+			return err
+		}},
+		{"the Agent's reply to them", func(ctx context.Context, id string) error {
+			_, err := f.s.PostAgentMessage(ctx, id, "u-2", "done", nil)
+			return err
+		}},
+		{"what they typed in their harness", func(ctx context.Context, id string) error {
+			return f.s.PostHarnessMessage(ctx, id, "u-2", "relayed", "t3", "key-"+id, now)
+		}},
+		{"a bot they made", func(ctx context.Context, id string) error {
+			_, err := f.s.PostBotMessage(ctx, BotPost{ConversationID: id, BotID: "bot-1", CreatorID: "u-2", Name: "CI", Body: "green"})
+			return err
+		}},
+	}
+	for _, p := range paths {
+		t.Run(p.name, func(t *testing.T) {
+			err := p.post(as("u-2"), f.eng.ID)
+			require.ErrorIs(t, err, apperrs.ErrForbidden)
+			assert.Contains(t, err.Error(), "Denied on channel")
+			require.NoError(t, p.post(as("u-2"), dm.ID), "a DM takes only its read")
+			require.NoError(t, p.post(context.Background(), f.secret.ID), "a channel that doesn't mute them")
+		})
+	}
+
+	_, err = f.s.PostSystemMessage(context.Background(), f.eng.ID, "u-2", "u-2 joined the call")
+	require.NoError(t, err, "the server's own notice posts as nobody")
+	_, err = f.s.ListMessages(as("u-2"), f.eng.ID, "u-2", 10)
+	require.NoError(t, err, "muted is still read")
+	_, err = f.s.PostMessage(as("u-3"), f.secret.ID, "u-3", "hi")
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "a channel they can't read is not found before anything is asked of posting")
 }

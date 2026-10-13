@@ -57,6 +57,7 @@ const (
 	ChannelsRead       Action = "channels:read"
 	ChannelsWrite      Action = "channels:write"
 	ChannelsDelete     Action = "channels:delete"
+	ChannelsPost       Action = "channels:post"
 	BotwebhookRead     Action = "botwebhook:read"
 	BotwebhookWrite    Action = "botwebhook:write"
 	BotwebhookDelete   Action = "botwebhook:delete"
@@ -121,6 +122,7 @@ const (
 	logs     = "logs"
 	access   = "access"
 	template = "template"
+	post     = "post"
 )
 
 // verbLabel is the owner-facing text for a domain-declared verb (ADR 0057): one line per verb, no per-domain switch.
@@ -137,6 +139,7 @@ var verbLabel = map[Action]string{
 	WorkspacesCreate: "Create workspaces",
 	ProjectsCreate:   "Create projects",
 	ProjectsAccess:   "Manage this project's access",
+	ChannelsPost:     "Post in channels",
 }
 
 // Area is where a domain's permission applies (ADR 0097): inside one project, across the workspace, or instance-wide.
@@ -182,8 +185,8 @@ var domainTable = []domainInfo{
 	{"dns", "DNS and gateways", []string{read, write, delete}, AreaInstance},
 	{"notifications", "notifications", []string{read, write}, AreaWorkspace},
 	{"chat", "chat", []string{read, write, delete}, AreaWorkspace},
-	// A channel's read starts held for whoever may see it, and only a rule on the channel denies channels:read (ADR 0148).
-	{"channels", "channels", []string{read, write, delete}, AreaWorkspace},
+	// A channel's read starts held for whoever may see it and only a rule denies it; posting takes channels:post (ADR 0149).
+	{"channels", "channels", []string{read, write, delete, post}, AreaWorkspace},
 	{"voice", "voice", []string{read, write}, AreaWorkspace},
 	// No implication between the three: read hides a bot's URL, write shows it, and only delete deletes.
 	{"botwebhook", "bots", []string{read, write, delete}, AreaWorkspace},

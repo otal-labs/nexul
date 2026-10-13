@@ -37,3 +37,6 @@ every rename ask for a destructive confirmation.
 
 Amends ADR 0087, whose channel and voice channel creation now takes `channels:write`, and ADR 0090's tool ceiling.
 Decided 2026-09-30.
+
+Amended by ADR 0149: a fourth bit, `channels:post`, gates posting in a channel, and `channels:write` writes a channel's
+rules.

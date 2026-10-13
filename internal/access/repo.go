@@ -113,10 +113,17 @@ type PlayWorkspaceResolver interface {
 	WorkspaceIDForPlay(ctx context.Context, playID string) (string, error)
 }
 
-// ChannelWorkspaceResolver resolves a channel's workspace so a rule on it is written there (ADR 0017).
+// ChannelScope is where a channel lives and, before its rules, who reads it: every member, or a private one's members.
+type ChannelScope struct {
+	WorkspaceID string
+	Private     bool
+	MemberIDs   []string
+}
+
+// ChannelWorkspaceResolver resolves a channel's scope so a rule on it is written and explained there (ADR 0017).
 type ChannelWorkspaceResolver interface {
-	// WorkspaceIDForChannel returns ErrNotFound for an unknown conversation or one that is not a text or voice channel.
-	WorkspaceIDForChannel(ctx context.Context, channelID string) (string, error)
+	// ChannelScope returns ErrNotFound for an unknown conversation or one that is not a text or voice channel.
+	ChannelScope(ctx context.Context, channelID string) (ChannelScope, error)
 }
 
 // Names resolves what a source names for the sentence a person reads, read only on the explain and refusal paths.

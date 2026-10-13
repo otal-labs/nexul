@@ -23,7 +23,7 @@ INSERT INTO roles (id, workspace_id, name, is_owner_role, created_at, updated_at
 	script, err := migrationFS.ReadFile("migrations/0040_stacks_logs_permission.sql")
 	require.NoError(t, err)
 	require.NoError(t, applyMigration(db, "0040_stacks_logs_permission", string(script)))
-	require.NoError(t, Migrate(db), "every later migration applies on top, as an upgrade would")
+	migrateUpTo(t, db, "0107") // 0107 gives every role channels:post, which its own test covers.
 	s := New(db, []byte("0123456789abcdef0123456789abcdef"))
 
 	for id, want := range map[string]permissions.Set{
