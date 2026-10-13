@@ -79,20 +79,8 @@ describe("RunnerHooks", () => {
     mocks.post.mockRejectedValue(new Error("a runner named alpha is already enrolled"));
     const { result } = renderHook(() => useCreateRunnerEnrollment(), { wrapper: wrapperFor(new QueryClient()) });
 
-    await expect(result.current.mutateAsync({ name: "alpha", machine: "", gitToken: "" })).rejects.toThrow();
+    await expect(result.current.mutateAsync({ name: "alpha" })).rejects.toThrow();
     expect(mocks.toastError).toHaveBeenCalledWith("a runner named alpha is already enrolled");
-  });
-
-  it("enrolls with the name and machine only, never the git token", async () => {
-    const enrollment = { code: "nxe_1", expires_at: "2026-09-27T13:00:00Z", commands: { unix: "u", windows: "w" } };
-    mocks.post.mockResolvedValue({ data: enrollment });
-    const { result } = renderHook(() => useCreateRunnerEnrollment(), { wrapper: wrapperFor(new QueryClient()) });
-
-    await expect(result.current.mutateAsync({ name: "alpha", machine: "", gitToken: "ghp_secret" })).resolves.toEqual(enrollment);
-    expect(mocks.post).toHaveBeenCalledWith("/api/runners/enrollments", { name: "alpha", machine: undefined });
-
-    await result.current.mutateAsync({ name: "beta", machine: "prod", gitToken: "" });
-    expect(mocks.post).toHaveBeenLastCalledWith("/api/runners/enrollments", { name: "beta", machine: "prod" });
   });
 
   it("toasts a failed removal", async () => {

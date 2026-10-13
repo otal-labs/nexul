@@ -20,10 +20,7 @@ Each machine has a stack root, the directory its stack checkouts live under (`st
 ## Adding a runner
 
 1. Open **Runners** and click **Add runner**. To add one to an existing machine, click **Add a runner to this machine** on that machine instead.
-2. Fill in:
-   - **Runner name**: lower case letters, digits and dashes, up to 32 characters.
-   - **Machine**: the machine it joins. Leave it empty and the runner joins a machine named after the computer's hostname, so runners on one computer share a machine.
-   - **GitHub token**: optional, for cloning private repositories. It goes into the command, never to the instance.
+2. Type a **Runner name**: lower case letters, digits and dashes, up to 32 characters. The runner joins a machine named after the computer's hostname, so runners on one computer share a machine.
 3. Click **Create install command** and copy the command for the machine's system:
 
    ```sh
@@ -34,7 +31,7 @@ Each machine has a stack root, the directory its stack checkouts live under (`st
    $env:NEXUL_VERSION='v0.2.1'; & ([scriptblock]::Create((irm https://nexul.io/runner.ps1))) --server https://nexul.example.com --name build-box-1 --code nxe_…
    ```
 
-4. Run it on the machine: on Linux as root or with `sudo`, on a Mac as yourself, on Windows in PowerShell (it asks for administrator rights).
+4. Run it on the machine: on Linux as root or with `sudo`, on a Mac as yourself, on Windows in PowerShell (it asks for administrator rights). The dialog shows **Server connected** under the command once a runner with that name connects, with its name and machine.
 
 The install sets up Docker the same way the [server install](/docs/guide/install/) does, enrolls the runner and starts it as the `nexul-runner-<name>` service. The runner then shows as connected on the **Runners** page.
 

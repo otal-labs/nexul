@@ -54,8 +54,10 @@ export const AddRunnerDialog = ({ machineName, triggerSize = "default", triggerV
           </DialogDescription>
         </DialogHeader>
 
-        {!enroll.data && <AddRunnerForm machineName={machineName} pending={enroll.isPending} onSubmit={enroll.mutateAsync} />}
-        {enroll.data && <RunnerInstallCommands enrollment={enroll.data} gitToken={enroll.variables?.gitToken ?? ""} />}
+        {!enroll.data && (
+          <AddRunnerForm pending={enroll.isPending} onSubmit={(input) => enroll.mutateAsync({ ...input, machine: machineName })} />
+        )}
+        {enroll.data && <RunnerInstallCommands enrollment={enroll.data} name={enroll.variables?.name ?? ""} />}
       </DialogContent>
     </Dialog>
   );

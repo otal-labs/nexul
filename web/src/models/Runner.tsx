@@ -54,11 +54,14 @@ export const RunnerEnrollmentFormSchema = z.object({
     .string()
     .trim()
     .regex(/^[a-z0-9][a-z0-9-]{0,31}$/, "Use 1 to 32 lowercase letters, digits or dashes"),
-  machine: z.string().trim(),
-  gitToken: z.string().trim(),
 });
 
 export type RunnerEnrollmentFormData = z.infer<typeof RunnerEnrollmentFormSchema>;
+
+// Set when the runner joins a known machine; otherwise the server names the machine after the computer's hostname.
+export interface RunnerEnrollmentInput extends RunnerEnrollmentFormData {
+  machine?: string | undefined;
+}
 
 export const RunnerEnrollmentSchema = z.object({
   code: z.string(),
