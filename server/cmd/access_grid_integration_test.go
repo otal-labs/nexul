@@ -105,6 +105,17 @@ func TestIntegration_AccessGrid_ChannelRuleFrames(t *testing.T) {
 	}
 	require.ErrorIs(t, s.accessSvc.SetRules(as(uReader), uReader, "channel", []string{f.channel.ID}, access.Targets{RoleIDs: []string{"role-plain"}}, readChannels, access.StateFallback), apperrs.ErrForbidden)
 	require.NoError(t, s.accessSvc.SetRules(as(uWriter), uWriter, "channel", []string{f.channel.ID}, access.Targets{RoleIDs: []string{"role-reader"}}, readChannels, access.StateDeny), "a writer of channels manages their rules")
+
+	private, err := s.chatSvc.CreatePrivateChannel(as(uOwner), wsDefault, uOwner, "private", chat.KindChannel, nil)
+	require.NoError(t, err)
+	privateFrame, err := json.Marshal(access.GrantEvent{ResourceType: "channel", ResourceID: private.ID, Target: access.TargetRole, RoleID: "role-plain"})
+	require.NoError(t, err)
+	assert.False(t, audience.allows(as(uWriter), access.TopicGrantChanged, json.RawMessage(privateFrame)), "channel writers outside a private channel do not receive its rules")
+	assert.True(t, audience.allows(as(uOwner), access.TopicGrantChanged, json.RawMessage(privateFrame)), "the Owner still reads every channel's rules")
+
+	require.NoError(t, s.accessSvc.SetRules(as(uOwner), uOwner, "channel", []string{f.channel.ID}, access.Targets{RoleIDs: []string{"role-writer"}}, readChannels, access.StateDeny))
+	assert.False(t, audience.allows(as(uWriter), access.TopicGrantChanged, json.RawMessage(frame)), "a public channel hidden from a writer does not send them other roles' rules")
+	assert.True(t, audience.allows(as(uOwner), access.TopicGrantChanged, json.RawMessage(frame)))
 }
 
 var readChannels = []permissions.Action{permissions.ChannelsRead}

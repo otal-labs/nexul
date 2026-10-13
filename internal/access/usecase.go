@@ -1054,6 +1054,9 @@ func (s *Service) canManage(ctx context.Context, actorID, resourceType, resource
 		return true, nil
 	}
 	if resourceType == resourceTypeChannel {
+		if err := s.requireOpens(ctx, actorID, resourceType, resourceID); err != nil {
+			return false, err
+		}
 		workspaceID := s.workspaceOf(ctx, resourceType, resourceID)
 		if workspaceID == "" {
 			return false, fmt.Errorf("%w: channel %s", apperrs.ErrNotFound, resourceID)

@@ -194,6 +194,12 @@ func TestChannelRules_ABotStopsWithItsCreator(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, status, "its creator posts here")
 	assert.Empty(t, row())
 
+	require.NoError(t, svc.authSvc.DisableAccount(as(uOwner), uOwner, uWriter))
+	assertStopped("its creator's account is disabled")
+	require.NoError(t, svc.authSvc.ReactivateAccount(as(uOwner), uOwner, uWriter))
+	status, _ = post()
+	require.Equal(t, http.StatusNoContent, status, "reactivating its creator starts it again")
+
 	postsChannel(t, f, f.channel.ID)
 	require.NoError(t, svc.accessSvc.SetRules(as(uOwner), uOwner, "channel", []string{f.channel.ID}, access.Targets{UserIDs: []string{uWriter}},
 		[]permissions.Action{permissions.ChannelsPost}, access.StateDeny))

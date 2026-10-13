@@ -46,6 +46,13 @@ type botwebhookPoster struct {
 }
 
 func (b botwebhookPoster) PostBotMessage(ctx context.Context, p botwebhook.Post) (string, time.Time, error) {
+	line, err := b.Stopped(ctx, p.ConversationID, p.CreatorID)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	if line != "" {
+		return "", time.Time{}, fmt.Errorf("%w: %s", apperrs.ErrForbidden, line)
+	}
 	m, err := b.svc.PostBotMessage(ctx, chat.BotPost{
 		ConversationID: p.ConversationID, BotID: p.BotID, CreatorID: p.CreatorID, Name: p.Name, AvatarURL: p.AvatarURL, Body: p.Body,
 		Embeds: p.Embeds, Mentions: p.Mentionable, Via: p.Via, Audit: p.Audit,
@@ -65,12 +72,23 @@ func (b botwebhookPoster) PostBotMessage(ctx context.Context, p botwebhook.Post)
 
 func (b botwebhookPoster) Stopped(ctx context.Context, conversationID, creatorID string) (string, error) {
 	stopped, name, err := b.svc.BotStopped(ctx, conversationID, creatorID)
-	if err != nil || !stopped {
+	if err != nil {
 		return "", err
 	}
 	creator := "its creator"
-	if u, err := b.users.GetUserByID(ctx, creatorID); err == nil {
+	u, err := b.users.GetUserByID(ctx, creatorID)
+	if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+		return "", err
+	}
+	if u != nil {
 		creator = u.Login
+		stopped = stopped || (u.AccountStatus != "" && u.AccountStatus != auth.AccountActive)
+	}
+	if u == nil {
+		stopped = true
+	}
+	if !stopped {
+		return "", nil
 	}
 	return fmt.Sprintf("Stopped: %s can't post in #%s", creator, name), nil
 }
