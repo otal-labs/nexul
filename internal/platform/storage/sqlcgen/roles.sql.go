@@ -10,18 +10,19 @@ import (
 )
 
 const createRole = `-- name: CreateRole :exec
-INSERT INTO roles (id, workspace_id, name, permissions, is_owner_role, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO roles (id, workspace_id, name, permissions, welcome_steps, is_owner_role, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateRoleParams struct {
-	ID          string
-	WorkspaceID string
-	Name        string
-	Permissions string
-	IsOwnerRole int64
-	CreatedAt   int64
-	UpdatedAt   int64
+	ID           string
+	WorkspaceID  string
+	Name         string
+	Permissions  string
+	WelcomeSteps string
+	IsOwnerRole  int64
+	CreatedAt    int64
+	UpdatedAt    int64
 }
 
 func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) error {
@@ -30,6 +31,7 @@ func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) error {
 		arg.WorkspaceID,
 		arg.Name,
 		arg.Permissions,
+		arg.WelcomeSteps,
 		arg.IsOwnerRole,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -50,7 +52,7 @@ func (q *Queries) DeleteRole(ctx context.Context, id string) (int64, error) {
 }
 
 const getRole = `-- name: GetRole :one
-SELECT id, workspace_id, name, is_owner_role, created_at, updated_at, permissions FROM roles WHERE id = ?
+SELECT id, workspace_id, name, is_owner_role, created_at, updated_at, permissions, welcome_steps FROM roles WHERE id = ?
 `
 
 func (q *Queries) GetRole(ctx context.Context, id string) (Role, error) {
@@ -64,12 +66,13 @@ func (q *Queries) GetRole(ctx context.Context, id string) (Role, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Permissions,
+		&i.WelcomeSteps,
 	)
 	return i, err
 }
 
 const listRoles = `-- name: ListRoles :many
-SELECT id, workspace_id, name, is_owner_role, created_at, updated_at, permissions FROM roles WHERE workspace_id = ? ORDER BY is_owner_role DESC, created_at, id
+SELECT id, workspace_id, name, is_owner_role, created_at, updated_at, permissions, welcome_steps FROM roles WHERE workspace_id = ? ORDER BY is_owner_role DESC, created_at, id
 `
 
 func (q *Queries) ListRoles(ctx context.Context, workspaceID string) ([]Role, error) {
@@ -89,6 +92,7 @@ func (q *Queries) ListRoles(ctx context.Context, workspaceID string) ([]Role, er
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Permissions,
+			&i.WelcomeSteps,
 		); err != nil {
 			return nil, err
 		}
@@ -104,20 +108,22 @@ func (q *Queries) ListRoles(ctx context.Context, workspaceID string) ([]Role, er
 }
 
 const updateRole = `-- name: UpdateRole :execrows
-UPDATE roles SET name = ?, permissions = ?, updated_at = ? WHERE id = ?
+UPDATE roles SET name = ?, permissions = ?, welcome_steps = ?, updated_at = ? WHERE id = ?
 `
 
 type UpdateRoleParams struct {
-	Name        string
-	Permissions string
-	UpdatedAt   int64
-	ID          string
+	Name         string
+	Permissions  string
+	WelcomeSteps string
+	UpdatedAt    int64
+	ID           string
 }
 
 func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, updateRole,
 		arg.Name,
 		arg.Permissions,
+		arg.WelcomeSteps,
 		arg.UpdatedAt,
 		arg.ID,
 	)

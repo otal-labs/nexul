@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -25,7 +26,7 @@ func (r *RolesRepo) Create(ctx context.Context, role *roles.Role) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).CreateRole(ctx, sqlcgen.CreateRoleParams{
 			ID: role.ID, WorkspaceID: role.WorkspaceID, Name: role.Name,
-			Permissions: setJSON(role.Permissions), IsOwnerRole: int64(boolInt(role.IsOwnerRole)),
+			Permissions: setJSON(role.Permissions), WelcomeSteps: stepsJSON(role.WelcomeSteps), IsOwnerRole: int64(boolInt(role.IsOwnerRole)),
 			CreatedAt: role.CreatedAt.Unix(), UpdatedAt: role.UpdatedAt.Unix(),
 		})
 		if err != nil {
@@ -62,7 +63,8 @@ func (r *RolesRepo) List(ctx context.Context, workspaceID string) ([]*roles.Role
 func (r *RolesRepo) Update(ctx context.Context, role *roles.Role, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateRole(ctx, sqlcgen.UpdateRoleParams{
-			Name: role.Name, Permissions: setJSON(role.Permissions), UpdatedAt: role.UpdatedAt.Unix(), ID: role.ID,
+			Name: role.Name, Permissions: setJSON(role.Permissions), WelcomeSteps: stepsJSON(role.WelcomeSteps),
+			UpdatedAt: role.UpdatedAt.Unix(), ID: role.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("update role %s: %w", role.ID, classifyWriteErr(err))
@@ -92,13 +94,26 @@ func toRole(row sqlcgen.Role) (*roles.Role, error) {
 	if err != nil {
 		return nil, fmt.Errorf("decode permissions for role %s: %w", row.ID, err)
 	}
+	var steps []string
+	if err := json.Unmarshal([]byte(row.WelcomeSteps), &steps); err != nil {
+		return nil, fmt.Errorf("decode welcome steps for role %s: %w", row.ID, err)
+	}
 	return &roles.Role{
-		ID:          row.ID,
-		WorkspaceID: row.WorkspaceID,
-		Name:        row.Name,
-		Permissions: perms,
-		IsOwnerRole: row.IsOwnerRole != 0,
-		CreatedAt:   time.Unix(row.CreatedAt, 0).UTC(),
-		UpdatedAt:   time.Unix(row.UpdatedAt, 0).UTC(),
+		ID:           row.ID,
+		WorkspaceID:  row.WorkspaceID,
+		Name:         row.Name,
+		Permissions:  perms,
+		WelcomeSteps: steps,
+		IsOwnerRole:  row.IsOwnerRole != 0,
+		CreatedAt:    time.Unix(row.CreatedAt, 0).UTC(),
+		UpdatedAt:    time.Unix(row.UpdatedAt, 0).UTC(),
 	}, nil
+}
+
+func stepsJSON(steps []string) string {
+	if len(steps) == 0 {
+		return "[]"
+	}
+	b, _ := json.Marshal(steps) // a []string always marshals
+	return string(b)
 }

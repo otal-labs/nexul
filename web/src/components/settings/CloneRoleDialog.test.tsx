@@ -22,6 +22,7 @@ const role = {
   workspace_id: "ws-1",
   name: "Editor",
   permissions: ["docs:read"],
+  welcome_steps: [],
   is_owner_role: false,
   created_at: "",
   updated_at: "",

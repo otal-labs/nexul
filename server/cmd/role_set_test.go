@@ -37,11 +37,11 @@ func TestRoleSet_EveryEvaluatorAgrees(t *testing.T) {
 		assert.True(t, owner)
 	})
 	t.Run("the roles domain", func(t *testing.T) {
-		_, err := svc.rolesSvc.Create(as(uPlain), wsDefault, uPlain, "Triage", grant("docs:read", "members:write"))
+		_, err := svc.rolesSvc.Create(as(uPlain), wsDefault, uPlain, "Triage", grant("docs:read", "members:write"), nil)
 		require.NoError(t, err, "roles:write from one role, the grant from both")
-		_, err = svc.rolesSvc.Create(as(uPlain), wsDefault, uPlain, "Shipper", grant("tickets:write"))
+		_, err = svc.rolesSvc.Create(as(uPlain), wsDefault, uPlain, "Shipper", grant("tickets:write"), nil)
 		require.ErrorIs(t, err, apperrs.ErrForbidden)
-		_, err = svc.rolesSvc.Create(as(uWriter), wsDefault, uWriter, "Upgrader", grant("instance:write"))
+		_, err = svc.rolesSvc.Create(as(uWriter), wsDefault, uWriter, "Upgrader", grant("instance:write"), nil)
 		require.NoError(t, err)
 	})
 	t.Run("the invitation SQL", func(t *testing.T) {

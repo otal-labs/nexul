@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import type { WelcomeStep } from "@nexul/client-core/welcome";
 
 import { api, errorMessage } from "@/api/client";
 import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
@@ -34,12 +35,17 @@ export const useRoleChoices = (workspaceId: string): { choices: RoleChoice[] | u
   return { choices, error: roles.error ?? me.error ?? catalog.error };
 };
 
+interface RoleInput {
+  name: string;
+  actions: string[];
+  welcome_steps: WelcomeStep[];
+}
+
 // `actions` must match the /api/permissions/catalog vocabulary exactly — unknowns drop silently server-side.
 export const useCreateWorkspaceRole = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ name, actions }: { name: string; actions: string[] }) =>
-      (await api.post<Role>(`/api/workspaces/${workspaceId}/roles`, { name, actions })).data,
+    mutationFn: async (input: RoleInput) => (await api.post<Role>(`/api/workspaces/${workspaceId}/roles`, input)).data,
     onSuccess: async (role) => {
       await client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, workspaceId] });
       toast.success(`${role.name} created`);
@@ -51,8 +57,8 @@ export const useCreateWorkspaceRole = (workspaceId: string) => {
 export const useUpdateWorkspaceRole = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ roleId, name, actions }: { roleId: string; name: string; actions: string[] }) =>
-      (await api.patch<Role>(`/api/workspaces/${workspaceId}/roles/${roleId}`, { name, actions })).data,
+    mutationFn: async ({ roleId, ...input }: RoleInput & { roleId: string }) =>
+      (await api.patch<Role>(`/api/workspaces/${workspaceId}/roles/${roleId}`, input)).data,
     onSuccess: async (role) => {
       await client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, workspaceId] });
       toast.success(`${role.name} saved`);

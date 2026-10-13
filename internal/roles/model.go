@@ -14,6 +14,8 @@ type Role struct {
 	Name        string          `json:"name"`
 	Permissions permissions.Set `json:"permissions"`
 	IsOwnerRole bool            `json:"is_owner_role"`
-	CreatedAt   time.Time       `json:"created_at"`
-	UpdatedAt   time.Time       `json:"updated_at"`
+	// WelcomeSteps are the Welcome wizard steps the role gives its holders, as welcomestep keys.
+	WelcomeSteps []string  `json:"welcome_steps"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }

@@ -26,6 +26,7 @@ func TestRolesRepo_Create_Get_RoundTrip(t *testing.T) {
 	require.NoError(t, s.Workspaces.Create(context.Background(), newTestWorkspace("ws-1", "Acme")))
 	want := newTestRole("role-1", "ws-1")
 	want.Permissions = permissions.SetOf(permissions.RolesWrite, permissions.ProjectsWrite)
+	want.WelcomeSteps = []string{"github", "phone"}
 	require.NoError(t, s.Roles.Create(context.Background(), want))
 
 	got, err := s.Roles.Get(context.Background(), "role-1")
@@ -36,6 +37,7 @@ func TestRolesRepo_Create_Get_RoundTrip(t *testing.T) {
 	assert.True(t, got.Permissions.Has(permissions.RolesWrite))
 	assert.True(t, got.Permissions.Has(permissions.ProjectsWrite))
 	assert.False(t, got.Permissions.Has(permissions.MembersWrite))
+	assert.Equal(t, []string{"github", "phone"}, got.WelcomeSteps)
 }
 
 func TestRolesRepo_Get_NotFound(t *testing.T) {
@@ -103,6 +105,7 @@ func TestRolesRepo_Update(t *testing.T) {
 
 	role.Name = "Reviewers"
 	role.Permissions = permissions.SetOf(permissions.RolesWrite)
+	role.WelcomeSteps = []string{"computer"}
 	role.UpdatedAt = time.Now()
 	event := eventbus.OutboxEvent{ID: "evt-1", Topic: roles.TopicUpdated, Payload: roles.RoleEvent{RoleID: "role-1", WorkspaceID: "ws-1"}}
 	require.NoError(t, s.Roles.Update(context.Background(), role, event))
@@ -111,6 +114,7 @@ func TestRolesRepo_Update(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Reviewers", got.Name)
 	assert.True(t, got.Permissions.Has(permissions.RolesWrite))
+	assert.Equal(t, []string{"computer"}, got.WelcomeSteps)
 	var n int
 	require.NoError(t, s.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM outbox WHERE topic = ?`, roles.TopicUpdated).Scan(&n))
 	assert.Equal(t, 1, n)

@@ -328,9 +328,19 @@ type GetRoleForInvitationGrantParams struct {
 	WorkspaceID string
 }
 
-func (q *Queries) GetRoleForInvitationGrant(ctx context.Context, arg GetRoleForInvitationGrantParams) (Role, error) {
+type GetRoleForInvitationGrantRow struct {
+	ID          string
+	WorkspaceID string
+	Name        string
+	IsOwnerRole int64
+	CreatedAt   int64
+	UpdatedAt   int64
+	Permissions string
+}
+
+func (q *Queries) GetRoleForInvitationGrant(ctx context.Context, arg GetRoleForInvitationGrantParams) (GetRoleForInvitationGrantRow, error) {
 	row := q.db.QueryRowContext(ctx, getRoleForInvitationGrant, arg.ID, arg.WorkspaceID)
-	var i Role
+	var i GetRoleForInvitationGrantRow
 	err := row.Scan(
 		&i.ID,
 		&i.WorkspaceID,

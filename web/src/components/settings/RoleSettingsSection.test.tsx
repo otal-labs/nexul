@@ -60,6 +60,7 @@ const role = (overrides: Record<string, unknown> = {}) => ({
   workspace_id: "ws-1",
   name: "Editor",
   permissions: [],
+  welcome_steps: [],
   is_owner_role: false,
   created_at: "",
   updated_at: "",
@@ -162,6 +163,7 @@ describe("RoleSettingsSection", () => {
     expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", {
       name: "Support",
       actions: ["plays:read", "members:read", "roles:read", "projects:read", "projects:write"],
+      welcome_steps: [],
     });
     expect(toast.success).toHaveBeenCalledWith("Support created");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -217,6 +219,7 @@ describe("RoleSettingsSection", () => {
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
       name: "Editor",
       actions: ["projects:create", "memories:template", "projects:access", "memories:read"],
+      welcome_steps: [],
     });
   });
 
@@ -236,8 +239,8 @@ describe("RoleSettingsSection", () => {
     expect(screen.getByTitle("Needs Read first")).toHaveTextContent("Clone");
   });
 
-  it("starts a new role from a copy of another role's permissions", async () => {
-    mockRoles([ownerRole, role({ permissions: ["members:read"] })]);
+  it("starts a new role from a copy of another role's permissions and welcome steps", async () => {
+    mockRoles([ownerRole, role({ permissions: ["members:read"], welcome_steps: ["computer"] })]);
     mocks.post.mockResolvedValue({ data: role({ name: "Auditor" }) });
     const user = userEvent.setup();
     renderSection();
@@ -250,7 +253,11 @@ describe("RoleSettingsSection", () => {
     expect(screen.getByText("Copied from Editor. Change anything below; Editor stays as it is.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Create role" }));
 
-    expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", { name: "Auditor", actions: ["members:read"] });
+    expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", {
+      name: "Auditor",
+      actions: ["members:read"],
+      welcome_steps: ["computer"],
+    });
   });
 
   it("keeps Create role off until the role has a name", async () => {
@@ -290,6 +297,7 @@ describe("RoleSettingsSection", () => {
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
       name: "Reviewer",
       actions: ["members:read", "members:write", "roles:read", "roles:write"],
+      welcome_steps: [],
     });
     expect(toast.success).toHaveBeenCalledWith("Reviewer saved");
   });
@@ -364,15 +372,63 @@ describe("RoleSettingsSection", () => {
     expect(mocks.delete).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor");
   });
 
-  it("duplicates a role under a free copy name", async () => {
-    mockRoles([ownerRole, role({ permissions: ["roles:read"] }), role({ id: "role-copy", name: "Editor (copy)" })]);
+  it("duplicates a role under a free copy name, its welcome steps included", async () => {
+    mockRoles([ownerRole, role({ permissions: ["roles:read"], welcome_steps: ["github"] }), role({ id: "role-copy", name: "Editor (copy)" })]);
     mocks.post.mockResolvedValue({ data: role() });
     const user = userEvent.setup();
     renderSection();
 
     await openMenu(user, "Editor", "Duplicate");
 
-    expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", { name: "Editor (copy 2)", actions: ["roles:read"] });
+    expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", {
+      name: "Editor (copy 2)",
+      actions: ["roles:read"],
+      welcome_steps: ["github"],
+    });
+  });
+
+  it("saves the steps ticked in the Welcome tab in the wizard's order, with the rest of the role", async () => {
+    mockRoles([ownerRole, role({ permissions: ["members:read"], welcome_steps: ["phone"] })]);
+    mocks.patch.mockResolvedValue({ data: role() });
+    const user = userEvent.setup();
+    renderSection();
+
+    await openMenu(user, "Editor", "Edit");
+    expect(tab("Welcome")).toHaveAccessibleName("Welcome, 1 of 5 steps");
+    await user.click(tab("Welcome"));
+    expect(ability("Get the phone app")).toBeChecked();
+    expect(ability("Connect GitHub")).not.toBeChecked();
+    await user.click(ability("Connect GitHub"));
+    expect(tab("Welcome")).toHaveAccessibleName(/^Welcome, 2 of 5 steps, unsaved changes/);
+    expect(tab("Instance")).not.toHaveAccessibleName(/unsaved changes/);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
+      name: "Editor",
+      actions: ["members:read"],
+      welcome_steps: ["github", "phone"],
+    });
+  });
+
+  it("counts a step switched back as no change, and asks before discarding one", async () => {
+    mockRoles([ownerRole, role()]);
+    const user = userEvent.setup();
+    renderSection();
+
+    await openMenu(user, "Editor", "Edit");
+    await user.click(tab("Welcome"));
+    await user.click(ability("Your computer"));
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    await user.click(ability("Your computer"));
+    expect(screen.getByText("No changes yet")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+
+    await user.click(ability("Add a deploy server"));
+    await user.keyboard("{Escape}");
+    expect(await screen.findByText("Your changes to Editor haven't been saved.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Discard changes" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(mocks.patch).not.toHaveBeenCalled();
   });
 
   it("offers Clone to workspace only with roles:clone, and opens the dialog", async () => {
@@ -408,6 +464,7 @@ describe("RoleSettingsSection", () => {
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
       name: "Editor",
       actions: ["roles:read", "roles:clone"],
+      welcome_steps: [],
     });
   });
 });

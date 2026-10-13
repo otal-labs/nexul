@@ -1,3 +1,5 @@
+import type { WelcomeStep } from "@nexul/client-core/welcome";
+
 import { PermissionArea, type PermissionInfo } from "@/models/Permission";
 import { domainsIn, levelName, levelOf, type PermissionDomain } from "@/models/PermissionLevel";
 
@@ -14,7 +16,23 @@ export const ROLE_SECTIONS: RoleSection[] = [
   { area: PermissionArea.Project, title: "In projects", bulk: "All areas in projects" },
 ];
 
-export const sectionLine = (area: PermissionArea, workspaceName: string): string => {
+// The tab after the permission areas: which Welcome wizard steps the role's holders are asked to do.
+export const WELCOME_TAB = "welcome";
+
+export type RoleTab = PermissionArea | typeof WELCOME_TAB;
+
+// What a holder is asked to do for each step, the line under its switch.
+export const WELCOME_STEP_LINES: Record<WelcomeStep, string> = {
+  github: "Link their GitHub account, so repositories open as them.",
+  computer: "Install Nexul on their computer and pair T3 Code, so agents can run there.",
+  projects: "Open the projects they're in and see what they can do there.",
+  deploy_server: "Install Nexul on a server, so stacks can deploy to it.",
+  phone: "Sign in to the phone app by scanning a QR code.",
+};
+
+export const NO_STEPS: WelcomeStep[] = [];
+
+export const sectionLine =(area: PermissionArea, workspaceName: string): string => {
   if (area === PermissionArea.Instance) return "Applies across every workspace on this install.";
   if (area === PermissionArea.Workspace) return `Across ${workspaceName || "this workspace"}, whatever project someone is in.`;
   return "Only inside the projects a holder is in. Each project lists who's in it.";

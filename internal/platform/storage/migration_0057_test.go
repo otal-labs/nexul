@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,6 +9,17 @@ import (
 
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
+
+// rolePermissions reads a role's permissions straight from its row, for a test stopped before a later migration
+// adds a column the roles repo reads.
+func rolePermissions(t *testing.T, db *sql.DB, id string) permissions.Set {
+	t.Helper()
+	var text string
+	require.NoError(t, db.QueryRow(`SELECT permissions FROM roles WHERE id = ?`, id).Scan(&text))
+	set, err := parseSet(text)
+	require.NoError(t, err)
+	return set
+}
 
 func TestMigration0057_WhateverCouldLockADocKeepsLockingIt(t *testing.T) {
 	db := migrateBefore(t, "0057")
@@ -46,9 +58,7 @@ INSERT INTO invitation_grants (invitation_id, workspace_id, role_id, allow_json,
 		"role-reader": permissions.SetOf(permissions.DocsRead),
 		"role-empty":  nil,
 	} {
-		role, err := s.Roles.Get(ctx, id)
-		require.NoError(t, err)
-		assert.Equal(t, want, role.Permissions, id)
+		assert.Equal(t, want, rolePermissions(t, db, id), id)
 	}
 
 	for doc, want := range map[string][2]permissions.Set{

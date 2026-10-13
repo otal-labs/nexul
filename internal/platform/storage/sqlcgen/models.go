@@ -940,13 +940,14 @@ type ProjectRepo struct {
 }
 
 type Role struct {
-	ID          string
-	WorkspaceID string
-	Name        string
-	IsOwnerRole int64
-	CreatedAt   int64
-	UpdatedAt   int64
-	Permissions string
+	ID           string
+	WorkspaceID  string
+	Name         string
+	IsOwnerRole  int64
+	CreatedAt    int64
+	UpdatedAt    int64
+	Permissions  string
+	WelcomeSteps string
 }
 
 type Runner struct {
@@ -959,6 +960,7 @@ type Runner struct {
 	MachineID   string
 	OwnerUserID string
 	ComputerID  string
+	EnrolledBy  string
 }
 
 type RunnerCredential struct {
@@ -977,6 +979,7 @@ type RunnerEnrollmentCode struct {
 	ExpiresAt   int64
 	OwnerUserID string
 	ComputerID  string
+	EnrolledBy  string
 }
 
 type Service struct {
@@ -1153,6 +1156,14 @@ type UserIdentity struct {
 	AvatarUrl      string
 	CreatedAt      int64
 	Username       string
+}
+
+type WelcomeStepState struct {
+	UserID    string
+	Step      string
+	SkippedAt sql.NullInt64
+	GivenAt   sql.NullInt64
+	DoneAt    sql.NullInt64
 }
 
 type Workspace struct {
