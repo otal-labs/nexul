@@ -99,6 +99,7 @@ describe("Layout", () => {
       }
       if (url.endsWith("/me")) return { data: meResponse };
       if (url === "/api/projects") return { data: projects };
+      if (url === "/api/me/welcome") return { data: { first_run_done: true, steps: [], dot: false } };
       if (url === "/api/team") throw new Error("403");
       if (url === "/api/workspaces") return { data: [{ id: "ws-1", name: "Acme", slug: "acme", created_at: "", updated_at: "" }] };
       return { data: [] };
