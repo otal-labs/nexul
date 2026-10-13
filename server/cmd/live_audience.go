@@ -460,12 +460,21 @@ func botwebhookFrame(ctx context.Context, a liveAudience, raw json.RawMessage) b
 	return decode(raw, &p) && a.access.Require(ctx, p.WorkspaceID, permissions.BotwebhookRead) == nil && conversationFrame(ctx, a, raw)
 }
 
+// playRunFrame reaches whoever reads the run's target and its trail: the run's starter, or someone who can see its play.
 func playRunFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	var p struct {
-		TargetType plays.TargetType `json:"target_type"`
-		TargetID   string           `json:"target_id"`
+		TargetType  plays.TargetType `json:"target_type"`
+		TargetID    string           `json:"target_id"`
+		PlayID      string           `json:"play_id"`
+		StarterID   string           `json:"starter_id"`
+		WorkspaceID string           `json:"workspace_id"`
 	}
 	if !decode(raw, &p) {
+		return false
+	}
+	actor := actorID(ctx)
+	started := actor != "" && actor == p.StarterID
+	if p.PlayID != "" && !started && !a.access.HasPermission(ctx, actor, p.WorkspaceID, permissions.PlaysRead, "play", p.PlayID) {
 		return false
 	}
 	if p.TargetType == plays.TargetDoc {
@@ -477,7 +486,7 @@ func playRunFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool
 	return readsTicket(ctx, a, p.TargetID)
 }
 
-// playFrame reaches whoever lists the workspace's plays (plays:read) or sees the play as a button (plays:run on it).
+// playFrame reaches whoever can see the play (plays:read on it).
 func playFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	var p struct {
 		ID          string `json:"id"`
@@ -494,25 +503,28 @@ func playFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	if workspaceID == "" {
 		return false
 	}
-	if a.access.Require(ctx, workspaceID, permissions.PlaysRead) == nil {
-		return true
-	}
-	return a.access.HasPermission(ctx, actorID(ctx), workspaceID, permissions.PlaysRun, "play", id)
+	return a.access.HasPermission(ctx, actorID(ctx), workspaceID, permissions.PlaysRead, "play", id)
 }
 
-// autoPlayFrame reaches whoever reads the workspace's auto plays; the workspace is top level on a delete, nested otherwise.
+// autoPlayFrame reaches whoever reads the workspace's auto plays and can see the auto play's play; the workspace and
+// play are top level on a delete, nested otherwise, and a limits frame names no play.
 func autoPlayFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	var p struct {
 		WorkspaceID string `json:"workspace_id"`
+		PlayID      string `json:"play_id"`
 		AutoPlay    struct {
 			WorkspaceID string `json:"workspace_id"`
+			PlayID      string `json:"play_id"`
 		} `json:"auto_play"`
 	}
 	if !decode(raw, &p) {
 		return false
 	}
-	workspaceID := p.WorkspaceID + p.AutoPlay.WorkspaceID
-	return workspaceID != "" && a.access.Require(ctx, workspaceID, permissions.AutoplaysRead) == nil
+	workspaceID, playID := p.WorkspaceID+p.AutoPlay.WorkspaceID, p.PlayID+p.AutoPlay.PlayID
+	if workspaceID == "" || a.access.Require(ctx, workspaceID, permissions.AutoplaysRead) != nil {
+		return false
+	}
+	return playID == "" || a.access.HasPermission(ctx, actorID(ctx), workspaceID, permissions.PlaysRead, "play", playID)
 }
 
 func stackFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {

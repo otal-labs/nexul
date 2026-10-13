@@ -11,7 +11,8 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// GetTrail returns one trail; plays:read in its workspace, and docs:thread on the doc for a doc trail.
+// GetTrail returns one trail to its starter or to someone who can see its play, and docs:thread on the doc for a doc
+// trail; anyone else, or someone outside its project, gets not found.
 func (r *Runner) GetTrail(ctx context.Context, id string) (*Trail, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
@@ -21,10 +22,10 @@ func (r *Runner) GetTrail(ctx context.Context, id string) (*Trail, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get trail %s: %w", id, err)
 	}
-	if !r.opensProject(ctx, t) {
+	if len(r.readable(ctx, []*Trail{t})) == 0 {
 		return nil, fmt.Errorf("get trail %s: %w", id, apperrs.ErrNotFound)
 	}
-	if err := r.requireTrailAccess(ctx, t.WorkspaceID, t.TargetType, t.TargetID); err != nil {
+	if err := r.requireThread(ctx, t.WorkspaceID, t.TargetType, t.TargetID); err != nil {
 		return nil, err
 	}
 	return t, nil
@@ -34,6 +35,24 @@ func (r *Runner) GetTrail(ctx context.Context, id string) (*Trail, error) {
 // given back brings it back.
 func (r *Runner) opensProject(ctx context.Context, t *Trail) bool {
 	return t.ProjectID == "" || r.perm.HasPermission(ctx, actorID(ctx), t.WorkspaceID, permissions.Member, resourceTypeProject, t.ProjectID)
+}
+
+// readable keeps the trails of list the caller reads: in a project they can open, and started by them or of a play they
+// can see, from one read of the play rules per workspace (ADR 0148).
+func (r *Runner) readable(ctx context.Context, list []*Trail) []*Trail {
+	actor := actorID(ctx)
+	byWorkspace := map[string][]string{}
+	for _, t := range list {
+		byWorkspace[t.WorkspaceID] = append(byWorkspace[t.WorkspaceID], t.PlayID)
+	}
+	sees := make(map[string]map[string]bool, len(byWorkspace))
+	for workspaceID, playIDs := range byWorkspace {
+		sees[workspaceID] = r.perm.PlaysWith(ctx, actor, workspaceID, permissions.PlaysRead, playIDs)
+	}
+	return slices.DeleteFunc(slices.Clone(list), func(t *Trail) bool {
+		started := actor != "" && actor == t.StarterID
+		return !r.opensProject(ctx, t) || (!started && !sees[t.WorkspaceID][t.PlayID])
+	})
 }
 
 // ListTrails returns a target's trails newest first, under the same gate as GetTrail; a playID keeps that play's alone.
@@ -46,11 +65,11 @@ func (r *Runner) ListTrails(ctx context.Context, targetType TargetType, targetID
 	if err != nil {
 		return nil, fmt.Errorf("list trails for %s %s: %w", targetType, targetID, err)
 	}
-	list = slices.DeleteFunc(list, func(t *Trail) bool { return !r.opensProject(ctx, t) })
+	list = r.readable(ctx, list)
 	if len(list) == 0 {
 		return nil, nil
 	}
-	if err := r.requireTrailAccess(ctx, list[0].WorkspaceID, targetType, targetID); err != nil {
+	if err := r.requireThread(ctx, list[0].WorkspaceID, targetType, targetID); err != nil {
 		return nil, err
 	}
 	return slices.DeleteFunc(list, func(t *Trail) bool { return playID != "" && t.PlayID != playID }), nil
@@ -75,11 +94,8 @@ func (r *Runner) ActiveTrails(ctx context.Context, targetType TargetType, target
 	if err != nil {
 		return nil, fmt.Errorf("list active trails: %w", err)
 	}
-	actor := actorID(ctx)
-	for _, t := range list {
-		if r.perm.HasPermission(ctx, actor, t.WorkspaceID, permissions.PlaysRead, "", "") && r.opensProject(ctx, t) {
-			out[t.TargetID] = t
-		}
+	for _, t := range r.readable(ctx, list) {
+		out[t.TargetID] = t
 	}
 	return out, nil
 }
@@ -94,8 +110,8 @@ func (r *Runner) LatestChoices(ctx context.Context, starterID, playID, projectID
 	if err != nil {
 		return nil, fmt.Errorf("get play %s: %w", playID, err)
 	}
-	if !r.perm.HasPermission(ctx, actorID(ctx), play.WorkspaceID, permissions.PlaysRead, "", "") {
-		return nil, fmt.Errorf("%w: %s required", apperrs.ErrForbidden, permissions.PlaysRead)
+	if !r.perm.HasPermission(ctx, actorID(ctx), play.WorkspaceID, permissions.PlaysRead, resourceTypePlay, play.ID) {
+		return nil, fmt.Errorf("get play %s: %w", playID, apperrs.ErrNotFound)
 	}
 	t, err := r.trails.LatestTrailForChoices(ctx, starterID, playID, projectID)
 	if errors.Is(err, apperrs.ErrNotFound) {
@@ -107,13 +123,26 @@ func (r *Runner) LatestChoices(ctx context.Context, starterID, playID, projectID
 	return &Choices{MemoryIDs: t.SelectedMemoryIDs, ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model, ModelOptions: t.ModelOptions}, nil
 }
 
-func (r *Runner) requireTrailAccess(ctx context.Context, workspaceID string, targetType TargetType, targetID string) error {
-	actor := actorID(ctx)
-	if !r.perm.HasPermission(ctx, actor, workspaceID, permissions.PlaysRead, "", "") {
-		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, permissions.PlaysRead)
-	}
-	if targetType == TargetDoc && !r.perm.HasPermission(ctx, actor, workspaceID, permissions.DocsThread, resourceTypeDoc, targetID) {
+// requireThread refuses a doc's runs to someone who may not see the doc's working thread.
+func (r *Runner) requireThread(ctx context.Context, workspaceID string, targetType TargetType, targetID string) error {
+	if targetType == TargetDoc && !r.perm.HasPermission(ctx, actorID(ctx), workspaceID, permissions.DocsThread, resourceTypeDoc, targetID) {
 		return fmt.Errorf("%w: %s required on doc %s", apperrs.ErrForbidden, permissions.DocsThread, targetID)
+	}
+	return nil
+}
+
+// requireSteer lets a run's starter, or someone who can see its play and holds plays:write on it, act on the run; a run
+// the caller can't read is not found.
+func (r *Runner) requireSteer(ctx context.Context, t *Trail, act string) error {
+	actor := actorID(ctx)
+	if actor != "" && actor == t.StarterID {
+		return nil
+	}
+	if len(r.readable(ctx, []*Trail{t})) == 0 {
+		return fmt.Errorf("get trail %s: %w", t.ID, apperrs.ErrNotFound)
+	}
+	if !r.perm.HasPermission(ctx, actor, t.WorkspaceID, permissions.PlaysWrite, resourceTypePlay, t.PlayID) {
+		return fmt.Errorf("%w: only the starter or a %s holder can %s", apperrs.ErrForbidden, permissions.PlaysWrite, act)
 	}
 	return nil
 }

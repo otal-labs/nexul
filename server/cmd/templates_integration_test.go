@@ -264,9 +264,9 @@ func TestIntegration_TemplatesClone(t *testing.T) {
 		}{
 			"a reader may not write a workspace's interview":    {uReader, memories.TemplateKind, "", templates.Instance, atDefault, forbidden},
 			"a member may not write a workspace's chip":         {uPlain, tenancy.TemplateKind, "", templates.Instance, atDefault, forbidden},
-			"a member may not write a workspace's play":         {uPlain, plays.TemplateKind, "fix-with-ai", templates.Instance, atDefault, forbidden},
+			"a member can't write a play they can't see":        {uPlain, plays.TemplateKind, "fix-with-ai", templates.Instance, atDefault, notFound},
 			"a member may not write a project's body template":  {uPlain, workspace.TemplateKind, "bug", templates.Instance, atGeneral, forbidden},
-			"a member may not read a workspace's plays":         {uPlain, plays.TemplateKind, "fix-with-ai", atDefault, templates.Instance, forbidden},
+			"a play a member can't see is not found":            {uPlain, plays.TemplateKind, "fix-with-ai", atDefault, templates.Instance, notFound},
 			"instance powers without templates:write refused":   {uSteward, memories.TemplateKind, "", atDefault, templates.Instance, forbidden},
 			"an outsider cannot read another workspace's chip":  {uOutsider, tenancy.TemplateKind, "", atDefault, templates.Instance, notFound},
 			"a project writer may copy a body template there":   {uWriter, workspace.TemplateKind, "task", templates.Instance, atGeneral, ok},

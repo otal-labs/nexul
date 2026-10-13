@@ -24,7 +24,7 @@ The agent decides where the ticket goes when it finishes. It reads your footer m
 
 ## Follow a run
 
-Every press leaves a trail, listed in the **Trail** section of the ticket, doc, or Interview page. Open one to see who started it, what was picked, and a transcript of what the agent said and did: each command, file change, and MCP call as its own row.
+Every press leaves a trail, listed in the **Trail** section of the ticket, doc, or Interview page. A trail shows to whoever started the run and to everyone who can see the play. Open one to see who started it, what was picked, and a transcript of what the agent said and did: each command, file change, and MCP call as its own row.
 
 While a run is going:
 
@@ -69,7 +69,9 @@ Open **Configuration → Plays**. A play has:
 
 A built-in play says whether its instructions match the instance's template, with **Reset to instance template** when they don't. See [Templates](/docs/guide/memories/#templates).
 
-To choose who may run one play, right-click its row, pick **Permissions…**, and set **Run** to **Allow** or **Deny** for a role or a person; see [Permissions on a project, a folder, a doc or a play](/docs/guide/people-and-access/#permissions-on-a-project-a-folder-a-doc-or-a-play).
+To choose who may see, run, edit or delete one play, right-click its row, pick **Permissions…**, and set **See this play**, **Run**, **Edit** or **Delete** to **Allow** or **Deny** for a role or a person; see [Permissions on a project, a folder, a doc or a play](/docs/guide/people-and-access/#permissions-on-a-project-a-folder-a-doc-or-a-play). The list shows how many a play is hidden from.
+
+A play someone can't see is gone for them: from **Configuration → Plays**, the buttons and menus on tickets, docs and the Interview page, its auto plays and queued runs, and agents' `play_list`, and its link is not found. Its auto plays never run on them. Runs it already made stay readable to whoever started them and to everyone who can see the play.
 
 ## Auto plays
 
@@ -85,7 +87,7 @@ An auto play has:
 - **Limits**, at most once per ticket or doc every hour, 24 hours, or 7 days, or no limit.
 - **Run on**, whose computer runs it: the ticket's developer, its tester, or whoever caused the moment. A doc play always runs on whoever caused it.
 
-The play's **Show when** stage does not apply to an auto play; add a **Stage is** condition instead. A run waits until its person has a free slot and their computer is online and set up, and its conditions are checked again before it starts. If nothing is paired yet, the computer needs pairing again, no T3 project is linked for the project, the computer's setup isn't done, or several computers are paired and none is the default, the run waits rather than failing and starts once that is fixed. The person it runs on needs `plays:run`.
+The play's **Show when** stage does not apply to an auto play; add a **Stage is** condition instead. A run waits until its person has a free slot and their computer is online and set up, and its conditions are checked again before it starts. If nothing is paired yet, the computer needs pairing again, no T3 project is linked for the project, the computer's setup isn't done, or several computers are paired and none is the default, the run waits rather than failing and starts once that is fixed. The person it runs on needs to see the play and hold `plays:run`; if they can't see it, it doesn't run, and says why only to those who can.
 
 **Each ticket runs at most 5 auto plays a day** across every play, so two auto plays can't keep starting each other. Change the number under the list of any ticket play's auto plays; it applies to the whole workspace.
 
@@ -105,13 +107,15 @@ If it can't start, the ticket shows **Decisions check didn't run** with the reas
 
 | Permission | Lets you |
 |---|---|
-| `plays:run` | see and press plays |
-| `plays:read` | open **Configuration → Plays** |
-| `plays:write` | create and edit plays, set who may run each one, stop anyone's run |
+| `plays:read` | see plays: **Configuration → Plays**, their buttons, and their runs |
+| `plays:run` | press the plays you can see |
+| `plays:write` | create and edit plays, set who may see and run each one, stop anyone's run |
 | `plays:delete` | delete plays |
 | `autoplays:read` | see a play's auto plays and the daily cap |
 | `autoplays:write` | add, change, and switch auto plays, and set the daily cap |
 | `autoplays:delete` | delete auto plays |
+
+A role gives these for every play; a play's own rules turn **See this play**, **Run**, **Edit** and **Delete** on or off for that play alone.
 
 Agents run plays with `play_run` and read trails with `trail_list`. See [MCP server](/docs/guide/mcp-server/). Like the dialog, `play_run` asks where the first time: in a project you haven't linked it needs `computer_id` and `t3_project_id`, and saves them as your link once that computer lists the T3 project. `computer_list` with a computer's id lists its T3 projects.
 

@@ -205,6 +205,15 @@ describe("the play follower", () => {
     expect(isStale(client, ["getAutoPlayLimits", "ws-1"])).toBe(false);
   });
 
+  it("refetches the play lists on a play's rule, and nothing on another entity's", async () => {
+    const keys = [["getWorkspacePlays", "ws-1"], ["getApplicablePlays", "ws-1", "p-1", "ticket", null], ["getAutoPlays", "ws-1", "pl-1"]];
+    const client = seeded(keys.map((key) => [key, []]));
+    await followFrame(playFollower, "access.grant.changed", { resource_type: "doc", resource_id: "d-1", role_id: "r-1" }, client);
+    expect(keys.map((key) => isStale(client, key))).toEqual([false, false, false]);
+    await followFrame(playFollower, "access.grant.changed", { resource_type: "play", resource_id: "pl-1", role_id: "r-1" }, client);
+    expect(keys.map((key) => isStale(client, key))).toEqual([true, true, true]);
+  });
+
   it("drops a deleted play's auto plays with it", async () => {
     const client = seeded([[["getAutoPlays", "ws-1", "pl-1"], []]]);
     await followFrame(playFollower, "play.deleted", { id: "pl-1", label: "Review", workspace_id: "ws-1" }, client);

@@ -18,8 +18,7 @@ import (
 // resourceTypeDoc is the resource_type value documents use in permission_overwrites.
 const resourceTypeDoc = "doc"
 
-// resourceTypePlay is the resource_type value plays use for per-user exclusion (ticket 21): a deny-only
-// overwrite of plays:run, managed from the play's settings page with the doc sharing dialog generalised.
+// resourceTypePlay keys a play's rules, which set its See, Run, Edit and Delete, by resource_id = the play id (ADR 0148).
 const resourceTypePlay = "play"
 
 // resourceTypeWorkspace names the workspace a source comes from; no rule sits on a workspace itself (ADR 0148).
@@ -553,7 +552,7 @@ func (s *Service) SetGrants(ctx context.Context, actorID string, docIDs, userIDs
 	return s.SetRules(ctx, actorID, resourceTypeDoc, docIDs, Targets{UserIDs: userIDs}, actions, state)
 }
 
-// SetPlayGrants sets plays:run to state for users on plays; it is the only action a play rule sets until See per play.
+// SetPlayGrants sets actions to state for users on plays.
 func (s *Service) SetPlayGrants(ctx context.Context, actorID string, playIDs, userIDs []string, actions []permissions.Action, state string) error {
 	return s.SetRules(ctx, actorID, resourceTypePlay, playIDs, Targets{UserIDs: userIDs}, actions, state)
 }
@@ -628,7 +627,7 @@ func checkWrite(actorID, resourceType string, resourceIDs []string, to Targets, 
 // planRules is each target's next rule on one resource, refused before anything is stored; a Fallback where no rule
 // is changes nothing and plans no write.
 func (s *Service) planRules(ctx context.Context, actorID, resourceType, resourceID string, to Targets, actions []permissions.Action, state string) ([]ruleWrite, error) {
-	if err := s.requireInProject(ctx, actorID, resourceType, resourceID); err != nil {
+	if err := s.requireOpens(ctx, actorID, resourceType, resourceID); err != nil {
 		return nil, err
 	}
 	ok, err := s.canManage(ctx, actorID, resourceType, resourceID)
@@ -683,7 +682,7 @@ func errNotARuleType(resourceType string) error {
 	return fmt.Errorf("%w: resource_type %q is not doc, folder, play, project, channel, computer, or instance_area", apperrs.ErrInvalid, resourceType)
 }
 
-// checkRuleActions refuses an action resourceType's rules may not set: a play's rules set Run, a project's In this
+// checkRuleActions refuses an action resourceType's rules may not set: a play's rules set See, Run, Edit and Delete, a project's In this
 // project and the project-area actions, a folder's the docs actions and their access, a channel's its read, an
 // instance area's its own actions (checkArea), a computer's its three permissions and nothing else.
 func checkRuleActions(resourceType string, actions []permissions.Action) error {
@@ -698,7 +697,7 @@ func checkRuleActions(resourceType string, actions []permissions.Action) error {
 			return fmt.Errorf("%w: projects:open is set only on a project", apperrs.ErrInvalid)
 		}
 		if resourceType == resourceTypePlay && !slices.Contains(playActions, a) {
-			return fmt.Errorf("%w: only plays:run may be set on a play", apperrs.ErrInvalid)
+			return fmt.Errorf("%w: %s is not set on a play; its rules set plays:read, plays:run, plays:write and plays:delete", apperrs.ErrInvalid, a)
 		}
 		if resourceType == resourceTypeProject && !slices.Contains(projectActions, a) {
 			return fmt.Errorf("%w: %s is not set on a project; its rules set projects:open and project-area actions", apperrs.ErrInvalid, a)
@@ -735,9 +734,9 @@ func (s *Service) requireRolesOf(ctx context.Context, resourceType, resourceID s
 	return nil
 }
 
-// requireInProject answers a project, or a folder of one, the actor is not in as not found, never forbidden.
-func (s *Service) requireInProject(ctx context.Context, actorID, resourceType, resourceID string) error {
-	if resourceType != resourceTypeProject && resourceType != resourceTypeFolder {
+// requireOpens answers a project, or a folder of one, the actor is not in, or a play they can't see, as not found.
+func (s *Service) requireOpens(ctx context.Context, actorID, resourceType, resourceID string) error {
+	if resourceType != resourceTypeProject && resourceType != resourceTypeFolder && resourceType != resourceTypePlay {
 		return nil
 	}
 	e, err := s.entityOf(ctx, resourceType, resourceID)
@@ -849,7 +848,7 @@ func (s *Service) ListPlayGrants(ctx context.Context, actorID, playID string) ([
 }
 
 // ListRules is the rules on a doc, folder, play, project, channel, or instance area, for whoever manages it; a project
-// the actor is not in, or a folder of one, is not found, so listing its rules never confirms it exists.
+// the actor is not in, a folder of one, or a play they can't see is not found, so listing its rules never confirms it exists.
 func (s *Service) ListRules(ctx context.Context, actorID, resourceType, resourceID string) ([]*Overwrite, error) {
 	if actorID == "" {
 		return nil, fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
@@ -860,7 +859,7 @@ func (s *Service) ListRules(ctx context.Context, actorID, resourceType, resource
 	if err := s.checkArea(resourceType, resourceID, nil); err != nil {
 		return nil, err
 	}
-	if err := s.requireInProject(ctx, actorID, resourceType, resourceID); err != nil {
+	if err := s.requireOpens(ctx, actorID, resourceType, resourceID); err != nil {
 		return nil, err
 	}
 	return s.listGrants(ctx, actorID, resourceType, resourceID)

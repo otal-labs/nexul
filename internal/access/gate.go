@@ -273,6 +273,44 @@ func (s *Service) ChannelsDenied(ctx context.Context, userID, workspaceID string
 	return out, nil
 }
 
+// PlaysWith is which of playIDs in workspaceID userID holds action on, their roles and each play's rules decided as
+// HasPermission does, from one read of the play rules reaching them (ADR 0148).
+func (s *Service) PlaysWith(ctx context.Context, userID, workspaceID string, action permissions.Action, playIDs []string) map[string]bool {
+	out := make(map[string]bool, len(playIDs))
+	if userID == "" || len(playIDs) == 0 {
+		return out
+	}
+	ctx = s.memoized(ctx)
+	ws := s.layers(ctx, userID, workspaceID, "")
+	var rules map[string]*Rules
+	for _, id := range playIDs {
+		out[id], _ = decide(ws, action, func() []*Rules {
+			if rules == nil {
+				rules = s.playRules(ctx, userID, playIDs)
+			}
+			return []*Rules{rules[id]}
+		})
+	}
+	return out
+}
+
+// playRules is channelRules for plays; a failed read counts as no rule, as a single check's does.
+func (s *Service) playRules(ctx context.Context, userID string, playIDs []string) map[string]*Rules {
+	read := func() (map[string]*Rules, error) { return s.rulesOn(ctx, resourceTypePlay, playIDs, userID) }
+	if len(playIDs) > 1 {
+		read = func() (map[string]*Rules, error) {
+			return remember(ctx, typeRulesKey{resourceTypePlay, userID}, func() (map[string]*Rules, error) {
+				return s.repo.RulesOfType(ctx, resourceTypePlay, userID)
+			})
+		}
+	}
+	rules, err := read()
+	if err != nil || rules == nil {
+		return map[string]*Rules{}
+	}
+	return rules
+}
+
 // channelRules reads a list's rules by type, which costs what the rules do rather than what naming each channel does.
 func (s *Service) channelRules(ctx context.Context, userID string, channelIDs []string) (map[string]*Rules, error) {
 	if len(channelIDs) == 1 {

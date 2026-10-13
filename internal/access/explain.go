@@ -14,11 +14,11 @@ func (s *Service) SetNames(n Names) {
 	s.names = n
 }
 
-// The actions each entity's rules may set: a doc's docs actions and its access, a play's Run, and on a project In this
-// project and every project-area action.
+// The actions each entity's rules may set: a doc's docs actions and its access, a play's See, Run, Edit and Delete, and
+// on a project In this project and every project-area action.
 var (
 	docActions     = catalogActions(func(i permissions.Info) bool { return i.Domain == "docs" || i.Value == permissions.PermissionsWrite })
-	playActions    = []permissions.Action{permissions.PlaysRun}
+	playActions    = []permissions.Action{permissions.PlaysRead, permissions.PlaysRun, permissions.PlaysWrite, permissions.PlaysDelete}
 	projectActions = append([]permissions.Action{permissions.ProjectsOpen}, catalogActions(func(i permissions.Info) bool { return i.Area == permissions.AreaProject })...)
 )
 

@@ -98,6 +98,17 @@ describe("PlayRow", () => {
     expect(await screen.findByText("1 excluded")).toBeInTheDocument();
   });
 
+  it("shows how many rules hide the play", async () => {
+    vi.mocked(api.get).mockImplementation(
+      mockGet([
+        { resource_type: "play", resource_id: "play-1", target: "role", role_id: "r1", user_id: "", allow: [], deny: ["plays:read"] },
+        { resource_type: "play", resource_id: "play-1", user_id: "u1", allow: ["plays:read"], deny: [] },
+      ]),
+    );
+    renderRow();
+    expect(await screen.findByText("hidden from 1")).toBeInTheDocument();
+  });
+
   it("opens the permissions panel on the play, today's exclusions as Deny on Run", async () => {
     const user = userEvent.setup();
     vi.mocked(api.get).mockImplementation(

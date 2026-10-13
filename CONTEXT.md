@@ -317,7 +317,7 @@ computers and none the default, the waiting run asks them to pick one, saved
 as their project link so the project's next runs need no pick. A ticket past the daily
 cap on automatic runs shows "Auto plays paused" until resumed. Managed with
 `autoplays:read`, `autoplays:write`, `autoplays:delete`; the person it runs
-on needs `plays:run`. An automation starts one in code with `runPlay`.
+on needs to see the play and hold `plays:run`. An automation starts one in code with `runPlay`.
 _Avoid_: Rule, trigger, workflow, automation (that is event-driven code)
 
 **Trail**:

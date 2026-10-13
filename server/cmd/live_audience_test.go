@@ -141,8 +141,8 @@ func TestLiveAudience_MemoryDeletedStaysInItsProject(t *testing.T) {
 	assert.False(t, a.allows(as(uOwner), memories.TopicDeleted, json.RawMessage(raw)))
 }
 
-// TestLiveAudience_PlayFramesReachWhoSeesThePlay: a play reaches whoever lists the workspace's plays and whoever is
-// offered it as a button through plays:run on that play, never a member who sees neither.
+// TestLiveAudience_PlayFramesReachWhoSeesThePlay: a play reaches whoever can see it, through a role's plays:read or a
+// rule on that play, never a member who can't.
 func TestLiveAudience_PlayFramesReachWhoSeesThePlay(t *testing.T) {
 	f := newPermFixture(t)
 	ctx := t.Context()
@@ -152,7 +152,8 @@ func TestLiveAudience_PlayFramesReachWhoSeesThePlay(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-play-reader", WorkspaceID: "workspace-default", Name: "Play reader", Permissions: grant("plays:read"), CreatedAt: now, UpdatedAt: now}))
 	require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: uPlayReader, WorkspaceID: "workspace-default", RoleID: "role-play-reader", CreatedAt: now}))
-	require.NoError(t, f.store.Access.Set(ctx, "play", "play-1", uPlain, grant("plays:run"), nil))
+	require.NoError(t, f.store.Access.Set(ctx, "play", "play-1", uPlain, grant("plays:read"), nil))
+	require.NoError(t, f.store.Access.SetRole(ctx, "play", "play-3", "role-play-reader", nil, grant("plays:read")))
 	a := liveAudience{access: f.svc.accessSvc}
 	cases := []struct {
 		topic   string
@@ -161,6 +162,7 @@ func TestLiveAudience_PlayFramesReachWhoSeesThePlay(t *testing.T) {
 	}{
 		{plays.TopicCreated, plays.CreatedEvent{Play: plays.Play{ID: "play-1", WorkspaceID: "workspace-default"}}, map[string]bool{uOwner: true, uPlayReader: true, uPlain: true, uReader: false, uOutsider: false}},
 		{plays.TopicUpdated, plays.UpdatedEvent{Play: plays.Play{ID: "play-2", WorkspaceID: "workspace-default"}}, map[string]bool{uPlayReader: true, uPlain: false, uReader: false}},
+		{plays.TopicUpdated, plays.UpdatedEvent{Play: plays.Play{ID: "play-3", WorkspaceID: "workspace-default"}}, map[string]bool{uOwner: true, uPlayReader: false}},
 		{plays.TopicDeleted, plays.DeletedEvent{ID: "play-1", Label: "Ship it", WorkspaceID: "workspace-default"}, map[string]bool{uPlayReader: true, uPlain: true, uReader: false, uOutsider: false}},
 		{plays.TopicDeleted, plays.DeletedEvent{ID: "play-1", Label: "Ship it"}, map[string]bool{uOwner: false}},
 	}
@@ -173,19 +175,20 @@ func TestLiveAudience_PlayFramesReachWhoSeesThePlay(t *testing.T) {
 	}
 }
 
-// TestLiveAudience_AutoPlayFramesReachTheirReaders: an auto play reaches whoever holds autoplays:read in its workspace,
-// not a play reader without it, and a frame naming no workspace reaches nobody.
+// TestLiveAudience_AutoPlayFramesReachTheirReaders: an auto play reaches whoever holds autoplays:read in its workspace
+// and can see its play, not a play reader without it, and a frame naming no workspace reaches nobody.
 func TestLiveAudience_AutoPlayFramesReachTheirReaders(t *testing.T) {
 	f := newPermFixture(t)
 	ctx := t.Context()
 	now := time.Now()
 	const uAutoReader, uPlayReader = "u-auto-reader", "u-play-reader"
-	for user, perm := range map[string]string{uAutoReader: "autoplays:read", uPlayReader: "plays:read"} {
+	for user, perm := range map[string][]string{uAutoReader: {"autoplays:read", "plays:read"}, uPlayReader: {"plays:read"}} {
 		_, _, err := f.store.Users.UpsertUser(ctx, &auth.Identity{UserID: user, Provider: auth.ProviderGitHub, ProviderUserID: user, Login: user})
 		require.NoError(t, err)
-		require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-" + user, WorkspaceID: "workspace-default", Name: user, Permissions: grant(perm), CreatedAt: now, UpdatedAt: now}))
+		require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-" + user, WorkspaceID: "workspace-default", Name: user, Permissions: grant(perm...), CreatedAt: now, UpdatedAt: now}))
 		require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: user, WorkspaceID: "workspace-default", RoleID: "role-" + user, CreatedAt: now}))
 	}
+	require.NoError(t, f.store.Access.Set(ctx, "play", "play-hidden", uAutoReader, nil, grant("plays:read")))
 	a := liveAudience{access: f.svc.accessSvc}
 	auto := plays.AutoPlay{ID: "ap-1", PlayID: "play-1", WorkspaceID: "workspace-default"}
 	cases := []struct {
@@ -197,6 +200,7 @@ func TestLiveAudience_AutoPlayFramesReachTheirReaders(t *testing.T) {
 		{plays.TopicAutoPlayUpdated, plays.AutoPlayEvent{AutoPlay: auto}, map[string]bool{uAutoReader: true, uPlayReader: false}},
 		{plays.TopicAutoPlayDeleted, plays.AutoPlayDeletedEvent{ID: "ap-1", PlayID: "play-1", WorkspaceID: "workspace-default"}, map[string]bool{uAutoReader: true, uPlayReader: false, uOutsider: false}},
 		{plays.TopicAutoPlayDeleted, plays.AutoPlayDeletedEvent{ID: "ap-1", PlayID: "play-1"}, map[string]bool{uOwner: false}},
+		{plays.TopicAutoPlayUpdated, plays.AutoPlayEvent{AutoPlay: plays.AutoPlay{ID: "ap-2", PlayID: "play-hidden", WorkspaceID: "workspace-default"}}, map[string]bool{uOwner: true, uAutoReader: false}},
 		{plays.TopicAutoPlayLimitsUpdated, plays.AutoPlayLimitsEvent{WorkspaceID: "workspace-default", DailyCapPerTicket: 3}, map[string]bool{uAutoReader: true, uPlayReader: false, uOutsider: false}},
 	}
 	for _, tc := range cases {

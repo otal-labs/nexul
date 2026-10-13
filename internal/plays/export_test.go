@@ -70,6 +70,9 @@ func (q *QueueRig) HideProject(userID, projectID string) { q.perm.hideProject(us
 // Exclude denies userID plays:run on playID, as a play's own settings exclude a person.
 func (q *QueueRig) Exclude(userID, playID string) { q.perm.deny(userID, playID) }
 
+// Hide is a play rule denying userID See on playID.
+func (q *QueueRig) Hide(userID, playID string) { q.perm.hide(userID, playID) }
+
 // Offline makes every computer refuse as offline, or answer again.
 func (q *QueueRig) Offline(offline bool) {
 	reason := ""

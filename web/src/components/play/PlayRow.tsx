@@ -30,7 +30,9 @@ export const PlayRow = ({ onLeave, play, workspaceId, canWrite, canDelete, onEdi
   const { open: confirm } = useConfirmationDialog();
   const openClone = useCloneTemplateDialog();
   const { data: grants } = useFetchGrants("play", play.id, canWrite);
-  const excludedCount = (grants ?? []).filter((g) => g.deny.includes("plays:run")).length;
+  const denying = (action: string) => (grants ?? []).filter((g) => g.deny.includes(action)).length;
+  const hiddenCount = denying("plays:read");
+  const excludedCount = denying("plays:run");
 
   const remove = async () => {
     const ok = await confirm({
@@ -66,6 +68,12 @@ export const PlayRow = ({ onLeave, play, workspaceId, canWrite, canDelete, onEdi
               <>
                 <span aria-hidden>·</span>
                 <span>{PLAY_STAGE_LABELS[play.show_when_stage]}</span>
+              </>
+            )}
+            {hiddenCount > 0 && (
+              <>
+                <span aria-hidden>·</span>
+                <span>hidden from {hiddenCount}</span>
               </>
             )}
             {excludedCount > 0 && (

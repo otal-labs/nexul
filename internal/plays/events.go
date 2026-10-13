@@ -125,6 +125,8 @@ type RunFrame struct {
 	Question   *TrailQuestion `json:"question"`
 	EndedAt    *time.Time     `json:"ended_at"`
 	LastError  string         `json:"last_error"`
+	// StarterID is who the frame always reaches, as a starter always reads their run.
+	StarterID string `json:"starter_id"`
 	// ProjectID and WorkspaceID place the run, so a client refetches only that project's and workspace's views.
 	ProjectID   string `json:"project_id"`
 	WorkspaceID string `json:"workspace_id"`
@@ -146,6 +148,6 @@ func runFrame(t *Trail) RunFrame {
 	return RunFrame{
 		TrailID: t.ID, PlayID: t.PlayID, TargetType: t.TargetType, TargetID: t.TargetID,
 		State: t.State, Activity: activity, Question: t.Question, EndedAt: t.EndedAt, LastError: t.LastError,
-		ProjectID: t.ProjectID, WorkspaceID: t.WorkspaceID,
+		StarterID: t.StarterID, ProjectID: t.ProjectID, WorkspaceID: t.WorkspaceID,
 	}
 }

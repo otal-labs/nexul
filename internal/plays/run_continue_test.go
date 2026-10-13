@@ -9,6 +9,7 @@ import (
 	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // endedRun runs the fixture's ticket play to a failed end and returns its trail.
@@ -93,7 +94,10 @@ func TestContinue_Refusals(t *testing.T) {
 	_, err := f.runner.Continue(ctxAs(starter), trail.ID, "more", ViaWeb)
 	assert.ErrorIs(t, err, apperrs.ErrConflict, "a run still going is answered or stopped, not continued")
 	_, err = f.runner.Continue(ctxAs("stranger"), trail.ID, "more", ViaWeb)
-	assert.ErrorIs(t, err, apperrs.ErrForbidden)
+	assert.ErrorIs(t, err, apperrs.ErrNotFound, "a run of a play the caller can't see")
+	f.perm.grants["reader"] = []permissions.Action{permissions.PlaysRead}
+	_, err = f.runner.Continue(ctxAs("reader"), trail.ID, "more", ViaWeb)
+	assert.ErrorIs(t, err, apperrs.ErrForbidden, "seeing the play is not plays:write on it")
 	_, err = f.runner.Continue(ctxAs(starter), trail.ID, "  ", ViaWeb)
 	assert.ErrorIs(t, err, apperrs.ErrInvalid)
 	_, err = f.runner.Continue(ctxAs(starter), " ", "more", ViaWeb)

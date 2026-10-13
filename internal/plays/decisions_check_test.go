@@ -64,7 +64,10 @@ func TestRetryDecisionsCheck_Refusals(t *testing.T) {
 		{"no ticket id", ctxAs(starter), " ", nil, apperrs.ErrInvalid},
 		{"unknown ticket", ctxAs(starter), "t-missing", nil, apperrs.ErrNotFound},
 		{"ticket not done", ctxAs(starter), ticketID, func(f *runnerFixture) { f.targets.setTicketStage(ticketID, StageTesting) }, apperrs.ErrInvalid},
-		{"caller may not run plays", ctxAs("u-stranger"), ticketID, nil, apperrs.ErrForbidden},
+		{"caller can't see the play", ctxAs("u-stranger"), ticketID, nil, apperrs.ErrNotFound},
+		{"caller sees the play but may not run it", ctxAs("u-stranger"), ticketID, func(f *runnerFixture) {
+			f.perm.grants["u-stranger"] = []permissions.Action{permissions.PlaysRead}
+		}, apperrs.ErrForbidden},
 		{"the play was deleted", ctxAs(starter), ticketID, func(f *runnerFixture) { delete(f.plays.byID, checkPlayID) }, apperrs.ErrNotFound},
 		{"the play is disabled", ctxAs(starter), ticketID, func(f *runnerFixture) { f.plays.byID[checkPlayID].Enabled = false }, apperrs.ErrInvalid},
 		{"the plays cannot be read", ctxAs(starter), ticketID, func(f *runnerFixture) { f.plays.listErr = errors.New("disk") }, nil},
@@ -92,7 +95,7 @@ func TestDecisionsCheckRun_HTTPAndMCP(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
 	<-f.turns.done
 	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodPost, "/api/plays/decisions-check", `{`, starter).Code)
-	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodPost, "/api/plays/decisions-check", `{"ticket_id":"`+ticketID+`"}`, "u-stranger").Code)
+	assert.Equal(t, http.StatusNotFound, do(t, h, http.MethodPost, "/api/plays/decisions-check", `{"ticket_id":"`+ticketID+`"}`, "u-stranger").Code)
 
 	f2 := newDecisionsFixture()
 	tools := RunMCPTools(f2.runner)

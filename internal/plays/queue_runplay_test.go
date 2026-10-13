@@ -90,7 +90,7 @@ func TestQueuePlay_RefusesWhatItCannotQueue(t *testing.T) {
 		{"run on whoever caused it", nil, plays.QueuePlayInput{Play: "Fix it", TicketID: "t-1", RunOn: plays.RunOnCauser}, apperrs.ErrInvalid, "developer or tester"},
 		{"an unknown priority", nil, plays.QueuePlayInput{Play: "Fix it", TicketID: "t-1", Priority: "urgent"}, apperrs.ErrInvalid, "high, normal, or low"},
 		{"a creator who may not run plays", func(ctx context.Context) context.Context { return asAutomation(ctx, "u-stranger") },
-			plays.QueuePlayInput{Play: "Fix it", TicketID: "t-1"}, apperrs.ErrForbidden, "plays:run required"},
+			plays.QueuePlayInput{Play: "Fix it", TicketID: "t-1"}, apperrs.ErrNotFound, "get play"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

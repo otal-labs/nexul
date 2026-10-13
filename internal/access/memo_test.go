@@ -223,3 +223,28 @@ func TestChannelsDenied_ARuleDeniesAnyoneButTheOwnerInOneRead(t *testing.T) {
 	_, err = s.ChannelsDenied(t.Context(), "team", "ws", channels)
 	require.Error(t, err, "a failed rule read is no answer")
 }
+
+// TestPlaysWith_DecidesEachPlayFromOneRead: a role's rule shows a play to its holders, the person's own rule beats it,
+// someone with no role sees what a rule names them on, the Owner sees every play, and a list costs one read of the rules.
+func TestPlaysWith_DecidesEachPlayFromOneRead(t *testing.T) {
+	s, repo := projectsFixture(t)
+	see := permissions.SetOf(permissions.PlaysRead)
+	for _, id := range []string{"pl-a", "pl-b"} {
+		require.NoError(t, repo.SetRole(t.Context(), "play", id, "role-team", see, nil))
+	}
+	require.NoError(t, repo.Set(t.Context(), "play", "pl-b", "team", nil, see))
+	require.NoError(t, repo.Set(t.Context(), "play", "pl-c", "nobody", see, nil))
+	plays := []string{"pl-a", "pl-b", "pl-c"}
+	repo.resetReads()
+
+	assert.Equal(t, map[string]bool{"pl-a": true, "pl-b": false, "pl-c": false}, s.PlaysWith(t.Context(), "team", "ws", permissions.PlaysRead, plays))
+	assert.Equal(t, 1, repo.readCounts(), "every play's rules at once")
+	assert.Equal(t, map[string]bool{"pl-c": true}, s.PlaysWith(t.Context(), "nobody", "ws", permissions.PlaysRead, []string{"pl-c"}), "one play, read by its id")
+	assert.Equal(t, map[string]bool{"pl-a": true, "pl-b": true, "pl-c": true}, s.PlaysWith(t.Context(), "owner", "ws", permissions.PlaysRead, plays))
+	assert.Equal(t, map[string]bool{"pl-a": false, "pl-b": false, "pl-c": false}, s.PlaysWith(t.Context(), "stranger", "ws", permissions.PlaysRead, plays))
+	assert.Empty(t, s.PlaysWith(t.Context(), "", "ws", permissions.PlaysRead, plays))
+
+	repo.getErr = errors.New("database is locked")
+	assert.Equal(t, map[string]bool{"pl-a": false, "pl-b": false, "pl-c": false}, s.PlaysWith(t.Context(), "team", "ws", permissions.PlaysRead, plays),
+		"a failed rule read counts as no rule")
+}

@@ -27,9 +27,9 @@ type accessGrantUpdateIn struct {
 	ResourceIDs  []string `json:"resource_ids" jsonschema:"The docs', folders', plays', projects', channels', or computers' ids, or instance areas' keys as permission_overwrite_list takes them; every one gets the same change."`
 	UserIDs      []string `json:"user_ids,omitempty" jsonschema:"The people the change applies to, by account id as account_list shows them. Send user_ids, role_ids, or both."`
 	RoleIDs      []string `json:"role_ids,omitempty" jsonschema:"The roles the change applies to, each a role of the resource's workspace (on an instance area, of any workspace) as workspace_list with the workspace's id lists them; the rule reaches everyone holding it."`
-	Actions      []string `json:"actions" jsonschema:"Permissions to set, each <domain>:<action>, for example [\"docs:read\", \"docs:write\"]. On a folder the docs actions and permissions:write; on a play only plays:run; on a project projects:open (In this project) and the project-area actions; on a channel only channels:read; on a computer computers:see, computers:run_agents and computers:run_commands, either run allowing see too; on an instance area its own actions, such as dns:read, dns:write, dns:delete on dns."`
+	Actions      []string `json:"actions" jsonschema:"Permissions to set, each <domain>:<action>, for example [\"docs:read\", \"docs:write\"]. On a folder the docs actions and permissions:write; on a play plays:read (See this play), plays:run, plays:write and plays:delete; on a project projects:open (In this project) and the project-area actions; on a channel only channels:read; on a computer computers:see, computers:run_agents and computers:run_commands, either run allowing see too; on an instance area its own actions, such as dns:read, dns:write, dns:delete on dns."`
 	State        string   `json:"state,omitempty" jsonschema:"allow, fallback, or deny: allow and deny hold the actions here whatever the roles say, fallback removes this rule's say so the answer comes from further out. Takes precedence over grant."`
-	Grant        *bool    `json:"grant,omitempty" jsonschema:"Without state: true grants the actions (on a play, lifts a deny); false revokes a grant (on a play, denies running it)."`
+	Grant        *bool    `json:"grant,omitempty" jsonschema:"Without state: true grants the actions (on a play, lifts a deny); false revokes a grant (on a play, denies the actions)."`
 }
 
 // state is in.State, else what grant means; neither is invalid.
@@ -60,12 +60,12 @@ func accessGrantListTool(s *Service) mcptool.Tool {
 		"Lists the rules on one doc, folder, play, project, channel, computer, or instance area, each naming a person or a role (target person or role, with "+
 			"user_id, login and name, or role_id and role_name) and the actions it allows and denies. A project's rules "+
 			"say who is in it (projects:open) and what they hold there beyond their roles; a folder's reach every doc in it, "+
-			"a doc's own rules beating them; a play's say whose plays:run "+
-			"is allowed or denied; a channel's whose channels:read is denied, which hides it from them; a computer's whom "+
+			"a doc's own rules beating them; a play's say who may see (plays:read), run, edit and delete it, and a play "+
+			"someone can't see is gone for them; a channel's whose channels:read is denied, which hides it from them; a computer's whom "+
 			"its owner shares it with, by name; an instance "+
 			"area's who holds its actions beyond their roles. Needs permissions:write on the doc or folder, plays:write on the "+
 			"play, projects:access on the project, the Owner role for a channel, owning the computer, or being the "+
-			"instance Owner for an instance area; a project you are not in, or a computer you don't own, is not found. Change them with permission_overwrite_update. With "+
+			"instance Owner for an instance area; a project you are not in, a play you can't see, or a computer you don't own, is not found. Change them with permission_overwrite_update. With "+
 			"user_id it returns instead that person's effective answer for each action the rules may set, with "+
 			"allowed and a source naming the rule or role that decided it; your own needs only opening the entity, "+
 			"anyone else's its manage permission, and on a computer shared with you only your own.",
@@ -117,7 +117,8 @@ func accessGrantUpdateTool(s *Service) mcptool.Tool {
 			"to further out, and between one person's roles Allow wins while a rule naming the person beats them. "+
 			"Listing a role or a person on a project is projects:open allow; projects:open deny keeps a person out "+
 			"whatever their roles. A folder's rules reach every doc in it, between its project's and the doc's own, and "+
-			"docs:read deny on a folder hides its docs. channels:read deny hides a channel from a role or a person. Sharing one of your "+
+			"docs:read deny on a folder hides its docs. channels:read deny hides a channel from a role or a person, and plays:read "+
+			"deny a play, from its lists, run menus, auto plays and play_list. Sharing one of your "+
 			"computers is computers:see, computers:run_agents or computers:run_commands allow for people who share a "+
 			"workspace with you, never a role; fallback takes a person off it and deny is refused, and only the "+
 			"computer's owner writes its rules. An instance area's rule "+

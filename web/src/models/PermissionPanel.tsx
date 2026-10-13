@@ -65,7 +65,7 @@ export const grantKey = (grant: PermissionGrant) =>
 const panelLabels: Record<PanelEntity["type"], Record<string, string>> = {
   doc: { "permissions:write": "Manage this doc's access" },
   folder: { "permissions:write": "Manage this folder's access" },
-  play: { "plays:run": "Run" },
+  play: { "plays:read": "See this play", "plays:run": "Run", "plays:write": "Edit", "plays:delete": "Delete" },
   project: { "projects:open": "See this project", "projects:access": "Manage this project's access", "permissions:write": "Manage each doc's access" },
   computer: { "computers:see": "See this computer", "computers:run_agents": "Run agents", "computers:run_commands": "Run commands" },
   instance_area: {},

@@ -35,13 +35,13 @@ func toolNames(tools []mcptool.Tool) []string {
 	return out
 }
 
-// playToolsFixture seeds one enabled ticket play; "owner" manages plays, "reader" only reads, "alice" only runs.
+// playToolsFixture seeds one enabled ticket play; "owner" manages plays, "reader" only reads, "alice" reads and runs.
 func playToolsFixture(t *testing.T) (*fakePerm, []mcptool.Tool, *Play) {
 	t.Helper()
 	perm := newFakePerm(map[string][]permissions.Action{
 		"owner":  {permissions.PlaysRead, permissions.PlaysWrite, permissions.PlaysDelete},
 		"reader": {permissions.PlaysRead},
-		"alice":  {permissions.PlaysRun},
+		"alice":  {permissions.PlaysRead, permissions.PlaysRun},
 	})
 	svc := newTestService(newFakeRepo(), perm)
 	p, err := svc.Create(ctxAs("owner"), workspaceID, CreateInput{
@@ -81,7 +81,6 @@ func TestPlayTools_ErrorPaths(t *testing.T) {
 		{"a reader cannot create", "reader", "play_create", `{"workspace_id":"$WS","label":"Go","type":"doc"}`, apperrs.ErrForbidden},
 		{"a reader cannot update", "reader", "play_update", `{"workspace_id":"$WS","id":"$ID","label":"x"}`, apperrs.ErrForbidden},
 		{"a reader cannot delete", "reader", "play_delete", `{"workspace_id":"$WS","id":"$ID"}`, apperrs.ErrForbidden},
-		{"a runner without plays:read cannot list every definition", "alice", "play_list", `{"workspace_id":"$WS"}`, apperrs.ErrForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
