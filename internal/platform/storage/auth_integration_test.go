@@ -68,6 +68,10 @@ func (p ownerPermissions) HoldsArea(ctx context.Context, userID, _ string, _ per
 	return slices.Contains(owners, userID), err
 }
 
+func (p ownerPermissions) IsInstanceOwner(ctx context.Context, userID string) (bool, error) {
+	return p.HoldsArea(ctx, userID, "", "")
+}
+
 func (p ownerPermissions) PermissionsAnywhere(ctx context.Context, userID string) ([]string, error) {
 	owners, err := p.users.ListActiveOwnerIDs(ctx)
 	if err != nil || !slices.Contains(owners, userID) {

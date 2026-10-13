@@ -4,7 +4,7 @@ import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
 import { usePanelEntity } from "@/hooks/usePanelEntity";
 import { usePermissionPanelStore, type PermissionPanelMode } from "@/stores/permissionPanelStore";
-import { targetsProject } from "@/models/PermissionPanel";
+import { entityWord, targetsProject } from "@/models/PermissionPanel";
 
 // "doc Pricing in Storefront › Sales" or "folder Sales in Storefront": the entity and where it sits, then Rules | Check access, a view held in the dialog.
 export const PermissionsPanelHeader = () => {
@@ -22,7 +22,7 @@ export const PermissionsPanelHeader = () => {
           Permissions
         </p>
         <DialogDescription>
-          {entity.type} <span className="font-medium text-foreground">{entity.name}</span>
+          {entityWord(entity.type)} <span className="font-medium text-foreground">{entity.name}</span>
           {where && ` in ${where}`}
         </DialogDescription>
       </div>

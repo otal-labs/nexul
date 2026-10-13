@@ -217,6 +217,8 @@ type OnboardingStatus struct {
 	NeedsFirstLoginWizard bool  `json:"needs_first_login_wizard"`
 	// InstancePermissions are the actions the user holds in at least one workspace, what instance-level areas answer to.
 	InstancePermissions []string `json:"instance_permissions"`
+	// InstanceOwner is whether the user holds the default workspace's Owner role, the one who writes instance-area rules.
+	InstanceOwner bool `json:"instance_owner"`
 }
 
 // ConnectionToken is a signed JWT a client imports to learn how to connect; no identity or credentials, not secret.

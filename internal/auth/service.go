@@ -206,6 +206,7 @@ type Config struct {
 type PermissionGate interface {
 	HoldsArea(ctx context.Context, userID, area string, action permissions.Action) (bool, error)
 	PermissionsAnywhere(ctx context.Context, userID string) ([]string, error)
+	IsInstanceOwner(ctx context.Context, userID string) (bool, error)
 }
 
 // Service is the auth use-case layer: OAuth, device sessions, and the user/onboarding/allowlist use-cases.
@@ -523,7 +524,11 @@ func (s *Service) Me(ctx context.Context, userID string) (*OnboardingStatus, err
 	if err != nil {
 		return nil, err
 	}
-	st := &OnboardingStatus{User: user, InstancePermissions: held}
+	owner, err := s.isInstanceOwner(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	st := &OnboardingStatus{User: user, InstancePermissions: held, InstanceOwner: owner}
 	if len(owners) == 0 {
 		st.NeedsOwnerWizard = true
 		return st, nil
@@ -551,6 +556,17 @@ func (s *Service) requireArea(ctx context.Context, userID, area string, action p
 		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
 	}
 	return nil
+}
+
+func (s *Service) isInstanceOwner(ctx context.Context, userID string) (bool, error) {
+	if s.cfg.Permissions == nil {
+		return false, nil
+	}
+	owner, err := s.cfg.Permissions.IsInstanceOwner(ctx, userID)
+	if err != nil {
+		return false, fmt.Errorf("check instance owner %s: %w", userID, err)
+	}
+	return owner, nil
 }
 
 func (s *Service) permissionsAnywhere(ctx context.Context, userID string) ([]string, error) {

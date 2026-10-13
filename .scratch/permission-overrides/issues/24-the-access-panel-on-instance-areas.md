@@ -1,6 +1,6 @@
 # 24 — The access panel on instance areas
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Blocked by:** 06, 23
 
@@ -21,6 +21,6 @@ Read first: `practices/react-guide.md` (F1 to F7, Live events, the self-review),
 
 ## Acceptance criteria
 
-- [ ] Giving a person DNS and no connector works end to end, and Check access shows each source.
-- [ ] A viewer who is not the instance Owner sees no access section.
-- [ ] Verified at 768, 1024 and 1440px with before and after screenshots, and the self-review passes.
+- [x] Giving a person DNS and no connector works end to end, and Check access shows each source.
+- [x] A viewer who is not the instance Owner sees no access section.
+- [x] Verified at 768, 1024 and 1440px with before and after screenshots, and the self-review passes.

@@ -73,6 +73,12 @@ func (p fakePermissions) HoldsArea(_ context.Context, userID, _ string, _ permis
 	return p.users.owners[userID], nil
 }
 
+func (p fakePermissions) IsInstanceOwner(_ context.Context, userID string) (bool, error) {
+	p.users.mu.Lock()
+	defer p.users.mu.Unlock()
+	return p.users.owners[userID], nil
+}
+
 func (p fakePermissions) PermissionsAnywhere(_ context.Context, userID string) ([]string, error) {
 	p.users.mu.Lock()
 	defer p.users.mu.Unlock()

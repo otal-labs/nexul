@@ -22,6 +22,13 @@ export interface PermissionInfo {
   area: PermissionArea;
 }
 
+// An instance area a rule may sit on (the catalog's instance_areas): its key, its name in a sentence, its actions.
+export interface InstanceArea {
+  key: string;
+  label: string;
+  actions: string[];
+}
+
 export interface PermissionGrant {
   resource_type: string;
   resource_id: string;

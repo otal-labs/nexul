@@ -69,7 +69,11 @@ To hand out one part of the instance without a custom role, such as letting bob 
 | Integrations | `integrations` | `integrations:read`, `integrations:write`, `integrations:delete` |
 | The audit log | `audit` | `audit:read` |
 
-A person holds an area's permission when one of their roles in any workspace grants it, unless a rule there says otherwise: between the rules for their roles Allow wins, and a rule naming them beats those. An Owner of any workspace is never denied, so nobody can lock the instance away from its Owners. A rule on one area says nothing about another, so allowing `connectors:read` on GitHub leaves Cloudflare as their roles have it. Only the instance Owner sees or changes these rules; with the API:
+A person holds an area's permission when one of their roles in any workspace grants it, unless a rule there says otherwise: between the rules for their roles Allow wins, and a rule naming them beats those. An Owner of any workspace is never denied, so nobody can lock the instance away from its Owners. A rule on one area says nothing about another, so allowing `connectors:read` on GitHub leaves Cloudflare as their roles have it.
+
+Only the instance Owner sees or changes these rules. In **Settings**, each instance entry ends with an **Access** card listing its areas: Instance, Team (accounts), Sign-in providers, DNS and Templates each show their own, Connectors has one row per connector on its **Access** tab, and the areas without an entry of their own (runners and machines, the topology registry, automation hosts, integrations, the audit log) sit under Instance. Each row says whose rules it carries, and opens the permissions panel on that area: the roles of every workspace, each named with its workspace ("Member in Northwind"), and every account, with **Check access** showing a person's answer for each permission and the rule or role it came from. A Deny on a read that a person or role holds today asks first, since a rule beats every role they hold and it may be their last way in.
+
+To let sam manage DNS but not connectors: open **Settings → DNS**, then **DNS and gateways** in its Access card, add sam, set **Read** and **Create and update** to Allow, and save. Sam now sees DNS under Settings and nothing under Connectors, and **Check access** on sam reads "Allowed on DNS and gateways for sam" for both, and "Not allowed: role Member doesn't grant it" for Delete. With the API:
 
 ```
 PUT /api/permissions

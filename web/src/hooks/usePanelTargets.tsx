@@ -7,6 +7,7 @@ import { useFetchProjectPeople, useFetchProjectRoleIds, useFetchWorkspacePeople,
 import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
 import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
+import { useFetchTeam } from "@/hooks/TeamHooks";
 import { parseTarget, targetKey, type TargetKind } from "@/models/PermissionPanel";
 import type { Role } from "@/models/Role";
 
@@ -28,6 +29,8 @@ interface TargetScope {
   projectId?: string | undefined;
   // A computer's: no roles, and every person who shares a workspace with the viewer, the viewer left out.
   everyWorkspace?: boolean;
+  // An instance area: every workspace's roles, each named with its workspace, and every account.
+  instance?: boolean | undefined;
 }
 
 // Everyone in any workspace the viewer is in but the viewer, once, while everyWorkspace; undefined until all have loaded.
@@ -48,12 +51,22 @@ const usePeopleAround = (everyWorkspace: boolean): Person[] | undefined => {
 const noRoles: Role[] = [];
 
 // Every role and member of the workspace as targets, and why one can't be listed here yet.
-export const usePanelTargets = ({ workspaceId, projectId, everyWorkspace = false }: TargetScope) => {
-  const { data: workspaceRoles } = useFetchWorkspaceRoles(everyWorkspace ? "" : workspaceId);
-  const { data: workspacePeople } = useFetchWorkspacePeople(everyWorkspace ? undefined : workspaceId);
+export const usePanelTargets = ({ workspaceId, projectId, everyWorkspace = false, instance = false }: TargetScope) => {
+  const { data: team } = useFetchTeam(instance);
+  // Team is read for other reasons too, so it is only consulted for an area.
+  const areaTeam = instance ? team : undefined;
+  const { data: workspaceRoles } = useFetchWorkspaceRoles(everyWorkspace || instance ? "" : workspaceId);
+  const { data: workspacePeople } = useFetchWorkspacePeople(everyWorkspace || instance ? undefined : workspaceId);
   const around = usePeopleAround(everyWorkspace);
-  const roles = everyWorkspace ? around && noRoles : workspaceRoles;
-  const people = everyWorkspace ? around : workspacePeople;
+  const teamRoles = areaTeam?.workspaces.flatMap((w) => w.roles.map((r) => ({ id: r.id, name: `${r.name} in ${w.name}`, is_owner_role: r.is_owner })));
+  const teamPeople = areaTeam?.people.filter((p) => p.status !== "removed").map((p) => ({ user_id: p.id, login: p.login, display_name: p.display_name || p.name, avatar_url: p.avatar_url }));
+  const byScope = <T,>(computer: T, area: T, workspace: T): T => {
+    if (everyWorkspace) return computer;
+    if (instance) return area;
+    return workspace;
+  };
+  const roles = byScope<Pick<Role, "id" | "name" | "is_owner_role">[] | undefined>(around && noRoles, teamRoles, workspaceRoles);
+  const people = byScope<Person[] | undefined>(around, teamPeople, workspacePeople);
   const { data: inProject } = useFetchProjectPeople(projectId);
   const { data: rolesIn } = useFetchProjectRoleIds(projectId);
   const { data: project } = useFetchProject(projectId);

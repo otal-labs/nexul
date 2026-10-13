@@ -2,6 +2,7 @@ import { GatewaysSection } from "@/components/dns/GatewaysSection";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ConnectorsSettingsPanel } from "@/components/settings/ConnectorsSettingsPanel";
+import { InstanceAccessSection } from "@/components/settings/InstanceAccessSection";
 import { InstanceUrlSection } from "@/components/settings/InstanceUrlSection";
 import { InstanceVersionSection } from "@/components/settings/InstanceVersionSection";
 import { SettingsCard } from "@/components/settings/SettingsCard";
@@ -51,7 +52,7 @@ interface InstanceSettingsContentProps {
   section: SettingsSection;
 }
 
-// No permission gate here: the Settings page only selects a section the viewer may open.
+// No permission gate here: the Settings page only selects a section the viewer may open. Connectors keeps Access in a tab.
 export const InstanceSettingsContent = ({ section }: InstanceSettingsContentProps) => (
   <>
     {section === "instance" && <InstancePanel />}
@@ -60,5 +61,6 @@ export const InstanceSettingsContent = ({ section }: InstanceSettingsContentProp
     {section === "dns" && <GatewaysSection />}
     {section === "team" && <TeamSection />}
     {section === "templates" && <InstanceTemplatesSection />}
+    {section !== "connectors" && <InstanceAccessSection section={section} />}
   </>
 );
