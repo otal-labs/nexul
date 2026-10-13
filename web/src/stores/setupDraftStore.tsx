@@ -4,7 +4,6 @@ import type { OptionSetting } from "@/models/Pairing";
 
 // The Set up step's unsaved edits for one computer; each field left out shows what the computer has saved.
 export interface SetupDraft {
-  included?: Record<string, boolean>;
   models?: Record<string, string>;
   options?: Record<string, OptionSetting[]>;
   folder?: string;

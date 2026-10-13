@@ -115,10 +115,8 @@ describe("PairComputerDialog for a computer still pairing through its tunnel", (
     await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
 
     await waitFor(() => expect(mocks.post).toHaveBeenLastCalledWith("/api/pairing/computers/c1/pair", { token: "t3-pair-token" }));
-    expect(await screen.findByRole("button", { name: /start setup/i })).toBeInTheDocument();
-    expect(screen.getByText(/each provider on work laptop takes one short turn/i)).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: /~\/\.claude\/skills\//i })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: /~\/\.agents\/skills\//i })).toBeChecked();
+    expect(await screen.findByRole("button", { name: /set up all/i })).toBeInTheDocument();
+    expect(screen.getByText(/installs mattpocock\/skills and nexul-memory into/i)).toHaveTextContent("~/.claude/skills/ and ~/.agents/skills/");
     expect(screen.getByRole("button", { name: /^done$/i })).toBeInTheDocument();
   });
 
@@ -224,6 +222,7 @@ describe("PairComputerDialog opened at Set up", () => {
     status,
     updated_at: "2026-09-24T00:00:00Z",
   });
+  const run = (...names: [string, string][]) => ({ data: { run_id: "r1", computer_id: "c1", providers: names.map(([provider, name]) => ({ provider, name })) } });
   let setup: ComputerSetup;
   let providers: HarnessProvider[];
   let defaults: PairingDefaults;
@@ -232,10 +231,15 @@ describe("PairComputerDialog opened at Set up", () => {
   beforeEach(() => {
     mocks.get.mockReset();
     mocks.post.mockReset();
+    mocks.put.mockReset();
     useSetupActivityStore.setState({ steps: {} });
     useSetupDraftStore.setState({ drafts: {} });
     setup = emptySetup;
-    providers = [];
+    providers = [
+      { id: "codex", driver: "codex", name: "Codex", needs_setup: true, skipped: false, models: [{ slug: "gpt", name: "GPT", is_default: true }] },
+      { id: "claude", driver: "claudeAgent", name: "Claude", needs_setup: true, skipped: false, models: [{ slug: "claude-big", name: "Big", options: [effort] }, { slug: "claude-small", name: "Small", is_default: true }] },
+      { id: "opencode", driver: "opencode", name: "OpenCode", needs_setup: true, skipped: false, models: [{ slug: "pickle", name: "Pickle", is_default: true }] },
+    ];
     defaults = {};
     projects = [];
     mocks.get.mockImplementation(async (url: string) => {
@@ -245,15 +249,19 @@ describe("PairComputerDialog opened at Set up", () => {
       if (url.endsWith("/defaults")) return { data: defaults };
       return { data: { computers: [] } };
     });
+    mocks.put.mockImplementation(async (_url: string, body: Partial<ComputerSetup>) => {
+      setup = { ...setup, ...body };
+      return { data: setup };
+    });
   });
 
   it("starts at Set up with no way back to the earlier steps, opens the failed provider's row on its reason, and retries only that one", async () => {
     setup = {
       ...emptySetup,
       confirmed_at: "2026-09-24T00:00:00Z",
-      turns: [turn("codex", "Codex", "confirmed", "Confirmed with 12 skills"), turn("opencode", "opencode", "failed", "No result within 10m0s")],
+      turns: [turn("codex", "Codex", "confirmed", "Confirmed with 12 skills"), turn("opencode", "OpenCode", "failed", "No result within 10m0s")],
     };
-    mocks.post.mockResolvedValue({ data: { run_id: "r1", computer_id: "c1", providers: [{ provider: "opencode", name: "opencode" }] } });
+    mocks.post.mockResolvedValue(run(["opencode", "OpenCode"]));
     const user = userEvent.setup();
     renderDialog(paired);
 
@@ -261,15 +269,15 @@ describe("PairComputerDialog opened at Set up", () => {
     expect(await screen.findByRole("heading", { name: /set up work laptop/i })).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
     const list = within(await screen.findByRole("list", { name: "Providers" }));
-    const failedRow = list.getByRole("button", { name: /^opencode/i });
+    const failedRow = await list.findByRole("button", { name: /^opencode/i });
     expect(failedRow).toHaveAttribute("aria-expanded", "true");
-    expect(failedRow.closest("li")).toHaveTextContent(/No result within 10m0s/);
+    expect(failedRow).toHaveTextContent(/No result within 10m0s/);
     expect(list.getByRole("button", { name: /^codex/i })).toHaveAttribute("aria-expanded", "false");
-    expect(list.queryByText(/Confirmed with 12 skills/)).not.toBeInTheDocument();
-    expect(screen.getByText("1/2 confirmed")).toBeInTheDocument();
+    expect(list.getByRole("button", { name: /^claude/i })).toHaveTextContent("Not set up yet");
+    expect(screen.getByText("1/3 confirmed")).toBeInTheDocument();
 
     await user.click(list.getByRole("button", { name: /^retry opencode$/i }));
-    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "", model_options: [], folder: "" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "pickle", model_options: [], folder: "" }));
     expect(mocks.post).toHaveBeenCalledTimes(1);
   });
 
@@ -279,7 +287,7 @@ describe("PairComputerDialog opened at Set up", () => {
       confirmed_at: "2026-09-24T00:00:00Z",
       turns: [turn("claudeagent", "Claude", "confirmed", "Confirmed with 12 skills"), { ...turn("codex", "Codex", "failed", "permission denied"), kind: "skills" }],
     };
-    mocks.post.mockResolvedValue({ data: { run_id: "r1", computer_id: "c1", providers: [{ provider: "codex", name: "Codex" }] } });
+    mocks.post.mockResolvedValue(run(["codex", "Codex"]));
     const user = userEvent.setup();
     renderDialog(paired);
 
@@ -290,36 +298,35 @@ describe("PairComputerDialog opened at Set up", () => {
     expect(mocks.post).toHaveBeenCalledTimes(1);
   });
 
-  it("lists every provider of a started run at once and follows the running one's transcript until another is clicked", async () => {
+  it("sets every switched-on provider up at once and follows the running one's transcript until another is clicked", async () => {
     mocks.post.mockImplementation(async () => {
       setup = {
         ...emptySetup,
         turns: [
-          turn("claudeagent", "Claude", "confirmed", "Confirmed with 12 skills", "r1", "t1"),
+          turn("claudeagent", "Claude", "running", "Checking the skills Claude discovered", "r1", "t1"),
           turn("codex", "Codex", "running", "Connecting Nexul and installing skills", "r1", "t2"),
         ],
       };
-      return {
-        data: {
-          run_id: "r1",
-          computer_id: "c1",
-          providers: [
-            { provider: "claudeagent", name: "Claude" },
-            { provider: "codex", name: "Codex" },
-            { provider: "opencode", name: "OpenCode" },
-          ],
-        },
-      };
+      return run(["codex", "Codex"], ["claudeagent", "Claude"], ["opencode", "OpenCode"]);
     });
     const user = userEvent.setup();
     renderDialog(paired);
 
     await user.click(screen.getByRole("button", { name: /^open$/i }));
-    await user.click(await screen.findByRole("button", { name: /start setup/i }));
+    await user.click(await screen.findByRole("button", { name: /set up all/i }));
 
-    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", { models: {}, model_options: {}, folder: "" }));
-    expect(await screen.findByRole("button", { name: /^codex/i })).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("button", { name: /re-run setup/i })).toBeDisabled();
+    await waitFor(() =>
+      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", {
+        models: { codex: "gpt", claudeagent: "claude-small", opencode: "pickle" },
+        model_options: { codex: [], claudeagent: [], opencode: [] },
+        folder: "",
+        providers: ["codex", "claudeagent", "opencode"],
+      }),
+    );
+    expect(await screen.findByText("Setting up 3 providers")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /set up all/i })).toBeDisabled();
+    expect(screen.getByRole("switch", { name: "Use Codex" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^codex/i })).toHaveAttribute("aria-expanded", "true");
 
     const push = (kind: ActivityKind, summary: string, call_id: string) =>
       act(() => useSetupActivityStore.getState().push("t2", { kind, call_id, tool: "Shell", summary, detail: "", at: "" }));
@@ -331,25 +338,33 @@ describe("PairComputerDialog opened at Set up", () => {
 
     await user.click(screen.getByRole("button", { name: /^opencode/i }));
     expect(screen.getByRole("button", { name: /^opencode/i })).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("Waiting for its turn. Codex is setting up now.")).toBeInTheDocument();
+    expect(screen.getByText("Starting its turn.")).toBeInTheDocument();
     expect(screen.queryByRole("log", { name: "Codex steps" })).not.toBeInTheDocument();
   });
 
-  it("picks a model and its options per provider, preselected from the defaults, and sends them with Start and Retry", async () => {
+  it("runs one provider on its own row while another still runs", async () => {
+    setup = { ...emptySetup, turns: [turn("codex", "Codex", "running", "Connecting Nexul and installing skills", "r0", "t0")] };
+    mocks.post.mockResolvedValue(run(["claudeagent", "Claude"]));
+    const user = userEvent.setup();
+    renderDialog(paired);
+
+    await user.click(screen.getByRole("button", { name: /^open$/i }));
+    await user.click(await screen.findByRole("button", { name: "Set up Claude" }));
+
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/claudeagent/retry", { model: "claude-small", model_options: [], folder: "" }));
+    expect(screen.getByRole("button", { name: "Set up OpenCode" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /set up codex/i })).not.toBeInTheDocument();
+  });
+
+  it("picks a model and its options per provider, preselected from the defaults, and sends them with Set up all and Retry", async () => {
     providers = [
-      { id: "claude", driver: "claudeAgent", name: "Claude", needs_setup: true, models: [{ slug: "claude-big", name: "Big", options: [effort] }, { slug: "claude-small", name: "Small", is_default: true }] },
-      { id: "opencode", driver: "opencode", name: "OpenCode", needs_setup: true, models: [{ slug: "pickle", name: "Pickle", is_default: true }, { slug: "gpt", name: "GPT", options: [effort] }] },
+      { id: "claude", driver: "claudeAgent", name: "Claude", needs_setup: true, skipped: false, models: [{ slug: "claude-big", name: "Big", options: [effort] }, { slug: "claude-small", name: "Small", is_default: true }] },
+      { id: "opencode", driver: "opencode", name: "OpenCode", needs_setup: true, skipped: false, models: [{ slug: "pickle", name: "Pickle", is_default: true }, { slug: "gpt", name: "GPT", options: [effort] }] },
     ];
     defaults = { provider: "claude", model: "claude-big" };
     mocks.post.mockImplementation(async () => {
-      setup = {
-        ...emptySetup,
-        turns: [
-          { ...turn("claudeagent", "Claude", "confirmed", "Confirmed with 12 skills", "r1", "t2"), model: "claude-big" },
-          turn("opencode", "OpenCode", "failed", "npx: command not found", "r1", "t3"),
-        ],
-      };
-      return { data: { run_id: "r1", computer_id: "c1", providers: [{ provider: "claudeagent", name: "Claude", model: "claude-big" }, { provider: "opencode", name: "OpenCode" }] } };
+      setup = { ...emptySetup, turns: [turn("claudeagent", "Claude", "confirmed", "Confirmed with 12 skills", "r1", "t2"), turn("opencode", "OpenCode", "failed", "npx: command not found", "r1", "t3")] };
+      return run(["claudeagent", "Claude"], ["opencode", "OpenCode"]);
     });
     const user = userEvent.setup();
     renderDialog(paired);
@@ -362,7 +377,7 @@ describe("PairComputerDialog opened at Set up", () => {
     await user.click(screen.getByRole("button", { name: "Claude model options" }));
     await user.click(await screen.findByRole("menuitemradio", { name: "High" }));
     expect(screen.getByRole("button", { name: "Claude model options" })).toHaveTextContent("High");
-    await user.click(screen.getByRole("button", { name: /start setup/i }));
+    await user.click(screen.getByRole("button", { name: /set up all/i }));
     await waitFor(() =>
       expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", {
         models: { claudeagent: "claude-big", opencode: "" },
@@ -371,70 +386,67 @@ describe("PairComputerDialog opened at Set up", () => {
         providers: ["claudeagent", "opencode"],
       }),
     );
-    await user.click(await screen.findByRole("button", { name: /^claude: confirmed/i }));
-    expect(await screen.findByText("claude-big")).toBeInTheDocument();
 
     await pickOption(user, "OpenCode model", "GPT");
     await user.click(await screen.findByRole("button", { name: /^retry opencode$/i }));
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "gpt", model_options: [], folder: "" }));
   });
 
-  describe("choosing which providers to set up", () => {
-    beforeEach(() => {
-      providers = [
-        { id: "codex", driver: "codex", name: "Codex", needs_setup: true, models: [{ slug: "gpt", name: "GPT", is_default: true }] },
-        { id: "claude", driver: "claudeAgent", name: "Claude", needs_setup: true, models: [{ slug: "claude-small", name: "Small", is_default: true }] },
-        { id: "opencode", driver: "opencode", name: "OpenCode", needs_setup: true, models: [{ slug: "pickle", name: "Pickle", is_default: true }] },
-      ];
-    });
-
-    it("runs only the included providers and counts confirmations over them alone", async () => {
+  describe("switching providers off", () => {
+    it("saves a switch at once, leaves the provider out of Set up all, and counts confirmations over the rest", async () => {
       setup = { ...emptySetup, turns: [turn("codex", "Codex", "confirmed", "Confirmed with 12 skills", "r0", "t0")] };
-      mocks.post.mockImplementation(async () => {
-        setup = { ...setup, turns: [...setup.turns, turn("claudeagent", "Claude", "running", "Connecting Nexul and installing skills", "r1", "t1")] };
-        return { data: { run_id: "r1", computer_id: "c1", providers: [{ provider: "claudeagent", name: "Claude" }, { provider: "opencode", name: "OpenCode" }] } };
-      });
+      mocks.post.mockResolvedValue(run(["claudeagent", "Claude"], ["opencode", "OpenCode"]));
       const user = userEvent.setup();
       renderDialog(paired);
 
       await user.click(screen.getByRole("button", { name: /^open$/i }));
-      await user.click(await screen.findByRole("button", { name: /^options/i }));
-      await user.click(screen.getByRole("switch", { name: "Codex" }));
-      expect(screen.getByRole("combobox", { name: "Codex model" })).toBeDisabled();
-      await user.click(screen.getByRole("button", { name: /re-run setup/i }));
-
+      await user.click(await screen.findByRole("switch", { name: "Use Codex" }));
       await waitFor(() =>
-        expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", {
+        expect(mocks.put).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/choices", {
+          skipped_providers: ["codex"],
           models: { codex: "gpt", claudeagent: "claude-small", opencode: "pickle" },
           model_options: { codex: [], claudeagent: [], opencode: [] },
           folder: "",
-          providers: ["claudeagent", "opencode"],
         }),
       );
-      const list = within(await screen.findByRole("list", { name: "Providers" }));
-      expect(list.queryByRole("button", { name: /codex/i })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^codex/i })).toHaveTextContent("Off · plays leave it out");
+      expect(screen.queryByRole("combobox", { name: "Codex model" })).not.toBeInTheDocument();
       expect(screen.getByText("0/2 confirmed")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: /set up all/i }));
+      await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", expect.objectContaining({ providers: ["claudeagent", "opencode"] })));
     });
 
-    it("opens with what the last run skipped switched off, and needs at least one provider on to start", async () => {
+    it("opens with saved switches off, and needs one provider on to set anything up", async () => {
       setup = { ...emptySetup, skipped_providers: ["codex"] };
       const user = userEvent.setup();
       renderDialog(paired);
 
       await user.click(screen.getByRole("button", { name: /^open$/i }));
-      expect(await screen.findByRole("switch", { name: "Codex" })).not.toBeChecked();
-      expect(screen.getByRole("switch", { name: "Claude" })).toBeChecked();
-      expect(screen.getByRole("button", { name: /start setup/i })).toBeEnabled();
+      expect(await screen.findByRole("switch", { name: "Use Codex" })).not.toBeChecked();
+      expect(screen.getByRole("switch", { name: "Use Claude" })).toBeChecked();
+      expect(screen.getByRole("button", { name: /set up all/i })).toBeEnabled();
 
-      await user.click(screen.getByRole("switch", { name: "Claude" }));
-      await user.click(screen.getByRole("switch", { name: "OpenCode" }));
-      expect(screen.getByRole("button", { name: /start setup/i })).toBeDisabled();
-      expect(screen.getByText(/turn on at least one provider/i)).toBeInTheDocument();
+      await user.click(screen.getByRole("switch", { name: "Use Claude" }));
+      await user.click(screen.getByRole("switch", { name: "Use OpenCode" }));
+      expect(await screen.findByText(/switch on a provider to set it up/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /set up all/i })).toBeDisabled();
       expect(mocks.post).not.toHaveBeenCalled();
+    });
+
+    it("puts the switch back when the save is refused", async () => {
+      mocks.put.mockRejectedValueOnce(apiError({ message: "nope" }));
+      const user = userEvent.setup();
+      renderDialog(paired);
+
+      await user.click(screen.getByRole("button", { name: /^open$/i }));
+      await user.click(await screen.findByRole("switch", { name: "Use Codex" }));
+      await waitFor(() => expect(screen.getByRole("switch", { name: "Use Codex" })).toBeChecked());
     });
   });
 
   it("runs setup in the default project's folder, or the one picked, and retries in it too", async () => {
+    providers = [providers[0]!];
     projects = [
       { id: "t3-gone", title: "StreamerBotChat", path: "/home/me/StreamerBotChat" },
       { id: "t3-app", title: "App", path: "/home/me/app" },
@@ -442,30 +454,26 @@ describe("PairComputerDialog opened at Set up", () => {
     defaults = { default_computer_id: "c1", fallback_project_id: "t3-gone" };
     mocks.post.mockImplementation(async () => {
       setup = { ...emptySetup, turns: [turn("codex", "Codex", "failed", "workspace folder no longer exists", "r1", "t2")] };
-      return { data: { run_id: "r1", computer_id: "c1", providers: [{ provider: "codex", name: "Codex" }] } };
+      return run(["codex", "Codex"]);
     });
     const user = userEvent.setup();
     renderDialog(paired);
 
     await user.click(screen.getByRole("button", { name: /^open$/i }));
-    expect(await screen.findByRole("combobox", { name: "Folder" })).toHaveTextContent("StreamerBotChat");
-    await user.click(screen.getByRole("button", { name: /start setup/i }));
-    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", { models: {}, model_options: {}, folder: "/home/me/StreamerBotChat" }));
+    expect(await screen.findByRole("combobox", { name: "Runs in" })).toHaveTextContent("StreamerBotChat");
+    await user.click(screen.getByRole("button", { name: /set up all/i }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", expect.objectContaining({ folder: "/home/me/StreamerBotChat" })));
 
-    await pickOption(user, "Folder", /^App/);
+    await pickOption(user, "Runs in", /^App/);
     expect(screen.getByText("/home/me/app")).toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: /^retry codex$/i }));
     await waitFor(() =>
-      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/codex/retry", { model: "", model_options: [], folder: "/home/me/app" }),
+      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/codex/retry", { model: "gpt", model_options: [], folder: "/home/me/app" }),
     );
   });
 
   describe("closing", () => {
     beforeEach(() => {
-      providers = [
-        { id: "codex", driver: "codex", name: "Codex", needs_setup: true, models: [{ slug: "gpt", name: "GPT", is_default: true }] },
-        { id: "claude", driver: "claudeAgent", name: "Claude", needs_setup: true, models: [{ slug: "claude-big", name: "Big", options: [effort] }, { slug: "claude-small", name: "Small", is_default: true }] },
-      ];
       projects = [{ id: "t3-app", title: "App", path: "/home/me/app" }];
     });
 
@@ -474,35 +482,29 @@ describe("PairComputerDialog opened at Set up", () => {
       const user = userEvent.setup({ pointerEventsCheck: 0 });
       renderDialog(paired);
       await user.click(screen.getByRole("button", { name: /^open$/i }));
-      await screen.findByRole("switch", { name: "Codex" });
+      await screen.findByRole("switch", { name: "Use Codex" });
 
       await user.click(document.body);
       expect(screen.getByRole("heading", { name: /set up work laptop/i })).toBeInTheDocument();
     });
 
-    it("Cancel drops an unsaved change, so the next open shows what was saved", async () => {
+    it("Cancel drops an unsaved model, so the next open shows what was saved", async () => {
       const user = userEvent.setup();
       renderDialog(paired);
       await user.click(screen.getByRole("button", { name: /^open$/i }));
-      await user.click(await screen.findByRole("switch", { name: "Codex" }));
-      expect(screen.getByRole("switch", { name: "Codex" })).not.toBeChecked();
+      await pickOption(user, "Claude model", "Big");
 
       await user.click(screen.getByRole("button", { name: "Cancel" }));
       expect(screen.queryByRole("heading", { name: /set up work laptop/i })).not.toBeInTheDocument();
       await user.click(screen.getByRole("button", { name: /^open$/i }));
-      expect(await screen.findByRole("switch", { name: "Codex" })).toBeChecked();
+      expect(await screen.findByRole("combobox", { name: "Claude model" })).toHaveTextContent("Small");
       expect(mocks.put).not.toHaveBeenCalled();
     });
 
-    it("Done saves the switches, models, options, and folder, and the next open shows them", async () => {
-      mocks.put.mockImplementation(async (_url: string, body: Omit<ComputerSetup, "computer_id" | "confirmed_at" | "providers" | "turns">) => {
-        setup = { ...setup, ...body };
-        return { data: setup };
-      });
+    it("Done saves the models, options, and folder, and the next open shows them", async () => {
       const user = userEvent.setup();
       renderDialog(paired);
       await user.click(screen.getByRole("button", { name: /^open$/i }));
-      await user.click(await screen.findByRole("switch", { name: "Codex" }));
       await pickOption(user, "Claude model", "Big");
       await user.click(screen.getByRole("button", { name: "Claude model options" }));
       await user.click(await screen.findByRole("menuitemradio", { name: "High" }));
@@ -510,17 +512,16 @@ describe("PairComputerDialog opened at Set up", () => {
       await user.click(screen.getByRole("button", { name: "Done" }));
       await waitFor(() =>
         expect(mocks.put).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/choices", {
-          skipped_providers: ["codex"],
-          models: { codex: "gpt", claudeagent: "claude-big" },
-          model_options: { codex: [], claudeagent: [{ id: "effort", value: "high" }] },
+          skipped_providers: [],
+          models: { codex: "gpt", claudeagent: "claude-big", opencode: "pickle" },
+          model_options: { codex: [], claudeagent: [{ id: "effort", value: "high" }], opencode: [] },
           folder: "/home/me/app",
         }),
       );
       await waitFor(() => expect(screen.queryByRole("heading", { name: /set up work laptop/i })).not.toBeInTheDocument());
 
       await user.click(screen.getByRole("button", { name: /^open$/i }));
-      expect(await screen.findByRole("switch", { name: "Codex" })).not.toBeChecked();
-      expect(screen.getByRole("combobox", { name: "Claude model" })).toHaveTextContent("Big");
+      expect(await screen.findByRole("combobox", { name: "Claude model" })).toHaveTextContent("Big");
       expect(screen.getByRole("button", { name: "Claude model options" })).toHaveTextContent("High");
       expect(mocks.post).not.toHaveBeenCalled();
     });

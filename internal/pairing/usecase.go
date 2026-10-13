@@ -69,8 +69,11 @@ type Service struct {
 	watchMu    sync.Mutex
 	watching   map[string]tunnelWatch
 	setupMu    sync.Mutex
-	settingUp  map[string]bool
-	setupRuns  sync.WaitGroup
+	// settingUp holds a computer's drivers with a setup turn running, keyed by setupKey.
+	settingUp map[string]bool
+	setupRuns sync.WaitGroup
+	// tokenMu keeps two setup runs starting at once from each minting the computer's token, which would revoke the other's.
+	tokenMu sync.Mutex
 	// pairMu guards pairFailures: why each computer's last pairing through its runner failed.
 	pairMu       sync.Mutex
 	pairFailures map[string]string
@@ -178,7 +181,7 @@ func (s *Service) ListProviders(ctx context.Context, userID, computerID string) 
 	}
 	out := make([]ProviderOption, 0, len(providers))
 	for _, p := range providers {
-		out = append(out, ProviderOption{Provider: p, NeedsSetup: !setupConfirmed(session, setups, p.Driver)})
+		out = append(out, ProviderOption{Provider: p, NeedsSetup: !setupConfirmed(session, setups, p.Driver), Skipped: switchedOff(session, p.Driver)})
 	}
 	return out, nil
 }
@@ -760,18 +763,22 @@ func (s *Service) requireSetup(ctx context.Context, target *ResolvedTarget) (*Re
 		return nil, fmt.Errorf("get computer %s: %w", target.Computer.ID, err)
 	}
 	target.Computer.Kind, target.Computer.HarnessVersion = stored.Kind, stored.HarnessVersion
-	provider, err := pickProvider(providers, target.Provider)
-	if err != nil {
-		return nil, err
-	}
 	setups, err := s.repo.ListProviderSetups(ctx, target.Computer.ID)
 	if err != nil {
 		return nil, fmt.Errorf("list provider setups for %s: %w", target.Computer.ID, err)
 	}
+	provider, err := pickProvider(providers, target.Provider, func(p harness.Provider) bool { return setupConfirmed(target.Computer, setups, p.Driver) })
+	if err != nil {
+		return nil, err
+	}
 	if !setupConfirmed(target.Computer, setups, provider.Driver) {
-		return nil, &NotConfiguredError{
+		nc := &NotConfiguredError{
 			Reason: ReasonSetupRequired, Provider: provider.Name, Computer: target.Computer.Name, ProviderID: provider.ID, ComputerID: target.Computer.ID,
 		}
+		if switchedOff(target.Computer, provider.Driver) {
+			nc.Why = "it's switched off"
+		}
+		return nil, nc
 	}
 	target.Provider = provider.ID
 	return target, nil
@@ -789,8 +796,11 @@ func (s *Service) offline(ctx context.Context, c Computer, err error) *NotConfig
 	return nc
 }
 
-// pickProvider finds the stored instance id among the harness's providers, or the harness default for an empty one.
-func pickProvider(providers []harness.Provider, id string) (harness.Provider, error) {
+// pickProvider finds the stored instance id among the harness's providers; an empty one takes the first usable, else the harness default.
+func pickProvider(providers []harness.Provider, id string, usable func(harness.Provider) bool) (harness.Provider, error) {
+	if i := slices.IndexFunc(providers, usable); id == "" && i >= 0 {
+		return providers[i], nil
+	}
 	for _, p := range providers {
 		if id == "" || p.ID == id {
 			return p, nil

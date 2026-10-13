@@ -5,4 +5,4 @@ export const PAIR_DIALOG_FRAME =
 // Set up holds a fixed height from md up, so opening a provider's transcript scrolls the body instead of resizing the dialog.
 export const SETUP_DIALOG_FRAME = "md:h-[min(90dvh,46rem)] md:max-w-[min(44rem,calc(100%-4rem))]";
 
-export const SETUP_LEAD = "Agent work runs on this computer once each provider on it is set up and confirmed.";
+export const SETUP_LEAD = "Each provider you switch on takes one short turn to connect Nexul and install its skills. Plays only use the ones that are on and confirmed.";

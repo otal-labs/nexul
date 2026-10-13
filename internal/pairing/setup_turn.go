@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/harness"
@@ -64,10 +65,11 @@ func (s *Service) UpdateSkills(ctx context.Context, userID, computerID string) (
 	if err != nil {
 		return nil, err
 	}
-	if !s.claimSetup(session.ID) {
-		return nil, fmt.Errorf("%w: setup is already running on %s", apperrs.ErrConflict, session.Name)
+	driver := strings.ToLower(p.Driver)
+	if !s.claimSetup(session.ID, []string{driver}) {
+		return nil, fmt.Errorf("%w: setup is already running for %s on %s", apperrs.ErrConflict, p.Name, session.Name)
 	}
-	pick := SetupProvider{Provider: strings.ToLower(p.Driver), Name: p.Name, Model: setupPick(choices.Models, p)}
+	pick := SetupProvider{Provider: driver, Name: p.Name, Model: setupPick(choices.Models, p)}
 	if pick.Model != "" {
 		pick.ModelOptions = setupPick(choices.ModelOptions, p)
 	}
@@ -75,7 +77,7 @@ func (s *Service) UpdateSkills(ctx context.Context, userID, computerID string) (
 	prompt := setupPrompt{ComputerID: session.ID, ComputerName: session.Name, Driver: p.Driver, ProviderName: p.Name}
 	runCtx := context.WithoutCancel(ctx)
 	s.setupRuns.Go(func() {
-		defer s.releaseSetup(session.ID)
+		defer s.releaseSetup(session.ID, driver)
 		turn := s.runSkillsTurn(runCtx, userID, *run, p, pick, prompt)
 		s.saveSetupTurn(runCtx, turn, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicSetupFinished, Payload: SetupFinishedEvent{
 			ComputerID: session.ID, UserID: userID, RunID: run.RunID, Confirmed: s.computerConfirmed(runCtx, userID, session.ID),
@@ -151,18 +153,24 @@ func (s *Service) startSetup(ctx context.Context, userID, computerID string, onl
 	if err != nil {
 		return nil, err
 	}
-	if !s.claimSetup(session.ID) {
-		return nil, fmt.Errorf("%w: setup is already running on %s", apperrs.ErrConflict, session.Name)
+	drivers := detectedDrivers(providers)
+	if !s.claimSetup(session.ID, drivers) {
+		return nil, fmt.Errorf("%w: setup is already running for %s on %s", apperrs.ErrConflict, strings.Join(drivers, " or "), session.Name)
+	}
+	release := func() {
+		for _, driver := range drivers {
+			s.releaseSetup(session.ID, driver)
+		}
 	}
 	token, err := s.setupToken(ctx, session)
 	if err != nil {
-		s.releaseSetup(session.ID)
+		release()
 		return nil, err
 	}
 	if remember {
 		choices.Skipped = skippedDrivers(detected, providers)
 		if err := s.repo.SaveSetupChoices(ctx, userID, session.ID, choices); err != nil {
-			s.releaseSetup(session.ID)
+			release()
 			return nil, err
 		}
 	}
@@ -177,10 +185,7 @@ func (s *Service) startSetup(ctx context.Context, userID, computerID string, onl
 	}
 	prompt := setupPrompt{ComputerID: session.ID, ComputerName: session.Name, MCPURL: mcpURL, Token: token}
 	runCtx := context.WithoutCancel(ctx)
-	s.setupRuns.Go(func() {
-		defer s.releaseSetup(session.ID)
-		s.runSetup(runCtx, userID, *run, providers, prompt)
-	})
+	s.setupRuns.Go(func() { s.runSetup(runCtx, userID, *run, providers, prompt) })
 	return run, nil
 }
 
@@ -287,6 +292,8 @@ func (s *Service) setupMCPURL(ctx context.Context) (string, error) {
 
 // setupToken reuses the token earlier setup turns wrote while it is still the computer's active one, else mints its replacement.
 func (s *Service) setupToken(ctx context.Context, computer Computer) (string, error) {
+	s.tokenMu.Lock()
+	defer s.tokenMu.Unlock()
 	tokens, err := s.tokenSeam()
 	if err != nil {
 		return "", err
@@ -324,40 +331,58 @@ func (s *Service) storedSetupToken(computer Computer) string {
 	return string(raw)
 }
 
-func (s *Service) claimSetup(computerID string) bool {
+func setupKey(computerID, driver string) string { return computerID + "/" + driver }
+
+// claimSetup claims every driver or none, so a driver runs one setup turn at a time while the others run beside it.
+func (s *Service) claimSetup(computerID string, drivers []string) bool {
 	s.setupMu.Lock()
 	defer s.setupMu.Unlock()
-	if s.settingUp[computerID] {
+	if slices.ContainsFunc(drivers, func(d string) bool { return s.settingUp[setupKey(computerID, d)] }) {
 		return false
 	}
-	s.settingUp[computerID] = true
+	for _, d := range drivers {
+		s.settingUp[setupKey(computerID, d)] = true
+	}
 	return true
 }
 
-func (s *Service) releaseSetup(computerID string) {
+func (s *Service) releaseSetup(computerID, driver string) {
 	s.setupMu.Lock()
 	defer s.setupMu.Unlock()
-	delete(s.settingUp, computerID)
+	delete(s.settingUp, setupKey(computerID, driver))
 }
 
-// runSetup runs the turns in order, so two providers never install into the shared skill locations at once.
+// runSetup runs every provider's turn at once, each freeing its driver as it ends; the last to end publishes the run's outcome.
 func (s *Service) runSetup(ctx context.Context, userID string, run SetupRun, providers []harness.Provider, prompt setupPrompt) {
-	runID, computerID := run.RunID, run.ComputerID
-	outcomes := make([]SetupTurnOutcome, 0, len(providers))
+	var (
+		mu       sync.Mutex
+		wg       sync.WaitGroup
+		outcomes = make([]SetupTurnOutcome, len(providers))
+		left     = len(providers)
+	)
 	for i, p := range providers {
-		last := i == len(providers)-1
-		prompt.Driver, prompt.ProviderName = p.Driver, p.Name
-		turn := s.runSetupTurn(ctx, userID, run, p, run.Providers[i], prompt)
-		outcomes = append(outcomes, SetupTurnOutcome{Provider: turn.Provider, State: turn.State, Status: turn.Status})
-		if !last {
-			s.saveSetupTurn(ctx, turn)
-			continue
-		}
-		s.saveSetupTurn(ctx, turn, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicSetupFinished, Payload: SetupFinishedEvent{
-			ComputerID: computerID, UserID: userID, RunID: runID, Confirmed: s.computerConfirmed(ctx, userID, computerID), Providers: outcomes,
-			MembersOnly: true,
-		}})
+		turnPrompt := prompt
+		turnPrompt.Driver, turnPrompt.ProviderName = p.Driver, p.Name
+		wg.Go(func() {
+			turn := s.runSetupTurn(ctx, userID, run, p, run.Providers[i], turnPrompt)
+			mu.Lock()
+			outcomes[i] = SetupTurnOutcome{Provider: turn.Provider, State: turn.State, Status: turn.Status}
+			left--
+			last := left == 0
+			mu.Unlock()
+			if !last {
+				s.saveSetupTurn(ctx, turn)
+				s.releaseSetup(run.ComputerID, turn.Provider)
+				return
+			}
+			s.saveSetupTurn(ctx, turn, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicSetupFinished, Payload: SetupFinishedEvent{
+				ComputerID: run.ComputerID, UserID: userID, RunID: run.RunID, Confirmed: s.computerConfirmed(ctx, userID, run.ComputerID),
+				Providers: outcomes, MembersOnly: true,
+			}})
+			s.releaseSetup(run.ComputerID, turn.Provider)
+		})
 	}
+	wg.Wait()
 }
 
 // beginSetupTurn saves the provider's turn as running, then resolves where its sessions run.

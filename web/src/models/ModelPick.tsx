@@ -42,7 +42,7 @@ export const pickerRows = (
 
 // The provider line under a model's name: the provider, where a routed model comes from, and whether setup is still due.
 export const sourceLabel = (row: ModelRow) =>
-  [row.provider.name, row.model.sub_provider, row.provider.needs_setup && "needs setup"].filter(Boolean).join(" · ");
+  [row.provider.name, row.model.sub_provider, row.provider.needs_setup && "Setup required"].filter(Boolean).join(" · ");
 
 // One pickable row of the list: a model, or the default the picker offers first.
 export interface PickerEntry {
@@ -54,6 +54,8 @@ export interface PickerEntry {
   isNew?: boolean;
   favouriteKey?: string;
   legacy: boolean;
+  // A provider still waiting on setup: listed so it can be found, never picked.
+  blocked?: boolean;
 }
 
 // The default row: the provider's own when one provider is in view, else the computer's.
@@ -72,8 +74,10 @@ const defaultEntry = (providers: HarnessProvider[], filter: RailFilter): PickerE
     pick: { provider: provider.id, model: "" },
     name: "Provider default",
     ...(fallback && { source: fallback }),
+    ...(provider.needs_setup && { source: "Setup required" }),
     driver: provider.driver,
     legacy: false,
+    ...(provider.needs_setup && { blocked: true }),
   };
 };
 
@@ -85,7 +89,8 @@ export const pickerEntries = (
   favourites: string[],
   allowDefault: boolean,
 ): PickerEntry[] => {
-  const { current, legacy } = pickerRows(providers, filter, query, favourites);
+  const visible = providers.filter((p) => !p.skipped);
+  const { current, legacy } = pickerRows(visible, filter, query, favourites);
   const toEntry = (row: ModelRow): PickerEntry => ({
     key: row.key,
     pick: { provider: row.provider.id, model: row.model.slug },
@@ -95,9 +100,10 @@ export const pickerEntries = (
     ...(row.model.is_new && { isNew: true }),
     favouriteKey: row.key,
     legacy: !!row.model.is_legacy,
+    ...(row.provider.needs_setup && { blocked: true }),
   });
   const offerDefault = allowDefault && !query.trim() && filter.kind !== "favourites";
-  return [...(offerDefault ? [defaultEntry(providers, filter)] : []), ...current.map(toEntry), ...legacy.map(toEntry)];
+  return [...(offerDefault ? [defaultEntry(visible, filter)] : []), ...current.map(toEntry), ...legacy.map(toEntry)];
 };
 
 export const optionDefault = (option: ModelOption): string | boolean | undefined =>

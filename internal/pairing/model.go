@@ -346,19 +346,29 @@ type SetupProvider struct {
 	ModelOptions []harness.OptionSetting `json:"model_options,omitempty"`
 }
 
-// ProviderOption is a provider instance as the pickers list it: still selectable while it needs setup.
+// ProviderOption is a provider instance as the pickers list it: shown but not runnable while it needs setup, hidden once switched off.
 type ProviderOption struct {
 	harness.Provider
 	NeedsSetup bool `json:"needs_setup"`
+	// Skipped is a driver its owner switched off in the Set up step, so pickers leave it out.
+	Skipped bool `json:"skipped"`
 }
 
-// setupConfirmed is the gate's rule: the computer's overall confirmation and the driver's own are both set.
+// setupConfirmed is the gate's rule: the computer's overall confirmation and the driver's own are both set, and the driver is switched on.
 func setupConfirmed(c Computer, setups []ProviderSetup, driver string) bool {
 	if c.SetupConfirmedAt == nil {
 		return false
 	}
 	driver = strings.ToLower(strings.TrimSpace(driver))
+	if switchedOff(c, driver) {
+		return false
+	}
 	return slices.ContainsFunc(setups, func(p ProviderSetup) bool { return p.Provider == driver && p.ConfirmedAt != nil })
+}
+
+// switchedOff is whether the Set up step switched driver off on c.
+func switchedOff(c Computer, driver string) bool {
+	return slices.ContainsFunc(c.SetupChoices.Skipped, func(d string) bool { return strings.EqualFold(d, strings.TrimSpace(driver)) })
 }
 
 // Defaults are a user's pairing-settings defaults for non-project chat contexts; every field is optional.
@@ -436,12 +446,16 @@ type NotConfiguredError struct {
 	ProviderID string
 	// Err is the harness failure behind ReasonOffline.
 	Err error
-	// Why says what is offline for ReasonOffline when Nexul knows more than that T3 Code did not answer.
+	// Why says what is offline for ReasonOffline when Nexul knows more than that T3 Code did not answer, and for
+	// ReasonSetupRequired that the provider is switched off rather than not set up.
 	Why string
 }
 
 // Error is the user-facing refusal for the gate's reasons, so chat, the play run dialog, and MCP all read the same line.
 func (e *NotConfiguredError) Error() string {
+	if e.Reason == ReasonSetupRequired && e.Why != "" {
+		return fmt.Sprintf("@Agent can't use %s on %s: %s. Switch it on in its setup in Settings → Computers.", e.Provider, e.Computer, e.Why)
+	}
 	if e.Reason == ReasonSetupRequired {
 		return fmt.Sprintf("@Agent can't use %s on %s until its setup is done — run setup for %s in Settings → Computers.", e.Provider, e.Computer, e.Computer)
 	}

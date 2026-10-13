@@ -2,7 +2,7 @@ import { queryOptions, useMutation, useQueries, useQuery, useQueryClient } from 
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import { useListComputers } from "@/hooks/PairingHooks";
+import { getHarnessProvidersKey, useListComputers } from "@/hooks/PairingHooks";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { hasOutdatedSkills, stillPairing, type ComputerSetup, type OptionSetting, type SetupChoices, type SetupRun } from "@/models/Pairing";
 import type { ActivityKind } from "@/models/Trail";
@@ -72,14 +72,28 @@ export const useUpdateSkills = (computerId: string) => {
   });
 };
 
-// Done on the Set up step: keeps the switches, models, options, and folder without running anything.
+// A provider's switch, and Done on the Set up step: keeps the switches, models, options, and folder without running anything.
 export const useSaveSetupChoices = (computerId: string) => {
   const client = useQueryClient();
+  const key = [getComputerSetupKey, computerId];
   return useMutation({
     mutationFn: async (choices: SetupChoices) =>
       (await api.put<ComputerSetup>(`/api/pairing/computers/${computerId}/setup/choices`, choices)).data,
-    onSuccess: (setup) => client.setQueryData([getComputerSetupKey, computerId], setup),
-    onError: (error) => toast.error(errorMessage(error)),
+    // The switch flips under the finger, not a round trip later.
+    onMutate: async (choices) => {
+      await client.cancelQueries({ queryKey: key, exact: true });
+      const before = client.getQueryData<ComputerSetup>(key);
+      if (before) client.setQueryData<ComputerSetup>(key, { ...before, ...choices });
+      return { before };
+    },
+    onSuccess: async (setup) => {
+      client.setQueryData(key, setup);
+      await client.invalidateQueries({ queryKey: [getHarnessProvidersKey, computerId], exact: true });
+    },
+    onError: (error, _choices, context) => {
+      if (context?.before) client.setQueryData(key, context.before);
+      toast.error(errorMessage(error));
+    },
   });
 };
 

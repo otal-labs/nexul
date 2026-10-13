@@ -170,6 +170,9 @@ Each provider's confirmation also records the version of Nexul's skills it
 found; an older one shows as skills out of date, a signal, never a block. A
 skills update, one agent turn that rewrites the skills on the computer, records
 the new version for every confirmed provider there and confirms nothing.
+A provider its owner switches off in the Set up step counts as unconfirmed while
+it is off: pickers leave it out and a run aimed at it is refused, and its
+confirmation comes back when it is switched on again.
 _Avoid_: Onboarded, verified, setup flag
 
 **Memory**:

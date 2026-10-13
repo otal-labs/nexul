@@ -9,34 +9,35 @@ interface SetupFolderPickProps {
   onPick: (folder: string) => void;
 }
 
-// The folder the setup turns run in, from the projects T3 Code opens; setup only writes user-level files, so any of them works.
+// Where the turns run and what they install, under the list; setup only writes user-level files, so any T3 project works.
 export const SetupFolderPick = ({ projects, folder, disabled, onPick }: SetupFolderPickProps) => (
-  <div className="@container space-y-1.5">
-    <div className="flex flex-col gap-1.5 @xs:flex-row @xs:items-center @xs:justify-between @xs:gap-3">
-      <label htmlFor="setup-folder" className="text-xs font-semibold">
-        Folder
-      </label>
-      <Select value={folder} onValueChange={onPick} disabled={disabled}>
-        <SelectTrigger id="setup-folder" className="h-8 @xs:w-52">
-          <span className="min-w-0 truncate">
-            <SelectValue>{projects.find((p) => p.path === folder)?.title}</SelectValue>
-          </span>
-        </SelectTrigger>
-        <SelectContent className="max-w-(--radix-select-content-available-width)">
-          {projects.map((p) => (
-            <SelectItem key={p.id} value={p.path} textValue={p.title}>
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate">{p.title}</span>
-                <span className="truncate font-mono text-xs text-muted-foreground">{p.path}</span>
-              </span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-    <p className="text-xs text-muted-foreground">
-      Runs in <span className="font-mono break-all">{folder}</span>. Setup only writes user-level files, so any folder works.
-      Pick another if this one is gone.
+  <div className="space-y-1.5 text-xs text-muted-foreground">
+    {projects.length > 0 && (
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="setup-folder">Runs in</label>
+        <Select value={folder} onValueChange={onPick} disabled={disabled}>
+          <SelectTrigger id="setup-folder" className="h-7 w-auto max-w-64 px-2 text-xs">
+            <span className="min-w-0 truncate">
+              <SelectValue>{projects.find((p) => p.path === folder)?.title}</SelectValue>
+            </span>
+          </SelectTrigger>
+          <SelectContent className="max-w-(--radix-select-content-available-width)">
+            {projects.map((p) => (
+              <SelectItem key={p.id} value={p.path} textValue={p.title}>
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate">{p.title}</span>
+                  <span className="truncate font-mono text-xs text-muted-foreground">{p.path}</span>
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="min-w-0 truncate font-mono">{folder}</span>
+      </div>
+    )}
+    <p>
+      Installs mattpocock/skills and nexul-memory into <span className="font-mono">~/.claude/skills/</span> and{" "}
+      <span className="font-mono">~/.agents/skills/</span>, never over a skill you already have.
     </p>
   </div>
 );

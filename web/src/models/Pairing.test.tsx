@@ -108,7 +108,7 @@ describe("providerSetupLines", () => {
 });
 
 describe("setupModelChoices", () => {
-  const provider = (id: string, driver: string, models: HarnessProvider["models"]): HarnessProvider => ({ id, driver, name: id, models, needs_setup: true });
+  const provider = (id: string, driver: string, models: HarnessProvider["models"]): HarnessProvider => ({ id, driver, name: id, models, needs_setup: true, skipped: false });
   const providers = [
     provider("claude", "claudeAgent", [
       { slug: "claude-big", name: "Big" },

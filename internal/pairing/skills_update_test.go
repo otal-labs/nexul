@@ -199,7 +199,7 @@ func TestUpdateSkills_ErrorPaths(t *testing.T) {
 			require.ErrorIs(t, err, tt.wantErr)
 			f.svc.setupRuns.Wait()
 			assert.Len(t, f.sessionTitles(), sessions, "a refused update runs no turn")
-			assert.True(t, f.svc.claimSetup(f.computer.ID), "a refused update leaves the computer free")
+			assert.True(t, f.svc.claimSetup(f.computer.ID, []string{"codex", "claudeagent"}), "a refused update leaves the computer free")
 		})
 	}
 }

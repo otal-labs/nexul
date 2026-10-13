@@ -49,6 +49,7 @@ func prepareInstructions(p setupPrompt) string {
 	fmt.Fprintf(&b, "\n2. Install the default skill set, mattpocock/skills, into both %s Never overwrite a skill directory that already exists in either location: the user may have edited it.\n", skillLocations)
 	b.WriteString("   - In a new empty temporary directory, run `npx -y skills@latest add mattpocock/skills --skill '*' --agent claude-code --copy --yes`. It writes the skills under `.claude/skills/` in that directory.\n")
 	b.WriteString("   - Copy each skill directory it wrote into ~/.claude/skills/ and into ~/.agents/skills/, creating them if needed and skipping any name already present, then delete the temporary directory.\n")
+	b.WriteString("   - " + atomicWrite + "\n")
 	memory := skills.NexulMemory
 	b.WriteString("3. " + skillInstallStep(memory, "the file at the end of these instructions"))
 	fmt.Fprintf(&b, "4. Verify that every skill from step 2 and nexul-memory has a SKILL.md in both %s\n\n", skillLocations)
@@ -59,9 +60,13 @@ func prepareInstructions(p setupPrompt) string {
 	return b.String()
 }
 
+// atomicWrite keeps setup turns running side by side from reading each other's half-written skills.
+const atomicWrite = "Other providers' setup may be writing the same skill folders right now, so never leave a half-written skill where they can see it: " +
+	"copy or write into a new temporary name beside the target, then move it into place with one rename. If the target appeared in the meantime, keep it and delete your temporary copy."
+
 // skillInstallStep is how every turn writes one of Nexul's skills from source, so setup and a skills update share one rule.
 func skillInstallStep(skill skills.Skill, source string) string {
-	return fmt.Sprintf("Install the %s skill at %s and at %s: write %s, exactly as given, wherever it is missing or its frontmatter's `metadata.version` is not %q. An older copy is Nexul's own, so replace it.\n",
+	return fmt.Sprintf("Install the %s skill at %s and at %s: write %s, exactly as given, wherever it is missing or its frontmatter's `metadata.version` is not %q. An older copy is Nexul's own, so replace it, by writing the new file under a temporary name beside it and renaming it over the old one.\n",
 		skill.Name, skill.Paths()[0], skill.Paths()[1], source, skill.Version)
 }
 

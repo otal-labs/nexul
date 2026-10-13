@@ -1,73 +1,70 @@
 import { useState } from "react";
 
-import { SetupFolderPick } from "@/components/pairing/SetupFolderPick";
-import { SetupModelPicks } from "@/components/pairing/SetupModelPicks";
-import { SetupOptions } from "@/components/pairing/SetupOptions";
-import { SetupPreselection } from "@/components/pairing/SetupPreselection";
-import { SetupRunHeader } from "@/components/pairing/SetupRunHeader";
-import { SetupRunRows } from "@/components/pairing/SetupRunRows";
+import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { SetupFolderPick } from "@/components/pairing/SetupFolderPick";
+import { SetupProviderItem } from "@/components/pairing/SetupProviderItem";
+import { SetupRunHeader } from "@/components/pairing/SetupRunHeader";
 import { useFetchComputerSetup, useRunSetup, useUpdateSkills } from "@/hooks/ComputerSetupHooks";
 import { useSetupChoices } from "@/hooks/useSetupChoices";
-import { openSetupRow, setupRunRows, setupRunning, type Computer, type ComputerSetup } from "@/models/Pairing";
+import { needsSetup, openSetupRow, setupProviderRows, setupRunRows, type Computer, type ComputerSetup } from "@/models/Pairing";
 
 interface SetupRunSectionProps {
-  computer: Computer;
   setup: ComputerSetup;
 }
 
-// The run on top, one row per provider under it, and the choices folded below once something has run.
-const SetupRunSection = ({ computer, setup }: SetupRunSectionProps) => {
-  const run = useRunSetup(computer.id);
-  const update = useUpdateSkills(computer.id);
-  const { choices, models, options, pick, pickOptions, included, excluded, include, projects, folder, pickFolder } = useSetupChoices(setup);
-  // Undefined follows the run (the running row, else a failure); null is every row folded by hand.
+// The run on top, then one row per provider with its own switch, model and run; the providers run side by side.
+const SetupRunSection = ({ setup }: SetupRunSectionProps) => {
+  const run = useRunSetup(setup.computer_id);
+  const update = useUpdateSkills(setup.computer_id);
+  const { choices, models, options, pick, pickOptions, included, include, projects, folder, pickFolder } = useSetupChoices(setup);
+  // Undefined follows the run (a running row, else a failure); null is every row folded by hand.
   const [picked, setPicked] = useState<string | null>();
-  const allRows = setupRunRows(setup.turns, run.data);
-  const rows = allRows.filter((r) => !excluded.includes(r.provider));
-  const open = picked === undefined ? openSetupRow(rows)?.provider : (picked ?? undefined);
-  const busy = run.isPending || update.isPending || setupRunning(allRows);
-  const noneIncluded = choices.length > 0 && included.length === 0;
-  const folderTitle = projects.find((p) => p.path === folder)?.title;
-  const summary = [choices.length > 0 && `${included.length} of ${choices.length} providers`, folderTitle].filter(Boolean).join(" · ");
-  const start = (provider?: string) => {
+  const rows = setupProviderRows(choices, setupRunRows(setup.turns, run.data), setup);
+  const on = rows.filter((r) => r.on);
+  const running = on.some((r) => r.state === "running" || r.state === "queued");
+  const open = picked === undefined ? openSetupRow(on.flatMap((r) => (r.run ? [r.run] : [])))?.provider : (picked ?? undefined);
+  const next = on.find(needsSetup)?.provider;
+  // The one request in flight: a single provider's run, or "*" for Set up all and a skills update.
+  const pending = (run.isPending && (run.variables?.provider ?? "*")) || (update.isPending && "*") || undefined;
+
+  const startAll = () => {
     setPicked(undefined);
-    run.mutate({ models, options, folder, providers: included, ...(provider ? { provider } : {}) });
+    run.mutate({ models, options, folder, providers: included });
   };
-  // A failed skills update retries as an update; any other row re-runs that provider's setup.
-  const retry = (provider: string) => {
-    if (rows.find((r) => r.provider === provider)?.kind !== "skills") return start(provider);
+  // A failed skills update retries as an update; any other row runs that provider's setup on its own.
+  const runOne = (provider: string) => {
     setPicked(undefined);
-    update.mutate();
+    if (rows.find((r) => r.provider === provider)?.run?.kind === "skills") return update.mutate();
+    run.mutate({ models, options, folder, provider });
   };
+  const toggle = (provider: string) => setPicked(provider === open ? null : provider);
+
   return (
     <div className="space-y-5">
-      <SetupRunHeader setup={setup} rows={rows} busy={busy} blocked={noneIncluded} onStart={() => start()} />
-      {noneIncluded && <p className="text-xs text-muted-foreground">Turn on at least one provider to start setup.</p>}
+      <SetupRunHeader rows={on} busy={pending === "*"} running={running} confirmed={!!setup.confirmed_at} onStart={startAll} />
       {rows.length > 0 && (
-        <SetupRunRows rows={rows} open={open} retryDisabled={busy} onToggle={(p) => setPicked(p === open ? null : p)} onRetry={retry} />
+        <EnterList aria-label="Providers" className="@container divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
+          {rows.map((row) => (
+            <SetupProviderItem
+              key={row.provider}
+              row={row}
+              model={models[row.provider] ?? ""}
+              options={options[row.provider] ?? []}
+              open={row.provider === open}
+              next={row.provider === next}
+              busy={pending === row.provider}
+              onInclude={include}
+              onPick={pick}
+              onOptions={pickOptions}
+              onRun={runOne}
+              onToggle={toggle}
+            />
+          ))}
+        </EnterList>
       )}
-      <SetupOptions defaultOpen={setup.turns.length === 0} summary={summary}>
-        <p className="text-sm text-muted-foreground">
-          Each provider on {computer.name} takes one short turn to connect Nexul's MCP server with this computer's own token,
-          install these skills, and confirm them.
-        </p>
-        {choices.length > 0 && (
-          <SetupModelPicks
-            choices={choices}
-            models={models}
-            options={options}
-            included={included}
-            disabled={busy}
-            onPick={pick}
-            onOptions={pickOptions}
-            onInclude={include}
-          />
-        )}
-        {projects.length > 0 && <SetupFolderPick projects={projects} folder={folder} disabled={busy} onPick={pickFolder} />}
-        <SetupPreselection />
-      </SetupOptions>
+      <SetupFolderPick projects={projects} folder={folder} disabled={running} onPick={pickFolder} />
     </div>
   );
 };
@@ -76,14 +73,14 @@ interface SetupStepProps {
   computer: Computer;
 }
 
-// Step three: one setup turn per provider connects Nexul's MCP server, installs the skills, and has the provider confirm itself.
+// Step three: one setup turn per switched-on provider connects Nexul's MCP server, installs the skills, and has the provider confirm itself.
 export const SetupStep = ({ computer }: SetupStepProps) => {
   const { data: setup, error, isPending } = useFetchComputerSetup(computer.id);
   return (
     <div>
       {isPending && <LoadingDisplay label="Reading setup" className="justify-start p-0" />}
       {error && <ErrorDisplay error={error} title="Couldn't read setup." className="p-4" />}
-      {setup && <SetupRunSection computer={computer} setup={setup} />}
+      {setup && <SetupRunSection setup={setup} />}
     </div>
   );
 };

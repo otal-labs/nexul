@@ -1,19 +1,29 @@
+import { useMemo } from "react";
+
+import { useSaveSetupChoices } from "@/hooks/ComputerSetupHooks";
 import { useSetupFolder } from "@/hooks/useSetupFolder";
 import { useSetupModels } from "@/hooks/useSetupModels";
-import { useSetupProviders } from "@/hooks/useSetupProviders";
 import type { ComputerSetup, SetupChoices } from "@/models/Pairing";
 
 // Everything the Set up step shows and saves, for the step itself and the dialog's Done button alike.
 export const useSetupChoices = (setup: ComputerSetup) => {
   const { choices, models, options, pick, pickOptions } = useSetupModels(setup.computer_id, setup);
-  const { included, excluded, include } = useSetupProviders(setup.computer_id, choices, setup.skipped_providers);
   const { projects, folder, pick: pickFolder } = useSetupFolder(setup.computer_id, setup.folder);
-  // A provider the harness does not list right now keeps what was saved for it.
+  const save = useSaveSetupChoices(setup.computer_id);
+  const included = useMemo(
+    () => choices.map((c) => c.provider).filter((p) => !setup.skipped_providers.includes(p)),
+    [choices, setup.skipped_providers],
+  );
   const body: SetupChoices = {
-    skipped_providers: [...setup.skipped_providers.filter((p) => !choices.some((c) => c.provider === p)), ...excluded],
+    skipped_providers: setup.skipped_providers,
     models: { ...setup.models, ...models },
     model_options: { ...setup.model_options, ...options },
     folder,
   };
-  return { choices, models, options, pick, pickOptions, included, excluded, include, projects, folder, pickFolder, body };
+  // A switch saves at once: plays leave a switched-off provider out, so it can't wait for Done.
+  const include = (provider: string, on: boolean) => {
+    const others = setup.skipped_providers.filter((p) => p !== provider);
+    save.mutate({ ...body, skipped_providers: on ? others : [...others, provider] });
+  };
+  return { choices, models, options, pick, pickOptions, included, include, projects, folder, pickFolder, body };
 };
