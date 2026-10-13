@@ -228,8 +228,12 @@ describe("DocsPage", () => {
     renderPage("/acme/docs", ["docs:read", "docs:write"]);
 
     await user.click(await screen.findByRole("button", { name: "More actions for Storage Spine" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Move to folder" }));
-    screen.getByRole("menuitemradio", { name: "GetSource" }).focus();
+    const moveTo = await screen.findByRole("menuitem", { name: "Move to folder" });
+    await user.click(moveTo);
+    const target = screen.getByRole("menuitemradio", { name: "GetSource" });
+    // The row menu scrolls and blurs its backdrop, which would clip a submenu nested inside it.
+    expect(moveTo.closest("[role=menu]")).not.toContainElement(target);
+    target.focus();
     await user.keyboard("{Enter}");
     await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/move", { folder_id: "f-gs" }));
   });
