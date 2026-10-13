@@ -2,7 +2,7 @@
 
 Type: task
 Status: resolved
-Blocked by: 07, and the permission rework's `permission-switch` branch merged
+Blocked by: 07. The permission prerequisite has merged.
 
 Read first: `AGENTS.md`, `CONTEXT.md` (Welcome wizard, Template role), `practices/go.md`, `practices/architecture.md`, `practices/mcp.md`, `practices/react-guide.md`,
 `practices/testing.md`, the spec (Decisions 6 and 7; Records; HTTP and MCP).

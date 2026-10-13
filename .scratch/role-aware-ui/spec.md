@@ -28,7 +28,7 @@ From the map and tickets 01 to 06.
 5. **Single-item answers** (ticket 05).
    - A stack, doc, play or project page reads its item's answers once through `GET /api/permissions/explain`.
    - Lists stay role-wide, and a refusal on click shows the rule's sentence.
-   - explain covers stacks, machines and instance areas once the rework's tickets 19, 23 and 24 land.
+   - explain covers stacks, machines and instance areas through the shipped rules (ADR 0148).
 6. **The look** (ticket 04): "Quiet lock and tooltip", with the values in the ticket. It uses `aria-disabled`, never
    `disabled`; on the phone it is tap for the reason.
 7. **The doors** (ticket 06): as listed there.

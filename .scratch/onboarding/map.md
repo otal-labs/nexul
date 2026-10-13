@@ -18,16 +18,15 @@ Welcome wizard, and an admin seeing each person's progress on Team.
 ## Notes
 
 - The destination is reached: `spec.md` is written. Build tickets 08 to 15 carry the build on this
-  map, and start once the permission rework's `permission-switch` branch merges.
+  map. The permission prerequisite has merged.
 
 - Skills every session consults: `grilling` and `domain-modeling` for decisions,
   and `CONTEXT.md` (Welcome wizard, Template role, Instance template). The
   owner chose auto design mode for the screen tickets: the agent scores, picks
   and reports with the runner-up, and asks no design questions.
-- Builds after the permission rework (`.scratch/permission-rework/`). Roles,
-  invitations and ADR 0148 are changing under it, and "Your computer" rests on
-  the personal runner (`.scratch/personal-runners/`), which is paused behind the
-  same rework.
+- Builds on the shipped permission model (ADR 0148). "Your computer" rests on
+  the personal runner (`.scratch/personal-runners/`); the permission prerequisite
+  no longer blocks either effort.
 - Decided while charting:
   - The destination is the Welcome wizard only. The other gaps the walks found
     go to their own homes (Out of scope).
@@ -68,7 +67,7 @@ Welcome wizard, and an admin seeing each person's progress on Team.
 
 <!-- one line per resolved ticket: [title](issues/NN-slug.md): gist -->
 
-- [How the permission rework lands on roles, invitations and computers](issues/01-how-the-permission-rework-lands-on-roles.md): roles keep their table and combine as a union; steps need a new field; Template roles are a new template kind copied in at workspace creation; projects are opt-in under ADR 0148; build after the `permission-switch` branch merges
+- [How the permission rework lands on roles, invitations and computers](issues/01-how-the-permission-rework-lands-on-roles.md): roles keep their table and combine as a union; steps need a new field; Template roles are a new template kind copied in at workspace creation; projects are opt-in under ADR 0148; the permission prerequisite has merged
 - [What counts as done for each step, and what skipping does](issues/02-what-counts-as-done-and-what-skip-does.md): done is read from existing data, except a per-person record of skips and of the phone's first connect, and a record of who enrolled each deploy runner; a skip lasts until the step is given again; the phone stays done once connected; `first_login_done` now means the first run happened
 - [How a role stores and edits its steps](issues/03-how-a-role-stores-and-edits-its-steps.md): a JSON list of five step keys on the role, edited in a Welcome tab with `roles:write`, carried by clones, `role_update` and `workspace_list`; Profile is always first; the uneditable Owner role has Connect GitHub and Your computer fixed in code
 - [The five Template roles: their permissions and their steps](issues/04-the-five-template-roles.md): Client, Junior Developer, Senior Developer, DevOps and Administrator with their grids and ticks; Administrator gets everything except the instance's own administration; the instance can add and delete its own template roles, and the shipped five reset but don't delete

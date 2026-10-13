@@ -1,7 +1,7 @@
 # How the permission rework lands on roles, invitations and computers
 
 Read from `origin/master` (06bc3014) and, where marked, `origin/permission-switch` (0adfd8cd, three commits ahead of
-master). Spec: `.scratch/permission-overrides/spec.md`; ADR 0148.
+master). The permission spec is in git history at `bf6a135f`; ADR 0148 records the model.
 
 ## 1. The role after the rework
 

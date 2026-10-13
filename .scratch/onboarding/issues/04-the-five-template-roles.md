@@ -18,7 +18,7 @@ Charting proposed these ticks:
 - Get the phone app: on for nobody by default, or on for everyone?
 
 The permissions come after the rework settles its vocabulary. Prod's hand-built
-roles are the starting point (`.scratch/permission-rework/research/what-the-rework-touches.md`).
+roles were the starting point (the permission research is in git history at `bf6a135f`).
 Also decide how the instance edits Template roles in Settings → Templates, and
 whether a fresh install's first workspace gets them (it should).
 

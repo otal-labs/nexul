@@ -298,7 +298,7 @@ without changing the core architecture.
   the roles and people listed in them, and each project, doc, play, channel,
   computer or instance area can allow, fall back or deny any permission for a
   role or one person, with the rule that decided every answer shown
-  (`.scratch/permission-overrides/`, ADR 0148).
+  (shipped, ADR 0148; remaining gaps in `.scratch/permission-followups/`).
 - **DNS extensions** — TLS automation (Let's Encrypt) for direct-to-server
   paths, additional registrars behind the provider interface, managed subdomain
   routing for deployed services.
