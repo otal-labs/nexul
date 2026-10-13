@@ -1,5 +1,6 @@
 import { RuleStateControl, lockedAllowReason, lockedLiftReason } from "@/components/access/RuleStateControl";
 import { SourceLine } from "@/components/access/SourceLine";
+import { useAreaDenyWarning } from "@/hooks/useAreaDenyWarning";
 import { usePanelEntity } from "@/hooks/usePanelEntity";
 import { usePermissionRules } from "@/hooks/usePermissionRules";
 import { RuleState, type PermissionAnswer } from "@/models/Permission";
@@ -16,12 +17,18 @@ interface PermissionRuleRowProps {
 export const PermissionRuleRow = ({ targetKey, action, label, answer }: PermissionRuleRowProps) => {
   const entity = usePanelEntity();
   const { stateOf, saved, holds, setState } = usePermissionRules();
+  const warnDeny = useAreaDenyWarning();
   const value = stateOf(targetKey, action);
   const held = holds(action);
   const liftLocked = !held && saved(targetKey, action) === RuleState.Deny;
   const locked = {
     ...(!held ? { [RuleState.Allow]: lockedAllowReason } : {}),
     ...(liftLocked ? { [RuleState.Fallback]: lockedLiftReason } : {}),
+  };
+
+  const pick = async (state: RuleState) => {
+    if (state === RuleState.Deny && !(await warnDeny(targetKey, action, label, answer))) return;
+    setState(targetKey, action, state);
   };
 
   return (
@@ -35,7 +42,7 @@ export const PermissionRuleRow = ({ targetKey, action, label, answer }: Permissi
         value={value}
         locked={locked}
         withoutDeny={entity.type === "computer"}
-        onChange={(state) => setState(targetKey, action, state)}
+        onChange={(state) => void pick(state)}
       />
     </li>
   );

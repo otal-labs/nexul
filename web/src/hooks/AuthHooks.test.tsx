@@ -46,6 +46,7 @@ const me: MeResponse = {
   needs_owner_wizard: false,
   needs_first_login_wizard: true,
   instance_permissions: [],
+  instance_owner: false,
 };
 
 const wrapper = ({ children }: { children: ReactNode }) => {

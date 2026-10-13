@@ -901,7 +901,8 @@ one of them through a role in any workspace they are in, then the area's rules
 for their roles, of which Allow wins, then a rule naming them. An Owner of any
 workspace is never denied one. Only the instance Owner, the Owner of the
 default workspace, writes these rules, so one area is handed out without a
-custom role: "bob manages DNS but not connectors".
+custom role: "bob manages DNS but not connectors". They set them from the Access
+card on each instance Settings entry.
 _Avoid_: Admin area, instance permission (that is the bit, not the place)
 
 **Display name**:

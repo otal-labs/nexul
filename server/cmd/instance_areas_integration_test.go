@@ -111,7 +111,7 @@ func TestInstanceAreas_BobManagesDNSButNotConnectors(t *testing.T) {
 }
 
 // TestInstanceAreas_OnlyTheInstanceOwnerWrites: holding every instance bit, or owning another workspace, writes no
-// instance area's rules, over HTTP or MCP; the instance Owner does.
+// instance area's rules, over HTTP or MCP, nor reads as the instance Owner on /api/auth/me; the instance Owner does.
 func TestInstanceAreas_OnlyTheInstanceOwnerWrites(t *testing.T) {
 	f := newPermFixture(t)
 	withOtherWorkspaceOwner(t, f)
@@ -128,7 +128,13 @@ func TestInstanceAreas_OnlyTheInstanceOwnerWrites(t *testing.T) {
 		assert.Equal(t, forbidden, outcome(err), user)
 		_, err = list.Call(as(user), json.RawMessage(`{"resource_type":"instance_area","resource_id":"dns"}`))
 		assert.Equal(t, forbidden, outcome(err), user)
+		me, err := s.authSvc.Me(as(user), user)
+		require.NoError(t, err)
+		assert.False(t, me.InstanceOwner, "/api/auth/me hides the access sections from %s", user)
 	}
+	me, err := s.authSvc.Me(as(uOwner), uOwner)
+	require.NoError(t, err)
+	assert.True(t, me.InstanceOwner, "/api/auth/me shows the instance Owner the access sections")
 	assert.Equal(t, http.StatusNoContent, status(t, routes, uOwner, http.MethodPut, "/api/permissions", body))
 	assert.Equal(t, http.StatusOK, status(t, routes, uOwner, http.MethodGet, "/api/permissions?resource_type=instance_area&resource_id=dns", ""))
 	assert.Equal(t, http.StatusNotFound, status(t, routes, uOwner, http.MethodPut, "/api/permissions",

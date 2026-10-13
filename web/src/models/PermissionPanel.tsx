@@ -1,9 +1,9 @@
-import { RuleState, type PermissionGrant, type PermissionInfo, type PermissionSource, type RuleChange } from "@/models/Permission";
+import { RuleState, type InstanceArea, type PermissionGrant, type PermissionInfo, type PermissionSource, type RuleChange } from "@/models/Permission";
 import { domainLabel } from "@/models/PermissionLevel";
 
 // What the permissions panel opens on. A doc or folder names its project, a doc its folder, for the header and the add list.
 export interface PanelEntity {
-  type: "doc" | "folder" | "play" | "project" | "computer";
+  type: "doc" | "folder" | "play" | "project" | "computer" | "instance_area";
   id: string;
   name: string;
   workspaceId: string;
@@ -25,12 +25,23 @@ export const computerEntity = (computer: { id: string; name: string }): PanelEnt
   type: "computer", id: computer.id, name: computer.name, workspaceId: "", projectId: "", folderId: "",
 });
 
-// Whom the panel's targets come from: the entity's workspace, or for a computer every workspace the viewer is in.
+// Whom the panel's targets come from: the entity's workspace, every workspace the viewer is in for a computer, the whole instance for an area.
 export const targetScope = (entity: PanelEntity, projectId?: string) => ({
   workspaceId: entity.workspaceId,
   projectId,
   everyWorkspace: entity.type === "computer",
+  instance: entity.type === "instance_area",
 });
+
+// An instance area as the panel opens on it, named as its Settings section shows it.
+export const areaEntity = (area: InstanceArea): PanelEntity => ({
+  type: "instance_area", id: area.key, name: areaName(area), workspaceId: "", projectId: "", folderId: "",
+});
+
+export const areaName = (area: InstanceArea) => area.label.charAt(0).toUpperCase() + area.label.slice(1);
+
+// The entity in a sentence: "Remove from this doc", "On instance area DNS and gateways".
+export const entityWord = (type: PanelEntity["type"]) => (type === "instance_area" ? "instance area" : type);
 
 export interface PanelGroup {
   name: string;
@@ -57,6 +68,7 @@ const panelLabels: Record<PanelEntity["type"], Record<string, string>> = {
   play: { "plays:run": "Run" },
   project: { "projects:open": "See this project", "projects:access": "Manage this project's access", "permissions:write": "Manage each doc's access" },
   computer: { "computers:see": "See this computer", "computers:run_agents": "Run agents", "computers:run_commands": "Run commands" },
+  instance_area: {},
 };
 
 export const permissionLabel = (action: string, catalog: PermissionInfo[] | undefined, type: PanelEntity["type"] = "doc") =>

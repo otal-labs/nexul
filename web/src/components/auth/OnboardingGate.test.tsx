@@ -31,6 +31,7 @@ const me = (overrides: Partial<MeResponse>): MeResponse => ({
   needs_owner_wizard: false,
   needs_first_login_wizard: false,
   instance_permissions: [],
+  instance_owner: false,
   ...overrides,
 });
 

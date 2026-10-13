@@ -12,7 +12,7 @@ import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { usePermissionRules } from "@/hooks/usePermissionRules";
 import { usePermissionPanelStore } from "@/stores/permissionPanelStore";
 import type { PermissionExplanation, PermissionInfo } from "@/models/Permission";
-import { groupActions, parseTarget, permissionLabel, targetScope, type PanelEntity, type PanelGroup } from "@/models/PermissionPanel";
+import { entityWord, groupActions, parseTarget, permissionLabel, targetScope, type PanelEntity, type PanelGroup } from "@/models/PermissionPanel";
 
 // The role behind a person's answers, read from the sources that name one.
 const heldRole = (explanation: PermissionExplanation | undefined) =>
@@ -76,7 +76,7 @@ const RulesFor = ({ targetKey }: { targetKey: string }) => {
               drop(targetKey);
             }}
           >
-            Remove from this {entity.type}
+            Remove from this {entityWord(entity.type)}
           </Button>
         }
       />

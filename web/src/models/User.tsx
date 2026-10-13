@@ -54,6 +54,8 @@ export interface MeResponse {
   needs_first_login_wizard: boolean;
   // Every permission the user holds in at least one workspace: what instance-level areas are checked against.
   instance_permissions: string[];
+  // Whether they own the default workspace: the instance Owner, the one who sets instance areas' rules.
+  instance_owner: boolean;
 }
 
 export interface InstanceSettings {

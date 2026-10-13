@@ -1,4 +1,4 @@
-import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
@@ -6,6 +6,7 @@ import { getDocFoldersKey } from "@/hooks/DocFolderHooks";
 import { getDocsKey } from "@/hooks/DocHooks";
 import { getProjectPeopleKey } from "@/hooks/PeopleHooks";
 import {
+  type InstanceArea,
   type PermissionExplanation,
   type PermissionGrant,
   type PermissionInfo,
@@ -52,14 +53,17 @@ export const useFetchExplanation = (resourceType: string, resourceId: string, ta
     enabled: enabled && resourceId !== "",
   });
 
+const catalogQuery = queryOptions({
+  queryKey: [getPermissionCatalogKey],
+  queryFn: async () => (await api.get<{ permissions: PermissionInfo[]; instance_areas?: InstanceArea[] }>("/api/permissions/catalog")).data,
+  staleTime: Infinity,
+});
+
 // The one source of the permission vocabulary — every grid/checklist in the app renders this, never a hardcoded list.
-export const useFetchPermissionCatalog = () =>
-  useQuery({
-    queryKey: [getPermissionCatalogKey],
-    queryFn: async () =>
-      (await api.get<{ permissions: PermissionInfo[] }>("/api/permissions/catalog")).data.permissions,
-    staleTime: Infinity,
-  });
+export const useFetchPermissionCatalog = () => useQuery({ ...catalogQuery, select: (catalog) => catalog.permissions });
+
+// The instance areas a rule may sit on, from the same catalog read.
+export const useFetchInstanceAreas = () => useQuery({ ...catalogQuery, select: (catalog) => catalog.instance_areas ?? [] });
 
 interface SaveRulesInput {
   resourceType: PanelEntity["type"];

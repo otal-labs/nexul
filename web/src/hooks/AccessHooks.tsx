@@ -44,6 +44,9 @@ export const useHasInstancePermission = (value: string): boolean => {
   return hasPermission(me?.instance_permissions, value);
 };
 
+// Whether the viewer is the instance Owner, who alone sees and sets the rules on instance areas.
+export const useIsInstanceOwner = (): boolean => !!useFetchMe().data?.instance_owner;
+
 // Every Configuration and Settings section open to someone holding anywhere in some workspace and permissions in this one.
 const settingsSectionsFor = (anywhere: string[] | undefined, permissions: string[]): SettingsSection[] => {
   const instanceSections = (Object.keys(INSTANCE_SECTION_PERMISSION) as InstanceSection[]).filter((section) =>

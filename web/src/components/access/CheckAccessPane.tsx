@@ -9,7 +9,7 @@ import { usePanelEntity } from "@/hooks/usePanelEntity";
 import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { usePermissionPanelStore } from "@/stores/permissionPanelStore";
 import type { PermissionAnswer, PermissionInfo } from "@/models/Permission";
-import { groupActions, permissionLabel, targetKey, targetScope, type PanelEntity, type PanelGroup } from "@/models/PermissionPanel";
+import { entityWord, groupActions, permissionLabel, targetKey, targetScope, type PanelEntity, type PanelGroup } from "@/models/PermissionPanel";
 
 interface CheckGroupProps {
   type: PanelEntity["type"];
@@ -46,7 +46,7 @@ const CheckFor = ({ userId }: { userId: string }) => {
       <PanelPaneHeader
         target={person}
         title={`What ${person.name} can do`}
-        line={`On ${entity.type} ${entity.name}, read from every rule that reaches it`}
+        line={`On ${entityWord(entity.type)} ${entity.name}, read from every rule that reaches it`}
       />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
