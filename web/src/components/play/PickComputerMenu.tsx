@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { NoComputersDisplay } from "@/components/play/NoComputersDisplay";
 import { PickComputerGroup } from "@/components/play/PickComputerGroup";
 import { signalActionClass } from "@/components/play/signalRowClass";
 import { useFetchPresence, useListComputers } from "@/hooks/PairingHooks";
@@ -30,7 +30,7 @@ export const PickComputerMenu = ({ item }: PickComputerMenuProps) => {
       <DropdownMenuContent align="start" className="w-64">
         {isPending && <LoadingDisplay label="Loading computers" className="justify-start p-2" />}
         {error && <ErrorDisplay error={error} title="Couldn't load your computers." className="p-3" />}
-        {computers && computers.length === 0 && <NoDataDisplay message="Add a computer in Settings to run plays." size="compact" />}
+        {computers && computers.length === 0 && <NoComputersDisplay />}
         {computers?.map((computer, index) => (
           <PickComputerGroup
             key={computer.id}

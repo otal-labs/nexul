@@ -4,7 +4,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { NoComputersDisplay } from "@/components/play/NoComputersDisplay";
 import { microheaderClass } from "@/components/Microheader";
 import { HarnessComputerField } from "@/components/settings/HarnessComputerField";
 import { HarnessProjectField } from "@/components/settings/HarnessProjectField";
@@ -41,7 +41,7 @@ const RunWhereForm = ({ value, onChange }: RunWhereFormProps) => {
     <div className="space-y-3">
       {isPending && <LoadingDisplay label="Loading computers" className="justify-start p-0" />}
       {error && <ErrorDisplay error={error} title="Couldn't load your computers." />}
-      {computers && computers.length === 0 && <NoDataDisplay message="Add a computer in Settings to run plays." size="compact" />}
+      {computers && computers.length === 0 && <NoComputersDisplay />}
       {computers && computers.length > 0 && (
         <HarnessComputerField
           control={form.control}

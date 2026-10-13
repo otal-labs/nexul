@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { api, errorMessage } from "@/api/client";
 import { getHarnessResolveKey, useFetchHarnessProjects, useFetchHarnessProviders, useHarnessReadiness, useListComputers } from "@/hooks/PairingHooks";
 import { findModel } from "@/models/ModelPick";
-import { canChooseRunLocation, START_IN_SHORT_LABELS, type ProjectLink, type ProjectLinkFormData } from "@/models/Pairing";
+import { canChooseRunLocation, START_IN_SHORT_LABELS, type ProjectLink, type ProjectLinkFormData, type ReadinessLink } from "@/models/Pairing";
 
 export const getProjectLinksKey = "getProjectLinks";
 
@@ -15,15 +15,20 @@ export const useFetchProjectLinks = () =>
     queryFn: async () => (await api.get<{ links: ProjectLink[] }>("/api/pairing/projects")).data.links,
   });
 
-// Why no play can start in the project, "" when one can; undefined until readiness and the caller's links have loaded.
-export const useRunBlockedReason = (projectId: string): string | undefined => {
+// What blocks a play in the project and where it is fixed: no message when one can start; undefined until readiness and
+// the caller's links have loaded.
+export const useRunBlock = (projectId: string): { message: string; link?: ReadinessLink } | undefined => {
   const readiness = useHarnessReadiness(projectId);
   const links = useFetchProjectLinks();
   if (readiness === undefined || links.isPending) return undefined;
-  if (readiness.state === "ready") return "";
+  if (readiness.state === "ready") return { message: "" };
   const linked = links.data?.some((l) => l.project_id === projectId && !!l.computer_id) ?? false;
-  return canChooseRunLocation(readiness, linked) ? "" : readiness.message;
+  if (canChooseRunLocation(readiness, linked)) return { message: "" };
+  return readiness;
 };
+
+// Why no play can start in the project, "" when one can; undefined until readiness and the caller's links have loaded.
+export const useRunBlockedReason = (projectId: string): string | undefined => useRunBlock(projectId)?.message;
 
 // A link changes which computer the caller's turns in that project resolve to, so readiness refetches with it.
 export const invalidateProjectLinks = (client: QueryClient) =>

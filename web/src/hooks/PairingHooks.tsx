@@ -198,14 +198,14 @@ export const useHarnessReadiness = (projectId?: string): HarnessReadiness | unde
   }
   if (!resolve.data.ok) {
     const state = RESOLVE_REASON_TO_STATE[resolve.data.reason ?? ""] ?? "unpaired";
-    return { state, message: HARNESS_READINESS_COPY[state] };
+    return { state, ...HARNESS_READINESS_COPY[state] };
   }
   const computerId = resolve.data.computer_id ?? "";
   if (presence.data?.[computerId] === "rejected") {
-    return { state: "expired", message: HARNESS_READINESS_COPY.expired };
+    return { state: "expired", ...HARNESS_READINESS_COPY.expired };
   }
   if (presence.data?.[computerId] !== "connected") {
-    return { state: "offline", message: HARNESS_READINESS_COPY.offline };
+    return { state: "offline", ...HARNESS_READINESS_COPY.offline };
   }
   return {
     state: "ready",

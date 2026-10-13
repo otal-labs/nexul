@@ -1,4 +1,5 @@
 import type { PlayType } from "@/models/Play";
+import { ADD_COMPUTER_LINK, COMPUTERS_SETTINGS_PATH, type ReadinessLink } from "@/models/Pairing";
 import type { PlayQueue, PlayQueueItem } from "@/models/PlayQueue";
 import { startsDay } from "@/utils/ChatDayUtility";
 
@@ -12,23 +13,29 @@ export const waitingRuns = (queue: PlayQueue | undefined): PlayQueueItem[] =>
 
 export const hasAutoPlaySignals = (queue: PlayQueue | undefined): boolean => !!queue && (queue.paused || waitingRuns(queue).length > 0);
 
-// A gap in the person's computer setup: a few words for the editor's line, and the server's sentence for the rail,
-// which says how to fix it (internal/pairing NotConfiguredError).
-const setupGaps: Record<string, { why: string; sentence: string }> = {
-  unpaired: { why: "no computer paired", sentence: "no computer is paired to run it on; add one in Settings → Computers" },
+// A gap in the person's computer setup: a few words for the editor's line, a sentence for the rail, and where the
+// person fixes it (internal/pairing NotConfiguredError).
+const setupGaps: Record<string, { why: string; sentence: string; link?: ReadinessLink }> = {
+  unpaired: { why: "no computer paired", sentence: "no computer is paired to run it on", link: ADD_COMPUTER_LINK },
   expired_token: {
     why: "computer session expired",
-    sentence: "the paired computer's session expired; pair it again in Settings → Computers",
+    sentence: "the paired computer's session expired",
+    link: { to: COMPUTERS_SETTINGS_PATH, label: "Pair it again" },
   },
   no_default: {
     why: "no T3 project linked",
-    sentence: "no T3 project is picked for this project; link one in Settings → Computers → Projects",
+    sentence: "no T3 project is picked for this project",
+    link: { to: `${COMPUTERS_SETTINGS_PATH}/projects`, label: "Link one" },
   },
   no_default_computer: {
     why: "no default computer",
     sentence: "several computers are paired and none is the default; pick one, and this project's runs use it from now on",
   },
-  setup_required: { why: "computer setup not done", sentence: "the computer's setup isn't done; run it in Settings → Computers" },
+  setup_required: {
+    why: "computer setup not done",
+    sentence: "the computer's setup isn't done",
+    link: { to: COMPUTERS_SETTINGS_PATH, label: "Run setup" },
+  },
 };
 
 // Several computers and no default: the run's person picks where it runs, and picks again while it still waits.
@@ -48,6 +55,10 @@ export const waitingWhy = (item: PlayQueueItem): string => {
 // waitingWhy, with a setup gap as the sentence that says how to fix it.
 export const waitingSentence = (item: PlayQueueItem): string =>
   (item.status === "queued" && setupGaps[item.reason]?.sentence) || waitingWhy(item);
+
+// Where the person the run lands on fixes the setup gap that holds it, if one does.
+export const waitingLink = (item: PlayQueueItem): ReadinessLink | undefined =>
+  item.status === "queued" ? setupGaps[item.reason]?.link : undefined;
 
 const outcomes: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^nobody to run it on: no person caused it and the (ticket|doc) has no developer$/, (m) => `nobody caused it and the ${m[1]} has no developer`],

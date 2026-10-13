@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -54,7 +55,9 @@ const renderSection = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <PlaysRailSection ticket={ticket} />
+      <MemoryRouter>
+        <PlaysRailSection ticket={ticket} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   return client;
@@ -136,12 +139,17 @@ describe("PlaysRailSection auto play signals", () => {
     expect(await screen.findByText("Fix with AI queued")).toBeInTheDocument();
   });
 
-  it("says how to fix a run waiting on its person's computer setup", async () => {
-    mockApi(() => playQueue({ items: [queueItem({ reason: "expired_token" })] }));
+  it("links the person a run waits on to the fix for their computer setup", async () => {
+    mockApi(() => playQueue({ items: [queueItem({ reason: "expired_token" })] }), "u-alice");
     renderSection();
-    expect(
-      await screen.findByText("Alice Moreau · the paired computer's session expired; pair it again in Settings → Computers"),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Pair it again" })).toHaveAttribute("href", "/settings/pairing");
+  });
+
+  it("says only what the gap is to anyone else, since the fix is in the run's person's own settings", async () => {
+    mockApi(() => playQueue({ items: [queueItem({ reason: "expired_token" })] }), "u-bob");
+    renderSection();
+    expect(await screen.findByText(/the paired computer's session expired/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Pair it again" })).not.toBeInTheDocument();
   });
 
   it("offers a pick of computer only to the person the run lands on, and only when no computer is the default", async () => {

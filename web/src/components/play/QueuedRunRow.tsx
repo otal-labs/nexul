@@ -4,6 +4,7 @@ import { useState } from "react";
 import { personLabel } from "@nexul/client-core/person";
 
 import { Button } from "@/components/ui/button";
+import { FixLink } from "@/components/FixLink";
 import { PickComputerMenu } from "@/components/play/PickComputerMenu";
 import { signalActionClass, signalRowClass } from "@/components/play/signalRowClass";
 import { useFetchMe } from "@/hooks/AuthHooks";
@@ -13,7 +14,7 @@ import { leavingRowClass } from "@/hooks/useRowGlide";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import type { PlayQueueItem } from "@/models/PlayQueue";
 import { cn } from "@/lib/utils";
-import { pickingComputer, waitingSentence } from "@/utils/PlayQueueUtility";
+import { pickingComputer, waitingLink, waitingSentence } from "@/utils/PlayQueueUtility";
 
 interface QueuedRunRowProps {
   item: PlayQueueItem;
@@ -30,6 +31,7 @@ export const QueuedRunRow = ({ item, onLeave }: QueuedRunRowProps) => {
   const cancel = useCancelQueuedRun();
   const [leaving, setLeaving] = useState(false);
   const mine = me?.user.id === item.person_id;
+  const link = waitingLink(item);
   const canCancel = item.status === "queued" && (mine || canWrite);
 
   const onCancel = () => {
@@ -45,6 +47,12 @@ export const QueuedRunRow = ({ item, onLeave }: QueuedRunRowProps) => {
         <p className="[overflow-wrap:anywhere]">{item.play_label} queued</p>
         <p className="text-muted-foreground [overflow-wrap:anywhere]">
           {person} · {waitingSentence(item)}
+          {mine && link && (
+            <>
+              {" · "}
+              <FixLink {...link} />
+            </>
+          )}
         </p>
         {mine && pickingComputer(item) && <PickComputerMenu item={item} />}
       </div>

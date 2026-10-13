@@ -6,11 +6,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DnsOnboardingPage } from "@/pages/DnsOnboardingPage";
 
-const access = vi.hoisted(() => ({ sections: ["connectors"] as string[] }));
-vi.mock("@/hooks/AccessHooks", () => ({ useCanOpenSection: (section: string) => access.sections.includes(section) }));
+const access = vi.hoisted(() => ({ permissions: ["connectors:write"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useHasInstancePermission: (value: string) => access.permissions.includes(value) }));
 
 beforeEach(() => {
-  access.sections = ["connectors"];
+  access.permissions = ["connectors:write"];
 });
 
 const mocks = vi.hoisted(() => ({
@@ -86,7 +86,7 @@ describe("DnsOnboardingPage", () => {
     expect(await screen.findByText(/connect cloudflare first/i)).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: /bare public address/i })).not.toBeInTheDocument();
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: /^connect cloudflare$/i }));
+    await user.click(await screen.findByRole("link", { name: /^connect cloudflare$/i }));
     expect(await screen.findByText("settings-page")).toBeInTheDocument();
   });
 
@@ -121,14 +121,15 @@ describe("DnsOnboardingPage", () => {
     expect(await screen.findByText("home-page")).toBeInTheDocument();
   });
 
-  it("offers no Settings button to a viewer who can't open Connectors", async () => {
-    access.sections = [];
+  it("tells a viewer who can't write Connectors who to ask instead of offering a link", async () => {
+    access.permissions = [];
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/connectors") return { data: cloudflareConnector(false) };
       return { data: [] };
     });
     renderPage();
     expect(await screen.findByText(/connect cloudflare first/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^connect cloudflare$/i })).not.toBeInTheDocument();
+    expect(await screen.findByText("Ask the instance owner to connect Cloudflare.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^connect cloudflare$/i })).not.toBeInTheDocument();
   });
 });

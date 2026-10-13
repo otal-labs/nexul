@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -94,7 +95,9 @@ const renderMenu = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <PlaysMenu workspaceId="ws-1" projectId="p-1" docId="doc-1" />
+      <MemoryRouter>
+        <PlaysMenu workspaceId="ws-1" projectId="p-1" docId="doc-1" />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 };
@@ -165,7 +168,8 @@ describe("PlaysMenu", () => {
     renderMenu();
 
     await user.click(await screen.findByRole("button", { name: /Plays/ }));
-    expect(await screen.findAllByText("Add a computer in Settings to run plays.")).toHaveLength(1);
+    expect(await screen.findAllByText("No computer is paired to run plays.")).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Add a computer" })).toHaveAttribute("href", "/settings/pairing");
     expect(screen.getByRole("button", { name: /To tickets via AI/ })).toBeDisabled();
   });
 
