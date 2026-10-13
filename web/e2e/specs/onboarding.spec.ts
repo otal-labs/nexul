@@ -12,12 +12,14 @@ afterAll(() => {
 });
 
 describe("onboarding wizards", () => {
-  it("first-login wizard: confirms and continues into the app", async () => {
+  it("welcome wizard: opens at first sign-in, and finishing later continues into the app", async () => {
     updateUser({ first_login_done: 0 });
     const page = await authedPage("/docs");
-    await page.waitForURL("**/onboarding/profile");
-    await expect(page.getByRole("heading", { name: /welcome/i })).toBeVisible();
+    await page.waitForURL("**/wizard/welcome?step=profile");
+    await expect(page.getByRole("heading", { name: "Introduce yourself" })).toBeVisible();
     await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await page.waitForURL((url) => url.searchParams.get("step") !== "profile");
+    await page.getByRole("button", { name: "Finish later", exact: true }).click();
     await page.waitForURL("**/");
     await expect(page.getByRole("heading", { name: /docs become tickets/i })).toBeVisible();
   });

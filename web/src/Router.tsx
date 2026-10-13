@@ -22,7 +22,6 @@ import {
   DeployPage,
   DnsOnboardingPage,
   DocsPage,
-  FirstLoginWizardPage,
   HomePage,
   InboxPage,
   InterviewPage,
@@ -38,6 +37,7 @@ import {
   StackPage,
   TicketPage,
   TopologyPage,
+  WelcomeWizardPage,
   WorkspaceEntryPage,
   YourSettingsPage,
   preloadMatchedPages,
@@ -121,7 +121,7 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
       ...(loggedIn
         ? [
             { path: "/wizard/onboarding/owner", element: <OwnerWizardPage /> },
-            { path: "/wizard/onboarding/profile", element: <FirstLoginWizardPage /> },
+            { path: "/wizard/welcome", element: <WelcomeWizardPage /> },
             {
               element: (
                 <OnboardingGate>

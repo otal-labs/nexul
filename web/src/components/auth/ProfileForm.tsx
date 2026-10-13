@@ -12,7 +12,7 @@ interface ProfileFormProps {
   onSaved?: () => void;
 }
 
-// The first-login wizard's stacked form; Settings → Profile lays the same fields out as rows (ProfileSettingsForm).
+// The wizards' stacked form; Settings → Profile lays the same fields out as rows (ProfileSettingsForm).
 export const ProfileForm = ({ user, submitLabel, submitClassName, onSaved }: ProfileFormProps) => {
   const { form, fileInputRef, name, avatarOverrideUrl, previewSrc, avatarError, onFileChange, removeAvatar, submit } =
     useProfileForm(user, onSaved);
