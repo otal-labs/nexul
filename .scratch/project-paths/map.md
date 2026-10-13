@@ -32,8 +32,10 @@ decision tickets they wait on are resolved.
   - "Add service" on a project with exactly one undeployed repository goes
     straight to that repository instead of asking for it again, and the
     project shows a "Deploy this repository" prompt while one is waiting.
-- Look and copy tickets go through `design-mode` and are reacted to by the
-  owner; technical questions are answered in the ticket and not grilled.
+- Look and copy tickets go through `auto-design-mode` (the owner's call on
+  2026-10-13, replacing "reacted to by the owner"): the agent scores, picks
+  and reports the runner-up. Technical questions are answered in the ticket
+  and not grilled.
 - Web only, built at 768px and verified at 768, 1024, and 1440px. Read
   `practices/react-guide.md` and `practices/design-language.md` before any
   web edit.
@@ -46,6 +48,8 @@ decision tickets they wait on are resolved.
 ## Decisions so far
 
 - [How attaching without deploying and the Add-service shortcut work](issues/03-attach-and-shortcut-mechanics.md): no server change; attach through the existing repos endpoint after the scan, save the tests answer on every exit, derive "undeployed" in the web, Done renders on the project.
+- [How the Repository step's choices and the early Done screens look](issues/01-the-repository-step-choices.md): the picked row opens with Attach without deploying and Deploy it, "No repository yet →" under the list, skipped deploy steps fold into one row on Done with Docs, Board and Invite people next; runner-up footer buttons
+- [Where "Deploy this repository" shows on a project](issues/02-the-deploy-this-repository-prompt.md): one quiet row per waiting repository in the project's Services card, not dismissable, gone once deployed; runner-up the Repositories row
 
 ## Not yet specified
 
