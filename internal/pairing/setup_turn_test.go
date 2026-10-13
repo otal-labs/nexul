@@ -229,7 +229,7 @@ func TestStartSetup_FreshComputer_ConfirmsEveryProviderAndAPlayRuns(t *testing.T
 	run := f.start(t)
 
 	assert.Equal(t, []SetupProvider{{Provider: "codex", Name: "Codex"}, {Provider: "claudeagent", Name: "Claude"}}, run.Providers, "one turn per driver, in the harness's order")
-	assert.Equal(t, []string{"Nexul setup: Codex", "Nexul setup check: Codex", "Nexul setup: Claude", "Nexul setup check: Claude"}, f.sessionTitles())
+	assert.ElementsMatch(t, []string{"Nexul setup: Codex", "Nexul setup check: Codex", "Nexul setup: Claude", "Nexul setup check: Claude"}, f.sessionTitles(), "the providers run side by side")
 	turns := f.turns(run.RunID)
 	require.Len(t, turns, 2)
 	for _, turn := range turns {
@@ -291,19 +291,19 @@ func TestStartSetup_Instructions_EveryConfirmSessionConfirmsTheComputer(t *testi
 	f := newSetupFixture(t)
 	f.start(t)
 
-	f.mu.Lock()
-	prompts := append([]string(nil), f.prompts...)
-	f.mu.Unlock()
+	prompts := f.promptsByTitle()
 	require.Len(t, prompts, 4)
-	assert.Regexp(t, `Bearer dep_\d{43}`, prompts[0])
-	assert.Contains(t, prompts[0], "https://nexul.example.com/mcp")
-	assert.Contains(t, prompts[0], "[mcp_servers.nexul]")
-	assert.Contains(t, prompts[2], "claude mcp add --scope user --transport http nexul")
-	assert.Contains(t, prompts[0], "name: nexul-memory")
-	assert.Contains(t, prompts[1], "confirm the computer itself")
-	assert.Contains(t, prompts[3], "confirm the computer itself")
-	assert.NotContains(t, prompts[0], "computer_setup_update", "the prepare session cannot reach Nexul's MCP server yet")
-	assert.Contains(t, prompts[3], `provider "claudeAgent"`)
+	codexPrepare, codexCheck := prompts["Nexul setup: Codex"], prompts["Nexul setup check: Codex"]
+	assert.Regexp(t, `Bearer dep_\d{43}`, codexPrepare)
+	assert.Contains(t, codexPrepare, "https://nexul.example.com/mcp")
+	assert.Contains(t, codexPrepare, "[mcp_servers.nexul]")
+	assert.Contains(t, prompts["Nexul setup: Claude"], "claude mcp add --scope user --transport http nexul")
+	assert.Contains(t, codexPrepare, "name: nexul-memory")
+	assert.Contains(t, codexPrepare, "move it into place with one rename", "turns side by side never see a half-copied skill")
+	assert.Contains(t, codexCheck, "confirm the computer itself")
+	assert.Contains(t, prompts["Nexul setup check: Claude"], "confirm the computer itself")
+	assert.NotContains(t, codexPrepare, "computer_setup_update", "the prepare session cannot reach Nexul's MCP server yet")
+	assert.Contains(t, prompts["Nexul setup check: Claude"], `provider "claudeAgent"`)
 }
 
 func TestStartSetup_Transcript_IsSavedAndStreamedWithoutTheToken(t *testing.T) {
@@ -509,7 +509,7 @@ func TestStartSetup_ErrorPaths(t *testing.T) {
 			require.ErrorIs(t, call(t.Context(), f), tt.wantErr)
 			f.svc.setupRuns.Wait()
 			assert.Empty(t, f.sessionTitles(), "a refused start runs no turn")
-			assert.True(t, f.svc.claimSetup(f.computer.ID), "a refused start leaves the computer free")
+			assert.True(t, f.svc.claimSetup(f.computer.ID, []string{"codex", "claudeagent"}), "a refused start leaves the computer free")
 		})
 	}
 }
@@ -534,6 +534,47 @@ func TestStartSetup_WhileRunning_IsAConflict(t *testing.T) {
 	_, err = f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, nil, "", nil)
 	require.NoError(t, err, "a finished run frees the computer")
 	f.svc.setupRuns.Wait()
+}
+
+func TestStartSetup_Providers_RunSideBySideAndEachFreesItsOwnDriver(t *testing.T) {
+	t.Parallel()
+	f := newSetupFixture(t)
+	claudeStarted, releaseCodex := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	start := f.exch.StartTurnFn
+	f.exch.StartTurnFn = func(ctx context.Context, target harness.Target, title string, prompts harness.TurnPrompts) (harness.StartResult, error) {
+		if target.Provider == "claude" {
+			once.Do(func() { close(claudeStarted) })
+		}
+		if title == "Nexul setup: Codex" {
+			<-claudeStarted
+			<-releaseCodex
+		}
+		return start(ctx, target, title, prompts)
+	}
+	run, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, nil, "", nil)
+	require.NoError(t, err)
+	<-claudeStarted
+
+	require.Eventually(t, func() bool { return f.turns(run.RunID)["claudeagent"].State == SetupTurnConfirmed }, 5*time.Second, 5*time.Millisecond,
+		"Claude finishes while Codex is still in its first session")
+	_, err = f.svc.RetrySetupProvider(t.Context(), "u1", f.computer.ID, "codex", "", nil, "")
+	require.ErrorIs(t, err, apperrs.ErrConflict, "the running driver stays claimed")
+	rerun, err := f.svc.RetrySetupProvider(t.Context(), "u1", f.computer.ID, "claudeAgent", "", nil, "")
+	require.NoError(t, err, "a finished driver can run again beside the one still running")
+
+	close(releaseCodex)
+	f.svc.setupRuns.Wait()
+	assert.Equal(t, SetupTurnConfirmed, f.turns(rerun.RunID)["claudeagent"].State)
+	finished := f.finished(t, run.RunID)
+	assert.ElementsMatch(t, []SetupTurnOutcome{
+		{Provider: "codex", State: SetupTurnConfirmed, Status: "Confirmed with 2 skills"},
+		{Provider: "claudeagent", State: SetupTurnConfirmed, Status: "Confirmed with 2 skills"},
+	}, finished.Providers, "the run reports once, after its last provider ends")
+	f.tokens.mu.Lock()
+	defer f.tokens.mu.Unlock()
+	assert.Equal(t, 1, f.tokens.seq, "the rerun reuses the run's token")
+	assert.Empty(t, f.tokens.revoked, "no turn's token was revoked under it")
 }
 
 func TestSetupTurn_SaveFailure_IsLoggedAndTheRunCarriesOn(t *testing.T) {
@@ -725,6 +766,17 @@ func TestGetSetup_Turns_ShowEachProviderNewestTurnOverHTTP(t *testing.T) {
 	require.ErrorIs(t, err, errBoom)
 }
 
+// promptsByTitle is each session's prompt keyed by its title, since providers run side by side in no fixed order.
+func (f *setupFixture) promptsByTitle() map[string]string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := map[string]string{}
+	for i, title := range f.titles {
+		out[title] = f.prompts[i]
+	}
+	return out
+}
+
 func (f *setupFixture) sessionModels() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -749,7 +801,7 @@ func TestStartSetup_PickedModels_RunBothSessionsOnThemAndAreRecorded(t *testing.
 		{Provider: "codex", Name: "Codex", Model: "gpt-mini", ModelOptions: options["codex"]},
 		{Provider: "claudeagent", Name: "Claude"},
 	}, run.Providers)
-	assert.Equal(t, []string{
+	assert.ElementsMatch(t, []string{
 		"codex-main=gpt-mini reasoningEffort:high fastMode:true", "codex-main=gpt-mini reasoningEffort:high fastMode:true", "claude=", "claude=",
 	}, f.sessionModels(), "both sessions carry the picked options; an unpicked provider runs on its own default, never the pairing defaults' model")
 	turns := f.turns(run.RunID)
@@ -802,6 +854,39 @@ func TestSaveSetupChoices_CleansAndKeepsThemForTheNextOpen(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
 	_, err = f.svc.SaveSetupChoices(t.Context(), "u2", f.computer.ID, SetupChoices{})
 	require.ErrorIs(t, err, apperrs.ErrNotFound, "another user's computer is not found, never saved")
+}
+
+func TestSwitchedOffProvider_IsHiddenRefusedAndNeverTheDefault(t *testing.T) {
+	t.Parallel()
+	f := newSetupFixture(t)
+	f.start(t)
+	_, err := f.svc.SaveSetupChoices(t.Context(), "u1", f.computer.ID, SetupChoices{Skipped: []string{"codex"}})
+	require.NoError(t, err)
+
+	options, err := f.svc.ListProviders(t.Context(), "u1", f.computer.ID)
+	require.NoError(t, err)
+	byID := map[string]ProviderOption{}
+	for _, o := range options {
+		byID[o.ID] = o
+	}
+	assert.True(t, byID["codex-main"].Skipped, "the picker leaves it out")
+	assert.True(t, byID["codex-main"].NeedsSetup, "a confirmed but switched-off provider is not runnable")
+	assert.False(t, byID["claude"].Skipped)
+	assert.False(t, byID["claude"].NeedsSetup)
+
+	err = f.resolveForPlay(t, "codex-main")
+	var nc *NotConfiguredError
+	require.ErrorAs(t, err, &nc)
+	assert.Equal(t, ReasonSetupRequired, nc.Reason)
+	assert.Equal(t, "@Agent can't use Codex on Laptop: it's switched off. Switch it on in its setup in Settings → Computers.", err.Error())
+
+	target, err := f.svc.ResolveTargetOverride(t.Context(), "u1", "", f.computer.ID, "", "", nil)
+	require.NoError(t, err)
+	assert.Equal(t, "claude", target.Provider, "the computer default skips the switched-off first provider")
+
+	_, err = f.svc.SaveSetupChoices(t.Context(), "u1", f.computer.ID, SetupChoices{Skipped: []string{}})
+	require.NoError(t, err)
+	require.NoError(t, f.resolveForPlay(t, "codex-main"), "switching it back on keeps its confirmation")
 }
 
 func TestStartSetup_OnlyNamedProviders_RunsThoseAndRemembersTheRest(t *testing.T) {
@@ -868,9 +953,16 @@ func TestStartSetup_ToolCallUpdates_AreOneStep(t *testing.T) {
 	assert.Equal(t, []string{"Ran command", "Ran command"}, calls, "one step per tool call in each session, at its latest state")
 	f.bus.mu.Lock()
 	defer f.bus.mu.Unlock()
-	assert.Equal(t, "call-Nexul setup: Codex", f.bus.frames[0].CallID)
-	assert.Equal(t, f.bus.frames[0].CallID, f.bus.frames[1].CallID, "the live frames name the call, so the dialog updates its line")
-	assert.Equal(t, []string{"tool_call", "tool_result"}, []string{f.bus.frames[0].Kind, f.bus.frames[1].Kind}, "the dialog spins an open call until its result lands")
+	var frames []SetupTurnActivityEvent
+	for _, frame := range f.bus.frames {
+		if frame.TurnID == codex.ID {
+			frames = append(frames, frame)
+		}
+	}
+	require.GreaterOrEqual(t, len(frames), 2)
+	assert.Equal(t, "call-Nexul setup: Codex", frames[0].CallID)
+	assert.Equal(t, frames[0].CallID, frames[1].CallID, "the live frames name the call, so the dialog updates its line")
+	assert.Equal(t, []string{"tool_call", "tool_result"}, []string{frames[0].Kind, frames[1].Kind}, "the dialog spins an open call until its result lands")
 }
 
 func TestStartSetup_ClosedMessages_StreamAsTextStepsBetweenTheTools(t *testing.T) {
@@ -901,9 +993,17 @@ func TestStartSetup_ClosedMessages_StreamAsTextStepsBetweenTheTools(t *testing.T
 	}
 	session := []string{"text:I'll check both skill folders first.", "tool_call:writing the config", "text:All set."}
 	assert.Equal(t, append(session, session...), kinds, "each closed message is a step where it was said in both Codex sessions, a streaming one is not")
+	codexTurn := f.turns(run.RunID)["codex"].ID
 	f.bus.mu.Lock()
 	defer f.bus.mu.Unlock()
-	first, tool := f.bus.frames[0], f.bus.frames[1]
+	var codexFrames []SetupTurnActivityEvent
+	for _, frame := range f.bus.frames {
+		if frame.TurnID == codexTurn {
+			codexFrames = append(codexFrames, frame)
+		}
+	}
+	require.GreaterOrEqual(t, len(codexFrames), 2)
+	first, tool := codexFrames[0], codexFrames[1]
 	assert.Equal(t, "I'll check both skill folders first.", first.Text, "a text frame carries the whole sentence for the prose")
 	assert.False(t, first.At.IsZero())
 	assert.Equal(t, "bash", tool.Tool, "the dialog tells a command from a tool by its name")

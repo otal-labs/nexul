@@ -37,14 +37,12 @@ const SetupOutcome = ({ row }: SetupOutcomeProps) => (
 
 interface SetupTranscriptProps {
   row: SetupRunRow;
-  runningName: string | undefined;
 }
 
 // One provider's turn read like a play run's, newest at the bottom, in a well under its row; a live turn scrolls in a fixed height.
-export const SetupTranscript = ({ row, runningName }: SetupTranscriptProps) => {
+export const SetupTranscript = ({ row }: SetupTranscriptProps) => {
   const steps = useSetupActivityStore((s) => (row.turnId && s.steps[row.turnId]) || EMPTY);
   const segments = segmentSetupTurn(steps, row.state === "running");
-  const waiting = runningName ? `Waiting for its turn. ${runningName} is setting up now.` : "Waiting for its turn.";
   return (
     <section aria-label={`${row.name} transcript`} className={cn("flex min-h-0 flex-col rounded-md bg-surface-2", steps.length > 0 && "h-60")}>
       <MessageScrollerProvider key={row.provider} autoScroll>
@@ -57,7 +55,7 @@ export const SetupTranscript = ({ row, runningName }: SetupTranscriptProps) => {
                 </MessageScrollerItem>
               ))}
               {row.state === "running" && steps.length === 0 && <LoadingDisplay label={row.status} className="justify-start p-0" />}
-              {row.state === "queued" && <EmptyRow className="text-left">{waiting}</EmptyRow>}
+              {row.state === "queued" && <EmptyRow className="text-left">Starting its turn.</EmptyRow>}
               {(row.state === "confirmed" || row.state === "failed") && (
                 <MessageScrollerItem messageId={`${row.provider}-outcome`} className={cn(SEGMENT_ITEM, steps.length > 0 && "mt-2 border-t border-border px-1 pt-3")}>
                   <SetupOutcome row={row} />

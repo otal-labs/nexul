@@ -203,7 +203,7 @@ describe("ComputersSection", () => {
     expect(await screen.findByText("Needs setup")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^set up$/i }));
     expect(await screen.findByRole("dialog", { name: /set up home/i })).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: /start setup/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /set up all/i })).toBeInTheDocument();
   });
 
   it("opens the named computer's Set up step from the setup link, and closing it forgets the link", async () => {

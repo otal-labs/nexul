@@ -56,6 +56,7 @@ const PROVIDERS = {
         driver: "claudeAgent",
         name: "Claude",
         needs_setup: false,
+        skipped: false,
         models: [
           {
             slug: "claude-opus-5-5",
@@ -91,7 +92,16 @@ const PROVIDERS = {
         driver: "opencode",
         name: "OpenCode",
         needs_setup: true,
+        skipped: false,
         models: [{ slug: "github-copilot/claude-haiku-4.5", name: "Claude Haiku 4.5", sub_provider: "GitHub Copilot" }],
+      },
+      {
+        id: "codex",
+        driver: "codex",
+        name: "Codex",
+        needs_setup: true,
+        skipped: true,
+        models: [{ slug: "gpt-switched-off", name: "GPT Switched Off" }],
       },
     ],
   },
@@ -116,14 +126,23 @@ describe("HarnessProviderModelFields", () => {
     const list = await openPicker(user);
     expect(within(list).getByRole("option", { name: "Computer default" })).toBeInTheDocument();
     expect(within(within(list).getByRole("group", { name: "Legacy models" })).getByRole("option", { name: "Claude Fable 5" })).toBeInTheDocument();
-    expect(within(list).getByRole("option", { name: "Claude Haiku 4.5" })).toHaveAccessibleDescription("OpenCode · GitHub Copilot · needs setup");
+    const notSetUp = within(list).getByRole("option", { name: "Claude Haiku 4.5" });
+    expect(notSetUp).toHaveAccessibleDescription("OpenCode · GitHub Copilot · Setup required");
+    expect(notSetUp).toHaveAttribute("aria-disabled", "true");
+    expect(within(list).queryByRole("option", { name: "GPT Switched Off" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Codex" })).not.toBeInTheDocument();
 
-    await user.type(screen.getByRole("combobox", { name: "Search model" }), "copilot");
+    const search = screen.getByRole("combobox", { name: "Search model" });
+    await user.type(search, "copilot");
     expect(within(list).getAllByRole("option").map((o) => o.getAttribute("aria-label"))).toEqual(["Claude Haiku 4.5"]);
     await user.keyboard("{Enter}");
+    expect(screen.getByTestId("pick")).toHaveTextContent("/ []");
 
-    expect(screen.getByTestId("pick")).toHaveTextContent("opencode/github-copilot/claude-haiku-4.5 []");
-    expect(screen.getByRole("combobox", { name: "Model" })).toHaveTextContent("Claude Haiku 4.5");
+    await user.clear(search);
+    await user.type(search, "opus");
+    await user.keyboard("{Enter}");
+    expect(screen.getByTestId("pick")).toHaveTextContent("claudeAgent/claude-opus-5-5 []");
+    expect(screen.getByRole("combobox", { name: "Model" })).toHaveTextContent("Claude Opus 5.5");
   });
 
   it("narrows to one provider from the rail and keeps starred models under favourites", async () => {

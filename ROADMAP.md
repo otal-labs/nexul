@@ -253,7 +253,9 @@ pairing done through the app's own connection, then setup. No Cloudflare
 tunnel or domain is involved, and the app keeps T3 Code paired and running.
 Linux, macOS and Windows work today, and a computer paired through a tunnel
 or by URL moves to the app from its row, keeping its links, setup and
-history; the tunnel is deleted once the app has paired it. Tracked in
+history; the tunnel is deleted once the app has paired it. Setup gives each
+provider its own switch and run, and sets them up side by side; a provider
+switched off is left out of plays and chat. Tracked in
 `.scratch/personal-runners/` (ADR 0146).
 
 Planned: **clarifying a doc**. A client writes what they need in a doc;

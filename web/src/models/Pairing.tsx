@@ -176,7 +176,7 @@ export const setupRunRows = (turns: SetupTurnSummary[], run: SetupRun | undefine
   const inRun = (run?.providers ?? []).map((p): SetupRunRow => {
     const turn = turns.find((t) => t.provider === p.provider && t.run_id === run?.run_id);
     if (turn) return turnRow(turn);
-    return { provider: p.provider, name: p.name, kind: "setup", state: "queued", status: "Waiting for its turn", model: p.model ?? "" };
+    return { provider: p.provider, name: p.name, kind: "setup", state: "queued", status: "Starting", model: p.model ?? "" };
   });
   const rest = turns.filter((t) => !inRun.some((r) => r.provider === t.provider)).map(turnRow);
   return [...inRun, ...rest];
@@ -211,7 +211,9 @@ export const setupModelChoices = (
 ): SetupModelChoice[] =>
   providers.flatMap((p, i) => {
     if (providers.findIndex((o) => o.driver.toLowerCase() === p.driver.toLowerCase()) !== i) return [];
-    return [{ provider: p.driver.toLowerCase(), name: p.name, instance: p, ...preselect(p, defaults, saved) }];
+    // Setup offers every model of every provider, set up or not.
+    const instance = { ...p, needs_setup: false, skipped: false };
+    return [{ provider: p.driver.toLowerCase(), name: p.name, instance, ...preselect(p, defaults, saved) }];
   });
 
 // The row that opens by itself: the running one, else the first failure; a settled run stays folded.
@@ -219,6 +221,43 @@ export const openSetupRow = (rows: SetupRunRow[]): SetupRunRow | undefined =>
   rows.find((r) => r.state === "running") ?? rows.find((r) => r.state === "failed");
 
 export const setupRunning = (rows: SetupRunRow[]) => rows.some((r) => r.state === "running" || r.state === "queued");
+
+// One provider in the Set up step: its switch, its model, and where its setup stands; unset has never been confirmed.
+export interface SetupProviderRow {
+  provider: string;
+  name: string;
+  driver: string;
+  on: boolean;
+  state: SetupRunRow["state"] | "unset";
+  // Absent when T3 Code no longer lists the provider: its last turn still shows, with nothing to pick or run.
+  choice?: SetupModelChoice;
+  run?: SetupRunRow;
+}
+
+// Every provider T3 Code lists, in its order, then any that only a past turn remembers.
+export const setupProviderRows = (choices: SetupModelChoice[], runRows: SetupRunRow[], setup: ComputerSetup): SetupProviderRow[] => {
+  const confirmed = (provider: string) => setup.providers.some((p) => p.provider === provider && p.confirmed_at);
+  const row = (provider: string, name: string, driver: string, choice?: SetupModelChoice): SetupProviderRow => {
+    const run = runRows.find((r) => r.provider === provider);
+    const state = run?.state ?? (confirmed(provider) ? "confirmed" : "unset");
+    return { provider, name, driver, on: !setup.skipped_providers.includes(provider), state, ...(choice && { choice }), ...(run && { run }) };
+  };
+  const listed = choices.map((c) => row(c.provider, c.name, c.instance.driver, c));
+  const gone = runRows.filter((r) => !choices.some((c) => c.provider === r.provider)).map((r) => row(r.provider, r.name, r.provider));
+  return [...listed, ...gone];
+};
+
+// The muted line under a provider's name.
+export const setupProviderLine = (row: SetupProviderRow) => {
+  if (!row.on) return "Off · plays leave it out";
+  if (row.state === "unset") return "Not set up yet";
+  if (row.state === "queued") return "Starting";
+  if (row.state === "confirmed") return row.run?.kind === "skills" ? "Confirmed · skills updated" : "Confirmed";
+  return row.run?.status || SETUP_STATE_LABEL[row.state];
+};
+
+// Waiting on the person: switched on and either never set up or failed.
+export const needsSetup = (row: SetupProviderRow) => row.on && (row.state === "unset" || row.state === "failed");
 
 export interface ProviderSetupLine {
   provider: string;
@@ -389,7 +428,10 @@ export interface HarnessProvider {
   driver: string;
   name: string;
   models: HarnessProviderModel[];
+  // Shown but not runnable until setup confirms it.
   needs_setup: boolean;
+  // Switched off in the Set up step: pickers leave it out.
+  skipped: boolean;
 }
 
 export interface PairingLink {

@@ -76,12 +76,12 @@ func TestResolveTarget_SetupGate_NeedsComputerAndProviderConfirmed(t *testing.T)
 		name      string
 		overall   bool
 		providers []string
-		refused   bool
+		want      string
 	}{
-		{"nothing confirmed", false, nil, true},
-		{"provider confirmed but not the computer", false, []string{"codex"}, true},
-		{"computer confirmed but not the provider", true, []string{"claudeAgent"}, true},
-		{"both confirmed", true, []string{"codex"}, false},
+		{"nothing confirmed", false, nil, ""},
+		{"provider confirmed but not the computer", false, []string{"codex"}, ""},
+		{"computer confirmed and only a later provider", true, []string{"claudeAgent"}, "claude"},
+		{"both confirmed", true, []string{"codex"}, "codex-main"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -95,13 +95,13 @@ func TestResolveTarget_SetupGate_NeedsComputerAndProviderConfirmed(t *testing.T)
 			}
 
 			target, err := f.svc.ResolveTarget(t.Context(), "u1", "")
-			if tt.refused {
+			if tt.want == "" {
 				requireSetupRefusal(t, err, "Codex")
 				assert.Nil(t, target)
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, "codex-main", target.Provider, "an empty provider is pinned to the harness default it was checked as")
+			assert.Equal(t, tt.want, target.Provider, "an empty provider is pinned to the first confirmed one, which is the one checked")
 		})
 	}
 }

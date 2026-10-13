@@ -17,7 +17,7 @@ interface ModelPickerRowProps {
 
 // One row: the name with a New mark, the provider line under it, then the check, the shortcut, and a favourite star.
 export const ModelPickerRow = ({ id, entry, selected, highlighted, shortcut, onPick, onHover }: ModelPickerRowProps) => {
-  const { name, source, driver, isNew, favouriteKey } = entry;
+  const { name, source, driver, isNew, favouriteKey, blocked } = entry;
   const favourite = useModelFavouritesStore((s) => !!favouriteKey && s.favourites.includes(favouriteKey));
   const toggle = useModelFavouritesStore((s) => s.toggle);
   return (
@@ -29,6 +29,7 @@ export const ModelPickerRow = ({ id, entry, selected, highlighted, shortcut, onP
         aria-label={name}
         {...(source && { "aria-describedby": `${id}-source` })}
         aria-selected={selected}
+        aria-disabled={blocked || undefined}
         tabIndex={-1}
         // onMouseDown beats the search field's blur, keeping click-to-pick reliable.
         onMouseDown={(e) => {
@@ -36,7 +37,7 @@ export const ModelPickerRow = ({ id, entry, selected, highlighted, shortcut, onP
           onPick();
         }}
         onMouseMove={onHover}
-        className="flex min-w-0 flex-1 cursor-default items-center gap-2 py-1.5 pl-2 text-left outline-none"
+        className={cn("flex min-w-0 flex-1 cursor-default items-center gap-2 py-1.5 pl-2 text-left outline-none", blocked && "opacity-50")}
       >
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-1.5">

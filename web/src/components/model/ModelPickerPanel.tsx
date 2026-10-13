@@ -28,6 +28,7 @@ export const ModelPickerPanel = ({ providers, value, allowDefault, label, onPick
     () => pickerEntries(providers, filter, query, favourites, allowDefault),
     [providers, filter, query, favourites, allowDefault],
   );
+  const railProviders = providers.filter((p) => !p.skipped);
   const current = entries.filter((e) => !e.legacy);
   const legacy = entries.filter((e) => e.legacy);
 
@@ -37,7 +38,7 @@ export const ModelPickerPanel = ({ providers, value, allowDefault, label, onPick
   };
   const pickAt = (index: number) => {
     const entry = entries[index];
-    if (entry) onPick(entry.pick);
+    if (entry && !entry.blocked) onPick(entry.pick);
   };
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     const digit = Number(e.key);
@@ -57,16 +58,16 @@ export const ModelPickerPanel = ({ providers, value, allowDefault, label, onPick
       selected={entry.pick.provider === value.provider && entry.pick.model === value.model}
       highlighted={index === highlighted}
       shortcut={index < 9 ? `${SHORTCUT_KEY}${index + 1}` : undefined}
-      onPick={() => onPick(entry.pick)}
+      onPick={() => pickAt(index)}
       onHover={() => setHighlighted(index)}
     />
   );
 
   return (
     <div className="flex max-h-96">
-      {providers.length > 1 && (
+      {railProviders.length > 1 && (
         <ModelPickerRail
-          providers={providers}
+          providers={railProviders}
           filter={filter}
           onFilter={(next) => {
             setFilter(next);
