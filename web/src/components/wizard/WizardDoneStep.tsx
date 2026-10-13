@@ -2,15 +2,18 @@ import { useNavigate } from "react-router";
 import { useShallow } from "zustand/react/shallow";
 
 import { Button } from "@/components/ui/button";
+import { WizardDoneHeadline } from "@/components/wizard/WizardDoneHeadline";
 import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { WizardInterviewOffer } from "@/components/wizard/WizardInterviewOffer";
 import { WizardLeftoversSection } from "@/components/wizard/WizardLeftoversSection";
+import { WizardNextPlacesSection } from "@/components/wizard/WizardNextPlacesSection";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useInterviewOffer } from "@/hooks/useInterviewOffer";
 import { useChangeProjectSetup, useFetchProjects } from "@/hooks/ProjectHooks";
-import { usePendingServiceContext, useSetupSession, useWizardStack, useWizardStackId } from "@/hooks/useWizardSetup";
+import { usePendingServiceContext, useSetupSession, useWizardStackId } from "@/hooks/useWizardSetup";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { interviewPath, projectTokenById } from "@/models/Project";
 
 interface WizardDoneStepProps {
@@ -22,16 +25,15 @@ export const WizardDoneStep = ({ onBack }: WizardDoneStepProps) => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const can = useAreaAccess();
-  const { name, exposureHostname, projectId, projectName } = useProjectWizardStore(
+  const { name, projectId, projectName } = useProjectWizardStore(
     useShallow((s) => ({
       name: s.name,
-      exposureHostname: s.exposureHostname,
       projectId: s.projectId,
       projectName: s.projectName,
     })),
   );
+  const selectProject = useWorkspaceStore((s) => s.selectProject);
   const stackId = useWizardStackId();
-  const stack = useWizardStack();
   const session = useSetupSession();
   const { data: projects } = useFetchProjects();
   const offer = useInterviewOffer(projectId, projectName ?? name);
@@ -55,11 +57,13 @@ export const WizardDoneStep = ({ onBack }: WizardDoneStepProps) => {
   const leave = async (to: string) => {
     if (await offer.confirmSkip()) await saveAndGo(to);
   };
-  const finish = async () => {
+  // Lands in the project it set up, wherever the path goes.
+  const finish = async (path: string) => {
     if (!projectId || !(await offer.confirmSkip())) return;
     try {
       if (session) await changeSetup.mutateAsync({ projectId, ...pendingContext(), finished: true });
-      go(can?.("tickets") ? `/board/${token}` : "/");
+      selectProject(projectId);
+      navigate(path);
     } catch {
       // The hook toasts the failure; the step stays so Finish can be pressed again.
     }
@@ -67,14 +71,7 @@ export const WizardDoneStep = ({ onBack }: WizardDoneStepProps) => {
 
   return (
     <div className="space-y-5">
-      {stack && (
-        <div>
-          <p className="text-sm">
-            {stack.name} is deploying on {stack.machine}.
-          </p>
-          {exposureHostname && <p className="mt-1 font-mono text-xs text-muted-foreground">{exposureHostname}</p>}
-        </div>
-      )}
+      <WizardDoneHeadline />
       <WizardLeftoversSection />
       {offer.pending && projectId && (
         <WizardInterviewOffer
@@ -86,6 +83,7 @@ export const WizardDoneStep = ({ onBack }: WizardDoneStepProps) => {
       {offer.skipped && (
         <p className="text-sm text-muted-foreground">Interview skipped. A banner on the project reminds you until it exists.</p>
       )}
+      {!stackId && <WizardNextPlacesSection onGo={(path) => void finish(path)} />}
       <WizardFooter onBack={onBack}>
         {stackId && can?.("stacks") && (
           <Button variant="outline" onClick={() => void leave(`/stacks/${stackId}`)}>
@@ -97,7 +95,11 @@ export const WizardDoneStep = ({ onBack }: WizardDoneStepProps) => {
             View on the canvas
           </Button>
         )}
-        <Button variant={offer.pending ? "outline" : "default"} onClick={() => void finish()} loading={changeSetup.isPending}>
+        <Button
+          variant={offer.pending ? "outline" : "default"}
+          onClick={() => void finish(wsPath(can?.("tickets") ? `/board/${token}` : "/"))}
+          loading={changeSetup.isPending}
+        >
           Finish
         </Button>
       </WizardFooter>

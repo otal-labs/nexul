@@ -43,12 +43,12 @@ const search = async (user: ReturnType<typeof userEvent.setup>, text = "onik97")
   await screen.findByText("onik97/api");
 };
 
-const renderStep = (onDone = vi.fn()) => {
+const renderStep = (onDone = vi.fn(), onLeaveEarly?: (repository: string) => Promise<void>) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <WizardRepositoryStep onDone={onDone} />
+        <WizardRepositoryStep onDone={onDone} onLeaveEarly={onLeaveEarly} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -126,6 +126,29 @@ describe("WizardRepositoryStep", () => {
     expect(mocks.post).toHaveBeenCalledWith("/api/repositories/scan", { owner: "onik97", name: "worker", workspace_id: "ws-1" });
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(useProjectWizardStore.getState().candidate?.name).toBe("api");
+  });
+
+  it("while the project is set up, opens the scanned repository with what it found and carries on only from Deploy it", async () => {
+    const onLeaveEarly = vi.fn();
+    const onDone = renderStep(vi.fn(), onLeaveEarly);
+    const user = userEvent.setup();
+    const service = (name: string) => ({ name, ports: [], expose: [], env_keys: [] });
+    mocks.post.mockResolvedValue({
+      data: {
+        default_branch: "main",
+        candidates: [{ kind: "compose", path: "compose.yaml", name: "api", services: [service("web"), service("worker")] }],
+        env_keys: [],
+      },
+    });
+
+    await search(user);
+    await user.click(screen.getByText("onik97/api"));
+    expect(await screen.findByText("compose.yaml · web, worker")).toBeInTheDocument();
+    expect(onDone).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Deploy it" }));
+    expect(onDone).toHaveBeenCalled();
+    expect(onLeaveEarly).not.toHaveBeenCalled();
   });
 
   it("says the list is the person's own GitHub view and links the App's install page", async () => {
@@ -292,6 +315,19 @@ describe("WizardRepositoryStep tests question", () => {
 
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(mocks.put).not.toHaveBeenCalled();
+  });
+
+  it("saves the answer before leaving without a repository, which needs no GitHub link", async () => {
+    mocks.link = { state: "none" };
+    const onLeaveEarly = vi.fn().mockResolvedValue(undefined);
+    renderStep(vi.fn(), onLeaveEarly);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("radio", { name: /in the repository you deploy/i }));
+    await user.click(await screen.findByRole("button", { name: /No repository yet/ }));
+
+    await vi.waitFor(() => expect(onLeaveEarly).toHaveBeenCalledWith("skipped"));
+    expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/tests-location", { tests_location: "same" });
   });
 
   it("is not asked when attaching a repository to an existing stack", async () => {

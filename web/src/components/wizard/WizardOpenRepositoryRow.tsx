@@ -1,0 +1,46 @@
+import { Check } from "lucide-react";
+
+import { RepoProviderMark } from "@/components/ProviderMarks";
+import { Button } from "@/components/ui/button";
+import { preferredCandidate, scanSummary, type Repo, type ScanResult } from "@/models/Repository";
+
+interface WizardOpenRepositoryRowProps {
+  repo: Repo;
+  scan: ScanResult;
+  attaching: boolean;
+  onAttach: () => void;
+  // Absent when the scan found nothing to deploy; the manual Dockerfile path below takes over.
+  onDeploy?: (() => void) | undefined;
+}
+
+// The picked repository, scanned: what the scan found, then the two ways on.
+export const WizardOpenRepositoryRow = ({ repo, scan, attaching, onAttach, onDeploy }: WizardOpenRepositoryRowProps) => {
+  const candidate = preferredCandidate(scan);
+  return (
+    <div className="relative bg-accent px-2 py-3" aria-current="true">
+      <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 bg-brand" />
+      <div className="flex items-center gap-3">
+        <RepoProviderMark provider={repo.provider} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{repo.full_name}</span>
+          <span className="flex min-w-0 items-center gap-1.5 font-mono text-xs text-muted-foreground">
+            <span className="shrink-0">{scan.default_branch}</span>
+            <span aria-hidden>·</span>
+            {candidate && <Check className="size-3 shrink-0 text-success" strokeWidth={3} aria-hidden />}
+            <span className="truncate">{scanSummary(candidate)}</span>
+          </span>
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onAttach} loading={attaching}>
+          Attach without deploying
+        </Button>
+        {onDeploy && (
+          <Button type="button" size="sm" onClick={onDeploy}>
+            Deploy it
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+};

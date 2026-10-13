@@ -79,8 +79,8 @@ const wizardSubtitle = ({ isAttach, project, revisit, continuing, firstProject }
   if (project && continuing) return "Pick up where it stopped. Skip any step and come back to it, then Finish.";
   if (project && revisit) return "Open any step to change it. The project stays set up.";
   if (project) return "Pick the repository for the new service. The project's setup stays as it is.";
-  if (firstProject) return "Tickets, docs, and deploys all live in a project. Name it, then point Nexul at its repository.";
-  return "Name the project, then pick the repository to deploy.";
+  if (firstProject) return "Tickets, docs, and deploys all live in a project. Name it, then pick its repository if it has one.";
+  return "Name the project, then pick its repository if it has one.";
 };
 
 export const ProjectWizardPage = () => {

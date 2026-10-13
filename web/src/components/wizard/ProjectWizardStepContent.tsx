@@ -14,7 +14,8 @@ import { WizardStepSummary } from "@/components/wizard/WizardStepSummary";
 import { useWizardBack, useWizardGoTo } from "@/hooks/useWizardNavigation";
 import { useMarkStep, useSetupSession, useWizardEnvKeys, useWizardProject, useWizardStack, useWizardStackId } from "@/hooks/useWizardSetup";
 import { useWizardStepOrder } from "@/hooks/useWizardStepOrder";
-import { wizardStepLabel, type WizardStepId } from "@/models/ProjectWizard";
+import type { SetupMark } from "@/models/Project";
+import { DeploySteps, wizardStepLabel, type WizardStepId } from "@/models/ProjectWizard";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 
 interface ProjectWizardStepContentProps {
@@ -67,6 +68,16 @@ export const ProjectWizardStepContent = ({ step }: ProjectWizardStepContentProps
       // The mutation hook shows the error; keep the step open for retry.
     }
   };
+  // A project set up without a service records every deploy step skipped, so Continue setup lands on Done.
+  const leaveEarly = async (repository: SetupMark) => {
+    const deploySkipped = Object.fromEntries(order.filter((id) => DeploySteps.includes(id)).map((id) => [id, "skipped" as const]));
+    try {
+      await markStep("repository", repository, deploySkipped);
+      goTo("done");
+    } catch {
+      // The mutation hook shows the error; keep the step open for retry.
+    }
+  };
 
   return (
     <WizardStepPanel step={step} title={wizardStepLabel(step, isAttach)}>
@@ -88,7 +99,11 @@ export const ProjectWizardStepContent = ({ step }: ProjectWizardStepContentProps
         <WizardStepNeeds needs="project" message="A repository belongs to a project. Name the project first." onBack={onBack} />
       )}
       {step === "repository" && (projectId || isAttach) && (
-        <WizardRepositoryStep onDone={() => complete("service")} onSkip={isAttach ? undefined : skip} />
+        <WizardRepositoryStep
+          onDone={() => complete("service")}
+          onBack={onBack}
+          onLeaveEarly={session && !isAttach && !stackId ? leaveEarly : undefined}
+        />
       )}
       {step === "service" && stackId && (
         <WizardStepSummary continueLabel={continueLabel} onContinue={() => complete(afterService)} onBack={onBack}>

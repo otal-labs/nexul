@@ -10,7 +10,11 @@ import { pickOption } from "@/test/pickOption";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const access = vi.hoisted(() => ({ areas: ["tickets"] as string[] }));
-vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area), useCanOpenSection: () => false }));
+vi.mock("@/hooks/AccessHooks", () => ({
+  useAreaAccess: () => (area: string) => access.areas.includes(area),
+  useCanOpenSection: () => false,
+  useVisibleSettingsSections: () => [],
+}));
 
 beforeEach(() => {
   access.areas = ["tickets"];
@@ -166,7 +170,7 @@ describe("ProjectWizardPage", () => {
   it("records a skipped step on the project and moves on to the next step, keeping the project it made", async () => {
     mockProjectInSetup();
     mocks.post.mockResolvedValueOnce({ data: inSetup({ project: "done" }) });
-    mocks.put.mockResolvedValue({ data: inSetup({ project: "done", people: "skipped", repository: "skipped" }) });
+    mocks.put.mockResolvedValue({ data: inSetup({ project: "done", people: "skipped" }) });
     const user = userEvent.setup();
     renderPage("/acme/wizard/project/project");
 
@@ -174,12 +178,9 @@ describe("ProjectWizardPage", () => {
     await user.type(screen.getByLabelText("Prefix"), "BE");
     await user.click(screen.getByRole("button", { name: "Continue to Who's in it" }));
     await user.click(await screen.findByRole("button", { name: "Skip for now" }));
-    expect(await screen.findByRole("heading", { name: "Repository" })).toBeInTheDocument();
-    await user.click(await screen.findByRole("button", { name: "Skip for now" }));
 
-    expect(await screen.findByRole("heading", { name: "Service" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Repository" })).toBeInTheDocument();
     expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", { finished: undefined, steps: { people: "skipped" } });
-    expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", { finished: undefined, steps: { repository: "skipped" } });
     expect(mocks.post).toHaveBeenCalledTimes(1);
   });
 
@@ -199,12 +200,75 @@ describe("ProjectWizardPage", () => {
     mocks.put.mockRejectedValue(new Error("offline"));
     useProjectWizardStore.getState().setProjectId("p-1", "Backend");
     const user = userEvent.setup();
-    renderPage("/acme/wizard/project/repository?project=p-1");
+    renderPage("/acme/wizard/project/service?project=p-1");
 
     await user.click(await screen.findByRole("button", { name: "Skip for now" }));
 
-    expect(screen.getByRole("heading", { name: "Repository" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Service" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Service" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Reach" })).not.toBeInTheDocument();
+  });
+
+  describe("leaving Repository without a service", () => {
+    const portal = { id: 7, owner: "acme", name: "portal", full_name: "acme/portal", default_branch: "main", html_url: "", provider: "github" };
+    let attached: unknown[] = [];
+
+    beforeEach(() => {
+      attached = [];
+      mocks.get.mockImplementation(async (url: string) => {
+        if (url === "/api/projects/p-1") return { data: inSetup({ project: "done", people: "done" }) };
+        if (url === "/api/projects/p-1/repos") return { data: attached };
+        if (url === "/api/repositories") return { data: { repositories: [portal] } };
+        if (url === "/api/memories") return { data: [{ id: "m-1", project_id: "p-1", kind: "interview", body: "## Stack" }] };
+        return { data: [] };
+      });
+    });
+
+    it("No repository yet skips the deploy steps, so Continue setup lands on Done, and a place to go next finishes setup", async () => {
+      access.areas = ["tickets", "docs"];
+      mocks.put.mockResolvedValue({ data: inSetup({ project: "done", people: "done", repository: "skipped" }) });
+      const user = userEvent.setup();
+      renderPage("/acme/wizard/project/repository?project=p-1");
+
+      await user.click(await screen.findByRole("button", { name: /No repository yet/ }));
+
+      expect(await screen.findByText("Backend is ready for docs and tickets.")).toBeInTheDocument();
+      expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", {
+        finished: undefined,
+        steps: { repository: "skipped", service: "skipped", reach: "skipped", branches: "skipped" },
+      });
+      expect(screen.getByText("needs a repository")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /^Board/ }));
+      expect(await screen.findByText("project board")).toBeInTheDocument();
+      expect(mocks.put).toHaveBeenLastCalledWith("/api/projects/p-1/setup", { finished: true });
+    });
+
+    it("Attach without deploying attaches the scanned repository, makes no service, and ends on Done waiting to deploy it", async () => {
+      mocks.post.mockImplementation(async (url: string) => {
+        if (url === "/api/repositories/scan") {
+          return { data: { default_branch: "main", env_keys: [], candidates: [{ kind: "compose", path: "compose.yaml", name: "portal", services: [] }] } };
+        }
+        attached = [{ owner: "acme", name: "portal", full_name: "acme/portal", connector_id: "github", role: "app" }];
+        return { data: undefined };
+      });
+      mocks.put.mockResolvedValue({ data: inSetup({ project: "done", people: "done", repository: "done" }) });
+      const user = userEvent.setup();
+      renderPage("/acme/wizard/project/repository?project=p-1");
+
+      await user.type(await screen.findByPlaceholderText("Search repositories…"), "portal");
+      await user.click(await screen.findByRole("button", { name: /acme\/portal/ }));
+      await user.click(await screen.findByRole("button", { name: "Attach without deploying" }));
+
+      expect(await screen.findByText(/is attached; deploy it whenever it's ready/)).toHaveTextContent(
+        "acme/portal is attached; deploy it whenever it's ready.",
+      );
+      expect(mocks.post).toHaveBeenCalledWith("/api/projects/p-1/repos", { owner: "acme", name: "portal", connector_id: "github" });
+      expect(mocks.post).toHaveBeenCalledTimes(2);
+      expect(mocks.put).toHaveBeenCalledWith("/api/projects/p-1/setup", {
+        finished: undefined,
+        steps: { repository: "done", service: "skipped", reach: "skipped", branches: "skipped" },
+      });
+      expect(screen.getByText("not started")).toBeInTheDocument();
+    });
   });
 
   it("can skip Environment before a service exists and advances to Reach", async () => {

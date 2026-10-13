@@ -1,5 +1,5 @@
 import { SearchIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -20,10 +20,14 @@ export interface RepositorySearchProps {
   busyId?: number | undefined;
   // Tells apart two searches on one page.
   label?: string;
+  // The picked repository's row, opened in place of its plain one.
+  openRow?: { id: number; row: ReactNode } | undefined;
+  // Under the results, before the hint on why a repository may be missing.
+  after?: ReactNode;
 }
 
 // Nothing loads until enough letters are typed: an installation can grant thousands of repositories.
-export const RepositorySearchField = ({ onSelect, excludeId, busyId, label = "Search repositories" }: RepositorySearchProps) => {
+export const RepositorySearchField = ({ onSelect, excludeId, busyId, label = "Search repositories", openRow, after }: RepositorySearchProps) => {
   const [text, setText] = useState("");
   const searching = text.trim().length >= REPOSITORY_SEARCH_MIN_LENGTH;
   const { data, isFetching, error } = useSearchRepositories(text);
@@ -65,10 +69,17 @@ export const RepositorySearchField = ({ onSelect, excludeId, busyId, label = "Se
       {repos && repos.length > 0 && (
         <ul className="divide-y divide-border border-y border-border">
           {repos.map((repo) => (
-            <RepositoryRow key={repo.id} repo={repo} busy={busyId === repo.id} onSelect={() => onSelect(repo)} />
+            <RepositoryRow
+              key={repo.id}
+              repo={repo}
+              busy={busyId === repo.id}
+              onSelect={() => onSelect(repo)}
+              open={openRow?.id === repo.id && openRow.row}
+            />
           ))}
         </ul>
       )}
+      {after}
       <RepositoryInstallHint />
     </div>
   );
