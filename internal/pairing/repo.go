@@ -18,6 +18,9 @@ type Repo interface {
 	GetComputer(ctx context.Context, userID, id string) (*Computer, error)
 	// ListComputers returns userID's paired computers, newest first.
 	ListComputers(ctx context.Context, userID string) ([]Computer, error)
+	// ListComputersFor returns userID's own computers, newest first, then those a live rule naming them shares with
+	// them, each with Shared set, in one read (ADR 0148).
+	ListComputersFor(ctx context.Context, userID string) ([]Computer, error)
 	// DeleteComputer removes one of userID's own computers and writes its events in one transaction, or ErrNotFound.
 	DeleteComputer(ctx context.Context, userID, id string, evts ...eventbus.OutboxEvent) error
 	// SetFacts replaces one of userID's own computers' facts and their time, with evt in one transaction, or ErrNotFound.

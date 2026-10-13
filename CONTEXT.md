@@ -122,8 +122,20 @@ A user's own machine running a harness, attached to their Nexul account.
 It is reached through its personal runner, which also pairs it, and pairs it
 again before its session ends, with no one asking; one paired before personal
 runners is reached through its computer tunnel, or by URL. Owned by one user; nobody
-else can see it or run on it, a workspace Owner included.
+else can see it or run on it, a workspace Owner included, unless its owner shares
+it with them by name (Computer sharing).
 _Avoid_: Device, host, runner (a runner builds and deploys)
+
+**Computer sharing**:
+A paired computer's owner letting named people use it, through a rule on the
+computer naming each person (ADR 0148): See this computer, Run agents and Run
+commands, either Run bringing See along. Only the owner writes these rules, for
+people who share a workspace with them, never for a role, and none denies. No
+role, Owner or permission bit reaches a computer, so to everyone no rule names it
+is not found. A rule ends for good when the two share no workspace or either
+account is disabled or removed. The person it is shared with sees it as
+"<owner>'s <computer> (shared)", by its name and whether it is online only.
+_Avoid_: lend, delegate, borrow
 
 **Computer facts**:
 What a paired computer's personal runner and harness last reported about it:

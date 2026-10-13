@@ -49,6 +49,7 @@ const RunWhereForm = ({ value, onChange }: RunWhereFormProps) => {
           computers={computers}
           presence={presence ?? {}}
           onChangeValue={() => form.setValue("harness_project_id", "")}
+          withShared
         />
       )}
       <HarnessProjectField control={form.control} name="harness_project_id" label="T3 project" computerId={computerId} />

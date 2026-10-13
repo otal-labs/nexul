@@ -104,7 +104,8 @@ interface GrantPayload {
   resource_id: string;
 }
 
-// A rule changed on a doc, folder, play or project: an open panel or people card on it rereads its rules and answers.
+// A rule changed on a doc, folder, play, project or computer: an open panel or people card on it rereads its rules and answers.
 export const permissionRulesFollower: LiveFollower = {
   "access.grant.changed": ({ resource_type, resource_id }: GrantPayload, { client }) => refreshRules(client, resource_type, resource_id),
+  "computer.grant_changed": ({ computer_id }: { computer_id: string }, { client }) => refreshRules(client, "computer", computer_id),
 };

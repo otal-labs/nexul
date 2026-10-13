@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { ApiErrorBody } from "@/api/client";
 import type { ComputerFacts } from "@/models/ComputerFacts";
+import type { SharedComputer } from "@/models/SharedComputer";
 
 // The bearer token never reaches the browser — only the metadata settings needs.
 export interface Computer {
@@ -23,6 +24,8 @@ export interface Computer {
   runner?: ComputerRunner;
   // Why the last pairing through the runner failed; absent once one succeeds.
   pair_error?: string;
+  // Set on another person's computer they share with the viewer, which then carries only its name and runner.connected.
+  shared?: SharedComputer;
 }
 
 export interface ComputerRunner {

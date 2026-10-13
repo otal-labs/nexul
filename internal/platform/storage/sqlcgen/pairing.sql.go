@@ -222,6 +222,78 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 	return items, nil
 }
 
+const listPairingComputersFor = `-- name: ListPairingComputersFor :many
+SELECT c.id, c.user_id, c.name, c.server_url, c.bearer_token, c.token_expires_at, c.harness_version, c.created_at, c.updated_at, c.kind, c.setup_confirmed_at, c.tunnel_id, c.tunnel_hostname, c.tunnel_zone_id, c.tunnel_record_id, c.tunnel_access_app_id, c.setup_mcp_token, c.setup_skipped_providers, c.setup_models, c.setup_model_options, c.setup_folder, c.facts, c.facts_at, CAST(coalesce(po.allow, '') AS TEXT) AS rule_allow,
+    CAST(coalesce(nullif(o.display_name, ''), nullif(o.name, ''), o.login) AS TEXT) AS owner_name
+FROM pairing_computers c
+JOIN users o ON o.id = c.user_id
+LEFT JOIN permission_overwrites po ON po.resource_type = 'computer' AND po.resource_id = c.id AND po.target = 'person'
+    AND po.user_id = ?1
+WHERE c.user_id = ?1
+   OR (EXISTS (SELECT 1 FROM json_each(po.allow) WHERE value = 'computers:see')
+       AND o.account_status = 'active'
+       AND EXISTS (SELECT 1 FROM users me WHERE me.id = ?1 AND me.account_status = 'active')
+       AND EXISTS (SELECT 1 FROM workspace_members a JOIN workspace_members b ON b.workspace_id = a.workspace_id
+                   WHERE a.user_id = ?1 AND b.user_id = c.user_id))
+ORDER BY po.allow IS NOT NULL, c.created_at DESC
+`
+
+type ListPairingComputersForRow struct {
+	PairingComputer PairingComputer
+	RuleAllow       string
+	OwnerName       string
+}
+
+// A person's own computers, then those a live rule naming them shares with See (ADR 0148), each with its owner's name.
+func (q *Queries) ListPairingComputersFor(ctx context.Context, userID sql.NullString) ([]ListPairingComputersForRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPairingComputersFor, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPairingComputersForRow
+	for rows.Next() {
+		var i ListPairingComputersForRow
+		if err := rows.Scan(
+			&i.PairingComputer.ID,
+			&i.PairingComputer.UserID,
+			&i.PairingComputer.Name,
+			&i.PairingComputer.ServerUrl,
+			&i.PairingComputer.BearerToken,
+			&i.PairingComputer.TokenExpiresAt,
+			&i.PairingComputer.HarnessVersion,
+			&i.PairingComputer.CreatedAt,
+			&i.PairingComputer.UpdatedAt,
+			&i.PairingComputer.Kind,
+			&i.PairingComputer.SetupConfirmedAt,
+			&i.PairingComputer.TunnelID,
+			&i.PairingComputer.TunnelHostname,
+			&i.PairingComputer.TunnelZoneID,
+			&i.PairingComputer.TunnelRecordID,
+			&i.PairingComputer.TunnelAccessAppID,
+			&i.PairingComputer.SetupMcpToken,
+			&i.PairingComputer.SetupSkippedProviders,
+			&i.PairingComputer.SetupModels,
+			&i.PairingComputer.SetupModelOptions,
+			&i.PairingComputer.SetupFolder,
+			&i.PairingComputer.Facts,
+			&i.PairingComputer.FactsAt,
+			&i.RuleAllow,
+			&i.OwnerName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPairingComputersToMove = `-- name: ListPairingComputersToMove :many
 SELECT c.id, c.user_id FROM pairing_computers c
 WHERE (c.tunnel_id != '' OR (c.server_url != '' AND c.server_url NOT LIKE ?1))

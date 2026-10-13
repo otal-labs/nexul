@@ -11,6 +11,28 @@ import (
 	"strings"
 )
 
+const computerRuleTargetShares = `-- name: ComputerRuleTargetShares :one
+SELECT EXISTS (
+    SELECT 1 FROM users p
+    JOIN workspace_members a ON a.user_id = p.id
+    JOIN workspace_members b ON b.workspace_id = a.workspace_id AND b.user_id = ?1
+    WHERE p.id = ?2 AND p.account_status = 'active'
+)
+`
+
+type ComputerRuleTargetSharesParams struct {
+	OwnerID  string
+	PersonID string
+}
+
+// Whether a computer rule may name person: an active account sharing a workspace with the computer's owner.
+func (q *Queries) ComputerRuleTargetShares(ctx context.Context, arg ComputerRuleTargetSharesParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, computerRuleTargetShares, arg.OwnerID, arg.PersonID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const countOverwriteAllowAny = `-- name: CountOverwriteAllowAny :one
 SELECT COUNT(*) FROM (
   SELECT 1 FROM permission_overwrites po
@@ -136,6 +158,36 @@ func (q *Queries) GetAccessSetup(ctx context.Context, id string) (GetAccessSetup
 		&i.AccessSetupAt,
 		&i.FinishedByLogin,
 	)
+	return i, err
+}
+
+const getComputerAccess = `-- name: GetComputerAccess :one
+SELECT c.user_id AS owner_id, CAST(coalesce(po.allow, '') AS TEXT) AS rule_allow
+FROM pairing_computers c
+JOIN users caller ON caller.id = ?1 AND caller.account_status = 'active'
+LEFT JOIN permission_overwrites po ON po.resource_type = 'computer' AND po.resource_id = c.id AND po.target = 'person'
+    AND po.user_id = ?1
+    AND EXISTS (SELECT 1 FROM users o WHERE o.id = c.user_id AND o.account_status = 'active')
+    AND EXISTS (SELECT 1 FROM workspace_members a JOIN workspace_members b ON b.workspace_id = a.workspace_id
+                WHERE a.user_id = ?1 AND b.user_id = c.user_id)
+WHERE c.id = ?2 AND (c.user_id = ?1 OR po.allow IS NOT NULL)
+`
+
+type GetComputerAccessParams struct {
+	UserID     string
+	ComputerID string
+}
+
+type GetComputerAccessRow struct {
+	OwnerID   string
+	RuleAllow string
+}
+
+// One fresh read per computer check (ADR 0148): its owner, and the rule naming the caller while both are active and share a workspace.
+func (q *Queries) GetComputerAccess(ctx context.Context, arg GetComputerAccessParams) (GetComputerAccessRow, error) {
+	row := q.db.QueryRowContext(ctx, getComputerAccess, arg.UserID, arg.ComputerID)
+	var i GetComputerAccessRow
+	err := row.Scan(&i.OwnerID, &i.RuleAllow)
 	return i, err
 }
 
@@ -499,6 +551,47 @@ func (q *Queries) ListDocRuleTurns(ctx context.Context, arg ListDocRuleTurnsPara
 	for rows.Next() {
 		var i ListDocRuleTurnsRow
 		if err := rows.Scan(&i.Kind, &i.ResourceID, &i.State); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEndedComputerRules = `-- name: ListEndedComputerRules :many
+SELECT po.resource_id AS computer_id, c.user_id AS owner_id, CAST(po.user_id AS TEXT) AS user_id
+FROM permission_overwrites po
+JOIN pairing_computers c ON c.id = po.resource_id
+WHERE po.resource_type = 'computer'
+  AND (NOT EXISTS (SELECT 1 FROM users o WHERE o.id = c.user_id AND o.account_status = 'active')
+    OR NOT EXISTS (SELECT 1 FROM users p WHERE p.id = po.user_id AND p.account_status = 'active')
+    OR NOT EXISTS (SELECT 1 FROM workspace_members a JOIN workspace_members b ON b.workspace_id = a.workspace_id
+                   WHERE a.user_id = po.user_id AND b.user_id = c.user_id))
+`
+
+type ListEndedComputerRulesRow struct {
+	ComputerID string
+	OwnerID    string
+	UserID     string
+}
+
+// The computer rules no longer live: either account not active, or the two sharing no workspace.
+func (q *Queries) ListEndedComputerRules(ctx context.Context) ([]ListEndedComputerRulesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEndedComputerRules)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEndedComputerRulesRow
+	for rows.Next() {
+		var i ListEndedComputerRulesRow
+		if err := rows.Scan(&i.ComputerID, &i.OwnerID, &i.UserID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { ComputerShareWarning } from "@/components/access/ComputerShareWarning";
 import { PanelPaneHeader } from "@/components/access/PanelPaneHeader";
 import { PermissionGroupSection } from "@/components/access/PermissionGroupSection";
 import { PermissionRuleRow } from "@/components/access/PermissionRuleRow";
@@ -11,7 +12,7 @@ import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { usePermissionRules } from "@/hooks/usePermissionRules";
 import { usePermissionPanelStore } from "@/stores/permissionPanelStore";
 import type { PermissionExplanation, PermissionInfo } from "@/models/Permission";
-import { groupActions, parseTarget, permissionLabel, type PanelEntity, type PanelGroup } from "@/models/PermissionPanel";
+import { groupActions, parseTarget, permissionLabel, targetScope, type PanelEntity, type PanelGroup } from "@/models/PermissionPanel";
 
 // The role behind a person's answers, read from the sources that name one.
 const heldRole = (explanation: PermissionExplanation | undefined) =>
@@ -47,14 +48,17 @@ const RuleGroup = ({ targetKey, type, group, explanation, catalog }: RuleGroupPr
 
 const RulesFor = ({ targetKey }: { targetKey: string }) => {
   const entity = usePanelEntity();
-  const { targetOf } = usePanelTargets({ workspaceId: entity.workspaceId });
+  const { targetOf } = usePanelTargets(targetScope(entity));
   const { data: catalog } = useFetchPermissionCatalog();
   const { data: explanation, error, isPending } = useFetchExplanation(entity.type, entity.id, explainTargetOf(targetKey));
   const { actions, clear } = usePermissionRules();
   const drop = usePermissionPanelStore((s) => s.drop);
   const target = targetOf(targetKey);
   const role = heldRole(explanation);
-  const line = target.kind === "role" ? "Role" : `Person · ${role ? `holds ${role}` : "holds no role"}`;
+  const roleLine = role ? `holds ${role}` : "holds no role";
+  // A computer's rules never read roles, so its person is named by login instead.
+  const personLine = entity.type === "computer" ? target.login : roleLine;
+  const line = target.kind === "role" ? "Role" : `Person · ${personLine}`;
 
   return (
     <div className="min-w-0 flex-1 space-y-5">
@@ -86,13 +90,16 @@ const RulesFor = ({ targetKey }: { targetKey: string }) => {
   );
 };
 
-// The chosen target's rule here, grouped by domain; nothing chosen is one muted sentence.
+// The chosen target's rule here, grouped by domain; nothing chosen is one muted sentence. A computer leads with its warning.
 export const RulesPane = () => {
   const entity = usePanelEntity();
   const target = usePermissionPanelStore((s) => s.target);
+  const computer = entity.type === "computer";
   return (
-    <div className="min-w-0">
-      {!target && <EmptyRow flush>Pick a role or person, or add one, to set rules on {entity.name}.</EmptyRow>}
+    <div className="min-w-0 space-y-5">
+      {computer && <ComputerShareWarning />}
+      {!target && !computer && <EmptyRow flush>Pick a role or person, or add one, to set rules on {entity.name}.</EmptyRow>}
+      {!target && computer && <EmptyRow flush>Add a person to share {entity.name} with them.</EmptyRow>}
       {target && <RulesFor key={target} targetKey={target} />}
     </div>
   );

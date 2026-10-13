@@ -26,6 +26,8 @@ type fakeRepo struct {
 	turns        map[string]SetupTurn
 	outbox       []eventbus.OutboxEvent
 	toMove       []Computer
+	// sharedWith is, per person, the computers others share with them, as the list query returns them.
+	sharedWith   map[string][]Computer
 	moveNotices  map[string]time.Time
 	factWrites   int
 	saveErr      error
@@ -93,6 +95,13 @@ func (f *fakeRepo) ListComputers(_ context.Context, userID string) ([]Computer, 
 		}
 	}
 	return out, nil
+}
+
+func (f *fakeRepo) ListComputersFor(ctx context.Context, userID string) ([]Computer, error) {
+	own, _ := f.ListComputers(ctx, userID)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append(own, f.sharedWith[userID]...), nil
 }
 
 func (f *fakeRepo) DeleteComputer(_ context.Context, userID, id string, evts ...eventbus.OutboxEvent) error {

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { HarnessProjectField } from "@/components/settings/HarnessProjectField";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
+import { useListSharedComputers } from "@/hooks/ComputerHooks";
 import { useClearProjectLink, useSetProjectLink } from "@/hooks/PairingProjectHooks";
 import {
   ProjectLinkFormSchema,
@@ -13,6 +14,7 @@ import {
   type ProjectLink,
   type ProjectLinkFormData,
 } from "@/models/Pairing";
+import { notRunnableYet, sharedComputerName } from "@/models/SharedComputer";
 
 interface ProjectLinkFormProps {
   projectId: string;
@@ -23,6 +25,7 @@ interface ProjectLinkFormProps {
 
 // Split out so defaultValues only seed from a loaded `link` — same F2 "= [] trap" fix.
 export const ProjectLinkForm = ({ projectId, projectName, link, computers }: ProjectLinkFormProps) => {
+  const { data: shared } = useListSharedComputers();
   const setLink = useSetProjectLink(projectId, projectName);
   const clearLink = useClearProjectLink(projectId, projectName);
   const isLinked = !!link.computer_id;
@@ -72,7 +75,10 @@ export const ProjectLinkForm = ({ projectId, projectName, link, computers }: Pro
         name="computer_id"
         label="Computer"
         placeholder="Pick a computer"
-        options={computers.map((c) => ({ value: c.id, label: c.name }))}
+        options={[
+          ...computers.map((c) => ({ value: c.id, label: c.name })),
+          ...(shared ?? []).map((c) => ({ value: c.id, label: `${sharedComputerName(c)} · ${notRunnableYet}`, disabled: true })),
+        ]}
       />
       <HarnessProjectField
         control={form.control}

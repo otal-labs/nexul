@@ -1,7 +1,9 @@
 import { Controller, type Control, type FieldValues, type Path } from "react-hook-form";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useListSharedComputers } from "@/hooks/ComputerHooks";
 import type { Computer } from "@/models/Pairing";
+import { notRunnableYet, sharedComputerName } from "@/models/SharedComputer";
 
 interface HarnessComputerFieldProps<T extends FieldValues> {
   control: Control<T>;
@@ -9,6 +11,8 @@ interface HarnessComputerFieldProps<T extends FieldValues> {
   computers: Computer[];
   presence: Record<string, string>;
   onChangeValue?: (value: string) => void;
+  // Lists the computers shared with the viewer too, which can't be picked yet.
+  withShared?: boolean;
 }
 
 // Every entry is one of the caller's own paired computers; an offline one is disabled with the reason beside it.
@@ -18,7 +22,9 @@ export const HarnessComputerField = <T extends FieldValues>({
   computers,
   presence,
   onChangeValue,
+  withShared = false,
 }: HarnessComputerFieldProps<T>) => {
+  const { data: shared } = useListSharedComputers();
   const labelId = `${name}-label`;
   return (
     <div className="space-y-2">
@@ -49,6 +55,13 @@ export const HarnessComputerField = <T extends FieldValues>({
                   </SelectItem>
                 );
               })}
+              {withShared &&
+                shared?.map((computer) => (
+                  <SelectItem key={computer.id} value={computer.id} disabled>
+                    {sharedComputerName(computer)}
+                    <span className="ml-1.5 text-muted-foreground">{notRunnableYet}</span>
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         )}

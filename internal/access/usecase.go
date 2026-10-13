@@ -48,6 +48,7 @@ type Service struct {
 	// ownerWorkspace is the default workspace, whose Owner is the instance Owner; connectorAreas are the connectors'.
 	ownerWorkspace string
 	connectorAreas []permissions.InstanceArea
+	computers      Computers
 	commits        *wake.Broadcast
 	now            func() time.Time
 }
@@ -578,6 +579,11 @@ func (s *Service) SetRules(ctx context.Context, actorID, resourceType string, re
 	if err := checkWrite(actorID, resourceType, resourceIDs, to, actions, state); err != nil {
 		return err
 	}
+	if resourceType == resourceTypeComputer {
+		if err := checkComputerWrite(to, state); err != nil {
+			return err
+		}
+	}
 	writes := make([]ruleWrite, 0, len(resourceIDs)*(len(to.UserIDs)+len(to.RoleIDs)))
 	for _, id := range resourceIDs {
 		planned, err := s.planRules(ctx, actorID, resourceType, id, to, actions, state)
@@ -594,7 +600,11 @@ func (s *Service) SetRules(ctx context.Context, actorID, resourceType string, re
 		if w.target == TargetPerson {
 			event.UserID = w.targetID
 		}
-		if err := s.store(ctx, resourceType, w, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicGrantChanged, Payload: event}); err != nil {
+		outbox := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicGrantChanged, Payload: event}
+		if resourceType == resourceTypeComputer {
+			outbox = computerGrantEvent(w.resourceID, actorID, w.targetID, actorID, w.allow)
+		}
+		if err := s.store(ctx, resourceType, w, outbox); err != nil {
 			return fmt.Errorf("set overwrite %s/%s/%s: %w", resourceType, w.resourceID, w.targetID, err)
 		}
 	}
@@ -640,6 +650,12 @@ func (s *Service) planRules(ctx context.Context, actorID, resourceType, resource
 		if err != nil {
 			return nil, err
 		}
+		if resourceType == resourceTypeComputer {
+			w.allow, w.deny = computerRule(w.allow, actions, state), nil
+			if err := s.checkComputerTarget(ctx, actorID, w); err != nil {
+				return nil, err
+			}
+		}
 		if w.existed || len(w.allow)+len(w.deny) > 0 {
 			out = append(out, w)
 		}
@@ -660,21 +676,24 @@ func (t Targets) each() [][2]string {
 }
 
 // ruleTypes are the entities rules sit on.
-var ruleTypes = []string{resourceTypeDoc, resourceTypeFolder, resourceTypePlay, resourceTypeProject, resourceTypeChannel, resourceTypeInstanceArea}
+var ruleTypes = []string{resourceTypeDoc, resourceTypeFolder, resourceTypePlay, resourceTypeProject, resourceTypeChannel, resourceTypeInstanceArea, resourceTypeComputer}
 
 // errNotARuleType refuses a resource_type no rule sits on.
 func errNotARuleType(resourceType string) error {
-	return fmt.Errorf("%w: resource_type %q is not doc, folder, play, project, channel, or instance_area", apperrs.ErrInvalid, resourceType)
+	return fmt.Errorf("%w: resource_type %q is not doc, folder, play, project, channel, computer, or instance_area", apperrs.ErrInvalid, resourceType)
 }
 
 // checkRuleActions refuses an action resourceType's rules may not set: a play's rules set Run, a project's In this
 // project and the project-area actions, a folder's the docs actions and their access, a channel's its read, an
-// instance area's its own actions (checkArea).
+// instance area's its own actions (checkArea), a computer's its three permissions and nothing else.
 func checkRuleActions(resourceType string, actions []permissions.Action) error {
 	if !slices.Contains(ruleTypes, resourceType) {
 		return errNotARuleType(resourceType)
 	}
 	for _, a := range actions {
+		if slices.Contains(permissions.ComputerActions, a) != (resourceType == resourceTypeComputer) {
+			return fmt.Errorf("%w: a computer's rules set computers:see, computers:run_agents and computers:run_commands, and only they", apperrs.ErrInvalid)
+		}
 		if a == permissions.ProjectsOpen && resourceType != resourceTypeProject {
 			return fmt.Errorf("%w: projects:open is set only on a project", apperrs.ErrInvalid)
 		}
@@ -802,11 +821,15 @@ func moveTo(allow, deny permissions.Set, a permissions.Action, state string) (pe
 	return allow.Without(a), deny.Without(a)
 }
 
-// holds is whether actorID holds action on the doc, folder, play, project, or instance area, its own rules for them included.
+// holds is whether actorID holds action on the doc, folder, play, project, instance area, or computer, its own rules included.
 func (s *Service) holds(ctx context.Context, actorID, resourceType, resourceID string, action permissions.Action) bool {
 	if resourceType == resourceTypeInstanceArea {
 		held, _ := s.HoldsArea(ctx, actorID, resourceID, action)
 		return held
+	}
+	if resourceType == resourceTypeComputer {
+		_, held, err := s.ComputerPermissions(ctx, actorID, resourceID)
+		return err == nil && held.Has(action)
 	}
 	if resourceType != resourceTypeDoc {
 		return s.HasPermission(ctx, actorID, s.workspaceOf(ctx, resourceType, resourceID), action, resourceType, resourceID)
@@ -925,10 +948,17 @@ func (s *Service) ManagesRules(ctx context.Context, userID, resourceType, resour
 // canManage grants no instance-wide bypass, since that would cross workspace isolation boundaries. A doc's or a
 // folder's manage action is the cross-cutting permissions:write share grant; a play's is plays:write, the same bit
 // that gates editing the play's own definition; a project's is Manage this project's access; a channel's is the
-// Owner's alone until channels carry their own manage permission; an instance area's the instance Owner's alone.
+// Owner's alone until channels carry their own manage permission; an instance area's the instance Owner's alone; a
+// computer's its owner's, and to anyone else it is not found.
 func (s *Service) canManage(ctx context.Context, actorID, resourceType, resourceID string) (bool, error) {
 	if resourceType == resourceTypeInstanceArea {
 		return s.IsInstanceOwner(ctx, actorID)
+	}
+	if resourceType == resourceTypeComputer {
+		if err := s.ownedComputer(ctx, actorID, resourceID); err != nil {
+			return false, err
+		}
+		return true, nil
 	}
 	if resourceType == resourceTypeChannel {
 		workspaceID := s.workspaceOf(ctx, resourceType, resourceID)

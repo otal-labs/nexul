@@ -79,6 +79,19 @@ describe("ComputersSection", () => {
     serveComputers([]);
   });
 
+  it("lists a computer someone shares with you under yours, by its owner's name and online state only", async () => {
+    serveComputers([
+      computer(),
+      { id: "c-bob", name: "Laptop", runner: { connected: true }, shared: { owner_id: "u-bob", owner_name: "Bob", permissions: ["computers:run_commands", "computers:see"] } },
+    ]);
+    renderSection();
+    expect(await screen.findByRole("heading", { name: "Shared with you" })).toBeInTheDocument();
+    expect(screen.getByText("Bob's Laptop (shared)")).toBeInTheDocument();
+    expect(screen.getByText("Online")).toBeInTheDocument();
+    expect(screen.getByText("· Run commands")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Actions for Laptop" })).not.toBeInTheDocument();
+  });
+
   it("shows an empty state when there are no computers", async () => {
     renderSection();
     expect(await screen.findByText("No computers yet")).toBeInTheDocument();

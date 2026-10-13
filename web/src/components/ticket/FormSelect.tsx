@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface FormSelectOption {
   value: string;
   label: string;
+  disabled?: boolean;
 }
 
 interface FormSelectProps<T extends FieldValues> {
@@ -65,7 +66,7 @@ export const FormSelect = <T extends FieldValues>({
             <SelectContent>
               {placeholder && <SelectItem value={NONE}>{placeholder}</SelectItem>}
               {options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
+                <SelectItem key={option.value} value={option.value} disabled={option.disabled === true}>
                   {option.label}
                 </SelectItem>
               ))}

@@ -166,3 +166,35 @@ DELETE FROM permission_overwrites WHERE rowid IN (
 
 -- name: FinishAccessSetup :exec
 UPDATE workspaces SET access_setup_finished = 1, access_setup_by = ?, access_setup_at = ? WHERE id = ?;
+
+-- name: GetComputerAccess :one
+-- One fresh read per computer check (ADR 0148): its owner, and the rule naming the caller while both are active and share a workspace.
+SELECT c.user_id AS owner_id, CAST(coalesce(po.allow, '') AS TEXT) AS rule_allow
+FROM pairing_computers c
+JOIN users caller ON caller.id = sqlc.arg(user_id) AND caller.account_status = 'active'
+LEFT JOIN permission_overwrites po ON po.resource_type = 'computer' AND po.resource_id = c.id AND po.target = 'person'
+    AND po.user_id = sqlc.arg(user_id)
+    AND EXISTS (SELECT 1 FROM users o WHERE o.id = c.user_id AND o.account_status = 'active')
+    AND EXISTS (SELECT 1 FROM workspace_members a JOIN workspace_members b ON b.workspace_id = a.workspace_id
+                WHERE a.user_id = sqlc.arg(user_id) AND b.user_id = c.user_id)
+WHERE c.id = sqlc.arg(computer_id) AND (c.user_id = sqlc.arg(user_id) OR po.allow IS NOT NULL);
+
+-- name: ComputerRuleTargetShares :one
+-- Whether a computer rule may name person: an active account sharing a workspace with the computer's owner.
+SELECT EXISTS (
+    SELECT 1 FROM users p
+    JOIN workspace_members a ON a.user_id = p.id
+    JOIN workspace_members b ON b.workspace_id = a.workspace_id AND b.user_id = sqlc.arg(owner_id)
+    WHERE p.id = sqlc.arg(person_id) AND p.account_status = 'active'
+);
+
+-- name: ListEndedComputerRules :many
+-- The computer rules no longer live: either account not active, or the two sharing no workspace.
+SELECT po.resource_id AS computer_id, c.user_id AS owner_id, CAST(po.user_id AS TEXT) AS user_id
+FROM permission_overwrites po
+JOIN pairing_computers c ON c.id = po.resource_id
+WHERE po.resource_type = 'computer'
+  AND (NOT EXISTS (SELECT 1 FROM users o WHERE o.id = c.user_id AND o.account_status = 'active')
+    OR NOT EXISTS (SELECT 1 FROM users p WHERE p.id = po.user_id AND p.account_status = 'active')
+    OR NOT EXISTS (SELECT 1 FROM workspace_members a JOIN workspace_members b ON b.workspace_id = a.workspace_id
+                   WHERE a.user_id = po.user_id AND b.user_id = c.user_id));

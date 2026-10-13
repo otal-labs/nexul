@@ -9,7 +9,7 @@ import { usePanelEntity } from "@/hooks/usePanelEntity";
 import { usePanelTargets } from "@/hooks/usePanelTargets";
 import { usePermissionPanelStore } from "@/stores/permissionPanelStore";
 import type { PermissionAnswer, PermissionInfo } from "@/models/Permission";
-import { groupActions, permissionLabel, targetKey, type PanelEntity, type PanelGroup } from "@/models/PermissionPanel";
+import { groupActions, permissionLabel, targetKey, targetScope, type PanelEntity, type PanelGroup } from "@/models/PermissionPanel";
 
 interface CheckGroupProps {
   type: PanelEntity["type"];
@@ -33,7 +33,7 @@ const CheckGroup = ({ type, group, answers, catalog }: CheckGroupProps) => (
 
 const CheckFor = ({ userId }: { userId: string }) => {
   const entity = usePanelEntity();
-  const { targetOf } = usePanelTargets({ workspaceId: entity.workspaceId });
+  const { targetOf } = usePanelTargets(targetScope(entity));
   const { data: catalog } = useFetchPermissionCatalog();
   const { data: explanation, error, isPending } = useFetchExplanation(entity.type, entity.id, userId);
   const person = targetOf(targetKey("person", userId));

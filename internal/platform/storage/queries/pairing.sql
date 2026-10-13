@@ -103,3 +103,19 @@ ORDER BY c.user_id, c.created_at, c.id;
 
 -- name: InsertPairingMoveNotice :execrows
 INSERT INTO pairing_move_notices (user_id, notified_at) VALUES (?, ?) ON CONFLICT(user_id) DO NOTHING;
+
+-- name: ListPairingComputersFor :many
+-- A person's own computers, then those a live rule naming them shares with See (ADR 0148), each with its owner's name.
+SELECT sqlc.embed(c), CAST(coalesce(po.allow, '') AS TEXT) AS rule_allow,
+    CAST(coalesce(nullif(o.display_name, ''), nullif(o.name, ''), o.login) AS TEXT) AS owner_name
+FROM pairing_computers c
+JOIN users o ON o.id = c.user_id
+LEFT JOIN permission_overwrites po ON po.resource_type = 'computer' AND po.resource_id = c.id AND po.target = 'person'
+    AND po.user_id = sqlc.arg(user_id)
+WHERE c.user_id = sqlc.arg(user_id)
+   OR (EXISTS (SELECT 1 FROM json_each(po.allow) WHERE value = 'computers:see')
+       AND o.account_status = 'active'
+       AND EXISTS (SELECT 1 FROM users me WHERE me.id = sqlc.arg(user_id) AND me.account_status = 'active')
+       AND EXISTS (SELECT 1 FROM workspace_members a JOIN workspace_members b ON b.workspace_id = a.workspace_id
+                   WHERE a.user_id = sqlc.arg(user_id) AND b.user_id = c.user_id))
+ORDER BY po.allow IS NOT NULL, c.created_at DESC;

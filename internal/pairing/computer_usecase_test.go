@@ -10,8 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // fakeRunners is the runner domain's side of a computer: the codes it minted and the runners enrolled per computer.
@@ -251,4 +253,40 @@ func TestHandleRunnerChanged_NamesAnUnnamedComputerAfterItsHostname(t *testing.T
 
 	err = svc.HandleRunnerChanged(t.Context(), eventbus.Event{Topic: "runner.personal_changed", Payload: []byte("{")})
 	require.ErrorIs(t, err, apperrs.ErrFatal)
+}
+
+// sharedLaptop is bob's laptop as the list query hands it to alice, whom a rule shares it with: the whole row.
+func sharedLaptop() Computer {
+	return Computer{
+		ID: "c-bob", UserID: "u-bob", Kind: harness.KindT3Code, Name: "Laptop", ServerURL: runnerAddress("c-bob"), BearerToken: "sealed",
+		HarnessVersion: "0.0.40", Facts: &Facts{Hostname: "bob-laptop", GitEmail: "bob@example.com"},
+		Shared: &SharedComputer{OwnerID: "u-bob", OwnerName: "Bob", Permissions: permissions.SetOf(permissions.ComputersSee)},
+	}
+}
+
+func TestListComputers_ShowsASharedComputerByNameAndOnlineStateOnly(t *testing.T) {
+	t.Parallel()
+	svc, repo, runners := newComputerService()
+	own, err := svc.AddComputer(t.Context(), "u-alice", "Desk")
+	require.NoError(t, err)
+	repo.sharedWith = map[string][]Computer{"u-alice": {sharedLaptop()}}
+	runners.runners["c-bob"] = ComputerRunner{Connected: true, LastSeen: testNow}
+
+	listed, err := svc.ListComputers(t.Context(), "u-alice")
+	require.NoError(t, err)
+	require.Len(t, listed, 2)
+	assert.Equal(t, own.Computer.ID, listed[0].ID)
+	assert.Equal(t, Computer{ID: "c-bob", Name: "Laptop", Runner: &ComputerRunner{Connected: true}, Shared: sharedLaptop().Shared}, listed[1])
+	assert.Equal(t, "Bob's Laptop (shared)", listed[1].SharedName())
+	assert.Equal(t, "Desk", listed[0].SharedName())
+
+	result, err := callTool(t, actorCtx(t, "u-alice"), svc, "computer_list", `{"id":"c-bob"}`)
+	require.NoError(t, err)
+	raw, err := json.Marshal(result)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `"name":"Bob's Laptop (shared)"`)
+	assert.NotContains(t, string(raw), "bob@example.com")
+	assert.NotContains(t, string(raw), `"setup"`, "a shared computer's setup is its owner's")
+	_, err = callTool(t, actorCtx(t, "u-alice"), svc, "computer_list", `{"id":"c-bob","container_logs":{"container":"web"}}`)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }

@@ -5,6 +5,17 @@ import { usePanelEntity } from "@/hooks/usePanelEntity";
 import { usePermissionPanelStore } from "@/stores/permissionPanelStore";
 import { RuleState, type PermissionRulesFormData } from "@/models/Permission";
 import { grantKey, parseTarget, ruleKey, savedState } from "@/models/PermissionPanel";
+import { ComputerPermission } from "@/models/SharedComputer";
+
+const runs = [ComputerPermission.RunAgents, ComputerPermission.RunCommands];
+
+// On a computer, allowing either Run allows See too, and taking See off takes both Runs with it, as the server keeps them.
+const computerChanges = (key: string, action: string, state: RuleState): Record<string, RuleState> => {
+  const change = { [ruleKey(key, action)]: state };
+  if (state === RuleState.Allow && runs.some((r) => r === action)) return { ...change, [ruleKey(key, ComputerPermission.See)]: RuleState.Allow };
+  if (state !== RuleState.Allow && action === ComputerPermission.See) return { ...change, ...Object.fromEntries(runs.map((r) => [ruleKey(key, r), state])) };
+  return change;
+};
 
 // The panel's rules as the giver sees them, by target key: what is saved, with the changes held in the dialog's form on top.
 export const usePermissionRules = () => {
@@ -37,7 +48,8 @@ export const usePermissionRules = () => {
     saved,
     holds,
     ruleCount,
-    setState: (key: string, action: string, state: RuleState) => write({ [ruleKey(key, action)]: state }),
+    setState: (key: string, action: string, state: RuleState) =>
+      write(entity.type === "computer" ? computerChanges(key, action, state) : { [ruleKey(key, action)]: state }),
     clear: (key: string) => write(Object.fromEntries(actions.map((a) => [ruleKey(key, a), RuleState.Fallback]))),
   };
 };

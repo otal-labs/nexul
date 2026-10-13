@@ -3,7 +3,7 @@ import { domainLabel } from "@/models/PermissionLevel";
 
 // What the permissions panel opens on. A doc or folder names its project, a doc its folder, for the header and the add list.
 export interface PanelEntity {
-  type: "doc" | "folder" | "play" | "project";
+  type: "doc" | "folder" | "play" | "project" | "computer";
   id: string;
   name: string;
   workspaceId: string;
@@ -18,6 +18,18 @@ export const targetsProject = (entity: Pick<PanelEntity, "type" | "projectId">) 
 // A project as the panel opens on it.
 export const projectEntity = (project: { id: string; name: string; workspace_id: string }): PanelEntity => ({
   type: "project", id: project.id, name: project.name, workspaceId: project.workspace_id, projectId: project.id, folderId: "",
+});
+
+// One of the viewer's computers as the panel opens on it, to share it.
+export const computerEntity = (computer: { id: string; name: string }): PanelEntity => ({
+  type: "computer", id: computer.id, name: computer.name, workspaceId: "", projectId: "", folderId: "",
+});
+
+// Whom the panel's targets come from: the entity's workspace, or for a computer every workspace the viewer is in.
+export const targetScope = (entity: PanelEntity, projectId?: string) => ({
+  workspaceId: entity.workspaceId,
+  projectId,
+  everyWorkspace: entity.type === "computer",
 });
 
 export interface PanelGroup {
@@ -44,12 +56,13 @@ const panelLabels: Record<PanelEntity["type"], Record<string, string>> = {
   folder: { "permissions:write": "Manage this folder's access" },
   play: { "plays:run": "Run" },
   project: { "projects:open": "See this project", "projects:access": "Manage this project's access", "permissions:write": "Manage each doc's access" },
+  computer: { "computers:see": "See this computer", "computers:run_agents": "Run agents", "computers:run_commands": "Run commands" },
 };
 
 export const permissionLabel = (action: string, catalog: PermissionInfo[] | undefined, type: PanelEntity["type"] = "doc") =>
   panelLabels[type][action] ?? catalog?.find((c) => c.value === action)?.label ?? action;
 
-const fixedGroups: Record<string, string> = { projects: "Project", plays: "Play", permissions: "Access" };
+const fixedGroups: Record<string, string> = { projects: "Project", plays: "Play", permissions: "Access", computers: "Computer" };
 
 const groupOf = (action: string, catalog: PermissionInfo[] | undefined) => {
   const domain = action.slice(0, action.indexOf(":"));

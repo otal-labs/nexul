@@ -1,9 +1,13 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import { getComputersKey } from "@/hooks/PairingHooks";
+import { computersQuery, getComputersKey } from "@/hooks/PairingHooks";
 import type { Computer, ComputerEnrollment, RenameComputerFormData } from "@/models/Pairing";
+import { sharedComputers } from "@/models/SharedComputer";
+
+// The computers other people share with the viewer by name, from the same request as their own.
+export const useListSharedComputers = () => useQuery({ ...computersQuery, select: sharedComputers });
 
 // Adds a computer waiting for its runner, or with an id mints a fresh command for one that has none; the dialog shows failures.
 export const useEnrollComputer = () => {

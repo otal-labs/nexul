@@ -10,6 +10,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	shipped "github.com/otal-labs/nexul/internal/platform/skills"
 )
 
@@ -41,6 +42,32 @@ type Computer struct {
 	// Facts are nil until the computer's runner first reports; FactsAt is when they last changed. Its owner's alone.
 	Facts   *Facts     `json:"facts,omitempty"`
 	FactsAt *time.Time `json:"facts_at,omitempty"`
+	// Shared is set on another person's computer shared with the caller by name (ADR 0148).
+	Shared *SharedComputer `json:"shared,omitempty"`
+}
+
+// SharedComputer is whose a shared computer is and what the caller holds on it.
+type SharedComputer struct {
+	OwnerID     string          `json:"owner_id"`
+	OwnerName   string          `json:"owner_name"`
+	Permissions permissions.Set `json:"permissions"`
+}
+
+// SharedName is how a person a computer is shared with reads it: "<owner>'s <computer> (shared)".
+func (c Computer) SharedName() string {
+	if c.Shared == nil {
+		return c.Name
+	}
+	return fmt.Sprintf("%s's %s (shared)", c.Shared.OwnerName, c.Name)
+}
+
+// sharedView is c with only its name, who shares it and whether its runner is connected.
+func sharedView(c Computer) Computer {
+	out := Computer{ID: c.ID, Name: c.Name, Shared: c.Shared}
+	if c.Runner != nil {
+		out.Runner = &ComputerRunner{Connected: c.Runner.Connected}
+	}
+	return out
 }
 
 // Facts is what a computer's owner reads about it (ADR 0146): its runner's report, and what its T3 Code last listed
