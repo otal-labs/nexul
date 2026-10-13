@@ -756,7 +756,9 @@ the level as a segmented strip of None, Read, Write, Delete where every rung
 up to the chosen one fills, so it reads as "this much access". The role
 editor (Role dialog, below) puts its lists on one tab per catalog area, each
 led by its own bulk row, and sets the extra verbs as checkboxes on a second
-line under the area's name, disabled until it holds Read. Project access is
+line under the area's name, disabled until it holds Read (See on plays, whose
+first rung is named so), and leads each tab with its yes-or-no permissions as
+switch rows (the name over a muted line), which the bulk row never sets. Project access is
 the same list: an Every project lead row (a muted icon, "Every project" over its one-line
 consequence, and a From role / Chosen projects segmented pair), then one row
 per project with the same level strip and an "Areas" toggle that opens that
@@ -798,10 +800,10 @@ the name, the levels as a tally, highest first, each a `LevelGlyph` (the
 level strip in miniature, a shorter ladder keeping the three-rung width so a
 column of them lines up), the level and a mono count, then a muted "No access
 · Events, Audit log, Accounts +2". The chevron opens every area read-only
-below it (`RoleAccessDetail`, its Workspace and Every project groups, two
+below it (`RoleAccessDetail`, its Workspace and In projects groups, two
 columns from a 36rem card) as a disclosure. The Owner row has no
-menu and says what it is in one line. A role someone holds can't be deleted:
-its Delete says who to move first instead. `RoleRow` and `RoleAccessSummary`
+menu and says what it is in one line. Deleting a role someone holds asks
+first, naming how many people lose it. `RoleRow` and `RoleAccessSummary`
 in `web/src/components/settings/` are the reference.
 
 Danger zone. Every danger zone (Configuration, project, stack, automation)
@@ -841,8 +843,8 @@ Role dialog. New role and a role's Edit open one dialog, 40rem wide and
 on an edit, the holders as overlapping 20px avatars over a muted line of who a
 save reaches; the Name (and on a new role a 12rem Start from beside it from a
 32rem band, under it below that); then one browser-style tab per catalog area,
-Instance, Workspace and Every project, each with a mono "3/12" of the areas it
-allows and the person dialog's `foreground` dot while it holds changes; then
+Instance, Workspace and In projects, each with a mono "3/12" of the areas and
+switches it allows and the person dialog's `foreground` dot while it holds changes; then
 the open tab's list, the only part that scrolls; and a footer whose muted note
 reads "No changes yet", "Name it to create it" or a dot and "Unsaved changes",
 with Cancel and Save or Create role. It opens on Instance, the first tab, and

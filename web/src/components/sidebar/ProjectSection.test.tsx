@@ -29,7 +29,6 @@ const inSetup: (typeof projects)[number] = { ...projects[0]!, setup: { finished:
 const ownerPermissions = ["docs:read", "docs:write", "memories:read", "projects:create", "projects:read", "projects:write", "tickets:read"];
 
 interface MeExtra {
-  restricted?: boolean;
   projects?: { project_id: string; actions: string[] }[];
 }
 
@@ -214,9 +213,8 @@ describe("ProjectSection", () => {
     expect(screen.queryByText("Project")).not.toBeInTheDocument();
   });
 
-  it("shows a Restricted member the project section with what they hold on the project in view", async () => {
+  it("shows a member the project section with what they hold on the project in view", async () => {
     const me = {
-      restricted: true,
       projects: [
         { project_id: "p-1", actions: ["tickets:read", "tickets:write"] },
         { project_id: "p-2", actions: ["docs:read", "projects:read"] },

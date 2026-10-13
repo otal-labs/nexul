@@ -8,10 +8,12 @@ interface PermissionLevelControlProps {
   level: number | undefined;
   onLevel: (level: number) => void;
   disabled?: boolean;
+  // What the first rung is called: plays are seen, not read.
+  readName?: string;
 }
 
 // Every rung up to the chosen one fills, so the control reads as "this much access", not "one of these".
-export const PermissionLevelControl = ({ label, levelCount, level, onLevel, disabled = false }: PermissionLevelControlProps) => (
+export const PermissionLevelControl = ({ label, levelCount, level, onLevel, disabled = false, readName = "Read" }: PermissionLevelControlProps) => (
   <ToggleGroup
     type="single"
     variant="outline"
@@ -32,7 +34,7 @@ export const PermissionLevelControl = ({ label, levelCount, level, onLevel, disa
           level !== undefined && rung > 0 && rung <= level && "bg-accent text-foreground",
         )}
       >
-        {levelName(rung)}
+        {rung === 1 ? readName : levelName(rung)}
       </ToggleGroupItem>
     ))}
   </ToggleGroup>

@@ -43,8 +43,6 @@ export interface MyWorkspaceInfo {
   // Every role held, in the order given; role_name names them joined.
   roles?: HeldRole[];
   permissions: string[];
-  // Still sent for builds from before projects were opt-in; true for every non-Owner, and read by nothing here.
-  restricted?: boolean;
   projects?: { project_id: string; actions: string[] }[];
 }
 

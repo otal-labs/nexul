@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import type { Role } from "@/models/Role";
+import { getTeamKey } from "@/models/Team";
 import type { Workspace } from "@/models/Workspace";
 import type { LiveFollower } from "@/lib/live";
 
@@ -49,7 +50,11 @@ export const useDeleteWorkspaceRole = (workspaceId: string) => {
     mutationFn: async (roleId: string) =>
       api.delete(`/api/workspaces/${workspaceId}/roles/${roleId}`),
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, workspaceId] });
+      // Its holders lose it, and the delete's frame is role.updated, which the Team doesn't follow.
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, workspaceId] }),
+        client.invalidateQueries({ queryKey: [getTeamKey], exact: true }),
+      ]);
       toast.success("Role deleted");
     },
     onError: (error) => toast.error(errorMessage(error)),

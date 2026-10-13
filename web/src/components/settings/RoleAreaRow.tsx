@@ -2,7 +2,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PermissionLevelControl } from "@/components/access/PermissionLevelControl";
 import { useRoleDraft } from "@/hooks/useRoleDraft";
 import { levelOf, withExtra, withLevel, type PermissionDomain } from "@/models/PermissionLevel";
-import { extraName } from "@/models/RoleSection";
+import { extraName, readName } from "@/models/RoleSection";
 import { cn } from "@/lib/utils";
 
 interface RoleAreaRowProps {
@@ -13,6 +13,7 @@ interface RoleAreaRowProps {
 export const RoleAreaRow = ({ domain }: RoleAreaRowProps) => {
   const { actions, setActions } = useRoleDraft();
   const level = levelOf(domain, actions);
+  const firstRung = readName(domain.domain);
 
   return (
     <li className="px-3 py-2">
@@ -24,6 +25,7 @@ export const RoleAreaRow = ({ domain }: RoleAreaRowProps) => {
           label={`${domain.name} access`}
           levelCount={domain.levels.length}
           level={level}
+          readName={firstRung}
           onLevel={(next) => setActions(withLevel(actions, domain, next))}
         />
       </div>
@@ -32,7 +34,7 @@ export const RoleAreaRow = ({ domain }: RoleAreaRowProps) => {
           {domain.extras.map((extra) => (
             <label
               key={extra.value}
-              title={level === 0 ? "Needs Read first" : extra.label}
+              title={level === 0 ? `Needs ${firstRung} first` : extra.label}
               className={cn(
                 "flex items-center gap-2 text-xs text-muted-foreground",
                 level === 0 ? "cursor-not-allowed opacity-70" : "cursor-pointer",

@@ -35,13 +35,13 @@ Every workspace has an **Owner** role. It can't be renamed, deleted, or limited:
 
 **New role** and a role's **Edit** open the role editor, a dialog with the name at the top and Save at the bottom. A new role can **Start from** a copy of another role; the copy is yours to change and the other role stays as it is. Nothing is saved until **Create role** or **Save**, and closing with changes asks before it throws them away.
 
-A role sets one level per area: **None**, **Read**, **Write**, or **Delete**, each level including the ones before it. Some areas carry extra checkboxes under their name, such as docs' **Threads**, **Clone**, and **Lock**, which need **Read** first. The editor has three tabs, each with the number of areas it allows, a dot while it holds unsaved changes, and a top row that sets every area in it at once:
+A role sets one level per area: **None**, **Read**, **Write**, or **Delete**, each level including the ones before it. Plays' first level is **See**. Some areas carry extra checkboxes under their name, such as docs' **Threads**, **Clone**, and **Lock**, which need **Read** first (plays' **Run** needs **See**). A few permissions are a plain yes or no, set with a switch at the top of their tab. The editor has three tabs, each with the number of areas and switches it allows, a dot while it holds unsaved changes, and a top row that sets every area in it at once, leaving the switches as they are:
 
 - **Instance**: areas that apply across every workspace on this install, such as runners, machines, DNS and gateways, connectors, accounts, and the audit log.
-- **Workspace**: areas such as chat, channels, plays, members, and roles.
-- **Every project**: a project's areas, such as tickets, docs, memories, and stacks, applied on every project.
+- **Workspace**: across the workspace, whatever project someone is in. It leads with **Create projects** (`projects:create`) and **Edit the workspace Interview template** (`memories:template`), then areas such as chat, channels, plays, members, and roles.
+- **In projects**: a project's areas, such as tickets, docs, memories, and stacks, which a holder has only inside the projects they're in. It leads with **Manage this project's access** (`projects:access`): choosing who's in a project and what they can do there.
 
-Each role's row counts its areas per level, names the first ones it has no access to, and shows who holds it; its chevron opens every area. Its **…** menu edits, duplicates (the copy is named `Admin (copy)`), clones to another workspace, or deletes it. Deleting a role someone holds takes it from them, along with the rules that name it and the pending invites that give it; someone left with no role stays a member and sees no project.
+Each role's row counts its areas per level, names the first ones it has no access to, and shows who holds it; its chevron opens every area. Its **…** menu edits, duplicates (the copy is named `Admin (copy)`), clones to another workspace, or deletes it. Deleting a role someone holds asks first, saying how many people lose it, then takes it from them, along with the rules that name it and the pending invites that give it; someone left with no role stays a member and sees no project.
 
 Nobody can hand out a permission they don't hold: not in a role, an override, or an invitation. Every permission is written `<area>:<action>`, such as `docs:write`, and the same names gate a person, a personal access token, an automation, and an agent.
 

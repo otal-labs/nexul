@@ -50,7 +50,6 @@ describe("a /me from before the switch and one from after it", () => {
       { id: "role-frontend", name: "Frontend", is_owner: false },
     ],
     permissions: ["chat:write"],
-    restricted: true,
     projects: [
       { project_id: "p-web", actions: ["tickets:read", "tickets:write"] },
       { project_id: "p-api", actions: ["tickets:read", "tickets:write"] },

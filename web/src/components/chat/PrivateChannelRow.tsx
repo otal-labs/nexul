@@ -7,12 +7,10 @@ import { cn } from "@/lib/utils";
 interface PrivateChannelRowProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
-  // A Restricted member's channel is private and stays so.
-  fixed?: boolean;
   className?: string;
 }
 
-export const PrivateChannelRow = ({ checked, onCheckedChange, fixed = false, className }: PrivateChannelRowProps) => {
+export const PrivateChannelRow = ({ checked, onCheckedChange, className }: PrivateChannelRowProps) => {
   const labelId = useId();
   const Icon = checked ? LockIcon : HashIcon;
   return (
@@ -26,7 +24,7 @@ export const PrivateChannelRow = ({ checked, onCheckedChange, fixed = false, cla
           {checked ? "Only its members can see it." : "Everyone in the workspace can read it."}
         </p>
       </div>
-      <Switch aria-labelledby={labelId} checked={checked} disabled={fixed} onCheckedChange={onCheckedChange} />
+      <Switch aria-labelledby={labelId} checked={checked} onCheckedChange={onCheckedChange} />
     </div>
   );
 };
