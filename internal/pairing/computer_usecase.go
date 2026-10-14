@@ -168,15 +168,21 @@ func (s *Service) HandleRunnerChanged(ctx context.Context, ev eventbus.Event) er
 	if err != nil {
 		return err
 	}
-	if computer.Name != "" {
+	return s.nameFromHostname(ctx, computer, p.Hostname)
+}
+
+// nameFromHostname saves an unnamed computer under the hostname it reported; a named one, or no hostname, changes nothing.
+func (s *Service) nameFromHostname(ctx context.Context, c *Computer, hostname string) error {
+	hostname = strings.TrimSpace(hostname)
+	if c.Name != "" || hostname == "" {
 		return nil
 	}
-	computer.Name = strings.TrimSpace(p.Hostname)
-	computer.UpdatedAt = s.now().UTC()
-	if err := s.repo.SaveComputer(ctx, *computer); err != nil {
-		return fmt.Errorf("name computer %s: %w", computer.ID, err)
+	c.Name = hostname
+	c.UpdatedAt = s.now().UTC()
+	if err := s.repo.SaveComputer(ctx, *c); err != nil {
+		return fmt.Errorf("name computer %s: %w", c.ID, err)
 	}
-	s.notifyComputersChanged(p.UserID)
+	s.notifyComputersChanged(c.UserID)
 	return nil
 }
 
@@ -222,10 +228,12 @@ func (s *Service) needsPairing(c Computer) bool {
 	return !c.Paired() || !onRunner(c) || !c.TokenExpiresAt.After(s.now().Add(repairWindow))
 }
 
-// pairOnReport pairs c through its runner; a failure is the row's pair_error, never the report's.
+// pairOnReport names c from the report, then pairs it through its runner; a failure is the row's pair_error, never the
+// report's, and leaves c named either way.
 func (s *Service) pairOnReport(ctx context.Context, c Computer, hostname string) {
-	if c.Name == "" {
-		c.Name = strings.TrimSpace(hostname)
+	if err := s.nameFromHostname(ctx, &c, hostname); err != nil {
+		logging.FromCtx(ctx).Warn("naming the computer from its report failed", "computer_id", c.ID, "error", err)
+		return
 	}
 	ctx, cancel := context.WithTimeout(ctx, pairTimeout)
 	defer cancel()
