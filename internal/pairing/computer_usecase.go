@@ -171,7 +171,6 @@ func (s *Service) HandleRunnerChanged(ctx context.Context, ev eventbus.Event) er
 	return s.nameFromHostname(ctx, computer, p.Hostname)
 }
 
-// nameFromHostname saves an unnamed computer under the hostname it reported; a named one, or no hostname, changes nothing.
 func (s *Service) nameFromHostname(ctx context.Context, c *Computer, hostname string) error {
 	hostname = strings.TrimSpace(hostname)
 	if c.Name != "" || hostname == "" {
@@ -228,8 +227,7 @@ func (s *Service) needsPairing(c Computer) bool {
 	return !c.Paired() || !onRunner(c) || !c.TokenExpiresAt.After(s.now().Add(repairWindow))
 }
 
-// pairOnReport names c from the report, then pairs it through its runner; a failure is the row's pair_error, never the
-// report's, and leaves c named either way.
+// Persist the name before pairing can publish a refusal, so an immediate manual retry passes name validation.
 func (s *Service) pairOnReport(ctx context.Context, c Computer, hostname string) {
 	if err := s.nameFromHostname(ctx, &c, hostname); err != nil {
 		logging.FromCtx(ctx).Warn("naming the computer from its report failed", "computer_id", c.ID, "error", err)

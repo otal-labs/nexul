@@ -146,8 +146,6 @@ func TestPairComputer_ThroughTheRunner_FailureLeavesTheComputerAndShowsWhy(t *te
 	}
 }
 
-// TestHandleFactsReported_ARefusedPairingStillNamesTheComputer: an unnamed computer takes the hostname it reported even
-// when pairing through its runner fails, so a person can pair it by hand right away.
 func TestHandleFactsReported_ARefusedPairingStillNamesTheComputer(t *testing.T) {
 	t.Parallel()
 	f := newRunnerFixture(t, Computer{ServerURL: runnerAddress("c-laptop")})
