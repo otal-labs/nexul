@@ -3,8 +3,9 @@ import { useActionState } from "@/hooks/useActionState";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSetAutomationHost } from "@/hooks/AutomationHooks";
 import { useFetchAutomationHosts } from "@/hooks/AutomationHostHooks";
+import { useFetchMachines } from "@/hooks/RunnerHooks";
 import type { Automation } from "@/models/Automation";
-import { InstanceHostName } from "@/models/AutomationHost";
+import { canPlaceOn, InstanceHostName } from "@/models/AutomationHost";
 
 interface AutomationHostPickerProps {
   automation: Automation;
@@ -15,10 +16,15 @@ const instanceValue = "__instance__";
 
 export const AutomationHostPicker = ({ automation }: AutomationHostPickerProps) => {
   const { data: hosts } = useFetchAutomationHosts();
+  const { data: machines } = useFetchMachines();
   const setHost = useSetAutomationHost(automation.id);
-  const action = useActionState({ permission: ["automations:write", "machines:deploy"], verb: "change where automations run" });
+  // Where an automation may run is checked per host against its machine; the permission here is only the workspace's.
+  const action = useActionState({ permission: "automations:write", verb: "change where automations run" });
   if (action.state === "hidden") return null;
-  const others = (hosts ?? []).filter((host) => host.name !== InstanceHostName);
+  // The host it runs on stays listed so the picker can name it, but can't be picked again without Deploy to there.
+  const others = machines
+    ? (hosts ?? []).filter((host) => host.name !== InstanceHostName && (canPlaceOn(host, machines) || host.id === automation.host_id))
+    : [];
 
   return (
     <SettingsCard id="runs-on" title="Runs on" description="The automations host that runs this automation.">
@@ -35,7 +41,7 @@ export const AutomationHostPicker = ({ automation }: AutomationHostPickerProps) 
             instance (built in)
           </SelectItem>
           {others.map((host) => (
-            <SelectItem key={host.id} value={host.id} className="font-mono">
+            <SelectItem key={host.id} value={host.id} disabled={!canPlaceOn(host, machines ?? [])} className="font-mono">
               {host.name}
             </SelectItem>
           ))}

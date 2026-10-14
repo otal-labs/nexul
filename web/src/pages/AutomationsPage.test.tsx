@@ -8,6 +8,7 @@ import { AutomationsPage } from "@/pages/AutomationsPage";
 import { AutomationKind } from "@/enums/Automation";
 import type { Automation } from "@/models/Automation";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { resetViewer, viewer } from "@/test/viewerActions";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn() }));
 
@@ -17,6 +18,7 @@ vi.mock("@/api/client", () => ({
   errorMessage: () => "error",
 }));
 
+vi.mock("@/hooks/AccessHooks", () => ({ useIsInstanceOwner: () => viewer.instanceOwner }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const automation = (overrides: Partial<Automation> = {}): Automation => ({
@@ -53,6 +55,8 @@ describe("AutomationsPage", () => {
   beforeEach(() => {
     mocks.get.mockReset();
     mocks.patch.mockReset();
+    resetViewer();
+    viewer.instanceOwner = true;
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   });
 
@@ -103,7 +107,7 @@ describe("AutomationsPage", () => {
     mocks.get.mockImplementation(async (url: string) =>
       url === "/api/automation-hosts"
         ? { data: [host] }
-        : { data: [automation(), automation({ id: "a2", name: "PR opened" })] },
+        : { data: url === "/api/machines" ? [] : [automation(), automation({ id: "a2", name: "PR opened" })] },
     );
     renderPage();
 
