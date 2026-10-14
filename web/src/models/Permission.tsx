@@ -34,6 +34,8 @@ export interface PermissionGrant {
   target: "person" | "role";
   user_id: string;
   role_id?: string;
+  // The role's name or the person's login, for a viewer whose own lists don't carry it; absent when none resolves.
+  target_name?: string;
   allow: string[];
   deny: string[];
   created_at: string;

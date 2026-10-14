@@ -1,7 +1,7 @@
 # 25: People on this machine shows ids to someone who can't list people
 
 Type: bug
-Status: open
+Status: resolved
 Blocked by: None
 
 Read first: `AGENTS.md`, `CONTEXT.md` (Machine), ADR 0151, `practices/react-guide.md`, `web/src/hooks/usePanelTargets.tsx`.
@@ -27,6 +27,15 @@ the viewer can list.
 
 ## Acceptance criteria
 
-- [ ] A Manage holder who can't read Team sees role names and person names in the summary and the panel.
-- [ ] A person's id is never shown as their name.
-- [ ] The viewer's access to the Team and Roles lists is unchanged.
+- [x] A Manage holder who can't read Team sees role names and person names in the summary and the panel.
+- [x] A person's id is never shown as their name.
+- [x] The viewer's access to the Team and Roles lists is unchanged.
+
+## Answer
+
+The rules list (`GET /api/permissions` and `permission_overwrite_list`, for every entity kind) now carries
+`target_name` on each rule: the role's name or the person's login, resolved by the same namer explain's sources use,
+and left out when nothing resolves (an id is never put there). `usePanelTargets` takes `rulesOn`, the entity whose
+rules name the targets, and names a target its Team and Roles lists can't resolve from that field, else "Someone" for
+a person and "Unknown role" for a role. The machine row and the permissions panel both read it, so a Manage holder
+without Team reads `dev, DevOps` instead of an id and "Unknown role". The Team and Roles checks are unchanged.

@@ -1,14 +1,15 @@
 import { useQueries } from "@tanstack/react-query";
 
-import { personLabel, unknownPerson, type Person } from "@nexul/client-core/person";
+import { personLabel, type Person } from "@nexul/client-core/person";
 
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchProjectPeople, useFetchProjectRoleIds, useFetchWorkspacePeople, workspacePeopleQuery } from "@/hooks/PeopleHooks";
+import { useFetchGrants } from "@/hooks/PermissionHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
 import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
-import { parseTarget, targetKey, type TargetKind } from "@/models/PermissionPanel";
+import { grantKey, parseTarget, targetKey, type TargetKind } from "@/models/PermissionPanel";
 import type { Role } from "@/models/Role";
 
 // A role or person a rule may name, as the panel and a project's people card show it.
@@ -31,6 +32,8 @@ interface TargetScope {
   everyWorkspace?: boolean;
   // An instance area: every workspace's roles, each named with its workspace, and every account.
   instance?: boolean | undefined;
+  // The entity whose rules name targets: a role or person the lists above can't resolve is named as the rules list does.
+  rulesOn?: { type: string; id: string } | undefined;
 }
 
 // Everyone in any workspace the viewer is in but the viewer, once, while everyWorkspace; undefined until all have loaded.
@@ -51,7 +54,7 @@ const usePeopleAround = (everyWorkspace: boolean): Person[] | undefined => {
 const noRoles: Role[] = [];
 
 // Every role and member of the workspace as targets, and why one can't be listed here yet.
-export const usePanelTargets = ({ workspaceId, projectId, everyWorkspace = false, instance = false }: TargetScope) => {
+export const usePanelTargets = ({ workspaceId, projectId, everyWorkspace = false, instance = false, rulesOn }: TargetScope) => {
   const { data: team } = useFetchTeam(instance);
   // Team is read for other reasons too, so it is only consulted for an area.
   const areaTeam = instance ? team : undefined;
@@ -70,6 +73,7 @@ export const usePanelTargets = ({ workspaceId, projectId, everyWorkspace = false
   const { data: inProject } = useFetchProjectPeople(projectId);
   const { data: rolesIn } = useFetchProjectRoleIds(projectId);
   const { data: project } = useFetchProject(projectId);
+  const { data: rules } = useFetchGrants(rulesOn?.type ?? "", rulesOn?.id ?? "", !!rulesOn);
 
   const allRoles: PanelTarget[] = (roles ?? []).map((r) => ({ key: targetKey("role", r.id), kind: "role", id: r.id, name: r.name, login: "", avatarUrl: "", known: true }));
   // The Owner role reaches everything whatever a rule says, so it is never offered as a target.
@@ -82,8 +86,9 @@ export const usePanelTargets = ({ workspaceId, projectId, everyWorkspace = false
     const found = [...allRoles, ...personTargets].find((t) => t.key === key);
     if (found) return found;
     const { kind, id } = parseTarget(key);
-    const stranger = unknownPerson(id);
-    return { key, kind, id, name: kind === "role" ? "Unknown role" : personLabel(stranger), login: stranger.login, avatarUrl: "", known: false };
+    const named = rules?.find((g) => grantKey(g) === key)?.target_name ?? "";
+    if (kind === "role") return { key, kind, id, name: named || "Unknown role", login: "", avatarUrl: "", known: false };
+    return { key, kind, id, name: named || "Someone", login: named, avatarUrl: "", known: false };
   };
 
   const inside = (t: PanelTarget) => (t.kind === "role" ? rolesIn?.includes(t.id) : inProject?.some((p) => p.user_id === t.id));

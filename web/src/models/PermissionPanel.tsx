@@ -46,6 +46,7 @@ export const targetScope = (entity: PanelEntity, projectId?: string) => ({
   projectId,
   everyWorkspace: entity.type === "computer",
   instance: entity.type === "instance_area" || entity.type === "machine",
+  rulesOn: { type: entity.type, id: entity.id },
 });
 
 // An instance area as the panel opens on it, named as its Settings section shows it.

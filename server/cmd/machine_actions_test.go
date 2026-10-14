@@ -63,3 +63,33 @@ func TestMachines_ListNamesWhatTheViewerHolds(t *testing.T) {
 		})
 	}
 }
+
+// A Manage holder who cannot list Team or Roles still reads a name on every rule target.
+func TestMachineRules_NameEachTarget(t *testing.T) {
+	c, db := newPrivacyCast(t)
+	seedEdgeAndCore(t, db)
+	_, err := db.Exec(`INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, allow, deny, created_at, updated_at) VALUES
+    ('machine', 'm-edge', 'person', 'u-alice', '["machines:see","machines:write"]', '[]', 1, 1),
+    ('machine', 'm-edge', 'person', 'u-bob', '["machines:see"]', '[]', 1, 1);
+INSERT INTO permission_overwrites (resource_type, resource_id, target, role_id, allow, deny, created_at, updated_at)
+VALUES ('machine', 'm-edge', 'role', 'role-member', '["machines:see"]', '[]', 1, 1)`)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusForbidden, callAPI(t, c.h, http.MethodGet, "/api/team", c.alice, "").Code, "Team stays closed to someone who only manages a machine")
+
+	rec := callAPI(t, c.h, http.MethodGet, "/api/permissions?resource_type=machine&resource_id=m-edge", c.alice, "")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	var body struct {
+		Grants []struct {
+			UserID     string `json:"user_id"`
+			RoleID     string `json:"role_id"`
+			TargetName string `json:"target_name"`
+		} `json:"grants"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	got := map[string]string{}
+	for _, g := range body.Grants {
+		got[g.UserID+g.RoleID] = g.TargetName
+	}
+	assert.Equal(t, map[string]string{"u-alice": "alice", "u-bob": "bob", "u-carol": "carol", "role-member": "Member"}, got)
+}

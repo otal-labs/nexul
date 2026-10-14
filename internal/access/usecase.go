@@ -1012,6 +1012,10 @@ func (s *Service) listGrants(ctx context.Context, actorID, resourceType, resourc
 	if err != nil {
 		return nil, fmt.Errorf("list overwrites %s/%s: %w", resourceType, resourceID, err)
 	}
+	n := s.namer(ctx)
+	for _, g := range grants {
+		g.TargetName = n.targetName(g)
+	}
 	return grants, nil
 }
 

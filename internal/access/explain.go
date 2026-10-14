@@ -375,22 +375,27 @@ func (s *Service) namer(ctx context.Context) *namer {
 
 // name is entityType id's name, or the id itself when it has none or the read fails.
 func (n *namer) name(entityType, id string) string {
+	if name, ok := n.resolve(entityType, id); ok {
+		return name
+	}
+	return id
+}
+
+// resolve is entityType id's name, and whether one exists.
+func (n *namer) resolve(entityType, id string) (string, bool) {
 	key := [2]string{entityType, id}
 	if got, ok := n.seen[key]; ok {
-		return got
+		return got, got != ""
 	}
-	if entityType == resourceTypeInstanceArea {
-		n.seen[key] = n.areaLabel(id)
-		return n.seen[key]
-	}
-	name := id
-	if n.names != nil && id != "" {
-		if got, err := n.names.Name(n.ctx, entityType, id); err == nil && got != "" {
-			name = got
-		}
+	name := ""
+	switch {
+	case entityType == resourceTypeInstanceArea:
+		name = n.areaLabel(id)
+	case n.names != nil && id != "":
+		name, _ = n.names.Name(n.ctx, entityType, id)
 	}
 	n.seen[key] = name
-	return name
+	return name, name != ""
 }
 
 // areaLabel is the instance area keyed key's name in a sentence, or the key itself for one no longer wired.
@@ -400,6 +405,16 @@ func (n *namer) areaLabel(key string) string {
 		return key
 	}
 	return n.areas[i].Label
+}
+
+// targetName is the name of the role or person a rule names, empty when none resolves: an id is not a name.
+func (n *namer) targetName(g *Overwrite) string {
+	if g.Target == TargetRole {
+		name, _ := n.resolve(TargetRole, g.RoleID)
+		return name
+	}
+	name, _ := n.resolve(TargetPerson, g.UserID)
+	return name
 }
 
 func (n *namer) named(src Source) NamedSource {
