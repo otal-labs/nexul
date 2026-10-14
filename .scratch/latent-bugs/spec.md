@@ -144,3 +144,17 @@ threads open the Bots section from their menu. Channel threads cannot be
 created yet (no use-case sets `parent_message_id`) and the web has no screen
 for one, so they have no menu to carry it. When channel threads get a screen,
 give its menu the same "Bots" item (`useBotsDialog`).
+
+## Ticket notes are untested on a real phone
+
+Notes open read-only on the phone app (#306). The web walkthrough passed, but no
+one has opened a note on a device: check that a note opens, that one with a table
+renders, and that deleting its message removes the file.
+
+## The Interview play still keeps a hidden interview thread
+
+Answers live on the Interview page now, but the play still creates a project's
+`interview_thread` conversation to carry the session id
+(`GetOrCreateInterviewThread` in `internal/chat`), and the messages it collects
+are never shown. The T3 protocol 2 changes have merged, so the thread can go once
+the run no longer needs it for the session.

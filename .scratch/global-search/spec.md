@@ -2,6 +2,10 @@
 
 **Status:** needs-triage
 
+Partly shipped: the command palette (Ctrl or Cmd+K) is the box, and it searches tickets and docs through the `@`
+picker's endpoint and lists memories. Not built: the fan-out endpoint, the workspace scope on its ticket and doc
+sources, and the services, pull requests and automations as searchable kinds.
+
 Carried over from the retired search requirements document, where it sat as a
 future direction. Search exists and works, but only from inside the docs and
 tickets surfaces and from the MCP tools. Worth re-confirming that a single

@@ -35,8 +35,7 @@ func TestHTTPBase(t *testing.T) {
 	}
 }
 
-// TestMintToken_ClaimStructure asserts the exact claim shape the research
-// doc (.scratch/integrations/research/08-livekit-facts.md) pins down:
+// TestMintToken_ClaimStructure asserts the exact claim shape LiveKit expects:
 // standard iss/sub/name/nbf/exp fields plus a video grant with roomJoin,
 // roomCreate, canSubscribe, and canPublishSources limited to
 // microphone/camera/screen_share/screen_share_audio.

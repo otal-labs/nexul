@@ -53,39 +53,10 @@ git history, and anything durable it decided is an ADR.
 
 - `.scratch/latent-bugs/` — small defects seen in passing, one heading each
   in `spec.md`; no tickets, fix and delete the heading.
-- `.scratch/llm-setup/` — wayfinder map complete 2026-09-24 (decisions
-  01–16, ADRs 0062–0065) and sliced into implementation tickets 17–38:
-  reaching a remote harness through a per-computer tunnel, the MCP-only
-  setup gate and its wizard, and the guided lifecycle (ticket people and
-  templates, found-in and blocked-by, the testing step, the interview, the
-  decisions check). Research findings in `research/`.
-- `.scratch/native-app/` — wayfinder map charted 2026-09-28: the settings
-  split (Your settings, Configuration, Devices with QR phone sign-in and
-  stored per-device sessions), then an Android app in `native/` with
-  self-hosted OTA updates. Research findings in `research/`.
-- `.scratch/integrations/` — three tracks: Cloudflare deploy→domain,
-  branch-driven deployments, LiveKit voice channels. Implemented; tickets 04
-  and 11 await the owner's reaction to the built UI. Research findings in
+- `.scratch/t3-orchestrator-v2/` — T3 Code's new orchestrator (protocol 2),
+  built and shipped; two tickets are left: 16, the owner's walkthrough on the
+  nightly, and 17, the guide pages and glossary terms. Wire research in
   `research/`.
-- `.scratch/plays/` — plays: a pre-configured Agent turn fired from a
-  ticket or doc page ("Fix with AI"), selectable memories with their own
-  permission, doc threads, and persisted trails. Wayfinder map complete
-  2026-09-17 and sliced; tickets 13–33 shipped, including the walkthrough
-  on a paired harness (28) and the five follow-ups it produced (29–33).
-  Delete the directory once the owner has reacted to the live UI. Research
-  findings in `research/`.
-- `.scratch/ticket-flow/` — the thread as a resizable pane beside a
-  ticket's body, and notes: an agent's additions as an Agent message in the
-  thread with a markdown file, instead of edits to the body. Wayfinder map
-  complete 2026-10-02 and sliced into implementation tickets 08–15.
-- `.scratch/t3-orchestrator-v2/` — T3 Code's new orchestrator (protocol 2):
-  a second T3 client under its own harness kind, a one-way switch per
-  computer, and handed-off agents as pills on the Agent's reply. Spec and
-  tickets 01–24 written 2026-10-03; wire research in `research/`.
-- `.scratch/interview-qna/` — the interview as question cards on the
-  Interview page with no agent, then a play run that asks follow-ups about
-  the gaps and writes the interview memory. Wayfinder map charted
-  2026-10-03; carries the build. Research findings in `research/`.
 - `.scratch/doc-clarify/` — "Clarify via AI": an agent asks a doc's gaps
   as rounds of question cards on the doc page and in the phone app, the
   client answers, and a round with no gaps left writes the doc. Wayfinder
@@ -118,14 +89,19 @@ git history, and anything durable it decided is an ADR.
   the owner *before* doing the work". Never act on one silently.
 - Specs carried over from the dissolved requirement docs, all `needs-triage`
   because the owner has not re-confirmed them since they were written:
-  `.scratch/ticket-workflow-depth/` (blocked tickets, type templates, comments
-  and activity), `.scratch/global-search/`, `.scratch/branch-from-ticket/`,
-  `.scratch/second-git-host/`,
-  `.scratch/integration-store/`, `.scratch/workspace-scoped-automation-surfaces/`.
-  Each is a `spec.md` with no tickets yet;
+  `.scratch/ticket-workflow-depth/` (what is left is an activity timeline and
+  custom fields), `.scratch/global-search/` (the command palette covers tickets
+  and docs; the all-entity search is not built), `.scratch/branch-from-ticket/`,
+  `.scratch/second-git-host/`, `.scratch/integration-store/`, and
+  `.scratch/workspace-scoped-automation-surfaces/` (automations are scoped;
+  integrations are not). Each is a `spec.md` with no tickets yet;
   triage first, then `/to-tickets`.
 
 ## History
+
+On 2026-10-14 the efforts whose tickets had all shipped were removed: LLM
+setup, integrations, plays, the phone app, ticket flow and the interview as
+questions.
 
 Before 2026-08-15 this repo tracked work as `docs/{ws,cus,dr}-XX.md` workstream
 documents with a dashboard in `orchestrator.md`, driven by three GitHub Actions

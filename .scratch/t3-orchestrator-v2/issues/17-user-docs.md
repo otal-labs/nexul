@@ -13,6 +13,9 @@ absent) and a hand-off term. Move the roadmap item to shipped in `ROADMAP.md` an
 
 **Status:** ready-for-agent
 
+Checked 2026-10-14: still unwritten. The paired-computers and computer-setup guides have no protocol 2, provider
+minimum, hand-off pill, Pi or Grok text, and `CONTEXT.md` has no hand-off term. The code ships; only the words are missing.
+
 Read first: the spec; `website/` is mobile first.
 
 - [ ] Website builds; pages checked at 320, 375, 414 and 768 px
