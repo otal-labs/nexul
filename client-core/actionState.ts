@@ -16,6 +16,12 @@ export interface EntityExplanation {
 export const answerFor = (explanation: EntityExplanation | undefined, permission: PermissionAction): EntityAnswer | undefined =>
   explanation?.effective.find((answer) => answer.action === permission);
 
+// A machine answers from the actions its card says the viewer holds (ADR 0151), not the role-wide union.
+export const machineAnswer = (machine: { actions: readonly string[] }, permission: PermissionAction): EntityAnswer => ({
+  allowed: hasPermission(machine.actions, permission),
+  source: { sentence: "" },
+});
+
 export interface ActionGate {
   permission: PermissionAction;
   projectId?: string | undefined;

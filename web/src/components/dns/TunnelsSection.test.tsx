@@ -7,18 +7,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TunnelsSection } from "@/components/dns/TunnelsSection";
 import { api } from "@/api/client";
 import { toast } from "sonner";
-
-const mocks = vi.hoisted(() => ({ canDelete: true }));
+import { resetViewer, viewer } from "@/test/viewerActions";
 
 vi.mock("@/api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/client")>()),
   api: { get: vi.fn(), delete: vi.fn() },
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-vi.mock("@/hooks/WorkspaceHooks", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/hooks/WorkspaceHooks")>()),
-  useHasPermission: (value: string) => value !== "dns:delete" || mocks.canDelete,
-}));
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
 
 const tunnel = {
   id: "t1",
@@ -42,7 +38,8 @@ const renderSection = () => {
 
 describe("TunnelsSection", () => {
   beforeEach(() => {
-    mocks.canDelete = true;
+    resetViewer();
+    viewer.instance = ["dns:delete"];
     vi.mocked(api.get).mockReset().mockResolvedValue({ data: [tunnel] });
     vi.mocked(api.delete).mockReset();
     vi.mocked(toast.error).mockClear();
@@ -74,11 +71,22 @@ describe("TunnelsSection", () => {
     expect(toast.error).toHaveBeenCalledWith(refusal);
   });
 
-  it("hides Delete from someone who can't delete DNS", async () => {
-    mocks.canDelete = false;
+  it.each([
+    ["hides Delete", false],
+    ["locks Delete with the reason", true],
+  ])("%s from someone who can't delete DNS", async (_name, showLocked) => {
+    viewer.instance = [];
+    viewer.showLocked = showLocked;
     renderSection();
+    const user = userEvent.setup();
 
     expect(await screen.findByText("edge")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Delete tunnel edge" })).not.toBeInTheDocument();
+    const del = screen.queryByRole("button", { name: "Delete tunnel edge" });
+    expect(!!del).toBe(showLocked);
+    if (!del) return;
+    await user.click(del);
+    expect(del).toHaveAttribute("aria-disabled", "true");
+    expect(del).toHaveAccessibleDescription("Your role can't delete tunnels");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

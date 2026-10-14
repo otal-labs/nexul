@@ -9,18 +9,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { DnsSetupDone } from "@/components/dns/DnsSetupDone";
 import type { DnsSetupResult } from "@/models/DNS";
-
-const mocks = vi.hoisted(() => ({ canDelete: true }));
+import { resetViewer, viewer } from "@/test/viewerActions";
 
 vi.mock("@/api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/client")>()),
   api: { delete: vi.fn() },
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-vi.mock("@/hooks/WorkspaceHooks", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/hooks/WorkspaceHooks")>()),
-  useHasPermission: (value: string) => value !== "dns:delete" || mocks.canDelete,
-}));
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
 
 const result: DnsSetupResult = {
   headline: "The instance record under example.com now points at 203.0.113.10.",
@@ -44,7 +40,8 @@ const renderDone = (props: Partial<{ result: DnsSetupResult }> = {}) => {
 
 describe("DnsSetupDone", () => {
   beforeEach(() => {
-    mocks.canDelete = true;
+    resetViewer();
+    viewer.instance = ["dns:delete"];
     vi.mocked(api.delete).mockReset().mockResolvedValue({ data: { status: "deleted" } });
     vi.mocked(toast.error).mockClear();
   });
@@ -91,7 +88,7 @@ describe("DnsSetupDone", () => {
     ["the viewer cannot delete DNS", false, result],
     ["the step made no record of its own", true, { headline: "Routed", detail: "tunnel" }],
   ])("offers no delete when %s", (_why, canDelete, shown) => {
-    mocks.canDelete = canDelete;
+    viewer.instance = canDelete ? ["dns:delete"] : [];
     renderDone({ result: shown });
 
     expect(screen.getByRole("button", { name: "Continue to Nexul" })).toBeInTheDocument();

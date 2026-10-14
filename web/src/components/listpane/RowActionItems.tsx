@@ -18,6 +18,7 @@ import {
   Trash2Icon,
 } from "lucide-react";
 
+import { ActionMenuItem } from "@/components/action/ActionMenuItem";
 import { hasOwnActions, type MenuParts, type RowMenu } from "@/components/listpane/rowMenu";
 import { useCanManageAccess } from "@/hooks/useCanManageAccess";
 
@@ -134,11 +135,16 @@ export const RowActionItems = ({ ui, ...m }: RowActionItemsProps) => {
       )}
       {m.permissions && <PermissionsItem ui={ui} permissions={m.permissions} afterOwn={own} beforeDelete={!!m.onDelete} />}
       {!m.permissions && m.onDelete && own && <ui.Separator />}
-      {m.onDelete && (
+      {m.onDelete && !m.deleteGate && (
         <ui.Item variant="destructive" onSelect={m.onDelete}>
           <Trash2Icon aria-hidden />
           Delete
         </ui.Item>
+      )}
+      {m.onDelete && m.deleteGate && (
+        <ActionMenuItem {...m.deleteGate} ui={ui} icon={Trash2Icon} destructive onSelect={m.onDelete}>
+          Delete
+        </ActionMenuItem>
       )}
     </>
   );

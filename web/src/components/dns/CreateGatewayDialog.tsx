@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm, useWatch, type UseFormReturn } from "react-hook-form";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -107,7 +108,9 @@ export const CreateGatewayDialog = () => {
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm">Create gateway</Button>
+        <ActionButton permission="dns:write" verb="create gateways" size="sm">
+          Create gateway
+        </ActionButton>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

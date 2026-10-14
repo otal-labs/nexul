@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { FormInput } from "@/components/FormInput";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
@@ -111,12 +112,12 @@ export const FreeNodeDialog = ({ node, onClose }: FreeNodeDialogProps) => {
               <Button variant="outline" type="button" onClick={onClose}>
                 Cancel
               </Button>
-              <Button variant="destructive" type="button" onClick={onDelete} loading={removeNode.isPending}>
+              <ActionButton permission="topology:delete" verb="delete topology nodes" variant="destructive" type="button" onClick={onDelete} loading={removeNode.isPending}>
                 Delete
-              </Button>
-              <Button type="submit" loading={save.isPending}>
+              </ActionButton>
+              <ActionButton permission="topology:write" verb="edit topology nodes" type="submit" loading={save.isPending}>
                 Save
-              </Button>
+              </ActionButton>
             </DialogFooter>
           </form>
         )}
@@ -142,12 +143,12 @@ export const FreeNodeDialog = ({ node, onClose }: FreeNodeDialogProps) => {
               <Button variant="outline" type="button" onClick={onClose}>
                 Cancel
               </Button>
-              <Button variant="destructive" type="button" onClick={onDelete} loading={removeNode.isPending}>
+              <ActionButton permission="topology:delete" verb="delete topology nodes" variant="destructive" type="button" onClick={onDelete} loading={removeNode.isPending}>
                 Delete
-              </Button>
-              <Button type="submit" loading={save.isPending}>
+              </ActionButton>
+              <ActionButton permission="topology:write" verb="edit topology nodes" type="submit" loading={save.isPending}>
                 Save
-              </Button>
+              </ActionButton>
             </DialogFooter>
           </form>
         )}

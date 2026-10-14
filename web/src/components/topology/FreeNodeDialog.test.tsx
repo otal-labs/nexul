@@ -9,10 +9,13 @@ import {
 } from "@/models/Topology";
 import { useFlowStore } from "@/stores/flowStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { resetViewer, viewer } from "@/test/viewerActions";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), _delete: vi.fn() }));
 
 vi.mock("@/api/client", () => ({ api: { get: mocks.get, put: mocks.put, delete: mocks._delete } }));
+
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
 
 const networkNode: NetworkNode = {
   id: "net-main",
@@ -27,6 +30,8 @@ const wrap = (ui: React.ReactNode) => (
 
 describe("FreeNodeDialog", () => {
   beforeEach(() => {
+    resetViewer();
+    viewer.instance = ["topology:write", "topology:delete"];
     mocks.get.mockReset();
     mocks.put.mockReset();
     mocks._delete.mockReset();
@@ -66,5 +71,19 @@ describe("FreeNodeDialog", () => {
       });
     });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("locks Save and Delete for a viewer who can only read topology, and sends nothing", async () => {
+    viewer.instance = [];
+    viewer.showLocked = true;
+    render(wrap(<FreeNodeDialog node={networkNode} onClose={vi.fn()} />));
+
+    for (const name of ["Save", "Delete"]) {
+      const button = screen.getByRole("button", { name });
+      fireEvent.click(button);
+      expect(button).toHaveAttribute("aria-disabled", "true");
+    }
+    expect(mocks.put).not.toHaveBeenCalled();
+    expect(mocks._delete).not.toHaveBeenCalled();
   });
 });

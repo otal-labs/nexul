@@ -1,8 +1,8 @@
 import { DownloadIcon, ServerIcon } from "lucide-react";
-import { Link } from "react-router";
-
+import { machineAnswer } from "@nexul/client-core/actionState";
 import { hasPermission } from "@nexul/client-core/permissions";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { EnterList } from "@/components/EnterList";
 import { EmptyRow } from "@/components/EmptyRow";
 import { RowActions } from "@/components/listpane/RowActions";
@@ -13,8 +13,7 @@ import { EditableStackRoot } from "@/components/runner/EditableStackRoot";
 import { MachineDeleteDetails } from "@/components/runner/MachineDeleteDetails";
 import { MachinePeopleRow } from "@/components/runner/MachinePeopleRow";
 import { RunnerRow } from "@/components/runner/RunnerRow";
-import { Button } from "@/components/ui/button";
-import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useActionState } from "@/hooks/useActionState";
 import { useDeleteMachine } from "@/hooks/MachineHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
@@ -42,14 +41,13 @@ const factClass = "relative min-w-0 pl-4 wrap-anywhere before:absolute before:le
 
 // A machine with nothing connected loses its lift and draws a dashed edge, like an unplugged card; its text keeps full contrast.
 export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
-  const canEditStacks = useAreaAccess()?.("editStacks") ?? false;
   const wsPath = useWorkspacePath();
   const openPermissions = usePermissionsDialog();
   const manages = hasPermission(machine.actions, "machines:write");
-  const canDelete = hasPermission(machine.actions, "machines:delete");
+  const deleteGate = { permission: "machines:delete", answer: machineAnswer(machine, "machines:delete") } as const;
+  const canDelete = useActionState(deleteGate).state !== "hidden";
   const deleteMachine = useDeleteMachine();
   const { open: confirmDelete } = useConfirmationDialog();
-  const canImport = manages && canEditStacks;
   const entity = machineEntity(machine);
   const onDelete = async () => {
     const ok = await confirmDelete({
@@ -64,6 +62,7 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
   const menu: RowMenu = {
     permissions: manages ? { entity, onOpen: () => void openPermissions(entity) } : undefined,
     onDelete: canDelete ? () => void onDelete() : undefined,
+    deleteGate,
   };
   const online = runners.filter((r) => r.connected).length;
   const tone = toneOf(online, runners.length);
@@ -97,19 +96,21 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
             <span className={cn("text-xs", tone === "online" ? "text-success" : "text-muted-foreground")}>{status}</span>
           </div>
           <div className="-my-1 -mr-1.5 flex items-center">
-            {canImport && (
-              <Button variant="ghost" size="sm" asChild>
-                <Link
-                  to={wsPath(`/wizard/project/import?machine=${machine.id}`)}
-                  aria-label="Import from this machine"
-                  title="Import from this machine"
-                >
-                  <DownloadIcon className="size-4" aria-hidden />
-                  <span className="hidden @lg:inline">Import</span>
-                </Link>
-              </Button>
-            )}
-            <AddRunnerDialog machineName={machine.name} triggerSize="sm" triggerVariant="ghost" />
+            <ActionButton
+              permission="machines:write"
+              answer={machineAnswer(machine, "machines:write")}
+              alsoNeeds={{ permission: "stacks:write" }}
+              verb="import from machines"
+              variant="ghost"
+              size="sm"
+              icon={DownloadIcon}
+              aria-label="Import from this machine"
+              title="Import from this machine"
+              to={wsPath(`/wizard/project/import?machine=${machine.id}`)}
+            >
+              <span className="hidden @lg:inline">Import</span>
+            </ActionButton>
+            <AddRunnerDialog machine={machine} triggerSize="sm" triggerVariant="ghost" />
             {offersMenu(menu, manages) && <RowActions itemLabel={machine.name} {...menu} />}
           </div>
           <div className="col-span-2 overflow-hidden">
@@ -122,7 +123,7 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
               </span>
               <span className={factClass}>seen {formatRelativeTime(machine.last_seen)}</span>
               <span className={factClass}>
-                <EditableStackRoot machineId={machine.id} stackRoot={machine.stack_root} />
+                <EditableStackRoot machine={machine} />
               </span>
             </div>
           </div>
@@ -132,7 +133,7 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
         {runners.length > 0 && (
           <EnterList className="divide-y divide-border border-t border-border">
             {runners.map((runner) => (
-              <RunnerRow key={runner.id} runner={runner} machineName={machine.name} />
+              <RunnerRow key={runner.id} runner={runner} machine={machine} />
             ))}
           </EnterList>
         )}

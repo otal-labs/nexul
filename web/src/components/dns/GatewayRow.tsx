@@ -44,6 +44,7 @@ export const GatewayRow = ({ gateway }: GatewayRowProps) => {
       </div>
       <ConfirmDestroyButton
         icon={Trash2}
+        gate={{ permission: "dns:delete", verb: "delete gateways" }}
         idleLabel={`Delete gateway on ${gateway.docker_network}`}
         confirmLabel="Delete"
         loading={deleteGateway.isPending}

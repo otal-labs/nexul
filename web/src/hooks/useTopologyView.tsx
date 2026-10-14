@@ -6,6 +6,7 @@ import { deriveWiring } from "@/components/topology/wiring";
 import { useFetchExposures, useFetchGateways } from "@/hooks/DnsHooks";
 import { useFetchAllContainers, useFetchStacks } from "@/hooks/StackHooks";
 import { useFetchTopology, useSaveTopology } from "@/hooks/TopologyHooks";
+import { useActionState } from "@/hooks/useActionState";
 import type { HostnameNode, TopologyNode } from "@/models/Topology";
 import { useFlowStore } from "@/stores/flowStore";
 import { alignPillsToRows, buildNetworkRects, layoutGraph, overlaps, type Positions } from "@/utils/TopologyLayout";
@@ -28,6 +29,7 @@ export const useTopologyView = () => {
   const nodes = useFlowStore((s) => s.nodes);
   const edges = useFlowStore((s) => s.edges);
   const save = useSaveTopology();
+  const canWrite = useActionState({ permission: "topology:write" }).state === "live";
   const { isPending } = useFetchTopology();
   const { data: containers = [] } = useFetchAllContainers();
   const { data: stacks = [] } = useFetchStacks();
@@ -78,7 +80,7 @@ export const useTopologyView = () => {
         }
         return next;
       });
-      if (persist) void save.mutateAsync();
+      if (persist && canWrite) void save.mutateAsync();
       if (cameraSet.current) return;
       cameraSet.current = true;
       // Next frame, once the new positions have rendered.
@@ -102,7 +104,7 @@ export const useTopologyView = () => {
       return;
     }
     settle(alignPillsToRows(viewNodes, stored, viewEdges, wiring.networks), false);
-  }, [isPending, viewNodes, viewEdges, wiring.nodes, wiring.networks, fitView, setViewport, save]);
+  }, [isPending, viewNodes, viewEdges, wiring.nodes, wiring.networks, fitView, setViewport, save, canWrite]);
 
   // Store nodes take their changes in the store; derived nodes keep theirs (measurements, mostly) here.
   const handleNodesChange: OnNodesChange<TopologyNode> = (changes) => {

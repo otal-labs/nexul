@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { GitBranchIcon } from "lucide-react";
-import { Link } from "react-router";
 
 import { Fact } from "@/components/Fact";
 import { PageHeader } from "@/components/PageHeader";
@@ -8,12 +7,12 @@ import type { Crumb } from "@/components/PageBreadcrumb";
 import { RowActions } from "@/components/listpane/RowActions";
 import { StackLiveHero } from "@/components/stack/StackLiveHero";
 import { NoFillBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useProjectCrumb, useWorkspaceCrumb } from "@/hooks/useCrumbs";
+import { useStackActions } from "@/hooks/useStackActions";
 import { useStackPermissions } from "@/hooks/useStackPermissions";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { canRunWizard } from "@/models/Access";
 import type { Deploy, Stack } from "@/models/Stack";
 
 interface StackHeaderSectionProps {
@@ -46,8 +45,8 @@ const useStackCrumbs = (stack: Stack): Crumb[] => {
 };
 
 export const StackHeaderSection = ({ stack, latest, image, hostnames }: StackHeaderSectionProps) => {
-  const can = useAreaAccess(stack.project_id || undefined);
   const wsPath = useWorkspacePath();
+  const answer = useStackActions(stack);
   const crumbs = useStackCrumbs(stack);
   const repo = repoLabel(stack);
   const { menu, manages } = useStackPermissions(stack);
@@ -66,12 +65,20 @@ export const StackHeaderSection = ({ stack, latest, image, hostnames }: StackHea
         }
         actions={
           <div className="flex items-center gap-2">
-            {!stack.managed && !!stack.project_id && !!can && canRunWizard(can, false) && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to={wsPath(`/wizard/project/repository?stack=${stack.id}`)}>
-                  <GitBranchIcon className="size-4" /> Attach repository
-                </Link>
-              </Button>
+            {!stack.managed && !!stack.project_id && (
+              <ActionButton
+                permission="stacks:write"
+                projectId={stack.project_id}
+                answer={answer("stacks:write")}
+                alsoNeeds={{ permission: "projects:write", projectId: stack.project_id }}
+                verb="attach repositories"
+                variant="outline"
+                size="sm"
+                icon={GitBranchIcon}
+                to={wsPath(`/wizard/project/repository?stack=${stack.id}`)}
+              >
+                Attach repository
+              </ActionButton>
             )}
             {manages && <RowActions itemLabel={stack.name} {...menu} />}
           </div>

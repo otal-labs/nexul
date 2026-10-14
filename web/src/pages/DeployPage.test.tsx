@@ -6,20 +6,23 @@ import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DeployPage } from "@/pages/DeployPage";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const access = vi.hoisted(() => ({ areas: ["stacks"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 
 beforeEach(() => {
   access.areas = ["stacks"];
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 
-vi.mock("@/api/client", () => ({
-  api: { get: mocks.get, post: mocks.post },
-  errorMessage: () => "boom",
-}));
+// The viewer is an Owner with no rule on any item; every other read is the test's own.
+vi.mock("@/api/client", async () => {
+  const { withOwner } = await import("@/test/viewer");
+  return { api: { get: withOwner(mocks.get), post: mocks.post }, errorMessage: () => "boom" };
+});
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 

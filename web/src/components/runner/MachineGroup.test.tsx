@@ -9,12 +9,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { MachineGroup } from "@/components/runner/MachineGroup";
 import type { Machine, Runner } from "@/models/Runner";
+import { resetViewer, viewer } from "@/test/viewerActions";
 
 vi.mock("@/api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/client")>()),
   api: { get: vi.fn(), delete: vi.fn() },
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => () => false, useIsInstanceOwner: () => true }));
 
 const machine = (actions: string[]): Machine => ({
@@ -24,6 +26,8 @@ const machine = (actions: string[]): Machine => ({
 const held = { allowed: true, source: { kind: "role" }, fallback: { allowed: true, source: { kind: "role" } } };
 
 beforeEach(() => {
+  resetViewer();
+  viewer.workspace = ["stacks:write"];
   vi.mocked(api.get).mockReset().mockImplementation(((url: string) => {
     if (url === "/api/permissions/explain") return Promise.resolve({ data: { effective: [{ action: "machines:write", ...held }] } });
     if (url.startsWith("/api/permissions?")) return Promise.resolve({ data: { grants: [] } });
@@ -67,6 +71,43 @@ describe("MachineGroup people", () => {
     await user.pointer({ keys: "[MouseRight]", target: screen.getByRole("heading", { name: "edge-box" }) });
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     expect(api.get).not.toHaveBeenCalledWith("/api/permissions?resource_type=machine&resource_id=m-1");
+  });
+});
+
+describe("MachineGroup on a machine the viewer only sees", () => {
+  const writes = [
+    "Import from this machine",
+    "Add a runner to this machine",
+    "Remove builder",
+    "Edit stack root /data/nexul",
+  ];
+
+  it("shows no live write control and no menu when no role shows locked actions", async () => {
+    renderCard(["machines:see"], [runner("builder", true)]);
+    await screen.findByRole("heading", { name: "edge-box" });
+
+    for (const name of writes) expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "More actions for edge-box" })).not.toBeInTheDocument();
+  });
+
+  it("locks each write with its reason, and Delete in the menu, when a role shows locked actions", async () => {
+    viewer.showLocked = true;
+    const user = userEvent.setup();
+    renderCard(["machines:see"], [runner("builder", true)]);
+
+    for (const name of writes) {
+      const control = await screen.findByRole("button", { name });
+      expect(control).toHaveAttribute("aria-disabled", "true");
+    }
+    expect(screen.getByRole("button", { name: "Remove builder" })).toHaveAccessibleDescription("Your role can't remove runners");
+
+    await user.click(screen.getByRole("button", { name: "More actions for edge-box" }));
+    const del = await screen.findByRole("menuitem", { name: /Delete/ });
+    expect(del).toHaveAttribute("aria-disabled", "true");
+    expect(del).toHaveTextContent("Your role can't delete machines");
+    await user.click(del);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
 

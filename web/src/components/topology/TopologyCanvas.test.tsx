@@ -7,12 +7,17 @@ import { TopologyCanvas } from "@/components/topology/TopologyCanvas";
 import { ServiceStatus, type Canvas } from "@/models/Topology";
 import { useFlowStore } from "@/stores/flowStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { resetViewer, viewer } from "@/test/viewerActions";
 
 const access = vi.hoisted(() => ({ areas: ["stacks"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
+
 beforeEach(() => {
   access.areas = ["stacks"];
+  resetViewer();
+  viewer.instance = ["topology:write", "topology:delete"];
 });
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn() }));
@@ -85,6 +90,23 @@ describe("TopologyCanvas", () => {
       expect(nodes.some((n) => n.position.x !== 0 || n.position.y !== 0)).toBe(true);
     });
     await waitFor(() => expect(mocks.put).toHaveBeenCalledWith("/api/topology", expect.objectContaining({ schema_version: 2 }), expect.anything()));
+  });
+
+  it("lays out for a viewer who can't write topology without saving it, and offers no External node", async () => {
+    viewer.instance = [];
+    render(wrap(<TopologyCanvas />));
+    await waitFor(() => expect(useFlowStore.getState().nodes.some((n) => n.position.x !== 0 || n.position.y !== 0)).toBe(true));
+
+    expect(mocks.put).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Add external node" })).not.toBeInTheDocument();
+  });
+
+  it("locks the External node button for a viewer whose role shows locked actions", async () => {
+    viewer.instance = [];
+    viewer.showLocked = true;
+    render(wrap(<TopologyCanvas />));
+
+    expect(await screen.findByRole("button", { name: "Add external node" })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("keeps the owner's saved positions and viewport instead of laying out again", async () => {

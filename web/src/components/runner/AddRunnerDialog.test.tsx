@@ -7,10 +7,12 @@ import { AddRunnerDialog } from "@/components/runner/AddRunnerDialog";
 import { runnerFollower } from "@/hooks/RunnerHooks";
 import type { Runner } from "@/models/Runner";
 import { followFrame } from "@/test/followFrame";
+import { resetViewer, viewer } from "@/test/viewerActions";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 
 vi.mock("@/api/client", () => ({ api: { get: mocks.get, post: mocks.post }, errorMessage: () => "Something went wrong" }));
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
 
 const enrollment = {
   code: "nxe_abc",
@@ -35,7 +37,7 @@ const renderDialog = (machineName?: string) => {
   const client = new QueryClient();
   render(
     <QueryClientProvider client={client}>
-      {machineName && <AddRunnerDialog machineName={machineName} />}
+      {machineName && <AddRunnerDialog machine={{ name: machineName, actions: ["machines:write"] }} />}
       {!machineName && <AddRunnerDialog />}
     </QueryClientProvider>,
   );
@@ -44,6 +46,8 @@ const renderDialog = (machineName?: string) => {
 
 describe("AddRunnerDialog", () => {
   beforeEach(() => {
+    resetViewer();
+    viewer.instance = ["machines:create"];
     mocks.get.mockReset();
     mocks.get.mockResolvedValue({ data: [] });
     mocks.post.mockReset();

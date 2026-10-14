@@ -1,20 +1,20 @@
 import { RemoveRunnerButton } from "@/components/runner/RemoveRunnerButton";
 import { RunnerStatusDot } from "@/components/runner/RunnerStatusDot";
 import { RunnerVersionChip } from "@/components/runner/RunnerVersionChip";
-import type { Runner } from "@/models/Runner";
+import type { Machine, Runner } from "@/models/Runner";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
 interface RunnerRowProps {
   runner: Runner;
-  /** Under a machine of the same name the row names the runner by its short id instead of repeating the header. */
-  machineName?: string;
+  /** Under a machine the row names the runner by its short id when they share a name, and removal follows the viewer's rights on it. */
+  machine?: Machine;
 }
 
 // Fixed columns, the dot under the machine's mark, so names, times and state line up across every machine.
-export const RunnerRow = ({ runner, machineName }: RunnerRowProps) => {
+export const RunnerRow = ({ runner, machine }: RunnerRowProps) => {
   const job = runner.running_job;
-  const named = runner.name && runner.name !== machineName;
+  const named = runner.name && runner.name !== machine?.name;
   return (
     <li className="grid grid-cols-[2.25rem_minmax(0,1fr)_5.5rem_minmax(0,9rem)_2rem] items-center gap-x-3 px-4 py-2.5 transition-colors duration-150 ease-standard hover:bg-accent/40">
       <RunnerStatusDot connected={runner.connected} />
@@ -37,7 +37,7 @@ export const RunnerRow = ({ runner, machineName }: RunnerRowProps) => {
         {!job && runner.connected && <span className="text-muted-foreground">idle</span>}
         {!runner.connected && <span className="text-muted-foreground">offline</span>}
       </span>
-      <RemoveRunnerButton runner={runner} />
+      <RemoveRunnerButton runner={runner} machine={machine} />
     </li>
   );
 };

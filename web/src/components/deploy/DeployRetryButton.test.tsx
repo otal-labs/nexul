@@ -8,10 +8,13 @@ import { DeployRetryButton } from "@/components/deploy/DeployRetryButton";
 import { useFetchStack } from "@/hooks/StackHooks";
 import { DeployStatus, DeployStrategy, type Deploy, type Stack } from "@/models/Stack";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), areas: ["editDeploys"] as string[] }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), state: { state: "live" } as { state: string; reason?: string } }));
 
-vi.mock("@/api/client", () => ({ api: { get: mocks.get, post: mocks.post }, errorMessage: () => "boom" }));
-vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => mocks.areas.includes(area) }));
+vi.mock("@/api/client", async () => {
+  const { withOwner } = await import("@/test/viewer");
+  return { api: { get: withOwner(mocks.get), post: mocks.post }, errorMessage: () => "boom" };
+});
+vi.mock("@/hooks/useActionState", () => ({ useActionState: () => mocks.state }));
 
 const stack: Stack = {
   id: "stack-1",
@@ -59,7 +62,7 @@ const renderButton = (deploy: Deploy) =>
 describe("DeployRetryButton", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.areas = ["editDeploys"];
+    mocks.state = { state: "live" };
     mocks.get.mockResolvedValue({ data: stack });
   });
 
@@ -84,10 +87,21 @@ describe("DeployRetryButton", () => {
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
   });
 
-  it("offers no Retry to someone who cannot deploy", async () => {
-    mocks.areas = [];
+  it.each([
+    ["hides Retry", { state: "hidden" }, undefined],
+    ["locks Retry with the reason", { state: "locked", reason: "Your role can't retry deploys" }, "Your role can't retry deploys"],
+  ])("%s from someone who cannot deploy", async (_name, state, reason) => {
+    mocks.state = state;
+    const user = userEvent.setup();
     renderButton(failed);
     await screen.findByText("stack loaded");
-    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+
+    const retry = screen.queryByRole("button", { name: "Retry" });
+    expect(!!retry).toBe(!!reason);
+    if (!retry) return;
+    await user.click(retry);
+    expect(retry).toHaveAttribute("aria-disabled", "true");
+    expect(retry).toHaveAccessibleDescription(reason);
+    expect(mocks.post).not.toHaveBeenCalled();
   });
 });

@@ -5,12 +5,17 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DnsOnboardingPage } from "@/pages/DnsOnboardingPage";
+import { resetViewer, viewer } from "@/test/viewerActions";
 
 const access = vi.hoisted(() => ({ permissions: ["connectors:write"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useHasInstancePermission: (value: string) => access.permissions.includes(value) }));
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/viewerActions")).mockedActionState);
+
 beforeEach(() => {
   access.permissions = ["connectors:write"];
+  resetViewer();
+  viewer.instance = ["dns:write"];
 });
 
 const mocks = vi.hoisted(() => ({
@@ -119,6 +124,14 @@ describe("DnsOnboardingPage", () => {
     });
     await user.click(await screen.findByRole("button", { name: /continue to nexul/i }));
     expect(await screen.findByText("home-page")).toBeInTheDocument();
+  });
+
+  it("shows a viewer who can't write DNS a sentence in place of the steps", async () => {
+    viewer.instance = [];
+    mockConnected();
+    renderPage();
+    expect(await screen.findByText("Your role can't set up DNS.")).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
   });
 
   it("tells a viewer who can't write Connectors who to ask instead of offering a link", async () => {

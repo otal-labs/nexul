@@ -2,10 +2,9 @@ import { CloudIcon, Trash2 } from "lucide-react";
 
 import { TunnelDeleteDetails } from "@/components/dns/TunnelDeleteDetails";
 import { SettingsStatus } from "@/components/settings/SettingsStatus";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useDeleteTunnel } from "@/hooks/DnsHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import type { Tunnel } from "@/models/DNS";
 
 interface TunnelRowProps {
@@ -14,7 +13,6 @@ interface TunnelRowProps {
 
 // Delete is refused by the server while a gateway or hostname uses the tunnel; the mutation's toast names them.
 export const TunnelRow = ({ tunnel }: TunnelRowProps) => {
-  const canDelete = useHasPermission("dns:delete");
   const deleteTunnel = useDeleteTunnel();
   const { open: confirmDelete } = useConfirmationDialog();
 
@@ -38,20 +36,20 @@ export const TunnelRow = ({ tunnel }: TunnelRowProps) => {
         {tunnel.hostname && <p className="font-mono text-xs break-all text-foreground/80">{tunnel.hostname}</p>}
         {!tunnel.hostname && <SettingsStatus tone="muted">No hostname routed</SettingsStatus>}
       </div>
-      {canDelete && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-label={`Delete tunnel ${tunnel.name}`}
-          title={`Delete tunnel ${tunnel.name}`}
-          className="hover:text-destructive"
-          loading={deleteTunnel.isPending}
-          onClick={() => void onDelete()}
-        >
-          <Trash2 className="size-4" />
-        </Button>
-      )}
+      <ActionButton
+        permission="dns:delete"
+        verb="delete tunnels"
+        type="button"
+        variant="ghost"
+        size="icon"
+        icon={Trash2}
+        aria-label={`Delete tunnel ${tunnel.name}`}
+        title={`Delete tunnel ${tunnel.name}`}
+        className="size-8"
+        liveClassName="hover:text-destructive"
+        loading={deleteTunnel.isPending}
+        onClick={() => void onDelete()}
+      />
     </li>
   );
 };

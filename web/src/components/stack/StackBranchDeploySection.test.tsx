@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -124,6 +124,7 @@ describe("StackBranchDeploySection overrides", () => {
 describe("StackBranchDeploySection removals", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.get.mockImplementation(asOwner());
     mocks.patch.mockImplementation((_url: string, body: unknown) => Promise.resolve({ data: body }));
     mocks._delete.mockResolvedValue({ data: undefined });
   });
@@ -137,6 +138,30 @@ describe("StackBranchDeploySection removals", () => {
     expect(mocks._delete).not.toHaveBeenCalled();
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Tear down" }));
     expect(mocks._delete).toHaveBeenCalledWith("/api/stacks/stack-feat");
+  });
+
+  it("locks Tear down with the base stack's rule sentence, and tears nothing down", async () => {
+    const sentence = "Denied on stack api for bob";
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/permissions/explain") return { data: { effective: [{ action: "stacks:delete", allowed: false, source: { sentence } }] } };
+      if (/^\/api\/workspaces\/[^/]+\/me$/.test(url)) return { data: { role_name: "Developer", roles: [], permissions: [], show_locked_actions: true } };
+      return { data: [] };
+    });
+    const user = userEvent.setup();
+    const deployment = { ...stack, id: "stack-feat", name: "api-feature-x", branch: "feature/x", derived_from: "stack-1", branch_deploy_rules: [] };
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <ContextAwareConfirmation.ConfirmationRoot />
+        <StackBranchDeploySection stack={{ ...stack, branch_deployments: [deployment] }} />
+      </QueryClientProvider>,
+    );
+
+    const teardown = await screen.findByRole("button", { name: "Tear down" });
+    await waitFor(() => expect(teardown).toHaveAttribute("aria-disabled", "true"));
+    expect(teardown).toHaveAccessibleDescription(sentence);
+    await user.click(teardown);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mocks._delete).not.toHaveBeenCalled();
   });
 
   it("removes a rule only once confirmed", async () => {

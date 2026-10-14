@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { actionState, type ActionState, type EntityAnswer, type InstanceAccess } from "@nexul/client-core/actionState";
+import { actionState, machineAnswer, type ActionState, type EntityAnswer, type InstanceAccess } from "@nexul/client-core/actionState";
 import type { PermissionAction } from "@nexul/client-core/permissionActions";
 import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
 
@@ -144,6 +144,22 @@ const rows: Row[] = [
     permission: "accounts:delete",
     instance: { instance_permissions: [], instance_owner: true },
     expected: { state: "live" },
+  },
+  {
+    name: "a machine that lists Manage is live whatever the instance permissions say",
+    me: developer(),
+    permission: "machines:write",
+    entity: machineAnswer({ actions: ["machines:see", "machines:write"] }, "machines:write"),
+    instance: { instance_permissions: [], instance_owner: false },
+    expected: { state: "live" },
+  },
+  {
+    name: "a machine the viewer only sees locks Manage and Delete with the role's reason",
+    me: developer(),
+    permission: "machines:delete",
+    entity: machineAnswer({ actions: ["machines:see"] }, "machines:delete"),
+    instance: { instance_permissions: ["machines:delete"], instance_owner: false },
+    expected: { state: "locked", reason: "Your role can't delete machines" },
   },
   { name: "an instance action waits for the instance permissions to load", me: developer(), permission: "dns:write", expected: { state: "hidden" } },
 ];

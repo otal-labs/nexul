@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -64,7 +65,9 @@ export const ExposeServiceDialog = ({ containers }: ExposeServiceDialogProps) =>
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm">Expose</Button>
+        <ActionButton permission="dns:write" verb="expose services" size="sm">
+          Expose
+        </ActionButton>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
