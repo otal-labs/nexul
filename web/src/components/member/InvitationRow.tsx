@@ -24,6 +24,6 @@ export const InvitationRow = ({ invitation, inviter, onRevoke, disabled }: Invit
       <p className="truncate text-sm font-medium" title={invitationLinkLabel(invitation)}>{invitationLinkLabel(invitation)}</p>
       <p className="truncate text-xs text-muted-foreground">by {inviter} · {expiresLabel(invitation.expires_at)}</p>
     </div>
-    <ConfirmDestroyButton icon={Link2Off} idleLabel="Revoke invitation" onConfirm={() => onRevoke(invitation.id)} disabled={disabled} />
+    <ConfirmDestroyButton gate={{ permission: "members:write", verb: "revoke invitations" }} icon={Link2Off} idleLabel="Revoke invitation" onConfirm={() => onRevoke(invitation.id)} disabled={disabled} />
   </li>
 );

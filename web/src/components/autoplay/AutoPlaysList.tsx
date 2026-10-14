@@ -7,8 +7,8 @@ import { EmptyRow } from "@/components/EmptyRow";
 import { EnterList } from "@/components/EnterList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { Button } from "@/components/ui/button";
-import { useAreaAccess } from "@/hooks/AccessHooks";
+import { ActionButton } from "@/components/action/ActionButton";
+import { useActionState } from "@/hooks/useActionState";
 import { useFetchAutoPlays } from "@/hooks/PlayHooks";
 import { useRowGlide } from "@/hooks/useRowGlide";
 import type { AutoPlay, AutoPlaySubject } from "@/models/AutoPlay";
@@ -21,9 +21,7 @@ interface AutoPlaysListProps {
 
 export const AutoPlaysList = ({ play, onOpen }: AutoPlaysListProps) => {
   const subject: AutoPlaySubject = play.type === "doc" ? "doc" : "ticket";
-  const can = useAreaAccess();
-  const canWrite = can?.("editAutoPlays") ?? false;
-  const canDelete = can?.("deleteAutoPlays") ?? false;
+  const canWrite = useActionState({ permission: "autoplays:write" }).state === "live";
   const { data: autoPlays, error, isPending } = useFetchAutoPlays(play.workspace_id, play.id);
   const { ref: glideRef, prepare: prepareGlide } = useRowGlide();
 
@@ -43,7 +41,6 @@ export const AutoPlaysList = ({ play, onOpen }: AutoPlaysListProps) => {
                 autoPlay={autoPlay}
                 subject={subject}
                 canWrite={canWrite}
-                canDelete={canDelete}
                 onOpen={onOpen}
                 onLeave={prepareGlide}
               />
@@ -51,12 +48,9 @@ export const AutoPlaysList = ({ play, onOpen }: AutoPlaysListProps) => {
           </EnterList>
         </div>
       )}
-      {canWrite && (
-        <Button type="button" variant="outline" size="sm" onClick={() => onOpen(null)}>
-          <PlusIcon />
-          Add auto play
-        </Button>
-      )}
+      <ActionButton permission="autoplays:write" verb="add auto plays" icon={PlusIcon} type="button" variant="outline" size="sm" onClick={() => onOpen(null)}>
+        Add auto play
+      </ActionButton>
       <div className="space-y-1 empty:hidden">
         <PlayQueueNowLine play={play} />
         {subject === "ticket" && <AutoPlayCapLine workspaceId={play.workspace_id} canWrite={canWrite} />}

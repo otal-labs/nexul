@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { InstanceVersionSection } from "@/components/settings/InstanceVersionSection";
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
+
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),

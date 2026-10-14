@@ -10,6 +10,7 @@ import type { Automation } from "@/models/Automation";
 
 const mocks = vi.hoisted(() => ({ patch: vi.fn() }));
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/api/client", () => ({
   api: { patch: mocks.patch },
   errorMessage: () => "error",

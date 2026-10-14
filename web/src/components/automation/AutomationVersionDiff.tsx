@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { EmptyRow } from "@/components/EmptyRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useMergeAutomationVersion } from "@/hooks/AutomationVersionHooks";
 import type { AutomationVersionDiff as VersionDiffData } from "@/models/AutomationVersion";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,6 @@ import { diffLines } from "@/utils/DiffUtility";
 interface AutomationVersionDiffProps {
   automationId: string;
   diff: VersionDiffData;
-  canUpdate: boolean;
 }
 
 const lineClass = (type: "context" | "add" | "remove") =>
@@ -23,7 +22,7 @@ const lineClass = (type: "context" | "add" | "remove") =>
   );
 
 // ponytail: lightweight LCS line-diff, not a library — code files are short enough the cost never matters yet.
-export const AutomationVersionDiff = ({ automationId, diff, canUpdate }: AutomationVersionDiffProps) => {
+export const AutomationVersionDiff = ({ automationId, diff }: AutomationVersionDiffProps) => {
   const merge = useMergeAutomationVersion(automationId);
   const pending = diff.pending;
   const lines = useMemo(() => diffLines(diff.active?.code ?? "", pending?.code ?? ""), [diff.active, pending]);
@@ -34,11 +33,10 @@ export const AutomationVersionDiff = ({ automationId, diff, canUpdate }: Automat
       title="Pending vs active"
       description="A pushed version waits here until you merge it. The active one keeps running."
       footer={
-        pending &&
-        canUpdate && (
-          <Button type="button" size="sm" onClick={() => merge.mutate(pending.id)} loading={merge.isPending}>
+        pending && (
+          <ActionButton permission="automations:write" verb="merge automation versions" type="button" size="sm" onClick={() => merge.mutate(pending.id)} loading={merge.isPending}>
             Merge
-          </Button>
+          </ActionButton>
         )
       }
     >

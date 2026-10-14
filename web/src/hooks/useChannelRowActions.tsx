@@ -5,6 +5,7 @@ import type { Conversation } from "@nexul/client-core/chat";
 import { ChannelSettingsDialog } from "@/components/chat/ChannelSettingsDialog";
 import { RenameChannelForm } from "@/components/chat/RenameChannelForm";
 import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useRowGates } from "@/hooks/useRowGates";
 import { useDeleteChannel } from "@/hooks/ChatHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
@@ -16,6 +17,10 @@ import { channelEntity } from "@/models/PermissionPanel";
 // is never deleted or made private. Settings opens settingsDialog, which the row renders.
 export const useChannelRowActions = (conversation: Conversation) => {
   const can = useAreaAccess();
+  const { offered, gates, deleteGate } = useRowGates({
+    onRename: { permission: "channels:write", verb: "rename channels" },
+    onDelete: { permission: "channels:delete" },
+  });
   const { open: openForm } = useFormDialog();
   const { open: confirm } = useConfirmationDialog();
   const deleteChannel = useDeleteChannel();
@@ -39,13 +44,15 @@ export const useChannelRowActions = (conversation: Conversation) => {
   };
 
   // Bots read alone opens it too, on a channel with nothing else to set.
-  const hasSettings = channelHasSettingsCard(conversation, !!can?.("editChannels")) || !!can?.("bots");
+  const hasSettings = channelHasSettingsCard(conversation, offered("onRename")) || !!can?.("bots");
 
   return {
     onSettings: hasSettings ? () => setSettingsOpen(true) : undefined,
-    onRename: can?.("editChannels") ? () => void rename() : undefined,
+    gates,
+    deleteGate,
+    onRename: offered("onRename") ? () => void rename() : undefined,
     permissions: { entity, onOpen: () => void openPermissions(entity) },
-    onDelete: can?.("deleteChannels") && !conversation.general ? () => void remove() : undefined,
+    onDelete: offered("onDelete") && !conversation.general ? () => void remove() : undefined,
     settingsDialog: <ChannelSettingsDialog conversationId={settingsOpen ? conversation.id : null} onClose={() => setSettingsOpen(false)} />,
   };
 };

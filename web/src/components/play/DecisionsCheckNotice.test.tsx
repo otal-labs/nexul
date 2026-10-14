@@ -15,6 +15,8 @@ vi.mock("@/api/client", () => ({
   errorMessage: vi.fn((error: unknown) => (error as Error)?.message ?? "Something went wrong"),
 }));
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
+
 const CHECK_ID = "play-check";
 
 const trail = (overrides: Partial<Trail>): Trail => ({

@@ -3,13 +3,13 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { INTERVIEW_TEMPLATE_CARD, InterviewTemplateForm } from "@/components/settings/InterviewTemplateForm";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { useFetchInterviewTemplate } from "@/hooks/MemoryHooks";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { useActionState } from "@/hooks/useActionState";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 // The loaded form draws its own card, so its Save can sit in the card's footer beside the text it saves.
 export const InterviewTemplateSection = () => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  const canWrite = useHasPermission("memories:template");
+  const canWrite = useActionState({ permission: "memories:template" }).state === "live";
   const { data: template, error, isPending } = useFetchInterviewTemplate(workspaceId);
 
   return (

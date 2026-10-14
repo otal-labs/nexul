@@ -2,7 +2,7 @@ import { Link } from "react-router";
 
 import { AutomationConfigStatusBadge } from "@/components/automation/AutomationConfigStatusBadge";
 import { AutomationKindBadge } from "@/components/automation/AutomationKindBadge";
-import { Switch } from "@/components/ui/switch";
+import { ActionSwitch } from "@/components/action/ActionSwitch";
 import { useSetAutomationEnabled } from "@/hooks/AutomationHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { Automation } from "@/models/Automation";
@@ -33,7 +33,9 @@ export const AutomationRow = ({ automation }: AutomationRowProps) => {
           {automation.description}
         </p>
       </div>
-      <Switch
+      <ActionSwitch
+        permission="automations:write"
+        verb="switch automations on or off"
         aria-label={automation.enabled ? `Disable ${automation.name}` : `Enable ${automation.name}`}
         checked={automation.enabled}
         disabled={setEnabled.isPending}

@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { CreateInvitationFormSchema, type CreateInvitationFormData, type CreatedInvitation } from "@/models/Invitation";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { CreateInvitationForm } from "@/components/member/CreateInvitationForm";
 
 interface CreateInvitationDialogProps {
@@ -26,5 +26,9 @@ export const CreateInvitationDialog = ({ onCreated }: CreateInvitationDialogProp
     });
   };
 
-  return <Button type="button" onClick={() => void create()}><Plus className="size-4" />Invite</Button>;
+  return (
+    <ActionButton permission="members:write" verb="invite people" icon={Plus} type="button" onClick={() => void create()}>
+      Invite
+    </ActionButton>
+  );
 };

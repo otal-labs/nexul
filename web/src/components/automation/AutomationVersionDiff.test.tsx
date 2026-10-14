@@ -9,6 +9,7 @@ import type { AutomationVersionDiff as VersionDiffData } from "@/models/Automati
 
 const mocks = vi.hoisted(() => ({ post: vi.fn() }));
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/api/client", () => ({
   api: { post: mocks.post },
   errorMessage: () => "error",
@@ -37,11 +38,11 @@ const diffData = (): VersionDiffData => ({
   },
 });
 
-const renderDiff = (diff: VersionDiffData, canUpdate: boolean) => {
+const renderDiff = (diff: VersionDiffData) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <AutomationVersionDiff automationId="a1" diff={diff} canUpdate={canUpdate} />
+      <AutomationVersionDiff automationId="a1" diff={diff} />
     </QueryClientProvider>,
   );
 };
@@ -52,24 +53,19 @@ describe("AutomationVersionDiff", () => {
   });
 
   it("renders removed and added lines for the pending vs active code", () => {
-    renderDiff(diffData(), true);
+    renderDiff(diffData());
 
     expect(screen.getByText("return true;")).toBeInTheDocument();
     expect(screen.getByText("return false;")).toBeInTheDocument();
   });
 
-  it("shows the merge button only when there's a pending version and the caller can update", () => {
-    renderDiff(diffData(), true);
+  it("shows the merge button only when there's a pending version", () => {
+    renderDiff(diffData());
     expect(screen.getByRole("button", { name: "Merge" })).toBeInTheDocument();
   });
 
-  it("hides the merge button when the caller lacks automations:write", () => {
-    renderDiff(diffData(), false);
-    expect(screen.queryByRole("button", { name: "Merge" })).not.toBeInTheDocument();
-  });
-
   it("shows no pending version message and no merge button when nothing is pending", () => {
-    renderDiff({ active: diffData().active, pending: null }, true);
+    renderDiff({ active: diffData().active, pending: null });
     expect(screen.getByText("No pending version")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Merge" })).not.toBeInTheDocument();
   });
@@ -77,7 +73,7 @@ describe("AutomationVersionDiff", () => {
   it("merges the pending version via POST on click", async () => {
     mocks.post.mockResolvedValue({ data: diffData().pending });
     const user = userEvent.setup();
-    renderDiff(diffData(), true);
+    renderDiff(diffData());
 
     await user.click(screen.getByRole("button", { name: "Merge" }));
 

@@ -10,7 +10,6 @@ interface MemoryVersionRowProps {
   memoryId: string;
   version: MemoryVersion;
   isCurrent: boolean;
-  canRevert: boolean;
   /** "stacked" is the compact rail row: version and title on one line, who and when under it, revert revealed on hover. */
   layout?: "inline" | "stacked";
 }
@@ -19,10 +18,9 @@ interface MemoryVersionRowProps {
 const authorLabel = (version: MemoryVersion, author: string): string =>
   version.author_via === "mcp" ? `Agent via ${author}` : author;
 
-export const MemoryVersionRow = ({ memoryId, version, isCurrent, canRevert, layout = "inline" }: MemoryVersionRowProps) => {
+export const MemoryVersionRow = ({ memoryId, version, isCurrent, layout = "inline" }: MemoryVersionRowProps) => {
   const stacked = layout === "stacked";
   const author = usePerson(version.author_id);
-  const canRevertHere = !isCurrent && canRevert;
 
   return (
     <li
@@ -44,7 +42,7 @@ export const MemoryVersionRow = ({ memoryId, version, isCurrent, canRevert, layo
         </p>
       </div>
       {stacked && isCurrent && <span className="shrink-0 font-mono text-xs text-muted-foreground">current</span>}
-      {canRevertHere && <MemoryVersionRevertButton memoryId={memoryId} version={version} compact={stacked} />}
+      {!isCurrent && <MemoryVersionRevertButton memoryId={memoryId} version={version} compact={stacked} />}
     </li>
   );
 };

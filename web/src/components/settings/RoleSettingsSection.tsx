@@ -9,7 +9,7 @@ import { OwnerRoleRow } from "@/components/settings/OwnerRoleRow";
 import { RoleEditorDialog } from "@/components/settings/RoleEditorDialog";
 import { RoleRow } from "@/components/settings/RoleRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useRowGlide } from "@/hooks/useRowGlide";
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
 import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
@@ -41,10 +41,9 @@ export const RoleSettingsSection = () => {
       footer={
         roles &&
         catalog && (
-          <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
-            <PlusIcon className="size-4" />
+          <ActionButton permission="roles:write" verb="create roles" icon={PlusIcon} variant="outline" size="sm" onClick={() => setCreating(true)}>
             New role
-          </Button>
+          </ActionButton>
         )
       }
     >

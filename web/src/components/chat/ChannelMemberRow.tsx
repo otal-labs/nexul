@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PersonAvatar } from "@/components/PersonAvatar";
-import { useAreaAccess } from "@/hooks/AccessHooks";
+import { ActionMenuItem } from "@/components/action/ActionMenuItem";
+import { dropdownParts } from "@/components/listpane/rowMenu";
+import { useActionState } from "@/hooks/useActionState";
 import { useRemoveChannelMember } from "@/hooks/ChannelHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { useOpenDirectMessage } from "@/hooks/useOpenDirectMessage";
@@ -21,10 +23,10 @@ interface ChannelMemberRowProps {
 export const ChannelMemberRow = ({ channel, userId, isYou }: ChannelMemberRowProps) => {
   const person = usePerson(userId);
   const name = personLabel(person);
-  const can = useAreaAccess();
+  const removal = useActionState({ permission: "channels:write", verb: "remove people from channels" });
   const removeMember = useRemoveChannelMember();
   const openDM = useOpenDirectMessage(userId);
-  const canRemove = !isYou && (can?.("editChannels") ?? false);
+  const canRemove = !isYou && removal.state !== "hidden";
   const message = !isYou && openDM;
 
   return (
@@ -47,9 +49,15 @@ export const ChannelMemberRow = ({ channel, userId, isYou }: ChannelMemberRowPro
             )}
             {message && canRemove && <DropdownMenuSeparator />}
             {canRemove && (
-              <DropdownMenuItem variant="destructive" onSelect={() => removeMember.mutate({ channel, userId, name })}>
+              <ActionMenuItem
+                permission="channels:write"
+                verb="remove people from channels"
+                ui={dropdownParts}
+                destructive
+                onSelect={() => removeMember.mutate({ channel, userId, name })}
+              >
                 Remove from channel
-              </DropdownMenuItem>
+              </ActionMenuItem>
             )}
           </DropdownMenuContent>
         </DropdownMenu>

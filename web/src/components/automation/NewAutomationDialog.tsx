@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -52,10 +53,9 @@ export const NewAutomationDialog = () => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button type="button">
-          <Plus className="size-4" aria-hidden />
+        <ActionButton permission="automations:write" verb="create automations" icon={Plus} type="button">
           New automation
-        </Button>
+        </ActionButton>
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>

@@ -10,6 +10,7 @@ import type { Automation } from "@/models/Automation";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), del: vi.fn() }));
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/api/client", () => ({
   api: { get: mocks.get, post: mocks.post, delete: mocks.del },
   errorMessage: () => "error",

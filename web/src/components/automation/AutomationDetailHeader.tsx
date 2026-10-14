@@ -1,7 +1,7 @@
 import { AutomationConfigStatusBadge } from "@/components/automation/AutomationConfigStatusBadge";
 import { AutomationKindBadge } from "@/components/automation/AutomationKindBadge";
 import { ClampedTitle, PageHeader, pageTitleClassFor } from "@/components/PageHeader";
-import { Switch } from "@/components/ui/switch";
+import { ActionSwitch } from "@/components/action/ActionSwitch";
 import { useSetAutomationEnabled } from "@/hooks/AutomationHooks";
 import { useWorkspaceCrumb } from "@/hooks/useCrumbs";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -41,7 +41,9 @@ export const AutomationDetailHeader = ({ automation }: AutomationDetailHeaderPro
       actions={
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           {automation.enabled ? "Enabled" : "Disabled"}
-          <Switch
+          <ActionSwitch
+            permission="automations:write"
+            verb="switch automations on or off"
             aria-label={automation.enabled ? "Disable automation" : "Enable automation"}
             checked={automation.enabled}
             disabled={setEnabled.isPending}

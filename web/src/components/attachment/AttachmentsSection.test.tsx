@@ -35,6 +35,7 @@ const image: Attachment = {
 const pdf: Attachment = { ...image, id: "a-2", name: "spec.pdf", content_type: "application/pdf", size: 5 * 1024 * 1024 };
 
 let grants: string[] = [];
+let showLocked = false;
 
 const renderSection = (permissions: string[] = ["tickets:write"], owner: AttachmentOwner = { ticket_id: "t-1" }) => {
   grants = permissions;
@@ -49,6 +50,7 @@ const renderSection = (permissions: string[] = ["tickets:write"], owner: Attachm
 
 beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
+  showLocked = false;
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.delete).mockReset();
@@ -57,7 +59,7 @@ beforeEach(() => {
   globalThis.URL.revokeObjectURL = vi.fn();
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/attachments") return { data: [image, pdf] };
-    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: grants } };
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: grants, show_locked_actions: showLocked } };
     return { data: new Blob(["png"]) };
   });
 });
@@ -115,6 +117,19 @@ describe("AttachmentsSection", () => {
     await screen.findByText("shot.png");
     expect(screen.getByRole("button", { name: "Add attachment" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete spec.pdf" })).toBeInTheDocument();
+  });
+
+  it("locks upload and delete with the reason where the viewer's role shows locked actions", async () => {
+    showLocked = true;
+    renderSection(["tickets:read"]);
+    await screen.findByText("shot.png");
+
+    for (const name of ["Add attachment", "Delete spec.pdf"]) {
+      const control = screen.getByRole("button", { name });
+      expect(control).toHaveAttribute("aria-disabled", "true");
+      expect(control).toHaveAccessibleDescription(name === "Add attachment" ? "Your role can't attach files" : "Your role can't delete files");
+    }
+    expect(screen.queryByLabelText("Attachment file")).not.toBeInTheDocument();
   });
 
   it("deletes after confirmation and not when cancelled", async () => {

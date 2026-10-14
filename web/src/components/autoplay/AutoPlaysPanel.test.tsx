@@ -77,7 +77,7 @@ const openAutoPlays = async () => {
   render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
-      <PlaySettingsSection canWrite canDelete />
+      <PlaySettingsSection />
     </QueryClientProvider>,
   );
   await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Fix with AI") });

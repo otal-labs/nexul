@@ -1,9 +1,8 @@
 import { FolderPlusIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { DocFolderNameForm } from "@/components/doc/DocFolderNameForm";
 import { useFormDialog } from "@/hooks/useFormDialog";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { DocFolderFormSchema, type DocFolderFormData } from "@/models/DocFolder";
 
 interface NewDocFolderButtonProps {
@@ -11,11 +10,13 @@ interface NewDocFolderButtonProps {
 }
 
 export const NewDocFolderButton = ({ projectId }: NewDocFolderButtonProps) => {
-  const canWrite = useHasPermission("docs:write");
   const { open } = useFormDialog();
-  if (!canWrite) return null;
   return (
-    <Button
+    <ActionButton
+      permission="docs:write"
+      projectId={projectId}
+      verb="create folders"
+      icon={FolderPlusIcon}
       variant="ghost"
       size="icon"
       className="size-8"
@@ -30,8 +31,6 @@ export const NewDocFolderButton = ({ projectId }: NewDocFolderButtonProps) => {
           formOptions: { defaultValues: { name: "" } },
         })
       }
-    >
-      <FolderPlusIcon className="size-4" aria-hidden />
-    </Button>
+    />
   );
 };

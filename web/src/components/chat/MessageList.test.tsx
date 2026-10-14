@@ -242,6 +242,7 @@ vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn() },
   errorMessage: vi.fn((error: unknown) => (error as Error)?.message ?? "Something went wrong"),
 }));
+vi.mock("@/hooks/useCanActOnTrail", () => ({ useCanActOnTrail: () => true }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const questionBody = "```nexul-question\n" + JSON.stringify({ request_id: "req-1", questions: [{ id: "q1", text: "Proceed?", options: [{ label: "Yes" }, { label: "No" }] }] }) + "\n```";

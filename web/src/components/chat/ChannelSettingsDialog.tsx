@@ -2,7 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BotsSection } from "@/components/botwebhook/BotsSection";
 import { ChannelSettingsCard } from "@/components/chat/ChannelSettingsCard";
+import { isOffered } from "@/components/listpane/rowMenu";
 import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useActionState } from "@/hooks/useActionState";
 import { useFetchConversations } from "@/hooks/ChatHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { channelHasSettingsCard, channelMention } from "@/models/Chat";
@@ -18,8 +20,9 @@ export const ChannelSettingsDialog = ({ conversationId, onClose }: ChannelSettin
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: conversations } = useFetchConversations(workspaceId);
   const can = useAreaAccess();
+  const channelWrite = useActionState({ permission: "channels:write" });
   const channel = conversations?.find((c) => c.id === conversationId);
-  const hasCard = !!channel && channelHasSettingsCard(channel, !!can?.("editChannels"));
+  const hasCard = !!channel && channelHasSettingsCard(channel, isOffered(channelWrite));
   const hasBots = !!can?.("bots");
 
   return (

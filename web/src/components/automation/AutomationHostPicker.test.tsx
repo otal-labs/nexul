@@ -10,6 +10,7 @@ import { pickOption } from "@/test/pickOption";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn() }));
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/api/client", () => ({ api: { get: mocks.get, patch: mocks.patch }, errorMessage: () => "error" }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 

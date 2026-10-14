@@ -1,4 +1,5 @@
 import { QuestionCard } from "@/components/play/QuestionCard";
+import { useCanActOnTrail } from "@/hooks/useCanActOnTrail";
 import { useAnswerTrail, useFetchTrail, useLiveTrailQuestion, useLiveTrailState } from "@/hooks/TrailHooks";
 import type { Trail } from "@/models/Trail";
 
@@ -12,8 +13,9 @@ export const TrailQuestionBody = ({ trail }: TrailQuestionBodyProps) => {
   const state = useLiveTrailState(trail);
   const question = useLiveTrailQuestion(trail);
   const answerTrail = useAnswerTrail();
+  const canAnswer = useCanActOnTrail(trail);
   if (question === null) return null;
-  const waiting = state === "waiting" && question.answer === undefined;
+  const waiting = state === "waiting" && question.answer === undefined && canAnswer;
   return (
     <QuestionCard
       question={question}

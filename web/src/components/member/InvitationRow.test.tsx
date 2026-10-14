@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { InvitationRow } from "@/components/member/InvitationRow";
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
+
 describe("InvitationRow", () => {
   it("titles the link by its access, names the inviter, and revokes after confirmation", async () => {
     const onRevoke = vi.fn();

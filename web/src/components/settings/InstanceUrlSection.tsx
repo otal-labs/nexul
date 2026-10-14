@@ -5,8 +5,9 @@ import { FormInput } from "@/components/FormInput";
 import { CopyButton } from "@/components/settings/CopyButton";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SettingsRow, SettingsRows } from "@/components/settings/SettingsRow";
-import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
+import { GatedSaveBar } from "@/components/settings/GatedSaveBar";
 import { useUpdateSettings } from "@/hooks/AuthHooks";
+import { useActionState } from "@/hooks/useActionState";
 import { useFlash } from "@/hooks/useFlash";
 import { InstanceURLFormSchema, type InstanceURLFormData, type InstanceSettings } from "@/models/User";
 
@@ -20,7 +21,9 @@ export const InstanceUrlSection = ({ settings }: InstanceUrlSectionProps) => {
   const updateSettings = useUpdateSettings();
   const [saved, flash] = useFlash();
 
+  const writable = useActionState({ permission: "instance:write" }).state === "live";
   const form = useForm<InstanceURLFormData>({
+    disabled: !writable,
     defaultValues: { instance_url: settings.instance_url },
     resolver: zodResolver(InstanceURLFormSchema),
   });
@@ -40,7 +43,9 @@ export const InstanceUrlSection = ({ settings }: InstanceUrlSectionProps) => {
       id="instance"
       title="Address"
       footer={
-        <SettingsSaveBar
+        <GatedSaveBar
+          permission="instance:write"
+          verb="change the instance address"
           form={FORM_ID}
           dirty={form.formState.isDirty}
           saving={form.formState.isSubmitting}

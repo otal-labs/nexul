@@ -1,4 +1,5 @@
-import { DangerAction, DangerButton } from "@/components/settings/DangerZone";
+import { ActionButton } from "@/components/action/ActionButton";
+import { DangerAction, dangerButtonClass } from "@/components/settings/DangerZone";
 import { WorkspaceArchiveDetails } from "@/components/settings/WorkspaceArchiveDetails";
 import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import { useFetchWorkspaceProjects } from "@/hooks/ProjectHooks";
@@ -31,9 +32,17 @@ export const WorkspaceArchiveAction = ({ workspace }: WorkspaceArchiveActionProp
       title="Archive workspace"
       consequence="Hides this workspace from everyone in it. The instance Owner restores it from Settings → Instance."
       action={
-        <DangerButton loading={archive.isPending} onClick={() => void onArchive()}>
+        <ActionButton
+          permission="workspaces:delete"
+          verb="archive workspaces"
+          variant="outline"
+          size="sm"
+          liveClassName={dangerButtonClass}
+          loading={archive.isPending}
+          onClick={() => void onArchive()}
+        >
           Archive workspace
-        </DangerButton>
+        </ActionButton>
       }
     />
   );

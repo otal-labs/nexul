@@ -3,22 +3,27 @@ import { useNavigate } from "react-router";
 import { DocFolderNameForm } from "@/components/doc/DocFolderNameForm";
 import { useDeleteDocFolder, useFetchDocFolders } from "@/hooks/DocFolderHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
-import { useCreateDocDialog } from "@/hooks/useCreateDocDialog";
+import { useOpenCreateDoc } from "@/hooks/useCreateDocDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { useRowGates } from "@/hooks/useRowGates";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { DocFolderFormSchema, type DocFolder, type DocFolderFormData } from "@/models/DocFolder";
 import { docPath, projectTokenById } from "@/models/Project";
 
 const moveLine = (n: number, to: string) => (n === 1 ? `1 doc moves to ${to}` : `${n} docs move to ${to}`);
 
-// A folder row's actions, each left out without its permission; the default folder offers no New doc, the header's + does.
+// A folder row's actions, each locked or left out without its permission; the default folder offers no New doc, the header's + does.
 export const useDocFolderActions = (folder: DocFolder, total: number) => {
-  const canWrite = useHasPermission("docs:write");
-  const createDoc = useCreateDocDialog(folder.project_id, folder.id);
+  const projectId = folder.project_id;
+  const { offered, gates, deleteGate } = useRowGates({
+    onNewDoc: { permission: "docs:write", projectId, verb: "create docs" },
+    onRename: { permission: "docs:write", projectId, verb: "rename folders" },
+    onDelete: { permission: "docs:write", projectId, verb: "delete folders" },
+  });
+  const createDoc = useOpenCreateDoc(folder.project_id, folder.id);
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const { data: projects } = useFetchProjects();
@@ -31,12 +36,10 @@ export const useDocFolderActions = (folder: DocFolder, total: number) => {
   const openPermissions = usePermissionsDialog();
   const entity = { type: "folder" as const, id: folder.id, name: folder.name, workspaceId, projectId: folder.project_id, folderId: folder.id };
 
-  const onNewDoc =
-    createDoc &&
-    (async () => {
-      const id = await createDoc();
-      if (id) void navigate(wsPath(docPath(projectTokenById(projects ?? [], folder.project_id), id)));
-    });
+  const onNewDoc = async () => {
+    const id = await createDoc();
+    if (id) void navigate(wsPath(docPath(projectTokenById(projects ?? [], folder.project_id), id)));
+  };
 
   const rename = () =>
     void openForm<DocFolderFormData>({
@@ -54,9 +57,11 @@ export const useDocFolderActions = (folder: DocFolder, total: number) => {
   };
 
   return {
-    onNewDoc: folder.is_default ? undefined : onNewDoc,
-    onRename: canWrite ? rename : undefined,
-    onDelete: canWrite && !folder.is_default ? () => void remove() : undefined,
+    gates,
+    deleteGate,
+    onNewDoc: !folder.is_default && offered("onNewDoc") ? () => void onNewDoc() : undefined,
+    onRename: offered("onRename") ? rename : undefined,
+    onDelete: !folder.is_default && offered("onDelete") ? () => void remove() : undefined,
     permissions: { entity, onOpen: () => void openPermissions(entity) },
   };
 };

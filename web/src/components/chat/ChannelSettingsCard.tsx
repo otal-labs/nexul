@@ -3,7 +3,8 @@ import type { Conversation } from "@nexul/client-core/chat";
 import { ChannelAccessRow } from "@/components/chat/ChannelAccessRow";
 import { ChannelMembersSection } from "@/components/chat/ChannelMembersSection";
 import { PrivateChannelRow } from "@/components/chat/PrivateChannelRow";
-import { useAreaAccess } from "@/hooks/AccessHooks";
+import { isOffered } from "@/components/listpane/rowMenu";
+import { useActionState } from "@/hooks/useActionState";
 import { useChannelSettingsActions } from "@/hooks/useChannelSettingsActions";
 import { cn } from "@/lib/utils";
 
@@ -15,9 +16,9 @@ interface ChannelSettingsCardProps {
 
 // Who sees and posts here, the private switch, then a private channel's members.
 export const ChannelSettingsCard = ({ channel, onOpenPermissions }: ChannelSettingsCardProps) => {
-  const can = useAreaAccess();
+  const channelWrite = useActionState({ permission: "channels:write" });
   const { setPrivate } = useChannelSettingsActions(channel);
-  const canManage = can?.("editChannels") ?? false;
+  const canManage = isOffered(channelWrite);
   const canSwitch = canManage && !channel.general;
   const isPrivate = channel.private ?? false;
 

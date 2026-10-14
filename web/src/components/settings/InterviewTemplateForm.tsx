@@ -2,9 +2,9 @@ import { useState, type FormEvent } from "react";
 
 import { InterviewTemplateField } from "@/components/settings/InterviewTemplateField";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
+import { GatedSaveBar } from "@/components/settings/GatedSaveBar";
 import { TemplateOriginLine } from "@/components/templates/TemplateOriginLine";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useSaveInterviewTemplate } from "@/hooks/MemoryHooks";
 import { useCloneTemplateDialog } from "@/hooks/useCloneTemplateDialog";
 import { useFlash } from "@/hooks/useFlash";
@@ -40,18 +40,18 @@ export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateF
     <SettingsCard
       {...INTERVIEW_TEMPLATE_CARD}
       aside={
-        <TemplateOriginLine kind="interview" templateKey="" at={at} state={template.edited ? "edited" : "following"} canReset={canWrite} />
+        <TemplateOriginLine kind="interview" templateKey="" at={at} state={template.edited ? "edited" : "following"} />
       }
       footer={
-        canWrite && (
-          <SettingsSaveBar
-            form={FORM_ID}
-            dirty={body !== template.body}
-            saving={saveTemplate.isPending}
-            saved={saved}
-            onDiscard={() => setBody(template.body)}
-          />
-        )
+        <GatedSaveBar
+          permission="memories:template"
+          verb="edit the interview template"
+          form={FORM_ID}
+          dirty={body !== template.body}
+          saving={saveTemplate.isPending}
+          saved={saved}
+          onDiscard={() => setBody(template.body)}
+        />
       }
     >
       <form id={FORM_ID} onSubmit={onSubmit} className="space-y-3">
@@ -63,7 +63,9 @@ export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateF
           error={saveTemplate.error}
           readOnly={!canWrite}
         />
-        <Button
+        <ActionButton
+          permission="memories:template"
+          verb="clone this template"
           type="button"
           variant="ghost"
           size="sm"
@@ -71,7 +73,7 @@ export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateF
           onClick={() => void openClone({ kind: "interview", key: "", name: "Interview", from: at })}
         >
           Clone to…
-        </Button>
+        </ActionButton>
       </form>
     </SettingsCard>
   );

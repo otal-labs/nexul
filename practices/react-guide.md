@@ -575,6 +575,9 @@ button, menu row, inline edit or drag handle (ADR 0152).
 | Row of a popover menu | `ActionMenuItem` | `onSelect`, `icon`, `destructive`, `separated`, and the gate; a `RowAction` with a `permission` renders through it |
 | A value that edits in place | `ActionInlineEdit` | `label`, `onEdit`, and the gate; the caller owns the editing state; hidden, the value still shows as plain text |
 | The grip that starts a drag | `ActionDragHandle` | `label`, the sortable's ref, attributes and listeners as props, and the gate |
+| A switch | `ActionSwitch` | `checked`, `onCheckedChange`, `aria-label`, and the gate; a viewer who can't flip it still sees the state, disabled |
+| The Save of a form only some roles change | `GatedSaveBar` | the `SettingsSaveBar` props and the gate; the form itself takes `disabled` from `useActionState` |
+| Items of a list row's ⋯ or right-click menu | `RowMenu.locked` | each action's `useActionResolver` answer: `isOffered` keeps the handler on the menu, `lockedReasons` names the reasons for `locked`, and `MenuEntry` draws the locked item |
 
 The gate is `permission` (a `PermissionAction`, the typed union
 `make permission-catalog` writes to `client-core/permissionActions.ts`, never a

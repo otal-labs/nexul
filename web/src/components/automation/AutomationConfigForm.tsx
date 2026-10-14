@@ -3,8 +3,9 @@ import { useForm } from "react-hook-form";
 import { AutomationConfigFieldControl } from "@/components/automation/AutomationConfigFieldControl";
 import { EmptyRow } from "@/components/EmptyRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
-import { SettingsSaveBar } from "@/components/settings/SettingsSaveBar";
+import { GatedSaveBar } from "@/components/settings/GatedSaveBar";
 import { useUpdateAutomationConfig } from "@/hooks/AutomationHooks";
+import { useActionState } from "@/hooks/useActionState";
 import { useFlash } from "@/hooks/useFlash";
 import { parseConfigSchema, parseConfigValues } from "@/models/Automation";
 import type { Automation } from "@/models/Automation";
@@ -20,7 +21,9 @@ export const AutomationConfigForm = ({ automation }: AutomationConfigFormProps) 
   const values = parseConfigValues(automation.config_values);
   const updateConfig = useUpdateAutomationConfig(automation.id);
 
+  const writable = useActionState({ permission: "automations:write" }).state === "live";
   const form = useForm<Record<string, string>>({
+    disabled: !writable,
     defaultValues: Object.fromEntries(fields.map((f) => [f.key, values[f.key] ?? f.default ?? ""])),
   });
 
@@ -40,7 +43,9 @@ export const AutomationConfigForm = ({ automation }: AutomationConfigFormProps) 
       description="Declared by the automation's code. The next run uses the saved values."
       footer={
         fields.length > 0 && (
-          <SettingsSaveBar
+          <GatedSaveBar
+            permission="automations:write"
+            verb="change automation settings"
             form="automation-config"
             dirty={form.formState.isDirty}
             saving={updateConfig.isPending}

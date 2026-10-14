@@ -1,7 +1,7 @@
 import { RotateCcw } from "lucide-react";
 
 import { AutomationVersionStatusBadge } from "@/components/automation/AutomationVersionStatusBadge";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { AutomationVersionStatus } from "@/enums/Automation";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useRollbackAutomationVersion } from "@/hooks/AutomationVersionHooks";
@@ -15,14 +15,13 @@ const SEED_PUSHER_ID = "nexul-seed";
 interface AutomationVersionRowProps {
   automationId: string;
   version: AutomationVersion;
-  canUpdate: boolean;
 }
 
-export const AutomationVersionRow = ({ automationId, version, canUpdate }: AutomationVersionRowProps) => {
+export const AutomationVersionRow = ({ automationId, version }: AutomationVersionRowProps) => {
   const rollback = useRollbackAutomationVersion(automationId);
   const { open: confirm } = useConfirmationDialog();
   const pusher = version.pusher_id === SEED_PUSHER_ID ? "Nexul" : version.pusher_id;
-  const canRollback = canUpdate && version.status !== AutomationVersionStatus.Active;
+  const canRollback = version.status !== AutomationVersionStatus.Active;
 
   const onRollback = async () => {
     const ok = await confirm({
@@ -44,16 +43,18 @@ export const AutomationVersionRow = ({ automationId, version, canUpdate }: Autom
         </p>
       </div>
       {canRollback && (
-        <Button
+        <ActionButton
+          permission="automations:write"
+          verb="roll back automations"
+          icon={RotateCcw}
           type="button"
           variant="outline"
           size="sm"
           onClick={onRollback}
           loading={rollback.isPending}
         >
-          <RotateCcw className="size-4" />
           Rollback
-        </Button>
+        </ActionButton>
       )}
     </li>
   );

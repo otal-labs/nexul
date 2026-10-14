@@ -1,6 +1,6 @@
 import { PlusIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { FolderToggle } from "@/components/listpane/FolderToggle";
 import { RowContextMenu } from "@/components/listpane/RowContextMenu";
 import { hasOwnActions } from "@/components/listpane/rowMenu";
@@ -34,9 +34,18 @@ export const DocFolderHeader = ({ folder, total, open, onToggle }: DocFolderHead
         />
         {hasActions && (
           <div className="hidden shrink-0 items-center group-focus-within/folder:flex group-hover/folder:flex group-has-[[data-state=open]]/folder:flex">
-            <Button variant="ghost" size="icon" className="size-6" aria-label={`New doc in ${folder.name}`} title="New doc" onClick={menu.onNewDoc}>
-              <PlusIcon className="size-3.5" aria-hidden />
-            </Button>
+            <ActionButton
+              permission="docs:write"
+              projectId={folder.project_id}
+              verb="create docs"
+              variant="ghost"
+              size="icon"
+              className="size-6"
+              aria-label={`New doc in ${folder.name}`}
+              title="New doc"
+              icon={PlusIcon}
+              onClick={menu.onNewDoc}
+            />
           </div>
         )}
       </div>

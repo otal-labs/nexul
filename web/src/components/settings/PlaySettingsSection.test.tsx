@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PlaySettingsSection } from "@/components/settings/PlaySettingsSection";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { asOwner, asReader, settle } from "@/test/viewer";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -38,20 +39,22 @@ const play = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const mockPlaysAndProjects = (plays: unknown[]) => {
-  mocks.get.mockImplementation((url: string) => {
-    if (url === "/api/workspaces/ws-1/plays") return Promise.resolve({ data: plays });
-    if (url === "/api/projects") return Promise.resolve({ data: [] });
-    return Promise.reject(new Error(`unexpected GET ${url}`));
-  });
+const mockPlaysAndProjects = (plays: unknown[], viewer = asOwner) => {
+  mocks.get.mockImplementation(
+    viewer((url: string) => {
+      if (url === "/api/workspaces/ws-1/plays") return plays;
+      if (url === "/api/projects") return [];
+      throw new Error(`unexpected GET ${url}`);
+    }),
+  );
 };
 
-const renderSection = (props: { canWrite?: boolean; canDelete?: boolean } = {}) => {
+const renderSection = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
-      <PlaySettingsSection canWrite={props.canWrite ?? true} canDelete={props.canDelete ?? true} />
+      <PlaySettingsSection />
     </QueryClientProvider>,
   );
 };
@@ -69,10 +72,12 @@ describe("PlaySettingsSection", () => {
 
   it("shows an error when the play list fails to load", async () => {
     mocks.errorMessage.mockReturnValue("Plays failed");
-    mocks.get.mockImplementation((url: string) => {
-      if (url === "/api/projects") return Promise.resolve({ data: [] });
-      return Promise.reject(new Error("boom"));
-    });
+    mocks.get.mockImplementation(
+      asOwner((url: string) => {
+        if (url === "/api/projects") return [];
+        throw new Error("boom");
+      }),
+    );
     renderSection();
     expect(await screen.findByText("Plays failed")).toBeInTheDocument();
   });
@@ -97,18 +102,29 @@ describe("PlaySettingsSection", () => {
     expect(await screen.findByText("Disabled")).toBeInTheDocument();
   });
 
-  it("hides the New play button without plays:write", async () => {
-    mockPlaysAndProjects([play()]);
-    renderSection({ canWrite: false });
+  it.each([
+    { name: "hides", showLocked: false },
+    { name: "locks", showLocked: true },
+  ])("$name New play, Edit and Delete for a reader", async ({ showLocked }) => {
+    const user = userEvent.setup();
+    mockPlaysAndProjects([play()], (rest) => asReader({ showLocked, permissions: ["plays:read"] }, rest));
+    renderSection();
     await screen.findByText("Fix with AI");
-    expect(screen.queryByRole("button", { name: "New play" })).not.toBeInTheDocument();
-  });
+    await settle();
 
-  it("hides edit and delete without their permissions", async () => {
-    mockPlaysAndProjects([play()]);
-    renderSection({ canWrite: false, canDelete: false });
-    await userEvent.setup().pointer({ keys: "[MouseRight]", target: await screen.findByText("Fix with AI") });
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    const newPlay = screen.queryByRole("button", { name: "New play" });
+    if (!showLocked) expect(newPlay).not.toBeInTheDocument();
+    if (showLocked) {
+      expect(newPlay).toHaveAttribute("aria-disabled", "true");
+      expect(newPlay).toHaveAccessibleDescription("Your role can't create plays");
+    }
+
+    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("Fix with AI") });
+    if (!showLocked) expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    if (showLocked) {
+      expect(await screen.findByRole("menuitem", { name: /Edit/ })).toHaveAttribute("aria-disabled", "true");
+      expect(screen.getByRole("menuitem", { name: /Delete/ })).toHaveAttribute("aria-disabled", "true");
+    }
   });
 
   it("deletes a play after confirming", async () => {
@@ -117,6 +133,7 @@ describe("PlaySettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
+    await settle();
     await user.pointer({ keys: "[MouseRight]", target: await screen.findByText("Fix with AI") });
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     await user.click(await screen.findByRole("button", { name: "Delete play" }));

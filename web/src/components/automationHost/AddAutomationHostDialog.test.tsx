@@ -7,6 +7,7 @@ import { AddAutomationHostDialog } from "@/components/automationHost/AddAutomati
 
 const mocks = vi.hoisted(() => ({ post: vi.fn() }));
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/api/client", () => ({ api: { post: mocks.post }, errorMessage: () => "Something went wrong" }));
 
 const enrollment = {

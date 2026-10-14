@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TeamSection } from "@/components/team/TeamSection";
 import type { Team, TeamPerson } from "@/models/Team";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() }));
 vi.mock("@/api/client", () => ({ api: mocks, errorMessage: vi.fn() }));
@@ -39,6 +40,7 @@ const accountsBits = ["accounts:read", "accounts:write", "accounts:delete"];
 const renderSection = (route = "/settings/team", data: Team = team, anywhere: string[] = accountsBits, invitations: unknown = []) => {
   mocks.get.mockImplementation((url: string) => {
     if (url === "/api/auth/me") return Promise.resolve({ data: { user: {}, instance_permissions: anywhere } });
+    if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Admin", permissions: ["members:write"] } });
     if (url === "/api/invitations") return Promise.resolve({ data: invitations });
     return Promise.resolve({ data: url === "/api/team" ? data : [] });
   });
@@ -58,6 +60,7 @@ describe("TeamSection", () => {
   beforeEach(() => {
     mocks.get.mockReset();
     mocks.put.mockReset();
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   });
 
   it("shows when each person was last online with a presence dot, and names an account status only when it blocks sign-in", async () => {
@@ -133,7 +136,7 @@ describe("TeamSection", () => {
     renderSection();
     expect(await screen.findByRole("tab", { name: "People", selected: true })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Invite" }));
+    await user.click(await screen.findByRole("button", { name: "Invite" }));
 
     expect(await screen.findByRole("tab", { name: "Invitations", selected: true })).toBeInTheDocument();
     const panel = screen.getByRole("tabpanel");

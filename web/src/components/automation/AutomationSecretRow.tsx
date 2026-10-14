@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useDeleteAutomationSecret } from "@/hooks/AutomationSecretHooks";
 import { leavingRowClass } from "@/hooks/useRowGlide";
 import { cn } from "@/lib/utils";
@@ -30,10 +30,11 @@ export const AutomationSecretRow = ({ onLeave, secret, onReplace }: AutomationSe
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        <Button type="button" variant="ghost" size="sm" aria-label={`Replace ${secret.name}`} onClick={onReplace}>
+        <ActionButton permission="automations:write" verb="replace automation secrets" type="button" variant="ghost" size="sm" aria-label={`Replace ${secret.name}`} onClick={onReplace}>
           Replace
-        </Button>
+        </ActionButton>
         <ConfirmDestroyButton
+          gate={{ permission: "automations:write", verb: "delete automation secrets" }}
           icon={Trash2}
           idleLabel={`Delete ${secret.name}`}
           confirmLabel="Delete"

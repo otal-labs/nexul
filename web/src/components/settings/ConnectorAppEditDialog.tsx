@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { ConnectorAppConfigForm } from "@/components/settings/ConnectorAppConfigForm";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import {
   Dialog,
   DialogContent,
@@ -24,9 +24,9 @@ export const ConnectorAppEditDialog = ({ connectorId, current }: ConnectorAppEdi
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
+        <ActionButton permission="connectors:write" verb="edit connector apps" size="sm" variant="outline">
           Edit
-        </Button>
+        </ActionButton>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

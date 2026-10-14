@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   errorMessage: vi.fn(),
 }));
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("@/api/client", () => ({
   api: { get: mocks.get, put: mocks.put, post: mocks.post, patch: mocks.patch, delete: mocks.del },
   errorMessage: mocks.errorMessage,

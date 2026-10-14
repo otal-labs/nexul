@@ -10,7 +10,6 @@ import { RowActionsMenu, type RowAction } from "@/components/settings/RowActions
 import { useCreateWorkspaceRole, useDeleteWorkspaceRole, useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { leavingRowClass } from "@/hooks/useRowGlide";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { cn } from "@/lib/utils";
 import type { PermissionInfo } from "@/models/Permission";
 import { copyName, type Role } from "@/models/Role";
@@ -36,7 +35,6 @@ export const RoleRow = ({ onLeave, role, workspaceId, catalog, holders }: RoleRo
   const createRole = useCreateWorkspaceRole(workspaceId);
   const deleteRole = useDeleteWorkspaceRole(workspaceId);
   const { open: confirm } = useConfirmationDialog();
-  const canClone = useHasPermission("roles:clone");
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
   const [cloning, setCloning] = useState(false);
@@ -59,8 +57,8 @@ export const RoleRow = ({ onLeave, role, workspaceId, catalog, holders }: RoleRo
   };
 
   const actions: RowAction[] = [
-    { label: "Edit", onSelect: () => setEditing(true) },
-    { label: "Duplicate", onSelect: duplicate },
+    { label: "Edit", permission: "roles:write", verb: "edit roles", onSelect: () => setEditing(true) },
+    { label: "Duplicate", permission: "roles:write", verb: "create roles", onSelect: duplicate },
     { label: "Clone to workspace…", permission: "roles:clone", onSelect: () => setCloning(true) },
     { label: "Delete", destructive: true, permission: "roles:write", onSelect: () => void remove() },
   ];
@@ -97,7 +95,7 @@ export const RoleRow = ({ onLeave, role, workspaceId, catalog, holders }: RoleRo
         </div>
       </div>
       <RoleEditorDialog open={editing} role={role} holders={holders} onClose={() => setEditing(false)} />
-      {canClone && <CloneRoleDialog role={role} open={cloning} onClose={() => setCloning(false)} />}
+      {cloning && <CloneRoleDialog role={role} open onClose={() => setCloning(false)} />}
     </li>
   );
 };

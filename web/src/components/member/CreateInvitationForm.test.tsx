@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CreateInvitationDialog } from "@/components/member/CreateInvitationDialog";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
+
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 vi.mock("@/api/client", () => ({ api: mocks, errorMessage: () => "refused" }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));

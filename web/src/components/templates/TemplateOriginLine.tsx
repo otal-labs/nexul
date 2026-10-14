@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useResetTemplate } from "@/hooks/TemplateHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import type { TemplateKind, TemplateLocation } from "@/models/Template";
@@ -18,10 +18,9 @@ interface TemplateOriginLineProps {
   templateKey: string;
   at: TemplateLocation;
   state: TemplateOrigin;
-  canReset: boolean;
 }
 
-export const TemplateOriginLine = ({ kind, templateKey, at, state, canReset }: TemplateOriginLineProps) => {
+export const TemplateOriginLine = ({ kind, templateKey, at, state }: TemplateOriginLineProps) => {
   const reset = useResetTemplate();
   const { open: confirm } = useConfirmationDialog();
   const ownText = state === "edited" || state === "differs";
@@ -38,10 +37,19 @@ export const TemplateOriginLine = ({ kind, templateKey, at, state, canReset }: T
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
       <span>{ORIGIN_TEXT[state]}</span>
-      {canReset && ownText && (
-        <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" loading={reset.isPending} onClick={() => void onReset()}>
+      {ownText && (
+        <ActionButton
+          permission="templates:write"
+          verb="reset templates"
+          type="button"
+          variant="link"
+          size="sm"
+          className="h-auto p-0 text-xs"
+          loading={reset.isPending}
+          onClick={() => void onReset()}
+        >
           Reset to instance template
-        </Button>
+        </ActionButton>
       )}
     </div>
   );

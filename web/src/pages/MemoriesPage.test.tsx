@@ -116,8 +116,8 @@ describe("MemoriesPage", () => {
     vi.mocked(api.put).mockReturnValue(new Promise((_, reject) => (failSave = reject)));
     renderPage("/memories", ["memories:read", "memories:write"]);
 
+    await vi.waitFor(async () => expect(await rowSwitch("Naming rules")).toBeEnabled());
     const toggle = await rowSwitch("Naming rules");
-    await vi.waitFor(() => expect(toggle).toBeEnabled());
     // Every later list read hangs, so the switch below shows the cache's own state, never a refetch's.
     const loaded = vi.mocked(api.get).getMockImplementation();
     vi.mocked(api.get).mockImplementation((url: string) =>

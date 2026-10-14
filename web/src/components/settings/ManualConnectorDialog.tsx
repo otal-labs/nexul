@@ -8,6 +8,7 @@ import { requires } from "@nexul/client-core/requires";
 import { api, errorMessage } from "@/api/client";
 import { FormInput } from "@/components/FormInput";
 import { TickerRow } from "@/components/TickerRow";
+import { ActionButton } from "@/components/action/ActionButton";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -83,7 +84,9 @@ export const ManualConnectorDialog = ({ connector }: ManualConnectorDialogProps)
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm">Connect</Button>
+        <ActionButton permission="connectors:write" verb="connect connectors" size="sm">
+          Connect
+        </ActionButton>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

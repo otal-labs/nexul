@@ -1,7 +1,6 @@
 import { UserMinus, UserRoundCheck, UserRoundX } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { useHasInstancePermission } from "@/hooks/AccessHooks";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useRemoveAccount, useUpdateAccountStatus } from "@/hooks/TeamHooks";
 import type { TeamPerson } from "@/models/Team";
@@ -10,8 +9,6 @@ import { personName } from "@/utils/TeamUtility";
 // Account status is instance-wide: disabling blocks sign-in everywhere, and each way in has its way back. Changing it
 // takes accounts:write and removing an account accounts:delete, each held in any workspace.
 export const TeamAccountActions = ({ person }: { person: TeamPerson }) => {
-  const canChange = useHasInstancePermission("accounts:write");
-  const canRemove = useHasInstancePermission("accounts:delete");
   const update = useUpdateAccountStatus();
   const remove = useRemoveAccount();
   const { open: confirm } = useConfirmationDialog();
@@ -35,25 +32,25 @@ export const TeamAccountActions = ({ person }: { person: TeamPerson }) => {
 
   return (
     <div className="flex flex-wrap items-center gap-1">
-      {canChange && person.status === "active" && (
-        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" loading={update.isPending} disabled={busy} onClick={() => void setStatus("disabled", "Disable", "lose sign-in but keep their workspace access, and their computers are disconnected")}>
-          <UserRoundX className="size-4" />Disable
-        </Button>
+      {person.status === "active" && (
+        <ActionButton permission="accounts:write" verb="disable accounts" icon={UserRoundX} type="button" variant="ghost" size="sm" className="text-muted-foreground" liveClassName="hover:text-destructive" loading={update.isPending} disabled={busy} onClick={() => void setStatus("disabled", "Disable", "lose sign-in but keep their workspace access, and their computers are disconnected")}>
+          Disable
+        </ActionButton>
       )}
-      {canChange && person.status === "disabled" && (
-        <Button type="button" variant="ghost" size="sm" loading={update.isPending} disabled={busy} onClick={() => void setStatus("active", "Reactivate", "be able to sign in again. The computers disconnected when the account was disabled stay disconnected")}>
-          <UserRoundCheck className="size-4" />Reactivate
-        </Button>
+      {person.status === "disabled" && (
+        <ActionButton permission="accounts:write" verb="reactivate accounts" icon={UserRoundCheck} type="button" variant="ghost" size="sm" loading={update.isPending} disabled={busy} onClick={() => void setStatus("active", "Reactivate", "be able to sign in again. The computers disconnected when the account was disabled stay disconnected")}>
+          Reactivate
+        </ActionButton>
       )}
-      {canChange && person.status === "removed" && (
-        <Button type="button" variant="ghost" size="sm" loading={update.isPending} disabled={busy} onClick={() => void setStatus("active", "Restore", "be able to sign in again, with no workspace access until you add it")}>
-          <UserRoundCheck className="size-4" />Restore
-        </Button>
+      {person.status === "removed" && (
+        <ActionButton permission="accounts:write" verb="restore accounts" icon={UserRoundCheck} type="button" variant="ghost" size="sm" loading={update.isPending} disabled={busy} onClick={() => void setStatus("active", "Restore", "be able to sign in again, with no workspace access until you add it")}>
+          Restore
+        </ActionButton>
       )}
-      {canRemove && person.status !== "removed" && (
-        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" loading={remove.isPending} disabled={busy} onClick={() => void removeAccount()}>
-          <UserMinus className="size-4" />Remove account
-        </Button>
+      {person.status !== "removed" && (
+        <ActionButton permission="accounts:delete" verb="remove accounts" icon={UserMinus} type="button" variant="ghost" size="sm" className="text-muted-foreground" liveClassName="hover:text-destructive" loading={remove.isPending} disabled={busy} onClick={() => void removeAccount()}>
+          Remove account
+        </ActionButton>
       )}
     </div>
   );

@@ -1,13 +1,10 @@
 import { CreateMemoryForm } from "@/components/memory/CreateMemoryForm";
 import { useFormDialog } from "@/hooks/useFormDialog";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { CreateMemoryFormSchema, emptyCreateMemoryForm, type CreateMemoryFormData } from "@/models/Memory";
 
-// Opens New memory scoped to projectId; undefined without memories:write, so callers hide the button.
-export const useCreateMemoryDialog = (projectId: string): (() => void) | undefined => {
-  const canWrite = useHasPermission("memories:write");
+// Opens New memory scoped to projectId; the control that calls it gates itself.
+export const useCreateMemoryDialog = (projectId: string): (() => void) => {
   const { open } = useFormDialog();
-  if (!canWrite) return undefined;
   return () =>
     void open<CreateMemoryFormData>({
       title: "New memory",

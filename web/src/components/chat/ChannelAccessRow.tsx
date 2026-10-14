@@ -2,7 +2,7 @@ import { ShieldIcon } from "lucide-react";
 
 import type { Conversation } from "@nexul/client-core/chat";
 
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { usePermissionsDialog } from "@/hooks/usePermissionsDialog";
 import { channelMention } from "@/models/Chat";
 import { channelEntity } from "@/models/PermissionPanel";
@@ -26,7 +26,9 @@ export const ChannelAccessRow = ({ channel, onOpen, className }: ChannelAccessRo
         <p className="text-sm font-medium">Who sees and posts here</p>
         <p className="text-sm text-muted-foreground">Rules for a role or a person on this channel.</p>
       </div>
-      <Button
+      <ActionButton
+        permission="channels:write"
+        verb="set who sees and posts in channels"
         type="button"
         variant="outline"
         size="sm"
@@ -36,7 +38,7 @@ export const ChannelAccessRow = ({ channel, onOpen, className }: ChannelAccessRo
         }}
       >
         Permissions…
-      </Button>
+      </ActionButton>
     </div>
   );
 };

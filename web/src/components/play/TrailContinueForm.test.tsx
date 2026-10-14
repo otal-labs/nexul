@@ -10,6 +10,7 @@ import type { Trail } from "@/models/Trail";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({ api: { get: vi.fn(), post: vi.fn() }, errorMessage: vi.fn(() => "Refused") }));
+vi.mock("@/hooks/useCanActOnTrail", () => ({ useCanActOnTrail: () => true }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
 const ended: Trail = {

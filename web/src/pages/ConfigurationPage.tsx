@@ -15,8 +15,6 @@ export const ConfigurationPage = () => {
   // Same permission the roles REST endpoints require server-side.
   const canManageRoles = useHasPermission("roles:write");
   const canReadPlays = useHasPermission("plays:read");
-  const canWritePlays = useHasPermission("plays:write");
-  const canDeletePlays = useHasPermission("plays:delete");
   const canManageWorkspace = useHasPermission("workspaces:write");
   const teamIsInstanceWide = useHasInstancePermission("accounts:read");
   const sections = useConfigurationSections() ?? [];
@@ -44,8 +42,6 @@ export const ConfigurationPage = () => {
           section={section}
           canManageRoles={canManageRoles}
           canReadPlays={canReadPlays}
-          canWritePlays={canWritePlays}
-          canDeletePlays={canDeletePlays}
           canManageWorkspace={canManageWorkspace}
         />
       </SettingsShell>

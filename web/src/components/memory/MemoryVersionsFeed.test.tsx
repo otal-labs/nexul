@@ -3,6 +3,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { MemoryVersionsFeed } from "@/components/memory/MemoryVersionsFeed";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { asOwner } from "@/test/viewer";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 
@@ -42,18 +44,19 @@ const renderFeed = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryVersionsFeed memoryId="mem-1" currentVersion={2} canRevert />
+      <MemoryVersionsFeed memoryId="mem-1" currentVersion={2} />
     </QueryClientProvider>,
   );
 };
 
 describe("MemoryVersionsFeed", () => {
   it("lists every version newest first, and only offers revert on non-current rows", async () => {
-    mocks.get.mockResolvedValue({ data: versions });
+    mocks.get.mockImplementation(asOwner((url) => (url === "/api/memories/mem-1" ? { id: "mem-1", project_id: "p-1" } : versions)));
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     renderFeed();
 
     await waitFor(() => expect(screen.getAllByText(/^v\d$/)).toHaveLength(2));
-    const buttons = screen.getAllByRole("button", { name: /Revert/ });
+    const buttons = await screen.findAllByRole("button", { name: /Revert/ });
     expect(buttons).toHaveLength(1); // only v1, not the current v2
     expect(mocks.get).toHaveBeenCalledWith("/api/memories/mem-1/versions");
   });

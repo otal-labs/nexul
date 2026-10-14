@@ -18,6 +18,7 @@ vi.mock("@/api/client", () => ({
     e?.response?.data?.message ?? e?.message ?? "Something went wrong",
 }));
 
+vi.mock("@/hooks/useActionState", async () => (await import("@/test/liveActions")).liveActions);
 vi.mock("sonner", () => ({ toast: mocks.toast }));
 
 type User = ReturnType<typeof userEvent.setup>;

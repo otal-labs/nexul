@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConnectorsSection } from "@/components/settings/ConnectorsSection";
 import type { ConnectorStatus } from "@/models/Connectors";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { settle } from "@/test/viewer";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -43,6 +45,10 @@ const connectorEntry = (overrides: Partial<ConnectorStatus> = {}): ConnectorStat
 
 const owner = { user: {}, needs_owner_wizard: false, needs_first_login_wizard: false, instance_permissions: ["connectors:read", "connectors:write"] };
 const member = { user: {}, needs_owner_wizard: false, needs_first_login_wizard: false, instance_permissions: ["connectors:read"] };
+
+// Every read answers the connector list except the account's, which holds the connector bits.
+const serve = (list: unknown, account: unknown = owner) =>
+  mocks.get.mockImplementation(async (url: string) => (url === "/api/auth/me" ? { data: account } : list));
 
 // Cloudflare wired for OAuth but with no app registration stored yet.
 const unregisteredCloudflare = (): ConnectorStatus =>
@@ -96,17 +102,17 @@ describe("ConnectorsSection", () => {
   });
 
   it("lands on Not connected when nothing is connected, showing every registry connector", async () => {
-    mocks.get.mockResolvedValue({ data: registryConnectors() });
+    serve({ data: registryConnectors() });
     renderSection();
 
     expect(await screen.findByText("GitHub")).toBeInTheDocument();
     expect(screen.getByText("Cloudflare")).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /not connected/i })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("button", { name: /^connect$/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^connect$/i })).toBeInTheDocument();
   });
 
   it("marks a not-yet-available connector Coming soon and offers no Connect", async () => {
-    mocks.get.mockResolvedValue({ data: registryConnectors() });
+    serve({ data: registryConnectors() });
     renderSection();
 
     const row = (await screen.findByText("Cloudflare")).closest("li") as HTMLElement;
@@ -115,19 +121,19 @@ describe("ConnectorsSection", () => {
   });
 
   it("lands on Connected and shows the pill and Disconnect button for a configured connector", async () => {
-    mocks.get.mockResolvedValue({
+    serve({
       data: [connectorEntry({ status: { configured: true, connected_by: "u1" } })],
     });
     renderSection();
 
     expect(await screen.findByText("Connected", { selector: "span" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /^connected$/i })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("button", { name: /^disconnect$/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^disconnect$/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^connect$/i })).not.toBeInTheDocument();
   });
 
   it("filters the list with the Connected / Not connected switch", async () => {
-    mocks.get.mockResolvedValue({
+    serve({
       data: [
         connectorEntry({ status: { configured: true } }),
         ...registryConnectors().slice(1),
@@ -145,9 +151,10 @@ describe("ConnectorsSection", () => {
   });
 
   it("calls the start-oauth mutation and navigates on Connect", async () => {
-    mocks.get.mockResolvedValue({ data: registryConnectors() });
+    serve({ data: registryConnectors() });
     mocks.post.mockResolvedValue({ data: undefined });
     mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/auth/me") return Promise.resolve({ data: owner });
       if (url === "/api/connectors/github/oauth/start") {
         return Promise.resolve({ data: { url: "https://github.com/login/oauth/authorize?client_id=x" } });
       }
@@ -193,19 +200,30 @@ describe("ConnectorsSection", () => {
     });
   });
 
-  it("shows a disabled Connect without connectors:write while the OAuth app is unregistered", async () => {
-    mocks.get.mockImplementation((url: string) => {
-      if (url === "/api/auth/me") return Promise.resolve({ data: member });
-      return Promise.resolve({ data: [unregisteredCloudflare()] });
+  it.each([
+    { name: "hides", showLocked: false },
+    { name: "locks", showLocked: true },
+  ])("$name Connect for a reader while the OAuth app is unregistered, and offers no live Set up app", async ({ showLocked }) => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/auth/me") return { data: member };
+      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Reader", permissions: [], show_locked_actions: showLocked } };
+      return { data: [unregisteredCloudflare()] };
     });
     renderSection();
 
-    expect(await screen.findByRole("button", { name: "Connect" })).toBeDisabled();
-    expect(screen.queryByRole("button", { name: "Set up app" })).not.toBeInTheDocument();
+    await screen.findByText("Cloudflare");
+    await settle();
+    if (!showLocked) expect(screen.queryByRole("button", { name: /Set up app|Connect/ })).not.toBeInTheDocument();
+    if (showLocked) {
+      const locked = await screen.findByRole("button", { name: /Set up app/ });
+      expect(locked).toHaveAttribute("aria-disabled", "true");
+      expect(locked).toHaveAccessibleDescription("Your role can't set up connector apps");
+    }
   });
 
   it("toasts the callback's error param and strips it from the URL", async () => {
-    mocks.get.mockResolvedValue({ data: registryConnectors() });
+    serve({ data: registryConnectors() });
     const { toast } = await import("sonner");
     renderSection(["/settings?connector=github&error=provider%20exploded"]);
 
@@ -216,7 +234,7 @@ describe("ConnectorsSection", () => {
   });
 
   it("renders a field form (not the OAuth Connect button) for a manual-credential connector", async () => {
-    mocks.get.mockResolvedValue({
+    serve({
       data: [
         connectorEntry({
           connector: {
@@ -246,7 +264,7 @@ describe("ConnectorsSection", () => {
   });
 
   it("submits the manual credential form and shows Connected on success", async () => {
-    mocks.get.mockResolvedValue({
+    serve({
       data: [
         connectorEntry({
           connector: {
@@ -289,7 +307,7 @@ describe("ConnectorsSection", () => {
   });
 
   it("verifies each named permission in parallel and ticks rows as they land; a failed row blocks Confirm", async () => {
-    mocks.get.mockResolvedValue({
+    serve({
       data: [
         connectorEntry({
           connector: {
@@ -344,7 +362,7 @@ describe("ConnectorsSection", () => {
   });
 
   it("shows a failed advisory check as a warning and still unlocks Confirm", async () => {
-    mocks.get.mockResolvedValue({
+    serve({
       data: [
         connectorEntry({
           connector: {
@@ -383,7 +401,7 @@ describe("ConnectorsSection", () => {
   });
 
   it("lists the domains a passing DNS check can edit under its row", async () => {
-    mocks.get.mockResolvedValue({
+    serve({
       data: [
         connectorEntry({
           connector: {
@@ -420,7 +438,7 @@ describe("ConnectorsSection", () => {
   });
 
   it("puts the green light out again when a field changes after Verify", async () => {
-    mocks.get.mockResolvedValue({
+    serve({
       data: [
         connectorEntry({
           connector: {
@@ -450,7 +468,7 @@ describe("ConnectorsSection", () => {
   });
 
   it("shows the verify error inline in the manual form on failure", async () => {
-    mocks.get.mockResolvedValue({
+    serve({
       data: [
         connectorEntry({
           connector: {
@@ -486,7 +504,7 @@ describe("ConnectorsSection", () => {
   });
 
   it("disconnects only once the confirm is accepted", async () => {
-    mocks.get.mockResolvedValue({
+    serve({
       data: [connectorEntry({ status: { configured: true } })],
     });
     mocks.post.mockResolvedValue({ data: { status: "disconnected" } });

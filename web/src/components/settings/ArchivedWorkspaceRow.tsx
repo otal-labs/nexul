@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/action/ActionButton";
 import { useRestoreWorkspace } from "@/hooks/WorkspaceHooks";
 import type { Workspace } from "@/models/Workspace";
 import { formatRelativeTime } from "@/utils/TimeUtility";
@@ -18,9 +18,9 @@ export const ArchivedWorkspaceRow = ({ workspace }: ArchivedWorkspaceRowProps) =
           {workspace.archived_at && <> · archived {formatRelativeTime(workspace.archived_at)}</>}
         </p>
       </div>
-      <Button variant="outline" size="sm" loading={restore.isPending} onClick={() => restore.mutate(workspace.id)}>
+      <ActionButton permission="instance:write" verb="restore workspaces" variant="outline" size="sm" loading={restore.isPending} onClick={() => restore.mutate(workspace.id)}>
         Restore
-      </Button>
+      </ActionButton>
     </li>
   );
 };

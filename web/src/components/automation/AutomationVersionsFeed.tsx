@@ -9,11 +9,10 @@ import { useFetchAutomationVersionDiff, useFetchAutomationVersions } from "@/hoo
 
 interface AutomationVersionsFeedProps {
   automationId: string;
-  canUpdate: boolean;
 }
 
 // The pending-vs-active diff sits above the full history while a push waits: it's where a developer catches what they missed.
-export const AutomationVersionsFeed = ({ automationId, canUpdate }: AutomationVersionsFeedProps) => {
+export const AutomationVersionsFeed = ({ automationId }: AutomationVersionsFeedProps) => {
   const diff = useFetchAutomationVersionDiff(automationId);
   const versions = useFetchAutomationVersions(automationId);
 
@@ -22,7 +21,7 @@ export const AutomationVersionsFeed = ({ automationId, canUpdate }: AutomationVe
       {(diff.isPending || versions.isPending) && <LoadingDisplay />}
       {(diff.error || versions.error) && <ErrorDisplay error={diff.error ?? versions.error} />}
       {diff.data?.pending && (
-        <AutomationVersionDiff automationId={automationId} diff={diff.data} canUpdate={canUpdate} />
+        <AutomationVersionDiff automationId={automationId} diff={diff.data} />
       )}
       {versions.data && (
         <SettingsCard id="version-history" title="Version history" description="Every pushed version, newest first.">
@@ -30,12 +29,7 @@ export const AutomationVersionsFeed = ({ automationId, canUpdate }: AutomationVe
           {versions.data.length > 0 && (
             <EnterList className="divide-y divide-border overflow-hidden rounded-md border">
               {versions.data.map((version) => (
-                <AutomationVersionRow
-                  key={version.id}
-                  automationId={automationId}
-                  version={version}
-                  canUpdate={canUpdate}
-                />
+                <AutomationVersionRow key={version.id} automationId={automationId} version={version} />
               ))}
             </EnterList>
           )}

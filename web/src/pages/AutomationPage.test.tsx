@@ -62,7 +62,7 @@ describe("AutomationPage", () => {
   const baseEndpoints = {
     "/api/automations/a1": automation,
     "/api/automations/a1/runs": [],
-    "/api/workspaces/ws-1/me": { role_name: "Owner", permissions: ["automations:write", "automations:delete"] },
+    "/api/workspaces/ws-1/me": { role_name: "Member", permissions: ["automations:write", "automations:delete", "machines:deploy"] },
     "/api/automations/a1/versions/diff": { active: null, pending: null },
     "/api/automation-hosts": [],
   };
