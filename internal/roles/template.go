@@ -179,12 +179,15 @@ var deployInfrastructure = []permissions.Action{
 	"dns:read", "dns:write", "dns:delete", "topology:read", "topology:write", "topology:delete",
 }
 
+// ownerOnly stays with Owner even though its area is the workspace: making or removing a workspace is as strong as Owner.
+var ownerOnly = []permissions.Action{permissions.WorkspacesCreate, "workspaces:delete"}
+
 // administrator holds every project and workspace action and the deploy infrastructure, none of the instance's own
 // administration, which stays with Owner.
 func administrator() permissions.Set {
 	out := slices.Clone(deployInfrastructure)
 	for _, info := range permissions.Catalog() {
-		if info.Area != permissions.AreaInstance {
+		if info.Area != permissions.AreaInstance && !slices.Contains(ownerOnly, info.Value) {
 			out = append(out, info.Value)
 		}
 	}

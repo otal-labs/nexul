@@ -372,6 +372,8 @@ func TestIntegration_TemplateRoles(t *testing.T) {
 	}, ticksOf(copies))
 	assert.Equal(t, grant("tickets:read", "chat:write"), copies["Support"].Permissions)
 	assert.True(t, copies["Administrator"].Permissions.Has(permissions.RolesWrite))
+	assert.False(t, copies["Administrator"].Permissions.Has(permissions.WorkspacesCreate), "making a workspace stays with Owner")
+	assert.False(t, copies["Administrator"].Permissions.Has("workspaces:delete"), "removing a workspace stays with Owner")
 	for _, a := range copies["Administrator"].Permissions {
 		if permissions.AreaOf(a) == permissions.AreaInstance {
 			domain, _, _ := strings.Cut(string(a), ":")
