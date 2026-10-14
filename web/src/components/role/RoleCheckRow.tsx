@@ -22,6 +22,7 @@ export const RoleCheckRow = ({ choice, domains, checked, onToggle }: RoleCheckRo
       <Checkbox id={id} checked={checked} disabled={!givable} onCheckedChange={() => onToggle(role.id)} />
       <label htmlFor={id} className={cn("min-w-0 flex-1", givable && "cursor-pointer")}>
         <span className={cn("block truncate text-sm font-medium", !givable && "text-muted-foreground")}>{role.name}</span>
+        {role.description && <span className="block text-xs leading-4.5 text-muted-foreground">{role.description}</span>}
         {!givable && (
           <span className="mt-0.5 flex items-start gap-1.5 text-xs text-muted-foreground">
             <Lock aria-hidden className="mt-px size-3 shrink-0" />
