@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { CloneDocForm } from "@/components/doc/CloneDocForm";
 import type { RowMenu } from "@/components/listpane/rowMenu";
 import { useFetchDocFolders, useMoveDoc } from "@/hooks/DocFolderHooks";
-import { useDeleteDoc, useSetDocLocked } from "@/hooks/DocHooks";
+import { useArchiveDoc, useDeleteDoc, useRestoreDoc, useSetDocLocked } from "@/hooks/DocHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useDocPins } from "@/hooks/useDocPins";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
@@ -28,6 +28,8 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean): RowMenu =
   const { open: confirm } = useConfirmationDialog();
   const deleteDoc = useDeleteDoc();
   const setLocked = useSetDocLocked();
+  const archiveDoc = useArchiveDoc();
+  const restoreDoc = useRestoreDoc();
   const { data: projects } = useFetchProjects();
   const { data: folders } = useFetchDocFolders(doc.project_id);
   const moveDoc = useMoveDoc();
@@ -61,6 +63,7 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean): RowMenu =
   return {
     pin: { pinned: pinnedIds.includes(doc.id), onToggle: () => toggle(doc.id) },
     lock: canLock ? { locked: doc.locked, onToggle: () => setLocked.mutate({ id: doc.id, locked: !doc.locked }) } : undefined,
+    archive: canWrite ? { archived: doc.archived, onToggle: () => (doc.archived ? restoreDoc : archiveDoc).mutate(doc.id) } : undefined,
     moveTo:
       canWrite && folders && folders.length > 1
         ? { label: "Move to folder", options: folders, currentId: doc.folder_id, onMove: (folderId: string) => moveDoc.mutate({ id: doc.id, folderId }) }

@@ -46,6 +46,7 @@ export interface RowMenu {
   /** Pin and Unpin are a personal view setting, so nothing gates them. */
   pin?: { pinned: boolean; onToggle: () => void } | undefined;
   lock?: { locked: boolean; onToggle: () => void } | undefined;
+  archive?: { archived: boolean; onToggle: () => void } | undefined;
   /** Removing from the sidebar is personal too: the item stays, only the viewer's sidebar drops it. */
   sidebar?: { hidden: boolean; onToggle: () => void } | undefined;
   /** The places the item can move to, the current one checked. */
@@ -62,7 +63,7 @@ export interface RowMenu {
 
 // The row's own actions, before Permissions… and Delete.
 export const hasOwnActions = (m: RowMenu) =>
-  !!m.onSettings || !!m.onBots || !!m.onNewDoc || !!m.pin || !!m.sidebar || !!m.lock || !!m.moveTo || !!m.onMarkUnread || !!m.onEdit || !!m.onRename || !!m.onClone;
+  !!m.onSettings || !!m.onBots || !!m.onNewDoc || !!m.pin || !!m.sidebar || !!m.lock || !!m.archive || !!m.moveTo || !!m.onMarkUnread || !!m.onEdit || !!m.onRename || !!m.onClone;
 
 // Permissions… counts only once its check has answered (manages), or a menu holding only it would open empty.
 export const offersMenu = (m: RowMenu | undefined, manages = false): m is RowMenu =>

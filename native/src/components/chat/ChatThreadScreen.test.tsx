@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider, notifyManager } from "@tanstack/react-query";
-import { act, render, screen, userEvent } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, userEvent } from "@testing-library/react-native";
 
 import { api } from "@/api/client";
 import { ApiError } from "@/api/errors";
@@ -47,7 +47,7 @@ jest.mock("@legendapp/list/react-native", () => ({
 }));
 
 jest.mock("@/api/client", () => ({
-  api: { get: jest.fn(), post: jest.fn() },
+  api: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
 }));
 
 // Query notifications otherwise land on a zero timeout after act has returned.
@@ -55,6 +55,7 @@ notifyManager.setScheduler((callback) => callback());
 
 const get = jest.mocked(api.get);
 const post = jest.mocked(api.post);
+const patch = jest.mocked(api.patch);
 const host = "https://nexul.example.com";
 
 const message = (id: string, body: string, minute: number, author = "ana"): Message => ({
@@ -74,6 +75,16 @@ const botPost = (id: string, overrides: Partial<Message>): Message => ({
   author_name: "GitHub",
   ...overrides,
 });
+
+// The Pressable around a text, found by what it offers rather than by how deep the body nests it.
+type Instance = ReturnType<typeof screen.getByText>;
+
+const actionsOf = (text: Instance) => {
+  let node: Instance | null = text;
+  while (node && !node.props.accessibilityActions) node = node.parent;
+  if (!node) throw new Error("no accessibility actions above the text");
+  return node;
+};
 
 const fields = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `Field ${i + 1}`, value: `value ${i + 1}` }));
 
@@ -107,6 +118,7 @@ describe("ChatThreadScreen", () => {
     mockPush.mockReset();
     post.mockReset();
     post.mockResolvedValue(null);
+    patch.mockReset();
     get.mockImplementation(respond);
     useSessionStore.getState().signIn(host, "ses_abc");
     useWorkspaceStore.setState({ selectedWorkspaceId: "w1" });
@@ -349,5 +361,64 @@ describe("ChatThreadScreen", () => {
     expect(screen.getByLabelText("shot.png").props.source).toEqual([
       { uri: `${host}/api/attachments/a1`, headers: { Authorization: "Bearer ses_abc" } },
     ]);
+  });
+  test("holding your own message opens its actions, and holding someone else's does nothing", async () => {
+    thread = [message("m1", "from ana", 1), message("m2", "mine", 2, "me")];
+    await renderThread();
+
+    await userEvent.longPress(await screen.findByText("from ana"));
+    expect(mockPush).not.toHaveBeenCalled();
+    await userEvent.longPress(screen.getByText("mine"));
+
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/chat/message-actions", params: { conversationId: "c1", messageId: "m2" } });
+  });
+
+  test("your message has Edit and Delete as accessibility actions, and Delete opens the confirm", async () => {
+    thread = [message("m2", "mine", 2, "me")];
+    await renderThread();
+    const bubble = actionsOf(await screen.findByText("mine"));
+
+    expect(bubble.props.accessibilityActions.map((a: { label: string }) => a.label)).toEqual(["Edit message", "Delete message"]);
+    fireEvent(bubble, "accessibilityAction", { nativeEvent: { actionName: "delete" } });
+
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/chat/message-actions", params: { conversationId: "c1", messageId: "m2", mode: "delete" } });
+  });
+
+  test("Edit loads your message into the composer, Save sends the change, and the thread shows it", async () => {
+    thread = [message("m2", "ship it frday", 2, "me")];
+    patch.mockResolvedValue({ ...message("m2", "ship it friday", 2, "me"), edited_at: "2026-09-28T10:05:00Z" });
+    await renderThread();
+    const bubble = actionsOf(await screen.findByText("ship it frday"));
+
+    await act(async () => fireEvent(bubble, "accessibilityAction", { nativeEvent: { actionName: "edit" } }));
+    expect(await screen.findByText("Editing your message")).toBeTruthy();
+    expect(screen.getByLabelText("Message").props.value).toBe("ship it frday");
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+
+    await userEvent.clear(screen.getByLabelText("Message"));
+    await userEvent.type(screen.getByLabelText("Message"), "ship it friday");
+    await userEvent.press(screen.getByRole("button", { name: "Save" }));
+
+    expect(patch).toHaveBeenCalledWith("/api/chat/messages/m2", { body: "ship it friday" });
+    expect(await screen.findByText("ship it friday")).toBeTruthy();
+    expect(screen.queryByText("Editing your message")).toBeNull();
+    expect(screen.getByRole("button", { name: "Send" })).toBeTruthy();
+  });
+
+  test("a refused edit shows why and keeps the edit open; Cancel leaves it without saving", async () => {
+    thread = [message("m2", "mine", 2, "me")];
+    patch.mockRejectedValue(new Error("only the author may edit this message"));
+    await renderThread();
+    const bubble = actionsOf(await screen.findByText("mine"));
+    await act(async () => fireEvent(bubble, "accessibilityAction", { nativeEvent: { actionName: "edit" } }));
+
+    await userEvent.type(screen.getByLabelText("Message"), "!");
+    await userEvent.press(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("only the author may edit this message")).toBeTruthy();
+    expect(screen.getByText("Editing your message")).toBeTruthy();
+
+    await userEvent.press(screen.getByRole("button", { name: "Cancel editing" }));
+    expect(screen.queryByText("Editing your message")).toBeNull();
+    expect(screen.getByLabelText("Message").props.value).toBe("");
   });
 });

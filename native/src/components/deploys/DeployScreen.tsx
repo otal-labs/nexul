@@ -2,6 +2,7 @@ import { LegendList } from "@legendapp/list/react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { View } from "react-native";
 
+import { CancelDeployRow } from "@/components/deploys/CancelDeployRow";
 import { DeployLogLineRow } from "@/components/deploys/DeployLogLineRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -41,6 +42,7 @@ export const DeployScreen = () => {
       {deployPending && <LoadingDisplay message="Loading the deploy" />}
       {deployError && <ErrorDisplay error={deployError} notFound="This deploy doesn't exist or was deleted." />}
       {deploy && <ScreenHeader title={OUTCOME[deploy.status] ?? deploy.status} meta={<DeployMeta deploy={deploy} />} className="pt-2" />}
+      {deploy && <CancelDeployRow deploy={deploy} />}
       {logPending && <LoadingDisplay message="Loading the log" />}
       {logError && <ErrorDisplay error={logError} />}
       {lines && lines.length === 0 && (

@@ -1,4 +1,5 @@
-import { View } from "react-native";
+import { useRouter } from "expo-router";
+import { Pressable, View } from "react-native";
 
 import { dropEchoedAuthor } from "@nexul/client-core/embed";
 import { isNote } from "@nexul/client-core/chat";
@@ -14,6 +15,7 @@ import { Text } from "@/components/ui/text";
 import { BotMessageIdContext } from "@/hooks/BotMediaHooks";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/models/Chat";
+import { useMessageEditStore } from "@/stores/messageEditStore";
 
 interface MessageRowProps {
   message: Message;
@@ -23,14 +25,35 @@ interface MessageRowProps {
   continuation?: boolean;
 }
 
-const OwnMessage = ({ message, continuation }: { message: Message; continuation: boolean }) => (
-  <View className={cn("items-end gap-1 px-4", continuation ? "pt-1" : "pt-3", message.pending && "opacity-70")}>
-    <View className="max-w-[82%] rounded-xl rounded-br-sm bg-brand px-3.5 py-2">
-      <MessageBody body={message.body} own />
+const ownMessageActions = [
+  { name: "edit", label: "Edit message" },
+  { name: "delete", label: "Delete message" },
+];
+
+// Holding the bubble opens Edit and Delete; the same two are the bubble's accessibility actions. A message still
+// sending has no id to act on yet.
+const OwnMessage = ({ message, continuation }: { message: Message; continuation: boolean }) => {
+  const router = useRouter();
+  const startEditing = useMessageEditStore((s) => s.start);
+  const open = (mode?: "delete") =>
+    router.push({ pathname: "/chat/message-actions", params: { conversationId: message.conversation_id, messageId: message.id, ...(mode ? { mode } : {}) } });
+  const edit = () => startEditing({ conversationId: message.conversation_id, messageId: message.id, body: message.body });
+  const actionable = !message.pending;
+  return (
+    <View className={cn("items-end gap-1 px-4", continuation ? "pt-1" : "pt-3", message.pending && "opacity-70")}>
+      <Pressable
+        disabled={!actionable}
+        onLongPress={() => open()}
+        accessibilityActions={actionable ? ownMessageActions : []}
+        onAccessibilityAction={({ nativeEvent }) => (nativeEvent.actionName === "delete" ? open("delete") : edit())}
+        className="max-w-[82%] rounded-xl rounded-br-sm bg-brand px-3.5 py-2 active:opacity-90"
+      >
+        <MessageBody body={message.body} own />
+      </Pressable>
+      {message.reactions && message.reactions.length > 0 && <MessageReactions reactions={message.reactions} />}
     </View>
-    {message.reactions && message.reactions.length > 0 && <MessageReactions reactions={message.reactions} />}
-  </View>
-);
+  );
+};
 
 // Everyone else's text runs plain under a 32pt avatar, so a long thread reads as a transcript, not a stack of boxes.
 const OtherMessage = ({ message, continuation }: { message: Message; continuation: boolean }) => {

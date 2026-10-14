@@ -148,11 +148,11 @@ describe("StackPage", () => {
     expect(screen.queryByRole("link", { name: "Logs" })).not.toBeInTheDocument();
   });
 
-  it("offers no image field on a compose stack without a repository, only the attach hint", async () => {
+  it("offers no image field on a compose stack without a repository, only the note that says why", async () => {
     renderPage();
     await screen.findByRole("heading", { name: "Deploy" });
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    expect(screen.getByText(/attach a repository to build and deploy this stack/i)).toBeInTheDocument();
+    expect(screen.getByText(/has no repository to build from and nothing running to redeploy/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /redeploy/i })).not.toBeInTheDocument();
   });
 

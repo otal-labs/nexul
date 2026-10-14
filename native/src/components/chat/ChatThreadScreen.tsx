@@ -12,6 +12,7 @@ import { HandOff, useLoaderShown } from "@/components/HandOff";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchMessages, useMarkThreadRead } from "@/hooks/ChatHooks";
+import { useMessageEditStore } from "@/stores/messageEditStore";
 
 export const ChatThreadScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -23,6 +24,7 @@ export const ChatThreadScreen = () => {
   useMarkThreadRead(id, messages?.at(-1)?.id);
   // Edge-to-edge Android never resizes the window for the keyboard, and this view's frame starts below the header.
   const headerHeight = useHeaderHeight();
+  const editing = useMessageEditStore((s) => (s.editing?.conversationId === id ? s.editing : null));
   return (
     <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={headerHeight} className="flex-1 bg-background">
       <ChatThreadTitle conversationId={id} />
@@ -42,7 +44,7 @@ export const ChatThreadScreen = () => {
           <MessageList messages={messages} />
         </HandOff>
       )}
-      {!gone && <ChatComposer conversationId={id} />}
+      {!gone && <ChatComposer key={editing?.messageId ?? "new"} conversationId={id} editing={editing} />}
     </KeyboardAvoidingView>
   );
 };

@@ -141,6 +141,22 @@ export const usePostMessage = (conversationId: string) => {
   });
 };
 
+export const useEditMessage = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ messageId, body }: { messageId: string; body: string }) => api.patch<Message>(`/api/chat/messages/${messageId}`, { body }),
+    onSuccess: (message) => upsertCachedMessage(client, message),
+  });
+};
+
+export const useDeleteMessage = (conversationId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (messageId: string) => api.delete<null>(`/api/chat/messages/${messageId}`),
+    onSuccess: (_result, messageId) => markCachedMessageDeleted(client, conversationId, messageId, new Date().toISOString()),
+  });
+};
+
 // Marks the thread read on open and on each new message; a plain call, since a mutation observer would only re-render the thread.
 export const useMarkThreadRead = (conversationId: string, lastMessageId: string | undefined) => {
   const client = useQueryClient();

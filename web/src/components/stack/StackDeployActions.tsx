@@ -144,7 +144,7 @@ export const StackDeployActions = ({ stack, lastHealthy, image }: StackDeployAct
       {canRedeploy && image && <RedeployRow stack={stack} image={image} deploy={deploy} />}
       {!canBuild && !canRedeploy && (
         <p className="text-sm text-muted-foreground">
-          Attach a repository to build and deploy this stack from here.
+          This stack has no repository to build from and nothing running to redeploy, so it can't be deployed from here.
         </p>
       )}
     </SettingsCard>

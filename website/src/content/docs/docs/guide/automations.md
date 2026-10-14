@@ -92,7 +92,7 @@ To run automations on another machine, for example to reach services on its netw
 2. Give it a **Host name** (lower-case letters, digits, and dashes) and optionally a **Machine**.
 3. Run the install line shown, for Linux or macOS, or for Windows, on that machine. It needs no Docker. The line carries a one-time code that expires after an hour.
 
-Move an automation by picking another host on its page. It stops on the old host as it starts on the new one, so two hosts never run the same automation. To retire a host, move its automations off, then **Remove** it; it uninstalls itself.
+Move an automation by picking another host on its page. It stops on the old host as it starts on the new one, so two hosts never run the same automation. To retire a host, move its automations off, then **Remove** it; it uninstalls itself. Removing a host moves its automations to the instance host and stops its credential. Adding a host again makes a new one: its automations stay on the instance host until you move them back.
 
 ## Switching off
 

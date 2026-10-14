@@ -85,6 +85,21 @@ export const useUpdateTicket = () => {
   });
 };
 
+export const useDeleteTicket = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/api/tickets/${id}`);
+    },
+    // Not awaited: the page leaves first, so its refetch of the deleted ticket never shows a not-found screen.
+    onSuccess: (_, id) => {
+      void ticketRemoved(client, id);
+      toast.success("Ticket deleted");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 export const useUpdateTicketStatus = () => {
   const client = useQueryClient();
   return useMutation({

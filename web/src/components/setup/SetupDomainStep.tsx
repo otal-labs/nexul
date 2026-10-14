@@ -27,7 +27,7 @@ export const SetupDomainStep = () => {
     <ol className="list-none">
       <DnsStep
         title="How should traffic reach Nexul?"
-        description="Pick the one that matches this server. You can change it later from the DNS page."
+        description="Pick the one that matches this server. You can change it later under Configuration, Instance."
         state={stepState(true, path !== null)}
         summary={chosen?.label}
         onChange={restart}

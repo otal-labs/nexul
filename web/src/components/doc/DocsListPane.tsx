@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { FileTextIcon } from "lucide-react";
+import { ArchiveIcon, FileTextIcon } from "lucide-react";
 import { useNavigate } from "react-router";
 
+import { DocArchivedToggle } from "@/components/doc/DocArchivedToggle";
 import { DocFolderSection } from "@/components/doc/DocFolderSection";
 import { DocGroupSection } from "@/components/doc/DocGroupSection";
 import { DocSortToggle } from "@/components/doc/DocSortToggle";
@@ -15,6 +16,7 @@ import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
 import { useCreateDocDialog } from "@/hooks/useCreateDocDialog";
 import { useDocPins } from "@/hooks/useDocPins";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
+import { useDocArchiveStore } from "@/stores/docArchiveStore";
 import { useDocFolderStore } from "@/stores/docFolderStore";
 import { useDocSortStore } from "@/stores/docSortStore";
 import type { DocListItem } from "@/models/Doc";
@@ -29,19 +31,27 @@ interface DocsListPaneProps {
 const matches = (query: string) => (doc: DocListItem) =>
   doc.title.toLowerCase().includes(query) || (doc.snippet ?? "").toLowerCase().includes(query);
 
+// A search lists the folders with a match; the archived view lists the folders holding something, so empty ones don't pile up.
+const folderFilter = (query: string, showArchived: boolean) => {
+  if (query !== "") return matches(query);
+  if (showArchived) return () => true;
+  return undefined;
+};
+
 // Lists only the docs the viewer can open, by folder; the server still names the others, with can_open false.
 export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) => {
   const [search, setSearch] = useState("");
   const sortBy = useDocSortStore((s) => s.sortBy);
+  const showArchived = useDocArchiveStore((s) => s.showArchived);
   const { pinnedIds } = useDocPins();
   const createDoc = useCreateDocDialog(project.id);
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const { data: folders, error, isPending } = useFetchDocFolders(project.id);
-  const openable = docs.filter((doc) => doc.can_open);
+  const openable = docs.filter((doc) => doc.can_open && doc.archived === showArchived);
   const query = search.trim().toLowerCase();
   const searching = query !== "";
-  const groups = folders && groupDocs({ docs: openable, folders, sortBy, pinnedIds, match: searching ? matches(query) : undefined });
+  const groups = folders && groupDocs({ docs: openable, folders, sortBy, pinnedIds, match: folderFilter(query, showArchived) });
   const token = projectToken(project);
   const openCreateDoc =
     createDoc &&
@@ -69,6 +79,7 @@ export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) =
         controls={
           <>
             <DocSortToggle />
+            <DocArchivedToggle />
             <NewDocFolderButton projectId={project.id} />
           </>
         }
@@ -76,7 +87,8 @@ export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) =
       <div className="min-h-0 flex-1 overflow-y-auto pb-2">
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} title="Couldn't load folders." />}
-        {groups && groups.folders.length === 0 && !searching && <ListPaneEmpty icon={FileTextIcon} message="No docs yet" />}
+        {groups && groups.folders.length === 0 && !searching && !showArchived && <ListPaneEmpty icon={FileTextIcon} message="No docs yet" />}
+        {groups && groups.folders.length === 0 && groups.pinned.length === 0 && !searching && showArchived && <ListPaneEmpty icon={ArchiveIcon} message="No archived docs" />}
         {groups && groups.folders.length === 0 && groups.pinned.length === 0 && searching && <ListPaneNoMatch onClear={() => setSearch("")} />}
         {groups && groups.pinned.length > 0 && (
           <DocGroupSection group={{ label: "Pinned", docs: groups.pinned }} projectToken={token} selectedId={selectedId} />

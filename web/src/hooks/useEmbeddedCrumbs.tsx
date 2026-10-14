@@ -6,3 +6,5 @@ import type { Crumb } from "@/components/PageBreadcrumb";
 export const EmbeddedCrumbsContext = createContext<Crumb[] | undefined>(undefined);
 
 export const useEmbeddedCrumbs = (own: Crumb[]): Crumb[] => useContext(EmbeddedCrumbsContext) ?? own;
+
+export const useIsEmbedded = (): boolean => useContext(EmbeddedCrumbsContext) !== undefined;

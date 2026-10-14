@@ -43,7 +43,7 @@ The instance gets its domain in the [setup wizard](/docs/guide/setup-wizard/). T
    - **Reverse proxy**: Traefik on ports 80 and 443 of a machine, with Let's Encrypt certificates. Both ports must be open to the internet.
 2. **Deploy the tunnel** (tunnel only): name it and pick the machine and Docker network. The picker lists only machines you may deploy to. If your token reaches several Cloudflare accounts, pick the one that owns the domain; a tunnel only serves its own account's zones.
 3. **Point your hostname**: pick the zone and subdomain (or, for a bare address, the record type and target). For a tunnel, leave the local service empty to send the hostname to this instance. Three checks then confirm the route, the proxied DNS record, and that the hostname answers over HTTPS. A new record can take a minute.
-4. **Go live** confirms the instance answers at its new address.
+4. **Go live** confirms the instance answers at its new address. If the record is wrong, **Delete this record** removes the A, AAAA or CNAME record that step created, after a confirm that names it and what it pointed at. Deleting can't be undone, and the step goes back to **Point your hostname** so you can create it again. It needs the Delete DNS permission, and the button is hidden without it. A tunnel's hostname record is removed with the tunnel instead (see [Tunnels](#tunnels)).
 
 Nexul deploys the tunnel or proxy itself, like any other stack. There is nothing to install by hand.
 

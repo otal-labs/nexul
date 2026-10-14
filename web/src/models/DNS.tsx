@@ -131,6 +131,8 @@ export interface TunnelDeployment {
 export interface DnsSetupResult {
   headline: string;
   detail: string;
+  // The record the step created, so the last rung can take it back.
+  record?: DnsRecord;
 }
 
 // Mirrors the server's recordNameFor: "@" at the apex, the label under the zone, or null when the host isn't in it.
