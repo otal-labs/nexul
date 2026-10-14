@@ -20,8 +20,8 @@ Read first: `AGENTS.md`, `CONTEXT.md` (Locked action, Source), `practices/go.md`
 
 ## Answer
 
-- `DeleteTunnel` refuses while a gateway runs through the tunnel or a hostname is exposed on one of its gateways. The
-  refusal is `apperrs.InUseError` (thing, users, what to do first): it matches `ErrConflict`, so HTTP answers 409 and
+- `DeleteTunnel` refuses while a gateway runs through the tunnel, a hostname is exposed on one of its gateways, the
+  tunnel serves the instance's own address, or its cloudflared stack still exists. The refusal is `apperrs.InUseError` (thing, users, what to do first): it matches `ErrConflict`, so HTTP answers 409 and
   MCP passes the same text through. The machine delete reuses it.
 - A free tunnel is deleted at Cloudflare, then its CNAME, then the local row, so a failed record delete leaves the
   row for a retry. The delete publishes the existing `dns.tunnel_changed` and `dns.record_changed` events, and the

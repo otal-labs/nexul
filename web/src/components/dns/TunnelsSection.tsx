@@ -14,7 +14,7 @@ export const TunnelsSection = () => {
     <SettingsCard
       id="tunnels"
       title="Tunnels"
-      description="The Cloudflare tunnels Nexul manages. A tunnel can be deleted once no gateway or hostname uses it."
+      description="The Cloudflare tunnels Nexul manages. A tunnel can be deleted once nothing uses it: no gateway, hostname, instance address or cloudflared stack."
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} title="Couldn't load tunnels." />}
