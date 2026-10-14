@@ -3,7 +3,7 @@ import { domainLabel } from "@/models/PermissionLevel";
 
 // What the permissions panel opens on. A doc, folder or stack names its project, a doc its folder, for the header and the add list.
 export interface PanelEntity {
-  type: "doc" | "folder" | "play" | "project" | "stack" | "channel" | "computer" | "instance_area";
+  type: "doc" | "folder" | "play" | "project" | "stack" | "channel" | "computer" | "instance_area" | "machine";
   id: string;
   name: string;
   workspaceId: string;
@@ -35,12 +35,17 @@ export const computerEntity = (computer: { id: string; name: string }): PanelEnt
   type: "computer", id: computer.id, name: computer.name, workspaceId: "", projectId: "", folderId: "",
 });
 
-// Whom the panel's targets come from: the entity's workspace, every workspace the viewer is in for a computer, the whole instance for an area.
+// A machine as the panel opens on it: its rules name a role of any workspace or a person, so it carries no workspace.
+export const machineEntity = (machine: { id: string; name: string }): PanelEntity => ({
+  type: "machine", id: machine.id, name: machine.name, workspaceId: "", projectId: "", folderId: "",
+});
+
+// Whom the panel's targets come from: the entity's workspace, every workspace the viewer is in for a computer, the whole instance for an area or a machine.
 export const targetScope = (entity: PanelEntity, projectId?: string) => ({
   workspaceId: entity.workspaceId,
   projectId,
   everyWorkspace: entity.type === "computer",
-  instance: entity.type === "instance_area",
+  instance: entity.type === "instance_area" || entity.type === "machine",
 });
 
 // An instance area as the panel opens on it, named as its Settings section shows it.
@@ -81,12 +86,18 @@ const panelLabels: Record<PanelEntity["type"], Record<string, string>> = {
   channel: { "channels:read": "See this channel", "channels:post": "Post in this channel" },
   computer: { "computers:see": "See this computer", "computers:run_agents": "Run agents", "computers:run_commands": "Run commands" },
   instance_area: {},
+  machine: {
+    "machines:see": "See this machine",
+    "machines:deploy": "Deploy to this machine",
+    "machines:write": "Manage this machine",
+    "machines:delete": "Delete this machine",
+  },
 };
 
 export const permissionLabel = (action: string, catalog: PermissionInfo[] | undefined, type: PanelEntity["type"] = "doc") =>
   panelLabels[type][action] ?? catalog?.find((c) => c.value === action)?.label ?? action;
 
-const fixedGroups: Record<string, string> = { projects: "Project", plays: "Play", permissions: "Access", computers: "Computer", channels: "Channel" };
+const fixedGroups: Record<string, string> = { projects: "Project", plays: "Play", permissions: "Access", computers: "Computer", channels: "Channel", machines: "Machine" };
 
 const groupOf = (action: string, catalog: PermissionInfo[] | undefined) => {
   const domain = action.slice(0, action.indexOf(":"));

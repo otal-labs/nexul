@@ -9,6 +9,7 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/release"
@@ -302,8 +303,34 @@ func (s *Service) ListMachines(ctx context.Context) ([]*Machine, error) {
 	return s.visibleMachines(ctx, r)
 }
 
+// ListMachineViews is ListMachines with what the caller holds on each, from the memo the request carries so the rules
+// are read once however many machines there are. The server and a caller with no gate hold all four.
+func (s *Service) ListMachineViews(ctx context.Context) ([]MachineView, error) {
+	ms, err := s.ListMachines(ctx)
+	if err != nil {
+		return nil, err
+	}
+	actor, checked := identity.ActorFromCtx(ctx)
+	out := make([]MachineView, 0, len(ms))
+	for _, m := range ms {
+		held := permissions.SetOf(permissions.MachineActions...)
+		if checked && s.creators != nil {
+			var err error
+			held, err = s.creators.MachinePermissions(ctx, actor.ID, m.ID)
+			if errors.Is(err, apperrs.ErrNotFound) {
+				continue
+			}
+			if err != nil {
+				return nil, fmt.Errorf("read what %s holds on machine %s: %w", actor.ID, m.Name, err)
+			}
+		}
+		out = append(out, MachineView{Machine: m, Actions: held})
+	}
+	return out, nil
+}
+
 // listAutomationsHosts is the hosts machine_list files under each machine of r; a caller who may not read them gets none.
-func (s *Service) listAutomationsHosts(ctx context.Context, r reach, machines []*Machine) ([]AutomationsHost, error) {
+func (s *Service) listAutomationsHosts(ctx context.Context, r reach, machines []MachineView) ([]AutomationsHost, error) {
 	if s.automationsHosts == nil {
 		return nil, nil
 	}

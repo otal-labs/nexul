@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import { refetchRunnersAndQueue } from "@/hooks/RunnerHooks";
 import type { LiveFollower } from "@/lib/live";
 import type { DeployTarget, GroupedDiscovery, ImportRequest, ImportResult, Machine } from "@/models/Machine";
 
@@ -21,10 +22,11 @@ export const useFetchDeployTargets = () =>
     queryFn: async () => (await api.get<DeployTarget[]>("/api/machines/deployable")).data,
   });
 
-// A rule on a machine can add or take away where the viewer may deploy.
+// A rule on a machine can add or take away where the viewer may deploy, and which machines, runners and jobs they see.
 export const machineFollower: LiveFollower = {
   "access.grant.changed": ({ resource_type }: { resource_type: string }, { client }) =>
-    resource_type === "machine" && client.invalidateQueries({ queryKey: [getMachinesKey] }),
+    resource_type === "machine" &&
+    Promise.all([client.invalidateQueries({ queryKey: [getMachinesKey] }), refetchRunnersAndQueue(client)]),
 };
 
 export const useDiscoverMachine = () =>

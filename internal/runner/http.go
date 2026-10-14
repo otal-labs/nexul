@@ -123,7 +123,7 @@ func (h *HTTPHandler) removeSelf(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HTTPHandler) listMachines(w http.ResponseWriter, r *http.Request) {
-	ms, err := h.svc.ListMachines(r.Context())
+	ms, err := h.svc.ListMachineViews(r.Context())
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

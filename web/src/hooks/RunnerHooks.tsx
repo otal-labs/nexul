@@ -64,6 +64,10 @@ export const useUpdateMachine = () => {
 
 const refetch = (client: QueryClient, key: string) => client.invalidateQueries({ queryKey: [key], exact: true });
 
+// Who sees a machine moves its runners and the queue with it.
+export const refetchRunnersAndQueue = (client: QueryClient) =>
+  Promise.all([refetch(client, getRunnersKey), refetch(client, getRunnerQueueKey)]);
+
 // A job frame names its deploy: the runners list refetches until a runner shows it, and the queue while it holds it.
 const followJob = ({ id }: { id: string }, { client }: { client: QueryClient }) =>
   Promise.all([
