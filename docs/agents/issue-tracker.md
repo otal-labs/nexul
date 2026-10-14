@@ -71,10 +71,6 @@ git history, and anything durable it decided is an ADR.
   tunnel and URL pairing retired after existing computers move; later shell
   jobs, container logs and sharing a computer. Spec and tickets 01–20
   written 2026-10-10.
-- `.scratch/permission-followups/` — four `needs-triage` tickets for per-play Run
-  controls, See/Run explanations, phone locked mentions, and the phone acceptance
-  verification the owner skipped. Scope and ticket index in `spec.md`; ADR 0148
-  records the shipped permission model.
 - `.scratch/machine-permissions/` — each machine carries rules (See, Deploy to,
   Manage, Delete) and only the instance Owner holds the instance by right
   (ADR 0151); spec and build tickets 01–06.
