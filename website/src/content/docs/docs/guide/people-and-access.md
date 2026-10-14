@@ -11,15 +11,23 @@ Your instance is private: nobody signs in without an invitation. Each person the
 
 1. Open **Settings → Team** and press **Invite**.
 2. Under **Link expires in**, choose **1 day** or **7 days**.
-3. Under **Workspace access**, choose a workspace, then tick the roles the link gives there under **Roles in** that workspace. Nothing is ticked at first, and each workspace needs at least one role: **Create link** stays off until it has one. **Add workspace** adds another.
+3. Under **Workspace access**, choose a workspace, then tick the roles the link gives there under **Roles in** that workspace. Each role shows its description under its name. Nothing is ticked at first, and each workspace needs at least one role: **Create link** stays off until it has one. **Add workspace** adds another.
 4. Press **Create link**. Team switches to its **Invitations** tab with the new link on top; press **Copy link**. It's shown once.
-5. Send the link however you like. The person opens it, signs in with one of the instance's sign-in providers, reviews each workspace and the roles they're being given, and accepts.
-
-A link is for someone without an account here. If a person who already has one opens it, signed in or by signing in with a provider account that belongs to them, the page says "You already have an account here" and lets them go to the instance. Nothing is written: the link stays unused, so it still works for the person it was meant for. To give someone who's already here a workspace, add them on Team ([Manage people](#manage-people)). A link that has run out or been revoked says only "This invitation has been deleted or has expired".
+5. Send the link yourself, by email, chat, or however you like. Nexul sends nothing.
 
 A link works once and gives nothing but its roles. The Owner role is never offered, and a role holding more than you hold sits under **Can't give** with what it holds that you don't; ownership doesn't move through an invitation. The **Invitations** tab lists the links not used yet under **Active invitation links**; **Revoke invitation** kills one.
 
 Below them, **Accepted in the last 30 days** lists who each link let in, newest first: their name, the roles it gave, who made the link, when they accepted, and how far their setup got, the same line Team shows under them. Click one to open the person. **Expired or deleted in the last 30 days** lists the links that stopped working before anyone used them, whether they ran out, were revoked, or lost their role or their maker's right to give it: what each gave, who made it and when, and when it ended.
+
+### What the person sees
+
+Before they sign in, the page names the instance and lists each workspace with the roles the link gives there and what each role means, then a **Continue with** button for each sign-in provider the instance has turned on. It names no project, so a link that reaches the wrong person shows only what the roles are. At the bottom it says the link works once and when it expires.
+
+Once they sign in, each workspace's card adds the projects its roles reach right now, such as "2 projects: Website relaunch, Mobile app", or "No projects yet", and under the cards "You may be added to more projects later." Past eight names the rest fold into **and N more**. **Accept invitation** puts them in each workspace with its roles and opens the instance. **Decline** leaves the link unused, the same as closing the page.
+
+### When a link doesn't work
+
+A link is for someone without an account here. If a person who already has one opens it, signed in or by signing in with a provider account that belongs to them, the page says "You already have an account here" and lets them go to the instance. Nothing is written: the link stays unused, so it still works for the person it was meant for. To give someone who's already here a workspace, add them on Team ([Manage people](#manage-people)). A link that has run out or been revoked says only "This invitation has been deleted or has expired": it doesn't say which, names nobody, and tells no one.
 
 ## Manage people
 
