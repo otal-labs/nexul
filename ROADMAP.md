@@ -302,7 +302,7 @@ without changing the core architecture.
 - **Machine permissions** — each machine says who sees it and who may deploy
   to, manage or delete it, for a role or one person; a new machine shows only
   to the instance Owner, and only the instance Owner holds the instance by
-  right (ADR 0150, `.scratch/machine-permissions/`).
+  right (ADR 0151, `.scratch/machine-permissions/`).
 - **DNS extensions** — TLS automation (Let's Encrypt) for direct-to-server
   paths, additional registrars behind the provider interface, managed subdomain
   routing for deployed services.

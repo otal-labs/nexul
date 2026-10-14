@@ -6,7 +6,7 @@ Blocked by: None — can start immediately
 
 Read first: `AGENTS.md`, `CONTEXT.md` (Instance area, Instance Owner, Source), `practices/go.md` (sections 14, 17),
 `practices/architecture.md` (sections 2, 3, 8), `practices/mcp.md`, `practices/testing.md` (sections 3, 8, 10), ADRs
-0088, 0148, 0150, the spec (decisions 3 and 4).
+0088, 0148, 0151, the spec (decisions 3 and 4).
 
 ## What to build
 

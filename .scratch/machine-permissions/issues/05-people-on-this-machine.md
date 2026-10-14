@@ -6,7 +6,7 @@ Blocked by: 02, 03
 
 Read first: `AGENTS.md`, `CONTEXT.md`, `practices/react-guide.md` (F1 to F7 and the self-review),
 `practices/design-language.md` (the shared core and the web app section), `practices/native.md`,
-`practices/testing.md`, ADRs 0148, 0150, the spec (UI).
+`practices/testing.md`, ADRs 0148, 0151, the spec (UI).
 
 ## What to build
 

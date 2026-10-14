@@ -18,7 +18,7 @@ A machine is root on a server: whatever deploys there runs in its Docker. Yet ev
 
 ## Decisions
 
-From the owner, 2026-10-14. ADR 0150 records the ones that are hard to reverse.
+From the owner, 2026-10-14. ADR 0151 records the ones that are hard to reverse.
 
 1. **Each machine carries rules**, for a role (of any workspace) or a person, in Allow, Fallback or Deny, through the
    same permissions panel as stacks and computers. Its actions are **See**, **Deploy to**, **Manage** and **Delete**.

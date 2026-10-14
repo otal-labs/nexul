@@ -6,7 +6,7 @@ Blocked by: 01, 03, 04, 05
 
 ## What to build
 
-- **Docs:** check `CONTEXT.md`, ADR 0150, `runners.md`, `people-and-access.md`, `stacks-and-deploys.md` and
+- **Docs:** check `CONTEXT.md`, ADR 0151, `runners.md`, `people-and-access.md`, `stacks-and-deploys.md` and
   `topology-and-dns.md` against what shipped.
 - **Roadmap:** move the entry from Planned to Shipped in `ROADMAP.md` and `website/src/pages/roadmap.astro`.
 - **Walkthrough:** on `nexul-box`, upgrade from the release before ticket 03, with two machines, a stack on each, and

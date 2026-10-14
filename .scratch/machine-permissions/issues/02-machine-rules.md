@@ -6,7 +6,7 @@ Blocked by: None — can start immediately
 
 Read first: `AGENTS.md`, `CONTEXT.md`, `practices/go.md` (sections 14, 17), `practices/architecture.md` (sections 2,
 3, 8), `practices/mcp.md` (sections 4, 6, 7), `practices/testing.md` (sections 3, 8, 10), ADRs 0088, 0140, 0148,
-0150, the spec (Decisions, The actions, Evaluation).
+0151, the spec (Decisions, The actions, Evaluation).
 
 Adds the rules and the evaluator; nothing enforces them yet, so nobody's access changes in this slice.
 

@@ -6,7 +6,7 @@ Blocked by: 02
 
 Read first: `AGENTS.md`, `CONTEXT.md`, `practices/go.md` (sections 14, 17), `practices/architecture.md` (sections 2,
 3, 8), `practices/mcp.md` (sections 4, 6, 7), `practices/react-guide.md` (F1 to F7 and the self-review),
-`practices/testing.md` (sections 3, 8, 10), ADRs 0079, 0148, 0150, the spec (decisions 6, 8 and 9).
+`practices/testing.md` (sections 3, 8, 10), ADRs 0079, 0148, 0151, the spec (decisions 6, 8 and 9).
 
 ## What to build
 

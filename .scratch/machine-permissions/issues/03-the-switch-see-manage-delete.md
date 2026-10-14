@@ -6,7 +6,7 @@ Blocked by: 02
 
 Read first: `AGENTS.md`, `CONTEXT.md`, `practices/go.md` (sections 14, 17), `practices/architecture.md` (sections 2 to
 8), `practices/mcp.md` (sections 4, 6, 7), `practices/react-guide.md` (The live topic contract), `practices/native.md`
-(section 4), `practices/testing.md` (sections 3, 8, 10), ADRs 0087, 0140, 0146, 0148, 0150, the spec (Where each check
+(section 4), `practices/testing.md` (sections 3, 8, 10), ADRs 0087, 0140, 0146, 0148, 0151, the spec (Where each check
 goes).
 
 Changes access on upgrade: every machine starts with only the instance Owner on it.
