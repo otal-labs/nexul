@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -27,6 +28,26 @@ type linkStateClaims struct {
 	Provider Provider `json:"p"`
 	Nonce    string   `json:"n"`
 	Exp      int64    `json:"exp"`
+	// Return is the page the callback lands on, checked by validLinkReturn when the link starts.
+	Return string `json:"r,omitempty"`
+}
+
+// defaultLinkReturn is where a link lands back when its start named no page: Profile, where links are made.
+const defaultLinkReturn = "/settings/profile"
+
+// linkReturnPages are the only pages a link may land back on, so the public callback can never redirect off the app.
+var linkReturnPages = []string{defaultLinkReturn, "/wizard/welcome"}
+
+// validLinkReturn reports whether returnTo is a path on this origin naming one of linkReturnPages, with any query.
+func validLinkReturn(returnTo string) bool {
+	if !strings.HasPrefix(returnTo, "/") || strings.HasPrefix(returnTo, "//") || strings.ContainsAny(returnTo, "\\#\r\n\t") {
+		return false
+	}
+	u, err := url.Parse(returnTo)
+	if err != nil || u.Scheme != "" || u.Host != "" || u.User != nil {
+		return false
+	}
+	return slices.Contains(linkReturnPages, u.Path)
 }
 
 // IsLinkState reports whether an OAuth callback state was minted by StartIdentityLink.
@@ -34,12 +55,13 @@ func IsLinkState(state string) bool {
 	return strings.HasPrefix(state, linkStatePrefix)
 }
 
-func (s *Service) signLinkState(userID string, provider Provider) (string, error) {
+func (s *Service) signLinkState(userID string, provider Provider, returnTo string) (string, error) {
 	nonce, err := s.NewState()
 	if err != nil {
 		return "", err
 	}
-	payload, err := json.Marshal(linkStateClaims{UserID: userID, Provider: provider, Nonce: nonce, Exp: s.cfg.Now().Add(stateMaxAge).Unix()})
+	claims := linkStateClaims{UserID: userID, Provider: provider, Nonce: nonce, Exp: s.cfg.Now().Add(stateMaxAge).Unix(), Return: returnTo}
+	payload, err := json.Marshal(claims)
 	if err != nil {
 		return "", fmt.Errorf("sign link state: %w", err)
 	}
@@ -47,23 +69,34 @@ func (s *Service) signLinkState(userID string, provider Provider) (string, error
 	return linkStatePrefix + enc + "." + s.mac(linkStateMACLabel+enc), nil
 }
 
-func (s *Service) verifyLinkState(state string, provider Provider) (string, error) {
+func (s *Service) verifyLinkState(state string, provider Provider) (linkStateClaims, error) {
+	invalid := fmt.Errorf("%w: link state is not valid", apperrs.ErrUnauthorized)
 	enc, sig, ok := strings.Cut(strings.TrimPrefix(state, linkStatePrefix), ".")
 	if !ok || !hmac.Equal([]byte(sig), []byte(s.mac(linkStateMACLabel+enc))) {
-		return "", fmt.Errorf("%w: link state is not valid", apperrs.ErrUnauthorized)
+		return linkStateClaims{}, invalid
 	}
 	payload, err := base64.RawURLEncoding.DecodeString(enc)
 	if err != nil {
-		return "", fmt.Errorf("%w: link state is not valid", apperrs.ErrUnauthorized)
+		return linkStateClaims{}, invalid
 	}
 	var claims linkStateClaims
 	if err := json.Unmarshal(payload, &claims); err != nil || claims.UserID == "" || claims.Provider != provider {
-		return "", fmt.Errorf("%w: link state is not valid", apperrs.ErrUnauthorized)
+		return linkStateClaims{}, invalid
 	}
 	if s.cfg.Now().Unix() >= claims.Exp {
-		return "", fmt.Errorf("%w: the link expired, start it again", apperrs.ErrUnauthorized)
+		return linkStateClaims{}, fmt.Errorf("%w: the link expired, start it again", apperrs.ErrUnauthorized)
 	}
-	return claims.UserID, nil
+	return claims, nil
+}
+
+// LinkReturn is the page a link's callback lands on: the one its start named, else Profile, which also takes a state
+// that fails to verify, since only a verified state's page was checked.
+func (s *Service) LinkReturn(state string, provider Provider) string {
+	claims, err := s.verifyLinkState(state, provider)
+	if err != nil || claims.Return == "" {
+		return defaultLinkReturn
+	}
+	return claims.Return
 }
 
 // SignInProviders is the composition root's read for the Team list, which checks who may see each account itself.
@@ -95,15 +128,19 @@ func (s *Service) firstIdentity(ctx context.Context, userID string) (Identity, e
 	return identities[0], nil
 }
 
-// StartIdentityLink runs provider's OAuth in link mode: the authorize URL plus the signed state naming the user.
-func (s *Service) StartIdentityLink(ctx context.Context, userID string, provider Provider) (authorizeURL, state string, err error) {
+// StartIdentityLink runs provider's OAuth in link mode: the authorize URL plus the signed state naming the user and,
+// when returnTo is set, the page to land back on.
+func (s *Service) StartIdentityLink(ctx context.Context, userID string, provider Provider, returnTo string) (authorizeURL, state string, err error) {
 	if userID == "" {
 		return "", "", apperrs.ErrUnauthorized
 	}
 	if _, ok := signInProviders[provider]; !ok {
 		return "", "", fmt.Errorf("%w: unknown sign-in provider %q", apperrs.ErrInvalid, provider)
 	}
-	state, err = s.signLinkState(userID, provider)
+	if returnTo != "" && !validLinkReturn(returnTo) {
+		return "", "", fmt.Errorf("%w: return_to must be Profile or the Welcome wizard on this app", apperrs.ErrInvalid)
+	}
+	state, err = s.signLinkState(userID, provider, returnTo)
 	if err != nil {
 		return "", "", err
 	}
@@ -116,10 +153,11 @@ func (s *Service) StartIdentityLink(ctx context.Context, userID string, provider
 
 // CompleteIdentityLink attaches the provider account behind code to the user the link state names.
 func (s *Service) CompleteIdentityLink(ctx context.Context, provider Provider, state, code string) error {
-	userID, err := s.verifyLinkState(state, provider)
+	claims, err := s.verifyLinkState(state, provider)
 	if err != nil {
 		return err
 	}
+	userID := claims.UserID
 	user, err := s.cfg.Users.GetUserByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("get user %s: %w", userID, err)

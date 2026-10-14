@@ -164,7 +164,7 @@ func TestGitHubToken_RefreshesALapsedTokenAndNeverFallsBack(t *testing.T) {
 // connectGitHub runs Connect GitHub for userID as the GitHub account gh returns.
 func connectGitHub(t *testing.T, s *Service, userID string) error {
 	t.Helper()
-	_, state, err := s.StartIdentityLink(t.Context(), userID, ProviderGitHub)
+	_, state, err := s.StartIdentityLink(t.Context(), userID, ProviderGitHub, "")
 	require.NoError(t, err)
 	return s.CompleteIdentityLink(t.Context(), ProviderGitHub, state, "good-code")
 }

@@ -24,7 +24,7 @@ describe("onboarding wizards", () => {
     await expect(page.getByRole("heading", { name: /docs become tickets/i })).toBeVisible();
   });
 
-  it("owner wizard: first user sets up their workspace and connects tools", async () => {
+  it("owner wizard: first user sets up their workspace, connects tools, and finishes with no computer", async () => {
     updateUser({ first_login_done: 1 });
     // global.ts's seed pre-creates the default workspace's Owner role/membership for every other spec's benefit, but tenancy.BindDefaultWorkspaceOwner always INSERTs a fresh one (idx_roles_owner_singleton), so this genuinely-fresh-owner flow 409s unless that pre-seeded row is cleared first.
     clearDefaultWorkspaceOwnership();
@@ -38,9 +38,14 @@ describe("onboarding wizards", () => {
     await expect(page.getByLabel(/project/i)).toHaveCount(0);
     await page.getByRole("button", { name: "Continue", exact: true }).click();
 
-    await page.getByRole("button", { name: /finish setup/i }).click();
-    // The domain is set up before sign-in, so completion goes straight to the project wizard.
-    await page.waitForURL((url) => url.pathname === "/wizard/project/project");
+    // Connect your tools is the last step; no computer is needed to finish.
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Workspace ready" })).toBeVisible();
+
+    // The Welcome wizard takes over on the owner's first step not done, past the profile the owner wizard already set.
+    await page.waitForURL((url) => url.pathname === "/wizard/welcome" && ["github", "computer"].includes(url.searchParams.get("step") ?? ""));
+    await page.getByRole("button", { name: "Finish later", exact: true }).click();
+    await page.waitForURL((url) => !url.pathname.startsWith("/wizard/welcome"));
   });
 
   it("dns onboarding renders and can be skipped", async () => {

@@ -183,10 +183,11 @@ export const useFetchIdentities = () =>
   });
 
 // The server answers the provider's authorize URL; the browser goes there itself and comes back to the Profile section.
-export const useStartIdentityLink = () =>
+// The link lands back on Profile unless returnTo names another page the server allows.
+export const useStartIdentityLink = (returnTo?: string) =>
   useMutation({
     mutationFn: async (provider: Provider) =>
-      (await api.post<{ url: string }>("/api/auth/identities/link", { provider })).data,
+      (await api.post<{ url: string }>("/api/auth/identities/link", { provider, return_to: returnTo })).data,
     onSuccess: (data) => window.location.assign(data.url),
     onError: (error) => toast.error(errorMessage(error)),
   });

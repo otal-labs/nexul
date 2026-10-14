@@ -4,6 +4,7 @@ import { AlreadyDone } from "@/components/welcome/AlreadyDone";
 import { ContinueButton, WelcomeFooter } from "@/components/welcome/WelcomeFooter";
 import { useStartIdentityLink } from "@/hooks/AuthHooks";
 import { useFetchGitHubLink } from "@/hooks/GitHubLinkHooks";
+import { useLinkResultToast } from "@/hooks/useLinkResultToast";
 import { useDoneOnArrival, useWelcomeFlow } from "@/hooks/useWelcomeFlow";
 
 const GIVES = [
@@ -12,9 +13,9 @@ const GIVES = [
   "Nexul never pushes as you; it reads.",
 ];
 
-// Linking leaves for GitHub and lands back in Your settings; a link made in another tab turns the primary into Continue.
+// Linking leaves for GitHub and lands back on this step; a link made in another tab turns the primary into Continue.
 const ConnectGitHub = () => {
-  const link = useStartIdentityLink();
+  const link = useStartIdentityLink("/wizard/welcome?step=github");
   const { data: status } = useFetchGitHubLink();
   const done = useWelcomeFlow().marks.github === "done";
   return (
@@ -56,6 +57,7 @@ const GitHubConnected = () => {
 
 export const GitHubStep = () => {
   const arrivedDone = useDoneOnArrival("github");
+  useLinkResultToast();
   return (
     <>
       {arrivedDone && <GitHubConnected />}
