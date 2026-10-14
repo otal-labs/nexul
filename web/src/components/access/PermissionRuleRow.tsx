@@ -1,3 +1,4 @@
+import { RequiresLine } from "@/components/access/RequiresLine";
 import { RuleStateControl, lockedAllowReason, lockedLiftReason } from "@/components/access/RuleStateControl";
 import { SourceLine } from "@/components/access/SourceLine";
 import { useAreaDenyWarning } from "@/hooks/useAreaDenyWarning";
@@ -36,6 +37,7 @@ export const PermissionRuleRow = ({ targetKey, action, label, answer }: Permissi
       <div className="min-w-0 flex-1 pt-1">
         <p className="text-sm">{label}</p>
         {value === RuleState.Fallback && answer && <SourceLine verdict={answer.fallback} className="mt-1" />}
+        <RequiresLine answer={answer} />
       </div>
       <RuleStateControl
         label={label}

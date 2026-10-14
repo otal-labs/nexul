@@ -194,6 +194,7 @@ func (s *Service) Explain(ctx context.Context, actorID, resourceType, resourceID
 		inherited, from := s.answer(ctx, userID, e, a, false)
 		out.Effective = append(out.Effective, Answer{Action: a, Verdict: Verdict{held, n.named(src)}, Fallback: Verdict{inherited, n.named(from)}})
 	}
+	requireSee(out.Effective)
 	return out, nil
 }
 
@@ -250,7 +251,19 @@ func (s *Service) ExplainRole(ctx context.Context, actorID, resourceType, resour
 		without, from := roleAnswer(ws, e, roleID, a, inProject, inFolder, atFallback(own[e.id], a), private)
 		out.Effective = append(out.Effective, Answer{Action: a, Verdict: Verdict{with, n.named(src)}, Fallback: Verdict{without, n.named(from)}})
 	}
+	requireSee(out.Effective)
 	return out, nil
+}
+
+// requireSee marks a play's Run answer with its See when See isn't held, since a run launches only on a play its
+// starter sees; each answer keeps its own source.
+func requireSee(answers []Answer) {
+	see := slices.IndexFunc(answers, func(a Answer) bool { return a.Action == permissions.PlaysRead })
+	run := slices.IndexFunc(answers, func(a Answer) bool { return a.Action == permissions.PlaysRun })
+	if see < 0 || run < 0 || answers[see].Allowed {
+		return
+	}
+	answers[run].Requires = &Requirement{Action: permissions.PlaysRead, Sentence: answers[see].Source.Sentence}
 }
 
 // roleRulesAround is roleID's rules on e's project, unless e is the project, and on a doc's folder.

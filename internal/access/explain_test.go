@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"slices"
 	"sync"
 	"testing"
 
@@ -328,6 +329,42 @@ func TestExplain(t *testing.T) {
 		_, _, err = s.Decide(ctx, "alice", "ticket", "t-1", permissions.TicketsRead)
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
+}
+
+// TestExplain_RunNamesTheSeeItNeeds: a play's Run answer keeps its own source and, while See isn't held, carries See's
+// sentence as what it requires, for a person and for a role; with See held it requires nothing.
+func TestExplain_RunNamesTheSeeItNeeds(t *testing.T) {
+	s, _ := explainFixture(t)
+	s.SetRoleWorkspaces(fakeRoleWorkspaces{"role-client": "ws"})
+	ctx := context.Background()
+	require.NoError(t, s.repo.Set(ctx, resourceTypePlay, "play-notes", "sam", permissions.SetOf(permissions.PlaysRun), permissions.SetOf(permissions.PlaysRead)))
+	require.NoError(t, s.repo.SetRole(ctx, resourceTypePlay, "play-notes", "role-client", permissions.SetOf(permissions.PlaysRun), permissions.SetOf(permissions.PlaysRead)))
+	run := func(t *testing.T, e *Explanation) Answer {
+		t.Helper()
+		i := slices.IndexFunc(e.Effective, func(a Answer) bool { return a.Action == permissions.PlaysRun })
+		require.GreaterOrEqual(t, i, 0)
+		return e.Effective[i]
+	}
+
+	person, err := s.Explain(ctx, "alice", resourceTypePlay, "play-notes", "sam")
+	require.NoError(t, err)
+	got := run(t, person)
+	assert.True(t, got.Allowed)
+	assert.Equal(t, "Allowed on play Release notes for sam", got.Source.Sentence, "Run keeps its own source")
+	assert.Equal(t, &Requirement{Action: permissions.PlaysRead, Sentence: "Denied on play Release notes for sam"}, got.Requires)
+
+	role, err := s.ExplainRole(ctx, "alice", resourceTypePlay, "play-notes", "role-client")
+	require.NoError(t, err)
+	assert.Equal(t, &Requirement{Action: permissions.PlaysRead, Sentence: "Denied on play Release notes for role Client"}, run(t, role).Requires)
+
+	seen, err := s.Explain(ctx, "alice", resourceTypePlay, "play-notes", "bob")
+	require.NoError(t, err)
+	assert.Nil(t, run(t, seen).Requires, "See held")
+	for _, a := range person.Effective {
+		if a.Action != permissions.PlaysRun {
+			assert.Nil(t, a.Requires, "only Run waits on See")
+		}
+	}
 }
 
 var explainRoles = map[string]HeldRole{

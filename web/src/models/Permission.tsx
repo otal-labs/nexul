@@ -73,6 +73,8 @@ export interface PermissionVerdict {
 export interface PermissionAnswer extends PermissionVerdict {
   action: string;
   fallback: PermissionVerdict;
+  // Another action this one needs and the sentence saying why it isn't held: a play's Run waits on its See.
+  requires?: { action: string; sentence: string };
 }
 
 export interface PermissionExplanation {

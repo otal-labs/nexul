@@ -60,8 +60,20 @@ const channelGrants = [
   { resource_type: "channel", resource_id: "c-1", target: "role", user_id: "", role_id: "r-client", allow: [], deny: ["channels:post"], created_at: "2026-10-03", updated_at: "" },
 ];
 
+const clientSeeDenied = { allowed: false, source: source({ kind: "rule", entity_type: "play", entity_id: "play-1", target_type: "role", target_id: "r-client", state: "deny", entity_name: "Deploy prod", target_name: "Client", sentence: "Denied on play Deploy prod for role Client" }) };
+const clientRuns = { allowed: true, source: source({ kind: "rule", entity_type: "play", entity_id: "play-1", target_type: "role", target_id: "r-client", state: "allow", entity_name: "Deploy prod", target_name: "Client", sentence: "Allowed on play Deploy prod for role Client" }) };
+const playAnswers = [
+  answer("plays:read", clientSeeDenied),
+  { ...answer("plays:run", clientRuns), requires: { action: "plays:read", sentence: "Denied on play Deploy prod for role Client" } },
+];
+const playGrants = [
+  { resource_type: "play", resource_id: "play-1", target: "role", user_id: "", role_id: "r-client", allow: ["plays:run"], deny: ["plays:read"], created_at: "2026-10-03", updated_at: "" },
+];
+
 const mockGet = (url: string, config?: { params?: Record<string, string> }) => {
   if (url === "/api/permissions?resource_type=channel&resource_id=c-1") return Promise.resolve({ data: { grants: channelGrants } });
+  if (url === "/api/permissions?resource_type=play&resource_id=play-1") return Promise.resolve({ data: { grants: playGrants } });
+  if (url === "/api/permissions/explain" && config?.params?.resource_type === "play") return Promise.resolve(explain(playAnswers));
   if (url === "/api/permissions/explain" && config?.params?.resource_type === "channel") return Promise.resolve(explain(channelAnswers));
   if (url === "/api/permissions?resource_type=doc&resource_id=doc-1") return Promise.resolve({ data: { grants } });
   if (url === "/api/permissions?resource_type=folder&resource_id=f-1") return Promise.resolve({ data: { grants: [] } });
@@ -226,6 +238,14 @@ describe("PermissionsPanel", () => {
     await waitFor(() =>
       expect(api.put).toHaveBeenCalledWith("/api/permissions", { resource_type: "channel", resource_ids: ["c-1"], role_ids: ["r-client"], actions: ["channels:read"], state: "deny" }),
     );
+  });
+
+  it("on a play, keeps Run's own state and says it can't run while See is denied, with See's source", async () => {
+    await openPanel({ type: "play", id: "play-1", name: "Deploy prod", workspaceId: "ws-1", projectId: "", folderId: "" });
+    await user.click(await screen.findByRole("button", { name: /Client/ }));
+    expect(await control("Run").findByRole("radio", { name: "Allow" })).toBeChecked();
+    expect(control("See this play").getByRole("radio", { name: "Deny" })).toBeChecked();
+    expect(screen.getAllByText("Can't run while See this play is denied · Denied on play Deploy prod for role Client")).toHaveLength(1);
   });
 
   it("sets a role's rules, says what applies under each Fallback without them, and saves them for the role", async () => {

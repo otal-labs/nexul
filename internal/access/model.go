@@ -162,6 +162,14 @@ type Answer struct {
 	Action permissions.Action `json:"action"`
 	Verdict
 	Fallback Verdict `json:"fallback"`
+	// Requires is set when the answer can't take effect: another action it needs isn't held, with that one's sentence.
+	Requires *Requirement `json:"requires,omitempty"`
+}
+
+// Requirement is an action an answer depends on and the source sentence of why it isn't held.
+type Requirement struct {
+	Action   permissions.Action `json:"action"`
+	Sentence string             `json:"sentence"`
 }
 
 // Explanation is a person's answer for every action an entity's rules may set.

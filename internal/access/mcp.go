@@ -68,7 +68,8 @@ func accessGrantListTool(s *Service) mcptool.Tool {
 			"play, projects:access on the project, channels:write on a channel you read, owning the computer, Manage on a machine you see, or being the "+
 			"instance Owner for an instance area; a project you are not in, a play or stack you can't see, or a computer you don't own, is not found. Change them with permission_overwrite_update. With "+
 			"user_id it returns instead that person's effective answer for each action the rules may set, with "+
-			"allowed and a source naming the rule or role that decided it; your own needs only opening the entity, "+
+			"allowed and a source naming the rule or role that decided it, and on a play whose See they don't hold, the "+
+			"plays:run answer adds requires with See's sentence, since a run needs See; your own needs only opening the entity, "+
 			"anyone else's its manage permission, and on a computer shared with you only your own.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in accessGrantListIn) (any, error) {

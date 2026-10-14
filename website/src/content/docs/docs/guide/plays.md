@@ -69,7 +69,7 @@ Open **Configuration → Plays**. A play has:
 
 A built-in play says whether its instructions match the instance's template, with **Reset to instance template** when they don't. See [Templates](/docs/guide/memories/#templates).
 
-To choose who may see, run, edit or delete one play, right-click its row, pick **Permissions…**, and set **See this play**, **Run**, **Edit** or **Delete** to **Allow** or **Deny** for a role or a person; see [Permissions on a project, a folder, a doc or a play](/docs/guide/people-and-access/#permissions-on-a-project-a-folder-a-doc-or-a-play). The list shows how many a play is hidden from.
+To choose who may see, run, edit or delete one play, right-click its row, pick **Permissions…**, and set **See this play**, **Run**, **Edit** or **Delete** to **Allow** or **Deny** for a role or a person; see [Permissions on a project, a folder, a doc or a play](/docs/guide/people-and-access/#permissions-on-a-project-a-folder-a-doc-or-a-play). The list shows how many a play is hidden from. Running a play needs seeing it: for a role or person denied **See this play**, the **Run** row keeps its own answer and adds a line such as "Can't run while See this play is denied · Denied on play Deploy prod for role Client".
 
 A play someone can't see is gone for them: from **Configuration → Plays**, the buttons and menus on tickets, docs and the Interview page, its auto plays and queued runs, and agents' `play_list`, and its link is not found. Its auto plays never run on them. Runs it already made stay readable to whoever started them and to everyone who can see the play.
 
