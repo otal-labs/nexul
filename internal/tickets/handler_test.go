@@ -243,6 +243,25 @@ func TestTicketsHandler_Links(t *testing.T) {
 		assert.Len(t, links.PRs, 1)
 		assert.Len(t, links.Branches, 1)
 	})
+	t.Run("unlinks a branch whose name has a slash and keeps the pr", func(t *testing.T) {
+		rec := serve(t, h, http.MethodDelete, base+"/branches?owner=acme&repo=app&branch=ticket%2F1", "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		var links ticketLinks
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &links))
+		assert.Empty(t, links.Branches)
+		assert.Len(t, links.PRs, 1)
+	})
+	t.Run("unlinks a pr", func(t *testing.T) {
+		rec := serve(t, h, http.MethodDelete, base+"/prs?owner=acme&repo=app&number=7", "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		var links ticketLinks
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &links))
+		assert.Empty(t, links.PRs)
+	})
+	t.Run("unlinking a pr without a number is 400", func(t *testing.T) {
+		rec := serve(t, h, http.MethodDelete, base+"/prs?owner=acme&repo=app", "")
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
 	t.Run("missing ticket is 404", func(t *testing.T) {
 		rec := serve(t, h, http.MethodGet, "/api/tickets/nope/links", "")
 		assert.Equal(t, http.StatusNotFound, rec.Code)

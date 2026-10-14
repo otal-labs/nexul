@@ -7,6 +7,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { AddComputerDialog } from "@/components/pairing/AddComputerDialog";
 import { ComputerItem } from "@/components/settings/ComputerItem";
+import { OpenComputerCodes } from "@/components/settings/OpenComputerCodes";
 import { HarnessReadinessLine } from "@/components/settings/HarnessReadinessLine";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { SharedComputersSection } from "@/components/settings/SharedComputersSection";
@@ -44,6 +45,7 @@ export const ComputersSection = () => {
             ))}
           </EnterList>
         )}
+        <OpenComputerCodes />
         <SharedComputersSection />
       </div>
     </SettingsCard>

@@ -697,6 +697,8 @@ host, or a personal runner bound to its person and computer, enroll with the
 instance and receive its host credential. A personal runner's code enrolls
 nothing else, and no other code enrolls a personal runner. It travels
 inside the install command the instance renders and is useless once used.
+Until then the person who made it, someone who manages its machine, or the
+instance Owner can revoke it; a computer's code is revoked by its owner alone.
 _Avoid_: Join token, registration token, runner secret
 
 **Host credential**:

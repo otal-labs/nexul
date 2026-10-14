@@ -26,6 +26,7 @@ func (h *NotificationHandler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/notifications", h.list)
 	mux.HandleFunc("GET /api/notifications/unread-count", h.unreadCount)
 	mux.HandleFunc("POST /api/notifications/{id}/read", h.markRead)
+	mux.HandleFunc("POST /api/notifications/{id}/unread", h.markUnread)
 	mux.HandleFunc("POST /api/notifications/read-all", h.markAllRead)
 	return mux
 }
@@ -77,6 +78,19 @@ func (h *NotificationHandler) markRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.svc.MarkRead(r.Context(), userID, r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *NotificationHandler) markUnread(w http.ResponseWriter, r *http.Request) {
+	userID := h.currentUser(r)
+	if userID == "" {
+		httpx.WriteError(w, apperrs.ErrUnauthorized)
+		return
+	}
+	if err := h.svc.MarkUnread(r.Context(), userID, r.PathValue("id")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

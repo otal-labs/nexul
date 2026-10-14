@@ -44,7 +44,7 @@ func connectFakeRunner(t *testing.T, store *storage.Store, handler *runner.Handl
 	require.NoError(t, store.Machines.Create(ctx, &runner.Machine{ID: "machine-1", Name: "m1", FirstSeen: now, LastSeen: now}))
 	_, codeHash, err := hostcred.MintCode()
 	require.NoError(t, err)
-	require.NoError(t, store.Runners.CreateEnrollment(ctx, &runner.EnrollmentCode{CodeHash: codeHash, Name: "logs", Machine: "m1", CreatedAt: now, ExpiresAt: now.Add(time.Hour)}))
+	require.NoError(t, store.Runners.CreateEnrollment(ctx, &runner.EnrollmentCode{ID: "id-" + codeHash, CodeHash: codeHash, Name: "logs", Machine: "m1", CreatedAt: now, ExpiresAt: now.Add(time.Hour)}))
 	credential, credentialHash, err := hostcred.MintCredential("nxr_")
 	require.NoError(t, err)
 	require.NoError(t, store.Runners.Enroll(ctx, codeHash, &runner.Runner{ID: "runner-logs", Name: "logs", MachineID: "machine-1", LastSeen: now, CreatedAt: now}, credentialHash, now, nil))

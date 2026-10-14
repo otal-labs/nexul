@@ -301,6 +301,15 @@ func TestIntegration_PermissionTable(t *testing.T) {
 		{"tickets: delete", func(ctx context.Context) error {
 			return s.ticketsSvc.Delete(ctx, f.ticket.ID)
 		}, map[string]string{uWriter: forbidden, uOutsider: notFound}},
+		{"tickets: unlink a pull request", func(ctx context.Context) error {
+			ref := tickets.PRRef{Owner: "acme", Repo: "app", Number: 99}
+			require.NoError(t, f.store.Tickets.LinkPR(context.Background(), f.ticket.ID, ref, tickets.PRStateOpen))
+			return s.ticketsSvc.UnlinkPR(ctx, f.ticket.ID, ref)
+		}, map[string]string{uOwner: ok, uWriter: ok, uReader: forbidden, uPlain: forbidden, uOutsider: notFound}},
+		{"tickets: unlink a branch", func(ctx context.Context) error {
+			require.NoError(t, f.store.Tickets.LinkBranch(context.Background(), f.ticket.ID, tickets.BranchLink{Owner: "acme", Repo: "app", Branch: "fix/x"}))
+			return s.ticketsSvc.UnlinkBranch(ctx, f.ticket.ID, "acme", "app", "fix/x")
+		}, map[string]string{uOwner: ok, uWriter: ok, uReader: forbidden, uPlain: forbidden, uOutsider: notFound}},
 		{"projects: create", func(ctx context.Context) error {
 			actor, _ := identity.ActorFromCtx(ctx)
 			_, err := s.workspaceSvc.Create(ctx, "workspace-default", "Mobile", "MOB"+actor.ID[2:4], workspace.ProjectIcon(""))

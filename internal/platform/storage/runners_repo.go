@@ -145,7 +145,7 @@ func (r *RunnersRepo) CreateEnrollment(ctx context.Context, e *runner.Enrollment
 			return fmt.Errorf("prune runner enrollment codes: %w", err)
 		}
 		err := q.CreateRunnerEnrollmentCode(ctx, sqlcgen.CreateRunnerEnrollmentCodeParams{
-			CodeHash: e.CodeHash, Name: e.Name, Machine: e.Machine, CreatedAt: e.CreatedAt.Unix(), ExpiresAt: e.ExpiresAt.Unix(),
+			ID: e.ID, CodeHash: e.CodeHash, Name: e.Name, Machine: e.Machine, CreatedAt: e.CreatedAt.Unix(), ExpiresAt: e.ExpiresAt.Unix(),
 			OwnerUserID: e.OwnerUserID, ComputerID: e.ComputerID, EnrolledBy: e.EnrolledBy,
 		})
 		if err != nil {
@@ -178,11 +178,48 @@ func (r *RunnersRepo) GetEnrollment(ctx context.Context, codeHash string, now ti
 	if err != nil {
 		return nil, fmt.Errorf("get runner enrollment code: %w", notFoundIfNoRows(err))
 	}
+	return toEnrollmentCode(row), nil
+}
+
+func (r *RunnersRepo) GetEnrollmentByID(ctx context.Context, id string, now time.Time) (*runner.EnrollmentCode, error) {
+	row, err := r.q.GetRunnerEnrollmentCodeByID(ctx, sqlcgen.GetRunnerEnrollmentCodeByIDParams{ID: id, ExpiresAt: now.Unix()})
+	if err != nil {
+		return nil, fmt.Errorf("get runner enrollment code %s: %w", id, notFoundIfNoRows(err))
+	}
+	return toEnrollmentCode(row), nil
+}
+
+func (r *RunnersRepo) ListEnrollments(ctx context.Context, userID string, now time.Time) ([]*runner.EnrollmentCode, error) {
+	rows, err := r.q.ListRunnerEnrollmentCodes(ctx, sqlcgen.ListRunnerEnrollmentCodesParams{Now: now.Unix(), UserID: userID})
+	if err != nil {
+		return nil, fmt.Errorf("list runner enrollment codes: %w", err)
+	}
+	out := make([]*runner.EnrollmentCode, len(rows))
+	for i, row := range rows {
+		out[i] = toEnrollmentCode(row)
+	}
+	return out, nil
+}
+
+func (r *RunnersRepo) RevokeEnrollment(ctx context.Context, id string) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).DeleteRunnerEnrollmentCodeByID(ctx, id)
+		if err != nil {
+			return fmt.Errorf("revoke runner enrollment code %s: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("revoke runner enrollment code %s: %w", id, apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
+
+func toEnrollmentCode(row sqlcgen.RunnerEnrollmentCode) *runner.EnrollmentCode {
 	return &runner.EnrollmentCode{
-		CodeHash: row.CodeHash, Name: row.Name, Machine: row.Machine, OwnerUserID: row.OwnerUserID, ComputerID: row.ComputerID,
+		ID: row.ID, CodeHash: row.CodeHash, Name: row.Name, Machine: row.Machine, OwnerUserID: row.OwnerUserID, ComputerID: row.ComputerID,
 		EnrolledBy: row.EnrolledBy,
 		CreatedAt:  time.Unix(row.CreatedAt, 0).UTC(), ExpiresAt: time.Unix(row.ExpiresAt, 0).UTC(),
-	}, nil
+	}
 }
 
 func (r *RunnersRepo) Enroll(ctx context.Context, codeHash string, rn *runner.Runner, credentialHash string, now time.Time, created *runner.CreatedMachine) error {

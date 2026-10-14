@@ -39,6 +39,13 @@ type CredentialStore interface {
 	DeleteComputerEnrollments(ctx context.Context, computerID string) error
 	// DeleteOwnerEnrollments drops every unused code that would enroll a personal runner for userID.
 	DeleteOwnerEnrollments(ctx context.Context, userID string) error
+	// ListEnrollments returns the unexpired codes userID owns as a personal runner's and every deploy runner's code
+	// with a maker, oldest first.
+	ListEnrollments(ctx context.Context, userID string, now time.Time) ([]*EnrollmentCode, error)
+	// GetEnrollmentByID returns the unexpired code with id, or apperrs.ErrNotFound.
+	GetEnrollmentByID(ctx context.Context, id string, now time.Time) (*EnrollmentCode, error)
+	// RevokeEnrollment drops an unused code; one already used or revoked is apperrs.ErrNotFound.
+	RevokeEnrollment(ctx context.Context, id string) error
 	// GetEnrollment returns the unexpired code with codeHash, or apperrs.ErrNotFound.
 	GetEnrollment(ctx context.Context, codeHash string, now time.Time) (*EnrollmentCode, error)
 	// Enroll consumes the code, creates the runner and stores its credential in one transaction, and with created the

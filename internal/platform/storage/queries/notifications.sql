@@ -69,6 +69,10 @@ GROUP BY n.workspace_id, 2;
 -- Reading an already read row keeps its first read time, so marking it again never extends its retention.
 UPDATE notifications SET read = 1, read_at = COALESCE(read_at, sqlc.arg(read_at)) WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id);
 
+-- name: MarkNotificationUnread :execrows
+-- Clearing read_at takes the row out of the read-retention sweep until it is read again.
+UPDATE notifications SET read = 0, read_at = NULL WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id);
+
 -- name: MarkAllNotificationsRead :exec
 UPDATE notifications SET read = 1, read_at = sqlc.arg(read_at)
 WHERE user_id = sqlc.arg(user_id) AND read = 0 AND (sqlc.arg(workspace_id) = '' OR workspace_id = sqlc.arg(workspace_id));

@@ -70,7 +70,9 @@ type machineList struct {
 	UnassignedRunners []runnerResult `json:"unassigned_runners,omitempty"`
 	// UnassignedAutomationsHosts are hosts filed under a machine no runner has joined.
 	UnassignedAutomationsHosts []automationsHostResult `json:"unassigned_automations_hosts,omitempty"`
-	Queue                      []jobResult             `json:"queue"`
+	// OpenEnrollments are the unused codes the caller may revoke; their ids are host_delete's code_id.
+	OpenEnrollments []OpenEnrollment `json:"open_enrollments,omitempty"`
+	Queue           []jobResult      `json:"queue"`
 }
 
 func machineListTool(s *Service) mcptool.Tool {
@@ -79,8 +81,9 @@ func machineListTool(s *Service) mcptool.Tool {
 			"version, and running job, and its automations hosts, plus the deploys queued for a runner on them; a "+
 			"build or deploy job's id is its "+
 			"deploy's id for deploy_get. A machine you are not on is left out, as it is everywhere else. Use a machine's "+
-			"name as stack_create's machine and its id for machine_discover and machine_import. Returns at most 100 "+
-			"machines per page.",
+			"name as stack_create's machine and its id for machine_discover and machine_import. open_enrollments lists "+
+			"the unused enrollment codes you may revoke, never the codes themselves; host_delete revokes one by its id. "+
+			"Returns at most 100 machines per page.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in machineListIn) (any, error) {
 			machines, err := s.ListMachineViews(ctx)
@@ -103,6 +106,10 @@ func machineListTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
+			codes, err := s.ListEnrollments(ctx)
+			if err != nil {
+				return nil, err
+			}
 			results, unassigned := groupRunners(machines, runners)
 			results, unassignedHosts := groupAutomationsHosts(results, hosts)
 			jobs := make([]jobResult, 0, len(queue))
@@ -111,7 +118,7 @@ func machineListTool(s *Service) mcptool.Tool {
 			}
 			return machineList{
 				Page: mcptool.Paginate(results, in.PageArgs), UnassignedRunners: unassigned,
-				UnassignedAutomationsHosts: unassignedHosts, Queue: jobs,
+				UnassignedAutomationsHosts: unassignedHosts, OpenEnrollments: codes, Queue: jobs,
 			}, nil
 		})
 }

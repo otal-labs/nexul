@@ -381,6 +381,18 @@ func (r ticketRepo) LinkPR(_ context.Context, id string, ref tickets.PRRef, stat
 	return nil
 }
 
+func (r ticketRepo) UnlinkPR(_ context.Context, id string, ref tickets.PRRef) error {
+	r.w.prs[id] = slices.DeleteFunc(r.w.prs[id], func(l tickets.PRLink) bool {
+		return l.Owner == ref.Owner && l.Repo == ref.Repo && l.Number == ref.Number
+	})
+	return nil
+}
+
+func (r ticketRepo) UnlinkBranch(_ context.Context, id string, link tickets.BranchLink) error {
+	r.w.branches[id] = slices.DeleteFunc(r.w.branches[id], func(l tickets.BranchLink) bool { return l == link })
+	return nil
+}
+
 func (r ticketRepo) ListPRLinks(_ context.Context, id string) ([]tickets.PRLink, error) {
 	if err := r.w.check("ListPRLinks"); err != nil {
 		return nil, err

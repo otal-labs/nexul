@@ -3,6 +3,7 @@ package tickets
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/otal-labs/nexul/internal/platform/colors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -121,6 +122,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/tickets/{id}/links", h.listLinks)
 	mux.HandleFunc("POST /api/tickets/{id}/prs", h.linkPR)
 	mux.HandleFunc("POST /api/tickets/{id}/branches", h.linkBranch)
+	mux.HandleFunc("DELETE /api/tickets/{id}/prs", h.unlinkPR)
+	mux.HandleFunc("DELETE /api/tickets/{id}/branches", h.unlinkBranch)
 	mux.HandleFunc("GET /api/tickets/{id}/ticket-links", h.ticketLinks)
 	mux.HandleFunc("PUT /api/tickets/{id}/found-in", h.setFoundIn)
 	mux.HandleFunc("DELETE /api/tickets/{id}/found-in", h.removeFoundIn)
@@ -417,6 +420,34 @@ func (h *Handler) linkBranch(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
+	prs, branches, err := h.svc.ListLinks(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, ticketLinks{PRs: prs, Branches: branches})
+}
+
+func (h *Handler) unlinkPR(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	number, _ := strconv.Atoi(q.Get("number"))
+	if err := h.svc.UnlinkPR(r.Context(), r.PathValue("id"), PRRef{Owner: q.Get("owner"), Repo: q.Get("repo"), Number: number}); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	h.writeLinks(w, r)
+}
+
+func (h *Handler) unlinkBranch(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	if err := h.svc.UnlinkBranch(r.Context(), r.PathValue("id"), q.Get("owner"), q.Get("repo"), q.Get("branch")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	h.writeLinks(w, r)
+}
+
+func (h *Handler) writeLinks(w http.ResponseWriter, r *http.Request) {
 	prs, branches, err := h.svc.ListLinks(r.Context(), r.PathValue("id"))
 	if err != nil {
 		httpx.WriteError(w, err)

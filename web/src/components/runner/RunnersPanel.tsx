@@ -2,6 +2,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { FleetStatRow } from "@/components/runner/FleetStatRow";
 import { MachineGroup } from "@/components/runner/MachineGroup";
+import { OpenRunnerCodes } from "@/components/runner/OpenRunnerCodes";
 import { QueueSection } from "@/components/runner/QueueSection";
 import { RunnersSection } from "@/components/runner/RunnersSection";
 import { useFetchMachines, useRunnerQueue, useRunners } from "@/hooks/RunnerHooks";
@@ -54,6 +55,7 @@ export const RunnersPanel = () => {
             </div>
           )}
           {machines.data && machines.data.length > 0 && unassigned.length > 0 && <RunnersSection runners={unassigned} />}
+          <OpenRunnerCodes />
         </div>
         <QueueSection queue={queue.data} />
       </div>

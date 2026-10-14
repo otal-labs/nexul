@@ -28,6 +28,8 @@ Adding a computer needs no Cloudflare and no domain: one command installs the Ne
 3. Watch the three checks. **Computer connected** passes once the Nexul app on the computer connects, **T3 Code found** once it finds T3 Code answering there, and **Paired** once Nexul has paired with T3 Code through the app's own connection. There's no pairing link to paste. A check that can't pass says what to do in its line: **Offline**, **Closed** (open the T3 Code desktop app), **Not running**, **Missing** (run the command again without `--no-t3`), or **Failed** with the reason.
 4. Press **Set up**, then [set up the computer](/docs/guide/computer-setup/), and **Done**.
 
+If you won't run the command after all, the code stays good for an hour. To cancel it, find it under **Unused computer codes** in the **Computers** list and press **Revoke**; only you see it there. **Add this computer again** then makes a fresh command.
+
 The computer is named after its hostname; **Rename** in its row's **…** menu changes that. If you close the dialog before running the command, the row reads **New computer** with **Add this computer again**, which makes a fresh command for the same row.
 
 ### What the command does on the computer

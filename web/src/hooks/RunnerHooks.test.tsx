@@ -123,6 +123,12 @@ describe("the runner follower", () => {
     expect([isStale(client, ["runners"]), isStale(client, ["runnerQueue"])]).toEqual([true, true]);
   });
 
+  it.each(["runner.connected", "runner.personal_changed"])("drops a spent enrollment code from the unused ones when %s arrives", async (topic) => {
+    const client = seeded([[["runnerEnrollments"], [{ id: "c-1", name: "alpha" }]]]);
+    await followFrame(runnerFollower, topic, {}, client);
+    expect(isStale(client, ["runnerEnrollments"])).toBe(true);
+  });
+
   it("refetches the runners and the queue once a job ends, since its runner takes the next one", async () => {
     const client = busy();
     await followFrame(runnerFollower, "deploy.status_changed", { id: "d-1", status: "healthy" }, client);

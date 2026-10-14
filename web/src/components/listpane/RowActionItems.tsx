@@ -7,6 +7,7 @@ import {
   FolderInputIcon,
   LockIcon,
   LockOpenIcon,
+  MailIcon,
   PencilIcon,
   PinIcon,
   PinOffIcon,
@@ -92,6 +93,12 @@ export const RowActionItems = ({ ui, ...m }: RowActionItemsProps) => {
             </ui.RadioGroup>
           </ui.SubContent>
         </ui.Sub>
+      )}
+      {m.onMarkUnread && (
+        <ui.Item onSelect={m.onMarkUnread}>
+          <MailIcon aria-hidden />
+          Mark unread
+        </ui.Item>
       )}
       {m.onEdit && (
         <ui.Item onSelect={m.onEdit}>

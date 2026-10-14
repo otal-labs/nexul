@@ -63,14 +63,25 @@ export const useFetchUnreadByWorkspace = () =>
     select: (d) => d.workspaces,
   });
 
+const refreshInbox = async (client: QueryClient) => {
+  await client.invalidateQueries({ queryKey: [getNotificationsKey] });
+  await client.invalidateQueries({ queryKey: [getUnreadCountKey] });
+};
+
 export const useMarkNotificationsRead = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (ids: string[]) => Promise.all(ids.map((id) => api.post(`/api/notifications/${id}/read`))),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getNotificationsKey] });
-      await client.invalidateQueries({ queryKey: [getUnreadCountKey] });
-    },
+    onSuccess: () => refreshInbox(client),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useMarkNotificationUnread = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => api.post(`/api/notifications/${id}/unread`),
+    onSuccess: () => refreshInbox(client),
     onError: (error) => toast.error(errorMessage(error)),
   });
 };
@@ -83,8 +94,7 @@ export const useMarkAllNotificationsRead = () => {
         params: { workspace_id: useWorkspaceStore.getState().selectedWorkspaceId },
       }),
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getNotificationsKey] });
-      await client.invalidateQueries({ queryKey: [getUnreadCountKey] });
+      await refreshInbox(client);
       toast.success("All notifications marked read");
     },
     onError: (error) => toast.error(errorMessage(error)),

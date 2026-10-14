@@ -49,7 +49,7 @@ Create a ticket with **New ticket** in a board column, or from a doc so the tick
 The ticket page has everything else:
 
 - **Links.** The **+** adds **Blocked by…**, **Blocks…**, **Found in…**, or **Source doc…**. A blocked card shows an icon until every blocker is done, but still moves freely; a play on it asks you to confirm.
-- **Development.** Create a branch, or link an existing branch or pull request. A branch or PR can link to more than one ticket.
+- **Development.** Create a branch, or link an existing branch or pull request. A branch or PR can link to more than one ticket. Point at a linked branch or pull request and press its **×** to unlink it, if you linked the wrong one; that needs permission to change the ticket, and the branch or PR itself is untouched. A pull request that still names the ticket in its description or branch name links itself again the next time GitHub reports it. Agents unlink with `unlink_pr` and `unlink_branch` on `ticket_update`.
 - **Testing.** In a Testing column it shows where to test and the acceptance criteria, with **Pass** and **Fail**. Fail asks for steps to reproduce, the expected and actual results, and a screenshot. It never points at production.
 - **Thread.** The ticket's conversation, where plays post their runs and agents leave notes.
 
@@ -60,6 +60,10 @@ A bug is a ticket of the type named `bug`, and it always says which ticket it wa
 ### Finished
 
 A ticket is finished once it has at least one merged pull request and none still open. Pull requests closed without merging don't count. The default **Ticket finished** automation then moves it to the status picked in its configuration; see [Automations](/docs/guide/automations/#the-defaults).
+
+## Inbox
+
+**Inbox** lists what happened to the tickets, docs and memories you follow, newest first. Opening a row marks it read. To put a read row back as unread, so it stays bold and counts in your badge until you come back to it, right-click it and pick **Mark unread**. A doc's notifications share one row, and **Mark unread** puts its newest one back. Agents use `notification_update` with `unread: true`.
 
 ## The board
 

@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"io"
@@ -155,6 +156,45 @@ func (f *fakeRunnerRepo) CreateEnrollment(_ context.Context, e *EnrollmentCode) 
 	cp := *e
 	f.codes[e.CodeHash] = &cp
 	return nil
+}
+
+func (f *fakeRunnerRepo) ListEnrollments(_ context.Context, userID string, now time.Time) ([]*EnrollmentCode, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*EnrollmentCode
+	for _, e := range f.codes {
+		mine := e.OwnerUserID == userID || (e.OwnerUserID == "" && e.ComputerID == "" && e.EnrolledBy != "")
+		if mine && e.ExpiresAt.After(now) {
+			cp := *e
+			out = append(out, &cp)
+		}
+	}
+	slices.SortFunc(out, func(a, b *EnrollmentCode) int { return cmp.Compare(a.ID, b.ID) })
+	return out, nil
+}
+
+func (f *fakeRunnerRepo) GetEnrollmentByID(_ context.Context, id string, now time.Time) (*EnrollmentCode, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, e := range f.codes {
+		if e.ID == id && e.ExpiresAt.After(now) {
+			cp := *e
+			return &cp, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
+func (f *fakeRunnerRepo) RevokeEnrollment(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for hash, e := range f.codes {
+		if e.ID == id {
+			delete(f.codes, hash)
+			return nil
+		}
+	}
+	return apperrs.ErrNotFound
 }
 
 func (f *fakeRunnerRepo) GetEnrollment(_ context.Context, codeHash string, now time.Time) (*EnrollmentCode, error) {

@@ -198,6 +198,7 @@ func TestTicketUpdate_Errors(t *testing.T) {
 		{"an unknown field is invalid", `{"id":"t-1","assignee":"lena"}`, apperrs.ErrInvalid},
 		{"two found-in fields are invalid", `{"id":"t-1","found_in_id":"REF-2","clear_found_in":true}`, apperrs.ErrInvalid},
 		{"a pull request without a number is invalid", `{"id":"t-1","link_pr":{"owner":"o","repo":"r"}}`, apperrs.ErrInvalid},
+		{"unlinking a pull request without a number is invalid", `{"id":"t-1","unlink_pr":{"owner":"o","repo":"r"}}`, apperrs.ErrInvalid},
 		{"a missing ticket is not found", `{"id":"REF-99","title":"x"}`, apperrs.ErrNotFound},
 		{"a blank title is invalid", `{"id":"t-1","title":" "}`, apperrs.ErrInvalid},
 		{"an unknown status is invalid", `{"id":"t-1","status_id":"st-nope"}`, apperrs.ErrInvalid},
@@ -320,6 +321,28 @@ func TestTicketUpdate_EveryField(t *testing.T) {
 	assert.Equal(t, []string{"project_id", "clear_found_in"}, got.(ticketUpdateResult).Applied)
 	assert.Equal(t, "p-2", got.(ticketUpdateResult).Ticket.ProjectID)
 	assert.Equal(t, "WEB-1", got.(ticketUpdateResult).Ticket.Key, "the key follows the ticket's new project")
+}
+
+func TestTicketUpdate_UnlinksOnlyWhatItNames(t *testing.T) {
+	f := newFixture(t)
+	_, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_update", `{"id":"t-1",
+		"link_pr":{"owner":"acme","repo":"app","number":7},"link_branch":{"owner":"acme","repo":"app","branch":"fix/x"}}`)
+	require.NoError(t, err)
+	_, err = call(t, asUser(t.Context()), f.ticketTools(), "ticket_update", `{"id":"t-1","link_pr":{"owner":"acme","repo":"app","number":8},"link_branch":{"owner":"acme","repo":"app","branch":"fix/y"}}`)
+	require.NoError(t, err)
+
+	got, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_update", `{"id":"t-1",
+		"unlink_pr":{"owner":"acme","repo":"app","number":7},"unlink_branch":{"owner":"acme","repo":"app","branch":"fix/x"}}`)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"unlink_pr", "unlink_branch"}, got.(ticketUpdateResult).Applied)
+
+	detail, err := call(t, t.Context(), f.ticketTools(), "ticket_get", `{"id":"t-1"}`)
+	require.NoError(t, err)
+	d := detail.(ticketDetail)
+	require.Len(t, d.PullRequests, 1)
+	assert.Equal(t, 8, d.PullRequests[0].Number)
+	require.Len(t, d.Branches, 1)
+	assert.Equal(t, "fix/y", d.Branches[0].Branch)
 }
 
 func TestTicketUpdate_NothingSentChangesNothing(t *testing.T) {

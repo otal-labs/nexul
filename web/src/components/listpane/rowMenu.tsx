@@ -50,6 +50,8 @@ export interface RowMenu {
   sidebar?: { hidden: boolean; onToggle: () => void } | undefined;
   /** The places the item can move to, the current one checked. */
   moveTo?: { label: string; options: { id: string; name: string }[]; currentId: string; onMove: (id: string) => void } | undefined;
+  /** Puts a read notification back to unread; it is the viewer's own inbox, so nothing gates it. */
+  onMarkUnread?: (() => void) | undefined;
   onEdit?: (() => void) | undefined;
   onRename?: (() => void) | undefined;
   onClone?: (() => void) | undefined;
@@ -60,7 +62,7 @@ export interface RowMenu {
 
 // The row's own actions, before Permissions… and Delete.
 export const hasOwnActions = (m: RowMenu) =>
-  !!m.onSettings || !!m.onBots || !!m.onNewDoc || !!m.pin || !!m.sidebar || !!m.lock || !!m.moveTo || !!m.onEdit || !!m.onRename || !!m.onClone;
+  !!m.onSettings || !!m.onBots || !!m.onNewDoc || !!m.pin || !!m.sidebar || !!m.lock || !!m.moveTo || !!m.onMarkUnread || !!m.onEdit || !!m.onRename || !!m.onClone;
 
 // Permissions… counts only once its check has answered (manages), or a menu holding only it would open empty.
 export const offersMenu = (m: RowMenu | undefined, manages = false): m is RowMenu =>

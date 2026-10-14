@@ -125,6 +125,27 @@ func TestNotificationHandler_MarkRead(t *testing.T) {
 	})
 }
 
+func TestNotificationHandler_MarkUnread(t *testing.T) {
+	t.Run("puts a read notification back to unread", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		repo.create(t, mkNotif("n1", "u1"))
+		s := newTestNotifService(repo, newFakeNotifUsers())
+		require.NoError(t, s.MarkRead(context.Background(), "u1", "n1"))
+		rec := notifServe(t, notifAuthedHandler(s), http.MethodPost, "/api/notifications/n1/unread", "")
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+		n, err := s.UnreadCount(context.Background(), "u1", "")
+		require.NoError(t, err)
+		assert.Equal(t, 1, n)
+	})
+	t.Run("someone else's notification is not found", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		repo.create(t, mkNotif("n1", "u2"))
+		s := newTestNotifService(repo, newFakeNotifUsers())
+		rec := notifServe(t, notifAuthedHandler(s), http.MethodPost, "/api/notifications/n1/unread", "")
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+	})
+}
+
 func TestNotificationHandler_MarkAllRead(t *testing.T) {
 	t.Run("marks all of the user's notifications read", func(t *testing.T) {
 		repo := newFakeNotifRepo()

@@ -49,6 +49,8 @@ type RunningJob struct {
 // EnrollmentCode is a stored one-time code: bound to the runner name it enrolls and, optionally, its machine; a
 // personal code is bound to its person and computer instead (ADR 0146).
 type EnrollmentCode struct {
+	// ID names the code to its maker; the hash never leaves the server.
+	ID          string
 	CodeHash    string
 	Name        string
 	Machine     string
@@ -76,6 +78,7 @@ type Credential struct {
 // Enrollment is a freshly minted code with the one-line install commands that carry it; a computer's code travels
 // inside its signed Token instead.
 type Enrollment struct {
+	ID        string          `json:"id"`
 	Code      string          `json:"code"`
 	Token     string          `json:"token,omitempty"`
 	ExpiresAt time.Time       `json:"expires_at"`

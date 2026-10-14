@@ -111,6 +111,19 @@ func (r *NotificationsRepo) MarkRead(ctx context.Context, userID, id string, at 
 	})
 }
 
+func (r *NotificationsRepo) MarkUnread(ctx context.Context, userID, id string) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).MarkNotificationUnread(ctx, sqlcgen.MarkNotificationUnreadParams{ID: id, UserID: userID})
+		if err != nil {
+			return fmt.Errorf("mark notification %s unread: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("mark notification %s unread: %w", id, apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
+
 func (r *NotificationsRepo) MarkAllRead(ctx context.Context, userID, workspaceID string, at time.Time) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		if err := r.q.WithTx(tx).MarkAllNotificationsRead(ctx, sqlcgen.MarkAllNotificationsReadParams{UserID: userID, WorkspaceID: workspaceID, ReadAt: nullUnixPtr(&at)}); err != nil {

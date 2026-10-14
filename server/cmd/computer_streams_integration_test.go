@@ -47,7 +47,7 @@ func TestIntegration_PersonalRunnerReachesT3Code(t *testing.T) {
 	now := time.Now().UTC()
 	_, codeHash, err := hostcred.MintCode()
 	require.NoError(t, err)
-	require.NoError(t, store.Runners.CreateEnrollment(ctx, &runner.EnrollmentCode{CodeHash: codeHash, Name: "computer-ab12cd34", CreatedAt: now, ExpiresAt: now.Add(time.Hour)}))
+	require.NoError(t, store.Runners.CreateEnrollment(ctx, &runner.EnrollmentCode{ID: "id-" + codeHash, CodeHash: codeHash, Name: "computer-ab12cd34", CreatedAt: now, ExpiresAt: now.Add(time.Hour)}))
 	credential, credentialHash, err := hostcred.MintCredential("nxr_")
 	require.NoError(t, err)
 	require.NoError(t, store.Runners.Enroll(ctx, codeHash, &runner.Runner{ID: "r-laptop", Name: "computer-ab12cd34", LastSeen: now, CreatedAt: now}, credentialHash, now, nil))

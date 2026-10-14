@@ -16,8 +16,10 @@ import {
 import { getTicketLinkSetKey } from "@/hooks/TicketLinkHooks";
 import {
   TicketRole,
+  type BranchLink,
   type LinkBranchFormData,
   type LinkPRFormData,
+  type PRLink,
   type SaveTicketFormData,
   type Ticket,
   type TicketLinks,
@@ -210,6 +212,33 @@ export const useLinkPR = () => {
     onError: (error) => toast.error(errorMessage(error)),
   });
 };
+
+// The server answers with the ticket's links as they stand, so they replace the cached ones without a refetch.
+const useUnlinkMutation = <TInput extends { id: string }>(request: (input: TInput) => Promise<TicketLinks>, success: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: request,
+    onSuccess: (links, vars) => {
+      client.setQueryData([getTicketLinksKey, vars.id], links);
+      toast.success(success);
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useUnlinkBranch = () =>
+  useUnlinkMutation(
+    async ({ id, branch }: { id: string; branch: BranchLink }) =>
+      (await api.delete<TicketLinks>(`/api/tickets/${id}/branches`, { params: { owner: branch.owner, repo: branch.repo, branch: branch.branch } })).data,
+    "Branch unlinked",
+  );
+
+export const useUnlinkPR = () =>
+  useUnlinkMutation(
+    async ({ id, pr }: { id: string; pr: PRLink }) =>
+      (await api.delete<TicketLinks>(`/api/tickets/${id}/prs`, { params: { owner: pr.owner, repo: pr.repo, number: pr.number } })).data,
+    "Pull request unlinked",
+  );
 
 export const useFetchAllLabels = () =>
   useQuery({

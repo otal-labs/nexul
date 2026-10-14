@@ -323,3 +323,21 @@ func (q *Queries) MarkNotificationRead(ctx context.Context, arg MarkNotification
 	}
 	return result.RowsAffected()
 }
+
+const markNotificationUnread = `-- name: MarkNotificationUnread :execrows
+UPDATE notifications SET read = 0, read_at = NULL WHERE id = ?1 AND user_id = ?2
+`
+
+type MarkNotificationUnreadParams struct {
+	ID     string
+	UserID string
+}
+
+// Clearing read_at takes the row out of the read-retention sweep until it is read again.
+func (q *Queries) MarkNotificationUnread(ctx context.Context, arg MarkNotificationUnreadParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, markNotificationUnread, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
