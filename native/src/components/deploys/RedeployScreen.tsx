@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { View } from "react-native";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { SheetTitle } from "@/components/SheetTitle";
 import { Button } from "@/components/ui/button";
@@ -23,12 +24,16 @@ export const RedeployScreen = () => {
         {image}
       </Text>
       {deploy.error && <ErrorDisplay error={deploy.error} className="px-0" />}
-      <Button
+      <ActionButton
+        permission="deploys:write"
+        projectId={stack?.project_id || undefined}
+        verb="deploy"
+        name="Redeploy"
         disabled={deploy.isPending}
         onPress={() => deploy.mutate({ stackId, image }, { onSuccess: () => router.back() })}
       >
         <Text>{deploy.isPending ? "Redeploying…" : "Redeploy"}</Text>
-      </Button>
+      </ActionButton>
       <Button variant="outline" disabled={deploy.isPending} onPress={() => router.back()}>
         <Text>Cancel</Text>
       </Button>

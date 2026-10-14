@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 
+import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
+
 import { api } from "@/api/client";
 import { ApiError } from "@/api/errors";
 import { TicketScreen } from "@/components/board/TicketScreen";
@@ -39,10 +41,12 @@ const ticket = {
   labels: null,
 };
 let currentTicket: typeof ticket = ticket;
+let myRole: MyWorkspaceInfo;
 
 const mockGet = (url: string) => {
   if (url === "/api/workspaces") return Promise.resolve([{ id: "ws-1" }]);
   if (url.startsWith("/api/auth/me")) return Promise.resolve(me);
+  if (url === "/api/workspaces/ws-1/me") return Promise.resolve(myRole);
   if (url === "/api/tickets/t-1") return Promise.resolve(currentTicket);
   if (url.startsWith("/api/projects/")) return Promise.resolve(project);
   if (url.startsWith("/api/statuses")) return Promise.resolve(statuses);
@@ -62,6 +66,8 @@ const renderScreen = async () => {
 
 beforeEach(() => {
   currentTicket = ticket;
+  myRole = { role_name: "Developer", permissions: ["tickets:write"], show_locked_actions: false };
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   jest.mocked(api.get).mockReset().mockImplementation(mockGet);
   jest.mocked(api.patch).mockReset();
   jest.mocked(api.post).mockReset();
@@ -77,6 +83,30 @@ describe("TicketScreen", () => {
     expect(screen.getByText("Open")).toBeTruthy();
     expect(screen.getByText("bug")).toBeTruthy();
     expect(screen.getAllByText("No one")).toHaveLength(2);
+  });
+
+  test.each([
+    ["hides both writes from a read-only role", { permissions: ["tickets:read"], show_locked_actions: false }, undefined, undefined],
+    [
+      "locks both writes for a read-only role that shows locked actions",
+      { permissions: ["tickets:read"], show_locked_actions: true },
+      "Your role can't change a ticket's status",
+      "Your role can't assign tickets",
+    ],
+  ])("%s", async (_name, role, statusHint, assignHint) => {
+    myRole = { role_name: "Client", ...role };
+    await renderScreen();
+    await screen.findByText("Fix login");
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/me"));
+    await act(async () => {});
+
+    const status = screen.queryByRole("button", { name: /^Status, Open/ });
+    const assign = screen.queryByRole("button", { name: "Assign to me" });
+    expect(status === null).toBe(statusHint === undefined);
+    expect(assign === null).toBe(assignHint === undefined);
+    expect(status?.props.accessibilityHint).toBe(statusHint);
+    expect(assign?.props.accessibilityHint).toBe(assignHint);
+    expect(screen.getByText("Open")).toBeTruthy();
   });
 
   test("Assign to me sets the viewer as developer", async () => {

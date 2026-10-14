@@ -8,7 +8,7 @@ import { InboxHeader } from "@/components/inbox/InboxHeader";
 import { NotificationFeed } from "@/components/inbox/NotificationFeed";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { FieldScreen } from "@/components/FieldScreen";
-import { useFetchNotifications, useMarkNotificationRead } from "@/hooks/NotificationHooks";
+import { useFetchNotifications, useMarkNotificationRead, useMarkNotificationUnread } from "@/hooks/NotificationHooks";
 import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import { NotificationKind, SubjectType, type Notification } from "@/models/Notification";
 
@@ -30,6 +30,7 @@ export const InboxScreen = () => {
   const router = useRouter();
   const { data, error, isPending, isRefetching, refetch } = useFetchNotifications();
   const markRead = useMarkNotificationRead();
+  const markUnread = useMarkNotificationUnread();
   const canReadTickets = useAreaAccess()?.("tickets") ?? false;
   const waited = useLoaderShown(isPending);
 
@@ -55,6 +56,7 @@ export const InboxScreen = () => {
             onRefresh={() => void refetch()}
             onSelect={onSelect}
             onMarkRead={(notification) => markRead.mutate(notification.id)}
+            onMarkUnread={(notification) => markUnread.mutate(notification.id)}
           />
         </HandOff>
       )}

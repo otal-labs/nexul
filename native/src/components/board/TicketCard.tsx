@@ -70,7 +70,7 @@ export const TicketCard = ({ onPress, ...body }: TicketCardProps) => {
       <Pressable
         role="button"
         aria-label={`${ticketKey(body.ticket, body.projectPrefix)} ${body.ticket.title}`}
-        accessibilityHint="Hold to move it to another column"
+        accessibilityHint={drag ? "Hold to move it to another column" : undefined}
         accessibilityActions={moves.map((s) => ({ name: s.id, label: `Move to ${s.name}` }))}
         onAccessibilityAction={({ nativeEvent }) => drag?.move(body.ticket.id, nativeEvent.actionName)}
         onPress={onPress}

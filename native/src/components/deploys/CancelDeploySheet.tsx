@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { View } from "react-native";
 
+import { ActionButton } from "@/components/action/ActionButton";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { SheetTitle } from "@/components/SheetTitle";
 import { Button } from "@/components/ui/button";
@@ -22,9 +23,17 @@ export const CancelDeploySheet = () => {
         The runner stops this deploy where it is. Start a new deploy from the stack when you want to try again.
       </Text>
       {cancel.error && <ErrorDisplay error={cancel.error} className="px-0" />}
-      <Button variant="destructive" disabled={cancel.isPending} onPress={() => cancel.mutate(deployId, { onSuccess: () => router.back() })}>
+      <ActionButton
+        permission="deploys:write"
+        projectId={stack?.project_id || undefined}
+        verb="cancel deploys"
+        name="Cancel deploy"
+        variant="destructive"
+        disabled={cancel.isPending}
+        onPress={() => cancel.mutate(deployId, { onSuccess: () => router.back() })}
+      >
         <Text>{cancel.isPending ? "Cancelling…" : "Cancel deploy"}</Text>
-      </Button>
+      </ActionButton>
       <Button variant="outline" disabled={cancel.isPending} onPress={() => router.back()}>
         <Text>Keep deploying</Text>
       </Button>

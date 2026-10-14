@@ -11,16 +11,17 @@ interface NotificationFeedProps {
   onRefresh: () => void;
   onSelect: (notification: Notification) => void;
   onMarkRead: (notification: Notification) => void;
+  onMarkUnread: (notification: Notification) => void;
 }
 
 // Order is the server's (newest first, ORDER BY created_at DESC); the feed renders it as given.
-export const NotificationFeed = ({ notifications, refreshing, onRefresh, onSelect, onMarkRead }: NotificationFeedProps) => (
+export const NotificationFeed = ({ notifications, refreshing, onRefresh, onSelect, onMarkRead, onMarkUnread }: NotificationFeedProps) => (
   <FlatList
     data={notifications}
     keyExtractor={(notification) => notification.id}
     ListHeaderComponent={<InboxHeader notifications={notifications} />}
     contentContainerClassName="pb-6"
-    renderItem={({ item }) => <NotificationRow notification={item} onPress={onSelect} onMarkRead={onMarkRead} />}
+    renderItem={({ item }) => <NotificationRow notification={item} onPress={onSelect} onMarkRead={onMarkRead} onMarkUnread={onMarkUnread} />}
     refreshControl={<RefreshList refreshing={refreshing} onRefresh={onRefresh} />}
   />
 );

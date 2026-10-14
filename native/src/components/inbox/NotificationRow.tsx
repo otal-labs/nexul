@@ -1,5 +1,6 @@
 import CheckCheck from "lucide-react-native/icons/check-check";
 import Circle from "lucide-react-native/icons/circle";
+import Mail from "lucide-react-native/icons/mail";
 import { useRef } from "react";
 import { Pressable, View } from "react-native";
 import Swipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
@@ -32,10 +33,11 @@ interface NotificationRowProps {
   notification: Notification;
   onPress: (notification: Notification) => void;
   onMarkRead: (notification: Notification) => void;
+  onMarkUnread: (notification: Notification) => void;
 }
 
-// What a left swipe uncovers on an unread row: the check that marks it read, growing in as the row is pulled.
-const ReadAction = ({ progress }: { progress: SharedValue<number> }) => {
+// What a left swipe uncovers: the icon and word of the move it makes, growing in as the row is pulled.
+const SwipeAction = ({ progress, icon: Glyph, label }: { progress: SharedValue<number>; icon: typeof CheckCheck; label: string }) => {
   const [foreground] = useCSSVariable(["--color-foreground"]);
   const style = useAnimatedStyle(() => ({
     opacity: Math.min(1, progress.get()),
@@ -44,35 +46,37 @@ const ReadAction = ({ progress }: { progress: SharedValue<number> }) => {
   return (
     <View className="w-24 items-center justify-center bg-accent">
       <Animated.View style={style} className="items-center gap-1">
-        <CheckCheck size={20} color={String(foreground)} />
-        <Text className="text-xs font-medium">Read</Text>
+        <Glyph size={20} color={String(foreground)} />
+        <Text className="text-xs font-medium">{label}</Text>
       </Animated.View>
     </View>
   );
 };
 
 // A tile for what happened with the unread dot on its corner, the title with its time, and what happened under it.
-// An unread row swipes left to mark it read without opening it; the same move is its "Mark read" accessibility action.
-export const NotificationRow = ({ notification, onPress, onMarkRead }: NotificationRowProps) => {
+// A row swipes left to flip between read and unread without opening it; the same move is its accessibility action.
+export const NotificationRow = ({ notification, onPress, onMarkRead, onMarkUnread }: NotificationRowProps) => {
   const [muted] = useCSSVariable(["--color-muted-foreground"]);
   const swipeable = useRef<SwipeableMethods>(null);
   const Icon = notificationKindIcon[notification.kind] ?? Circle;
   const unread = !notification.read;
+  const flip = unread ? onMarkRead : onMarkUnread;
   return (
     <Swipeable
       ref={swipeable}
-      enabled={unread}
       friction={1.5}
       rightThreshold={56}
       overshootRight={false}
-      renderRightActions={(progress) => <ReadAction progress={progress} />}
-      onSwipeableWillOpen={() => onMarkRead(notification)}
+      renderRightActions={(progress) => (
+        <SwipeAction progress={progress} icon={unread ? CheckCheck : Mail} label={unread ? "Read" : "Unread"} />
+      )}
+      onSwipeableWillOpen={() => flip(notification)}
       onSwipeableOpen={() => swipeable.current?.close()}
     >
       <Pressable
         role="button"
-        accessibilityActions={unread ? [{ name: "markRead", label: "Mark read" }] : []}
-        onAccessibilityAction={() => onMarkRead(notification)}
+        accessibilityActions={[unread ? { name: "markRead", label: "Mark read" } : { name: "markUnread", label: "Mark unread" }]}
+        onAccessibilityAction={() => flip(notification)}
         onPress={() => onPress(notification)}
         className="min-h-16 flex-row items-start gap-3.5 bg-background px-5 py-3 active:bg-accent"
       >

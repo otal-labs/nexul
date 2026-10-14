@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, userEvent } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 
 import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
 
@@ -22,7 +22,8 @@ const me = { user: { id: "u1", login: "onik97", name: "Onik" } };
 const project = { id: "p-1", name: "Nexul", prefix: "NEX" };
 const other = { id: "p-2", name: "Website", prefix: "WEB" };
 let projects: Project[] = [project];
-let myRole: MyWorkspaceInfo = { role_name: "Member", permissions: ["tickets:read"] };
+const writer: MyWorkspaceInfo = { role_name: "Member", permissions: ["tickets:read", "tickets:write"] };
+let myRole: MyWorkspaceInfo = writer;
 // Deliberately not alphabetical, so a test that passed by accidentally sorting statuses by name would fail here.
 const statuses = [
   { id: "st-todo", name: "Todo", position: 0, kind: "backlog" },
@@ -58,7 +59,7 @@ const renderScreen = async () => {
 
 beforeEach(() => {
   projects = [project];
-  myRole = { role_name: "Member", permissions: ["tickets:read"] };
+  myRole = writer;
   useBoardStore.setState({ selectedProjectId: null });
   jest.mocked(api.get).mockReset().mockImplementation(mockGet);
 });
@@ -91,6 +92,21 @@ describe("BoardScreen", () => {
     await act(() => fireEvent(card, "accessibilityAction", { nativeEvent: { actionName: "st-shipped" } }));
 
     expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "st-shipped" });
+  });
+
+  test.each([
+    ["a role that can write tickets", writer, ["Move to Doing", "Move to Shipped"]],
+    ["a read-only role", { role_name: "Client", permissions: ["tickets:read"] }, []],
+    ["a read-only role that shows locked actions", { role_name: "Client", permissions: ["tickets:read"], show_locked_actions: true }, []],
+  ])("a card offers its moves to %s", async (_name, role, moves) => {
+    myRole = role;
+    await renderScreen();
+    const card = await screen.findByRole("button", { name: "NEX-12 Fix login" });
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/me"));
+    await act(async () => {});
+
+    expect(screen.getByRole("button", { name: "NEX-12 Fix login" }).props.accessibilityActions.map((a: { label: string }) => a.label)).toEqual(moves);
+    expect(card).toBeTruthy();
   });
 
   test("Only mine hides tickets where the viewer holds neither role", async () => {

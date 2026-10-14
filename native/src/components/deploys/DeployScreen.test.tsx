@@ -1,21 +1,18 @@
 import { QueryClient, QueryClientProvider, notifyManager } from "@tanstack/react-query";
-import { act, render, screen, userEvent } from "@testing-library/react-native";
+import { act, render, screen, userEvent, waitFor } from "@testing-library/react-native";
+
+import type { MyWorkspaceInfo } from "@nexul/client-core/permissions";
 
 import { api } from "@/api/client";
 import { DeployScreen } from "@/components/deploys/DeployScreen";
 import { dispatch } from "@/hooks/useLiveEvents";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { DeployLogLine } from "@/models/Stack";
 
 jest.mock("@/api/client", () => ({ api: { get: jest.fn() } }));
 
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ useLocalSearchParams: () => ({ id: "d-1" }), useRouter: () => ({ push: mockPush }), Stack: { Screen: () => null } }));
-
-const mockCanDeploy: { current: boolean } = { current: true };
-jest.mock("@/hooks/WorkspaceHooks", () => ({
-  ...jest.requireActual<object>("@/hooks/WorkspaceHooks"),
-  useAreaAccess: () => () => mockCanDeploy.current,
-}));
 
 // dispatch pulls in useLiveEvents' sessionStore import chain, which wires the query client's online manager
 // to expo-network/expo-secure-store; both are stubbed the same way useLiveEvents.test.tsx does it.
@@ -44,8 +41,11 @@ notifyManager.setScheduler((callback) => callback());
 
 let deploy = { id: "d-1", stack_id: "s-1", image: "api:2", status: "running", created_at: "2026-09-29T10:00:00Z" };
 let lines: DeployLogLine[] = [];
+let me: MyWorkspaceInfo;
 
 const mockGet = (url: string) => {
+  if (url === "/api/workspaces") return Promise.resolve([{ id: "ws-1", name: "Acme" }]);
+  if (url === "/api/workspaces/ws-1/me") return Promise.resolve(me);
   if (url === "/api/deploys/d-1") return Promise.resolve(deploy);
   if (url === "/api/deploys/d-1/log") return Promise.resolve(lines);
   if (url === "/api/stacks/s-1") return Promise.resolve({ id: "s-1", project_id: "p-1", name: "api" });
@@ -64,7 +64,8 @@ const renderScreen = async () => {
 
 beforeEach(() => {
   mockPush.mockReset();
-  mockCanDeploy.current = true;
+  me = { role_name: "Developer", permissions: ["deploys:write"], show_locked_actions: false };
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   deploy = { id: "d-1", stack_id: "s-1", image: "api:2", status: "running", created_at: "2026-09-29T10:00:00Z" };
   jest.mocked(api.get).mockReset().mockImplementation(mockGet);
   lines = [
@@ -113,15 +114,26 @@ describe("DeployScreen", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/deploys/cancel", params: { deployId: "d-1" } });
   });
 
-  test.each([
-    ["the viewer cannot deploy the stack", "running", false],
-    ["the deploy has finished", "healthy", true],
-  ])("Cancel deploy is left out when %s", async (_why, status, canDeploy) => {
-    deploy = { ...deploy, status };
-    mockCanDeploy.current = canDeploy;
+  test("Cancel deploy is left out once the deploy has finished", async () => {
+    deploy = { ...deploy, status: "healthy" };
     await renderScreen();
 
     await screen.findByText("starting");
     expect(screen.queryByRole("button", { name: "Cancel deploy" })).toBeNull();
+  });
+
+  test.each([
+    ["is hidden from a role that can't deploy", { permissions: ["stacks:read"], show_locked_actions: false }, undefined],
+    ["is locked for a role that shows locked actions", { permissions: ["stacks:read"], show_locked_actions: true }, "Your role can't cancel deploys"],
+  ])("Cancel deploy %s", async (_name, role, hint) => {
+    me = { role_name: "Client", ...role };
+    await renderScreen();
+
+    await screen.findByText("starting");
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/me"));
+    await act(async () => {});
+    const control = screen.queryByRole("button", { name: "Cancel deploy" });
+    expect(control === null).toBe(hint === undefined);
+    expect(control?.props.accessibilityHint).toBe(hint);
   });
 });

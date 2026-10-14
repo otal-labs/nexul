@@ -17,7 +17,7 @@ export const ActionButton = ({ permission, projectId, answer, verb, name, childr
     <>
       {action.state === "live" && <Button {...props}>{children}</Button>}
       {action.state === "locked" && (
-        <LockedActionButton name={name} reason={action.reason} variant={props.variant} size={props.size} className={props.className}>
+        <LockedActionButton name={name} reason={action.reason} label={props["aria-label"]} variant={props.variant} size={props.size} className={props.className}>
           {children}
         </LockedActionButton>
       )}
