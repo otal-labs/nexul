@@ -251,3 +251,29 @@ func TestRoles_AnotherWorkspacesOwnerCannotHandOutAnInstanceArea(t *testing.T) {
 		require.NoError(t, s.tenancySvc.UpdateMemberRoles(ctx, uOwner, "workspace-default", uPlain, []string{made.ID}, nil))
 	})
 }
+
+// TestInvitations_AnotherWorkspacesOwnerCannotInviteIntoAnInstanceArea: an invitation giving a role that carries
+// dns:write is refused to the Owner of the workspace it lands in, who doesn't hold DNS, and allowed to the instance Owner.
+func TestInvitations_AnotherWorkspacesOwnerCannotInviteIntoAnInstanceArea(t *testing.T) {
+	f := newPermFixture(t)
+	withOtherWorkspaceOwner(t, f)
+	s := f.svc
+	ctx := context.Background()
+	now := time.Now()
+	_, err := f.store.Settings.Set(ctx, "https://nexul.example.com")
+	require.NoError(t, err)
+	for _, r := range []*roles.Role{
+		{ID: "role-ops-other", WorkspaceID: "workspace-other", Name: "Ops", Permissions: grant("dns:write"), CreatedAt: now, UpdatedAt: now},
+		{ID: "role-ops-default", WorkspaceID: "workspace-default", Name: "Ops", Permissions: grant("dns:write"), CreatedAt: now, UpdatedAt: now},
+	} {
+		require.NoError(t, f.store.Roles.Create(ctx, r))
+	}
+	invite := func(actor, workspaceID, roleID string) error {
+		_, err := s.invitationSvc.Create(as(actor), actor, tenancy.CreateInvitationInput{ExpiresInDays: 1,
+			Grants: []*tenancy.InvitationGrant{{WorkspaceID: workspaceID, RoleID: roleID}}})
+		return err
+	}
+
+	require.ErrorIs(t, invite(uOtherOwner, "workspace-other", "role-ops-other"), apperrs.ErrForbidden)
+	require.NoError(t, invite(uOwner, "workspace-default", "role-ops-default"))
+}
