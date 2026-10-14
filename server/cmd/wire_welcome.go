@@ -66,3 +66,25 @@ type welcomeProgress struct{ svc *welcome.Service }
 func (w welcomeProgress) Progress(ctx context.Context, userID string) (any, error) {
 	return w.svc.Progress(ctx, userID)
 }
+
+// teamProgress is tenancy's seam onto the welcome domain and the invitations that let each person in, for Team.
+type teamProgress struct {
+	welcome     *welcome.Service
+	invitations *storage.InvitationsRepo
+}
+
+func (t teamProgress) WelcomeOf(ctx context.Context, userIDs []string) (map[string]any, error) {
+	progress, err := t.welcome.ProgressFor(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]any, len(progress))
+	for id, p := range progress {
+		out[id] = p
+	}
+	return out, nil
+}
+
+func (t teamProgress) Joins(ctx context.Context) (map[string]*tenancy.Joined, error) {
+	return t.invitations.Joins(ctx)
+}

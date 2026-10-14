@@ -56,6 +56,8 @@ type InvitationRepo interface {
 	GetByTokenHash(ctx context.Context, tokenHash string, now time.Time) (*Invitation, error)
 	GetByAcceptanceHash(ctx context.Context, acceptanceHash string, now time.Time) (*Invitation, error)
 	List(ctx context.Context, actorID string, now time.Time) ([]*Invitation, error)
+	// History is the links actorID may manage that were accepted, or expired or ended early, since since, newest first.
+	History(ctx context.Context, actorID string, since, now time.Time) (accepted, ended []*Invitation, err error)
 	Revoke(ctx context.Context, actorID, invitationID string, now time.Time, events ...eventbus.OutboxEvent) error
 	Redeem(ctx context.Context, acceptanceHash string, identity InvitationIdentity, now time.Time, events ...eventbus.OutboxEvent) (*InvitationAdmission, error)
 }

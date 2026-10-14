@@ -58,12 +58,12 @@ func (h *InvitationHandler) create(w http.ResponseWriter, r *http.Request) {
 func (h *InvitationHandler) list(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := invitationRequestContext(r)
 	defer cancel()
-	invitations, err := h.svc.List(ctx, UserIDFromCtx(r.Context()))
+	list, err := h.svc.List(ctx, UserIDFromCtx(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"invitations": invitations})
+	httpx.WriteJSON(w, http.StatusOK, list)
 }
 
 func (h *InvitationHandler) revoke(w http.ResponseWriter, r *http.Request) {

@@ -1,3 +1,5 @@
+import type { WelcomeProgress } from "@nexul/client-core/welcome";
+
 import type { Provider } from "@/models/User";
 
 // Mirrors internal/tenancy/model.go's Team wire shape (GET /api/team).
@@ -57,6 +59,9 @@ export interface TeamPerson {
   online: boolean;
   last_seen_at: string | null;
   workspaces: TeamMembership[];
+  welcome?: WelcomeProgress;
+  // The first invitation they accepted: invited_by is the account that made the link.
+  joined?: { invited_by: string; accepted_at: string };
 }
 
 export interface TeamRole {

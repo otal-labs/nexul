@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { RoleChipRow } from "@/components/role/RoleChipRow";
 import { AccountStatusLabel } from "@/components/team/AccountStatusLabel";
+import { TeamGapLine } from "@/components/team/TeamGapLine";
 import { TeamSignInAccounts } from "@/components/team/TeamSignInAccounts";
 import { cn } from "@/lib/utils";
 import { heldRoles, type TeamPerson } from "@/models/Team";
@@ -46,6 +47,7 @@ export const TeamPersonRow = ({ person, onOpen }: TeamPersonRowProps) => {
             {several && <span className="truncate">{person.workspaces.length} workspaces</span>}
             {!only && <span className="truncate">No workspace</span>}
           </span>
+          <TeamGapLine person={person} />
         </span>
         <span className="flex shrink-0 flex-col items-end gap-1 text-right text-sm text-muted-foreground">
           <span className={cn(person.online && "text-foreground")}>{presenceText(person)}</span>

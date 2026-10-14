@@ -885,3 +885,37 @@ func TestStatements_WelcomeProgressCostsTheSameForAnyPage(t *testing.T) {
 	}
 	assert.Equal(t, cost(1), cost(50))
 }
+
+// TestStatements_TeamListCostsTheSameForAnyNumberOfPeople: the Team list reads every person's Welcome wizard progress
+// and the invitation they joined by in a fixed number of statements, whether it holds a few people or forty.
+func TestStatements_TeamListCostsTheSameForAnyNumberOfPeople(t *testing.T) {
+	cost := func(n int) int64 {
+		f, st, db := newCountedFixtureDB(t)
+		ctx := context.Background()
+		now := time.Now()
+		require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-newcomer", WorkspaceID: wsDefault, Name: "Newcomer",
+			WelcomeSteps: []string{"github", "computer", "projects", "deploy_server", "phone"}, CreatedAt: now, UpdatedAt: now}))
+		for i := range n {
+			id := fmt.Sprintf("u-newcomer-%d", i)
+			_, _, err := f.store.Users.UpsertUser(ctx, &auth.Identity{UserID: id, Provider: auth.ProviderGitHub, ProviderUserID: id, Login: id})
+			require.NoError(t, err)
+			require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: id, WorkspaceID: wsDefault, RoleID: "role-newcomer", CreatedAt: now}))
+			_, err = db.ExecContext(ctx, `INSERT INTO invitations (id, token_hash, invited_by, created_at, expires_at, redeemed_at, redeemed_by)
+				VALUES (?, ?, ?, ?, ?, ?, ?)`, "inv-"+id, fmt.Sprintf("%064d", i), uOwner, now.Unix(), now.Add(24*time.Hour).Unix(), now.Unix(), id)
+			require.NoError(t, err)
+		}
+		st.Reset()
+		team, err := f.svc.tenancySvc.ListTeam(identity.WithActor(ctx, identity.Actor{ID: uOwner}), uOwner)
+		require.NoError(t, err)
+		joined := 0
+		for _, p := range team.People {
+			require.NotNil(t, p.Welcome, p.Login)
+			if p.Joined != nil {
+				joined++
+			}
+		}
+		require.Equal(t, n, joined)
+		return st.Count()
+	}
+	assert.Equal(t, cost(2), cost(40))
+}

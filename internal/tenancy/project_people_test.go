@@ -158,6 +158,38 @@ func TestHandler_Me_ReadsEveryNonOwnerAsRestricted(t *testing.T) {
 	require.ErrorIs(t, err, f.repo.getErr)
 }
 
+// fakeTeamProgress answers every person with the same progress and bob's join, or fails where told to.
+type fakeTeamProgress struct{ welcomeErr, joinsErr error }
+
+func (f fakeTeamProgress) WelcomeOf(_ context.Context, userIDs []string) (map[string]any, error) {
+	out := map[string]any{}
+	for _, id := range userIDs {
+		out[id] = "progress of " + id
+	}
+	return out, f.welcomeErr
+}
+
+func (f fakeTeamProgress) Joins(context.Context) (map[string]*Joined, error) {
+	return map[string]*Joined{"bob": {InvitedBy: "actor"}}, f.joinsErr
+}
+
+func TestListTeam_EachPersonCarriesTheirProgressAndHowTheyJoined(t *testing.T) {
+	f := newAccessFixture(t)
+	f.svc.SetTeamProgress(fakeTeamProgress{})
+	team, err := f.svc.ListTeam(t.Context(), "actor")
+	require.NoError(t, err)
+	for _, p := range team.People {
+		assert.Equal(t, "progress of "+p.ID, p.Welcome)
+		assert.Equal(t, p.ID == "bob", p.Joined != nil, p.ID)
+	}
+
+	for _, broken := range []fakeTeamProgress{{welcomeErr: errors.New("disk gone")}, {joinsErr: errors.New("disk gone")}} {
+		f.svc.SetTeamProgress(broken)
+		_, err = f.svc.ListTeam(t.Context(), "actor")
+		require.Error(t, err)
+	}
+}
+
 func TestListTeam_RemovedFieldsReadAsEmpty(t *testing.T) {
 	f := newAccessFixture(t)
 	team, err := f.svc.ListTeam(t.Context(), "actor")

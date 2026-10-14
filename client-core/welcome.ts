@@ -25,6 +25,8 @@ export interface WelcomeProgress {
   first_run_done: boolean;
   steps: WelcomeStepProgress[];
   dot: boolean;
+  // Whether they are in any project, whether or not projects is one of their steps.
+  in_a_project: boolean;
 }
 
 // The dot rule, as the server's LightsDot: a step left lights it, but projects only once someone gave it, since

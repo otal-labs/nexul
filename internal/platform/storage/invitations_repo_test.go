@@ -260,9 +260,9 @@ func TestInvitationsRepo_Redeem_InvalidGrantRollsBackNewUser(t *testing.T) {
 	assert.ErrorIs(t, err, apperrs.ErrNotFound)
 	_, err = s.WorkspaceMembers.RoleIDFor(ctx, "ws-1", "user-new")
 	assert.ErrorIs(t, err, apperrs.ErrNotFound)
-	var invitationCount int
-	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM invitations WHERE id = ?`, invitation.ID).Scan(&invitationCount))
-	assert.Zero(t, invitationCount)
+	var expiresAt int64
+	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT expires_at FROM invitations WHERE id = ?`, invitation.ID).Scan(&expiresAt))
+	assert.Equal(t, now.Unix(), expiresAt, "the link ends where it failed and stays on record")
 }
 
 func TestInvitationsRepo_Redeem_ConcurrentConsumptionHasOneWinner(t *testing.T) {
@@ -302,7 +302,7 @@ func TestInvitationsRepo_Redeem_ConcurrentConsumptionHasOneWinner(t *testing.T) 
 	assert.Equal(t, 1, winners)
 }
 
-func TestInvitationsRepo_GetByTokenHash_ExpiryDeletesActiveRow(t *testing.T) {
+func TestInvitationsRepo_GetByTokenHash_ExpiredLinkIsRefusedAndKeptOnRecord(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	ctx := t.Context()
@@ -317,22 +317,24 @@ func TestInvitationsRepo_GetByTokenHash_ExpiryDeletesActiveRow(t *testing.T) {
 	assert.ErrorIs(t, err, apperrs.ErrNotFound)
 	var expiredCount int
 	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM invitations WHERE token_hash = ?`, oneDayHash).Scan(&expiredCount))
-	assert.Zero(t, expiredCount)
+	assert.Equal(t, 1, expiredCount, "the Invitations tab lists it as expired")
 	got, err := s.Invitations.GetByTokenHash(ctx, sevenDayHash, now.Add(6*24*time.Hour))
 	require.NoError(t, err)
 	assert.Equal(t, "inv-2", got.ID)
 }
 
-func TestInvitationsRepo_LazyExpiryDeletion_WritesDeletionEvent(t *testing.T) {
+func TestInvitationsRepo_EndingALinkWhoseRoleIsGone_WritesDeletionEvent(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	ctx := t.Context()
 	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
 	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
+	require.NoError(t, s.Roles.Create(ctx, &roles.Role{ID: "role-reviewer", WorkspaceID: "ws-1", Name: "Reviewer", CreatedAt: now, UpdatedAt: now}))
 	_, tokenHash := invitationToken(t, "33")
-	invitation := newInvitation("inv-1", "actor", "ws-1", "role-editor", now, 24*time.Hour)
+	invitation := newInvitation("inv-1", "actor", "ws-1", "role-reviewer", now, 24*time.Hour)
 	require.NoError(t, s.Invitations.Create(ctx, invitation, tokenHash))
-	_, err := s.Invitations.GetByTokenHash(ctx, tokenHash, now.Add(24*time.Hour))
+	require.NoError(t, s.Roles.Delete(ctx, "role-reviewer"))
+	_, err := s.Invitations.GetByTokenHash(ctx, tokenHash, now.Add(time.Hour))
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 	var topic string
 	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT topic FROM outbox WHERE topic = ? ORDER BY created_at DESC LIMIT 1`, tenancy.TopicInvitationDeleted).Scan(&topic))
@@ -518,4 +520,80 @@ func TestInvitationsRepo_Redeem_DifferentIdentityCannotUseCompletedHandoff(t *te
 
 	_, err := s.Invitations.Redeem(ctx, acceptanceHash, tenancy.InvitationIdentity{ID: "other", Provider: "github", ProviderUserID: "other-provider", Login: "other"}, now)
 	assert.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+// seedInvitationHistory: bob took alice's link two days ago and lena's yesterday; alice revoked one link 12 hours
+// ago, one lapsed two days ago, one lapsed 44 days ago, and one is still open.
+func seedInvitationHistory(t *testing.T) (*Store, time.Time) {
+	t.Helper()
+	s := newTestStore(t)
+	ctx := t.Context()
+	now := time.Now().UTC().Truncate(time.Second)
+	day := 24 * time.Hour
+	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "alice")
+	seedInvitationWorkspace(t, s, "ws-2", "Globex", "role-globex", false, "lena")
+	links := []struct {
+		invitation *tenancy.Invitation
+		suffix     string
+	}{
+		{newInvitation("inv-taken", "alice", "ws-1", "role-editor", now.Add(-3*day), 7*day), "40"},
+		{newInvitation("inv-lena", "lena", "ws-2", "role-globex", now.Add(-3*day), 7*day), "41"},
+		{newInvitation("inv-revoked", "alice", "ws-1", "role-editor", now.Add(-day), 7*day), "42"},
+		{newInvitation("inv-lapsed", "alice", "ws-1", "role-editor", now.Add(-3*day), day), "43"},
+		{newInvitation("inv-old", "alice", "ws-1", "role-editor", now.Add(-45*day), day), "44"},
+		{newInvitation("inv-open", "alice", "ws-1", "role-editor", now, 7*day), "45"},
+	}
+	for _, l := range links {
+		_, hash := invitationToken(t, l.suffix)
+		require.NoError(t, s.Invitations.Create(ctx, l.invitation, hash))
+	}
+	bob := tenancy.InvitationIdentity{ID: "user-bob", Provider: "github", ProviderUserID: "provider-bob", Login: "bob"}
+	_, err := s.Invitations.Redeem(ctx, createAcceptanceHandoff(t, s, "inv-taken", now, bob, "46"), bob, now.Add(-2*day))
+	require.NoError(t, err)
+	_, err = s.Invitations.Redeem(ctx, createAcceptanceHandoff(t, s, "inv-lena", now, bob, "47"), bob, now.Add(-day))
+	require.NoError(t, err)
+	require.NoError(t, s.Invitations.Revoke(ctx, "alice", "inv-revoked", now.Add(-12*time.Hour)))
+	return s, now
+}
+
+func invitationIDs(list []*tenancy.Invitation) []string {
+	out := make([]string, 0, len(list))
+	for _, inv := range list {
+		out = append(out, inv.ID)
+	}
+	return out
+}
+
+func TestInvitationsRepo_History_ListsTheLinksAcceptedOrEndedInTheWindowThatTheActorManages(t *testing.T) {
+	t.Parallel()
+	s, now := seedInvitationHistory(t)
+	since := now.Add(-30 * 24 * time.Hour)
+
+	accepted, ended, err := s.Invitations.History(t.Context(), "alice", since, now)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"inv-taken"}, invitationIDs(accepted), "lena's link is in a workspace alice doesn't manage")
+	require.NotNil(t, accepted[0].RedeemedAt)
+	assert.Equal(t, now.Add(-48*time.Hour), *accepted[0].RedeemedAt)
+	assert.Equal(t, "user-bob", accepted[0].RedeemedBy)
+	assert.Equal(t, "role-editor", accepted[0].Grants[0].RoleID)
+	assert.Equal(t, []string{"inv-revoked", "inv-lapsed"}, invitationIDs(ended), "newest first, the 44-day-old one left out")
+	assert.Equal(t, now.Add(-12*time.Hour), ended[0].ExpiresAt, "a revoked link ends when it was revoked")
+
+	open, err := s.Invitations.List(t.Context(), "alice", now)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"inv-open"}, invitationIDs(open))
+
+	accepted, ended, err = s.Invitations.History(t.Context(), "carol", since, now)
+	require.NoError(t, err)
+	assert.Empty(t, accepted, "carol manages no workspace")
+	assert.Empty(t, ended)
+}
+
+func TestInvitationsRepo_Joins_IsTheFirstLinkEachPersonAccepted(t *testing.T) {
+	t.Parallel()
+	s, now := seedInvitationHistory(t)
+
+	joins, err := s.Invitations.Joins(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, map[string]*tenancy.Joined{"user-bob": {InvitedBy: "alice", AcceptedAt: now.Add(-48 * time.Hour)}}, joins)
 }

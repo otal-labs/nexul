@@ -108,8 +108,28 @@ func (s *InvitationService) Create(ctx context.Context, actorID string, input Cr
 	return &CreatedInvitation{Invitation: invitation, URL: baseURL + "/invite#" + token}, nil
 }
 
-func (s *InvitationService) List(ctx context.Context, actorID string) ([]*Invitation, error) {
-	return s.repo.List(ctx, strings.TrimSpace(actorID), s.now().UTC())
+// InvitationList is the links someone may manage: those still open, and those accepted or ended in the last 30 days.
+type InvitationList struct {
+	Invitations []*Invitation `json:"invitations"`
+	Accepted    []*Invitation `json:"accepted"`
+	Ended       []*Invitation `json:"ended"`
+}
+
+// InvitationHistory is how far back the list reaches for accepted and ended links.
+const InvitationHistory = 30 * 24 * time.Hour
+
+func (s *InvitationService) List(ctx context.Context, actorID string) (*InvitationList, error) {
+	actorID = strings.TrimSpace(actorID)
+	now := s.now().UTC()
+	open, err := s.repo.List(ctx, actorID, now)
+	if err != nil {
+		return nil, err
+	}
+	accepted, ended, err := s.repo.History(ctx, actorID, now.Add(-InvitationHistory), now)
+	if err != nil {
+		return nil, err
+	}
+	return &InvitationList{Invitations: open, Accepted: accepted, Ended: ended}, nil
 }
 
 func (s *InvitationService) Revoke(ctx context.Context, actorID, invitationID string) error {

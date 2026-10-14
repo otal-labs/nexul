@@ -153,7 +153,7 @@ func LightsDot(s Step) bool {
 
 // progressOf works out a person's progress from what other domains hold and the records kept for their steps.
 func progressOf(f Facts, records map[string]Record) Progress {
-	p := Progress{FirstRunDone: f.FirstRunDone, Steps: []Step{}}
+	p := Progress{FirstRunDone: f.FirstRunDone, Steps: []Step{}, InAProject: f.InAProject}
 	done := map[string]bool{
 		welcomestep.GitHub: f.GitHub, welcomestep.Computer: f.Computer, welcomestep.Projects: f.InAProject,
 		welcomestep.DeployServer: f.DeployServer, welcomestep.Phone: records[welcomestep.Phone].DoneAt != nil,

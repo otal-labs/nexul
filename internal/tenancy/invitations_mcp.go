@@ -27,11 +27,13 @@ type invitationCreateIn struct {
 
 // invitationResult is an invitation as the tools show it: each workspace with the roles it gives, never its link.
 type invitationResult struct {
-	ID        string                  `json:"id"`
-	InvitedBy string                  `json:"invited_by"`
-	CreatedAt time.Time               `json:"created_at"`
-	ExpiresAt time.Time               `json:"expires_at"`
-	Grants    []invitationGrantResult `json:"grants"`
+	ID         string                  `json:"id"`
+	InvitedBy  string                  `json:"invited_by"`
+	CreatedAt  time.Time               `json:"created_at"`
+	ExpiresAt  time.Time               `json:"expires_at"`
+	RedeemedAt *time.Time              `json:"redeemed_at,omitempty"`
+	RedeemedBy string                  `json:"redeemed_by,omitempty"`
+	Grants     []invitationGrantResult `json:"grants"`
 }
 
 type invitationGrantResult struct {
@@ -47,6 +49,7 @@ type createdInvitationResult struct {
 
 type invitationListIn struct {
 	mcptool.PageArgs
+	State string `json:"state,omitempty" jsonschema:"open (the default) for links still waiting, accepted for those redeemed in the last 30 days, or ended for those that expired or were revoked in the last 30 days."`
 }
 
 type invitationDeleteIn struct {
@@ -78,12 +81,19 @@ func invitationCreateTool(s *InvitationService) mcptool.Tool {
 
 func invitationListTool(s *InvitationService) mcptool.Tool {
 	return mcptool.New("invitation_list", "List invitations",
-		"Lists the unredeemed, unexpired invitations you may manage, meaning you hold members:write in every "+
-			"workspace each one grants. Each shows its workspaces with the roles it gives there (id, name, whether it "+
-			"is the Owner role), who invited, and when it expires, never its link. Use invitation_create for a new link and invitation_delete to revoke one.",
+		"Lists the invitations you may manage, meaning you hold members:write in every workspace each one grants: by "+
+			"default the unredeemed, unexpired ones; with state accepted those redeemed in the last 30 days, newest first, "+
+			"with who redeemed it (redeemed_by, an account id from account_list) and when; with state ended those that "+
+			"expired or were revoked in the last 30 days, newest first, expires_at being when the link stopped working. "+
+			"Each shows its workspaces with the roles it gives there (id, name, whether it is the Owner role), who "+
+			"invited, and when it was made, never its link. Use invitation_create for a new link and invitation_delete to revoke one.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in invitationListIn) (any, error) {
-			invitations, err := s.List(ctx, actorID(ctx))
+			list, err := s.List(ctx, actorID(ctx))
+			if err != nil {
+				return nil, err
+			}
+			invitations, err := list.inState(in.State)
 			if err != nil {
 				return nil, err
 			}
@@ -120,8 +130,22 @@ func invitationGrants(in []invitationGrantIn) ([]*InvitationGrant, error) {
 	return grants, nil
 }
 
+// inState picks one of the list's three groups by the name invitation_list takes.
+func (l *InvitationList) inState(state string) ([]*Invitation, error) {
+	switch state {
+	case "", "open":
+		return l.Invitations, nil
+	case "accepted":
+		return l.Accepted, nil
+	case "ended":
+		return l.Ended, nil
+	}
+	return nil, fmt.Errorf("%w: state is open, accepted or ended, not %q", apperrs.ErrInvalid, state)
+}
+
 func toInvitationResult(inv *Invitation) invitationResult {
-	out := invitationResult{ID: inv.ID, InvitedBy: inv.InvitedBy, CreatedAt: inv.CreatedAt, ExpiresAt: inv.ExpiresAt, Grants: make([]invitationGrantResult, len(inv.Grants))}
+	out := invitationResult{ID: inv.ID, InvitedBy: inv.InvitedBy, CreatedAt: inv.CreatedAt, ExpiresAt: inv.ExpiresAt, RedeemedAt: inv.RedeemedAt,
+		RedeemedBy: inv.RedeemedBy, Grants: make([]invitationGrantResult, len(inv.Grants))}
 	for i, g := range inv.Grants {
 		roles := g.Roles
 		if roles == nil {

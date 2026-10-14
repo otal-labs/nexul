@@ -3,7 +3,6 @@ package composite
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -73,17 +72,6 @@ func (f *fakeStatusSetter) UpdateAccountStatus(_ context.Context, _, _ string, s
 	return nil
 }
 
-// fakeWelcome answers every person with one step left, or fails when err is set.
-type fakeWelcome struct{ err error }
-
-func (f fakeWelcome) ProgressFor(_ context.Context, userIDs []string) (map[string]welcome.Progress, error) {
-	out := map[string]welcome.Progress{}
-	for _, id := range userIDs {
-		out[id] = welcome.Progress{Steps: []welcome.Step{{Key: "computer", State: welcome.Left}}, Dot: true}
-	}
-	return out, f.err
-}
-
 func callAccountTool(t *testing.T, tools []mcptool.Tool, name, args string) (any, error) {
 	t.Helper()
 	for _, tool := range tools {
@@ -100,6 +88,8 @@ func TestAccountList_CarriesPresenceProvidersAndEachMembershipWithTheViewersMana
 	team := &fakeTeam{team: &tenancy.Team{
 		People: []*tenancy.TeamPerson{{
 			TeamAccount: tenancy.TeamAccount{ID: "bob", Login: "bob", Status: "active", Online: true, LastSeenAt: &seen, Providers: []string{"github", "discord"}},
+			Welcome:     welcome.Progress{Steps: []welcome.Step{{Key: "computer", State: welcome.Left}}, Dot: true},
+			Joined:      &tenancy.Joined{InvitedBy: "alice", AcceptedAt: seen},
 			Workspaces: []*tenancy.TeamMembership{
 				{WorkspaceID: "ws-nexul", RoleName: "Editor, Frontend", Roles: []*tenancy.TeamRole{{ID: "r-editor", Name: "Editor"}, {ID: "r-front", Name: "Frontend"}}},
 				{WorkspaceID: "ws-acme", RoleName: "Viewer"},
@@ -108,7 +98,7 @@ func TestAccountList_CarriesPresenceProvidersAndEachMembershipWithTheViewersMana
 		Workspaces: []*tenancy.TeamWorkspace{{ID: "ws-nexul", CanManageMembers: true}, {ID: "ws-acme"}},
 	}}
 
-	got, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team, fakeWelcome{}), "account_list", `{}`)
+	got, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team), "account_list", `{}`)
 	require.NoError(t, err)
 	page := got.(mcptool.Page[accountResult])
 	require.Len(t, page.Items, 1)
@@ -119,9 +109,8 @@ func TestAccountList_CarriesPresenceProvidersAndEachMembershipWithTheViewersMana
 	assert.True(t, page.Items[0].Workspaces[0].CanManageMembers)
 	assert.False(t, page.Items[0].Workspaces[1].CanManageMembers)
 	assert.Equal(t, []*tenancy.TeamRole{{ID: "r-editor", Name: "Editor"}, {ID: "r-front", Name: "Frontend"}}, page.Items[0].Workspaces[0].Roles)
-	assert.Equal(t, &welcome.Progress{Steps: []welcome.Step{{Key: "computer", State: welcome.Left}}, Dot: true}, page.Items[0].Welcome)
-	_, err = callAccountTool(t, AccountTools(&fakeStatusSetter{}, team, fakeWelcome{err: errors.New("disk gone")}), "account_list", `{}`)
-	require.Error(t, err)
+	assert.Equal(t, welcome.Progress{Steps: []welcome.Step{{Key: "computer", State: welcome.Left}}, Dot: true}, page.Items[0].Welcome)
+	assert.Equal(t, &tenancy.Joined{InvitedBy: "alice", AcceptedAt: seen}, page.Items[0].Joined)
 	raw, err := json.Marshal(page.Items[0].Workspaces[0])
 	require.NoError(t, err)
 	for _, gone := range []string{"role_id", "role_name", "allow", "deny", "every_project", "projects"} {
@@ -147,7 +136,7 @@ func TestAccountUpdate_RoutesEachWorkspaceToAddOrChangeAndStopsAtTheFirstFailure
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			team := &fakeTeam{members: map[string][]string{"ws-nexul": {"bob"}}, failOn: tt.failOn}
-			_, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team, fakeWelcome{}), "account_update", tt.args)
+			_, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team), "account_update", tt.args)
 			if tt.wantErr != nil {
 				require.ErrorIs(t, err, tt.wantErr)
 			}
@@ -170,7 +159,7 @@ func TestAccountUpdate_RemovedFieldsFailTheSchema(t *testing.T) {
 		`{"workspace_id":"ws-nexul","project_access":[{"project_id":"p-1","allow":["tickets:read"]}]}`,
 	} {
 		team := &fakeTeam{members: map[string][]string{"ws-nexul": {"bob"}}}
-		_, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team, fakeWelcome{}), "account_update", `{"id":"bob","workspaces":[`+entry+`]}`)
+		_, err := callAccountTool(t, AccountTools(&fakeStatusSetter{}, team), "account_update", `{"id":"bob","workspaces":[`+entry+`]}`)
 		require.ErrorIs(t, err, apperrs.ErrInvalid, entry)
 		assert.Contains(t, err.Error(), "input schema", entry)
 		assert.Empty(t, team.calls, entry)
@@ -179,7 +168,7 @@ func TestAccountUpdate_RemovedFieldsFailTheSchema(t *testing.T) {
 
 func TestAccountUpdate_StatusGoesToTheAccountAndTheResultOmitsAnUnreadableTeam(t *testing.T) {
 	status := &fakeStatusSetter{}
-	got, err := callAccountTool(t, AccountTools(status, &fakeTeam{}, fakeWelcome{}), "account_update", `{"id":"bob","status":"disabled"}`)
+	got, err := callAccountTool(t, AccountTools(status, &fakeTeam{}), "account_update", `{"id":"bob","status":"disabled"}`)
 	require.NoError(t, err)
 	assert.Equal(t, []auth.AccountStatus{auth.AccountDisabled}, status.calls)
 	assert.Equal(t, accountUpdateResult{Applied: []string{"status"}}, got)

@@ -20,6 +20,10 @@ import (
 type invitationRepoFake struct {
 	created      []*Invitation
 	listed       []*Invitation
+	accepted     []*Invitation
+	ended        []*Invitation
+	historyErr   error
+	historySince time.Time
 	byToken      map[string]*Invitation
 	byAcceptance map[string]*Invitation
 	events       []eventbus.OutboxEvent
@@ -66,6 +70,11 @@ func (f *invitationRepoFake) List(_ context.Context, _ string, _ time.Time) ([]*
 		return nil, f.listErr
 	}
 	return f.listed, nil
+}
+
+func (f *invitationRepoFake) History(_ context.Context, _ string, since, _ time.Time) ([]*Invitation, []*Invitation, error) {
+	f.historySince = since
+	return f.accepted, f.ended, f.historyErr
 }
 
 func (f *invitationRepoFake) Revoke(_ context.Context, _ string, _ string, _ time.Time, events ...eventbus.OutboxEvent) error {
@@ -186,4 +195,17 @@ func TestInvitationService_List_PropagatesRepositoryError(t *testing.T) {
 	repo.listErr = errors.New("storage down")
 	_, err := svc.List(t.Context(), "actor")
 	assert.ErrorIs(t, err, repo.listErr)
+	repo.listErr, repo.historyErr = nil, errors.New("history gone")
+	_, err = svc.List(t.Context(), "actor")
+	assert.ErrorIs(t, err, repo.historyErr)
+}
+
+func TestInvitationService_List_ReachesBackThirtyDaysForAcceptedAndEndedLinks(t *testing.T) {
+	t.Parallel()
+	svc, repo := newInvitationServiceFixture()
+	repo.listed, repo.accepted, repo.ended = []*Invitation{{ID: "open"}}, []*Invitation{{ID: "taken"}}, []*Invitation{{ID: "gone"}}
+	got, err := svc.List(t.Context(), "actor")
+	require.NoError(t, err)
+	assert.Equal(t, &InvitationList{Invitations: repo.listed, Accepted: repo.accepted, Ended: repo.ended}, got)
+	assert.Equal(t, svc.now().Add(-30*24*time.Hour), repo.historySince)
 }

@@ -109,8 +109,8 @@ type Invitation struct {
 	InvitedBy  string             `json:"invited_by"`
 	CreatedAt  time.Time          `json:"created_at"`
 	ExpiresAt  time.Time          `json:"expires_at"`
-	RedeemedAt *time.Time         `json:"-"`
-	RedeemedBy string             `json:"-"`
+	RedeemedAt *time.Time         `json:"redeemed_at,omitempty"`
+	RedeemedBy string             `json:"redeemed_by,omitempty"`
 	Grants     []*InvitationGrant `json:"grants"`
 }
 
@@ -225,10 +225,19 @@ type TeamMembership struct {
 	Projects      []*ProjectAccess `json:"projects"`
 }
 
-// TeamPerson is one registered account with every workspace membership it holds.
+// TeamPerson is one registered account with every workspace membership it holds, how far its Welcome wizard got, and
+// the invitation that let it in.
 type TeamPerson struct {
 	TeamAccount
 	Workspaces []*TeamMembership `json:"workspaces"`
+	Welcome    any               `json:"welcome,omitempty"`
+	Joined     *Joined           `json:"joined,omitempty"`
+}
+
+// Joined is the first invitation a person accepted: who made the link and when they redeemed it.
+type Joined struct {
+	InvitedBy  string    `json:"invited_by"`
+	AcceptedAt time.Time `json:"accepted_at"`
 }
 
 // TeamRole is a role a Team member can be given, or the Owner role they may already hold.

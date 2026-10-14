@@ -76,7 +76,7 @@ const TeamMeta = () => {
       parts={[
         "Instance-wide",
         team && count(team.people.length, "person", "people"),
-        invitations && count(invitations.length, "open invitation link"),
+        invitations && count(invitations.invitations.length, "open invitation link"),
       ]}
     />
   );

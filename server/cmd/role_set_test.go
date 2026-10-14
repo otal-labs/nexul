@@ -50,8 +50,8 @@ func TestRoleSet_EveryEvaluatorAgrees(t *testing.T) {
 		require.NoError(t, err, "members:write from one role, the Reader's set from the other")
 		listed, err := svc.invitationSvc.List(as(uPlain), uPlain)
 		require.NoError(t, err)
-		require.Len(t, listed, 1)
-		assert.Equal(t, created.Invitation.ID, listed[0].ID)
+		require.Len(t, listed.Invitations, 1)
+		assert.Equal(t, created.Invitation.ID, listed.Invitations[0].ID)
 		_, err = svc.invitationSvc.Create(as(uPlain), uPlain, tenancy.CreateInvitationInput{ExpiresInDays: 1,
 			Grants: []*tenancy.InvitationGrant{{WorkspaceID: wsDefault, RoleID: "role-writer"}}})
 		require.ErrorIs(t, err, apperrs.ErrForbidden)

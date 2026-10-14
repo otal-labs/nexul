@@ -33,6 +33,7 @@ type Service struct {
 	accounts  AccountGate
 	projects  ProjectGate
 	instance  InstanceTemplates
+	progress  TeamProgress
 	now       func() time.Time
 }
 
@@ -43,6 +44,17 @@ type InstanceTemplates interface {
 
 // SetInstanceTemplates wires the instance layer an unedited workspace's mention chip template follows.
 func (s *Service) SetInstanceTemplates(t InstanceTemplates) { s.instance = t }
+
+// TeamProgress reads how far each person got after joining, without tenancy importing welcome (ADR 0017).
+type TeamProgress interface {
+	// WelcomeOf is each of userIDs' Welcome wizard progress, in one read per seam whatever their number.
+	WelcomeOf(ctx context.Context, userIDs []string) (map[string]any, error)
+	// Joins is the first invitation each person accepted, in one read.
+	Joins(ctx context.Context) (map[string]*Joined, error)
+}
+
+// SetTeamProgress wires the Team's progress reads once the welcome domain exists; unset, Team shows none.
+func (s *Service) SetTeamProgress(p TeamProgress) { s.progress = p }
 
 // NewService wires the tenancy use-cases over their repos and permission gates.
 func NewService(repo Repo, members MemberRepo, invites InviteRepo, roles RoleGate, perm PermissionGate, roleNames RoleNameGate, wsPerms WorkspacePermissionGate, allowlist AllowlistGate, users UserLookupGate, channels ChannelGate, defaults DefaultsGate, accounts AccountGate) *Service {
@@ -622,8 +634,34 @@ func (s *Service) ListTeam(ctx context.Context, actorID string) (*Team, error) {
 			p.LastSeenAt = &at
 		}
 	}
+	if err := s.addProgress(ctx, people); err != nil {
+		return nil, err
+	}
 	slices.SortStableFunc(people, byPresence)
 	return &Team{People: people, Workspaces: visible, CanManageAccounts: manageAccounts}, nil
+}
+
+// addProgress gives each person their Welcome wizard progress and how they joined, read once for the whole list.
+func (s *Service) addProgress(ctx context.Context, people []*TeamPerson) error {
+	if s.progress == nil || len(people) == 0 {
+		return nil
+	}
+	userIDs := make([]string, 0, len(people))
+	for _, p := range people {
+		userIDs = append(userIDs, p.ID)
+	}
+	welcome, err := s.progress.WelcomeOf(ctx, userIDs)
+	if err != nil {
+		return fmt.Errorf("read welcome progress: %w", err)
+	}
+	joins, err := s.progress.Joins(ctx)
+	if err != nil {
+		return fmt.Errorf("read who joined by invitation: %w", err)
+	}
+	for _, p := range people {
+		p.Welcome, p.Joined = welcome[p.ID], joins[p.ID]
+	}
+	return nil
 }
 
 // byPresence puts whoever is online first, then the most recently seen; ties keep the accounts' login order.

@@ -57,15 +57,6 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 	return count, err
 }
 
-const deleteAccountInvitations = `-- name: DeleteAccountInvitations :exec
-DELETE FROM invitations WHERE invited_by = ? AND redeemed_at IS NULL
-`
-
-func (q *Queries) DeleteAccountInvitations(ctx context.Context, invitedBy string) error {
-	_, err := q.db.ExecContext(ctx, deleteAccountInvitations, invitedBy)
-	return err
-}
-
 const deleteAccountMemberships = `-- name: DeleteAccountMemberships :exec
 DELETE FROM workspace_members WHERE user_id = ?
 `
@@ -117,6 +108,21 @@ func (q *Queries) DeleteIdentity(ctx context.Context, arg DeleteIdentityParams) 
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const endAccountInvitations = `-- name: EndAccountInvitations :exec
+UPDATE invitations SET expires_at = ?1
+WHERE invited_by = ?2 AND redeemed_at IS NULL AND expires_at > ?1
+`
+
+type EndAccountInvitationsParams struct {
+	Now       int64
+	InvitedBy string
+}
+
+func (q *Queries) EndAccountInvitations(ctx context.Context, arg EndAccountInvitationsParams) error {
+	_, err := q.db.ExecContext(ctx, endAccountInvitations, arg.Now, arg.InvitedBy)
+	return err
 }
 
 const getSettings = `-- name: GetSettings :one

@@ -8,6 +8,7 @@ import type {
   CreateInvitationFormData,
   CreatedInvitation,
   InvitationAcceptance,
+  InvitationList,
   InvitationPreview,
   InvitationProvider,
   RedeemedInvitation,
@@ -18,9 +19,9 @@ export const getInvitationsKey = "getInvitations";
 export const useFetchInvitations = () =>
   useQuery({
     queryKey: [getInvitationsKey],
-    queryFn: async () => {
-      const data = (await api.get<ActiveInvitation[] | { invitations: ActiveInvitation[] }>("/api/invitations")).data;
-      return Array.isArray(data) ? data : data.invitations;
+    queryFn: async (): Promise<InvitationList> => {
+      const data = (await api.get<ActiveInvitation[] | InvitationList>("/api/invitations")).data;
+      return Array.isArray(data) ? { invitations: data, accepted: [], ended: [] } : data;
     },
   });
 

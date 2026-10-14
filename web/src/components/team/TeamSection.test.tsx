@@ -36,9 +36,10 @@ const team: Team = {
 
 const accountsBits = ["accounts:read", "accounts:write", "accounts:delete"];
 
-const renderSection = (route = "/settings/team", data: Team = team, anywhere: string[] = accountsBits) => {
+const renderSection = (route = "/settings/team", data: Team = team, anywhere: string[] = accountsBits, invitations: unknown = []) => {
   mocks.get.mockImplementation((url: string) => {
     if (url === "/api/auth/me") return Promise.resolve({ data: { user: {}, instance_permissions: anywhere } });
+    if (url === "/api/invitations") return Promise.resolve({ data: invitations });
     return Promise.resolve({ data: url === "/api/team" ? data : [] });
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -141,6 +142,33 @@ describe("TeamSection", () => {
     expect(link).toHaveTextContent("https://nexul.example.com/invite#secret");
     await user.click(within(link).getByRole("button", { name: "Copy link" }));
     expect(await within(link).findByRole("button", { name: "Copied" })).toBeInTheDocument();
+  });
+
+  it("lists the links accepted and the links ended in the last 30 days, each accepted one opening the person it let in", async () => {
+    const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+    const grants = [{ workspace_id: "ws-nexul", workspace_name: "Nexul", role_id: "r-editor", role_name: "Editor", roles: [{ id: "r-editor", name: "Editor" }] }];
+    const alice: TeamPerson = { ...team.people[0]!, id: "u-alice", login: "alice", name: "Alice", workspaces: [] };
+    const bob: TeamPerson = {
+      ...team.people[0]!,
+      welcome: { first_run_done: true, dot: true, in_a_project: true, steps: [{ key: "computer", state: "left", given: false }] },
+    };
+    const user = userEvent.setup();
+    renderSection("/settings/team/invitations", { ...team, people: [bob, alice] }, accountsBits, {
+      invitations: [],
+      accepted: [{ id: "inv-1", invited_by: "u-alice", created_at: daysAgo(3), expires_at: daysAgo(-4), redeemed_at: daysAgo(2), redeemed_by: "u-bob", grants }],
+      ended: [{ id: "inv-2", invited_by: "u-alice", created_at: daysAgo(5), expires_at: daysAgo(4), grants }],
+    });
+
+    const accepted = within(await screen.findByRole("region", { name: "Accepted in the last 30 days" }));
+    const row = await accepted.findByRole("button", { name: "Open Bob" });
+    expect(row).toHaveTextContent("Editor in Nexul · invited by Alice");
+    expect(row).toHaveTextContent("1 of 2 set up· computer not added");
+    expect(row).toHaveTextContent("accepted 2d ago");
+    const ended = within(screen.getByRole("region", { name: "Expired or deleted in the last 30 days" }));
+    expect(ended.getByRole("listitem")).toHaveTextContent("Nexul · Editorby Alice · made 5d agoended 4d ago");
+
+    await user.click(row);
+    expect(await screen.findByRole("dialog", { name: "Bob" })).toBeInTheDocument();
   });
 
   it("gives each workspace the person is in a tab, read-only with the reason where the viewer can't manage members", async () => {
