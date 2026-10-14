@@ -260,7 +260,9 @@ func (q *Queries) GetConversation(ctx context.Context, id string) (Conversation,
 }
 
 const getConversationByAgentThread = `-- name: GetConversationByAgentThread :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen FROM conversations WHERE agent_thread_id = ? AND agent_thread_id != '' LIMIT 1
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private, agent_seen FROM conversations WHERE agent_thread_id = ? AND agent_thread_id != ''
+  AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = conversations.workspace_id AND w.archived_at IS NOT NULL)
+LIMIT 1
 `
 
 func (q *Queries) GetConversationByAgentThread(ctx context.Context, agentThreadID string) (Conversation, error) {

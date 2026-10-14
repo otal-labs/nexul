@@ -80,6 +80,16 @@ func storedRole(t *testing.T, db *sql.DB, id string) (permissions.Set, []string)
 	return perms, steps
 }
 
+// storedAutomationScopes reads an automation's scopes from its row, since the repo reads columns a migration under test may predate.
+func storedAutomationScopes(t *testing.T, db *sql.DB, id string) []string {
+	t.Helper()
+	var raw []byte
+	require.NoError(t, db.QueryRow(`SELECT scopes FROM automations WHERE id = ?`, id).Scan(&raw))
+	scopes, err := decodeStringList(raw)
+	require.NoError(t, err)
+	return scopes
+}
+
 func apply0029(t *testing.T, db *sql.DB) {
 	t.Helper()
 	script, err := migrationFS.ReadFile("migrations/0029_instance_stacks.sql")

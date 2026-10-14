@@ -42,6 +42,13 @@ type Automation struct {
 	HostID    *string   `json:"host_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	// WorkspaceArchived is read with the automation: an archived workspace's automations run nothing until it is restored.
+	WorkspaceArchived bool `json:"-"`
+}
+
+// Runs reports whether the automation is delivered events, given a worker and secrets: switched on in a live workspace.
+func (a *Automation) Runs() bool {
+	return a.Enabled && !a.WorkspaceArchived
 }
 
 // Validate checks the fields every automation must carry regardless of how it was constructed.

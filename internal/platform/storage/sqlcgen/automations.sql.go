@@ -71,94 +71,115 @@ func (q *Queries) DeleteAutomation(ctx context.Context, id string) (int64, error
 }
 
 const getAutomation = `-- name: GetAutomation :one
-SELECT id, name, description, kind, enabled, subscriptions, config_schema, config_values, scopes, token_hash, token_prefix, token_revoked_at, created_at, updated_at, created_by, host_id, workspace_id FROM automations WHERE id = ?
+SELECT a.id, a.name, a.description, a.kind, a.enabled, a.subscriptions, a.config_schema, a.config_values, a.scopes, a.token_hash, a.token_prefix, a.token_revoked_at, a.created_at, a.updated_at, a.created_by, a.host_id, a.workspace_id, EXISTS (SELECT 1 FROM workspaces w WHERE w.id = a.workspace_id AND w.archived_at IS NOT NULL) AS workspace_archived
+FROM automations a WHERE a.id = ?
 `
 
-func (q *Queries) GetAutomation(ctx context.Context, id string) (Automation, error) {
+type GetAutomationRow struct {
+	Automation        Automation
+	WorkspaceArchived bool
+}
+
+func (q *Queries) GetAutomation(ctx context.Context, id string) (GetAutomationRow, error) {
 	row := q.db.QueryRowContext(ctx, getAutomation, id)
-	var i Automation
+	var i GetAutomationRow
 	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Description,
-		&i.Kind,
-		&i.Enabled,
-		&i.Subscriptions,
-		&i.ConfigSchema,
-		&i.ConfigValues,
-		&i.Scopes,
-		&i.TokenHash,
-		&i.TokenPrefix,
-		&i.TokenRevokedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.CreatedBy,
-		&i.HostID,
-		&i.WorkspaceID,
+		&i.Automation.ID,
+		&i.Automation.Name,
+		&i.Automation.Description,
+		&i.Automation.Kind,
+		&i.Automation.Enabled,
+		&i.Automation.Subscriptions,
+		&i.Automation.ConfigSchema,
+		&i.Automation.ConfigValues,
+		&i.Automation.Scopes,
+		&i.Automation.TokenHash,
+		&i.Automation.TokenPrefix,
+		&i.Automation.TokenRevokedAt,
+		&i.Automation.CreatedAt,
+		&i.Automation.UpdatedAt,
+		&i.Automation.CreatedBy,
+		&i.Automation.HostID,
+		&i.Automation.WorkspaceID,
+		&i.WorkspaceArchived,
 	)
 	return i, err
 }
 
 const getAutomationByTokenHash = `-- name: GetAutomationByTokenHash :one
-SELECT id, name, description, kind, enabled, subscriptions, config_schema, config_values, scopes, token_hash, token_prefix, token_revoked_at, created_at, updated_at, created_by, host_id, workspace_id FROM automations WHERE token_hash = ?
+SELECT a.id, a.name, a.description, a.kind, a.enabled, a.subscriptions, a.config_schema, a.config_values, a.scopes, a.token_hash, a.token_prefix, a.token_revoked_at, a.created_at, a.updated_at, a.created_by, a.host_id, a.workspace_id, EXISTS (SELECT 1 FROM workspaces w WHERE w.id = a.workspace_id AND w.archived_at IS NOT NULL) AS workspace_archived
+FROM automations a WHERE a.token_hash = ?
 `
 
-func (q *Queries) GetAutomationByTokenHash(ctx context.Context, tokenHash string) (Automation, error) {
+type GetAutomationByTokenHashRow struct {
+	Automation        Automation
+	WorkspaceArchived bool
+}
+
+func (q *Queries) GetAutomationByTokenHash(ctx context.Context, tokenHash string) (GetAutomationByTokenHashRow, error) {
 	row := q.db.QueryRowContext(ctx, getAutomationByTokenHash, tokenHash)
-	var i Automation
+	var i GetAutomationByTokenHashRow
 	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Description,
-		&i.Kind,
-		&i.Enabled,
-		&i.Subscriptions,
-		&i.ConfigSchema,
-		&i.ConfigValues,
-		&i.Scopes,
-		&i.TokenHash,
-		&i.TokenPrefix,
-		&i.TokenRevokedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.CreatedBy,
-		&i.HostID,
-		&i.WorkspaceID,
+		&i.Automation.ID,
+		&i.Automation.Name,
+		&i.Automation.Description,
+		&i.Automation.Kind,
+		&i.Automation.Enabled,
+		&i.Automation.Subscriptions,
+		&i.Automation.ConfigSchema,
+		&i.Automation.ConfigValues,
+		&i.Automation.Scopes,
+		&i.Automation.TokenHash,
+		&i.Automation.TokenPrefix,
+		&i.Automation.TokenRevokedAt,
+		&i.Automation.CreatedAt,
+		&i.Automation.UpdatedAt,
+		&i.Automation.CreatedBy,
+		&i.Automation.HostID,
+		&i.Automation.WorkspaceID,
+		&i.WorkspaceArchived,
 	)
 	return i, err
 }
 
 const listAutomations = `-- name: ListAutomations :many
-SELECT id, name, description, kind, enabled, subscriptions, config_schema, config_values, scopes, token_hash, token_prefix, token_revoked_at, created_at, updated_at, created_by, host_id, workspace_id FROM automations ORDER BY created_at
+SELECT a.id, a.name, a.description, a.kind, a.enabled, a.subscriptions, a.config_schema, a.config_values, a.scopes, a.token_hash, a.token_prefix, a.token_revoked_at, a.created_at, a.updated_at, a.created_by, a.host_id, a.workspace_id, EXISTS (SELECT 1 FROM workspaces w WHERE w.id = a.workspace_id AND w.archived_at IS NOT NULL) AS workspace_archived
+FROM automations a ORDER BY a.created_at
 `
 
-func (q *Queries) ListAutomations(ctx context.Context) ([]Automation, error) {
+type ListAutomationsRow struct {
+	Automation        Automation
+	WorkspaceArchived bool
+}
+
+func (q *Queries) ListAutomations(ctx context.Context) ([]ListAutomationsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAutomations)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Automation
+	var items []ListAutomationsRow
 	for rows.Next() {
-		var i Automation
+		var i ListAutomationsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Description,
-			&i.Kind,
-			&i.Enabled,
-			&i.Subscriptions,
-			&i.ConfigSchema,
-			&i.ConfigValues,
-			&i.Scopes,
-			&i.TokenHash,
-			&i.TokenPrefix,
-			&i.TokenRevokedAt,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.CreatedBy,
-			&i.HostID,
-			&i.WorkspaceID,
+			&i.Automation.ID,
+			&i.Automation.Name,
+			&i.Automation.Description,
+			&i.Automation.Kind,
+			&i.Automation.Enabled,
+			&i.Automation.Subscriptions,
+			&i.Automation.ConfigSchema,
+			&i.Automation.ConfigValues,
+			&i.Automation.Scopes,
+			&i.Automation.TokenHash,
+			&i.Automation.TokenPrefix,
+			&i.Automation.TokenRevokedAt,
+			&i.Automation.CreatedAt,
+			&i.Automation.UpdatedAt,
+			&i.Automation.CreatedBy,
+			&i.Automation.HostID,
+			&i.Automation.WorkspaceID,
+			&i.WorkspaceArchived,
 		); err != nil {
 			return nil, err
 		}

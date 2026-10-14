@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"slices"
@@ -213,4 +214,33 @@ func TestArchiveRoutes_ArchivingTakesTheWorkspaceOutOfTheListAndRestoreBringsItB
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, ids("/api/workspaces"), acme.ID)
 	assert.Empty(t, ids("/api/workspaces/archived"))
+}
+
+// Guards refusals that predate the archive work: a pressed play and a bot URL start nothing while archived.
+func TestIntegration_ArchivedWorkspace_RefusesWhatPeopleAndSendersStartThere(t *testing.T) {
+	f := newArchiveFixture(t)
+	channel, err := f.svc.chatSvc.CreateChannel(as(uClerk), f.acme.ID, uClerk, "alerts")
+	require.NoError(t, err)
+	bot, err := f.svc.botwebhookSvc.Create(as(uClerk), channel.ID, "CI", "")
+	require.NoError(t, err)
+	var logs bytes.Buffer
+	routes := botRoutes(f.permFixture, &logs)
+	pressPlay := func() bool {
+		return f.svc.accessSvc.HasPermission(as(uClerk), uClerk, f.acme.ID, permissions.PlaysRun, "play", "play-fix")
+	}
+	require.Equal(t, http.StatusNoContent, postAs(routes, botPath(bot), `{"content":"build passed"}`).Code)
+	require.True(t, pressPlay(), "its Owner presses plays while it is live")
+
+	_, err = f.svc.tenancySvc.Archive(as(uClerk), uClerk, f.acme.ID)
+	require.NoError(t, err)
+	assert.False(t, pressPlay(), "nobody presses a play there")
+	assert.GreaterOrEqual(t, postAs(routes, botPath(bot), `{"content":"build passed"}`).Code, http.StatusBadRequest, "a bot's URL posts nothing")
+	msgs, err := f.store.Chat.ListMessages(t.Context(), channel.ID, 50)
+	require.NoError(t, err)
+	assert.Len(t, msgs, 1)
+
+	_, err = f.svc.tenancySvc.Restore(as(uOwner), uOwner, f.acme.ID)
+	require.NoError(t, err)
+	assert.True(t, pressPlay())
+	assert.Equal(t, http.StatusNoContent, postAs(routes, botPath(bot), `{"content":"build passed"}`).Code)
 }

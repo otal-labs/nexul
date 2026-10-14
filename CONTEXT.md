@@ -35,7 +35,9 @@ _Avoid_: Workspace key, handle, subdomain
 A workspace taken out of use without deleting anything. It leaves every list, search, inbox and live frame for the
 people in it, and its address no longer resolves; its projects, tickets, docs, people and roles stay stored. An Owner
 archives it (`workspaces:delete`); the instance Owner restores it (`instance:write`), which brings back all of it. The
-instance's own workspace can't be archived. A permanent delete does not exist yet.
+instance's own workspace can't be archived. Nothing automatic runs in it: its automations get no events, its auto plays
+queue and start nothing, and branch deploys on pushes stop; a restore resumes them without replaying what came
+meanwhile. A permanent delete does not exist yet.
 _Avoid_: Deleted workspace, disabled workspace
 
 **Project**:

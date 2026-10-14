@@ -79,12 +79,8 @@ INSERT INTO invitation_grants (invitation_id, workspace_id, role_id, allow_json,
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"docs:read"}, scopeStrings(install.Scopes))
 
-	automation, err := s.Automations.Get(ctx, "auto-docs")
-	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"docs:lock", "docs:write"}, scopeStrings(automation.Scopes))
-	automation, err = s.Automations.Get(ctx, "auto-empty")
-	require.NoError(t, err)
-	assert.Empty(t, automation.Scopes)
+	assert.ElementsMatch(t, []string{"docs:lock", "docs:write"}, storedAutomationScopes(t, db, "auto-docs"))
+	assert.Empty(t, storedAutomationScopes(t, db, "auto-empty"))
 
 	var allow, projects string
 	require.NoError(t, db.QueryRow(`SELECT allow_json, project_access_json FROM invitation_grants WHERE invitation_id = 'inv-1'`).Scan(&allow, &projects))

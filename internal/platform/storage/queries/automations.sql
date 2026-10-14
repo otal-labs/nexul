@@ -3,13 +3,16 @@ INSERT INTO automations (id, workspace_id, name, description, kind, enabled, sub
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetAutomation :one
-SELECT * FROM automations WHERE id = ?;
+SELECT sqlc.embed(a), EXISTS (SELECT 1 FROM workspaces w WHERE w.id = a.workspace_id AND w.archived_at IS NOT NULL) AS workspace_archived
+FROM automations a WHERE a.id = ?;
 
 -- name: GetAutomationByTokenHash :one
-SELECT * FROM automations WHERE token_hash = ?;
+SELECT sqlc.embed(a), EXISTS (SELECT 1 FROM workspaces w WHERE w.id = a.workspace_id AND w.archived_at IS NOT NULL) AS workspace_archived
+FROM automations a WHERE a.token_hash = ?;
 
 -- name: ListAutomations :many
-SELECT * FROM automations ORDER BY created_at;
+SELECT sqlc.embed(a), EXISTS (SELECT 1 FROM workspaces w WHERE w.id = a.workspace_id AND w.archived_at IS NOT NULL) AS workspace_archived
+FROM automations a ORDER BY a.created_at;
 
 -- name: UpdateAutomation :execrows
 UPDATE automations SET name = ?, description = ?, kind = ?, enabled = ?, subscriptions = ?, config_schema = ?, config_values = ?, scopes = ?, token_hash = ?, token_prefix = ?, token_revoked_at = ?, host_id = ?, updated_at = ? WHERE id = ?;

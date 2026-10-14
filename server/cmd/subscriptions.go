@@ -336,6 +336,9 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	for _, topic := range []string{tenancy.TopicWorkspaceMemberRemoved, auth.TopicAccountDisabled, auth.TopicAccountRemoved} {
 		mustSubscribe(ctx, bus, "access.end_computer_rules", topic, "", svc.accessSvc.HandleMembershipEnded)
 	}
+	// An archived workspace's automations drop their connections; a restore skips what they missed.
+	mustSubscribe(ctx, bus, "automations.workspace_archived", tenancy.TopicWorkspaceArchived, "", svc.automationsSvc.HandleWorkspaceArchived)
+	mustSubscribe(ctx, bus, "automations.workspace_restored", tenancy.TopicWorkspaceRestored, "", svc.automationsSvc.HandleWorkspaceRestored)
 	// A disabled or removed account's computers lose their runners, which uninstall themselves.
 	for _, topic := range []string{auth.TopicAccountDisabled, auth.TopicAccountRemoved} {
 		mustSubscribe(ctx, bus, "runner.revoke_personal", topic, "", svc.computers.HandleAccountClosed)

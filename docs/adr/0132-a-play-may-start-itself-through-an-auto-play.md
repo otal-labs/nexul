@@ -49,3 +49,5 @@ Amended 2026-10-11: a run with a pick that still waits, such as one whose picked
 in place of the old one, and its link with it. The dispatcher reads the pick in the statement that claims the run, and a
 pick writes only while the run is queued, so a pick landing as the run starts is either the one it starts on or refused
 as "already starting", never saved and then ignored.
+
+Amended: an archived workspace's auto plays match nothing and its queued runs wait without starting, so no automatic run starts there; a restore resumes the queue, and moments from the archived time are not replayed.

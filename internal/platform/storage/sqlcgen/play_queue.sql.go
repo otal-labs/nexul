@@ -144,6 +144,7 @@ func (q *Queries) InsertPlayQueueItem(ctx context.Context, arg InsertPlayQueueIt
 
 const listDuePlayQueue = `-- name: ListDuePlayQueue :many
 SELECT id, workspace_id, project_id, target_type, target_id, play_id, play_label, auto_play_id, person_id, run_on, moment, via, priority, status, reason, trail_id, queued_at, decided_at, not_before, automation_id, computer_id, harness_project_id FROM play_queue WHERE status = 'queued' AND person_id = ? AND not_before <= ?
+  AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = play_queue.workspace_id AND w.archived_at IS NOT NULL)
 ORDER BY priority DESC, queued_at, id
 `
 
@@ -255,6 +256,7 @@ func (q *Queries) ListPlayQueueByTarget(ctx context.Context, arg ListPlayQueueBy
 
 const listPlayQueuePeople = `-- name: ListPlayQueuePeople :many
 SELECT DISTINCT person_id FROM play_queue WHERE status = 'queued' AND not_before <= ?
+  AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = play_queue.workspace_id AND w.archived_at IS NOT NULL)
 `
 
 func (q *Queries) ListPlayQueuePeople(ctx context.Context, notBefore int64) ([]string, error) {
@@ -341,6 +343,7 @@ func (q *Queries) ListQueuedPlayQueueByPlay(ctx context.Context, arg ListQueuedP
 
 const nextPlayQueueNotBefore = `-- name: NextPlayQueueNotBefore :one
 SELECT MIN(not_before) FROM play_queue WHERE status = 'queued' AND not_before > ?
+  AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = play_queue.workspace_id AND w.archived_at IS NOT NULL)
 `
 
 func (q *Queries) NextPlayQueueNotBefore(ctx context.Context, notBefore int64) (interface{}, error) {

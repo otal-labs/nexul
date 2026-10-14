@@ -59,6 +59,8 @@ An Owner can archive a workspace in **Configuration → Danger zone**, with `wor
 
 The instance Owner brings it back from **Settings → Instance → Archived workspaces** with **Restore**, which takes `instance:write`. Its projects, tickets, docs, people and roles return exactly as they were. There is no permanent delete yet. The instance's own workspace, the one whose Owner is the instance Owner, can't be archived.
 
+Nothing automatic runs in an archived workspace. Its automations stop receiving events and lose their connections and secrets, its auto plays queue nothing and start nothing, and a push to one of its repositories deploys nothing. Restoring resumes all of it from then on: what happened while the workspace was archived is skipped, not replayed, and runs that were already waiting in a queue carry on.
+
 Agents archive with `workspace_update` and `archived` set to `true`, restore with `archived` set to `false`, and list what is archived with `workspace_list` and `archived` set to `true`; a member's `workspace_list` never shows an archived workspace.
 
 ## Who can see a project

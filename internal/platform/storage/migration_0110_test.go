@@ -63,12 +63,8 @@ INSERT INTO permission_overwrites (resource_type, resource_id, target, user_id, 
 	install, err := s.IntegrationInstalls.GetByID(ctx, "install-fleet")
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"stacks:read"}, scopeStrings(install.Scopes))
-	automation, err := s.Automations.Get(ctx, "auto-fleet")
-	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"machines:write"}, scopeStrings(automation.Scopes))
-	automation, err = s.Automations.Get(ctx, "auto-empty")
-	require.NoError(t, err)
-	assert.Empty(t, automation.Scopes)
+	assert.ElementsMatch(t, []string{"machines:write"}, storedAutomationScopes(t, db, "auto-fleet"))
+	assert.Empty(t, storedAutomationScopes(t, db, "auto-empty"))
 
 	var areas int
 	require.NoError(t, db.QueryRow(`SELECT COUNT(*) FROM permission_overwrites WHERE resource_type = 'instance_area' AND resource_id = 'runners'`).Scan(&areas))

@@ -25,10 +25,12 @@ WHERE status = 'queued' AND play_id = sqlc.arg(play_id)
 ORDER BY priority DESC, queued_at, id;
 
 -- name: ListPlayQueuePeople :many
-SELECT DISTINCT person_id FROM play_queue WHERE status = 'queued' AND not_before <= ?;
+SELECT DISTINCT person_id FROM play_queue WHERE status = 'queued' AND not_before <= ?
+  AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = play_queue.workspace_id AND w.archived_at IS NOT NULL);
 
 -- name: ListDuePlayQueue :many
 SELECT * FROM play_queue WHERE status = 'queued' AND person_id = ? AND not_before <= ?
+  AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = play_queue.workspace_id AND w.archived_at IS NOT NULL)
 ORDER BY priority DESC, queued_at, id;
 
 -- name: WakePlayQueuePerson :exec
@@ -36,7 +38,8 @@ UPDATE play_queue SET not_before = sqlc.arg(now)
 WHERE status = 'queued' AND person_id = sqlc.arg(person_id) AND not_before > sqlc.arg(now);
 
 -- name: NextPlayQueueNotBefore :one
-SELECT MIN(not_before) FROM play_queue WHERE status = 'queued' AND not_before > ?;
+SELECT MIN(not_before) FROM play_queue WHERE status = 'queued' AND not_before > ?
+  AND NOT EXISTS (SELECT 1 FROM workspaces w WHERE w.id = play_queue.workspace_id AND w.archived_at IS NOT NULL);
 
 -- name: PlayQueueQueuedSince :one
 SELECT EXISTS (
