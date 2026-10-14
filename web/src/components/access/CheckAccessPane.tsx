@@ -3,6 +3,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PanelPaneHeader } from "@/components/access/PanelPaneHeader";
 import { PermissionGroupSection } from "@/components/access/PermissionGroupSection";
+import { RequiresLine } from "@/components/access/RequiresLine";
 import { SourceLine } from "@/components/access/SourceLine";
 import { useFetchExplanation, useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
 import { usePanelEntity } from "@/hooks/usePanelEntity";
@@ -26,6 +27,7 @@ const CheckGroup = ({ type, group, answers, catalog }: CheckGroupProps) => (
         <li key={answer.action} className="px-3 py-2.5">
           <p className="text-sm">{permissionLabel(answer.action, catalog, type)}</p>
           <SourceLine verdict={answer} className="mt-1" />
+          <RequiresLine answer={answer} />
         </li>
       ))}
   </PermissionGroupSection>

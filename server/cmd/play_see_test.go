@@ -250,3 +250,30 @@ func pageItems(t *testing.T, a *access.Service, tl mcptool.Tool, user, args stri
 	require.NoError(t, err)
 	return raw
 }
+
+// TestPlays_RunExplainsTheSeeItNeeds: the reader's role is denied See on the play while it holds Run; the panel's Run
+// answer stays allowed by the role and requires See with See's sentence, and pressing the play is still not found.
+func TestPlays_RunExplainsTheSeeItNeeds(t *testing.T) {
+	f, runner := playSeeFixture(t)
+	explainRun := func(t *testing.T, target string) access.Answer {
+		t.Helper()
+		rec := serveAs(access.NewHandler(f.svc.accessSvc).Routes(), uOwner, http.MethodGet, "/api/permissions/explain?resource_type=play&resource_id="+hiddenPlay+"&"+target, "")
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		var e access.Explanation
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &e))
+		i := slices.IndexFunc(e.Effective, func(a access.Answer) bool { return a.Action == permissions.PlaysRun })
+		require.GreaterOrEqual(t, i, 0)
+		return e.Effective[i]
+	}
+	see := &access.Requirement{Action: permissions.PlaysRead, Sentence: "Denied on play Release notes for role Reader"}
+
+	person := explainRun(t, "user_id="+uReader)
+	assert.True(t, person.Allowed)
+	assert.Equal(t, "Allowed by role Reader", person.Source.Sentence)
+	assert.Equal(t, see, person.Requires)
+	assert.Equal(t, see, explainRun(t, "role_id=role-reader").Requires, "the role's own answers")
+	assert.Nil(t, explainRun(t, "user_id="+uWriter).Requires, "See held")
+
+	body := `{"target_type":"doc","target_id":"` + f.doc + `"}`
+	assert.Equal(t, http.StatusNotFound, serveAs(plays.NewRunHandler(runner, nil).Routes(), uReader, http.MethodPost, "/api/plays/"+hiddenPlay+"/run", body).Code)
+}
