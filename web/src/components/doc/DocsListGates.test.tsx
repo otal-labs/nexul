@@ -72,7 +72,7 @@ describe.each([
     await userEvent.setup().pointer({ keys: "[MouseRight]", target: await screen.findByText("Runbook") });
 
     for (const [name, reason] of [
-      ["Lock", "Your role can't lock and unlock docs"],
+      ["Lock", "Your role can't lock docs"],
       ["Archive", "Your role can't archive docs"],
       ["Move to folder", "Your role can't move docs"],
       ["Clone", "Your role can't clone docs into another project"],

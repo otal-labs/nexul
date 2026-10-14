@@ -24,7 +24,7 @@ export const StatusStageGroup = ({ projectId, kind, label, rows, total, adding, 
   <div>
     <div className="flex items-center justify-between gap-2 border-b border-border pb-1.5">
       <Microheader>{label}</Microheader>
-      <ActionButton permission="projects:write" projectId={projectId} variant="ghost" size="icon" icon={PlusIcon} className="size-6 [&_svg]:size-3.5" aria-label={`Add ${kind} status`} onClick={onToggleAdding} />
+      <ActionButton permission="projects:write" projectId={projectId} verb="add a status" variant="ghost" size="icon" icon={PlusIcon} className="size-6 [&_svg]:size-3.5" aria-label={`Add ${kind} status`} onClick={onToggleAdding} />
     </div>
     {rows.length === 0 && <EmptyRow className="px-0 py-2">No {kind} statuses, so the board skips this stage.</EmptyRow>}
     {rows.length > 0 && (

@@ -56,6 +56,7 @@ export const ProjectName = ({ project, onRename, className }: ProjectNameProps) 
       {!editing && (
         <ActionInlineEdit
           permission="projects:write"
+          verb="rename projects"
           projectId={project.id}
           answer={answer("projects:write")}
           label="Rename project"

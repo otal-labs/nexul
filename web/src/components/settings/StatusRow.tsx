@@ -76,10 +76,10 @@ export const StatusRow = ({ projectId, status, index, total, onMove }: StatusRow
         subject={status.name}
         projectId={projectId}
         actions={[
-          { label: "Rename", permission: "projects:write", onSelect: startEditing },
-          { label: "Move up", permission: "projects:write", disabled: index === 0, onSelect: () => onMove(-1) },
-          { label: "Move down", permission: "projects:write", disabled: index === total - 1, onSelect: () => onMove(1) },
-          { label: "Delete", destructive: true, permission: "projects:delete", onSelect: () => deleteStatus.mutate(status.id) },
+          { label: "Rename", permission: "projects:write", verb: "rename statuses", onSelect: startEditing },
+          { label: "Move up", permission: "projects:write", verb: "reorder statuses", disabled: index === 0, onSelect: () => onMove(-1) },
+          { label: "Move down", permission: "projects:write", verb: "reorder statuses", disabled: index === total - 1, onSelect: () => onMove(1) },
+          { label: "Delete", destructive: true, permission: "projects:delete", verb: "delete statuses", onSelect: () => deleteStatus.mutate(status.id) },
         ]}
       />
     </li>

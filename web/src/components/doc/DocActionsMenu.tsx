@@ -27,19 +27,19 @@ export const DocActionsMenu = ({ doc, onCreateTicket, onPermissions, onArchive, 
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 p-1">
-        <ActionMenuItem permission="tickets:write" projectId={doc.project_id} onSelect={onCreateTicket}>
+        <ActionMenuItem permission="tickets:write" projectId={doc.project_id} verb="create tickets" onSelect={onCreateTicket}>
           Create ticket from this doc
         </ActionMenuItem>
         <ActionMenuItem permission="permissions:write" answer={answer("permissions:write")} verb="manage this doc's permissions" onSelect={onPermissions}>
           Permissions…
         </ActionMenuItem>
         {!doc.locked && (
-          <ActionMenuItem permission="docs:lock" answer={answer("docs:lock")} onSelect={() => setLocked.mutate({ id: doc.id, locked: true })}>
+          <ActionMenuItem permission="docs:lock" answer={answer("docs:lock")} verb="lock docs" onSelect={() => setLocked.mutate({ id: doc.id, locked: true })}>
             Lock
           </ActionMenuItem>
         )}
         {doc.locked && (
-          <ActionMenuItem permission="docs:lock" answer={answer("docs:lock")} onSelect={() => setLocked.mutate({ id: doc.id, locked: false })}>
+          <ActionMenuItem permission="docs:lock" answer={answer("docs:lock")} verb="unlock docs" onSelect={() => setLocked.mutate({ id: doc.id, locked: false })}>
             Unlock
           </ActionMenuItem>
         )}

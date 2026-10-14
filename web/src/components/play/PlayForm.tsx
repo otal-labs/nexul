@@ -32,7 +32,7 @@ export const PlayForm = ({ workspaceId, editing }: PlayFormProps) => {
   const updatePlay = useUpdatePlay(workspaceId);
   const confirmRename = useConfirmPlayRename(workspaceId);
   const answer = useEntityActions("play", editing?.id ?? "", !!editing);
-  const write = useActionState({ permission: "plays:write", answer: answer("plays:write") });
+  const write = useActionState({ permission: "plays:write", answer: answer("plays:write"), verb: "edit plays" });
   // An existing play's own rules can refuse what the role allows; Save then waits, with the rule's sentence above.
   const refused = !!editing && write.state !== "live";
   useEffect(() => setBlocked(refused), [refused, setBlocked]);

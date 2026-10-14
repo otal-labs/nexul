@@ -22,7 +22,7 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean): RowMenu =
   const { pinnedIds, toggle } = useDocPins();
   const projectId = doc.project_id;
   const { offered, gates, deleteGate } = useRowGates({
-    lock: { permission: "docs:lock", projectId },
+    lock: { permission: "docs:lock", projectId, verb: doc.locked ? "unlock docs" : "lock docs" },
     archive: { permission: "docs:write", projectId, verb: doc.archived ? "restore docs" : "archive docs" },
     moveTo: { permission: "docs:write", projectId, verb: "move docs" },
     onClone: { permission: "docs:clone", projectId },

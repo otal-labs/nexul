@@ -36,7 +36,7 @@ export const TicketTypeRow = ({ ticket, onSetType }: TicketTypeRowProps) => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <PropertyRowTrigger projectId={ticket.project_id} label={`Type: ${current?.name ?? "no type"}`}>
+        <PropertyRowTrigger projectId={ticket.project_id} verb="change a ticket's type" label={`Type: ${current?.name ?? "no type"}`}>
           {content}
         </PropertyRowTrigger>
       </PopoverTrigger>

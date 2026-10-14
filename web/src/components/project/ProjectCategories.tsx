@@ -77,7 +77,7 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
       title="Categories"
       description="Each category is a swimlane on the board, in this order. Drag a row to reorder."
       footer={
-        <ActionButton permission="projects:write" projectId={projectId} variant="outline" size="sm" icon={PlusIcon} onClick={() => void onAdd()}>
+        <ActionButton permission="projects:write" projectId={projectId} verb="add a category" variant="outline" size="sm" icon={PlusIcon} onClick={() => void onAdd()}>
           New category
         </ActionButton>
       }

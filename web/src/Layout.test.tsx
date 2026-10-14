@@ -54,6 +54,7 @@ const ownerGrid = [
 // Sidebar entries are gated on the selected workspace's resolved `/me` permission list, so tests toggle this instead of a user field.
 let meResponse = { role_name: "Owner", permissions: ownerGrid };
 let projects: unknown[] = [];
+let machines: { id: string; name: string }[] = [];
 
 const ownerUser = {
   id: "u1",
@@ -90,6 +91,7 @@ describe("Layout", () => {
     useSessionStore.setState({ token: null, isLoggedIn: false });
     meResponse = { role_name: "Owner", permissions: ownerGrid };
     projects = [];
+    machines = [{ id: "m-1", name: "box" }];
     authUser = ownerUser;
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     useWorkspaceStore.persist.clearStorage();
@@ -101,6 +103,7 @@ describe("Layout", () => {
       }
       if (url.endsWith("/me")) return { data: meResponse };
       if (url === "/api/projects") return { data: projects };
+      if (url === "/api/machines") return { data: machines };
       if (url === "/api/me/welcome") return { data: { first_run_done: true, steps: [], dot: false } };
       if (url === "/api/team") throw new Error("403");
       if (url === "/api/workspaces") return { data: [{ id: "ws-1", name: "Acme", slug: "acme", created_at: "", updated_at: "" }] };

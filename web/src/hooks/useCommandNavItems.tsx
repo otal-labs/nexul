@@ -16,7 +16,7 @@ import { useNavigate } from "react-router";
 
 import { hasPermission, projectPermissions } from "@nexul/client-core/permissions";
 
-import { useAreaAccess, useCanOpen } from "@/hooks/AccessHooks";
+import { useAreaAccess, useCanOpen, useShowRunnersLink } from "@/hooks/AccessHooks";
 import { useSidebarProject } from "@/hooks/useSidebarProject";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
@@ -33,6 +33,7 @@ export const useCommandNavItems = (): CommandGroup[] => {
   const { data: role } = useFetchMyRole(workspaceId);
   const can = useAreaAccess(current?.id);
   const canOpen = useCanOpen();
+  const showRunners = useShowRunnersLink();
   const go = (path: string) => () => void navigate(wsPath(path));
 
   const page = (id: string, label: string, icon: CommandItem["icon"], path: string, shown = true): CommandItem[] =>
@@ -47,7 +48,7 @@ export const useCommandNavItems = (): CommandGroup[] => {
     ...page("docs", "Docs", FileTextIcon, "/docs", !!current && !!can?.("docs")),
     ...page("memories", "Memories", BrainIcon, "/memories", !!current && !!can?.("memories")),
     ...page("project-settings", "Project settings", SettingsIcon, projectSettingsPath(token), !!current && !!can?.("projects")),
-    ...page("runners", "Runners", CpuIcon, "/runners"),
+    ...page("runners", "Runners", CpuIcon, "/runners", showRunners),
     ...page("topology", "Topology", NetworkIcon, "/topology", canOpen("topology") === true),
     ...page("automations", "Automations", WorkflowIcon, "/automations", canOpen("automations") === true),
     ...page("configuration", "Configuration", SlidersHorizontalIcon, "/configuration", canOpen("configuration") === true),

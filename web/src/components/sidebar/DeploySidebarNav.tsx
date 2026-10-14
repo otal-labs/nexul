@@ -3,7 +3,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import { sectionLabelClass, type SidebarNavEntry } from "@/components/SidebarNav";
 import { SidebarNavLink } from "@/components/sidebar/SidebarNavLink";
-import { useCanOpen } from "@/hooks/AccessHooks";
+import { useCanOpen, useShowRunnersLink } from "@/hooks/AccessHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { lastInputWasKeyboard, settleIn } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -28,7 +28,8 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
   );
   const canOpen = useCanOpen();
   const wsPath = useWorkspacePath();
-  const entries = deployNav.filter((entry) => !entry.area || canOpen(entry.area) === true);
+  const showRunners = useShowRunnersLink();
+  const entries = deployNav.filter((entry) => (entry.to === "/runners" ? showRunners : !entry.area || canOpen(entry.area) === true));
 
   if (entries.length === 0) return null;
 

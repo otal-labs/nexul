@@ -92,7 +92,7 @@ const rows: Row[] = [
       return <WizardServiceStep onDone={vi.fn()} />;
     },
     control: { role: "button", name: "Create" },
-    reason: "Your role can't create and update stacks",
+    reason: "Your role can't create stacks",
   },
   {
     name: "Service creates the stack and starts its first deploy",
@@ -102,21 +102,21 @@ const rows: Row[] = [
       return <WizardServiceStep onDone={vi.fn()} />;
     },
     control: { role: "button", name: "Create & deploy" },
-    reason: "Your role can't create and update deploys",
+    reason: "Your role can't create stacks and deploy",
   },
   {
     name: "Environment saves the values and deploys",
     holds: ["stacks:write"],
     step: () => <WizardEnvStep stackId="stack-1" envKeys={["API_KEY"]} onDone={vi.fn()} />,
     control: { role: "button", name: "Save & deploy" },
-    reason: "Your role can't create and update deploys",
+    reason: "Your role can't save the environment and deploy",
   },
   {
     name: "Deploy branches saves the rules",
     holds: ["deploys:write"],
     step: () => <BranchRulesForm stack={stack} exposure={undefined} defaultPort="" networks={[]} onDone={vi.fn()} onSkip={vi.fn()} />,
     control: { role: "button", name: "Save branches" },
-    reason: "Your role can't create and update stacks",
+    reason: "Your role can't save branch deploy rules",
   },
 ];
 

@@ -33,7 +33,7 @@ export const TicketCategoryRow = ({ ticket }: TicketCategoryRowProps) => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <PropertyRowTrigger projectId={ticket.project_id} label={`Category: ${name}`}>
+        <PropertyRowTrigger projectId={ticket.project_id} verb="change a ticket's category" label={`Category: ${name}`}>
           <span className={rowIconClass}>
             <Rows3 className="size-3.5" aria-hidden />
           </span>
