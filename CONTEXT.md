@@ -835,10 +835,10 @@ declares for an act that is neither (`plays:run`, `memories:clone`,
 `roles:clone`, `docs:thread`, `docs:clone`, `docs:lock`, `stacks:logs`, `projects:create`, `projects:access`,
 `memories:template`). One vocabulary for every actor: a role, a
 scoped token, and the agent are checked against the same values. Checked in
-the workspace the entity belongs to (a workspace's topology canvas in that workspace); runners, machines, DNS,
+the workspace the entity belongs to (a workspace's topology canvas in that workspace); DNS,
 connectors, the instance's own stacks, and the instance itself (its settings,
 upgrades, accounts, workspace creation), which belong to none, against every
-workspace the caller is in, and then the rules on the Instance area it acts on. A member holds a set of roles, or none, and holds what any of them allows. The Owner of
+workspace the caller is in, and then the rules on the Instance area it acts on, and a machine against the same roles and then the rules it carries (Machine rules). A member holds a set of roles, or none, and holds what any of them allows. The Owner of
 any workspace therefore holds every permission outside the instance areas, and only the instance Owner holds those by right; nobody grants a permission they don't hold. What
 every member reads (public channels, their own DMs and inbox, People) takes membership, not a permission. Each domain
 is a project area, a workspace area, or an instance area; a role's project areas count only inside the projects the
