@@ -76,6 +76,10 @@ func (allowGate) RequireMachine(context.Context, string, permissions.Action) err
 
 func (allowGate) RequireMachineNamed(context.Context, string, permissions.Action) error { return nil }
 
+func (allowGate) RequireMachineOfStack(context.Context, string, permissions.Action) error {
+	return nil
+}
+
 func (allowGate) CallerMachines(context.Context) ([]string, bool, error) { return nil, false, nil }
 
 func requireStack(t *testing.T, stacks *fakeStackRepo, stack Stack) {

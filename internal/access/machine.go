@@ -226,9 +226,25 @@ func (s *Service) RequireMachine(ctx context.Context, machineID string, action p
 	return nil
 }
 
-// RequireMachineNamed is RequireMachine for a machine a stack or gateway carries by name; a name no machine bears is
-// invalid input, never a free string (ADR 0151). The server's own calls pass.
+// RequireMachineNamed is RequireMachine for a machine a person types by name, aiming a stack or gateway at it. A machine
+// they can't See answers exactly as a name no machine bears, invalid input naming the name and no id, so no one finds
+// out which names exist by trying them (ADR 0151). The server's own calls pass.
 func (s *Service) RequireMachineNamed(ctx context.Context, name string, action permissions.Action) error {
+	return s.requireNamed(ctx, name, action, errNoMachineNamed(name))
+}
+
+// RequireMachineOfStack is RequireMachineNamed for the machine a stack the caller already found carries: one they can't
+// See is not found, naming the machine and no id.
+func (s *Service) RequireMachineOfStack(ctx context.Context, name string, action permissions.Action) error {
+	return s.requireNamed(ctx, name, action, fmt.Errorf("%w: machine %q", apperrs.ErrNotFound, name))
+}
+
+func errNoMachineNamed(name string) error {
+	return fmt.Errorf("%w: machine %q does not exist; machine_list lists machines", apperrs.ErrInvalid, name)
+}
+
+// requireNamed resolves name and checks action on it; unseen is what a machine the caller can't See answers.
+func (s *Service) requireNamed(ctx context.Context, name string, action permissions.Action, unseen error) error {
 	if _, checked := caller(ctx); !checked {
 		return nil
 	}
@@ -237,12 +253,16 @@ func (s *Service) RequireMachineNamed(ctx context.Context, name string, action p
 	}
 	id, err := s.machines.MachineIDByName(ctx, name)
 	if errors.Is(err, apperrs.ErrNotFound) {
-		return fmt.Errorf("%w: machine %q does not exist; machine_list lists machines", apperrs.ErrInvalid, name)
+		return errNoMachineNamed(name)
 	}
 	if err != nil {
 		return fmt.Errorf("resolve machine %q: %w", name, err)
 	}
-	return s.RequireMachine(ctx, id, action)
+	err = s.RequireMachine(ctx, id, action)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return unseen
+	}
+	return err
 }
 
 // MachinesSeen is the ids of the machines userID sees, from one read of the rules reaching them however many machines

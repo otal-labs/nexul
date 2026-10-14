@@ -74,10 +74,12 @@ type Gate interface {
 	// CallerStacks is what a stack or deploy list in workspaceID, or every one when empty, filters by for action; all is
 	// true for every project's stacks.
 	CallerStacks(ctx context.Context, workspaceID string, action permissions.Action) (reach permissions.StackReach, all bool, err error)
-	// RequireMachine and RequireMachineNamed check a machine action by id and by the name a stack carries; a machine
-	// the caller can't see is not found, and a name no machine bears is invalid input (ADR 0151).
+	// RequireMachine checks a machine action by id; a machine the caller can't see is not found (ADR 0151).
 	RequireMachine(ctx context.Context, machineID string, action permissions.Action) error
+	// RequireMachineNamed checks a machine a person types by name, answering a machine they can't see as it does a name
+	// no machine bears; RequireMachineOfStack checks the one a stack they found carries, not found when they can't see it.
 	RequireMachineNamed(ctx context.Context, name string, action permissions.Action) error
+	RequireMachineOfStack(ctx context.Context, name string, action permissions.Action) error
 	// CallerMachines is the ids of the machines the caller sees, for a list of instance stacks to filter by; all is true
 	// when they see every one without asking.
 	CallerMachines(ctx context.Context) (machineIDs []string, all bool, err error)
@@ -119,7 +121,7 @@ func (s *Service) requireInstanceStack(ctx context.Context, stack *Stack, action
 	if !reads(action) {
 		return s.requireAim(ctx, "", stack.Machine)
 	}
-	if err := s.gate.RequireMachineNamed(ctx, stack.Machine, permissions.MachinesSee); err != nil {
+	if err := s.gate.RequireMachineOfStack(ctx, stack.Machine, permissions.MachinesSee); err != nil {
 		return err
 	}
 	err := s.gate.RequireAnywhere(ctx, permissions.DNSRead)
@@ -324,7 +326,7 @@ func (s *Service) requireDeployTo(ctx context.Context, stack *Stack) error {
 	if s.gate == nil || stack.ProjectID == "" {
 		return nil
 	}
-	return s.gate.RequireMachineNamed(ctx, stack.Machine, permissions.MachinesDeploy)
+	return s.gate.RequireMachineOfStack(ctx, stack.Machine, permissions.MachinesDeploy)
 }
 
 // Rollback redeploys the last healthy image as a normal record, so provenance tracks the acting user.
