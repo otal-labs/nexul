@@ -39,14 +39,14 @@ type Poster interface {
 	// creator may not make there is ErrForbidden, saying so as Stopped does.
 	PostBotMessage(ctx context.Context, p Post) (string, time.Time, error)
 	// Stopped is "Stopped: <creator> can't post in #<channel>" while the bot's creator may not post where it posts,
-	// else empty (ADR 0149).
+	// else empty (ADR 0150).
 	Stopped(ctx context.Context, conversationID, creatorID string) (string, error)
 }
 
 // Post is one post through a bot's URL, as the bot's message stores it.
 type Post struct {
 	ConversationID, BotID, Name, AvatarURL, Body string
-	// CreatorID is who made the bot, whose posting check the post takes (ADR 0149).
+	// CreatorID is who made the bot, whose posting check the post takes (ADR 0150).
 	CreatorID string
 	Embeds    json.RawMessage
 	// Mentionable are the logins the body's @handles may mention; any other handle stays plain text.

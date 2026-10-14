@@ -4,7 +4,7 @@ Status: proposed, with the personal runners effort (`.scratch/personal-runners/`
 
 Supersedes ADR 0062 and ADR 0142. Amends ADR 0031, ADR 0073, ADR 0074 and ADR 0102.
 
-Sharing a computer is built as computer rules (ADR 0148, `.scratch/permission-overrides/`).
+Sharing a computer is built as computer rules (ADR 0148).
 
 Nexul runs on a server; T3 Code runs on each person's own computer, usually behind a router. ADR 0062 reached it
 through a tunnel in the instance's own Cloudflare account, one per computer, closed by an Access rule. That made

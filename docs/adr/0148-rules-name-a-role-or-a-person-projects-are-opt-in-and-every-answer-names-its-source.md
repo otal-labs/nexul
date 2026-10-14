@@ -76,4 +76,4 @@ Proposed 2026-10-10 with an Everyone target and Restricted members kept. Rewritt
 decisions on the permission rework map: roles only, several roles or none, opt-in projects, See on each play, and a
 wipe with a one-time setup. Accepted 2026-10-13, when the switch was tested by upgrading a copy.
 
-Amended by ADR 0149: a channel's rules also set `channels:post`, which roles hold and posting in it takes.
+Amended by ADR 0150: a channel's rules also set `channels:post`, which roles hold and posting in it takes.

@@ -185,7 +185,7 @@ var domainTable = []domainInfo{
 	{"dns", "DNS and gateways", []string{read, write, delete}, AreaInstance},
 	{"notifications", "notifications", []string{read, write}, AreaWorkspace},
 	{"chat", "chat", []string{read, write, delete}, AreaWorkspace},
-	// A channel's read starts held for whoever may see it and only a rule denies it; posting takes channels:post (ADR 0149).
+	// A channel's read starts held for whoever may see it and only a rule denies it; posting takes channels:post (ADR 0150).
 	{"channels", "channels", []string{read, write, delete, post}, AreaWorkspace},
 	{"voice", "voice", []string{read, write}, AreaWorkspace},
 	// No implication between the three: read hides a bot's URL, write shows it, and only delete deletes.

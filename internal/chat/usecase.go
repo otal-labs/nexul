@@ -57,7 +57,7 @@ func (s *Service) SetThreadGate(g ThreadGate) { s.threads = g }
 type Standing interface {
 	IsOwner(ctx context.Context, userID, workspaceID string) (bool, error)
 	ChannelsDenied(ctx context.Context, userID, workspaceID string, channelIDs []string) (map[string]bool, error)
-	// ChannelPost is nil when userID may post in the channel, else forbidden naming what refused it (ADR 0149).
+	// ChannelPost is nil when userID may post in the channel, else forbidden naming what refused it (ADR 0150).
 	ChannelPost(ctx context.Context, userID, workspaceID, channelID string) error
 }
 
@@ -144,7 +144,7 @@ func (s *Service) reads(ctx context.Context, userID string, c *Conversation) err
 	return nil
 }
 
-// requirePost is the posting check: reading c, and in a channel channels:post (ADR 0149); every other conversation
+// requirePost is the posting check: reading c, and in a channel channels:post (ADR 0150); every other conversation
 // takes only its read.
 func (s *Service) requirePost(ctx context.Context, c *Conversation, userID string) error {
 	if err := s.requireRead(ctx, c, userID); err != nil {

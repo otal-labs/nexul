@@ -74,7 +74,7 @@ var exactDenylist = map[string]bool{
 	http.MethodPost + " /api/instance/upgrade":    true,
 }
 
-// verbRouteScope names routes gated by other than the path's domain and method: a verb, channels, posting, watching, or a conversation's bots (ADR 0057, 0094, 0101, 0107, 0149).
+// verbRouteScope names routes gated by other than the path's domain and method: a verb, channels, posting, watching, or a conversation's bots (ADR 0057, 0094, 0101, 0107, 0150).
 var verbRouteScope = map[string]Scope{
 	"GET /api/stacks/{id}/services/{name}/logs":                  Scope(permissions.StacksLogs),
 	"GET /api/services/{id}/services/{name}/logs":                Scope(permissions.StacksLogs),
