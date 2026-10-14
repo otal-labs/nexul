@@ -34,10 +34,10 @@ export const TicketTestSection = ({ ticket }: TicketTestSectionProps) => {
           <TestTargetRow ticket={ticket} />
           <AcceptanceCriteriaBlock ticket={ticket} />
           <div className="flex gap-2 px-2">
-            <ActionButton permission="tickets:write" projectId={ticket.project_id} icon={Check} size="sm" className="flex-1" loading={pass.isPending} onClick={() => pass.mutate(ticket.id)}>
+            <ActionButton permission="tickets:write" projectId={ticket.project_id} verb="pass tickets" icon={Check} size="sm" className="flex-1" loading={pass.isPending} onClick={() => pass.mutate(ticket.id)}>
               Pass
             </ActionButton>
-            <ActionButton permission="tickets:write" projectId={ticket.project_id} icon={X} size="sm" variant="outline" className="flex-1" onClick={() => void openFail(ticket.id)}>
+            <ActionButton permission="tickets:write" projectId={ticket.project_id} verb="fail tickets" icon={X} size="sm" variant="outline" className="flex-1" onClick={() => void openFail(ticket.id)}>
               Fail
             </ActionButton>
           </div>

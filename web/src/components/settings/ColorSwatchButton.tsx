@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useActionState } from "@/hooks/useActionState";
 import { cn } from "@/lib/utils";
 
-interface ColorSwatchButtonProps extends Pick<ActionGate, "permission" | "projectId"> {
+interface ColorSwatchButtonProps extends Pick<ActionGate, "permission" | "projectId" | "verb"> {
   label: string;
   value: string;
   onChange: (color: string) => void;
@@ -22,10 +22,10 @@ interface ColorSwatchButtonProps extends Pick<ActionGate, "permission" | "projec
 
 // One dot, not an inline swatch row — five hues per row breaks the color-as-signal ceiling at scale.
 // The color is data first: a viewer who can't change it still sees the dot, locked beside a lock.
-export const ColorSwatchButton = ({ label, value, onChange, allowNone = true, permission, projectId, dotClass }: ColorSwatchButtonProps) => {
+export const ColorSwatchButton = ({ label, value, onChange, allowNone = true, permission, projectId, verb, dotClass }: ColorSwatchButtonProps) => {
   const [open, setOpen] = useState(false);
   const id = useId();
-  const action = useActionState({ permission, projectId });
+  const action = useActionState({ permission, projectId, verb });
   const dot = (
     <span
       className={cn("size-2.5 rounded-full", dotClass ?? (value && HUE_DOT_CLASS[value] ? HUE_DOT_CLASS[value] : "border border-dashed border-muted-foreground"))}

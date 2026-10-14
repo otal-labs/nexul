@@ -164,7 +164,7 @@ const ReachForm = ({
           </Button>
         )}
         {!exposed && (
-          <ActionButton permission="dns:write" type="submit" loading={createExposure.isPending}>
+          <ActionButton permission="dns:write" verb="expose services" type="submit" loading={createExposure.isPending}>
             Expose service
           </ActionButton>
         )}

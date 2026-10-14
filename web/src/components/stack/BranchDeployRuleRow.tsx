@@ -56,7 +56,7 @@ export const BranchDeployRuleRow = ({ stack, rule, index }: BranchDeployRuleRowP
         </div>
         <div className="flex shrink-0 gap-1">
           {derivesClone(rule) && !editing && (
-            <ActionButton permission="stacks:write" projectId={stack.project_id || undefined} answer={answer("stacks:write")} variant="ghost" size="sm" onClick={() => setEditing(true)}>
+            <ActionButton permission="stacks:write" projectId={stack.project_id || undefined} answer={answer("stacks:write")} verb="edit branch deploy rules" variant="ghost" size="sm" onClick={() => setEditing(true)}>
               Overrides
             </ActionButton>
           )}
@@ -64,6 +64,7 @@ export const BranchDeployRuleRow = ({ stack, rule, index }: BranchDeployRuleRowP
             permission="stacks:write"
             projectId={stack.project_id || undefined}
             answer={answer("stacks:write")}
+            verb="remove branch deploy rules"
             variant="ghost"
             size="sm"
             liveClassName="hover:text-destructive"

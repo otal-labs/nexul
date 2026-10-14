@@ -22,6 +22,7 @@ const renderPalette = () => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: [{ id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" }] };
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
+    if (url === "/api/machines") return { data: [{ id: "m-1", name: "box" }] };
     if (url === "/api/mentions/search") return { data: { results: [{ type: "ticket", id: "t-1", title: "Renew the staging certificate", can_open: true }] } };
     return { data: [] };
   });

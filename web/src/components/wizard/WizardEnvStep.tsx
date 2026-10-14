@@ -93,7 +93,7 @@ const WizardEnvForm = ({ stack, envKeys, onDone, onBack, onSkip }: WizardEnvForm
       )}
       {mode === "paste" && <EnvPasteField text={text} onText={setText} parsed={parsed} />}
       <WizardFooter onBack={onBack} skip={onSkip && <WizardSkipLink onClick={onSkip} />}>
-        <ActionButton permission={["stacks:write", "deploys:write"]} projectId={stack.project_id} type="submit" disabled={pasteBlocked} loading={updateEnv.isPending || deployStack.isPending}>
+        <ActionButton permission={["stacks:write", "deploys:write"]} projectId={stack.project_id} verb="save the environment and deploy" type="submit" disabled={pasteBlocked} loading={updateEnv.isPending || deployStack.isPending}>
           Save & deploy
         </ActionButton>
       </WizardFooter>

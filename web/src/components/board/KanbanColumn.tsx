@@ -57,6 +57,7 @@ const KanbanColumnImpl = ({
       <h4 className="flex items-center gap-1.5 px-1 pt-1">
         <ActionDragHandle
           permission="projects:write"
+          verb="reorder columns"
           label={`Reorder ${column.name}`}
           ref={setActivatorNodeRef}
           className="transition-colors duration-[120ms] ease-standard focus-visible:ring-[3px] focus-visible:ring-ring/50"

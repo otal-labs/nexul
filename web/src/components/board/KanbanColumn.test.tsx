@@ -166,6 +166,7 @@ describe("KanbanColumn", () => {
       const add = await screen.findByRole("button", { name: "New ticket in Open" });
       expect(add).toHaveAttribute("aria-disabled", "true");
       expect(screen.getByRole("button", { name: "Reorder Open" })).toHaveAttribute("aria-disabled", "true");
+      expect(screen.getByRole("button", { name: "Reorder Open" })).toHaveAccessibleDescription("Your role can't reorder columns");
       await user.click(add);
       expect(onAddTicket).not.toHaveBeenCalled();
     });

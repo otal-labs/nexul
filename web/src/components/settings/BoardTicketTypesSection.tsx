@@ -36,7 +36,7 @@ export const BoardTicketTypesSection = ({ projectId, ticketTypes }: BoardTicketT
       description="Each type has a color and a body template its new tickets start from."
       footer={
         !adding && (
-          <ActionButton permission="projects:write" projectId={projectId} variant="outline" size="sm" icon={PlusIcon} onClick={() => setAdding(true)}>
+          <ActionButton permission="projects:write" projectId={projectId} verb="add a ticket type" variant="outline" size="sm" icon={PlusIcon} onClick={() => setAdding(true)}>
             New ticket type
           </ActionButton>
         )

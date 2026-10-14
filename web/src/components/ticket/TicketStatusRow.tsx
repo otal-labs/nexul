@@ -32,7 +32,7 @@ export const TicketStatusRow = ({ ticket, onTransition }: TicketStatusRowProps) 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <PropertyRowTrigger projectId={ticket.project_id} label={`Status: ${name}`}>
+        <PropertyRowTrigger projectId={ticket.project_id} verb="change a ticket's status" label={`Status: ${name}`}>
           {content}
         </PropertyRowTrigger>
       </PopoverTrigger>

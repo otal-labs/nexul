@@ -21,6 +21,7 @@ export const DocLockedSignal = ({ docId }: DocLockedSignalProps) => {
       <ActionButton
         permission="docs:lock"
         answer={answer("docs:lock")}
+        verb="unlock docs"
         variant="ghost"
         size="sm"
         loading={setLocked.isPending}

@@ -36,7 +36,7 @@ export const StackBranchDeploySection = ({ stack }: StackBranchDeploySectionProp
             {rules.length > 1 && `${rules.length} rules.`}
           </p>
           {!adding && (
-            <ActionButton permission="stacks:write" projectId={stack.project_id || undefined} answer={answer("stacks:write")} size="sm" onClick={() => setAdding(true)}>
+            <ActionButton permission="stacks:write" projectId={stack.project_id || undefined} answer={answer("stacks:write")} verb="add branch deploy rules" size="sm" onClick={() => setAdding(true)}>
               Add rule
             </ActionButton>
           )}

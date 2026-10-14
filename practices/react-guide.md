@@ -584,7 +584,8 @@ The gate is `permission` (a `PermissionAction`, the typed union
 string; a list of them means the action writes through each, and the first one
 the viewer lacks decides the reason, and `answer` belongs to the first of them while the rest read role-wide), plus `projectId`, `answer` (an item's own answer from `GET
 /api/permissions/explain`) and `verb` (the words after "Your role can't", where
-the catalog's label reads clumsily) when the page has them. `actionState` in
+the catalog's label reads clumsily; every write permission's does, "Create and
+update tickets", so a control gated by one passes the verb it performs) when the page has them. `actionState` in
 `@nexul/client-core/actionState` turns the gate and the viewer's `/me` into
 live, locked or hidden: the Owner and any holder are live (an instance-domain
 action reads the auth `/me`'s `instance_permissions`, and only the instance Owner

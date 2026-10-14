@@ -15,6 +15,7 @@ jest.mock("@/api/client", () => ({ api: { get: jest.fn() } }));
 
 let permissions: string[] = [];
 let projects: MyWorkspaceInfo["projects"];
+let runners: { id: string }[] = [];
 
 const renderApp = (initialUrl: string) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -43,10 +44,12 @@ const renderApp = (initialUrl: string) => {
 
 beforeEach(() => {
   projects = undefined;
+  runners = [];
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   jest.mocked(api.get).mockImplementation(async (path: string) => {
     if (path === "/api/workspaces") return [{ id: "ws-1", name: "Acme" }];
     if (path === "/api/workspaces/ws-1/me") return { role_name: "Member", permissions, ...(projects && { projects }) };
+    if (path === "/api/runners") return runners;
     if (path.startsWith("/api/notifications/unread-count")) return { count: 0 };
     return [];
   });
@@ -73,12 +76,13 @@ describe("tabs by permission", () => {
     permissions = [];
     await renderApp("/more");
 
-    expect(await screen.findByText("Runners")).toBeTruthy();
+    expect(await screen.findByText("Docs")).toBeTruthy();
     expect(tabs()).toEqual(["Inbox", "Chat", "More"]);
   });
 
-  test("More lists Runners for every member, the server deciding which machines it shows", async () => {
+  test("More lists Runners for a member who sees one, the server deciding which machines they see", async () => {
     permissions = ["tickets:read"];
+    runners = [{ id: "r-1" }];
     await renderApp("/more");
 
     expect(await screen.findByRole("button", { name: tab("Board") })).toBeTruthy();

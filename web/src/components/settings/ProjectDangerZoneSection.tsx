@@ -74,6 +74,7 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
         action={
           <ActionButton
             permission="projects:delete"
+            verb="delete projects"
             projectId={project.id}
             answer={answer("projects:delete")}
             variant="outline"

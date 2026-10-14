@@ -10,6 +10,7 @@ import { SettingsCard } from "@/components/SettingsCard";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { FieldScreen } from "@/components/FieldScreen";
 import { Text } from "@/components/ui/text";
+import { useShowRunnersRow } from "@/hooks/RunnerHooks";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { useSessionStore } from "@/stores/sessionStore";
 
@@ -18,6 +19,7 @@ export const MoreScreen = () => {
   const router = useRouter();
   const host = useSessionStore((s) => s.host);
   const workspace = useSelectedWorkspace();
+  const showRunners = useShowRunnersRow();
 
   return (
     <FieldScreen>
@@ -26,7 +28,7 @@ export const MoreScreen = () => {
         <View className="gap-6 px-4">
           <SettingsCard>
             <SettingsRow first icon={FileText} label="Docs" onPress={() => router.push("/more/docs")} />
-            <SettingsRow icon={Server} label="Runners" onPress={() => router.push("/more/runners")} />
+            {showRunners && <SettingsRow icon={Server} label="Runners" onPress={() => router.push("/more/runners")} />}
           </SettingsCard>
           <SettingsCard>
             <SettingsRow first icon={Settings} label="Your settings" onPress={() => router.push("/more/settings")} />

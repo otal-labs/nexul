@@ -18,6 +18,7 @@ export const LabelColorRow = ({ label, color, projectId }: LabelColorRowProps) =
       <span className="min-w-0 flex-1 truncate text-sm font-medium" title={label}>{label}</span>
       <ColorSwatchButton
         permission="tickets:write"
+        verb="recolor labels"
         projectId={projectId}
         label={`Color for label ${label}`}
         value={color}

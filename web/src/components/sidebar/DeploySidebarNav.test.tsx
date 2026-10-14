@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { DeploySidebarNav } from "@/components/sidebar/DeploySidebarNav";
+import { getMeKey } from "@/hooks/AuthHooks";
 import { useSidebarStore } from "@/stores/sidebarStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -27,6 +28,7 @@ beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/auth/me") return { data: { user: {}, instance_permissions: [] } };
+    if (url === "/api/machines") return { data: [{ id: "m-1", name: "box" }] };
     return { data: { role_name: "Owner", permissions: ["automations:read", "topology:read", "roles:write"] } };
   });
 });
@@ -57,6 +59,7 @@ describe("DeploySidebarNav", () => {
   it("leaves Configuration out for a viewer holding instance permissions but no workspace section", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/auth/me") return { data: { user: {}, instance_permissions: ["instance:read", "connectors:read", "accounts:read"] } };
+      if (url === "/api/machines") return { data: [{ id: "m-1", name: "box" }] };
       return { data: { role_name: "Member", permissions: [] } };
     });
     render(
@@ -69,6 +72,32 @@ describe("DeploySidebarNav", () => {
 
     await screen.findByRole("link", { name: /Runners/ });
     expect(screen.queryByRole("link", { name: /Configuration/ })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    { who: "a Client with no machine and no way to add one", machines: [], me: { instance_permissions: [] }, link: false },
+    { who: "someone who sees a machine", machines: [{ id: "m-1", name: "box" }], me: { instance_permissions: [] }, link: true },
+    { who: "someone who can add machines", machines: [], me: { instance_permissions: ["machines:create"] }, link: true },
+    { who: "the instance Owner", machines: [], me: { instance_permissions: [], instance_owner: true }, link: true },
+  ])("shows the Runners link for $who: $link", async ({ machines, me, link }) => {
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/auth/me") return { data: { user: {}, ...me } };
+      if (url === "/api/machines") return { data: machines };
+      return { data: { role_name: "Member", permissions: ["topology:read"] } };
+    });
+    const client = new QueryClient();
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <DeploySidebarNav collapsed={false} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await screen.findByRole("link", { name: /Topology/ });
+    await vi.waitFor(() => expect(client.getQueryState(["machines"])?.status).toBe("success"));
+    await vi.waitFor(() => expect(client.getQueryState([getMeKey])?.status).toBe("success"));
+    expect(screen.queryByRole("link", { name: /Runners/ }) !== null).toBe(link);
   });
 
   it("tags only Automations as work in progress", async () => {

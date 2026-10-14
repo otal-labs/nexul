@@ -37,7 +37,7 @@ export const ProjectRepos = ({ projectId }: ProjectReposProps) => {
       title="Repositories"
       description="Where this project's code lives. A tests repository is never deployed."
       footer={
-        <ActionButton permission="projects:write" projectId={projectId} variant="outline" size="sm" icon={PlusIcon} onClick={() => void onAdd()}>
+        <ActionButton permission="projects:write" projectId={projectId} verb="add repositories" variant="outline" size="sm" icon={PlusIcon} onClick={() => void onAdd()}>
           Add repo
         </ActionButton>
       }

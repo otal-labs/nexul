@@ -94,7 +94,7 @@ export const BranchRulesForm = ({ stack, exposure, defaultPort, networks, onDone
         Add branch
       </Button>
       <WizardFooter skip={<WizardSkipLink onClick={onSkip} />}>
-        <ActionButton permission="stacks:write" projectId={stack.project_id} type="submit" loading={updateStack.isPending}>
+        <ActionButton permission="stacks:write" projectId={stack.project_id} verb="save branch deploy rules" type="submit" loading={updateStack.isPending}>
           Save branches
         </ActionButton>
       </WizardFooter>

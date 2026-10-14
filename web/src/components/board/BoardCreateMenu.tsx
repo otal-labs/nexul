@@ -33,6 +33,7 @@ export const BoardCreateMenu = ({ projectId, onNewTicket, onNewCategory }: Board
           <ActionMenuItem
             permission="tickets:write"
             projectId={projectId}
+            verb="create tickets"
             icon={TicketIcon}
             onSelect={() => {
               setOpen(false);
@@ -44,6 +45,7 @@ export const BoardCreateMenu = ({ projectId, onNewTicket, onNewCategory }: Board
           <ActionMenuItem
             permission="tickets:write"
             projectId={projectId}
+            verb="report bugs"
             icon={Bug}
             onSelect={() => {
               setOpen(false);
@@ -55,6 +57,7 @@ export const BoardCreateMenu = ({ projectId, onNewTicket, onNewCategory }: Board
           <ActionMenuItem
             permission="projects:write"
             projectId={projectId}
+            verb="add a category"
             icon={TagIcon}
             onSelect={() => {
               setOpen(false);

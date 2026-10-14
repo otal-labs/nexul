@@ -136,7 +136,7 @@ export const WizardServiceStep = ({ onDone, onBack, onSkip }: WizardServiceStepP
           <span className="font-mono text-foreground">{attachStack.machine}</span>.
         </p>
         <WizardFooter onBack={onBack}>
-          <ActionButton permission={writes} projectId={projectId} type="button" onClick={() => void onAttach()} loading={updateStack.isPending || deployStack.isPending}>
+          <ActionButton permission={writes} projectId={projectId} verb={envStepFollows ? "attach stacks" : "attach stacks and deploy"} type="button" onClick={() => void onAttach()} loading={updateStack.isPending || deployStack.isPending}>
             Attach
           </ActionButton>
         </WizardFooter>
@@ -176,7 +176,7 @@ export const WizardServiceStep = ({ onDone, onBack, onSkip }: WizardServiceStepP
       <FormInput control={form.control} name="name" label="Name" placeholder="e.g. web" />
       <MachinePicker control={form.control} name="machine" />
       <WizardFooter onBack={onBack} skip={onSkip && <WizardSkipLink onClick={onSkip} />}>
-        <ActionButton permission={writes} projectId={projectId} type="submit" loading={createStack.isPending}>
+        <ActionButton permission={writes} projectId={projectId} verb={envStepFollows ? "create stacks" : "create stacks and deploy"} type="submit" loading={createStack.isPending}>
           {envStepFollows ? "Create" : "Create & deploy"}
         </ActionButton>
       </WizardFooter>

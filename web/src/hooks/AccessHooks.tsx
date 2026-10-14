@@ -2,6 +2,7 @@ import { AREA_PERMISSION, hasPermission, projectPermissions, workspaceWidePermis
 
 import { isInstanceSection, type SettingsSection, visibleSettingsSections } from "@/components/settings/SettingsNav";
 import { useFetchMe } from "@/hooks/AuthHooks";
+import { useFetchMachines } from "@/hooks/RunnerHooks";
 import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { canOpenWizard, INSTANCE_SECTION_PERMISSION, type InstanceSection, type RouteArea } from "@/models/Access";
@@ -46,6 +47,13 @@ export const useHasInstancePermission = (value: string): boolean => {
 
 // Whether the viewer is the instance Owner, who alone sees and sets the rules on instance areas.
 export const useIsInstanceOwner = (): boolean => !!useFetchMe().data?.instance_owner;
+
+// The Runners link is for whoever sees a machine or can add one; the route itself still opens for every member.
+export const useShowRunnersLink = (): boolean => {
+  const { data: me } = useFetchMe();
+  const { data: machines } = useFetchMachines();
+  return (machines?.length ?? 0) > 0 || me?.instance_owner === true || hasPermission(me?.instance_permissions, "machines:create");
+};
 
 // Every Configuration and Settings section open to someone holding anywhere in some workspace and permissions in this one.
 const settingsSectionsFor = (anywhere: string[] | undefined, permissions: string[]): SettingsSection[] => {

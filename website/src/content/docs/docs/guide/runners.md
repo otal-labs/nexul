@@ -13,7 +13,7 @@ A computer someone adds for their own agent work runs a runner of its own too. I
 
 ## Who sees a machine
 
-The **Runners** page opens for every member and shows the machines you are on, with their runners and the jobs queued for them. A machine you aren't on isn't there at all: not in the list, not in a picker, not over the API or MCP, and its runners' live updates never reach you. The instance Owner (the Owner of the default workspace) sees every machine. Everyone else is put on a machine by a rule on it, for a role or for a person, and an Owner of another workspace is no exception.
+The **Runners** link shows in the sidebar, the command palette and the phone's More tab only for someone who sees a machine or can add one; the page itself opens for every member by its address and shows the machines you are on, with their runners and the jobs queued for them. A machine you aren't on isn't there at all: not in the list, not in a picker, not over the API or MCP, and its runners' live updates never reach you. The instance Owner (the Owner of the default workspace) sees every machine. Everyone else is put on a machine by a rule on it, for a role or for a person, and an Owner of another workspace is no exception.
 
 What you can do on a machine you are on comes from three permissions: **Deploy to**, **Manage** and **Delete**. Your roles' `machines:deploy`, `machines:write` and `machines:delete` set them, and the machine's rules can allow or deny each on top. Adding a runner to a machine that exists, changing its stack root, discovering what runs on it and removing one of its runners all take **Manage**.
 

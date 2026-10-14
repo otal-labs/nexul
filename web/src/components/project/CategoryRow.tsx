@@ -81,6 +81,7 @@ export const CategoryRow = ({ category, index, lifted, count, first, last, onMov
           <ActionDragHandle
             permission="projects:write"
             projectId={category.project_id}
+            verb="reorder categories"
             label={`Reorder ${category.name}`}
             ref={setActivatorNodeRef}
             className="-ml-1 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
@@ -102,10 +103,10 @@ export const CategoryRow = ({ category, index, lifted, count, first, last, onMov
             subject={category.name}
             projectId={category.project_id}
             actions={[
-              { label: "Edit", permission: "projects:write", onSelect: () => setEditing(true) },
-              { label: "Move up", permission: "projects:write", disabled: first, onSelect: onMoveUp },
-              { label: "Move down", permission: "projects:write", disabled: last, onSelect: onMoveDown },
-              { label: "Delete", destructive: true, permission: "projects:delete", onSelect: () => void remove() },
+              { label: "Edit", permission: "projects:write", verb: "edit categories", onSelect: () => setEditing(true) },
+              { label: "Move up", permission: "projects:write", verb: "reorder categories", disabled: first, onSelect: onMoveUp },
+              { label: "Move down", permission: "projects:write", verb: "reorder categories", disabled: last, onSelect: onMoveDown },
+              { label: "Delete", destructive: true, permission: "projects:delete", verb: "delete categories", onSelect: () => void remove() },
             ]}
           />
         </motion.div>

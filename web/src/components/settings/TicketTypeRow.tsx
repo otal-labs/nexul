@@ -79,6 +79,7 @@ export const TicketTypeRow = ({ type, projectId }: TicketTypeRowProps) => {
       )}
       <ColorSwatchButton
         permission="projects:write"
+        verb="recolor ticket types"
         projectId={projectId}
         label={`Color for ${type.name}`}
         value={type.color}
@@ -88,15 +89,15 @@ export const TicketTypeRow = ({ type, projectId }: TicketTypeRowProps) => {
         subject={type.name}
         projectId={projectId}
         actions={[
-          { label: "Rename", permission: "projects:write", onSelect: () => setEditing(true) },
-          { label: "Edit template", permission: "projects:write", onSelect: () => void editTemplate() },
+          { label: "Rename", permission: "projects:write", verb: "rename ticket types", onSelect: () => setEditing(true) },
+          { label: "Edit template", permission: "projects:write", verb: "edit ticket type templates", onSelect: () => void editTemplate() },
           {
             label: "Clone template to…",
             permission: "templates:write",
             onSelect: () =>
               void openClone({ kind: "ticket_body", key: type.name, name: type.name, from: { scope: "project", project_id: projectId } }),
           },
-          { label: "Delete", destructive: true, permission: "projects:delete", onSelect: () => void remove() },
+          { label: "Delete", destructive: true, permission: "projects:delete", verb: "delete ticket types", onSelect: () => void remove() },
         ]}
       />
     </li>
