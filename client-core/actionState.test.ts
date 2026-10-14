@@ -28,7 +28,7 @@ const beforeTheSwitch: MyWorkspaceInfo = { role_name: "Junior Developer", permis
 
 const instanceHolder: InstanceAccess = { instance_permissions: ["dns:write"], instance_owner: false };
 
-const answer = (allowed: boolean, sentence: string): EntityAnswer => ({ allowed, source: { sentence } });
+const answer = (allowed: boolean, sentence: string, kind?: string): EntityAnswer => ({ allowed, source: kind ? { sentence, kind } : { sentence } });
 
 interface Row {
   name: string;
@@ -88,6 +88,14 @@ const rows: Row[] = [
     permission: "chat:write",
     entity: answer(false, "Denied on stack api for bob"),
     expected: { state: "hidden" },
+  },
+  {
+    name: "an item refused only because the role doesn't grant it reads as the role's reason",
+    me: developer(),
+    permission: "deploys:write",
+    verb: "deploy",
+    entity: answer(false, "Not allowed: role Junior Developer doesn't grant it", "role"),
+    expected: { state: "locked", reason: "Your role can't deploy" },
   },
   {
     name: "a refusal without a sentence falls back to the role's reason",

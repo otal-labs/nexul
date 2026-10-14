@@ -4,7 +4,7 @@ import { INSTANCE_PERMISSION_ACTIONS, PERMISSION_LABELS, type PermissionAction }
 // An item's own answer from GET /api/permissions/explain.
 export interface EntityAnswer {
   allowed: boolean;
-  source: { sentence: string };
+  source: { sentence: string; kind?: string };
 }
 
 // GET /api/permissions/explain: one answer per action the item's rules may set.
@@ -68,7 +68,9 @@ const stateOf = ({ permission, projectId, answer, verb, me, instance }: Omit<Act
   if (!me) return !answer && INSTANCE_PERMISSION_ACTIONS.includes(permission) && holdsInstance ? LIVE : HIDDEN;
   if (answer) {
     if (answer.allowed) return LIVE;
-    return lockedOrHidden(me, answer.source.sentence || cannotReason(permission, verb));
+    // A role that doesn't grant it is the role-wide reason; only a rule on this item has a sentence of its own.
+    const sentence = answer.source.kind === "role" ? "" : answer.source.sentence;
+    return lockedOrHidden(me, sentence || cannotReason(permission, verb));
   }
   if (INSTANCE_PERMISSION_ACTIONS.includes(permission)) {
     if (!instance) return HIDDEN;
