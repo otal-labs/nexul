@@ -297,6 +297,12 @@ muted skip, both end on a Done screen that says what was made, and a project
 with a repository waiting to deploy shows the way back to deploying it. The
 map is in `.scratch/project-paths/`.
 
+Planned: **invitations that explain themselves**. The invite page says what
+each role means in one line, and after signing in, which projects it opens.
+A link that expired or was deleted says so plainly, and someone who already has
+an account is turned away without using up the link meant for someone else.
+Spec in `.scratch/invitations/`.
+
 Planned: **screens that know your role**. Every button that changes something
 is hidden from people whose roles can't use it, or, for roles that should know
 it exists, shown locked with the reason ("Your role can't deploy"), instead of
