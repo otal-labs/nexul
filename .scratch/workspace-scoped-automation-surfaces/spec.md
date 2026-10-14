@@ -5,6 +5,9 @@
 Runners and machines have left this spec: each machine carries its own rules instead of belonging to a
 workspace (ADR 0151, `.scratch/machine-permissions/`). What follows about runners is superseded.
 
+Automations shipped (#259, ADR 0095): they belong to a workspace and receive only its events. What follows about
+automations is done. Integrations are still instance-wide and need the decision below.
+
 Carried over from the retired workspace requirements document, which said these
 three move "from implicit instance-level to explicit workspace-level scoping",
 and gave the reason for integrations plainly: so their events and permissions

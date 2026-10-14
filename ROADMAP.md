@@ -59,6 +59,19 @@ each enrolling for its own credential with a one-time code. Remove revokes the
 credential and uninstalls the host from its machine, and each automation is
 placed on one named automations host.
 
+### Plays and guided agent setup
+
+A play is a pre-configured Agent turn fired from a ticket or a doc page, such
+as Fix with AI and To tickets via AI, with memories the person selects, doc
+threads and persisted trails that read as a transcript, and a harness and
+model picker in the run dialog. A paired computer is set up per provider by a
+wizard that installs a starting skill set and
+confirms through the MCP server; an agent run is refused on a computer or
+provider that is not set up, with a link to the wizard. Tickets gain a
+developer, a tester and a reporter, found-in and blocked-by links, body
+templates per type, a Test this panel with Pass and Fail, and per-branch
+deploy overrides. ADRs 0055 to 0057 and 0062 to 0065.
+
 ### Domain-first setup
 
 First run gives the instance its https domain before anything else, unlocked by
@@ -75,6 +88,13 @@ workspace's configuration in the Workspace section. Sessions are stored per devi
 browser, desktop app and phone and signs any of them out on its next request.
 Profile links several sign-in accounts to one user, and a phone connects by
 scanning a single-use QR code.
+
+### The phone app
+
+An Android APK and an unsigned iPhone IPA for sideloading, built on GitHub and
+updated over the air from a self-hosted update server. Inbox, Chat, the board,
+docs, deploys and runners, container logs and Your settings on a phone, signed
+in by scanning a QR code, with push notifications for the inbox.
 
 ### Team
 
@@ -155,6 +175,20 @@ project's folder, or a new git worktree off the branch that folder is on, so
 plays and chats running at the same time never edit the same files. The choice
 sits beside the model in pairing defaults, and a project link can override it.
 
+### Ticket notes
+
+A ticket's thread sits in a resizable pane beside its body, and an agent adds
+to the ticket as a note: one message in the thread with a markdown file, opened
+and edited live in a dialog, instead of growing the body. Docs, ticket bodies,
+memories and notes gained editable tables.
+
+### The interview as questions
+
+A project's interview is a set of question cards on the Interview page, with
+no agent involved. Once they are answered, a play run reads the answers and the
+code, asks follow-ups about the gaps a round at a time, and writes the interview
+memory; changing an answer regenerates it.
+
 ### Interview sources
 
 A project's interview can start from what it already has. Sources are pointed
@@ -232,30 +266,12 @@ the public domain exists, security-review the integration model before the
 store accepts third parties, register the Cloudflare OAuth app, and settle the
 canvas node kinds.
 
-In progress: **the phone app** in `native/`, an Android APK and an unsigned iPhone IPA for sideloading, with Inbox, Chat, the board,
-docs, deploys and runners on a phone, signed in by scanning a QR code,
-with push notifications and over-the-air updates. It is built and in device
-testing ahead of its first release; the map is in `.scratch/native-app/`.
-
-In progress: **ticket flow**. A ticket's thread moves into a resizable
-pane beside the body on wide screens, and agents leave notes instead of
-growing the body: one message in the thread with a markdown file, opened
-and edited live in a dialog. Built and walked through on a real install;
-the phone check and one editor fix remain, tracked in `.scratch/ticket-flow/`.
-Docs, ticket bodies, memories, and notes also gained editable tables.
-
 In progress: **T3 Code orchestrator V2**. A computer whose T3 Code moves to
 T3's new orchestrator keeps working without re-pairing, and never goes back.
 An agent that hands work to other agents replies with the finished result,
 and each helper shows as a pill on the reply that opens its conversation.
 OpenCode 2 runs as a provider inside T3 Code, so it needs no harness of its
 own. Tracked in `.scratch/t3-orchestrator-v2/`.
-
-In progress: **the interview as questions**. A project's interview stops
-being a chat: the Interview page steps through the template's questions as
-cards, then an agent reads the answers and the code, asks follow-ups about
-the gaps, and writes the interview memory. Answers stay on the page, so a
-re-run means changing what changed. The map is in `.scratch/interview-qna/`.
 
 In progress: **adding a computer in one command**. Your settings →
 Computers → **Add a computer** gives one command to run on the computer; it
@@ -317,9 +333,8 @@ without changing the core architecture.
   access domain regains a `comment` action when this lands.
 - **Runner labels and selectors** for routing a job to the right runners,
   beyond the machine a stack targets.
-- **Ticket workflow depth** — blocked tickets, ticket-type body templates and
-  required relations, comments and an activity timeline
-  (`.scratch/ticket-workflow-depth/`); creating a branch from the ticket page
+- **Ticket workflow depth** — an activity timeline and custom fields on ticket
+  types (`.scratch/ticket-workflow-depth/`); creating a branch from the ticket page
   (`.scratch/branch-from-ticket/`); one search box across every entity
   (`.scratch/global-search/`).
 - **Chat and voice depth** — the message features still missing (read
@@ -327,9 +342,6 @@ without changing the core architecture.
   in-chat approvals instead of today's auto-decline, per-user memories and
   multiple named agents, and on the voice side DM and group calls, `@Agent` in
   a call, and recordings for standups.
-- **Integrations polish** — the expose-a-service flow and the voice channel
-  UI, postponed until after the public release (`.scratch/integrations/`,
-  tickets 04 and 11).
 - **Smaller gaps**, too thin for a spec: offline doc edits do not survive a
   closed tab (the collaboration state is memory-only); a project's docs list
   has no manual ordering; MCP tools for automation versions and
@@ -350,7 +362,7 @@ without changing the core architecture.
 
 Shelved for now, specs kept: the integration store (`.scratch/integration-store/`)
 and a second git host, GitLab and Gitea (`.scratch/second-git-host/`), and
-workspace-scoped runners and integrations
+workspace-scoped integrations
 (`.scratch/workspace-scoped-automation-surfaces/`).
 
 ---

@@ -1,6 +1,10 @@
 # T3 Code orchestrator V2
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
+
+Tickets 01–15 and 18–24 shipped and their files are gone; ticket numbers in this spec point at them in git
+history. Open: 16, the owner's walkthrough on the nightly, and 17, the guide pages and glossary terms, which
+are not written yet (the paired-computers and computer-setup guides say nothing of protocol 2, Pi or Grok).
 
 ## Objective
 
