@@ -59,7 +59,7 @@ Five roles ship with Nexul as templates. Every new workspace, a fresh install's 
 | Junior Developer | The same, plus read pull requests, code reviews, repositories, stacks and deploys with their logs, and see and run plays | Your computer, Your projects |
 | Senior Developer | Delete in most project areas, write repositories, stacks and deploys, create projects, edit plays and auto plays, edit the Interview template, and read runners, machines, DNS and the topology | Connect GitHub, Your computer |
 | DevOps | Write tickets, docs, repositories, stacks and deploys, delete stacks, and manage runners, machines, DNS and gateways, and the topology registry | Add a deploy server |
-| Administrator | Every project and workspace permission plus the deploy infrastructure, but none of the instance's own administration, which stays with the Owner | Connect GitHub |
+| Administrator | Every project and workspace permission plus the deploy infrastructure, except making or removing a workspace and the instance's own administration, which stay with the Owner | Connect GitHub |
 
 All five can chat and use channels, voice, mentions, and notifications.
 
